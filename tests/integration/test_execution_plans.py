@@ -538,3 +538,38 @@ def test_forget_restores_capacity_without_prior_id_knowledge(tmp_path, execution
         api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan.plan_id
         != first.plan_id
     )
+
+
+@pytest.mark.parametrize("index", [0, 1])
+@pytest.mark.parametrize("value", [None, True, 1, 1.5, {}, [], ["id"], {"id": "value"}])
+def test_cursor_pair_types_are_controlled_before_timestamp_uuid_parsing(tmp_path, index, value):
+    import base64
+
+    pair = ["2026-10-28T00:00:00.000000Z", "11111111-1111-4111-8111-111111111111"]
+    pair[index] = value
+    cursor = base64.urlsafe_b64encode(canonical(pair)).decode("ascii")
+    with pytest.raises(YorungeError) as failure:
+        api.list_execution_plans(cursor=cursor, state_dir=tmp_path / "state")
+    assert failure.value.code == "invalid_request"
+    assert failure.value.exit_code == 2
+
+
+def test_cli_malformed_cursor_returns_one_json_error_without_traceback(tmp_path, cli):
+    import base64
+
+    cursor = base64.urlsafe_b64encode(canonical(["2026-10-28T00:00:00.000000Z", 1])).decode("ascii")
+    result = cli(
+        "plan",
+        "execution",
+        "list",
+        "--cursor",
+        cursor,
+        "--state-dir",
+        str(tmp_path / "state"),
+        "--output",
+        "json",
+        state=True,
+    )
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert json.loads(result.stderr) == YorungeError("invalid_request").envelope()

@@ -79,8 +79,12 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
         if not isinstance(cursor, str) or len(cursor) > 256:
             raise ValueError("bounded cursor required")
         raw = json.loads(base64.b64decode(cursor, altchars=b"-_", validate=True))
-        if not isinstance(raw, list) or len(raw) != 2:
-            raise ValueError("cursor pair required")
+        if (
+            not isinstance(raw, list)
+            or len(raw) != 2
+            or not all(isinstance(part, str) for part in raw)
+        ):
+            raise ValueError("cursor string pair required")
         prepared, identifier = raw
         instant(prepared)
         canonical_uuid(identifier)

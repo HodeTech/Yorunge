@@ -1,6 +1,6 @@
 # P01-3 uygulama ve kabul kaydı
 
-**Tarih:** 2026-10-27. **Durum:** Uygulanıyor; ilk cache adımı doğrulanıyor, epik tamamlanmadı. **Dal:** feat/p01-3-capability-planning; **taban:** development@78d5d77. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iki iş kartı](../roadmap/tasks/README.md).
+**Tarih:** 2026-10-27. **Durum:** Adım1–3 ve ikişer review tamamlandı; bütünleşik teslim/PR kabulü sürüyor, epik henüz kapanmadı. **Dal:** feat/p01-3-capability-planning; **taban:** development@78d5d77. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iki iş kartı](../roadmap/tasks/README.md).
 
 ## Onay ve yöntem
 
@@ -95,3 +95,12 @@ Ruff format/lint, strict mypy38 kaynak,105 belge ve altı skill/yedi kart deneti
 Yeni/idempotent kayıt için monotonic timeout, EIO ve SQLite read denial altı regresyonla sınandı. İlk read-denial beklentisi var olan SQLite hata eşlemesinin state_invalid döndürdüğünü gösterdi; eşleme değiştirilmedi, denial ile EIO ayrı sınandı. Son approval takımı **34 passed (14,54 s)**; lint/type ve belge/ajan kontrolleri başarılıdır.
 
 State reviewer20 yarış/cascade/corruption/legacy testinde yeni bulgu bulmadı. Liste index özetinin payload doğrulamadığı gözlemi ADR'nin açık payload okumama kararıyla karşılaştırılıp kod bulgusu olarak alınmadı; referanstaki aşırı geniş “her okumada” ifadesi tam kayıt okuması olarak açıklaştırıldı. İkinci fresh review turu beklenir.
+
+
+### Adım 3 / review 2 ve kapanışı
+
+Üç farklı yeni reviewer invariants/time (GPT-6 Astra/high), storage/recovery ve public sözleşme (GPT-6.1 Sol/high) `988bbc3` üzerinde inceledi. Invariants reviewer60 test ve yeni/idempotent onayın commit öncesi/sonrası credential rotation dört bağımsız probunda R1 düzeltmesini doğruladı. Public reviewer424 testi (iki kapasite testi seçilmeden), storage reviewer179 integration testi başarıyla koştu. Onay/state/recovery alanında yeni bulgu yok.
+
+Bir P2 bozuk cursor'un UUID eleman türünü kontrol etmeden canonical_uuid'ya iletmesiydi; integer/bool/object/list, public CLI'da traceback üretebiliyordu. Adım2'den mevcut bu kusur ertelenmedi: parse öncesi strict string-pair kapısı ve iki eleman için16 negatif tip + gerçek CLI JSON hata regresyonu eklendi. Düzeltme sonrası plan+approval **77 passed (26,25 s)**; Ruff/strict mypy ve belge denetimi başarılıdır.
+
+Adım3 tamamlandı. Kalıcı cache/plan/onay, seçili yönetim, reset/restore/recover ve bütün public yüzey uygulanmıştır; henüz run/operation/HTTP/gerçek producer yoktur. Adım4 son build/iki temiz kurulum, memory/başlangıç ölçümü, kanonik durum kapanışı ve tek development PR'ına geçilir; kullanıcı review'i için merge yapılmaz.
