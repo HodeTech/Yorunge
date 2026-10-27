@@ -45,7 +45,7 @@ CLI/şema adaylarının kısa import deneyi ve seçimin gerekçesi [ADR-0008](..
 
 Bozuk YAML scalar literal ve scalar/mapping düğüm türü, C0/DEL/C1 manifest/URL karakterleri ve boş userinfo için gerçek dosya/API/CLI regresyonları eklendi. Geçersiz reçete kararlı `invalid_recipe`; konsol çıkış 2, boş stdout ve tek güvenli JSON hata kaydı üretir. Geçerli Unicode referans ve standart scalar tag desteği korunur; YAML mapping-to-scalar uyumluluk kısayolunun reddi [referansta](../reference/configuration.md) açıklanır. Capability sorgusunda uyumsuz sonuç ile plan hazırlamada hata ayrımı korunur.
 
-Yerel kontrol: **400 pytest geçti**, atlama/xfail yok; 55'i gerçek sentetik ZIP/tar arşiv senaryosudur. Format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock kontrolü temiz. Ham arşiv üye adı kök kırpılmadan doğrulanır; traversal/mutlak/kanonik olmayan yol, link/özel üye, duplicate ve dosya/dizin çakışması reddedilir. Tek sdist kökü ve dağıtım/sürüm eşleşmesi denetlenir. Gerçek wheel (17 üye) ve sdist (129 üye) ayrı temiz venv'lerde lock/hash runtime bağımlılıklarıyla kuruldu; depo dışından import kökeni/konsol/plan geçti. Son build'in arşiv kimliği ve SHA-256'sı `dist/verification.jsonl` içinde üretilir; belge/kaynak değişince sdist hash'i ve üye sayısı yeniden ölçülür.
+Yerel kontrol: **404 pytest geçti**, atlama/xfail yok; 59'u gerçek sentetik ZIP/tar arşiv senaryosudur. Format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock kontrolü temiz. Ham arşiv üye adı kök kırpılmadan doğrulanır; traversal/mutlak/kanonik olmayan yol, link/özel üye, duplicate ve dosya/dizin çakışması reddedilir. Tek sdist kökü ve dağıtım/sürüm eşleşmesi denetlenir. ZIP özgün adındaki NUL ve Python/uv arasında alternatif ad seçtiren Unicode Path extra alanı reddedilir; diğer düzgün metadata korunur. Gerçek wheel (17 üye) ve sdist (130 üye) ayrı temiz venv'lerde lock/hash runtime bağımlılıklarıyla kuruldu; depo dışından import kökeni/konsol/plan geçti. Son build'in arşiv kimliği ve SHA-256'sı `dist/verification.jsonl` içinde üretilir; belge/kaynak değişince sdist hash'i ve üye sayısı yeniden ölçülür.
 
 Başlangıç ölçümü: aynı macOS 27.0.1 arm64 / CPython 3.11.18 referans makinede, wheel'den ayrı temiz venv'e kurulum; editable değil. Profil 227 bayt, üç ısınma ve her komut için 30 ayrı süreç. İlk süreç/OS cache sınırı yukarıdakiyle aynıdır; bu fiziksel soğuk boot ölçümü değildir. [Ham kapanış ölçümleri](p01-1a-startup.json).
 
@@ -55,7 +55,7 @@ Başlangıç ölçümü: aynı macOS 27.0.1 arm64 / CPython 3.11.18 referans mak
 | `--version` | 25,091 | 25,486 | 26,266 | ≤ 500 ms | Geçti |
 | `context show` + TOML + JSON | 401,901 | 89,434 | 92,807 | ≤ 200 ms | Geçti |
 
-Adım 1 iki bağımsız review turuyla kapandı; bulunan mapping ve timestamp köşeleri düzeltildi ve yeniden doğrulandı. Adım 2 review/PR ve uzak CI sonucu henüz bekleniyor; tam güncel teslim kaydı karttadır. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
+İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. Kullanıcı PR incelemesi ve uzak CI sonucu bekleniyor; tam güncel teslim kaydı karttadır. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
 
 ## Kalan sınır ve sonraki iş
 

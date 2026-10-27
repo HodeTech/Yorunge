@@ -1,7 +1,7 @@
 ---
 id: P01-1a
 phase: P01
-status: in_progress
+status: in_review
 size: M
 depends_on: [P01-1]
 capabilities: [C13]
@@ -62,7 +62,11 @@ Adım 1'de gerçek dosya ve subprocess negatif testleri, ilgili unit/contract/in
 
 ## Teslim kaydı
 
-Adım 1 ve iki review turundaki düzeltmeler tamamlandı; 345 test geçti. Adım 2 uygulandı; 55 gerçek sentetik arşiv senaryosu dahil 400 test, build/iki temiz kurulum ve başlangıç bütçeleri geçti. Adım 2 review turları ve PR henüz tamamlanmadı. Hazırlık probe'ları düzeltme kabulü değildir.
+İki adım ve her adımın iki yeni bağımsız review turu tamamlandı. Doğrulanmış bütün bulgular giderildi ve kapanışları yeniden incelendi. Kullanıcının PR incelemesi ve uzak CI sonucu bekleniyor; `in_review` bunun içindir. Hazırlık probe'ları teslim kanıtı yerine kullanılmaz.
+
+- PR/commit: [Son uygulama düzeltmesi](https://github.com/HodeTech/Yorunge/commit/7a255d51ce118b2ade6cc1af82191e3b8919e13d); development PR bağlantısı açılışta eklenecek.
+- Sonuç: 404 test (59 arşiv senaryosu), format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock geçti. Son kaynaklardan wheel/sdist ayrı temiz ortamlara kuruldu; 17/130 üye, depo dışı import/konsol/plan başarılı. [Kabul ve ham başlangıç ölçümü](../../research/p01-core-validation.md#p01-1-kapanış-doğrulaması); yerel JSONL son arşiv adı/hash ve temiz kurulum sonucunu taşır. Uzak CI henüz başarılı diye kaydedilmedi.
+- Kalan sınır: Açık doğrulanmış kod bulgusu yok; kullanıcı PR incelemesi ve zorunlu CI bekleniyor. HTTP/state/secret çözümleme, canlı EVREN, diğer OS/Python doğrulaması, yayın ve Master aktarımı bu kartın kabulü değildir.
 
 | Adım / tur | İncelenen commit | Kapsam ve sonuç |
 |---|---|---|
@@ -70,5 +74,5 @@ Adım 1 ve iki review turundaki düzeltmeler tamamlandı; 345 test geçti. Adım
 | 1 / review 1 | `8ae0fc5` | İki yeni bağımsız ajan: girdi/hata güvenliği (GPT-6.1 Sol xhigh), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: yanlış türde `!!map`/`!!set` düğümü TypeError veya sessiz boş mapping dönüşümü üretebiliyor. `f05ab2d` düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla giderdi; ikinci tur bu düzeltmeyi doğruladı |
 | 1 / review 2 | `f05ab2d` | Başka iki yeni ajan: parser/güvenlik (GPT-6 Astra high), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: timestamp scalar tag'i `{=: ...}` mapping'iyle TypeError üretiyor. `1e2df18`/`96755da` scalar düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla giderdi; aynı reviewer'ın odak kapanışında 256 varyant ve altı gerçek CLI timestamp deneyi kontrollü reddedildi, geçerli scalar girdiler korundu, açık doğrulanmış bulgu kalmadı |
 | 2 / uygulama | `2255d67` | Ham arşiv yolu/tür/kök/çakışma ve eşleşen dağıtım çifti; 400 test, iki temiz kurulum, JSONL ve wheel başlangıç ölçümü geçti |
-| 2 / review 1 | `2255d67` | İki yeni ajan: arşiv güvenliği (GPT-6 Astra high), kurulum/kanıt/sözleşme (GPT-6.1 Sol high). Tek doğrulanmış P2: ZipInfo.filename NUL'da kırpılıyor; orig_filename denetimi ve gerçek ZIP başlık regresyonuyla giderildi. Diğer reviewer iki temiz kurulumu ve ham ölçüm/p95/JSONL eşleşmesini doğruladı. İkinci tur henüz yapılmadı |
-| 2 / review 2 | `04a8e24` | Başka iki yeni ajan: arşiv biçimi (GPT-6 Astra high), teslim/kanıt (GPT-6.1 Sol high). Teslim reviewer'ı 401 test/iki temiz kurulum/JSONL/ölçümü doğruladı. Arşiv reviewer'ı Unicode Path extra alanında Python/uv ad yorum farkını bildirdi; kök ajan gerçek offline uv kurulumuyla bağımsız doğruladı. Alternatif ZIP adı ve bozuk extra alanı reddi ekleniyor; ek odak review ve nihai kapanış bekleniyor |
+| 2 / review 1 | `2255d67` | İki yeni ajan: arşiv güvenliği (GPT-6 Astra high), kurulum/kanıt/sözleşme (GPT-6.1 Sol high). Tek doğrulanmış P2: ZipInfo.filename NUL'da kırpılıyor; orig_filename denetimi ve gerçek ZIP başlık regresyonuyla giderildi. Diğer reviewer iki temiz kurulumu ve ham ölçüm/p95/JSONL eşleşmesini doğruladı. `04a8e24` düzeltmesi ikinci turda doğrulandı |
+| 2 / review 2 | `04a8e24` | Başka iki yeni ajan: arşiv biçimi (GPT-6 Astra high), teslim/kanıt (GPT-6.1 Sol high). Teslim reviewer'ı 401 test/iki temiz kurulum/JSONL/ölçümü doğruladı. Arşiv reviewer'ı Unicode Path extra alanında Python/uv ad yorum farkını bildirdi; kök ajan gerçek offline uv kurulumuyla bağımsız doğruladı. `7a255d5` alternatif ZIP adı/bozuk extra alanı reddi ekledi. Kapanış için yeni üçüncü bağımsız ajan (GPT-6.1 Sol xhigh) son diff'i ve son kaynaklardan build'i inceledi: 404 test, 59 arşiv senaryosu, lint/type/belge ve iki temiz kurulum geçti; 17/130 üye; açık doğrulanmış bulgu kalmadı |

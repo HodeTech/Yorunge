@@ -12,7 +12,7 @@
 - Yerel test, tip/lint/format, dağıtım/temiz kurulum ve başlangıç kanıtı [kabul kaydında](../research/p01-core-validation.md). İlk PR'da 100 test ve bütün CI kontrolleri Ubuntu/Python 3.11'de geçti. Metadata kontrolü PR #2'de doğrulandı; iki dalda `offline-core` ve `branch-policy` zorunlu. Yayımlanmış paket yok.
 - Genel belge ve paket girdileri izin listeleriyle sınırlandırıldı; yerel analiz arşivi üretim girdisi değildir. Site/doküman yayın sistemi henüz yoktur.
 - Aktif ürün kodlaması öncesi roadmap ve ajan hazırlığı gözden geçirildi; [bulgu ve karar kaydı](../research/roadmap-readiness-review.md). P01 bağımlılık sırası ve uzak fazların paket sınırı netleştirildi. Bu hazırlık yeni ürün capability'si uygulamaz.
-- Kullanıcının P01-1 kapanış talebi için belgeler ve mevcut çekirdek yeniden incelendi. Parser/şema hata sınırı ve dağıtım denetimi bulguları [P01-1a kartında](tasks/p01-1a-core-acceptance-hardening.md) iki adım olarak somutlaştırıldı; kullanıcı kartı onayladı ve mevcut çekirdeğin kapanış düzeltmeleri başladı. Bu iş tamamlandıktan sonraki yeni özellik P01-2a olarak kalır.
+- Kullanıcının P01-1 kapanış talebi için belgeler ve mevcut çekirdek yeniden incelendi. Parser/şema hata sınırı ve dağıtım denetimi bulguları [P01-1a kartında](tasks/p01-1a-core-acceptance-hardening.md) iki adım olarak somutlaştırıldı; kullanıcı kartı onayladı; iki adım ve bağımsız review turları tamamlandı, doğrulanmış bulgular kapandı. Yerel kabul/kurulum/ölçüm sonucu ve PR inceleme durumu karttadır. Sonraki yeni özellik P01-2a olarak kalır.
 
 ## Sıradaki somut iş
 
