@@ -22,7 +22,7 @@
 | P01-3 | Dört destek durumu, seçim önceliği, sabit seçimli offline draft ve digest | Hesaba bağlı kanıt/tazelik/cache; yürütme geçerliliği |
 | P01-4 | Yok | SQLite/operation/attempt/migration/lease bütünü |
 | P01-5 | Ortak CLI/Python yerel kullanım senaryoları, tipli sonuç ve JSON hata sınırı | HTTP, retry/deadline, streaming ve iptal |
-| P01-6 | Çalışan test/lint/type/build/perf araçları ve CI tanımı | Uzak CI koşusu ve ilerideki P01 özelliklerine ait kontroller |
+| P01-6 | Test/lint/type/build/perf ve PR #1 üzerinde gerçek Ubuntu CI kanıtı | İlerideki P01 özelliklerine ait kontroller |
 
 [Kabul kanıtı](../research/p01-core-validation.md). Tam faz tamamlandı diye işaretlenmez.
 

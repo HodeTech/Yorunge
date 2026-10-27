@@ -1,6 +1,6 @@
 # Git, inceleme ve yayın standardı
 
-**Durum:** Benimsenmiş dal/PR politikası; canlı ayarlar kurulum sonunda ayrıca doğrulanır. **Tarih:** 2026-10-27.
+**Durum:** Benimsenmiş dal/PR politikası; [canlı doğrulama kaydı](../research/branch-workflow-validation.md) ayrı tutulur. **Tarih:** 2026-10-27.
 
 ## Dal modeli ve birleştirme
 
