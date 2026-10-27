@@ -1,14 +1,14 @@
 ---
 id: P01-3a
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-2b, P01-4a]
 capabilities: [C02, C13]
 ---
 # P01-3a — Kapsamlı capability cache ve tazelik
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). Doğrudan önkoşullar verified; ADR-0013/0014 onayı eksik olduğu için draft.
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). Doğrudan önkoşullar verified; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. İlk uygulama adımı başladı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,11 +20,11 @@ Ayrı v2 kayıt, tipli producer/resolver, tam scope anahtarı, gerçek SQLite ca
 
 ## Bağımlılıklar ve kararlar
 
-P01-2b/P01-4a [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'ta; [kabul](../../research/p01-2-implementation-validation.md#development-merge-kapanışı). SQLite, HMAC ve binding v1 yeniden seçilmez. [ADR-0013](../../decisions/0013-scoped-capability-cache.md) ile [ADR-0014](../../decisions/0014-execution-plan-validity-and-approval.md) Proposed; açık kullanıcı onayı ürün kodunun kapısıdır.
+P01-2b/P01-4a [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'ta; [kabul](../../research/p01-2-implementation-validation.md#development-merge-kapanışı). SQLite, HMAC ve binding v1 yeniden seçilmez. [ADR-0013](../../decisions/0013-scoped-capability-cache.md) ile [ADR-0014](../../decisions/0014-execution-plan-validity-and-approval.md) 2026-10-27 kullanıcı onayıyla Accepted; karar kapısı kapandı.
 
 ## Sözleşme ve uygulama sınırı
 
-Domain somut SQLite/env/CLI bilmez; application producer/clock/store portlarını koordine eder; gerçek SQLite ve dosya işleri adaptördedir. Public API producer/evidence nesnesi kabul etmez. Kanonik genel referans [capability kaydı](../../reference/capability-record.md), Proposed exact scope [CapabilityScopeV2](../../reference/capability-scope-v2.md), politika ADR-0013'tedir. CLI/Python aynı use case'i çağırır; cached yolun açık state/sır/clock etkisi kullanıcı belgesinde görünürdür.
+Domain somut SQLite/env/CLI bilmez; application producer/clock/store portlarını koordine eder; gerçek SQLite ve dosya işleri adaptördedir. Public API producer/evidence nesnesi kabul etmez. Kanonik genel referans [capability kaydı](../../reference/capability-record.md), Accepted exact scope [CapabilityScopeV2](../../reference/capability-scope-v2.md), politika ADR-0013'tedir. CLI/Python aynı use case'i çağırır; cached yolun açık state/sır/clock etkisi kullanıcı belgesinde görünürdür.
 
 ## Kabul
 
@@ -48,4 +48,4 @@ Unit kanıt/clock/scope; contract eski v1/new v2/CLI/API/sızıntı; integration
 
 ## Teslim kaydı
 
-Henüz ürün teslimi yoktur. Kart draft, karar onayı ve uygulama/test/review kanıtı bekler. P01-2'nin geçmiş testleri bu kartın kabulü değildir.
+Henüz ürün teslimi yoktur. Kart in_progress; uygulama/test/review kanıtı bekler. P01-2'nin geçmiş testleri bu kartın kabulü değildir.

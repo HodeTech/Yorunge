@@ -1,6 +1,6 @@
 # ADR-0013: Kapsamlı capability cache, kanıt ve tazelik
 
-**Durum:** Proposed — kullanıcı onayı bekliyor; ürün uygulaması başlamadı. **Tarih:** 2026-10-27. **İş:** P01-3a. [Ön inceleme](../research/p01-3-readiness-review.md), [teslim planı](../roadmap/p01-3-delivery-plan.md).
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; uygulama/kabul ayrı kaydedilir. **Tarih:** 2026-10-27. **İş:** P01-3a. [Ön inceleme](../research/p01-3-readiness-review.md), [teslim planı](../roadmap/p01-3-delivery-plan.md).
 
 ## Bağlam
 
@@ -27,7 +27,7 @@ Yeni scope şu bağların tamamını taşır:
 | Araç | Kimlik, doğrulanmış sürüm, executable ve environment digest'leri; yoksa null |
 | Execution | Backend, doğrulanmış runtime kimliği/sürümü; bilinmeyen bağ null |
 
-Kapalı alan/tür/nullability, alt nesne, Unicode/sıralama, toplam limit ve local/remote değişmezlerinin **tek normatif kaynağı** bağlı [CapabilityScopeV2 wire sözleşmesidir](../reference/capability-scope-v2.md). Bu belge de Proposed'dır ve bu ADR'nin onay kapsamına dahildir; uygulamaya bırakılmış serbest `dict` veya producer'a göre değişen alan adları yoktur.
+Kapalı alan/tür/nullability, alt nesne, Unicode/sıralama, toplam limit ve local/remote değişmezlerinin **tek normatif kaynağı** bağlı [CapabilityScopeV2 wire sözleşmesidir](../reference/capability-scope-v2.md). Bu belge de aynı kullanıcı onayıyla benimsenmiştir; uygulamaya bırakılmış serbest `dict` veya producer'a göre değişen alan adları yoktur.
 
 Null **wildcard değildir**; yalnız aynı null alanla eşleşir ve doğrulama yerine geçmez. İzin ve kaynak listeleri sınırlı, sıralı ve tekrarsızdır; kaynak kaydı namespace/type/id ile kendi izinlerini birlikte taşır. Boş doğrulanmış izin kümesi ile bilinmeyen izin ayrıdır. Gerekli olmayan bağ null olabilir; görev için gerekli fakat bilinmeyen bağ execution desteğini engeller. Adapter hangi bağların gerekli olduğunu kendi tipli görev sözleşmesinde bildirir; caller bu gereksinimleri azaltamaz.
 

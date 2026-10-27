@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-10-27. **Durum:** Hazırlık/karar önerisi; ürün kodu ve P01-3 kabulü değildir. **Taban:** development@78d5d77; **dal:** feat/p01-3-capability-planning.
 
+
+**Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed ve onay bekleme ifadeleri tarihseldir; uygulama kabulü ayrıca kaydedilir.
 ## Sonuç ve onay kapsamı
 
 P01-2b/P01-4a önkoşulları development'ta doğrulanmış durumda; mevcut SQLite, HMAC/epoch/nesil ve hedef normalleştirme kararlarını yeniden açmak gerekmiyor. P01-3 satırı tek başına uygulamaya hazır değil: kanıt otoritesi, cache politikası, ayrı execution biçimi/onayı ve yeni state tüketicilerinin bakım davranışı ayrıntısızdı. Bunlar rutin kodlama tercihi değil, public sözleşme/güven sınırıdır.

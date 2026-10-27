@@ -1,7 +1,9 @@
 # P01-3 — Capability ve execution hazırlığı teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** Hazırlık; ADR-0013/0014 Proposed, kullanıcı onayı bekleniyor. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Ürün kodlaması başlamadı.
+**Tarih:** 2026-10-27. **Durum:** Uygulanıyor; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. İlk uygulama adımı başladı; ürün kabulü henüz yoktur.
 
+
+**Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed ve onay bekleme ifadeleri tarihseldir; uygulama kabulü ayrıca kaydedilir.
 ## Teslim sınırı
 
 Kullanıcı sonucu: capability bilgisinin hangi hedef/kimlik/kanıta ait ve ne kadar güncel olduğunu görmek; ayrı execution hazırlığını kaydetmek; değişmiş girdi/yetkiyle eski plan veya onayın geçerli sayılmasını engellemek. [P01-3a](tasks/p01-3a-scoped-capability-cache.md) ve [P01-3b](tasks/p01-3b-execution-plan-validity.md) tek development PR'ında teslim edilir. Paket L büyüklüğündedir; iki kart ve aşağıdaki M uygulama adımlarına ayrılır. Bunlar süre tahmini değildir.
@@ -10,12 +12,12 @@ Offline v1 Plan/capability ve seçim önceliği korunur. Uzak discovery/auth, ge
 
 ## Hazırlık kapısı
 
-[Ön inceleme ve araştırma](../research/p01-3-readiness-review.md) mevcut kodu, ilgili kanonik belgeleri ve üç bağımsız audit'i kapsar. P01-2b/P01-4a [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alınmıştır; kapanış tabanı [PR #7](https://github.com/HodeTech/Yorunge/pull/7)'dir. Önkoşul teslimi mevcut; aşağıdaki yeni kararlar henüz Accepted değildir:
+[Ön inceleme ve araştırma](../research/p01-3-readiness-review.md) mevcut kodu, ilgili kanonik belgeleri ve üç bağımsız audit'i kapsar. P01-2b/P01-4a [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alınmıştır; kapanış tabanı [PR #7](https://github.com/HodeTech/Yorunge/pull/7)'dir. Önkoşul teslimi mevcut; aşağıdaki kararlar 2026-10-27 kullanıcı onayıyla Accepted:
 
 - [ADR-0013](../decisions/0013-scoped-capability-cache.md): Yeni scope/kanıt, cache/clock/TTL/kota ve açık sorgu.
 - [ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md): Execution/onay/yerel kayıt yönetimi ve restore/recover/preview uyumu.
 
-Kullanıcının mevcut talebi uygulama, commit, bağımsız review ve son development PR'ını yetkilendirir. Yeni ADR'ler için ayrıca açık onay istediği için şu an yalnız hazırlık yapılır. Onay gelince iki kartın ready koşulları gerçek bağımlılıklarıyla değerlendirilir; P01-3b, P01-3a kabulü oluşmadan uygulamaya hazır gösterilmez.
+Kullanıcının mevcut talebi uygulama, commit, bağımsız review ve son development PR'ını yetkilendirir. Yeni ADR'ler ve bağlı wire için açık onay alındı; ilk kartın doğrudan bağımlılıkları kanıtlı olduğundan uygulama başladı; P01-3b, P01-3a kabulü oluşmadan uygulamaya hazır gösterilmez.
 
 ## Uygulama adımları
 

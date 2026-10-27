@@ -4,7 +4,7 @@
 
 İlk uygulama yalnız offline `draft` üretir: sır, araç sürümü, veri/model içeriği veya uzak yetki doğrulanmadığından `prepared`/onay/yürütme durumuna geçmez. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
-P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Proposed ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı ve ürün kabulü henüz yoktur; bu mimarideki gelecek durumlar mevcut runtime desteği değildir.
+P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; ürün kabulü henüz tamamlanmadı; bu mimarideki gelecek durumlar mevcut runtime desteği değildir.
 
 ## Planın içerdiği bağlar
 

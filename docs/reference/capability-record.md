@@ -2,7 +2,7 @@
 
 **Durum:** v1 genel sözleşme; sınırlı offline görünüm uygulandı, canlı/cache kaydı planlandı. **Tarih:** 2026-10-27.
 
-P01-3 için ayrı v2/cache ayrıntısı [Proposed ADR-0013](../decisions/0013-scoped-capability-cache.md) ve ona bağlı [CapabilityScopeV2 wire](capability-scope-v2.md) ile kullanıcı onayına sunulmuştur. Bu öneri aşağıdaki uygulanmış v1'i veya henüz benimsenmemiş tasarımı değiştirmez; [hazırlık incelemesi](../research/p01-3-readiness-review.md).
+P01-3 için ayrı v2/cache ayrıntısı [Accepted ADR-0013](../decisions/0013-scoped-capability-cache.md) ve ona bağlı [CapabilityScopeV2 wire](capability-scope-v2.md) ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Tasarım onayı aşağıdaki uygulanmış v1'i veya henüz benimsenmemiş tasarımı değiştirmez; [hazırlık incelemesi](../research/p01-3-readiness-review.md).
 
 ## Uygulanan offline görünüm
 

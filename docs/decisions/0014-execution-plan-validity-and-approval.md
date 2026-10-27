@@ -1,6 +1,6 @@
 # ADR-0014: Execution planı, geçerlilik ve digest bağlı onay
 
-**Durum:** Proposed — kullanıcı onayı bekliyor; ürün uygulaması başlamadı. **Tarih:** 2026-10-27. **İş:** P01-3b; P01-3a bakım entegrasyonu. [Ön inceleme](../research/p01-3-readiness-review.md), [teslim planı](../roadmap/p01-3-delivery-plan.md).
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; uygulama/kabul ayrı kaydedilir. **Tarih:** 2026-10-27. **İş:** P01-3b; P01-3a bakım entegrasyonu. [Ön inceleme](../research/p01-3-readiness-review.md), [teslim planı](../roadmap/p01-3-delivery-plan.md).
 
 ## Bağlam
 
