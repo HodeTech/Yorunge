@@ -236,10 +236,31 @@ def test_canonical_source_directory_cannot_point_to_private_archive(guide_tree):
     assert "Synthetic instruction" not in result.stdout + result.stderr
 
 
-def test_code_samples_do_not_create_document_anchors():
+def test_code_samples_do_not_create_document_anchors(monkeypatch):
+    monkeypatch.syspath_prepend(str(SCRIPT.parent))
     helpers = runpy.run_path(str(SCRIPT.with_name("check-docs.py")))
     anchors = helpers["anchors"](
         "---\nname: example\n---\n# Guide\n\n```md\n# Sample heading\n```\n\n## Actual section\n"
     )
     assert "guide" in anchors and "actual-section" in anchors
     assert "sample-heading" not in anchors
+
+
+@pytest.mark.parametrize("fence", ["`", "~"])
+def test_nested_shorter_fences_and_info_suffix_do_not_close_samples(monkeypatch, fence):
+    monkeypatch.syspath_prepend(str(SCRIPT.parent))
+    helpers = runpy.run_path(str(SCRIPT.with_name("check-docs.py")))
+    sample = (
+        f"# Guide\n\n{fence * 4}markdown\n{fence * 3}\n# Nested sample\n"
+        f"{fence * 4}not-a-closing-fence\n# Still a sample\n"
+        f"{fence * 5}\n\n## Actual section\n"
+    )
+    anchors = helpers["anchors"](sample)
+    assert anchors == {"guide", "actual-section"}
+    assert helpers["markdown_prose"](sample)[1] is False
+
+
+def test_unclosed_tilde_fence_is_reported(monkeypatch):
+    monkeypatch.syspath_prepend(str(SCRIPT.parent))
+    helpers = runpy.run_path(str(SCRIPT.with_name("check-docs.py")))
+    assert helpers["markdown_prose"]("# Guide\n\n~~~md\n# Sample\n")[1] is True

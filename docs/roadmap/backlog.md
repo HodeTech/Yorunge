@@ -5,7 +5,7 @@
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
 | B01 | CLI/şema/YAML seçildi; HTTP açık | [ADR-0008](../decisions/0008-offline-core-stack.md); taşıma/deadline deneyi kaldı | P01-5 |
-| B02 | Ortak state DDL/migration/lease | Önce P01-4a store/migration kararı, sonra P01-4b sahiplik; çökme ve çok süreç deneyi | P01-4a/P01-4b |
+| B02 | Ortak state DDL/migration/lease | Önce B02 store/migration karar paketi, sonra P01-4a store/migration temeli ve P01-4b sahiplik; çökme ve çok süreç deneyi | P01-4a/P01-4b |
 | B03 | SDK'yı kullanma sınırı | Güncel kod/endpoint/retry sözleşme denetimi | P02 |
 | B04 | Aktarım limitleri ve native eğitim durumları | Güncel resmî sözleşme + yetkili küçük pilot | P02/P03 |
 | B05 | İlk muadil araç ve sürüm aralığı | Aynı SFT task/result deneyi; Axolotl ilk aday | P03-4 |

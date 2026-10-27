@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import yaml
+from markdown_prose import markdown_prose
 
 STATUSES = {"draft", "ready", "in_progress", "in_review", "verified", "blocked", "deferred"}
 WORK_ID = re.compile(r"P\d{2}-(?:\d+[a-z]?|R\d+)")
@@ -56,7 +57,9 @@ def check_card_body(text: str, status: object) -> None:
     if status not in STARTABLE:
         return
     # Samples do not supply real card sections or delivery evidence.
-    prose = re.sub(r"(?ms)^(`{3,}|~{3,})[^\n]*\n.*?^\1[ \t]*$", "", text)
+    prose, unclosed_fence = markdown_prose(text)
+    if unclosed_fence:
+        raise ValueError("unclosed task sample fence")
     parts = re.split(r"(?m)^## (.+)\n", prose)
     sections = dict(zip(parts[1::2], parts[2::2], strict=True))
     if any(not sections.get(heading, "").strip() for heading in CARD_SECTIONS):
