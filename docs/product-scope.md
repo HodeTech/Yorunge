@@ -1,6 +1,6 @@
 # Ürün kapsamı ve öncelikler
 
-**Güncellendi:** 2026-10-27. **Durum:** Benimsenmiş kapsam; bütün çalışma zamanı özellikleri planlanıyor.
+**Güncellendi:** 2026-10-27. **Durum:** Benimsenmiş kapsam; ilk offline planlama alt kümesi uygulandı. Tam özellik durumları [matristedir](capability-matrix.md).
 
 ## Kullanıcı problemleri
 

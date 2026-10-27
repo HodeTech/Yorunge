@@ -1,8 +1,34 @@
 # Git, inceleme ve yayın standardı
 
-**Durum:** Benimsenmiş. **Tarih:** 2026-10-27.
+**Durum:** Benimsenmiş dal/PR politikası; canlı ayarlar kurulum sonunda ayrıca doğrulanır. **Tarih:** 2026-10-27.
 
-Repo boş olarak `Master` varsayılanıyla klonlandı. Bu belge `main`/`development` dalı veya branch protection kurulduğunu iddia etmez. Mevcut varsayılan dal üzerinden kısa ömürlü çalışma dalları kullanılır; dal modelini değiştiren işlem ayrıca karara bağlanır.
+## Dal modeli ve birleştirme
+
+Kanonik geliştirme dalı ve GitHub varsayılanı `development`; release dalı büyük/küçük harfi korunarak `Master`'dır. `development` ilk kez `Master`'ın `6ec4b16` commit'inden oluşturulur. Yeni işler güncel `origin/development` üzerinden kısa ömürlü dallarda geliştirilir; kod, doküman, bağımlılık ve CI dahil bütün değişiklikler PR ile `development`'a girer.
+
+`development` → `Master` aktarımı aynı depodan PR ile yapılır. Bu PR'ı ve release/yayın işlemlerini kullanıcı (`cemililik`) yürütür. Ajan development PR'larını kapsamı ve zorunlu kontrolleri uygunsa birleştirebilir; `Master`'ı kendiliğinden birleştirmez. Aynı hesapla çalışan ajan/kullanıcı GitHub tarafından ayırt edilemez; bu sınır ayrıca ajan yönergesiyle korunur.
+
+Her iki aşamada **merge commit** kullanılır. Repo ayarında `allow_merge_commit=true`, `allow_squash_merge=false`, `allow_rebase_merge=false`; linear history kapalıdır. Commit kimlikleri ve PR birleşme noktaları korunur. Kalıcı dallar rebase/reset ile yeniden yazılmaz. `Master`'da release için yapılan sürüm düzeltmeleri PR ile `development`'a geri taşınır; normal aktarımda cherry-pick kullanılmaz. [ADR-0009](../decisions/0009-development-and-release-branches.md).
+
+## Koruma ve CI sözleşmesi
+
+İki dalda klasik branch protection kullanılır; bu ölçekte doğrudan kullanıcı bazlı `Master` yazma sınırı yeterlidir. PR zorunlu, çözülmemiş konuşma engeli etkin, force push/silme kapalı ve yönetici denetimi etkindir. Genel yönetici bypass veya PR bypass listesi tanımlanmaz. `Master` yazma listesi yalnız `cemililik`; diğer yöneticilerin ayar değiştirme yetkisini bu politika ortadan kaldırmaz.
+
+Required check kimlikleri `offline-core` ve `branch-policy`, kaynak uygulama GitHub Actions'tır. `offline-core` format/lint/type, genel belge, offline test, build/temiz kurulum ve başlangıç bütçelerini uygular. PR'da GitHub'ın geçici birleşim sonucu test edilir. `branch-policy` yalnız güvenilen varsayılan dal commit'inden checkout yapar ve PR metadata'sını okur; PR head kodunu çalıştırmaz. `Master` hedefinde head dalının **aynı depodaki** `development` olması gerekir; fork'ta aynı adı kullanmak geçmez. Politika `edited` olayında da yeniden koşar; PR hedefi değişimi denetimsiz kalmaz.
+
+Normal CI `development`/`Master` PR'larında, bu iki dala push'ta ve manuel çağrıda çalışır; feature push + PR için yinelenen tam koşu üretilmez. Token `contents: read`, süre ve concurrency sınırı taşır. Metadata kontrolü ayrı `pull_request_target` workflow'udur; token salt okunur, checkout açık `github.sha` ile güvenilen commit'e sabittir, PR kodu/artefaktı ve cache'i kullanılmaz.
+
+`development` required check'leri strict'tir: özellik dalı güncel tabanla sınanır. `Master` check'leri loose'tur: iki uzun ömürlü dal arasında her release merge commit'ini salt soy ağacı için geri taşıma zorunluluğu yaratılmaz. Master aktarım PR'ları kullanıcı tarafından tek tek ele alınır; taban değişmişse kontroller yeniden çalıştırılır. PR'ın oluşturulduğu/güncellendiği anın birleşim sonucu test edilir; loose ayar eşzamanlı PR'lar için merge queue garantisi vermez.
+
+Şimdilik zorunlu onay sayısı **0**'dır; PR ve CI zorunluluğu devam eder. Tek yazma yetkilisinin kendi PR'ını onaylayamaması nedeniyle 1 review şartı kurulmaz. İkinci bağımsız yazma yetkilisi geldiğinde 1 onay, stale approval iptali ve sahiplik gereksinimleri yeniden değerlendirilir.
+
+## İlk kurulum sırası
+
+İlk uygulama commit'i `bb67b3a`, dal politikası benimsenmeden önce `Master` tabanlı `feat/offline-core` dalında hazırlanmıştır. Bu mevcut çalışma korunur; `development`'a doğrudan taşımak yerine ilk PR'a dahil edilir. Bu taban istisnası yeni geliştirmeler için emsal değildir.
+
+İlk PR'da `offline-core` gerçek koşusu doğrulanır, bu check ile development koruması açılır ve PR merge commit ile alınır. Ardından varsayılan dal `development` yapılır. Güvenilen metadata workflow'u artık varsayılan dalda vardır; takip eden doğrulama PR'ında `branch-policy` koşusu görülünce bu check de iki dalda zorunlu hale getirilir. Böylece henüz var olmayan check ilk kurulumu kilitlemez. `Master` içeriği kurulum sırasında ilerletilmez; ilk release aktarımını kullanıcı yapar.
+
+Canlı ayarlar API'den geri okunarak; merge commit'in iki parent'ı, PR hedefi ve gerçek Actions sonuçlarıyla doğrulanır. Belge tek başına bu ayarların uygulanmış olduğuna kanıt değildir.
 
 Commit türleri `docs`, `feat`, `fix`, `test`, `refactor`, `perf`, `build`, `ci`, `chore` gibi açık amaç taşır. PR problemi, kullanıcı sonucunu, sözleşme/uyumluluk etkisini ve gerçek kontrolleri anlatır. Reviewer davranış doğruluğu, kullanıcı kolaylığı, kaynak bütçesi ve toparlanmaya öncelik verir.
 

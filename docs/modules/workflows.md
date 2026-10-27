@@ -1,6 +1,6 @@
 # İş akışları ve işlem durumu modülü
 
-**Durum:** Planlandı. **Kapsam:** C12/C13; gelecekte C14 yüzeyi. **Faz:** P01–P04.
+**Durum:** Uygulanıyor — seçim/digest/offline draft testli; yürütme/kalıcı durum planlandı. **Kapsam:** C12/C13; gelecekte C14 yüzeyi. **Faz:** P01–P04.
 
 Plan oluşturma, context/tool/execution çözümleme, onay, operation/attempt koordinasyonu ve restart sonrası uzlaştırmayı sahiplenir. İlk sürüm sınırlı, bilinen görev bileşimleri kullanır; genel amaçlı kod çalıştıran workflow dili oluşturmaz.
 

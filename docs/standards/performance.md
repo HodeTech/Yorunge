@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** Benimsenmiş hedefler; henüz benchmark yapılmadı. **Tarih:** 2026-10-27.
+**Durum:** Başlangıç/profil hedefleri ilk referans ortamda ölçüldü; aktarım/ağ hedefleri henüz ölçülmedi. **Tarih:** 2026-10-27. [Ölçüm kaydı](../research/p01-core-validation.md).
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

@@ -1,0 +1,1 @@
+"""Typed, transport-independent contracts."""

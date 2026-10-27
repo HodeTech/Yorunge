@@ -1,12 +1,26 @@
 # Profil ve reçete sözleşmesi
 
-**Durum:** Tasarlanan v1 sözleşmesi. **Tarih:** 2026-10-27.
+**Durum:** v1 yerel alt küme uygulandı; secret erişimi/migration ve yürütme bağları planlandı. **Tarih:** 2026-10-27.
+
+## Uygulanan dosya ve şema sınırı
+
+Config açık `--config PATH` / Python `config=Path(...)` ile seçilir. Verilmezse `~/.config/yorunge/config.toml` okunur; dosya yoksa sır/hesap/proje içermeyen yerleşik `default` profili kullanılır. Açık dosya yoksa hata döner. Env davranış override'ı taranmaz; bu dilimde credential değeri de okunmaz. `platform_key_env` ve `llm_key_env` yalnız ad şemasıyla doğrulanır, context/plan/çıktıya dahil edilmez. Keychain henüz yoktur.
+
+TOML root alanları: `schema_version=1` (bool/string değil int), `active_profile`, `profiles`. Her profil: `platform_url`, `llm_url`, `platform_key_env`, `llm_key_env`, `account_id`, `project_id`, `tools.defaults`. Bilinmeyen/nested alan ve yinelenen anahtar reddedilir. Proje önceliği açık çağrı → reçete `project` → profil `project_id` → null; liste başından proje alınmaz. Eksik proje yerel okumayı/plan hazırlığını engellemez; gerektiğinde remote plan engeli olur.
+
+Hizmet URL'leri HTTPS olmalı; userinfo/query/fragment, beklenmeyen port, kontrol karakteri ve karışmış bilinen Platform/LLM host'ları reddedilir. Özel host'u yerel şemaya kabul etmek o host'un güvenilirliğini veya API uyumunu doğrulamaz. IPv6 kapsamı köşeli parantezle korunur. Uzak hedef politikası sonraki HTTP işinde doğrulanmalıdır.
+
+YAML alanları: `schema_version`, `task`, isteğe bağlı `profile`, `project`, `tool: {id}`, `execution: {backend}`, `model: {source, id, revision}`, `data: {manifest}`, `training: {method, epochs}`, `provider_options`. `schema_version` ve `task` zorunlu; model/veri bu taslakta isteğe bağlı referanstır. İlk model biçimi `source=huggingface`, `id=owner/model`, açık revision; eğitim yalnız `llm.train`, `method=sft`, int `epochs` 1–1000. Native görevlerin model/veri parametreleri henüz uygulanmadığı için reddedilir. `provider_options` yalnız boş nesne kabul eder; adaptör yokken doğrulanamayan seçenek geçirilmez. Veri yolu URL/kontrol karakteri içeremez; dosya varlığı, çalışma kökü, symlink ve içerik doğrulaması bu dilimde yapılmaz. Görevin yürütme planına dönüşmesi bunları gerektirir.
+
+Planlanabilir görev kimlikleri: sekiz araçlı LLM görevi (aşağıdaki defaults), `dataset.upload`, `vision.train.managed`, `llm.chat`. Araç adları seçim politikası kapsamında `forgelm`, `axolotl`, `llamafactory`, `unsloth`; **hiçbirinin adaptörü yoktur**. Native veri/LLM için `local` istemci, görsel yönetilen eğitim için `evren-managed`; araçlı LLM için `local` veya sözleşmesi henüz bilinmeyen `evren-workspace` taslakları gösterilebilir. Uyumsuz birleşimde fallback yoktur.
+
+TOML/YAML en çok 65.536 bayt, JSON Plan 262.144 bayt; UTF-8 ve normal dosya gerekir (salt okunur config symlink'i izlenebilir). YAML en çok 32 collection derinliği ve 2.048 parse olayı; alias, anchor, merge/özel tag ve çoklu belge reddedilir. JSON'da yinelenen anahtar ve NaN/Infinity reddedilir. Kaydedilen dosya CLI zarfı değil `result.data.model_dump_json()` Plan nesnesidir. Digest anahtarları sıralı, kompakt UTF-8 JSON üzerinden `digest` alanı hariç hesaplanır. Yüklemede şema, digest ve yerel plan politikası denetlenir; mevcut profil kullanılarak araç yeniden çözülmez.
 
 ## Ayrım
 
 Profil TOML'i hizmet/hesap tercihleri ve sır referanslarını taşır. Paylaşılabilir YAML reçetesi görev, veri, model, araç ve execution ayarını tanımlar. Geçici işlem durumu bu dosyalara geri yazılmaz; operation store'da kalır.
 
-**Örnek profil — taslak; bugün okunabilir uygulama config'i değil:**
+**Okunabilen profil örneği — URL'ler belge varsayılanıdır, canlı doğrulama değildir:**
 
 ```toml
 schema_version = 1
@@ -31,7 +45,7 @@ llm_key_env = "EVREN_LLM_API_KEY"
 
 Proje verilmediyse gereken ilk uzak işlem öncesi açık seçim yapılır; liste başındaki UUID alınmaz. Keychain desteği env referansının alternatifi olabilir; sır değeri dosyaya yazılmaz. Platform ve LLM adres/anahtar eşleşmesi ayrı kontrol edilir.
 
-**Örnek reçete — taslak; model/sürüm/dosya yer tutucuları gerçek girdiyle değişir:**
+**Okunabilen reçete örneği — model/sürüm/dosya referansları yer tutucudur; yürütme sağlamaz:**
 
 ```yaml
 schema_version: 1

@@ -1,0 +1,24 @@
+name: pr-policy
+on:
+  pull_request_target:
+    branches: [development, Master]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  branch-policy:
+    name: branch-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: scripts/check-pr-policy.py
+          sparse-checkout-cone-mode: false
+      - name: Validate trusted pull request metadata
+        run: python3 scripts/check-pr-policy.py

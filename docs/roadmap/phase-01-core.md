@@ -1,6 +1,6 @@
 # P01 — Hafif çekirdek ve gerçek sözleşmeler
 
-**Durum:** Planlandı. **Bağımlılık:** P00. **Yetenekler:** C01/C02/C12/C13 temeli.
+**Durum:** Uygulanıyor; ilk çevrimdışı dilim yerelde doğrulandı. **Bağımlılık:** P00. **Yetenekler:** C01/C02/C12/C13 temeli.
 
 ## İş sırası
 
@@ -13,9 +13,22 @@
 | P01-5 | Ortak HTTP/sonuç/hata ve CLI/Python hattı | Loopback, deadline/retry, JSON/NDJSON ve iptal sözleşmesi |
 | P01-6 | CI ve geliştirici kurulumunu bağlamak | Gerçek unit/contract/integration ve performans kontrolleri; doküman komutları güncel |
 
+## İlk teslim durumu — 2026-10-27
+
+| İş | Tamamlanan alt küme | Kalan |
+|---|---|---|
+| P01-1 | Paket, `src` yerleşimi, konsol, lock/build, CLI/şema/YAML deneyi, başlangıç ölçümü | HTTP seçimi bu ağsız teslimde gerekmiyor; P01-5'e taşındı |
+| P01-2 | Strict TOML, yerel context, açık proje tercihi, env referansı şeması | Secret erişimi, credential kimliği/nesli, güncel hizmet/yetki bağları |
+| P01-3 | Dört destek durumu, seçim önceliği, sabit seçimli offline draft ve digest | Hesaba bağlı kanıt/tazelik/cache; yürütme geçerliliği |
+| P01-4 | Yok | SQLite/operation/attempt/migration/lease bütünü |
+| P01-5 | Ortak CLI/Python yerel kullanım senaryoları, tipli sonuç ve JSON hata sınırı | HTTP, retry/deadline, streaming ve iptal |
+| P01-6 | Çalışan test/lint/type/build/perf araçları ve CI tanımı | Uzak CI koşusu ve ilerideki P01 özelliklerine ait kontroller |
+
+[Kabul kanıtı](../research/p01-core-validation.md). Tam faz tamamlandı diye işaretlenmez.
+
 ## Uçtan uca dilim
 
-P01-1–P01-5 işleri birikerek ilk uçtan uca dilimi tamamlar: küçük offline görev → context → capability → plan → sahte execution → kalıcı durum/artefakt sonucu, hem CLI hem Python'dan aynı kurallarla çalışır. P01-1'in kabulü paket/kütüphane seçimi ve ilk ölçümdür; context/capability/plan P01-2/P01-3'e, kalıcı yürütüm ve uçtan uca sonuç P01-4/P01-5'e bağlıdır. Bu dilim gerçek EVREN eğitimi diye sunulmaz; çekirdek sözleşmesini sınar.
+Bu teslimin sınırı: küçük offline görev → context → capability → seçim → şeması doğrulanmış plan taslağı → tipli planlama sonucu. Yürütme, veri/model dosyası doğrulaması, operation ve artefakt yoktur. İleride P01-1–P01-5 birikince test double'ı yalnız test/fixture içinde tutularak kalıcı durum ve teslim sınırı da sınanır. Üründe sahte execution veya eğitim başarısı bulunmaz. Uzak işler ve gerçek araçlar ayrıca kendi entegrasyon kapılarından geçer.
 
 ## Çıkış kapısı
 

@@ -1,6 +1,6 @@
 # Yetenek çözümleme modülü
 
-**Durum:** Planlandı. **Kapsam:** C02. **Faz:** P01 ve tüm adaptörler.
+**Durum:** Uygulanıyor — dört durumlu offline görünüm testli; keşif/cache/tazelik planlandı. **Kapsam:** C02. **Faz:** P01 ve tüm adaptörler.
 
 Görev, model, hesap, hizmet, araç ve execution birleşiminde destek bilgisini bir araya getirir. Şema/kılavuz/istemci gözlemi/canlı test kanıtlarını birbirine eşitlemez. Aynı hizmette farklı hesapların veya aynı hesaptaki farklı yetki kimliği/nesli/kapsamının kayıtları cache'te paylaşılmaz.
 

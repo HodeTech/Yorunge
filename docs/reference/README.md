@@ -1,6 +1,6 @@
 # Referans sözleşmeler
 
-**Durum:** Benimsenmiş taslak sözleşmeler; uygulanmadı. **Tarih:** 2026-10-27.
+**Durum:** CLI/config/capability yerel alt kümeleri uygulandı; tam yürütme/araç portları tasarım. **Tarih:** 2026-10-27.
 
 | Belge | Kanonik tanım |
 |---|---|
@@ -9,4 +9,4 @@
 | [Araç sağlayıcısı](tool-provider-contract.md) | Görev, plan, execution ve sonuç sınırı |
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
 
-Bu belgeler çalışır bir SDK/komut referansı değildir. Uygulama başlayınca şema ve contract testleri aynı değişiklikte eklenir; destek kanıtı oluşmadan örnekler kurulum talimatına dönüştürülmez.
+Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).

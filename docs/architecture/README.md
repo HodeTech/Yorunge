@@ -1,6 +1,6 @@
 # Mimari rehberi
 
-**Durum:** Benimsenmiş tasarım; henüz uygulanmadı. **Tarih:** 2026-10-27.
+**Durum:** Benimsenmiş tasarım; yerel context/planlama sınırı uygulandı, uzak/durum adaptörleri planlandı. **Tarih:** 2026-10-27.
 
 | Belge | Soru |
 |---|---|
