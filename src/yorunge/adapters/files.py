@@ -46,7 +46,7 @@ def read_text(path: Path, limit: int, code: ErrorCode) -> str:
 
 
 class RecipeLoader(yaml.SafeLoader):
-    def construct_scalar(self, node: ScalarNode) -> str:
+    def construct_scalar(self, node: ScalarNode | MappingNode) -> str:
         if not isinstance(node, ScalarNode):
             raise ConstructorError(None, None, "scalar node required", node.start_mark)
         return super().construct_scalar(node)
