@@ -1,6 +1,6 @@
 # Test ve kabul standardı
 
-**Durum:** Benimsenmiş. **Tarih:** 2026-10-27. Bugün uygulama test paketi yoktur.
+**Durum:** Etkin — ilk çevrimdışı şema/seçim/CLI sınırında; uzak ve dayanıklılık senaryoları ilgili fazlarda. **Tarih:** 2026-10-27. [Kabul kaydı](../research/p01-core-validation.md).
 
 Testler kullanıcı sözleşmesini ve hata sınırını doğrular. Uygulamayı satır satır tekrar eden düşük etkili test yerine maliyet, veri kaybı, yanlış başarı, seçim ve toparlanma senaryolarına öncelik verilir.
 

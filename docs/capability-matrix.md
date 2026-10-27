@@ -2,12 +2,12 @@
 
 **Güncellendi:** 2026-10-27. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
 
-Bugün aşağıdaki çalışma zamanı yeteneklerinin **hiçbiri Yörünge'de uygulanmış değildir**. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir.
+İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [P01 kabul kaydı](research/p01-core-validation.md), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
 
 | Kimlik | Yetenek | Kullanıcı sonucu | EVREN/araç kanıtı | Yörünge durumu | Hedef |
 |---|---|---|---|---|---|
-| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Planlandı | P01 |
-| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Planlandı | P01 |
+| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/context testli; uzak kimlik yok | P01 |
+| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm testli; doctor/keşif/cache yok | P01 |
 | C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Planlandı | P02 |
 | C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |
 | C05 | Model/veri kataloğu | Uygun modeli bulmak | Platform kataloğu ve LLM model şeması | Planlandı | P02 |
@@ -17,8 +17,8 @@ Bugün aşağıdaki çalışma zamanı yeteneklerinin **hiçbiri Yörünge'de uy
 | C09 | Seçilebilir LLM eğitim aracı | ForgeLM veya muadille aynı görevi yapmak | ForgeLM kodu; muadil adaptörleri araştırılacak | Planlandı | P03 |
 | C10 | LLM veri hazırlama/denetim/üretim, fit, değerlendirme, merge/export | Eğitim çevrimini tamamlamak | ForgeLM ilgili yetenekleri; göreve özel uyum gerekli | Planlandı | P03 aşamalı |
 | C11 | GPU, kuyruk, rezervasyon, kota | Kaynak ve tüketimi görmek | Kamu altyapısı ve istemci/kota şeması | Planlandı | P02/P03 |
-| C12 | İş kaydı, izleme, uzlaştırma, artefakt | Kesintiden toparlanmak | Yörünge'nin çekirdek gereksinimi | Planlandı | P01–P03 |
-| C13 | Tekrarlanabilir reçete ve JSON API | Otomasyon kurmak | Yeni Yörünge sözleşmesi | Planlandı | P01–P03 |
+| C12 | İş kaydı, izleme, uzlaştırma, artefakt | Kesintiden toparlanmak | Yörünge'nin çekirdek gereksinimi | Uygulanıyor — yalnız offline draft; operasyon/teslim yok | P01–P03 |
+| C13 | Tekrarlanabilir reçete ve JSON API | Otomasyon kurmak | Yeni Yörünge sözleşmesi | Uygulanıyor — dar YAML/JSON ve ortak Python API testli | P01–P03 |
 | C14 | MCP ve gelişmiş terminal/köprü | Ajanlardan aynı işi yürütmek | Yörünge adaptörü ve protokol/host doğrulaması gerekli | Planlandı | P04 |
 | C15 | OCR/ses ve ileri servisler | Metin dışı girdi/çıktı işlemek | Gateway şemasında servis yüzeyi var | Planlandı | P04 |
 | C16 | EVREN runtime'da haricî araç | EVREN GPU'sunda LLM eğitmek | İstemci gözlemi; genel kullanıcı erişimi doğrulanmadı | Erişim kapılı plan | P03 keşif / P04 uygulama |

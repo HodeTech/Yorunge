@@ -10,6 +10,8 @@
 | Araç sağlayıcısı | `forgelm`, doğrulanmış muadil | Haricî araçla uygulama ve parametre çevirisi |
 | Execution | `local`, `evren-managed`, koşullu `evren-workspace` | Kaynak ve çalışma ortamı |
 
+İlk offline modelde `dataset.upload` ve `llm.chat` yerel istemci (`local`) + ayrı uzak Platform/LLM hizmet scope'u taşır. `vision.train.managed`, `evren-managed` seçer. Yerel istemci yürütme ortamı ile bağlandığı uzak hizmet tek kimlikte birleştirilmez. Hiçbiri bu aşamada yürütülmez.
+
 `evren-managed` görsel eğitim hizmetini kullanır; bu hizmetin motorunu `--tool forgelm` ile değiştirmek mümkün kabul edilmez. `llm.train` ise uygun tool ve execution birleşimi gerektirir. ForgeLM veya Axolotl adı tek başına EVREN GPU erişimi sağlamaz.
 
 ## Çözümleme önceliği
@@ -26,6 +28,6 @@ Ortak sözleşme **ortak sonuçları** temsil eder; araçların bütün ayarlar�
 
 ## İlk sağlayıcı hedefi
 
-ForgeLM varsayılan adaptörü + aynı LLM eğitim görevi için en az bir muadil, P03 kabul koşuludur. Axolotl ilk değerlendirme adayı; LlamaFactory başka bir adaydır. Unsloth'un ForgeLM içindeki backend rolü ile bağımsız Yörünge sağlayıcısı rolü farklı kaydedilir. Bugün hiçbir Yörünge adaptörü yoktur; aday listesi destek ilanı değildir.
+ForgeLM varsayılan adaptörü + aynı LLM eğitim görevi için en az bir muadil, P03 kabul koşuludur. Axolotl ilk değerlendirme adayı; LlamaFactory başka bir adaydır. Unsloth'un ForgeLM içindeki backend rolü ile bağımsız Yörünge sağlayıcısı rolü farklı kaydedilir. Bugün hiçbir Yörünge araç adaptörü yoktur; aday listesi destek ilanı değildir.
 
 Üçüncü parti Python kodunu otomatik keşfedip import eden açık plugin sistemi ilk sürümde kurulmaz. Adaptörler gözden geçirilmiş kayıt ve açık sürüm kanıtıyla gelir. [Araç portu](../reference/tool-provider-contract.md), [ADR-0002](../decisions/0002-forgelm-default-open-tools.md).

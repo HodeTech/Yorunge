@@ -16,4 +16,4 @@ Başlangıçta mikroservis ve uzak kontrol düzlemi yerel görevleri gereksiz ka
 
 ## Sonuçlar
 
-Tek dil tercihinin düşük başlangıç gecikmesini kendiliğinden sağlamadığı kabul edilir. Ağır import ve kurulum bütçeleri ölçülür. Başka dilde worker ancak ölçülmüş darboğaz/dağıtım ihtiyacıyla ayrıca ele alınır. Bugün paket veya uyum matrisi kurulmuş değildir.
+Tek dil tercihinin düşük başlangıç gecikmesini kendiliğinden sağlamadığı kabul edilir. Ağır import ve kurulum bütçeleri ölçülür. Başka dilde worker ancak ölçülmüş darboğaz/dağıtım ihtiyacıyla ayrıca ele alınır. İlk paket ve ortam kanıtı [ADR-0008](0008-offline-core-stack.md) ile kaydedildi; bütün OS/Python sürümleri için uyum iddiası değildir.

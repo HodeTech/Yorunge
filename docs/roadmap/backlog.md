@@ -4,7 +4,7 @@
 
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
-| B01 | Kesin CLI/HTTP/şema/YAML paketleri | Başlangıç/çıktı/güvenlik spike'ı | P01-1 |
+| B01 | CLI/şema/YAML seçildi; HTTP açık | [ADR-0008](../decisions/0008-offline-core-stack.md); taşıma/deadline deneyi kaldı | P01-5 |
 | B02 | Ortak state DDL/migration/lease | Çökme ve çok süreç deneyleri | P01-4 |
 | B03 | SDK'yı kullanma sınırı | Güncel kod/endpoint/retry sözleşme denetimi | P02 |
 | B04 | Aktarım limitleri ve native eğitim durumları | Güncel resmî sözleşme + yetkili küçük pilot | P02/P03 |

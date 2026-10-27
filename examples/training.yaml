@@ -1,0 +1,15 @@
+schema_version: 1
+task: llm.train
+profile: work
+model:
+  source: huggingface
+  id: synthetic/model
+  revision: synthetic-revision
+data:
+  manifest: ./synthetic-manifest.json
+training:
+  method: sft
+  epochs: 1
+execution:
+  backend: local
+provider_options: {}

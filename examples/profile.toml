@@ -1,0 +1,10 @@
+schema_version = 1
+active_profile = "work"
+
+[profiles.work]
+platform_key_env = "EVREN_PLATFORM_API_KEY"
+llm_key_env = "EVREN_LLM_API_KEY"
+project_id = "synthetic-project"
+
+[profiles.work.tools.defaults]
+"llm.train" = "forgelm"

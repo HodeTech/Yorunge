@@ -1,6 +1,6 @@
 # Vizyon ve konumlandırma
 
-**Güncellendi:** 2026-10-27. **Durum:** Benimsenmiş ürün yönü; uygulama planlanıyor.
+**Güncellendi:** 2026-10-27. **Durum:** Benimsenmiş ürün yönü; ilk çevrimdışı uygulama dilimi hazır, kapsamın kalanı planlanıyor.
 
 Yörünge, EVREN platformunda çalışan kişilerin veriyi hazırlama, doğru hizmet/modeli seçme, işi yürütme ve sonucunu kullanma süresini kısaltır. Platformun farklı yüzeyleri arasında anlaşılır bir yardımcı katman kurar.
 

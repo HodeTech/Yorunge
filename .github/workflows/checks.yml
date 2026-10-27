@@ -1,0 +1,28 @@
+name: core-checks
+on: [push, pull_request]
+jobs:
+  offline-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install locked development environment
+        run: |
+          python3 -m venv .ci-tools
+          .ci-tools/bin/pip install uv==0.11.2
+          .ci-tools/bin/uv sync --frozen --python 3.11
+      - name: Check format, lint, types and public documentation
+        run: |
+          .venv/bin/ruff format --check src tests scripts
+          .venv/bin/ruff check src tests scripts
+          .venv/bin/mypy
+          .venv/bin/python scripts/check-docs.py
+      - name: Test offline contracts and real console entry
+        run: .venv/bin/pytest
+      - name: Build and verify both distributions in clean environments
+        run: |
+          .ci-tools/bin/uv build
+          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv
+      - name: Enforce startup budgets
+        run: >-
+          .venv/bin/python scripts/benchmark-startup.py
+          --command .venv/bin/yorunge --output dist/startup.json

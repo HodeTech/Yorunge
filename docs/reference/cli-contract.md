@@ -1,6 +1,27 @@
 # CLI sözleşmesi
 
-**Durum:** Tasarlanan v1 sözleşmesi; CLI henüz yok. **Tarih:** 2026-10-27.
+**Durum:** v1; aşağıdaki dar çevrimdışı alt küme uygulanmıştır, diğer komutlar tasarımdır. **Tarih:** 2026-10-27.
+
+## Uygulanan alt küme
+
+| Komut | Gerçek davranış |
+|---|---|
+| `yorunge --help`, `--version` | Yalnız metadata; config/DB/sır/ağ/araç keşfi ve ML import yok |
+| `yorunge context show` | Yerel profil, hesap/proje tercihi; uzak doğrulama yok |
+| `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
+| `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
+| `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
+| `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
+
+İlk sürüm `--config PATH`, `--profile NAME`, `--project ID`, `--output text|json`, `--non-interactive` seçeneklerini uygular. Ortak seçenekler komuttan önce veya sonra verilebilir; kısaltmalar kabul edilmez. Plan/capability için `--recipe PATH`, `--tool ID`, `--execution BACKEND`; genel plan/capability için ayrıca `--task TASK` vardır. `--refresh`, `ndjson`, rehberli mod ve bütün `run` komutları henüz yoktur. `plan show` context değiştiren seçenekleri reddeder; profil değişimiyle seçim yenilemez.
+
+Yeni plan seçim önceliği [config sözleşmesindedir](configuration.md#öncelik-ve-sabitleme). `train plan` görevi açık `llm.train` çağrısı sayılır. Açık görev override'ı reçetedeki parametreyi geçersiz kılarsa hata olur; parametre düşürülmez.
+
+Planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=offline`, `state=draft`, `executable=false`, `inputs_verified=false`, context, seçim/kaynağı, reçete, capability kayıtları, engeller ve SHA-256 digest bulunur. Bu başarı yalnız **plan hazırlığına** aittir. Araç sürümü bilinmiyor; model/veri referanslarının içeriği, yetki veya maliyet doğrulanmaz. Plan yürütülemez ve onay/operation kimliği oluşturulmaz.
+
+Uygulanan çıkış kodları yalnız **0** ve **2**'dir. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. Tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; JSON hatası tek nesne stderr, stdout boştur. Diğer çıkış kodları aşağıda gelecekteki yürütme sözleşmesidir.
+
+Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` aynı tipli zarfı döndürür. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
 ## Komut alanları
 
@@ -20,7 +41,7 @@
 
 İleri servis/MCP komutları P04 tasarımıyla eklenir. Yerel komutlar ağ veya sır okuma zorunluluğu taşımaz. Her ailede bütün fiillerin aynı fazda yayımlandığı varsayılmaz; kesin destek matrisi uygulama sürümünde daraltılabilir.
 
-## Ortak seçenekler
+## Planlanan geniş ortak seçenekler
 
 `--profile`, `--project`, `--output text|json|ndjson`, `--non-interactive` ve gerektiğinde `--refresh`. Araçlı planlamada `--tool` ve `--execution` bulunur. `--tool` native veri/çıkarım işlemine gereksiz zorunluluk getirmez. TTY yalnız etkileşimi belirler; çıktı biçimini kendiliğinden JSON'a dönüştürmez.
 

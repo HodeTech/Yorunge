@@ -1,6 +1,6 @@
 # Modül haritası
 
-**Durum:** Bütün modüller planlanıyor; uygulama yok. **Tarih:** 2026-10-27.
+**Durum:** Kimlik/context, capability ve iş akışı yerel alt kümeleri uygulanıyor; diğer modüller planlandı. **Tarih:** 2026-10-27.
 
 | Modül | Sahip olduğu alan | Yetenekler |
 |---|---|---|

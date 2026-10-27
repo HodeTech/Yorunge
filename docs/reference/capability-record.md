@@ -1,6 +1,12 @@
 # Yetenek kaydı sözleşmesi
 
-**Durum:** Tasarlanan v1 sözleşmesi. **Tarih:** 2026-10-27.
+**Durum:** v1 genel sözleşme; sınırlı offline görünüm uygulandı, canlı/cache kaydı planlandı. **Tarih:** 2026-10-27.
+
+## Uygulanan offline görünüm
+
+`yorunge capabilities` / `yorunge.api.inspect_capabilities` seçilmiş context/task/tool/execution kapsamını döndürür. `planning.offline=supported` yalnız uygulanmış yerel şema/seçim politikasını anlatır; dış araç/EVREN desteği değildir. Eksik adaptör veya uyumsuz birleşim `unsupported`, doğrulanmamış hizmet/yetki/runtime `unknown`, açıkça eksik proje önkoşulu `requires_access` olur. `evren-workspace` genel kullanıcı sözleşmesi bilinmediği için erişim var/yok hükmü verilmez.
+
+Kanıt `local_policy` veya `not_verified`; `checked_at`/`expires_at`, credential kimliği/nesli, yetki kapsamı ve araç sürümü null'dır. Bu bilinmeyen alanlar runtime/canlı kanıt gibi doldurulmaz. Aşağıdaki genel alanlardan `constraints` ve `provider_request_id` bu dar modelde henüz yoktur; bilinmeyen alanlar reddedilir. Cache ve tazelik politikası bu dilimde uygulanmadı. Plan yalnız bu kayıtları ve engelleri sabitler; yürütülemez.
 
 | Alan | Anlam |
 |---|---|

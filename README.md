@@ -4,7 +4,42 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 27 Ekim 2026:** Kapsam ve dokümantasyon temeli oluşturuluyor. Çalışan Yörünge CLI'si, Python paketi veya yayımlanmış sürüm henüz yok. Belgelerdeki komutlar ve sözleşmeler tasarımdır; uygulanmış yetenek olarak sunulmaz.
+**Durum — 27 Ekim 2026:** İlk çevrimdışı CLI/Python dilimi çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
+
+## Çalışan başlangıç
+
+Python 3.11+ ve `uv 0.11.2` ile depo kökünde:
+
+```sh
+uv sync --frozen --python 3.11
+.venv/bin/yorunge --help
+.venv/bin/yorunge --version
+.venv/bin/yorunge context show --config examples/profile.toml
+.venv/bin/yorunge capabilities --task dataset.upload --output json
+.venv/bin/yorunge train plan --config examples/profile.toml --recipe examples/training.yaml
+.venv/bin/yorunge train plan --config examples/profile.toml --recipe examples/training.yaml --tool axolotl --output json
+```
+
+Bu komutlar ağ, anahtar, veritabanı ve eğitim ortamı gerektirmez. Örnek model/veri referansları sentetiktir; dosyalar okunmaz veya model indirilmez. Çıktı `draft`, `executable=false` ve açık engeller taşır. Başarı, **plan hazırlığının** tamamlandığını belirtir. Araç adaptörleri henüz yoktur; araç tercihi yürütme desteği anlamına gelmez.
+
+Aynı kullanım senaryosu Python'dan:
+
+```python
+from pathlib import Path
+from yorunge.api import load_plan, prepare_plan
+
+result = prepare_plan(
+    config=Path("examples/profile.toml"),
+    recipe=Path("examples/training.yaml"),
+    tool="axolotl",
+)
+print(result.data.selection.tool)
+Path("offline-plan.json").write_text(result.data.model_dump_json(), encoding="utf-8")
+saved = load_plan(Path("offline-plan.json"))
+assert saved.data.digest == result.data.digest
+```
+
+`plan show --plan offline-plan.json` kayıtlı seçimi mevcut profilden yeniden çözmez. Digest bütünlük kontrolüdür; yürütme onayı değildir. Kurulum, kontrol ve build adımları [katkı rehberinde](CONTRIBUTING.md); kesin uygulama sınırı [CLI](docs/reference/cli-contract.md) ve [config](docs/reference/configuration.md) sözleşmelerindedir. Yerel doğrulama ve ölçümler: [P01 kabul kaydı](docs/research/p01-core-validation.md).
 
 ## Ürün yaklaşımı
 

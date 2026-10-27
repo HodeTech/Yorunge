@@ -18,4 +18,4 @@ Sürüm aralıkları uyumluluk deneyiyle belirlenir, build/test ortamı tekrar �
 
 JSON'da NaN/Infinity, yinelenen anahtar ve bilinmeyen şema sürümü reddedilir. Boyut, hash, yol, sayfa ve sayısal maliyet alanları beklenen tür/sonluluk/işaret kurallarıyla doğrulanır; imzalı ledger tutarı ile negatif olamayan tahmin aynı kural değildir. Config davranışı açık profil/reçeteden gelir; env yalnız sır referanslarında kullanılır.
 
-Format/lint/type araçları P01'de gerçek paket yapılandırmasıyla bağlanır. Bugün komut adlarının belgede aday olması CI denetimi yapıldığı anlamına gelmez.
+Format/lint/type araçları ilk dilimde `pyproject.toml`, `uv.lock` ve CI tanımına bağlandı; yerelde çalıştırıldı. Komutlar [katkı rehberinde](../../CONTRIBUTING.md); uzak CI çalışması ayrıca doğrulanmalıdır.

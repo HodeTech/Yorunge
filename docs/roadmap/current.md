@@ -4,18 +4,19 @@
 
 ## Bugün
 
-- Repo boş olarak klonlandı; önceki kullanıcı dosyası veya uygulama yoktu.
-- Yörünge'nin EVREN kapsamlı yardımcı araç konumu ve ForgeLM varsayılan/seçilebilir araç modeli belgelendi.
-- Root belgeleri, MIT, ürün kapsamı, standartlar, mimari, modüller, ADR'ler, sözleşmeler ve faz planları hazırlandı.
-- P00 belge bütünlüğü/tutarlılık kontrolü tamamlandı: yerel bağlantılar, başlıklar, kod blokları, indeks erişimi ve config örneklerinin sözdizimi doğrulandı. Henüz uygulama, paket, CI workflow'u veya runtime testi yok.
-- Yerel analiz arşivi `docs/analysis/private/` altında Git ve yayın kapsamından dışlandı. Paylaşılabilir belgeler bu arşive veya içindeki proje/deney kayıtlarına referans vermez.
+- Devirdeki Git durumu doğrulandı: `Master`, temiz çalışma ağacı ve `6ec4b16` belge temeli commit'i mevcuttu. İlk uygulama `feat/offline-core` dalında hazırlandı; remote/yayın/izin ayarları değiştirilmedi.
+- P00 tamamlandı. İlk çalışan dilim: Python paketi/konsol girişi, yerel TOML context, dar YAML reçetesi, dört durumlu capability görünümü, araç seçimi ve digest'li çevrimdışı plan. CLI/Python API ortak kullanım senaryolarına bağlı.
+- Plan yalnız şema/seçim düzeyinde doğrulanır; `draft`, `executable=false`, `inputs_verified=false`. Adaptör, uzak yetki, veri/model içeriği ve yürütme desteği iddia edilmez. Sahte eğitim başarısı üretilmez.
+- P01-1 paket/CLI/şema/build kısmı tamamlandı; HTTP seçimi kapsam gereği P01-5'e bırakıldı. P01-2/P01-3'ün dar yerel alt kümeleri ve P01-6 kontrol altyapısı eklendi. P01 bütünü tamamlanmadı.
+- Yerel test, tip/lint/format, dağıtım/temiz kurulum ve başlangıç kanıtı [kabul kaydında](../research/p01-core-validation.md). CI tanımı eklendi; uzakta koştuğu doğrulanmadı. Yayımlanmış paket yok.
+- Genel belge ve paket girdileri izin listeleriyle sınırlandırıldı; yerel analiz arşivi üretim girdisi değildir. Site/doküman yayın sistemi henüz yoktur.
 
-## Sıradaki uygulama dilimi
+## Sıradaki somut iş
 
-P01-1 ile gerçek Python paket/CLI/HTTP/şema seçimini küçük deneyle kur; `--help`, cold/warm başlangıç, opsiyonel import ve makine stdout davranışını ölç. P01-2'de config/context/secret referansları, P01-3'te capability ve offline plan modeli gelir. P01-4'te kalıcı operation/lease, P01-5'te ortak hizmet/sonuç portları ve CLI/Python hattı eklenince tek offline görev sahte execution ve artefakt sonucuna kadar uçtan uca yürütülür. Kabul sınırları [P01 iş tablosundadır](phase-01-core.md).
+P01-2'nin kalan secret/context bağlarını tamamla: sır değerini çıktıdan uzak tutarak hizmete özel credential kimliği/nesli ve izin kapsamını modelle; aynı env referansında anahtar değişimini sınayan testleri kur. Ardından P01-3 hesap/hedef/yetki/tazelik bağlı capability cache ve execution öncesi plan geçerliliği gelir. Kalıcı operation/lease P01-4, HTTP/deadline/retry P01-5 kapsamındadır. [İş tablosu](phase-01-core.md).
 
-Paralel ürün araştırması P02 veri/çıkarım kullanıcı görevlerini ve EVREN'in güncel kimlik/şema sınırını doğrular. P03 için ForgeLM ile bir muadil aynı görevde seçilir; gerçek adaptör uygulanmadan destek etiketi verilmez.
+Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 
-## Şu an çözülmemiş dış sorular
+## Çözülmemiş dış sorular
 
-EVREN workspace genel kullanıcı erişimi, haricî paket/araç kurulum yöntemi, kalıcı artefakt, managed LLM eğitim API'si ve kullanıcı LLM serving sözleşmesi. Bunlar bütün ürünü durdurmaz; ilgili özelliğin durumunu sınırlar. [Araştırma soruları](../research/validation-questions.md), [backlog](backlog.md).
+EVREN workspace genel kullanıcı erişimi, haricî paket/araç kurulumu, kalıcı artefakt, managed LLM eğitim API'si ve kullanıcı LLM serving sözleşmesi. Bunlar ilgili özelliklerin durumunu sınırlar. [Araştırma soruları](../research/validation-questions.md), [backlog](backlog.md).
