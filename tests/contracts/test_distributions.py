@@ -108,6 +108,20 @@ def test_wheel_rejects_links_and_special_files(tmp_path, kind):
         inspect_archive(path)
 
 
+def test_wheel_rejects_nul_in_original_zip_header_name(tmp_path):
+    name = b"yorunge/file.pyX../outside"
+    path = wheel(tmp_path, [(name.decode(), stat.S_IFREG | 0o644)])
+    content = path.read_bytes()
+    assert content.count(name) == 2  # Local header and central directory.
+    path.write_bytes(content.replace(name, name.replace(b"X", b"\x00")))
+    with zipfile.ZipFile(path) as archive:
+        item = archive.infolist()[0]
+        assert item.filename == "yorunge/file.py"
+        assert "\x00" in item.orig_filename
+    with pytest.raises(ValueError, match="unsafe"):
+        inspect_archive(path)
+
+
 @pytest.mark.parametrize("kind", [stat.S_IFREG, stat.S_IFDIR])
 def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
     name = "yorunge/member/" if kind == stat.S_IFREG else "yorunge/member"

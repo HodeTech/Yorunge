@@ -162,16 +162,18 @@ def inspect_archive(path: Path) -> list[str]:
         metadata = f"yorunge-{fields[1]}.dist-info"
         with zipfile.ZipFile(path) as wheel:
             for item in wheel.infolist():
-                directory = item.is_dir()
+                # ZipInfo.filename is truncated at NUL; retain the decoded original name.
+                name = item.orig_filename
+                directory = name.endswith("/")
+                parts = record(name, directory)
                 kind = stat.S_IFMT(item.external_attr >> 16)
                 if kind not in (0, stat.S_IFDIR if directory else stat.S_IFREG) or (
                     item.external_attr & 0x10 and not directory
                 ):
                     raise ValueError("archive links and special files are not permitted")
-                parts = record(item.filename, directory)
                 if parts[0] not in ("yorunge", metadata) or (len(parts) == 1 and not directory):
                     raise ValueError("unexpected wheel member")
-                members.append(item.filename)
+                members.append(name)
     elif path.name.endswith(".tar.gz"):
         root = path.name.removesuffix(".tar.gz")
         if not root.startswith("yorunge-") or root == "yorunge-":
