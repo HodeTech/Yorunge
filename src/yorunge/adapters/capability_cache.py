@@ -7,7 +7,7 @@ import sqlite3
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
@@ -64,6 +64,18 @@ class Stamp:
 class Token:
     present: bool
     revision: int
+
+
+@dataclass
+class TimeGate:
+    intervals: list[tuple[datetime, datetime]] = field(default_factory=list)
+
+    def require(self, record: CapabilityRecord) -> None:
+        self.intervals.append((instant(record.checked_at), instant(record.expires_at)))
+
+    def check(self, now: datetime) -> None:
+        if any(not start <= now < end for start, end in self.intervals):
+            raise YorungeError("capability_expired")
 
 
 def decode_record(payload: object) -> CapabilityRecord:
@@ -204,15 +216,26 @@ class StateCache:
         )
         return Stamp(value.store_id, epoch, generation, now, bool(anomaly))
 
-    def stamp(self) -> Stamp:
+    def _save_stamp(self, rollback: datetime | None = None) -> Stamp:
         self.connection.execute("BEGIN IMMEDIATE")
         try:
+            if rollback is not None:
+                self._tick(rollback)
             result = self._tick(self.now())
             self.connection.execute("COMMIT")
             return result
         finally:
             if self.connection.in_transaction:
                 self.connection.execute("ROLLBACK")
+
+    def stamp(self) -> Stamp:
+        result = self._save_stamp()
+        # The read/clock commit can consume the remaining TTL. Fence the final
+        # observed point durably as well, without a retry or an unbounded loop.
+        after_commit = self.now()
+        if after_commit == result.now:
+            return result
+        return self._save_stamp(after_commit if after_commit < result.now else None)
 
     def _bindings(self, stamp: Stamp) -> None:
         value = metadata(self.connection)
@@ -240,19 +263,21 @@ class StateCache:
         self.store.deadline.remaining()
 
     @contextmanager
-    def transaction(self, stamp: Stamp) -> Iterator[None]:
+    def transaction(self, stamp: Stamp) -> Iterator[TimeGate]:
         """Clock changes survive a business rollback, including the final time gate."""
         connection = self.connection
         connection.execute("BEGIN IMMEDIATE")
         observed = self.now()
+        gate = TimeGate()
         try:
             self._tick(observed)
             connection.execute("SAVEPOINT business")
             try:
                 self._same(stamp, self._tick(self.now()))
-                yield
+                yield gate
                 observed = self.now()
                 self._same(stamp, self._tick(observed))
+                gate.check(observed)
             except BaseException:
                 observed = self.observed
                 connection.execute("ROLLBACK TO business")
@@ -305,10 +330,11 @@ class StateCache:
         with self.transaction(stamp):
             _, token = self._read(key)
         incoming = producer.observe(key, self.now())
-        with self.transaction(stamp):
+        with self.transaction(stamp) as gate:
             previous, current = self._read(key)
             now = self.now()
             record = combine(key, previous, incoming, now, replace_own=current == token)
+            gate.require(record)
             self._prune_and_reserve(key, now)
             self._same(stamp, self._tick(self.now()))
             if not instant(record.checked_at) <= self.now() < instant(record.expires_at):
@@ -410,8 +436,34 @@ class StateCache:
                 self._bindings(stamp)
             elif error.code != "capability_expired":
                 raise
+        final, within_budget = self._finish(stamp)
+        return self._present(key, record, candidates, stamp, final, within_budget)
+
+    def _finish(self, stamp: Stamp) -> tuple[Stamp, bool]:
         final = self.stamp()
         self._bindings(stamp)
+        self.store.deadline.remaining()
+        return final, self.clock.monotonic() < self.end
+
+    def finalize(
+        self, results: tuple[CachedCapability, ...], stamp: Stamp
+    ) -> tuple[CachedCapability, ...]:
+        """All records in one public view share the final observed validity point."""
+        final, within_budget = self._finish(stamp)
+        return tuple(
+            self._present(r.key, r.record, r.historical_candidates, stamp, final, within_budget)
+            for r in results
+        )
+
+    def _present(
+        self,
+        key: CapabilityKey,
+        record: CapabilityRecord | None,
+        candidates: tuple[CapabilityRecord, ...],
+        stamp: Stamp,
+        final: Stamp,
+        within_budget: bool,
+    ) -> CachedCapability:
         if final.generation == stamp.generation:
             self._key_guard(key)
         if any(candidate.key.projection() != key.projection() for candidate in candidates):
@@ -422,7 +474,7 @@ class StateCache:
             and not final.anomaly
             and final.generation == stamp.generation
             and record.checked_at <= now < record.expires_at
-            and self.clock.monotonic() < self.end
+            and within_budget
         )
         freshness: Freshness = (
             "fresh"

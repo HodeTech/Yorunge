@@ -649,9 +649,9 @@ def query_capabilities(
             key = CapabilityKey(capability_id=old.capability_id, task=spec.task, scope=scope)
             if refresh and not stamp.anomaly:
                 cache.refresh(key, stamp, LocalPolicyProducer(old.support, old.reason_code))
-            records.append(
-                current_policy_result(
-                    cache.query(key, stamp), frozenset({LocalPolicyProducer.SOURCE})
-                )
-            )
-        return Result[CachedCapabilityView](data=CachedCapabilityView(records=tuple(records)))
+            records.append(cache.query(key, stamp))
+        final = tuple(
+            current_policy_result(record, frozenset({LocalPolicyProducer.SOURCE}))
+            for record in cache.finalize(tuple(records), stamp)
+        )
+        return Result[CachedCapabilityView](data=CachedCapabilityView(records=final))

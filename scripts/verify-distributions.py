@@ -243,7 +243,7 @@ def main() -> int:
     for package in packages:
         members = inspect_archive(package)
         with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
-            scratch = Path(directory)
+            scratch = Path(directory).resolve()
             requirements = scratch / "runtime.txt"
             run(
                 [

@@ -6,9 +6,10 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
+from pydantic.config import ExtraValues
 
 from yorunge.domain.credentials import normalize_target
 from yorunge.domain.models import (
@@ -58,7 +59,44 @@ def instant(value: str) -> datetime:
     return result
 
 
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate wire key")
+        result[key] = value
+    return result
+
+
+def _reject_constant(value: str) -> object:
+    raise ValueError("finite JSON required")
+
+
 class WireModel(Model):
+    @classmethod
+    def model_validate_json(
+        cls,
+        json_data: str | bytes | bytearray,
+        *,
+        strict: bool | None = None,
+        extra: ExtraValues | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        # Pydantic's JSON parser accepts duplicate keys; v2 wire does not.
+        text = json_data if isinstance(json_data, str) else json_data.decode("utf-8")
+        text.encode("utf-8", errors="strict")
+        json.loads(text, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+        return super().model_validate_json(
+            text,
+            strict=strict,
+            extra=extra,
+            context=context,
+            by_alias=by_alias,
+            by_name=by_name,
+        )
+
     @field_validator("*", mode="after")
     @classmethod
     def unicode_text(cls, value: object) -> object:

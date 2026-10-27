@@ -522,3 +522,103 @@ def test_config_resolution_consumes_the_same_total_budget_before_store_io(tmp_pa
         api.query_capabilities(task="llm.train", state_dir=root)
     assert failure.value.code == "state_busy"
     assert not root.exists()
+
+
+def test_last_transaction_time_sample_rejects_expired_write(tmp_path):
+    clock = Clock()
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        inserted = False
+        samples_after_insert = 0
+        original_now = clock.now
+
+        def mark_insert(statement):
+            nonlocal inserted
+            if statement.startswith("INSERT OR REPLACE INTO capability_cache"):
+                inserted = True
+
+        def last_sample():
+            nonlocal samples_after_insert
+            if inserted:
+                samples_after_insert += 1
+                if samples_after_insert == 2:
+                    clock.value += timedelta(seconds=300)
+            return original_now()
+
+        store.connection.set_trace_callback(mark_insert)
+        clock.now = last_sample
+        with pytest.raises(YorungeError) as failure:
+            cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        assert failure.value.code == "capability_expired"
+        assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (0,)
+
+
+@pytest.mark.parametrize("advance", [300, -1])
+def test_query_observes_and_fences_time_after_its_clock_commit(tmp_path, advance):
+    clock = Clock()
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        commits = 0
+
+        def move_after_clock_commit(statement):
+            nonlocal commits
+            if statement == "COMMIT":
+                commits += 1
+                if commits == 2:
+                    clock.value += timedelta(seconds=advance)
+
+        store.connection.set_trace_callback(move_after_clock_commit)
+        result = cache.query(key, stamp)
+        store.connection.set_trace_callback(None)
+        assert result.effective_support == "unknown"
+        assert result.freshness == ("stale" if advance > 0 else "clock_anomaly")
+        assert result.checked_at == timestamp(clock.value)
+        generation, high = store.connection.execute(
+            "SELECT clock_generation,high_watermark FROM cache_clock"
+        ).fetchone()
+        assert generation == (1 if advance > 0 else 2)
+        assert high >= timestamp(clock.value)
+
+
+@pytest.mark.parametrize("advance", [300, -1])
+def test_public_view_rechecks_all_records_at_one_final_time(tmp_path, monkeypatch, advance):
+    clock = Clock()
+    monkeypatch.setattr("yorunge.adapters.capability_cache.SystemClock", lambda: clock)
+    root = tmp_path / "state"
+    api.query_capabilities(task="llm.train", state_dir=root, refresh=True)
+    original_query = StateCache.query
+    calls = 0
+
+    def advance_between_records(self, key, stamp):
+        nonlocal calls
+        result = original_query(self, key, stamp)
+        calls += 1
+        if calls == 1:
+            clock.value += timedelta(seconds=advance)
+        return result
+
+    monkeypatch.setattr(StateCache, "query", advance_between_records)
+    records = api.query_capabilities(task="llm.train", state_dir=root).data.records
+    assert len(records) == 2
+    assert all(r.effective_support == "unknown" for r in records)
+    assert all(r.freshness == ("stale" if advance > 0 else "clock_anomaly") for r in records)
+    assert all(r.checked_at == timestamp(clock.value) for r in records)
+
+
+def test_cached_cli_explains_the_project_selection_blocker(tmp_path, cli):
+    result = cli(
+        "capabilities",
+        "--task",
+        "dataset.upload",
+        "--refresh",
+        "--state-dir",
+        str(tmp_path / "state"),
+        state=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Uzak görev öncesinde açık proje seçin." in result.stdout

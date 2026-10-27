@@ -203,3 +203,22 @@ def test_record_cannot_promote_unverified_evidence_to_supported(kind):
             checked_at=proof.checked_at,
             expires_at=proof.expires_at,
         )
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_scope_wire_rejects_duplicate_json_keys_at_every_level(nested):
+    encoded = json.dumps(scope_data())
+    duplicate = (
+        encoded.replace('"backend": "local"', '"backend": "local", "backend": "local"')
+        if nested
+        else '{"schema_version": 2,' + encoded[1:]
+    )
+    with pytest.raises(ValueError, match="duplicate wire key"):
+        CapabilityScopeV2.model_validate_json(duplicate)
+
+
+@pytest.mark.parametrize("encoding", ["utf-16", "utf-32"])
+def test_scope_wire_rejects_non_utf8_json_bytes(encoding):
+    payload = json.dumps(scope_data()).encode(encoding)
+    with pytest.raises(ValueError):
+        CapabilityScopeV2.model_validate_json(payload)

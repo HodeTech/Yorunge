@@ -25,3 +25,16 @@ Tarihsel v1 migration fault deneyleri yalnız o testlerde açık identity-only m
 ## Sonraki adımlar
 
 İlk adımın iki fresh review turu ve doğrulanmış düzeltmeleri bitmeden P01-3a verified veya P01-3b ready yapılmaz. Sonra execution hazırlığı/validity, ardından onay/yönetim/bakım ve bütünleşik PR kabulü aynı dalda sürer. Kalıcı plan/onay, run, operation/lease/jobs, HTTP, uzak keşif ve gerçek adaptör bu ilk cache adımında uygulanmış sayılmaz.
+
+### Adım 1 / review 1
+
+İlk ürün commit'i `a3287b0`. Üç yeni ajan state/saat (GPT-6 Astra/high), evidence/scope ve CLI/API/teslim (GPT-6.1 Sol/high) boyutlarını bağımsız inceledi. Ortak bulgular tekilleştirildi ve gerçek SQLite/public API ile doğrulandı:
+
+- Son transaction örneği kayıt TTL'sini denetlemiyordu: commit öncesi TimeGate eklendi; tam expiry'de business yazımı rollback olur, gözlenen clock invalidation kalır.
+- Clock COMMIT gecikmesi ve sonraki kayıt sorgusu önceki sonucu eskitebiliyordu: commit sonrası gözlenen saat kalıcılaştırılır; tüm public kayıtlar ortak son snapshot ile yeniden değerlendirilir. Kilit bekledikten sonraki UTC örneği kullanılır; eşzamanlı süreçlerin eski örneği sahte rollback üretmez.
+- Bazı yerel nedenlerin insan açıklaması genelleşiyordu: proje/runtime/uyumsuzluk/araç açıklamaları tamamlandı.
+- DB decoder duplicate key'i zaten reddediyordu; doğrudan v2 model JSON parser'ı reddetmiyordu: yalnız yeni WireModel sınırına recursive duplicate/nonfinite/UTF-8 kontrolü eklendi. V1 parser değişmedi.
+
+Regresyonlar son transaction örneğini, COMMIT sonrası expiry/rollback'i ve iki kayıt arasında expiry/rollback'i doğrudan tetikler; tüm sonuçlar unknown'a düşer ve clock fence kalır. Eksik proje CLI açıklaması ve üst/iç JSON duplicate ayrıca sınanır. İlk yeni koşu iki süreç testinde kilit öncesi alınan UTC örneğinin yanlış fence üretmesini yakaladı; örnek kilit sonrasına taşındı, kabul/eşik gevşetilmedi.
+
+Temiz kurulum smoke'u macOS `/var` symlink'ini güvenli state kökü olarak reddetti; denetim scratch konumunu kanonik fiziksel yola bağladı. Wheel/sdist iki temiz ortamda gerçek kurulu CLI/import ve refresh→cached smoke'u geçti; bunlar review düzeltmelerinin ara build kanıtıdır, final paket yerine sayılmaz.

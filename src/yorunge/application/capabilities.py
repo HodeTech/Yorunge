@@ -125,6 +125,10 @@ def combine(
             "adapter_not_implemented": "Seçilen araç adaptörü henüz uygulanmadı; yürütülemez.",
             "service_not_verified": "Uzak hizmet ve hesap desteği doğrulanmadı.",
             "authorization_not_verified": "Uzak izin kapsamı doğrulanmadı.",
+            "project_selection_required": "Uzak görev öncesinde açık proje seçin.",
+            "runtime_access_unverified": "EVREN runtime erişimi bu sorguda doğrulanmadı.",
+            "unsupported_combination": "Görev, araç ve ortam birleşimi desteklenmiyor.",
+            "tool_unavailable": "Araç kimliği tanınmıyor; desteklenen bir araç seçin.",
         }.get(reason, "Kanıt sonucu yalnız kayıtlı kapsam ve süre için geçerlidir.")
     )
     payload = dict(
