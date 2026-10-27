@@ -9,7 +9,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Stamp, StateCache
-from yorunge.adapters.state import Store, metadata
+from yorunge.adapters.state import Store, metadata, sqlite_error_code
 from yorunge.application.execution import ExecutionBudget
 from yorunge.domain.capabilities import canonical, instant, timestamp
 from yorunge.domain.errors import YorungeError
@@ -134,19 +134,24 @@ class PlanRepository:
     def finish(
         self, expected: ExecutionMoment, *, valid_until: datetime | None = None
     ) -> ExecutionMoment:
-        current, within_budget = self.cache._finish(
-            stamp(expected), (valid_until,) if valid_until is not None else ()
-        )
-        self.budget.check()
-        if not within_budget:
-            raise YorungeError("execution_timeout")
-        return ExecutionMoment(
-            current.store_id,
-            current.identity_epoch,
-            current.generation,
-            current.now,
-            current.anomaly,
-        )
+        try:
+            current, within_budget = self.cache._finish(
+                stamp(expected), (valid_until,) if valid_until is not None else ()
+            )
+            self.budget.check()
+            if not within_budget:
+                raise YorungeError("execution_timeout")
+            return ExecutionMoment(
+                current.store_id,
+                current.identity_epoch,
+                current.generation,
+                current.now,
+                current.anomaly,
+            )
+        except OSError:
+            raise YorungeError("state_write_failed") from None
+        except sqlite3.Error as error:
+            raise YorungeError(sqlite_error_code(error)) from None
 
     def read(self, plan_id: str) -> ExecutionPlan:
         self.pinned = read_plan(self.store.connection, plan_id)

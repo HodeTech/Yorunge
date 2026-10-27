@@ -1,3 +1,4 @@
+import errno
 import json
 import sqlite3
 import subprocess
@@ -634,3 +635,68 @@ def test_forget_rolls_back_plan_if_approval_cascade_cannot_complete(
     shown = api.show_execution_plan(plan.plan_id, state_dir=state).data
     assert shown.plan == plan
     assert shown.approval.record == approved
+
+
+@pytest.mark.parametrize("idempotent", [False, True])
+@pytest.mark.parametrize("failure_kind", ["timeout", "io", "read_denied"])
+def test_postcommit_failures_disclose_persisted_record_for_new_and_existing_approval(
+    tmp_path,
+    execution_fixture,
+    execution_clock,
+    monkeypatch,
+    idempotent,
+    failure_kind,
+):
+    from yorunge.adapters.execution_store import PlanRepository
+
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    previous = (
+        api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state).data.record
+        if idempotent
+        else None
+    )
+    original = PlanRepository.approve
+
+    def fail_after_commit(self, *args):
+        if failure_kind == "timeout":
+
+            def delay(statement):
+                if statement == "COMMIT":
+                    execution_clock.elapsed = 31
+
+            self.store.connection.set_trace_callback(delay)
+        result = original(self, *args)
+        if failure_kind == "io":
+
+            def io_failure(*args, **kwargs):
+                raise OSError(errno.EIO, "fixture terminal clock failure")
+
+            monkeypatch.setattr(self.cache, "_save_stamp", io_failure)
+        elif failure_kind == "read_denied":
+            self.store.connection.set_authorizer(
+                lambda action, *rest: (
+                    sqlite3.SQLITE_DENY if action == sqlite3.SQLITE_SELECT else sqlite3.SQLITE_OK
+                )
+            )
+        return result
+
+    monkeypatch.setattr(PlanRepository, "approve", fail_after_commit)
+    with pytest.raises(ApprovalNotEffective) as failure:
+        api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state)
+    details = failure.value.envelope()["details"]
+    assert failure.value.exit_code == 2
+    assert details["recorded"] is True
+    assert (
+        details["reason_code"]
+        == {
+            "timeout": "execution_timeout",
+            "io": "state_write_failed",
+            "read_denied": "state_invalid",
+        }[failure_kind]
+    )
+    assert "kaydı oluştu" in str(failure.value)
+    shown = api.show_execution_plan(plan.plan_id, state_dir=state).data
+    assert shown.approval.record.approval_id == details["approval_id"]
+    if idempotent:
+        assert shown.approval.record == previous

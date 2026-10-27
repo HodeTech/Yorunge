@@ -319,9 +319,13 @@ class ExecutionUseCases:
         if not validity.valid or validity.valid_until is None:
             raise YorungeError("plan_not_valid")
         written = self.repository.approve(plan, validity, expected)
-        final = self.repository.finish(
-            expected, valid_until=min(instant(validity.valid_until), instant(written.expires_at))
-        )
+        try:
+            final = self.repository.finish(
+                expected,
+                valid_until=min(instant(validity.valid_until), instant(written.expires_at)),
+            )
+        except YorungeError as error:
+            raise ApprovalNotEffective(plan.plan_id, written.approval_id, error.code) from None
         current = report(plan, final, [], instant(validity.valid_until))
         state = approval_state(
             plan,

@@ -135,11 +135,13 @@ class YorungeError(Exception):
 class ApprovalNotEffective(YorungeError):
     """A committed local record is visible even when terminal validity has elapsed."""
 
-    def __init__(self, plan_id: str, approval_id: str) -> None:
+    def __init__(
+        self, plan_id: str, approval_id: str, reason: ErrorCode = "plan_not_valid"
+    ) -> None:
         super().__init__("plan_not_valid")
-        self.plan_id, self.approval_id = plan_id, approval_id
+        self.plan_id, self.approval_id, self.reason = plan_id, approval_id, reason
         self.message = (
-            "Onay kaydı oluştu fakat son kontrolde etkin değil. "
+            "Onay kaydı oluştu fakat son kontrolde etkinliği doğrulanamadı. "
             "plan execution show ile kayıtlı planı inceleyin."
         )
         self.args = (self.message,)
@@ -150,5 +152,6 @@ class ApprovalNotEffective(YorungeError):
             "plan_id": self.plan_id,
             "approval_id": self.approval_id,
             "recorded": True,
+            "reason_code": self.reason,
         }
         return value
