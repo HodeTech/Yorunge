@@ -40,8 +40,8 @@ def signature(info: os.stat_result) -> tuple[int, ...]:
 
 def directory_chain(anchor: str) -> tuple[int, tuple[tuple[int, int], ...]]:
     descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    chain = [identity(os.fstat(descriptor))]
     try:
+        chain = [identity(os.fstat(descriptor))]
         for part in anchor.split("/")[1:]:
             if not part:
                 continue
@@ -57,8 +57,8 @@ def directory_chain(anchor: str) -> tuple[int, tuple[tuple[int, int], ...]]:
 
 def relative_file(root: int, path: str) -> tuple[int, tuple[tuple[int, int], ...]]:
     descriptor = os.dup(root)
-    chain = [identity(os.fstat(descriptor))]
     try:
+        chain = [identity(os.fstat(descriptor))]
         parts = path.split("/")
         for part in parts[:-1]:
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)

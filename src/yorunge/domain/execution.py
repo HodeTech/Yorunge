@@ -17,7 +17,8 @@ from yorunge.domain.capabilities import (
     canonical,
     instant,
 )
-from yorunge.domain.models import Context, Identifier, Recipe, Selection, Task
+from yorunge.domain.credentials import normalize_target
+from yorunge.domain.models import LLM_TASKS, Context, Identifier, Recipe, Selection, Task
 from yorunge.domain.state import canonical_uuid
 
 NonnegativeInt64 = Annotated[int, Field(ge=0, le=2**63 - 1)]
@@ -114,6 +115,52 @@ class ExecutionAssessment(WireModel):
         return min(dates)
 
 
+def validate_assessment_scope(
+    assessment: ExecutionAssessment,
+    context: Context,
+    selection: Selection,
+    recipe: Recipe,
+) -> None:
+    required = (
+        "local"
+        if selection.task in LLM_TASKS and selection.execution == "local"
+        else ("evren-llm" if selection.task == "llm.chat" else "evren-platform")
+    )
+    if assessment.ready() and not any(
+        c.key.capability_id != "planning.offline" and c.key.scope.service_id == required
+        for c in assessment.capabilities
+    ):
+        raise ValueError("task execution authority required")
+    for capability in assessment.capabilities:
+        scope = capability.key.scope
+        if (scope.account_id, scope.project_id) != (context.account_id, context.project_id):
+            raise ValueError("account/project scope mismatch")
+        if scope.service_id not in ("local", required):
+            raise ValueError("task service mismatch")
+        if scope.service_id != "local":
+            target = normalize_target(
+                context.llm_url if required == "evren-llm" else context.platform_url
+            )
+            if (scope.service_origin, scope.api_base_path) != (
+                target.service_origin,
+                target.api_base_path,
+            ):
+                raise ValueError("service target mismatch")
+        if (
+            scope.execution.backend != selection.execution
+            or (scope.tool.id if scope.tool else None) != selection.tool
+        ):
+            raise ValueError("selected tool/backend mismatch")
+        expected_model = (
+            (recipe.model.source, recipe.model.id, recipe.model.revision) if recipe.model else None
+        )
+        observed_model = (
+            (scope.model.source, scope.model.id, scope.model.revision) if scope.model else None
+        )
+        if observed_model != expected_model:
+            raise ValueError("selected model mismatch")
+
+
 class ExecutionBody(WireModel):
     schema_version: Literal[2] = 2
     policy_version: Literal[1] = 1
@@ -150,6 +197,7 @@ class ExecutionBody(WireModel):
         start, end = instant(self.prepared_at), instant(self.expires_at)
         if not timedelta(0) < end - start <= timedelta(seconds=300):
             raise ValueError("bounded plan lifetime required")
+        validate_assessment_scope(self.assessment, self.context, self.selection, self.recipe)
         if self.selection.task != self.recipe.task:
             raise ValueError("saved task mismatch")
         if (self.status == "prepared") != self.assessment.ready():
@@ -165,7 +213,7 @@ class ExecutionBody(WireModel):
             raise ValueError("plan cannot outlive authority")
         for capability in self.assessment.capabilities:
             scope = capability.key.scope
-            if self.status == "prepared":
+            if self.status == "prepared" and capability.key.capability_id != "planning.offline":
                 if (
                     scope.execution.backend != self.selection.execution
                     or scope.execution.environment_digest is None

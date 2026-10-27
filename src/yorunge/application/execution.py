@@ -25,6 +25,7 @@ from yorunge.domain.execution import (
     ExecutionValidity,
     InputBinding,
     InputRoot,
+    validate_assessment_scope,
 )
 from yorunge.domain.models import Context, Recipe, Selection
 
@@ -174,6 +175,7 @@ class ExecutionUseCases:
             result = ExecutionAssessment.model_validate_json(
                 canonical(result.model_dump(mode="json"))
             )
+            validate_assessment_scope(result, request.context, request.selection, request.recipe)
         except (ValueError, ValidationError, TypeError):
             raise YorungeError("plan_not_valid") from None
         final = self.repository.finish(expected)

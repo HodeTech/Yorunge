@@ -61,3 +61,11 @@ P01-3a kendi kabulüyle verified; P01-3b adım 2 başladı. Cache temizliğinin 
 Descriptor walk her root/ara/son bileşende no-follow kullanır; FIFO okunmaz. Önce/sonra stat ve zincir kimliği, içerik hash'i, root anchor/inode, CWD değişimi ve byte-identical root değişimi sınanır. 16MiB/256MiB/1GiB sparse sentetik dosyada tam okuma ve Python allocation peak<8MiB testi geçti; gerçek model/data closure veya fiziksel I/O garantisi değildir. 1GiB+ ve toplam30s retleri, hash sırasında root/içerik değişimi, path traversal ve descriptor kapanışı testlidir.
 
 İlk execution/input alt takımı37 test geçti. İlk tam takım965 başarılı/1 başarısızdı: yeni execution_plans tablosu eski exact şema assertion'ında yoktu; assertion gerçek şemayla güncellendi. Sonraki execution/input/state/platform alt takımı253 testte başarılı; mypy38 kaynak ve Ruff geçti. Yeni komutlarda üç platform/fcntl senaryosu gerçek ayrı süreçte simüle edilir; gerçek Windows koşusu değildir. İki review turu henüz başlamadan bu kanıt ürün kapanışı sayılmaz. Approval/revoke/forget sonraki adımdadır.
+
+### Adım 2 / review 1
+
+İlk execution commit'i `57fe22c`; son tam takım bu head'de **991 passed (101,62 s)**. Üç yeni reviewer input/TOCTOU (GPT-6 Astra/high), validity/scope ve CLI/state/teslim (GPT-6.1 Sol/high) inceledi. Teslim reviewer'ında yeni bulgu yok;247 hedefli test, gerçek public CLI smoke ve schema2 legacy intent/stage/live-source-lost recovery probları geçti.
+
+İki doğrulanmış P2 giderildi: producer proof account/project ve görev için gerekli service namespace'i istekle karşılaştırılmıyordu (remote→local proof ile prepared mümkün); ortak pure scope invariant hem fresh admission'a hem persisted body'ye eklendi. Eksik/yanlış remote namespace, hesap/proje/hedef ve yalnız planning.offline kanıtı preparation sağlayamaz. İkinci bulgu ilk root/dup-root fstat hatasında FD sızıntısıydı; metadata işlemleri cleanup kapsamına alındı. Her iki noktaya gerçek descriptor/EIO enjeksiyonu artık bütün FD'lerin kapandığını doğrular.
+
+Düzeltme sonrası input/execution **45 passed (10,50 s)**; Ruff ve strict mypy38 kaynak başarılı. Bu turdaki fixture pozitifliği public uzak destek veya execution değildir. İkinci fresh review turu kapanmadan adım3'e geçilmez.

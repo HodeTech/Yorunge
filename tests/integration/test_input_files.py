@@ -161,3 +161,50 @@ def test_missing_safe_open_support_fails_before_io(tmp_path, monkeypatch):
     with pytest.raises(YorungeError) as failure:
         DescriptorInputs().bind(tmp_path, (), budget())
     assert failure.value.code == "input_unsupported"
+
+
+@pytest.mark.parametrize("point", ["root", "dup-root"])
+def test_initial_stat_io_failure_closes_the_opened_descriptor(tmp_path, monkeypatch, point):
+    import errno
+
+    (tmp_path / "data").write_bytes(b"data")
+    original_open, original_dup, original_close, original_stat = os.open, os.dup, os.close, os.fstat
+    live, duplicated = set(), set()
+    injected = False
+
+    def opening(*args, **kwargs):
+        result = original_open(*args, **kwargs)
+        live.add(result)
+        return result
+
+    def duplicate(fd):
+        result = original_dup(fd)
+        live.add(result)
+        duplicated.add(result)
+        return result
+
+    def closing(fd):
+        original_close(fd)
+        live.discard(fd)
+
+    def stating(fd):
+        nonlocal injected
+        if not injected and (point == "root" or fd in duplicated):
+            injected = True
+            raise OSError(errno.EIO, "fixture stat failure")
+        return original_stat(fd)
+
+    monkeypatch.setattr(os, "open", opening)
+    monkeypatch.setattr(os, "dup", duplicate)
+    monkeypatch.setattr(os, "close", closing)
+    monkeypatch.setattr(os, "fstat", stating)
+    monkeypatch.setattr(os, "supports_dir_fd", {*os.supports_dir_fd, opening})
+    try:
+        with pytest.raises(YorungeError) as failure:
+            DescriptorInputs().bind(tmp_path, (("data", "data"),), budget())
+        assert failure.value.code == "input_invalid"
+        assert injected
+        assert live == set()
+    finally:
+        for fd in tuple(live):
+            original_close(fd)

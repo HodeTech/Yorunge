@@ -432,3 +432,65 @@ def test_credential_rotation_inside_producer_rejects_the_stale_snapshot(
         )
     assert failure.value.code == "state_changed"
     assert api.list_execution_plans(state_dir=state).data.plans == ()
+
+
+@pytest.mark.parametrize("mismatch", ["account", "project", "local", "planning_only", "target"])
+def test_execution_authority_must_match_full_request_scope(
+    tmp_path,
+    config,
+    execution_fixture,
+    mismatch,
+):
+    config.write_text(
+        config.read_text().replace("[profiles.work]", '[profiles.work]\naccount_id="account"')
+    )
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, project="project", state_dir=state
+    ).data.plan
+
+    def wrong_scope(assessment):
+        record = assessment.capabilities[0]
+        key = record.key
+        scope = key.scope
+        proof = record.evidence[0]
+        if mismatch in ("account", "project"):
+            scope = scope.model_copy(update={mismatch + "_id": "different"})
+        elif mismatch in ("local", "planning_only"):
+            scope = scope.model_copy(
+                update={
+                    "service_id": "local",
+                    "service_origin": None,
+                    "api_base_path": None,
+                    "credential_id": None,
+                    "credential_revision": None,
+                    "authorization_scope": None,
+                }
+            )
+            proof = proof.model_copy(update={"kind": "local_policy"})
+            if mismatch == "planning_only":
+                key = key.model_copy(update={"capability_id": "planning.offline"})
+        else:
+            scope = scope.model_copy(update={"api_base_path": "/different"})
+        key = key.model_copy(update={"scope": scope})
+        return assessment.model_copy(
+            update={"capabilities": (record.model_copy(update={"key": key, "evidence": (proof,)}),)}
+        )
+
+    execution_fixture.change = wrong_scope
+    with pytest.raises(YorungeError) as failure:
+        api.prepare_execution_plan(
+            task="dataset.upload", config=config, project="project", state_dir=state
+        )
+    assert failure.value.code == "plan_not_valid"
+    invalid = api.validate_execution_plan(
+        plan.plan_id, config=config, project="project", state_dir=state
+    ).data
+    assert invalid.valid is False
+    assert "current_validation_blocked" in invalid.reasons
+    # A newly hashed hostile body is still rejected structurally, without live validation.
+    body = plan.model_dump(mode="json", exclude={"digest"})
+    body["assessment"] = wrong_scope(plan.assessment).model_dump(mode="json")
+    body["digest"] = hashlib.sha256(canonical(body)).hexdigest()
+    with pytest.raises(ValueError):
+        ExecutionPlan.model_validate_json(canonical(body))
