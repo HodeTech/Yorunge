@@ -23,6 +23,31 @@ depends_on: [P01-1]
 capabilities: [C01]
 ---
 # Synthetic task
+
+## Kullanıcı sonucu ve mevcut eksik
+Resolve only the selected synthetic service credential.
+
+## Giren ve girmeyen kapsam
+Explicit env lookup; no network or persistence.
+
+## Bağımlılıklar ve kararlar
+P01-1 is verified by the phase's historical evidence.
+
+## Sözleşme ve uygulama sınırı
+Keep local context independent from credential lookup.
+
+## Kabul
+Selected env value is read only on request; missing values fail without leaks.
+
+## Doğrulama
+Exercise the real resolver with synthetic env values and a local-context read guard.
+
+## Teslim kaydı
+No implementation or delivery evidence yet.
+"""
+DELIVERY = """- PR/commit: [Synthetic PR](https://github.com/HodeTech/Yorunge/pull/1)
+- Sonuç: Synthetic resolver checks passed in the isolated test fixture.
+- Kalan sınır: No live service verification.
 """
 
 
@@ -86,7 +111,9 @@ def test_malformed_or_unready_guides_fail(guide_tree, mutation, tmp_path):
     card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
     alias = guide_tree / ".claude/skills/yorunge-example"
     if mutation == "duplicate-name":
-        (skill / "SKILL.md").write_text(SKILL.replace("description:", "name: other\ndescription:"))
+        (skill / "SKILL.md").write_text(
+            SKILL.replace("description:", "name: yorunge-example\ndescription:")
+        )
     elif mutation == "wrong-name":
         (skill / "SKILL.md").write_text(SKILL.replace("name: yorunge-example", "name: other"))
     elif mutation == "unsupported-field":
@@ -106,6 +133,8 @@ def test_malformed_or_unready_guides_fail(guide_tree, mutation, tmp_path):
         card.write_text(CARD.replace("C01", "C99"))
     elif mutation == "partial-card":
         card.write_text(CARD.replace("status: ready", "status: partial"))
+        phase = guide_tree / "docs/roadmap/phase-01-core.md"
+        phase.write_text(phase.read_text().replace("`ready`", "`partial`"))
     elif mutation == "state-drift":
         card.write_text(CARD.replace("status: ready", "status: in_progress"))
     elif mutation == "large-ready-card":
@@ -118,10 +147,82 @@ def test_malformed_or_unready_guides_fail(guide_tree, mutation, tmp_path):
         elif mutation == "absolute-alias":
             alias.symlink_to(skill)
         else:
-            alias.symlink_to(tmp_path)
+            alias.symlink_to("../../../")
+            assert alias.resolve() == tmp_path
     result = invoke(guide_tree)
     assert result.returncode == 1
     assert "Traceback" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("status", ["in_progress", "in_review", "verified"])
+def test_unverified_dependencies_block_started_states(guide_tree, status):
+    phase = guide_tree / "docs/roadmap/phase-01-core.md"
+    phase.write_text(phase.read_text().replace("verified", "draft").replace("ready", status))
+    card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
+    card.write_text(
+        CARD.replace("status: ready", f"status: {status}").replace(
+            "No implementation or delivery evidence yet.", DELIVERY
+        )
+    )
+    assert invoke(guide_tree).returncode == 1
+
+
+@pytest.mark.parametrize("field", ["PR/commit", "Sonuç", "Kalan sınır"])
+def test_verified_card_requires_each_delivery_field(guide_tree, field):
+    phase = guide_tree / "docs/roadmap/phase-01-core.md"
+    phase.write_text(phase.read_text().replace("ready", "verified"))
+    card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
+    delivery = "\n".join(
+        line for line in DELIVERY.splitlines() if not line.startswith(f"- {field}:")
+    )
+    card.write_text(
+        CARD.replace("status: ready", "status: verified").replace(
+            "No implementation or delivery evidence yet.", delivery
+        )
+    )
+    assert invoke(guide_tree).returncode == 1
+
+
+def test_verified_card_with_delivery_record(guide_tree):
+    phase = guide_tree / "docs/roadmap/phase-01-core.md"
+    phase.write_text(phase.read_text().replace("ready", "verified"))
+    card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
+    card.write_text(
+        CARD.replace("status: ready", "status: verified").replace(
+            "No implementation or delivery evidence yet.", DELIVERY
+        )
+    )
+    result = invoke(guide_tree)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("replacement", ["", "## Kabul\n\n"])
+def test_ready_card_requires_nonempty_body_sections(guide_tree, replacement):
+    card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
+    card.write_text(
+        CARD.replace(
+            "## Kabul\nSelected env value is read only on request; "
+            "missing values fail without leaks.\n",
+            replacement,
+        )
+    )
+    assert invoke(guide_tree).returncode == 1
+
+
+def test_duplicate_phase_work_ids_fail(guide_tree):
+    phase = guide_tree / "docs/roadmap/phase-01-core.md"
+    phase.write_text(phase.read_text() + "| P01-1 | Conflicting duplicate | `draft` |\n")
+    result = invoke(guide_tree)
+    assert result.returncode == 1
+    assert "Duplicate phase work id: P01-1" in result.stdout
+
+
+def test_draft_card_can_have_an_incomplete_body(guide_tree):
+    phase = guide_tree / "docs/roadmap/phase-01-core.md"
+    phase.write_text(phase.read_text().replace("ready", "draft"))
+    card = guide_tree / "docs/roadmap/tasks/p01-2a-synthetic-task.md"
+    card.write_text(CARD.split("## Kullanıcı sonucu")[0].replace("status: ready", "status: draft"))
+    assert invoke(guide_tree).returncode == 0
 
 
 def test_canonical_source_directory_cannot_point_to_private_archive(guide_tree):

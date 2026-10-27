@@ -15,7 +15,7 @@
 
 ## Sıradaki somut iş
 
-**Aktif ürün kartı yok; sıradaki hazır iş [P01-2a — env secret çözümleme](tasks/p01-2a-secret-resolution.md).** Yalnız açık çağrıda doğru hizmetin env referansını çözer; yerel komutlar sır okumaz. HTTP, keychain, DB, credential nesli veya execution bu karta girmez. Kart henüz uygulanmadı.
+**Sıradaki iş [P01-2a — env secret çözümleme](tasks/p01-2a-secret-resolution.md); güncel hazırlık/teslim durumu kart metadata'sındadır.** Hedefi yalnız açık çağrıda doğru hizmetin env referansını çözmek; yerel komutlarda sır okumamaktır. HTTP, keychain, DB, credential nesli veya execution bu karta girmez.
 
 Sonra B02/B13 kararları → P01-4a kalıcılık temeli → P01-2b credential kimliği/nesli → P01-3a/b capability ve execution geçerliliği → P01-4b operation/lease gelir. P01-5a loopback taşıma deneyi P01-2a sonrası bağımsız yürüyebilir; bütün hattı tamamlamak P01-5b/P01-6b kabulüdür. [Kesin sıra ve durumlar](phase-01-core.md), [ajan çalışma rehberi](../../.agents/README.md).
 

@@ -25,7 +25,7 @@ Faz satırı bir epiktir; tek seferde bütün faz uygulanmaz. Anlamlı yeni uygu
 | `deferred` | Bilinçli ertelendi; ilk teslimin gizli önkoşulu değil |
 | `partial` | Yalnız epik/üst işte: bazı alt işler tamam, bütünü değil |
 
-Bu durumlar ürün matrisindeki teslim durumlarından ve runtime capability enum'larından ayrıdır. `ready` için: kullanıcı sonucu + giren/girmeyen kapsam + tamamlanmış bağımlılık kanıtı + olumlu/negatif kabul + uygun test/ölçüm + gerekli dış yetki/karar bulunmalı. Kritik karar eksikse uygulama değil, ayrı karar/araştırma paketi hazırlanır. Hazırlık mevcut kullanıcı yetkisini iptal eden genel bir onay kapısı değildir.
+Bu durumlar ürün matrisindeki teslim durumlarından ve runtime capability enum'larından ayrıdır. `ready` için: kullanıcı sonucu + giren/girmeyen kapsam + tamamlanmış bağımlılık kanıtı + olumlu/negatif kabul + uygun test/ölçüm + gerekli dış yetki/karar bulunmalı. Bu koşullar `in_progress`, `in_review` ve `verified` durumlarında da korunur. Kritik karar eksikse uygulama değil, ayrı karar/araştırma paketi hazırlanır. Hazırlık mevcut kullanıcı yetkisini iptal eden genel bir onay kapısı değildir.
 
 ## Ne kadar iş alınır?
 

@@ -12,13 +12,17 @@ capabilities: [C01]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı bir sonraki hizmet işleminde yalnız doğru servisin credential'ının kullanılmasını ister; yerel context/plan okumak için anahtar gerekmemelidir. Bugün profil env adını doğruluyor fakat secret çözümlemiyor. `P01-1` [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [ilk dilim kanıtıyla](../../research/p01-core-validation.md) doğrulandı.
+Kullanıcı bir sonraki hizmet işleminde yalnız doğru servisin credential'ının kullanılmasını ister; yerel context/plan okumak için anahtar gerekmemelidir. Bugün profil env adını doğruluyor fakat secret çözümlemiyor.
 
 ## Giren ve girmeyen kapsam
 
 Giren: `evren-platform` / `evren-llm` hizmetine bağlı tipli env referansı, yalnız açık çözümleme çağrısında değer okuyan adaptör ve dışarı sızmayan credential taşıyıcısı. Mevcut TOML `platform_key_env` / `llm_key_env` alanları kullanılır; sır dosyaya yazılmaz. CLI/Python yerel context ve offline draft davranışı korunur.
 
 Girmeyen: HTTP/auth denemesi, doctor/proje keşfi, keychain, DB, credential kimliği/nesli, cache, eğitim aracı veya yürütüm. Plan alanları hâlâ uzak yetki doğrulanmadığını gösterir. Bir sırrın env'de bulunması hesabın destek/yetki kanıtı değildir. Yeni “anahtarı yazdır” CLI komutu eklenmez.
+
+## Bağımlılıklar ve kararlar
+
+`P01-1` [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [ilk dilim kanıtıyla](../../research/p01-core-validation.md) doğrulandı. Bu dar env çözümleme dilimi için açık dış erişim veya ek mimari karar gerekmez; kalıcı credential kimliği B02/B13 ve P01-4a/P01-2b'ye bağlı ayrı iştir.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -35,8 +39,10 @@ Mevcut domain hata/model, application kullanım senaryosu ve dosya/profil adapt�
 5. Yardım, sürüm, context, capability ve offline plan testleri credential okumasını yasaklayan guard altında geçer. Ağ, DB, keychain, araç/model keşfi veya ML import eklenmez.
 6. Mevcut seçim önceliği, açık proje eksikliği davranışı ve kayıtlı plan seçimi korunur. Credential varlığı `remote_verified=true`, `supported` veya `executable=true` üretmez.
 
-## Doğrulama ve teslim
+## Doğrulama
 
 Gerçek env adaptörü, sentetik değer ve gerçek şema kullanılır; parser veya bütün application mock edilerek doğruluk iddiası kurulmaz. Hizmet karışması, eksik/boş/yanlış referans ve çıktı sızıntısı negatif testleri; mevcut CLI/API sözleşme suite'i ve strict format/lint/type gerekir. Import veya başlangıç yolu değişirse standart benchmark, paket yerleşimi/metadata etkilenirse build/temiz kurulum eklenir. Komut kaynağı [CONTRIBUTING](../../../CONTRIBUTING.md#doğrulama-seçimi).
 
-Henüz uygulama commit/PR'si veya bu karta ait test sonucu yoktur. Teslimde kabul maddeleri gerçek kanıtla eşlenir; bu kart ancak o zaman `verified` olur.
+## Teslim kaydı
+
+Henüz uygulama commit/PR'si veya bu karta ait test sonucu yoktur. Teslimde kabul maddeleri gerçek kanıtla eşlenir; bu kart ancak o zaman `verified` olur. Kayıt biçimi [şablondadır](../task-template.md).

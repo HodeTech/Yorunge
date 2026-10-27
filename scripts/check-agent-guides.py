@@ -10,6 +10,16 @@ import yaml
 
 STATUSES = {"draft", "ready", "in_progress", "in_review", "verified", "blocked", "deferred"}
 WORK_ID = re.compile(r"P\d{2}-(?:\d+[a-z]?|R\d+)")
+STARTABLE = {"ready", "in_progress", "in_review", "verified"}
+CARD_SECTIONS = (
+    "Kullanıcı sonucu ve mevcut eksik",
+    "Giren ve girmeyen kapsam",
+    "Bağımlılıklar ve kararlar",
+    "Sözleşme ve uygulama sınırı",
+    "Kabul",
+    "Doğrulama",
+    "Teslim kaydı",
+)
 
 
 def metadata(text: str, *, frontmatter: bool = True) -> dict[str, object]:
@@ -39,6 +49,28 @@ def trusted_file(path: Path, root: Path) -> str:
     if path.is_symlink():
         raise ValueError("canonical guide must be a regular source")
     return path.read_text(encoding="utf-8")
+
+
+def check_card_body(text: str, status: object) -> None:
+    """Check structure/evidence presence; acceptance quality still needs human review."""
+    if status not in STARTABLE:
+        return
+    # Samples do not supply real card sections or delivery evidence.
+    prose = re.sub(r"(?ms)^(`{3,}|~{3,})[^\n]*\n.*?^\1[ \t]*$", "", text)
+    parts = re.split(r"(?m)^## (.+)\n", prose)
+    sections = dict(zip(parts[1::2], parts[2::2], strict=True))
+    if any(not sections.get(heading, "").strip() for heading in CARD_SECTIONS):
+        raise ValueError("started task needs all nonempty card sections")
+    if status == "verified":
+        delivery = sections["Teslim kaydı"]
+        if not re.search(
+            r"(?m)^- PR/commit: .*https://github\.com/HodeTech/Yorunge/"
+            r"(?:pull/[1-9]\d*|commit/[0-9a-f]{7,40})(?:[)\s]|$)",
+            delivery,
+        ) or any(
+            not re.search(rf"(?m)^- {field}: \S.*$", delivery) for field in ("Sonuç", "Kalan sınır")
+        ):
+            raise ValueError("verified task needs delivery link, result and remaining limits")
 
 
 def check(root: Path) -> tuple[list[str], int, int]:
@@ -103,12 +135,16 @@ def check(root: Path) -> tuple[list[str], int, int]:
         for line in trusted_file(phase, root).splitlines():
             cells = [cell.strip().strip("`") for cell in line.split("|")[1:-1]]
             if len(cells) >= 2 and WORK_ID.fullmatch(cells[0]):
-                known[cells[0]] = cells[-1]
+                if cells[0] in known:
+                    errors.append(f"Duplicate phase work id: {cells[0]}")
+                else:
+                    known[cells[0]] = cells[-1]
     cards = sorted((root / "docs/roadmap/tasks").glob("p*.md"))
     seen: set[str] = set()
     for path in cards:
         try:
-            spec = metadata(trusted_file(path, root))
+            text = trusted_file(path, root)
+            spec = metadata(text)
             if set(spec) != {"id", "phase", "status", "size", "depends_on", "capabilities"}:
                 raise ValueError("task metadata fields mismatch")
             identifier = spec["id"]
@@ -123,8 +159,9 @@ def check(root: Path) -> tuple[list[str], int, int]:
                 raise ValueError("invalid task state or size")
             if known[identifier] != spec["status"]:
                 raise ValueError("task state differs from phase index")
-            if spec["status"] == "ready" and spec["size"] == "L":
+            if spec["status"] in STARTABLE and spec["size"] == "L":
                 raise ValueError("large task must be split before becoming ready")
+            check_card_body(text, spec["status"])
             dependencies = spec["depends_on"]
             capabilities = spec["capabilities"]
             if not isinstance(dependencies, list) or not all(
@@ -139,10 +176,10 @@ def check(root: Path) -> tuple[list[str], int, int]:
                 )
             ):
                 raise ValueError("invalid capability id")
-            if spec["status"] == "ready" and any(
+            if spec["status"] in STARTABLE and any(
                 known[item] != "verified" for item in dependencies
             ):
-                raise ValueError("ready task has unverified prerequisite")
+                raise ValueError("started task has unverified prerequisite")
         except (OSError, ValueError, TypeError, yaml.YAMLError, RecursionError):
             errors.append(f"Invalid task metadata or readiness: {path.name}")
     return errors, len(skills), len(cards)

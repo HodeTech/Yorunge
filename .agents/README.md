@@ -33,6 +33,8 @@ Codex'te `$yorunge-plan-task`, Claude Code'da `/yorunge-plan-task` örnek açık
 
 Kanonik kılavuzlar sdist geliştirme kaynağına dahildir; wheel runtime'ına dahil değildir. Claude alias'ları yalnız repo entegrasyonudur, sdist'te symlink olarak yayımlanmaz. Tam ajan doğrulaması Git checkout'unda çalışır.
 
+Tam geliştirme/test ortamı gerçek symlink destekleyen macOS/Linux checkout'udur; Windows'un symlink'i düz dosyaya çevirdiği checkout bu entegrasyonu sağlayamaz. Ortam ve doğrulama sınırı [CONTRIBUTING](../CONTRIBUTING.md#geliştirme-ve-doğrulama) içinde kayıtlıdır.
+
 ## Yetki ve devir
 
 Skill bir talimat kaynağıdır, yeni dış işlem yetkisi değildir. Sıradan çalışma repo iznini/release'i değiştirmez; Master aktarımı kullanıcıdadır. Bağımsız ajan değerlendirmesi yalnız kullanıcı veya geçerli çalışma yönergesi yetkilendirmişse yapılır; bir skill'in varlığı delegasyon izni değildir.

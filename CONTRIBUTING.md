@@ -21,6 +21,8 @@ Türkçe açıklama, İngilizce dosya/kimlik adları, UTF-8/LF ve göreli bağla
 
 [Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. Ubuntu/Python 3.11 CI tanımı gerçek PR ve dal koşularıyla doğrulanır; yerel kontrol uzak CI koşmuş sayılmaz.
 
+Ajan alias'ları ve bunları sınayan fixture'lar gerçek göreli symlink gerektirir. Desteklenen tam geliştirme/test checkout ortamı macOS veya Linux'tur; Git symlink'leri normal dosyaya dönüştüren Windows checkout'ları doğrulanmamıştır ve bu kontrolü çalıştıramaz. Bu sınır runtime için Windows desteği kanıtı veya yeni bir runtime kısıtı değildir.
+
 `uv 0.11.2` zaten kuruluysa doğrudan `uv sync` adımına geçin. İzole araç kurulumu:
 
 ```sh
@@ -59,7 +61,7 @@ Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerek
 | Paket/bağımlılık/yerleşim veya yayın girdisi | Yukarıdakilere build, arşiv izin listesi ve temiz kurulum/import kökeni; wheel ile sdist ayrımı |
 | Import/başlangıç veya aktarım/worker yolu | İlgili performans standardı ve veri doğruluğu; ortam/örnek/ilk süreç ve p95 kayıtlı |
 
-Rehber denetimi Git checkout'undaki canonical skills/Claude alias'ları ve yakın kartların metadata/ready bağımlılığını kontrol eder. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
+Rehber denetimi Git checkout'undaki canonical skills/Claude alias'larını, tekil faz ID'lerini, kart metadata/bölümlerini ve işe başlanabilecek durumların bağımlılıklarını kontrol eder. `verified` için teslim alanları aranır; kanıtın doğruluğu ve kabulü karşılaması review gerektirir. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
 
 ## İnceleme ve lisans
 

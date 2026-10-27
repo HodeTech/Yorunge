@@ -12,6 +12,6 @@ Ajan prosedürleri `.agents/skills` altında altı dar, instruction-only skill'd
 
 Her işte bütün belge kataloğunu yüklemek bağlamı şişirir; görev bazlı okuma tercih edilir. Her platform için kopya skill drift üretir; aynı kaynağa alias kullanılır. Yalnız faz tablosu ise tek PR sınırını/kabulünü açık bırakır; yakın kart bunu kapatır. Her ufak belge düzeltmesine kart, ADR ve zorunlu onay eklemek gerekli görülmedi.
 
-LearnStack'in kapsam/uygulama ayrımı, ForgeLM'in şema-tüketici-test izi, Relavium'un bağlamı ilgili sınıra daraltması ve Tyrne'nin kanıtlı durum geçişi örüntüleri incelendi. Bu projelerin ürün/mimari/CI/izin ve release kuralları devralınmadı; metinler Yörünge için yazıldı. Kaynak ve uyarlama sınırı [review kaydındadır](../research/roadmap-readiness-review.md).
+Kullanıcının belirttiği yerel örneklerden kapsam/uygulama ayrımı, şema-tüketici-test izi, bağlamı ilgili sınıra daraltma ve kanıtlı durum geçişi örüntüleri incelendi. Bu projelerin ürün/mimari/CI/izin ve release kuralları devralınmadı; metinler Yörünge için yazıldı. Uyarlama sınırı [review kaydındadır](../research/roadmap-readiness-review.md); yerel checkout kimlikleri yayımlanabilir kararın girdisi değildir.
 
 Doğrulama metadata, bağlantı/alias ve hazır kart bağımlılığını denetler; modelin her doğal dil isteğinde doğru skill'i seçtiğini kanıtlamaz. Canonical ajan materyali sdist geliştirme kaynağına seçilir, wheel'e girmez; istemci alias'ları ve özel/yerel çalışma arşivi dağıtım girdisi değildir.

@@ -33,22 +33,23 @@ Standartların hata, güvenlik, performans ve test gerekleri doğru yönde; canl
 
 Kullanıcının seçtiği yerel referanslarda yalnız ortak skill katalogları ve ilgili prosedürler okundu; worktree kopyaları, kullanıcı ayarı/credential ve çalışma hafızası girdi yapılmadı. Bu kaynaklar başka checkout'a çalışma zamanı bağımlılığı değildir.
 
-| Referans | İncelenen ilgili örüntü | Yörünge'ye alınan / alınmayan |
+| Prosedür grubu | İncelenen ilgili örüntü | Yörünge'ye alınan / alınmayan |
 |---|---|---|
-| LearnStack `.claude/skills` | start-task, implement-task, commit-and-pr, review/katalog yönlendirmesi | Plan ile uygulamayı ve küçük düzeltmeyi ayırma. .NET/tenant modülleri, kendi main/commit/izin kuralları alınmadı. |
-| ForgeLM `.claude/skills` | config alanı, test, PR review ve release rehberi | Şema → tüketici → anlamlı test → belge izi; kurulu artefaktın import kökeni. Eğitim bağımlılığı, çift dil, kendi coverage eşiği ve yayın komutları alınmadı. |
-| Relavium `.claude` | scoped task/implement/review, ilgili sınırları okuma ve reviewer rolü | Kanonik sözleşme ve dar bağlam; severity/etki/kanıtlı bulgu. TS/Tauri/engine kuralları, sabit model ve her değişiklik için onay kapısı alınmadı. |
-| Tyrne `.agents` | görev kartı, code/approval review, skill/kural ayrımı | Kabul iddiasını kanıtla karşılaştırma, yakın kartın durumu ve istemciden bağımsız katalog. Rust/unsafe/BSP ve bağımsız ajan zorunluluğu alınmadı. |
+| Başlangıç/teslim | start-task, implement-task, commit-and-pr, review/katalog yönlendirmesi | Plan ile uygulamayı ve küçük düzeltmeyi ayırma. Başka ürünün modülleri, kendi main/commit/izin kuralları alınmadı. |
+| Sözleşme/doğrulama | config alanı, test, PR review ve release rehberi | Şema → tüketici → anlamlı test → belge izi; kurulu artefaktın import kökeni. Eğitim bağımlılığı, çift dil, kendi coverage eşiği ve yayın komutları alınmadı. |
+| Bağlam/inceleme | scoped task/implement/review, ilgili sınırları okuma ve reviewer rolü | Kanonik sözleşme ve dar bağlam; severity/etki/kanıtlı bulgu. Başka ürünün stack/engine kuralları, sabit model ve her değişiklik için onay kapısı alınmadı. |
+| İş kartı/kural ayrımı | görev kartı, code/approval review, skill/kural ayrımı | Kabul iddiasını kanıtla karşılaştırma, yakın kartın durumu ve istemciden bağımsız katalog. Başka ürünün dil/donanım sınırları ve bağımsız ajan zorunluluğu alınmadı. |
 
 Metinler Yörünge için yazıldı; referans proje talimatları bu depoda yürütülmedi. Codex repo discovery için [resmî OpenAI skills](https://learn.chatgpt.com/docs/build-skills), Claude project/symlink davranışı için [resmî Claude Code skills](https://code.claude.com/docs/en/skills) okundu (2026-10-27). `.agents/skills` kanonik; Claude'a kişi/global ayarı değiştirmeden göreli alias sağlanıyor.
 
 ## Doğrulama ve pratik sınama
 
 - Altı skill `skill-creator` quick validator'ından geçti; proje helper'ı metadata/UI prompt, alias ve bir hazır kartı doğruladı.
-- Toplam 117 offline test geçti. Yeni 17 senaryo; duplicate/yanlış metadata, yanlış UI, kopya/absolute/dış alias, bilinmeyen veya tamamlanmamış bağımlılık, yanlış capability, durum drift'i, bölünmemiş L iş ve kaynak sınırını kapsıyor. Kod örneklerinin gerçek anchor sayılmaması da sınandı.
+- Toplam 128 offline test geçti. Yeni 28 senaryo; duplicate/yanlış metadata, yanlış UI, kopya/absolute/dış alias, bilinmeyen veya tamamlanmamış bağımlılık, yanlış capability, durum drift'i, bölünmemiş L iş ve kaynak sınırını kapsıyor. Başlanmış/tamamlanmış işin bağımlılığı, boş/eksik kart gövdesi, verified teslim kaydı ve çakışan faz ID'leri de sınandı; bağımsız hata nedenlerini maskeleyen üç negatif fixture düzeltildi. Kod örneklerinin gerçek anchor sayılmaması da sınandı.
 - Ruff format/lint ve strict mypy temiz. Açık kaynak listesinde 85 Markdown dosyası, link/fence/anchor ve git diff kontrolü geçti. Wheel/sdist build ve ikisinin ayrı temiz kurulum/import-konsol deneyi başarılı. Wheel 17 runtime/metadata üyesiyle kaldı; kanonik ajan rehberleri yalnız sdist geliştirme girdisinde, Claude alias symlink'leri dağıtım dışında. Arşiv kimliği/SHA-256 ve sonuçlar build sonrası `dist/verification.jsonl` kaydındadır; bu kaynak belgenin kendi hash'i içine yazılmaz.
 - Skill kullanım senaryoları içerik üzerinden kontrol edildi: plan-only istek kod başlatmıyor; ready kartı uygula talebi planla bırakılmıyor; yalnız review dış yazma yapmıyor; doğrulama canlı hesaba geçmiyor; PR akışı Master/release yetkisi üretmiyor. Bunlar yazarın senaryo incelemesidir, bağımsız model/istemci forward-test'i değildir.
 - Codex/Claude UI'sında doğal dil otomatik seçim ve yeni oturum discovery e2e testi yapılmadı; dosya/metadata/alias yapısı ve resmî yerleşim doğrulandı. Mermaid görsel render ve canlı EVREN/GPU testi yapılmadı.
+- Tam geliştirme/test checkout'u gerçek symlink destekleyen macOS/Linux ile sınırlıdır; Windows checkout davranışı doğrulanmadı. Kart helper'ı yapısal alan/kanıt varlığını kontrol eder; kabulün gerçekten sağlanması review konusudur. Güncel durum indeks/current içinde tekrar edilmez; kart metadata'sı ve onunla denetlenen faz satırı kullanılır.
 
 ## Hazırlık kararı ve kalan işler
 
