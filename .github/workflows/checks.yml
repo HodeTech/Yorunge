@@ -1,8 +1,21 @@
 name: core-checks
-on: [push, pull_request]
+on:
+  push:
+    branches: [development, Master]
+  pull_request:
+    branches: [development, Master]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: core-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   offline-core:
+    name: offline-core
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Install locked development environment

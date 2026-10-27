@@ -12,5 +12,6 @@
 | [0006](0006-cli-and-public-api.md) | Ortak çekirdek üzerinde CLI ve Python API | Accepted |
 | [0007](0007-mit-and-documentation.md) | MIT ve tek kanonik belge yapısı | Accepted |
 | [0008](0008-offline-core-stack.md) | Çevrimdışı ilk dilimin paket, CLI ve şema seçimi | Accepted — uygulandı |
+| [0009](0009-development-and-release-branches.md) | Development PR ve Master release akışı; merge commit | Accepted |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

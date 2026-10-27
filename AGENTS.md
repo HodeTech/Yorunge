@@ -24,6 +24,13 @@ Türkçe ürün/mühendislik açıklamaları; İngilizce dosya, API, config anah
 
 Doğrulamayı değişikliğe göre seç. Sadece belge değişikliğinde bağlantı, başlık, fence ve tutarlılık denetimleri yeterli olabilir. Çalıştırılmayan testleri açıkça belirt. Başka projelerin yönergeleri bu deponun kurallarının yerine geçmez. Remote ayarlarını, yayınları ve repo izinlerini sıradan belge işi kapsamında değiştirme.
 
+## Dal ve PR akışı
+
+- Yeni çalışma dalını güncel `origin/development` üzerinden aç; kod, belge ve CI değişikliklerini `development` hedefli PR ile taşı. `development` veya `Master` dalına doğrudan push yapma.
+- PR'lar merge commit ile birleşir; squash/rebase merge kullanma. Zorunlu CI ve konuşma çözümleme koşulları sağlanmadan birleştirme yapma; yönetici bypass'ı kullanma.
+- `Master` hedefli PR yalnız aynı deponun `development` dalından açılır. `Master` birleştirmesini ve release/yayın işlemlerini kullanıcı yapar; ajan bunları kendiliğinden gerçekleştirmez.
+- Kanonik politika ve ilk kurulum istisnası [Git/yayın standardındadır](docs/standards/git-release.md). Aynı GitHub kimliğini kullanmak kullanıcı/ajan ayrımını teknik olarak sağlamaz.
+
 ## Özel analiz sınırı
 
 `docs/analysis/private/` yerel analiz arşividir ve Git dışında tutulur. Buradaki dosya, proje adı, kaynak bağlantısı veya test sonuçlarına üretim kodunda, yayımlanabilir dokümanlarda, changelog'da ve commit/PR içeriklerinde referans verme. Gerekli ürün kararını kendi kanonik belgesinde bağımsız anlat; doğrulanabilir dış sözleşme için resmî kaynak kullan. Özel arşivi paket, site, doküman üretimi veya yayın girdisine dahil etme; zorla stage etme.

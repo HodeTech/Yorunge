@@ -75,6 +75,8 @@ EVREN'de GPU görünmesi veya rezervasyon yapılabilmesi, kullanıcıya genel Py
 
 Tüm belgeler: [dokümantasyon rehberi](docs/README.md). Katkı: [CONTRIBUTING.md](CONTRIBUTING.md). Ajan yönergeleri: [AGENTS.md](AGENTS.md).
 
+Geliştirme ve normal PR hedefi `development`, release dalı `Master`'dır. PR'lar merge commit ile alınır; Master'a aktarımı kullanıcı yapar. [Dal ve koruma politikası](docs/standards/git-release.md).
+
 Proje kayıtları: [değişiklik günlüğü](CHANGELOG.md), [güvenlik bildirimi](SECURITY.md), [topluluk ilkeleri](CODE_OF_CONDUCT.md), [Claude giriş rehberi](CLAUDE.md).
 
 ## Lisans ve proje ilişkisi

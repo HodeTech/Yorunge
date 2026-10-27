@@ -84,7 +84,10 @@ def inspect_archive(path: Path) -> list[str]:
                 members.append("/".join(parts))
                 if parts[0] not in ALLOWED_SDIST:
                     raise ValueError("unexpected sdist member")
-                if parts[0] == ".github" and parts[1:] != ("workflows", "checks.yml"):
+                if parts[0] == ".github" and parts[1:] not in (
+                    ("workflows", "checks.yml"),
+                    ("workflows", "pr-policy.yml"),
+                ):
                     raise ValueError("unexpected workflow member")
                 if parts[0] == "docs" and not (
                     len(parts) >= 2

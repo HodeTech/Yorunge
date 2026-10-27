@@ -6,9 +6,12 @@ Yörünge'nin ilk çevrimdışı paket/CLI/API dilimi uygulanmıştır; P01 deva
 
 1. İlgili kapsam maddesini, modülü, sözleşmeyi ve standardı okuyun.
 2. İlgili iş kaydını veya yol haritası görevini belirleyin. Küçük belge düzeltmeleri ayrı iş kaydı gerektirmez.
-3. Mevcut varsayılan daldan kısa ömürlü bir çalışma dalı açın. İlk boş repo `Master` dalıyla klonlandı; uzaktaki dal politikası doğrulanmadan `main` veya `development` varsaymayın.
+3. Güncel `origin/development` üzerinden kısa ömürlü `feat/`, `fix/`, `docs/` veya `ci/` çalışma dalı açın. Normal PR hedefi `development`; varsayılan dal da `development` olur.
 4. Bir değişiklikte tek bir sonucu somutlaştırın. Kullanıcı davranışı değişirse sözleşme ve kabul ölçütünü aynı değişiklikte güncelleyin.
 5. İlgili doğrulamayı yapıp sonucu PR açıklamasına yazın. Çalıştırılmayan kontrolü başarılı göstermeyin.
+6. Yeşil zorunlu kontroller ve çözülmüş inceleme konuşmaları sonrası **merge commit** ile birleştirin. Squash/rebase merge ve korunan dallara doğrudan push kullanılmaz.
+
+`Master` release dalıdır; aynı deponun `development` dalından açılan aktarım PR'ını bakım sahibi birleştirir. Ajan `Master` birleştirmesi veya yayın yapmaz. İlk kurulum sırası, tek yazma yetkilisi nedeniyle sıfır zorunlu review seçimi ve tam koruma koşulları [Git/yayın standardında](docs/standards/git-release.md) tanımlıdır.
 
 ## Belge değişiklikleri
 
@@ -16,7 +19,7 @@ Türkçe açıklama, İngilizce dosya/kimlik adları, UTF-8/LF ve göreli bağla
 
 ## Geliştirme ve doğrulama
 
-[Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. Ubuntu/Python 3.11 CI tanımı eklenmiştir; yerel kontrol CI koşmuş sayılmaz.
+[Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. Ubuntu/Python 3.11 CI tanımı gerçek PR ve dal koşularıyla doğrulanır; yerel kontrol uzak CI koşmuş sayılmaz.
 
 `uv 0.11.2` zaten kuruluysa doğrudan `uv sync` adımına geçin. İzole araç kurulumu:
 

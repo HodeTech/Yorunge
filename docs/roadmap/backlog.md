@@ -14,7 +14,7 @@
 | B08 | Rehberli terminal ve çıktı dili | Görev gözlemi, ekran okuyucu/dar terminal | P01–P04 |
 | B09 | Ekip kullanımı/uzak koordinasyon ihtiyacı | Yerel ilk pilot sonuçları; server ancak gerekçeyle | Sonraki kapsam |
 | B10 | Puan/katkı ve organizasyon gelişmiş işleri | Gerçek kullanıcı talebi ve etki alanı | Sonraki kapsam |
-| B11 | Dal politikası ve ilk release numarası | Uygulama/paket hazır olduğunda bakım kararı | P01/P04 |
+| B11 | Dal politikası seçildi; ilk release numarası açık | [ADR-0009](../decisions/0009-development-and-release-branches.md); geliştirme sürümü release değildir | P01/P04 |
 | B12 | Özel güvenlik bildirimi ve yedek kanal | Ana kanalı etkinleştirip kullanılabilirliğini, bakım ekibi erişimini ve özel yedek adresi doğrulamak; güncel kayıt [SECURITY.md](../../SECURITY.md) | İlk yayın öncesi / P04-6 |
 
 Her yeni kapsam maddesi kullanıcı sonucuna, modülüne ve kabul kanıtına bağlanır. Bu kayıt tarih verilmiş bir teslim taahhüdü değildir. Kullanıcı önceliği değişirse [kapsam](../product-scope.md) ve [matris](../capability-matrix.md) birlikte güncellenir.
