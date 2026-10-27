@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | P01-1 | Paket, CLI, şema ve YAML seçimi; lock/build | P00 | [İlk dilim](../research/p01-core-validation.md), [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [P01-1a kapanışı](tasks/p01-1a-core-acceptance-hardening.md); HTTP seçimi P01-5a'ya taşındı | `verified` |
 | P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); dört alt kart verified; [PR #6](https://github.com/HodeTech/Yorunge/pull/6) development’a [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1) ile alındı; review/CI/merge kanıtı [kayıtta](../research/p01-2-implementation-validation.md#development-merge-kapanışı) | `verified` |
-| P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; [paket planı](p01-3-delivery-plan.md), Accepted ADR-0013/0014; P01-3a uygulanıyor, P01-3b önkoşul bekliyor | `partial` |
+| P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; [paket planı](p01-3-delivery-plan.md), Accepted ADR-0013/0014; P01-3a verified, P01-3b uygulanıyor | `partial` |
 | P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | P01-4a temeli PR #6 ile development’a alındı; operation/lease henüz yok | `partial` |
 | P01-5 | HTTP, ortak sonuç/hata, akış ve iptal | P01-2a | CLI/Python yerel zarf mevcut; taşıma/yürütüm eksik | `partial` |
 | P01-6 | Kurulum, CI, performans ve faz kabulü | İlgili alt işler | Gerçek Ubuntu CI mevcut; gelecek alt işlerin kapıları eksik | `partial` |
@@ -24,8 +24,8 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | [Tamamlanan kart](tasks/p01-4a-state-foundation.md); iki review turu ve gerçek kabul kanıtı | `verified` |
 | P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Tamamlanan kart](tasks/p01-2b-credential-identity.md); gözlem ve bakım ikişer review turuyla doğrulandı | `verified` |
 | P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Tamamlanan kart](tasks/p01-2c-local-context-management.md); iki review turu, yerel tanılama; HTTP/uzak keşif kapsam dışı | `verified` |
-| P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | [Aktif kart](tasks/p01-3a-scoped-capability-cache.md); karar onayı tamamlandı, cache uygulaması başladı | `in_progress` |
-| P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | [Draft kart](tasks/p01-3b-execution-plan-validity.md); v2/validity/approval/restore kararı Accepted; P01-3a kabulü bekleniyor | `draft` |
+| P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | [Kabul kartı](tasks/p01-3a-scoped-capability-cache.md); 929 test, iki review turu ve cache p95 157,082 ms | `verified` |
+| P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | [Aktif kart](tasks/p01-3b-execution-plan-validity.md); P01-3a kabulü tamamlandı, execution hazırlığı başladı | `in_progress` |
 | P01-4b | Operation/attempt, lease/fencing ve unknown uzlaştırma temeli | P01-4a, P01-3b | Çökme/kilit/lease devri, ikinci yan etkiyi engelleme ve backup sonrası unknown kaybında restore reddi; gerçek EVREN yok | `draft` |
 | P01-4c | Yerel jobs list/show ve kalıcı plan/sonuç sorgusu | P01-4b, P01-3b | Gerçek store'dan sınırlı tipli okuma; fixture seed ürünün sahte işi olmaz, uzak watch/stop P03'tedir | `draft` |
 | P01-5a | HTTP/SDK seçimi ve ortak taşıma portu | P01-2a; B01/B03 incelemesi | Loopback: TLS/hedef/redirect/sır, tek retry/total deadline bütçesi; ücretli istek yok | `draft` |
@@ -33,7 +33,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4), P01-2 paketi [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alındı. B02/B13 kararları Accepted; P01-2a → P01-4a → P01-2b → P01-2c teslim sırası tamamlandı. [Kabul ve merge kaydı](../research/p01-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. Aktif P01-3 hazırlığı [inceleme raporu](../research/p01-3-readiness-review.md), [tek PR planı](p01-3-delivery-plan.md) ve iki kartla daraltıldı; ADR'ler onaylandı, P01-3a aktif, P01-3b önkoşulunu bekliyor. Yerel doctor teslim edildi; cache bu paket, HTTP ve uzak hesap keşfi ilgili sonraki işlerdir.
+P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4), P01-2 paketi [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alındı. B02/B13 kararları Accepted; P01-2a → P01-4a → P01-2b → P01-2c teslim sırası tamamlandı. [Kabul ve merge kaydı](../research/p01-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. Aktif P01-3 hazırlığı [inceleme raporu](../research/p01-3-readiness-review.md), [tek PR planı](p01-3-delivery-plan.md) ve iki kartla daraltıldı; ADR'ler onaylandı, P01-3a verified, P01-3b aktif. Yerel doctor teslim edildi; cache bu paket, HTTP ve uzak hesap keşfi ilgili sonraki işlerdir.
 
 | Development PR paketi | Teslim edilecek alt işler |
 |---|---|

@@ -49,5 +49,5 @@ Unit kanıt/clock/scope; contract eski v1/new v2/CLI/API/sızıntı; integration
 ## Teslim kaydı
 
 - PR/commit: [uygulama a3287b0](https://github.com/HodeTech/Yorunge/commit/a3287b0), [review 1 cd8e812](https://github.com/HodeTech/Yorunge/commit/cd8e812); review 2 saat düzeltmesi ve kapanış aynı dalda kaydedildi.
-- Sonuç: [Kanonik uygulama/test/review/performans kanıtı](../../research/p01-3-implementation-validation.md). Son tam takım 929 test; Ruff/strict mypy, belge/ajan denetimi, wheel/sdist iki temiz kurulum ve 1.024 kayıtta cache p95 157,082 ms başarılıdır. İki tur toplam altı yeni reviewer ve son saat bulgusunun bağımsız yeniden probu tamamlandı. 
+- Sonuç: [Kanonik uygulama/test/review/performans kanıtı](../../research/p01-3-implementation-validation.md). Son tam takım 929 test; Ruff/strict mypy, belge/ajan denetimi, wheel/sdist iki temiz kurulum ve 1.024 kayıtta cache p95 157,082 ms başarılıdır. İki tur toplam altı yeni reviewer ve son saat bulgusunun bağımsız yeniden probu tamamlandı.
 - Kalan sınır: Canlı EVREN/Windows/fiziksel güç kesintisi kanıtı yoktur. P01-3b'nin plan/onay tüketicilerine bağlı bütünleşik kabul kendi adımında sürer; epik henüz tamamlanmadı.
