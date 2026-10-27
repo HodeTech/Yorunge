@@ -11,7 +11,7 @@ from typing import TypeVar
 import yaml
 from pydantic import ValidationError
 from yaml.constructor import ConstructorError
-from yaml.nodes import MappingNode
+from yaml.nodes import MappingNode, ScalarNode
 from yaml.tokens import AliasToken, AnchorToken
 
 from yorunge.domain.errors import ErrorCode, YorungeError
@@ -46,6 +46,11 @@ def read_text(path: Path, limit: int, code: ErrorCode) -> str:
 
 
 class RecipeLoader(yaml.SafeLoader):
+    def construct_scalar(self, node: ScalarNode) -> str:
+        if not isinstance(node, ScalarNode):
+            raise ConstructorError(None, None, "scalar node required", node.start_mark)
+        return super().construct_scalar(node)
+
     def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Hashable, object]:
         if not isinstance(node, MappingNode):
             raise ConstructorError(None, None, "mapping node required", node.start_mark)

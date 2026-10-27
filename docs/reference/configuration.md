@@ -18,6 +18,8 @@ Planlanabilir görev kimlikleri: sekiz araçlı LLM görevi (aşağıdaki defaul
 
 TOML/YAML en çok 65.536 bayt, JSON Plan 262.144 bayt; UTF-8 ve normal dosya gerekir (salt okunur config symlink'i izlenebilir). YAML en çok 32 collection derinliği ve 2.048 parse olayı; alias, anchor, merge/özel tag ve çoklu belge reddedilir. JSON'da yinelenen anahtar ve NaN/Infinity reddedilir. Kaydedilen dosya CLI zarfı değil `result.data.model_dump_json()` Plan nesnesidir. Digest anahtarları sıralı, kompakt UTF-8 JSON üzerinden `digest` alanı hariç hesaplanır. Yüklemede şema, digest ve yerel plan politikası denetlenir; mevcut profil kullanılarak araç yeniden çözülmez.
 
+Standart YAML tag'i de doğru düğüm türünde olmalıdır: scalar tag'ine mapping veya mapping tag'ine sequence verilmez. PyYAML'ın `!!str {=: ...}` gibi mapping'i scalar'a dönüştüren uyumluluk kısayolu bu dar reçetede kabul edilmez; normal string veya `!!str "..."` kullanılır. Bozuk literal ve düğüm/tag birleşimleri ham parser istisnası yerine `invalid_recipe` üretir.
+
 ## Ayrım
 
 Profil TOML'i hizmet/hesap tercihleri ve sır referanslarını taşır. Paylaşılabilir YAML reçetesi görev, veri, model, araç ve execution ayarını tanımlar. Geçici işlem durumu bu dosyalara geri yazılmaz; operation store'da kalır.

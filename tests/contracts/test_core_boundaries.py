@@ -19,6 +19,9 @@ MALFORMED_TAGS = [
     pytest.param(f"task: !!set [{MARKER}]", id="set-scalar-sequence"),
     pytest.param("task: !!map [{}]", id="map-mapping-sequence"),
     pytest.param("task: llm.train\nprovider_options: !!map []", id="empty-map-sequence"),
+    pytest.param("task: !!timestamp {=: 2026-10-27}", id="timestamp-value-mapping"),
+    pytest.param(f"task: !!timestamp {{=: {MARKER}}}", id="timestamp-invalid-value-mapping"),
+    pytest.param("task: !!timestamp {=: {=: nested}}", id="timestamp-nested-value-mapping"),
 ]
 CONTROLS = [chr(value) for value in (*range(32), *range(127, 160))]
 
