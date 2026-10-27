@@ -13,6 +13,6 @@
 | [Güvenlik](security.md) | Sır, dosya, ağ ve çalıştırma sınırları | Benimsenmiş |
 | [Hata ve gözlemlenebilirlik](error-handling-observability.md) | Sonuç, log, metrik ve belirsizlik | Benimsenmiş |
 | [Belgeleme](documentation.md) | Kanonik kaynak, dil ve durum | Benimsenmiş; bu belge temeline uygulanır |
-| [Git ve yayın](git-release.md) | Değişiklik, inceleme ve sürüm | Benimsenmiş |
+| [Git ve yayın](git-release.md) | Değişiklik, inceleme ve sürüm | Etkin — dal/PR korumaları ve gerçek CI; yayın kapısı ayrıca geçerli |
 
 `Taslak` açık öneri; `Benimsenmiş` uygulama değişikliklerini bağlayan karar; `Etkin` ilgili davranışın kod/CI veya kayıtlı işletim denetimiyle uygulandığı durumdur. Etkinleşen standardın kanıtı ve kapsamı aynı değişiklikte bu indekse eklenir. “Benimsenmiş” daha düşük kalite hedefi değildir; bugünkü kanıt sınırını doğru anlatır.

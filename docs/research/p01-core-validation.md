@@ -21,7 +21,7 @@ Başarılı planlama, `state=draft`, `executable=false`, `inputs_verified=false`
 | Build/kurulum | Wheel sdist'ten üretildi. Wheel ve sdist ayrı temiz venv'e, runtime sürümleri lock/hash ile kuruldu; `-I` import kökeni ve depo dışından yardım/sürüm/plan doğrulandı |
 | Paket sınırı | Girdi izin listesi ve arşiv üye denetimi; yalnız genel kaynaklar. Wheel yalnız paket + dist-info; sdist açık kod/test/script/örnek/genel belge listesi |
 | Bağımsız inceleme | Hizmet/ortam ayrımı, kanıtsız runtime durumu, IPv6 origin, seçenek kısaltması ve NUL dosya yolu bulguları düzeltildi; test eklendi |
-| CI | Aynı gerçek kontroller Ubuntu/Python 3.11 workflow'una bağlandı; uzak koşu henüz doğrulanmadı |
+| CI | İlk yerel kabulden sonra PR #1 Ubuntu/CPython 3.11.15 koşusunda 100 test ve bütün kontroller geçti; [canlı kayıt](branch-workflow-validation.md) |
 
 Tekrar çalıştırılacak komutlar [CONTRIBUTING](../../CONTRIBUTING.md#geliştirme-ve-doğrulama) içindedir. Build çıktıları `dist/` altında kalır. Son arşiv kimliği/SHA-256 ve temiz kurulum sonuçları `dist/verification.jsonl` içinde üretilir; bu dosya build sonrası kanıttır, kaynak dağıtımının kendi hash'ini içine koymaz.
 
@@ -41,6 +41,6 @@ CLI/şema adaylarının kısa import deneyi ve seçimin gerekçesi [ADR-0008](..
 
 ## Kalan sınır ve sonraki iş
 
-Gerçek EVREN/HTTP, credential kimliği/nesli/izin doğrulaması, capability cache/tazelik, SQLite operation/attempt/lease, execution/onay, gerçek ForgeLM/muadil adaptörleri, eğitim ve artefakt teslimi henüz planlandı. Aktarım RSS, eşzamanlılık ve ağ/deadline bütçeleri bu dilimde ölçülemez; ilgili fazlara aittir. Başka OS/Python sürümü ve canlı hesap desteği doğrulanmadı.
+Gerçek EVREN/HTTP, credential kimliği/nesli/izin doğrulaması, capability cache/tazelik, SQLite operation/attempt/lease, execution/onay, gerçek ForgeLM/muadil adaptörleri, eğitim ve artefakt teslimi henüz planlandı. Aktarım RSS, eşzamanlılık ve ağ/deadline bütçeleri bu dilimde ölçülemez; ilgili fazlara aittir. İlk kabulden sonra Ubuntu/Python 3.11 CI kanıtı eklendi; diğer OS/Python sürümleri ve canlı hesap desteği doğrulanmadı.
 
 Sıradaki somut iş P01-2'nin secret/context bağları ve anahtar değişim testleridir; ardından P01-3 capability cache/plan geçerliliği. [Etkin yol haritası](../roadmap/current.md).

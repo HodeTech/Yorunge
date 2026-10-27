@@ -1,6 +1,6 @@
 # Git, inceleme ve yayın standardı
 
-**Durum:** Benimsenmiş dal/PR politikası; canlı ayarlar kurulum sonunda ayrıca doğrulanır. **Tarih:** 2026-10-27.
+**Durum:** Etkin — dal/PR korumaları ve zorunlu CI; yayın kapıları ayrıca geçerli. [Canlı doğrulama kaydı](../research/branch-workflow-validation.md). **Tarih:** 2026-10-27.
 
 ## Dal modeli ve birleştirme
 
@@ -26,7 +26,7 @@ Normal CI `development`/`Master` PR'larında, bu iki dala push'ta ve manuel ça�
 
 İlk uygulama commit'i `bb67b3a`, dal politikası benimsenmeden önce `Master` tabanlı `feat/offline-core` dalında hazırlanmıştır. Bu mevcut çalışma korunur; `development`'a doğrudan taşımak yerine ilk PR'a dahil edilir. Bu taban istisnası yeni geliştirmeler için emsal değildir.
 
-İlk PR'da `offline-core` gerçek koşusu doğrulanır, bu check ile development koruması açılır ve PR merge commit ile alınır. Ardından varsayılan dal `development` yapılır. Güvenilen metadata workflow'u artık varsayılan dalda vardır; takip eden doğrulama PR'ında `branch-policy` koşusu görülünce bu check de iki dalda zorunlu hale getirilir. Böylece henüz var olmayan check ilk kurulumu kilitlemez. `Master` içeriği kurulum sırasında ilerletilmez; ilk release aktarımını kullanıcı yapar.
+İlk PR'da `offline-core` gerçek koşusu doğrulandı, bu check ile development koruması açıldı ve PR merge commit ile alındı. Ardından varsayılan dal `development` yapıldı. Güvenilen metadata workflow'u varsayılan dala yerleştikten sonra PR #2'de `branch-policy` koşusu görüldü ve bu check de iki dalda zorunlu hale getirildi. Böylece henüz var olmayan check ilk kurulumu kilitlemedi. `Master` içeriği kurulum sırasında ilerletilmedi; ilk release aktarımını kullanıcı yapar. Gerçek koşular ve ayar geri okuması [canlı kayıttadır](../research/branch-workflow-validation.md).
 
 Canlı ayarlar API'den geri okunarak; merge commit'in iki parent'ı, PR hedefi ve gerçek Actions sonuçlarıyla doğrulanır. Belge tek başına bu ayarların uygulanmış olduğuna kanıt değildir.
 
