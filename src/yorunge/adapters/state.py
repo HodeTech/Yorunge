@@ -37,11 +37,21 @@ from yorunge.adapters.local_files import (
     write_new,
 )
 from yorunge.domain.credentials import EnvReference, normalize_target
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid
 
 DB_NAME = "state.sqlite3"
+
+
+def sqlite_error_code(error: sqlite3.Error) -> ErrorCode:
+    number = getattr(error, "sqlite_errorcode", 0)
+    primary = number & 255 if isinstance(number, int) else 0
+    if primary in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED, sqlite3.SQLITE_INTERRUPT):
+        return "state_busy"
+    if primary in (sqlite3.SQLITE_FULL, sqlite3.SQLITE_IOERR):
+        return "state_write_failed"
+    return "state_invalid"
 
 
 def utc_now() -> str:
@@ -521,10 +531,4 @@ def open_store(
     except OSError:
         raise YorungeError("state_write_failed") from None
     except sqlite3.Error as error:
-        number = getattr(error, "sqlite_errorcode", 0)
-        busy = isinstance(number, int) and number & 255 in (
-            sqlite3.SQLITE_BUSY,
-            sqlite3.SQLITE_LOCKED,
-            sqlite3.SQLITE_INTERRUPT,
-        )
-        raise YorungeError("state_busy" if busy else "state_invalid") from None
+        raise YorungeError(sqlite_error_code(error)) from None

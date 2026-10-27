@@ -55,3 +55,9 @@ Final adım head'inde wheel 20 üye (`9ef6ff0f0bfe9f6a7283da44e908562e1f2c56ea4d
 Kabul kanıtındaki bootstrap/sync boşluğu da kapatıldı: **22 bootstrap sınırı × süreç çıkışı/I/O hatası = 44 ayrı subprocess senaryosu**; root/üst dizin, lock, keys/üst dizin, key file/fsync/fullsync, DB dosyası ve metadata/commit/final sync kapsandı. Kesilmiş kilit oluşturma sonrası aynı inode'un bariyeri yeniden tamamlanır. Ayrıca backup tamamlanma kaydının öncesi/sonrası süreç kesintisi, backup üst dizin sync hatası, key symlink/hardlink ve varsayılan/Unicode state path testleri eklendi. Bu deneyler güç kesintisi veya disk donanımı kanıtı değildir.
 
 Düzeltme sonrası **96 state / 562 toplam test geçti** (11,63 s); Ruff format/lint ve strict mypy geçti. İlk head'in bağımsız yüzey incelemesinde API/CLI zarfı ve forbidden-option reddi, on kez iki eşzamanlı ilk bootstrap ve paket hash/üye eşleşmeleri doğrulandı. İkinci tur yeni ajanlarla düzeltme head'inde yapılır.
+
+### Adım 2 / review 2
+
+İncelenen head `494799b`. Yeni ajanlar: `p012_s2_r2_durability` (GPT-6 Astra/high), `p012_s2_r2_sql`, `p012_s2_r2_delivery` (GPT-6.1 Sol/high). R1 düzeltmeleri doğrulandı. Dosya reviewer'ı 20 bariyerli eşzamanlı iki-süreç bootstrap ve nested parent sync hatası sonrası yeniden bariyer probe'unu; delivery reviewer'ı 96 state testi, belge/ajan, iki temiz kurulum ve başlangıç bütçelerini bağımsız doğruladı.
+
+Tek yeni P2: gerçek SQLite FULL kodu 13, yanlışlıkla bozuk state diye sınıflanıyordu; kök ajan gerçek max_page_count sınırıyla yeniden üretti. FULL/IOERR ve genişletilmiş alt kodlar persistence hata sınıfına taşındı; gerçek SQLite FULL rollback/backup ve iki IOERR hata sınırı testi eklendi. Eşzamanlı ilk bootstrap kalıcı, iki child'ın bariyerde buluşup aynı UUID/epoch sonucu verdiği test olarak da eklendi. Kapanış doğrulaması ve bu dar düzeltmenin odak kontrolü bekleniyor.

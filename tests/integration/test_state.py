@@ -268,19 +268,48 @@ def test_bounded_file_and_sqlite_lock_wait(tmp_path):
         writer.execute("ROLLBACK")
 
 
-def test_two_migration_processes_apply_step_once(tmp_path):
+@pytest.mark.parametrize("existing", [False, True])
+def test_two_migration_processes_apply_step_once(tmp_path, existing):
     root = tmp_path / "state"
-    api.initialize_state(state_dir=root)
+    if existing:
+        api.initialize_state(state_dir=root)
     code = """from pathlib import Path
-import sys
+import sys, time
 from yorunge import api
 from yorunge.adapters import state_schema as s
 s.MIGRATIONS += (s.Migration(1,2,('CREATE TABLE second_step(id INTEGER) STRICT',)),)
-assert api.initialize_state(state_dir=Path(sys.argv[1])).data.store_schema_version == 2
+root = Path(sys.argv[1])
+(root.parent / ('ready-' + sys.argv[2])).write_text('ready')
+while not (root.parent / 'start').exists():
+    time.sleep(0.001)
+result = api.initialize_state(state_dir=root)
+assert result.data.store_schema_version == 2
+print(result.model_dump_json())
 """
-    processes = [subprocess.Popen([sys.executable, "-c", code, str(root)]) for _ in range(2)]
-    for process in processes:
-        assert process.wait(timeout=10) == 0
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", code, str(root), str(index)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for index in range(2)
+    ]
+    try:
+        end = time.monotonic() + 5
+        while not all((tmp_path / ("ready-" + str(index))).exists() for index in range(2)):
+            assert time.monotonic() < end, "children did not reach bootstrap barrier"
+            time.sleep(0.01)
+        (tmp_path / "start").write_text("start")
+        results = [process.communicate(timeout=10) for process in processes]
+        for process, (_, error) in zip(processes, results, strict=True):
+            assert process.returncode == 0, error
+        assert json.loads(results[0][0]) == json.loads(results[1][0])
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=10)
     assert query(root, "SELECT version FROM schema_migrations ORDER BY version") == [(1,), (2,)]
 
 
@@ -668,3 +697,48 @@ def test_explicit_default_state_initialization_uses_canonical_home_path(tmp_path
     root = tmp_path / ".local/state/yorunge"
     assert (root / DB_NAME).is_file()
     assert api.initialize_state(state_dir=root) == first
+
+
+def test_actual_sqlite_full_is_write_failure_with_rollback(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    original = state.connect
+
+    def limited(path, deadline):
+        connection = original(path, deadline)
+        if path == root / DB_NAME:
+            pages = connection.execute("PRAGMA page_count").fetchone()[0]
+            connection.execute(f"PRAGMA max_page_count={pages}")
+        return connection
+
+    monkeypatch.setattr(state, "connect", limited)
+    monkeypatch.setattr(
+        state_schema,
+        "MIGRATIONS",
+        state_schema.MIGRATIONS
+        + (Migration(1, 2, ("CREATE TABLE second_step(id INTEGER) STRICT",)),),
+    )
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert getattr(failure.value.__context__, "sqlite_errorcode", None) == sqlite3.SQLITE_FULL
+    assert failure.value.code == "state_write_failed"
+    assert query(root, "PRAGMA user_version") == [(1,)]
+    assert query(root, "PRAGMA integrity_check") == [("ok",)]
+    assert len(list((root / "backups").glob("*/complete.json"))) == 1
+
+
+@pytest.mark.parametrize("code", [sqlite3.SQLITE_IOERR, sqlite3.SQLITE_IOERR_WRITE])
+def test_sqlite_io_error_family_uses_safe_write_failure(tmp_path, monkeypatch, code):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+
+    def failing(path, deadline):
+        error = sqlite3.OperationalError("synthetic-internal-error-NEVER-PRINT")
+        error.sqlite_errorcode = code
+        raise error
+
+    monkeypatch.setattr(state, "connect", failing)
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_write_failed"
+    assert "NEVER-PRINT" not in json.dumps(failure.value.envelope())

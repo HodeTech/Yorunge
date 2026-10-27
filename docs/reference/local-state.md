@@ -14,6 +14,8 @@ Metadata/help/version, context, capability, offline Plan ve env credential kontr
 
 Kararlı `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kodları çıkış 2'dir. Hata zarfı path, ham SQLite hatası, K veya özel verifier taşımaz. `state_busy` otomatik bütün kullanım senaryosu tekrarı değildir. Yerel karşılaştırma anahtarı sorunu EVREN auth hatası diye raporlanmaz.
 
+SQLite'ın FULL ve IOERR (genişletilmiş alt kodlar dahil) aileleri disk/I/O için `state_write_failed` olur; bozuk şema diye sınıflanmaz. BUSY/LOCKED/INTERRUPT bütçe/kilit sınıfında kalır; bozuk/yabancı şema `state_invalid` olur.
+
 SQLite/file lock beklemesi en çok 1 saniyedir; bu kullanım senaryosunun varsayılan toplam bütçesi 5 saniyedir. SQLite progress ve backup/hash adımları bütçeyi denetler. İşletim sistemi disk I/O'su, fsync veya scheduler gecikmesi için katı 5 saniye duvar saati garantisi verilmez. Süre dolduysa yarım sonucu başarı sayma veya yeni kimlik oluşturmak için otomatik yeniden başlama yoktur.
 
 Eksik/bozuk key, partial bootstrap, yabancı/bozuk/ileri şema ve restore intent normal açılışta otomatik onarılmaz. Mevcut dosyalar korunur. Açık reset/restore/onarım komutları bu adımda henüz yoktur; ilgili P01-2b adımında aynı sözleşmeye eklenecek.
