@@ -13,8 +13,8 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 | 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
 | 2 | P01-4a — store/migration/backup/key temeli | İki yeni review turuyla verified |
 | 3 | P01-2b — kalıcı kimlik/nesil | İki review turuyla tamamlandı |
-| 4 | P01-2b — reset/identity-only restore | Başladı |
-| 5 | P01-2c — init/profil/proje/doctor | Önceki kabul bekleniyor |
+| 4 | P01-2b — reset/identity-only restore | İki review turuyla tamamlandı |
+| 5 | P01-2c — init/profil/proje/doctor | Başladı |
 
 Her adımın gerçek commit/test/review bulgusu burada kaydedilecek. Tasarım/probe sonucu ürün kabulü sayılmaz. Son kapanışta tam offline suite, lint/type/belge, wheel/sdist iki temiz kurulum, en az 30 süreç başlangıç bütçesi ve son PR head CI kanıtı gerekir. HTTP/cache/operation/uzak kimlik bu paketin teslimi değildir.
 
@@ -109,3 +109,5 @@ Diğer alanlarda doğrulanmış kusur yok: iki reviewer bağımsız 80 bakım te
 Head `e153a83`; fresh ajanlar `p012_s4_r2_protocol`, `p012_s4_r2_durability` (GPT-6 Astra/high), `p012_s4_r2_delivery` (GPT-6.1 Sol/high). Tek yeni dayanıklılık bulgusu: intent write'ında içerik görünürken ilk fsync hata verdiyse recover bu dosyanın bariyerini yeniden kurmadan yayına geçebiliyordu. Kök ajan ve reviewer ayrı geçici gerçek dosya problarında restore hatası sonrası recover'da sıfır intent-fsync çağrısını doğruladı. Recover onaydan sonra ve stage/yayın öncesi `sync_private(intent)` yapar. Tekrar sync hatasında bütün canlı dosya baytları değişmeden kalır; başarılı retry'da yayın öncesi bariyer ve aynı ilan edilen epoch regresyonla doğrulanır. **84 maintenance testi**, Ruff/type geçti.
 
 Protokol reviewer'ı yanlış action onaylarının reddi, eski K kaldırılmışken yeni çiftle recovery, private/public ayrımı ve operation-runtime retlerini doğruladı; yeni kusur yok. Delivery reviewer head'de **669 tam test**, format/lint/type/belge/ajan ve geçici build/iki temiz kurulum geçti. Son intent fix'inin odak kapanışı bekleniyor.
+
+Adım 4 kapanışı: `033b3b6` üzerindeki intent sync fix'i bulgu sahibi tarafından 84 bakım testiyle doğrulandı, tek bulgu kapandı. Delivery reviewer 19 ek guarded console/API probe ve eski dört offline çıktının tam byte eşitliğini doğruladı. P01-2b verified; sonraki adım P01-2c'dir.

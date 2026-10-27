@@ -22,8 +22,8 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-1a | Mevcut offline çekirdeğin parser/şema hata sınırı ve dağıtım kabulünü sağlamlaştırma | P01-1 | [Tamamlanan kart ve merge/CI kanıtı](tasks/p01-1a-core-acceptance-hardening.md); HTTP/state/secret çözümleme eklemez | `verified` |
 | P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Tamamlanan kart](tasks/p01-2a-secret-resolution.md); iki review turu ve gerçek kabul kanıtı | `verified` |
 | P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | [Tamamlanan kart](tasks/p01-4a-state-foundation.md); iki review turu ve gerçek kabul kanıtı | `verified` |
-| P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Aktif kart](tasks/p01-2b-credential-identity.md); önce gözlem, sonra reset/restore | `in_progress` |
-| P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Taslak kart](tasks/p01-2c-local-context-management.md); yerel tanılama; HTTP P01-5, uzak keşif P02-0b | `draft` |
+| P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Tamamlanan kart](tasks/p01-2b-credential-identity.md); gözlem ve bakım ikişer review turuyla doğrulandı | `verified` |
+| P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Aktif kart](tasks/p01-2c-local-context-management.md); yerel tanılama; HTTP P01-5, uzak keşif P02-0b | `in_progress` |
 | P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | İki credential, hedef/proje/izin farkı, stale saat ve unknown/access ayrımı | `draft` |
 | P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | Saved seçim değişmez; değişmiş girdi/hedef/yetkiyle yürütüm reddi | `draft` |
 | P01-4b | Operation/attempt, lease/fencing ve unknown uzlaştırma temeli | P01-4a, P01-3b | Çökme/kilit/lease devri, ikinci yan etkiyi engelleme ve backup sonrası unknown kaybında restore reddi; gerçek EVREN yok | `draft` |

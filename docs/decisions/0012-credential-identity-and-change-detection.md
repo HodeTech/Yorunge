@@ -1,6 +1,6 @@
 # ADR-0012: Opak credential kimliği ve gözlenen anahtar değişimi
 
-**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; henüz uygulanmadı. **Tarih:** 2026-10-27. **Kayıt:** B13. ADR-0005 ve execution/capability bağlarını ayrıntılandırır. Yerel HMAC kaydı, koruma anahtarı dosyası ve bağlı binding v1 sözleşmesi bu onaya dahildir.
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; P01-2b gözlem/reset/identity-only restore alt kümesi iki review turuyla doğrulandı; operation tüketicisi kapsam dışı. **Tarih:** 2026-10-27. **Kayıt:** B13. ADR-0005 ve execution/capability bağlarını ayrıntılandırır. Yerel HMAC kaydı, koruma anahtarı dosyası ve bağlı binding v1 sözleşmesi bu onaya dahildir.
 
 ## Bağlam
 

@@ -1,18 +1,18 @@
 ---
 id: P01-2b
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-2a, P01-4a]
 capabilities: [C01, C13]
 ---
 # P01-2b — Credential kimliği, nesli ve hedef bağları
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 Accepted, P01-2a/P01-4a verified; önce gözlem, sonra reset/restore adımı uygulanıyor.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 Accepted, P01-2a/P01-4a verified; gözlem ve reset/restore adımları ikişer yeni review turuyla doğrulandı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Aynı profil/env adı altında credential veya hedef değişince eski bağ kullanılmamalıdır. Bugün kimlik/nesil alanları null'dır ve env değeri hiç okunmaz.
+Aynı profil/env adı altında credential veya hedef değişince eski bağ kullanılmamalıdır. Kalıcı gözlem API'si kimlik/nesli kaydeder; eski offline Plan alanları null kalır.
 
 ## Giren ve girmeyen kapsam
 
@@ -43,4 +43,6 @@ Gerçek env adaptörü, geçici gerçek DB/yerel koruma ve ayrı süreçler; hiz
 
 ## Teslim kaydı
 
-Ürün uygulaması ve bu karta ait teslim kanıtı henüz yoktur. Yerel araştırma probe'u kabul testi veya tamamlanmış credential adaptörü sayılmaz.
+- PR/commit: [gözlem ad54dc6](https://github.com/HodeTech/Yorunge/commit/ad54dc6), [reset/restore a1bfd1a](https://github.com/HodeTech/Yorunge/commit/a1bfd1a), [son fix 033b3b6](https://github.com/HodeTech/Yorunge/commit/033b3b6).
+- Sonuç: Gözlem ve bakım için iki ayrı fresh review turu; tam test/kurulum ve kesinti kanıtı [kabul kaydında](../../research/p01-2-implementation-validation.md). Son bakım fix'i 84 senaryoda doğrulandı.
+- Kalan sınır: HTTP auth/cache/execution/operation tüketicisi bu teslim değildir. Fiziksel güç kesintisi ve uygulama dışı DB+K rollback koruması iddia edilmez.
