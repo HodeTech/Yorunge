@@ -709,7 +709,10 @@ def prepare_execution_plan(
         state_dir is not None and not isinstance(state_dir, Path)
     ):
         raise YorungeError("invalid_request")
-    from yorunge.adapters.input_files import DescriptorInputs
+    from yorunge.adapters.input_files import DescriptorInputs, anchor_input_root
+
+    if input_root is not None:
+        input_root = anchor_input_root(input_root)
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
     from yorunge.domain.execution import ExecutionPlanView

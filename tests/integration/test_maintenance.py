@@ -588,3 +588,46 @@ def test_second_recovery_cut_preserves_completed_pair_without_original_backup(
     assert (target / "keys" / (intent.key_id + ".key")).exists()
     with open_store(target) as store:
         store.verify()
+
+
+@pytest.mark.parametrize("action", ["reset", "restore", "recover"])
+def test_default_preview_text_exposes_same_counts_and_effects_as_json(
+    tmp_path, config, execution_fixture, monkeypatch, cli, action
+):
+    state = tmp_path / "state"
+    observed(config, state)
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state)
+    saved = migration_backup(state)
+    api.prepare_execution_plan(task="llm.train", state_dir=state)
+    if action == "recover":
+        preview = api.preview_state_restore(saved, state_dir=state).data
+
+        def stop(*args):
+            raise YorungeError("state_write_failed")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(maintenance, "finish_restore", stop)
+            with pytest.raises(YorungeError):
+                api.restore_state(saved, preview.digest, state_dir=state)
+    arguments = ["state", action, "--state-dir", str(state)]
+    if action == "restore":
+        arguments += ["--backup", str(saved)]
+    machine = cli(*arguments, "--output", "json", state=True)
+    text = cli(*arguments, state=True)
+    assert machine.returncode == 0, machine.stderr
+    assert text.returncode == 0, text.stderr
+    data = json.loads(machine.stdout)["data"]
+    assert data["digest"] in text.stdout
+    for field, label in (("current", "Mevcut"), ("source", "Snapshot")):
+        snapshot = data[field]
+        if snapshot is not None:
+            assert f"{label} credential bağı: {snapshot['binding_count']}" in text.stdout
+            assert f"{label} plan: {snapshot['plan_count']}" in text.stdout
+            assert f"{label} onay: {snapshot['approval_count']}" in text.stdout
+    assert "Capability cache geçersizleşir." in text.stdout
+    assert "eski kimlikler, planlar ve onaylar geçersizleşir" in text.stdout
+    if data["history_may_be_lost"]:
+        assert "Snapshot sonrası plan/onay geçmişi kaybolabilir." in text.stdout
+    else:
+        assert "Mevcut plan/onay geçmişi korunur." in text.stdout

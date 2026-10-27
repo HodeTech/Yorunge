@@ -51,7 +51,7 @@ def timestamp(value: datetime) -> str:
 
 
 def instant(value: str) -> datetime:
-    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z", value):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z", value, flags=re.ASCII):
         raise ValueError("canonical UTC required")
     result = datetime.fromisoformat(value)
     if timestamp(result) != value:

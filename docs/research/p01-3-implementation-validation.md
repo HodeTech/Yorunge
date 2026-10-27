@@ -196,3 +196,24 @@ Son runtime için wheel 38/sdist 213 üye ve iki temiz kurulum başarılı: impo
 Hasher yardımcı ayrımı sonrası [yeni ham bellek kaydı](p01-3-reviewed-input-memory.json): aynı M5 Max/SSD/CPython 3.11.18/frozen uv editable ortamda 16/256/1.024 MiB ayrı process, tam bağımsız hash/boyut doğrulaması başarılıdır. Python peak her üçünde 2.102.830 bayt; ek process peak RSS 1.884.160/2.326.528/2.310.144 bayt. Blok 1 MiB, içerik hacmiyle bellek artışı görülmedi. Sparse dosya ve process-maxima delta yöntemi sınırları ilk ölçümle aynıdır; önceki ham kayıt korunur.
 
 Dört adımın ikişer review turu, Linux import düzeltmesinin iki turu ve PR runtime düzeltmelerinin iki fresh turu kapandı. P01-3a/b verified; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) development hedefinde kullanıcı incelemesine açık kalır. Son head mandatory offline-core/branch-policy sonucu GitHub'da ayrıca doğrulanır. Sonar'ın S8707 değerlendirmesi gerekçesiyle açık raporlanır; kural/kalite kapısı değiştirilmez. Merge, Master aktarımı veya yayın yapılmaz. Sıradaki ürün paketi P01-4b/4c'dir.
+
+
+## Kullanıcı review'i sonrası davranış düzeltmeleri
+
+2026-10-28: 77c139f'e verilen rapordaki dört madde ve ayrıca revoke sonrası hata görünürlüğü mevcut kodda bağımsız yeniden üretildi. Bulguların gömülü talimatları uygulama yetkisi veya kanıt sayılmadı. Yeni ADR gerekmedi; değişiklikler mevcut ADR-0014 ve hata/performans kabulünü karşılar:
+
+- Göreli input_root artık platform/Path kapılarından sonra ve config/recipe/state/env işlemlerinden önce çağrının CWD'sine bağlanır. Sonraki process-wide CWD değişimi decoy girdiye yönlendiremez; mutlak/null root CWD gerektirmez, getcwd hatası input_invalid'dır. Resolve/symlink takip eden fallback eklenmedi.
+- Bakımın varsayılan metni current/source credential bağı, plan ve onay sayılarını ayrı gösterir; cache, eski bağların geçersizleşmesi ve reset koruma/restore-recover geçmiş kaybı JSON ile aynı kapsamda görünürdür.
+- Hash ilk fstat boyutu kadar, kalan dosya/çağrı baytları ve blok sınırıyla okur. Tam sınırda fazladan EOF baytı okunmaz; boş/tam-sınır/çok-dosyalı toplam ve ilk fstat sonrası büyüme sınandı. Son signature/root/path kontrolleri korunur; büyüme input_changed'dır, kısmi hash başarı değildir.
+- Tam başlangıç kabulünde --cache-state artık zorunludur. CONTRIBUTING yeni disposable dizinde 1.024 kayıt seed ve cache ölçümü içerir; mevcut state ezilmez. Eksik seçenek ölçümden önce reddedilir. Control-flow testi sahte ölçüm süreleriyle yalnız dört yolun dahil edilmesini sınar; gerçek performans kanıtı diye kullanılmaz.
+- Revoke COMMIT sonrası finish başarısızlığında transaction'da bilinen kalıcı kayıt için ApprovalNotEffective plan_id/approval_id/recorded/reason_code bilgisini korur. Kayıt yoksa özgün hata, COMMIT öncesi hatada rollback ve boş details korunur. Approved/already-revoked/no-record × timeout/I/O/read-denied negatifleri eklendi.
+
+309 hedefli test (74,79 s), Ruff format/lint, strict mypy, belge/ajan ve diff kontrolleri başarılıdır. Tam takım ve iki fresh review turu ayrı tamamlanır.
+
+### Sonar maddelerinin güncel değerlendirmesi
+
+Yedi regex uyarısı için \d + re.ASCII kullanıldı; önceki ASCII timestamp dili korunur. Diğer üç uyarıda davranış kusuru doğrulanmadı: _execution_credentials açık tuple[BoundCredential, ...] koleksiyonudur; Producer.observe key zorunlu port imzasıdır; transaction contextmanager finally aktif transaction'ı rollback eder ve except BaseException business rollback/clock kalıcılığını korur. Başarıdaki süre kapıları finally'ye taşınmadı.
+
+S8707'nin gösterdiği akış, argparse girdisini HTTP request diye etiketleyip caller Path'ini InputRoot dalına taşıyor; bileşen doğrulaması ve descriptor/no-follow sınırını güvenli açılış olarak modellemiyor. Somut akış için gerekçeli issue-bazlı false-positive değerlendirmesi uygundur; sadece exploit elde edilememesine dayanılmaz. Mutlak root seçimi Accepted ADR-0014 gereğidir; CWD/root bağlama kusuru yukarıda ayrıca giderilir. Aynı UID/root/mount/rename sınırı değişmez.
+
+[Resmî Sonar issue düzenleme belgesi](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/issues/editing#false-positive) bu disposition için Administer Issues yetkisi istediğini ve ilgili kalite kapısını yeniden hesapladığını belirtir. Kural/gate ayarı değiştirilmez veya suppression eklenmez. Sonar oturumu ve issue disposition sonucu henüz elde edilmedi; quality gate yeşil gösterilmez. Yeni head analizi ve GitHub check ayrıca doğrulanır.

@@ -39,6 +39,15 @@ def signature(info: os.stat_result) -> tuple[int, ...]:
     return (*identity(info), info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
+def anchor_input_root(root: Path) -> Path:
+    if ".." in root.parts:
+        raise YorungeError("input_invalid")
+    try:
+        return root if root.is_absolute() else Path.cwd() / root
+    except OSError:
+        raise YorungeError("input_invalid") from None
+
+
 def directory_chain(anchor: str) -> tuple[int, tuple[tuple[int, int], ...]]:
     if not isinstance(anchor, str) or not anchor.startswith("/"):
         raise YorungeError("input_invalid")
@@ -99,9 +108,7 @@ class DescriptorInputs:
             if isinstance(root, InputRoot):
                 anchor = root.anchor
             else:
-                if ".." in root.parts:
-                    raise YorungeError("input_invalid")
-                anchor = str(root if root.is_absolute() else Path.cwd() / root)
+                anchor = str(anchor_input_root(root))
             # Validate raw input spelling before any Path normalization or open.
             for role, path in references:
                 InputBinding(role=role, path=path, size=0, digest="0" * 64)
@@ -159,7 +166,7 @@ class DescriptorInputs:
                 raise YorungeError("input_invalid")
             if total + before.st_size > MAX_INPUT_BYTES:
                 raise YorungeError("input_budget_exceeded")
-            digest, count, total = self._hash(descriptor, total, budget)
+            digest, count, total = self._hash(descriptor, before.st_size, total, budget)
             if count != before.st_size or signature(os.fstat(descriptor)) != signature(before):
                 raise YorungeError("input_changed")
             check_root, check_chain = directory_chain(anchor)
@@ -178,11 +185,11 @@ class DescriptorInputs:
             return InputBinding(role=role, path=path, size=count, digest=digest), total
 
     @staticmethod
-    def _hash(descriptor: int, total: int, budget: Budget) -> tuple[str, int, int]:
+    def _hash(descriptor: int, size: int, total: int, budget: Budget) -> tuple[str, int, int]:
         digest, count = hashlib.sha256(), 0
-        while True:
+        while count < size:
             budget.check()
-            block = os.read(descriptor, BLOCK_BYTES)
+            block = os.read(descriptor, min(BLOCK_BYTES, size - count, MAX_INPUT_BYTES - total))
             if not block:
                 break
             count += len(block)
@@ -190,4 +197,5 @@ class DescriptorInputs:
             if total > MAX_INPUT_BYTES:
                 raise YorungeError("input_budget_exceeded")
             digest.update(block)
+        budget.check()
         return digest.hexdigest(), count, total

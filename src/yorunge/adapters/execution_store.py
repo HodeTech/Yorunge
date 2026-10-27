@@ -394,6 +394,7 @@ def forget_plan(store: Store, plan_id: str, confirmation: str | None) -> Forgott
 
 def revoke_approval(store: Store, plan_id: str) -> ExecutionApprovalState:
     from yorunge.application.execution import approval_state
+    from yorunge.domain.errors import ApprovalNotEffective
 
     plan = read_plan(store.connection, plan_id)
     cache = StateCache(store)
@@ -418,5 +419,10 @@ def revoke_approval(store: Store, plan_id: str) -> ExecutionApprovalState:
     finally:
         if store.connection.in_transaction:
             store.connection.execute("ROLLBACK")
-    final = repo.finish(expected)
+    try:
+        final = repo.finish(expected)
+    except YorungeError as error:
+        if record is None:
+            raise
+        raise ApprovalNotEffective(plan.plan_id, record.approval_id, error.code) from None
     return approval_state(plan, repo.latest_approval, final, valid=False)

@@ -575,3 +575,78 @@ def test_cli_malformed_cursor_returns_one_json_error_without_traceback(tmp_path,
     assert result.returncode == 2
     assert result.stdout == ""
     assert json.loads(result.stderr) == YorungeError("invalid_request").envelope()
+
+
+def test_prepare_pins_relative_root_before_concurrent_cwd_change(
+    tmp_path, inputs, execution_fixture, monkeypatch
+):
+    import threading
+    from pathlib import Path
+
+    root, recipe = inputs
+    state = tmp_path / "state"
+    decoy = tmp_path / "decoy"
+    (decoy / "inputs").mkdir(parents=True)
+    (decoy / "inputs" / "manifest.json").write_bytes(b"different content")
+    expected = hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
+    monkeypatch.chdir(tmp_path)
+    resolving, changed = threading.Event(), threading.Event()
+    original = api._resolve
+
+    def change_cwd():
+        if resolving.wait(5):
+            os.chdir(decoy)
+            changed.set()
+
+    def resolve(*args, **kwargs):
+        resolving.set()
+        assert changed.wait(5), "concurrent CWD change did not complete"
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(api, "_resolve", resolve)
+    worker = threading.Thread(target=change_cwd, daemon=True)
+    worker.start()
+    try:
+        plan = api.prepare_execution_plan(
+            recipe=recipe, input_root=Path("inputs"), state_dir=state
+        ).data.plan
+    finally:
+        resolving.set()
+        worker.join(timeout=5)
+    assert not worker.is_alive()
+    assert plan.input_root.anchor == str(root)
+    assert plan.inputs[0].digest == expected
+    assert api.validate_execution_plan(plan.plan_id, state_dir=state).data.valid
+
+
+@pytest.mark.parametrize("with_root", [False, True])
+def test_absolute_or_missing_input_root_does_not_require_cwd(
+    tmp_path, inputs, monkeypatch, with_root
+):
+    from pathlib import Path
+
+    root, _ = inputs
+
+    def denied():
+        raise OSError("synthetic unavailable CWD")
+
+    monkeypatch.setattr(Path, "cwd", denied)
+    plan = api.prepare_execution_plan(
+        task="llm.train", input_root=root if with_root else None, state_dir=tmp_path / "state"
+    ).data.plan
+    assert (plan.input_root is not None) == with_root
+
+
+def test_relative_input_root_cwd_failure_is_controlled_before_resolution(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    def unavailable():
+        raise OSError("synthetic unavailable CWD")
+
+    monkeypatch.setattr(Path, "cwd", unavailable)
+    monkeypatch.setattr(api, "_resolve", lambda **kwargs: pytest.fail("request resolved too early"))
+    root = Path("inputs")
+    with pytest.raises(YorungeError) as failure:
+        api.prepare_execution_plan(task="llm.train", input_root=root, state_dir=tmp_path / "state")
+    assert failure.value.code == "input_invalid"
+    assert not (tmp_path / "state").exists()

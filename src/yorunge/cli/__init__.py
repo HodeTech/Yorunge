@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
     from yorunge.domain.state import StateInfo
 
@@ -293,14 +293,25 @@ def execution_plan_text(data: ExecutionPlanView) -> str:
 def maintenance_text(data: MaintenancePreview) -> str:
     lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
     if data.current:
-        lines.append(f"Mevcut kayıt: {data.current.binding_count}")
+        lines.extend(maintenance_counts("Mevcut", data.current))
     if data.source:
-        lines.append(f"Snapshot kaydı: {data.source.binding_count}")
+        lines.extend(maintenance_counts("Snapshot", data.source))
+    if data.cache_invalidated:
+        lines.append("Capability cache geçersizleşir.")
     if data.history_may_be_lost:
-        lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
+        lines.append("Snapshot sonrası plan/onay geçmişi kaybolabilir.")
     else:
-        lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
+        lines.append("Mevcut plan/onay geçmişi korunur.")
+    lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
     return "\n".join(lines)
+
+
+def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
+    return (
+        f"{label} credential bağı: {snapshot.binding_count}",
+        f"{label} plan: {snapshot.plan_count}",
+        f"{label} onay: {snapshot.approval_count}",
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

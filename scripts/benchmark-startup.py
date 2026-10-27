@@ -49,7 +49,9 @@ def main() -> int:
     parser.add_argument("--profile", type=Path, default=Path("examples/profile.toml"))
     parser.add_argument("--samples", type=int, default=30)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--cache-state", type=Path, help="Prepared synthetic cache dataset")
+    parser.add_argument(
+        "--cache-state", type=Path, required=True, help="Prepared synthetic cache dataset"
+    )
     parser.add_argument("--disk-type", default="unknown")
     parser.add_argument("--cpu-label", default=cpu_label())
     parser.add_argument("--installation-label", default="unknown; specify measured environment")
@@ -66,32 +68,28 @@ def main() -> int:
             200,
         ),
     }
-    cache_dataset: dict[str, object] | None = None
-    if args.cache_state is not None:
-        database = args.cache_state.resolve() / "state.sqlite3"
-        with closing(
-            sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)
-        ) as reader:
-            count, total, largest = reader.execute(
-                "SELECT count(*),sum(length(payload)),max(length(payload)) FROM capability_cache"
-            ).fetchone()
-        cache_dataset = {"records": count, "payload_bytes": total, "largest_record_bytes": largest}
-        cases["cache"] = (
-            [
-                command,
-                "capabilities",
-                "--task",
-                "llm.train",
-                "--cached",
-                "--config",
-                str(profile),
-                "--state-dir",
-                str(args.cache_state.resolve()),
-                "--output",
-                "json",
-            ],
-            200,
-        )
+    database = args.cache_state.resolve() / "state.sqlite3"
+    with closing(sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)) as reader:
+        count, total, largest = reader.execute(
+            "SELECT count(*),sum(length(payload)),max(length(payload)) FROM capability_cache"
+        ).fetchone()
+    cache_dataset = {"records": count, "payload_bytes": total, "largest_record_bytes": largest}
+    cases["cache"] = (
+        [
+            command,
+            "capabilities",
+            "--task",
+            "llm.train",
+            "--cached",
+            "--config",
+            str(profile),
+            "--state-dir",
+            str(args.cache_state.resolve()),
+            "--output",
+            "json",
+        ],
+        200,
+    )
     measurements: dict[str, object] = {}
     passed = True
     for name, (invocation, target) in cases.items():

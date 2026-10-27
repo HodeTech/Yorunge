@@ -262,3 +262,74 @@ def test_root_walk_keeps_absolute_unicode_colon_backslash_root_support(tmp_path)
         os.close(descriptor)
     descriptor, _ = directory_chain("/")
     os.close(descriptor)
+
+
+@pytest.mark.parametrize("sizes", [(5,), (0, 5), (2, 3), (5, 0), (0,)])
+def test_exact_total_byte_limit_needs_no_extra_eof_read(tmp_path, monkeypatch, sizes):
+    import hashlib
+
+    from yorunge.adapters import input_files
+
+    monkeypatch.setattr(input_files, "MAX_INPUT_BYTES", 5)
+    monkeypatch.setattr(input_files, "BLOCK_BYTES", 2)
+    references = []
+    for index, size in enumerate(sizes):
+        name = f"file-{index}"
+        (tmp_path / name).write_bytes(b"x" * size)
+        references.append((name, name))
+    original = os.read
+    requested, consumed = [], []
+
+    def read(descriptor, size):
+        assert 0 < size <= 5 - sum(consumed)
+        requested.append(size)
+        block = original(descriptor, size)
+        consumed.append(len(block))
+        return block
+
+    monkeypatch.setattr(os, "read", read)
+    _, bound = DescriptorInputs().bind(tmp_path, tuple(references), budget())
+    assert sum(consumed) == sum(sizes)
+    assert [item.size for item in bound] == list(sizes)
+    assert [item.digest for item in bound] == [
+        hashlib.sha256(b"x" * size).hexdigest() for size in sizes
+    ]
+    assert all(size <= 2 for size in requested)
+
+
+@pytest.mark.parametrize("initial_size", [0, 5])
+def test_growth_after_initial_stat_cannot_read_past_byte_limit(tmp_path, monkeypatch, initial_size):
+    import stat
+
+    from yorunge.adapters import input_files
+
+    monkeypatch.setattr(input_files, "MAX_INPUT_BYTES", 5)
+    file = tmp_path / "data"
+    file.write_bytes(b"x" * initial_size)
+    inode = file.stat().st_ino
+    original_stat, original_read = os.fstat, os.read
+    grown, consumed = False, []
+
+    def stating(descriptor):
+        nonlocal grown
+        info = original_stat(descriptor)
+        if not grown and stat.S_ISREG(info.st_mode) and info.st_ino == inode:
+            grown = True
+            with file.open("ab") as writer:
+                writer.write(b"extra")
+        return info
+
+    def reading(descriptor, size):
+        assert 0 < size <= 5 - sum(consumed)
+        result = original_read(descriptor, size)
+        consumed.append(len(result))
+        return result
+
+    monkeypatch.setattr(os, "fstat", stating)
+    monkeypatch.setattr(os, "read", reading)
+    binder, current_budget = DescriptorInputs(), budget()
+    with pytest.raises(YorungeError) as failure:
+        binder.bind(tmp_path, (("data", "data"),), current_budget)
+    assert failure.value.code == "input_changed"
+    assert grown
+    assert sum(consumed) == initial_size

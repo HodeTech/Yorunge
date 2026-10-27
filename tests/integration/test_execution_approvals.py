@@ -700,3 +700,90 @@ def test_postcommit_failures_disclose_persisted_record_for_new_and_existing_appr
     assert shown.approval.record.approval_id == details["approval_id"]
     if idempotent:
         assert shown.approval.record == previous
+
+
+@pytest.mark.parametrize("initial_status", ["none", "approved", "revoked"])
+@pytest.mark.parametrize("failure_kind", ["timeout", "io", "read_denied"])
+def test_revoke_postcommit_failure_discloses_only_a_known_persisted_record(
+    tmp_path, execution_fixture, execution_clock, monkeypatch, initial_status, failure_kind
+):
+    from yorunge.adapters.execution_store import PlanRepository
+
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    previous = None
+    if initial_status != "none":
+        previous = api.approve_execution_plan(
+            plan.plan_id, plan.digest, state_dir=state
+        ).data.record
+    if initial_status == "revoked":
+        previous = api.revoke_execution_approval(plan.plan_id, state_dir=state).data.record
+    original = PlanRepository.finish
+
+    def fail_after_commit(self, expected, **kwargs):
+        if failure_kind == "timeout":
+            execution_clock.elapsed = 31
+        elif failure_kind == "io":
+
+            def io_failure(*args, **kwargs):
+                raise OSError(errno.EIO, "fixture terminal clock failure")
+
+            monkeypatch.setattr(self.cache, "_save_stamp", io_failure)
+        else:
+            self.store.connection.set_authorizer(
+                lambda action, *rest: (
+                    sqlite3.SQLITE_DENY if action == sqlite3.SQLITE_SELECT else sqlite3.SQLITE_OK
+                )
+            )
+        return original(self, expected, **kwargs)
+
+    monkeypatch.setattr(PlanRepository, "finish", fail_after_commit)
+    with pytest.raises(YorungeError) as failure:
+        api.revoke_execution_approval(plan.plan_id, state_dir=state)
+    expected_reason = {
+        "timeout": "execution_timeout",
+        "io": "state_write_failed",
+        "read_denied": "state_invalid",
+    }[failure_kind]
+    actual = failure.value
+    shown = api.show_execution_plan(plan.plan_id, state_dir=state).data.approval.record
+    if previous is None:
+        assert not isinstance(actual, ApprovalNotEffective)
+        assert actual.code == expected_reason
+        assert actual.envelope()["details"] == {}
+        assert shown is None
+    else:
+        assert isinstance(actual, ApprovalNotEffective)
+        assert actual.code == "plan_not_valid"
+        assert actual.exit_code == 2
+        assert actual.envelope()["details"] == {
+            "plan_id": plan.plan_id,
+            "approval_id": previous.approval_id,
+            "recorded": True,
+            "reason_code": expected_reason,
+        }
+        assert shown.approval_id == previous.approval_id
+        assert shown.status == "revoked"
+        if initial_status == "revoked":
+            assert shown == previous
+
+
+def test_revoke_precommit_failure_does_not_claim_revocation_was_recorded(
+    tmp_path, execution_fixture, monkeypatch
+):
+    from yorunge.adapters import execution_store
+
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    previous = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state).data.record
+
+    def fail_write(*args):
+        raise YorungeError("state_write_failed")
+
+    monkeypatch.setattr(execution_store, "write_approval", fail_write)
+    with pytest.raises(YorungeError) as failure:
+        api.revoke_execution_approval(plan.plan_id, state_dir=state)
+    assert not isinstance(failure.value, ApprovalNotEffective)
+    assert failure.value.code == "state_write_failed"
+    assert failure.value.envelope()["details"] == {}
+    assert api.show_execution_plan(plan.plan_id, state_dir=state).data.approval.record == previous
