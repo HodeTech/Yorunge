@@ -51,3 +51,24 @@ def test_research_output_cannot_clobber_arbitrary_path_or_follow_links(tmp_path,
     with pytest.raises(expected):
         write(filename, {"synthetic": True})
     assert retained.read_bytes() == b"retained"
+
+
+def test_cache_performance_seed_tracks_current_schema_and_never_clobbers(tmp_path, monkeypatch):
+    from yorunge import api
+    from yorunge.adapters.state import open_store
+    from yorunge.adapters.state_schema import MIGRATIONS
+
+    root = tmp_path / "synthetic-cache"
+    fixture = Path(__file__).parents[1] / "fixtures/seed_capability_cache.py"
+    seed = runpy.run_path(str(fixture))["seed"]
+    seed(root, Path(__file__).parents[2] / "examples/profile.toml")
+    with open_store(root) as store:
+        assert store.verify().store_schema_version == len(MIGRATIONS)
+        assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (
+            1024,
+        )
+    monkeypatch.setattr(
+        api, "query_capabilities", lambda **kwargs: pytest.fail("existing seed mutated")
+    )
+    with pytest.raises(ValueError, match="existing data is preserved"):
+        seed(root, Path(__file__).parents[2] / "examples/profile.toml")

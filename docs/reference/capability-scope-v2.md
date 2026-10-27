@@ -1,6 +1,6 @@
 # CapabilityScopeV2 wire sözleşmesi
 
-**Durum:** Accepted ve uygulandı — [ADR-0013](../decisions/0013-scoped-capability-cache.md) ile 2026-10-27 kullanıcı onayı; P01-3a bütün kabul/review sürüyor. **Tarih:** 2026-10-27. Mevcut offline v1 Scope/Capability/Plan değişmez. Bu belge yeni scope'un alan, tip ve kanonik bayt biçiminin tek kaynağıdır; kayıt/TTL/güven politikasının nedeni ADR'dedir.
+**Durum:** Accepted ve uygulandı — [ADR-0013](../decisions/0013-scoped-capability-cache.md) ile 2026-10-27 kullanıcı onayı; P01-3a yerel kabulü tamamlandı. **Tarih:** 2026-10-27. Mevcut offline v1 Scope/Capability/Plan değişmez. Bu belge yeni scope'un alan, tip ve kanonik bayt biçiminin tek kaynağıdır; kayıt/TTL/güven politikasının nedeni ADR'dedir.
 
 ## Ortak türler ve kodlama
 

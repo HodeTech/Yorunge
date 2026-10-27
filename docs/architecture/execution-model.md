@@ -2,9 +2,9 @@
 
 **Durum:** Benimsenmiş tasarım. **Tarih:** 2026-10-27.
 
-İlk uygulama yalnız offline `draft` üretir: sır, araç sürümü, veri/model içeriği veya uzak yetki doğrulanmadığından `prepared`/onay/yürütme durumuna geçmez. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
+Offline v1 stateless draft üretir. P01-3 ayrı kalıcı execution hazırlığı, descriptor input bağı, güncel validation ve onay/yönetim çekirdeğini ekler. Ürün producer'ında araç/uzak auth/tam girdi kapanışı doğrulanmadığı için public plan draft ve onaylanamaz kalır; prepared/onay pozitifliği yalnız test portuyla kanıtlanır. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
-P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; ürün kabulü henüz tamamlanmadı; bu mimarideki gelecek durumlar mevcut runtime desteği değildir.
+P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; uygulama/test ve iki review turu adımları [kabul kaydındadır](../research/p01-3-implementation-validation.md). Aşağıdaki operation/run durumları P01-4/P02/P03 tasarımıdır; mevcut runtime yan etki başlatmaz.
 
 ## Planın içerdiği bağlar
 

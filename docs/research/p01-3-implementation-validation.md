@@ -4,6 +4,8 @@
 
 ## Onay ve yöntem
 
+Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstte ve son bütünleşik bölümündedir.
+
 Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını onayladı; `6e91690` onay commit'idir. [Ön inceleme ve iki kullanıcı review'inin doğrulanması](p01-3-readiness-review.md) tasarım kanıtıdır; ürün uygulaması yerine sayılmaz. Her adım kod/test/belge → commit → yeni ajanlarla review 1 → doğrulanmış fix/commit → başka yeni ajanlarla review 2 → doğrulanmış fix/commit döngüsünü tamamlar. Sonunda tek development PR'ı kullanıcı incelemesine açılır; otomatik merge yoktur.
 
 ## Adım 1 — Açık capability cache ve clock
@@ -104,3 +106,23 @@ State reviewer20 yarış/cascade/corruption/legacy testinde yeni bulgu bulmadı.
 Bir P2 bozuk cursor'un UUID eleman türünü kontrol etmeden canonical_uuid'ya iletmesiydi; integer/bool/object/list, public CLI'da traceback üretebiliyordu. Adım2'den mevcut bu kusur ertelenmedi: parse öncesi strict string-pair kapısı ve iki eleman için16 negatif tip + gerçek CLI JSON hata regresyonu eklendi. Düzeltme sonrası plan+approval **77 passed (26,25 s)**; Ruff/strict mypy ve belge denetimi başarılıdır.
 
 Adım3 tamamlandı. Kalıcı cache/plan/onay, seçili yönetim, reset/restore/recover ve bütün public yüzey uygulanmıştır; henüz run/operation/HTTP/gerçek producer yoktur. Adım4 son build/iki temiz kurulum, memory/başlangıç ölçümü, kanonik durum kapanışı ve tek development PR'ına geçilir; kullanıcı review'i için merge yapılmaz.
+
+## Adım 4 — Bütünleşik teslim kabulü
+
+2026-10-28: Tam yerel takım **1.077 passed (111,03 s)**. Ruff format65 dosya, lint, strict mypy38 kaynak,105 public Markdown, altı skill/yedi kart ve diff whitespace kontrolleri başarılıdır. `.venv/bin/python`/import kökeni bu checkout'taki editable src olarak doğrulandı. Ağ/ML import guard'ları, frozen offline v1 golden/digest, yeni stateful API/CLI ve negatif JSON hata yolları aynı takımdadır.
+
+Wheel38/sdist208 üyeli build ve iki ayrı temiz kurulum geçti. Arşiv izin listesi ve kurulu import kökeni; metadata, eski offline plan, refresh→cached ve yeni prepare→list→show→validate→eksik onay4/blocked onay2→revoke→forget→empty list akışı gerçek kurulu console üzerinden sınandı. Onay pozitifliği bu kurulum smoke'unda beklenmez; gerçek ürün producer'ı blocked kalmalıdır. Script artık beklenen negatif çıkışı da doğrular. Bu yerel geliştirme build'idir; paket yayınlanmadı, son PR CI kendi artefaktını yeniden üretir.
+
+Final başlangıç fixture'ında sabit schema2 assertion'ı yeni şemayı reddetti; seed artık Store'un gerçek migration manifest'ini doğrular. 1.024 gerçek kayıt ve mevcut dizini ezmeme regresyonu eklendi; başarısız seed'in oluşturduğu sentetik dizin yeniden kullanılmadı. Eşik değiştirilmedi.
+
+### Son performans ve kaynak kanıtı
+
+[Ham başlangıç ölçümü](p01-3-final-startup.json): macOS27.0.1 arm64/Apple M5 Max/SSD/CPython3.11.18/editable `.venv`. Her komutta ilk süreç, üç ısınma ve30 ayrı süreç; OS/disk cache kontrol edilmez. Veri1.024 kayıt, toplam payload1.212.625 bayt, en büyük1.233 bayt. Her cache örneği gerçek fresh hit olduğunu doğrular. Sıcak p95 help24,687, version24,395, context81,620 ve cache142,181 ms;500/200ms hedefleri başarılıdır. Bu kayıt hacmi için kanıttır; tüm kayıtların32KiB dolu payload olması veya soğuk disk performansı değildir. CI'da CPU model etiketi Linux /proc/cpuinfo'dan okunur; bulunamayan disk türü unknown kalır.
+
+[Input bellek ham ölçümü](p01-3-input-memory.json):16MiB/256MiB/1GiB ayrı sparse sıfır dosyası, üç ayrı process, aynı CPU/SSD/editable ortam. Descriptor üzerinden tam okunan içerik bağımsız beklenen SHA-256 ve boyutla doğrulandı; blok1MiB. Python allocation peak üçünde de2.102.830 bayt; ek process peak RSS sırasıyla2.293.760/3.391.488/4.505.600 bayt. Dosya boyutuyla doğrusal bellek büyümesi görülmedi. RSS farkı ru_maxrss process maxima farkıdır; import baseline ve işletim sistemi allocator etkileri raw kayıttadır. Sparse fixture gerçek model/veri closure, ağ aktarımı veya fiziksel soğuk I/O kanıtı değildir.
+
+### Güncel sınır ve PR kapısı
+
+Ürün işi private SQLite cache/clock/plan/approval ve yerel dosya bağlamayla sınırlıdır. Gerçek EVREN/HTTP, araç/runtime yürütümü, operation/attempt/lease/jobs ve maliyetli yan etki yoktur. Public görevler draft/blocked; pozitif preparation/approval yalnız trusted test fixture'dır. Gerçek Windows ve fiziksel güç kesintisi denenmedi. Yerel user/root/inode/mount/rename ve gözlenmeyen zaman değişimi sınırları ADR'lerde korunur. Cache temizliğinin plan/onayları koruduğu ve restore'un bütün eski bağları emekliye ayırdığı gerçek tüketicilerle kanıtlandı.
+
+Adım4 ilk commit'i ardından iki fresh bütünleşik review turu yapılır; sonra P01-3b yerel kabulü verified ve tek development PR'ı kullanıcı incelemesine açık kaydedilir. PR/son head CI henüz oluşmadığından burada geçmiş gibi yazılmaz. Master/release işlemi ve PR merge kullanıcıda kalır.

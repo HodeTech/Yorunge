@@ -1,6 +1,6 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-27.
+**Güncellendi:** 2026-10-28.
 
 ## Bugün
 
@@ -20,11 +20,11 @@
 
 Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli SQLite store, migration ve backup; kalıcı credential kimliği/nesli ve açık reset/restore/recover; config init/profil/proje yönetimi ve yerel doctor. Son ürün head'i ca9502c'de 837 test, lint/type, iki temiz kurulum ve başlangıç bütçeleri geçti. Bu yerel kabuller uzak auth/hesap keşfi, HTTP, capability cache, execution geçerliliği veya operation/lease teslimi sayılmaz. Eski offline Plan biçimi/yürütülemezliği korunur.
 
-**Aktif iş P01-3 uygulaması:** feat/p01-3-capability-planning dalı development@78d5d77 tabanındadır. Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını 2026-10-27 tarihinde onayladı; kararlar Accepted oldu. [Paket planı](p01-3-delivery-plan.md) ve [kabul kartları](tasks/README.md) uygulamayı bağlar.
+**Aktif iş P01-3 bütünleşik teslimi:** feat/p01-3-capability-planning dalı development@78d5d77 tabanındadır. Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını 2026-10-27 tarihinde onayladı; kararlar Accepted. [Paket planı](p01-3-delivery-plan.md) ve [kabul kaydı](../research/p01-3-implementation-validation.md) kanoniktir.
 
-P01-3a verified: tipli capability/cache/clock, tam kapsam/kanıt, kalıcılık ve açık CLI/Python sorgusu; 929 test ve iki bağımsız review turu tamamlandı. P01-3b in_progress: kalıcı execution hazırlığı/validity, ardından onay/yönetim uygulanıyor. Kullanıcının adım başına commit ve iki yeni bağımsız review turu, sonunda kendi incelemesi için tek PR talebi korunur; ürün kabulü henüz tamamlanmadı.
+P01-3a verified; P01-3b in_review. Cache/clock, tam scope/evidence, immutable execution v2, descriptor input bağı, güncel validation, digest onayı/revoke/forget ve schema1/2/3 eski intent→4 recovery uygulandı. Adım1–3 ve ikişer fresh review turu tamamlandı; son bütünleşik review ve development PR'ı hazırlanıyor. Public producer eksik araç/uzak auth/input closure nedeniyle draft/blocked kalır; run/operation/HTTP yoktur.
 
-İlk cache/SQLite/CLI dilimi ve testleri yazıldı; [gerçek test, ölçüm ve review ilerlemesi](../research/p01-3-implementation-validation.md) kanoniktir. Adımın tamamlanması tasarım onayından veya tek bir yeşil test koşusundan çıkarılmaz.
+Son yerel hacimli cache p95 142,181 ms; 16MiB/256MiB/1GiB hash Python allocation peak yaklaşık2MiB. Wheel/sdist iki temiz kurulumda import ve bütün public execution akışı başarılıdır. Bunlar canlı EVREN, gerçek Windows veya fiziksel güç kesintisi kanıtı değildir. Son head'in test/CI/review sonuçları kabul kaydına yazılır; PR kullanıcı incelemesi için açık bırakılır.
 
 [Belge incelemesi ve kullanıcı review düzeltmeleri](../research/p01-3-readiness-review.md) tarihsel hazırlık kanıtıdır. Tasarım onayı canlı EVREN/araç desteği, P01-3 teslimi veya yayın değildir.
 

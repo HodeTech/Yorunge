@@ -1,6 +1,6 @@
 # Execution planı v2
 
-**Durum:** P01-3 adım 3 uygulandı; bağımsız review/kabul sürüyor. Prepare/list/show/validate/approve/revoke/forget vardır. **Tarih:** 2026-10-28. [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) politika kaynağıdır. Eski offline Plan v1 ve digest'i değişmez.
+**Durum:** P01-3 adım 1–3 uygulandı ve ikişer bağımsız review tamamlandı; final bütünleşik PR kabulü sürüyor. Prepare/list/show/validate/approve/revoke/forget vardır. **Tarih:** 2026-10-28. [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) politika kaynağıdır. Eski offline Plan v1 ve digest'i değişmez.
 
 ## Kullanıcı akışı
 

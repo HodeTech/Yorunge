@@ -32,6 +32,17 @@ def measure(command: list[str], *, cache_hit: bool = False) -> float:
     return duration
 
 
+def cpu_label() -> str:
+    if sys.platform == "linux":
+        try:
+            for line in Path("/proc/cpuinfo").read_text().splitlines():
+                if line.startswith("model name") and ":" in line:
+                    return line.split(":", 1)[1].strip() or "unknown"
+        except OSError:
+            pass
+    return platform.processor() or "unknown"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--command", type=Path, required=True)
@@ -40,7 +51,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cache-state", type=Path, help="Prepared synthetic cache dataset")
     parser.add_argument("--disk-type", default="unknown")
-    parser.add_argument("--cpu-label", default=platform.processor() or "unknown")
+    parser.add_argument("--cpu-label", default=cpu_label())
     parser.add_argument("--installation-label", default="unknown; specify measured environment")
     args = parser.parse_args()
     if args.samples < 30:

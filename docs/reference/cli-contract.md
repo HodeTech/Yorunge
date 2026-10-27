@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** v1; aşağıdaki dar çevrimdışı alt küme uygulanmıştır, diğer komutlar tasarımdır. **Tarih:** 2026-10-27.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. HTTP/NDJSON/jobs/run planlandı. **Tarih:** 2026-10-28.
 
 ## Uygulanan alt küme
 
@@ -17,6 +17,7 @@
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
 | `yorunge capabilities --task TASK --cached\|--refresh [--state-dir PATH]` | Açık private cache/clock kullanımı; yalnız mevcut yerel kanıt, uzak discovery yok |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
+| `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
@@ -24,13 +25,13 @@
 
 Yeni plan seçim önceliği [config sözleşmesindedir](configuration.md#öncelik-ve-sabitleme). `train plan` görevi açık `llm.train` çağrısı sayılır. Açık görev override'ı reçetedeki parametreyi geçersiz kılarsa hata olur; parametre düşürülmez.
 
-Planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=offline`, `state=draft`, `executable=false`, `inputs_verified=false`, context, seçim/kaynağı, reçete, capability kayıtları, engeller ve SHA-256 digest bulunur. Bu başarı yalnız **plan hazırlığına** aittir. Araç sürümü bilinmiyor; model/veri referanslarının içeriği, yetki veya maliyet doğrulanmaz. Plan yürütülemez ve onay/operation kimliği oluşturulmaz.
+Offline v1 planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=offline`, `state=draft`, `executable=false`, `inputs_verified=false`, context, seçim/kaynağı, reçete, capability kayıtları, engeller ve SHA-256 digest bulunur. Bu başarı yalnız **plan hazırlığına** aittir. Araç sürümü bilinmiyor; model/veri referanslarının içeriği, yetki veya maliyet doğrulanmaz. Plan yürütülemez ve onay/operation kimliği oluşturulmaz.
 
-Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3** ve config yayın belirsizliğinde **5**'tir. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. **Plan hazırlamada** tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Geçerli bir `capabilities` sorgusu aynı seçim için çıkış 0 ve ilgili reason code ile `unsupported` kayıt döndürür; sorgunun tamamlanması yürütme desteği değildir. Sorgunun kendisi geçersizse (örneğin bilinmeyen görev veya bozuk dosya) yine 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. `credential_unavailable` (referans/değer yok veya boş) ve `invalid_credential` (UTF-8/16.384 bayt sınırı) çıkış 3; `invalid_service_target` çıkış 2'dir. Credential kontrolü hesap/izin doğrulaması değildir; `available=true`, `remote_verified=false` ve sır içermeyen hedef/context metadata'sı döndürür. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; bozuk standart YAML scalar tag'leri de güvenli `invalid_recipe` olur. JSON hatası tek nesne stderr, stdout boştur. Diğer çıkış kodları aşağıda gelecekteki yürütme sözleşmesidir.
+Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**, execution/forget digest onayında **4** ve config yayın belirsizliğinde **5**'tir. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. **Offline v1 plan hazırlamada** tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Geçerli bir `capabilities` sorgusu aynı seçim için çıkış 0 ve ilgili reason code ile `unsupported` kayıt döndürür; sorgunun tamamlanması yürütme desteği değildir. Sorgunun kendisi geçersizse (örneğin bilinmeyen görev veya bozuk dosya) yine 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. `credential_unavailable` (referans/değer yok veya boş) ve `invalid_credential` (UTF-8/16.384 bayt sınırı) çıkış 3; `invalid_service_target` çıkış 2'dir. Credential kontrolü hesap/izin doğrulaması değildir; `available=true`, `remote_verified=false` ve sır içermeyen hedef/context metadata'sı döndürür. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; bozuk standart YAML scalar tag'leri de güvenli `invalid_recipe` olur. JSON hatası tek nesne stderr, stdout boştur. 1/6/7 çıkışları aşağıda gelecekteki yürütme sözleşmesidir.
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor` ve açık `context identity` gözleminde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity`, cache sorgusu ve execution planı ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
 
 ## Komut alanları
 

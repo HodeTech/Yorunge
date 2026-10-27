@@ -1,14 +1,14 @@
 ---
 id: P01-3b
 phase: P01
-status: in_progress
+status: in_review
 size: M
 depends_on: [P01-3a]
 capabilities: [C02, C12, C13]
 ---
 # P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım 2 uygulaması başladı.
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım2/3 ve ikişer review tamamlandı; final bütünleşik review/PR aşamasındadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -50,4 +50,6 @@ Unit canonical digest/girdi/onay/saat; contract v1/v2 ve CLI/API; integration ge
 
 ## Teslim kaydı
 
-Henüz ürün teslimi yoktur. Karar onayı tamamlandı; P01-3a önkoşulu ve paket adım 2/3/4 uygulama/test/review kanıtları beklenir. Ürün PR'ı sonunda kullanıcı incelemesine açılır; otomatik merge edilmez.
+- PR/commit: [hazırlık57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetimdb9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesie7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
+- Sonuç: Adım2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Final bütünleşik review/PR nedeniyle kart in_review; yerel uygulama hazırdır.
+- Kalan sınır: Public producer draft/blocked; run/operation/lease, HTTP ve gerçek EVREN yoktur. Gerçek Windows/fiziksel güç kesintisi kanıtı verilmez. Ürün PR'ı kullanıcı incelemesine açılır, otomatik merge edilmez.

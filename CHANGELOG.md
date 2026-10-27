@@ -4,6 +4,16 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-10-28
+
+- Ayrı ScopeV2/kanıt, tam credential/hedef kapsamı, kalıcı cache/clock generation, bounded TTL/kota ve açık cached/refresh CLI/Python sorgusu.
+- Değişmez execution v2 planı, descriptor üzerinden yerel input hash/root kimliği, kayıt/list/show ve güncel validity.
+- Güncel validation sonrası tam digest onayı, idempotent onay/revoke ve seçili plan/current approval için atomik forget.
+- Cache/plan/onay runtime restore/recover, eski intent yükseltmeleri ve plan/onay fingerprint bağlı maintenance preview v2.
+- Kurulu wheel/sdist üzerinde stateful komut kontrolleri, 1.024 kayıt başlangıç ve ayrı süreçlerde büyük input bellek/hash kanıtı.
+
+Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetki/tam girdi kapanışı eksiklerini açık blocked gösterir; run, operation/lease ve gerçek EVREN yoktur. [P01-3 kabul/review kanıtı](docs/research/p01-3-implementation-validation.md).
+
 ### Fixed — 2026-10-27
 
 - Yerel context yolunda kullanılmayan kimlik/bakım modellerinin eager import maliyeti kaldırıldı; Linux başlangıç bütçesi korundu.

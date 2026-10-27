@@ -1,16 +1,16 @@
 # Yerel state kullanım sözleşmesi
 
-**Durum:** P01-4a temeli iki review turuyla doğrulandı; kimlik gözlemi uygulandı; reset/restore adımı iki review turuyla doğrulandı. **Tarih:** 2026-10-27. Tasarım nedeni ve kanonik dayanıklılık/migration kuralları [ADR-0011](../decisions/0011-state-foundation-and-migrations.md), key yaşam döngüsü [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) içindedir.
+**Durum:** P01-4a temeli iki review turuyla doğrulandı; kimlik gözlemi uygulandı; reset/restore adımı iki review turuyla doğrulandı. **Tarih:** 2026-10-28. Tasarım nedeni ve kanonik dayanıklılık/migration kuralları [ADR-0011](../decisions/0011-state-foundation-and-migrations.md), key yaşam döngüsü [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) içindedir.
 
 ## Açık oluşturma ve doğrulama
 
 State oluşturma/gözlem ve tüm bakım önizleme/uygulama girişleri desteklenmeyen platformda veya `fcntl` bulunmadığında I/O ve env çözümlemesi öncesi `state_unsupported` verir. Platforma özgü import eksikliği ham `ModuleNotFoundError` olarak public API/CLI sınırına çıkmaz.
 
-`yorunge state init [--state-dir PATH]` ile Python `yorunge.api.initialize_state(*, state_dir: Path | None = None)` aynı kullanım senaryosudur. Varsayılan macOS/Linux yerel disk yolu `~/.local/state/yorunge`; DB `state.sqlite3` dosyasıdır. `XDG_STATE_HOME` veya başka davranış env override'ı okunmaz. CLI'da `--state-dir` yalnız `state` ailesinde, `state` ile `init` arasında veya `init` sonrasında verilir. Config/profil/proje seçenekleri bu işte geçersizdir.
+`yorunge state init [--state-dir PATH]` ile Python `yorunge.api.initialize_state(*, state_dir: Path | None = None)` aynı kullanım senaryosudur. Varsayılan macOS/Linux yerel disk yolu `~/.local/state/yorunge`; DB `state.sqlite3` dosyasıdır. `XDG_STATE_HOME` veya başka davranış env override'ı okunmaz. State ailesinde `--state-dir`, `state` ile `init` arasında veya `init` sonrasında verilir; doctor, identity, açık cache ve execution ailesinde kendi komutunda da desteklenir. Config/profil/proje seçenekleri bu işte geçersizdir.
 
 İlk açık kullanımda private store, karşılaştırma K'sı ve gerçek şema kurulur. Var olan sağlıklı store'da aynı store/epoch döner; bu çağrı kimlik reset'i veya env çözümleme değildir. Sonuç `Result[StateInfo]`: zarf sürümü 1; data `schema_version=1`, gerçek DB `store_schema_version`, `store_id`, `identity_epoch`. K, key-check ve özel verifier sonuçta yoktur. `state init` mevcut store için tam yapısal/ilişkisel/mantıksal doğrulama yapar.
 
-Metadata/help/version, varsayılan context/capability, offline Plan ve env credential kontrolü bu store'u açmaz/yaratmaz. Açık capability `--cached`/`--refresh` modu private store/clock kullanır; normal capability komutuna gizli DB erişimi eklenmez. State sınıfları explicit kullanımda lazy yüklenir. Tarihsel şema 1 metadata/migration/credential tablolarıdır; şema 2 `cache_clock` ve `capability_cache` ekler. Operation/lease/jobs yoktur. SQL/key dosyalarının sahipliği/izinleri denetlenir; mevcut kullanıcı dosyası chmod/overwrite edilerek benimsenmez.
+Metadata/help/version, varsayılan context/capability, offline Plan ve env credential kontrolü bu store'u açmaz/yaratmaz. Açık capability `--cached`/`--refresh` modu private store/clock kullanır; normal capability komutuna gizli DB erişimi eklenmez. State sınıfları explicit kullanımda lazy yüklenir. Tarihsel şema 1 metadata/migration/credential tablolarıdır; şema 2 `cache_clock` ve `capability_cache`, şema 3 `execution_plans`, şema 4 `execution_approvals` ekler. Operation/lease/jobs yoktur. SQL/key dosyalarının sahipliği/izinleri denetlenir; mevcut kullanıcı dosyası chmod/overwrite edilerek benimsenmez.
 
 ## Hata ve süre
 

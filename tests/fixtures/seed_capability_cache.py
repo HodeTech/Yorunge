@@ -93,7 +93,7 @@ def seed(root: Path, config: Path) -> None:
         finally:
             if store.connection.in_transaction:
                 store.connection.execute("ROLLBACK")
-        assert store.verify().store_schema_version == 2
+        assert store.verify().store_schema_version == len(store.migrations)
         assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (
             1024,
         )

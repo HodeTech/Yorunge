@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** Başlangıç/profil hedefleri ilk referans ortamda ölçüldü; aktarım/ağ hedefleri henüz ölçülmedi. **Tarih:** 2026-10-27. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux ölçümleri](../research/p01-2-implementation-validation.md).
+**Durum:** Başlangıç/profil hedefleri ilk referans ortamda ölçüldü; aktarım/ağ hedefleri henüz ölçülmedi. **Tarih:** 2026-10-27. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux ölçümleri](../research/p01-2-implementation-validation.md), [P01-3 cache/input ölçümleri](../research/p01-3-implementation-validation.md). Büyük hash ölçümü gerçek aktarım desteği sayılmaz.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

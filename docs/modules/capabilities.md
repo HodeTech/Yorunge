@@ -1,6 +1,6 @@
 # Yetenek çözümleme modülü
 
-**Durum:** Uygulanıyor — offline v1 ile açık yerel cache/clock v2 testli; P01-3a review sürüyor, uzak keşif planlandı. **Kapsam:** C02. **Faz:** P01 ve tüm adaptörler.
+**Durum:** Uygulanıyor — offline v1 ile açık yerel cache/clock v2 testli; P01-3a yerel kabulü tamamlandı, uzak keşif planlandı. **Kapsam:** C02. **Faz:** P01 ve tüm adaptörler.
 
 Görev, model, hesap, hizmet, araç ve execution birleşiminde destek bilgisini bir araya getirir. Şema/kılavuz/istemci gözlemi/canlı test kanıtlarını birbirine eşitlemez. Aynı hizmette farklı hesapların veya aynı hesaptaki farklı yetki kimliği/nesli/kapsamının kayıtları cache'te paylaşılmaz.
 
