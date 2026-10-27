@@ -126,3 +126,11 @@ Final başlangıç fixture'ında sabit schema2 assertion'ı yeni şemayı reddet
 Ürün işi private SQLite cache/clock/plan/approval ve yerel dosya bağlamayla sınırlıdır. Gerçek EVREN/HTTP, araç/runtime yürütümü, operation/attempt/lease/jobs ve maliyetli yan etki yoktur. Public görevler draft/blocked; pozitif preparation/approval yalnız trusted test fixture'dır. Gerçek Windows ve fiziksel güç kesintisi denenmedi. Yerel user/root/inode/mount/rename ve gözlenmeyen zaman değişimi sınırları ADR'lerde korunur. Cache temizliğinin plan/onayları koruduğu ve restore'un bütün eski bağları emekliye ayırdığı gerçek tüketicilerle kanıtlandı.
 
 Adım4 ilk commit'i ardından iki fresh bütünleşik review turu yapılır; sonra P01-3b yerel kabulü verified ve tek development PR'ı kullanıcı incelemesine açık kaydedilir. PR/son head CI henüz oluşmadığından burada geçmiş gibi yazılmaz. Master/release işlemi ve PR merge kullanıcıda kalır.
+
+### Adım 4 / review 1
+
+İlk bütünleşik commit `d34986a`. Üç yeni reviewer delivery/paket/kaynak (GPT-6.1 Sol/high), acceptance/invariants (GPT-6 Astra/high) ve docs/public sözleşme (GPT-6.1 Sol/high) inceledi. Delivery66 contract testi,38/208 arşiv üyesi ve30 örnekten dört p95'nin yeniden hesabında yeni kusur bulmadı. Acceptance159 test (dört kota/kapasite testi seçilmeden) ve11 görevin ayrı gerçek API/SQLite probunda draft/false/onay reddi sınırını doğruladı; yeni kod bulgusu yok.
+
+İki P3 belge kapsamı doğrulandı ve düzeltildi: local-state referansında eski cache-only restore allowlist/“plan-onay henüz yok” ifadeleri, configuration referansında env okumayan yolların stateless v1 ile sınırlanmaması. Güncel identity/cache/clock/plan/approval allowlist, açık cached/execution tek seçili env snapshot'ı ve YAML/offline parser ile descriptor execution bağının ayrımı netleştirildi. Belge değişikliği için link/heading/fence ve diff denetimi yeterlidir; runtime testleri tekrar edilmedi.
+
+Ignored dist/verification.jsonl önceki17/130 üyeli denemeyi taşıyordu; aynı başarılı son38/208 üyeli .local doğrulama makbuzu o konuma kopyalandı. Kod/commit kanıtı olarak eski dosya kullanılmadı. İkinci fresh bütünleşik review turu ve son PR/CI kapısı beklenir.
