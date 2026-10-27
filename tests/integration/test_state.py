@@ -1,6 +1,7 @@
 import errno
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -324,7 +325,7 @@ def test_default_offline_commands_never_create_state(tmp_path, cli):
     assert not (tmp_path / ".local/state/yorunge").exists()
 
 
-@pytest.mark.parametrize("path", ["not-a-path", Path("\x00")])
+@pytest.mark.parametrize("path", ["not-a-path", Path("\x00"), Path("bad\ud800")])
 def test_invalid_api_state_path_is_controlled(path):
     with pytest.raises(YorungeError) as failure:
         api.initialize_state(state_dir=path)
@@ -429,3 +430,241 @@ def test_invalid_backup_metadata_does_not_modify_snapshot(tmp_path, kind):
         state.read_backup(saved, Deadline(), state_schema.MIGRATIONS)
     assert failure.value.code == "state_invalid"
     assert (saved / "snapshot.sqlite3").read_bytes() == snapshot
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "CREATE TABLE sqliteXforeign(id INTEGER)",
+        "CREATE TRIGGER sqliteXdeny BEFORE UPDATE ON state_meta BEGIN SELECT RAISE(IGNORE); END",
+    ],
+)
+def test_reserved_prefix_filter_does_not_hide_user_schema(tmp_path, sql):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    modify(root, sql)
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_invalid"
+
+
+def test_expired_lock_budget_closes_opened_descriptor(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    original = local_files.open_private
+    descriptors = []
+
+    def tracked(*args, **kwargs):
+        descriptor = original(*args, **kwargs)
+        descriptors.append(descriptor)
+        return descriptor
+
+    monkeypatch.setattr(local_files, "open_private", tracked)
+    with pytest.raises(YorungeError) as failure:
+        with open_store(root, timeout=0):
+            pytest.fail("expired budget unexpectedly opened state")
+    assert failure.value.code == "state_busy"
+    assert descriptors
+    for descriptor in descriptors:
+        with pytest.raises(OSError) as closed:
+            os.fstat(descriptor)
+        assert closed.value.errno == errno.EBADF
+
+
+def test_migration_key_binding_failure_rolls_back_before_commit(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    original = api.initialize_state(state_dir=root)
+    monkeypatch.setattr(
+        state_schema,
+        "MIGRATIONS",
+        state_schema.MIGRATIONS
+        + (
+            Migration(
+                1,
+                2,
+                ("UPDATE state_meta SET identity_epoch='00000000-0000-4000-8000-000000000001'",),
+            ),
+        ),
+    )
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_repair_required"
+    assert query(root, "PRAGMA user_version") == [(1,)]
+    assert query(root, "SELECT identity_epoch FROM state_meta") == [(original.data.identity_epoch,)]
+    assert query(root, "SELECT version FROM schema_migrations") == [(1,)]
+
+
+def test_backup_parent_sync_failure_prevents_migration_ddl(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    before = (root / DB_NAME).read_bytes()
+    original = local_files.sync_directory
+
+    def failing(path):
+        if path == root and (root / "backups").exists():
+            raise OSError(errno.EIO, "synthetic backup parent sync failure")
+        original(path)
+
+    monkeypatch.setattr(local_files, "sync_directory", failing)
+    monkeypatch.setattr(
+        state_schema,
+        "MIGRATIONS",
+        state_schema.MIGRATIONS
+        + (Migration(1, 2, ("CREATE TABLE should_not_exist(id INTEGER) STRICT",)),),
+    )
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_write_failed"
+    assert (root / DB_NAME).read_bytes() == before
+    assert not list((root / "backups").glob("*/complete.json"))
+
+
+@pytest.mark.parametrize("mode", ["exit", "error"])
+@pytest.mark.parametrize(
+    "phase",
+    [
+        "before-key",
+        "root-before-sync",
+        "root-parent-before-sync",
+        "lock-before-fsync",
+        "lock-before-dir-sync",
+        "lock-before-fullsync",
+        "lock-after-fullsync",
+        "keys-dir-before-sync",
+        "keys-parent-before-sync",
+        "key-before-fsync",
+        "key-before-dir-sync",
+        "key-before-fullsync",
+        "key-after-fullsync",
+        "db-before-fsync",
+        "db-before-dir-sync",
+        "db-before-fullsync",
+        "db-after-fullsync",
+        "metadata-before-insert",
+        "metadata-before-commit",
+        "after-commit",
+        "db-final-before-sync",
+        "db-final-after-sync",
+    ],
+)
+def test_bootstrap_failure_boundaries_never_adopt_partial_identity(tmp_path, mode, phase):
+    root = tmp_path / "state"
+    script = Path(__file__).parents[1] / "fixtures/bootstrap_failure.py"
+    child = subprocess.run(
+        [sys.executable, str(script), str(root), phase, mode],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert child.returncode == (71 if mode == "exit" else 72), child.stderr
+    keys_before = set((root / "keys").glob("*.key"))
+    db = root / DB_NAME
+    inode = db.stat().st_ino if db.exists() else None
+    healthy = phase in (
+        "before-key",
+        "root-before-sync",
+        "root-parent-before-sync",
+        "lock-before-fsync",
+        "lock-before-dir-sync",
+        "lock-before-fullsync",
+        "lock-after-fullsync",
+        "after-commit",
+        "db-final-before-sync",
+        "db-final-after-sync",
+    )
+    if healthy:
+        restored = api.initialize_state(state_dir=root)
+        assert restored == api.initialize_state(state_dir=root)
+        if keys_before:
+            assert set((root / "keys").glob("*.key")) == keys_before
+    else:
+        with pytest.raises(YorungeError) as failure:
+            api.initialize_state(state_dir=root)
+        assert failure.value.code in ("state_invalid", "state_repair_required")
+        assert set((root / "keys").glob("*.key")) == keys_before
+        assert (db.stat().st_ino if db.exists() else None) == inode
+
+
+@pytest.mark.parametrize("after_completion", [False, True])
+def test_migration_process_cut_at_backup_completion_preserves_old_schema(
+    tmp_path, monkeypatch, after_completion
+):
+    root = tmp_path / "state"
+    original = api.initialize_state(state_dir=root)
+    code = """import os, sys
+from pathlib import Path
+from yorunge import api
+from yorunge.adapters import state, state_schema as s
+s.MIGRATIONS += (s.Migration(1,2,('CREATE TABLE second_step(id INTEGER) STRICT',)),)
+original = state.write_new
+def cut(path, content):
+    if path.name == 'complete.json':
+        if sys.argv[2] == 'after':
+            original(path, content)
+        os._exit(73)
+    return original(path, content)
+state.write_new = cut
+api.initialize_state(state_dir=Path(sys.argv[1]))
+raise AssertionError('completion boundary not reached')
+"""
+    child = subprocess.run(
+        [sys.executable, "-c", code, str(root), "after" if after_completion else "before"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert child.returncode == 73, child.stderr
+    assert api.initialize_state(state_dir=root) == original
+    saved = next((root / "backups").iterdir())
+    if after_completion:
+        assert state.read_backup(saved, Deadline(), state_schema.MIGRATIONS).source_version == 1
+    else:
+        with pytest.raises(YorungeError):
+            state.read_backup(saved, Deadline(), state_schema.MIGRATIONS)
+    monkeypatch.setattr(
+        state_schema,
+        "MIGRATIONS",
+        state_schema.MIGRATIONS
+        + (Migration(1, 2, ("CREATE TABLE second_step(id INTEGER) STRICT",)),),
+    )
+    assert api.initialize_state(state_dir=root).data.store_schema_version == 2
+    assert query(root, "SELECT version FROM schema_migrations ORDER BY version") == [(1,), (2,)]
+    assert saved.exists()
+
+
+@pytest.mark.parametrize("part", ["key-file", "keys-directory"])
+def test_key_symlinks_are_rejected_without_following(tmp_path, part):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    path = next((root / "keys").glob("*.key")) if part == "key-file" else root / "keys"
+    saved = tmp_path / "preserved"
+    path.rename(saved)
+    path.symlink_to(saved, target_is_directory=part == "keys-directory")
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_invalid"
+    assert saved.exists()
+
+
+def test_hardlinked_database_is_not_opened(tmp_path):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    before = (root / DB_NAME).read_bytes()
+    os.link(root / DB_NAME, tmp_path / "alias.sqlite3")
+    with pytest.raises(YorungeError) as failure:
+        api.initialize_state(state_dir=root)
+    assert failure.value.code == "state_invalid"
+    assert (root / DB_NAME).read_bytes() == before
+
+
+def test_valid_unicode_state_path_is_supported(tmp_path):
+    root = tmp_path / "ölçüm-東京"
+    first = api.initialize_state(state_dir=root)
+    assert api.initialize_state(state_dir=root) == first
+
+
+def test_explicit_default_state_initialization_uses_canonical_home_path(tmp_path):
+    first = api.initialize_state()
+    root = tmp_path / ".local/state/yorunge"
+    assert (root / DB_NAME).is_file()
+    assert api.initialize_state(state_dir=root) == first

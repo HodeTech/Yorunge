@@ -94,6 +94,10 @@ def state_directory(path: Path | None) -> Path:
     chosen = (path if path is not None else Path.home() / ".local/state/yorunge").absolute()
     if "\x00" in str(chosen):
         raise YorungeError("invalid_request")
+    try:
+        os.fsencode(chosen)
+    except UnicodeError:
+        raise YorungeError("invalid_request") from None
     safe_ancestors(chosen)
     return Path(os.path.normpath(chosen))
 
@@ -423,7 +427,9 @@ def maintain(
                     if validate(connection, migrations, full=True)[0] != version:
                         raise YorungeError("state_invalid")
                     apply_migration(connection, migrations[version])
-                    validate(connection, migrations, full=True)
+                    _, updated = validate(connection, migrations, full=True)
+                    if check_key:
+                        load_key(root, updated)
                     deadline.remaining()
                     connection.execute("COMMIT")
                 finally:

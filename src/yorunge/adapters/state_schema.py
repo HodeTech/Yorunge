@@ -71,7 +71,7 @@ def schema_signature(connection: sqlite3.Connection) -> tuple[tuple[str, str, st
     return tuple(
         connection.execute(
             "SELECT type,name,tbl_name,sql FROM sqlite_schema "
-            "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"
+            "WHERE substr(name,1,7) != 'sqlite_' ORDER BY type,name"
         ).fetchall()
     )
 

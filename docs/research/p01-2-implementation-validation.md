@@ -47,3 +47,11 @@ Final adım head'inde wheel 20 üye (`9ef6ff0f0bfe9f6a7283da44e908562e1f2c56ea4d
 İlk doğrulama: **39 state integration testi**, **505 toplam test** geçti (6,58 s); Ruff format/lint, strict mypy (24 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. İki ayrı migration süreci, iki adımlı hata/yeniden açılış, gerçek hot journal ve commit öncesi/sonrası süreç kesintisi, FK bozulması, izin/symlink, disk/sync ve bozuk backup negatifleri gerçek geçici dosyalarla kapsandı. Bu süreç kesintileri güç kesintisi kanıtı değildir.
 
 İlk wheel 24 üye (`5515aaca3fb05d3d7052fd8802afb57313dfc23d9315f8711e7d467336327758`), sdist 154 üye (`6f67d4a644b6ea0e7392c8060e0948fde19efaa03b8ae757d221b9d584987a76`); iki temiz kurulum/köken/smoke ve 30 süreç başlangıç bütçeleri geçti. İki bağımsız review turu tamamlanmadan P01-4a verified değildir.
+
+### Adım 2 / review 1
+
+İncelenen ilk head `0b668ed`. Üç yeni ajan: `p012_s2_r1_files` (GPT-6 Astra/high), `p012_s2_r1_sql`, `p012_s2_r1_surface` (GPT-6.1 Sol/high). Kök ajan üç P2 ve bir P3'ü geçici gerçek dosyalarda yeniden üretti: deadline kontrolünde lock FD sızıntısı; `LIKE 'sqlite_%'` jokeri nedeniyle atlanan kullanıcı şema nesneleri; aktif key bağını bozan migration'ın hata vermeden önce commit edilmesi; filesystem'e kodlanamayan Unicode Path'in ham istisnası. FD'nin immediate try/finally sahibi, literal reserved-prefix filtresi, commit öncesi key-check ve upfront filesystem encoding denetimiyle giderildi.
+
+Kabul kanıtındaki bootstrap/sync boşluğu da kapatıldı: **22 bootstrap sınırı × süreç çıkışı/I/O hatası = 44 ayrı subprocess senaryosu**; root/üst dizin, lock, keys/üst dizin, key file/fsync/fullsync, DB dosyası ve metadata/commit/final sync kapsandı. Kesilmiş kilit oluşturma sonrası aynı inode'un bariyeri yeniden tamamlanır. Ayrıca backup tamamlanma kaydının öncesi/sonrası süreç kesintisi, backup üst dizin sync hatası, key symlink/hardlink ve varsayılan/Unicode state path testleri eklendi. Bu deneyler güç kesintisi veya disk donanımı kanıtı değildir.
+
+Düzeltme sonrası **96 state / 562 toplam test geçti** (11,63 s); Ruff format/lint ve strict mypy geçti. İlk head'in bağımsız yüzey incelemesinde API/CLI zarfı ve forbidden-option reddi, on kez iki eşzamanlı ilk bootstrap ve paket hash/üye eşleşmeleri doğrulandı. İkinci tur yeni ajanlarla düzeltme head'inde yapılır.

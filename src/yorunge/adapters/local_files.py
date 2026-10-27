@@ -119,10 +119,13 @@ def open_private(path: Path, *, writable: bool = False) -> int:
     before = private_stat(path)
     flags = (os.O_RDWR if writable else os.O_RDONLY) | os.O_NOFOLLOW | os.O_NONBLOCK
     descriptor = os.open(path, flags)
-    after = os.fstat(descriptor)
-    if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+    try:
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise YorungeError("state_invalid")
+    except BaseException:
         os.close(descriptor)
-        raise YorungeError("state_invalid")
+        raise
     return descriptor
 
 
@@ -162,10 +165,10 @@ def file_lock(path: Path, deadline: Deadline, *, exclusive: bool, create: bool) 
         try:
             write_new(path, b"")
         except FileExistsError:
-            pass
+            sync_private(path)
     descriptor = open_private(path)
-    end = time.monotonic() + min(1.0, deadline.remaining())
     try:
+        end = time.monotonic() + min(1.0, deadline.remaining())
         operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
         while True:
             try:
