@@ -151,8 +151,9 @@ def test_wheel_preserves_other_well_formed_extra_metadata(tmp_path):
 @pytest.mark.parametrize("kind", [stat.S_IFREG, stat.S_IFDIR])
 def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
     name = "yorunge/member/" if kind == stat.S_IFREG else "yorunge/member"
+    path = wheel(tmp_path, [(name, kind | 0o755)])
     with pytest.raises(ValueError):
-        inspect_archive(wheel(tmp_path, [(name, kind | 0o755)]))
+        inspect_archive(path)
 
 
 @pytest.mark.parametrize(
@@ -176,28 +177,32 @@ def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
     ],
 )
 def test_sdist_rejects_raw_unsafe_roots_and_unexpected_paths(tmp_path, name):
+    path = sdist(tmp_path, [(name, tarfile.REGTYPE)])
     with pytest.raises(ValueError):
-        inspect_archive(sdist(tmp_path, [(name, tarfile.REGTYPE)]))
+        inspect_archive(path)
 
 
 @pytest.mark.parametrize(
     "kind", [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.FIFOTYPE, tarfile.CHRTYPE, tarfile.BLKTYPE]
 )
 def test_sdist_rejects_links_and_special_files(tmp_path, kind):
+    path = sdist(tmp_path, [(ROOT + "/src/member", kind)])
     with pytest.raises(ValueError, match="links and special"):
-        inspect_archive(sdist(tmp_path, [(ROOT + "/src/member", kind)]))
+        inspect_archive(path)
 
 
 def test_sdist_rejects_multiple_roots(tmp_path):
     entries = [(ROOT + "/README.md", tarfile.REGTYPE), ("another/pyproject.toml", tarfile.REGTYPE)]
+    path = sdist(tmp_path, entries)
     with pytest.raises(ValueError, match="root"):
-        inspect_archive(sdist(tmp_path, entries))
+        inspect_archive(path)
 
 
 def test_sdist_file_allowlist_entry_cannot_be_a_directory(tmp_path):
     entries = [(ROOT + "/.github/pull_request_template.md/", tarfile.DIRTYPE)]
+    path = sdist(tmp_path, entries)
     with pytest.raises(ValueError):
-        inspect_archive(sdist(tmp_path, entries))
+        inspect_archive(path)
 
 
 @pytest.mark.parametrize("format", ["wheel", "sdist"])

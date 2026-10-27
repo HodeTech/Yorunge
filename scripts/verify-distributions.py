@@ -14,9 +14,12 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+GITHUB_DIRECTORY = ".github"
+SDIST_SUFFIX = ".tar.gz"
+
 ALLOWED_SDIST = {
     ".gitignore",
-    ".github",
+    GITHUB_DIRECTORY,
     ".agents",
     "src",
     "tests",
@@ -103,54 +106,54 @@ def check_zip_extra(extra: bytes) -> None:
         offset += size
 
 
+def _github_allowed(parts: tuple[str, ...], directory: bool) -> bool:
+    files = (
+        (GITHUB_DIRECTORY, "workflows", "checks.yml"),
+        (GITHUB_DIRECTORY, "workflows", "pr-policy.yml"),
+        (GITHUB_DIRECTORY, "pull_request_template.md"),
+    )
+    if directory:
+        return any(len(parts) < len(item) and parts == item[: len(parts)] for item in files)
+    return parts in files
+
+
+def _agents_allowed(parts: tuple[str, ...], directory: bool) -> bool:
+    tail = parts[1:]
+    if directory:
+        return (
+            tail in ((), ("skills",))
+            or (len(tail) == 2 and tail[0] == "skills")
+            or (len(tail) == 3 and tail[0] == "skills" and tail[2] == "agents")
+        )
+    return tail == ("README.md",) or (
+        len(tail) >= 3
+        and tail[0] == "skills"
+        and tail[2:] in (("SKILL.md",), ("agents", "openai.yaml"))
+    )
+
+
+def _docs_allowed(parts: tuple[str, ...], directory: bool) -> bool:
+    if directory:
+        return (
+            len(parts) == 1
+            or (len(parts) >= 2 and parts[1] in ALLOWED_DOCS and not parts[1].endswith(".md"))
+            or parts == ("docs", "analysis")
+        )
+    return len(parts) >= 2 and (
+        (parts[1] in ALLOWED_DOCS and (len(parts) == 2 or not parts[1].endswith(".md")))
+        or parts == ("docs", "analysis", "README.md")
+    )
+
+
 def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
     if parts[0] not in ALLOWED_SDIST:
         raise ValueError("unexpected sdist member")
-    if parts[0] == ".github":
-        files = (
-            (".github", "workflows", "checks.yml"),
-            (".github", "workflows", "pr-policy.yml"),
-            (".github", "pull_request_template.md"),
-        )
-        allowed = (
-            any(len(parts) < len(item) and parts == item[: len(parts)] for item in files)
-            if directory
-            else parts in files
-        )
+    if parts[0] == GITHUB_DIRECTORY:
+        allowed = _github_allowed(parts, directory)
     elif parts[0] == ".agents":
-        tail = parts[1:]
-        allowed = (
-            (
-                tail in ((), ("skills",))
-                or (len(tail) == 2 and tail[0] == "skills")
-                or (len(tail) == 3 and tail[0] == "skills" and tail[2] == "agents")
-            )
-            if directory
-            else (
-                tail == ("README.md",)
-                or (
-                    len(tail) >= 3
-                    and tail[0] == "skills"
-                    and tail[2:] in (("SKILL.md",), ("agents", "openai.yaml"))
-                )
-            )
-        )
+        allowed = _agents_allowed(parts, directory)
     elif parts[0] == "docs":
-        allowed = (
-            (
-                len(parts) == 1
-                or (len(parts) >= 2 and parts[1] in ALLOWED_DOCS and not parts[1].endswith(".md"))
-                or parts == ("docs", "analysis")
-            )
-            if directory
-            else (
-                len(parts) >= 2
-                and (
-                    (parts[1] in ALLOWED_DOCS and (len(parts) == 2 or not parts[1].endswith(".md")))
-                    or parts == ("docs", "analysis", "README.md")
-                )
-            )
-        )
+        allowed = _docs_allowed(parts, directory)
     else:
         tree = parts[0] in ("src", "tests", "scripts", "examples")
         allowed = (tree and (len(parts) > 1 or directory)) or (
@@ -191,8 +194,8 @@ def inspect_archive(path: Path) -> list[str]:
                 if parts[0] not in ("yorunge", metadata) or (len(parts) == 1 and not directory):
                     raise ValueError("unexpected wheel member")
                 members.append(name)
-    elif path.name.endswith(".tar.gz"):
-        root = path.name.removesuffix(".tar.gz")
+    elif path.name.endswith(SDIST_SUFFIX):
+        root = path.name.removesuffix(SDIST_SUFFIX)
         if not root.startswith("yorunge-") or root == "yorunge-":
             raise ValueError("unexpected sdist name")
         with tarfile.open(path) as sdist:
@@ -217,10 +220,10 @@ def inspect_archive(path: Path) -> list[str]:
 
 def distribution_pair(directory: Path) -> tuple[Path, Path]:
     wheels = sorted(directory.glob("yorunge-*.whl"))
-    sdists = sorted(directory.glob("yorunge-*.tar.gz"))
+    sdists = sorted(directory.glob(f"yorunge-*{SDIST_SUFFIX}"))
     if len(wheels) != 1 or len(sdists) != 1:
         raise ValueError("exactly one wheel and one sdist required")
-    if "-".join(wheels[0].name.split("-")[:2]) != sdists[0].name.removesuffix(".tar.gz"):
+    if "-".join(wheels[0].name.split("-")[:2]) != sdists[0].name.removesuffix(SDIST_SUFFIX):
         raise ValueError("distribution versions must match")
     return wheels[0], sdists[0]
 

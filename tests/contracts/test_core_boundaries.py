@@ -42,10 +42,12 @@ def test_malformed_yaml_tag_is_safe_in_api_and_console(tmp_path, cli, body):
     assert failure.value.code == "invalid_recipe"
     assert MARKER not in str(failure.value)
     result = cli("plan", "prepare", "--recipe", str(recipe), "--output", "json")
-    assert result.returncode == 2 and result.stdout == ""
+    assert result.returncode == 2
+    assert result.stdout == ""
     assert result.stderr.count("\n") == 1
     assert json.loads(result.stderr) == failure.value.envelope()
-    assert MARKER not in result.stderr and "Traceback" not in result.stderr
+    assert MARKER not in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 @pytest.mark.parametrize("control", CONTROLS)
@@ -111,7 +113,8 @@ def test_valid_standard_yaml_and_unicode_references_roundtrip(tmp_path, cli):
     saved.write_text(plan.model_dump_json(), encoding="utf-8")
     assert api.load_plan(saved).data == plan
     result = cli("plan", "show", "--plan", str(saved), "--output", "json")
-    assert result.returncode == 0 and result.stderr == ""
+    assert result.returncode == 0
+    assert result.stderr == ""
     assert json.loads(result.stdout)["data"] == plan.model_dump(mode="json")
 
 
@@ -125,13 +128,16 @@ def test_valid_standard_yaml_and_unicode_references_roundtrip(tmp_path, cli):
 def test_capability_query_and_plan_rejection_agree_with_api(cli, options, code):
     arguments = [item for name, value in options.items() for item in ("--" + name, value)]
     query = cli("capabilities", "--task", "llm.train", *arguments, "--output", "json")
-    assert query.returncode == 0 and query.stderr == ""
+    assert query.returncode == 0
+    assert query.stderr == ""
     python = api.inspect_capabilities(task="llm.train", **options)
     assert json.loads(query.stdout) == python.model_dump(mode="json")
     record = python.data.records[-1]
-    assert record.support == "unsupported" and record.reason_code == code
+    assert record.support == "unsupported"
+    assert record.reason_code == code
     command = cli("plan", "prepare", "--task", "llm.train", *arguments, "--output", "json")
-    assert command.returncode == 2 and command.stdout == ""
+    assert command.returncode == 2
+    assert command.stdout == ""
     with pytest.raises(YorungeError) as failure:
         api.prepare_plan(task="llm.train", **options)
     assert failure.value.code == code
