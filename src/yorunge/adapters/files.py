@@ -96,7 +96,16 @@ def load_recipe(path: Path) -> Recipe:
         if any(isinstance(token, (AliasToken, AnchorToken)) for token in yaml.scan(content)):
             raise ValueError("aliases and anchors are not allowed")
         value = yaml.load(content, Loader=RecipeLoader)
-    except (yaml.YAMLError, ValueError, RecursionError):
+    # SafeLoader's scalar constructors can raise built-in errors for malformed literals.
+    except (
+        yaml.YAMLError,
+        ValueError,
+        RecursionError,
+        KeyError,
+        IndexError,
+        AttributeError,
+        OverflowError,
+    ):
         raise YorungeError("invalid_recipe") from None
     return validate(Recipe, value, "invalid_recipe")
 

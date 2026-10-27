@@ -19,6 +19,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 
 | ID | Tek teslim sınırı | Önkoşul | Kanıt / kapsam dışı | Durum |
 |---|---|---|---|---|
+| P01-1a | Mevcut offline çekirdeğin parser/şema hata sınırı ve dağıtım kabulünü sağlamlaştırma | P01-1 | [Yetkili kapanış kartı](tasks/p01-1a-core-acceptance-hardening.md); ilk teslimi yeniden yazmaz, HTTP/state/secret çözümleme eklemez | `in_progress` |
 | P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Hazır kart](tasks/p01-2a-secret-resolution.md); HTTP, keychain, DB ve nesil kaydı yok | `ready` |
 | P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | Geçici gerçek DB'de migration, izin/bozuk kayıt ve süreç yeniden açma; tam operation/lease yok | `draft` |
 | P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | Aynı env adı altında değer değişince eski bağ geçersiz; ham secret/hash çıktı veya DB'de yok | `draft` |
@@ -32,7 +33,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-5a taşıma deneyi, state işinin tamamını beklemeden loopback üzerinde yapılabilir. Kimlik nesli için kalıcılık gerektiğinden P01-4a, P01-2b'den öncedir; “önce bütün kimlik, sonra DB” döngüsü kurulmaz. B02/B13 kararı alınmadan kalıcı credential biçimi icat edilmez. İlk başlayacak tek ürün paketi **P01-2a**; bu hazırlık çalışması onun implementasyonu değildir.
+P01-5a taşıma deneyi, state işinin tamamını beklemeden loopback üzerinde yapılabilir. Kimlik nesli için kalıcılık gerektiğinden P01-4a, P01-2b'den öncedir; “önce bütün kimlik, sonra DB” döngüsü kurulmaz. B02/B13 kararı alınmadan kalıcı credential biçimi icat edilmez. P01-1a kullanıcı onayıyla mevcut teslimde saptanan hataları kapatır; sonraki yeni ürün paketi **P01-2a** olarak kalır. Bu kapanış hazırlığı P01-2a implementasyonu değildir.
 
 ```mermaid
 flowchart LR

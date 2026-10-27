@@ -42,6 +42,10 @@ LLM_TASKS: frozenset[str] = frozenset(
 TOOL_IDS: frozenset[str] = frozenset({"forgelm", "axolotl", "llamafactory", "unsloth"})
 
 
+def has_control_characters(value: str) -> bool:
+    return any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in value)
+
+
 class Model(BaseModel):
     model_config = ConfigDict(
         strict=True, extra="forbid", frozen=True, hide_input_in_errors=True, allow_inf_nan=False
@@ -84,7 +88,7 @@ class DataSpec(Model):
     @field_validator("manifest")
     @classmethod
     def local_reference(cls, value: str) -> str:
-        if ":" in value or "\x00" in value or "\n" in value or "\r" in value:
+        if ":" in value or has_control_characters(value):
             raise ValueError("local path required")
         return value
 
@@ -145,14 +149,14 @@ class Profile(Model):
     @field_validator("platform_url", "llm_url")
     @classmethod
     def service_url(cls, value: str) -> str:
-        if len(value) > 2048 or any(ord(char) < 33 for char in value) or "\\" in value:
+        if len(value) > 2048 or has_control_characters(value) or " " in value or "\\" in value:
             raise ValueError("invalid service URL")
         parts = urlsplit(value)
         if (
             parts.scheme != "https"
             or not parts.hostname
-            or parts.username
-            or parts.password
+            or parts.username is not None
+            or parts.password is not None
             or parts.query
             or parts.fragment
             or parts.port not in (None, 443)
