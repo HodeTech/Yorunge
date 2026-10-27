@@ -11,10 +11,13 @@
 - P01-1 paket/CLI/şema/build kısmı tamamlandı; HTTP seçimi kapsam gereği P01-5'e bırakıldı. P01-2/P01-3'ün dar yerel alt kümeleri ve P01-6 kontrol altyapısı eklendi. P01 bütünü tamamlanmadı.
 - Yerel test, tip/lint/format, dağıtım/temiz kurulum ve başlangıç kanıtı [kabul kaydında](../research/p01-core-validation.md). İlk PR'da 100 test ve bütün CI kontrolleri Ubuntu/Python 3.11'de geçti. Metadata kontrolü PR #2'de doğrulandı; iki dalda `offline-core` ve `branch-policy` zorunlu. Yayımlanmış paket yok.
 - Genel belge ve paket girdileri izin listeleriyle sınırlandırıldı; yerel analiz arşivi üretim girdisi değildir. Site/doküman yayın sistemi henüz yoktur.
+- Aktif ürün kodlaması öncesi roadmap ve ajan hazırlığı gözden geçirildi; [bulgu ve karar kaydı](../research/roadmap-readiness-review.md). P01 bağımlılık sırası ve uzak fazların paket sınırı netleştirildi. Bu hazırlık yeni ürün capability'si uygulamaz.
 
 ## Sıradaki somut iş
 
-P01-2'nin kalan secret/context bağlarını tamamla: sır değerini çıktıdan uzak tutarak hizmete özel credential kimliği/nesli ve izin kapsamını modelle; aynı env referansında anahtar değişimini sınayan testleri kur. Ardından P01-3 hesap/hedef/yetki/tazelik bağlı capability cache ve execution öncesi plan geçerliliği gelir. Kalıcı operation/lease P01-4, HTTP/deadline/retry P01-5 kapsamındadır. [İş tablosu](phase-01-core.md).
+**Sıradaki iş [P01-2a — env secret çözümleme](tasks/p01-2a-secret-resolution.md); güncel hazırlık/teslim durumu kart metadata'sındadır.** Hedefi yalnız açık çağrıda doğru hizmetin env referansını çözmek; yerel komutlarda sır okumamaktır. HTTP, keychain, DB, credential nesli veya execution bu karta girmez.
+
+Sonra B02/B13 kararları → P01-4a kalıcılık temeli → P01-2b credential kimliği/nesli → P01-3a/b capability ve execution geçerliliği → P01-4b operation/lease gelir. P01-5a loopback taşıma deneyi P01-2a sonrası bağımsız yürüyebilir; bütün hattı tamamlamak P01-5b/P01-6b kabulüdür. [Kesin sıra ve durumlar](phase-01-core.md), [ajan çalışma rehberi](../../.agents/README.md).
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 

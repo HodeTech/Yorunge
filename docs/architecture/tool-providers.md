@@ -2,13 +2,14 @@
 
 **Durum:** Benimsenmiş tasarım. **Tarih:** 2026-10-27.
 
-## Üç bağımsız seçim
+## Dört bağımsız eksen
 
 | Eksen | Örnek | Sahip olduğu karar |
 |---|---|---|
 | Görev | `llm.train`, `llm.evaluate`, `dataset.upload` | Kullanıcının sonucu |
 | Araç sağlayıcısı | `forgelm`, doğrulanmış muadil | Haricî araçla uygulama ve parametre çevirisi |
 | Execution | `local`, `evren-managed`, koşullu `evren-workspace` | Kaynak ve çalışma ortamı |
+| EVREN hizmeti | Platform API veya LLM gateway | Uzak hedef ve hizmete özel kimlik/yetki |
 
 İlk offline modelde `dataset.upload` ve `llm.chat` yerel istemci (`local`) + ayrı uzak Platform/LLM hizmet scope'u taşır. `vision.train.managed`, `evren-managed` seçer. Yerel istemci yürütme ortamı ile bağlandığı uzak hizmet tek kimlikte birleştirilmez. Hiçbiri bu aşamada yürütülmez.
 

@@ -21,6 +21,8 @@ Türkçe açıklama, İngilizce dosya/kimlik adları, UTF-8/LF ve göreli bağla
 
 [Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. Ubuntu/Python 3.11 CI tanımı gerçek PR ve dal koşularıyla doğrulanır; yerel kontrol uzak CI koşmuş sayılmaz.
 
+Ajan alias'ları ve bunları sınayan fixture'lar gerçek göreli symlink gerektirir. Desteklenen tam geliştirme/test checkout ortamı macOS veya Linux'tur; Git symlink'leri normal dosyaya dönüştüren Windows checkout'ları doğrulanmamıştır ve bu kontrolü çalıştıramaz. Bu sınır runtime için Windows desteği kanıtı veya yeni bir runtime kısıtı değildir.
+
 `uv 0.11.2` zaten kuruluysa doğrudan `uv sync` adımına geçin. İzole araç kurulumu:
 
 ```sh
@@ -37,6 +39,7 @@ uv sync --frozen --python 3.11
 .venv/bin/mypy
 .venv/bin/pytest
 .venv/bin/python scripts/check-docs.py
+.venv/bin/python scripts/check-agent-guides.py
 uv build
 .venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv
 .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --output dist/startup.json
@@ -45,6 +48,20 @@ uv build
 `--uv` için gerçekten kullanılan uv executable yolunu verin. `uv.lock` geliştirme/runtime sürümleri ve hash'lerini sabitler; build backend'i `pyproject.toml` içinde sabittir. İlk kurulum/build paket indirmek için ağ kullanabilir; uygulama ve test senaryoları çevrimdışıdır. `uv build` wheel'i sdist'ten üretir. Dağıtım denetimi üyeleri izin listesiyle kontrol eder, her arşivi ayrı temiz ortama kurar, import kökenini ve konsol komutunu depo dışından doğrular. Build çıktısı `dist/` altında Git dışında kalır.
 
 Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
+
+## Doğrulama seçimi
+
+Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır.
+
+| Değişiklik | Yerelde gerekli kanıt |
+|---|---|
+| Yalnız açıklama/link/durum | `check-docs.py`, `git diff --check`; kod testi eklenmez |
+| Skill, alias, iş kartı metadata veya ajan rehberi | Belge kontrolü + `check-agent-guides.py`; yeni/değişen helper için anlamlı negatif test ve lint/type |
+| Runtime/config/CLI/API | Anlamlı unit/contract/integration, Ruff format/lint ve strict mypy; kullanıcı sözleşmesi ve belge güncel |
+| Paket/bağımlılık/yerleşim veya yayın girdisi | Yukarıdakilere build, arşiv izin listesi ve temiz kurulum/import kökeni; wheel ile sdist ayrımı |
+| Import/başlangıç veya aktarım/worker yolu | İlgili performans standardı ve veri doğruluğu; ortam/örnek/ilk süreç ve p95 kayıtlı |
+
+Rehber denetimi Git checkout'undaki canonical skills/Claude alias'larını, tekil faz ID'lerini, kart metadata/bölümlerini ve işe başlanabilecek durumların bağımlılıklarını kontrol eder. `verified` için teslim alanları aranır; kanıtın doğruluğu ve kabulü karşılaması review gerektirir. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
 
 ## İnceleme ve lisans
 

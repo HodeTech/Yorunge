@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge PR akışı"
+  short_description: "Doğrulanmış değişikliği development PR akışına taşı"
+  default_prompt: "$yorunge-pr ile mevcut değişikliği development PR akışına hazırla."

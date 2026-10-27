@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge iş planı"
+  short_description: "Faz hedefinden dar ve ölçülebilir iş paketi çıkar"
+  default_prompt: "$yorunge-plan-task ile sıradaki işi kapsam ve kabul ölçütleriyle hazırla."

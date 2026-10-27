@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge uygulama"
+  short_description: "Hazır iş paketini kod, test ve belgeyle tamamla"
+  default_prompt: "$yorunge-implement-task ile hazır iş paketini uygula."

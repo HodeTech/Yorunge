@@ -6,8 +6,8 @@
 
 | Kimlik | Yetenek | Kullanıcı sonucu | EVREN/araç kanıtı | Yörünge durumu | Hedef |
 |---|---|---|---|---|---|
-| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/context testli; uzak kimlik yok | P01 |
-| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm testli; doctor/keşif/cache yok | P01 |
+| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/context testli; uzak kimlik yok | P01 yerel / P02-0b uzak |
+| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm testli; doctor/keşif/cache yok | P01 yerel / P02 hesap kanıtı |
 | C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Planlandı | P02 |
 | C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |
 | C05 | Model/veri kataloğu | Uygun modeli bulmak | Platform kataloğu ve LLM model şeması | Planlandı | P02 |
@@ -22,10 +22,12 @@
 | C14 | MCP ve gelişmiş terminal/köprü | Ajanlardan aynı işi yürütmek | Yörünge adaptörü ve protokol/host doğrulaması gerekli | Planlandı | P04 |
 | C15 | OCR/ses ve ileri servisler | Metin dışı girdi/çıktı işlemek | Gateway şemasında servis yüzeyi var | Planlandı | P04 |
 | C16 | EVREN runtime'da haricî araç | EVREN GPU'sunda LLM eğitmek | İstemci gözlemi; genel kullanıcı erişimi doğrulanmadı | Erişim kapılı plan | P03 keşif / P04 uygulama |
-| C17 | Kullanıcı LLM/adapter serving | Kendi modeliyle EVREN'de çıkarım | Genel sözleşme doğrulanmadı | Araştırma | Kapı sonrası |
+| C17 | Kullanıcı LLM/adapter serving | Kendi modeliyle EVREN'de çıkarım | Genel sözleşme doğrulanmadı | Araştırma | P04-R1; implementasyon kapı sonrası |
 | C18 | Yayınlama, silme, rezervasyon yazma | Kaynak yaşam döngüsünü yönetmek | İşleme özel yetki/etki sözleşmesi gerekli | Sınırlı plan | P03/P04 |
 
 ## Uygulama durumları
+
+Roadmap iş kartlarının `ready`/`verified` durumu bu satırın tamamlandığı anlamına gelmez. Kart, belirli bir alt teslimi kanıtlar; satırın kapsamı ve dış erişim koşulları ayrıca değerlendirilir. [İş hazırlığı](roadmap/README.md#hazır-iş-paketi).
 
 `Araştırma` → `Planlandı` → `Uygulanıyor` → `Deneysel` → `Doğrulandı` → `Yayımlandı`. Deneysel veya doğrulandı durumuna geçişte test/işlem kanıtı ve sürüm/commit kaydı gerekir. Bir fazın yapılmış olması tüm satırlarının yayımlandığı anlamına gelmez. Dış erişime bağlı satır, erişim kapısı geçilmeden genel kullanıcı desteği kazanmaz.
 

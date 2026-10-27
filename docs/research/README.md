@@ -6,6 +6,7 @@
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
 - [P01 ilk dilim kabulü](p01-core-validation.md): yerel test/build/temiz kurulum ve performans kanıtı; [ham başlangıç ölçümü](p01-startup.json).
 - [Dal/PR/koruma kabulü](branch-workflow-validation.md): development kurulumu, gerçek GitHub CI ve koruma geri okuma kanıtı.
+- [Roadmap ve ajan hazırlığı review'si](roadmap-readiness-review.md): bulgular, yapılan düzeltmeler, referans örüntüleri ve kalan kararlar.
 
 26 Ekim'deki öncül araştırma LLM/ForgeLM akışını öne almıştı. 27 Ekim kullanıcı talimatı Yörünge'yi EVREN kapsamlı yardımcı araç olarak konumlandırdı ve ForgeLM'i ilgili görevlerin seçilebilir varsayılanı yaptı. Güncel ürün yönü [ADR-0001](../decisions/0001-platform-companion.md) ve [ADR-0002](../decisions/0002-forgelm-default-open-tools.md) ile kayıtlıdır.
 

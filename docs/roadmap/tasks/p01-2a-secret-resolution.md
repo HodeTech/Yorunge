@@ -1,0 +1,48 @@
+---
+id: P01-2a
+phase: P01
+status: ready
+size: M
+depends_on: [P01-1]
+capabilities: [C01]
+---
+# P01-2a — Hizmete bağlı env secret çözümleme
+
+**Hazırlandı:** 2026-10-27. Bu kart planlamadır; secret erişimi henüz uygulanmadı.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+Kullanıcı bir sonraki hizmet işleminde yalnız doğru servisin credential'ının kullanılmasını ister; yerel context/plan okumak için anahtar gerekmemelidir. Bugün profil env adını doğruluyor fakat secret çözümlemiyor.
+
+## Giren ve girmeyen kapsam
+
+Giren: `evren-platform` / `evren-llm` hizmetine bağlı tipli env referansı, yalnız açık çözümleme çağrısında değer okuyan adaptör ve dışarı sızmayan credential taşıyıcısı. Mevcut TOML `platform_key_env` / `llm_key_env` alanları kullanılır; sır dosyaya yazılmaz. CLI/Python yerel context ve offline draft davranışı korunur.
+
+Girmeyen: HTTP/auth denemesi, doctor/proje keşfi, keychain, DB, credential kimliği/nesli, cache, eğitim aracı veya yürütüm. Plan alanları hâlâ uzak yetki doğrulanmadığını gösterir. Bir sırrın env'de bulunması hesabın destek/yetki kanıtı değildir. Yeni “anahtarı yazdır” CLI komutu eklenmez.
+
+## Bağımlılıklar ve kararlar
+
+`P01-1` [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [ilk dilim kanıtıyla](../../research/p01-core-validation.md) doğrulandı. Bu dar env çözümleme dilimi için açık dış erişim veya ek mimari karar gerekmez; kalıcı credential kimliği B02/B13 ve P01-4a/P01-2b'ye bağlı ayrı iştir.
+
+## Sözleşme ve uygulama sınırı
+
+Mevcut domain hata/model, application kullanım senaryosu ve dosya/profil adaptörü incelenir; env I/O domain'e konmaz. Sırrı tüketmek isteyen kullanım senaryosu hizmeti açıkça seçer; ihtiyaç duymayan mevcut API çağrıları çözümleme yapmaz. Yeni iç port/model adları uygulamada seçilebilir; henüz olmayan port varmış gibi import örneği yazılmaz.
+
+[Config](../../reference/configuration.md) ve [CLI hata sözleşmesi](../../reference/cli-contract.md) aynı değişiklikte uygulanmış alt kümeyi günceller. Mevcut kullanıcı şeması bozulmadan yapı kurulabilir; bir alan/sürüm değişimi gerekirse açık fark/migration kaydedilir. Global credential registry kararı bu pakete çekilmez; P01-4a/P01-2b ve B13'te ele alınır.
+
+## Kabul
+
+1. İki hizmetin farklı env referansı ve değeri sentetik fixture'da ayrılır. Platform isteği LLM anahtarını kullanmaz; birinin yokluğu diğerine fallback üretmez.
+2. Değer yalnız açık çözümleme çağrısında ve yalnız seçilen ad için okunur; rastgele env taraması veya davranış override'ı yoktur. Referansın tür/ad hatası kontrollü kullanım/config hatasıdır.
+3. Seçilmiş referansın eksik/boş değeri kararlı tipli credential hatasıdır. Kimlik eksikliği exit sınıfı 3 ile eşlenir; stderr zarfı sır veya ham parser girdi taşımaz. Bu eşleme, yerel context'i credential gerektirir hale getirmez.
+4. Bilinen sentetik secret; repr/str, JSON/plan/digest, hata ve log sınırlarında görünmez. İç taşıyıcının genel amaçlı serialization'ı ham değeri vermez; secret yalnız ihtiyaç duyan adaptöre kontrollü aktarılır.
+5. Yardım, sürüm, context, capability ve offline plan testleri credential okumasını yasaklayan guard altında geçer. Ağ, DB, keychain, araç/model keşfi veya ML import eklenmez.
+6. Mevcut seçim önceliği, açık proje eksikliği davranışı ve kayıtlı plan seçimi korunur. Credential varlığı `remote_verified=true`, `supported` veya `executable=true` üretmez.
+
+## Doğrulama
+
+Gerçek env adaptörü, sentetik değer ve gerçek şema kullanılır; parser veya bütün application mock edilerek doğruluk iddiası kurulmaz. Hizmet karışması, eksik/boş/yanlış referans ve çıktı sızıntısı negatif testleri; mevcut CLI/API sözleşme suite'i ve strict format/lint/type gerekir. Import veya başlangıç yolu değişirse standart benchmark, paket yerleşimi/metadata etkilenirse build/temiz kurulum eklenir. Komut kaynağı [CONTRIBUTING](../../../CONTRIBUTING.md#doğrulama-seçimi).
+
+## Teslim kaydı
+
+Henüz uygulama commit/PR'si veya bu karta ait test sonucu yoktur. Teslimde kabul maddeleri gerçek kanıtla eşlenir; bu kart ancak o zaman `verified` olur. Kayıt biçimi [şablondadır](../task-template.md).

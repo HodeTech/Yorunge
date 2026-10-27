@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge sözleşmeleri"
+  short_description: "CLI, config ve sağlayıcı sınırlarını tutarlı değiştir"
+  default_prompt: "$yorunge-contract-change ile istenen sözleşme değişikliğini ele al."

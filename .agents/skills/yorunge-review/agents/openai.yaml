@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge inceleme"
+  short_description: "Kod ve belge iddialarını somut kanıtla incele"
+  default_prompt: "$yorunge-review ile verilen değişikliği kapsam ve doğruluk açısından incele."

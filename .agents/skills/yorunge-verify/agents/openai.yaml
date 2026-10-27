@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yörünge doğrulama"
+  short_description: "Değişikliğe uygun yerel ve paket kontrollerini çalıştır"
+  default_prompt: "$yorunge-verify ile mevcut değişikliğin gerekli kontrollerini yap."

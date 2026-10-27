@@ -23,6 +23,7 @@ packages = ["src/yorunge"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/src", "/tests", "/scripts", "/examples", "/.github/workflows",
+  "/.github/pull_request_template.md", "/.agents/README.md", "/.agents/skills",
   "/docs/architecture", "/docs/decisions", "/docs/modules", "/docs/reference",
   "/docs/standards", "/docs/roadmap", "/docs/research", "/docs/analysis/README.md",
   "/docs/README.md", "/docs/capability-matrix.md", "/docs/glossary.md",
