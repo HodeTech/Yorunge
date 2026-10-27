@@ -237,6 +237,18 @@ def clear_project(
     )
 
 
+def _missing_config(path: Path | None) -> bool:
+    if path is None:
+        return False
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return True
+    except (OSError, ValueError):
+        pass
+    return False
+
+
 def diagnose_local(
     *,
     config: Path | None = None,
@@ -275,7 +287,14 @@ def diagnose_local(
         if error.code == "profile_not_found":
             checks.append(Diagnostic(name="profile", status="invalid", code=error.code))
         else:
-            checks.append(Diagnostic(name="configuration", status="invalid", code=error.code))
+            missing = error.code == "file_unreadable" and _missing_config(config)
+            checks.append(
+                Diagnostic(
+                    name="configuration",
+                    status="missing" if missing else "invalid",
+                    code=error.code,
+                )
+            )
             checks.append(Diagnostic(name="profile", status="not_checked"))
         checks.extend(
             (

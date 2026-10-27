@@ -140,9 +140,13 @@ def encoded(configuration: Configuration) -> bytes:
     return content
 
 
-def publish(path: Path, content: bytes, *, initial: bool) -> None:
+def stage(path: Path, content: bytes) -> Path:
     temporary = path.with_name("." + path.name + "." + str(uuid4()) + ".tmp")
     write_new(temporary, content)
+    return temporary
+
+
+def publish(path: Path, temporary: Path, *, initial: bool) -> None:
     try:
         if initial:
             os.link(temporary, path, follow_symlinks=False)
@@ -153,7 +157,7 @@ def publish(path: Path, content: bytes, *, initial: bool) -> None:
         sync_private(path)
     except FileExistsError:
         raise YorungeError("config_exists") from None
-    except OSError:
+    except (OSError, YorungeError):
         raise YorungeError("config_write_uncertain") from None
 
 
@@ -179,7 +183,7 @@ def initialize(path: Path | None, name: str, project: str | None) -> ConfigUpdat
             private_directory(chosen.parent)
         durable_private_chain(chosen.parent)
         with config_lock(chosen):
-            publish(chosen, content, initial=True)
+            publish(chosen, stage(chosen, content), initial=True)
         return ConfigUpdate(
             config_path=str(chosen),
             backup_path=None,
@@ -216,9 +220,10 @@ def update(
             durable_private_chain(backups)
             saved = backups / (str(uuid4()) + ".toml")
             write_new(saved, original.raw)
+            temporary = stage(chosen, content)
             if read_snapshot(chosen).identity != original.identity:
                 raise YorungeError("config_conflict")
-            publish(chosen, content, initial=False)
+            publish(chosen, temporary, initial=False)
         return ConfigUpdate(
             config_path=str(chosen),
             backup_path=str(saved),

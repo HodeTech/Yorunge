@@ -43,6 +43,7 @@ def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Dia
         live_snapshot,
         no_intent,
         owned_directory,
+        present,
         quiescent,
         target_lock,
     )
@@ -57,6 +58,18 @@ def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Dia
     unchecked = Diagnostic(name="key_check", status="not_checked")
     try:
         root, deadline = state_directory(path), Deadline()
+        owned_directory(root)
+        if not present(root / "store.lock"):
+            with os.scandir(root) as entries:
+                payload = any(True for _ in entries)
+            if not payload:
+                return (
+                    Diagnostic(name="state", status="missing"),
+                    Diagnostic(name="key", status="not_checked"),
+                    unchecked,
+                )
+            if not present(root / "store.lock"):
+                raise YorungeError("state_repair_required")
         with target_lock(root, deadline, create=False):
             no_intent(root)
             if live_snapshot(root, deadline) is None:
@@ -99,8 +112,11 @@ def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Dia
             unchecked,
         )
     except sqlite3.Error as error:
+        code = sqlite_error_code(error)
         return (
-            Diagnostic(name="state", status="invalid", code=sqlite_error_code(error)),
+            Diagnostic(
+                name="state", status="busy" if code == "state_busy" else "invalid", code=code
+            ),
             Diagnostic(name="key", status="not_checked"),
             unchecked,
         )

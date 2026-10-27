@@ -397,3 +397,81 @@ def test_saved_plan_never_reloads_changed_profile_or_project(config, tmp_path):
     api.set_project("new-project", config=config)
     assert api.load_plan(saved).data == original
     assert saved.read_bytes() == before
+
+
+def test_editor_change_during_real_temporary_write_is_not_lost(config, monkeypatch):
+    original = configuration.write_new
+    editor_bytes = config.read_bytes() + b"\n# independent editor change\n"
+
+    def write(path, content):
+        original(path, content)
+        if path.suffix == ".tmp":
+            config.write_bytes(editor_bytes)
+
+    monkeypatch.setattr(configuration, "write_new", write)
+    with pytest.raises(YorungeError) as failure:
+        api.set_project("changed", config=config)
+    assert failure.value.code == "config_conflict"
+    assert config.read_bytes() == editor_bytes
+
+
+def test_typed_postpublication_validation_failure_is_uncertain(config, monkeypatch):
+    original = configuration.sync_private
+
+    def sync(path):
+        path.chmod(0o640)
+        original(path)
+
+    monkeypatch.setattr(configuration, "sync_private", sync)
+    with pytest.raises(YorungeError) as failure:
+        api.set_project("published", config=config)
+    assert failure.value.code == "config_write_uncertain"
+    assert failure.value.exit_code == 5
+    assert load_config(config).profiles["work"].project_id == "published"
+
+
+def test_doctor_empty_state_directory_is_missing_without_creating_lock(tmp_path):
+    root = tmp_path / "state"
+    root.mkdir(mode=0o700)
+    report = api.diagnose_local(state_dir=root).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["state"].status == "missing"
+    assert list(root.iterdir()) == []
+    (root / "foreign-payload").write_bytes(b"retained")
+    report = api.diagnose_local(state_dir=root).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["state"].code == "state_repair_required"
+    assert not (root / "store.lock").exists()
+
+
+def test_doctor_sqlite_interruption_reports_busy_instead_of_corrupt(tmp_path, monkeypatch):
+    from yorunge.adapters import state
+
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    original = state.connect_readonly
+
+    def interrupted(*args):
+        connection = original(*args)
+        connection.set_progress_handler(lambda: 1, 1)
+        return connection
+
+    monkeypatch.setattr(state, "connect_readonly", interrupted)
+    report = api.diagnose_local(state_dir=root).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["state"].status == "busy"
+    assert checks["state"].code == "state_busy"
+
+
+def test_doctor_explicit_missing_config_distinguished_from_broken_symlink(tmp_path):
+    path = tmp_path / "missing.toml"
+    report = api.diagnose_local(config=path).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["configuration"].status == "missing"
+    path.symlink_to(tmp_path / "missing-target")
+    report = api.diagnose_local(config=path).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["configuration"].status == "invalid"
+    report = api.diagnose_local(config=Path(str(path) + "\ud800")).data
+    checks = {item.name: item for item in report.checks}
+    assert checks["configuration"].status == "invalid"
