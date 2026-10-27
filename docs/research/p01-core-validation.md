@@ -55,7 +55,7 @@ Başlangıç ölçümü: aynı macOS 27.0.1 arm64 / CPython 3.11.18 referans mak
 | `--version` | 25,091 | 25,486 | 26,266 | ≤ 500 ms | Geçti |
 | `context show` + TOML + JSON | 401,901 | 89,434 | 92,807 | ≤ 200 ms | Geçti |
 
-İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. [PR #4](https://github.com/HodeTech/Yorunge/pull/4) kullanıcı incelemesine sunuldu; uzak CI'ın son head sonucu ve tam teslim kaydı kartın PR bağlantısından izlenir. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
+İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. PR incelemesindeki test hata kapsamı/assertion ve izin listesi okunurluğu bulguları `016d2c3` ile giderildi; 404 test ve iki temiz kurulum yeniden geçti. Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü 2026-10-27 tarihinde [3d3c86b merge commit'i](https://github.com/HodeTech/Yorunge/commit/3d3c86bb623df9e5ce81a01583e7585431cf74da) ile development'a aldı. Son PR head'inde `offline-core`, `branch-policy`, SonarCloud, Sourcery ve CodeRabbit başarılı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) test/build/temiz kurulum/başlangıç kapılarını tekrar geçti. P01-1/P01-1a kapanışı tamamlandı; tam teslim kaydı karttadır. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
 
 ## Kalan sınır ve sonraki iş
 

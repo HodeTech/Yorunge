@@ -1,7 +1,7 @@
 ---
 id: P01-1a
 phase: P01
-status: in_review
+status: verified
 size: M
 depends_on: [P01-1]
 capabilities: [C13]
@@ -58,15 +58,15 @@ Her adımda: uygulama + anlamlı doğrulama → commit → birinci tur yeni bağ
 
 Adım 1'de gerçek dosya ve subprocess negatif testleri, ilgili unit/contract/integration paketi, Ruff format/lint, strict mypy ve belge kontrolü çalıştırılır. Adım 2'de sentetik arşiv negatif/pozitif testleri, tam pytest, belge/ajan denetimi, lock kontrolü, wheel/sdist build, arşiv denetimi, iki ayrı temiz kurulum ve [başlangıç bütçeleri](../../standards/performance.md#başlangıç-bütçeleri) çalıştırılır. En az 30 ayrı süreç, üç ısınma, ilk süreç ve p95/ortam kaydı gerekir; eşik gevşetilmez.
 
-İnceleme ajanları readonly çalışır; her turun kapsamı, taban commit'i, doğrulanmış/reddedilmiş bulgusu ve düzeltme commit'i teslimde kaydedilir. Bir ajan kullanılması bütün yetenek veya canlı hizmet doğrulaması sayılmaz. Tekrar kontrolleri değişen sınır ve kalan riskle gerekçelendirilir. Dış CI sonucu PR açıldıktan sonra son head üzerinde ayrıca okunur; bu hazırlıkta CI çalıştı denmez.
+İnceleme ajanları readonly çalışır; her turun kapsamı, taban commit'i, doğrulanmış/reddedilmiş bulgusu ve düzeltme commit'i teslimde kaydedilir. Bir ajan kullanılması bütün yetenek veya canlı hizmet doğrulaması sayılmaz. Tekrar kontrolleri değişen sınır ve kalan riskle gerekçelendirilir. Dış CI sonucu PR açıldıktan sonra son head üzerinde ayrıca okunur; CI tanımı veya yerel kontrol uzak koşu kanıtı sayılmaz.
 
 ## Teslim kaydı
 
-İki adım ve her adımın iki yeni bağımsız review turu tamamlandı. Doğrulanmış bütün bulgular giderildi ve kapanışları yeniden incelendi. Kullanıcının PR incelemesi bekleniyor; `in_review` bunun içindir. Zorunlu uzak CI sonucu PR'ın son head kontrollerinde izlenir. Hazırlık probe'ları teslim kanıtı yerine kullanılmaz.
+İki adım ve her adımın iki yeni bağımsız review turu tamamlandı. Doğrulanmış bütün bulgular giderildi ve kapanışları yeniden incelendi. Kullanıcı, [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü 2026-10-27 tarihinde `development` dalına merge commit ile aldı; kartın bütün kabulü karşılandı. Son PR head'i `016d2c3`, birleşim commit'i `3d3c86b` ve merge sonrası CI doğrulandı.
 
-- PR/commit: [Development PR #4](https://github.com/HodeTech/Yorunge/pull/4); [son uygulama düzeltmesi](https://github.com/HodeTech/Yorunge/commit/7a255d51ce118b2ade6cc1af82191e3b8919e13d). PR kullanıcı incelemesi için açık bırakılır.
-- Sonuç: 404 test (59 arşiv senaryosu), format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock geçti. Son kaynaklardan wheel/sdist ayrı temiz ortamlara kuruldu; 17/130 üye, depo dışı import/konsol/plan başarılı. [Kabul ve ham başlangıç ölçümü](../../research/p01-core-validation.md#p01-1-kapanış-doğrulaması); yerel JSONL son arşiv adı/hash ve temiz kurulum sonucunu taşır. Uzak CI için PR'ın son head kontrolleri esastır; yerel sonuç uzak koşu sayılmaz.
-- Kalan sınır: Açık doğrulanmış kod bulgusu yok; kullanıcı PR incelemesi bekleniyor. Birleştirmeden önce son head için zorunlu CI ve konuşma koşulları sağlanmalıdır. HTTP/state/secret çözümleme, canlı EVREN, diğer OS/Python doğrulaması, yayın ve Master aktarımı bu kartın kabulü değildir.
+- PR/commit: [Development PR #4](https://github.com/HodeTech/Yorunge/pull/4); [merge commit 3d3c86b](https://github.com/HodeTech/Yorunge/commit/3d3c86bb623df9e5ce81a01583e7585431cf74da). İki parent, önceki development `9ce5204` ve son PR head'i `016d2c3` ile eşleşir.
+- Sonuç: 404 test (59 arşiv senaryosu), format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock geçti. Son kaynaklardan wheel/sdist ayrı temiz ortamlara kuruldu; 17/130 üye, depo dışı import/konsol/plan başarılı. [Kabul ve ham başlangıç ölçümü](../../research/p01-core-validation.md#p01-1-kapanış-doğrulaması). Son PR head'inde zorunlu kontroller ve dış review kontrolleri başarılı; [merge sonrası development CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) test, build/iki temiz kurulum ve başlangıç bütçelerini yeniden geçti. Arşiv adı/hash ve kurulum JSONL kayıtları ilgili CI günlüğündedir.
+- Kalan sınır: Bu kartın kabulünde açık iş veya doğrulanmış kod bulgusu kalmadı. P01 bütünü tamamlanmadı; sıradaki iş [P01-2a](p01-2a-secret-resolution.md). HTTP/state/secret çözümleme, canlı EVREN, diğer OS/Python doğrulaması, yayın ve Master aktarımı bu kartın kabulü değildir.
 
 | Adım / tur | İncelenen commit | Kapsam ve sonuç |
 |---|---|---|
@@ -76,3 +76,4 @@ Adım 1'de gerçek dosya ve subprocess negatif testleri, ilgili unit/contract/in
 | 2 / uygulama | `2255d67` | Ham arşiv yolu/tür/kök/çakışma ve eşleşen dağıtım çifti; 400 test, iki temiz kurulum, JSONL ve wheel başlangıç ölçümü geçti |
 | 2 / review 1 | `2255d67` | İki yeni ajan: arşiv güvenliği (GPT-6 Astra high), kurulum/kanıt/sözleşme (GPT-6.1 Sol high). Tek doğrulanmış P2: ZipInfo.filename NUL'da kırpılıyor; orig_filename denetimi ve gerçek ZIP başlık regresyonuyla giderildi. Diğer reviewer iki temiz kurulumu ve ham ölçüm/p95/JSONL eşleşmesini doğruladı. `04a8e24` düzeltmesi ikinci turda doğrulandı |
 | 2 / review 2 | `04a8e24` | Başka iki yeni ajan: arşiv biçimi (GPT-6 Astra high), teslim/kanıt (GPT-6.1 Sol high). Teslim reviewer'ı 401 test/iki temiz kurulum/JSONL/ölçümü doğruladı. Arşiv reviewer'ı Unicode Path extra alanında Python/uv ad yorum farkını bildirdi; kök ajan gerçek offline uv kurulumuyla bağımsız doğruladı. `7a255d5` alternatif ZIP adı/bozuk extra alanı reddi ekledi. Kapanış için yeni üçüncü bağımsız ajan (GPT-6.1 Sol xhigh) son diff'i ve son kaynaklardan build'i inceledi: 404 test, 59 arşiv senaryosu, lint/type/belge ve iki temiz kurulum geçti; 17/130 üye; açık doğrulanmış bulgu kalmadı |
+| PR / bulgu kapanışı | `016d2c3` | Beş arşiv testinde fixture oluşturma hata beklentisinden ayrıldı; altı birleşik assertion bölündü; izin listesi yardımcıları ve tekrar eden sabitler sadeleştirildi. 191.958 sentetik karşılaştırmada kabul/red farkı yok; 404 test, lint/type/belge ve iki temiz kurulum geçti. Son head'in zorunlu CI, SonarCloud, Sourcery ve CodeRabbit kontrolleri başarılı |
