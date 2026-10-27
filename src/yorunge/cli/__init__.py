@@ -260,18 +260,7 @@ def execution_text_result(data: Model) -> str | None:
     if isinstance(data, ForgottenExecutionPlan):
         return f"Yerel plan unutuldu: {data.plan_id}\nUzak iş iptali değildir."
     if isinstance(data, ExecutionPlanView):
-        plan = data.plan
-        approval_status = (
-            data.approval.record.status if data.approval and data.approval.record else "none"
-        )
-        return (
-            f"Execution planı: {plan.plan_id}\nDigest: {plan.digest}\n"
-            f"Hazırlık: {plan.status}; güncel geçerlilik: "
-            f"{data.validity.valid if data.validity else 'denetlenmedi'}\n"
-            f"Onay kaydı: {approval_status}; "
-            "show güncel onay doğrulaması yapmaz.\n"
-            f"Engeller: {', '.join(plan.assessment.blockers) or '-'}\nYürütme başlatılmaz."
-        )
+        return execution_plan_text(data)
     if isinstance(data, ExecutionValidity):
         return (
             f"Geçerli: {data.valid}\n"
@@ -284,6 +273,21 @@ def execution_text_result(data: Model) -> str | None:
             for p in data.plans
         ) + (f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else "")
     return None
+
+
+def execution_plan_text(data: ExecutionPlanView) -> str:
+    plan = data.plan
+    approval_status = (
+        data.approval.record.status if data.approval and data.approval.record else "none"
+    )
+    return (
+        f"Execution planı: {plan.plan_id}\nDigest: {plan.digest}\n"
+        f"Hazırlık: {plan.status}; güncel geçerlilik: "
+        f"{data.validity.valid if data.validity else 'denetlenmedi'}\n"
+        f"Onay kaydı: {approval_status}; "
+        "show güncel onay doğrulaması yapmaz.\n"
+        f"Engeller: {', '.join(plan.assessment.blockers) or '-'}\nYürütme başlatılmaz."
+    )
 
 
 def maintenance_text(data: MaintenancePreview) -> str:

@@ -91,7 +91,7 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
         if encode_cursor(prepared, identifier) != cursor:
             raise ValueError("canonical cursor required")
         return prepared, identifier
-    except (ValueError, TypeError, UnicodeError, RecursionError):
+    except (ValueError, TypeError, RecursionError):
         raise YorungeError("invalid_request") from None
 
 
