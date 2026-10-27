@@ -10,7 +10,8 @@ from typing import TypeVar
 
 import yaml
 from pydantic import ValidationError
-from yaml.nodes import MappingNode
+from yaml.constructor import ConstructorError
+from yaml.nodes import MappingNode, ScalarNode
 from yaml.tokens import AliasToken, AnchorToken
 
 from yorunge.domain.errors import ErrorCode, YorungeError
@@ -45,7 +46,14 @@ def read_text(path: Path, limit: int, code: ErrorCode) -> str:
 
 
 class RecipeLoader(yaml.SafeLoader):
+    def construct_scalar(self, node: ScalarNode | MappingNode) -> str:
+        if not isinstance(node, ScalarNode):
+            raise ConstructorError(None, None, "scalar node required", node.start_mark)
+        return super().construct_scalar(node)
+
     def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Hashable, object]:
+        if not isinstance(node, MappingNode):
+            raise ConstructorError(None, None, "mapping node required", node.start_mark)
         result: dict[Hashable, object] = {}
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
@@ -96,7 +104,16 @@ def load_recipe(path: Path) -> Recipe:
         if any(isinstance(token, (AliasToken, AnchorToken)) for token in yaml.scan(content)):
             raise ValueError("aliases and anchors are not allowed")
         value = yaml.load(content, Loader=RecipeLoader)
-    except (yaml.YAMLError, ValueError, RecursionError):
+    # SafeLoader's scalar constructors can raise built-in errors for malformed literals.
+    except (
+        yaml.YAMLError,
+        ValueError,
+        RecursionError,
+        KeyError,
+        IndexError,
+        AttributeError,
+        OverflowError,
+    ):
         raise YorungeError("invalid_recipe") from None
     return validate(Recipe, value, "invalid_recipe")
 

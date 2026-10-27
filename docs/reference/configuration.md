@@ -10,11 +10,15 @@ TOML root alanları: `schema_version=1` (bool/string değil int), `active_profil
 
 Hizmet URL'leri HTTPS olmalı; userinfo/query/fragment, beklenmeyen port, kontrol karakteri ve karışmış bilinen Platform/LLM host'ları reddedilir. Özel host'u yerel şemaya kabul etmek o host'un güvenilirliğini veya API uyumunu doğrulamaz. IPv6 kapsamı köşeli parantezle korunur. Uzak hedef politikası sonraki HTTP işinde doğrulanmalıdır.
 
+Kontrol karakteri sınırı C0 (`U+0000–U+001F`), DEL (`U+007F`) ve C1 (`U+0080–U+009F`) aralıklarıdır; hem hizmet URL'sine hem veri yolu referansına uygulanır. Boş userinfo (`https://@host/...`) de reddedilir. Önceden yanlışlıkla kabul edilen bu girdiler artık config/reçete/kayıtlı Plan hatasıdır; geçerli Unicode dosya adları ve v1 dosyaları korunur.
+
 YAML alanları: `schema_version`, `task`, isteğe bağlı `profile`, `project`, `tool: {id}`, `execution: {backend}`, `model: {source, id, revision}`, `data: {manifest}`, `training: {method, epochs}`, `provider_options`. `schema_version` ve `task` zorunlu; model/veri bu taslakta isteğe bağlı referanstır. İlk model biçimi `source=huggingface`, `id=owner/model`, açık revision; eğitim yalnız `llm.train`, `method=sft`, int `epochs` 1–1000. Native görevlerin model/veri parametreleri henüz uygulanmadığı için reddedilir. `provider_options` yalnız boş nesne kabul eder; adaptör yokken doğrulanamayan seçenek geçirilmez. Veri yolu URL/kontrol karakteri içeremez; dosya varlığı, çalışma kökü, symlink ve içerik doğrulaması bu dilimde yapılmaz. Görevin yürütme planına dönüşmesi bunları gerektirir.
 
 Planlanabilir görev kimlikleri: sekiz araçlı LLM görevi (aşağıdaki defaults), `dataset.upload`, `vision.train.managed`, `llm.chat`. Araç adları seçim politikası kapsamında `forgelm`, `axolotl`, `llamafactory`, `unsloth`; **hiçbirinin adaptörü yoktur**. Native veri/LLM için `local` istemci, görsel yönetilen eğitim için `evren-managed`; araçlı LLM için `local` veya sözleşmesi henüz bilinmeyen `evren-workspace` taslakları gösterilebilir. Uyumsuz birleşimde fallback yoktur.
 
 TOML/YAML en çok 65.536 bayt, JSON Plan 262.144 bayt; UTF-8 ve normal dosya gerekir (salt okunur config symlink'i izlenebilir). YAML en çok 32 collection derinliği ve 2.048 parse olayı; alias, anchor, merge/özel tag ve çoklu belge reddedilir. JSON'da yinelenen anahtar ve NaN/Infinity reddedilir. Kaydedilen dosya CLI zarfı değil `result.data.model_dump_json()` Plan nesnesidir. Digest anahtarları sıralı, kompakt UTF-8 JSON üzerinden `digest` alanı hariç hesaplanır. Yüklemede şema, digest ve yerel plan politikası denetlenir; mevcut profil kullanılarak araç yeniden çözülmez.
+
+Standart YAML tag'i de doğru düğüm türünde olmalıdır: scalar tag'ine mapping veya mapping tag'ine sequence verilmez. PyYAML'ın `!!str {=: ...}` gibi mapping'i scalar'a dönüştüren uyumluluk kısayolu bu dar reçetede kabul edilmez; normal string veya `!!str "..."` kullanılır. Bozuk literal ve düğüm/tag birleşimleri ham parser istisnası yerine `invalid_recipe` üretir.
 
 ## Ayrım
 

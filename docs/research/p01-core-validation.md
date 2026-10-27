@@ -39,8 +39,26 @@ Ortam: CPython 3.11.18, macOS 27.0.1 arm64, Apple M5 Max (`Mac17,6`), 36 GiB RAM
 
 CLI/şema adaylarının kısa import deneyi ve seçimin gerekçesi [ADR-0008](../decisions/0008-offline-core-stack.md) içindedir. Benchmark betiği hedef aşımında hata kodu verir; hedefler değiştirilmedi.
 
+## P01-1 kapanış doğrulaması
+
+**Tarih:** 2026-10-27. [P01-1a kartı](../roadmap/tasks/p01-1a-core-acceptance-hardening.md) kullanıcı onayıyla ilk teslimin hata ve dağıtım kabulünü sağlamlaştırır. Yukarıdaki 87/100 test ve ilk başlangıç ölçümü tarihsel sonuçtur; bu bölüm sonraki kapanış kanıtını taşır. Yeni HTTP, state, secret çözümleme veya yürütme yeteneği eklenmedi.
+
+Bozuk YAML scalar literal ve scalar/mapping düğüm türü, C0/DEL/C1 manifest/URL karakterleri ve boş userinfo için gerçek dosya/API/CLI regresyonları eklendi. Geçersiz reçete kararlı `invalid_recipe`; konsol çıkış 2, boş stdout ve tek güvenli JSON hata kaydı üretir. Geçerli Unicode referans ve standart scalar tag desteği korunur; YAML mapping-to-scalar uyumluluk kısayolunun reddi [referansta](../reference/configuration.md) açıklanır. Capability sorgusunda uyumsuz sonuç ile plan hazırlamada hata ayrımı korunur.
+
+Yerel kontrol: **404 pytest geçti**, atlama/xfail yok; 59'u gerçek sentetik ZIP/tar arşiv senaryosudur. Format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock kontrolü temiz. Ham arşiv üye adı kök kırpılmadan doğrulanır; traversal/mutlak/kanonik olmayan yol, link/özel üye, duplicate ve dosya/dizin çakışması reddedilir. Tek sdist kökü ve dağıtım/sürüm eşleşmesi denetlenir. ZIP özgün adındaki NUL ve Python/uv arasında alternatif ad seçtiren Unicode Path extra alanı reddedilir; diğer düzgün metadata korunur. Gerçek wheel (17 üye) ve sdist (130 üye) ayrı temiz venv'lerde lock/hash runtime bağımlılıklarıyla kuruldu; depo dışından import kökeni/konsol/plan geçti. Son build'in arşiv kimliği ve SHA-256'sı `dist/verification.jsonl` içinde üretilir; belge/kaynak değişince sdist hash'i ve üye sayısı yeniden ölçülür.
+
+Başlangıç ölçümü: aynı macOS 27.0.1 arm64 / CPython 3.11.18 referans makinede, wheel'den ayrı temiz venv'e kurulum; editable değil. Profil 227 bayt, üç ısınma ve her komut için 30 ayrı süreç. İlk süreç/OS cache sınırı yukarıdakiyle aynıdır; bu fiziksel soğuk boot ölçümü değildir. [Ham kapanış ölçümleri](p01-1a-startup.json).
+
+| Yol | İlk süreç (ms) | Sıcak medyan (ms) | Sıcak p95 (ms) | Hedef | Durum |
+|---|---:|---:|---:|---:|---|
+| `--help` | 205,008 | 25,824 | 27,129 | ≤ 500 ms | Geçti |
+| `--version` | 25,091 | 25,486 | 26,266 | ≤ 500 ms | Geçti |
+| `context show` + TOML + JSON | 401,901 | 89,434 | 92,807 | ≤ 200 ms | Geçti |
+
+İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. [PR #4](https://github.com/HodeTech/Yorunge/pull/4) kullanıcı incelemesine sunuldu; uzak CI'ın son head sonucu ve tam teslim kaydı kartın PR bağlantısından izlenir. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
+
 ## Kalan sınır ve sonraki iş
 
 Gerçek EVREN/HTTP, credential kimliği/nesli/izin doğrulaması, capability cache/tazelik, SQLite operation/attempt/lease, execution/onay, gerçek ForgeLM/muadil adaptörleri, eğitim ve artefakt teslimi henüz planlandı. Aktarım RSS, eşzamanlılık ve ağ/deadline bütçeleri bu dilimde ölçülemez; ilgili fazlara aittir. İlk kabulden sonra Ubuntu/Python 3.11 CI kanıtı eklendi; diğer OS/Python sürümleri ve canlı hesap desteği doğrulanmadı.
 
-Sıradaki somut iş P01-2'nin secret/context bağları ve anahtar değişim testleridir; ardından P01-3 capability cache/plan geçerliliği. [Etkin yol haritası](../roadmap/current.md).
+Sonraki işin kesin kapsamı ve state/credential bağımlılık sırası [etkin yol haritasında](../roadmap/current.md) tutulur; tarihsel kabul kaydı iş sırasının ikinci kaynağı değildir.
