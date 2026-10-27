@@ -42,4 +42,5 @@ Gerçek tempfile/config yazma, izin/çatışma/bozuk dosya negatifleri ve gerçe
 
 - PR/commit: [yerel yönetim 662eb98](https://github.com/HodeTech/Yorunge/commit/662eb98), [review fix b7478e3](https://github.com/HodeTech/Yorunge/commit/b7478e3), [doctor kapanışı 6fbdafe](https://github.com/HodeTech/Yorunge/commit/6fbdafe).
 - Sonuç: İkişer fresh review turu, doğrulanmış bulguların fix/regresyon/odak kapanışı; 80 yönetim testi, tam suite ve kurulu wheel kullanıcı yolculuğu [kabul kaydında](../../research/p01-2-implementation-validation.md).
+- Development teslimi: [PR #6](https://github.com/HodeTech/Yorunge/pull/6), [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1); 2026-10-27 kullanıcı merge’i. [Merge/CI kaydı](../../research/p01-2-implementation-validation.md#development-merge-kapanışı).
 - Kalan sınır: Uzak auth/hesap keşfi/HTTP/cache bu kartta yoktur. Doctor K içeriği/uzak erişim doğrulamaz; config lock'una katılmayan editörün son check/replace aralığı belgeli sınırdır.

@@ -1,6 +1,6 @@
 # P01-2 — Kimlik ve bağlam paketi teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** B02/B13 Accepted; beş uygulama/review adımı ve Linux CI kabulü tamamlandı; PR #6 kullanıcı review'sine açık. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Alt kartlar kendi kabulüyle verified; paket [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development review'sindedir; merge/yayın yapılmadı.
+**Tarih:** 2026-10-27. **Durum:** Tamamlandı — dört alt kart verified, [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı tarafından development'a alındı ([merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1)). **Uygulama dalı:** feat/p01-2-identity-context, tarihî taban development@83bcd83. Beş adımın review/kabul ve merge kanıtı [uygulama kaydındadır](../research/p01-2-implementation-validation.md#development-merge-kapanışı). Bu merge paket yayını veya Master aktarımı değildir.
 
 ## Teslim sınırı
 
