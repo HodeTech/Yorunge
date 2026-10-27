@@ -58,6 +58,15 @@ TTL 300/60/30 saniye, cache kotası, plan kotası ve ayrı public komutlar dış
 ## Kullanıcıya sunulan kararlar
 
 1. **ADR-0013 önerisi:** Offline v1 korunurken ayrı v2, trusted producer sınırı, sınırlı TTL/cache ve açık stateful sorgu. Kullanıcıya kanıt JSON'u yükletip uzak supported iddiası kabul edilmez.
-2. **ADR-0014 önerisi:** Ayrı kalıcı execution hazırlığı/validity/onay, açık revoke/forget, yeni epoch'la bütün bağların geçersizliği ve operation öncesi dar restore/recover devamlılığı. Bakım önizlemesinin v2 çıktı farkı açıkça belgelenir.
+2. **ADR-0014 önerisi:** Ayrı kalıcı execution hazırlığı/validity/onay, açık list/revoke/forget, yeni epoch/clock generation ile bütün bağların geçersizliği ve operation öncesi dar restore/recover devamlılığı. Bakım önizlemesinin v2 çıktı farkı açıkça belgelenir.
 
 İki öneriyi birlikte uygulamak için yeni uzak hesap erişimi, ücretli işlem, araç kurulumu, repo izin değişikliği veya dependency seçimi gerekmiyor. Bu aşamada başka kullanıcı tercihi saptanmadı. Onay sonrası yeni güven sınırı/ADR ihtiyacı doğarsa o karar önce somutlaştırılır; rutin uygulama ayrıntısı tekrar onaya taşınmaz.
+
+## Önerilerin bağımsız review kaydı
+
+`13f50f4` hazırlık commit'inde üç yeni salt okuma ajanıyla birinci tur yapıldı: `p013_docs_r1_trust_clock` (GPT-6 Astra/high), `p013_docs_r1_recovery` ve `p013_docs_r1_scope_ux` (GPT-6.1 Sol/high). Root aşağıdaki iki P2 tasarım boşluğunu doğruladı:
+
+- High-watermark tek başına eski kanıtı kalıcı emekliye ayıramaz: 10:00–10:05 geçerli kayıt, 10:03 watermark, 10:02'ye dönüş ve 10:04'e yetişme örneği. Kalıcı clock generation/anomaly durumu, cache/plan/onay bağı ve hata rollback'inden bağımsız kalıcılık eklendi.
+- 1.024 plan kotasında eski çıktının ID'lerini kaybeden kullanıcının forget için aday bulma yolu yoktu. Bounded/cursor'lı plan listesi ve ID bilinmeden kota toparlanması kabulü eklendi; jobs listesi sonraki işte kalır.
+
+Recovery reviewer'ının forget confirmation kapsamı açıklık önerisi kabul edildi: digest değişmez planı sabitler, transaction anındaki bağlı onay birlikte silinir; önceki approval durumunu sabitleme iddiası yoktur. Sayısal hash toplam/byte/blok bütçesi ve büyüyen dosyada kaynak kabulü de yazıldı. Mevcut Accepted restore/operation sınırında doğrulanmış zayıflatma bulunmadı. İkinci tur ve son doğrulama gerçekleşince bu kayıt tamamlanır.

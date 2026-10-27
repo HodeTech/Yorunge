@@ -16,7 +16,7 @@ Kullanıcı planın hangi girdiler/hedef/yetkiyle hazırlandığını saklayabil
 
 ## Giren ve girmeyen kapsam
 
-Ayrı execution v2 snapshot, yerel dosya bağlama, kalıcı prepare/show/validate, güncel doğrulama sonrası açık digest approval/revoke/forget, kota ve yeni tüketicinin reset/restore/recover/preview uyumu girer. Mevcut offline Plan byte/digest ve seçim önceliği korunur. Run/start, operation/attempt/lease/jobs, HTTP, gerçek EVREN ve ForgeLM/muadil adaptörü yoktur. Test fixture pozitif hazırlığı ürün desteği değildir; public görevler adaptör eksikliğini blocked/non-executable gösterir.
+Ayrı execution v2 snapshot, yerel dosya bağlama, kalıcı prepare/list/show/validate, güncel doğrulama sonrası açık digest approval/revoke/forget, kota ve yeni tüketicinin reset/restore/recover/preview uyumu girer. Mevcut offline Plan byte/digest ve seçim önceliği korunur. Run/start, operation/attempt/lease/jobs, HTTP, gerçek EVREN ve ForgeLM/muadil adaptörü yoktur. Test fixture pozitif hazırlığı ürün desteği değildir; public görevler adaptör eksikliğini blocked/non-executable gösterir.
 
 ## Bağımlılıklar ve kararlar
 
@@ -29,15 +29,15 @@ Domain plan/girdi/onay kuralları; application güncel tipli producer, dosya ve 
 ## Kabul
 
 1. Eski v1 golden Plan aynı JSON/digest ile üretilir/yüklenir; güncel profil değişimi saved seçimi yeniden çözmez, v1 execution'a otomatik yükselmez. V2 yükleme/yapı bütünlüğü güncel validity veya onay sayılmaz.
-2. Gerçek yerel dosya, descriptor/stat ve bloklu hash ile bağlanır. Aynı boyut/mtime değişimi, symlink/kök dışı/absolute/traversal yol, hash sırasında değişim ve bütçe aşımı güvenli reddedilir. Manifest dosyasını hash'lemek tüm data closure/model ağırlığını doğrulamış gibi anlatılmaz.
+2. Gerçek yerel dosya, descriptor/stat ve bloklu hash ile bağlanır. Aynı boyut/mtime değişimi, symlink/kök dışı/absolute/traversal yol, hash sırasında değişim, 30 saniye/1 GiB okuma bütçesi aşımı güvenli reddedilir. 16 MiB/256 MiB/1 GiB fixture'da 1 MiB blokla hash belleği boyutla büyümez; kısmi hash başarı değildir. Manifest dosyasını hash'lemek tüm data closure/model ağırlığını doğrulamış gibi anlatılmaz.
 3. Fixture producer ile olumlu preparation ve public üreticide eksik araç/uzak kanıt engelleri ayrı test edilir; hiçbir public sentetik görev/backend veya run eklenmez. State/IO hatasında sahte başarı yoktur.
 4. Saved plan değişmeden güncel API kökü/origin/hesap/proje/credential ID/nesil/izin/kaynak/model revision/içerik/tool executable/environment/runtime/parametre farkında validity reddedilir. Aynı secret snapshot kullanılır; son transaction'da epoch/revision tekrar denetlenir; çatışma otomatik retry edilmez.
-5. Plan/capability/tahmin expiry'si ve saat anomalisi geçerliliği sınırlar. Yalnız yeni kontrol zamanı, aynı semantik karar için planı değiştirmez veya ilk expiry'yi uzatmaz. Güncel validation sonraki dispatch bileti değildir.
+5. Plan/capability/tahmin expiry'si ve kalıcı clock generation geçerliliği sınırlar. Saat watermark'a yetişince veya restart sonrası eski plan/onay canlanmaz. Yalnız yeni kontrol zamanı, aynı semantik karar için planı değiştirmez veya ilk expiry'yi uzatmaz. Güncel validation sonraki dispatch bileti değildir.
 6. Eksik/yanlış digest çıkış 4; blocked/geçersiz plan approval çıkış 2'dir. Doğru açık onay yalnız aynı plan/schema/digest/store/epoch/süre için kayıt olur. Tekrarlı geçerli onay idempotent yerel sonuçtur; revoke sonraki kullanımı reddeder. Non-TTY prompt/sessiz onay yoktur; insan kimliği veya exactly-once garantisi iddia edilmez.
-7. Plan/onay kotası ve bounded okuma gerçek DB'de sınanır. Forget doğru digest ile yalnız seçilen plan/onayı atomik siler; başka kayda veya cache/identity/backup'a dokunmaz. Planı unutmak uzak iptal değildir; gelecek operation bağı silmeyi engelleyecek açık devir koşuludur.
+7. Plan/onay kotası ve bounded/sayfalı list gerçek DB'de sınanır. Önceden ID bilgisi olmadan dolu store → list ile plan bul → doğru digest ile forget → yeni prepare akışı tamamlanır. Forget yalnız seçilen planı ve transaction anındaki bağlı onayı atomik siler; başka kayda veya cache/identity/backup'a dokunmaz. Eşzamanlı approval/revoke için bu davranış ayrı süreçte doğrulanır. Planı unutmak uzak iptal değildir; gelecek operation bağı silmeyi engelleyecek açık devir koşuludur.
 8. Reset/restore local-only dahil eski cache/plan/onay etkinliğini bitirir. Preview sonrası yalnız plan/onay değişiminde confirmation stale olur; cache-only değişim onayı bozmaz. Bakım preview v2 kayıp/etkisizleşme kapsamını gösterir.
 9. Gerçek önceki runtime intent'inde stage yok/eski stage/eski live; tamamlanmış pair'de kaynak backup kayıp; yeni şema/kalıcılık öncesi kesinti senaryoları recover ile güvenli tamamlanır. Bozuk payload epoch değişimiyle aklanmaz; operation-capable runtime'da eski snapshot/intent ile kaçış yoktur.
-10. CLI/Python prepare/show/validate/approve/revoke/forget aynı kuralları ve kontrollü JSON/hata zarfını kullanır. Secret/tag/K yeni public payload/digest/repr/loga girmez; show env/girdi okumaz. Metadata ve mevcut offline guard/performance bütçeleri korunur.
+10. CLI/Python prepare/list/show/validate/approve/revoke/forget aynı kuralları ve kontrollü JSON/hata zarfını kullanır. Secret/tag/K yeni public payload/digest/repr/loga girmez; list/show env/girdi okumaz. Metadata ve mevcut offline guard/performance bütçeleri korunur.
 
 ## Doğrulama
 

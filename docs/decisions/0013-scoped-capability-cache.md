@@ -18,7 +18,7 @@ Yeni scope şu bağların tamamını taşır:
 
 | Bağ | Anlam |
 |---|---|
-| `store_id`, `identity_epoch` | Yerel store ve etkin kimlik alanı; local-only kayıtlar da bağlıdır |
+| `store_id`, `identity_epoch`, `clock_generation` | Yerel store, etkin kimlik alanı ve kalıcı saat geçersizleştirme nesli; local-only kayıtlar da bağlıdır |
 | Hizmet/hedef | `service_id`, `service_origin`, `api_base_path`; uzak hedef binding v1 ile karşılaştırılır |
 | Hesap/proje | Seçilen `account_id`, `project_id`; seçim tek başına doğrulanmış uzak kimlik değildir |
 | Credential | Opak `credential_id`, pozitif `credential_revision`; referans adı, tag veya sır yoktur |
@@ -43,7 +43,9 @@ P01-3 ürün üreticisi yalnız mevcut yerel politika ve `not_verified` sonuçla
 
 Yeni zamanlar kanonik UTC, altı basamak mikrosaniye ve `Z` ile yazılır. Taze koşulu `checked_at <= now < expires_at` olur; tam expiry anı stale'dir. Policy üst sınırları `supported`/`unsupported` için 300, `requires_access` için 60, `unknown` için 30 saniyedir. Producer daha kısa süre seçebilir; uzatamaz. Birleşik kayıtta en erken expiry kullanılır. Bunlar hizmet garantisi değil, ilk Yörünge politikasıdır.
 
-Enjekte edilen saat UTC kayıt ile süreç içi monotonic deadline/yaş denetimini ayırır. Açık stateful cache/plan kullanımında kısa transaction, epoch'a bağlı kalıcı UTC high-watermark'ı ileri taşır. `now` önceki watermark'tan geriyse eski epoch cache'i geçerli sayılmaz; anomali görülmeden önceki kayıtlar yeniden taze olmaz. Yeni refresh de saat watermark'a yetişmeden kritik geçerlilik vermez. İleri sıçrayıp süresi bitmiş kayıtların saat geri dönünce canlanması engellenir. Gelecekteki veya bozuk producer zamanı kabul edilmez.
+Enjekte edilen saat UTC kayıt ile süreç içi monotonic deadline/yaş denetimini ayırır. Açık stateful cache/plan kullanımında kısa transaction, epoch'a bağlı kalıcı UTC high-watermark'ı ileri taşır. Clock metadata ayrıca pozitif signed-64 `clock_generation` ve `anomaly_active` taşır. `now` önceki watermark'tan geriye ilk düştüğünde aynı transaction generation'ı bir artırır ve anomaly işaretini kalıcılaştırır. Aynı geri-saat olayı sürdükçe generation yeniden artırılmaz; saat watermark'a yetişince anomaly kapanır. Taşma kontrollü hata olur, sayaç sarmaz veya otomatik reset olmaz.
+
+Cache, plan ve onay etkinliği **güncel clock generation** ile de eşleşmelidir. Anomali öncesi kayıtlar saat yetiştikten veya süreç yeniden açıldıktan sonra canlanmaz. Yeni refresh de anomaly sürerken kritik geçerlilik vermez. İleri sıçrayıp süresi bitmiş kayıtların saat geri dönünce canlanması aynı kapıyla engellenir. Gelecekteki veya bozuk producer zamanı kabul edilmez. Clock generation'ın ilerletilmesi, kullanım senaryosunun sonraki hata/ret nedeniyle rollback ettiği bir transaction içinde kaybolamaz; ret öncesi ayrı kısa kalıcı saat denetimi tamamlanır. Son cache/plan/onay commit'i bu neslin değişmediğini tekrar doğrular.
 
 Güvenilir dış saat yokken gözlenmeyen saat geri dönüşünü veya DB+K+clock metadata'sının birlikte eskiye alınmasını tam saptama iddiası yoktur. Persist edilmiş monotonic sayaç restart otoritesi olarak kullanılmaz. Cache tazeliği **yan etki yetkisi değildir**: kritik execution/approval geçerliliği [ADR-0014](0014-execution-plan-validity-and-approval.md) uyarınca güncel trusted producer doğrulaması ister.
 
@@ -51,7 +53,7 @@ Normal stateful sorgu miss/stale/clock-anomaly durumunu açık gösterir; eski `
 
 ### Transaction ve saklama
 
-Cache yazımı/etkin okuması son kısa transaction'da store/epoch ve kullanılan bütün credential ID/revision bağlarını tekrar denetler. Arada gözlem değişmişse `state_changed` olur; eski snapshot tekrar observe edilmez, env ikinci kez okunmaz ve otomatik retry yoktur. Ağ/hash işlemi SQL write transaction'ı dışında kalır.
+Cache yazımı/etkin okuması son kısa transaction'da store/epoch/clock generation ve kullanılan bütün credential ID/revision bağlarını tekrar denetler. Arada gözlem değişmişse `state_changed` olur; eski snapshot tekrar observe edilmez, env ikinci kez okunmaz ve otomatik retry yoktur. Ağ/hash işlemi SQL write transaction'ı dışında kalır. Açık cache kullanımının toplam bütçesi 5 saniye, lock/busy beklemesi en çok 1 saniyedir; disk I/O için katı duvar saati garantisi iddia edilmez.
 
 Bir kanonik cache kaydı en çok 32 KiB, en çok sekiz kanıt ve 128 izin/kaynak öğesi taşır. Etkin credential binding/nesil başına 128, store genelinde 1.024 kayıt sınırı vardır; credential'sız local kayıtlar epoch'a bağlı tek kota grubudur. Upsert transaction'ı önce eski epoch/nesil kayıtlarını, sonra expiry ve en eski doğrulama zamanı/anahtar sırasıyla kota fazlasını temizler. Eski nesil kayıtları aktif cache'te birikmez. Bu yalnız türetilmiş cache'e uygulanır; identity geçmişi, plan, onay, operation veya backup silinmez. Sınır mantıksal payload/satır sınırıdır; SQLite dosyasını küçültmek için otomatik VACUUM yapılmaz.
 

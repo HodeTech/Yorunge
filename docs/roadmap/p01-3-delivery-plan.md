@@ -22,7 +22,7 @@ Kullanıcının mevcut talebi uygulama, commit, bağımsız review ve son develo
 | Adım | Sonuç / commit sınırı | Başlama kapısı | Review odağı |
 |---|---|---|---|
 | 1 | P01-3a bütünü: v2 tipli kayıt/producer/resolver, gerçek SQLite cache+clock migration, epoch/nesil ve kota, CLI/Python açık cached/refresh; cache-only restore/recover uyumu | İki ADR onayı, P01-2 önkoşul kanıtı | Trust/TTL/saat; concurrency/migration/bakım; public uyumluluk/performans |
-| 2 | P01-3b hazırlık/validity: ayrı değişmez plan, gerçek yerel dosya bağlama, kalıcı kayıt/show/validate, plan tüketicisinin bakım önizleme/restore entegrasyonu | Adım 1 kabulü ve iki review turu | Girdi/TOCTOU; saved seçim/hedef/yetki; plan şeması/digest/store/epoch |
+| 2 | P01-3b hazırlık/validity: ayrı değişmez plan, gerçek yerel dosya bağlama, kalıcı kayıt/list/show/validate, plan tüketicisinin bakım önizleme/restore entegrasyonu | Adım 1 kabulü ve iki review turu | Girdi/TOCTOU; saved seçim/hedef/yetki; plan şeması/digest/store/epoch/clock |
 | 3 | P01-3b onay/yönetim: güncel validation sonrası digest onayı, revoke/forget/kota, bütün bakım v2 ve önceki runtime intent kurtarma kabulü | Adım 2 kanıtı ve iki review turu | Onay/replay/sır; reset/restore/legacy intent; CLI/Python/hata ve FK sınırı |
 | 4 | Bütünleşik teslim: uçtan uca offline/stateful/blocked akış, tam build/iki temiz kurulum, hacimli cache başlangıç ölçümü, kanonik belge/kart kapanışı ve son PR | Adım 1–3 kabulü ve her birinin iki review turu | Paket/sızıntı/kaynak; kanıt/durum/belge; gelecek operation tüketicisine devir |
 
@@ -45,4 +45,6 @@ Kartların ayrıntılı kabulü tek kaynaktır. Paket kapanışında bunların b
 
 ## Hazırlık teslim kaydı
 
-Ürün commit/test/benchmark/PR kanıtı henüz yoktur. Ön inceleme raporu, Proposed ADR'ler ve draft kartlar bu adımın çıktısıdır. İlk hazırlıkta belge kontrolü 102 dosyada, ajan rehberi kontrolü altı skill/yedi kartta sorunsuz ve diff boşluk kontrolü başarılıdır; runtime test/build/benchmark çalıştırılmadı. Kullanıcı onayı ve yeni belge review sonuçları gerçekleşince burada kaydedilir; gelecekteki ürün başarıları şimdiden yazılmaz.
+Ürün commit/test/benchmark/PR kanıtı henüz yoktur. Ön inceleme raporu, Proposed ADR'ler ve draft kartlar `13f50f4` hazırlık commit'inde kaydedildi. İlk hazırlıkta belge kontrolü 102 dosyada, ajan rehberi kontrolü altı skill/yedi kartta sorunsuz ve diff boşluk kontrolü başarılıdır; runtime test/build/benchmark çalıştırılmadı.
+
+Yeni üç ajanla ilk belge review turu tamamlandı: trust/clock (GPT-6 Astra/high), recovery/state ve scope/UX (GPT-6.1 Sol/high). Kalıcı saat geçersizleştirme mekanizmasının eksikliği ve kota dolunca ID keşif yolunun bulunmaması doğrulandı; clock generation ve bounded plan listesi eklendi. Forget'in eşzamanlı onayı silme anlamı ve hash kaynak bütçesi ayrıca açıklaştırıldı. İkinci fresh review ve son belge kontrolleri bekleniyor. Kararlar hâlâ Proposed, kartlar draft; ürün uygulaması yoktur.

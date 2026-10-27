@@ -18,7 +18,7 @@ Digest'e giren alan grupları:
 
 | Alan grubu | Bağlanan bilgi |
 |---|---|
-| Kimlik/sürüm | Plan ID, schema/policy sürümü, store ID ve identity epoch; local-only plan da bağlıdır |
+| Kimlik/sürüm | Plan ID, schema/policy sürümü, store ID, identity epoch ve clock generation; local-only plan da bağlıdır |
 | İstek/seçim | Görev, tipli parametreler, seçilen tool/execution ve seçim kaynağı |
 | Girdiler | Rol, sabit kök/göreli yol, güncel içerik SHA-256/boyut; model/veri sürümü ve varsa doğrulanmış içerik bağları |
 | Araç/ortam | Doğrulanmış sürüm/executable/environment/runtime kimliği; gerekli izinler ve parametre eşleme/kayıp raporu |
@@ -33,17 +33,19 @@ Kanonik JSON kodlaması ADR-0013 ile aynıdır; yalnız `digest` hariç bütün 
 
 Yerel dosya bağlama açık `input_root` altında, kök dahil symlink içermeyen düzenli dosyalarla yapılır. Absolute/kök dışı/dot traversal referansı reddedilir. Hash sınırlı bloklarla, monotonic toplam bütçesi altında ve SQL write transaction'ı dışında hesaplanır; descriptor/stat değişimi denetlenir. Aynı boyut/mtime veya eski hash cache'i güncel içerik yerine geçmez. Mevcut recipe'deki `data.manifest` için yalnız dosyanın kendi içeriği bağlanır; içerikteki bütün veri dosyalarının doğrulandığı iddia edilmez. Model revision etiketi tek başına değişmez model içeriği değildir. Görev adaptörünün tam girdi kapanışı doğrulanamıyorsa plan blocked kalır.
 
+Execution prepare/validate/approve toplam bütçesi 30 saniye, bir hash bloğu en çok 1 MiB ve bir kullanım senaryosunda yerel içerik okuma sınırı toplam 1 GiB'dir. Lock/busy beklemesi en çok 1 saniye ve toplam bütçenin içindedir. Boyut/bütçe aşımı açık yerel önkoşul hatasıdır; kısmi hash doğrulanmış sayılmaz. Bu ilk yerel bağlama politikasıdır, büyük veri/model aktarımının desteği veya fiziksel disk I/O için katı duvar saati garantisi değildir. 16 MiB/256 MiB/1 GiB sentetik dosyada hash belleğinin dosya boyutuyla büyümediği ve sınır/timeout retleri kabulde ölçülür.
+
 Her `prepare`, `validate` ve `approve` güncel tipli doğrulama portunu kullanır. Producer portları composition katmanında seçilir; public caller capability/yetki/artefakt doğrulama nesnesi enjekte edemez. Uzak kritik karar yalnız TTL içindeki cache'e dayanmaz; aynı secret snapshot'ıyla güncel hesap/yetki doğrulaması gerekir. P01-3'te bu adaptörler yokken public plan açık engellerle `draft`, `executable=false` kalır. Gerçek destek olmadığı halde `prepared` sonucu üretilmez. Pozitif hazırlık/onay kabulü test fixture portlarıyla, ürün backend'i eklenmeden yapılır.
 
 Validation kayıtlı seçimleri yeni profile göre değiştirmez; mevcut profil/hedef/yetki/girdiyle karşılaştırır. Gerekli bütün bağlar doğrulanmış/eşit/taze ve görev adaptörü mevcutsa hazırlık geçerli olabilir. Hedef/API kökü, hesap/proje, credential nesli, izin/kaynak sınırı, model içeriği/sürümü, executable/environment veya parametre değişimi geçersiz kılar. Salt profil adının aynı olması yeterli değildir. Producer yenilemesinde yalnız zaman ilerlemesi, aynı kapsam/semantik karar korunuyorsa eski planı değiştirmez; planın ilk expiry'si uzatılmaz. Kaynak/politika veya kararın anlamı değişmişse yeni plan gerekir.
 
-Plan geçerliliği en çok 300 saniye ve bütün gerekli kanıt/girdi/tahmin bağlarının en erken expiry'si kadardır. Tam expiry/saat anomalisi geçersizdir. Validation sonucu yalnız o snapshot'ın kontrolüdür; daha sonra yeniden kullanılacak dispatch bileti değildir. Son kısa transaction'da etkin store/epoch ve bütün credential ID/revision tekrar karşılaştırılır; çatışma `state_changed`, otomatik retry yoktur. Denetimden sonra env/profil tekrar çözülmez.
+Plan geçerliliği en çok 300 saniye ve bütün gerekli kanıt/girdi/tahmin bağlarının en erken expiry'si kadardır. Tam expiry/saat anomalisi veya ADR-0013'te kalıcılaştırılmış clock generation farkı geçersizdir. Saat watermark'a yetiştikten ve restart sonrasında da eski plan/onay canlanmaz. Validation sonucu yalnız o snapshot'ın kontrolüdür; daha sonra yeniden kullanılacak dispatch bileti değildir. Son kısa transaction'da etkin store/epoch/clock generation ve bütün credential ID/revision tekrar karşılaştırılır; çatışma `state_changed`, otomatik retry yoktur. Denetimden sonra env/profil tekrar çözülmez.
 
 `executable`, bu kullanım senaryosunda her zaman false'tur: P01-3 hiçbir run/start/dispatch sağlamaz. Gelecekte `prepared` ve geçerli onay bile P01-4'ün operation/attempt/lease kaydı ve P01-5/P02/P03'ün yürütüm kapıları olmadan yan etki başlatamaz. Aynı dosyanın denetim sonrası haricî süreççe değiştirilmesini tüm gelecek süre boyunca engellediğimiz iddia edilmez; yürütücü kendi son doğrulama/snapshot sınırını ayrıca korur.
 
 ### Açık onay ve iptal
 
-Onay plan gövdesindeki `approved=true` alanı değildir; ayrı yerel kayıttır. `plan_id`, schema sürümü, tam digest, store/epoch, doğrulanan bağlar, açık onay zamanı ve en geç plan expiry'siyle ilişkilidir. `approve` güncel validation'ı tekrar yapmadan onay yazamaz. Onaylı plan değişmez; başka içerik yeni ID/digest ister.
+Onay plan gövdesindeki `approved=true` alanı değildir; ayrı yerel kayıttır. `plan_id`, schema sürümü, tam digest, store/epoch/clock generation, doğrulanan bağlar, açık onay zamanı ve en geç plan expiry'siyle ilişkilidir. `approve` güncel validation'ı tekrar yapmadan onay yazamaz. Onaylı plan değişmez; başka içerik yeni ID/digest ister.
 
 CLI açık `--confirm PLAN_DIGEST`, Python açık `confirmation` argümanı ister; eksik/yanlış onay `approval_required` çıkış 4'tür. Prompt veya sessiz onay yoktur. Geçersiz/blocked plan `plan_not_valid` çıkış 2 ile reddedilir. Aynı hâlâ geçerli digest'in tekrar onayı aynı etkin kayıt sonucunu verir; bir yan etkiyi tekrar gönderme yetkisi değildir. `revoke` etkin onayı açıkça etkisizleştirir; sonraki onay yeniden validation ister. Onay kaydını sunmak veya bir modelin onay istediğini söylemek, kriptografik insan kimliği kanıtı değildir; UI/CI/MCP caller yetkilendirmesi ayrıca uygulanır.
 
@@ -53,7 +55,9 @@ Her plan için en çok bir güncel onay/iptal kaydı tutulur; tam insan denetim 
 
 Plan/onay gerçek SQLite tüketicileriyle yeni immutable migration adımlarında eklenir; capability cache temizliği bunlara dokunmaz. Her plan gövdesi en çok 64 KiB ve 128 girdi bağı, store en çok 1.024 plan taşır; otomatik plan/onay silinmez. Kota dolduysa kontrollü `plan_capacity_exceeded` çıkış 2 ve açık yerel yönetim yolu gösterilir. Sıcak sorgu bütün geçmişi belleğe yüklemez.
 
-Bu pakette `forget`, seçili planı ve güncel onayını aynı transaction'da, açık `--confirm PLAN_DIGEST` ile siler. Etkisi yalnız yerel kaydı unutmak olarak gösterilir; uzak işi iptal etmez. Yanlış digest veya değişmiş kayıt reddedilir. İleride operation bağı varsa plan silme bu bağı aşamaz; P01-4 tüketicisi aynı transaction/FK sınırını kurmak zorundadır. Yalnız onay durumunu değiştiren `revoke`, plan içeriğini silmez. Tekrarlı revoke kontrollü/idempotent yerel sonuçtur.
+Bu pakette bounded `list`, önceden ID bilinmeden kayıtlı planların ID/digest/görev/zaman/onay özetlerini bulmayı sağlar; varsayılan sayfa 50, üst sınır 100'dür. `(prepared_at, plan_id)` sıralı cursor sayfalaması kullanılır; payload veya sır okunmaz. Liste güncel execution validity iddia etmez; tarihsel/etkisizleşmiş planlar görünürdür. Bu plan kayıt yönetimidir, P01-4c'nin jobs/operation listesi değildir.
+
+`forget`, seçili planı ve transaction anında ona bağlı güncel onayı aynı transaction'da, açık `--confirm PLAN_DIGEST` ile siler. Etkisi yalnız yerel kaydı unutmak olarak gösterilir; uzak işi iptal etmez. Yanlış digest veya değişmiş plan gövdesi reddedilir. Confirmation onayın önceki durumunu sabitlemez; arada onay/revoke değişmiş olsa da kullanıcının doğruladığı plan ve o andaki bağlı onay birlikte unutulur. İleride operation bağı varsa plan silme bu bağı aşamaz; P01-4 tüketicisi aynı transaction/FK sınırını kurmak zorundadır. Yalnız onay durumunu değiştiren `revoke`, plan içeriğini silmez. Tekrarlı revoke kontrollü/idempotent yerel sonuçtur.
 
 ### Restore ve recover: P01-3 genişlemesi
 
@@ -71,6 +75,7 @@ Kaynak/stage/live full validation şema sürümüne duyarlıdır. Önceki sürü
 
 ```text
 yorunge plan execution prepare --task TASK [--recipe FILE] [--input-root PATH] [--state-dir PATH]
+yorunge plan execution list [--limit N] [--cursor CURSOR] [--state-dir PATH]
 yorunge plan execution show --plan-id ID [--state-dir PATH]
 yorunge plan execution validate --plan-id ID [--config FILE] [--state-dir PATH]
 yorunge plan execution approve --plan-id ID --confirm DIGEST [--state-dir PATH]
@@ -78,7 +83,7 @@ yorunge plan execution revoke --plan-id ID [--state-dir PATH]
 yorunge plan execution forget --plan-id ID --confirm DIGEST [--state-dir PATH]
 ```
 
-Python karşılıkları ayrı `prepare_execution_plan`, `show_execution_plan`, `validate_execution_plan`, `approve_execution_plan`, `revoke_execution_approval`, `forget_execution_plan` kullanım senaryolarıdır. Prepare mevcut seçim seçeneklerini, validate/approve güncel config/profile/project karşılaştırmasını kabul eder; show/revoke/forget seçimi değiştiren seçenek kabul etmez. Hepsi `Path`/strict girdi ve ortak tipli Result/YorungeError sınırını kullanır. `show` sır/girdi okumaz, validation yapıldı iddiası taşımaz; yapı doğrulaması güncel geçerlilik değildir. Validation sorgusu `valid=false` ve gerekçeleri normal raporlayabilir; bozuk istek/state kontrollü hatadır. Her yeni sonuçta `operation_id=null`; run veya sahte training başarısı yoktur.
+Python karşılıkları ayrı `prepare_execution_plan`, `list_execution_plans`, `show_execution_plan`, `validate_execution_plan`, `approve_execution_plan`, `revoke_execution_approval`, `forget_execution_plan` kullanım senaryolarıdır. Prepare mevcut seçim seçeneklerini, validate/approve güncel config/profile/project karşılaştırmasını kabul eder; list/show/revoke/forget seçimi değiştiren seçenek kabul etmez. Hepsi `Path`/strict girdi ve ortak tipli Result/YorungeError sınırını kullanır. `list`/`show` sır/girdi okumaz, validation yapıldı iddiası taşımaz; yapı doğrulaması güncel geçerlilik değildir. Validation sorgusu `valid=false` ve gerekçeleri normal raporlayabilir; bozuk istek/state kontrollü hatadır. Her yeni sonuçta `operation_id=null`; run veya sahte training başarısı yoktur.
 
 ## Değerlendirilen alternatifler
 
