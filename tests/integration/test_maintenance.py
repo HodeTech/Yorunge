@@ -619,7 +619,10 @@ def test_default_preview_text_exposes_same_counts_and_effects_as_json(
     assert machine.returncode == 0, machine.stderr
     assert text.returncode == 0, text.stderr
     data = json.loads(machine.stdout)["data"]
-    assert data["current"]["binding_count"] == 2
+    if action == "recover":
+        assert data["current"] is None
+    else:
+        assert data["current"]["binding_count"] == 2
     if data["source"] is not None:
         assert data["source"]["binding_count"] == 1
     assert data["digest"] in text.stdout

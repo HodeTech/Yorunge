@@ -226,3 +226,6 @@ S8707'nin gösterdiği akış, argparse girdisini HTTP request diye etiketleyip 
 İki P3 doğrulandı ve düzeltildi: bakım metninin plan/onay kaybı ifadesi credential geçmişini daraltıyordu; yeni metin credential, plan ve onay geçmişini birlikte kapsar. JSON/metin testinde current binding 2/source 1 gerçek farkı eklendi. CONTRIBUTING mktemp yolu macOS /var veya /tmp symlink atasıyla seed'i state_invalid yapıyordu; fixture repo içindeki yeni .local dizininde oluşturulur. Ürün dosya güvenliği gevşetilmedi.
 
 İlk fix commit'inde tam yerel takım **1.159 passed (136,79 s)**. Son metin/fixture komutu için hedefli kontrol ve gerçek 1.024 kayıt/30-process ölçümü ayrıca yapılır; ikinci fresh review turu ayrı ajanlarla tamamlanır. Reviewer'ların tam takım/build/benchmark çalıştırdığı iddia edilmez.
+
+
+R1 metin düzeltmesinin güçlendirilmiş testindeki ek count assertion'ı, recover.current alanının sözleşmedeki nullable durumunu göz ardı etti ve bir kez başarısız oldu. Assertion düzeltildi; current null olan recover ile gerçek current/source sayıları taşıyan reset/restore ayrı doğrulandı: üç metin/JSON testi geçti (2,19 s). Runtime'ın nullable önizleme sözleşmesi değiştirilmedi.
