@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-27T23:27:51.847088+00:00",
+  "project_key": "HodeTech_Yorunge",
+  "pull_request": 8,
+  "head_commit": "27f6f2764228a52dafa15b4ed238d28279e42550",
+  "issue": {
+    "key": "AaF_Zhd-QWCEle059UYw",
+    "rule": "pythonsecurity:S8707",
+    "component": "HodeTech_Yorunge:src/yorunge/adapters/input_files.py",
+    "line": 61,
+    "status": "RESOLVED",
+    "resolution": "FALSE-POSITIVE",
+    "issueStatus": "FALSE_POSITIVE"
+  },
+  "disposition": "issue-level false positive; no rule, severity, permission or quality gate setting changes",
+  "rationale_reference": "p01-3-implementation-validation.md",
+  "quality_gate": {
+    "status": "OK",
+    "conditions": [
+      {
+        "status": "OK",
+        "metricKey": "new_reliability_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "1"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_security_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "1"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_maintainability_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "1"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_coverage",
+        "comparator": "LT",
+        "periodIndex": 1,
+        "errorThreshold": "80"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_duplicated_lines_density",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "3",
+        "actualValue": "0.0"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_security_hotspots_reviewed",
+        "comparator": "LT",
+        "periodIndex": 1,
+        "errorThreshold": "100",
+        "actualValue": "100.0"
+      }
+    ],
+    "periods": [],
+    "ignoredConditions": false
+  }
+}

@@ -28,3 +28,6 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 - [P01-3 kullanıcı review sonrası yerel başlangıç ölçümü](p01-3-review-startup.json): zorunlu cache fixture ile kanonik .local seed, 1.024 kayıt ve 30 süreçte dört bütçe geçti.
 - [P01-3 kullanıcı review sonrası hash/bellek ölçümü](p01-3-review-memory.json): ilk fstat boyutuna bağlı strict read sınırıyla 16/256/1.024 MiB tam hash ve bellek doğrulaması.
 - [P01-3 kullanıcı review sonrası Linux bütçe reddi](p01-3-review-linux-startup-failed.json): d9d1117, AMD EPYC 7763; test/build geçti, cache p95 218,042 ms başarısız. Profil tanısı CI logunda korunur.
+
+- [P01-3 Sonar issue disposition ve gate makbuzu](p01-3-sonar-disposition.json): S8707 issue-bazlı False positive; kalite kapısı OK, kural/izin/eşik değişikliği yok.
+- [P01-3 kullanıcı review sonrası başarılı Linux ölçümü](p01-3-review-linux-startup-passed.json): 27f6f27/AMD EPYC 9V45, dört bütçe geçti; önceki farklı-CPU başarısızlığı korunur.
