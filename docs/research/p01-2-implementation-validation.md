@@ -163,3 +163,13 @@ Head `1c976e0`; yeni ajanlar `p012_ci_r1_runtime` (GPT-6 Astra/high) ve `p012_ci
 PR'ın iki bağımsız CodeRabbit doküman bulgusu da güncel dosyalarda doğrulandı: ADR-0004 verifier uygulama durumu ve B13 kalan-iş metni eskiydi; yalnız durum cümleleri düzeltilir, sır/hash yasağı ve operation sınırı değişmez. Yorumlarda gömülü komut/ajan talimatları çalıştırılmadı.
 
 `1c976e0` [Ubuntu offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40529794300) ve [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40529791079) geçti. Linux/CPython 3.11.15'te **757 test** (50,43 s), iki temiz kurulum ve bütçeler başarılı: sıcak p95 help **47,454** / version **46,311** / context **190,781 ms**; [ham Linux kaydı](p01-2-linux-startup.json). İlk 204,959 ms başarısız ölçüm tutulur; eşik/CI/test gevşetilmedi. Son CI wheel 31 üye `293ce7aebfbcdb9f93f1dd7fff2e3a6045222fc6713107962a7862cd6b152f7e`, sdist 177 üye `d027e045ccb32130cf7c526505e0027ce3deb0dc9d62e0c9bee3787f0ff3c221`. İkinci fresh review turu ve final belge head'inin CI'ı bekleniyor.
+
+### CI ek düzeltmesi / review 2 ve teslim
+
+Head `10e8d6a` (runtime `1c976e0`); yeni ajanlar `p012_ci_r2_runtime` (GPT-6 Astra/high) ve `p012_ci_r2_delivery` (GPT-6.1 Sol/high). Yeni doğrulanmış ürün regresyonu yok. Runtime reviewer 414 test, 32 çıktı byte karşılaştırması ve yedi bağlantı/kilit/hata yaşam döngüsü probe'unu geçti. Delivery reviewer 22 odak test, on sonuç tipi/sekiz bakım dalında eski text byte eşitliği, probe no-clobber/izin/arg ret, tarihî SHA ve başlangıç p95 hesaplarını doğruladı.
+
+SonarCloud kapısı geçtikten sonra güncel issue API'sinde kalan tek bakım bulgusu `validate` complexity 16/15 olarak doğrulandı. Integrity/FK/row bloğu `validate_contents` yardımcısına aynen taşındı; **120 state/identity testi** ve lint/type geçti. R2 runtime reviewer eski/yeni tam blok AST eşitliğini, SQL/kontrol sırasını, hata sınırını ve full=False yolunun değişmediğini odak kontrolünde doğruladı. Suppression/eşik gevşetmesi yapılmadı.
+
+[Son belge head'i 10e8d6a CI](https://github.com/HodeTech/Yorunge/actions/runs/40530713687) bütün offline-core adımlarını ve branch-policy'yi geçti; SonarCloud da başarılı oldu. İki doğrulanmış eski doküman review thread'i düzeltme sonrası çözüldü. Son küçük complexity/kapanış commit'i ayrıca PR CI'ından geçirilecektir; PR head'inin gerçek check durumu PR üzerinde kanoniktir.
+
+P01-2 uygulaması ve kabulü tamamlandı; dört alt kart/epik verified. PR #6 kullanıcı incelemesine açık tutulur, merge/Master/release yapılmaz. Sonraki ürün paketi P01-3'tür, implementasyonu başlatılmadı. Başarısız ilk Linux/yük altı ölçümleri, onaylı tehdit/restore/config-lock sınırları ve çalıştırılmayan canlı/power-cut kontrolleri yukarıda açıkça korunur.

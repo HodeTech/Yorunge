@@ -16,11 +16,11 @@
 
 ## Sıradaki somut iş
 
-**Aktif uygulama [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** Beş adım env, store/migration/backup, kimlik gözlemi, reset/restore ve config/doctor ikişer yeni review turuyla doğrulandı. Bütünleşik yerel doğrulama ve tek PR/CI kapanışı sürüyor; [gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
+**P01-2 uygulama/kabulü tamamlandı; [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı review'sine açık, henüz merge edilmedi.** P01-2a, P01-4a, P01-2b ve P01-2c verified. Beş uygulama adımının her biri iki fresh ajan review turundan geçti; ek bütünleşme ve CI kapanış review'ları tamamlandı. Kanıt: [uygulama kaydı](../research/p01-2-implementation-validation.md), [paket planı](p01-2-delivery-plan.md). Uygulama `feat/p01-2-identity-context` dalında, development tabanı `83bcd83`'tür.
 
-Onay öncesi iki incelemenin [doğrulama/düzeltme kaydı](../research/p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması) rapordadır. Reset/restore ayrımı, kalıcı no-clobber backup, migration değişmezleri ve [ortak binding v1](../reference/credential-binding-v1.md) Accepted tasarıma dahildir. Alt iş durumları uygulama/bağımlılık kanıtı olmadan ilerletilmedi.
+B02/B13 Accepted kararları, kalıcı kimlik/nesil, reset/restore ve yerel init/context/doctor teslim edildi. HTTP auth, hesap keşfi, capability cache, execution geçerliliği ve operation/lease ayrı işlerdir. Offline Plan biçimi ve yürütülemezliği korunur; doctor/env varlığı uzak erişim başarısı değildir.
 
-P01-2 alt kartları verified; aktif iş bütünleşik kabul ve kullanıcı review'si için tek PR'dır. Ardından P01-3 → P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. Alt kartların güncel hazırlık/teslim durumu metadata'sındadır; aynı PR'da alt iş commit/test/review birimidir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md).
+Sıradaki ürün paketi **P01-3**: P01-3a kapsam/kanıt/tazelik bağlı capability cache ve P01-3b execution planı/onay bağı. Gerekli P01-2b/P01-4a teslim edildi; P01-3 implementasyonu başlatılmadı. Ardından P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır.
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 

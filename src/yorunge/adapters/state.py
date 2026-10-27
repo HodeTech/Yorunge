@@ -205,18 +205,22 @@ def validate(
         raise YorungeError("state_invalid") from None
     result = metadata(connection)
     if full:
-        if connection.execute("PRAGMA integrity_check(1)").fetchall() != [("ok",)]:
-            raise YorungeError("state_invalid")
-        if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
-            raise YorungeError("state_invalid")
-        rows = connection.execute(
-            "SELECT identity_epoch,service_id,service_origin,api_base_path,reference_type,"
-            "reference_name,credential_id,revision,tag_format,tag,observed_at "
-            "FROM credential_bindings"
-        )
-        for row in rows:
-            validate_binding_row(row)
+        validate_contents(connection)
     return version, result
+
+
+def validate_contents(connection: sqlite3.Connection) -> None:
+    if connection.execute("PRAGMA integrity_check(1)").fetchall() != [("ok",)]:
+        raise YorungeError("state_invalid")
+    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+        raise YorungeError("state_invalid")
+    rows = connection.execute(
+        "SELECT identity_epoch,service_id,service_origin,api_base_path,reference_type,"
+        "reference_name,credential_id,revision,tag_format,tag,observed_at "
+        "FROM credential_bindings"
+    )
+    for row in rows:
+        validate_binding_row(row)
 
 
 def validate_binding_row(row: tuple[Any, ...]) -> None:

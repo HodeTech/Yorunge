@@ -6,6 +6,9 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Fixed — 2026-10-27
 
+- Yerel context yolunda kullanılmayan kimlik/bakım modellerinin eager import maliyeti kaldırıldı; Linux başlangıç bütçesi korundu.
+- Araştırma probe çıktıları belgelenmiş sabit no-clobber hedeflere sınırlandı.
+
 - Bozuk YAML scalar ve collection tag'leri güvenli `invalid_recipe` hatasına dönüştürüldü; ham parser istisnası ve girdi yansıması kapatıldı.
 - Manifest/hizmet URL'sinde C0/DEL/C1 kontrol karakterleri ve boş URL userinfo reddedildi; YAML scalar/mapping düğüm türleri doğrulandı.
 - Capability sorgusunun destek kaydı ile plan hazırlamanın hata çıkışı belgede ayrıldı.

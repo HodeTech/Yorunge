@@ -47,6 +47,6 @@ Gerçek env adaptörü, sentetik değer ve gerçek şema kullanılır; parser ve
 
 ## Teslim kaydı
 
-- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/41c7dba), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/b319001); tek P01-2 PR'ı paket sonunda açılacak.
+- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/41c7dba), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/b319001); [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı review'sine açık.
 - Sonuç: 466 test, Ruff format/lint, strict mypy, belge/ajan denetimleri; wheel/sdist iki temiz kurulum ve başlangıç bütçeleri geçti. Üçer yeni ajanla iki bağımsız tur tamamlandı; ilk turdaki üç P2 regresyonla giderildi, ikinci turda açık bulgu kalmadı. [Ayrıntılı kanıt](../../research/p01-2-implementation-validation.md).
 - Kalan sınır: Bu alt kartta açık doğrulanmış bulgu/kabul işi yok. Kalıcı kimlik/state, init/doctor, HTTP/auth ve uzak execution P01-2a'nın teslimi değildir; sonraki adımlar kendi kanıtıyla kapanır.

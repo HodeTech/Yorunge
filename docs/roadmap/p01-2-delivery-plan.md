@@ -1,6 +1,6 @@
 # P01-2 — Kimlik ve bağlam paketi teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** B02/B13 Accepted; beş uygulama/review adımı tamamlandı, bütünleşik PR/CI kapanışı sürüyor. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Alt kartlar kendi kabulüyle verified; paket tek PR/son CI kanıtını bekliyor.
+**Tarih:** 2026-10-27. **Durum:** B02/B13 Accepted; beş uygulama/review adımı ve Linux CI kabulü tamamlandı; PR #6 kullanıcı review'sine açık. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Alt kartlar kendi kabulüyle verified; paket [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development review'sindedir; merge/yayın yapılmadı.
 
 ## Teslim sınırı
 
@@ -19,7 +19,7 @@ Bu paketin kullanıcı sonucu: doğru yerel profil/hizmet/proje seçimi, açık 
 | 4 | P01-2c — yerel init/context/doctor | Adım 1/2/3 kanıtı | [Yerel yönetim kartı](tasks/p01-2c-local-context-management.md) |
 | 5 | Bütünleşik kabul ve tek PR | Dört alt işin kendi kabulü | Aşağıdaki paket kapanışı |
 
-Adım 0'ın karar onayı tamamlandı; kullanıcı P01-2 uygulamasını yetkilendirdi. Sonraki kartlar kendi uygulama/bağımlılık kanıtlarını bekler. P01-2b büyük olduğu için iki uygulama/review adımına ayrılır: önce kimlik gözlemi, sonra reset/restore. Ayrı kart/PR üretilmez; kart iki adımın kabulü tamamlandığında kapanır.
+Adım 0'ın karar onayı tamamlandı; kullanıcı P01-2 uygulamasını yetkilendirdi. Paket alt kartları kendi uygulama/bağımlılık kanıtlarıyla verified oldu. P01-2b büyük olduğu için iki uygulama/review adımına ayrılır: önce kimlik gözlemi, sonra reset/restore. Ayrı kart/PR üretilmez; kart iki adımın kabulü tamamlandığında kapanır.
 
 Uygulama/review adımları: **1** P01-2a env çözümleme ve hedef kapısı; **2** P01-4a güvenli store/migration/backup ve key temeli; **3** P01-2b kimlik/nesil gözlemi; **4** P01-2b reset/identity-only restore; **5** P01-2c init/profil/proje/doctor. Bütünleşik kapanış ve tek PR bu beş adımın iki review turundan sonra gelir. [Gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
 
@@ -39,4 +39,4 @@ Alt işin `verified` kanıtı aynı çalışma dalındaki gerçek commit/test/re
 
 ## Hazırlık ve kabul edilen kararlar
 
-[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md), bağlı binding v1 ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik kararı olarak ayrılır. Karar kapısı kapanmıştır; ürün commit/kabul kanıtı uygulama kaydındadır; PR/CI kapanışı ayrıca kaydedilir.
+[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md), bağlı binding v1 ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik kararı olarak ayrılır. Karar kapısı kapanmıştır; ürün commit, review ve PR/CI kanıtı uygulama kaydındadır.

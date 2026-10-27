@@ -7,7 +7,7 @@
 | ID | Sınır | Önkoşul | Kabul kanıtı / kalan | Durum |
 |---|---|---|---|---|
 | P01-1 | Paket, CLI, şema ve YAML seçimi; lock/build | P00 | [İlk dilim](../research/p01-core-validation.md), [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [P01-1a kapanışı](tasks/p01-1a-core-acceptance-hardening.md); HTTP seçimi P01-5a'ya taşındı | `verified` |
-| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); dört alt kart verified; bütünleşik PR/CI kapanışı sürüyor | `in_review` |
+| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); dört alt kart verified; [PR #6](https://github.com/HodeTech/Yorunge/pull/6), iki review turu/adım ve Linux CI kanıtı [kayıtta](../research/p01-2-implementation-validation.md) | `verified` |
 | P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; hesap cache'i ve yürütme geçerliliği eksik | `partial` |
 | P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | P01-4a temeli P01-2 PR'ında verified; operation/lease henüz yok | `partial` |
 | P01-5 | HTTP, ortak sonuç/hata, akış ve iptal | P01-2a | CLI/Python yerel zarf mevcut; taşıma/yürütüm eksik | `partial` |
