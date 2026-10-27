@@ -87,6 +87,22 @@ def check_member_tree(entries: dict[tuple[str, ...], bool]) -> None:
             raise ValueError("archive file used as a directory")
 
 
+def check_zip_extra(extra: bytes) -> None:
+    offset = 0
+    while offset < len(extra):
+        if len(extra) - offset < 4:
+            raise ValueError("malformed ZIP extra field")
+        identifier = int.from_bytes(extra[offset : offset + 2], "little")
+        size = int.from_bytes(extra[offset + 2 : offset + 4], "little")
+        offset += 4
+        if size > len(extra) - offset:
+            raise ValueError("malformed ZIP extra field")
+        # uv honors this alternate name whereas Python's zipfile exposes the base name.
+        if identifier == 0x7075:
+            raise ValueError("alternate ZIP member names are not permitted")
+        offset += size
+
+
 def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
     if parts[0] not in ALLOWED_SDIST:
         raise ValueError("unexpected sdist member")
@@ -162,6 +178,7 @@ def inspect_archive(path: Path) -> list[str]:
         metadata = f"yorunge-{fields[1]}.dist-info"
         with zipfile.ZipFile(path) as wheel:
             for item in wheel.infolist():
+                check_zip_extra(item.extra)
                 # ZipInfo.filename is truncated at NUL; retain the decoded original name.
                 name = item.orig_filename
                 directory = name.endswith("/")

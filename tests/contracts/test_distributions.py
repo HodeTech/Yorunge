@@ -3,9 +3,11 @@
 import io
 import runpy
 import stat
+import struct
 import tarfile
 import warnings
 import zipfile
+import zlib
 from pathlib import Path
 
 import pytest
@@ -18,7 +20,7 @@ ROOT = "yorunge-0.1.0.dev0"
 METADATA = "yorunge-0.1.0.dev0.dist-info"
 
 
-def wheel(tmp_path, entries):
+def wheel(tmp_path, entries, *, extra=b""):
     path = tmp_path / f"{ROOT}-py3-none-any.whl"
     with zipfile.ZipFile(path, "w") as archive, warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="Duplicate name:", category=UserWarning)
@@ -26,6 +28,7 @@ def wheel(tmp_path, entries):
             item = zipfile.ZipInfo(name)
             item.create_system = 3
             item.external_attr = mode << 16
+            item.extra = extra
             archive.writestr(item, b"synthetic")
     return path
 
@@ -120,6 +123,29 @@ def test_wheel_rejects_nul_in_original_zip_header_name(tmp_path):
         assert "\x00" in item.orig_filename
     with pytest.raises(ValueError, match="unsafe"):
         inspect_archive(path)
+
+
+def test_wheel_rejects_alternate_unicode_member_name(tmp_path):
+    name = "yorunge/member.py"
+    value = b"\x01" + struct.pack("<I", zlib.crc32(name.encode())) + b"alternate_member.py"
+    extra = struct.pack("<HH", 0x7075, len(value)) + value
+    path = wheel(tmp_path, [(name, stat.S_IFREG | 0o644)], extra=extra)
+    with zipfile.ZipFile(path) as archive:
+        assert archive.infolist()[0].orig_filename == name
+    with pytest.raises(ValueError, match="alternate ZIP member names"):
+        inspect_archive(path)
+
+
+def test_wheel_rejects_incomplete_extra_field(tmp_path):
+    path = wheel(tmp_path, [("yorunge/member.py", stat.S_IFREG | 0o644)], extra=b"\x01")
+    with pytest.raises(ValueError, match="malformed ZIP extra"):
+        inspect_archive(path)
+
+
+def test_wheel_preserves_other_well_formed_extra_metadata(tmp_path):
+    extra = struct.pack("<HH", 0xCAFE, 4) + b"test"
+    path = wheel(tmp_path, [("yorunge/member.py", stat.S_IFREG | 0o644)], extra=extra)
+    assert inspect_archive(path) == ["yorunge/member.py"]
 
 
 @pytest.mark.parametrize("kind", [stat.S_IFREG, stat.S_IFDIR])

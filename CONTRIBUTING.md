@@ -49,6 +49,8 @@ uv build
 
 Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye adı kök kırpılmadan denetlenir; mutlak/traversal/kanonik olmayan yol, yinelenen ad, dosya/dizin çakışması, link ve özel dosya reddedilir. Sdist'in tek kökü arşiv adıyla, wheel metadata dizini dağıtım/sürümle eşleşir. `dist/verification.jsonl` her başarılı temiz kurulum için arşiv adı/SHA-256/üye sayısı/köken/smoke sonucu taşır; komutun başarısı ve iki kayıt birlikte tam kabul kanıtıdır. Hatalı koşunun kısmi kaydı başarı sayılmaz. CI aynı kayıtları iş günlüğünde gösterir.
 
+ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` ile Python'un farklı ad seçmesine yol açan Unicode Path (`0x7075`) alternatif ad alanı ve bozuk extra metadata reddedilir; diğer düzgün metadata alanları korunur. Bu denetim bu deponun ürettiği paketler içindir, genel amaçlı arşiv çıkarıcı değildir.
+
 Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
 
 ## Doğrulama seçimi
