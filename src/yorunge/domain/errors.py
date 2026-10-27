@@ -20,6 +20,11 @@ ErrorCode = Literal[
     "state_changed",
     "credential_revision_exhausted",
     "state_restore_unsupported",
+    "config_exists",
+    "config_conflict",
+    "config_busy",
+    "config_write_failed",
+    "config_write_uncertain",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -54,6 +59,16 @@ MESSAGES: dict[ErrorCode, str] = {
     "state_restore_unsupported": (
         "Bu runtime veya snapshot türü için DB restore desteklenmiyor. Kimlik reset'i ayrıdır."
     ),
+    "config_exists": "Config zaten var. İlk oluşturma mevcut dosyanın üzerine yazmaz.",
+    "config_busy": "Config başka bir yazım tarafından kilitli. Etkin işlemi kontrol edin.",
+    "config_conflict": (
+        "Config başka bir yazımla değişti. Güncel dosyayı inceleyip yeniden hazırlayın."
+    ),
+    "config_write_failed": "Config yazılamadı. Dosya izinlerini ve diski kontrol edin.",
+    "config_write_uncertain": (
+        "Config yayınlandı veya yayın durumu belirsiz. "
+        "Dosyayı ve backup'ı inceleyin; otomatik tekrar yok."
+    ),
 }
 
 
@@ -63,7 +78,13 @@ class YorungeError(Exception):
     def __init__(self, code: ErrorCode) -> None:
         self.code = code
         self.message = MESSAGES[code]
-        self.exit_code = 3 if code in ("credential_unavailable", "invalid_credential") else 2
+        self.exit_code = (
+            5
+            if code == "config_write_uncertain"
+            else 3
+            if code in ("credential_unavailable", "invalid_credential")
+            else 2
+        )
         super().__init__(self.message)
 
     def envelope(self) -> dict[str, object]:

@@ -47,7 +47,7 @@ Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarın
 .venv/bin/yorunge context credential --service evren-platform --config examples/profile.toml --output json
 ```
 
-Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Diğer yerel komutlar env sırrını okumaz.
+Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi de seçili env'yi açık istekle okur; diğer yerel komutlar okumaz.
 
 ## Ürün yaklaşımı
 
@@ -90,3 +90,16 @@ Proje kayıtları: [değişiklik günlüğü](CHANGELOG.md), [güvenlik bildirim
 ## Lisans ve proje ilişkisi
 
 [MIT License](LICENSE). Yörünge, HodeTech altında geliştirilen bağımsız bir yardımcı araç projesidir. EVREN adı uyumluluk hedefini belirtir; platformun geliştirdiği veya onayladığı bir ürün olduğu iddia edilmez. ForgeLM ayrı bir projedir ve kendi lisansı/sürüm döngüsüyle kullanılır.
+
+
+Yerel ayar ve kimlik yönetimi:
+
+```sh
+.venv/bin/yorunge init --profile work
+.venv/bin/yorunge context profiles
+.venv/bin/yorunge context set-project project-id
+.venv/bin/yorunge doctor --output json
+.venv/bin/yorunge context identity --service evren-platform --output json
+```
+
+`init` var olan config'i ezmez; profil/proje değişimleri özgün dosyayı yedekler. Doctor env/K içeriği veya uzak erişimi kontrol etmez; sonuçtaki durumları değerlendirin. Kimlik gözlemi yerel DB/key oluşturabilir; ağ açmaz veya execution izni vermez. Reset/restore için önce etki önizlemesi ve açık digest onayı gerekir; restore snapshot sonrası geçmişi kaybedebilir. [Config/doctor sözleşmesi](docs/reference/configuration.md#yerel-config-yazma-ve-tanılama), [kimlik bağları](docs/reference/credential-binding-v1.md) ve [bakım/kurtarma](docs/reference/local-state.md#açık-reset-restore-ve-kesilmiş-restore-kurtarması).

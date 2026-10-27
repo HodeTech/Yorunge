@@ -8,6 +8,13 @@ from pydantic import ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
+from yorunge.domain.configuration import (
+    ConfigUpdate,
+    Diagnostic,
+    DoctorReport,
+    ProfileSummary,
+    ProfilesView,
+)
 from yorunge.domain.credentials import CredentialCheck, CredentialObservation, ServiceId
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.maintenance import MaintenancePreview
@@ -101,11 +108,10 @@ def recover_state(confirmation: str, *, state_dir: Path | None = None) -> Result
     )
 
 
-def _context(
-    config: Path | None, request: Request, recipe: Recipe | None
-) -> tuple[Context, Profile]:
+def _configuration(config: Path | None) -> tuple[Configuration, bool]:
     if config is not None and not isinstance(config, Path):
         raise YorungeError("invalid_request")
+    exists = True
     if config is None:
         config = Path.home() / ".config" / "yorunge" / "config.toml"
         try:
@@ -120,6 +126,13 @@ def _context(
             configuration = load_config(config)
     else:
         configuration = load_config(config)
+    return configuration, exists
+
+
+def _context(
+    config: Path | None, request: Request, recipe: Recipe | None
+) -> tuple[Context, Profile]:
+    configuration, _ = _configuration(config)
     name = request.profile or (recipe.profile if recipe else None) or configuration.active_profile
     if name not in configuration.profiles:
         raise YorungeError("profile_not_found")
@@ -140,6 +153,144 @@ def show_context(
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     context, _ = _context(config, request, None)
     return Result[Context](data=context)
+
+
+def initialize_config(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import initialize
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    return Result[ConfigUpdate](
+        data=initialize(config, request.profile or "default", request.project)
+    )
+
+
+def list_profiles(*, config: Path | None = None) -> Result[ProfilesView]:
+    configuration, exists = _configuration(config)
+    return Result[ProfilesView](
+        data=ProfilesView(
+            config_exists=exists,
+            active_profile=configuration.active_profile,
+            profiles=tuple(
+                ProfileSummary(
+                    name=name,
+                    active=name == configuration.active_profile,
+                    account_id=value.account_id,
+                    project_id=value.project_id,
+                )
+                for name, value in configuration.profiles.items()
+            ),
+        )
+    )
+
+
+def activate_profile(name: str, *, config: Path | None = None) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import activate
+
+    request = validate(Request, {"profile": name}, "invalid_request")
+    if request.profile is None:
+        raise YorungeError("invalid_request")
+    return Result[ConfigUpdate](data=update(config, request.profile, activate))
+
+
+def set_project(
+    project: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import project_selection
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    if request.project is None:
+        raise YorungeError("invalid_request")
+    return Result[ConfigUpdate](
+        data=update(
+            config,
+            request.profile,
+            lambda value, name: project_selection(value, name, request.project),
+        )
+    )
+
+
+def clear_project(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import project_selection
+
+    request = validate(Request, {"profile": profile}, "invalid_request")
+    return Result[ConfigUpdate](
+        data=update(
+            config,
+            request.profile,
+            lambda value, name: project_selection(value, name, None),
+        )
+    )
+
+
+def diagnose_local(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DoctorReport]:
+    from yorunge.adapters.diagnostics import check_state
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    if (config is not None and not isinstance(config, Path)) or (
+        state_dir is not None and not isinstance(state_dir, Path)
+    ):
+        raise YorungeError("invalid_request")
+    checks: list[Diagnostic] = []
+    try:
+        configuration, exists = _configuration(config)
+        checks.append(Diagnostic(name="configuration", status="ok" if exists else "missing"))
+        name = request.profile or configuration.active_profile
+        if name not in configuration.profiles:
+            raise YorungeError("profile_not_found")
+        selected = configuration.profiles[name]
+        checks.extend(
+            (
+                Diagnostic(name="profile", status="ok"),
+                Diagnostic(
+                    name="platform_reference",
+                    status="ok" if selected.platform_key_env else "missing",
+                ),
+                Diagnostic(
+                    name="llm_reference", status="ok" if selected.llm_key_env else "missing"
+                ),
+            )
+        )
+    except YorungeError as error:
+        if error.code == "profile_not_found":
+            checks.append(Diagnostic(name="profile", status="invalid", code=error.code))
+        else:
+            checks.append(Diagnostic(name="configuration", status="invalid", code=error.code))
+            checks.append(Diagnostic(name="profile", status="not_checked"))
+        checks.extend(
+            (
+                Diagnostic(name="platform_reference", status="not_checked"),
+                Diagnostic(name="llm_reference", status="not_checked"),
+            )
+        )
+    checks.extend(check_state(state_dir))
+    checks.append(Diagnostic(name="remote_access", status="not_checked"))
+    return Result[DoctorReport](
+        data=DoctorReport(
+            checks=tuple(checks),
+            issue_count=sum(item.status in ("missing", "invalid", "busy") for item in checks),
+        )
+    )
 
 
 def check_credential(

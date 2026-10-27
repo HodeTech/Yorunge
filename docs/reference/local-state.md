@@ -1,6 +1,6 @@
 # Yerel state kullanım sözleşmesi
 
-**Durum:** P01-4a temeli iki review turuyla doğrulandı; kimlik gözlemi uygulandı; reset/restore adımının kabulü sürüyor. **Tarih:** 2026-10-27. Tasarım nedeni ve kanonik dayanıklılık/migration kuralları [ADR-0011](../decisions/0011-state-foundation-and-migrations.md), key yaşam döngüsü [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) içindedir.
+**Durum:** P01-4a temeli iki review turuyla doğrulandı; kimlik gözlemi uygulandı; reset/restore adımı iki review turuyla doğrulandı. **Tarih:** 2026-10-27. Tasarım nedeni ve kanonik dayanıklılık/migration kuralları [ADR-0011](../decisions/0011-state-foundation-and-migrations.md), key yaşam döngüsü [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) içindedir.
 
 ## Açık oluşturma ve doğrulama
 

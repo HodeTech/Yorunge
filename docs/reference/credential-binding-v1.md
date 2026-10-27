@@ -1,6 +1,6 @@
 # Hizmet hedefi ve özel credential binding v1
 
-**Durum:** Benimsenmiş — Accepted ADR-0012'nin bağlı sözleşmesi; Hedef kapısı, secret byte sınırı ve kalıcı binding/HMAC gözlemi uygulandı; reset/restore kabulü sürüyor. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
+**Durum:** Benimsenmiş — Accepted ADR-0012'nin bağlı sözleşmesi; Hedef kapısı, secret byte sınırı ve kalıcı binding/HMAC gözlemi uygulandı; gözlem ve reset/restore ikişer review turuyla doğrulandı. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
 
 ## Hizmet hedefi: service-target-v1
 
@@ -69,4 +69,4 @@ Sentetik K/secret, tam binding/key-check JSON'u, UTF-8 uzunlukları, mesaj hex'i
 
 Aynı altı alan/değer tekrarında kimlik, nesil ve zaman değişmez. Gözlenen değer değişiminde aynı kimliğin nesli transaction içinde bir artar; A→B→A 1→2→3'tür. Eşzamanlı bağımsız env snapshot'ları kilit edinme sırasıyla kaydedilir; süreçlerin başlama zamanı veya uzak sunucunun o andaki durumu hakkında sıra garantisi yoktur. Hiç gözlenmeyen değişimler ve aynı değerin uzak izin değişimleri saptanamaz. Nesil 2^63−1 iken farklı değer `credential_revision_exhausted` verir; otomatik reset olmaz.
 
-Hesap/proje public context'te kalır, binding anahtarının yerine geçmez. Bu gözlem eski offline Plan'a kimlik eklemez veya yürütme yetkisi vermez. Reset/restore kabulü sonraki uygulama adımındadır.
+Hesap/proje public context'te kalır, binding anahtarının yerine geçmez. Bu gözlem eski offline Plan'a kimlik eklemez veya yürütme yetkisi vermez. Açık reset/restore/recover [state sözleşmesinde](local-state.md) tanımlıdır.
