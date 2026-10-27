@@ -25,6 +25,8 @@ def importing(name, *args, **kwargs):
 builtins.__import__ = importing
 confirmation = "0" * 64
 calls = {
+    "cache": lambda: api.query_capabilities(task="llm.train", state_dir=state_dir),
+    "refresh": lambda: api.query_capabilities(task="llm.train", refresh=True, state_dir=state_dir),
     "state-init": lambda: api.initialize_state(state_dir=state_dir),
     "reset-preview": lambda: api.preview_identity_reset(state_dir=state_dir),
     "reset": lambda: api.reset_identity(confirmation, state_dir=state_dir),
@@ -44,6 +46,8 @@ calls = {
     "doctor": lambda: api.diagnose_local(config=config, state_dir=state_dir),
 }
 commands = {
+    "cache": ["capabilities", "--task", "llm.train", "--cached"],
+    "refresh": ["capabilities", "--task", "llm.train", "--refresh"],
     "state-init": ["state", "init"],
     "reset-preview": ["state", "reset"],
     "reset": ["state", "reset", "--confirm", confirmation],

@@ -223,6 +223,12 @@ def validate_contents(connection: sqlite3.Connection) -> None:
     )
     for row in rows:
         validate_binding_row(row)
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='cache_clock'"
+    ).fetchone():
+        from yorunge.adapters.capability_cache import validate_cache
+
+        validate_cache(connection)
 
 
 def validate_binding_row(row: tuple[Any, ...]) -> None:

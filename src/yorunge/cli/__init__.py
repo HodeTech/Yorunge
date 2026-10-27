@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, NoReturn, TypeAlias
 from yorunge import __version__
 
 if TYPE_CHECKING:
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.maintenance import MaintenancePreview
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
         | Result[ConfigUpdate]
         | Result[ProfilesView]
         | Result[DoctorReport]
+        | Result[CachedCapabilityView]
     )
 
 
@@ -120,6 +122,12 @@ def parser() -> Parser:
             maintenance.add_argument("--backup", required=True, type=Path)
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
+    cache_modes = capabilities.add_mutually_exclusive_group()
+    cache_modes.add_argument("--cached", action="store_true", help="Açık stateful önbellek okuması")
+    cache_modes.add_argument(
+        "--refresh", action="store_true", help="Uygulanan yerel kanıtı yenile; uzak keşif yok"
+    )
+    capabilities.add_argument("--state-dir", type=Path)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
     common(plan)
     actions = plan.add_subparsers(dest="action", required=True)
@@ -159,11 +167,17 @@ def text_result(data: Model) -> str:
 
 
 def local_text_result(data: Model) -> str:
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
+    if isinstance(data, CachedCapabilityView):
+        return "\n".join(
+            f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
+            for r in data.records
+        )
     if isinstance(data, ConfigUpdate):
         return (
             f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
@@ -315,6 +329,21 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     if args.command == "doctor":
         return api.diagnose_local(state_dir=args.state_dir, **context_options)
     task = "llm.train" if args.command == "train" else options.get("task")
+    if args.command == "capabilities":
+        if args.cached or args.refresh:
+            return api.query_capabilities(
+                **context_options,
+                task=task,
+                recipe=args.recipe,
+                tool=args.tool,
+                execution=args.execution,
+                refresh=args.refresh,
+                state_dir=args.state_dir,
+            )
+        if args.state_dir is not None:
+            from yorunge.domain.errors import YorungeError
+
+            raise YorungeError("invalid_request")
     use_case = api.inspect_capabilities if args.command == "capabilities" else api.prepare_plan
     return use_case(
         **context_options, task=task, recipe=args.recipe, tool=args.tool, execution=args.execution

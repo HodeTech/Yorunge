@@ -313,6 +313,34 @@ def main() -> int:
             plan = json.loads(output)
             if plan["data"]["executable"] or plan["data"]["selection"]["tool"] != "forgelm":
                 raise ValueError("installed plan contract failed")
+            cache_smoke = "not_run_unsupported_platform"
+            if sys.platform in ("darwin", "linux"):
+                for mode in ("--refresh", "--cached"):
+                    cached = json.loads(
+                        run(
+                            [
+                                str(console),
+                                "capabilities",
+                                "--task",
+                                "llm.train",
+                                mode,
+                                "--config",
+                                str(root / "examples/profile.toml"),
+                                "--state-dir",
+                                str(scratch / "state"),
+                                "--output",
+                                "json",
+                            ],
+                            cwd=scratch,
+                            environment=environment,
+                        )
+                    )
+                    records = cached["data"]["records"]
+                    if not records or not all(
+                        r["hit"] and r["freshness"] == "fresh" for r in records
+                    ):
+                        raise ValueError("installed cache contract failed")
+                cache_smoke = "passed"
             print(
                 json.dumps(
                     {
@@ -321,6 +349,7 @@ def main() -> int:
                         "members": len(members),
                         "origin_verified": True,
                         "smoke": "passed",
+                        "cache_smoke": cache_smoke,
                     }
                 )
             )

@@ -26,9 +26,17 @@ ErrorCode = Literal[
     "config_write_failed",
     "config_write_uncertain",
     "config_unsupported",
+    "capability_expired",
+    "capability_capacity_exceeded",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "capability_expired": (
+        "Yetenek kanıtının süresi veya saat/bekleme bütçesi geçersiz. Güncel kaydı inceleyin."
+    ),
+    "capability_capacity_exceeded": (
+        "Yetenek önbelleği kotası dolu; taze çelişkili kanıtlar korunuyor. Süreleri inceleyin."
+    ),
     "invalid_request": "İstek geçersiz. Komut yardımındaki alanları ve türleri kontrol edin.",
     "invalid_config": "Profil geçersiz. v1 alanlarını, türleri ve anahtarları kontrol edin.",
     "invalid_recipe": "Reçete geçersiz. v1 alanlarını, türleri ve YAML sınırlarını kontrol edin.",

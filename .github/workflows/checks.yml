@@ -38,6 +38,6 @@ jobs:
           .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
           cat dist/verification.jsonl
       - name: Enforce startup budgets
-        run: >-
-          .venv/bin/python scripts/benchmark-startup.py
-          --command .venv/bin/yorunge --output dist/startup.json
+        run: |
+          .venv/bin/python tests/fixtures/seed_capability_cache.py .ci-cache-state examples/profile.toml
+          .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --cache-state .ci-cache-state --installation-label "editable .venv; frozen uv environment" --output dist/startup.json

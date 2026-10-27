@@ -24,6 +24,8 @@ Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli 
 
 P01-3a in_progress: tipli capability/cache/clock, tam kapsam/kanıt, kalıcılık ve açık CLI/Python sorgusu. P01-3b draft: önce P01-3a'nın kendi kabulü ve iki review turu tamamlanır. Kullanıcının adım başına commit ve iki yeni bağımsız review turu, sonunda kendi incelemesi için tek PR talebi korunur; ürün kabulü henüz tamamlanmadı.
 
+İlk cache/SQLite/CLI dilimi ve testleri yazıldı; [gerçek test, ölçüm ve review ilerlemesi](../research/p01-3-implementation-validation.md) kanoniktir. Adımın tamamlanması tasarım onayından veya tek bir yeşil test koşusundan çıkarılmaz.
+
 [Belge incelemesi ve kullanıcı review düzeltmeleri](../research/p01-3-readiness-review.md) tarihsel hazırlık kanıtıdır. Tasarım onayı canlı EVREN/araç desteği, P01-3 teslimi veya yayın değildir.
 
 Ardından P01-4'te operation/attempt, lease/fencing, unknown uzlaştırma ve jobs; P01-5'te HTTP/SDK, akış ve iptal; P01-6'da bütün P01 kabulü/destek matrisi kalır. P01-4a ve P01-6a yeniden yapılacak işler değildir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır; henüz paket yayını yoktur.

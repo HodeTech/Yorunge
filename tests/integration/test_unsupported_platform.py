@@ -12,6 +12,8 @@ from yorunge.domain.errors import YorungeError
 SCENARIOS = ["unsupported-missing-fcntl", "unsupported-with-fcntl", "native-missing-fcntl"]
 CONFIG_ACTIONS = ("config-init", "activate", "set-project", "clear-project")
 STATE_ACTIONS = (
+    "cache",
+    "refresh",
     "state-init",
     "reset-preview",
     "reset",

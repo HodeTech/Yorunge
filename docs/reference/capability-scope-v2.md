@@ -1,6 +1,6 @@
 # CapabilityScopeV2 wire sözleşmesi
 
-**Durum:** Accepted tasarım — [ADR-0013](../decisions/0013-scoped-capability-cache.md) ile 2026-10-27 kullanıcı onayı; ürün kabulü henüz tamamlanmadı. **Tarih:** 2026-10-27. Mevcut offline v1 Scope/Capability/Plan değişmez. Bu belge yeni scope'un alan, tip ve kanonik bayt biçiminin tek kaynağıdır; kayıt/TTL/güven politikasının nedeni ADR'dedir.
+**Durum:** Accepted ve uygulandı — [ADR-0013](../decisions/0013-scoped-capability-cache.md) ile 2026-10-27 kullanıcı onayı; P01-3a bütün kabul/review sürüyor. **Tarih:** 2026-10-27. Mevcut offline v1 Scope/Capability/Plan değişmez. Bu belge yeni scope'un alan, tip ve kanonik bayt biçiminin tek kaynağıdır; kayıt/TTL/güven politikasının nedeni ADR'dedir.
 
 ## Ortak türler ve kodlama
 
@@ -17,7 +17,7 @@ Her nesne kapalıdır: aşağıda sayılmayan alan, eksik alan veya duplicate JS
 
 String'lerde trim, case-fold, NFC/NFKC veya locale dönüşümü yoktur. Semantik olarak farklı byte/code point dizileri birleştirilmez. Hedef alanlarının tek istisnai normalleştirme kaynağı [service-target-v1](credential-binding-v1.md#hizmet-hedefi-service-target-v1)'dir. Unicode sağlayıcı verisi gerekirse trusted adaptör tarafından açık, kayıpsız eşlenir; bu wire parser sessiz dönüştürmez.
 
-Nesne anahtarları sıralanarak `json.dumps(..., sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("utf-8")` yazılır; BOM/newline yoktur. Diziler aşağıdaki kanonik sırada olmak zorundadır; wire girdisinde sırasız/duplicate dizi reddedilir. Producer ham veriyi modele girmeden önce bu sıraya koyabilir. Bir scope'un kanonik boyutu en çok 16 KiB; bütün capability kaydı ayrıca ADR-0013'ün 32 KiB sınırına tabidir. Tekil alan sınırlarına uymak toplam boyut sınırını kaldırmaz.
+Hash ve depolama için kanonik temsilde nesne anahtarları sıralanarak `json.dumps(..., sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("utf-8")` yazılır; BOM/newline yoktur. Public Result JSON'unun biçim/key sırası bu canonical blob olmak zorunda değildir. Diziler aşağıdaki kanonik sırada olmak zorundadır; wire girdisinde sırasız/duplicate dizi reddedilir. Producer ham veriyi modele girmeden önce bu sıraya koyabilir. Bir scope'un kanonik boyutu en çok 16 KiB; bütün capability kaydı ayrıca ADR-0013'ün 32 KiB sınırına tabidir. Tekil alan sınırlarına uymak toplam boyut sınırını kaldırmaz.
 
 ## Zorunlu üst alanlar
 
@@ -90,4 +90,4 @@ Tam anahtar girdisi kapalı `{"capability_id": Identifier, "task": Task, "scope"
 }
 ```
 
-Gösterim okunabilir JSON'dur; anahtar üretiminde yukarıdaki compact/sort kuralı uygulanır. Kabulde aynı scope'u bağımsız producer'ların aynı bayt/digest ile üretmesi; izin/kaynak permütasyonunun producer'da kanonikleştirilmesi ve wire'da sırasız girdinin reddi; Unicode composed/decomposed ayrımı; eksik/extra/null/yanlış tür/limit/local-remote negatifleri sınanır. Bu hazırlıkta çalışan model veya ürün testi oluşturulmamıştır.
+Gösterim okunabilir JSON'dur; anahtar üretiminde yukarıdaki compact/sort kuralı uygulanır. Contract testleri iki bağımsız oluşturucunun aynı bayt/digest'i üretmesini; sırasız/duplicate wire reddini; Unicode composed/decomposed ayrımını; eksik/extra/null/yanlış tür/limit/local-remote negatiflerini sınar. [Uygulama ve kabul kaydı](../research/p01-3-implementation-validation.md) bu alt kümenin gerçek kanıtını taşır; wire onayı uzak hesap erişimi değildir.

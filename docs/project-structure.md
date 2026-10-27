@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-27. **Durum:** Offline çekirdek ve P01-2 yerel kimlik/state/config yerleşimi uygulanmıştır; P01-3 hazırlıktır.
+**Güncellendi:** 2026-10-27. **Durum:** Offline çekirdek, yerel kimlik/state/config ve P01-3a cache dilimi uygulanıyor; epik kabulü sürüyor.
 
 ```text
 src/yorunge/
@@ -11,6 +11,7 @@ src/yorunge/
   adapters/files.py       # Sınırlı TOML/YAML/JSON okuma ve doğrulama
   adapters/state*.py      # SQLite yaşam döngüsü, validation ve immutable migration
   adapters/identity.py    # İşlemsel credential kimliği/nesli
+  adapters/capability_cache.py # İşlemsel cache/clock ve son bağ/süre kapısı
   adapters/maintenance.py # Açık reset/restore/recover
   adapters/local_files.py # Private dosya/kilit/deadline ve platform sınırı
   adapters/configuration.py # Atomik config yazımı/backup; diagnostics ayrı adaptörde
@@ -28,7 +29,7 @@ examples/                 # Küçük sentetik profil ve reçete
 docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kartları
 ```
 
-`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de gerçek tüketicileriyle uygulanmıştır. Henüz uygulanmayan HTTP, cache/execution ve araç adaptörleri için boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
+`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. Henüz uygulanmayan HTTP, execution ve araç adaptörleri için boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
 
 [Ajan kataloğu](../.agents/README.md) repo geliştirme girdisidir; runtime bağımlılığı değildir. Canonical `.agents` materyali sdist'e seçilir; wheel ve Claude alias symlink'leriyle karıştırılmaz. İstemci/global ayar veya otomatik izin hook'u eklenmez.
 

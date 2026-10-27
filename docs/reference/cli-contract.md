@@ -15,11 +15,12 @@
 | `yorunge state reset/restore/recover` | Varsayılan etki önizlemesi; açık `--confirm DIGEST` ile bakım |
 | `yorunge state init [--state-dir PATH]` | Açık yerel store/key oluşturma veya mevcut store'u doğrulama; env/ağ yok |
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
+| `yorunge capabilities --task TASK --cached\|--refresh [--state-dir PATH]` | Açık private cache/clock kullanımı; yalnız mevcut yerel kanıt, uzak discovery yok |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
-İlk sürüm `--config PATH`, `--profile NAME`, `--project ID`, `--output text|json`, `--non-interactive` seçeneklerini uygular. Ortak seçenekler komuttan önce veya sonra verilebilir; kısaltmalar kabul edilmez. Plan/capability için `--recipe PATH`, `--tool ID`, `--execution BACKEND`; genel plan/capability için ayrıca `--task TASK` vardır. `--refresh`, `ndjson`, rehberli mod ve bütün `run` komutları henüz yoktur. `plan show` context değiştiren seçenekleri reddeder; profil değişimiyle seçim yenilemez.
+İlk sürüm `--config PATH`, `--profile NAME`, `--project ID`, `--output text|json`, `--non-interactive` seçeneklerini uygular. Ortak seçenekler komuttan önce veya sonra verilebilir; kısaltmalar kabul edilmez. Plan/capability için `--recipe PATH`, `--tool ID`, `--execution BACKEND`; genel plan/capability için ayrıca `--task TASK` vardır. `--cached`/`--refresh` yalnız capability sorgusunda birbirini dışlayarak desteklenir; bu ailede `--state-dir` ancak bu açık modlardan biriyle geçerlidir. `ndjson`, rehberli mod ve bütün `run` komutları henüz yoktur. `plan show` context değiştiren seçenekleri reddeder; profil değişimiyle seçim yenilemez.
 
 Yeni plan seçim önceliği [config sözleşmesindedir](configuration.md#öncelik-ve-sabitleme). `train plan` görevi açık `llm.train` çağrısı sayılır. Açık görev override'ı reçetedeki parametreyi geçersiz kılarsa hata olur; parametre düşürülmez.
 
@@ -92,6 +93,12 @@ Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0
 ## Açık yerel kimlik gözlemi
 
 `context identity --service evren-platform|evren-llm [--state-dir PATH]` ortak config/profile/project seçiminden sonra tek env snapshot'ını kalıcı yerel kimlikle bağlar. Python karşılığı `api.observe_credential`'dır. `identity` nesnesi opak UUID, pozitif nesil, epoch ve gözlem zamanı taşır; uzak doğrulama false kalır. Eksik/geçersiz secret çıkış 3; state/taşma/bağ değişimi çıkış 2'dir. Aynı değer yeniden gözlendiğinde yazma/zaman güncellemesi yapılmaz. Eski offline komutlar ve Plan biçimi değişmez; ayrıntı [binding v1](credential-binding-v1.md).
+
+## Açık capability cache sorgusu
+
+Python `query_capabilities(*, task=None, config=None, recipe=None, profile=None, project=None, tool=None, execution=None, refresh=False, state_dir=None)` ortak tipli `Result[CachedCapabilityView]` döndürür. `refresh` strict bool, dosya/dizin argümanları Path'tir. CLI `--cached` aynı default refresh=False yoludur; bu yeni API'nin çağrılması başlı başına stateful niyettir. Eski `inspect_capabilities`/CLI varsayılanı aynı stateless v1'i üretir.
+
+Sonuçtaki hit/freshness, etkin destek ve tarihsel kayıt [cache v2 sözleşmesinde](capability-record.md#açık-cache-v2-sorgusu) tanımlıdır. Miss/stale/clock anomaly/unknown başarılı sorgu olabilir ve çıkış 0'dır; stored supported etkin karar yerine gösterilmez. `--refresh` bu sürümde ağ değil yerel politika yenilemesidir. Kapasite dolu ve pinlenmiş çelişkiler korunuyorsa `capability_capacity_exceeded`, refresh sırasında süre/bütçe dolmuşsa `capability_expired`, bağ değişmişse `state_changed` çıkış 2 olur; otomatik retry yoktur. Uzak seçili env referansı varsa eksik/geçersiz değeri mevcut credential çıkış 3 sözleşmesine uyar. Fcntl/platform kapısı bütün I/O ve env gözleminden öncedir.
 
 ## Kimlik bakımı
 

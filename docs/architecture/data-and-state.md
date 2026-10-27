@@ -16,7 +16,7 @@ SQLite ayrı servis gerektirmeden transaction, migration ve yeniden başlatma so
 | Transfers | Dosya kimliği, güncel hash, aşama, uzak öğe | Günlük var diye kalıcı uzak başarı varsayımı |
 | Artifacts | Yerel/uzak referans, boyut/hash, köken ve doğrulama | Bütün model ağırlığının DB içine alınması |
 
-Bu tablo mantıksal sahipliktir; identity temeli için üç tablo ve migration P01-4a'da uygulanmıştır. Diğer satırların DDL/işleyişi ilgili P01/P02/P03 işlerinde gelir; varmış gibi çalışan örnek verilmez.
+Bu tablo mantıksal sahipliktir; identity temeli için üç tablo ve migration P01-4a'da, cache/clock için iki tablo ve 1→2 migration P01-3a'da uygulanır. Plan/onay ve diğer satırların DDL/işleyişi kendi tüketicileriyle gelir; varmış gibi çalışan örnek verilmez. [Gerçek uygulama kabulü](../research/p01-3-implementation-validation.md).
 
 Kimlik karşılaştırması için özel HMAC doğrulayıcısı ve ayrı K dosyası [Accepted ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) ile kullanıcı tarafından benimsenmiştir; genel sır saklama yasağı yalnız bu verifier için daraltılmıştır, ham sır/hash yasağı korunur. Verifier public kayıt, cache, Plan veya normal export verisi değildir. Bu kararın identity alt kümesi ve [ADR-0011 migration/yedek temeli](../decisions/0011-state-foundation-and-migrations.md) P01-2 içinde doğrulandı; [kanıt ve kapsam](../research/p01-2-implementation-validation.md). Operation/lease/uzak yürütüm henüz uygulanmadı.
 

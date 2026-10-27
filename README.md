@@ -47,7 +47,16 @@ Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarın
 .venv/bin/yorunge context credential --service evren-platform --config examples/profile.toml --output json
 ```
 
-Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi de seçili env'yi açık istekle okur; diğer yerel komutlar okumaz.
+Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi seçili env'yi açık istekle okur; varsayılan offline komutlar okumaz.
+
+Açık yerel capability cache sorgusu:
+
+```sh
+.venv/bin/yorunge capabilities --task llm.train --refresh --output json
+.venv/bin/yorunge capabilities --task llm.train --cached --output json
+```
+
+Bu iki seçenek private SQLite state/clock kullanır; `--state-dir PATH` ile ayrı dizin seçilebilir. `--cached` keşif yapmaz, `--refresh` bu sürümde yalnız uygulanmış yerel politikayı yeniler. Hit/freshness ile etkin destek ve tarihsel kayıt ayrıdır; uzak hesap/araç desteği yaratılmaz. Python karşılığı `api.query_capabilities` ve ayrıntılar [cache sözleşmesindedir](docs/reference/capability-record.md#açık-cache-v2-sorgusu). Execution planı/onayı ve run henüz bu cache diliminin teslimi değildir.
 
 ## Ürün yaklaşımı
 

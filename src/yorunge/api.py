@@ -26,6 +26,7 @@ from yorunge.domain.models import (
 )
 
 if TYPE_CHECKING:
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.maintenance import MaintenancePreview
@@ -521,3 +522,136 @@ def load_plan(path: Path) -> Result[Plan]:
     except YorungeError:
         raise YorungeError("invalid_plan") from None
     return Result[Plan](data=plan, warnings=("offline_draft_not_executable",))
+
+
+def query_capabilities(
+    *,
+    task: str | None = None,
+    config: Path | None = None,
+    recipe: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    tool: str | None = None,
+    execution: str | None = None,
+    refresh: bool = False,
+    state_dir: Path | None = None,
+) -> Result[CachedCapabilityView]:
+    """Explicit stateful query. No caller evidence, producer or authorization input."""
+    import time
+
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    query_started = time.monotonic()
+    if type(refresh) is not bool or (state_dir is not None and not isinstance(state_dir, Path)):
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.adapters.identity import StateCredentialRegistry
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.adapters.state import open_store
+    from yorunge.application.capabilities import LocalPolicyProducer, current_policy_result
+    from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.domain.capabilities import (
+        CachedCapabilityView,
+        CapabilityKey,
+        CapabilityScopeV2,
+        ExecutionBinding,
+        ModelBinding,
+        ToolBinding,
+    )
+    from yorunge.domain.credentials import normalize_target
+
+    context, selected_profile, request, spec = _resolve(
+        config=config,
+        recipe=recipe,
+        profile=profile,
+        project=project,
+        task=task,
+        tool=tool,
+        execution=execution,
+    )
+    selection = resolve_selection(
+        spec.task, selected_profile, spec, request.tool, request.execution
+    )
+    offline = capability_records(context, selection)
+    remote = next(
+        (
+            r.scope.service_id
+            for r in offline
+            if r.capability_id != "planning.offline" and r.scope.service_id != "local"
+        ),
+        None,
+    )
+    remaining = 5.0 - (time.monotonic() - query_started)
+    if remaining <= 0:
+        raise YorungeError("state_busy")
+    with open_store(state_dir, timeout=remaining) as store:
+        identity = None
+        if remote in ("evren-platform", "evren-llm"):
+            name = (
+                selected_profile.platform_key_env
+                if remote == "evren-platform"
+                else selected_profile.llm_key_env
+            )
+            if name is not None:
+                resolved = resolve_credential(selected_profile, remote, EnvSecretReader())
+                identity = bind_credential(
+                    context, resolved, StateCredentialRegistry(store)
+                ).identity
+        cache = StateCache(store, bindings=(identity,) if identity else ())
+        stamp = cache.stamp()
+        records = []
+        for old in offline:
+            local = old.capability_id == "planning.offline" or old.scope.service_id == "local"
+            service = "local" if local else old.scope.service_id
+            target = (
+                None
+                if local
+                else normalize_target(
+                    context.llm_url if service == "evren-llm" else context.platform_url
+                )
+            )
+            scope = CapabilityScopeV2(
+                schema_version=2,
+                store_id=stamp.store_id,
+                identity_epoch=stamp.identity_epoch,
+                clock_generation=stamp.generation,
+                service_id=service,
+                service_origin=target.service_origin if target else None,
+                api_base_path=target.api_base_path if target else None,
+                account_id=context.account_id,
+                project_id=context.project_id,
+                credential_id=identity.credential_id if identity and not local else None,
+                credential_revision=identity.credential_revision
+                if identity and not local
+                else None,
+                authorization_scope=None,
+                model=ModelBinding(
+                    source=spec.model.source,
+                    id=spec.model.id,
+                    revision=spec.model.revision,
+                    content_digest=None,
+                )
+                if spec.model
+                else None,
+                tool=ToolBinding(
+                    id=selection.tool, version=None, executable_digest=None, environment_digest=None
+                )
+                if selection.tool
+                else None,
+                execution=ExecutionBinding(
+                    backend=selection.execution,
+                    runtime_id=None,
+                    runtime_revision=None,
+                    environment_digest=None,
+                ),
+            )
+            key = CapabilityKey(capability_id=old.capability_id, task=spec.task, scope=scope)
+            if refresh and not stamp.anomaly:
+                cache.refresh(key, stamp, LocalPolicyProducer(old.support, old.reason_code))
+            records.append(
+                current_policy_result(
+                    cache.query(key, stamp), frozenset({LocalPolicyProducer.SOURCE})
+                )
+            )
+        return Result[CachedCapabilityView](data=CachedCapabilityView(records=tuple(records)))

@@ -118,7 +118,11 @@ def test_restore_new_epoch_no_old_key_needed_safety_snapshot_and_explicit_loss(
     assert current.credential_id != old.credential_id
     assert current.credential_revision == 1
     if existing:
-        snapshots = list((target / "backups").glob("*/complete.json"))
+        snapshots = [
+            p
+            for p in (target / "backups").glob("*/complete.json")
+            if json.loads(p.read_text())["purpose"] == "pre_restore"
+        ]
         assert len(snapshots) == 1
         record = json.loads(snapshots[0].read_text())
         assert record["purpose"] == "pre_restore"
@@ -153,7 +157,10 @@ def test_operation_runtime_disables_restore_even_old_snapshot_and_no_target(
     root = tmp_path / "source"
     observed(config, root)
     saved = migration_backup(root)
-    step = state_schema.Migration(1, 2, ("CREATE TABLE operations(id INTEGER PRIMARY KEY) STRICT",))
+    version = len(state_schema.MIGRATIONS)
+    step = state_schema.Migration(
+        version, version + 1, ("CREATE TABLE operations(id INTEGER PRIMARY KEY) STRICT",)
+    )
     monkeypatch.setattr(state_schema, "MIGRATIONS", (*state_schema.MIGRATIONS, step))
     for call in (
         lambda: api.preview_state_restore(saved, state_dir=tmp_path / "missing"),
