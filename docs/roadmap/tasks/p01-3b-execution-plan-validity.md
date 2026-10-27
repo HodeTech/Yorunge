@@ -38,6 +38,7 @@ Domain plan/girdi/onay kuralları; application güncel tipli producer, dosya ve 
 8. Reset/restore local-only dahil eski cache/plan/onay etkinliğini bitirir. Preview sonrası yalnız plan/onay değişiminde confirmation stale olur; cache-only değişim onayı bozmaz. Bakım preview v2 kayıp/etkisizleşme kapsamını gösterir.
 9. Gerçek önceki runtime intent'inde stage yok/eski stage/eski live; tamamlanmış pair'de kaynak backup kayıp; yeni şema/kalıcılık öncesi kesinti senaryoları recover ile güvenli tamamlanır. Bozuk payload epoch değişimiyle aklanmaz; operation-capable runtime'da eski snapshot/intent ile kaçış yoktur.
 10. CLI/Python prepare/list/show/validate/approve/revoke/forget aynı kuralları ve kontrollü JSON/hata zarfını kullanır. Secret/tag/K yeni public payload/digest/repr/loga girmez; list/show env/girdi okumaz. Metadata ve mevcut offline guard/performance bütçeleri korunur.
+11. Plan/onay gerçek tabloları eklendikten sonra cache expiry/nesil/kota temizliği bu kayıtları veya başka kritik geçmişi silmez; bütünleşik gerçek DB kabulü P01-3a'nın cache-only testlerini tamamlar.
 
 ## Doğrulama
 
