@@ -57,6 +57,9 @@ class SecretValue:
     def __reduce_ex__(self, protocol: object) -> NoReturn:
         raise TypeError("credential serialization is not supported")
 
+    def __getstate__(self) -> NoReturn:
+        raise TypeError("credential serialization is not supported")
+
 
 @dataclass(frozen=True, slots=True)
 class ResolvedCredential:
@@ -85,6 +88,8 @@ def _target(value: str) -> ServiceTarget:
     ):
         raise ValueError("invalid target")
     parts = urlsplit(value)
+    if not parts.netloc.isascii():
+        raise ValueError("ASCII authority required")
     host = parts.hostname or ""
     if (
         parts.scheme != "https"
@@ -103,9 +108,7 @@ def _target(value: str) -> ServiceTarget:
     suffix = parts.netloc[authority_end:]
     if suffix and not re.fullmatch(r":[0-9]+", suffix):
         raise ValueError("invalid authority suffix")
-    if ":" in host:
-        if not parts.netloc.startswith("["):
-            raise ValueError("bracketed IPv6 required")
+    if parts.netloc.startswith("["):
         host = "[" + ipaddress.IPv6Address(host).compressed + "]"
     elif re.fullmatch(r"[0-9.]+", host):
         host = str(ipaddress.IPv4Address(host))

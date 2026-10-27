@@ -2,6 +2,9 @@ import dataclasses
 import json
 import os
 import pickle
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -53,6 +56,9 @@ def test_selected_env_is_read_once_and_snapshot_does_not_change(
         with pytest.raises(TypeError) as failure:
             convert(value)
         assert expected not in str(failure.value)
+    with pytest.raises(TypeError) as failure:
+        json.dumps(value.secret, default=lambda item: item.__getstate__())
+    assert expected not in str(failure.value)
 
 
 @pytest.mark.parametrize(
@@ -216,6 +222,8 @@ def test_ambiguous_target_paths_are_rejected(suffix):
         "https://[::1]unexpected/v1",
         "https://[::1]:/v1",
         "https://api.example.test:/v1",
+        "https://[v1.a]/v1",
+        "https://K.test/v1",
     ],
 )
 def test_invalid_target_authorities(url):
@@ -247,3 +255,41 @@ def test_new_target_policy_does_not_rewrite_legacy_offline_plans(tmp_path, url):
     assert api.load_plan(saved).data == plan
     assert saved.read_bytes() == before
     assert plan.context.platform_url == Profile(platform_url=url).platform_url
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        'os.environ["CUSTOM_API_TOKEN"]',
+        'os.environb[b"CUSTOM_API_TOKEN"]',
+    ],
+)
+def test_subprocess_guard_covers_configured_custom_names_and_bytes(monkeypatch, expression):
+    environment = dict(os.environ)
+    environment["CUSTOM_API_TOKEN"] = PLATFORM
+    environment["YORUNGE_TEST_SECRET_NAMES"] = '["CUSTOM_API_TOKEN"]'
+    environment["YORUNGE_TEST_CREDENTIAL"] = "0"
+    environment["PYTHONPATH"] = str(Path(__file__).parents[1] / "fixtures" / "guards")
+    result = subprocess.run(
+        [sys.executable, "-c", "import os; print(" + expression + ")"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode != 0
+    assert "forbidden implicit credential access" in result.stderr
+    assert PLATFORM not in result.stdout
+    assert PLATFORM not in result.stderr
+
+
+@pytest.mark.parametrize("url", ["https://[v1.a]/v1", "https://K.test/v1"])
+def test_non_contract_authority_fails_before_secret_read(url, monkeypatch):
+    def denied(self, reference):
+        raise AssertionError("unexpected credential read")
+
+    monkeypatch.setattr(EnvSecretReader, "read", denied)
+    profile = Profile(platform_url=url, platform_key_env="CUSTOM_API_TOKEN")
+    with pytest.raises(YorungeError) as failure:
+        resolve_credential(profile, "evren-platform", EnvSecretReader())
+    assert failure.value.code == "invalid_service_target"

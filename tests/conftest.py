@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import socket
 import subprocess
@@ -28,11 +29,17 @@ def offline_home(tmp_path, monkeypatch):
 
 @pytest.fixture
 def cli():
-    def invoke(*args: str, metadata: bool = False, credential: bool = False):
+    def invoke(
+        *args: str,
+        metadata: bool = False,
+        credential: bool = False,
+        secret_names: tuple[str, ...] = (),
+    ):
         environment = dict(os.environ)
         environment["PYTHONPATH"] = str(ROOT / "tests" / "fixtures" / "guards")
         environment["YORUNGE_TEST_METADATA"] = "1" if metadata else "0"
         environment["YORUNGE_TEST_CREDENTIAL"] = "1" if credential else "0"
+        environment["YORUNGE_TEST_SECRET_NAMES"] = json.dumps(secret_names)
         return subprocess.run(
             [str(Path(sys.executable).parent / "yorunge"), *args],
             capture_output=True,

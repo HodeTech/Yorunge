@@ -1,5 +1,6 @@
 """Subprocess audit guard: a forbidden side effect makes the real command fail."""
 
+import json
 import os
 import sys
 
@@ -8,10 +9,15 @@ CREDENTIAL = os.environ.get("YORUNGE_TEST_CREDENTIAL") == "1"
 FORBIDDEN = ("torch", "transformers", "trl", "keyring", "forgelm", "axolotl")
 
 original_getitem = type(os.environ).__getitem__
+SECRET_NAMES = frozenset(
+    ("EVREN_PLATFORM_API_KEY", "EVREN_LLM_API_KEY")
+    + tuple(json.loads(os.environ.get("YORUNGE_TEST_SECRET_NAMES", "[]")))
+)
 
 
 def guarded_getitem(self, key):
-    if key in ("EVREN_PLATFORM_API_KEY", "EVREN_LLM_API_KEY") and (META or not CREDENTIAL):
+    name = key.decode("ascii", errors="ignore") if isinstance(key, bytes) else key
+    if name in SECRET_NAMES and (META or not CREDENTIAL):
         raise RuntimeError("forbidden implicit credential access")
     return original_getitem(self, key)
 
