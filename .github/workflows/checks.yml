@@ -35,7 +35,8 @@ jobs:
       - name: Build and verify both distributions in clean environments
         run: |
           .ci-tools/bin/uv build
-          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv
+          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
+          cat dist/verification.jsonl
       - name: Enforce startup budgets
         run: >-
           .venv/bin/python scripts/benchmark-startup.py

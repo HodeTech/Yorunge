@@ -62,10 +62,10 @@ Adım 1'de gerçek dosya ve subprocess negatif testleri, ilgili unit/contract/in
 
 ## Teslim kaydı
 
-Adım 1 uygulandı; commit ve iki bağımsız review turu hazırlanıyor. Yeni regresyon paketi mevcut kodda 137 başarısız / 70 başarılı senaryo üretti; düzeltme sonrası 207 senaryo geçti. Adım 2 ve son kabul henüz tamamlanmadı. Hazırlık probe'ları düzeltme kabulü değildir.
+Adım 1 ve iki review turundaki düzeltmeler tamamlandı; 345 test geçti. Adım 2 uygulandı; 55 gerçek sentetik arşiv senaryosu dahil 400 test, build/iki temiz kurulum ve başlangıç bütçeleri geçti. Adım 2 review turları ve PR henüz tamamlanmadı. Hazırlık probe'ları düzeltme kabulü değildir.
 
 | Adım / tur | İncelenen commit | Kapsam ve sonuç |
 |---|---|---|
 | 1 / uygulama | `8ae0fc5` | Parser/şema ve CLI referansı; 338 test geçti, lint/type/belge temiz |
-| 1 / review 1 | `8ae0fc5` | İki yeni bağımsız ajan: girdi/hata güvenliği (GPT-6.1 Sol xhigh), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: yanlış türde `!!map`/`!!set` düğümü TypeError veya sessiz boş mapping dönüşümü üretebiliyor. Düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla giderildi; ikinci tur henüz yapılmadı |
-| 1 / review 2 | `f05ab2d` | Başka iki yeni ajan: parser/güvenlik (GPT-6 Astra high), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: timestamp scalar tag'i `{=: ...}` mapping'iyle TypeError üretiyor. Scalar düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla gideriliyor; kapanış doğrulaması bekleniyor |
+| 1 / review 1 | `8ae0fc5` | İki yeni bağımsız ajan: girdi/hata güvenliği (GPT-6.1 Sol xhigh), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: yanlış türde `!!map`/`!!set` düğümü TypeError veya sessiz boş mapping dönüşümü üretebiliyor. `f05ab2d` düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla giderdi; ikinci tur bu düzeltmeyi doğruladı |
+| 1 / review 2 | `f05ab2d` | Başka iki yeni ajan: parser/güvenlik (GPT-6 Astra high), sözleşme/UX (GPT-6.1 Sol high). Tek doğrulanmış P2: timestamp scalar tag'i `{=: ...}` mapping'iyle TypeError üretiyor. `1e2df18`/`96755da` scalar düğüm türü denetimi ve gerçek API/CLI regresyonlarıyla giderdi; aynı reviewer'ın odak kapanışında 256 varyant ve altı gerçek CLI timestamp deneyi kontrollü reddedildi, geçerli scalar girdiler korundu, açık doğrulanmış bulgu kalmadı |

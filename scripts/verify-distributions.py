@@ -6,12 +6,13 @@ import argparse
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
 import zipfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 ALLOWED_SDIST = {
     ".gitignore",
@@ -65,54 +66,144 @@ def run(command: list[str], *, cwd: Path, environment: dict[str, str]) -> str:
     ).stdout
 
 
-def inspect_archive(path: Path) -> list[str]:
-    if path.suffix == ".whl":
-        with zipfile.ZipFile(path) as wheel:
-            members = wheel.namelist()
-        for member in members:
-            parts = PurePosixPath(member).parts
-            if not parts or (parts[0] != "yorunge" and not parts[0].endswith(".dist-info")):
-                raise ValueError("unexpected wheel member")
-    else:
-        with tarfile.open(path) as sdist:
-            members = []
-            for item in sdist.getmembers():
-                if item.issym() or item.islnk():
-                    raise ValueError("archive links are not permitted")
-                parts = PurePosixPath(item.name).parts[1:]
-                if not parts:
-                    continue
-                members.append("/".join(parts))
-                if parts[0] not in ALLOWED_SDIST:
-                    raise ValueError("unexpected sdist member")
-                if parts[0] == ".github" and parts[1:] not in (
-                    ("workflows", "checks.yml"),
-                    ("workflows", "pr-policy.yml"),
-                    ("pull_request_template.md",),
-                ):
-                    raise ValueError("unexpected workflow member")
-                if parts[0] == ".agents" and not (
-                    parts[1:] == ("README.md",)
-                    or (
-                        len(parts) >= 4
-                        and parts[1] == "skills"
-                        and parts[3:] in (("SKILL.md",), ("agents", "openai.yaml"))
-                    )
-                ):
-                    raise ValueError("unexpected agent guide member")
-                if parts[0] == "docs" and not (
-                    len(parts) >= 2
-                    and (parts[1] in ALLOWED_DOCS or parts[1:] == ("analysis", "README.md"))
-                ):
-                    raise ValueError("unexpected documentation member")
-    if any(
-        PurePosixPath(member).is_absolute()
-        or ".." in PurePosixPath(member).parts
-        or "__pycache__" in PurePosixPath(member).parts
-        for member in members
+def archive_parts(name: str, *, directory: bool) -> tuple[str, ...]:
+    # Inspect raw segments before PurePosixPath could normalize an unsafe spelling.
+    canonical = name[:-1] if directory and name.endswith("/") else name
+    parts = tuple(canonical.split("/"))
+    if (
+        not canonical
+        or any(part in ("", ".", "..", "__pycache__") for part in parts)
+        or "\\" in name
+        or ":" in name
+        or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in name)
     ):
         raise ValueError("unsafe archive member")
+    return parts
+
+
+def check_member_tree(entries: dict[tuple[str, ...], bool]) -> None:
+    for parts in entries:
+        if any(entries.get(parts[:index]) is False for index in range(1, len(parts))):
+            raise ValueError("archive file used as a directory")
+
+
+def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
+    if parts[0] not in ALLOWED_SDIST:
+        raise ValueError("unexpected sdist member")
+    if parts[0] == ".github":
+        files = (
+            (".github", "workflows", "checks.yml"),
+            (".github", "workflows", "pr-policy.yml"),
+            (".github", "pull_request_template.md"),
+        )
+        allowed = (
+            any(len(parts) < len(item) and parts == item[: len(parts)] for item in files)
+            if directory
+            else parts in files
+        )
+    elif parts[0] == ".agents":
+        tail = parts[1:]
+        allowed = (
+            (
+                tail in ((), ("skills",))
+                or (len(tail) == 2 and tail[0] == "skills")
+                or (len(tail) == 3 and tail[0] == "skills" and tail[2] == "agents")
+            )
+            if directory
+            else (
+                tail == ("README.md",)
+                or (
+                    len(tail) >= 3
+                    and tail[0] == "skills"
+                    and tail[2:] in (("SKILL.md",), ("agents", "openai.yaml"))
+                )
+            )
+        )
+    elif parts[0] == "docs":
+        allowed = (
+            (
+                len(parts) == 1
+                or (len(parts) >= 2 and parts[1] in ALLOWED_DOCS and not parts[1].endswith(".md"))
+                or parts == ("docs", "analysis")
+            )
+            if directory
+            else (
+                len(parts) >= 2
+                and (
+                    (parts[1] in ALLOWED_DOCS and (len(parts) == 2 or not parts[1].endswith(".md")))
+                    or parts == ("docs", "analysis", "README.md")
+                )
+            )
+        )
+    else:
+        tree = parts[0] in ("src", "tests", "scripts", "examples")
+        allowed = (tree and (len(parts) > 1 or directory)) or (
+            not tree and len(parts) == 1 and not directory
+        )
+    if not allowed:
+        raise ValueError("unexpected sdist member")
+
+
+def inspect_archive(path: Path) -> list[str]:
+    entries: dict[tuple[str, ...], bool] = {}
+    members: list[str] = []
+
+    def record(name: str, directory: bool) -> tuple[str, ...]:
+        parts = archive_parts(name, directory=directory)
+        if parts in entries:
+            raise ValueError("duplicate archive member")
+        entries[parts] = directory
+        return parts
+
+    if path.suffix == ".whl":
+        fields = path.name.split("-")
+        if len(fields) not in (5, 6) or fields[0] != "yorunge" or not fields[1]:
+            raise ValueError("unexpected wheel name")
+        metadata = f"yorunge-{fields[1]}.dist-info"
+        with zipfile.ZipFile(path) as wheel:
+            for item in wheel.infolist():
+                directory = item.is_dir()
+                kind = stat.S_IFMT(item.external_attr >> 16)
+                if kind not in (0, stat.S_IFDIR if directory else stat.S_IFREG) or (
+                    item.external_attr & 0x10 and not directory
+                ):
+                    raise ValueError("archive links and special files are not permitted")
+                parts = record(item.filename, directory)
+                if parts[0] not in ("yorunge", metadata) or (len(parts) == 1 and not directory):
+                    raise ValueError("unexpected wheel member")
+                members.append(item.filename)
+    elif path.name.endswith(".tar.gz"):
+        root = path.name.removesuffix(".tar.gz")
+        if not root.startswith("yorunge-") or root == "yorunge-":
+            raise ValueError("unexpected sdist name")
+        with tarfile.open(path) as sdist:
+            for member in sdist.getmembers():
+                if not (member.type in (tarfile.REGTYPE, tarfile.AREGTYPE) or member.isdir()):
+                    raise ValueError("archive links and special files are not permitted")
+                parts = record(member.name, member.isdir())
+                if parts[0] != root or (len(parts) == 1 and not member.isdir()):
+                    raise ValueError("unexpected sdist root")
+                if len(parts) == 1:
+                    continue
+                relative = parts[1:]
+                check_sdist_path(relative, directory=member.isdir())
+                members.append("/".join(relative))
+    else:
+        raise ValueError("expected wheel or sdist")
+    check_member_tree(entries)
+    if not members or all(entries[parts] for parts in entries):
+        raise ValueError("empty distribution")
     return members
+
+
+def distribution_pair(directory: Path) -> tuple[Path, Path]:
+    wheels = sorted(directory.glob("yorunge-*.whl"))
+    sdists = sorted(directory.glob("yorunge-*.tar.gz"))
+    if len(wheels) != 1 or len(sdists) != 1:
+        raise ValueError("exactly one wheel and one sdist required")
+    if "-".join(wheels[0].name.split("-")[:2]) != sdists[0].name.removesuffix(".tar.gz"):
+        raise ValueError("distribution versions must match")
+    return wheels[0], sdists[0]
 
 
 def main() -> int:
@@ -122,11 +213,7 @@ def main() -> int:
     args = parser.parse_args()
     uv = str(args.uv.resolve())
     root = Path(__file__).resolve().parents[1]
-    packages = sorted(args.dist.resolve().glob("yorunge-*.whl")) + sorted(
-        args.dist.resolve().glob("yorunge-*.tar.gz")
-    )
-    if len(packages) != 2:
-        raise ValueError("exactly one wheel and one sdist required")
+    packages = distribution_pair(args.dist.resolve())
     environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
