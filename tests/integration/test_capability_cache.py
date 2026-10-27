@@ -403,8 +403,9 @@ def test_real_v1_to_cache_migration_preserves_identity_and_verified_backup(
 
 
 @pytest.mark.parametrize("cut", ["intent", "stage", "live"])
+@pytest.mark.parametrize("old_version", [1, 2, 3])
 def test_old_runtime_restore_intent_upgrades_even_when_completed_source_is_gone(
-    config, tmp_path, monkeypatch, cut
+    config, tmp_path, monkeypatch, cut, old_version, execution_fixture
 ):
     import shutil
     import subprocess
@@ -415,16 +416,49 @@ def test_old_runtime_restore_intent_upgrades_even_when_completed_source_is_gone(
     from yorunge.adapters.state import DB_NAME, backup
 
     source, target = tmp_path / "source", tmp_path / "target"
+    historical_plan = None
+    template = (
+        api.prepare_execution_plan(task="llm.train", state_dir=tmp_path / "template").data.plan
+        if old_version == 3
+        else None
+    )
     with monkeypatch.context() as patch:
-        patch.setattr(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:1])
+        patch.setattr(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:old_version])
         api.observe_credential("evren-platform", config=config, state_dir=source)
+        if template is not None:
+            import hashlib
+
+            from yorunge.domain.capabilities import canonical
+            from yorunge.domain.execution import ExecutionPlan
+
+            with open_store(source) as store:
+                value = store.verify()
+                body = template.model_dump(mode="json", exclude={"digest"})
+                body["store_id"], body["identity_epoch"] = value.store_id, value.identity_epoch
+                for capability in body["assessment"]["capabilities"]:
+                    capability["key"]["scope"]["store_id"] = value.store_id
+                    capability["key"]["scope"]["identity_epoch"] = value.identity_epoch
+                body["digest"] = hashlib.sha256(canonical(body)).hexdigest()
+                historical_plan = ExecutionPlan.model_validate_json(canonical(body))
+                store.connection.execute(
+                    "INSERT INTO execution_plans VALUES(?,?,?,?,?,?,?)",
+                    (
+                        historical_plan.plan_id,
+                        historical_plan.digest,
+                        historical_plan.selection.task,
+                        historical_plan.prepared_at,
+                        historical_plan.expires_at,
+                        historical_plan.status,
+                        canonical(body).decode("ascii"),
+                    ),
+                )
         with maintenance.target_lock(source, Deadline(), create=False):
             saved = backup(source, source / DB_NAME, Deadline(), state_schema.MIGRATIONS)
     code = """import os,sys
 from pathlib import Path
 from yorunge import api
 from yorunge.adapters import maintenance as m,state_schema as s
-s.MIGRATIONS=s.MIGRATIONS[:1]
+s.MIGRATIONS=s.MIGRATIONS[:int(sys.argv[4])]
 root=Path(sys.argv[2]);mode=sys.argv[3]
 write,reset,sync=m.write_new,m.reset_connection,m.sync_private
 def write_cut(path,content):
@@ -443,7 +477,7 @@ api.restore_state(Path(sys.argv[1]),preview.data.digest,state_dir=root)
 raise AssertionError('cut not reached')
 """
     child = subprocess.run(
-        [sys.executable, "-c", code, str(saved), str(target), cut],
+        [sys.executable, "-c", code, str(saved), str(target), cut, str(old_version)],
         capture_output=True,
         text=True,
         timeout=10,
@@ -461,6 +495,13 @@ raise AssertionError('cut not reached')
         api.query_capabilities(task="llm.train", state_dir=target).data.records[0].freshness
         == "miss"
     )
+
+    if historical_plan is not None:
+        assert (
+            api.show_execution_plan(historical_plan.plan_id, state_dir=target).data.plan
+            == historical_plan
+        )
+        assert not api.validate_execution_plan(historical_plan.plan_id, state_dir=target).data.valid
 
 
 def test_current_producer_version_is_required_for_effective_public_result(tmp_path):

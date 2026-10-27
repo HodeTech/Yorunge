@@ -10,6 +10,8 @@ class IdentitySnapshot(Model):
     identity_epoch: str
     store_schema_version: int
     binding_count: int
+    approval_count: int = 0
+    approval_fingerprint: str = ""
     plan_count: int = 0
     plan_fingerprint: str = ""
     binding_fingerprint: str

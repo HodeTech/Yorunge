@@ -83,12 +83,10 @@ training: {method: sft, epochs: 1}
     return path
 
 
-@pytest.fixture
-def execution_fixture(monkeypatch):
+def execution_validator_fixture():
     """Trusted execution proof exists only in tests, never in the public task registry."""
     from datetime import timedelta
 
-    from yorunge import api
     from yorunge.application.capabilities import combine, policy_keys
     from yorunge.domain.capabilities import AuthorizationScope, Evidence, timestamp
     from yorunge.domain.execution import Effect, ExecutionAssessment
@@ -170,6 +168,33 @@ def execution_fixture(monkeypatch):
             )
             return self.change(result) if self.change else result
 
-    validator = Validator()
+    return Validator()
+
+
+@pytest.fixture
+def execution_fixture(monkeypatch):
+    from yorunge import api
+
+    validator = execution_validator_fixture()
     monkeypatch.setattr(api, "_execution_validator", lambda: validator)
     return validator
+
+
+@pytest.fixture
+def execution_clock(monkeypatch):
+    import time
+    from datetime import UTC, datetime
+
+    class Clock:
+        value = datetime(2026, 10, 28, tzinfo=UTC)
+        elapsed = 0
+
+        def now(self):
+            return self.value
+
+        def monotonic(self):
+            return time.monotonic() + self.elapsed
+
+    clock = Clock()
+    monkeypatch.setattr("yorunge.adapters.capability_cache.SystemClock", lambda: clock)
+    return clock

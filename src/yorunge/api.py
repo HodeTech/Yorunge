@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,11 +31,18 @@ from yorunge.domain.models import (
 if TYPE_CHECKING:
     from yorunge.adapters.execution_store import PlanRepository
     from yorunge.adapters.state import Store
-    from yorunge.application.execution import ExecutionBudget, ExecutionValidator
+    from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
-    from yorunge.domain.execution import ExecutionPlans, ExecutionPlanView, ExecutionValidity
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlan,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
@@ -748,14 +757,52 @@ def show_execution_plan(
     from yorunge.adapters.local_files import require_local_files
 
     require_local_files()
-    from yorunge.adapters.execution_store import read_plan
+    from yorunge.adapters.execution_store import read_approval, read_plan
     from yorunge.adapters.state import open_store
+    from yorunge.application.execution import approval_state
     from yorunge.domain.execution import ExecutionPlanView
 
     with open_store(state_dir) as store:
+        plan = read_plan(store.connection, plan_id)
         return Result[ExecutionPlanView](
-            data=ExecutionPlanView(plan=read_plan(store.connection, plan_id))
+            data=ExecutionPlanView(
+                plan=plan,
+                approval=approval_state(plan, read_approval(store.connection, plan), None),
+            )
         )
+
+
+@contextmanager
+def _execution_validation(
+    plan_id: str,
+    config: Path | None,
+    profile: str | None,
+    project: str | None,
+    state_dir: Path | None,
+    budget: ExecutionBudget,
+    *,
+    confirmation: str | None = None,
+    consent: bool = False,
+) -> Iterator[tuple[ExecutionUseCases, ExecutionPlan, Context, tuple[BoundCredential, ...]]]:
+    from yorunge.adapters.execution_store import read_plan
+    from yorunge.adapters.input_files import DescriptorInputs
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import ExecutionUseCases, require_confirmation
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    with open_store(state_dir, timeout=budget.remaining()) as store:
+        plan = read_plan(store.connection, plan_id)
+        if consent:
+            require_confirmation(plan, confirmation)
+        context, selected = _context(config, request, None)
+        credentials = _execution_credentials(context, selected, plan.selection, store)
+        repository = _execution_repository(store, credentials, budget)
+        if repository.read(plan_id) != plan:
+            raise YorungeError("state_changed")
+        use_cases = ExecutionUseCases(
+            repository, DescriptorInputs(), _execution_validator(), budget
+        )
+        yield use_cases, plan, context, credentials
 
 
 def validate_execution_plan(
@@ -767,19 +814,70 @@ def validate_execution_plan(
     state_dir: Path | None = None,
 ) -> Result[ExecutionValidity]:
     budget = _execution_budget()
-    from yorunge.adapters.execution_store import read_plan
-    from yorunge.adapters.input_files import DescriptorInputs
-    from yorunge.adapters.state import open_store
-    from yorunge.application.execution import ExecutionUseCases
     from yorunge.domain.execution import ExecutionValidity
 
-    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
-    context, selected = _context(config, request, None)
-    with open_store(state_dir, timeout=budget.remaining()) as store:
-        plan = read_plan(store.connection, plan_id)
-        credentials = _execution_credentials(context, selected, plan.selection, store)
-        repository = _execution_repository(store, credentials, budget)
-        use_cases = ExecutionUseCases(
-            repository, DescriptorInputs(), _execution_validator(), budget
-        )
+    with _execution_validation(plan_id, config, profile, project, state_dir, budget) as (
+        use_cases,
+        plan,
+        context,
+        credentials,
+    ):
         return Result[ExecutionValidity](data=use_cases.validate(plan, context, credentials))
+
+
+def approve_execution_plan(
+    plan_id: str,
+    confirmation: str | None = None,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ExecutionApprovalState]:
+    budget = _execution_budget()
+    from yorunge.domain.execution import ExecutionApprovalState
+
+    with _execution_validation(
+        plan_id,
+        config,
+        profile,
+        project,
+        state_dir,
+        budget,
+        confirmation=confirmation,
+        consent=True,
+    ) as (use_cases, plan, context, credentials):
+        return Result[ExecutionApprovalState](
+            data=use_cases.approve(plan, confirmation, context, credentials)
+        )
+
+
+def revoke_execution_approval(
+    plan_id: str, *, state_dir: Path | None = None
+) -> Result[ExecutionApprovalState]:
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import revoke_approval
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.execution import ExecutionApprovalState
+
+    with open_store(state_dir) as store:
+        return Result[ExecutionApprovalState](data=revoke_approval(store, plan_id))
+
+
+def forget_execution_plan(
+    plan_id: str, confirmation: str | None = None, *, state_dir: Path | None = None
+) -> Result[ForgottenExecutionPlan]:
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import forget_plan
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.execution import ForgottenExecutionPlan
+
+    with open_store(state_dir) as store:
+        return Result[ForgottenExecutionPlan](
+            data=forget_plan(store, plan_id, confirmation),
+            warnings=("local_forget_does_not_cancel_remote_work",),
+        )

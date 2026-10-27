@@ -10,7 +10,7 @@
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
 | [CapabilityScopeV2](capability-scope-v2.md) | Accepted tasarım — ADR-0013'e bağlı kapalı wire, nullability, sıralama ve kanonik anahtar; ürün kabulü sürüyor |
 | [Credential binding v1](credential-binding-v1.md) | Uygulandı — ortak hedef/UNIQUE/HMAC, kalıcı gözlem ve byte vektörleri; Accepted ADR-0012 |
-| [Execution planı v2](execution-plan.md) | Ayrı kalıcı prepare/list/show/validate, descriptor input ve güncel validity; onay adımı sürüyor |
+| [Execution planı v2](execution-plan.md) | Ayrı kalıcı prepare/list/show/validate, descriptor input, güncel validity ve açık digest onayı/yönetim; kabul sürüyor |
 | [Yerel state](local-state.md) | Store/migration/backup, açık reset/identity-only restore/recover ve koruma sınırı |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).

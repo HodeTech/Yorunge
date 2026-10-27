@@ -1,6 +1,7 @@
 from typing import Literal
 
 ErrorCode = Literal[
+    "approval_required",
     "input_unsupported",
     "input_invalid",
     "input_changed",
@@ -39,6 +40,7 @@ ErrorCode = Literal[
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
     "input_unsupported": "Güvenli dosya bağlama bu platformda desteklenmiyor.",
     "input_invalid": "Girdi kökü veya dosya geçersiz. Açık kök ve düzenli göreli dosya kullanın.",
     "input_changed": "Girdi veya kök kimliği değişti. Güncel içerikle yeni plan hazırlayın.",
@@ -111,7 +113,9 @@ class YorungeError(Exception):
         self.code = code
         self.message = MESSAGES[code]
         self.exit_code = 2
-        if code == "config_write_uncertain":
+        if code == "approval_required":
+            self.exit_code = 4
+        elif code == "config_write_uncertain":
             self.exit_code = 5
         elif code in ("credential_unavailable", "invalid_credential"):
             self.exit_code = 3
@@ -126,3 +130,25 @@ class YorungeError(Exception):
             "retryable": False,
             "details": {},
         }
+
+
+class ApprovalNotEffective(YorungeError):
+    """A committed local record is visible even when terminal validity has elapsed."""
+
+    def __init__(self, plan_id: str, approval_id: str) -> None:
+        super().__init__("plan_not_valid")
+        self.plan_id, self.approval_id = plan_id, approval_id
+        self.message = (
+            "Onay kaydı oluştu fakat son kontrolde etkin değil. "
+            "plan execution show ile kayıtlı planı inceleyin."
+        )
+        self.args = (self.message,)
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = {
+            "plan_id": self.plan_id,
+            "approval_id": self.approval_id,
+            "recorded": True,
+        }
+        return value

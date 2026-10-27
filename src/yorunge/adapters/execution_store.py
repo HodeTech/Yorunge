@@ -6,17 +6,23 @@ import base64
 import json
 import sqlite3
 from datetime import datetime
+from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Stamp, StateCache
 from yorunge.adapters.state import Store, metadata
 from yorunge.application.execution import ExecutionBudget
-from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.capabilities import canonical, instant, timestamp
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.execution import (
+    ExecutionApproval,
+    ExecutionApprovalState,
     ExecutionMoment,
     ExecutionPlan,
     ExecutionPlans,
     ExecutionSummary,
+    ExecutionValidity,
+    ForgottenExecutionPlan,
+    binding_digest,
 )
 from yorunge.domain.state import canonical_uuid
 
@@ -88,6 +94,30 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
 class PlanRepository:
     def __init__(self, store: Store, cache: StateCache, budget: ExecutionBudget) -> None:
         self.store, self.cache, self.budget = store, cache, budget
+        self.pinned: ExecutionPlan | None = None
+        self.latest_approval: ExecutionApproval | None = None
+        self.cache.checks = (self._guard_plan,)
+        self.cache.additional_expiries = self._expiry_boundaries
+
+    def _expiry_boundaries(self) -> tuple[datetime, ...]:
+        dates: tuple[datetime, ...] = (
+            (instant(self.pinned.expires_at),) if self.pinned is not None else ()
+        )
+        if self.latest_approval is not None:
+            dates += (instant(self.latest_approval.expires_at),)
+        return dates
+
+    def _guard_plan(self) -> None:
+        if self.pinned is not None:
+            try:
+                current = read_plan(self.store.connection, self.pinned.plan_id)
+            except YorungeError as error:
+                if error.code == "plan_not_found":
+                    raise YorungeError("state_changed") from None
+                raise
+            if current != self.pinned:
+                raise YorungeError("state_changed")
+            self.latest_approval = read_approval(self.store.connection, current)
 
     def moment(self) -> ExecutionMoment:
         self.budget.check()
@@ -119,7 +149,57 @@ class PlanRepository:
         )
 
     def read(self, plan_id: str) -> ExecutionPlan:
-        return read_plan(self.store.connection, plan_id)
+        self.pinned = read_plan(self.store.connection, plan_id)
+        self.latest_approval = read_approval(self.store.connection, self.pinned)
+        return self.pinned
+
+    def approval(self) -> ExecutionApproval | None:
+        return self.latest_approval
+
+    def approve(
+        self, plan: ExecutionPlan, validity: ExecutionValidity, expected: ExecutionMoment
+    ) -> ExecutionApproval:
+        if self.pinned != plan:
+            raise YorungeError("state_changed")
+        if not validity.valid or validity.valid_until is None:
+            raise YorungeError("plan_not_valid")
+        until = min(instant(plan.expires_at), instant(validity.valid_until))
+        try:
+            with self.cache.transaction(stamp(expected)) as gate:
+                self.budget.check()
+                gate.require_range(instant(plan.prepared_at), until)
+                old = self.latest_approval
+                now = timestamp(self.cache.now())
+                if (
+                    old is not None
+                    and old.status == "approved"
+                    and old.approved_at <= now < old.expires_at
+                ):
+                    gate.require_range(instant(old.approved_at), instant(old.expires_at))
+                    record = old
+                else:
+                    if not instant(plan.prepared_at) <= instant(now) < until:
+                        raise YorungeError("plan_not_valid")
+                    record = ExecutionApproval(
+                        approval_id=str(uuid4()),
+                        plan_id=plan.plan_id,
+                        plan_digest=plan.digest,
+                        binding_digest=binding_digest(plan),
+                        store_id=plan.store_id,
+                        identity_epoch=plan.identity_epoch,
+                        clock_generation=plan.clock_generation,
+                        approved_at=now,
+                        expires_at=timestamp(until),
+                        status="approved",
+                        revoked_at=None,
+                    )
+                    write_approval(self.store.connection, record)
+                self.budget.check()
+            return record
+        except YorungeError as error:
+            if error.code == "capability_expired":
+                raise YorungeError("plan_not_valid") from None
+            raise
 
     def save(self, plan: ExecutionPlan, expected: ExecutionMoment) -> None:
         try:
@@ -147,6 +227,7 @@ class PlanRepository:
                     ),
                 )
                 self.budget.check()
+            self.pinned = plan
         except YorungeError as error:
             if error.code == "capability_expired":
                 raise YorungeError("plan_not_valid") from None
@@ -171,13 +252,15 @@ def list_plans(connection: sqlite3.Connection, limit: int, cursor: str | None) -
         raise YorungeError("invalid_request")
     after = decode_cursor(cursor) if cursor is not None else ("", "")
     rows = connection.execute(
-        "SELECT plan_id,digest,task,prepared_at,expires_at,status FROM execution_plans "
-        "WHERE (prepared_at,plan_id)>(?,?) ORDER BY prepared_at,plan_id LIMIT ?",
+        "SELECT p.plan_id,p.digest,p.task,p.prepared_at,p.expires_at,p.status,"
+        "coalesce(a.status,'none') FROM execution_plans p LEFT JOIN execution_approvals a "
+        "ON p.plan_id=a.plan_id WHERE (p.prepared_at,p.plan_id)>(?,?) "
+        "ORDER BY p.prepared_at,p.plan_id LIMIT ?",
         (*after, limit + 1),
     ).fetchall()
     plans = []
     try:
-        for identifier, digest, task, prepared, expires, status in rows[:limit]:
+        for identifier, digest, task, prepared, expires, status, approval_status in rows[:limit]:
             canonical_uuid(identifier)
             instant(prepared), instant(expires)
             plans.append(
@@ -188,6 +271,7 @@ def list_plans(connection: sqlite3.Connection, limit: int, cursor: str | None) -
                     prepared_at=prepared,
                     expires_at=expires,
                     status=status,
+                    approval_status=approval_status,
                 )
             )
     except (ValueError, TypeError):
@@ -196,3 +280,134 @@ def list_plans(connection: sqlite3.Connection, limit: int, cursor: str | None) -
         encode_cursor(plans[-1].prepared_at, plans[-1].plan_id) if len(rows) > limit else None
     )
     return ExecutionPlans(plans=tuple(plans), next_cursor=next_cursor)
+
+
+APPROVAL_COLUMNS = "plan_id,approval_id,status,approved_at,expires_at,revoked_at,payload"
+
+
+def decode_approval(row: tuple[object, ...], plan: ExecutionPlan) -> ExecutionApproval:
+    try:
+        identifier, approval_id, status, approved, expires, revoked, payload = row
+        if not isinstance(payload, str) or len(payload.encode("utf-8")) > 4096:
+            raise ValueError("bounded approval required")
+        record = ExecutionApproval.model_validate_json(payload)
+        if (
+            (identifier, approval_id, status, approved, expires, revoked)
+            != (
+                record.plan_id,
+                record.approval_id,
+                record.status,
+                record.approved_at,
+                record.expires_at,
+                record.revoked_at,
+            )
+            or (
+                record.plan_id,
+                record.plan_digest,
+                record.binding_digest,
+                record.store_id,
+                record.identity_epoch,
+                record.clock_generation,
+            )
+            != (
+                plan.plan_id,
+                plan.digest,
+                binding_digest(plan),
+                plan.store_id,
+                plan.identity_epoch,
+                plan.clock_generation,
+            )
+            or not plan.prepared_at <= record.approved_at < record.expires_at <= plan.expires_at
+            or plan.status != "prepared"
+        ):
+            raise ValueError("approval relationship mismatch")
+        return record
+    except (ValueError, TypeError, RecursionError):
+        raise YorungeError("state_invalid") from None
+
+
+def read_approval(connection: sqlite3.Connection, plan: ExecutionPlan) -> ExecutionApproval | None:
+    row = connection.execute(
+        f"SELECT {APPROVAL_COLUMNS} FROM execution_approvals WHERE plan_id=?", (plan.plan_id,)
+    ).fetchone()
+    return decode_approval(row, plan) if row is not None else None
+
+
+def validate_approvals(connection: sqlite3.Connection) -> None:
+    for row in connection.execute(f"SELECT {APPROVAL_COLUMNS} FROM execution_approvals"):
+        try:
+            plan = read_plan(connection, row[0])
+        except YorungeError:
+            raise YorungeError("state_invalid") from None
+        decode_approval(row, plan)
+
+
+def write_approval(connection: sqlite3.Connection, record: ExecutionApproval) -> None:
+    payload = canonical(record.model_dump(mode="json")).decode("ascii")
+    if len(payload) > 4096:
+        raise YorungeError("plan_not_valid")
+    connection.execute(
+        "INSERT OR REPLACE INTO execution_approvals VALUES(?,?,?,?,?,?,?)",
+        (
+            record.plan_id,
+            record.approval_id,
+            record.status,
+            record.approved_at,
+            record.expires_at,
+            record.revoked_at,
+            payload,
+        ),
+    )
+
+
+def forget_plan(store: Store, plan_id: str, confirmation: str | None) -> ForgottenExecutionPlan:
+    from yorunge.application.execution import require_confirmation
+
+    plan = read_plan(store.connection, plan_id)
+    require_confirmation(plan, confirmation)
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        current = read_plan(store.connection, plan_id)
+        if current != plan:
+            raise YorungeError("state_changed")
+        approval = read_approval(store.connection, current)
+        store.deadline.remaining()
+        store.connection.execute("DELETE FROM execution_plans WHERE plan_id=?", (plan_id,))
+        store.deadline.remaining()
+        store.connection.execute("COMMIT")
+        return ForgottenExecutionPlan(
+            plan_id=plan_id, digest=plan.digest, approval_removed=approval is not None
+        )
+    finally:
+        if store.connection.in_transaction:
+            store.connection.execute("ROLLBACK")
+
+
+def revoke_approval(store: Store, plan_id: str) -> ExecutionApprovalState:
+    from yorunge.application.execution import approval_state
+
+    plan = read_plan(store.connection, plan_id)
+    cache = StateCache(store)
+    repo = PlanRepository(store, cache, ExecutionBudget(cache.clock, cache.clock.monotonic()))
+    repo.read(plan_id)
+    expected = repo.moment()
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        repo._guard_plan()
+        record = repo.latest_approval
+        if record is not None and record.status != "revoked":
+            record = ExecutionApproval.model_validate_json(
+                canonical(
+                    record.model_copy(
+                        update={"status": "revoked", "revoked_at": timestamp(cache.now())}
+                    ).model_dump(mode="json")
+                )
+            )
+            write_approval(store.connection, record)
+        store.deadline.remaining()
+        store.connection.execute("COMMIT")
+    finally:
+        if store.connection.in_transaction:
+            store.connection.execute("ROLLBACK")
+    final = repo.finish(expected)
+    return approval_state(plan, repo.latest_approval, final, valid=False)

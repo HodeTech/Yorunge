@@ -15,7 +15,13 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.execution import ExecutionPlans, ExecutionPlanView, ExecutionValidity
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
     from yorunge.domain.state import StateInfo
@@ -35,6 +41,8 @@ if TYPE_CHECKING:
         | Result[ExecutionPlanView]
         | Result[ExecutionPlans]
         | Result[ExecutionValidity]
+        | Result[ExecutionApprovalState]
+        | Result[ForgottenExecutionPlan]
     )
 
 
@@ -142,16 +150,18 @@ def parser() -> Parser:
     execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
     common(execution_plan)
     execution_actions = execution_plan.add_subparsers(dest="execution_action", required=True)
-    for name in ("prepare", "list", "show", "validate"):
+    for name in ("prepare", "list", "show", "validate", "approve", "revoke", "forget"):
         command = execution_actions.add_parser(name)
         if name == "prepare":
             planning_options(command)
             command.add_argument("--input-root", type=Path)
         else:
-            common(command, context=name == "validate")
+            common(command, context=name in ("validate", "approve"))
         command.add_argument("--state-dir", type=Path)
-        if name in ("show", "validate"):
+        if name in ("show", "validate", "approve", "revoke", "forget"):
             command.add_argument("--plan-id", required=True)
+        if name in ("approve", "forget"):
+            command.add_argument("--confirm", help="Tam plan digest'i; eksik/yanlış ise çıkış4")
         if name == "list":
             command.add_argument("--limit", type=int, default=50)
             command.add_argument("--cursor")
@@ -190,24 +200,47 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.execution import ExecutionPlans, ExecutionPlanView, ExecutionValidity
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
+    if isinstance(data, ExecutionApprovalState):
+        return (
+            f"Plan: {data.plan_id}\nOnay etkin: {data.effective}\n"
+            f"Durum: {data.record.status if data.record else 'none'}\nYürütme başlatılmaz."
+        )
+    if isinstance(data, ForgottenExecutionPlan):
+        return f"Yerel plan unutuldu: {data.plan_id}\nUzak iş iptali değildir."
     if isinstance(data, ExecutionPlanView):
         plan = data.plan
+        approval_status = (
+            data.approval.record.status if data.approval and data.approval.record else "none"
+        )
         return (
             f"Execution planı: {plan.plan_id}\nDigest: {plan.digest}\n"
             f"Hazırlık: {plan.status}; güncel geçerlilik: "
             f"{data.validity.valid if data.validity else 'denetlenmedi'}\n"
+            f"Onay kaydı: {approval_status}; "
+            "show güncel onay doğrulaması yapmaz.\n"
             f"Engeller: {', '.join(plan.assessment.blockers) or '-'}\nYürütme başlatılmaz."
         )
     if isinstance(data, ExecutionValidity):
-        return f"Geçerli: {data.valid}\nNedenler: {', '.join(data.reasons) or '-'}"
-    if isinstance(data, ExecutionPlans):
-        return "\n".join(f"{p.plan_id} {p.digest} {p.task} ({p.status})" for p in data.plans) + (
-            f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else ""
+        return (
+            f"Geçerli: {data.valid}\n"
+            f"Onay etkin: {data.approval.effective if data.approval else False}\n"
+            f"Nedenler: {', '.join(data.reasons) or '-'}"
         )
+    if isinstance(data, ExecutionPlans):
+        return "\n".join(
+            f"{p.plan_id} {p.digest} {p.task} ({p.status}; onay kaydı: {p.approval_status})"
+            for p in data.plans
+        ) + (f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else "")
     if isinstance(data, CachedCapabilityView):
         return "\n".join(
             f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
@@ -392,14 +425,22 @@ def execution_result(args: argparse.Namespace) -> CliResult:
 
     options = vars(args)
     action = args.execution_action
-    if action in ("list", "show"):
+    if action in ("list", "show", "revoke", "forget"):
         reject_context(args, ("config", "profile", "project"))
         if action == "list":
             return api.list_execution_plans(
                 limit=args.limit, cursor=args.cursor, state_dir=args.state_dir
             )
+        if action == "revoke":
+            return api.revoke_execution_approval(args.plan_id, state_dir=args.state_dir)
+        if action == "forget":
+            return api.forget_execution_plan(args.plan_id, args.confirm, state_dir=args.state_dir)
         return api.show_execution_plan(args.plan_id, state_dir=args.state_dir)
     context = {name: options.get(name) for name in ("config", "profile", "project")}
+    if action == "approve":
+        return api.approve_execution_plan(
+            args.plan_id, args.confirm, state_dir=args.state_dir, **context
+        )
     if action == "validate":
         return api.validate_execution_plan(args.plan_id, state_dir=args.state_dir, **context)
     return api.prepare_execution_plan(

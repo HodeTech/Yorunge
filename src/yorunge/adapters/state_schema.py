@@ -109,6 +109,21 @@ payload TEXT NOT NULL CHECK(length(payload)<=65536)
             "CREATE INDEX execution_plan_order ON execution_plans(prepared_at,plan_id)",
         ),
     ),
+    Migration(
+        3,
+        4,
+        (
+            """CREATE TABLE execution_approvals (
+plan_id TEXT PRIMARY KEY REFERENCES execution_plans(plan_id) ON DELETE CASCADE,
+approval_id TEXT NOT NULL UNIQUE CHECK(length(approval_id)=36),
+status TEXT NOT NULL CHECK(status IN ('approved','revoked')),
+approved_at TEXT NOT NULL CHECK(length(approved_at)=27),
+expires_at TEXT NOT NULL CHECK(length(expires_at)=27),
+revoked_at TEXT CHECK(revoked_at IS NULL OR length(revoked_at)=27),
+payload TEXT NOT NULL CHECK(length(payload)<=4096)
+) STRICT""",
+        ),
+    ),
 )
 
 

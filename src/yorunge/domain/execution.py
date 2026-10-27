@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
@@ -274,6 +275,81 @@ class ExecutionPlan(ExecutionBody):
         return self
 
 
+class ExecutionApproval(WireModel):
+    schema_version: Literal[1] = 1
+    approval_id: str
+    plan_id: str
+    plan_schema_version: Literal[2] = 2
+    plan_digest: Digest
+    binding_digest: Digest
+    store_id: str
+    identity_epoch: str
+    clock_generation: PositiveInt64
+    approved_at: str
+    expires_at: str
+    status: Literal["approved", "revoked"]
+    revoked_at: str | None
+
+    @field_validator("approval_id", "plan_id", "store_id", "identity_epoch")
+    @classmethod
+    def uuid(cls, value: str) -> str:
+        return canonical_uuid(value)
+
+    @field_validator("plan_schema_version", mode="before")
+    @classmethod
+    def strict_version(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer plan version required")
+        return value
+
+    @model_validator(mode="after")
+    def consistent(self) -> ExecutionApproval:
+        if (
+            not timedelta(0)
+            < instant(self.expires_at) - instant(self.approved_at)
+            <= timedelta(seconds=300)
+        ):
+            raise ValueError("bounded approval lifetime required")
+        if (self.status == "revoked") != (self.revoked_at is not None):
+            raise ValueError("revocation status mismatch")
+        if self.revoked_at is not None:
+            instant(self.revoked_at)
+        return self
+
+
+class ExecutionApprovalState(WireModel):
+    plan_id: str
+    plan_digest: Digest
+    record: ExecutionApproval | None
+    effective: bool | None
+    checked_at: str | None
+    valid_until: str | None
+    reasons: tuple[Identifier, ...]
+
+
+class ForgottenExecutionPlan(WireModel):
+    plan_id: str
+    digest: Digest
+    forgotten: Literal[True] = True
+    local_only: Literal[True] = True
+    approval_removed: bool
+
+
+def binding_digest(plan: ExecutionPlan) -> str:
+    return hashlib.sha256(
+        canonical(
+            {
+                "context": plan.context.model_dump(mode="json"),
+                "selection": plan.selection.model_dump(mode="json"),
+                "recipe": plan.recipe.model_dump(mode="json"),
+                "input_root": plan.input_root.model_dump(mode="json") if plan.input_root else None,
+                "inputs": [i.model_dump(mode="json") for i in plan.inputs],
+                "assessment": json.loads(plan.assessment.semantic()),
+            }
+        )
+    ).hexdigest()
+
+
 class ExecutionValidity(WireModel):
     plan_id: str
     digest: Digest
@@ -281,14 +357,17 @@ class ExecutionValidity(WireModel):
     checked_at: str
     valid_until: str | None
     reasons: tuple[Identifier, ...]
+    approval: ExecutionApprovalState | None = None
 
 
 class ExecutionPlanView(WireModel):
     plan: ExecutionPlan
     validity: ExecutionValidity | None = None
+    approval: ExecutionApprovalState | None = None
 
 
 class ExecutionSummary(WireModel):
+    approval_status: Literal["none", "approved", "revoked"] = "none"
     plan_id: str
     digest: Digest
     task: Task

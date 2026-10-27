@@ -59,6 +59,7 @@ def test_real_state_reopen_cli_and_pragmas(tmp_path, cli):
             "cache_clock",
             "capability_cache",
             "execution_plans",
+            "execution_approvals",
         }
     result = cli("state", "init", "--state-dir", str(root), "--output", "json", state=True)
     assert result.returncode == 0

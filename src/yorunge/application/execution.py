@@ -14,9 +14,11 @@ from pydantic import ValidationError
 from yorunge.application.capabilities import LocalPolicyProducer, combine, policy_keys
 from yorunge.domain.capabilities import canonical, instant, timestamp
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import ApprovalNotEffective, YorungeError
 from yorunge.domain.execution import (
     Effect,
+    ExecutionApproval,
+    ExecutionApprovalState,
     ExecutionAssessment,
     ExecutionBody,
     ExecutionMoment,
@@ -63,6 +65,10 @@ class ExecutionRepository(Protocol):
         self, expected: ExecutionMoment, *, valid_until: datetime | None = None
     ) -> ExecutionMoment: ...
     def read(self, plan_id: str) -> ExecutionPlan: ...
+    def approval(self) -> ExecutionApproval | None: ...
+    def approve(
+        self, plan: ExecutionPlan, validity: ExecutionValidity, expected: ExecutionMoment
+    ) -> ExecutionApproval: ...
     def save(self, plan: ExecutionPlan, expected: ExecutionMoment) -> None: ...
 
 
@@ -290,4 +296,93 @@ class ExecutionUseCases:
                 raise
         self.budget.check()
         final = self.repository.finish(expected, valid_until=until)
-        return report(plan, final, reasons, until)
+        validity = report(plan, final, reasons, until)
+        approval = approval_state(
+            plan,
+            self.repository.approval(),
+            final,
+            valid=validity.valid,
+            valid_until=instant(validity.valid_until) if validity.valid_until else None,
+        )
+        return validity.model_copy(update={"approval": approval})
+
+    def approve(
+        self,
+        plan: ExecutionPlan,
+        confirmation: str | None,
+        context: Context,
+        credentials: tuple[BoundCredential, ...],
+    ) -> ExecutionApprovalState:
+        require_confirmation(plan, confirmation)
+        expected = self.repository.moment()
+        validity = self.validate(plan, context, credentials)
+        if not validity.valid or validity.valid_until is None:
+            raise YorungeError("plan_not_valid")
+        written = self.repository.approve(plan, validity, expected)
+        final = self.repository.finish(
+            expected, valid_until=min(instant(validity.valid_until), instant(written.expires_at))
+        )
+        current = report(plan, final, [], instant(validity.valid_until))
+        state = approval_state(
+            plan,
+            self.repository.approval(),
+            final,
+            valid=current.valid,
+            valid_until=instant(current.valid_until) if current.valid_until else None,
+        )
+        if not state.effective:
+            raise ApprovalNotEffective(plan.plan_id, written.approval_id)
+        return state
+
+
+def require_confirmation(plan: ExecutionPlan, confirmation: str | None) -> None:
+    if not isinstance(confirmation, str) or confirmation != plan.digest:
+        raise YorungeError("approval_required")
+
+
+def approval_state(
+    plan: ExecutionPlan,
+    record: ExecutionApproval | None,
+    moment: ExecutionMoment | None,
+    *,
+    valid: bool = False,
+    valid_until: datetime | None = None,
+) -> ExecutionApprovalState:
+    if moment is None:
+        return ExecutionApprovalState(
+            plan_id=plan.plan_id,
+            plan_digest=plan.digest,
+            record=record,
+            effective=None,
+            checked_at=None,
+            valid_until=None,
+            reasons=("approval_not_validated",),
+        )
+    reasons = []
+    if not valid:
+        reasons.append("plan_not_validated_for_use")
+    if record is None:
+        reasons.append("approval_missing")
+    elif record.status == "revoked":
+        reasons.append("approval_revoked")
+    elif (record.store_id, record.identity_epoch, record.clock_generation) != (
+        moment.store_id,
+        moment.identity_epoch,
+        moment.generation,
+    ) or moment.anomaly:
+        reasons.append("approval_binding_changed")
+    elif not instant(record.approved_at) <= moment.now < instant(record.expires_at):
+        reasons.append("approval_expired")
+    return ExecutionApprovalState(
+        plan_id=plan.plan_id,
+        plan_digest=plan.digest,
+        record=record,
+        effective=not reasons,
+        checked_at=timestamp(moment.now),
+        valid_until=timestamp(
+            min(instant(record.expires_at), valid_until or instant(record.expires_at))
+        )
+        if not reasons and record is not None
+        else None,
+        reasons=tuple(reasons),
+    )

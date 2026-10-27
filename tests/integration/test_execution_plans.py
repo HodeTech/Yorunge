@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from pydantic import ValidationError
@@ -266,25 +266,6 @@ def test_plan_changes_stale_maintenance_preview_but_cache_churn_does_not(
     assert not api.validate_execution_plan(plan.plan_id, state_dir=state).data.valid
 
 
-@pytest.fixture
-def execution_clock(monkeypatch):
-    import time
-
-    class Clock:
-        value = datetime(2026, 10, 28, tzinfo=UTC)
-        elapsed = 0
-
-        def now(self):
-            return self.value
-
-        def monotonic(self):
-            return time.monotonic() + self.elapsed
-
-    clock = Clock()
-    monkeypatch.setattr("yorunge.adapters.capability_cache.SystemClock", lambda: clock)
-    return clock
-
-
 def test_semantic_revalidation_does_not_extend_original_expiry_and_clock_fences_restart(
     tmp_path,
     execution_fixture,
@@ -406,6 +387,10 @@ def test_plan_quota_and_pagination_are_real_database_constraints(tmp_path, execu
             break
     assert len(seen) == 1024
     assert first.plan_id in seen
+    selected = api.list_execution_plans(limit=1, state_dir=state).data.plans[0]
+    api.forget_execution_plan(selected.plan_id, selected.digest, state_dir=state)
+    replacement = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    assert replacement.plan_id not in seen
 
 
 def test_credential_rotation_inside_producer_rejects_the_stale_snapshot(
@@ -538,3 +523,18 @@ def test_terminal_clock_commit_delay_cannot_publish_validity(
             assert generation == 2
         else:
             assert high >= plan.expires_at
+
+
+def test_forget_restores_capacity_without_prior_id_knowledge(tmp_path, execution_fixture):
+    # Quota generation/1024-row traversal is covered above; management selects an ID from list.
+    state = tmp_path / "state"
+    first = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    other = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    selected = api.list_execution_plans(limit=1, state_dir=state).data.plans[0]
+    api.forget_execution_plan(selected.plan_id, selected.digest, state_dir=state)
+    assert selected.plan_id == first.plan_id
+    assert api.show_execution_plan(other.plan_id, state_dir=state).data.plan == other
+    assert (
+        api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan.plan_id
+        != first.plan_id
+    )

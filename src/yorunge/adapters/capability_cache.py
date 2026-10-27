@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -180,6 +180,8 @@ class StateCache:
         self.observation_anomaly = False
         self.required_generation = 0
         self.generation = 0
+        self.checks: tuple[Callable[[], None], ...] = ()
+        self.additional_expiries: Callable[[], tuple[datetime, ...]] = lambda: ()
 
     def now(self) -> datetime:
         self.observed = self.clock.now()
@@ -267,6 +269,9 @@ class StateCache:
                 identity.credential_revision,
             ):
                 raise YorungeError("state_changed")
+
+        for check in self.checks:
+            check()
 
     def _same(self, expected: Stamp, found: Stamp) -> None:
         self._bindings(expected)
@@ -492,7 +497,10 @@ class StateCache:
                 return current, within_budget
             if observed < current.now or self.required_generation > current.generation:
                 return self._save_stamp(observed), within_budget
-            if any(current.now < boundary <= observed for boundary in expires):
+            if any(
+                current.now < boundary <= observed
+                for boundary in (*expires, *self.additional_expiries())
+            ):
                 current = self._save_stamp()
                 continue
             return Stamp(
