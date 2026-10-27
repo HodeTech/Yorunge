@@ -30,9 +30,10 @@ Domain somut SQLite bilmez; kayıt yaşam döngüsü dış adaptördedir. Model/
 
 1. Yardım/sürüm ve mevcut offline kullanım store/dizin/key oluşturmaz. Açık store kullanımı gerçek geçici DB'de kapanıp yeniden açılır.
 2. Onaylı PRAGMA, application/schema kimliği, sürüm ve bütünlük denetlenir; yabancı/gelecek/bozuk DB sessizce yenisiyle değiştirilmez.
-3. Migration DDL/veri/sürüm kaydı birlikte commit veya rollback olur; süreç kesintisi ve iki migration yazarı deneyi kanıtlıdır.
+3. Migration DDL/veri/sürüm kaydı adım başına birlikte commit veya rollback olur; 1→2 başarılı/2→3 başarısız zincir 2'de yeniden açılır. Manifest checksum/süreklilik/sürüm değişmezi, ilişkisel/mantıksal tutarlılık, süreç kesintisi ve iki migration yazarı deneyi kanıtlıdır.
 4. Kilit beklemesi sınırlıdır; hata kontrolsüz traceback, sahte başarı veya sessiz veri sıfırlaması üretmez. Transaction içinde ağ/uzun hash beklenmez.
 5. Dosya/dizin izinleri, symlink ve yetersiz yazma alanı senaryoları desteklenen macOS/Linux'ta anlamlı negatif testle doğrulanır. NFS/bulut senkronizasyon dizini desteği varsayılmaz.
+6. ADR-0011'in no-clobber backup, tamamlanma kaydı, saklama ve platform sync sırası gerçek dosyalarla sınanır; mevcut hedef/disk dolması/üst dizin sync hatasında DDL başlamaz. Kısmi yedek restore girdisi sayılmaz, başarılı snapshot otomatik silinmez. Hot-journal açılış kurtarması ile manuel journal silme ayrımı korunur.
 
 ## Doğrulama
 

@@ -10,6 +10,8 @@ Bellek içi teklifler ve yalnızca done journal'ına dayanan tekrarlar, süreç 
 
 Plan, operation, attempt, sahiplik ve kritik rezervasyonlar yerel SQLite transaction'larıyla tutulur. Dosya/model içeriği artefakt deposunda kalır. Sırlar DB'ye yazılmaz. Kritik kayıt yan etkiden önce oluşur; belirsiz sonuçta tekrar gönderim yerine unknown/uzlaştırma kullanılır.
 
+[ADR-0012](0012-credential-identity-and-change-detection.md), yalnız özel yerel keyed verifier için bu sır saklama sınırını daraltmayı önerir. Henüz Proposed'dır; bu Accepted kararın istisnası yürürlüğe girmiş sayılmaz. Ham credential/hash yasağı ve diğer kayıtların sınırı korunur.
+
 ## Alternatifler
 
 Salt RAM restart bilgisini kaybeder. JSONL gözlem için uygundur, tek başına transaction/çok süreçli sahiplik çözmez. İlk sürüm için sunuculu DB işletimi gereksizdir.

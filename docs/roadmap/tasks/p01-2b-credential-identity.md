@@ -34,6 +34,8 @@ P01-2a ve P01-4a aynı dalda kanıtlı tamamlanır. [ADR-0012](../../decisions/0
 4. Onaylı mekanizmanın özel karşılaştırma kaydı public serialization/digest/log/hata içine girmez; raw secret ve raw hash saklanmaz. Sentetik sızıntı testleri bütün sınırları kapsar.
 5. Yerel koruma verisi kayıp/bozuk/uyumsuzsa otomatik yeniden üretimle eski bağ kabul edilmez. Onaylı kurtarma yolu yeni kimlik alanı üretir, eski bağları reddeder ve operation geçmişini silme sözleşmesi oluşturmaz.
 6. Plan seçimi, salt yerel komutların sır okumaması ve `remote_verified=false`/yürütülemez offline davranış korunur.
+7. [Ortak binding sözleşmesinin](../../reference/credential-binding-v1.md) hedef örnekleri, tam JSON/message/tag byte vektörleri, env/secret uzunlukları, revision taşması ve değişmeden eski v1 Plan yükleme kabulü doğrulanır.
+8. Canlı DB reset'i ile identity-only DB restore ayrıdır. Reset geçmişi silmez; restore'un kayıt kaybı açıkça gösterilir. Restore kilidi/kalıcı intent, kesinti ve yeni epoch/key doğrulaması eski bağı yeniden aktifleştirmez. Operation tüketicisi sürümünde restore ret kapısı P01-4b kabulüdür; bu karta tamamlanmış operation koruması yazılmaz.
 
 ## Doğrulama
 

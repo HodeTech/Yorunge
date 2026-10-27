@@ -8,6 +8,8 @@ Config açık `--config PATH` / Python `config=Path(...)` ile seçilir. Verilmez
 
 TOML root alanları: `schema_version=1` (bool/string değil int), `active_profile`, `profiles`. Her profil: `platform_url`, `llm_url`, `platform_key_env`, `llm_key_env`, `account_id`, `project_id`, `tools.defaults`. Bilinmeyen/nested alan ve yinelenen anahtar reddedilir. Proje önceliği açık çağrı → reçete `project` → profil `project_id` → null; liste başından proje alınmaz. Eksik proje yerel okumayı/plan hazırlığını engellemez; gerektiğinde remote plan engeli olur.
 
+`platform_key_env`/`llm_key_env` verilirse ad 1–128 ASCII karakter ve `^[A-Z_][A-Z0-9_]*$` biçimindedir (`EnvName` modelinin mevcut v1 sınırı). Bu ad sınırı secret değerinin uzunluğu değildir; değer bugün çözülmez. Secret değerinin UTF-8 byte sınırı ve credential hedef eşlemesi [Proposed binding sözleşmesinde](credential-binding-v1.md) ADR-0012 onayına sunulur; mevcut config/Plan dosyaları bu hazırlıkla yeniden yazılmaz.
+
 Hizmet URL'leri HTTPS olmalı; userinfo/query/fragment, beklenmeyen port, kontrol karakteri ve karışmış bilinen Platform/LLM host'ları reddedilir. Özel host'u yerel şemaya kabul etmek o host'un güvenilirliğini veya API uyumunu doğrulamaz. IPv6 kapsamı köşeli parantezle korunur. Uzak hedef politikası sonraki HTTP işinde doğrulanmalıdır.
 
 Kontrol karakteri sınırı C0 (`U+0000–U+001F`), DEL (`U+007F`) ve C1 (`U+0080–U+009F`) aralıklarıdır; hem hizmet URL'sine hem veri yolu referansına uygulanır. Boş userinfo (`https://@host/...`) de reddedilir. Önceden yanlışlıkla kabul edilen bu girdiler artık config/reçete/kayıtlı Plan hatasıdır; geçerli Unicode dosya adları ve v1 dosyaları korunur.

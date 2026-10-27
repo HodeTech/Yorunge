@@ -18,6 +18,8 @@
 
 **Aktif hazırlık [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** [B02/B13 araştırması ve Proposed kararları](../research/p01-2-state-identity-decision-review.md) hazır; kullanıcı onayı bekleniyor. Ürün uygulaması başlamadı; kararlar kabul edilmeden kalıcı biçim/koruma kodlanmaz.
 
+Onay öncesi iki incelemenin [doğrulama/düzeltme kaydı](../research/p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması) rapora eklendi. Reset/restore ayrımı, kalıcı no-clobber backup, migration değişmezleri ve [ortak binding v1](../reference/credential-binding-v1.md) hâlâ Proposed kararların parçasıdır; alt iş durumları ilerletilmedi.
+
 Paketin uygulama sırası onay → [P01-2a](tasks/p01-2a-secret-resolution.md) → [P01-4a](tasks/p01-4a-state-foundation.md) → [P01-2b](tasks/p01-2b-credential-identity.md) → [P01-2c](tasks/p01-2c-local-context-management.md). Ardından P01-3 → P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. Alt kartların güncel hazırlık/teslim durumu metadata'sındadır; aynı PR'da alt iş commit/test/review birimidir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md).
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
