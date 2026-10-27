@@ -14,13 +14,15 @@
 - Aktif ürün kodlaması öncesi roadmap ve ajan hazırlığı gözden geçirildi; [bulgu ve karar kaydı](../research/roadmap-readiness-review.md). P01 bağımlılık sırası ve uzak fazların paket sınırı netleştirildi. Bu hazırlık yeni ürün capability'si uygulamaz.
 - P01-1 kapanış düzeltmeleri ve bağımsız review turları tamamlandı; [P01-1a teslim kaydı](tasks/p01-1a-core-acceptance-hardening.md). Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü `3d3c86b` merge commit'iyle development'a aldı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) başarılı. Kapanış belgeleri [PR #5](https://github.com/HodeTech/Yorunge/pull/5) ile `83bcd83` tabanına alındı. P01-1 kapsamında açık iş kalmadı; P01 bütünü devam ediyor.
 
-## Sıradaki somut iş
+## Tamamlanan P01-2 ve sıradaki somut iş
 
-**P01-2 uygulama/kabulü tamamlandı; [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı review'sine açık, henüz merge edilmedi.** P01-2a, P01-4a, P01-2b ve P01-2c verified. Beş uygulama adımının her biri iki fresh ajan review turundan geçti; ek bütünleşme ve CI kapanış review'ları tamamlandı. Kanıt: [uygulama kaydı](../research/p01-2-implementation-validation.md), [paket planı](p01-2-delivery-plan.md). Uygulama `feat/p01-2-identity-context` dalında, development tabanı `83bcd83`'tür.
+**P01-2 tamamlandı ve [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı tarafından 2026-10-27 tarihinde development'a alındı:** [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1). P01-2a, P01-4a, P01-2b ve P01-2c verified; bu pakette açık uygulama/kabul işi kalmadı. Beş uygulama adımı, ikişer bağımsız review turu ve sonraki PR bulgularının kapanış kanıtı [uygulama kaydındadır](../research/p01-2-implementation-validation.md#development-merge-kapanışı).
 
-B02/B13 Accepted kararları, kalıcı kimlik/nesil, reset/restore ve yerel init/context/doctor teslim edildi. HTTP auth, hesap keşfi, capability cache, execution geçerliliği ve operation/lease ayrı işlerdir. Offline Plan biçimi ve yürütülemezliği korunur; doctor/env varlığı uzak erişim başarısı değildir.
+Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli SQLite store, migration ve backup; kalıcı credential kimliği/nesli ve açık reset/restore/recover; config init/profil/proje yönetimi ve yerel doctor. Son ürün head'i ca9502c'de 837 test, lint/type, iki temiz kurulum ve başlangıç bütçeleri geçti. Bu yerel kabuller uzak auth/hesap keşfi, HTTP, capability cache, execution geçerliliği veya operation/lease teslimi sayılmaz. Eski offline Plan biçimi/yürütülemezliği korunur.
 
-Sıradaki ürün paketi **P01-3**: P01-3a kapsam/kanıt/tazelik bağlı capability cache ve P01-3b execution planı/onay bağı. Gerekli P01-2b/P01-4a teslim edildi; P01-3 implementasyonu başlatılmadı. Ardından P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır.
+**Sıradaki ürün paketi P01-3:** P01-3a kapsam/kanıt/tazelik bağlı capability cache ve P01-3b execution planı/onay bağı. Doğrudan önkoşullar P01-2b/P01-4a development'ta tamamlandı. İki alt iş hâlâ draft; önce kapsam/kabul ve karar boşlukları iş kartlarıyla netleştirilecek, ardından tek development PR'ında uygulanacak. Bu kapanış işi P01-3 planlama veya implementasyonunu başlatmaz.
+
+Ardından P01-4'te operation/attempt, lease/fencing, unknown uzlaştırma ve jobs; P01-5'te HTTP/SDK, akış ve iptal; P01-6'da bütün P01 kabulü/destek matrisi kalır. P01-4a ve P01-6a yeniden yapılacak işler değildir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır; henüz paket yayını yoktur.
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 

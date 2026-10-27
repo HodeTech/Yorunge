@@ -2,7 +2,7 @@
 
 **Güncellendi:** 2026-10-27. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
 
-İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [P01-2 kabulü](research/p01-2-implementation-validation.md), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
+İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [development’a alınan P01-2 kabulü](research/p01-2-implementation-validation.md#development-merge-kapanışı), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
 
 | Kimlik | Yetenek | Kullanıcı sonucu | EVREN/araç kanıtı | Yörünge durumu | Hedef |
 |---|---|---|---|---|---|

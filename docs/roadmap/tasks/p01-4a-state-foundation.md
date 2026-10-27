@@ -41,6 +41,7 @@ Gerçek tempfile/SQLite ve ayrı süreçlerle commit/rollback, migration, kilit 
 
 ## Teslim kaydı
 
-- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/0b668ed), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/494799b), [review 2 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/93c4de4); [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı review'sine açık.
+- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/0b668ed), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/494799b), [review 2 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/93c4de4); [PR #6](https://github.com/HodeTech/Yorunge/pull/6) development'a alındı.
 - Sonuç: 100 state/566 toplam test, Ruff format/lint, strict mypy, belge/ajan; wheel/sdist iki temiz kurulum ve başlangıç bütçeleri geçti. Üçer yeni ajanla iki review turu tamamlandı; dört ilk tur ve bir ikinci tur bulgusu doğrulanıp giderildi, odak kapanışında yeni bulgu yok. [Gerçek kabul kaydı](../../research/p01-2-implementation-validation.md).
+- Development teslimi: [PR #6](https://github.com/HodeTech/Yorunge/pull/6), [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1); 2026-10-27 kullanıcı merge’i. [Merge/CI kaydı](../../research/p01-2-implementation-validation.md#development-merge-kapanışı).
 - Kalan sınır: Bu alt kartta açık doğrulanmış bulgu/kabul işi yok. Credential gözlemi/reset/restore P01-2b; operation/lease/jobs sonraki P01-4 alt işleridir. Bu adımın ilk kanıtı macOS koşusudur; bütün P01-2 Linux/CPython 3.11.15 CI'ında 757 test ve iki temiz kurulumla ayrıca doğrulandı.

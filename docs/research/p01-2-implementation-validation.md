@@ -1,6 +1,16 @@
 # P01-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-10-27. **Durum:** Uygulama başladı; kabul tamamlanmadı. **Dal:** `feat/p01-2-identity-context`, ilk uygulama tabanı `d96b65e`; development tabanı `83bcd83`. Tek PR kullanıcı review'sine sunulacak; merge/yayın bu kayıtla yapılmaz.
+**Tarih:** 2026-10-27. **Durum:** Tamamlandı/verified; [PR #6](https://github.com/HodeTech/Yorunge/pull/6) kullanıcı tarafından development'a merge edildi. **Uygulama dalı:** feat/p01-2-identity-context; ilk uygulama tabanı d96b65e, tarihî development tabanı 83bcd83. Güncel teslim/merge kanıtı aşağıdadır; paket yayını yapılmadı.
+
+## Development merge kapanışı
+
+Kullanıcı [PR #6](https://github.com/HodeTech/Yorunge/pull/6)'yı 2026-10-27 18:48:02 UTC'de development'a aldı: [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1). İki parent Git üzerinden doğrulandı: önceki development 83bcd83 ve son PR head'i ca9502c. Merge commit kullanıldı; squash/rebase veya Master/release işlemi yapılmadı.
+
+P01-2a, P01-4a, P01-2b ve P01-2c verified; bu paket için açık uygulama/kabul işi kalmadı. Son PR head'i ca9502c [offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40560953143) / branch-policy ve SonarCloud'dan geçti: 837 test, lint/type/belge, wheel/sdist iki temiz kurulum ve başlangıç bütçeleri başarılı. Merge sonrası development [push CI koşusu](https://github.com/HodeTech/Yorunge/actions/runs/40563323269) da başarılı: 837 test, format/lint/type/belge, wheel/sdist iki temiz kurulum ve başlangıç bütçeleri geçti. Bu belge kapanışında ürün testleri yerelde tekrar çalıştırılmadı; merge commit'inin gerçek CI sonucu kullanıldı.
+
+Sıradaki ürün paketi P01-3a/3b'dir. Gerekli P01-2b/P01-4a teslimi development'ta mevcut; draft kapsam/kabul satırları önce iş kartlarına daraltılmalı. P01-3 kodlaması bu belge kapanışıyla başlamaz. Operation/lease/jobs, HTTP/akış/iptal ve faz bütünü kabulü sonraki paketlerdir. Canlı EVREN, gerçek Windows veya fiziksel güç kesintisi doğrulaması iddia edilmez.
+
+Aşağıdaki bölümler tarihî adım ve review kayıtlarıdır. İçlerindeki o adıma ait bekleniyor/merge-edilmedi ifadeleri o dönemi anlatır; güncel teslim durumu bu merge kapanışıdır.
 
 ## Belge incelemesi ve plan
 

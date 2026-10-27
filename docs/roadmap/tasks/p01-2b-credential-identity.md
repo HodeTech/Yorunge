@@ -45,4 +45,5 @@ Gerçek env adaptörü, geçici gerçek DB/yerel koruma ve ayrı süreçler; hiz
 
 - PR/commit: [gözlem ad54dc6](https://github.com/HodeTech/Yorunge/commit/ad54dc6), [reset/restore a1bfd1a](https://github.com/HodeTech/Yorunge/commit/a1bfd1a), [son fix 033b3b6](https://github.com/HodeTech/Yorunge/commit/033b3b6).
 - Sonuç: Gözlem ve bakım için iki ayrı fresh review turu; tam test/kurulum ve kesinti kanıtı [kabul kaydında](../../research/p01-2-implementation-validation.md). Son bakım fix'i 84 senaryoda doğrulandı.
+- Development teslimi: [PR #6](https://github.com/HodeTech/Yorunge/pull/6), [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1); 2026-10-27 kullanıcı merge’i. [Merge/CI kaydı](../../research/p01-2-implementation-validation.md#development-merge-kapanışı).
 - Kalan sınır: HTTP auth/cache/execution/operation tüketicisi bu teslim değildir. Fiziksel güç kesintisi ve uygulama dışı DB+K rollback koruması iddia edilmez.

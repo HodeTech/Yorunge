@@ -1,15 +1,15 @@
 # P01 — Hafif çekirdek ve gerçek sözleşmeler
 
-**Durum:** Uygulanıyor; yalnız offline alt küme doğrulandı. **Bağımlılık:** P00. **Yetenekler:** C01/C02/C12/C13. Bu belge iş sırasını, kartlar ayrıntılı kabulü taşır.
+**Durum:** Uygulanıyor; offline çekirdek ve yerel kimlik/state alt kümesi doğrulandı; faz bütünü sürüyor. **Bağımlılık:** P00. **Yetenekler:** C01/C02/C12/C13. Bu belge iş sırasını, kartlar ayrıntılı kabulü taşır.
 
 ## Epikler ve gerçek durum
 
 | ID | Sınır | Önkoşul | Kabul kanıtı / kalan | Durum |
 |---|---|---|---|---|
 | P01-1 | Paket, CLI, şema ve YAML seçimi; lock/build | P00 | [İlk dilim](../research/p01-core-validation.md), [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [P01-1a kapanışı](tasks/p01-1a-core-acceptance-hardening.md); HTTP seçimi P01-5a'ya taşındı | `verified` |
-| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); dört alt kart verified; [PR #6](https://github.com/HodeTech/Yorunge/pull/6), iki review turu/adım ve Linux CI kanıtı [kayıtta](../research/p01-2-implementation-validation.md) | `verified` |
+| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); dört alt kart verified; [PR #6](https://github.com/HodeTech/Yorunge/pull/6) development’a [merge c042383](https://github.com/HodeTech/Yorunge/commit/c042383178c051fa2ea9e895d5179e681f8450f1) ile alındı; review/CI/merge kanıtı [kayıtta](../research/p01-2-implementation-validation.md#development-merge-kapanışı) | `verified` |
 | P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; hesap cache'i ve yürütme geçerliliği eksik | `partial` |
-| P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | P01-4a temeli P01-2 PR'ında verified; operation/lease henüz yok | `partial` |
+| P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | P01-4a temeli PR #6 ile development’a alındı; operation/lease henüz yok | `partial` |
 | P01-5 | HTTP, ortak sonuç/hata, akış ve iptal | P01-2a | CLI/Python yerel zarf mevcut; taşıma/yürütüm eksik | `partial` |
 | P01-6 | Kurulum, CI, performans ve faz kabulü | İlgili alt işler | Gerçek Ubuntu CI mevcut; gelecek alt işlerin kapıları eksik | `partial` |
 
@@ -33,7 +33,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile development'a alındı. Aktif teslim paketi **P01-2**; [B02/B13 kararları](../research/p01-2-state-identity-decision-review.md) 2026-10-27 kullanıcı onayıyla Accepted oldu. Paket içi uygulama sırası P01-2a → P01-4a → P01-2b → P01-2c'dir; [uygulama ve review kaydı](../research/p01-2-implementation-validation.md) gerçek ilerlemeyi taşır. Kimlik nesli için gerekli P01-4a aynı PR'a alınır. Yerel doctor'ın HTTP/cache bağımlılığı kaldırıldı; uzak kontrolün kapsamı P01-5/P02'de açık tutulur.
+P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4), P01-2 paketi [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alındı. B02/B13 kararları Accepted; P01-2a → P01-4a → P01-2b → P01-2c teslim sırası tamamlandı. [Kabul ve merge kaydı](../research/p01-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki paket P01-3'tür; P01-3a/3b'nin önkoşulları tamamlanmış olsa da kart/kabul ayrıntıları henüz draft'tır. Yerel doctor teslim edildi; HTTP/cache ve uzak hesap keşfi ilgili sonraki işlerde kalır.
 
 | Development PR paketi | Teslim edilecek alt işler |
 |---|---|

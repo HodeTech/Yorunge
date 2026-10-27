@@ -12,4 +12,4 @@
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 
-Bu dört yakın alt iş [P01-2 teslim planında](../p01-2-delivery-plan.md) tek PR olarak koordine edilir; taslak kartların varlığı karar kapılarının geçildiği anlamına gelmez.
+Bu dört alt iş [P01-2 teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. Sonraki paket P01-3'tür; P01-3a/3b faz satırları draft, ayrıntılı kartları henüz oluşturulmadı. Bu indeks tamamlanan kanıtı korur, sonraki işi hazır göstermez.
