@@ -13,6 +13,8 @@ Yörünge'nin ilk çevrimdışı paket/CLI/API dilimi uygulanmıştır; P01 deva
 
 `Master` release dalıdır; aynı deponun `development` dalından açılan aktarım PR'ını bakım sahibi birleştirir. Ajan `Master` birleştirmesi veya yayın yapmaz. İlk kurulum sırası, tek yazma yetkilisi nedeniyle sıfır zorunlu review seçimi ve tam koruma koşulları [Git/yayın standardında](docs/standards/git-release.md) tanımlıdır.
 
+P01 için [epik başına PR sözleşmesi](docs/roadmap/README.md#epik-başına-pr) geçerlidir. Alt kart/commit/review birimleri aynı epik dalında tamamlanır; ortak önkoşullar ve bütünleşik kabul paket planında görünür tutulur.
+
 ## Belge değişiklikleri
 
 Türkçe açıklama, İngilizce dosya/kimlik adları, UTF-8/LF ve göreli bağlantılar kullanın. Her Markdown dosyasının bir H1 başlığı olmalı. Planlanan komutu çalışan örnek diye sunmayın. Dizine eklenen belgeyi o dizinin README'sine bağlayın. Bağlantıları, başlıkları, kod bloklarını ve mevcut durumla tutarlılığı denetleyin. [Belgeleme standardı](docs/standards/documentation.md).

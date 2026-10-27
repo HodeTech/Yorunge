@@ -12,13 +12,13 @@
 - Yerel test, tip/lint/format, dağıtım/temiz kurulum ve başlangıç kanıtı [kabul kaydında](../research/p01-core-validation.md). İlk PR'da 100 test ve bütün CI kontrolleri Ubuntu/Python 3.11'de geçti. Metadata kontrolü PR #2'de doğrulandı; iki dalda `offline-core` ve `branch-policy` zorunlu. Yayımlanmış paket yok.
 - Genel belge ve paket girdileri izin listeleriyle sınırlandırıldı; yerel analiz arşivi üretim girdisi değildir. Site/doküman yayın sistemi henüz yoktur.
 - Aktif ürün kodlaması öncesi roadmap ve ajan hazırlığı gözden geçirildi; [bulgu ve karar kaydı](../research/roadmap-readiness-review.md). P01 bağımlılık sırası ve uzak fazların paket sınırı netleştirildi. Bu hazırlık yeni ürün capability'si uygulamaz.
-- P01-1 kapanış düzeltmeleri ve bağımsız review turları tamamlandı; [P01-1a teslim kaydı](tasks/p01-1a-core-acceptance-hardening.md). Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü `3d3c86b` merge commit'iyle development'a aldı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) başarılı. P01-1 kapsamında açık iş kalmadı; P01 bütünü devam ediyor ve sonraki yeni özellik P01-2a.
+- P01-1 kapanış düzeltmeleri ve bağımsız review turları tamamlandı; [P01-1a teslim kaydı](tasks/p01-1a-core-acceptance-hardening.md). Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü `3d3c86b` merge commit'iyle development'a aldı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) başarılı. Kapanış belgeleri [PR #5](https://github.com/HodeTech/Yorunge/pull/5) ile `83bcd83` tabanına alındı. P01-1 kapsamında açık iş kalmadı; P01 bütünü devam ediyor.
 
 ## Sıradaki somut iş
 
-**Sıradaki iş [P01-2a — env secret çözümleme](tasks/p01-2a-secret-resolution.md); güncel hazırlık/teslim durumu kart metadata'sındadır.** Hedefi yalnız açık çağrıda doğru hizmetin env referansını çözmek; yerel komutlarda sır okumamaktır. HTTP, keychain, DB, credential nesli veya execution bu karta girmez.
+**Aktif hazırlık [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** [B02/B13 araştırması ve Proposed kararları](../research/p01-2-state-identity-decision-review.md) hazır; kullanıcı onayı bekleniyor. Ürün uygulaması başlamadı; kararlar kabul edilmeden kalıcı biçim/koruma kodlanmaz.
 
-Sonra B02/B13 kararları → P01-4a kalıcılık temeli → P01-2b credential kimliği/nesli → P01-3a/b capability ve execution geçerliliği → P01-4b operation/lease gelir. P01-5a loopback taşıma deneyi P01-2a sonrası bağımsız yürüyebilir; bütün hattı tamamlamak P01-5b/P01-6b kabulüdür. [Kesin sıra ve durumlar](phase-01-core.md), [ajan çalışma rehberi](../../.agents/README.md).
+Paketin uygulama sırası onay → [P01-2a](tasks/p01-2a-secret-resolution.md) → [P01-4a](tasks/p01-4a-state-foundation.md) → [P01-2b](tasks/p01-2b-credential-identity.md) → [P01-2c](tasks/p01-2c-local-context-management.md). Ardından P01-3 → P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. Alt kartların güncel hazırlık/teslim durumu metadata'sındadır; aynı PR'da alt iş commit/test/review birimidir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md).
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 

@@ -7,9 +7,9 @@
 | ID | Sınır | Önkoşul | Kabul kanıtı / kalan | Durum |
 |---|---|---|---|---|
 | P01-1 | Paket, CLI, şema ve YAML seçimi; lock/build | P00 | [İlk dilim](../research/p01-core-validation.md), [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [P01-1a kapanışı](tasks/p01-1a-core-acceptance-hardening.md); HTTP seçimi P01-5a'ya taşındı | `verified` |
-| P01-2 | Config/context ve hizmete bağlı secret erişimi | P01-1 | TOML/yerel context mevcut; çözümleme ve kimlik nesli eksik | `partial` |
+| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; paket içi B02/B13 kapısı | [Tek PR teslim planı](p01-2-delivery-plan.md); TOML/context mevcut, paket hazırlığı sürüyor | `partial` |
 | P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; hesap cache'i ve yürütme geçerliliği eksik | `partial` |
-| P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1 | Kalıcı state henüz yok | `draft` |
+| P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | Kalıcı state henüz yok; P01-4a temeli P01-2 PR'ında planlandı | `draft` |
 | P01-5 | HTTP, ortak sonuç/hata, akış ve iptal | P01-2a | CLI/Python yerel zarf mevcut; taşıma/yürütüm eksik | `partial` |
 | P01-6 | Kurulum, CI, performans ve faz kabulü | İlgili alt işler | Gerçek Ubuntu CI mevcut; gelecek alt işlerin kapıları eksik | `partial` |
 
@@ -20,10 +20,10 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | ID | Tek teslim sınırı | Önkoşul | Kanıt / kapsam dışı | Durum |
 |---|---|---|---|---|
 | P01-1a | Mevcut offline çekirdeğin parser/şema hata sınırı ve dağıtım kabulünü sağlamlaştırma | P01-1 | [Tamamlanan kart ve merge/CI kanıtı](tasks/p01-1a-core-acceptance-hardening.md); HTTP/state/secret çözümleme eklemez | `verified` |
-| P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Hazır kart](tasks/p01-2a-secret-resolution.md); HTTP, keychain, DB ve nesil kaydı yok | `ready` |
-| P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | Geçici gerçek DB'de migration, izin/bozuk kayıt ve süreç yeniden açma; tam operation/lease yok | `draft` |
-| P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | Aynı env adı altında değer değişince eski bağ geçersiz; ham secret/hash çıktı veya DB'de yok | `draft` |
-| P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-3a, P01-5a | Config no-clobber/yedek, açık proje tercihi ve tipli tanılama; canlı hesap/proje keşfi P02-0b | `draft` |
+| P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Hazır alt kart](tasks/p01-2a-secret-resolution.md); P01-2 tek PR'ının ilk uygulama adımı | `ready` |
+| P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | [Taslak kart](tasks/p01-4a-state-foundation.md); P01-2 PR'ında gerçek DB kabulü, tam operation/lease yok | `draft` |
+| P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Taslak kart](tasks/p01-2b-credential-identity.md); gözlenen değişimde eski nesil geçersiz, raw secret/hash saklanmaz | `draft` |
+| P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Taslak kart](tasks/p01-2c-local-context-management.md); yerel tanılama; HTTP P01-5, uzak keşif P02-0b | `draft` |
 | P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | İki credential, hedef/proje/izin farkı, stale saat ve unknown/access ayrımı | `draft` |
 | P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | Saved seçim değişmez; değişmiş girdi/hedef/yetkiyle yürütüm reddi | `draft` |
 | P01-4b | Operation/attempt, lease/fencing ve unknown uzlaştırma temeli | P01-4a, P01-3b | Çökme/kilit/lease devri ve ikinci yan etkiyi engelleme; gerçek EVREN yok | `draft` |
@@ -33,7 +33,17 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-5a taşıma deneyi, state işinin tamamını beklemeden loopback üzerinde yapılabilir. Kimlik nesli için kalıcılık gerektiğinden P01-4a, P01-2b'den öncedir; “önce bütün kimlik, sonra DB” döngüsü kurulmaz. B02/B13 kararı alınmadan kalıcı credential biçimi icat edilmez. P01-1a mevcut teslimde saptanan hataları kapattı ve kullanıcı tarafından [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile development'a alındı. Sıradaki yeni ürün paketi **P01-2a**; env secret çözümleme henüz uygulanmadı.
+P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile development'a alındı. Sıradaki teslim paketi **P01-2**; mevcut tur [B02/B13 karar araştırmasıdır](../research/p01-2-state-identity-decision-review.md). Paket içi sıra karar onayı → P01-2a → P01-4a → P01-2b → P01-2c'dir; ürün uygulaması başlamadı. Kimlik nesli için gerekli P01-4a aynı PR'a alınır. Yerel doctor'ın HTTP/cache bağımlılığı kaldırıldı; uzak kontrolün kapsamı P01-5/P02'de açık tutulur.
+
+| Development PR paketi | Teslim edilecek alt işler |
+|---|---|
+| P01-2 PR'ı | P01-2a, P01-4a, P01-2b, P01-2c |
+| P01-3 PR'ı | P01-3a, P01-3b |
+| P01-4 PR'ı | P01-4b, P01-4c; P01-4a önceki pakette tamamlanmış olmalı |
+| P01-5 PR'ı | P01-5a, P01-5b |
+| P01-6 PR'ı | P01-6b; P01-6a ilk altyapısı zaten tamam |
+
+Alt iş ayrı PR zorunluluğu değildir; [epik PR sözleşmesi](README.md#epik-başına-pr) geçerlidir. Teknik olarak bağımsız P01-5a deneyi yapılabilse de kullanıcının mevcut teslim tercihi bu paket sırasıdır.
 
 ```mermaid
 flowchart LR
@@ -43,8 +53,7 @@ flowchart LR
     I --> C["P01-3a: capability"] --> P["P01-3b: plan bağı"]
     P --> O["P01-4b: operation/lease"] --> T["P01-5b: ortak hat"]
     A --> H["P01-5a: loopback taşıma"] --> T
-    C --> U["P01-2c: init/doctor"]
-    H --> U
+    I --> U["P01-2c: yerel init/doctor"]
     O --> Q["P01-4c: jobs okuma"]
     T --> G["P01-6b: faz kabulü"]
     U --> G

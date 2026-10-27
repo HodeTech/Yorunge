@@ -1,0 +1,51 @@
+{
+  "status": "research_only_not_product_acceptance",
+  "python": "3.11.18",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "sqlite": "3.54.1",
+  "sqlite_source_id": "2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76",
+  "probe_sha256": "a08d947a9feeca33a47b3f638c95d5588dfa9ef8460f0085376f78bc03c16738",
+  "sqlite_strict_still_coerces_numeric_text": true,
+  "migration": {
+    "ddl_and_version_rollback": true,
+    "executescript_split_observed": true
+  },
+  "locking_and_process_exit": {
+    "busy_100ms_observed_ms": 123.665,
+    "process_exit_row_counts": [
+      0,
+      500
+    ]
+  },
+  "identity_prototype": {
+    "rfc4231_vector": true,
+    "concurrent_workers": 8,
+    "observed_revision_sequence": [
+      1,
+      2,
+      3
+    ],
+    "domain_separation": true,
+    "raw_values_and_plain_sha256_absent_from_db": true,
+    "key_mode": "0o600"
+  },
+  "commit_microbenchmark": {
+    "DELETE": {
+      "synchronous": 3,
+      "samples": 100,
+      "median_ms": 11.947,
+      "p95_ms": 12.725
+    },
+    "WAL": {
+      "synchronous": 2,
+      "samples": 100,
+      "median_ms": 3.883,
+      "p95_ms": 4.269
+    }
+  },
+  "limits": [
+    "Single local host; no power-cut, hardware-fault, NFS or other OS verification.",
+    "Prototype only; no product acceptance claim.",
+    "Commit timings exclude startup/schema work; fsync counts differ by policy."
+  ]
+}
