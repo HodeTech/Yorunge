@@ -25,6 +25,10 @@ OS/disk cache'i boşaltılmadı; fiziksel soğuk açılış kanıtı değildir. 
 
 Repo ayarı API'den geri okundu: varsayılan `development`, merge commit açık, squash/rebase merge kapalı. İki dalda PR, `offline-core`, yönetici denetimi ve konuşma çözümleme zorunlu; force push ve silme kapalı. `Master` yazma listesi yalnız `cemililik`; zorunlu review sayısı tek yazma yetkilisi nedeniyle 0. Development strict, Master loose check kullanır.
 
-Güvenilen metadata kontrolü artık varsayılan dalda mevcut. Bu kaydı taşıyan takip PR'ında `branch-policy` gerçek check'i doğrulanıp iki dalda ikinci zorunlu kontrol olarak eklenecek; bu satır henüz tamamlanmış doğrulama iddiası değildir. Sonuç güncellendiğinde gerçek koşu bağlantısı ve API geri okuma kanıtı burada korunur.
+[PR #2](https://github.com/HodeTech/Yorunge/pull/2) üzerinde [metadata kontrolü](https://github.com/HodeTech/Yorunge/actions/runs/40463140804) başarılı oldu. Checkout logu PR head'i `8a0857c` yerine güvenilen varsayılan dal commit'i `d9f4ae7`'nin kullanıldığını doğruladı. Bu gerçek check görüldükten sonra `branch-policy`, GitHub Actions uygulama kimliğine bağlı ikinci zorunlu kontrol olarak iki dala eklendi.
+
+Son ayarlar API'den geri okundu: iki dalda `offline-core` + `branch-policy` (`app_id=15368`), 0 zorunlu onay, yönetici denetimi, konuşma çözümleme, force push/silme yasağı ve linear history kapalı. Development strict, Master loose; Master yazma listesi yalnız `cemililik`. Varsayılan development ve merge/squash/rebase ayarları da repo API'sinden doğrulandı. Koruma için doğrudan/force push deneyi yapılmadı; kanıt API geri okuması ve koruma altındaki PR akışıdır.
+
+`Master` son doğrulamada hâlâ `6ec4b160e215599afcb24a416c7f796839cbe44a` noktasındadır. Kurulum bu dala commit taşımadı, tag/release veya paket yayını oluşturmadı. İlk uygulamanın `bb67b3a` commit'i development soy ağacında korunur.
 
 Kanonik ayar sözleşmesi [Git/yayın standardındadır](../standards/git-release.md); bu dosya aynı sözleşmenin ikinci kopyası değildir. `Master` içeriği kuruluma dahil edilmez; release aktarımı ve yayımlama kullanıcıya aittir.
