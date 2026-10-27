@@ -25,7 +25,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Tamamlanan kart](tasks/p01-2b-credential-identity.md); gözlem ve bakım ikişer review turuyla doğrulandı | `verified` |
 | P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Tamamlanan kart](tasks/p01-2c-local-context-management.md); iki review turu, yerel tanılama; HTTP/uzak keşif kapsam dışı | `verified` |
 | P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | [Kabul kartı](tasks/p01-3a-scoped-capability-cache.md); 929 test, iki review turu ve cache p95 157,082 ms | `verified` |
-| P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | [Kabul kartı](tasks/p01-3b-execution-plan-validity.md);1.077 test, iki temiz kurulum ve kaynak bütçesi; adım2/3/4 ikişer review ile tamamlandı | `verified` |
+| P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | [Kabul kartı](tasks/p01-3b-execution-plan-validity.md); 1.133 test, iki temiz kurulum ve kaynak bütçesi; adım 2/3/4 ikişer review ile tamamlandı | `verified` |
 | P01-4b | Operation/attempt, lease/fencing ve unknown uzlaştırma temeli | P01-4a, P01-3b | Çökme/kilit/lease devri, ikinci yan etkiyi engelleme ve backup sonrası unknown kaybında restore reddi; gerçek EVREN yok | `draft` |
 | P01-4c | Yerel jobs list/show ve kalıcı plan/sonuç sorgusu | P01-4b, P01-3b | Gerçek store'dan sınırlı tipli okuma; fixture seed ürünün sahte işi olmaz, uzak watch/stop P03'tedir | `draft` |
 | P01-5a | HTTP/SDK seçimi ve ortak taşıma portu | P01-2a; B01/B03 incelemesi | Loopback: TLS/hedef/redirect/sır, tek retry/total deadline bütçesi; ücretli istek yok | `draft` |

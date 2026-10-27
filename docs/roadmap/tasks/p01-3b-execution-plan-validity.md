@@ -8,11 +8,11 @@ capabilities: [C02, C12, C13]
 ---
 # P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım2/3 ve ikişer review tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesine açıktır; son CI kapısı takip ediliyor.
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesine açıktır; son CI kapısı takip ediliyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı planın hangi girdiler/hedef/yetkiyle hazırlandığını saklayabilmeli; değişmiş bağla eski plan veya onay geçerli sayılmamalı. Bugünkü offline Plan yalnız şema/seçim doğrulamasıdır; execution modeli, güncel içerik/izin doğrulaması, kalıcı plan/onay ve public validity yüzeyi yoktur.
+Kullanıcı planın hangi girdiler/hedef/yetkiyle hazırlandığını saklayabilmeli; değişmiş bağla eski plan veya onay geçerli sayılmamalı. İşe başlarken offline Plan yalnız şema/seçim doğrulamasıydı; bu kart ayrı execution modeli, güncel bağ doğrulaması, kalıcı plan/onay ve public validity yüzeyini tamamladı.
 
 ## Giren ve girmeyen kapsam
 
@@ -24,7 +24,7 @@ P01-3a aynı dalda kendi kabulü ve iki bağımsız review turuyla verified; ayr
 
 ## Sözleşme ve uygulama sınırı
 
-Domain plan/girdi/onay kuralları; application güncel tipli producer, dosya ve state portlarını koordine eder; CLI parse/render yapar. Public caller doğrulanmış girdi/izin veya onay nesnesi enjekte edemez. Önerilen v2/CLI/approval/bakım ayrıntısı ADR-0014'tedir; onay sonrası exact alanlar execution referansına, public komut/hatalar CLI/state referansına bağlanır. Yeni şema eski `load_plan` politikasını zayıflatmaz.
+Domain plan/girdi/onay kuralları; application güncel tipli producer, dosya ve state portlarını koordine eder; CLI parse/render yapar. Public caller doğrulanmış girdi/izin veya onay nesnesi enjekte edemez. V2/CLI/approval/bakım kararları ADR-0014'tedir; uygulanan exact alanlar execution referansında, public komut/hatalar CLI/state referansında tutulur. Yeni şema eski `load_plan` politikasını zayıflatmaz.
 
 ## Kabul
 
@@ -51,5 +51,5 @@ Unit canonical digest/girdi/onay/saat; contract v1/v2 ve CLI/API; integration ge
 ## Teslim kaydı
 
 - PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [hazırlık 57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetim db9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesi e7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
-- Sonuç: Adım 2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Final yerel tam takım 1.077 test, wheel/sdist iki temiz kurulum, cache p95 142,181 ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; development merge/PR CI ayrı kaydedilir.
+- Sonuç: Adım 2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Son yerel ve Linux tam takım 1.133 test, wheel/sdist iki temiz kurulum, son Linux cache p95 191,836 ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; development merge/PR CI ayrı kaydedilir.
 - Kalan sınır: Public producer draft/blocked; run/operation/lease, HTTP ve gerçek EVREN yoktur. Gerçek Windows/fiziksel güç kesintisi kanıtı verilmez. Ürün PR'ı kullanıcı incelemesine açılır, otomatik merge edilmez.

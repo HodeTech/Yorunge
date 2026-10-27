@@ -1,6 +1,6 @@
 # P01-3 — Capability ve execution hazırlığı teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** Uygulanıyor; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Dört adım yerel kabul ve ikişer bağımsız review turuyla tamamlandı; tek development PR kullanıcı incelemesi/CI kapısında.
+**Tarih:** 2026-10-27. **Durum:** Yerel kabul tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesinde; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Dört adım yerel kabul ve ikişer bağımsız review turuyla tamamlandı; tek development PR kullanıcı incelemesi/CI kapısında.
 
 
 **Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed ve onay bekleme ifadeleri tarihseldir; uygulama kabulü ayrıca kaydedilir.

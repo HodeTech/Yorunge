@@ -12,7 +12,7 @@ capabilities: [C02, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı kaydın hangi hedef/hesap/proje/credential/model/araç/ortama ait olduğunu, kanıt düzeyini ve güncelliğini görebilmeli. Mevcut offline görünüm yalnız yerel politika/not-verified verir; kalıcı cache, TTL, clock ve tam scope modeli yoktur.
+Kullanıcı kaydın hangi hedef/hesap/proje/credential/model/araç/ortama ait olduğunu, kanıt düzeyini ve güncelliğini görebilmeli. İşe başlarken offline görünüm yalnız yerel politika/not-verified veriyordu; bu kart ayrı kalıcı cache, TTL, clock ve tam scope modelini tamamladı.
 
 ## Giren ve girmeyen kapsam
 
@@ -49,5 +49,5 @@ Unit kanıt/clock/scope; contract eski v1/new v2/CLI/API/sızıntı; integration
 ## Teslim kaydı
 
 - PR/commit: [uygulama a3287b0](https://github.com/HodeTech/Yorunge/commit/a3287b0), [review 1 cd8e812](https://github.com/HodeTech/Yorunge/commit/cd8e812); review 2 saat düzeltmesi ve kapanış aynı dalda kaydedildi.
-- Sonuç: [Kanonik uygulama/test/review/performans kanıtı](../../research/p01-3-implementation-validation.md). Son tam takım 929 test; Ruff/strict mypy, belge/ajan denetimi, wheel/sdist iki temiz kurulum ve 1.024 kayıtta cache p95 157,082 ms başarılıdır. İki tur toplam altı yeni reviewer ve son saat bulgusunun bağımsız yeniden probu tamamlandı.
-- Kalan sınır: Canlı EVREN/Windows/fiziksel güç kesintisi kanıtı yoktur. P01-3b'nin plan/onay tüketicilerine bağlı bütünleşik kabul kendi adımında sürer; epik henüz tamamlanmadı.
+- Sonuç: [Kanonik uygulama/test/review/performans kanıtı](../../research/p01-3-implementation-validation.md). Adım 1 kapanışında tam takım 929 test; Ruff/strict mypy, belge/ajan denetimi, wheel/sdist iki temiz kurulum ve 1.024 kayıtta cache p95 157,082 ms başarılıdır. İki tur toplam altı yeni reviewer ve son saat bulgusunun bağımsız yeniden probu tamamlandı.
+- Kalan sınır: Canlı EVREN/Windows/fiziksel güç kesintisi kanıtı yoktur. P01-3b'nin gerçek plan/onay tüketicileriyle bütünleşik kabul tamamlandı. [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesinde; son 1.133 test ve Linux CI kanıtı kanonik kayıttadır.
