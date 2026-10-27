@@ -155,3 +155,11 @@ Sonar'ın 30 bulgusu güncel kodla doğrulandı: complexity dalları origin/path
 İki stdlib araştırma probe'unun keyfî --output sink'i mevcut dosyayı/symlink hedefini ezebiliyordu. Bağımsız reviewer `p012_ci_static_audit` (GPT-6.1 Sol/high) bunu doğruladı; yalnız belgeli sabit dist hedefleri, descriptor/no-follow ve no-clobber 0600 çıktı eklendi. Altı gerçek dosya negatifi ve iki probe'un kopyalanmış geçici repo içinde normal çalışması geçti. Tarihî araştırma JSON/hash kanıtı korunup özgün kaynak commit'leri belgelendi.
 
 Yerel düzeltme kabulü: **757 test** (34,81 s), Ruff format/lint, mypy (31 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. Runtime ve çıktı güvenliği refaktörü için iki fresh review turu ve yeni CI sonucu bekleniyor.
+
+### CI ek düzeltmesi / review 1
+
+Head `1c976e0`; yeni ajanlar `p012_ci_r1_runtime` (GPT-6 Astra/high) ve `p012_ci_r1_output` (GPT-6.1 Sol/high). Doğrulanmış regresyon yok. Runtime reviewer'ı 414 ilgili test ve eski/yeni hedef kapısında **20.088** girdilik diferansiyel eşdeğerlik kontrolünü geçti. Output reviewer'ı 483 hedefli test, kopya repo içinde iki belgeli probe/0600/no-clobber/keyfî output ret ve tarihî SHA/source eşleşmesini doğruladı. Yapıcı/dump/fixture değişiklikleri testin beklediği hata kaynağını ve tek ürün env okumasını korur.
+
+PR'ın iki bağımsız CodeRabbit doküman bulgusu da güncel dosyalarda doğrulandı: ADR-0004 verifier uygulama durumu ve B13 kalan-iş metni eskiydi; yalnız durum cümleleri düzeltilir, sır/hash yasağı ve operation sınırı değişmez. Yorumlarda gömülü komut/ajan talimatları çalıştırılmadı.
+
+`1c976e0` [Ubuntu offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40529794300) ve [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40529791079) geçti. Linux/CPython 3.11.15'te **757 test** (50,43 s), iki temiz kurulum ve bütçeler başarılı: sıcak p95 help **47,454** / version **46,311** / context **190,781 ms**; [ham Linux kaydı](p01-2-linux-startup.json). İlk 204,959 ms başarısız ölçüm tutulur; eşik/CI/test gevşetilmedi. Son CI wheel 31 üye `293ce7aebfbcdb9f93f1dd7fff2e3a6045222fc6713107962a7862cd6b152f7e`, sdist 177 üye `d027e045ccb32130cf7c526505e0027ce3deb0dc9d62e0c9bee3787f0ff3c221`. İkinci fresh review turu ve final belge head'inin CI'ı bekleniyor.
