@@ -22,7 +22,7 @@ Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli 
 
 **Aktif iş P01-3 uygulaması:** feat/p01-3-capability-planning dalı development@78d5d77 tabanındadır. Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını 2026-10-27 tarihinde onayladı; kararlar Accepted oldu. [Paket planı](p01-3-delivery-plan.md) ve [kabul kartları](tasks/README.md) uygulamayı bağlar.
 
-P01-3a in_progress: tipli capability/cache/clock, tam kapsam/kanıt, kalıcılık ve açık CLI/Python sorgusu. P01-3b draft: önce P01-3a'nın kendi kabulü ve iki review turu tamamlanır. Kullanıcının adım başına commit ve iki yeni bağımsız review turu, sonunda kendi incelemesi için tek PR talebi korunur; ürün kabulü henüz tamamlanmadı.
+P01-3a verified: tipli capability/cache/clock, tam kapsam/kanıt, kalıcılık ve açık CLI/Python sorgusu; 929 test ve iki bağımsız review turu tamamlandı. P01-3b in_progress: kalıcı execution hazırlığı/validity, ardından onay/yönetim uygulanıyor. Kullanıcının adım başına commit ve iki yeni bağımsız review turu, sonunda kendi incelemesi için tek PR talebi korunur; ürün kabulü henüz tamamlanmadı.
 
 İlk cache/SQLite/CLI dilimi ve testleri yazıldı; [gerçek test, ölçüm ve review ilerlemesi](../research/p01-3-implementation-validation.md) kanoniktir. Adımın tamamlanması tasarım onayından veya tek bir yeşil test koşusundan çıkarılmaz.
 

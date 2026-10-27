@@ -1,14 +1,14 @@
 ---
 id: P01-3b
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-3a]
 capabilities: [C02, C12, C13]
 ---
 # P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları tamamlandı; P01-3a kabulü bekleniyor, bu nedenle draft.
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım 2 uygulaması başladı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Ayrı execution v2 snapshot, yerel dosya bağlama, kalıcı prepare/list/show/va
 
 ## Bağımlılıklar ve kararlar
 
-P01-3a aynı dalda kendi kabulü ve iki bağımsız review turuyla tamamlanmalıdır; ayrı merge gerekmez. [ADR-0013](../../decisions/0013-scoped-capability-cache.md)/[ADR-0014](../../decisions/0014-execution-plan-validity-and-approval.md) 2026-10-27 kullanıcı onayıyla Accepted; P01-3a kendi kabulüyle tamamlanmadan ready yapılmaz. Temel bağların nedeni Accepted ADR-0004/0005/0011/0012 ve [execution mimarisidir](../../architecture/execution-model.md).
+P01-3a aynı dalda kendi kabulü ve iki bağımsız review turuyla verified; ayrı merge gerekmez. [ADR-0013](../../decisions/0013-scoped-capability-cache.md)/[ADR-0014](../../decisions/0014-execution-plan-validity-and-approval.md) 2026-10-27 kullanıcı onayıyla Accepted; P01-3a önkoşul kanıtı uygulama kaydındadır. Temel bağların nedeni Accepted ADR-0004/0005/0011/0012 ve [execution mimarisidir](../../architecture/execution-model.md).
 
 ## Sözleşme ve uygulama sınırı
 

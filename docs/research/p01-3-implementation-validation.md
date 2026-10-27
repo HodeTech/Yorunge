@@ -38,3 +38,18 @@ Tarihsel v1 migration fault deneyleri yalnız o testlerde açık identity-only m
 Regresyonlar son transaction örneğini, COMMIT sonrası expiry/rollback'i ve iki kayıt arasında expiry/rollback'i doğrudan tetikler; tüm sonuçlar unknown'a düşer ve clock fence kalır. Eksik proje CLI açıklaması ve üst/iç JSON duplicate ayrıca sınanır. İlk yeni koşu iki süreç testinde kilit öncesi alınan UTC örneğinin yanlış fence üretmesini yakaladı; örnek kilit sonrasına taşındı, kabul/eşik gevşetilmedi.
 
 Temiz kurulum smoke'u macOS `/var` symlink'ini güvenli state kökü olarak reddetti; denetim scratch konumunu kanonik fiziksel yola bağladı. Wheel/sdist iki temiz ortamda gerçek kurulu CLI/import ve refresh→cached smoke'u geçti; bunlar review düzeltmelerinin ara build kanıtıdır, final paket yerine sayılmaz.
+
+### Adım 1 / review 2
+
+Üç farklı yeni ajan invariants/state/saat (GPT-6 Astra/high), trust/scope ve CLI/teslim (GPT-6.1 Sol/high) incelemesini `cd8e812` üzerinde tamamladı. Trust ve teslimde doğrulanmış yeni bulgu yok: sırasıyla 77 ve 565 hedefli test; parser ve gerçek SQLite overflow/kota probları başarılı. State/saat ajanı producer başlangıcındaki UTC örneğinin sonradan üzerine yazılması nedeniyle gözlenen ileri→geri dönüşün ret/restart sonrasında eski supported'ı canlandırmasını doğruladı. Ara gözlemlerin high-watermark ve gereken nesil bağı kayıpsız tutuldu; producer öncesi/başarı/hata sonrası kısa kalıcı saat kapıları eklendi. İki sıçrama yönü, producer hatası ve restart; ayrıca tick öncesi üzerine yazılan örnek yeni regresyonlardır. Düzeltme sonrası cache integration 29 test ve strict lint/type başarılıdır. `cd8e812` tam suite sonucu 926 testtir (77,59 s); son düzeltmenin final kontrolleri ayrıca kaydedilir.
+
+
+### Adım 1 kapanışı — 2026-10-28
+
+Round2 saat bulgusu aynı reviewer'ın dört gerçek SQLite başarı/hata probuyla yeniden doğrulandı: ret, unknown, kalıcı generation2 ve restart miss; bulgu kapandı. Çok kayıtlı okuma tek transaction ve ortak son snapshot'a toplandı; iki kayıt arasındaki saat değişimi regresyonu gerçek `_read` sınırında sürer.
+
+Son tam takım **929 passed (60,14 s)**; Ruff format/lint, strict mypy 34 kaynak, 104 belge/0 sorun ve altı skill/yedi kart/0 sorun geçti. Wheel34/sdist197 üyeli build ve iki temiz kurulu import/CLI/refresh→cached smoke başarılıdır; son paket bütün epik sonunda yeniden üretilir.
+
+[Clock kapıları sonrası ilk ölçüm](p01-3-step-1-clock-gate-startup.json) cache p95 223,335 ms ile 200 ms bütçesini **geçemedi**. Profiling, her kayıt için ayrı clock commit'lerini gösterdi. İşlem/süre/güven kapıları kaldırılmadan çoklu okuma ortak transaction'a alındı. [Son ölçüm](p01-3-step-1-final-startup.json): aynı CPU/SSD/editable kurulumda 1.024 kayıt, toplam payload 1.212.625 bayt; 30 ayrı süreçte p95 help23,565, version25,217, context91,039 ve cache157,082 ms. Her örnek gerçek fresh hit olduğunu doğrular. Eşik gevşetilmedi; başarısız ham kayıt da tutuldu.
+
+P01-3a kendi kabulüyle verified; P01-3b adım 2 başladı. Cache temizliğinin gerçek plan/onayları koruması P01-3b/bütünleşik kabulde ayrıca tamamlanacaktır. Epik ve PR henüz tamamlanmadı.

@@ -172,9 +172,20 @@ class StateCache:
         self.clock = clock or SystemClock()
         self.end = self.clock.monotonic() + 5.0
         self.bindings = bindings
+        self.observation_high: datetime | None = None
+        self.observation_anomaly = False
+        self.required_generation = 0
+        self.generation = 0
 
     def now(self) -> datetime:
         self.observed = self.clock.now()
+        if self.observation_high is not None and self.observed < self.observation_high:
+            if not self.observation_anomaly:
+                self.required_generation = max(self.required_generation, self.generation + 1)
+            self.observation_anomaly = True
+        else:
+            self.observation_high = self.observed
+            self.observation_anomaly = False
         return self.observed
 
     def _tick(self, now: datetime) -> Stamp:
@@ -201,6 +212,8 @@ class StateCache:
         except (ValueError, TypeError):
             raise YorungeError("state_invalid") from None
         moment = timestamp(now)
+        if self.observation_high is not None:
+            high = max(high, timestamp(self.observation_high))
         if moment < high:
             if not anomaly:
                 if generation == 2**63 - 1:
@@ -209,6 +222,12 @@ class StateCache:
             anomaly = 1
         else:
             high, anomaly = moment, 0
+        generation = max(generation, self.required_generation)
+        if generation > 2**63 - 1:
+            raise YorungeError("state_invalid")
+        self.generation = generation
+        self.observation_high = instant(high)
+        self.observation_anomaly = bool(anomaly)
         self.connection.execute(
             "UPDATE cache_clock SET clock_generation=?,high_watermark=?,anomaly_active=? "
             "WHERE singleton=1",
@@ -329,7 +348,13 @@ class StateCache:
     def refresh(self, key: CapabilityKey, stamp: Stamp, producer: Producer) -> None:
         with self.transaction(stamp):
             _, token = self._read(key)
-        incoming = producer.observe(key, self.now())
+        observed = self.stamp()
+        self._same(stamp, observed)
+        try:
+            incoming = producer.observe(key, observed.now)
+        finally:
+            # A failed producer cannot discard a clock observation or revive old proof.
+            self._same(stamp, self.stamp())
         with self.transaction(stamp) as gate:
             previous, current = self._read(key)
             now = self.now()
@@ -417,43 +442,46 @@ class StateCache:
             others.remove(victim)
 
     def query(self, key: CapabilityKey, stamp: Stamp) -> CachedCapability:
-        record = None
-        candidates: tuple[CapabilityRecord, ...] = ()
+        return self.query_many((key,), stamp)[0]
+
+    def query_many(
+        self, keys: tuple[CapabilityKey, ...], stamp: Stamp
+    ) -> tuple[CachedCapability, ...]:
+        rows: list[tuple[CapabilityRecord | None, tuple[CapabilityRecord, ...]]] = [
+            (None, ()) for key in keys
+        ]
         try:
             with self.transaction(stamp):
-                record, _ = self._read(key)
-                if record is None and key.scope.authorization_scope is None:
-                    candidates = tuple(
-                        decode_entry(row)[0]
-                        for row in self.connection.execute(
-                            f"SELECT {ENTRY_FIELDS} FROM capability_cache WHERE projection_key=? "
-                            "ORDER BY checked_at DESC,cache_key LIMIT 4",
-                            (key.projection(),),
+                for index, key in enumerate(keys):
+                    record, _ = self._read(key)
+                    candidates: tuple[CapabilityRecord, ...] = ()
+                    if record is None and key.scope.authorization_scope is None:
+                        candidates = tuple(
+                            decode_entry(row)[0]
+                            for row in self.connection.execute(
+                                f"SELECT {ENTRY_FIELDS} FROM capability_cache "
+                                "WHERE projection_key=? "
+                                "ORDER BY checked_at DESC,cache_key LIMIT 4",
+                                (key.projection(),),
+                            )
                         )
-                    )
+                    rows[index] = record, candidates
         except YorungeError as error:
             if error.code == "state_changed":
                 self._bindings(stamp)
             elif error.code != "capability_expired":
                 raise
         final, within_budget = self._finish(stamp)
-        return self._present(key, record, candidates, stamp, final, within_budget)
+        return tuple(
+            self._present(key, record, candidates, stamp, final, within_budget)
+            for key, (record, candidates) in zip(keys, rows, strict=True)
+        )
 
     def _finish(self, stamp: Stamp) -> tuple[Stamp, bool]:
         final = self.stamp()
         self._bindings(stamp)
         self.store.deadline.remaining()
         return final, self.clock.monotonic() < self.end
-
-    def finalize(
-        self, results: tuple[CachedCapability, ...], stamp: Stamp
-    ) -> tuple[CachedCapability, ...]:
-        """All records in one public view share the final observed validity point."""
-        final, within_budget = self._finish(stamp)
-        return tuple(
-            self._present(r.key, r.record, r.historical_candidates, stamp, final, within_budget)
-            for r in results
-        )
 
     def _present(
         self,

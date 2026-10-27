@@ -591,18 +591,18 @@ def test_public_view_rechecks_all_records_at_one_final_time(tmp_path, monkeypatc
     monkeypatch.setattr("yorunge.adapters.capability_cache.SystemClock", lambda: clock)
     root = tmp_path / "state"
     api.query_capabilities(task="llm.train", state_dir=root, refresh=True)
-    original_query = StateCache.query
+    original_query = StateCache._read
     calls = 0
 
-    def advance_between_records(self, key, stamp):
+    def advance_between_records(self, key):
         nonlocal calls
-        result = original_query(self, key, stamp)
+        result = original_query(self, key)
         calls += 1
         if calls == 1:
             clock.value += timedelta(seconds=advance)
         return result
 
-    monkeypatch.setattr(StateCache, "query", advance_between_records)
+    monkeypatch.setattr(StateCache, "_read", advance_between_records)
     records = api.query_capabilities(task="llm.train", state_dir=root).data.records
     assert len(records) == 2
     assert all(r.effective_support == "unknown" for r in records)
@@ -622,3 +622,53 @@ def test_cached_cli_explains_the_project_selection_blocker(tmp_path, cli):
     )
     assert result.returncode == 0, result.stderr
     assert "Uzak görev öncesinde açık proje seçin." in result.stdout
+
+
+@pytest.mark.parametrize("advance", [-50, 300])
+def test_producer_clock_observation_survives_catchup_rejection_and_restart(tmp_path, advance):
+    root, clock = tmp_path / "state", Clock()
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        initial = cache.stamp()
+        key = key_for(initial)
+        cache.refresh(key, initial, LocalPolicyProducer("supported", "fixture_policy"))
+        clock.value += timedelta(seconds=100)
+        stamp = cache.stamp()
+        caught_up = clock.value
+        commits = 0
+
+        def jump_after_snapshot(statement):
+            nonlocal commits
+            if statement == "COMMIT":
+                commits += 1
+                if commits == 1:
+                    clock.value += timedelta(seconds=advance)
+
+        class CatchUp:
+            def observe(self, key, now):
+                clock.value = caught_up
+                raise YorungeError("capability_expired")
+
+        store.connection.set_trace_callback(jump_after_snapshot)
+        with pytest.raises(YorungeError):
+            cache.refresh(key, stamp, CatchUp())
+        store.connection.set_trace_callback(None)
+        clock.value = caught_up
+        assert cache.query(key, stamp).effective_support == "unknown"
+    clock.value += timedelta(seconds=301)
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        current = cache.stamp()
+        assert current.generation == 2
+        assert cache.query(key_for(current), current).freshness == "miss"
+
+
+def test_intermediate_clock_sample_cannot_be_overwritten_before_tick(tmp_path):
+    clock = Clock()
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        clock.value -= timedelta(seconds=1)
+        cache.now()
+        clock.value += timedelta(seconds=1)
+        assert cache.stamp().generation == stamp.generation + 1
