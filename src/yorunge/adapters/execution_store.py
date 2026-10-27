@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import sqlite3
+from datetime import datetime
 
 from yorunge.adapters.capability_cache import Stamp, StateCache
 from yorunge.adapters.state import Store, metadata
@@ -100,11 +101,22 @@ class PlanRepository:
             current.anomaly,
         )
 
-    def finish(self, expected: ExecutionMoment) -> ExecutionMoment:
-        current = self.moment()
-        self.cache._bindings(stamp(expected))
+    def finish(
+        self, expected: ExecutionMoment, *, valid_until: datetime | None = None
+    ) -> ExecutionMoment:
+        current, within_budget = self.cache._finish(
+            stamp(expected), (valid_until,) if valid_until is not None else ()
+        )
         self.budget.check()
-        return current
+        if not within_budget:
+            raise YorungeError("execution_timeout")
+        return ExecutionMoment(
+            current.store_id,
+            current.identity_epoch,
+            current.generation,
+            current.now,
+            current.anomaly,
+        )
 
     def read(self, plan_id: str) -> ExecutionPlan:
         return read_plan(self.store.connection, plan_id)

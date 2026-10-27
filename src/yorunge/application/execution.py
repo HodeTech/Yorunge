@@ -59,7 +59,9 @@ class InputReader(Protocol):
 
 class ExecutionRepository(Protocol):
     def moment(self) -> ExecutionMoment: ...
-    def finish(self, expected: ExecutionMoment) -> ExecutionMoment: ...
+    def finish(
+        self, expected: ExecutionMoment, *, valid_until: datetime | None = None
+    ) -> ExecutionMoment: ...
     def read(self, plan_id: str) -> ExecutionPlan: ...
     def save(self, plan: ExecutionPlan, expected: ExecutionMoment) -> None: ...
 
@@ -178,7 +180,10 @@ class ExecutionUseCases:
             validate_assessment_scope(result, request.context, request.selection, request.recipe)
         except (ValueError, ValidationError, TypeError):
             raise YorungeError("plan_not_valid") from None
-        final = self.repository.finish(expected)
+        try:
+            final = self.repository.finish(expected, valid_until=result.expiry())
+        except ValueError:
+            raise YorungeError("plan_not_valid") from None
         for record in result.capabilities:
             scope = record.key.scope
             if not instant(record.checked_at) <= final.now < instant(record.expires_at) or (
@@ -251,7 +256,7 @@ class ExecutionUseCases:
             raise YorungeError("plan_not_valid") from None
         self.budget.check()
         self.repository.save(plan, expected)
-        final = self.repository.finish(expected)
+        final = self.repository.finish(expected, valid_until=expires)
         self.budget.check()
         return ExecutionPlanView(plan=plan, validity=report(plan, final, [], expires))
 
@@ -284,5 +289,5 @@ class ExecutionUseCases:
             else:
                 raise
         self.budget.check()
-        final = self.repository.finish(expected)
+        final = self.repository.finish(expected, valid_until=until)
         return report(plan, final, reasons, until)

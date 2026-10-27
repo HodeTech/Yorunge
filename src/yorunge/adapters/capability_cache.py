@@ -252,13 +252,8 @@ class StateCache:
                 self.connection.execute("ROLLBACK")
 
     def stamp(self) -> Stamp:
-        result = self._save_stamp()
-        # The read/clock commit can consume the remaining TTL. Fence the final
-        # observed point durably as well, without a retry or an unbounded loop.
-        after_commit = self.now()
-        if after_commit == result.now:
-            return result
-        return self._save_stamp(after_commit if after_commit < result.now else None)
+        """Durable clock point; consumers obtain a terminal point through _finish."""
+        return self._save_stamp()
 
     def _bindings(self, stamp: Stamp) -> None:
         value = metadata(self.connection)
@@ -475,17 +470,38 @@ class StateCache:
                 self._bindings(stamp)
             elif error.code != "capability_expired":
                 raise
-        final, within_budget = self._finish(stamp)
+        final, within_budget = self._finish(
+            stamp, tuple(instant(record.expires_at) for record, _ in rows if record is not None)
+        )
         return tuple(
             self._present(key, record, candidates, stamp, final, within_budget)
             for key, (record, candidates) in zip(keys, rows, strict=True)
         )
 
-    def _finish(self, stamp: Stamp) -> tuple[Stamp, bool]:
-        final = self.stamp()
-        self._bindings(stamp)
-        self.store.deadline.remaining()
-        return final, self.clock.monotonic() < self.end
+    def _finish(self, stamp: Stamp, expires: tuple[datetime, ...] = ()) -> tuple[Stamp, bool]:
+        current = self.stamp()
+        # Only newly crossed boundaries require another durable watermark. Each
+        # iteration fences at least one boundary, or invalidates the generation.
+        # No producer/discovery retry occurs and the loop is bounded by the view.
+        while True:
+            self._bindings(stamp)
+            self.store.deadline.remaining()
+            within_budget = self.clock.monotonic() < self.end
+            observed = self.now()
+            if current.anomaly or current.generation != stamp.generation:
+                return current, within_budget
+            if observed < current.now or self.required_generation > current.generation:
+                return self._save_stamp(observed), within_budget
+            if any(current.now < boundary <= observed for boundary in expires):
+                current = self._save_stamp()
+                continue
+            return Stamp(
+                current.store_id,
+                current.identity_epoch,
+                current.generation,
+                observed,
+                current.anomaly,
+            ), within_budget
 
     def _present(
         self,

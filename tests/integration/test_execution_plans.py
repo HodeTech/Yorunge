@@ -494,3 +494,47 @@ def test_execution_authority_must_match_full_request_scope(
     body["digest"] = hashlib.sha256(canonical(body)).hexdigest()
     with pytest.raises(ValueError):
         ExecutionPlan.model_validate_json(canonical(body))
+
+
+@pytest.mark.parametrize("advance", [0.3, -0.3])
+def test_terminal_clock_commit_delay_cannot_publish_validity(
+    tmp_path,
+    monkeypatch,
+    execution_fixture,
+    execution_clock,
+    advance,
+):
+    from yorunge.adapters.execution_store import PlanRepository
+    from yorunge.domain.capabilities import instant
+
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    execution_clock.value += timedelta(seconds=100)
+    original = PlanRepository.finish
+    armed = False
+
+    def finish(self, expected, *, valid_until=None):
+        nonlocal armed
+        if valid_until == instant(plan.expires_at) and not armed:
+            armed = True
+            execution_clock.value = valid_until - timedelta(seconds=0.2)
+
+            def move(statement):
+                if statement == "COMMIT":
+                    execution_clock.value += timedelta(seconds=advance)
+
+            self.store.connection.set_trace_callback(move)
+        return original(self, expected, valid_until=valid_until)
+
+    monkeypatch.setattr(PlanRepository, "finish", finish)
+    result = api.validate_execution_plan(plan.plan_id, state_dir=state).data
+    assert armed
+    assert result.valid is False
+    with open_store(state) as store:
+        generation, high = store.connection.execute(
+            "SELECT clock_generation,high_watermark FROM cache_clock"
+        ).fetchone()
+        if advance < 0:
+            assert generation == 2
+        else:
+            assert high >= plan.expires_at

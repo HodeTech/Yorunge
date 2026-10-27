@@ -69,3 +69,11 @@ Descriptor walk her root/ara/son bileşende no-follow kullanır; FIFO okunmaz. �
 İki doğrulanmış P2 giderildi: producer proof account/project ve görev için gerekli service namespace'i istekle karşılaştırılmıyordu (remote→local proof ile prepared mümkün); ortak pure scope invariant hem fresh admission'a hem persisted body'ye eklendi. Eksik/yanlış remote namespace, hesap/proje/hedef ve yalnız planning.offline kanıtı preparation sağlayamaz. İkinci bulgu ilk root/dup-root fstat hatasında FD sızıntısıydı; metadata işlemleri cleanup kapsamına alındı. Her iki noktaya gerçek descriptor/EIO enjeksiyonu artık bütün FD'lerin kapandığını doğrular.
 
 Düzeltme sonrası input/execution **45 passed (10,50 s)**; Ruff ve strict mypy38 kaynak başarılı. Bu turdaki fixture pozitifliği public uzak destek veya execution değildir. İkinci fresh review turu kapanmadan adım3'e geçilmez.
+
+### Adım 2 / review 2 ve kapanışı
+
+Üç farklı yeni reviewer time/scope (GPT-6 Astra/high), input/state ve public sözleşme (GPT-6.1 Sol/high) `6d68120` üzerinde inceledi. Public reviewer308 test ve11 görevin draft/blocked kaldığı CLI/API problarında yeni bulgu bulmadı. Input/state reviewer155 test;71 ayrı FD I/O enjeksiyonu,21 body/corruption ret yolu ve schema2 legacy intent/stage/live-source-lost→3 recovery problarında yeni bulgu bulmadı.
+
+Bir P2 son clock commit'inden sonra UTC'nin tekrar örneklenmemesiydi. Durable clock noktası ile terminal geçerlilik noktası ayrıldı: tüm DB işleri sonrası UTC/monotonic örneği kullanılır. Yeni geçilen expiry sınırı kalıcılaştırılıp tekrar örneklenir; döngü sınır sayısıyla sınırlıdır, producer/env/discovery tekrar çağrılmaz. Gerileme kalıcı generation fence ile geçersiz kalır. Ortak cache okuyucusu aynı kapıyı kullanır. Prepare/validate ve fresh assessment, gerçek expiry'lerini bu kapıya verir.
+
+Son cache+execution **54 passed (16,16 s)**, lint/type38 kaynak ve105 belge denetimi geçti. Aynı reviewer orijinal COMMIT+0,3s probunu yeniden çalıştırdı: expiry öncesi gerçek terminal nokta geçerli, expiry'yi geçen varyant false; ileri/geri iki regresyon da geçti. Bulgu kapandı. Adım2 tamamlandı; P01-3b in_progress olarak adım3 onay/yönetim/bütün bakım kabulüne otomatik ilerler. Final tam suite/build/performans bütünleşik adımda güncel head üzerinde yapılır.
