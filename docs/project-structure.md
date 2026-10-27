@@ -18,9 +18,14 @@ tests/
 scripts/                  # Build/temiz kurulum, belge ve performans kontrolleri
 examples/                 # Küçük sentetik profil ve reçete
 .github/workflows/        # Gerçek kontrolleri çalıştıran CI tanımı
+.agents/skills/           # Kanonik görev prosedürleri ve Codex UI metadata'sı
+.claude/skills/           # Aynı skill klasörlerine göreli alias; içerik kopyası yok
+docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kartları
 ```
 
 `pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. Henüz uygulanmayan HTTP, SQLite, araç/execution adaptörleri ve alan modülleri için boş iskelet dizinleri oluşturulmadı. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
+
+[Ajan kataloğu](../.agents/README.md) repo geliştirme girdisidir; runtime bağımlılığı değildir. Canonical `.agents` materyali sdist'e seçilir; wheel ve Claude alias symlink'leriyle karıştırılmaz. İstemci/global ayar veya otomatik izin hook'u eklenmez.
 
 Root'ta README, MIT, katkı/güvenlik/topluluk belgeleri ve ajan rehberi; `docs` altında kanonik ürün/standart/mimari/karar/referans/yol haritası/kanıt belgeleri bulunur. Her belge alt dizininin README'si giriş noktasıdır.
 

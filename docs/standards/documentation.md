@@ -6,7 +6,7 @@
 
 Kanonik açıklama dili Türkçedir. Dosya/dizin adları İngilizce `kebab-case`; kod, config anahtarı, hata kimliği ve makine sözleşmeleri İngilizcedir. Çeviri eklenirse kanonik belgeye ve güncellik durumuna bağlanır; bugün İngilizce eş doküman zorunluluğu yoktur.
 
-Bir Markdown dosyası ilk satırda tek H1 ile başlar. Yaşayan belgede tarih/durum belirtilir. UTF-8/LF, GitHub Markdown ve gerekli yerde Mermaid kullanılır. İndeksler yalnız bağlantı/amaç haritasını tutar; ayrıntıyı çoğaltmaz. Her alt dizinin README'si vardır. Kanonik klasör `docs/standards`'tır.
+Bir Markdown dosyası ilk satırda tek H1 ile başlar; skill ve iş kartında gereken YAML frontmatter önce, tek H1 hemen ardından gelir. Kod bloğundaki örnek başlık gerçek belge başlığı sayılmaz. Yaşayan belgede tarih/durum belirtilir. UTF-8/LF, GitHub Markdown ve gerekli yerde Mermaid kullanılır. İndeksler yalnız bağlantı/amaç haritasını tutar; ayrıntıyı çoğaltmaz. Belge alt dizininin README'si vardır; tek görevli skill klasörüne gereksiz README eklenmez. Kanonik klasör `docs/standards`'tır.
 
 ## Tek kaynak ve doğru durum
 
@@ -19,6 +19,8 @@ Bir Markdown dosyası ilk satırda tek H1 ile başlar. Yaşayan belgede tarih/du
 | İş sırası/aktif çalışma | `roadmap` |
 | Kararın nedeni | `decisions` |
 | Dış kanıt ve açık sorular | `research` |
+| İş paketi hazırlığı ve ayrıntılı kabul | `roadmap/README.md` ve ilgili `roadmap/tasks` kartı |
+| Ajanın tekrarlanan görev prosedürü | `.agents/skills`; ortak kurallar root `AGENTS.md` |
 
 Taslak/benimsenmiş tasarım ile uygulanmış/yayımlanmış davranış ayrı yazılır. Belge tarihini yenilemek canlı kaynağın tekrar doğrulandığını göstermez. Örnek komutlar henüz çalışmıyorsa üstünde açık “taslak” ibaresi ve uygun `text` bloğu bulunur; kurulmamış pakete kurulum önerilmez.
 

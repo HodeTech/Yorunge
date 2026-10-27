@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 ALLOWED_SDIST = {
     ".gitignore",
     ".github",
+    ".agents",
     "src",
     "tests",
     "scripts",
@@ -87,8 +88,18 @@ def inspect_archive(path: Path) -> list[str]:
                 if parts[0] == ".github" and parts[1:] not in (
                     ("workflows", "checks.yml"),
                     ("workflows", "pr-policy.yml"),
+                    ("pull_request_template.md",),
                 ):
                     raise ValueError("unexpected workflow member")
+                if parts[0] == ".agents" and not (
+                    parts[1:] == ("README.md",)
+                    or (
+                        len(parts) >= 4
+                        and parts[1] == "skills"
+                        and parts[3:] in (("SKILL.md",), ("agents", "openai.yaml"))
+                    )
+                ):
+                    raise ValueError("unexpected agent guide member")
                 if parts[0] == "docs" and not (
                     len(parts) >= 2
                     and (parts[1] in ALLOWED_DOCS or parts[1:] == ("analysis", "README.md"))

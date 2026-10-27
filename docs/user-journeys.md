@@ -1,6 +1,6 @@
 # Kullanıcı yolculukları
 
-**Güncellendi:** 2026-10-27. **Durum:** Planlanan deneyimler; henüz kullanılabilir komutlar değildir.
+**Güncellendi:** 2026-10-27. **Durum:** Uçtan uca hedef deneyimler. Bugün yalnız yerel context, capability ve offline plan hazırlığı çalışır; [uygulanan CLI alt kümesi](reference/cli-contract.md#uygulanan-alt-küme). Diğer adımlar planlandı.
 
 ## 1. İlk bağlantı
 
@@ -30,7 +30,7 @@ Veri seti sürümü → proje ve desteklenen mimari → hiperparametre/hesaplama
 
 Amaç/veri/model → görev yetenekleri → varsayılan ForgeLM veya açık alternatif → çalıştırma ortamı → plan → çalıştırma → sonuçları toplama. Desteklenmeyen seçenek varsa planlama aşamasında açıklanır; seçenek başka araca sessizce aktarılmaz.
 
-Örnek **taslak**: `yorunge train plan --recipe training.yaml --tool axolotl --execution local`. Kullanıcı araç belirtmezse uygun LLM görevi için ForgeLM çözülür. Araç kurulu değilse kurulması gereken ortam veya kullanılabilir muadiller gösterilir; otomatik ağır indirme yapılmaz.
+Bugün çalışan **yalnız plan hazırlığı** örneği: `yorunge train plan --config examples/profile.toml --recipe examples/training.yaml --tool axolotl --execution local`. Sonuç yürütülemez draft ve adaptör eksikliği taşır; eğitim/artefakt üretmez. Kullanıcı araç belirtmezse uygun LLM görevi için ForgeLM çözülür. İleride gerçek adaptör kurulu değilse eksik ortam ve açık seçenekler gösterilir; otomatik ağır indirme yapılmaz.
 
 **Kabul:** Aynı sınıftaki görev iki doğrulanmış araçla yapılabilir; modele/parametreye özel farklar kaybolmaz. EVREN runtime erişimi yoksa kullanıcıya “EVREN GPU'sunda çalışıyor” denmez; başka ortam için ayrı seçim gerekir.
 

@@ -19,6 +19,8 @@ Belgeler okuyucunun sorusuna göre ayrılır. Bir kararın benimsenmesi, ilgili 
 | [Modüller](modules/README.md) | Hangi alanın sorumluluğu kimde? |
 | [Referans sözleşmeler](reference/README.md) | CLI, config ve adaptörün kesin taslak biçimi ne? |
 | [Yol haritası](roadmap/README.md) | Hangi iş hangi kanıtla tamamlanacak? |
+| [Yakın iş kartları](roadmap/tasks/README.md) | Kodlamaya hazır dar iş ve ayrıntılı kabul hangisi? |
+| [Ajan çalışma rehberi](../.agents/README.md) | Hangi görevde hangi skill ve bağlam kullanılacak? |
 | [Araştırma](research/README.md) | Kaynaklar, belirsizlikler ve doğrulama soruları neler? |
 | [Analiz yönetimi](analysis/README.md) | Yerel özel arşiv ve yayın sınırı nasıl korunur? |
 

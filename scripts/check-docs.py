@@ -9,10 +9,15 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ("standards", "architecture", "decisions", "modules", "reference", "roadmap", "research")
 
 
+def prose(text: str) -> str:
+    text = re.sub(r"\A---\n.*?\n---\n", "", text, count=1, flags=re.DOTALL)
+    return re.sub(r"^(```|~~~).*?^\1[^\n]*$", "", text, flags=re.MULTILINE | re.DOTALL)
+
+
 def anchors(text: str) -> set[str]:
     result = set()
     counts: dict[str, int] = {}
-    for title in re.findall(r"^#{1,6}\s+(.+)$", text, re.MULTILINE):
+    for title in re.findall(r"^#{1,6}\s+(.+)$", prose(text), re.MULTILINE):
         slug = re.sub(r"[^\w\s-]", "", title.lower()).replace(" ", "-")
         count = counts.get(slug, 0)
         counts[slug] = count + 1
@@ -25,14 +30,23 @@ def main() -> int:
     files.append(ROOT / "docs" / "analysis" / "README.md")
     for directory in PUBLIC:
         files.extend(sorted((ROOT / "docs" / directory).glob("*.md")))
+    files.extend(sorted((ROOT / "docs/roadmap/tasks").glob("*.md")))
+    files.extend(sorted((ROOT / ".agents/skills").glob("*/SKILL.md")))
+    files.extend([ROOT / ".agents/README.md", ROOT / ".github/pull_request_template.md"])
     problems: list[str] = []
     for path in files:
-        if path.is_symlink():
-            problems.append("public Markdown source may not be a symbolic link")
+        resolved = path.resolve()
+        if (
+            path.is_symlink()
+            or not resolved.is_relative_to(ROOT)
+            or resolved.is_relative_to(ROOT / "docs/analysis/private")
+        ):
+            problems.append("public Markdown source escapes its allowed boundary")
             continue
         text = path.read_text()
         name = str(path.relative_to(ROOT))
-        if not text.startswith("# ") or len(re.findall(r"^# ", text, re.MULTILINE)) != 1:
+        body = prose(text).lstrip()
+        if not body.startswith("# ") or len(re.findall(r"^# ", body, re.MULTILINE)) != 1:
             problems.append(f"{name}: expected one initial H1")
         if len(re.findall(r"^```", text, re.MULTILINE)) % 2:
             problems.append(f"{name}: unbalanced code fence")

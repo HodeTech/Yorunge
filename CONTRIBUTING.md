@@ -37,6 +37,7 @@ uv sync --frozen --python 3.11
 .venv/bin/mypy
 .venv/bin/pytest
 .venv/bin/python scripts/check-docs.py
+.venv/bin/python scripts/check-agent-guides.py
 uv build
 .venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv
 .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --output dist/startup.json
@@ -45,6 +46,20 @@ uv build
 `--uv` için gerçekten kullanılan uv executable yolunu verin. `uv.lock` geliştirme/runtime sürümleri ve hash'lerini sabitler; build backend'i `pyproject.toml` içinde sabittir. İlk kurulum/build paket indirmek için ağ kullanabilir; uygulama ve test senaryoları çevrimdışıdır. `uv build` wheel'i sdist'ten üretir. Dağıtım denetimi üyeleri izin listesiyle kontrol eder, her arşivi ayrı temiz ortama kurar, import kökenini ve konsol komutunu depo dışından doğrular. Build çıktısı `dist/` altında Git dışında kalır.
 
 Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
+
+## Doğrulama seçimi
+
+Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır.
+
+| Değişiklik | Yerelde gerekli kanıt |
+|---|---|
+| Yalnız açıklama/link/durum | `check-docs.py`, `git diff --check`; kod testi eklenmez |
+| Skill, alias, iş kartı metadata veya ajan rehberi | Belge kontrolü + `check-agent-guides.py`; yeni/değişen helper için anlamlı negatif test ve lint/type |
+| Runtime/config/CLI/API | Anlamlı unit/contract/integration, Ruff format/lint ve strict mypy; kullanıcı sözleşmesi ve belge güncel |
+| Paket/bağımlılık/yerleşim veya yayın girdisi | Yukarıdakilere build, arşiv izin listesi ve temiz kurulum/import kökeni; wheel ile sdist ayrımı |
+| Import/başlangıç veya aktarım/worker yolu | İlgili performans standardı ve veri doğruluğu; ortam/örnek/ilk süreç ve p95 kayıtlı |
+
+Rehber denetimi Git checkout'undaki canonical skills/Claude alias'ları ve yakın kartların metadata/ready bağımlılığını kontrol eder. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
 
 ## İnceleme ve lisans
 
