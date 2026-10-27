@@ -299,9 +299,9 @@ def maintenance_text(data: MaintenancePreview) -> str:
     if data.cache_invalidated:
         lines.append("Capability cache geçersizleşir.")
     if data.history_may_be_lost:
-        lines.append("Snapshot sonrası plan/onay geçmişi kaybolabilir.")
+        lines.append("Snapshot sonrası credential, plan ve onay geçmişi kaybolabilir.")
     else:
-        lines.append("Mevcut plan/onay geçmişi korunur.")
+        lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
     lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
     return "\n".join(lines)
 

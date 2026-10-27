@@ -44,7 +44,8 @@ uv sync --frozen --python 3.11
 .venv/bin/python scripts/check-agent-guides.py
 uv build
 .venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv > dist/verification.jsonl
-startup_fixture=$(mktemp -d "${TMPDIR:-/tmp}/yorunge-startup.XXXXXX")
+mkdir -p .local
+startup_fixture=$(mktemp -d .local/yorunge-startup.XXXXXX)
 .venv/bin/python tests/fixtures/seed_capability_cache.py "$startup_fixture/state" examples/profile.toml
 .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --cache-state "$startup_fixture/state" --installation-label "editable .venv; frozen uv environment" --output dist/startup.json
 ```
@@ -55,7 +56,7 @@ Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye
 
 ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` ile Python'un farklı ad seçmesine yol açan Unicode Path (`0x7075`) alternatif ad alanı ve bozuk extra metadata reddedilir; diğer düzgün metadata alanları korunur. Bu denetim bu deponun ürettiği paketler içindir, genel amaçlı arşiv çıkarıcı değildir.
 
-Performans kabulü help/version/context ile birlikte 1.024 kayıtlı cache sorgusunu da kapsar; `--cache-state` zorunludur. Yukarıdaki hazırlık her koşu için yeni bir geçici dizin seçer, mevcut state verisini kullanmaz veya ezmez; sentetik dizin ve ölçüm kaydı denetim için korunur. CPU/disk/kurulum etiketleri ölçülen gerçek ortamı belirtmelidir; bilinmeyen disk türü `unknown` kalır. Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
+Performans kabulü help/version/context ile birlikte 1.024 kayıtlı cache sorgusunu da kapsar; `--cache-state` zorunludur. Yukarıdaki hazırlık her koşu için repo içindeki `.local` altında yeni bir geçici dizin seçer (macOS `/var`/`/tmp` symlink atalarını kullanmaz), mevcut state verisini kullanmaz veya ezmez; sentetik dizin ve ölçüm kaydı denetim için korunur. CPU/disk/kurulum etiketleri ölçülen gerçek ortamı belirtmelidir; bilinmeyen disk türü `unknown` kalır. Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
 
 ## Doğrulama seçimi
 

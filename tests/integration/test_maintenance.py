@@ -600,6 +600,7 @@ def test_default_preview_text_exposes_same_counts_and_effects_as_json(
     api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state)
     saved = migration_backup(state)
     api.prepare_execution_plan(task="llm.train", state_dir=state)
+    api.observe_credential("evren-llm", config=config, state_dir=state)
     if action == "recover":
         preview = api.preview_state_restore(saved, state_dir=state).data
 
@@ -618,6 +619,9 @@ def test_default_preview_text_exposes_same_counts_and_effects_as_json(
     assert machine.returncode == 0, machine.stderr
     assert text.returncode == 0, text.stderr
     data = json.loads(machine.stdout)["data"]
+    assert data["current"]["binding_count"] == 2
+    if data["source"] is not None:
+        assert data["source"]["binding_count"] == 1
     assert data["digest"] in text.stdout
     for field, label in (("current", "Mevcut"), ("source", "Snapshot")):
         snapshot = data[field]
@@ -628,6 +632,6 @@ def test_default_preview_text_exposes_same_counts_and_effects_as_json(
     assert "Capability cache geçersizleşir." in text.stdout
     assert "eski kimlikler, planlar ve onaylar geçersizleşir" in text.stdout
     if data["history_may_be_lost"]:
-        assert "Snapshot sonrası plan/onay geçmişi kaybolabilir." in text.stdout
+        assert "Snapshot sonrası credential, plan ve onay geçmişi kaybolabilir." in text.stdout
     else:
-        assert "Mevcut plan/onay geçmişi korunur." in text.stdout
+        assert "Mevcut credential, plan ve onay geçmişi korunur." in text.stdout

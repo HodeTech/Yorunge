@@ -217,3 +217,12 @@ Yedi regex uyarısı için \d + re.ASCII kullanıldı; önceki ASCII timestamp d
 S8707'nin gösterdiği akış, argparse girdisini HTTP request diye etiketleyip caller Path'ini InputRoot dalına taşıyor; bileşen doğrulaması ve descriptor/no-follow sınırını güvenli açılış olarak modellemiyor. Somut akış için gerekçeli issue-bazlı false-positive değerlendirmesi uygundur; sadece exploit elde edilememesine dayanılmaz. Mutlak root seçimi Accepted ADR-0014 gereğidir; CWD/root bağlama kusuru yukarıda ayrıca giderilir. Aynı UID/root/mount/rename sınırı değişmez.
 
 [Resmî Sonar issue düzenleme belgesi](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/issues/editing#false-positive) bu disposition için Administer Issues yetkisi istediğini ve ilgili kalite kapısını yeniden hesapladığını belirtir. Kural/gate ayarı değiştirilmez veya suppression eklenmez. Sonar oturumu ve issue disposition sonucu henüz elde edilmedi; quality gate yeşil gösterilmez. Yeni head analizi ve GitHub check ayrıca doğrulanır.
+
+
+### Kullanıcı review düzeltmeleri / fresh review 1
+
+77c139f..d9d1117 üç yeni reviewer ile input/CWD/bütçe, revoke/bakım ve benchmark/belge/Sonar eksenlerinde incelendi. Input reviewer'ı 43 input/CWD ve altı platform testi, kısa okuma/büyüme/truncation/son blok timeout/FD için sekiz bağımsız küçük dosya probunda yeni kusur bulmadı. State reviewer'ı 13 test ve revoke sonrası concurrent forget probunda committed ID/state_changed açıklamasını doğruladı. Delivery reviewer'ı 53 test ve 124 eski/yeni regex probunu tamamladı; Sonar disposition sınırını doğruladı.
+
+İki P3 doğrulandı ve düzeltildi: bakım metninin plan/onay kaybı ifadesi credential geçmişini daraltıyordu; yeni metin credential, plan ve onay geçmişini birlikte kapsar. JSON/metin testinde current binding 2/source 1 gerçek farkı eklendi. CONTRIBUTING mktemp yolu macOS /var veya /tmp symlink atasıyla seed'i state_invalid yapıyordu; fixture repo içindeki yeni .local dizininde oluşturulur. Ürün dosya güvenliği gevşetilmedi.
+
+İlk fix commit'inde tam yerel takım **1.159 passed (136,79 s)**. Son metin/fixture komutu için hedefli kontrol ve gerçek 1.024 kayıt/30-process ölçümü ayrıca yapılır; ikinci fresh review turu ayrı ajanlarla tamamlanır. Reviewer'ların tam takım/build/benchmark çalıştırdığı iddia edilmez.
