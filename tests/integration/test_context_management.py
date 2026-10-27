@@ -472,6 +472,19 @@ def test_doctor_explicit_missing_config_distinguished_from_broken_symlink(tmp_pa
     report = api.diagnose_local(config=path).data
     checks = {item.name: item for item in report.checks}
     assert checks["configuration"].status == "invalid"
+
+
+def test_doctor_implicit_broken_symlink_is_invalid_but_context_fallback_unchanged(tmp_path):
+    path = tmp_path / ".config/yorunge/config.toml"
+    path.parent.mkdir(parents=True)
+    path.symlink_to(tmp_path / "missing-target")
+    implicit = api.diagnose_local().data
+    explicit = api.diagnose_local(config=path).data
+    assert implicit == explicit
+    checks = {item.name: item for item in implicit.checks}
+    assert checks["configuration"].status == "invalid"
+    assert checks["profile"].status == "not_checked"
+    assert api.show_context().data.profile == "default"
     report = api.diagnose_local(config=Path(str(path) + "\ud800")).data
     checks = {item.name: item for item in report.checks}
     assert checks["configuration"].status == "invalid"

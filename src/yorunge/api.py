@@ -249,6 +249,17 @@ def _missing_config(path: Path | None) -> bool:
     return False
 
 
+def _diagnostic_configuration(config: Path | None) -> tuple[Configuration, bool]:
+    configuration, exists = _configuration(config)
+    if not exists:
+        try:
+            if (Path.home() / ".config/yorunge/config.toml").is_symlink():
+                raise YorungeError("file_unreadable")
+        except OSError:
+            raise YorungeError("file_unreadable") from None
+    return configuration, exists
+
+
 def diagnose_local(
     *,
     config: Path | None = None,
@@ -265,7 +276,7 @@ def diagnose_local(
         raise YorungeError("invalid_request")
     checks: list[Diagnostic] = []
     try:
-        configuration, exists = _configuration(config)
+        configuration, exists = _diagnostic_configuration(config)
         checks.append(Diagnostic(name="configuration", status="ok" if exists else "missing"))
         name = request.profile or configuration.active_profile
         if name not in configuration.profiles:
