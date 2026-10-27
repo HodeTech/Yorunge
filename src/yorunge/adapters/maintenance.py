@@ -556,4 +556,6 @@ def recover(path: Path | None, confirmation: str) -> StateInfo:
         with target_lock(root, deadline, create=False):
             intent = read_intent(root)
             consent(recovery_preview(root, intent, deadline), confirmation)
+            # A prior write may have left parseable bytes before its durability barrier failed.
+            sync_private(root / INTENT_NAME)
             return finish_restore(root, intent, deadline)

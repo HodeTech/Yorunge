@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -449,3 +450,51 @@ def test_explicit_empty_confirmation_is_rejected_before_io(tmp_path, cli, action
     assert result.stdout == ""
     assert json.loads(result.stderr) == failure.value.envelope()
     assert not root.exists()
+
+
+def test_recover_retries_interrupted_intent_barrier_before_any_publication(
+    config, tmp_path, monkeypatch
+):
+    root = tmp_path / "state"
+    observed(config, root)
+    saved = migration_backup(root)
+    preview = api.preview_state_restore(saved, state_dir=root).data
+    original = os.fsync
+
+    def fail_intent(descriptor):
+        marker = root / maintenance.INTENT_NAME
+        if marker.exists() and marker.stat().st_ino == os.fstat(descriptor).st_ino:
+            raise OSError("synthetic failed intent content sync")
+        return original(descriptor)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "fsync", fail_intent)
+        with pytest.raises(YorungeError) as failure:
+            api.restore_state(saved, preview.digest, state_dir=root)
+        assert failure.value.code == "state_write_failed"
+    intent = maintenance.read_intent(root)
+    before = files(root)
+    recovery = api.preview_state_recovery(state_dir=root).data
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "fsync", fail_intent)
+        with pytest.raises(YorungeError) as failure:
+            api.recover_state(recovery.digest, state_dir=root)
+        assert failure.value.code == "state_write_failed"
+    assert files(root) == before
+    events = []
+    original_sync = maintenance.sync_private
+    original_replace = os.replace
+
+    def sync(path):
+        original_sync(path)
+        if path == root / maintenance.INTENT_NAME:
+            events.append("durable-intent")
+
+    def publish(*args):
+        assert events == ["durable-intent"]
+        return original_replace(*args)
+
+    monkeypatch.setattr(maintenance, "sync_private", sync)
+    monkeypatch.setattr(os, "replace", publish)
+    actual = api.recover_state(recovery.digest, state_dir=root).data
+    assert actual.identity_epoch == intent.identity_epoch
