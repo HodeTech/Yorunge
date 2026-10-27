@@ -78,9 +78,17 @@ def parser() -> Parser:
     state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
     common(state, context=False)
     state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
-    state_init = state.add_subparsers(dest="action", required=True).add_parser("init")
+    state_actions = state.add_subparsers(dest="action", required=True)
+    state_init = state_actions.add_parser("init")
     common(state_init, context=False)
     state_init.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+    for name in ("reset", "restore", "recover"):
+        maintenance = state_actions.add_parser(name, help="Önizle; digest ile açıkça uygula")
+        common(maintenance, context=False)
+        maintenance.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+        maintenance.add_argument("--confirm", help="Güncel önizleme digest'i")
+        if name == "restore":
+            maintenance.add_argument("--backup", required=True, type=Path)
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
@@ -99,9 +107,21 @@ def parser() -> Parser:
 
 def text_result(data: Model) -> str:
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Plan
     from yorunge.domain.state import StateInfo
 
+    if isinstance(data, MaintenancePreview):
+        lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
+        if data.current:
+            lines.append(f"Mevcut kayıt: {data.current.binding_count}")
+        if data.source:
+            lines.append(f"Snapshot kaydı: {data.source.binding_count}")
+        if data.history_may_be_lost:
+            lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
+        else:
+            lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
+        return "\n".join(lines)
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
 
@@ -160,6 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     options = vars(args)
     json_output = options.get("output", "text") == "json"
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
     result: (
@@ -169,12 +190,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         | Result[CredentialCheck]
         | Result[CredentialObservation]
         | Result[StateInfo]
+        | Result[MaintenancePreview]
     )
     try:
         if args.command == "state":
             if any(options.get(name) is not None for name in ("config", "profile", "project")):
                 raise YorungeError("invalid_request")
-            result = api.initialize_state(state_dir=options.get("state_dir"))
+            state_dir = options.get("state_dir")
+            if args.action == "init":
+                result = api.initialize_state(state_dir=state_dir)
+            elif args.action == "reset":
+                result = (
+                    api.reset_identity(args.confirm, state_dir=state_dir)
+                    if args.confirm
+                    else api.preview_identity_reset(state_dir=state_dir)
+                )
+            elif args.action == "restore":
+                result = (
+                    api.restore_state(args.backup, args.confirm, state_dir=state_dir)
+                    if args.confirm
+                    else api.preview_state_restore(args.backup, state_dir=state_dir)
+                )
+            else:
+                result = (
+                    api.recover_state(args.confirm, state_dir=state_dir)
+                    if args.confirm
+                    else api.preview_state_recovery(state_dir=state_dir)
+                )
         elif args.command == "plan" and args.action == "show":
             if any(options.get(name) is not None for name in ("config", "profile", "project")):
                 raise YorungeError("invalid_request")

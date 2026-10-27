@@ -88,3 +88,7 @@ Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0
 ## Açık yerel kimlik gözlemi
 
 `context identity --service evren-platform|evren-llm [--state-dir PATH]` ortak config/profile/project seçiminden sonra tek env snapshot'ını kalıcı yerel kimlikle bağlar. Python karşılığı `api.observe_credential`'dır. `identity` nesnesi opak UUID, pozitif nesil, epoch ve gözlem zamanı taşır; uzak doğrulama false kalır. Eksik/geçersiz secret çıkış 3; state/taşma/bağ değişimi çıkış 2'dir. Aynı değer yeniden gözlendiğinde yazma/zaman güncellemesi yapılmaz. Eski offline komutlar ve Plan biçimi değişmez; ayrıntı [binding v1](credential-binding-v1.md).
+
+## Kimlik bakımı
+
+`state reset`, `state restore --backup PATH`, `state recover` varsayılan önizleme; `--confirm DIGEST` açık uygulamadır. `--state-dir PATH` desteklenir, diğer context seçenekleri reddedilir. Python karşılıkları, önizleme alanları, kesinti/onarım sınırları ve kayıt kaybı [local-state](local-state.md#açık-reset-restore-ve-kesilmiş-restore-kurtarması) içinde kanoniktir. `state_changed`, `credential_revision_exhausted`, `state_restore_unsupported` kontrollü çıkış 2'dir; onay otomatik tekrar veya uzak yürütme izni vermez.

@@ -19,6 +19,7 @@ ErrorCode = Literal[
     "state_unsupported",
     "state_changed",
     "credential_revision_exhausted",
+    "state_restore_unsupported",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -49,6 +50,9 @@ MESSAGES: dict[ErrorCode, str] = {
     "state_changed": "Yerel bağ değişti. Güncel durumu inceleyip isteği yeniden hazırlayın.",
     "credential_revision_exhausted": (
         "Credential nesil sınırına ulaşıldı. Açık kimlik reset akışını kullanın."
+    ),
+    "state_restore_unsupported": (
+        "Bu runtime veya snapshot türü için DB restore desteklenmiyor. Kimlik reset'i ayrıdır."
     ),
 }
 

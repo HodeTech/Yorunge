@@ -10,6 +10,7 @@ from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, va
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
 from yorunge.domain.credentials import CredentialCheck, CredentialObservation, ServiceId
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.maintenance import MaintenancePreview
 from yorunge.domain.models import (
     CapabilityView,
     Configuration,
@@ -50,6 +51,54 @@ def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
 
     with open_store(state_dir) as store:
         return Result[StateInfo](data=store.verify())
+
+
+def preview_identity_reset(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_reset
+
+    return Result[MaintenancePreview](data=preview_reset(state_dir))
+
+
+def reset_identity(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import reset
+
+    return Result[StateInfo](data=reset(state_dir, confirmation))
+
+
+def preview_state_restore(
+    backup_dir: Path, *, state_dir: Path | None = None
+) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_restore
+
+    return Result[MaintenancePreview](
+        data=preview_restore(backup_dir, state_dir),
+        warnings=("restore_discards_post_backup_history",),
+    )
+
+
+def restore_state(
+    backup_dir: Path, confirmation: str, *, state_dir: Path | None = None
+) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import restore
+
+    return Result[StateInfo](
+        data=restore(backup_dir, state_dir, confirmation),
+        warnings=("restore_discards_post_backup_history",),
+    )
+
+
+def preview_state_recovery(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_recovery
+
+    return Result[MaintenancePreview](data=preview_recovery(state_dir))
+
+
+def recover_state(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import recover
+
+    return Result[StateInfo](
+        data=recover(state_dir, confirmation), warnings=("restore_discards_post_backup_history",)
+    )
 
 
 def _context(
