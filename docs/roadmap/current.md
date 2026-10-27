@@ -16,11 +16,11 @@
 
 ## Sıradaki somut iş
 
-**Aktif uygulama [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** İlk dört adım env, store/migration/backup, kimlik gözlemi ve reset/restore ikişer yeni review turuyla doğrulandı. Adım 5 P01-2c yerel yönetim başladı; [gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
+**Aktif uygulama [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** Beş adım env, store/migration/backup, kimlik gözlemi, reset/restore ve config/doctor ikişer yeni review turuyla doğrulandı. Bütünleşik yerel doğrulama ve tek PR/CI kapanışı sürüyor; [gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
 
 Onay öncesi iki incelemenin [doğrulama/düzeltme kaydı](../research/p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması) rapordadır. Reset/restore ayrımı, kalıcı no-clobber backup, migration değişmezleri ve [ortak binding v1](../reference/credential-binding-v1.md) Accepted tasarıma dahildir. Alt iş durumları uygulama/bağımlılık kanıtı olmadan ilerletilmedi.
 
-Aktif uygulama [P01-2c](tasks/p01-2c-local-context-management.md); P01-2b verified. Ardından P01-3 → P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. Alt kartların güncel hazırlık/teslim durumu metadata'sındadır; aynı PR'da alt iş commit/test/review birimidir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md).
+P01-2 alt kartları verified; aktif iş bütünleşik kabul ve kullanıcı review'si için tek PR'dır. Ardından P01-3 → P01-4 → P01-5 → P01-6 ayrı epik PR'ları gelir. Alt kartların güncel hazırlık/teslim durumu metadata'sındadır; aynı PR'da alt iş commit/test/review birimidir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md).
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.
 

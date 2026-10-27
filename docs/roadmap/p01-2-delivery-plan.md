@@ -1,6 +1,6 @@
 # P01-2 — Kimlik ve bağlam paketi teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** B02/B13 kararları kullanıcı onayıyla Accepted; sıradaki uygulama P01-2a. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Bu plan uygulama veya bütün paketin `ready` olduğu iddiası değildir.
+**Tarih:** 2026-10-27. **Durum:** B02/B13 Accepted; beş uygulama/review adımı tamamlandı, bütünleşik PR/CI kapanışı sürüyor. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Alt kartlar kendi kabulüyle verified; paket tek PR/son CI kanıtını bekliyor.
 
 ## Teslim sınırı
 
@@ -39,4 +39,4 @@ Alt işin `verified` kanıtı aynı çalışma dalındaki gerçek commit/test/re
 
 ## Hazırlık ve kabul edilen kararlar
 
-[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md), bağlı binding v1 ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik kararı olarak ayrılır. Karar kapısı kapanmıştır; bu pakete ait ürün commit/PR veya kabul kanıtı henüz yoktur.
+[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md), bağlı binding v1 ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik kararı olarak ayrılır. Karar kapısı kapanmıştır; ürün commit/kabul kanıtı uygulama kaydındadır; PR/CI kapanışı ayrıca kaydedilir.

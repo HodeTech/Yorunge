@@ -1,6 +1,6 @@
 # Profil ve reçete sözleşmesi
 
-**Durum:** v1 yerel config/context, env ve kalıcı kimlik uygulandı; config yönetimi/doctor kabulü sürüyor, uzak yürütme bağları planlandı. **Tarih:** 2026-10-27.
+**Durum:** v1 yerel config/context, env ve kalıcı kimlik uygulandı; config yönetimi/doctor iki review turuyla doğrulandı; uzak yürütme bağları planlandı. **Tarih:** 2026-10-27.
 
 ## Uygulanan dosya ve şema sınırı
 

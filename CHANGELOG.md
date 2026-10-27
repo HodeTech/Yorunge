@@ -13,6 +13,11 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-10-27
 
+- Hizmete bağlı tek env çözümleme, korumalı secret taşıyıcısı ve kanonik hedef kapısı.
+- SQLite store/migration, özel kalıcı credential kimliği/nesli ve güvenli no-clobber snapshot temeli.
+- Önizleme/digest onaylı identity reset, identity-only restore ve kesintiden açık recover.
+- Atomik config init/profil/proje yönetimi, özgün backup ve sır/K içeriği okumayan yerel doctor.
+
 - EVREN platformunun kapsamlı yardımcı aracı olarak ürün kapsamı ve yetenek matrisi.
 - ForgeLM varsayılanı ve kullanıcı tarafından seçilebilen muadil araçlar için sağlayıcı sözleşmesi.
 - Mimari, modül sınırları, standartlar, ADR'ler, yol haritası ve araştırma kanıt rehberi.

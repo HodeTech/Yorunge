@@ -9,6 +9,10 @@
 | `yorunge --help`, `--version` | Yalnız metadata; config/DB/sır/ağ/araç keşfi ve ML import yok |
 | `yorunge context show` | Yerel profil, hesap/proje tercihi; uzak doğrulama yok |
 | `yorunge context credential --service evren-platform\|evren-llm` | Yalnız seçilen hizmetin env değerini bir kez çözer; sırrı göstermeden UTF-8/boyut ve hedef kontrolü; DB/ağ yok |
+| `yorunge init`, `context profiles/use-profile/set-project/clear-project` | Güvenli yerel config oluşturma/güncelleme; [seçenekler](configuration.md#yerel-config-yazma-ve-tanılama) |
+| `yorunge doctor [--state-dir PATH]` | Yerel config/referans/store/key metadata tanısı; env/K içeriği ve ağ yok |
+| `yorunge context identity --service SERVICE [--state-dir PATH]` | Tek seçili env snapshot'ının kalıcı yerel kimlik/nesil gözlemi |
+| `yorunge state reset/restore/recover` | Varsayılan etki önizlemesi; açık `--confirm DIGEST` ile bakım |
 | `yorunge state init [--state-dir PATH]` | Açık yerel store/key oluşturma veya mevcut store'u doğrulama; env/ağ yok |
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
@@ -25,7 +29,7 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3** 
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde ve açık `context identity` gözleminde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor` ve açık `context identity` gözleminde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
 
 ## Komut alanları
 

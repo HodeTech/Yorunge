@@ -14,7 +14,7 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 | 2 | P01-4a — store/migration/backup/key temeli | İki yeni review turuyla verified |
 | 3 | P01-2b — kalıcı kimlik/nesil | İki review turuyla tamamlandı |
 | 4 | P01-2b — reset/identity-only restore | İki review turuyla tamamlandı |
-| 5 | P01-2c — init/profil/proje/doctor | Başladı |
+| 5 | P01-2c — init/profil/proje/doctor | İki review turuyla tamamlandı |
 
 Her adımın gerçek commit/test/review bulgusu burada kaydedilecek. Tasarım/probe sonucu ürün kabulü sayılmaz. Son kapanışta tam offline suite, lint/type/belge, wheel/sdist iki temiz kurulum, en az 30 süreç başlangıç bütçesi ve son PR head CI kanıtı gerekir. HTTP/cache/operation/uzak kimlik bu paketin teslimi değildir.
 
@@ -129,3 +129,17 @@ Head `662eb98`; fresh ajanlar `p012_s5_r1_files` (GPT-6 Astra/high), `p012_s5_r1
 ### Adım 5 / review 2
 
 Head `b7478e3`; yeni ajanlar `p012_s5_r2_files` (GPT-6 Astra/high), `p012_s5_r2_doctor`, `p012_s5_r2_delivery` (GPT-6.1 Sol/high). Dosya reviewer'ı 79 test ve beş ek gerçek staging/byte/mtime/inode/izin/hardlink probe'unda R1 fix'lerini doğruladı; yeni kusur yok. Doctor reviewer'ı tek ek P2 buldu: varsayılan config yolunda kopuk symlink missing/valid-default sayılıyor, aynı açık Path invalid oluyordu. Kök ajan yeniden üretti; doctor'a özel symlink kapısı eklendi, eski context fallback'i korunur. **80 yönetim testi**, Ruff/type geçti. Son fix'in odak kontrolü ve delivery kanıtı bekleniyor.
+
+Adım 5 kapanışı: `6fbdafe` üzerindeki dar doctor fix'i bulgu sahibi tarafından beş odak regresyonuyla doğrulandı. Delivery reviewer `b7478e3` üzerinde 749 tam test, lint/type/belge/ajan, iki temiz kurulum ve kurulu wheel'de 65 guarded konsol/API probe'unu geçti; bütün init→profil/proje→state/identity→doctor→reset→restore yolculuğu sentetik HOME'da doğrulandı. Beş adımın iki review turu tamamlandı, açık doğrulanmış bulgu kalmadı. Son bütünleşik head ve PR CI kaydı aşağıya eklenecek.
+
+## Bütünleşik yerel kapanış
+
+Ürün runtime head'i `6fbdafe`; beş uygulama adımı ve her biri için iki fresh bağımsız review turu tamamlandı. Son dar fix'lerde ilgili bulgu sahibinin odak kapanışı alındı. Yeni ADR/karar kapısı gerektiren açık bir konu veya doğrulanmış açık bulgu kalmadı. P01-2a, P01-4a, P01-2b ve P01-2c kendi kanıtlarıyla verified; epik son PR/CI kapısını bekler.
+
+Kök ajan final kaynakta **750 test geçti** (35,65 s), Ruff format/lint, strict mypy (31 kaynak), 96 public Markdown ve 6 skill/5 kart denetimlerini geçti. Son build'in wheel/sdist arşiv ve iki temiz kurulum/köken/smoke sonuçları ayrı kimliklerle kaydedildi: wheel 31 üye (`f966557f7fdb679af871e08c7c579570956eb8ea86503273afab56e07458cd00`), sdist 172 üye (`92ebd7d2d86952edf94be4b8e7c4806288ad318045303b7a9fd52cdf396a3b8d`). Build bir yayın değildir; kapanış belge commit'i sonrası CI aynı kapıları son PR head'inde yeniden uygular.
+
+Ek fresh bütünleşme reviewer'ı `p012_final_integration` (GPT-6 Astra/high), gerçek geçici config/SQLite üzerinde profil/proje ve kanonik hedef dönüşleri, A→B→A, secret okunurken config+env değişimiyle tek tutarlı snapshot, eski Plan byte uyumu, stale reset reddi, yeni epoch/UUID/1, intent altında normal erişim ret/doctor tanısı ve offline yolların çalışması, ilan edilmiş epoch ile recover ve CLI/API eşitliği zincirini doğruladı. Yeni bulgu yok; canlı hizmet/uzak yetki/güç kesintisi iddiası yoktur.
+
+[Son 30 süreç başlangıç ölçümü](p01-2-final-startup.json) paket kapanışının kanıtıdır; OS cache'i boşaltılmadı. Daha önceki yük altında başarısız ölçüm korunur. NFS/cloud, aynı UID/root saldırganı ve uygulama dışı DB+K rollback koruması yoktur; destek sınırı Accepted ADR'lerdeki yerel macOS/Linux/stdlib SQLite'tır. Linux kanıtı son development PR CI'ında kaydedilecek.
+
+Son ölçümün sıcak p95 değerleri: help 23.717 / version 25.436 / context 88.245 ms. Üç bütçe de geçti; her komut 30 ayrı süreçte ölçüldü.

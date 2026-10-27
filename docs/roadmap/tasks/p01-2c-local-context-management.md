@@ -1,7 +1,7 @@
 ---
 id: P01-2c
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-2a, P01-4a, P01-2b]
 capabilities: [C01, C02]
@@ -12,11 +12,11 @@ capabilities: [C01, C02]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı config oluşturabilmeli, profilleri görebilmeli, aktif profil/projeyi açıkça seçebilmeli ve yerel ayar sorununu tipli sonuçla anlayabilmelidir. Bugün yalnız context okuma vardır.
+Kullanıcı config oluşturabilmeli, profilleri görebilmeli, aktif profil/projeyi açıkça seçebilmeli ve yerel ayar sorununu tipli sonuçla anlayabilmelidir. Yerel yönetim ve doctor CLI/Python üzerinde uygulanıp iki review turuyla doğrulandı.
 
 ## Giren ve girmeyen kapsam
 
-Güvenli ilk config oluşturma, profil listeleme/aktivasyonu, açık proje tercihi ve yerel config/referans/store tanılaması girer. Komut/API adları ve seçenekleri uygulama öncesi CLI/config referansında kesinleştirilir; burada çalışan komut örneği ilan edilmez. HTTP tanılaması P01-5, capability cache P01-3 ve gerçek hesap/proje keşfi P02-0b'dedir.
+Güvenli ilk config oluşturma, profil listeleme/aktivasyonu, açık proje tercihi ve yerel config/referans/store tanılaması girer. Komut/API adları ve seçenekleri [config referansında](../../reference/configuration.md#yerel-config-yazma-ve-tanılama) kanoniktir. HTTP tanılaması P01-5, capability cache P01-3 ve gerçek hesap/proje keşfi P02-0b'dedir.
 
 ## Bağımlılıklar ve kararlar
 
@@ -40,4 +40,6 @@ Gerçek tempfile/config yazma, izin/çatışma/bozuk dosya negatifleri ve gerçe
 
 ## Teslim kaydı
 
-Ürün uygulaması, yeni komut/API veya teslim PR'sı henüz yoktur. Bu kartın hazırlanması runtime doctor veya canlı hesap desteği sağlamaz.
+- PR/commit: [yerel yönetim 662eb98](https://github.com/HodeTech/Yorunge/commit/662eb98), [review fix b7478e3](https://github.com/HodeTech/Yorunge/commit/b7478e3), [doctor kapanışı 6fbdafe](https://github.com/HodeTech/Yorunge/commit/6fbdafe).
+- Sonuç: İkişer fresh review turu, doğrulanmış bulguların fix/regresyon/odak kapanışı; 80 yönetim testi, tam suite ve kurulu wheel kullanıcı yolculuğu [kabul kaydında](../../research/p01-2-implementation-validation.md).
+- Kalan sınır: Uzak auth/hesap keşfi/HTTP/cache bu kartta yoktur. Doctor K içeriği/uzak erişim doğrulamaz; config lock'una katılmayan editörün son check/replace aralığı belgeli sınırdır.
