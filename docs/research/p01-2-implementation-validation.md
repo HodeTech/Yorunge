@@ -81,3 +81,9 @@ Reset/restore ön incelemesi (GPT-6 Astra/high, `p012_recovery_protocol_audit`) 
 İlk head `ad54dc6`; üç yeni ajan: `p012_s3_r1_security` (GPT-6 Astra/high), `p012_s3_r1_transactions`, `p012_s3_r1_delivery` (GPT-6.1 Sol/high). Tek P2 doğrulandı: erken `state_directory` kontrolünde erişilemeyen üst dizin ham PermissionError/CLI traceback üretiyordu. Kök ajan yeniden üretti; path kontrolüne ortak OSError dönüşümü ve runtime desteğinin secret öncesi kontrolü eklendi. CLI/API izin ve unsupported-platform regresyonları geçti.
 
 Diğer alanlarda doğrulanmış bulgu yok: security 79 hedefli test; delivery 310 test ve yedi invalid-request probe; transaction reviewer 117 identity/state testi, bozuk satır/rollback probe'ları ve on ayrı eşzamanlı child süreçte tek kimlik/nesil doğruladı. Sonraki tur farklı yeni ajanlarla yapılır.
+
+### Adım 3 / review 2
+
+Head `b66d266`; yeni ajanlar `p012_s3_r2_security` (GPT-6 Astra/high), `p012_s3_r2_sql`, `p012_s3_r2_delivery` (GPT-6.1 Sol/high). İlk izin hatası düzeltmesi doğrulandı. Tek yeni P2: eksik-lock kontrolü ile dizin taraması arasında başka bootstrap tamamlanırsa sağlıklı store yanlış onarım hatası alabiliyordu. Kök ajan kontrollü interleaving ile yeniden üretti; payload görüldüğünde lock'un hâlâ eksik olması şartı eklendi. Deterministik regresyon ve 120 identity/state testi geçti.
+
+Diğer alanlar temiz: security 81 identity/credential + 100 state testi ve serializer/UTF-8 probe'ları; delivery 585 tam test, lint/type/belge/ajan, dokuz invalid API/dört CLI hatası, eski head ile tam Plan byte/digest eşitliği, geçici build/iki temiz kurulum ve 30 süreç bütçesi geçti. Bu son ölçümün p95'i help 24,697 / version 24,823 / context 117,223 ms. Reset/restore kabulü bundan sonraki adımdır.

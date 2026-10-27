@@ -490,7 +490,7 @@ def open_store(
         lock, db = root / "store.lock", root / DB_NAME
         if not lock.exists():
             with os.scandir(root) as entries:
-                if any(entry.name != "store.lock" for entry in entries):
+                if any(entry.name != "store.lock" for entry in entries) and not lock.exists():
                     raise YorungeError("state_repair_required")
         needs_maintenance = False
         with file_lock(lock, deadline, exclusive=False, create=not db.exists()):

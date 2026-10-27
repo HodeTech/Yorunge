@@ -333,3 +333,19 @@ def test_unsupported_platform_rejected_before_secret_read(config, tmp_path, monk
     with pytest.raises(YorungeError) as failure:
         observe(config, tmp_path / "state")
     assert failure.value.code == "state_unsupported"
+
+
+def test_completed_concurrent_bootstrap_between_missing_lock_check_and_scan(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    original = os.scandir
+    other = []
+
+    def interleaved(path):
+        if Path(path) == root and not other:
+            other.append(None)
+            other[0] = api.initialize_state(state_dir=root).data
+        return original(path)
+
+    monkeypatch.setattr(os, "scandir", interleaved)
+    actual = api.initialize_state(state_dir=root).data
+    assert actual == other[0]
