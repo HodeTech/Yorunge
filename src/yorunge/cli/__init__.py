@@ -202,19 +202,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             elif args.action == "reset":
                 result = (
                     api.reset_identity(args.confirm, state_dir=state_dir)
-                    if args.confirm
+                    if args.confirm is not None
                     else api.preview_identity_reset(state_dir=state_dir)
                 )
             elif args.action == "restore":
                 result = (
                     api.restore_state(args.backup, args.confirm, state_dir=state_dir)
-                    if args.confirm
+                    if args.confirm is not None
                     else api.preview_state_restore(args.backup, state_dir=state_dir)
                 )
             else:
                 result = (
                     api.recover_state(args.confirm, state_dir=state_dir)
-                    if args.confirm
+                    if args.confirm is not None
                     else api.preview_state_recovery(state_dir=state_dir)
                 )
         elif args.command == "plan" and args.action == "show":

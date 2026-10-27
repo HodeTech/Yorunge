@@ -25,7 +25,7 @@ Uygulanan çıkış kodları **0**, **2** ve açık credential kontrolünde **3*
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesine özeldir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/repair komutları henüz yoktur.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde ve açık `context identity` gözleminde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
 
 ## Komut alanları
 

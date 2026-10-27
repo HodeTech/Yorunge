@@ -427,3 +427,25 @@ def test_orphaned_intent_stage_journal_is_retained_before_rebuild(config, tmp_pa
     retained = list(root.glob("interrupted-*.sqlite3-journal"))
     assert len(retained) == 1
     assert retained[0].read_bytes() == b"retained orphaned stage journal"
+
+
+@pytest.mark.parametrize("action", ["reset", "restore", "recover"])
+def test_explicit_empty_confirmation_is_rejected_before_io(tmp_path, cli, action):
+    root = tmp_path / "missing"
+    source = tmp_path / "missing-backup"
+    call = {
+        "reset": lambda: api.reset_identity("", state_dir=root),
+        "restore": lambda: api.restore_state(source, "", state_dir=root),
+        "recover": lambda: api.recover_state("", state_dir=root),
+    }[action]
+    with pytest.raises(YorungeError) as failure:
+        call()
+    assert failure.value.code == "invalid_request"
+    command = ["state", action, "--state-dir", str(root), "--confirm", "", "--output", "json"]
+    if action == "restore":
+        command += ["--backup", str(source)]
+    result = cli(*command, state=True)
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert json.loads(result.stderr) == failure.value.envelope()
+    assert not root.exists()

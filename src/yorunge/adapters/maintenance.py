@@ -170,9 +170,13 @@ def make_preview(
     return preview.model_copy(update={"digest": digest})
 
 
-def consent(preview: MaintenancePreview, confirmation: str) -> None:
+def validate_confirmation(confirmation: str) -> None:
     if not isinstance(confirmation, str) or not re.fullmatch("[0-9a-f]{64}", confirmation):
         raise YorungeError("invalid_request")
+
+
+def consent(preview: MaintenancePreview, confirmation: str) -> None:
+    validate_confirmation(confirmation)
     if confirmation != preview.digest:
         raise YorungeError("state_changed")
 
@@ -278,6 +282,7 @@ def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: De
 
 
 def reset(path: Path | None, confirmation: str) -> StateInfo:
+    validate_confirmation(confirmation)
     with errors():
         root, deadline = state_directory(path), Deadline()
         with target_lock(root, deadline, create=False):
@@ -483,6 +488,7 @@ def finish_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Sta
 
 
 def restore(source: Path, path: Path | None, confirmation: str) -> StateInfo:
+    validate_confirmation(confirmation)
     if not isinstance(source, Path):
         raise YorungeError("invalid_request")
     with errors():
@@ -543,6 +549,7 @@ def preview_recovery(path: Path | None) -> MaintenancePreview:
 
 
 def recover(path: Path | None, confirmation: str) -> StateInfo:
+    validate_confirmation(confirmation)
     with errors():
         require_identity_runtime()
         root, deadline = state_directory(path), Deadline()
