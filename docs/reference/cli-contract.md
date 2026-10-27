@@ -112,4 +112,4 @@ Uygulanan `init`, `context profiles`, `context use-profile NAME`, `context set-p
 
 ## Kalıcı execution hazırlığı
 
-`plan execution prepare|list|show|validate|approve|revoke|forget` ve Python karşılıkları uygulandı; exact seçenekler, gövde, validity/hata ve dosya/süre sınırları [execution planı v2](execution-plan.md) içindedir. Eski `plan prepare/show` v1 kalır. Digest onayı açık ve güncel validation gerektirir; eksik/yanlış onay çıkış4, blocked plan çıkış2. Run/dispatch yoktur.
+`plan execution prepare|list|show|validate|approve|revoke|forget` ve Python karşılıkları uygulandı; exact seçenekler, gövde, validity/hata ve dosya/süre sınırları [execution planı v2](execution-plan.md) içindedir. Eski `plan prepare/show` v1 kalır. Digest onayı açık ve güncel validation gerektirir; eksik/yanlış onay çıkış 4, blocked plan çıkış 2. Run/dispatch yoktur.

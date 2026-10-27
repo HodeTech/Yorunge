@@ -148,6 +148,15 @@ def parser() -> Parser:
     common(saved, context=False)
     saved.add_argument("--plan", required=True, type=Path, help="Plan nesnesi içeren JSON dosyası")
     execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
+    execution_options(execution_plan)
+    train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
+    common(train)
+    train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
+    planning_options(train_plan, task=False)
+    return root
+
+
+def execution_options(execution_plan: argparse.ArgumentParser) -> None:
     common(execution_plan)
     execution_actions = execution_plan.add_subparsers(dest="execution_action", required=True)
     for name in ("prepare", "list", "show", "validate", "approve", "revoke", "forget"):
@@ -161,15 +170,10 @@ def parser() -> Parser:
         if name in ("show", "validate", "approve", "revoke", "forget"):
             command.add_argument("--plan-id", required=True)
         if name in ("approve", "forget"):
-            command.add_argument("--confirm", help="Tam plan digest'i; eksik/yanlış ise çıkış4")
+            command.add_argument("--confirm", help="Tam plan digest'i; eksik/yanlış ise çıkış 4")
         if name == "list":
             command.add_argument("--limit", type=int, default=50)
             command.add_argument("--cursor")
-    train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
-    common(train)
-    train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
-    planning_options(train_plan, task=False)
-    return root
 
 
 def text_result(data: Model) -> str:
@@ -200,6 +204,46 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.state import StateInfo
+
+    execution = execution_text_result(data)
+    if execution is not None:
+        return execution
+    if isinstance(data, CachedCapabilityView):
+        return "\n".join(
+            f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
+            for r in data.records
+        )
+    if isinstance(data, ConfigUpdate):
+        return (
+            f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
+            f"Seçili profil projesi: {data.project_id or 'seçilmedi'}\n"
+            f"Backup: {data.backup_path or 'ilk oluşturma'}"
+        )
+    if isinstance(data, ProfilesView):
+        return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
+    if isinstance(data, DoctorReport):
+        return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
+    if isinstance(data, MaintenancePreview):
+        return maintenance_text(data)
+    if isinstance(data, StateInfo):
+        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
+
+    if isinstance(data, CredentialObservation):
+        return (
+            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
+            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
+        )
+    if isinstance(data, CredentialCheck):
+        return (
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
+            "Sır mevcut; uzak erişim doğrulanmadı."
+        )
+    raise TypeError("unsupported result type")
+
+
+def execution_text_result(data: Model) -> str | None:
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlans,
@@ -207,8 +251,6 @@ def local_text_result(data: Model) -> str:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import MaintenancePreview
-    from yorunge.domain.state import StateInfo
 
     if isinstance(data, ExecutionApprovalState):
         return (
@@ -241,37 +283,7 @@ def local_text_result(data: Model) -> str:
             f"{p.plan_id} {p.digest} {p.task} ({p.status}; onay kaydı: {p.approval_status})"
             for p in data.plans
         ) + (f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else "")
-    if isinstance(data, CachedCapabilityView):
-        return "\n".join(
-            f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
-            for r in data.records
-        )
-    if isinstance(data, ConfigUpdate):
-        return (
-            f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
-            f"Seçili profil projesi: {data.project_id or 'seçilmedi'}\n"
-            f"Backup: {data.backup_path or 'ilk oluşturma'}"
-        )
-    if isinstance(data, ProfilesView):
-        return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
-    if isinstance(data, DoctorReport):
-        return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, MaintenancePreview):
-        return maintenance_text(data)
-    if isinstance(data, StateInfo):
-        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
-
-    if isinstance(data, CredentialObservation):
-        return (
-            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
-            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
-        )
-    if isinstance(data, CredentialCheck):
-        return (
-            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
-            "Sır mevcut; uzak erişim doğrulanmadı."
-        )
-    raise TypeError("unsupported result type")
+    return None
 
 
 def maintenance_text(data: MaintenancePreview) -> str:
@@ -398,6 +410,14 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return api.initialize_config(**context_options)
     if args.command == "doctor":
         return api.diagnose_local(state_dir=args.state_dir, **context_options)
+    return planning_result(args)
+
+
+def planning_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    context_options = {name: options.get(name) for name in ("config", "profile", "project")}
     task = "llm.train" if args.command == "train" else options.get("task")
     if args.command == "capabilities":
         if args.cached or args.refresh:

@@ -505,3 +505,86 @@ def test_recover_retries_interrupted_intent_barrier_before_any_publication(
     monkeypatch.setattr(os, "replace", publish)
     actual = api.recover_state(recovery.digest, state_dir=root).data
     assert actual.identity_epoch == intent.identity_epoch
+
+
+@pytest.mark.parametrize("old_version", [1, 2, 3])
+@pytest.mark.parametrize("pair_kind", ["stage", "live"])
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "migration-write",
+        "migration-committed",
+        "shadow-synced",
+        "publish-before",
+        "publish-after",
+        "pair-synced",
+    ],
+)
+def test_second_recovery_cut_preserves_completed_pair_without_original_backup(
+    tmp_path,
+    monkeypatch,
+    old_version,
+    pair_kind,
+    boundary,
+):
+    import shutil
+    import signal
+
+    from yorunge.adapters import maintenance, state_schema
+    from yorunge.adapters.local_files import Deadline
+    from yorunge.adapters.state import DB_NAME, backup, open_store
+
+    source, target = tmp_path / "source", tmp_path / "target"
+    with monkeypatch.context() as patch:
+        patch.setattr(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:old_version])
+        with open_store(source) as store:
+            saved = backup(source, source / DB_NAME, Deadline(), state_schema.MIGRATIONS)
+    fixture = Path(__file__).parents[1] / "fixtures/recovery_upgrade_failure.py"
+    old = subprocess.run(
+        [sys.executable, str(fixture), "old", str(target), pair_kind, str(old_version), str(saved)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert old.returncode == 73, old.stderr
+    intent = maintenance.read_intent(target)
+    pair = target / (
+        DB_NAME if pair_kind == "live" else "restore-" + intent.stage_id + maintenance.STAGE_SUFFIX
+    )
+    original = pair.read_bytes()
+    shutil.rmtree(source)
+    child = subprocess.run(
+        [
+            sys.executable,
+            str(fixture),
+            "upgrade",
+            str(target),
+            boundary,
+            str(old_version),
+            pair_kind,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert child.returncode == -signal.SIGKILL, child.stderr
+    if boundary in ("migration-write", "migration-committed", "shadow-synced", "publish-before"):
+        preserved = pair.read_bytes() == original
+        assert preserved, "completed pair was modified before shadow publication"
+    if boundary == "migration-write":
+        journals = list(target.glob("upgrade-*.sqlite3-journal"))
+        assert len(journals) == 1
+        assert journals[0].read_bytes()[:8] == bytes.fromhex("d9d505f920a163d7")
+        assert not pair.with_name(pair.name + "-journal").exists()
+    before = {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()}
+    preview = api.preview_state_recovery(state_dir=target).data
+    after = {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()}
+    unchanged = before == after
+    assert unchanged, "recovery preview changed private files"
+    result = api.recover_state(preview.digest, state_dir=target).data
+    assert result.identity_epoch == intent.identity_epoch
+    assert result.store_schema_version == len(state_schema.MIGRATIONS)
+    assert not (target / maintenance.INTENT_NAME).exists()
+    assert (target / "keys" / (intent.key_id + ".key")).exists()
+    with open_store(target) as store:
+        store.verify()

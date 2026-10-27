@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import ValidationError
 
@@ -74,20 +74,13 @@ def current_policy_result(
     return result
 
 
-def combine(
-    key: CapabilityKey,
+def _merged_proofs(
     previous: CapabilityRecord | None,
     incoming: tuple[Evidence, ...],
-    now: datetime,
+    moment: str,
     *,
     replace_own: bool,
-) -> CapabilityRecord:
-    """Merge fresh observations; aggregate TTL never shortens proof retention."""
-    moment = timestamp(now)
-    if not incoming or any(
-        instant(e.checked_at) > now or instant(e.expires_at) <= now for e in incoming
-    ):
-        raise YorungeError("capability_expired")
+) -> tuple[Evidence, ...]:
     sources = {(e.producer_id, e.producer_version) for e in incoming}
     old = previous.evidence if previous else ()
     observations = [
@@ -106,7 +99,24 @@ def combine(
             canonical(before.model_dump(mode="json")),
         ):
             unique[semantic] = evidence
-    proofs = tuple(unique[k] for k in sorted(unique))
+    return tuple(unique[k] for k in sorted(unique))
+
+
+def combine(
+    key: CapabilityKey,
+    previous: CapabilityRecord | None,
+    incoming: tuple[Evidence, ...],
+    now: datetime,
+    *,
+    replace_own: bool,
+) -> CapabilityRecord:
+    """Merge fresh observations; aggregate TTL never shortens proof retention."""
+    moment = timestamp(now)
+    if not incoming or any(
+        instant(e.checked_at) > now or instant(e.expires_at) <= now for e in incoming
+    ):
+        raise YorungeError("capability_expired")
+    proofs = _merged_proofs(previous, incoming, moment, replace_own=replace_own)
     signatures = {
         (e.support, canonical([c.model_dump(mode="json") for c in e.constraints])) for e in proofs
     }
@@ -137,16 +147,16 @@ def combine(
             "tool_unavailable": "Araç kimliği tanınmıyor; desteklenen bir araç seçin.",
         }.get(reason, "Kanıt sonucu yalnız kayıtlı kapsam ve süre için geçerlidir.")
     )
-    payload = dict(
-        key=key,
-        support=support,
-        reason_code=reason,
-        message=message,
-        evidence=proofs,
-        checked_at=checked,
-        expires_at=expires,
-        conflict_until=blocker,
-    )
+    payload = {
+        "key": key,
+        "support": support,
+        "reason_code": reason,
+        "message": message,
+        "evidence": proofs,
+        "checked_at": checked,
+        "expires_at": expires,
+        "conflict_until": blocker,
+    }
     size = len(
         canonical(
             {
@@ -200,47 +210,69 @@ def policy_keys(
     for old in capability_records(context, selection):
         local = old.capability_id == "planning.offline" or old.scope.service_id == "local"
         service = "local" if local else old.scope.service_id
-        target = (
-            None
-            if local
-            else normalize_target(
-                context.llm_url if service == "evren-llm" else context.platform_url
-            )
-        )
-        scope = CapabilityScopeV2(
-            schema_version=2,
+        scope = _policy_scope(
+            context,
+            selection,
+            recipe,
+            service,
             store_id=store_id,
             identity_epoch=identity_epoch,
             clock_generation=clock_generation,
-            service_id=service,
-            service_origin=target.service_origin if target else None,
-            api_base_path=target.api_base_path if target else None,
-            account_id=context.account_id,
-            project_id=context.project_id,
-            credential_id=identity.credential_id if identity and not local else None,
-            credential_revision=identity.credential_revision if identity and not local else None,
-            authorization_scope=None,
-            model=ModelBinding(
-                source=recipe.model.source,
-                id=recipe.model.id,
-                revision=recipe.model.revision,
-                content_digest=None,
-            )
-            if recipe.model
-            else None,
-            tool=ToolBinding(
-                id=selection.tool, version=None, executable_digest=None, environment_digest=None
-            )
-            if selection.tool
-            else None,
-            execution=ExecutionBinding(
-                backend=selection.execution,
-                runtime_id=None,
-                runtime_revision=None,
-                environment_digest=None,
-            ),
+            identity=identity,
         )
         records.append(
             (CapabilityKey(capability_id=old.capability_id, task=recipe.task, scope=scope), old)
         )
     return tuple(records)
+
+
+def _policy_scope(
+    context: Context,
+    selection: Selection,
+    recipe: Recipe,
+    service: Literal["local", "evren-platform", "evren-llm"],
+    *,
+    store_id: str,
+    identity_epoch: str,
+    clock_generation: int,
+    identity: CredentialIdentity | None,
+) -> CapabilityScopeV2:
+    target = None
+    if service != "local":
+        url = context.llm_url if service == "evren-llm" else context.platform_url
+        target = normalize_target(url)
+    return CapabilityScopeV2(
+        schema_version=2,
+        store_id=store_id,
+        identity_epoch=identity_epoch,
+        clock_generation=clock_generation,
+        service_id=service,
+        service_origin=target.service_origin if target else None,
+        api_base_path=target.api_base_path if target else None,
+        account_id=context.account_id,
+        project_id=context.project_id,
+        credential_id=identity.credential_id if identity and service != "local" else None,
+        credential_revision=identity.credential_revision
+        if identity and service != "local"
+        else None,
+        authorization_scope=None,
+        model=ModelBinding(
+            source=recipe.model.source,
+            id=recipe.model.id,
+            revision=recipe.model.revision,
+            content_digest=None,
+        )
+        if recipe.model
+        else None,
+        tool=ToolBinding(
+            id=selection.tool, version=None, executable_digest=None, environment_digest=None
+        )
+        if selection.tool
+        else None,
+        execution=ExecutionBinding(
+            backend=selection.execution,
+            runtime_id=None,
+            runtime_revision=None,
+            environment_digest=None,
+        ),
+    )

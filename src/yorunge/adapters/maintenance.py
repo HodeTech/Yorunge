@@ -500,17 +500,32 @@ def stage_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Path
 
 
 def upgrade_pair(root: Path, path: Path, intent: RestoreIntent, deadline: Deadline) -> None:
-    """Complete old-runtime recovery without the original backup or a new epoch."""
-    connection = connect(path, deadline)
+    """Migrate a private shadow; preserve the completed pair through every cut."""
+    current = pair_snapshot(root, path, intent, deadline)
+    if current is None:
+        raise YorungeError("state_invalid")
+    if current.store_schema_version == len(schema.MIGRATIONS):
+        return
+    # A failed shadow (and its journal) is retained, never selected as authority.
+    shadow = root / ("upgrade-" + str(uuid4()) + STAGE_SUFFIX)
+    copy_snapshot(path, shadow, deadline)
+    connection = connect(shadow, deadline)
     try:
         if not intended(metadata(connection), intent):
             raise YorungeError("state_invalid")
         load_key(root, metadata(connection))
-        upgrade(connection, root, path, deadline)
+        upgrade(connection, root, shadow, deadline)
         if validate(connection, schema.MIGRATIONS, full=True)[0] != len(schema.MIGRATIONS):
             raise YorungeError("state_invalid")
+        if not intended(metadata(connection), intent):
+            raise YorungeError("state_invalid")
+        load_key(root, metadata(connection))
     finally:
         connection.close()
+    quiescent(shadow)
+    sync_private(shadow)
+    deadline.remaining()
+    os.replace(shadow, path)
     sync_private(path)
 
 

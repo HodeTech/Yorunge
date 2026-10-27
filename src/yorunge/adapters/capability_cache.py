@@ -29,6 +29,7 @@ from yorunge.domain.capabilities import (
 )
 from yorunge.domain.credentials import CredentialIdentity
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.models import Support
 from yorunge.domain.state import canonical_uuid
 
 MIN_TIME = "0001-01-01T00:00:00.000000Z"
@@ -405,28 +406,40 @@ class StateCache:
             digest, group, checked = record.key.digest(), group_key(record.key), record.checked_at
             if record.key.scope.store_id != key.scope.store_id:
                 raise YorungeError("state_invalid")
-            scope = record.key.scope
-            stale = (scope.identity_epoch, scope.clock_generation) != (
-                key.scope.identity_epoch,
-                key.scope.clock_generation,
-            )
-            if scope.credential_id is not None:
-                stale = stale or not credential_matches(
-                    self.connection,
-                    scope.credential_id,
-                    scope.identity_epoch,
-                    scope.credential_revision or 0,
-                    service=scope.service_id,
-                    origin=scope.service_origin,
-                    base=scope.api_base_path,
-                )
-            dead = not any(e.expires_at > moment for e in record.evidence) and not (
-                record.conflict_until and record.conflict_until > moment
-            )
-            if digest != key.digest() and (stale or dead):
+            obsolete = self._obsolete(record, key, moment)
+            if digest != key.digest() and obsolete:
                 self.connection.execute("DELETE FROM capability_cache WHERE cache_key=?", (digest,))
             else:
                 survivors.append((digest, group, checked, record.pinned_until(moment)))
+        self._reserve(key, survivors, moment)
+
+    def _obsolete(self, record: CapabilityRecord, key: CapabilityKey, moment: str) -> bool:
+        scope = record.key.scope
+        stale = (scope.identity_epoch, scope.clock_generation) != (
+            key.scope.identity_epoch,
+            key.scope.clock_generation,
+        )
+        if scope.credential_id is not None:
+            stale = stale or not credential_matches(
+                self.connection,
+                scope.credential_id,
+                scope.identity_epoch,
+                scope.credential_revision or 0,
+                service=scope.service_id,
+                origin=scope.service_origin,
+                base=scope.api_base_path,
+            )
+        dead = not any(e.expires_at > moment for e in record.evidence) and not (
+            record.conflict_until and record.conflict_until > moment
+        )
+        return stale or dead
+
+    def _reserve(
+        self,
+        key: CapabilityKey,
+        survivors: list[tuple[str, str, str, str | None]],
+        moment: str,
+    ) -> None:
         # Reserve one slot for an upsert, respecting pinned conflicts in either quota.
         others = [r for r in survivors if r[0] != key.digest()]
         while len(others) >= 1024 or sum(r[1] == group_key(key) for r in others) >= 128:
@@ -452,7 +465,7 @@ class StateCache:
         self, keys: tuple[CapabilityKey, ...], stamp: Stamp
     ) -> tuple[CachedCapability, ...]:
         rows: list[tuple[CapabilityRecord | None, tuple[CapabilityRecord, ...]]] = [
-            (None, ()) for key in keys
+            (None, ()) for _ in keys
         ]
         try:
             with self.transaction(stamp):
@@ -532,36 +545,51 @@ class StateCache:
             and record.checked_at <= now < record.expires_at
             and within_budget
         )
-        freshness: Freshness = (
-            "fresh"
-            if fresh
-            else "clock_anomaly"
-            if final.anomaly or final.generation != stamp.generation
-            else "stale"
-            if record
-            else "historical_only"
-            if candidates
-            else "miss"
+        freshness = self._freshness(fresh, final, stamp, record, candidates)
+        support: Support
+        support, reason, message, valid_until = (
+            "unknown",
+            "cache_" + freshness,
+            "Güncel geçerli cache kararı yok; açık yenileme veya doğrulama gerekiyor.",
+            None,
         )
+        if fresh and record:
+            support, reason, message, valid_until = (
+                record.support,
+                record.reason_code,
+                record.message,
+                record.expires_at,
+            )
+        elif candidates:
+            reason = "authorization_scope_unverified"
+            message = "İzin kapsamı bilinmiyor; aday kayıt yalnız tarihsel bilgidir."
         return CachedCapability(
             key=key,
             hit=record is not None,
             freshness=freshness,
-            effective_support=record.support if fresh and record else "unknown",
-            reason_code=record.reason_code
-            if fresh and record
-            else "authorization_scope_unverified"
-            if candidates
-            else "cache_" + freshness,
+            effective_support=support,
+            reason_code=reason,
             checked_at=now,
-            message=record.message
-            if fresh and record
-            else (
-                "İzin kapsamı bilinmiyor; aday kayıt yalnız tarihsel bilgidir."
-                if candidates
-                else "Güncel geçerli cache kararı yok; açık yenileme veya doğrulama gerekiyor."
-            ),
-            valid_until=record.expires_at if fresh and record else None,
+            message=message,
+            valid_until=valid_until,
             record=record,
             historical_candidates=candidates,
         )
+
+    @staticmethod
+    def _freshness(
+        fresh: bool,
+        final: Stamp,
+        stamp: Stamp,
+        record: CapabilityRecord | None,
+        candidates: tuple[CapabilityRecord, ...],
+    ) -> Freshness:
+        if fresh:
+            return "fresh"
+        if final.anomaly or final.generation != stamp.generation:
+            return "clock_anomaly"
+        if record:
+            return "stale"
+        if candidates:
+            return "historical_only"
+        return "miss"

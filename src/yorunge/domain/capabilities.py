@@ -317,22 +317,25 @@ class CapabilityRecord(WireModel):
             if self.support != "unknown":
                 raise ValueError("blocker cannot support execution")
         if self.support == "supported":
-            if not self.evidence or any(e.support != "supported" for e in self.evidence):
-                raise ValueError("supported requires consistent evidence")
-            if self.key.scope.service_id != "local" and (
-                self.key.scope.authorization_scope is None
-                or self.key.scope.credential_id is None
-                or self.key.scope.account_id is None
-                or any(e.kind != "live_account" for e in self.evidence)
-            ):
-                raise ValueError("remote support requires scoped live authority")
-            if any(
-                e.kind in ("not_verified", "synthetic_test", "documentation") for e in self.evidence
-            ):
-                raise ValueError("insufficient support evidence")
+            self._validate_support()
         if len(canonical(self.model_dump(mode="json"))) > MAX_RECORD_BYTES:
             raise ValueError("record too large")
         return self
+
+    def _validate_support(self) -> None:
+        if not self.evidence or any(e.support != "supported" for e in self.evidence):
+            raise ValueError("supported requires consistent evidence")
+        if self.key.scope.service_id != "local" and (
+            self.key.scope.authorization_scope is None
+            or self.key.scope.credential_id is None
+            or self.key.scope.account_id is None
+            or any(e.kind != "live_account" for e in self.evidence)
+        ):
+            raise ValueError("remote support requires scoped live authority")
+        if any(
+            e.kind in ("not_verified", "synthetic_test", "documentation") for e in self.evidence
+        ):
+            raise ValueError("insufficient support evidence")
 
     def pinned_until(self, at: str | None = None) -> str | None:
         evidence = tuple(

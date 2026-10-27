@@ -8,7 +8,7 @@ capabilities: [C02, C12, C13]
 ---
 # P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım2/3 ve ikişer review tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; development PR kullanıcı incelemesine açılıyor.
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; adım2/3 ve ikişer review tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesine açıktır; son CI kapısı takip ediliyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -50,6 +50,6 @@ Unit canonical digest/girdi/onay/saat; contract v1/v2 ve CLI/API; integration ge
 
 ## Teslim kaydı
 
-- PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [hazırlık57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetimdb9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesie7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
-- Sonuç: Adım2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Final yerel tam takım1.077 test, wheel/sdist iki temiz kurulum, cache p95142,181ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; development merge/PR CI ayrı kaydedilir.
+- PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [hazırlık 57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetim db9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesi e7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
+- Sonuç: Adım 2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Final yerel tam takım 1.077 test, wheel/sdist iki temiz kurulum, cache p95 142,181 ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; development merge/PR CI ayrı kaydedilir.
 - Kalan sınır: Public producer draft/blocked; run/operation/lease, HTTP ve gerçek EVREN yoktur. Gerçek Windows/fiziksel güç kesintisi kanıtı verilmez. Ürün PR'ı kullanıcı incelemesine açılır, otomatik merge edilmez.

@@ -122,44 +122,55 @@ def validate_assessment_scope(
     selection: Selection,
     recipe: Recipe,
 ) -> None:
-    required = (
-        "local"
-        if selection.task in LLM_TASKS and selection.execution == "local"
-        else ("evren-llm" if selection.task == "llm.chat" else "evren-platform")
-    )
+    if selection.task in LLM_TASKS and selection.execution == "local":
+        required = "local"
+    elif selection.task == "llm.chat":
+        required = "evren-llm"
+    else:
+        required = "evren-platform"
     if assessment.ready() and not any(
         c.key.capability_id != "planning.offline" and c.key.scope.service_id == required
         for c in assessment.capabilities
     ):
         raise ValueError("task execution authority required")
     for capability in assessment.capabilities:
-        scope = capability.key.scope
-        if (scope.account_id, scope.project_id) != (context.account_id, context.project_id):
-            raise ValueError("account/project scope mismatch")
-        if scope.service_id not in ("local", required):
-            raise ValueError("task service mismatch")
-        if scope.service_id != "local":
-            target = normalize_target(
-                context.llm_url if required == "evren-llm" else context.platform_url
-            )
-            if (scope.service_origin, scope.api_base_path) != (
-                target.service_origin,
-                target.api_base_path,
-            ):
-                raise ValueError("service target mismatch")
-        if (
-            scope.execution.backend != selection.execution
-            or (scope.tool.id if scope.tool else None) != selection.tool
+        _validate_capability_scope(capability, context, selection, recipe, required)
+
+
+def _validate_capability_scope(
+    capability: CapabilityRecord,
+    context: Context,
+    selection: Selection,
+    recipe: Recipe,
+    required: str,
+) -> None:
+    scope = capability.key.scope
+    if (scope.account_id, scope.project_id) != (context.account_id, context.project_id):
+        raise ValueError("account/project scope mismatch")
+    if scope.service_id not in ("local", required):
+        raise ValueError("task service mismatch")
+    if scope.service_id != "local":
+        target = normalize_target(
+            context.llm_url if required == "evren-llm" else context.platform_url
+        )
+        if (scope.service_origin, scope.api_base_path) != (
+            target.service_origin,
+            target.api_base_path,
         ):
-            raise ValueError("selected tool/backend mismatch")
-        expected_model = (
-            (recipe.model.source, recipe.model.id, recipe.model.revision) if recipe.model else None
-        )
-        observed_model = (
-            (scope.model.source, scope.model.id, scope.model.revision) if scope.model else None
-        )
-        if observed_model != expected_model:
-            raise ValueError("selected model mismatch")
+            raise ValueError("service target mismatch")
+    if (
+        scope.execution.backend != selection.execution
+        or (scope.tool.id if scope.tool else None) != selection.tool
+    ):
+        raise ValueError("selected tool/backend mismatch")
+    expected_model = (
+        (recipe.model.source, recipe.model.id, recipe.model.revision) if recipe.model else None
+    )
+    observed_model = (
+        (scope.model.source, scope.model.id, scope.model.revision) if scope.model else None
+    )
+    if observed_model != expected_model:
+        raise ValueError("selected model mismatch")
 
 
 class ExecutionBody(WireModel):
@@ -212,34 +223,14 @@ class ExecutionBody(WireModel):
             raise ValueError("manifest binding required")
         if not self.assessment.capabilities or end > self.assessment.expiry():
             raise ValueError("plan cannot outlive authority")
+        self._validate_capabilities(start)
+        return self
+
+    def _validate_capabilities(self, start: datetime) -> None:
         for capability in self.assessment.capabilities:
             scope = capability.key.scope
             if self.status == "prepared" and capability.key.capability_id != "planning.offline":
-                if (
-                    scope.execution.backend != self.selection.execution
-                    or scope.execution.environment_digest is None
-                ):
-                    raise ValueError("verified execution environment required")
-                if self.selection.tool is not None and (
-                    scope.tool is None
-                    or scope.tool.id != self.selection.tool
-                    or scope.tool.version is None
-                    or scope.tool.executable_digest is None
-                    or scope.tool.environment_digest is None
-                ):
-                    raise ValueError("verified selected tool required")
-                if self.recipe.model is not None and (
-                    scope.model is None
-                    or scope.model.source != self.recipe.model.source
-                    or scope.model.id != self.recipe.model.id
-                    or scope.model.revision != self.recipe.model.revision
-                    or scope.model.content_digest is None
-                ):
-                    raise ValueError("verified selected model required")
-                if self.selection.execution != "local" and (
-                    scope.execution.runtime_id is None or scope.execution.runtime_revision is None
-                ):
-                    raise ValueError("verified runtime required")
+                self._validate_prepared_capability(capability)
             if (
                 scope.store_id,
                 scope.identity_epoch,
@@ -254,7 +245,34 @@ class ExecutionBody(WireModel):
                 raise ValueError("plan evidence binding mismatch")
         if self.assessment.cost and instant(self.assessment.cost.checked_at) > start:
             raise ValueError("future estimate")
-        return self
+
+    def _validate_prepared_capability(self, capability: CapabilityRecord) -> None:
+        scope = capability.key.scope
+        if (
+            scope.execution.backend != self.selection.execution
+            or scope.execution.environment_digest is None
+        ):
+            raise ValueError("verified execution environment required")
+        if self.selection.tool is not None and (
+            scope.tool is None
+            or scope.tool.id != self.selection.tool
+            or scope.tool.version is None
+            or scope.tool.executable_digest is None
+            or scope.tool.environment_digest is None
+        ):
+            raise ValueError("verified selected tool required")
+        if self.recipe.model is not None and (
+            scope.model is None
+            or scope.model.source != self.recipe.model.source
+            or scope.model.id != self.recipe.model.id
+            or scope.model.revision != self.recipe.model.revision
+            or scope.model.content_digest is None
+        ):
+            raise ValueError("verified selected model required")
+        if self.selection.execution != "local" and (
+            scope.execution.runtime_id is None or scope.execution.runtime_revision is None
+        ):
+            raise ValueError("verified runtime required")
 
 
 class ExecutionPlan(ExecutionBody):

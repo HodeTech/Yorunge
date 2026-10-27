@@ -127,10 +127,9 @@ def test_two_independent_producers_match_canonical_key_and_unicode_is_not_normal
 
 @pytest.mark.parametrize("permissions", [["z", "a"], ["a", "a"], ["*"], ["a\n"], ["a" * 129]])
 def test_permission_wire_is_ordered_unique_bounded_and_not_wildcard(permissions):
+    payload = json.dumps({"permissions": permissions, "resources": []})
     with pytest.raises(ValidationError):
-        AuthorizationScope.model_validate_json(
-            json.dumps({"permissions": permissions, "resources": []})
-        )
+        AuthorizationScope.model_validate_json(payload)
 
 
 def test_total_resource_limit_and_nested_extra_keys_are_enforced():
@@ -146,8 +145,9 @@ def test_total_resource_limit_and_nested_extra_keys_are_enforced():
         {"permissions": ["a" + str(i).zfill(3) for i in range(128)], "resources": [resource]},
     ]
     for value in values:
+        payload = json.dumps(value)
         with pytest.raises(ValidationError):
-            AuthorizationScope.model_validate_json(json.dumps(value))
+            AuthorizationScope.model_validate_json(payload)
 
 
 @pytest.mark.parametrize(

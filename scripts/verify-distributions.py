@@ -16,6 +16,8 @@ from pathlib import Path
 
 GITHUB_DIRECTORY = ".github"
 SDIST_SUFFIX = ".tar.gz"
+EXAMPLE_PROFILE = "examples/profile.toml"
+TRAIN_TASK = "llm.train"
 
 ALLOWED_SDIST = {
     ".gitignore",
@@ -229,11 +231,25 @@ def distribution_pair(directory: Path) -> tuple[Path, Path]:
     return wheels[0], sdists[0]
 
 
+def _installed_execution_plan(data: object) -> dict[str, object]:
+    if not isinstance(data, dict) or not isinstance(data.get("plan"), dict):
+        raise ValueError("installed execution preparation failed")
+    plan = data["plan"]
+    if (
+        plan["schema_version"] != 2
+        or plan["mode"] != "execution"
+        or plan["executable"]
+        or plan["status"] != "draft"
+    ):
+        raise ValueError("installed execution boundary failed")
+    return dict(plan)
+
+
 def verify_installed_execution(
     console: Path, root: Path, scratch: Path, environment: dict[str, str]
 ) -> str:
     state_args = ["--state-dir", str(scratch / "state"), "--output", "json"]
-    config_args = ["--config", str(root / "examples/profile.toml")]
+    config_args = ["--config", str(root / EXAMPLE_PROFILE)]
 
     def invoke(action: str, *options: str, expected_code: int = 0) -> dict[str, object]:
         value = json.loads(
@@ -248,18 +264,8 @@ def verify_installed_execution(
             raise ValueError("installed execution envelope failed")
         return value
 
-    prepared = invoke("prepare", "--task", "llm.train", *config_args)
-    data = prepared["data"]
-    if not isinstance(data, dict) or not isinstance(data.get("plan"), dict):
-        raise ValueError("installed execution preparation failed")
-    plan = data["plan"]
-    if (
-        plan["schema_version"] != 2
-        or plan["mode"] != "execution"
-        or plan["executable"]
-        or plan["status"] != "draft"
-    ):
-        raise ValueError("installed execution boundary failed")
+    prepared = invoke("prepare", "--task", TRAIN_TASK, *config_args)
+    plan = _installed_execution_plan(prepared["data"])
     plan_id, digest = str(plan["plan_id"]), str(plan["digest"])
     listing = invoke("list")["data"]
     if not isinstance(listing, dict) or len(listing["plans"]) != 1:
@@ -286,6 +292,128 @@ def verify_installed_execution(
     return "passed"
 
 
+def verify_installed_cache(
+    console: Path, root: Path, scratch: Path, environment: dict[str, str]
+) -> None:
+    for mode in ("--refresh", "--cached"):
+        cached = json.loads(
+            run(
+                [
+                    str(console),
+                    "capabilities",
+                    "--task",
+                    TRAIN_TASK,
+                    mode,
+                    "--config",
+                    str(root / EXAMPLE_PROFILE),
+                    "--state-dir",
+                    str(scratch / "state"),
+                    "--output",
+                    "json",
+                ],
+                cwd=scratch,
+                environment=environment,
+            )
+        )
+        records = cached["data"]["records"]
+        if not records or not all(r["hit"] and r["freshness"] == "fresh" for r in records):
+            raise ValueError("installed cache contract failed")
+
+
+def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
+    members = inspect_archive(package)
+    with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
+        scratch = Path(directory).resolve()
+        requirements = scratch / "runtime.txt"
+        run(
+            [
+                uv,
+                "export",
+                "--frozen",
+                "--no-dev",
+                "--no-emit-project",
+                "--output-file",
+                str(requirements),
+            ],
+            cwd=root,
+            environment=environment,
+        )
+        venv = scratch / "env"
+        run(
+            [uv, "venv", str(venv), "--python", sys.executable],
+            cwd=scratch,
+            environment=environment,
+        )
+        binaries = venv / ("Scripts" if os.name == "nt" else "bin")
+        python = binaries / ("python.exe" if os.name == "nt" else "python")
+        console = binaries / ("yorunge.exe" if os.name == "nt" else "yorunge")
+        run(
+            [
+                uv,
+                "pip",
+                "install",
+                "--python",
+                str(python),
+                "--require-hashes",
+                "-r",
+                str(requirements),
+            ],
+            cwd=scratch,
+            environment=environment,
+        )
+        run(
+            [uv, "pip", "install", "--python", str(python), "--no-deps", str(package)],
+            cwd=scratch,
+            environment=environment,
+        )
+        origin = run(
+            [str(python), "-I", "-c", "import yorunge; print(yorunge.__file__)"],
+            cwd=scratch,
+            environment=environment,
+        ).strip()
+        if not Path(origin).resolve().is_relative_to(venv.resolve()):
+            raise ValueError("import did not come from clean environment")
+        for option in ("--help", "--version"):
+            run([str(console), option], cwd=scratch, environment=environment)
+        output = run(
+            [
+                str(console),
+                "plan",
+                "prepare",
+                "--task",
+                TRAIN_TASK,
+                "--config",
+                str(root / EXAMPLE_PROFILE),
+                "--output",
+                "json",
+            ],
+            cwd=scratch,
+            environment=environment,
+        )
+        plan = json.loads(output)
+        if plan["data"]["executable"] or plan["data"]["selection"]["tool"] != "forgelm":
+            raise ValueError("installed plan contract failed")
+        cache_smoke = "not_run_unsupported_platform"
+        execution_smoke = "not_run_unsupported_platform"
+        if sys.platform in ("darwin", "linux"):
+            verify_installed_cache(console, root, scratch, environment)
+            cache_smoke = "passed"
+            execution_smoke = verify_installed_execution(console, root, scratch, environment)
+        print(
+            json.dumps(
+                {
+                    "archive": package.name,
+                    "sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
+                    "members": len(members),
+                    "origin_verified": True,
+                    "smoke": "passed",
+                    "cache_smoke": cache_smoke,
+                    "execution_smoke": execution_smoke,
+                }
+            )
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--uv", required=True, type=Path)
@@ -299,121 +427,7 @@ def main() -> int:
     environment.pop("PYTHONHOME", None)
     environment["PYTHONNOUSERSITE"] = "1"
     for package in packages:
-        members = inspect_archive(package)
-        with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
-            scratch = Path(directory).resolve()
-            requirements = scratch / "runtime.txt"
-            run(
-                [
-                    uv,
-                    "export",
-                    "--frozen",
-                    "--no-dev",
-                    "--no-emit-project",
-                    "--output-file",
-                    str(requirements),
-                ],
-                cwd=root,
-                environment=environment,
-            )
-            venv = scratch / "env"
-            run(
-                [uv, "venv", str(venv), "--python", sys.executable],
-                cwd=scratch,
-                environment=environment,
-            )
-            binaries = venv / ("Scripts" if os.name == "nt" else "bin")
-            python = binaries / ("python.exe" if os.name == "nt" else "python")
-            console = binaries / ("yorunge.exe" if os.name == "nt" else "yorunge")
-            run(
-                [
-                    uv,
-                    "pip",
-                    "install",
-                    "--python",
-                    str(python),
-                    "--require-hashes",
-                    "-r",
-                    str(requirements),
-                ],
-                cwd=scratch,
-                environment=environment,
-            )
-            run(
-                [uv, "pip", "install", "--python", str(python), "--no-deps", str(package)],
-                cwd=scratch,
-                environment=environment,
-            )
-            origin = run(
-                [str(python), "-I", "-c", "import yorunge; print(yorunge.__file__)"],
-                cwd=scratch,
-                environment=environment,
-            ).strip()
-            if not Path(origin).resolve().is_relative_to(venv.resolve()):
-                raise ValueError("import did not come from clean environment")
-            for option in ("--help", "--version"):
-                run([str(console), option], cwd=scratch, environment=environment)
-            output = run(
-                [
-                    str(console),
-                    "plan",
-                    "prepare",
-                    "--task",
-                    "llm.train",
-                    "--config",
-                    str(root / "examples/profile.toml"),
-                    "--output",
-                    "json",
-                ],
-                cwd=scratch,
-                environment=environment,
-            )
-            plan = json.loads(output)
-            if plan["data"]["executable"] or plan["data"]["selection"]["tool"] != "forgelm":
-                raise ValueError("installed plan contract failed")
-            cache_smoke = "not_run_unsupported_platform"
-            execution_smoke = "not_run_unsupported_platform"
-            if sys.platform in ("darwin", "linux"):
-                for mode in ("--refresh", "--cached"):
-                    cached = json.loads(
-                        run(
-                            [
-                                str(console),
-                                "capabilities",
-                                "--task",
-                                "llm.train",
-                                mode,
-                                "--config",
-                                str(root / "examples/profile.toml"),
-                                "--state-dir",
-                                str(scratch / "state"),
-                                "--output",
-                                "json",
-                            ],
-                            cwd=scratch,
-                            environment=environment,
-                        )
-                    )
-                    records = cached["data"]["records"]
-                    if not records or not all(
-                        r["hit"] and r["freshness"] == "fresh" for r in records
-                    ):
-                        raise ValueError("installed cache contract failed")
-                cache_smoke = "passed"
-                execution_smoke = verify_installed_execution(console, root, scratch, environment)
-            print(
-                json.dumps(
-                    {
-                        "archive": package.name,
-                        "sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
-                        "members": len(members),
-                        "origin_verified": True,
-                        "smoke": "passed",
-                        "cache_smoke": cache_smoke,
-                        "execution_smoke": execution_smoke,
-                    }
-                )
-            )
+        verify_package(package, uv, root, environment)
     return 0
 
 

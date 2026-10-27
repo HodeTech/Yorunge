@@ -242,8 +242,9 @@ def test_plan_corruption_is_rejected_before_epoch_reset(tmp_path, execution_fixt
     with pytest.raises(YorungeError) as error:
         api.preview_identity_reset(state_dir=state)
     assert error.value.code == "state_invalid"
+    payload = canonical(body)
     with pytest.raises(ValidationError):
-        ExecutionPlan.model_validate_json(canonical(body))
+        ExecutionPlan.model_validate_json(payload)
 
 
 def test_plan_changes_stale_maintenance_preview_but_cache_churn_does_not(
@@ -477,8 +478,9 @@ def test_execution_authority_must_match_full_request_scope(
     body = plan.model_dump(mode="json", exclude={"digest"})
     body["assessment"] = wrong_scope(plan.assessment).model_dump(mode="json")
     body["digest"] = hashlib.sha256(canonical(body)).hexdigest()
+    payload = canonical(body)
     with pytest.raises(ValueError):
-        ExecutionPlan.model_validate_json(canonical(body))
+        ExecutionPlan.model_validate_json(payload)
 
 
 @pytest.mark.parametrize("advance", [0.3, -0.3])

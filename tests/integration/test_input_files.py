@@ -24,8 +24,10 @@ def budget():
 )
 def test_raw_unsafe_input_reference_rejected_before_read(tmp_path, monkeypatch, path):
     monkeypatch.setattr(os, "read", lambda *args: pytest.fail("unsafe content read"))
+    binder = DescriptorInputs()
+    current_budget = budget()
     with pytest.raises(YorungeError) as failure:
-        DescriptorInputs().bind(tmp_path, (("manifest", path),), budget())
+        binder.bind(tmp_path, (("manifest", path),), current_budget)
     assert failure.value.code == "input_invalid"
 
 
@@ -83,8 +85,10 @@ def test_component_swap_before_open_never_reads_external_content_and_closes_desc
     monkeypatch.setattr(os, "dup", duplicate)
     monkeypatch.setattr(os, "supports_dir_fd", {*os.supports_dir_fd, opening})
     monkeypatch.setattr(os, "read", lambda *args: pytest.fail("sentinel/FIFO read"))
+    binder = DescriptorInputs()
+    current_budget = budget()
     with pytest.raises(YorungeError):
-        DescriptorInputs().bind(root, (("manifest", "nested/data"),), budget())
+        binder.bind(root, (("manifest", "nested/data"),), current_budget)
     assert swapped
     assert live == set()
 
@@ -112,8 +116,10 @@ def test_change_during_hash_is_rejected(tmp_path, monkeypatch, change):
         return result
 
     monkeypatch.setattr(os, "read", reading)
+    binder = DescriptorInputs()
+    current_budget = budget()
     with pytest.raises(YorungeError) as failure:
-        DescriptorInputs().bind(root, (("manifest", "data"),), budget())
+        binder.bind(root, (("manifest", "data"),), current_budget)
     assert failure.value.code == "input_changed"
 
 
@@ -121,8 +127,10 @@ def test_size_and_total_time_budget_are_enforced_without_partial_hash(tmp_path, 
     file = tmp_path / "data"
     with file.open("wb") as stream:
         stream.truncate(MAX_INPUT_BYTES + 1)
+    binder = DescriptorInputs()
+    current_budget = budget()
     with pytest.raises(YorungeError) as failure:
-        DescriptorInputs().bind(tmp_path, (("data", "data"),), budget())
+        binder.bind(tmp_path, (("data", "data"),), current_budget)
     assert failure.value.code == "input_budget_exceeded"
     file.write_bytes(b"a" * (BLOCK_BYTES + 1))
     clock = Clock()
@@ -135,8 +143,9 @@ def test_size_and_total_time_budget_are_enforced_without_partial_hash(tmp_path, 
         return result
 
     monkeypatch.setattr(os, "read", slow)
+    binder = DescriptorInputs()
     with pytest.raises(YorungeError) as failure:
-        DescriptorInputs().bind(tmp_path, (("data", "data"),), current_budget)
+        binder.bind(tmp_path, (("data", "data"),), current_budget)
     assert failure.value.code == "execution_timeout"
 
 
@@ -158,8 +167,10 @@ def test_large_hash_uses_bounded_memory_and_complete_content(tmp_path, size):
 def test_missing_safe_open_support_fails_before_io(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "supports_dir_fd", set())
     monkeypatch.setattr(os, "read", lambda *args: pytest.fail("unsupported read"))
+    binder = DescriptorInputs()
+    current_budget = budget()
     with pytest.raises(YorungeError) as failure:
-        DescriptorInputs().bind(tmp_path, (), budget())
+        binder.bind(tmp_path, (), current_budget)
     assert failure.value.code == "input_unsupported"
 
 
@@ -200,11 +211,54 @@ def test_initial_stat_io_failure_closes_the_opened_descriptor(tmp_path, monkeypa
     monkeypatch.setattr(os, "fstat", stating)
     monkeypatch.setattr(os, "supports_dir_fd", {*os.supports_dir_fd, opening})
     try:
+        binder = DescriptorInputs()
+        current_budget = budget()
         with pytest.raises(YorungeError) as failure:
-            DescriptorInputs().bind(tmp_path, (("data", "data"),), budget())
+            binder.bind(tmp_path, (("data", "data"),), current_budget)
         assert failure.value.code == "input_invalid"
         assert injected
         assert live == set()
     finally:
         for fd in tuple(live):
             original_close(fd)
+
+
+@pytest.mark.parametrize(
+    "suffix", ["/../outside", "/./outside", "//outside", "/outside/", "/nul\x00"]
+)
+def test_root_walk_primitive_rejects_noncanonical_components(tmp_path, suffix):
+    from yorunge.adapters.input_files import directory_chain
+
+    anchor = str(tmp_path) + suffix
+    with pytest.raises(YorungeError) as failure:
+        directory_chain(anchor)
+    assert failure.value.code == "input_invalid"
+
+
+@pytest.mark.parametrize(
+    "reference", ["../outside", "/outside", "a/../outside", "a//outside", "a\x00", "a\\b", "a:b"]
+)
+def test_relative_walk_primitive_rejects_unsafe_references_before_dup(tmp_path, reference):
+    from yorunge.adapters.input_files import relative_file
+
+    root = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            relative_file(root, reference)
+        assert failure.value.code == "input_invalid"
+    finally:
+        os.close(root)
+
+
+def test_root_walk_keeps_absolute_unicode_colon_backslash_root_support(tmp_path):
+    from yorunge.adapters.input_files import directory_chain
+
+    root = tmp_path / "çok:root\\name"
+    root.mkdir()
+    descriptor, _ = directory_chain(str(root))
+    try:
+        assert os.fstat(descriptor).st_ino == root.stat().st_ino
+    finally:
+        os.close(descriptor)
+    descriptor, _ = directory_chain("/")
+    os.close(descriptor)

@@ -99,16 +99,18 @@ def test_exact_expiry_and_durable_clock_regression_do_not_revive_after_restart(t
         clock.value += timedelta(seconds=180)
         assert cache.query(key, stamp).effective_support == "supported"
         clock.value -= timedelta(seconds=60)
+        producer = LocalPolicyProducer("supported", "fixture_policy")
         with pytest.raises(YorungeError):
-            cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+            cache.refresh(key, stamp, producer)
     clock.value += timedelta(seconds=120)  # clock catches up, old TTL still has a minute
     with open_store(root) as store:
         cache = StateCache(store, clock)
         current = cache.stamp()
         assert current.generation == 2
         assert cache.query(key_for(current), current).freshness == "miss"
+        producer = LocalPolicyProducer("supported", "fixture_policy")
         with pytest.raises(YorungeError) as failure:
-            cache.refresh(key, current, LocalPolicyProducer("supported", "fixture_policy"))
+            cache.refresh(key, current, producer)
         assert failure.value.code == "state_changed"
         new_key = key_for(current)
         cache.refresh(new_key, current, LocalPolicyProducer("supported", "fixture_policy"))
@@ -129,8 +131,9 @@ def test_producer_expiry_and_total_deadline_cannot_publish_fresh_result(tmp_path
                 clock.value += timedelta(seconds=300)
                 return proof
 
+        producer = Expired()
         with pytest.raises(YorungeError) as failure:
-            cache.refresh(key, stamp, Expired())
+            cache.refresh(key, stamp, producer)
         assert failure.value.code == "capability_expired"
         assert cache.query(key, stamp).freshness == "miss"
         clock.elapsed = 5
@@ -151,8 +154,9 @@ def test_rotation_between_snapshot_and_commit_rejects_stale_writer(config, tmp_p
                 api.observe_credential("evren-platform", config=config, state_dir=root)
                 return LocalPolicyProducer("unknown", "not_verified").observe(key, now)
 
+        producer = Rotate()
         with pytest.raises(YorungeError) as failure:
-            cache.refresh(key, stamp, Rotate())
+            cache.refresh(key, stamp, producer)
         assert failure.value.code == "state_changed"
         assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (0,)
 
@@ -536,8 +540,9 @@ def test_final_sql_gate_rolls_back_record_but_preserves_clock_fence(tmp_path, ad
                 clock.value += timedelta(seconds=advance)
 
         store.connection.set_trace_callback(move_time)
+        producer = LocalPolicyProducer("supported", "fixture_policy")
         with pytest.raises(YorungeError):
-            cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+            cache.refresh(key, stamp, producer)
         store.connection.set_trace_callback(None)
         assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (0,)
         generation = store.connection.execute(
@@ -595,8 +600,9 @@ def test_last_transaction_time_sample_rejects_expired_write(tmp_path):
 
         store.connection.set_trace_callback(mark_insert)
         clock.now = last_sample
+        producer = LocalPolicyProducer("supported", "fixture_policy")
         with pytest.raises(YorungeError) as failure:
-            cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+            cache.refresh(key, stamp, producer)
         assert failure.value.code == "capability_expired"
         assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (0,)
 
@@ -696,8 +702,9 @@ def test_producer_clock_observation_survives_catchup_rejection_and_restart(tmp_p
                 raise YorungeError("capability_expired")
 
         store.connection.set_trace_callback(jump_after_snapshot)
+        producer = CatchUp()
         with pytest.raises(YorungeError):
-            cache.refresh(key, stamp, CatchUp())
+            cache.refresh(key, stamp, producer)
         store.connection.set_trace_callback(None)
         clock.value = caught_up
         assert cache.query(key, stamp).effective_support == "unknown"

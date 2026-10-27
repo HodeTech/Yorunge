@@ -8,7 +8,7 @@ Mevcut Plan v1 yalnız offline draft'tır. SHA-256 digest bütünlük denetimidi
 
 Bu öneri mevcut offline davranışı, [ADR-0011](0011-state-foundation-and-migrations.md) dayanıklılığını ve [ADR-0012](0012-credential-identity-and-change-detection.md) credential bağlarını koruyarak eksik sınırı tanımlar. Operation/attempt/lease ve taşıma bu pakete taşınmaz.
 
-## Önerilen karar
+## Karar
 
 ### Ayrı, değişmez execution hazırlığı
 
@@ -83,7 +83,7 @@ Kaynak/stage/live full validation şema sürümüne duyarlıdır. Önceki sürü
 
 ### Public yüzey
 
-**Aşağıdakiler öneridir; henüz çalışan komut değildir.**
+**Uygulanan CLI yüzeyi:** Güncel seçenek ve hata sözleşmesi [CLI referansında](../reference/cli-contract.md#kalıcı-execution-hazırlığı), ayrıntılı plan ve Python sözleşmesi [execution referansındadır](../reference/execution-plan.md).
 
 ```text
 yorunge plan execution prepare [--task TASK] [--recipe FILE] [--config FILE] [--profile NAME] [--project ID] [--tool ID] [--execution BACKEND] [--input-root PATH] [--state-dir PATH]
@@ -101,7 +101,7 @@ Python karşılıkları ayrı `prepare_execution_plan`, `list_execution_plans`, 
 
 Seçilen profile ait secret referansı yalnız o çağrının özel resolver snapshot'ında bulunur. Gereken her hizmetin env değeri bir kez okunur; aynı target/reference/secret snapshot registry gözlemi ve producer'a bağlanır. Plan gövdesi yalnız allowlist public context/seçim bağlarını taşır; tüm `Profile`/config nesnesi, secret referans adı veya ham secret serialize edilmez. Aynı env adıyla gözlenen değer değişimi veya başka referansa geçiş registry bağı üzerinden eski planı geçersiz kılar; secret-ref'i digest'e eklemek çözüm değildir. Config/env'nin çağrı içindeki snapshot'tan sonra dışarıdan değiştirilmesini her anda saptadığımız iddia edilmez; final registry kapısı ve sonraki yürütücünün yeniden doğrulaması korunur.
 
-**Önerilen Python imzaları** (henüz import edilebilir ürün API'si değildir; bütün sonuçlar ortak `Result[T]` zarfındadır):
+**Uygulanan Python imzaları** (bütün sonuçlar ortak `Result[T]` zarfındadır; güncel alanlar execution referansında tutulur):
 
 ```text
 prepare_execution_plan(*, task: str | None = None, config: Path | None = None,
