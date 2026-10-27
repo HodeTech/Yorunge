@@ -7,12 +7,29 @@ import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING, NoReturn, TypeAlias
 
 from yorunge import __version__
 
 if TYPE_CHECKING:
+    from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
+    from yorunge.domain.state import StateInfo
+
+    CliResult: TypeAlias = (
+        Result[Plan]
+        | Result[Context]
+        | Result[CapabilityView]
+        | Result[CredentialCheck]
+        | Result[CredentialObservation]
+        | Result[StateInfo]
+        | Result[MaintenancePreview]
+        | Result[ConfigUpdate]
+        | Result[ProfilesView]
+        | Result[DoctorReport]
+    )
 
 
 class UsageError(Exception):
@@ -61,10 +78,46 @@ def parser() -> Parser:
     root.add_argument("--version", action="version", version=f"yorunge {__version__}")
     common(root)
     commands = root.add_subparsers(dest="command", required=True)
+    initialize = commands.add_parser("init", help="İlk config'i no-clobber oluştur")
+    common(initialize)
+    doctor = commands.add_parser("doctor", help="Yerel ayar ve state tanılaması; sır okumaz")
+    common(doctor)
+    doctor.add_argument("--state-dir", type=Path)
     context = commands.add_parser("context", help="Yerel profil bağlamı")
     common(context)
-    show = context.add_subparsers(dest="action", required=True).add_parser("show")
+    context_actions = context.add_subparsers(dest="action", required=True)
+    show = context_actions.add_parser("show")
     common(show)
+    for action in ("profiles", "use-profile", "set-project", "clear-project"):
+        management = context_actions.add_parser(action)
+        common(management)
+        if action == "use-profile":
+            management.add_argument("name")
+        elif action == "set-project":
+            management.add_argument("project_id")
+    credential = context_actions.add_parser(
+        "credential", help="Seçilen hizmetin env sırrını kontrol et"
+    )
+    common(credential)
+    credential.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    identity = context_actions.add_parser("identity", help="Seçilen sır gözleminin yerel kimliği")
+    common(identity)
+    identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    identity.add_argument("--state-dir", type=Path)
+    state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
+    common(state, context=False)
+    state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+    state_actions = state.add_subparsers(dest="action", required=True)
+    state_init = state_actions.add_parser("init")
+    common(state_init, context=False)
+    state_init.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+    for name in ("reset", "restore", "recover"):
+        maintenance = state_actions.add_parser(name, help="Önizle; digest ile açıkça uygula")
+        common(maintenance, context=False)
+        maintenance.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+        maintenance.add_argument("--confirm", help="Güncel önizleme digest'i")
+        if name == "restore":
+            maintenance.add_argument("--backup", required=True, type=Path)
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
@@ -101,7 +154,55 @@ def text_result(data: Model) -> str:
             f"Engeller: {', '.join(data.blockers)}\n"
             "Plan hazırlandı; yürütülemez. Eğitim veya uzak işlem başlatılmadı."
         )
+
+    return local_text_result(data)
+
+
+def local_text_result(data: Model) -> str:
+    from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.state import StateInfo
+
+    if isinstance(data, ConfigUpdate):
+        return (
+            f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
+            f"Seçili profil projesi: {data.project_id or 'seçilmedi'}\n"
+            f"Backup: {data.backup_path or 'ilk oluşturma'}"
+        )
+    if isinstance(data, ProfilesView):
+        return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
+    if isinstance(data, DoctorReport):
+        return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
+    if isinstance(data, MaintenancePreview):
+        return maintenance_text(data)
+    if isinstance(data, StateInfo):
+        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
+
+    if isinstance(data, CredentialObservation):
+        return (
+            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
+            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
+        )
+    if isinstance(data, CredentialCheck):
+        return (
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
+            "Sır mevcut; uzak erişim doğrulanmadı."
+        )
     raise TypeError("unsupported result type")
+
+
+def maintenance_text(data: MaintenancePreview) -> str:
+    lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
+    if data.current:
+        lines.append(f"Mevcut kayıt: {data.current.binding_count}")
+    if data.source:
+        lines.append(f"Snapshot kaydı: {data.source.binding_count}")
+    if data.history_may_be_lost:
+        lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
+    else:
+        lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
+    return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -123,33 +224,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return error.exit_code
 
-    from yorunge import api
     from yorunge.domain.errors import YorungeError
 
-    options = vars(args)
-    json_output = options.get("output", "text") == "json"
-    result: Result[Plan] | Result[Context] | Result[CapabilityView]
+    json_output = vars(args).get("output", "text") == "json"
     try:
-        if args.command == "plan" and args.action == "show":
-            if any(options.get(name) is not None for name in ("config", "profile", "project")):
-                raise YorungeError("invalid_request")
-            result = api.load_plan(args.plan)
-        else:
-            context_options = {name: options.get(name) for name in ("config", "profile", "project")}
-            if args.command == "context":
-                result = api.show_context(**context_options)
-            else:
-                task = "llm.train" if args.command == "train" else options.get("task")
-                use_case = (
-                    api.inspect_capabilities if args.command == "capabilities" else api.prepare_plan
-                )
-                result = use_case(
-                    **context_options,
-                    task=task,
-                    recipe=args.recipe,
-                    tool=args.tool,
-                    execution=args.execution,
-                )
+        result = dispatch(args)
         print(result.model_dump_json() if json_output else text_result(result.data))
         return 0
     except YorungeError as error:
@@ -158,3 +237,85 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return error.exit_code
+
+
+def reject_context(args: argparse.Namespace, names: tuple[str, ...]) -> None:
+    from yorunge.domain.errors import YorungeError
+
+    if any(vars(args).get(name) is not None for name in names):
+        raise YorungeError("invalid_request")
+
+
+def state_result(args: argparse.Namespace) -> Result[StateInfo] | Result[MaintenancePreview]:
+    from yorunge import api
+
+    reject_context(args, ("config", "profile", "project"))
+    state_dir = vars(args).get("state_dir")
+    if args.action == "init":
+        return api.initialize_state(state_dir=state_dir)
+    if args.action == "reset":
+        return (
+            api.reset_identity(args.confirm, state_dir=state_dir)
+            if args.confirm is not None
+            else api.preview_identity_reset(state_dir=state_dir)
+        )
+    if args.action == "restore":
+        return (
+            api.restore_state(args.backup, args.confirm, state_dir=state_dir)
+            if args.confirm is not None
+            else api.preview_state_restore(args.backup, state_dir=state_dir)
+        )
+    return (
+        api.recover_state(args.confirm, state_dir=state_dir)
+        if args.confirm is not None
+        else api.preview_state_recovery(state_dir=state_dir)
+    )
+
+
+def context_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    context_options = {name: options.get(name) for name in ("config", "profile", "project")}
+    if args.action in ("profiles", "use-profile"):
+        reject_context(args, ("profile", "project"))
+    if args.action in ("set-project", "clear-project"):
+        reject_context(args, ("project",))
+    if args.action == "profiles":
+        return api.list_profiles(config=options.get("config"))
+    if args.action == "use-profile":
+        return api.activate_profile(args.name, config=options.get("config"))
+    if args.action == "set-project":
+        return api.set_project(
+            args.project_id, config=options.get("config"), profile=options.get("profile")
+        )
+    if args.action == "clear-project":
+        return api.clear_project(config=options.get("config"), profile=options.get("profile"))
+    if args.action == "identity":
+        return api.observe_credential(args.service, state_dir=args.state_dir, **context_options)
+    if args.action == "credential":
+        return api.check_credential(args.service, **context_options)
+    return api.show_context(**context_options)
+
+
+def dispatch(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    if args.command == "state":
+        return state_result(args)
+    if args.command == "context":
+        return context_result(args)
+    if args.command == "plan" and args.action == "show":
+        reject_context(args, ("config", "profile", "project"))
+        return api.load_plan(args.plan)
+    context_options = {name: options.get(name) for name in ("config", "profile", "project")}
+    if args.command == "init":
+        return api.initialize_config(**context_options)
+    if args.command == "doctor":
+        return api.diagnose_local(state_dir=args.state_dir, **context_options)
+    task = "llm.train" if args.command == "train" else options.get("task")
+    use_case = api.inspect_capabilities if args.command == "capabilities" else api.prepare_plan
+    return use_case(
+        **context_options, task=task, recipe=args.recipe, tool=args.tool, execution=args.execution
+    )

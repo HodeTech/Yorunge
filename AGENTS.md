@@ -11,6 +11,8 @@ Bu dosya bu depoda çalışan bütün kodlama ajanlarının ortak yönergesidir.
 
 Gereken bağlamı [ajan çalışma rehberinden](.agents/README.md) daralt. Görevle eşleşen skill'i `.agents/skills` altında oku; bütün skill ve dokümanları her çağrıda yükleme. Anlamlı yeni uygulamada [hazır iş kartını](docs/roadmap/tasks/README.md) kullan; büyük faz satırını tek iş gibi üstlenme. Kullanıcı yalnız review/hazırlık istemişse ürün implementasyonuna başlama; uygulama da yetkilendirilmişse sadece planla durma.
 
+P01'de [epik başına tek PR](docs/roadmap/README.md#epik-başına-pr) kullanılır; alt kartlar aynı dalda bağımlılık, kabul, commit ve review birimidir. Epik planını ve ilgili alt kartı birlikte oku; her alt adım için yeni PR açma.
+
 ## Ürün kuralları
 
 - Yörünge, EVREN platformunun kapsamlı yardımcı aracıdır. İlgili görevlerde ForgeLM varsayılandır; desteklenen alternatifler açıkça seçilebilir.

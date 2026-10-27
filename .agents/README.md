@@ -25,6 +25,8 @@ Küçük yazım düzeltmesini altı skill'lik törene çevirme. Bütün kataloğ
 
 Komutlar ve hangi değişiklikte hangisinin gerekli olduğu [CONTRIBUTING](../CONTRIBUTING.md#doğrulama-seçimi) içinde tek yerde tutulur. Hazır işin kabulünü tekrar icat etme; büyük faz satırını da hazır kart sayma.
 
+[Epik PR sözleşmesi](../docs/roadmap/README.md#epik-başına-pr) ve [P01-2 paket planı](../docs/roadmap/p01-2-delivery-plan.md) aynı PR'daki alt adımların sırasını belirler. Alt kartın gerçek commit/test/review kanıtı sonraki adımın önkoşuludur; bağımsız PR/merge zorunluluğu değildir. Hazırlık araştırması ve Proposed ADR ürün uygulaması sayılmaz.
+
 ## Yerleşim ve keşif
 
 Kanonik skill dosyaları `.agents/skills/<name>/SKILL.md`; Codex UI metadata'sı aynı skill'in `agents/openai.yaml` dosyasındadır. Claude Code için `.claude/skills/<name>` göreli bağlantıları aynı kanonik klasöre gider. Böylece iki istemci için iki içerik kopyası oluşmaz. [CLAUDE.md](../CLAUDE.md) ortak kurala yönlendirir. Kullanıcı/global ayar, izin listesi, MCP bağlantısı, hook veya sabit model seçimi eklenmez.

@@ -24,6 +24,7 @@ Task = Literal[
     "vision.train.managed",
     "llm.chat",
 ]
+ServiceId = Literal["evren-platform", "evren-llm"]
 Execution = Literal["local", "evren-managed", "evren-workspace"]
 Support = Literal["supported", "unsupported", "unknown", "requires_access"]
 SelectionSource = Literal["request", "recipe", "profile", "product_default", "native"]

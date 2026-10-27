@@ -9,6 +9,23 @@ ErrorCode = Literal[
     "profile_not_found",
     "unsupported_combination",
     "tool_unavailable",
+    "credential_unavailable",
+    "invalid_credential",
+    "invalid_service_target",
+    "state_invalid",
+    "state_busy",
+    "state_repair_required",
+    "state_write_failed",
+    "state_unsupported",
+    "state_changed",
+    "credential_revision_exhausted",
+    "state_restore_unsupported",
+    "config_exists",
+    "config_conflict",
+    "config_busy",
+    "config_write_failed",
+    "config_write_uncertain",
+    "config_unsupported",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -20,17 +37,56 @@ MESSAGES: dict[ErrorCode, str] = {
     "profile_not_found": "Seçilen profil bulunamadı. Config içindeki profil adını kontrol edin.",
     "unsupported_combination": "Görev, araç, ortam veya parametre birleşimi desteklenmiyor.",
     "tool_unavailable": "Seçilen araç tanınmıyor. Açıkça kayıtlı bir araç kimliği seçin.",
+    "credential_unavailable": (
+        "Seçilen hizmetin sır referansı veya değeri eksik. Profil ve env ayarını kontrol edin."
+    ),
+    "invalid_credential": (
+        "Seçilen hizmetin sır değeri geçersiz. UTF-8 ve uzunluk sınırını kontrol edin."
+    ),
+    "invalid_service_target": (
+        "Hizmet hedefi credential kullanımı için geçersiz. HTTPS adresini kontrol edin."
+    ),
+    "state_invalid": "Yerel durum geçersiz. Sahiplik, izin ve bütünlük denetimini çalıştırın.",
+    "state_busy": "Yerel durum meşgul veya süre bütçesi doldu. Etkin işlemi kontrol edin.",
+    "state_repair_required": "Yerel durum onarım gerektiriyor. Açık kurtarma akışını kullanın.",
+    "state_write_failed": (
+        "Yerel durum kalıcılaştırılamadı. Disk ve tanılama sonucunu kontrol edin."
+    ),
+    "state_unsupported": "Yerel durum için desteklenen macOS/Linux ve SQLite 3.37+ gereklidir.",
+    "state_changed": "Yerel bağ değişti. Güncel durumu inceleyip isteği yeniden hazırlayın.",
+    "credential_revision_exhausted": (
+        "Credential nesil sınırına ulaşıldı. Açık kimlik reset akışını kullanın."
+    ),
+    "state_restore_unsupported": (
+        "Bu runtime veya snapshot türü için DB restore desteklenmiyor. Kimlik reset'i ayrıdır."
+    ),
+    "config_exists": "Config zaten var. İlk oluşturma mevcut dosyanın üzerine yazmaz.",
+    "config_unsupported": (
+        "Config yazımı için desteklenen macOS/Linux yerel dosya ortamı gereklidir."
+    ),
+    "config_busy": "Config başka bir yazım tarafından kilitli. Etkin işlemi kontrol edin.",
+    "config_conflict": (
+        "Config başka bir yazımla değişti. Güncel dosyayı inceleyip yeniden hazırlayın."
+    ),
+    "config_write_failed": "Config yazılamadı. Dosya izinlerini ve diski kontrol edin.",
+    "config_write_uncertain": (
+        "Config yayınlandı veya yayın durumu belirsiz. "
+        "Dosyayı ve backup'ı inceleyin; otomatik tekrar yok."
+    ),
 }
 
 
 class YorungeError(Exception):
     """Safe public failure: never attaches parser input, paths or provider bodies."""
 
-    exit_code = 2
-
     def __init__(self, code: ErrorCode) -> None:
         self.code = code
         self.message = MESSAGES[code]
+        self.exit_code = 2
+        if code == "config_write_uncertain":
+            self.exit_code = 5
+        elif code in ("credential_unavailable", "invalid_credential"):
+            self.exit_code = 3
         super().__init__(self.message)
 
     def envelope(self) -> dict[str, object]:

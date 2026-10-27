@@ -29,9 +29,17 @@ Bu durumlar ürün matrisindeki teslim durumlarından ve runtime capability enum
 
 ## Ne kadar iş alınır?
 
-Büyüklük takvim tahmini değil, inceleme birimi sınırıdır: **S** tek sözleşme/tek dar sonuç, **M** birkaç bağlı sınır, **L** birden çok bağımsız sonuç veya dış sözleşme belirsizliği. S/M paketi tek review edilebilir PR'a sığacak biçimde daraltılır; L satır koddan önce alt paketlere bölünür. Ağır test veya yeni bilinmez ortaya çıkarsa kabulü sessizce küçültmek yerine bölünme/karar kaydedilir. Saat/gün ve canlı pilot maliyeti, ilgili paket somutlaşmadan uydurulmaz.
+Büyüklük takvim tahmini değil, inceleme birimi sınırıdır: **S** tek sözleşme/tek dar sonuç, **M** birkaç bağlı sınır, **L** birden çok bağımsız sonuç veya dış sözleşme belirsizliği. L iş koddan önce S/M alt işlere bölünür; alt iş ile PR sınırı aynı olmak zorunda değildir. Ağır test veya yeni bilinmez ortaya çıkarsa kabulü sessizce küçültmek yerine bölünme/karar kaydedilir. Saat/gün ve canlı pilot maliyeti, ilgili paket somutlaşmadan uydurulmaz.
 
 Mevcut ID'ler korunur; bölünme `P01-2a` gibi alt ID üretir. Faz özeti işi ve bağımlılığı, kart ayrıntılı kabulü, current aktif iş/sonraki adımı taşır. Aynı kabul listesi üç dosyada tutulmaz. `verified` geçişinde PR/commit ve gerçek kanıt bağlanır; eski tarihsel ölçümler silinmez.
+
+## Epik başına PR
+
+Kullanıcının 2026-10-27 tercihiyle P01-2 → P01-3 → P01-4 → P01-5 → P01-6 epik başına tek development PR'ında ilerler. Alt kartlar kabul/test/commit/review birimleridir; her biri için ayrı PR açılmaz. Paket koordinasyon planı kapsamı, iç sırayı ve bütünleşik kapanışı taşır; ayrıntılı alt kabul kartlarda kalır. İlk paket [P01-2 teslim planıdır](p01-2-delivery-plan.md).
+
+Aynı PR'daki sonraki alt iş, öncekinin gerçek kod/test/review kanıtı oluşunca başlayabilir; bağımlılığın ayrı PR'da merge edilmesi gerekmez. Yerel `verified` alt iş kaydı gerçek commit'e dayanır ve paket/PR durumunu olduğundan ileride göstermez. Epik, bütün alt işler ve bütünleşik kabul tamamlanmadan kapanmaz. Karar bekleyen alt iş taslak kalır; paket büyüklüğü hazır olma kontrolünü veya kullanıcı ADR onayını kaldırmaz.
+
+Gerekli ortak temel, ihtiyaç duyan ilk epik PR'ında teslim edilir ve özgün ID'sinde işaretlenir: P01-4a P01-2 PR'ına dahildir; operation/lease/jobs P01-4'te kalır. Yerel doctor P01-2, HTTP tanılaması P01-5, gerçek hesap/proje keşfi P02-0b kapsamıdır. Epik numarası bütün altyapının ilk kez o PR'da yazılacağı anlamına gelmez.
 
 ## Bağımlılık ve dış kapılar
 

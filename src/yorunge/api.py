@@ -1,8 +1,9 @@
-"""Public offline use cases. No network, credentials, database or tool discovery."""
+"""Local use cases; credential access requires an explicit service check."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
@@ -20,8 +21,15 @@ from yorunge.domain.models import (
     Profile,
     Recipe,
     Result,
+    ServiceId,
     Task,
 )
+
+if TYPE_CHECKING:
+    from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.state import StateInfo
 
 
 class Request(Model):
@@ -32,11 +40,84 @@ class Request(Model):
     execution: Execution | None = None
 
 
-def _context(
-    config: Path | None, request: Request, recipe: Recipe | None
-) -> tuple[Context, Profile]:
+class CredentialRequest(Request):
+    service_id: ServiceId
+
+
+def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
+    """Explicitly create/validate the local state; never reads service credentials."""
+    import sys
+
+    from yorunge.domain.state import StateInfo
+
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    if sys.platform not in ("darwin", "linux"):
+        raise YorungeError("state_unsupported")
+    from yorunge.adapters.state import open_store
+
+    with open_store(state_dir) as store:
+        return Result[StateInfo](data=store.verify())
+
+
+def preview_identity_reset(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_reset
+    from yorunge.domain.maintenance import MaintenancePreview
+
+    return Result[MaintenancePreview](data=preview_reset(state_dir))
+
+
+def reset_identity(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import reset
+    from yorunge.domain.state import StateInfo
+
+    return Result[StateInfo](data=reset(state_dir, confirmation))
+
+
+def preview_state_restore(
+    backup_dir: Path, *, state_dir: Path | None = None
+) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_restore
+    from yorunge.domain.maintenance import MaintenancePreview
+
+    return Result[MaintenancePreview](
+        data=preview_restore(backup_dir, state_dir),
+        warnings=("restore_discards_post_backup_history",),
+    )
+
+
+def restore_state(
+    backup_dir: Path, confirmation: str, *, state_dir: Path | None = None
+) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import restore
+    from yorunge.domain.state import StateInfo
+
+    return Result[StateInfo](
+        data=restore(backup_dir, state_dir, confirmation),
+        warnings=("restore_discards_post_backup_history",),
+    )
+
+
+def preview_state_recovery(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
+    from yorunge.adapters.maintenance import preview_recovery
+    from yorunge.domain.maintenance import MaintenancePreview
+
+    return Result[MaintenancePreview](data=preview_recovery(state_dir))
+
+
+def recover_state(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
+    from yorunge.adapters.maintenance import recover
+    from yorunge.domain.state import StateInfo
+
+    return Result[StateInfo](
+        data=recover(state_dir, confirmation), warnings=("restore_discards_post_backup_history",)
+    )
+
+
+def _configuration(config: Path | None) -> tuple[Configuration, bool]:
     if config is not None and not isinstance(config, Path):
         raise YorungeError("invalid_request")
+    exists = True
     if config is None:
         config = Path.home() / ".config" / "yorunge" / "config.toml"
         try:
@@ -51,6 +132,13 @@ def _context(
             configuration = load_config(config)
     else:
         configuration = load_config(config)
+    return configuration, exists
+
+
+def _context(
+    config: Path | None, request: Request, recipe: Recipe | None
+) -> tuple[Context, Profile]:
+    configuration, _ = _configuration(config)
     name = request.profile or (recipe.profile if recipe else None) or configuration.active_profile
     if name not in configuration.profiles:
         raise YorungeError("profile_not_found")
@@ -71,6 +159,257 @@ def show_context(
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     context, _ = _context(config, request, None)
     return Result[Context](data=context)
+
+
+def initialize_config(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import initialize
+    from yorunge.domain.configuration import ConfigUpdate
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    return Result[ConfigUpdate](
+        data=initialize(config, request.profile or "default", request.project)
+    )
+
+
+def list_profiles(*, config: Path | None = None) -> Result[ProfilesView]:
+    from yorunge.domain.configuration import ProfileSummary, ProfilesView
+
+    configuration, exists = _configuration(config)
+    return Result[ProfilesView](
+        data=ProfilesView(
+            config_exists=exists,
+            active_profile=configuration.active_profile,
+            profiles=tuple(
+                ProfileSummary(
+                    name=name,
+                    active=name == configuration.active_profile,
+                    account_id=value.account_id,
+                    project_id=value.project_id,
+                )
+                for name, value in configuration.profiles.items()
+            ),
+        )
+    )
+
+
+def activate_profile(name: str, *, config: Path | None = None) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import activate
+    from yorunge.domain.configuration import ConfigUpdate
+
+    request = validate(Request, {"profile": name}, "invalid_request")
+    if request.profile is None:
+        raise YorungeError("invalid_request")
+    return Result[ConfigUpdate](data=update(config, request.profile, activate))
+
+
+def set_project(
+    project: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import project_selection
+    from yorunge.domain.configuration import ConfigUpdate
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    if request.project is None:
+        raise YorungeError("invalid_request")
+    return Result[ConfigUpdate](
+        data=update(
+            config,
+            request.profile,
+            lambda value, name: project_selection(value, name, request.project),
+        )
+    )
+
+
+def clear_project(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[ConfigUpdate]:
+    from yorunge.adapters.configuration import update
+    from yorunge.application.configuration import project_selection
+    from yorunge.domain.configuration import ConfigUpdate
+
+    request = validate(Request, {"profile": profile}, "invalid_request")
+    return Result[ConfigUpdate](
+        data=update(
+            config,
+            request.profile,
+            lambda value, name: project_selection(value, name, None),
+        )
+    )
+
+
+def _missing_config(path: Path | None) -> bool:
+    if path is None:
+        return False
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return True
+    except (OSError, ValueError):
+        pass
+    return False
+
+
+def _diagnostic_configuration(config: Path | None) -> tuple[Configuration, bool]:
+    configuration, exists = _configuration(config)
+    if not exists:
+        try:
+            if (Path.home() / ".config/yorunge/config.toml").is_symlink():
+                raise YorungeError("file_unreadable")
+        except OSError:
+            raise YorungeError("file_unreadable") from None
+    return configuration, exists
+
+
+def diagnose_local(
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DoctorReport]:
+    from yorunge.adapters.diagnostics import check_state
+    from yorunge.adapters.local_files import require_local_files
+    from yorunge.domain.configuration import Diagnostic, DoctorReport
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    if (config is not None and not isinstance(config, Path)) or (
+        state_dir is not None and not isinstance(state_dir, Path)
+    ):
+        raise YorungeError("invalid_request")
+    require_local_files()
+    checks = _config_diagnostics(config, request)
+    checks.extend(check_state(state_dir))
+    checks.append(Diagnostic(name="remote_access", status="not_checked"))
+    return Result[DoctorReport](
+        data=DoctorReport(
+            checks=tuple(checks),
+            issue_count=sum(item.status in ("missing", "invalid", "busy") for item in checks),
+        )
+    )
+
+
+def _config_diagnostics(config: Path | None, request: Request) -> list[Diagnostic]:
+    from yorunge.domain.configuration import Diagnostic
+
+    checks: list[Diagnostic] = []
+    try:
+        configuration, exists = _diagnostic_configuration(config)
+        checks.append(Diagnostic(name="configuration", status="ok" if exists else "missing"))
+        name = request.profile or configuration.active_profile
+        if name not in configuration.profiles:
+            raise YorungeError("profile_not_found")
+        selected = configuration.profiles[name]
+        checks.extend(
+            (
+                Diagnostic(name="profile", status="ok"),
+                Diagnostic(
+                    name="platform_reference",
+                    status="ok" if selected.platform_key_env else "missing",
+                ),
+                Diagnostic(
+                    name="llm_reference", status="ok" if selected.llm_key_env else "missing"
+                ),
+            )
+        )
+    except YorungeError as error:
+        if error.code == "profile_not_found":
+            checks.append(Diagnostic(name="profile", status="invalid", code=error.code))
+        else:
+            missing = error.code == "file_unreadable" and _missing_config(config)
+            checks.append(
+                Diagnostic(
+                    name="configuration",
+                    status="missing" if missing else "invalid",
+                    code=error.code,
+                )
+            )
+            checks.append(Diagnostic(name="profile", status="not_checked"))
+        checks.extend(
+            (
+                Diagnostic(name="platform_reference", status="not_checked"),
+                Diagnostic(name="llm_reference", status="not_checked"),
+            )
+        )
+    return checks
+
+
+def check_credential(
+    service_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+) -> Result[CredentialCheck]:
+    """Check only the selected env reference; never authenticates or persists identity."""
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.credentials import resolve_credential
+    from yorunge.domain.credentials import CredentialCheck
+
+    request = validate(
+        CredentialRequest,
+        {"service_id": service_id, "profile": profile, "project": project},
+        "invalid_request",
+    )
+    context, selected = _context(config, request, None)
+    resolved = resolve_credential(selected, request.service_id, EnvSecretReader())
+    return Result[CredentialCheck](
+        data=CredentialCheck(
+            service_id=resolved.reference.service_id,
+            **resolved.target.model_dump(),
+            profile=context.profile,
+            account_id=context.account_id,
+            project_id=context.project_id,
+        )
+    )
+
+
+def observe_credential(
+    service_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[CredentialObservation]:
+    """Persist one selected env snapshot; does not verify remote authentication."""
+    from yorunge.adapters.identity import StateCredentialRegistry
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.adapters.state import open_store, state_directory
+    from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.domain.credentials import CredentialObservation
+
+    request = validate(
+        CredentialRequest,
+        {"service_id": service_id, "profile": profile, "project": project},
+        "invalid_request",
+    )
+    root = state_directory(state_dir)
+    context, selected = _context(config, request, None)
+    resolved = resolve_credential(selected, request.service_id, EnvSecretReader())
+    with open_store(root) as store:
+        bound = bind_credential(context, resolved, StateCredentialRegistry(store))
+        return Result[CredentialObservation](
+            data=CredentialObservation(
+                service_id=resolved.reference.service_id,
+                **resolved.target.model_dump(),
+                profile=context.profile,
+                account_id=context.account_id,
+                project_id=context.project_id,
+                identity=bound.identity,
+            )
+        )
 
 
 def _resolve(

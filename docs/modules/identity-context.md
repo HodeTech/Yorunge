@@ -1,6 +1,6 @@
 # Kimlik ve bağlam modülü
 
-**Durum:** Uygulanıyor — TOML/yerel context testli; secret erişimi ve uzak bağ doğrulaması planlandı. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap keşfi.
+**Durum:** Uygulanıyor — TOML/context, açık env ve kalıcı kimlik/nesil/reset/restore testli; yerel yönetim/doctor testli; uzak bağ doğrulaması planlandı. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap keşfi.
 
 Profil, hizmet adresi, secret referansı, hesap/organizasyon/proje tercihleri ve bunların doğrulanmasını sahiplenir. Hesap oluşturma, şart kabulü veya uzakta anahtar üretme ilk kapsam değildir.
 

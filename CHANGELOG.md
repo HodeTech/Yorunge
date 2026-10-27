@@ -6,12 +6,20 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Fixed — 2026-10-27
 
+- Yerel context yolunda kullanılmayan kimlik/bakım modellerinin eager import maliyeti kaldırıldı; Linux başlangıç bütçesi korundu.
+- Araştırma probe çıktıları belgelenmiş sabit no-clobber hedeflere sınırlandı.
+
 - Bozuk YAML scalar ve collection tag'leri güvenli `invalid_recipe` hatasına dönüştürüldü; ham parser istisnası ve girdi yansıması kapatıldı.
 - Manifest/hizmet URL'sinde C0/DEL/C1 kontrol karakterleri ve boş URL userinfo reddedildi; YAML scalar/mapping düğüm türleri doğrulandı.
 - Capability sorgusunun destek kaydı ile plan hazırlamanın hata çıkışı belgede ayrıldı.
 - Wheel/sdist ham üye yolu, kök, dosya türü ve çakışma denetimi güçlendirildi; iki dağıtımın sürüm eşleşmesi ve JSONL kurulum kanıtı akışı netleştirildi.
 
 ### Added — 2026-10-27
+
+- Hizmete bağlı tek env çözümleme, korumalı secret taşıyıcısı ve kanonik hedef kapısı.
+- SQLite store/migration, özel kalıcı credential kimliği/nesli ve güvenli no-clobber snapshot temeli.
+- Önizleme/digest onaylı identity reset, identity-only restore ve kesintiden açık recover.
+- Atomik config init/profil/proje yönetimi, özgün backup ve sır/K içeriği okumayan yerel doctor.
 
 - EVREN platformunun kapsamlı yardımcı aracı olarak ürün kapsamı ve yetenek matrisi.
 - ForgeLM varsayılanı ve kullanıcı tarafından seçilebilen muadil araçlar için sağlayıcı sözleşmesi.

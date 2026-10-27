@@ -1,0 +1,210 @@
+# P01-2 uygulama ve kabul kaydı
+
+**Tarih:** 2026-10-27. **Durum:** Uygulama başladı; kabul tamamlanmadı. **Dal:** `feat/p01-2-identity-context`, ilk uygulama tabanı `d96b65e`; development tabanı `83bcd83`. Tek PR kullanıcı review'sine sunulacak; merge/yayın bu kayıtla yapılmaz.
+
+## Belge incelemesi ve plan
+
+Kullanıcı bütün P01-2'yi ve her adım için commit → iki ayrı yeni ajan review turu → doğrulanmış bulguları düzelt/commit akışını yetkilendirdi. Accepted ADR-0011/0012 ve binding v1 korunur. Yeni ADR gerektiren doğrulanmış karar açığı yoktur; rutin CLI/API isimleri ilgili reference içinde uygulamayla birlikte kesinleştirilir.
+
+Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_audit`; GPT-6.1 Sol/high) scope/matris, standartlar, architecture/execution/state, identity modülü, config/CLI/capability/binding, ADR'ler, araştırma ve dört iş kartını mevcut kodla karşılaştırdı. Config belgesinin boş query/fragment anlatımı düzeltildi; eski parser/Plan biçimi değiştirilmez. Guarded secret, seçili env'yi bir kez okuma, ortak bakım kilidi, no-clobber backup, reset/restore ayrımı ve default doctor'ın yan etkisizliği özel kabul noktalarıdır.
+
+| Adım | Teslim | Durum |
+|---|---|---|
+| 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
+| 2 | P01-4a — store/migration/backup/key temeli | İki yeni review turuyla verified |
+| 3 | P01-2b — kalıcı kimlik/nesil | İki review turuyla tamamlandı |
+| 4 | P01-2b — reset/identity-only restore | İki review turuyla tamamlandı |
+| 5 | P01-2c — init/profil/proje/doctor | İki review turuyla tamamlandı |
+
+Her adımın gerçek commit/test/review bulgusu burada kaydedilecek. Tasarım/probe sonucu ürün kabulü sayılmaz. Son kapanışta tam offline suite, lint/type/belge, wheel/sdist iki temiz kurulum, en az 30 süreç başlangıç bütçesi ve son PR head CI kanıtı gerekir. HTTP/cache/operation/uzak kimlik bu paketin teslimi değildir.
+
+Başlangıç doğrulaması: temiz `d96b65e` üzerinde `.venv/bin/pytest -q` → **404 geçti** (3,84 s); `git fetch` sonrası development ile fark 0 geri / 3 hazırlık commit'i ileri. Kullanıcı dosyası/değişikliği bulunmadı.
+
+## Adım 1 — İlk uygulama
+
+Hizmet/ref/immutable gözlem taşıyıcısı ve tek seçili env okuma; strict UTF-8 1–16.384 bayt; saf `service-target-v1` normalleştirme; `api.check_credential` ve `context credential --service` sonucu eklendi. Secret public zarf/JSON'a girmez; açık kontrol hesap/yetki doğrulaması değildir. Eski Profile/Plan parser ve digest üreticisi değiştirilmedi. Subprocess guard varsayılan yollarda credential env okumalarını da reddeder; yalnız açık credential fixture modu izin verir, ağ/DB yasakları korunur.
+
+İlk doğrulama: **460 test geçti** (4,97 s), Ruff format/lint, strict mypy (20 kaynak), 95 belge ve 6 skill/5 kart denetimi geçti. Wheel (20 üye) ve sdist (147 üye) iki ayrı temiz kurulum/köken/smoke kontrolünden geçti. 30 ayrı süreç başlangıç ölçümünün üç bütçesi de geçti; bu ölçüm güç kesintisi veya canlı auth kanıtı değildir. İki yeni review turu tamamlanmadan kart `verified` yapılmaz.
+
+İlk ürün commit'i `41c7dba`. Başlangıç sıcak p95: help 28,196 ms / version 27,717 ms / context 97,353 ms; hedefler 500/500/200 ms (CPython 3.11.18, macOS arm64; komut başına 30 ayrı süreç).
+
+### Adım 1 / review 1
+
+Üç yeni bağımsız ajan (GPT-6.1 Sol/high): `p012_s1_r1_secrets` (tek okuma/taşıyıcı/sızıntı), `p012_s1_r1_target` (URL sözleşmesi/eski Plan), `p012_s1_r1_surface` (CLI/API/guard/belge). Kök ajan üç P2'yi yeniden üretti: bracketed IPvFuture'ın DNS'e çevrilmesi, Unicode Kelvin host'un parser lowercase ile ASCII'ye dönüşmesi ve `object.__getstate__` yolunda ham slotted secret açılması. Authority'nin özgün ASCII kontrolü, parantezli host'un zorunlu IPv6 doğrulaması ve güvenli `__getstate__` ile giderildi; secret okunmadan ret ve serialization regresyonları eklendi.
+
+Guard'ın iki sabit env adıyla sınırlı kanıtı ürün kusuru sayılmadı; test yapılandırmasından özel env adları ve `os.environb` de kapsandı. Diğer doğrulanmış ürün bulgusu yok. Düzeltme sonrası **466 test**, Ruff format/lint ve strict mypy geçti. İkinci tur yeni ajanlarla bu head üzerinde yapılır.
+
+### Adım 1 / review 2 ve kapanış
+
+İncelenen head `b319001`. Yeni ajanlar: `p012_s1_r2_security` (GPT-6 Astra/high), `p012_s1_r2_target`, `p012_s1_r2_delivery` (GPT-6.1 Sol/high). İlk turdaki üç düzeltme doğrulandı; yeni doğrulanmış bulgu yok. Security reviewer altı serialization yolu ve 332 sentetik hedef/karakter örneğini; target reviewer 2.981 kabul edilen URL'de idempotence ve 15 ek bozuk girdiyi; delivery reviewer tam 466 test, lint/type/belge/ajan, yeniden build ve iki temiz kurulumu doğruladı.
+
+Final adım head'inde wheel 20 üye (`9ef6ff0f0bfe9f6a7283da44e908562e1f2c56ea4d4e06d0a4202c36fc44a084`), sdist 147 üye (`86d4bf3f28082e674602b0bd225cfdcfefed5c178553b401b70d9990411e698d`) ve iki köken/smoke başarılı. [Ham başlangıç ölçümü](p01-2-step-1-startup.json): 30 ayrı süreç sıcak p95 help 79,622 / version 60,863 / context 105,469 ms; build ile eşzamanlı yükte de bütçeler geçti. OS cache'i boşaltılmadı. P01-2a kapanmıştır; P01-2 bütünü tamamlanmadı.
+
+## Adım 2 — İlk uygulama
+
+Özel dosya/dizin ve üst dizin sync zinciri, bounded shared/exclusive bakım kilidi, stdlib SQLite DELETE/EXTRA/fullfsync, üç gerçek tablo ve sıralı checksummed SQL manifesti eklendi. Bootstrap K/key-check'i DB pointer'ından önce kalıcılaştırır; mevcut eksik/bozuk K yeniden oluşturulmaz. Migration her adımda exclusive bakım altında kalıcı no-clobber snapshot alır; backup/hash SQL write transaction'ı dışındadır. Tamamlanma kaydı/snapshot doğrulaması readonly/immutable yapılır. Restore intent normal açılışı engeller; reset/restore/partial bootstrap repair sonraki adımdır. Public `initialize_state` / `state init --state-dir` aynı sır içermeyen sonucu verir, mevcut offline komutlar state açmaz.
+
+İlk doğrulama: **39 state integration testi**, **505 toplam test** geçti (6,58 s); Ruff format/lint, strict mypy (24 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. İki ayrı migration süreci, iki adımlı hata/yeniden açılış, gerçek hot journal ve commit öncesi/sonrası süreç kesintisi, FK bozulması, izin/symlink, disk/sync ve bozuk backup negatifleri gerçek geçici dosyalarla kapsandı. Bu süreç kesintileri güç kesintisi kanıtı değildir.
+
+İlk wheel 24 üye (`5515aaca3fb05d3d7052fd8802afb57313dfc23d9315f8711e7d467336327758`), sdist 154 üye (`6f67d4a644b6ea0e7392c8060e0948fde19efaa03b8ae757d221b9d584987a76`); iki temiz kurulum/köken/smoke ve 30 süreç başlangıç bütçeleri geçti. İki bağımsız review turu tamamlanmadan P01-4a verified değildir.
+
+### Adım 2 / review 1
+
+İncelenen ilk head `0b668ed`. Üç yeni ajan: `p012_s2_r1_files` (GPT-6 Astra/high), `p012_s2_r1_sql`, `p012_s2_r1_surface` (GPT-6.1 Sol/high). Kök ajan üç P2 ve bir P3'ü geçici gerçek dosyalarda yeniden üretti: deadline kontrolünde lock FD sızıntısı; `LIKE 'sqlite_%'` jokeri nedeniyle atlanan kullanıcı şema nesneleri; aktif key bağını bozan migration'ın hata vermeden önce commit edilmesi; filesystem'e kodlanamayan Unicode Path'in ham istisnası. FD'nin immediate try/finally sahibi, literal reserved-prefix filtresi, commit öncesi key-check ve upfront filesystem encoding denetimiyle giderildi.
+
+Kabul kanıtındaki bootstrap/sync boşluğu da kapatıldı: **22 bootstrap sınırı × süreç çıkışı/I/O hatası = 44 ayrı subprocess senaryosu**; root/üst dizin, lock, keys/üst dizin, key file/fsync/fullsync, DB dosyası ve metadata/commit/final sync kapsandı. Kesilmiş kilit oluşturma sonrası aynı inode'un bariyeri yeniden tamamlanır. Ayrıca backup tamamlanma kaydının öncesi/sonrası süreç kesintisi, backup üst dizin sync hatası, key symlink/hardlink ve varsayılan/Unicode state path testleri eklendi. Bu deneyler güç kesintisi veya disk donanımı kanıtı değildir.
+
+Düzeltme sonrası **96 state / 562 toplam test geçti** (11,63 s); Ruff format/lint ve strict mypy geçti. İlk head'in bağımsız yüzey incelemesinde API/CLI zarfı ve forbidden-option reddi, on kez iki eşzamanlı ilk bootstrap ve paket hash/üye eşleşmeleri doğrulandı. İkinci tur yeni ajanlarla düzeltme head'inde yapılır.
+
+### Adım 2 / review 2
+
+İncelenen head `494799b`. Yeni ajanlar: `p012_s2_r2_durability` (GPT-6 Astra/high), `p012_s2_r2_sql`, `p012_s2_r2_delivery` (GPT-6.1 Sol/high). R1 düzeltmeleri doğrulandı. Dosya reviewer'ı 20 bariyerli eşzamanlı iki-süreç bootstrap ve nested parent sync hatası sonrası yeniden bariyer probe'unu; delivery reviewer'ı 96 state testi, belge/ajan, iki temiz kurulum ve başlangıç bütçelerini bağımsız doğruladı.
+
+Tek yeni P2: gerçek SQLite FULL kodu 13, yanlışlıkla bozuk state diye sınıflanıyordu; kök ajan gerçek max_page_count sınırıyla yeniden üretti. FULL/IOERR ve genişletilmiş alt kodlar persistence hata sınıfına taşındı; gerçek SQLite FULL rollback/backup ve iki IOERR hata sınırı testi eklendi. Eşzamanlı ilk bootstrap kalıcı, iki child'ın bariyerde buluşup aynı UUID/epoch sonucu verdiği test olarak da eklendi. Kapanış doğrulaması ve bu dar düzeltmenin odak kontrolü bekleniyor.
+
+### Adım 2 kapanışı
+
+Düzeltme head'i `93c4de4`: kök ajan **100 state / 566 toplam test**, format/lint/type/belge/ajan denetimlerini geçti. Bulgu sahibi yeni head'de odak kontrolü yaptı; 12 ilgili test ve 11 hata eşleme örneğiyle FULL/IOERR fix'i ve diğer hata sınıfları doğrulandı, yeni bulgu yok. İki tam tur ve doğrulanmış bulguların kapanışı tamamlandı.
+
+Son kaynaklardan wheel 24 üye (`b2f90c1111b08ae5e52362d46becb0db40333a6afa06e4b6d2f0bc68ff4d4f8b`), sdist 155 üye (`30415c7109982d56e0b9ead037e068d101d5a920431d08167d1217d240676f05`); iki ayrı temiz kurulum/köken/smoke geçti. [Ham başlangıç ölçümü](p01-2-step-2-startup.json): 30 süreç sıcak p95 help 22,318 / version 22,866 / context 84,391 ms; üç bütçe geçti. Bu adım macOS/arm64 üzerinde doğrulandı; Linux ve son PR CI bütünleşik kapanıştadır. P01-4a verified; sonraki adım P01-2b gözlemidir.
+
+## Adım 3 — İlk uygulama
+
+Altı alanın tam kanonik binding'i, onaylı uzunluk çerçevesiyle HMAC-SHA-256, constant-time karşılaştırma ve BEGIN IMMEDIATE altında opak UUID/nesil kaydı eklendi. Aynı değer zaman/satır değiştirmez; gözlenen değişim aynı UUID'nin neslini bir artırır, taşma kontrollü ret olur. `BoundCredential` aynı immutable context/target/secret snapshot'ını kimliğe bağlar; env yeniden okunmaz. `observe_credential` / `context identity` public sonucu sır/reference adı/tag içermez, uzak doğrulama false kalır. Eski offline Plan biçimi/digest'i değişmedi.
+
+Reset/restore ön incelemesi (GPT-6 Astra/high, `p012_recovery_protocol_audit`) mevcut ADR'lerle uygulanabilir sınırları doğruladı; yeni kullanıcı kararı gerekmiyor. Eksik lock ile geride key kalan partial store'un lock'u yeniden yarattığı doğrulandı; payload varsa ilk lock oluşturma da fail-closed yapıldı, DB var/yok regresyonları eklendi.
+
+İlk kabul: **583 test geçti** (13,52 s), Ruff format/lint, strict mypy (25 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. Tam iki bağımsız HMAC byte vektörü, rotation/taşma/tek okuma, altı eşzamanlı gerçek child süreçte aynı nesil, farklı değerlerin işlemsel sıralanması ve API/CLI negatifleri kapsandı. İki temiz kurulum: wheel 25 üye (`a5d937dc9171552f3325f86e43fb85d7f045b32f2e87a2c5321c3fc99fa52f34`), sdist 158 üye (`34afb059e2040fe5325625f64ff4d5e9faa34aa825c53e26dcc6a3ca177a62f8`). [30 süreç ölçümü](p01-2-step-3-startup.json): sıcak p95 help 33,113 / version 24,735 / context 98,229 ms; bütçeler geçti. İki yeni review turu bekleniyor; P01-2b reset/restore olmadan kapanmaz.
+
+### Adım 3 / review 1
+
+İlk head `ad54dc6`; üç yeni ajan: `p012_s3_r1_security` (GPT-6 Astra/high), `p012_s3_r1_transactions`, `p012_s3_r1_delivery` (GPT-6.1 Sol/high). Tek P2 doğrulandı: erken `state_directory` kontrolünde erişilemeyen üst dizin ham PermissionError/CLI traceback üretiyordu. Kök ajan yeniden üretti; path kontrolüne ortak OSError dönüşümü ve runtime desteğinin secret öncesi kontrolü eklendi. CLI/API izin ve unsupported-platform regresyonları geçti.
+
+Diğer alanlarda doğrulanmış bulgu yok: security 79 hedefli test; delivery 310 test ve yedi invalid-request probe; transaction reviewer 117 identity/state testi, bozuk satır/rollback probe'ları ve on ayrı eşzamanlı child süreçte tek kimlik/nesil doğruladı. Sonraki tur farklı yeni ajanlarla yapılır.
+
+### Adım 3 / review 2
+
+Head `b66d266`; yeni ajanlar `p012_s3_r2_security` (GPT-6 Astra/high), `p012_s3_r2_sql`, `p012_s3_r2_delivery` (GPT-6.1 Sol/high). İlk izin hatası düzeltmesi doğrulandı. Tek yeni P2: eksik-lock kontrolü ile dizin taraması arasında başka bootstrap tamamlanırsa sağlıklı store yanlış onarım hatası alabiliyordu. Kök ajan kontrollü interleaving ile yeniden üretti; payload görüldüğünde lock'un hâlâ eksik olması şartı eklendi. Deterministik regresyon ve 120 identity/state testi geçti.
+
+Diğer alanlar temiz: security 81 identity/credential + 100 state testi ve serializer/UTF-8 probe'ları; delivery 585 tam test, lint/type/belge/ajan, dokuz invalid API/dört CLI hatası, eski head ile tam Plan byte/digest eşitliği, geçici build/iki temiz kurulum ve 30 süreç bütçesi geçti. Bu son ölçümün p95'i help 24,697 / version 24,823 / context 117,223 ms. Reset/restore kabulü bundan sonraki adımdır.
+
+Adım 3 kapanışı: `3891479` üzerindeki odak kontrolünde bulgu sahibi yarış/partial lock/migration regresyonlarından beşini geçti, bulgu kapandı. İki bağımsız tur tamamlandı; P01-2b kartı reset/restore tamamlanana kadar in_progress kalır.
+
+## Adım 4 — İlk uygulama
+
+Açık salt okuma etki önizlemesi/digest onayıyla canlı identity reset, yalnız migration backup'ından identity-only restore ve intent altındaki açık recover eklendi. Onay fingerprint'i public UUID/nesil/epoch/zamanı bağlar; tag veya DB hash'i public digest'e girmez. Reset eski binding/operation geçmişini korur; kayıp/yanlış eski K'yı kurtarılmış saymaz. Restore sağlıklı canlıya güvenlik snapshot'ı alır, yeni K/epoch ile stage'i doğrular, canlı yayın ve kalıcılık sonrasında intent'i kaldırır. Normal kullanıcılar intent'te durur. Recover aynı ilan edilmiş epoch/K ile tamamlar; intent-owned partial stage/sidecar korunup sağlam pinlenmiş kaynaktan yeniden kurulur. Belirsiz canlı/foreign/partial root üzerine yazılmaz, yeni açık state-dir yolu belgelenir. Mevcut runtime'da operation tablosu varsa eski snapshot/eksik hedef dahil restore kapalıdır; bu savunma gelecekteki operation-history kabulünün yerine geçmez.
+
+İlk doğrulama: **665 tam test** (31,69 s) ve son eklenen orphan stage-journal regresyonu geçti; maintenance kümesi 80 senaryodur. Reset için on sınır, restore için yirmi sınır × süreç çıkışı/I/O = 60 subprocess kesinti senaryosu; canlı kilit inode'u, eski/yeni geçerli çift, intent fail-closed ve aynı epoch recovery kontrol edildi. Kayıp/yanlış K, tam yeni pair ile kaynak olmadan recover, partial copy retention, stale revision onayı, reset'te operation satırı korunması ve runtime restore ret kapısı testlidir. Güç kesintisi iddiası yoktur.
+
+Ruff format/lint, mypy (27 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. İlk wheel 27 üye (`1f46ef1d74c8a99eb896f5f7c82499ec13912e08fbc84059ff65dff6e4164e7e`), sdist 163 üye (`2a4584b33dfc3a9e6271e7ca4a6cd6e84d40ffd292d20cf4372a70077100d004`); iki temiz kurulum/köken/smoke başarılı. Test/build eşzamanlı [yük altı ölçümünde](p01-2-step-4-startup-under-load.json) context sıcak p95 208,965 ms ile bütçe aşımı kaydedildi; bu sonuç silinmedi. Süreç yükü bittikten sonraki [ölçüm](p01-2-step-4-startup.json) ayrıca tutuldu. İki fresh review turu bekleniyor.
+
+### Adım 4 / review 1
+
+İlk head `a1bfd1a`. Yeni ajanlar: `p012_s4_r1_protocol`, `p012_s4_r1_durability` (GPT-6 Astra/high), `p012_s4_r1_surface` (GPT-6.1 Sol/high). İki doğrulanmış bulgu: açık boş `--confirm ''` CLI'da başarılı preview sayılıyor, API'de hata oluyordu; CLI referansında eski “komut yok”/state-dir kısıtı kalmıştı. Kök ajan boş onayı yeniden üretti; üç eylemde absence/empty ayrımı ve I/O öncesi format kapısı, CLI/API regresyonları ve belge düzeltmesi eklendi. **83 maintenance testi**, Ruff/type geçti.
+
+Diğer alanlarda doğrulanmış kusur yok: iki reviewer bağımsız 80 bakım testi; eski şemadan yeni identity şemasına restore, intent varken operation-runtime ret kapısı ve quarantine'nin birinci/ikinci rename sonrası I/O hatasından aynı epoch ile kayıpsız toparlanması doğrulandı. Surface reviewer gerçek konsolda 24 preview/apply/error/forbidden-option/guard probe'unu geçti. Yük bittikten sonraki ölçüm p95 help 28,158 / version 114,663 / context 181,903 ms ile bütçeleri geçti; başarısız yük altı ölçümü ayrı tutulur. Yeni bağımsız ikinci tur bekleniyor.
+
+### Adım 4 / review 2
+
+Head `e153a83`; fresh ajanlar `p012_s4_r2_protocol`, `p012_s4_r2_durability` (GPT-6 Astra/high), `p012_s4_r2_delivery` (GPT-6.1 Sol/high). Tek yeni dayanıklılık bulgusu: intent write'ında içerik görünürken ilk fsync hata verdiyse recover bu dosyanın bariyerini yeniden kurmadan yayına geçebiliyordu. Kök ajan ve reviewer ayrı geçici gerçek dosya problarında restore hatası sonrası recover'da sıfır intent-fsync çağrısını doğruladı. Recover onaydan sonra ve stage/yayın öncesi `sync_private(intent)` yapar. Tekrar sync hatasında bütün canlı dosya baytları değişmeden kalır; başarılı retry'da yayın öncesi bariyer ve aynı ilan edilen epoch regresyonla doğrulanır. **84 maintenance testi**, Ruff/type geçti.
+
+Protokol reviewer'ı yanlış action onaylarının reddi, eski K kaldırılmışken yeni çiftle recovery, private/public ayrımı ve operation-runtime retlerini doğruladı; yeni kusur yok. Delivery reviewer head'de **669 tam test**, format/lint/type/belge/ajan ve geçici build/iki temiz kurulum geçti. Son intent fix'inin odak kapanışı bekleniyor.
+
+Adım 4 kapanışı: `033b3b6` üzerindeki intent sync fix'i bulgu sahibi tarafından 84 bakım testiyle doğrulandı, tek bulgu kapandı. Delivery reviewer 19 ek guarded console/API probe ve eski dört offline çıktının tam byte eşitliğini doğruladı. P01-2b verified; sonraki adım P01-2c'dir.
+
+## Adım 5 — İlk uygulama
+
+No-clobber `init`, profil listesi/aktivasyonu, açık set/clear-project ve yerel doctor aynı Python kullanım senaryoları üzerinde eklendi. Config yazımı bounded parse/roundtrip sonrası sabit lock altında optimistic inode/byte snapshot karşılaştırır, özgün byte'ları özel no-clobber backup'a kaydeder ve senkron yeni dosyayı atomik yayınlar. İlk oluşturma overwrite etmez; yeni dosya 0600'dür. Yayın sonrası belirsiz sync hatası çıkış 5 `config_write_uncertain` ile ayrılır, otomatik tekrar yoktur. Eski Plan byte/digest ve readonly config symlink davranışı korunur. CLI dispatch ailelere ayrıldı; kural CLI içine kopyalanmadı.
+
+Doctor env/K içeriği okumaz; key metadata'sını denetler ve key-check/remote erişimi not_checked bırakır. Missing/invalid/busy tanıları typed checks içindedir. Eksik store/lock/key yaratmaz, migration/journal recovery yapmaz. Diagnostic toplaması başarı zarfıdır, bütün kontrollerin geçtiği anlamına gelmez.
+
+İlk doğrulama: **742 tam test** (35,49 s) ve son eklenen iki invalid diagnostic Path dahil **74 context-management testi** geçti. Kırk gerçek subprocess config sınırı × exit/EIO kapsamı, init yarışı, optimistic conflict, lock bütçesi/inode, izin/symlink/hardlink/FIFO, TOML non-BMP/roundtrip boyut sınırı, raw backup ve no-secret/no-write doctor testlidir. Ruff format/lint, mypy (31 kaynak), 96 belge/6 skill/5 kart denetimi geçti. İlk wheel 31 üye (`4f92f61a42dc25b32d5573874171dec26a355052c322df077f4585153c7f6b20`), sdist 171 üye (`e2660e4877d91728c91694646f3720b4241a2f7c31f26506e143d1f311c5b93b`); iki temiz kurulum/köken/smoke geçti. [30 süreç başlangıç kaydı](p01-2-step-5-startup.json) ayrıca tutulur. İki fresh review turu bekleniyor.
+
+### Adım 5 / review 1
+
+Head `662eb98`; fresh ajanlar `p012_s5_r1_files` (GPT-6 Astra/high), `p012_s5_r1_doctor`, `p012_s5_r1_delivery` (GPT-6.1 Sol/high). Kök ajan beş P2'yi yeniden üretti: son snapshot kontrolünden sonraki staging I/O'sunda haricî editör değişikliğinin kaybı; publish sonrası typed dosya doğrulama hatasının belirsizlik sayılmaması; doctor'ın boş state dizinini, açık eksik config'i ve SQLite INTERRUPT bütçe kesintisini yanlış sınıflaması. Stage son snapshot kontrolünden önce hazırlanır; publish sonrası typed hata da config_write_uncertain olur. Doctor missing/invalid/busy ayrımları düzeltildi; broken symlink ve kodlanamayan Path sınırı ayrıca korundu. **79 context-management testi**, Ruff/type geçti.
+
+İşbirlikçi config lock'unun haricî editörün son kontrol/replace aralığına POSIX CAS garantisi sağlamadığı belgede açıklaştırıldı; bu sınır otomatik retry veya sessiz overwrite vaadiyle gizlenmez. Delivery reviewer 91 hedefli test, on eski text/JSON çıktıda tam byte eşitliği, 24 yasak seçenek, altı metadata guard ve iki gerçek code-5/error-envelope probe'unu doğruladı. Diğer doğrulanmış bulgu yok; ikinci tur yeni ajanlarla yapılır.
+
+### Adım 5 / review 2
+
+Head `b7478e3`; yeni ajanlar `p012_s5_r2_files` (GPT-6 Astra/high), `p012_s5_r2_doctor`, `p012_s5_r2_delivery` (GPT-6.1 Sol/high). Dosya reviewer'ı 79 test ve beş ek gerçek staging/byte/mtime/inode/izin/hardlink probe'unda R1 fix'lerini doğruladı; yeni kusur yok. Doctor reviewer'ı tek ek P2 buldu: varsayılan config yolunda kopuk symlink missing/valid-default sayılıyor, aynı açık Path invalid oluyordu. Kök ajan yeniden üretti; doctor'a özel symlink kapısı eklendi, eski context fallback'i korunur. **80 yönetim testi**, Ruff/type geçti. Son fix'in odak kontrolü ve delivery kanıtı bekleniyor.
+
+Adım 5 kapanışı: `6fbdafe` üzerindeki dar doctor fix'i bulgu sahibi tarafından beş odak regresyonuyla doğrulandı. Delivery reviewer `b7478e3` üzerinde 749 tam test, lint/type/belge/ajan, iki temiz kurulum ve kurulu wheel'de 65 guarded konsol/API probe'unu geçti; bütün init→profil/proje→state/identity→doctor→reset→restore yolculuğu sentetik HOME'da doğrulandı. Beş adımın iki review turu tamamlandı, açık doğrulanmış bulgu kalmadı. Son bütünleşik head ve PR CI kaydı aşağıya eklenecek.
+
+## Bütünleşik yerel kapanış
+
+### Arşivlenmiş Linux başlangıç ölçümünün ortamı
+
+190,781 ms context p95 kaydı [40529794300 koşusunda](https://github.com/HodeTech/Yorunge/actions/runs/40529794300), runtime `1c976e0` üzerinde alındı. [Ham JSON](p01-2-linux-startup.json) aşağıdaki log tabanlı ortam bilgisiyle tamamlandı; örnekler, p95 hesabı ve bütçe sonucu değiştirilmedi. Yeni ölçüm yapılmış sayılmaz.
+
+| Alan | Kaydedilebilen bilgi |
+|---|---|
+| Runner | GitHub Actions hosted; workflow `runs-on: ubuntu-latest` |
+| Image / OS | `ubuntu-24.04`, image `20261012.334.1`; Ubuntu 24.04.5 LTS |
+| Python / mimari | CPython 3.11.15; x86_64; tam kernel/Python bilgisi ham JSON'da |
+| Kurulum | Repo kökünde editable `.venv`; `.ci-tools/bin/uv sync --frozen --python 3.11` |
+| Ölçülen giriş | `.venv/bin/yorunge`; temiz wheel/sdist kurulumları ayrı doğrulama, bu ölçümün ortamı değildir |
+| Veri / örnek | Profil 227 bayt; komut başına 30 ayrı süreç, üç ısınma süreci |
+| CPU modeli / mantıksal çekirdek | `unknown` / `unknown` |
+| Disk türü / dosya sistemi | `unknown` / `unknown` |
+
+Özgün job logunda CPU/disk envanteri yoktur; güncel başka bir runner veya genel runner kataloğundan geriye dönük tahmin yapılmadı. Donanım eşdeğerliği bilinmediğinden bu kayıt farklı koşularla donanım sabitmiş gibi doğrudan hız kıyasına dayanak değildir. O koşunun 200 ms bütçesini geçtiğini kanıtlar; fiziksel soğuk açılış veya güç kesintisi deneyi değildir.
+
+Ürün runtime head'i `6fbdafe`; beş uygulama adımı ve her biri için iki fresh bağımsız review turu tamamlandı. Son dar fix'lerde ilgili bulgu sahibinin odak kapanışı alındı. Yeni ADR/karar kapısı gerektiren açık bir konu veya doğrulanmış açık bulgu kalmadı. P01-2a, P01-4a, P01-2b ve P01-2c kendi kanıtlarıyla verified; epik son PR/CI kapısını bekler.
+
+Kök ajan final kaynakta **750 test geçti** (35,65 s), Ruff format/lint, strict mypy (31 kaynak), 96 public Markdown ve 6 skill/5 kart denetimlerini geçti. Son build'in wheel/sdist arşiv ve iki temiz kurulum/köken/smoke sonuçları ayrı kimliklerle kaydedildi: wheel 31 üye (`f966557f7fdb679af871e08c7c579570956eb8ea86503273afab56e07458cd00`), sdist 172 üye (`92ebd7d2d86952edf94be4b8e7c4806288ad318045303b7a9fd52cdf396a3b8d`). Build bir yayın değildir; kapanış belge commit'i sonrası CI aynı kapıları son PR head'inde yeniden uygular.
+
+Ek fresh bütünleşme reviewer'ı `p012_final_integration` (GPT-6 Astra/high), gerçek geçici config/SQLite üzerinde profil/proje ve kanonik hedef dönüşleri, A→B→A, secret okunurken config+env değişimiyle tek tutarlı snapshot, eski Plan byte uyumu, stale reset reddi, yeni epoch/UUID/1, intent altında normal erişim ret/doctor tanısı ve offline yolların çalışması, ilan edilmiş epoch ile recover ve CLI/API eşitliği zincirini doğruladı. Yeni bulgu yok; canlı hizmet/uzak yetki/güç kesintisi iddiası yoktur.
+
+[Son 30 süreç başlangıç ölçümü](p01-2-final-startup.json) paket kapanışının kanıtıdır; OS cache'i boşaltılmadı. Daha önceki yük altında başarısız ölçüm korunur. NFS/cloud, aynı UID/root saldırganı ve uygulama dışı DB+K rollback koruması yoktur; destek sınırı Accepted ADR'lerdeki yerel macOS/Linux/stdlib SQLite'tır. Linux kanıtı son development PR CI'ında kaydedilecek.
+
+Son ölçümün sıcak p95 değerleri: help 23.717 / version 25.436 / context 88.245 ms. Üç bütçe de geçti; her komut 30 ayrı süreçte ölçüldü.
+
+## PR #6 — CI ek kapanışı
+
+[PR #6](https://github.com/HodeTech/Yorunge/pull/6) `development` hedefiyle açıldı; merge edilmedi. İlk `b07d13d` [Ubuntu CI](https://github.com/HodeTech/Yorunge/actions/runs/40527548310) CPython 3.11.15/Linux x86_64 üzerinde **750 test**, lint/type/belge ve iki temiz kurulumdan geçti; context sıcak p95 **204,959 ms** ile 200 ms kapısında durdu. [Ham CI ölçümü](p01-2-first-ci-startup.json) korunur, aynı head tekrar çalıştırılarak başarısızlık gizlenmez.
+
+Gözlem: API ve text render, basit context okumasında yeni config/identity/maintenance modellerini eager import ediyordu. Sadece kullanılan açık kullanım senaryosunda import edilir; ortak ServiceId literal'i hafif model modülüne taşındı, hedef/kimlik/sonuç biçimi değişmedi. Yeni subprocess guard context API+text yolunun kullanılmayan feature modellerini yüklemediğini doğrular. [Yerel fix ölçümü](p01-2-ci-fix-startup.json) ayrıca kaydedilir; Linux sonucu yeni commit'in CI'ında doğrulanır.
+
+Sonar'ın 30 bulgusu güncel kodla doğrulandı: complexity dalları origin/path, bağlantı/row doğrulama ve tanı/render yardımcılarına ayrıldı; sabit literal'ler tekilleştirildi; exception testlerinde hazırlık/constructor/dump çağrıları assert dışına taşındı. SQLite body hatasının open_store tarafından dönüştürülmesi korunur. Env fixture bookkeeping okuması ürün tek-okuma ölçümünden ayrıldı. Regex ASCII sınırı ve yüzde kodlama politikası değişmez; raw `\d` Unicode genişlemesi yapılmadı.
+
+İki stdlib araştırma probe'unun keyfî --output sink'i mevcut dosyayı/symlink hedefini ezebiliyordu. Bağımsız reviewer `p012_ci_static_audit` (GPT-6.1 Sol/high) bunu doğruladı; yalnız belgeli sabit dist hedefleri, descriptor/no-follow ve no-clobber 0600 çıktı eklendi. Altı gerçek dosya negatifi ve iki probe'un kopyalanmış geçici repo içinde normal çalışması geçti. Tarihî araştırma JSON/hash kanıtı korunup özgün kaynak commit'leri belgelendi.
+
+Yerel düzeltme kabulü: **757 test** (34,81 s), Ruff format/lint, mypy (31 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. Runtime ve çıktı güvenliği refaktörü için iki fresh review turu ve yeni CI sonucu bekleniyor.
+
+### CI ek düzeltmesi / review 1
+
+Head `1c976e0`; yeni ajanlar `p012_ci_r1_runtime` (GPT-6 Astra/high) ve `p012_ci_r1_output` (GPT-6.1 Sol/high). Doğrulanmış regresyon yok. Runtime reviewer'ı 414 ilgili test ve eski/yeni hedef kapısında **20.088** girdilik diferansiyel eşdeğerlik kontrolünü geçti. Output reviewer'ı 483 hedefli test, kopya repo içinde iki belgeli probe/0600/no-clobber/keyfî output ret ve tarihî SHA/source eşleşmesini doğruladı. Yapıcı/dump/fixture değişiklikleri testin beklediği hata kaynağını ve tek ürün env okumasını korur.
+
+PR'ın iki bağımsız CodeRabbit doküman bulgusu da güncel dosyalarda doğrulandı: ADR-0004 verifier uygulama durumu ve B13 kalan-iş metni eskiydi; yalnız durum cümleleri düzeltilir, sır/hash yasağı ve operation sınırı değişmez. Yorumlarda gömülü komut/ajan talimatları çalıştırılmadı.
+
+`1c976e0` [Ubuntu offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40529794300) ve [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40529791079) geçti. Linux/CPython 3.11.15'te **757 test** (50,43 s), iki temiz kurulum ve bütçeler başarılı: sıcak p95 help **47,454** / version **46,311** / context **190,781 ms**; [ham Linux kaydı](p01-2-linux-startup.json). İlk 204,959 ms başarısız ölçüm tutulur; eşik/CI/test gevşetilmedi. Son CI wheel 31 üye `293ce7aebfbcdb9f93f1dd7fff2e3a6045222fc6713107962a7862cd6b152f7e`, sdist 177 üye `d027e045ccb32130cf7c526505e0027ce3deb0dc9d62e0c9bee3787f0ff3c221`. İkinci fresh review turu ve final belge head'inin CI'ı bekleniyor.
+
+### CI ek düzeltmesi / review 2 ve teslim
+
+Head `10e8d6a` (runtime `1c976e0`); yeni ajanlar `p012_ci_r2_runtime` (GPT-6 Astra/high) ve `p012_ci_r2_delivery` (GPT-6.1 Sol/high). Yeni doğrulanmış ürün regresyonu yok. Runtime reviewer 414 test, 32 çıktı byte karşılaştırması ve yedi bağlantı/kilit/hata yaşam döngüsü probe'unu geçti. Delivery reviewer 22 odak test, on sonuç tipi/sekiz bakım dalında eski text byte eşitliği, probe no-clobber/izin/arg ret, tarihî SHA ve başlangıç p95 hesaplarını doğruladı.
+
+SonarCloud kapısı geçtikten sonra güncel issue API'sinde kalan tek bakım bulgusu `validate` complexity 16/15 olarak doğrulandı. Integrity/FK/row bloğu `validate_contents` yardımcısına aynen taşındı; **120 state/identity testi** ve lint/type geçti. R2 runtime reviewer eski/yeni tam blok AST eşitliğini, SQL/kontrol sırasını, hata sınırını ve full=False yolunun değişmediğini odak kontrolünde doğruladı. Suppression/eşik gevşetmesi yapılmadı.
+
+[Son belge head'i 10e8d6a CI](https://github.com/HodeTech/Yorunge/actions/runs/40530713687) bütün offline-core adımlarını ve branch-policy'yi geçti; SonarCloud da başarılı oldu. İki doğrulanmış eski doküman review thread'i düzeltme sonrası çözüldü. Son küçük complexity/kapanış commit'i ayrıca PR CI'ından geçirilecektir; PR head'inin gerçek check durumu PR üzerinde kanoniktir.
+
+P01-2 uygulaması ve kabulü tamamlandı; dört alt kart/epik verified. PR #6 kullanıcı incelemesine açık tutulur, merge/Master/release yapılmaz. Sonraki ürün paketi P01-3'tür, implementasyonu başlatılmadı. Başarısız ilk Linux/yük altı ölçümleri, onaylı tehdit/restore/config-lock sınırları ve çalıştırılmayan canlı/power-cut kontrolleri yukarıda açıkça korunur.
+
+## PR #6 sonrası P2/P3 review düzeltmeleri
+
+Kullanıcının `9c9561f` incelemesindeki bir P2/iki P3 güncel kaynakla doğrulandı. Kök ajan, sys.platform=win32 ve fcntl import yokluğu simülasyonunda initialize_state'in state_unsupported, bakım/identity/config girişlerinin ham ModuleNotFoundError verdiğini yeniden üretti. Platform dosya desteği artık modül importunu çökertmez; destek kapısı state/gözlem/bakım, config yazımı ve doctor'da platforma özgü dosya işlemi/env erişimi öncesinde uygulanır. Config yazımları macOS/Linux ile sınırlanıp ayrı config_unsupported/çıkış 2 olarak belgelenir; doctor/state için state_unsupported/çıkış 2 korunur.
+
+Yeni 80 subprocess regresyonu; desteklenmeyen platform+eksik fcntl, desteklenmeyen platform+mevcut fcntl ve mevcut platform+eksik fcntl senaryolarında 13 API/CLI girişini ve metadata yollarını kapsar. Gerçek Windows çalıştırılmadı; bu sentetik import/platform ret ve hata zarfı kanıtıdır. Normal state/dayanıklılık testleri desteklenen yerel ortamda korunur.
+
+Araştırma indeksindeki tamamlanmamış kabul ifadesi ve verified P01-2a kartındaki sıradaki-uygulama ifadesi düzeltildi. Arşivlenmiş 190,781 ms Linux ölçümünün workflow/job logu incelendi; editable .venv, ölçülen konsol girişi, Ubuntu image/OS ve komutlar ham JSON/ortam tablosuna eklendi. Kaydedilmemiş CPU/disk bilgileri unknown olarak açıklandı; başka runner'dan tahmin edilmedi. Örnek/p95/bütçe alanlarının önceki Git sürümüyle birebir değişmediği doğrulandı. Yeni veya donanım eşdeğer koşulda ölçüm yapılmış sayılmaz.
+
+İlk düzeltme kabulü: 837 test (42,16 s), Ruff format/lint, strict mypy (31 kaynak), 96 belge, 6 skill/5 kart ve diff whitespace denetimi geçti. Wheel/sdist iki temiz kurulum/köken/smoke kontrolü geçti. Düzeltme commit'i ardından iki fresh bağımsız review turu ve son PR head CI'ı izlenir; merge yapılmaz.
+
+### P2/P3 düzeltmesi — iki bağımsız review turu ve kapanış
+
+İncelenen düzeltme `d995354` (taban `9c9561f`). İlk tur fresh ajanlar `p012_followup_r1_platform` (GPT-6 Astra/high) ve `p012_followup_r1_evidence` (GPT-6.1 Sol/high): doğrulanmış ek bulgu yok; her reviewer 80 subprocess regresyonunu bağımsız geçti. Platform reviewer ayrıca 26 API çağrısında dosya yolu ve credential erişimi yasakken erken hata kodlarını doğruladı. Evidence reviewer özgün job logunu, iki status cümlesini, editable kurulum bilgisini ve değişmeyen ham ölçümleri bağımsız karşılaştırdı.
+
+İkinci tur farklı fresh ajanlar `p012_followup_r2_platform` (GPT-6 Astra/high) ve `p012_followup_r2_evidence` (GPT-6.1 Sol/high): doğrulanmış ek bulgu yok. Platform reviewer 52 API ret probe'u ve 10 macOS/Linux mock fsync/flock/descriptor senaryosunu geçti; Pydantic framework plugin env okumasını credential çözümlemesiyle karıştırmadı. Evidence reviewer 80 subprocess testini geçti; lazy adaptör importunun hook sonrasında olduğunu, özgün log ve eski/yeni JSON measurements eşitliğini doğruladı.
+
+`d995354` [Ubuntu offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40560357404), [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40560354445) ve SonarCloud kontrollerinden geçti. Üç kullanıcı bulgusu giderildi; gerçek Windows, güç kesintisi veya canlı EVREN testi yapılmış sayılmaz. Son kapanış belge head'i de zorunlu PR CI'ından geçirilir; PR #6 merge edilmeden kullanıcı incelemesinde kalır.

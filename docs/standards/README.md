@@ -9,7 +9,7 @@
 | [Python](python.md) | Tip, kaynak yönetimi ve bağımlılıklar | Etkin — yerel şema, lint/type/import; uzak kaynaklar planlandı |
 | [Kullanım deneyimi](ux.md) | Rehberli/doğrudan/CI davranışı | Benimsenmiş |
 | [Performans](performance.md) | Bütçeler, ölçüm ve optimizasyon | Etkin — başlangıç/profil; aktarım/ağ planlandı |
-| [Test](testing.md) | Sözleşme ve dayanıklılık kanıtı | Etkin — offline dilim; yürütme/dayanıklılık planlandı |
+| [Test](testing.md) | Sözleşme ve dayanıklılık kanıtı | Etkin — offline/yerel state kesinti kabulü; uzak yürütme planlandı |
 | [Güvenlik](security.md) | Sır, dosya, ağ ve çalıştırma sınırları | Benimsenmiş |
 | [Hata ve gözlemlenebilirlik](error-handling-observability.md) | Sonuç, log, metrik ve belirsizlik | Benimsenmiş |
 | [Belgeleme](documentation.md) | Kanonik kaynak, dil ve durum | Benimsenmiş; bu belge temeline uygulanır |

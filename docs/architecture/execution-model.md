@@ -19,6 +19,8 @@ Plan; görev türü, veri/model sürümü ve hash'leri, seçilen araç/sürüm, 
 
 Plan sır değeri içermez. Bu bağların tamamı dahil kanonik temsilin digest'i ve şema sürümü onayla ilişkilendirilir.
 
+Plan/capability/registry hedef eşlemesinin byte düzeyindeki ayrıntısı [credential binding v1](../reference/credential-binding-v1.md) olarak Accepted ADR-0012 ile benimsenmiştir. Etkin 443 portunun origin metninden çıkarılması ve eski offline Plan'ın değiştirilmeden karşılaştırılması orada tanımlanır; tasarım onayı ürün uygulaması veya kabul kanıtı yerine geçmez.
+
 Araç seçimi ve tüm önemli girdiler plan hazırlığında çözülür. `run` sırasında sürüm/executable, hizmet origin'i/API kökü, hesap/proje, yetki kimliği/nesli/kapsamı veya veri değişmişse eski plan uygulanmaz; yeniden planlama ve etki politikasına göre yeni digest'e bağlı onay gerekir. Aynı profil adı bu kontrolün yerine geçmez. Uzak tahminin geçerlilik sınırı ve bilinmeyen maliyet açık kalır.
 
 ```mermaid

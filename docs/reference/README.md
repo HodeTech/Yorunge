@@ -8,5 +8,7 @@
 | [Yapılandırma](configuration.md) | Profil/reçete, öncelik ve doğrulama |
 | [Araç sağlayıcısı](tool-provider-contract.md) | Görev, plan, execution ve sonuç sınırı |
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
+| [Credential binding v1](credential-binding-v1.md) | Uygulandı — ortak hedef/UNIQUE/HMAC, kalıcı gözlem ve byte vektörleri; Accepted ADR-0012 |
+| [Yerel state](local-state.md) | Store/migration/backup, açık reset/identity-only restore/recover ve koruma sınırı |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).
