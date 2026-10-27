@@ -1,6 +1,6 @@
 # P01-3 uygulama ve kabul kaydı
 
-**Tarih:** 2026-10-27. **Durum:** Adım1–3 ve ikişer review tamamlandı; bütünleşik teslim/PR kabulü sürüyor, epik henüz kapanmadı. **Dal:** feat/p01-3-capability-planning; **taban:** development@78d5d77. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iki iş kartı](../roadmap/tasks/README.md).
+**Tarih:** 2026-10-27. **Durum:** Dört adımın yerel kabulü ve ikişer review tamamlandı; development PR/CI teslimi ve kullanıcı incelemesi sürüyor. **Dal:** feat/p01-3-capability-planning; **taban:** development@78d5d77. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iki iş kartı](../roadmap/tasks/README.md).
 
 ## Onay ve yöntem
 
@@ -134,3 +134,12 @@ Adım4 ilk commit'i ardından iki fresh bütünleşik review turu yapılır; son
 İki P3 belge kapsamı doğrulandı ve düzeltildi: local-state referansında eski cache-only restore allowlist/“plan-onay henüz yok” ifadeleri, configuration referansında env okumayan yolların stateless v1 ile sınırlanmaması. Güncel identity/cache/clock/plan/approval allowlist, açık cached/execution tek seçili env snapshot'ı ve YAML/offline parser ile descriptor execution bağının ayrımı netleştirildi. Belge değişikliği için link/heading/fence ve diff denetimi yeterlidir; runtime testleri tekrar edilmedi.
 
 Ignored dist/verification.jsonl önceki17/130 üyeli denemeyi taşıyordu; aynı başarılı son38/208 üyeli .local doğrulama makbuzu o konuma kopyalandı. Kod/commit kanıtı olarak eski dosya kullanılmadı. İkinci fresh bütünleşik review turu ve son PR/CI kapısı beklenir.
+
+
+### Adım 4 / review 2 ve yerel kapanış
+
+Üç farklı yeni reviewer integration/invariants (GPT-6 Astra/high), artifacts ve docs (GPT-6.1 Sol/high) `271a6fb` üzerinde inceledi. Integration501 hedefli test ve bağımsız5s cost-expiry/idempotence/tam expiry/geri-saat probunda yeni kusur bulmadı. Artifact reviewer mevcut wheel/sdist SHA'larını makbuzla, runtime ve sdist src/scripts/tests baytlarını checkout ile karşılaştırdı; izin listesi ve kaynak ölçümü iddialarında yeni bulgu yok. Build/benchmark tekrarı yapılmadı.
+
+Tek P3 referans indeksinin restore'u hâlâ identity-only diye özetlemesiydi; yaşayan indeks güncel genişlemeyi yanlış daraltıyordu, ibare kaldırıldı. Belge/ajan/diff kontrolü geçti. Dört adımın her biri iki ayrı fresh review turuyla, doğrulanmış bulguların fix/commit ve gerekli regresyonlarıyla tamamlandı. P01-3a/b yerel kabulü verified; bu, development merge veya yayın değildir.
+
+Sıradaki işlem tek development PR'ı açmak, son head'in offline-core/branch-policy CI'ını doğrulamak ve kullanıcı incelemesi için açık bırakmaktır. Sıradaki ürün paketi P01-4b/4c: operation/attempt, lease/fencing, unknown uzlaştırma ve yerel jobs; ardından P01-5 ve faz kapanışı. Master/release kullanıcıdadır.

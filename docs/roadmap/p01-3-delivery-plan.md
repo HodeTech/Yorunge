@@ -1,11 +1,11 @@
 # P01-3 — Capability ve execution hazırlığı teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** Uygulanıyor; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Adım1–3 uygulama ve ikişer bağımsız review turuyla tamamlandı; final bütünleşik kabul/PR adımı sürüyor.
+**Tarih:** 2026-10-27. **Durum:** Uygulanıyor; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Dört adım yerel kabul ve ikişer bağımsız review turuyla tamamlandı; tek development PR kullanıcı incelemesi/CI kapısında.
 
 
 **Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed ve onay bekleme ifadeleri tarihseldir; uygulama kabulü ayrıca kaydedilir.
 
-Gerçek kod/test/ölçüm, adım commit'leri ve iki review turunun tek kanonik kaydı [uygulama kabulüdür](../research/p01-3-implementation-validation.md). Cache ve execution hazırlığı/geçerliliği/onay/yönetim adımları tamamlandı; final bütünleşik kabul/PR sürüyor. Epik henüz kapanmadı.
+Gerçek kod/test/ölçüm, adım commit'leri ve iki review turunun tek kanonik kaydı [uygulama kabulüdür](../research/p01-3-implementation-validation.md). Cache ve execution hazırlığı/geçerliliği/onay/yönetim ile bütünleşik yerel kabul tamamlandı; PR/CI ve kullanıcı incelemesi ayrıdır. Development merge henüz yapılmadı.
 ## Teslim sınırı
 
 Kullanıcı sonucu: capability bilgisinin hangi hedef/kimlik/kanıta ait ve ne kadar güncel olduğunu görmek; ayrı execution hazırlığını kaydetmek; değişmiş girdi/yetkiyle eski plan veya onayın geçerli sayılmasını engellemek. [P01-3a](tasks/p01-3a-scoped-capability-cache.md) ve [P01-3b](tasks/p01-3b-execution-plan-validity.md) tek development PR'ında teslim edilir. Paket L büyüklüğündedir; iki kart ve aşağıdaki M uygulama adımlarına ayrılır. Bunlar süre tahmini değildir.
