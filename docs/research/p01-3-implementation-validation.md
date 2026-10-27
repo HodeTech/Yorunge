@@ -229,3 +229,18 @@ S8707'nin gösterdiği akış, argparse girdisini HTTP request diye etiketleyip 
 
 
 R1 metin düzeltmesinin güçlendirilmiş testindeki ek count assertion'ı, recover.current alanının sözleşmedeki nullable durumunu göz ardı etti ve bir kez başarısız oldu. Assertion düzeltildi; current null olan recover ile gerçek current/source sayıları taşıyan reset/restore ayrı doğrulandı: üç metin/JSON testi geçti (2,19 s). Runtime'ın nullable önizleme sözleşmesi değiştirilmedi.
+
+
+### Kullanıcı review düzeltmeleri / fresh review 2 ve kanıt
+
+77c139f..41e122e iki farklı fresh reviewer ile incelendi; yeni doğrulanmış bulgu yok. Input reviewer'ı 137 input/execution/scope ve 134 platform testi (üç büyük bellek durumu hariç), 216 küçük dosya/bütçe/blok matrisi, dört büyüme ve kısa ara okuma probunu tamamladı. 1.351 regex karşılaştırması ve üç Unicode-rakam timestamp reddi aynı ASCII dilini doğruladı. State/delivery reviewer'ı 13 revoke/metin + iki benchmark contract testi, gerçek .local seed ile 1.024 kayıt ve revoke sonrası concurrent forget için doğru committed approval ID/state_changed açıklamasını doğruladı. Nullable recover.current ve credential/plan/onay geçmişi metni artık uyumludur. Her iki turda Sonar'ın somut flow'u bağımsız incelendi; CLI Path'i InputRoot dalına izleme ve HTTP-source etiketi modelleme hatası olarak değerlendirildi. Dış issue durumu bu review'lerle otomatik değişmiş sayılmaz.
+
+[Gerçek yerel başlangıç kaydı](p01-3-review-startup.json): M5 Max/SSD/CPython 3.11.18/frozen uv editable; yeni .local fixture, 1.024 kayıt/1.212.625 payload baytı/en büyük 1.233, üç ısınma sonrası 30 ayrı süreç. Help p95 29,655/version 30,133/context 87,185/cache 143,957 ms; dört bütçe geçti. Cache her örnekte fresh hit olarak doğrulandı. Eşik veya örnek sayısı değiştirilmedi.
+
+[Yeni hasher bellek kaydı](p01-3-review-memory.json) aynı ortamda 16/256/1.024 MiB ayrı sparse dosya/process, bağımsız tam SHA-256 ve boyut doğrulamasıyla geçti. Python peak her üçünde 2.102.830 bayt; ek process peak RSS 2.310.144/2.342.912/2.293.760 bayt. RSS process-maxima delta sınırı, sparse fixture ve fiziksel soğuk I/O/aktarımı kanıtlamama sınırı sürer.
+
+41e122e runtime'ı wheel 38/sdist 215 üyeyle iki temiz ortamda kuruldu; import kökeni, metadata, v1, cache ve yedi execution-plan komutu/beklenen negatif çıkışlar geçti. Yerel makbuz dist/verification.jsonl için son build'den yenilenir; son yalnız ham kayıt/belge girdileri sdist sayısını değiştirebilir. Son CI kendi artefaktını yeniden kurar.
+
+[d9d1117 Linux CI](https://github.com/HodeTech/Yorunge/actions/runs/40600730985) tam test/build/iki kurulumda başarılı, [cache p95 218,042 ms](p01-3-review-linux-startup-failed.json) ile 200 ms kapısında başarısızdır. Context 165,588 ms geçti. Runner AMD EPYC 7763, disk unknown; aynı platformdaki önceki hızlı AMD 9V45/9V74 koşularıyla donanım farkı vardır. Başarısızlık saklanmaz veya aynı head sırf yeşil elde etmek için tekrar başlatılmaz. Tanı adımı importtime/cProfile üretti: Pydantic import/şema oluşturma baskın; durable clock transaction'ları ve bütün süre kapıları korunur. Seçici defer-build prototipleri ilk doğrulamaya maliyet taşıdı ve yalnız küçük yerel farklar verdi; kanıtlanmamış bir performans çözümü diye ürüne alınmadı.
+
+Beş kullanıcı bulgusu uygulama/test/referans ve iki fresh review turuyla kapandı. Son head'in CI sonucu ayrıca doğrulanır; önceki başarılı veya başarısız koşu son head'in yerine geçirilmez. Sonar oturumu açık olmadığından issue-bazlı dış disposition henüz uygulanmadı; giriş ekranının Terms onayı kullanıcıya bırakıldı. Bu süreçte kural, severity, permission veya quality gate ayarı değiştirilmedi. PR #8 development hedefiyle açık kalır, merge/yayın yapılmaz.

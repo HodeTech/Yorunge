@@ -24,3 +24,7 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 - [P01-3 Linux doğrulanmış başlangıç ölçümü](p01-3-linux-startup-verified.json): 83f70a8 CI koşusu, 1.024 fresh kayıt ve 30 süreçte bütün bütçeler geçti; runner farkı kayıtlıdır.
 
 - [P01-3 review sonrası input hash/bellek ölçümü](p01-3-reviewed-input-memory.json): hasher yardımcı ayrımı sonrası üç boyutta bağımsız tam içerik doğrulaması ve sınırlı bellek.
+
+- [P01-3 kullanıcı review sonrası yerel başlangıç ölçümü](p01-3-review-startup.json): zorunlu cache fixture ile kanonik .local seed, 1.024 kayıt ve 30 süreçte dört bütçe geçti.
+- [P01-3 kullanıcı review sonrası hash/bellek ölçümü](p01-3-review-memory.json): ilk fstat boyutuna bağlı strict read sınırıyla 16/256/1.024 MiB tam hash ve bellek doğrulaması.
+- [P01-3 kullanıcı review sonrası Linux bütçe reddi](p01-3-review-linux-startup-failed.json): d9d1117, AMD EPYC 7763; test/build geçti, cache p95 218,042 ms başarısız. Profil tanısı CI logunda korunur.
