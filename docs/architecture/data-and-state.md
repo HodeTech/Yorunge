@@ -18,7 +18,7 @@ SQLite ayrı servis gerektirmeden transaction, migration ve yeniden başlatma so
 
 Bu tablo mantıksal sahipliktir; kesin DDL ve migration P01'de karara bağlanacaktır. SQL şeması varmış gibi çalışan örnek verilmez.
 
-Kimlik karşılaştırması için özel HMAC doğrulayıcısı ve ayrı K dosyası [ADR-0012'de Proposed](../decisions/0012-credential-identity-and-change-detection.md) olarak onaya sunulmuştur; ham sır/hash yasağı için henüz etkin olmayan dar bir istisnadır. Verifier public kayıt, cache, Plan veya normal export verisi değildir. [ADR-0011'in migration/yedek önerisi](../decisions/0011-state-foundation-and-migrations.md) de henüz uygulanmış store sayılmaz.
+Kimlik karşılaştırması için özel HMAC doğrulayıcısı ve ayrı K dosyası [Accepted ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) ile kullanıcı tarafından benimsenmiştir; genel sır saklama yasağı yalnız bu verifier için daraltılmıştır, ham sır/hash yasağı korunur. Verifier public kayıt, cache, Plan veya normal export verisi değildir. Bu karar ve [Accepted ADR-0011'in migration/yedek temeli](../decisions/0011-state-foundation-and-migrations.md) henüz uygulanmış store sayılmaz.
 
 Canlı DB üzerindeki identity reset ile eski DB snapshot'ını restore etmek farklıdır: restore snapshot sonrasındaki işlem geçmişini kaybedebilir. Önerilen [restore kapısı](../decisions/0012-credential-identity-and-change-detection.md#identity-reset-ve-db-restore-ayrımı), operation tüketicisi eklendiğinde kayıp geçmiş için ayrı güvenilir uzlaştırma kurulana kadar DB restore'u reddeder; reset unknown işe yeniden gönderim yetkisi vermez.
 

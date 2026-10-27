@@ -1,6 +1,6 @@
 # P01-2 — Kimlik ve bağlam paketi teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** Hazırlık; B02/B13 karar onayı bekleniyor. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Bu plan uygulama veya bütün paketin `ready` olduğu iddiası değildir.
+**Tarih:** 2026-10-27. **Durum:** B02/B13 kararları kullanıcı onayıyla Accepted; sıradaki uygulama P01-2a. **Dal:** `feat/p01-2-identity-context`, taban `development@83bcd83`. Bu plan uygulama veya bütün paketin `ready` olduğu iddiası değildir.
 
 ## Teslim sınırı
 
@@ -12,14 +12,14 @@ Bu paketin kullanıcı sonucu: doğru yerel profil/hizmet/proje seçimi, açık 
 
 | Adım | İş | Başlama kapısı | Kanonik kabul |
 |---|---|---|---|
-| 0 | B02/B13 araştırması ve karar belgeleri | Kullanıcının mevcut hazırlık yetkisi | [Karar raporu](../research/p01-2-state-identity-decision-review.md), ADR-0011/0012 onayı |
+| 0 | B02/B13 araştırması ve karar belgeleri — tamamlandı | Kullanıcının mevcut hazırlık yetkisi | [Karar raporu](../research/p01-2-state-identity-decision-review.md), ADR-0011/0012 için 2026-10-27 kullanıcı onayı |
 | 1 | P01-2a — hizmete bağlı env çözümleme | P01-1 doğrulandı; ürün uygulama yetkisi | [Mevcut kart](tasks/p01-2a-secret-resolution.md) |
 | 2 | P01-4a — store/migration ve kayıt temeli | Adım 1 kanıtı; B02/B13 kabulü | [Store kartı](tasks/p01-4a-state-foundation.md) |
 | 3 | P01-2b — opak kimlik/nesil ve hedef bağı | Adım 1/2 kanıtı; B13 kabulü | [Credential kartı](tasks/p01-2b-credential-identity.md) |
 | 4 | P01-2c — yerel init/context/doctor | Adım 1/2/3 kanıtı | [Yerel yönetim kartı](tasks/p01-2c-local-context-management.md) |
 | 5 | Bütünleşik kabul ve tek PR | Dört alt işin kendi kabulü | Aşağıdaki paket kapanışı |
 
-Bu tur adım 0'dır. Yalnız P01-2a'nın bağımsız kartı hazırdır; paket uygulaması başlatılmaz. Hazırlık ve önerilen ADR onayı ürün geliştirme yetkisi yerine geçmez.
+Adım 0'ın karar onayı tamamlandı. Yalnız P01-2a'nın bağımsız kartı hazırdır; sonraki kartlar kendi uygulama/bağımlılık kanıtlarını bekler. Kararların benimsenmesi, ürün uygulaması veya bütün paketin kabulü değildir; mevcut tur onay kaydını commit eder.
 
 ## Uygulama ve review
 
@@ -35,6 +35,6 @@ Alt işin `verified` kanıtı aynı çalışma dalındaki gerçek commit/test/re
 - Yardım/sürüm ile mevcut offline komutlar ağ, credential okuma ve istemsiz DB/key oluşturma guard'larını geçer. Store ve secret erişimi açık kullanım senaryosunda lazy açılır.
 - Kart kabulü, CLI/Python sözleşme uyumu, tam test/lint/type/belge, build/iki temiz kurulum ve değişen import yolları için başlangıç bütçeleri kanıtlıdır. Son head'in zorunlu CI'ı geçer.
 
-## Hazırlık ve açık karar
+## Hazırlık ve kabul edilen kararlar
 
-[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) Proposed hazırlanır; bunlar kabul edilmeden kalıcı biçim/koruma mekanizması kodlanmaz. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik önerisi olarak ayrılır. Bu pakete ait ürün commit/PR veya kabul kanıtı henüz yoktur.
+[ADR-0011](../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md), bağlı binding v1 ile 2026-10-27 kullanıcı onayıyla benimsenmiştir. Araştırma sonuçları resmî kaynak, yerel deney ve mühendislik kararı olarak ayrılır. Karar kapısı kapanmıştır; bu pakete ait ürün commit/PR veya kabul kanıtı henüz yoktur.

@@ -1,14 +1,14 @@
 # ADR-0011: P01 yerel store ve işlemsel migration temeli
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor. **Tarih:** 2026-10-27. **Kayıt:** B02. ADR-0004'teki SQLite kararını ayrıntılandırır; motor seçimini değiştirmez. Bu belge ürün uygulaması değildir.
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; henüz uygulanmadı. **Tarih:** 2026-10-27. **Kayıt:** B02. ADR-0004'teki SQLite kararını ayrıntılandırır; motor seçimini değiştirmez. Bu belge ürün uygulaması değildir.
 
 ## Bağlam
 
 P01-2b'nin kimlik/nesil kaydı süreçler arasında kalmalıdır; P01-4a bu nedenle P01-2 PR'ında teslim edilir. Sonraki capability/operation tüketicileri aynı transaction otoritesine dayanacaktır. [Karşılaştırma, resmî kaynak ve yerel deney raporu](../research/p01-2-state-identity-decision-review.md) önerinin dayanağıdır.
 
-## Önerilen karar
+## Karar
 
-| Konu | Onaya sunulan seçim |
+| Konu | Kabul edilen seçim |
 |---|---|
 | Motor/bağımlılık | Python 3.11+ standart `sqlite3`; ilk store için bağlı SQLite ≥ 3.37.0; ORM/Alembic veya ayrı SQLite wheel'i eklenmez |
 | Yerleşim | macOS/Linux yerel diskte `~/.local/state/yorunge/state.sqlite3`; açık state dizini seçimi ayrıca CLI/Python sözleşmesine bağlanır; `XDG_STATE_HOME` davranış override'ı bu pakette eklenmez |
@@ -67,4 +67,4 @@ P01-4b aynı DB'de operation/attempt geçişi, rastgele owner ve monoton artan f
 
 ## Sonuçlar ve kabul kapısı
 
-Yeni varsayılan ürün koduna ancak kullanıcı onayıyla girer. Geçici gerçek DB'de DDL/veri/sürüm rollback, ikinci adımı başarısız zincirin yeniden açılması, sürüm/manifest ayrışması, iki migration yazarı, sınırlı busy, bozuk/yabancı/yeni sürüm, izin/symlink ve ayrı süreçte commit/kesinti kanıtı gerekir. Backup'ta mevcut hedef, disk dolması, ilişkisel bozulma, tamamlanma kaydından önce/sonra kesinti; yeni dizin/üst dizin/file sync hataları ve açık kurtarma sınırları kabulde sınanır. Mevcut komutların lazy guard'ları korunur. Süreç öldürme deneyi güç kesintisi/SSD arızası testi diye raporlanmaz. Daha ağır operation yükü için journal değişikliği gerekirse ölçüm, runtime uyumu ve migration ayrı açık kararla ele alınır.
+Tasarımın kullanıcı onayı tamamlandı; ürün kabulü aşağıdaki gerçek kanıtları gerektirir. Geçici gerçek DB'de DDL/veri/sürüm rollback, ikinci adımı başarısız zincirin yeniden açılması, sürüm/manifest ayrışması, iki migration yazarı, sınırlı busy, bozuk/yabancı/yeni sürüm, izin/symlink ve ayrı süreçte commit/kesinti kanıtı gerekir. Backup'ta mevcut hedef, disk dolması, ilişkisel bozulma, tamamlanma kaydından önce/sonra kesinti; yeni dizin/üst dizin/file sync hataları ve açık kurtarma sınırları kabulde sınanır. Mevcut komutların lazy guard'ları korunur. Süreç öldürme deneyi güç kesintisi/SSD arızası testi diye raporlanmaz. Daha ağır operation yükü için journal değişikliği gerekirse ölçüm, runtime uyumu ve migration ayrı açık kararla ele alınır.

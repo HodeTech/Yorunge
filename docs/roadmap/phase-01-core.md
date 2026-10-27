@@ -7,7 +7,7 @@
 | ID | Sınır | Önkoşul | Kabul kanıtı / kalan | Durum |
 |---|---|---|---|---|
 | P01-1 | Paket, CLI, şema ve YAML seçimi; lock/build | P00 | [İlk dilim](../research/p01-core-validation.md), [PR #1](https://github.com/HodeTech/Yorunge/pull/1) ve [P01-1a kapanışı](tasks/p01-1a-core-acceptance-hardening.md); HTTP seçimi P01-5a'ya taşındı | `verified` |
-| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; paket içi B02/B13 kapısı | [Tek PR teslim planı](p01-2-delivery-plan.md); TOML/context mevcut, paket hazırlığı sürüyor | `partial` |
+| P01-2 | Config/context, hizmete bağlı secret, kimlik nesli ve yerel init/doctor | P01-1; B02/B13 kararları Accepted | [Tek PR teslim planı](p01-2-delivery-plan.md); TOML/context mevcut, env çözümleme henüz yok | `partial` |
 | P01-3 | Kapsam/kanıt/tazelik bağlı capability ve execution planı | P01-2b, P01-4a | Seçim/offline draft mevcut; hesap cache'i ve yürütme geçerliliği eksik | `partial` |
 | P01-4 | SQLite, migration, operation/attempt ve sahiplik | P01-1; alt işlerin kendi önkoşulları | Kalıcı state henüz yok; P01-4a temeli P01-2 PR'ında planlandı | `draft` |
 | P01-5 | HTTP, ortak sonuç/hata, akış ve iptal | P01-2a | CLI/Python yerel zarf mevcut; taşıma/yürütüm eksik | `partial` |
@@ -33,7 +33,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile development'a alındı. Sıradaki teslim paketi **P01-2**; mevcut tur [B02/B13 karar araştırmasıdır](../research/p01-2-state-identity-decision-review.md). Paket içi sıra karar onayı → P01-2a → P01-4a → P01-2b → P01-2c'dir; ürün uygulaması başlamadı. Kimlik nesli için gerekli P01-4a aynı PR'a alınır. Yerel doctor'ın HTTP/cache bağımlılığı kaldırıldı; uzak kontrolün kapsamı P01-5/P02'de açık tutulur.
+P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile development'a alındı. Sıradaki teslim paketi **P01-2**; [B02/B13 kararları](../research/p01-2-state-identity-decision-review.md) 2026-10-27 kullanıcı onayıyla Accepted oldu. Paket içi uygulama sırası P01-2a → P01-4a → P01-2b → P01-2c'dir; ürün uygulaması henüz başlamadı. Kimlik nesli için gerekli P01-4a aynı PR'a alınır. Yerel doctor'ın HTTP/cache bağımlılığı kaldırıldı; uzak kontrolün kapsamı P01-5/P02'de açık tutulur.
 
 | Development PR paketi | Teslim edilecek alt işler |
 |---|---|
@@ -48,7 +48,7 @@ Alt iş ayrı PR zorunluluğu değildir; [epik PR sözleşmesi](README.md#epik-b
 ```mermaid
 flowchart LR
     A["P01-2a: env çözümleme"] --> S["P01-4a: store temeli"]
-    D["B02/B13: karar"] --> S
+    D["B02/B13: Accepted karar"] --> S
     S --> I["P01-2b: kimlik nesli"]
     I --> C["P01-3a: capability"] --> P["P01-3b: plan bağı"]
     P --> O["P01-4b: operation/lease"] --> T["P01-5b: ortak hat"]

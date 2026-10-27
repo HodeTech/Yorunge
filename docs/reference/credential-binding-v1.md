@@ -1,6 +1,6 @@
 # Hizmet hedefi ve özel credential binding v1
 
-**Durum:** Proposed — ADR-0012 ile birlikte onay bekleyen sözleşme; ürün uygulaması değildir. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
+**Durum:** Benimsenmiş — 2026-10-27 kullanıcı onayıyla Accepted ADR-0012'nin bağlı sözleşmesi; henüz uygulanmadı. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
 
 ## Hizmet hedefi: service-target-v1
 

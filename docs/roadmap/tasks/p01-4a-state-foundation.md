@@ -8,7 +8,7 @@ capabilities: [C01, C12]
 ---
 # P01-4a — Yerel store ve migration temeli
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 onayı ve P01-2a kanıtı beklenir; uygulama yoktur.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a kanıtı beklenir, uygulama yoktur.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Gerçek yerel SQLite açma/kapatma, özel dosya/dizin, şema sahipliği/sürüm,
 
 ## Bağımlılıklar ve kararlar
 
-P01-2a aynı dalda gerçek teslim kanıtıyla tamamlanır. [B02/B13 raporu](../../research/p01-2-state-identity-decision-review.md), [ADR-0011](../../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../../decisions/0012-credential-identity-and-change-detection.md) onaylanmadan şema/yerel koruma kesinleştirilmez. SQLite motoru ADR-0004 ile zaten seçilmiştir.
+P01-2a aynı dalda gerçek teslim kanıtıyla tamamlanır. [B02/B13 raporuna](../../research/p01-2-state-identity-decision-review.md) bağlı [ADR-0011](../../decisions/0011-state-foundation-and-migrations.md) ve [ADR-0012](../../decisions/0012-credential-identity-and-change-detection.md), 2026-10-27 kullanıcı onayıyla Accepted'dır; şema/yerel koruma bu kararlara uyar. SQLite motoru ADR-0004 ile zaten seçilmiştir. Karar onayı, eksik doğrudan bağımlılığın teslim kanıtı yerine geçmez.
 
 ## Sözleşme ve uygulama sınırı
 

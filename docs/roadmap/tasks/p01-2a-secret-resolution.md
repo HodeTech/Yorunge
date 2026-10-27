@@ -10,7 +10,7 @@ capabilities: [C01]
 
 **Hazırlandı:** 2026-10-27. Bu kart planlamadır; secret erişimi henüz uygulanmadı.
 
-[P01-2 tek PR paketinin](../p01-2-delivery-plan.md) ilk uygulama adımıdır. Bağımsız hazır olma durumu bütün paketin hazır veya ürün uygulamasının yetkili olduğu anlamına gelmez; bu tur karar araştırması/hazırlıktır.
+[P01-2 tek PR paketinin](../p01-2-delivery-plan.md) ilk uygulama adımıdır. B02/B13 kararları Accepted'dır; bu kart sıradaki uygulamadır. Bağımsız hazır olma durumu bütün paketin hazır veya uygulanmış olduğu anlamına gelmez.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

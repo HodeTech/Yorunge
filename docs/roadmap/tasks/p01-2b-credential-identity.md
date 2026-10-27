@@ -8,7 +8,7 @@ capabilities: [C01, C13]
 ---
 # P01-2b — Credential kimliği, nesli ve hedef bağları
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 kararı ve doğrudan bağımlılıklar beklenir.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 kararı Accepted; doğrudan bağımlılıkların teslim kanıtları beklenir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Hizmet/hedef/referans ayrımı, rastgele opak kimlik, gözlenen değişimde iler
 
 ## Bağımlılıklar ve kararlar
 
-P01-2a ve P01-4a aynı dalda kanıtlı tamamlanır. [ADR-0012](../../decisions/0012-credential-identity-and-change-detection.md) Proposed kararı kullanıcı tarafından kabul edilmelidir; yerel karşılaştırma anahtarı/koruma/kurtarma seçimi onaydan önce uygulanmaz.
+P01-2a ve P01-4a aynı dalda kanıtlı tamamlanır. [ADR-0012](../../decisions/0012-credential-identity-and-change-detection.md), 2026-10-27 kullanıcı onayıyla Accepted'dır; yerel karşılaştırma anahtarı/koruma/kurtarma ve bağlı binding v1 bu karara uyar. Karar onayı, eksik doğrudan bağımlılıkların teslim kanıtı yerine geçmez.
 
 ## Sözleşme ve uygulama sınırı
 

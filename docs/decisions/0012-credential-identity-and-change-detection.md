@@ -1,18 +1,18 @@
 # ADR-0012: Opak credential kimliği ve gözlenen anahtar değişimi
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor. **Tarih:** 2026-10-27. **Kayıt:** B13. ADR-0005 ve execution/capability bağlarını ayrıntılandırır. Yerel HMAC kaydı ve koruma anahtarı dosyası için açık onay gerekir; henüz uygulanmadı.
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; henüz uygulanmadı. **Tarih:** 2026-10-27. **Kayıt:** B13. ADR-0005 ve execution/capability bağlarını ayrıntılandırır. Yerel HMAC kaydı, koruma anahtarı dosyası ve bağlı binding v1 sözleşmesi bu onaya dahildir.
 
 ## Bağlam
 
 Env referansı aynı kalırken değer değişebilir. Offline çözümlemede kullanılabilecek güvenilir sağlayıcı key ID/rotation metadata'sı henüz yoktur. Aynı değerde süreçler arası kararlı kimlik ve sessiz değişimi yakalama hedefi, önceki değerle ilişki kuran kalıcı veya güvenilir dış kanıt gerektirir. Ham credential/hash saklanamaz. [Seçenekler, tehdit sınırı ve deney raporu](../research/p01-2-state-identity-decision-review.md) bu kararın dayanağıdır.
 
-## Önerilen karar
+## Karar
 
 Public `credential_id` sırdan bağımsız UUIDv4; `credential_revision` pozitif, SQLite signed-64 sınırında tamsayıdır. İlk gözlem 1, farklı değer gözlemi +1; 2^63−1'de değişim kontrollü hata ve rollback üretir, otomatik sarma/reset yoktur. Açık identity reset ayrı etkili kurtarma yoludur. Sır bir kez çözülür; hizmet/hedef/kimlik ve guarded secret taşıyıcısı aynı snapshot'a bağlanır. Env adına geri dönüp ikinci kez sır okunmaz.
 
 DB'de yalnız yerel, dışarı aktarılmayan **HMAC-SHA-256 doğrulayıcısı** tutulur; bu ham SHA-256 değildir ama sırdan türetilmiş hassas bir kayıttır. Public kimlik, plan digest'i, capability, log, repr/str, hata veya genel JSON içine girmez. HMAC şifreleme veya uzak kimlik doğrulaması değildir.
 
-Bu öneri, [Accepted ADR-0004'teki](0004-local-durable-operation-state.md) “Sırlar DB'ye yazılmaz” sınırını yalnız bu özel keyed verifier için **kullanıcı onayına bağlı olarak daraltır**; ham credential, ham hash veya geri çözülebilir credential DB'ye yazılamaz. Genel kayıt/export yasağı korunur. ADR-0004'ün bu daraltması bu ADR Proposed iken yürürlükte değildir; Accepted kaydın anlamı sessizce değiştirilmez.
+Bu karar, [Accepted ADR-0004'teki](0004-local-durable-operation-state.md) “Sırlar DB'ye yazılmaz” sınırını yalnız bu özel keyed verifier için **2026-10-27 kullanıcı onayıyla daraltır**; ham credential, ham hash veya geri çözülebilir credential DB'ye yazılamaz. Genel kayıt/export yasağı korunur. Bu daraltma tasarım kuralıdır; yerel verifier'ın uygulanmış veya ürün kabulünün tamamlanmış olduğu anlamına gelmez.
 
 ### Kapsam, kayıt ve kodlama
 
@@ -63,4 +63,4 @@ Bu kapsam kabul edilmiyorsa K için OS secret store gerekir; keychain/secret-ser
 
 ## Sonuçlar ve kabul kapısı
 
-Onay, DB'de özel HMAC doğrulayıcısı ve ayrı açık K dosyasını, ADR-0004'ün daraltmasını, ortak binding v1 sözleşmesini ve sınırlı restore desteğini belirtilen tehdit sınırıyla kabul eder. Bu kabul olmadan mekanizma kodlanmaz. Gerçek env/DB ve ayrı süreçlerde kararlı ID, hedef örnekleri/byte vektörleri/uzunluk sınırları, eski Plan uyumu, A→B→A, concurrency/taşma, key kayıp/bozulma, bütün mkdir/üst dizin/file sync hataları, bootstrap/reset/identity-only restore kesintisi ve sızıntı testleri gerekir. Operation restore ret kabulü P01-4b'nin kapısıdır. Araştırma prototipi bu kabulün yerine geçmez; uygulama ve CLI/API sınırları P01-2 kartlarında doğrulanır.
+Kullanıcı onayı, DB'de özel HMAC doğrulayıcısı ve ayrı açık K dosyasını, ADR-0004'ün daraltmasını, ortak binding v1 sözleşmesini ve sınırlı restore desteğini belirtilen tehdit sınırıyla kapsar. Tasarım kararı kabul edildi; ürün kabulü henüz yoktur. Gerçek env/DB ve ayrı süreçlerde kararlı ID, hedef örnekleri/byte vektörleri/uzunluk sınırları, eski Plan uyumu, A→B→A, concurrency/taşma, key kayıp/bozulma, bütün mkdir/üst dizin/file sync hataları, bootstrap/reset/identity-only restore kesintisi ve sızıntı testleri gerekir. Operation restore ret kabulü P01-4b'nin kapısıdır. Araştırma prototipi bu kabulün yerine geçmez; uygulama ve CLI/API sınırları P01-2 kartlarında doğrulanır.
