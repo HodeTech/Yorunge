@@ -12,8 +12,8 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 |---|---|---|
 | 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
 | 2 | P01-4a — store/migration/backup/key temeli | İki yeni review turuyla verified |
-| 3 | P01-2b — kalıcı kimlik/nesil | Başladı |
-| 4 | P01-2b — reset/identity-only restore | Adım 3 bekliyor |
+| 3 | P01-2b — kalıcı kimlik/nesil | İki review turuyla tamamlandı |
+| 4 | P01-2b — reset/identity-only restore | Başladı |
 | 5 | P01-2c — init/profil/proje/doctor | Önceki kabul bekleniyor |
 
 Her adımın gerçek commit/test/review bulgusu burada kaydedilecek. Tasarım/probe sonucu ürün kabulü sayılmaz. Son kapanışta tam offline suite, lint/type/belge, wheel/sdist iki temiz kurulum, en az 30 süreç başlangıç bütçesi ve son PR head CI kanıtı gerekir. HTTP/cache/operation/uzak kimlik bu paketin teslimi değildir.
@@ -87,3 +87,5 @@ Diğer alanlarda doğrulanmış bulgu yok: security 79 hedefli test; delivery 31
 Head `b66d266`; yeni ajanlar `p012_s3_r2_security` (GPT-6 Astra/high), `p012_s3_r2_sql`, `p012_s3_r2_delivery` (GPT-6.1 Sol/high). İlk izin hatası düzeltmesi doğrulandı. Tek yeni P2: eksik-lock kontrolü ile dizin taraması arasında başka bootstrap tamamlanırsa sağlıklı store yanlış onarım hatası alabiliyordu. Kök ajan kontrollü interleaving ile yeniden üretti; payload görüldüğünde lock'un hâlâ eksik olması şartı eklendi. Deterministik regresyon ve 120 identity/state testi geçti.
 
 Diğer alanlar temiz: security 81 identity/credential + 100 state testi ve serializer/UTF-8 probe'ları; delivery 585 tam test, lint/type/belge/ajan, dokuz invalid API/dört CLI hatası, eski head ile tam Plan byte/digest eşitliği, geçici build/iki temiz kurulum ve 30 süreç bütçesi geçti. Bu son ölçümün p95'i help 24,697 / version 24,823 / context 117,223 ms. Reset/restore kabulü bundan sonraki adımdır.
+
+Adım 3 kapanışı: `3891479` üzerindeki odak kontrolünde bulgu sahibi yarış/partial lock/migration regresyonlarından beşini geçti, bulgu kapandı. İki bağımsız tur tamamlandı; P01-2b kartı reset/restore tamamlanana kadar in_progress kalır.
