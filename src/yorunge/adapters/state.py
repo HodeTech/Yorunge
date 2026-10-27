@@ -91,6 +91,15 @@ class BackupManifest(Model):
 
 
 def state_directory(path: Path | None) -> Path:
+    if sys.platform not in ("darwin", "linux") or sqlite3.sqlite_version_info < (3, 37, 0):
+        raise YorungeError("state_unsupported")
+    try:
+        return _state_directory(path)
+    except OSError:
+        raise YorungeError("state_write_failed") from None
+
+
+def _state_directory(path: Path | None) -> Path:
     if path is not None and not isinstance(path, Path):
         raise YorungeError("invalid_request")
     chosen = (path if path is not None else Path.home() / ".local/state/yorunge").absolute()

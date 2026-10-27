@@ -75,3 +75,9 @@ Altı alanın tam kanonik binding'i, onaylı uzunluk çerçevesiyle HMAC-SHA-256
 Reset/restore ön incelemesi (GPT-6 Astra/high, `p012_recovery_protocol_audit`) mevcut ADR'lerle uygulanabilir sınırları doğruladı; yeni kullanıcı kararı gerekmiyor. Eksik lock ile geride key kalan partial store'un lock'u yeniden yarattığı doğrulandı; payload varsa ilk lock oluşturma da fail-closed yapıldı, DB var/yok regresyonları eklendi.
 
 İlk kabul: **583 test geçti** (13,52 s), Ruff format/lint, strict mypy (25 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. Tam iki bağımsız HMAC byte vektörü, rotation/taşma/tek okuma, altı eşzamanlı gerçek child süreçte aynı nesil, farklı değerlerin işlemsel sıralanması ve API/CLI negatifleri kapsandı. İki temiz kurulum: wheel 25 üye (`a5d937dc9171552f3325f86e43fb85d7f045b32f2e87a2c5321c3fc99fa52f34`), sdist 158 üye (`34afb059e2040fe5325625f64ff4d5e9faa34aa825c53e26dcc6a3ca177a62f8`). [30 süreç ölçümü](p01-2-step-3-startup.json): sıcak p95 help 33,113 / version 24,735 / context 98,229 ms; bütçeler geçti. İki yeni review turu bekleniyor; P01-2b reset/restore olmadan kapanmaz.
+
+### Adım 3 / review 1
+
+İlk head `ad54dc6`; üç yeni ajan: `p012_s3_r1_security` (GPT-6 Astra/high), `p012_s3_r1_transactions`, `p012_s3_r1_delivery` (GPT-6.1 Sol/high). Tek P2 doğrulandı: erken `state_directory` kontrolünde erişilemeyen üst dizin ham PermissionError/CLI traceback üretiyordu. Kök ajan yeniden üretti; path kontrolüne ortak OSError dönüşümü ve runtime desteğinin secret öncesi kontrolü eklendi. CLI/API izin ve unsupported-platform regresyonları geçti.
+
+Diğer alanlarda doğrulanmış bulgu yok: security 79 hedefli test; delivery 310 test ve yedi invalid-request probe; transaction reviewer 117 identity/state testi, bozuk satır/rollback probe'ları ve on ayrı eşzamanlı child süreçte tek kimlik/nesil doğruladı. Sonraki tur farklı yeni ajanlarla yapılır.

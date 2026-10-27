@@ -284,3 +284,52 @@ def test_missing_lock_with_partial_payload_never_recreates_lock(tmp_path, keep_d
         api.initialize_state(state_dir=root)
     assert failure.value.code == "state_repair_required"
     assert not (root / "store.lock").exists()
+
+
+def test_inaccessible_state_ancestor_returns_safe_error_before_secret_read(
+    config, tmp_path, monkeypatch, cli
+):
+    parent = tmp_path / "blocked"
+    parent.mkdir()
+    child = parent / "child"
+    child.mkdir()
+
+    def denied(self, reference):
+        raise AssertionError("must validate path before reading a secret")
+
+    monkeypatch.setattr(EnvSecretReader, "read", denied)
+    parent.chmod(0)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            observe(config, child / "state")
+        assert failure.value.code == "state_write_failed"
+        result = cli(
+            "context",
+            "identity",
+            "--service",
+            "evren-platform",
+            "--config",
+            str(config),
+            "--state-dir",
+            str(child / "state"),
+            "--output",
+            "json",
+            credential=True,
+            state=True,
+        )
+        assert result.returncode == 2
+        assert result.stdout == ""
+        assert json.loads(result.stderr) == failure.value.envelope()
+    finally:
+        parent.chmod(0o700)
+
+
+def test_unsupported_platform_rejected_before_secret_read(config, tmp_path, monkeypatch):
+    def denied(self, reference):
+        raise AssertionError("must validate runtime before reading a secret")
+
+    monkeypatch.setattr(EnvSecretReader, "read", denied)
+    monkeypatch.setattr("yorunge.adapters.state.sys.platform", "unsupported")
+    with pytest.raises(YorungeError) as failure:
+        observe(config, tmp_path / "state")
+    assert failure.value.code == "state_unsupported"
