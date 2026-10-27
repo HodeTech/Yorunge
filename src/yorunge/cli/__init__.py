@@ -63,8 +63,14 @@ def parser() -> Parser:
     commands = root.add_subparsers(dest="command", required=True)
     context = commands.add_parser("context", help="Yerel profil bağlamı")
     common(context)
-    show = context.add_subparsers(dest="action", required=True).add_parser("show")
+    context_actions = context.add_subparsers(dest="action", required=True)
+    show = context_actions.add_parser("show")
     common(show)
+    credential = context_actions.add_parser(
+        "credential", help="Seçilen hizmetin env sırrını kontrol et"
+    )
+    common(credential)
+    credential.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
@@ -82,8 +88,14 @@ def parser() -> Parser:
 
 
 def text_result(data: Model) -> str:
+    from yorunge.domain.credentials import CredentialCheck
     from yorunge.domain.models import CapabilityView, Context, Plan
 
+    if isinstance(data, CredentialCheck):
+        return (
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
+            "Sır mevcut; uzak erişim doğrulanmadı."
+        )
     if isinstance(data, Context):
         return (
             f"Profil: {data.profile}\nProje: {data.project_id or 'seçilmedi'}\n"
@@ -128,7 +140,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     options = vars(args)
     json_output = options.get("output", "text") == "json"
-    result: Result[Plan] | Result[Context] | Result[CapabilityView]
+    from yorunge.domain.credentials import CredentialCheck
+
+    result: Result[Plan] | Result[Context] | Result[CapabilityView] | Result[CredentialCheck]
     try:
         if args.command == "plan" and args.action == "show":
             if any(options.get(name) is not None for name in ("config", "profile", "project")):
@@ -137,7 +151,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             context_options = {name: options.get(name) for name in ("config", "profile", "project")}
             if args.command == "context":
-                result = api.show_context(**context_options)
+                result = (
+                    api.check_credential(args.service, **context_options)
+                    if args.action == "credential"
+                    else api.show_context(**context_options)
+                )
             else:
                 task = "llm.train" if args.command == "train" else options.get("task")
                 use_case = (

@@ -9,6 +9,9 @@ ErrorCode = Literal[
     "profile_not_found",
     "unsupported_combination",
     "tool_unavailable",
+    "credential_unavailable",
+    "invalid_credential",
+    "invalid_service_target",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -20,17 +23,25 @@ MESSAGES: dict[ErrorCode, str] = {
     "profile_not_found": "Seçilen profil bulunamadı. Config içindeki profil adını kontrol edin.",
     "unsupported_combination": "Görev, araç, ortam veya parametre birleşimi desteklenmiyor.",
     "tool_unavailable": "Seçilen araç tanınmıyor. Açıkça kayıtlı bir araç kimliği seçin.",
+    "credential_unavailable": (
+        "Seçilen hizmetin sır referansı veya değeri eksik. Profil ve env ayarını kontrol edin."
+    ),
+    "invalid_credential": (
+        "Seçilen hizmetin sır değeri geçersiz. UTF-8 ve uzunluk sınırını kontrol edin."
+    ),
+    "invalid_service_target": (
+        "Hizmet hedefi credential kullanımı için geçersiz. HTTPS adresini kontrol edin."
+    ),
 }
 
 
 class YorungeError(Exception):
     """Safe public failure: never attaches parser input, paths or provider bodies."""
 
-    exit_code = 2
-
     def __init__(self, code: ErrorCode) -> None:
         self.code = code
         self.message = MESSAGES[code]
+        self.exit_code = 3 if code in ("credential_unavailable", "invalid_credential") else 2
         super().__init__(self.message)
 
     def envelope(self) -> dict[str, object]:

@@ -1,4 +1,4 @@
-"""Public offline use cases. No network, credentials, database or tool discovery."""
+"""Local use cases; credential access requires an explicit service check."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
+from yorunge.domain.credentials import CredentialCheck, ServiceId
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
     CapabilityView,
@@ -30,6 +31,10 @@ class Request(Model):
     task: Task | None = None
     tool: Identifier | None = None
     execution: Execution | None = None
+
+
+class CredentialRequest(Request):
+    service_id: ServiceId
 
 
 def _context(
@@ -71,6 +76,35 @@ def show_context(
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     context, _ = _context(config, request, None)
     return Result[Context](data=context)
+
+
+def check_credential(
+    service_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+) -> Result[CredentialCheck]:
+    """Check only the selected env reference; never authenticates or persists identity."""
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.credentials import resolve_credential
+
+    request = validate(
+        CredentialRequest,
+        {"service_id": service_id, "profile": profile, "project": project},
+        "invalid_request",
+    )
+    context, selected = _context(config, request, None)
+    resolved = resolve_credential(selected, request.service_id, EnvSecretReader())
+    return Result[CredentialCheck](
+        data=CredentialCheck(
+            service_id=resolved.reference.service_id,
+            **resolved.target.model_dump(),
+            profile=context.profile,
+            account_id=context.account_id,
+            project_id=context.project_id,
+        )
+    )
 
 
 def _resolve(

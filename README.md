@@ -41,6 +41,14 @@ assert saved.data.digest == result.data.digest
 
 `plan show --plan offline-plan.json` kayıtlı seçimi mevcut profilden yeniden çözmez. Digest bütünlük kontrolüdür; yürütme onayı değildir. Kurulum, kontrol ve build adımları [katkı rehberinde](CONTRIBUTING.md); kesin uygulama sınırı [CLI](docs/reference/cli-contract.md) ve [config](docs/reference/configuration.md) sözleşmelerindedir. Yerel doğrulama ve ölçümler: [P01 kabul kaydı](docs/research/p01-core-validation.md).
 
+Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarını açıkça kontrol edebilirsiniz:
+
+```sh
+.venv/bin/yorunge context credential --service evren-platform --config examples/profile.toml --output json
+```
+
+Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Diğer yerel komutlar env sırrını okumaz.
+
 ## Ürün yaklaşımı
 
 - **EVREN odaklı kapsam:** Veri aktarımı, model keşfi, çıkarım, eğitim, kaynak görünürlüğü ve sonuç yönetimi aynı ürünün alanlarıdır.

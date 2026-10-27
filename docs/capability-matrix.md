@@ -6,7 +6,7 @@
 
 | Kimlik | Yetenek | Kullanıcı sonucu | EVREN/araç kanıtı | Yörünge durumu | Hedef |
 |---|---|---|---|---|---|
-| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/context testli; uzak kimlik yok | P01 yerel / P02-0b uzak |
+| C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/context ve açık env kontrolü testli; kalıcı/uzak kimlik yok | P01 yerel / P02-0b uzak |
 | C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm testli; doctor/keşif/cache yok | P01 yerel / P02 hesap kanıtı |
 | C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Planlandı | P02 |
 | C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |

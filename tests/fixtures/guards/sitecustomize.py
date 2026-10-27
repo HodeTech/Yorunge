@@ -4,7 +4,19 @@ import os
 import sys
 
 META = os.environ.get("YORUNGE_TEST_METADATA") == "1"
+CREDENTIAL = os.environ.get("YORUNGE_TEST_CREDENTIAL") == "1"
 FORBIDDEN = ("torch", "transformers", "trl", "keyring", "forgelm", "axolotl")
+
+original_getitem = type(os.environ).__getitem__
+
+
+def guarded_getitem(self, key):
+    if key in ("EVREN_PLATFORM_API_KEY", "EVREN_LLM_API_KEY") and (META or not CREDENTIAL):
+        raise RuntimeError("forbidden implicit credential access")
+    return original_getitem(self, key)
+
+
+type(os.environ).__getitem__ = guarded_getitem
 
 
 def audit(event, args):

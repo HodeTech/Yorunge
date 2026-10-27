@@ -1,6 +1,6 @@
 # Hizmet hedefi ve özel credential binding v1
 
-**Durum:** Benimsenmiş — 2026-10-27 kullanıcı onayıyla Accepted ADR-0012'nin bağlı sözleşmesi; henüz uygulanmadı. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
+**Durum:** Benimsenmiş — Accepted ADR-0012'nin bağlı sözleşmesi; P01-2a hedef kapısı/secret byte sınırı uygulandı, kalıcı binding/HMAC henüz yoktur. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
 
 ## Hizmet hedefi: service-target-v1
 
@@ -29,7 +29,7 @@ Host/port/case ve yüzde kodlamasının genel sözdizimi [RFC 3986](https://www.
 
 P01-2 mevcut v1 offline Plan üretimi/yükleme ve digest baytlarını değiştirmez. `scope_for` bugün portu atar fakat örneğin IPv6 yazımını sıkıştırmaz; “origin/etkin port” ifadesi bu eski kaydı başka kimlik sayma gerekçesi değildir. Registry için tam context URL'si; gelecekte plan/capability karşılaştırması için kayıtlı origin + API kökü aynı `service-target-v1` kuralıyla **geçici karşılaştırma değeri** üretir. Kayıtlı Plan rewrite edilmez, digest yeniden yazılmaz ve offline Plan execution planına yükseltilmez.
 
-Mevcut parser'ın kabul edip bu yeni credential hedef kapısının reddettiği Unicode host, bozuk escape veya belirsiz path için açık hata gerekir; sessiz hedef düzeltmesi yoktur. Gelecekte prepared plan biçimi değişirse P01-3 kendi açık şema/uyumluluk kararıyla ilerler. Bu önerinin ürün kabulünde eski v1 dosyalarının değişmeden yüklenmesi ve hedef eşlemesi ayrıca sınanır; bugünkü kod için uygulanmış normalizer iddiası değildir.
+Mevcut parser'ın kabul edip bu yeni credential hedef kapısının reddettiği Unicode host, bozuk escape veya belirsiz path için açık hata gerekir; sessiz hedef düzeltmesi yoktur. Gelecekte prepared plan biçimi değişirse P01-3 kendi açık şema/uyumluluk kararıyla ilerler. P01-2a ürün testleri hedef örnekleri ve eski v1 dosyalarının değişmeden yüklenmesini kapsar; kalıcı registry/kimlik entegrasyonu sonraki adımdır.
 
 ## Binding alan kümesi
 

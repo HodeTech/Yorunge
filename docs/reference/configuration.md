@@ -1,14 +1,14 @@
 # Profil ve reçete sözleşmesi
 
-**Durum:** v1 yerel alt küme uygulandı; secret erişimi/migration ve yürütme bağları planlandı. **Tarih:** 2026-10-27.
+**Durum:** v1 yerel alt küme ve açık env çözümleme uygulandı; migration/kalıcı kimlik ve yürütme bağları planlandı. **Tarih:** 2026-10-27.
 
 ## Uygulanan dosya ve şema sınırı
 
-Config açık `--config PATH` / Python `config=Path(...)` ile seçilir. Verilmezse `~/.config/yorunge/config.toml` okunur; dosya yoksa sır/hesap/proje içermeyen yerleşik `default` profili kullanılır. Açık dosya yoksa hata döner. Env davranış override'ı taranmaz; bu dilimde credential değeri de okunmaz. `platform_key_env` ve `llm_key_env` yalnız ad şemasıyla doğrulanır, context/plan/çıktıya dahil edilmez. Keychain henüz yoktur.
+Config açık `--config PATH` / Python `config=Path(...)` ile seçilir. Verilmezse `~/.config/yorunge/config.toml` okunur; dosya yoksa sır/hesap/proje içermeyen yerleşik `default` profili kullanılır. Açık dosya yoksa hata döner. Env davranış override'ı taranmaz. `platform_key_env` ve `llm_key_env` adları şemayla doğrulanır, context/plan/çıktıya dahil edilmez. Değer yalnız açık `context credential --service …` / `api.check_credential` çağrısında seçilen hizmet için bir kez okunur; yerel context/capability/offline plan okumaz. Keychain henüz yoktur.
 
 TOML root alanları: `schema_version=1` (bool/string değil int), `active_profile`, `profiles`. Her profil: `platform_url`, `llm_url`, `platform_key_env`, `llm_key_env`, `account_id`, `project_id`, `tools.defaults`. Bilinmeyen/nested alan ve yinelenen anahtar reddedilir. Proje önceliği açık çağrı → reçete `project` → profil `project_id` → null; liste başından proje alınmaz. Eksik proje yerel okumayı/plan hazırlığını engellemez; gerektiğinde remote plan engeli olur.
 
-`platform_key_env`/`llm_key_env` verilirse ad 1–128 ASCII karakter ve `^[A-Z_][A-Z0-9_]*$` biçimindedir (`EnvName` modelinin mevcut v1 sınırı). Bu ad sınırı secret değerinin uzunluğu değildir; değer bugün çözülmez. Secret değerinin UTF-8 byte sınırı ve credential hedef eşlemesi [benimsenmiş binding sözleşmesinde](credential-binding-v1.md) Accepted ADR-0012'ye bağlıdır; henüz uygulanmadı ve mevcut config/Plan dosyaları bu kayıtla yeniden yazılmaz.
+`platform_key_env`/`llm_key_env` verilirse ad 1–128 ASCII karakter ve `^[A-Z_][A-Z0-9_]*$` biçimindedir (`EnvName` modelinin mevcut v1 sınırı). Açık çözümlemede secret strict UTF-8 ile 1–16.384 bayt olmalıdır; trim/case/Unicode normalizasyonu yapılmaz. Secret'ın veya referansın eksikliği başka hizmete fallback üretmez. Credential hedef kapısı [binding v1](credential-binding-v1.md) kuralını uygular; kalıcı HMAC/kimlik henüz yoktur. Mevcut config/Plan dosyaları yeniden yazılmaz.
 
 Hizmet URL'leri HTTPS olmalı; userinfo, dolu query/fragment, beklenmeyen port, kontrol karakteri ve karışmış bilinen Platform/LLM host'ları reddedilir. Mevcut offline parser boş `?`/`#` ayıraçlarını kabul eder; yeni credential hedef kapısı bunları [binding v1](credential-binding-v1.md) gereği reddeder. Eski offline Plan uyumu için genel parser bu kapıyla sessizce değiştirilmez. Özel host'u yerel şemaya kabul etmek o host'un güvenilirliğini veya API uyumunu doğrulamaz. IPv6 kapsamı köşeli parantezle korunur. Uzak hedef politikası sonraki HTTP işinde doğrulanmalıdır.
 

@@ -16,7 +16,7 @@
 
 ## Sıradaki somut iş
 
-**Aktif hazırlık [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** [B02/B13 araştırmasına](../research/p01-2-state-identity-decision-review.md) bağlı ADR-0011/0012 ve binding v1, 2026-10-27 kullanıcı onayıyla benimsendi. Karar kapısı kapandı; ürün uygulaması henüz başlamadı.
+**Aktif uygulama [P01-2 tek PR paketidir](p01-2-delivery-plan.md); dal `feat/p01-2-identity-context`, taban `development@83bcd83`.** ADR-0011/0012 ve binding v1 kullanıcı tarafından benimsendi; uygulama yetkilendirildi. Adım 1 env/taşıyıcı/hedef kapısı review'dedir; [gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
 
 Onay öncesi iki incelemenin [doğrulama/düzeltme kaydı](../research/p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması) rapordadır. Reset/restore ayrımı, kalıcı no-clobber backup, migration değişmezleri ve [ortak binding v1](../reference/credential-binding-v1.md) Accepted tasarıma dahildir. Alt iş durumları uygulama/bağımlılık kanıtı olmadan ilerletilmedi.
 
