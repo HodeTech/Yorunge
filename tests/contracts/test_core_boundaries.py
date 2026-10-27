@@ -9,12 +9,16 @@ from yorunge import api
 from yorunge.domain.errors import YorungeError
 
 MARKER = "synthetic-secret-48291"
-SCALARS = [
-    f"!!bool {MARKER}",
-    '!!int ""',
-    '!!float ""',
-    f"!!timestamp {MARKER}",
-    '!!float "1:' + "00:" * 200 + '00.0"',
+MALFORMED_TAGS = [
+    pytest.param(f"task: !!bool {MARKER}", id="bool"),
+    pytest.param('task: !!int ""', id="empty-int"),
+    pytest.param('task: !!float ""', id="empty-float"),
+    pytest.param(f"task: !!timestamp {MARKER}", id="timestamp"),
+    pytest.param('task: !!float "1:' + "00:" * 200 + '00.0"', id="float-overflow"),
+    pytest.param(f"task: !!map [{MARKER}]", id="map-scalar-sequence"),
+    pytest.param(f"task: !!set [{MARKER}]", id="set-scalar-sequence"),
+    pytest.param("task: !!map [{}]", id="map-mapping-sequence"),
+    pytest.param("task: llm.train\nprovider_options: !!map []", id="empty-map-sequence"),
 ]
 CONTROLS = [chr(value) for value in (*range(32), *range(127, 160))]
 
@@ -26,10 +30,10 @@ def write_plan(path, value):
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
-@pytest.mark.parametrize("scalar", SCALARS)
-def test_malformed_yaml_scalar_is_safe_in_api_and_console(tmp_path, cli, scalar):
+@pytest.mark.parametrize("body", MALFORMED_TAGS)
+def test_malformed_yaml_tag_is_safe_in_api_and_console(tmp_path, cli, body):
     recipe = tmp_path / "recipe.yaml"
-    recipe.write_text(f"schema_version: 1\ntask: {scalar}\n", encoding="utf-8")
+    recipe.write_text(f"schema_version: 1\n{body}\n", encoding="utf-8")
     with pytest.raises(YorungeError) as failure:
         api.prepare_plan(recipe=recipe)
     assert failure.value.code == "invalid_recipe"

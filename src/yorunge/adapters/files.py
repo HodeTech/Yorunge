@@ -10,6 +10,7 @@ from typing import TypeVar
 
 import yaml
 from pydantic import ValidationError
+from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
 from yaml.tokens import AliasToken, AnchorToken
 
@@ -46,6 +47,8 @@ def read_text(path: Path, limit: int, code: ErrorCode) -> str:
 
 class RecipeLoader(yaml.SafeLoader):
     def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Hashable, object]:
+        if not isinstance(node, MappingNode):
+            raise ConstructorError(None, None, "mapping node required", node.start_mark)
         result: dict[Hashable, object] = {}
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
