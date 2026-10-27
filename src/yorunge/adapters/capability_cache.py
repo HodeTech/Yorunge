@@ -73,6 +73,9 @@ class TimeGate:
     def require(self, record: CapabilityRecord) -> None:
         self.intervals.append((instant(record.checked_at), instant(record.expires_at)))
 
+    def require_range(self, start: datetime, end: datetime) -> None:
+        self.intervals.append((start, end))
+
     def check(self, now: datetime) -> None:
         if any(not start <= now < end for start, end in self.intervals):
             raise YorungeError("capability_expired")
@@ -167,10 +170,11 @@ class StateCache:
         clock: Clock | None = None,
         *,
         bindings: tuple[CredentialIdentity, ...] = (),
+        budget_seconds: float = 5.0,
     ) -> None:
         self.store, self.connection = store, store.connection
         self.clock = clock or SystemClock()
-        self.end = self.clock.monotonic() + 5.0
+        self.end = self.clock.monotonic() + budget_seconds
         self.bindings = bindings
         self.observation_high: datetime | None = None
         self.observation_anomaly = False

@@ -107,3 +107,8 @@ Sonuçtaki hit/freshness, etkin destek ve tarihsel kayıt [cache v2 sözleşmesi
 ## Yerel config yönetimi ve doctor
 
 Uygulanan `init`, `context profiles`, `context use-profile NAME`, `context set-project ID`, `context clear-project` ve `doctor` seçenekleri/API sonuçları [config sözleşmesinde](configuration.md#yerel-config-yazma-ve-tanılama) tanımlıdır. Init/update no-clobber/backup/optimistic conflict ve atomik publish kullanır. `config_unsupported`, `config_exists`, `config_conflict`, `config_busy`, `config_write_failed` çıkış 2; yayın sonrası `config_write_uncertain` çıkış 5'tir. Çıkış 5'te güncel dosya ve backup incelenir, otomatik tekrar yoktur. Doctor desteklenmeyen yerel platformda I/O öncesi `state_unsupported` ile 2 döner; desteklenen ortamda tanıların toplanmasında 0 döner; `checks`/`issue_count` değerlendirilir, `not_checked` başarıya çevrilmez. Varsayılan doctor sır/K içeriği okumaz veya state/lock/key yaratmaz.
+
+
+## Kalıcı execution hazırlığı
+
+`plan execution prepare|list|show|validate` ve Python karşılıkları uygulandı; exact seçenekler, gövde, validity/hata ve dosya/süre sınırları [execution planı v2](execution-plan.md) içindedir. Eski `plan prepare/show` v1 kalır. Approval/revoke/forget sonraki uygulama adımındadır; run/dispatch yoktur.

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.execution import ExecutionPlans, ExecutionPlanView, ExecutionValidity
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
     from yorunge.domain.state import StateInfo
@@ -31,6 +32,9 @@ if TYPE_CHECKING:
         | Result[ProfilesView]
         | Result[DoctorReport]
         | Result[CachedCapabilityView]
+        | Result[ExecutionPlanView]
+        | Result[ExecutionPlans]
+        | Result[ExecutionValidity]
     )
 
 
@@ -135,6 +139,22 @@ def parser() -> Parser:
     saved = actions.add_parser("show", help="Kaydedilmiş planı doğrula ve göster")
     common(saved, context=False)
     saved.add_argument("--plan", required=True, type=Path, help="Plan nesnesi içeren JSON dosyası")
+    execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
+    common(execution_plan)
+    execution_actions = execution_plan.add_subparsers(dest="execution_action", required=True)
+    for name in ("prepare", "list", "show", "validate"):
+        command = execution_actions.add_parser(name)
+        if name == "prepare":
+            planning_options(command)
+            command.add_argument("--input-root", type=Path)
+        else:
+            common(command, context=name == "validate")
+        command.add_argument("--state-dir", type=Path)
+        if name in ("show", "validate"):
+            command.add_argument("--plan-id", required=True)
+        if name == "list":
+            command.add_argument("--limit", type=int, default=50)
+            command.add_argument("--cursor")
     train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
     common(train)
     train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
@@ -170,9 +190,24 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.execution import ExecutionPlans, ExecutionPlanView, ExecutionValidity
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
+    if isinstance(data, ExecutionPlanView):
+        plan = data.plan
+        return (
+            f"Execution planı: {plan.plan_id}\nDigest: {plan.digest}\n"
+            f"Hazırlık: {plan.status}; güncel geçerlilik: "
+            f"{data.validity.valid if data.validity else 'denetlenmedi'}\n"
+            f"Engeller: {', '.join(plan.assessment.blockers) or '-'}\nYürütme başlatılmaz."
+        )
+    if isinstance(data, ExecutionValidity):
+        return f"Geçerli: {data.valid}\nNedenler: {', '.join(data.reasons) or '-'}"
+    if isinstance(data, ExecutionPlans):
+        return "\n".join(f"{p.plan_id} {p.digest} {p.task} ({p.status})" for p in data.plans) + (
+            f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else ""
+        )
     if isinstance(data, CachedCapabilityView):
         return "\n".join(
             f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
@@ -320,6 +355,8 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return state_result(args)
     if args.command == "context":
         return context_result(args)
+    if args.command == "plan" and args.action == "execution":
+        return execution_result(args)
     if args.command == "plan" and args.action == "show":
         reject_context(args, ("config", "profile", "project"))
         return api.load_plan(args.plan)
@@ -347,4 +384,30 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     use_case = api.inspect_capabilities if args.command == "capabilities" else api.prepare_plan
     return use_case(
         **context_options, task=task, recipe=args.recipe, tool=args.tool, execution=args.execution
+    )
+
+
+def execution_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    action = args.execution_action
+    if action in ("list", "show"):
+        reject_context(args, ("config", "profile", "project"))
+        if action == "list":
+            return api.list_execution_plans(
+                limit=args.limit, cursor=args.cursor, state_dir=args.state_dir
+            )
+        return api.show_execution_plan(args.plan_id, state_dir=args.state_dir)
+    context = {name: options.get(name) for name in ("config", "profile", "project")}
+    if action == "validate":
+        return api.validate_execution_plan(args.plan_id, state_dir=args.state_dir, **context)
+    return api.prepare_execution_plan(
+        task=args.task,
+        recipe=args.recipe,
+        tool=args.tool,
+        execution=args.execution,
+        input_root=args.input_root,
+        state_dir=args.state_dir,
+        **context,
     )

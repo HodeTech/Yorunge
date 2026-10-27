@@ -7,18 +7,24 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from yorunge.application.planning import capability_records
 from yorunge.domain.capabilities import (
     TTL,
     CachedCapability,
     CapabilityKey,
     CapabilityRecord,
+    CapabilityScopeV2,
     Evidence,
+    ExecutionBinding,
+    ModelBinding,
+    ToolBinding,
     canonical,
     instant,
     timestamp,
 )
+from yorunge.domain.credentials import CredentialIdentity, normalize_target
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import Support
+from yorunge.domain.models import Capability, Context, Recipe, Selection, Support
 
 
 class Producer(Protocol):
@@ -177,3 +183,64 @@ def combine(
         )
     except ValidationError:
         raise YorungeError("invalid_request") from None
+
+
+def policy_keys(
+    context: Context,
+    selection: Selection,
+    recipe: Recipe,
+    *,
+    store_id: str,
+    identity_epoch: str,
+    clock_generation: int,
+    identity: CredentialIdentity | None,
+) -> tuple[tuple[CapabilityKey, Capability], ...]:
+    """Build exact policy scopes once for cache and current execution validation."""
+    records = []
+    for old in capability_records(context, selection):
+        local = old.capability_id == "planning.offline" or old.scope.service_id == "local"
+        service = "local" if local else old.scope.service_id
+        target = (
+            None
+            if local
+            else normalize_target(
+                context.llm_url if service == "evren-llm" else context.platform_url
+            )
+        )
+        scope = CapabilityScopeV2(
+            schema_version=2,
+            store_id=store_id,
+            identity_epoch=identity_epoch,
+            clock_generation=clock_generation,
+            service_id=service,
+            service_origin=target.service_origin if target else None,
+            api_base_path=target.api_base_path if target else None,
+            account_id=context.account_id,
+            project_id=context.project_id,
+            credential_id=identity.credential_id if identity and not local else None,
+            credential_revision=identity.credential_revision if identity and not local else None,
+            authorization_scope=None,
+            model=ModelBinding(
+                source=recipe.model.source,
+                id=recipe.model.id,
+                revision=recipe.model.revision,
+                content_digest=None,
+            )
+            if recipe.model
+            else None,
+            tool=ToolBinding(
+                id=selection.tool, version=None, executable_digest=None, environment_digest=None
+            )
+            if selection.tool
+            else None,
+            execution=ExecutionBinding(
+                backend=selection.execution,
+                runtime_id=None,
+                runtime_revision=None,
+                environment_digest=None,
+            ),
+        )
+        records.append(
+            (CapabilityKey(capability_id=old.capability_id, task=recipe.task, scope=scope), old)
+        )
+    return tuple(records)

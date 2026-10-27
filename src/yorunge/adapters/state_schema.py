@@ -93,6 +93,22 @@ pinned_until TEXT CHECK(pinned_until IS NULL OR length(pinned_until)=27)
             "CREATE INDEX capability_groups ON capability_cache(group_key,checked_at,cache_key)",
         ),
     ),
+    Migration(
+        2,
+        3,
+        (
+            """CREATE TABLE execution_plans (
+plan_id TEXT PRIMARY KEY CHECK(length(plan_id)=36),
+digest TEXT NOT NULL CHECK(length(digest)=64),
+task TEXT NOT NULL,
+prepared_at TEXT NOT NULL CHECK(length(prepared_at)=27),
+expires_at TEXT NOT NULL CHECK(length(expires_at)=27),
+status TEXT NOT NULL CHECK(status IN ('draft','prepared')),
+payload TEXT NOT NULL CHECK(length(payload)<=65536)
+) STRICT""",
+            "CREATE INDEX execution_plan_order ON execution_plans(prepared_at,plan_id)",
+        ),
+    ),
 )
 
 

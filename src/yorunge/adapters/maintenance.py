@@ -58,7 +58,7 @@ from yorunge.domain.state import StateInfo, canonical_uuid
 
 STAGE_SUFFIX = ".sqlite3"
 IDENTITY_TABLES = {"state_meta", "schema_migrations", "credential_bindings"}
-RESTORABLE_TABLES = IDENTITY_TABLES | {"cache_clock", "capability_cache"}
+RESTORABLE_TABLES = IDENTITY_TABLES | {"cache_clock", "capability_cache", "execution_plans"}
 
 
 class RestoreIntent(Model):
@@ -140,12 +140,26 @@ def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> IdentitySnap
         deadline.remaining()
         digest.update(json.dumps(row, separators=(",", ":"), ensure_ascii=True).encode() + b"\n")
         count += 1
+    plan_digest = hashlib.sha256()
+    plan_count = 0
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='execution_plans'"
+    ).fetchone():
+        for row in connection.execute(
+            "SELECT plan_id,digest,status,prepared_at,expires_at "
+            "FROM execution_plans ORDER BY plan_id"
+        ):
+            deadline.remaining()
+            plan_digest.update(json.dumps(row, separators=(",", ":")).encode() + b"\n")
+            plan_count += 1
     return IdentitySnapshot(
         store_id=value.store_id,
         identity_epoch=value.identity_epoch,
         store_schema_version=version,
         binding_count=count,
         binding_fingerprint=digest.hexdigest(),
+        plan_count=plan_count,
+        plan_fingerprint=plan_digest.hexdigest(),
     )
 
 

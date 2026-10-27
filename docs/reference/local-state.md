@@ -45,3 +45,8 @@ Ortak exclusive `store.lock` boyunca yeni K, özel `restore-intent.json`, özel 
 Tamamlanmış/yarım backup, orphan key ve interrupted stage dosyaları otomatik silinmez. Temizleme ve saklama kullanıcının açık yerel yönetimine aittir. Süreç kesintisi testleri fiziksel güç kesintisi/disk firmware garantisi değildir.
 
 Cache/clock şema geçişinde snapshot/manifest ve tam payload/index tutarlılığı doğrulanır; yanlış projection/group/key veya bozuk payload cache miss diye gizlenmez. Reset cache'i temizler, clock alanını yeni identity epoch'a bağlar; kimlik geçmişini silmez. Önceki runtime'ın tamamlanmış eski stage/live restore çifti, kaynak backup kayıpken de intent'in aynı epoch/K'sı korunarak yeni şemaya yükseltilir. Tam hedef sürüm ve kalıcılık tamamlanmadan intent kaldırılmaz. Plan/onay tüketicisi ve bakım preview v2 henüz P01-3b uygulama adımlarıdır; bu cache-only sürüm onları teslim etmiş sayılmaz.
+
+
+## Execution planı tüketicisi
+
+P01-3 adım 2 migration2→3 ile execution_plans ekler; [exact plan/bakım sözleşmesi](execution-plan.md#state-ve-bakım). MaintenancePreview schema_version=2 ve cache_invalidated=true alanlarını, current/source özetinde plan_count ve plan_fingerprint'i taşır. Plan değişimi digest'i değiştirir; cache/clock-only güncelleme değiştirmez. Reset geçmiş planları tutup epoch ile etkisizleştirir; restore geçmiş kaybını açık gösterir. Onay tüketicisi sonraki adımda eklenecek; operation/unknown runtime kapısı açılmadı.

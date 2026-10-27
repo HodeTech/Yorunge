@@ -1,6 +1,14 @@
 from typing import Literal
 
 ErrorCode = Literal[
+    "input_unsupported",
+    "input_invalid",
+    "input_changed",
+    "input_budget_exceeded",
+    "execution_timeout",
+    "plan_not_found",
+    "plan_not_valid",
+    "plan_capacity_exceeded",
     "invalid_request",
     "invalid_config",
     "invalid_recipe",
@@ -31,6 +39,18 @@ ErrorCode = Literal[
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "input_unsupported": "Güvenli dosya bağlama bu platformda desteklenmiyor.",
+    "input_invalid": "Girdi kökü veya dosya geçersiz. Açık kök ve düzenli göreli dosya kullanın.",
+    "input_changed": "Girdi veya kök kimliği değişti. Güncel içerikle yeni plan hazırlayın.",
+    "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
+    "execution_timeout": "Execution hazırlığı veya doğrulaması 30 saniyelik bütçeyi aştı.",
+    "plan_not_found": "Kayıtlı plan bulunamadı. Plan listesini inceleyin.",
+    "plan_not_valid": (
+        "Execution planı güncel ve onaylanabilir değil. Engelleri ve bağları inceleyin."
+    ),
+    "plan_capacity_exceeded": (
+        "Plan kotası dolu. Listeyi inceleyip seçili eski planı açıkça unutun."
+    ),
     "capability_expired": (
         "Yetenek kanıtının süresi veya saat/bekleme bütçesi geçersiz. Güncel kaydı inceleyin."
     ),

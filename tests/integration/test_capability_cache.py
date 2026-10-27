@@ -7,6 +7,7 @@ import pytest
 from yorunge import api
 from yorunge.adapters.capability_cache import StateCache, decode_record
 from yorunge.adapters.state import open_store
+from yorunge.adapters.state_schema import MIGRATIONS
 from yorunge.application.capabilities import LocalPolicyProducer
 from yorunge.domain.capabilities import (
     AuthorizationScope,
@@ -227,7 +228,7 @@ def test_conflict_is_retained_after_aggregate_expiry_and_quota_pressure(tmp_path
         record = cache.query(key, stamp).record
         assert record.support == "unknown"
         assert {e.producer_id for e in record.evidence} == {"yorunge-local-policy", "other"}
-        assert store.verify().store_schema_version == 2
+        assert store.verify().store_schema_version == len(MIGRATIONS)
 
 
 def test_cache_reset_and_restore_never_reactivate_old_epoch(tmp_path):
@@ -275,6 +276,7 @@ def test_two_processes_merge_same_producer_conflicts_without_last_writer_win(tmp
     code = """import sys,time
 from pathlib import Path
 from yorunge.adapters.state import open_store
+from yorunge.adapters.state_schema import MIGRATIONS
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.application.capabilities import LocalPolicyProducer
 from yorunge.domain.capabilities import CapabilityKey
@@ -388,13 +390,16 @@ def test_real_v1_to_cache_migration_preserves_identity_and_verified_backup(
         old = api.observe_credential("evren-platform", config=config, state_dir=root).data.identity
     current = api.observe_credential("evren-platform", config=config, state_dir=root).data.identity
     assert current == old
-    saved = next((root / "backups").iterdir())
-    assert read_backup(saved, Deadline(), state_schema.MIGRATIONS).source_version == 1
+    saved_versions = {
+        read_backup(saved, Deadline(), state_schema.MIGRATIONS).source_version
+        for saved in (root / "backups").iterdir()
+    }
+    assert saved_versions == set(range(1, len(state_schema.MIGRATIONS)))
     with open_store(root) as store:
-        assert store.verify().store_schema_version == 2
+        assert store.verify().store_schema_version == len(MIGRATIONS)
         assert store.connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,)]
+        ).fetchall() == [(step.to_version,) for step in MIGRATIONS]
 
 
 @pytest.mark.parametrize("cut", ["intent", "stage", "live"])
@@ -450,7 +455,7 @@ raise AssertionError('cut not reached')
     preview = api.preview_state_recovery(state_dir=target).data
     result = api.recover_state(preview.digest, state_dir=target).data
     assert result.identity_epoch == announced
-    assert result.store_schema_version == 2
+    assert result.store_schema_version == len(MIGRATIONS)
     assert not (target / "restore-intent.json").exists()
     assert (
         api.query_capabilities(task="llm.train", state_dir=target).data.records[0].freshness
