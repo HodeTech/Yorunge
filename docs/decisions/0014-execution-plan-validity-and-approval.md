@@ -31,7 +31,15 @@ Kanonik JSON kodlaması ADR-0013 ile aynıdır; yalnız `digest` hariç bütün 
 
 ### Girdi ve güncel bağ doğrulaması
 
-Yerel dosya bağlama açık `input_root` altında, kök dahil symlink içermeyen düzenli dosyalarla yapılır. Absolute/kök dışı/dot traversal referansı reddedilir. Hash sınırlı bloklarla, monotonic toplam bütçesi altında ve SQL write transaction'ı dışında hesaplanır; descriptor/stat değişimi denetlenir. Aynı boyut/mtime veya eski hash cache'i güncel içerik yerine geçmez. Mevcut recipe'deki `data.manifest` için yalnız dosyanın kendi içeriği bağlanır; içerikteki bütün veri dosyalarının doğrulandığı iddia edilmez. Model revision etiketi tek başına değişmez model içeriği değildir. Görev adaptörünün tam girdi kapanışı doğrulanamıyorsa plan blocked kalır.
+Yerel dosya bağlama açık `input_root` altında, kök dahil symlink içermeyen düzenli dosyalarla yapılır. Kök argümanı mutlak olabilir; mutlak **girdi referansı**, boş/`.`/`..` yol bileşeni, kök dışı yol ve symlink reddedilir. Yerel referans varsa açık root gerekir; yerel girdi yoksa root null olabilir. Göreli root prepare çağrısı başındaki CWD'ye bir kez bağlanır (`.` root olarak CWD'yi seçebilir); `..` içeren root reddedilir. `Path.resolve()` ile symlink takip edilip kabul edilmez. Plana UTF-8 mutlak root ankrajı ve açılan kökün `fstat` ile `st_dev/st_ino` kimliği dahil edilir. Validate/approve saklanan ankrajı kullanır; yeni CWD'ye göre yorumlama, root override veya başka köke fallback yoktur. Root kimliği değişmişse byte-identical içerikte dahi yeni plan gerekir.
+
+**Descriptor yürüyüşü:** Desteklenen macOS/Linux'ta `/` descriptor'ından başlayıp root'un her bileşeni tek adla `os.open(..., O_RDONLY|O_DIRECTORY|O_NOFOLLOW, dir_fd=parent_fd)` ile açılır. Tutulan root descriptor'ından girdinin her ara dizini aynı şekilde, son dosya `O_RDONLY|O_NOFOLLOW|O_NONBLOCK` ile açılır; `fstat` düzenli dosya şartını doğrular. Ayrı `lstat`/prefix kontrolü ve sonra tam path ile open yetkilendirme değildir. Gerekli flag/`dir_fd` desteği yoksa içerik/env okumasından önce kontrollü `input_unsupported` çıkış 2; güvenli olmayan fallback yoktur.
+
+Hash yalnız açık file descriptor'dan, sınırlı bloklarla ve SQL write transaction'ı dışında hesaplanır. Önce/sonra `fstat` kimliği, boyut, `mtime_ns`, `ctime_ns` ve okunan bayt sayısı karşılaştırılır. Root/ara bileşenler yeniden descriptor yürüyüşüyle açılıp tutulan kimlik zinciriyle karşılaştırılır; gözlenen path değişiminde kabul yoktur. Bütün descriptor'lar hata/ret yolunda da kapanır. Bu denetimler SQL write transaction'ı öncesinde biter; uzun hash/kök taraması DB kilidinde yapılmaz.
+
+Açık descriptor symlink yön değişimini takip etmez; fakat aynı UID/root'un düşmanca rename/mount, inode yeniden kullanımı veya eşzamanlı içerik değişimini bütün olası zamanlarda engelleyen sandbox değildir. [ADR-0011'in güvenilen yerel kullanıcı sınırı](0011-state-foundation-and-migrations.md) miras alınır: gözlenen root/bileşen değişimi reddedilir, süreçler arası fiziksel dizin kimliği kriptografik kimlik diye sunulmaz. Gelecek yürütücü kendi son snapshot/doğrulama kapısını korur. Aynı boyut/mtime veya eski hash cache'i güncel içerik yerine geçmez.
+
+Mevcut recipe'deki `data.manifest` için yalnız dosyanın kendi içeriği bağlanır; içerikteki bütün veri dosyalarının doğrulandığı iddia edilmez. Model revision etiketi tek başına değişmez model içeriği değildir. Görev adaptörünün tam girdi kapanışı doğrulanamıyorsa plan blocked kalır.
 
 Execution prepare/validate/approve toplam bütçesi 30 saniye, bir hash bloğu en çok 1 MiB ve bir kullanım senaryosunda yerel içerik okuma sınırı toplam 1 GiB'dir. Lock/busy beklemesi en çok 1 saniye ve toplam bütçenin içindedir. Boyut/bütçe aşımı açık yerel önkoşul hatasıdır; kısmi hash doğrulanmış sayılmaz. Bu ilk yerel bağlama politikasıdır, büyük veri/model aktarımının desteği veya fiziksel disk I/O için katı duvar saati garantisi değildir. 16 MiB/256 MiB/1 GiB sentetik dosyada hash belleğinin dosya boyutuyla büyümediği ve sınır/timeout retleri kabulde ölçülür.
 
@@ -40,6 +48,10 @@ Her `prepare`, `validate` ve `approve` güncel tipli doğrulama portunu kullanı
 Validation kayıtlı seçimleri yeni profile göre değiştirmez; mevcut profil/hedef/yetki/girdiyle karşılaştırır. Gerekli bütün bağlar doğrulanmış/eşit/taze ve görev adaptörü mevcutsa hazırlık geçerli olabilir. Hedef/API kökü, hesap/proje, credential nesli, izin/kaynak sınırı, model içeriği/sürümü, executable/environment veya parametre değişimi geçersiz kılar. Salt profil adının aynı olması yeterli değildir. Producer yenilemesinde yalnız zaman ilerlemesi, aynı kapsam/semantik karar korunuyorsa eski planı değiştirmez; planın ilk expiry'si uzatılmaz. Kaynak/politika veya kararın anlamı değişmişse yeni plan gerekir.
 
 Plan geçerliliği en çok 300 saniye ve bütün gerekli kanıt/girdi/tahmin bağlarının en erken expiry'si kadardır. Tam expiry/saat anomalisi veya ADR-0013'te kalıcılaştırılmış clock generation farkı geçersizdir. Saat watermark'a yetiştikten ve restart sonrasında da eski plan/onay canlanmaz. Validation sonucu yalnız o snapshot'ın kontrolüdür; daha sonra yeniden kullanılacak dispatch bileti değildir. Son kısa transaction'da etkin store/epoch/clock generation ve bütün credential ID/revision tekrar karşılaştırılır; çatışma `state_changed`, otomatik retry yoktur. Denetimden sonra env/profil tekrar çözülmez.
+
+Prepare'ın geçerli hazırlık sonucu, validate'ın `valid=true` sonucu ve approval INSERT/UPDATE'si için **ayrı son süre kapısı** zorunludur: hash/producer/kilit bekleyişi bittikten, SQL kilidi alındıktan sonra güncel UTC ve monotonic zaman yeniden örneklenir. Planın ilk expiry'si, gereken bütün kanıt/girdi/yetki/tahmin süreleri, varsa yeniden kullanılacak önceki onayın expiry'si ve toplam deadline tek tek denetlenir; tam eşitlik geçersizdir. Clock metadata aynı anda tekrar okunur. Süre geçtiyse valid/prepared sonucu veya etkin approval yazımı yoktur; approve `plan_not_valid`, validate `valid=false` verir. Daha önce var olan aynı onayı döndüren idempotent yol da bu kapıyı atlayamaz. Son örnekte saat anomalisi görülürse ADR-0013'ün rollback dışında kalıcı invalidation kuralı uygulanır.
+
+Kontrol noktası son SQL değişikliği/commit çağrısının hemen öncesidir; süreler değiştirilmez. Commit/fsync sırasında expiry geçerse fiziksel olarak geçmişte kalmış bir kayıt oluşabilir, fakat bu etkin onay değildir: commit sonrası sonuç kapısı süreyi tekrar denetler, `valid=true`/etkin onay sunmaz ve yazılmışsa kaydın varlığını gizlemez. Her sonraki tüketici de güncel expiry'yi denetler. Fsync süresini atomik saat kontrolüyle durdurma veya döndükten sonraki caller anında hâlâ geçerlilik garantisi verilmez; sonuç kontrol zamanı/`valid_until` taşır ve otomatik yeniden onay yoktur.
 
 `executable`, bu kullanım senaryosunda her zaman false'tur: P01-3 hiçbir run/start/dispatch sağlamaz. Gelecekte `prepared` ve geçerli onay bile P01-4'ün operation/attempt/lease kaydı ve P01-5/P02/P03'ün yürütüm kapıları olmadan yan etki başlatamaz. Aynı dosyanın denetim sonrası haricî süreççe değiştirilmesini tüm gelecek süre boyunca engellediğimiz iddia edilmez; yürütücü kendi son doğrulama/snapshot sınırını ayrıca korur.
 
@@ -74,16 +86,39 @@ Kaynak/stage/live full validation şema sürümüne duyarlıdır. Önceki sürü
 **Aşağıdakiler öneridir; henüz çalışan komut değildir.**
 
 ```text
-yorunge plan execution prepare --task TASK [--recipe FILE] [--input-root PATH] [--state-dir PATH]
+yorunge plan execution prepare [--task TASK] [--recipe FILE] [--config FILE] [--profile NAME] [--project ID] [--tool ID] [--execution BACKEND] [--input-root PATH] [--state-dir PATH]
 yorunge plan execution list [--limit N] [--cursor CURSOR] [--state-dir PATH]
 yorunge plan execution show --plan-id ID [--state-dir PATH]
-yorunge plan execution validate --plan-id ID [--config FILE] [--state-dir PATH]
-yorunge plan execution approve --plan-id ID --confirm DIGEST [--state-dir PATH]
+yorunge plan execution validate --plan-id ID [--config FILE] [--profile NAME] [--project ID] [--state-dir PATH]
+yorunge plan execution approve --plan-id ID --confirm DIGEST [--config FILE] [--profile NAME] [--project ID] [--state-dir PATH]
 yorunge plan execution revoke --plan-id ID [--state-dir PATH]
 yorunge plan execution forget --plan-id ID --confirm DIGEST [--state-dir PATH]
 ```
 
 Python karşılıkları ayrı `prepare_execution_plan`, `list_execution_plans`, `show_execution_plan`, `validate_execution_plan`, `approve_execution_plan`, `revoke_execution_approval`, `forget_execution_plan` kullanım senaryolarıdır. Prepare mevcut seçim seçeneklerini, validate/approve güncel config/profile/project karşılaştırmasını kabul eder; list/show/revoke/forget seçimi değiştiren seçenek kabul etmez. Hepsi `Path`/strict girdi ve ortak tipli Result/YorungeError sınırını kullanır. `list`/`show` sır/girdi okumaz, validation yapıldı iddiası taşımaz; yapı doğrulaması güncel geçerlilik değildir. Validation sorgusu `valid=false` ve gerekçeleri normal raporlayabilir; bozuk istek/state kontrollü hatadır. Her yeni sonuçta `operation_id=null`; run veya sahte training başarısı yoktur.
+
+**Ortak context çözümü:** Prepare/validate/approve her çağrıda `config: Path | None`, `profile: str | None`, `project: str | None` kabul eder. Explicit config varsa o, yoksa mevcut varsayılan config yolu okunur; geçmiş custom config yolu saklı veriden sessizce açılmaz. Config çağrıda bir kez yüklenir. Prepare mevcut request → recipe → profile/default önceliğiyle seçim yapar. Validate/approve için profile açık argüman veya **güncel config active_profile**, project açık argüman veya **güncel seçili profil projesidir**; kayıtlı recipe/profile değerleri güncel context yerine geçirilmez. Custom config/nondefault profile/project ile hazırlanmış plan için bunları tekrar açık vermek gerekir; seçenekleri vermemek eski context'i güvenilir yapmaz. Yeni task/tool/execution/recipe override'ı validate/approve'da kabul edilmez; saved seçim/parametreler korunarak güncel bağlar karşılaştırılır.
+
+Seçilen profile ait secret referansı yalnız o çağrının özel resolver snapshot'ında bulunur. Gereken her hizmetin env değeri bir kez okunur; aynı target/reference/secret snapshot registry gözlemi ve producer'a bağlanır. Plan gövdesi yalnız allowlist public context/seçim bağlarını taşır; tüm `Profile`/config nesnesi, secret referans adı veya ham secret serialize edilmez. Aynı env adıyla gözlenen değer değişimi veya başka referansa geçiş registry bağı üzerinden eski planı geçersiz kılar; secret-ref'i digest'e eklemek çözüm değildir. Config/env'nin çağrı içindeki snapshot'tan sonra dışarıdan değiştirilmesini her anda saptadığımız iddia edilmez; final registry kapısı ve sonraki yürütücünün yeniden doğrulaması korunur.
+
+**Önerilen Python imzaları** (henüz import edilebilir ürün API'si değildir; bütün sonuçlar ortak `Result[T]` zarfındadır):
+
+```text
+prepare_execution_plan(*, task: str | None = None, config: Path | None = None,
+    recipe: Path | None = None, profile: str | None = None, project: str | None = None,
+    tool: str | None = None, execution: str | None = None,
+    input_root: Path | None = None, state_dir: Path | None = None)
+list_execution_plans(*, limit: int = 50, cursor: str | None = None, state_dir: Path | None = None)
+show_execution_plan(plan_id: str, *, state_dir: Path | None = None)
+validate_execution_plan(plan_id: str, *, config: Path | None = None,
+    profile: str | None = None, project: str | None = None, state_dir: Path | None = None)
+approve_execution_plan(plan_id: str, confirmation: str | None = None, *, config: Path | None = None,
+    profile: str | None = None, project: str | None = None, state_dir: Path | None = None)
+revoke_execution_approval(plan_id: str, *, state_dir: Path | None = None)
+forget_execution_plan(plan_id: str, confirmation: str | None = None, *, state_dir: Path | None = None)
+```
+
+Yerel girdilerde prepare'ın input_root seçimi planda sabittir; validate/approve imzalarında root override olmaması bilinçlidir. Task açık `--task` veya recipe ile sağlanmak zorundadır. Eksik confirmation uygulama sınırına None olarak ulaşır ve çıkış 4 üretir; Python çağrı imzasının TypeError'ına bırakılmaz.
 
 ## Değerlendirilen alternatifler
 

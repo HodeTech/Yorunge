@@ -52,6 +52,8 @@ Aşağıdaki resmî kaynaklar 2026-10-27 tarihinde incelendi; bir hizmetin canl�
 | [Python 3.11 hashlib](https://docs.python.org/3.11/library/hashlib.html) | İçerik digest'i güncel okunan baytlardan hesaplanabilir. Çıkarım: digest alanını görmek dosya içeriği veya kaynağın yetkisini doğrulamaz; dosya yaşam döngüsü ayrıca korunur |
 | [SQLite transactions](https://www.sqlite.org/lang_transaction.html) | Read transaction eski snapshot'ı görebilir; eşzamanlı tek writer vardır, BEGIN IMMEDIATE busy olabilir. Çıkarım: gözlemden sonra commit öncesi aynı kısa transaction içinde kritik bağ kontrolü gerekir |
 | [SQLite STRICT](https://www.sqlite.org/stricttables.html) | STRICT tablo kayıpsız tür dönüşümünü hâlâ yapabilir. Çıkarım: SQL sınırları tipli payload/UUID/zaman/ilişki doğrulamasının yerine geçmez |
+| [Python 3.11 os.open/dir_fd](https://docs.python.org/3.11/library/os.html#os.open) | Descriptor'a göre relative açılış ve platform capability denetimi belgelenir. Çıkarım: path kontrolünden sonra tam path'i açmak yerine her bileşen tutulan parent descriptor'ına göre açılmalı |
+| [Linux open/openat](https://man7.org/linux/man-pages/man2/open.2.html), [Apple open](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/open.2.html) | O_NOFOLLOW son açılan bileşene uygulanır; açık descriptor daha sonra yol değişse de aynı nesneye bağlı kalır. Çıkarım: bileşen yürüyüşü ve root kimliği gerekir; bu özellik bütün eşzamanlı rename/mount veya aynı-UID saldırılarını ortadan kaldırmaz |
 
 TTL 300/60/30 saniye, cache kotası, plan kotası ve ayrı public komutlar dış standarttan çıkmaz; önerilen Yörünge seçimleridir ve ADR onay kapsamındadır. Başka sağlayıcının doğrulanmamış auth/capability endpoint'i veya izin adı uydurulmadı. Mevcut EVREN araştırması bu pakette canlı keşif adaptörü kurmak için yeterli sayılmadı; P02 kapısı korunur.
 
@@ -74,3 +76,21 @@ Recovery reviewer'ının forget confirmation kapsamı açıklık önerisi kabul 
 `751c77c` üzerinde başka üç yeni ajanla ikinci tur yapıldı: `p013_docs_r2_invariants` (GPT-6 Astra/high), `p013_docs_r2_public_contract` ve `p013_docs_r2_state_acceptance` (GPT-6.1 Sol/high). İlk iki bulgunun çözümü doğrulandı. Yeni bir P2 kabul sırası boşluğu doğrulandı: P01-3a'nın ilk adımı henüz olmayan plan/onay tüketicilerinin saat davranışını da kanıtlamak zorundaydı. Cache-only kabul ilk kartta kaldı; plan/onay saat ve cache temizliği entegrasyonu P01-3b/bütünleşik kabule bağlandı. Gösterimlik tüketici eklenmedi ve kabul kaldırılmadı. Diğer iki review alanında yeni bulgu yoktu.
 
 Hazırlık yalnız belge değişikliğidir; ADR'ler Proposed ve kartlar draft kalır. Son belge/ajan/diff doğrulaması paket planında kayıtlıdır; bu review'ler runtime güvenliği veya canlı destek kanıtı değildir.
+
+## Kullanıcı reviewlerinin doğrulanması
+
+Kullanıcının iki incelemesindeki yedi iddia `8c976cf` önerileri ve mevcut kodla ayrı ayrı karşılaştırıldı. `p013_followup_cache_contracts` (GPT-6 Astra/high) ile `p013_followup_inputs_context` (GPT-6.1 Sol/high) bağımsız salt okuma doğrulaması yaptı. Hepsi **henüz uygulanmamış tasarım açıklığı** olarak geçerlidir; mevcut v1 ürününde kanıtlanmış açık veya başarısız execution testi diye sınıflandırılmadı. Özellikle "expiry hiç kontrol edilmiyor" ve "mevcut input uygulaması yarışlı" daha geniş iddiaları kurulmadı; eksik olan son süre kontrolünün yeri ve henüz yazılmamış güvenli input portunun sözleşmesiydi.
+
+| ID | Doğrulanan eksik | Yapılan somut düzeltme |
+|---|---|---|
+| A1 | Hash/producer/kilit sonrasında yeni zamanla final expiry/deadline kontrolü açık değil | Her etkin cache sonucu ve prepare/validate/approve için son UTC/monotonic kapısı; tam expiry ve commit sırasında süre geçişi kabulleri |
+| A2 | No-symlink şartının path-check/open yarışında uygulanışı yok | Root'tan her bileşene dir_fd/O_NOFOLLOW yürüyüşü; düzenli dosya/fstat/descriptor kapanışı; destek yoksa kontrollü ret ve yarışta dış sentinel okunmaması |
+| A3 | Bilinmeyen authorization scope ile discovery'siz full-key lookup belirsiz | Null exact lookup ve ayrı bounded tarihsel aday projeksiyonu; DB kendi scope'unu doğrulamaz, restart'ta bağımsız proof yoksa etkin supported yok |
+| A4 | Concurrent refresh sıradan upsert ile son-yazan kazanabilir | Silmede tekrar kullanılmayan snapshot token; son transaction'da fresh kanıt merge; yalnız exact-version kendi producer snapshot'ını yeniler; çelişki/overflow unknown ve kalıcı süreli blocker |
+| B1 | Approve context seçenekleri prose ile komut/API gösteriminde farklı | Prepare/validate/approve ortak config/profile/project CLI seçenekleri ve exact Python imzaları; çağrı başında tek config/secret snapshot'ı, public allowlist serialization |
+| B2 | input_root saklama, yeni CWD ve root replacement anlamı yok | Mutlak ankraj + root dev/inode digest bağı, relative root'un prepare CWD'sinde sabitlenmesi, validate/approve root override yasağı ve kimlik yeniden denetimi |
+| B3 | ScopeV2 kapalı wire tipi/limit/sırası yok | [Bağlı wire referansı](../reference/capability-scope-v2.md): bütün zorunlu-nullable alanlar, kapalı nested nesneler, Unicode/strict tür, sıra/tekillik, canonical key ve local/remote değişmezleri |
+
+Bu yedi maddeden atlanan/geçersiz sayılan yoktur; örtüşen input ve süre maddeleri tek tutarlı karar ve ilgili kart kabulüne bağlandı. Sayı sınırları korunurken concurrent merge taşmasının eski supported'ı etkin bırakmaması ve blocker'ın unknown TTL/kota temizliğinden bağımsız güvenli ömrü ayrıca açıklaştırıldı.
+
+Resmî dosya açma kaynakları yukarıya eklendi. Yerel Darwin/CPython 3.11.18 ortamında yalnız capability envanteri okundu: `os.open in os.supports_dir_fd` ve O_DIRECTORY/O_NOFOLLOW/O_NONBLOCK/O_RDONLY varlığı true. Bu, dosya yarışının veya Linux çalışmasının ürün kabulü değildir; bu hazırlıkta input uygulaması, runtime test/build/benchmark oluşturulmadı/çalıştırılmadı. Kullanıcı review metni ADR onayı sayılmadı; iki ADR ve bağlı wire Proposed, kartlar draft kalır.

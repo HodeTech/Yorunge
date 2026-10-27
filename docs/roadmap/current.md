@@ -24,6 +24,8 @@ Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli 
 
 Doğrudan P01-2b/P01-4a önkoşulları tamamlandı. [ADR-0013](../decisions/0013-scoped-capability-cache.md) cache/kanıt/tazelik ve [ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) ayrı execution/onay/bakım kararı **Proposed**; kullanıcının açık talimatı gereği onay bekleniyor. Onay sonrası P01-3a, ardından onun kanıtıyla P01-3b aynı dalda uygulanacak. Yeni belge hazırlığı capability teslimi veya P01-3 kabulü değildir.
 
+Kullanıcının sonraki iki belge incelemesindeki yedi tasarım boşluğu mevcut sözleşmeyle doğrulanıp [düzeltme kaydına](../research/p01-3-readiness-review.md#kullanıcı-reviewlerinin-doğrulanması) bağlandı: son süre kapısı, descriptor/root güvenliği, context parametreleri, cached aday güveni, concurrent refresh ve bağlı [kapalı scope v2 wire](../reference/capability-scope-v2.md). Bu geri bildirim ADR onayı değildir; durumlar Proposed/draft kalır.
+
 Ardından P01-4'te operation/attempt, lease/fencing, unknown uzlaştırma ve jobs; P01-5'te HTTP/SDK, akış ve iptal; P01-6'da bütün P01 kabulü/destek matrisi kalır. P01-4a ve P01-6a yeniden yapılacak işler değildir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır; henüz paket yayını yoktur.
 
 Paralel ürün araştırması P02 veri/çıkarım görevlerinin güncel EVREN sözleşmesini doğrular. Gerçek ForgeLM/muadil adaptörleri P03'tedir; plan seçim desteği adaptör desteği değildir.

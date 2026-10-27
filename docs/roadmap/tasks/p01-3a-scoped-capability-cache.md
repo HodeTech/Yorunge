@@ -24,7 +24,7 @@ P01-2b/P01-4a [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile developmen
 
 ## Sözleşme ve uygulama sınırı
 
-Domain somut SQLite/env/CLI bilmez; application producer/clock/store portlarını koordine eder; gerçek SQLite ve dosya işleri adaptördedir. Public API producer/evidence nesnesi kabul etmez. Kanonik genel referans [capability kaydı](../../reference/capability-record.md), önerilen ayrıntı ADR-0013'tedir; onay sonrası uygulanan v2 alanları referansta tek yerde belgelenir. CLI/Python aynı use case'i çağırır; cached yolun açık state/sır/clock etkisi kullanıcı belgesinde görünürdür.
+Domain somut SQLite/env/CLI bilmez; application producer/clock/store portlarını koordine eder; gerçek SQLite ve dosya işleri adaptördedir. Public API producer/evidence nesnesi kabul etmez. Kanonik genel referans [capability kaydı](../../reference/capability-record.md), Proposed exact scope [CapabilityScopeV2](../../reference/capability-scope-v2.md), politika ADR-0013'tedir. CLI/Python aynı use case'i çağırır; cached yolun açık state/sır/clock etkisi kullanıcı belgesinde görünürdür.
 
 ## Kabul
 
@@ -37,6 +37,10 @@ Domain somut SQLite/env/CLI bilmez; application producer/clock/store portların�
 7. Cache-only runtime reset/restore/recover açık allowlist'e uyar; eski epoch cache aktif olmaz. Eski restore intent, geçerli stage/live ve kaynak kayıp tamamlanmış çift yeni şemaya güvenli ulaşır; operation runtime yasağı korunur.
 8. CLI/API eşit sonuç ve kontrollü hata verir; default offline görünüm ve help/version/env/DB/key guard'ları korunur. Sır/tag/K public JSON, cache payload, hata/repr/loga sızmaz.
 9. Standart hacimde 1.024 kayıtla en az 30 ayrı süreçte sıcak cache okuma p95 ≤200 ms; CPU/disk/kurulum/record boyutu kayıtlıdır. Metadata p95 ≤500 ms; kanıt gerçek komut/ölçümle tutulur, başarısız bütçe gevşetilmez.
+10. Producer/lock bekleyişinde UTC tam expiry'ye ve ötesine, monotonic toplam bütçeye ilerletilir; son transaction'ın yeni örneği etkin sonucu reddeder. Aynı clock generation ve idempotent cache hit süre kapısını atlayamaz. Commit sonrası gözlenen expiry de taze sonuç vermez; son örnekteki anomali ret/rollback sonrasında restart'ta kalıcıdır.
+11. Yeni süreçte authorization scope bilinmiyorsa null exact lookup veya yalnız tarihsel aday/unknown döner; DB kaydı kendi scope'unu doğrulamaz. Bağımsız trusted scope bilinen/değişmiş fixture'da yalnız exact key etkinlik adayıdır. Aday projection en çok dört sonuçla sınırlı, diğer alanların null'ı wildcard değildir ve --cached discovery yapmaz.
+12. İki ayrı süreç aynı key için aynı/farklı producer'dan çelişkili refresh üretir: son transaction kanıtları birleştirir, sonuç unknown ve iki provenance korunur. Exact-version snapshot yalnız kendi eski producer kanıtını yeniler; yarışan snapshot kör overwrite yapmaz. Eviction/reinsert token ABA, aynı sonuçta idempotence, expiry sırasında merge ve sekiz kanıt/32 KiB overflow marker'ının TTL/kota/refresh ile erken kaybolmaması sınanır.
+13. Kapalı ScopeV2'nin eksik/extra/yanlış tür/bool-int/null/UUID/digest/local-remote değişmezleri ve 128 toplam izin-kaynak/16 KiB scope sınırı gerçek parser'da reddedilir. İki bağımsız producer aynı semantik scope için aynı canonical bayt/digest üretir; wire sırasız/duplicate diziyi reddeder, composed/decomposed Unicode birbirine sessiz çevrilmez.
 
 ## Doğrulama
 
