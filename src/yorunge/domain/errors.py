@@ -25,6 +25,7 @@ ErrorCode = Literal[
     "config_busy",
     "config_write_failed",
     "config_write_uncertain",
+    "config_unsupported",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -60,6 +61,9 @@ MESSAGES: dict[ErrorCode, str] = {
         "Bu runtime veya snapshot türü için DB restore desteklenmiyor. Kimlik reset'i ayrıdır."
     ),
     "config_exists": "Config zaten var. İlk oluşturma mevcut dosyanın üzerine yazmaz.",
+    "config_unsupported": (
+        "Config yazımı için desteklenen macOS/Linux yerel dosya ortamı gereklidir."
+    ),
     "config_busy": "Config başka bir yazım tarafından kilitli. Etkin işlemi kontrol edin.",
     "config_conflict": (
         "Config başka bir yazımla değişti. Güncel dosyayı inceleyip yeniden hazırlayın."

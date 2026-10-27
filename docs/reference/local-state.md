@@ -4,6 +4,8 @@
 
 ## Açık oluşturma ve doğrulama
 
+State oluşturma/gözlem ve tüm bakım önizleme/uygulama girişleri desteklenmeyen platformda veya `fcntl` bulunmadığında I/O ve env çözümlemesi öncesi `state_unsupported` verir. Platforma özgü import eksikliği ham `ModuleNotFoundError` olarak public API/CLI sınırına çıkmaz.
+
 `yorunge state init [--state-dir PATH]` ile Python `yorunge.api.initialize_state(*, state_dir: Path | None = None)` aynı kullanım senaryosudur. Varsayılan macOS/Linux yerel disk yolu `~/.local/state/yorunge`; DB `state.sqlite3` dosyasıdır. `XDG_STATE_HOME` veya başka davranış env override'ı okunmaz. CLI'da `--state-dir` yalnız `state` ailesinde, `state` ile `init` arasında veya `init` sonrasında verilir. Config/profil/proje seçenekleri bu işte geçersizdir.
 
 İlk açık kullanımda private store, karşılaştırma K'sı ve gerçek şema kurulur. Var olan sağlıklı store'da aynı store/epoch döner; bu çağrı kimlik reset'i veya env çözümleme değildir. Sonuç `Result[StateInfo]`: zarf sürümü 1; data `schema_version=1`, gerçek DB `store_schema_version`, `store_id`, `identity_epoch`. K, key-check ve özel verifier sonuçta yoktur. `state init` mevcut store için tam yapısal/ilişkisel/mantıksal doğrulama yapar.

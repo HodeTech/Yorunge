@@ -19,6 +19,7 @@ from yorunge.adapters.local_files import (
     durable_private_chain,
     file_lock,
     private_directory,
+    require_local_files,
     safe_ancestors,
     sync_directory,
     sync_private,
@@ -39,6 +40,7 @@ class ConfigSnapshot:
 def config_path(path: Path | None) -> Path:
     if path is not None and not isinstance(path, Path):
         raise YorungeError("invalid_request")
+    require_local_files("config_unsupported")
     try:
         chosen = (
             path if path is not None else Path.home() / ".config/yorunge/config.toml"

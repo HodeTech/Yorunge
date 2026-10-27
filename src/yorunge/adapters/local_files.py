@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import os
 import stat
 import sys
@@ -10,8 +9,26 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from types import ModuleType
+from typing import Literal
 
 from yorunge.domain.errors import YorungeError
+
+fcntl_module: ModuleType | None
+try:
+    import fcntl
+except ImportError:
+    fcntl_module = None
+else:
+    fcntl_module = fcntl
+
+
+def require_local_files(
+    code: Literal["state_unsupported", "config_unsupported"] = "state_unsupported",
+) -> ModuleType:
+    if sys.platform not in ("darwin", "linux") or fcntl_module is None:
+        raise YorungeError(code)
+    return fcntl_module
 
 
 class Deadline:
@@ -48,9 +65,10 @@ def sync_directory(path: Path) -> None:
 
 
 def full_sync(descriptor: int) -> None:
+    locking = require_local_files()
     os.fsync(descriptor)
     if sys.platform == "darwin":
-        fcntl.fcntl(descriptor, fcntl.F_FULLFSYNC)
+        locking.fcntl(descriptor, locking.F_FULLFSYNC)
 
 
 def private_directory(path: Path) -> None:
@@ -161,6 +179,7 @@ def sync_private(path: Path) -> None:
 
 @contextmanager
 def file_lock(path: Path, deadline: Deadline, *, exclusive: bool, create: bool) -> Iterator[None]:
+    locking = require_local_files()
     if create:
         try:
             write_new(path, b"")
@@ -169,10 +188,10 @@ def file_lock(path: Path, deadline: Deadline, *, exclusive: bool, create: bool) 
     descriptor = open_private(path)
     try:
         end = time.monotonic() + min(1.0, deadline.remaining())
-        operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        operation = locking.LOCK_EX if exclusive else locking.LOCK_SH
         while True:
             try:
-                fcntl.flock(descriptor, operation | fcntl.LOCK_NB)
+                locking.flock(descriptor, operation | locking.LOCK_NB)
                 break
             except BlockingIOError:
                 remaining = min(end - time.monotonic(), deadline.remaining())

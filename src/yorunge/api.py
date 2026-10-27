@@ -280,6 +280,7 @@ def diagnose_local(
     state_dir: Path | None = None,
 ) -> Result[DoctorReport]:
     from yorunge.adapters.diagnostics import check_state
+    from yorunge.adapters.local_files import require_local_files
     from yorunge.domain.configuration import Diagnostic, DoctorReport
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
@@ -287,6 +288,7 @@ def diagnose_local(
         state_dir is not None and not isinstance(state_dir, Path)
     ):
         raise YorungeError("invalid_request")
+    require_local_files()
     checks = _config_diagnostics(config, request)
     checks.extend(check_state(state_dir))
     checks.append(Diagnostic(name="remote_access", status="not_checked"))

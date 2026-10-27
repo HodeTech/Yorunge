@@ -26,6 +26,7 @@ from yorunge.adapters.local_files import (
     private_directory,
     private_stat,
     read_private,
+    require_local_files,
     sync_directory,
     sync_private,
     write_new,
@@ -85,6 +86,7 @@ class RestoreIntent(Model):
 
 @contextmanager
 def errors() -> Iterator[None]:
+    require_local_files()
     try:
         yield
     except OSError:

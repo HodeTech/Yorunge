@@ -5,7 +5,7 @@
   "machine": "x86_64",
   "profile_bytes": 227,
   "samples_per_command": 30,
-  "installation": "installed console script; specify environment in accompanying report",
+  "installation": "editable .venv from uv sync --frozen --python 3.11; measured .venv/bin/yorunge",
   "cold_method": "first command process; OS/disk caches uncontrolled; not a cold boot",
   "measurements": {
     "help": {
@@ -125,5 +125,23 @@
       "target_ms": 200,
       "passed": true
     }
+  },
+  "environment": {
+    "provider": "GitHub Actions hosted runner",
+    "runs_on": "ubuntu-latest",
+    "runner_image": "ubuntu-24.04",
+    "runner_image_version": "20261012.334.1",
+    "operating_system": "Ubuntu 24.04.5 LTS",
+    "cpu_model": "unknown",
+    "logical_cpu_count": "unknown",
+    "disk_type": "unknown",
+    "filesystem_type": "unknown",
+    "installation_mode": "editable",
+    "virtual_environment": ".venv",
+    "setup_command": ".ci-tools/bin/uv sync --frozen --python 3.11",
+    "measured_command": ".venv/bin/yorunge",
+    "source_commit": "1c976e0",
+    "workflow_run_url": "https://github.com/HodeTech/Yorunge/actions/runs/40529794300",
+    "environment_source": "original workflow and job log; CPU/disk inventory was not recorded"
   }
 }

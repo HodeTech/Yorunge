@@ -32,6 +32,7 @@ from yorunge.adapters.local_files import (
     private_directory,
     private_stat,
     read_private,
+    require_local_files,
     safe_ancestors,
     sync_private,
     write_new,
@@ -93,7 +94,8 @@ class BackupManifest(Model):
 
 
 def state_directory(path: Path | None) -> Path:
-    if sys.platform not in ("darwin", "linux") or sqlite3.sqlite_version_info < (3, 37, 0):
+    require_local_files()
+    if sqlite3.sqlite_version_info < (3, 37, 0):
         raise YorungeError("state_unsupported")
     try:
         return _state_directory(path)
@@ -532,7 +534,8 @@ def open_store(
     check_key: bool = True,
     timeout: float = 5.0,
 ) -> Iterator[Store]:
-    if sys.platform not in ("darwin", "linux") or sqlite3.sqlite_version_info < (3, 37, 0):
+    require_local_files()
+    if sqlite3.sqlite_version_info < (3, 37, 0):
         raise YorungeError("state_unsupported")
     try:
         deadline, migrations = Deadline(timeout), schema.MIGRATIONS

@@ -10,7 +10,7 @@ capabilities: [C01]
 
 **Hazırlandı:** 2026-10-27. Uygulama ve iki yeni bağımsız review turu tamamlandı. [Güncel kabul kaydı](../../research/p01-2-implementation-validation.md).
 
-[P01-2 tek PR paketinin](../p01-2-delivery-plan.md) ilk uygulama adımıdır. B02/B13 kararları Accepted'dır; bu kart sıradaki uygulamadır. Bağımsız hazır olma durumu bütün paketin hazır veya uygulanmış olduğu anlamına gelmez.
+[P01-2 tek PR paketinin](../p01-2-delivery-plan.md) ilk uygulama adımıdır. B02/B13 kararları Accepted'dır; bu ilk adım uygulanıp doğrulandı. Kartın teslim kanıtı aşağıdadır; paketin bütünü için [kabul kaydı](../../research/p01-2-implementation-validation.md) geçerlidir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

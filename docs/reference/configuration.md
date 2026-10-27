@@ -85,6 +85,8 @@ Config migration açık sürüm yükseltmesi ve yedek/önizleme ile tasarlanır.
 
 ## Yerel config yazma ve tanılama
 
+Config oluşturma/güncelleme ve yerel doctor bu sürümde macOS/Linux dosya ve kilit desteği gerektirir. Windows veya eksik `fcntl` desteğinde config yazımları I/O öncesi `config_unsupported` (çıkış 2), doctor `state_unsupported` (çıkış 2) verir; traceback veya kısmi yazma üretilmez. Bu sınır SQLite state desteğiyle aynı yerel platform hedefini kullanır; Windows desteği eklendiği iddia edilmez. Metadata komutları bu altyapıyı yüklemez.
+
 P01-2c yüzeyi: `init [--config PATH] [--profile NAME] [--project ID]` ilk dosyayı no-clobber oluşturur. Varsayılan yol `~/.config/yorunge/config.toml`, açık profil yoksa `default`'tur. Yeni config iki hizmet için yalnız geleneksel `EVREN_PLATFORM_API_KEY` / `EVREN_LLM_API_KEY` env adlarını yazar; değerleri okumaz. Mevcut implicit default davranışı değişmez.
 
 `context profiles` profilleri/aktif seçimi listeler; `context use-profile NAME` kalıcı aktif profili değiştirir. `context set-project ID` / `context clear-project` seçili (`--profile` veya aktif) profilin proje tercihini değiştirir. Diğer profiller, hizmet alanları ve araç varsayılanları anlamsal olarak korunur; TOML yorum/biçimi korunmaz, özgün byte'lar özel backup'ta saklanır. Liste ve use-profile çağrılarında `--profile/--project`; proje değişiminde ayrıca `--project` kabul edilmez. Init/profile/proje yönetimi credential veya state açmaz.

@@ -134,6 +134,23 @@ Adım 5 kapanışı: `6fbdafe` üzerindeki dar doctor fix'i bulgu sahibi tarafı
 
 ## Bütünleşik yerel kapanış
 
+### Arşivlenmiş Linux başlangıç ölçümünün ortamı
+
+190,781 ms context p95 kaydı [40529794300 koşusunda](https://github.com/HodeTech/Yorunge/actions/runs/40529794300), runtime `1c976e0` üzerinde alındı. [Ham JSON](p01-2-linux-startup.json) aşağıdaki log tabanlı ortam bilgisiyle tamamlandı; örnekler, p95 hesabı ve bütçe sonucu değiştirilmedi. Yeni ölçüm yapılmış sayılmaz.
+
+| Alan | Kaydedilebilen bilgi |
+|---|---|
+| Runner | GitHub Actions hosted; workflow `runs-on: ubuntu-latest` |
+| Image / OS | `ubuntu-24.04`, image `20261012.334.1`; Ubuntu 24.04.5 LTS |
+| Python / mimari | CPython 3.11.15; x86_64; tam kernel/Python bilgisi ham JSON'da |
+| Kurulum | Repo kökünde editable `.venv`; `.ci-tools/bin/uv sync --frozen --python 3.11` |
+| Ölçülen giriş | `.venv/bin/yorunge`; temiz wheel/sdist kurulumları ayrı doğrulama, bu ölçümün ortamı değildir |
+| Veri / örnek | Profil 227 bayt; komut başına 30 ayrı süreç, üç ısınma süreci |
+| CPU modeli / mantıksal çekirdek | `unknown` / `unknown` |
+| Disk türü / dosya sistemi | `unknown` / `unknown` |
+
+Özgün job logunda CPU/disk envanteri yoktur; güncel başka bir runner veya genel runner kataloğundan geriye dönük tahmin yapılmadı. Donanım eşdeğerliği bilinmediğinden bu kayıt farklı koşularla donanım sabitmiş gibi doğrudan hız kıyasına dayanak değildir. O koşunun 200 ms bütçesini geçtiğini kanıtlar; fiziksel soğuk açılış veya güç kesintisi deneyi değildir.
+
 Ürün runtime head'i `6fbdafe`; beş uygulama adımı ve her biri için iki fresh bağımsız review turu tamamlandı. Son dar fix'lerde ilgili bulgu sahibinin odak kapanışı alındı. Yeni ADR/karar kapısı gerektiren açık bir konu veya doğrulanmış açık bulgu kalmadı. P01-2a, P01-4a, P01-2b ve P01-2c kendi kanıtlarıyla verified; epik son PR/CI kapısını bekler.
 
 Kök ajan final kaynakta **750 test geçti** (35,65 s), Ruff format/lint, strict mypy (31 kaynak), 96 public Markdown ve 6 skill/5 kart denetimlerini geçti. Son build'in wheel/sdist arşiv ve iki temiz kurulum/köken/smoke sonuçları ayrı kimliklerle kaydedildi: wheel 31 üye (`f966557f7fdb679af871e08c7c579570956eb8ea86503273afab56e07458cd00`), sdist 172 üye (`92ebd7d2d86952edf94be4b8e7c4806288ad318045303b7a9fd52cdf396a3b8d`). Build bir yayın değildir; kapanış belge commit'i sonrası CI aynı kapıları son PR head'inde yeniden uygular.
@@ -173,3 +190,13 @@ SonarCloud kapısı geçtikten sonra güncel issue API'sinde kalan tek bakım bu
 [Son belge head'i 10e8d6a CI](https://github.com/HodeTech/Yorunge/actions/runs/40530713687) bütün offline-core adımlarını ve branch-policy'yi geçti; SonarCloud da başarılı oldu. İki doğrulanmış eski doküman review thread'i düzeltme sonrası çözüldü. Son küçük complexity/kapanış commit'i ayrıca PR CI'ından geçirilecektir; PR head'inin gerçek check durumu PR üzerinde kanoniktir.
 
 P01-2 uygulaması ve kabulü tamamlandı; dört alt kart/epik verified. PR #6 kullanıcı incelemesine açık tutulur, merge/Master/release yapılmaz. Sonraki ürün paketi P01-3'tür, implementasyonu başlatılmadı. Başarısız ilk Linux/yük altı ölçümleri, onaylı tehdit/restore/config-lock sınırları ve çalıştırılmayan canlı/power-cut kontrolleri yukarıda açıkça korunur.
+
+## PR #6 sonrası P2/P3 review düzeltmeleri
+
+Kullanıcının `9c9561f` incelemesindeki bir P2/iki P3 güncel kaynakla doğrulandı. Kök ajan, sys.platform=win32 ve fcntl import yokluğu simülasyonunda initialize_state'in state_unsupported, bakım/identity/config girişlerinin ham ModuleNotFoundError verdiğini yeniden üretti. Platform dosya desteği artık modül importunu çökertmez; destek kapısı state/gözlem/bakım, config yazımı ve doctor'da platforma özgü dosya işlemi/env erişimi öncesinde uygulanır. Config yazımları macOS/Linux ile sınırlanıp ayrı config_unsupported/çıkış 2 olarak belgelenir; doctor/state için state_unsupported/çıkış 2 korunur.
+
+Yeni 80 subprocess regresyonu; desteklenmeyen platform+eksik fcntl, desteklenmeyen platform+mevcut fcntl ve mevcut platform+eksik fcntl senaryolarında 13 API/CLI girişini ve metadata yollarını kapsar. Gerçek Windows çalıştırılmadı; bu sentetik import/platform ret ve hata zarfı kanıtıdır. Normal state/dayanıklılık testleri desteklenen yerel ortamda korunur.
+
+Araştırma indeksindeki tamamlanmamış kabul ifadesi ve verified P01-2a kartındaki sıradaki-uygulama ifadesi düzeltildi. Arşivlenmiş 190,781 ms Linux ölçümünün workflow/job logu incelendi; editable .venv, ölçülen konsol girişi, Ubuntu image/OS ve komutlar ham JSON/ortam tablosuna eklendi. Kaydedilmemiş CPU/disk bilgileri unknown olarak açıklandı; başka runner'dan tahmin edilmedi. Örnek/p95/bütçe alanlarının önceki Git sürümüyle birebir değişmediği doğrulandı. Yeni veya donanım eşdeğer koşulda ölçüm yapılmış sayılmaz.
+
+İlk düzeltme kabulü: 837 test (42,16 s), Ruff format/lint, strict mypy (31 kaynak), 96 belge, 6 skill/5 kart ve diff whitespace denetimi geçti. Wheel/sdist iki temiz kurulum/köken/smoke kontrolü geçti. Düzeltme commit'i ardından iki fresh bağımsız review turu ve son PR head CI'ı izlenir; merge yapılmaz.
