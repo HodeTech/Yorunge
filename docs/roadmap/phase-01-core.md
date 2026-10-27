@@ -33,7 +33,7 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
 | P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
 
-P01-5a taşıma deneyi, state işinin tamamını beklemeden loopback üzerinde yapılabilir. Kimlik nesli için kalıcılık gerektiğinden P01-4a, P01-2b'den öncedir; “önce bütün kimlik, sonra DB” döngüsü kurulmaz. B02/B13 kararı alınmadan kalıcı credential biçimi icat edilmez. P01-1a kullanıcı onayıyla mevcut teslimde saptanan hataları kapattı ve PR incelemesine hazırlanıyor; sonraki yeni ürün paketi **P01-2a** olarak kalır. Bu kapanış hazırlığı P01-2a implementasyonu değildir.
+P01-5a taşıma deneyi, state işinin tamamını beklemeden loopback üzerinde yapılabilir. Kimlik nesli için kalıcılık gerektiğinden P01-4a, P01-2b'den öncedir; “önce bütün kimlik, sonra DB” döngüsü kurulmaz. B02/B13 kararı alınmadan kalıcı credential biçimi icat edilmez. P01-1a kullanıcı onayıyla mevcut teslimde saptanan hataları kapattı ve [PR #4](https://github.com/HodeTech/Yorunge/pull/4) incelemesinde; sonraki yeni ürün paketi **P01-2a** olarak kalır. Bu kapanış hazırlığı P01-2a implementasyonu değildir.
 
 ```mermaid
 flowchart LR

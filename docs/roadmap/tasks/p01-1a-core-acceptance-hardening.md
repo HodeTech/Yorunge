@@ -62,11 +62,11 @@ Adım 1'de gerçek dosya ve subprocess negatif testleri, ilgili unit/contract/in
 
 ## Teslim kaydı
 
-İki adım ve her adımın iki yeni bağımsız review turu tamamlandı. Doğrulanmış bütün bulgular giderildi ve kapanışları yeniden incelendi. Kullanıcının PR incelemesi ve uzak CI sonucu bekleniyor; `in_review` bunun içindir. Hazırlık probe'ları teslim kanıtı yerine kullanılmaz.
+İki adım ve her adımın iki yeni bağımsız review turu tamamlandı. Doğrulanmış bütün bulgular giderildi ve kapanışları yeniden incelendi. Kullanıcının PR incelemesi bekleniyor; `in_review` bunun içindir. Zorunlu uzak CI sonucu PR'ın son head kontrollerinde izlenir. Hazırlık probe'ları teslim kanıtı yerine kullanılmaz.
 
-- PR/commit: [Son uygulama düzeltmesi](https://github.com/HodeTech/Yorunge/commit/7a255d51ce118b2ade6cc1af82191e3b8919e13d); development PR bağlantısı açılışta eklenecek.
-- Sonuç: 404 test (59 arşiv senaryosu), format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock geçti. Son kaynaklardan wheel/sdist ayrı temiz ortamlara kuruldu; 17/130 üye, depo dışı import/konsol/plan başarılı. [Kabul ve ham başlangıç ölçümü](../../research/p01-core-validation.md#p01-1-kapanış-doğrulaması); yerel JSONL son arşiv adı/hash ve temiz kurulum sonucunu taşır. Uzak CI henüz başarılı diye kaydedilmedi.
-- Kalan sınır: Açık doğrulanmış kod bulgusu yok; kullanıcı PR incelemesi ve zorunlu CI bekleniyor. HTTP/state/secret çözümleme, canlı EVREN, diğer OS/Python doğrulaması, yayın ve Master aktarımı bu kartın kabulü değildir.
+- PR/commit: [Development PR #4](https://github.com/HodeTech/Yorunge/pull/4); [son uygulama düzeltmesi](https://github.com/HodeTech/Yorunge/commit/7a255d51ce118b2ade6cc1af82191e3b8919e13d). PR kullanıcı incelemesi için açık bırakılır.
+- Sonuç: 404 test (59 arşiv senaryosu), format/lint/strict mypy, 86 genel Markdown, altı skill/iki kart ve lock geçti. Son kaynaklardan wheel/sdist ayrı temiz ortamlara kuruldu; 17/130 üye, depo dışı import/konsol/plan başarılı. [Kabul ve ham başlangıç ölçümü](../../research/p01-core-validation.md#p01-1-kapanış-doğrulaması); yerel JSONL son arşiv adı/hash ve temiz kurulum sonucunu taşır. Uzak CI için PR'ın son head kontrolleri esastır; yerel sonuç uzak koşu sayılmaz.
+- Kalan sınır: Açık doğrulanmış kod bulgusu yok; kullanıcı PR incelemesi bekleniyor. Birleştirmeden önce son head için zorunlu CI ve konuşma koşulları sağlanmalıdır. HTTP/state/secret çözümleme, canlı EVREN, diğer OS/Python doğrulaması, yayın ve Master aktarımı bu kartın kabulü değildir.
 
 | Adım / tur | İncelenen commit | Kapsam ve sonuç |
 |---|---|---|

@@ -55,7 +55,7 @@ Başlangıç ölçümü: aynı macOS 27.0.1 arm64 / CPython 3.11.18 referans mak
 | `--version` | 25,091 | 25,486 | 26,266 | ≤ 500 ms | Geçti |
 | `context show` + TOML + JSON | 401,901 | 89,434 | 92,807 | ≤ 200 ms | Geçti |
 
-İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. Kullanıcı PR incelemesi ve uzak CI sonucu bekleniyor; tam güncel teslim kaydı karttadır. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
+İki adım da iki yeni bağımsız review turuyla tamamlandı; mapping/timestamp, ZIP NUL ve alternatif Unicode ad bulguları giderilip yeniden doğrulandı. Son ZIP düzeltmesi ek yeni bağımsız reviewer ile son kaynak build'inde doğrulandı. [PR #4](https://github.com/HodeTech/Yorunge/pull/4) kullanıcı incelemesine sunuldu; uzak CI'ın son head sonucu ve tam teslim kaydı kartın PR bağlantısından izlenir. Canlı EVREN, başka OS/Python veya ürün yayını bu sonuçlarla doğrulanmış sayılmaz.
 
 ## Kalan sınır ve sonraki iş
 
