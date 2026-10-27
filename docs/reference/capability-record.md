@@ -2,6 +2,8 @@
 
 **Durum:** v1 genel sözleşme; sınırlı offline görünüm uygulandı, canlı/cache kaydı planlandı. **Tarih:** 2026-10-27.
 
+P01-3 için ayrı v2/cache ayrıntısı [Proposed ADR-0013](../decisions/0013-scoped-capability-cache.md) ile kullanıcı onayına sunulmuştur. Bu öneri aşağıdaki uygulanmış v1'i veya henüz benimsenmemiş tasarımı değiştirmez; [hazırlık incelemesi](../research/p01-3-readiness-review.md).
+
 ## Uygulanan offline görünüm
 
 `yorunge capabilities` / `yorunge.api.inspect_capabilities` seçilmiş context/task/tool/execution kapsamını döndürür. `planning.offline=supported` yalnız uygulanmış yerel şema/seçim politikasını anlatır; dış araç/EVREN desteği değildir. Eksik adaptör veya uyumsuz birleşim `unsupported`, doğrulanmamış hizmet/yetki/runtime `unknown`, açıkça eksik proje önkoşulu `requires_access` olur. `evren-workspace` genel kullanıcı sözleşmesi bilinmediği için erişim var/yok hükmü verilmez.

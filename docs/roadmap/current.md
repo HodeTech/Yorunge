@@ -20,7 +20,9 @@
 
 Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli SQLite store, migration ve backup; kalıcı credential kimliği/nesli ve açık reset/restore/recover; config init/profil/proje yönetimi ve yerel doctor. Son ürün head'i ca9502c'de 837 test, lint/type, iki temiz kurulum ve başlangıç bütçeleri geçti. Bu yerel kabuller uzak auth/hesap keşfi, HTTP, capability cache, execution geçerliliği veya operation/lease teslimi sayılmaz. Eski offline Plan biçimi/yürütülemezliği korunur.
 
-**Sıradaki ürün paketi P01-3:** P01-3a kapsam/kanıt/tazelik bağlı capability cache ve P01-3b execution planı/onay bağı. Doğrudan önkoşullar P01-2b/P01-4a development'ta tamamlandı. İki alt iş hâlâ draft; önce kapsam/kabul ve karar boşlukları iş kartlarıyla netleştirilecek, ardından tek development PR'ında uygulanacak. Bu kapanış işi P01-3 planlama veya implementasyonunu başlatmaz.
+**Aktif iş P01-3 hazırlığı:** Kullanıcı bütün paketin uygulanmasını, adım başına commit/iki bağımsız review turunu ve sonunda kendi incelemesi için tek PR açılmasını istedi. Güncel development@78d5d77 tabanında feat/p01-3-capability-planning dalı açıldı. [Belge/kod incelemesi](../research/p01-3-readiness-review.md), [paket planı](p01-3-delivery-plan.md) ve [iki draft kart](tasks/README.md) oluşturuldu; ürün kodu başlamadı.
+
+Doğrudan P01-2b/P01-4a önkoşulları tamamlandı. [ADR-0013](../decisions/0013-scoped-capability-cache.md) cache/kanıt/tazelik ve [ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) ayrı execution/onay/bakım kararı **Proposed**; kullanıcının açık talimatı gereği onay bekleniyor. Onay sonrası P01-3a, ardından onun kanıtıyla P01-3b aynı dalda uygulanacak. Yeni belge hazırlığı capability teslimi veya P01-3 kabulü değildir.
 
 Ardından P01-4'te operation/attempt, lease/fencing, unknown uzlaştırma ve jobs; P01-5'te HTTP/SDK, akış ve iptal; P01-6'da bütün P01 kabulü/destek matrisi kalır. P01-4a ve P01-6a yeniden yapılacak işler değildir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır; henüz paket yayını yoktur.
 

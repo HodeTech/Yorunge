@@ -1,0 +1,48 @@
+---
+id: P01-3b
+phase: P01
+status: draft
+size: M
+depends_on: [P01-3a]
+capabilities: [C02, C12, C13]
+---
+# P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
+
+**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). P01-3a kabulü ve Proposed ADR onayları bekleniyor; draft.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+Kullanıcı planın hangi girdiler/hedef/yetkiyle hazırlandığını saklayabilmeli; değişmiş bağla eski plan veya onay geçerli sayılmamalı. Bugünkü offline Plan yalnız şema/seçim doğrulamasıdır; execution modeli, güncel içerik/izin doğrulaması, kalıcı plan/onay ve public validity yüzeyi yoktur.
+
+## Giren ve girmeyen kapsam
+
+Ayrı execution v2 snapshot, yerel dosya bağlama, kalıcı prepare/show/validate, güncel doğrulama sonrası açık digest approval/revoke/forget, kota ve yeni tüketicinin reset/restore/recover/preview uyumu girer. Mevcut offline Plan byte/digest ve seçim önceliği korunur. Run/start, operation/attempt/lease/jobs, HTTP, gerçek EVREN ve ForgeLM/muadil adaptörü yoktur. Test fixture pozitif hazırlığı ürün desteği değildir; public görevler adaptör eksikliğini blocked/non-executable gösterir.
+
+## Bağımlılıklar ve kararlar
+
+P01-3a aynı dalda kendi kabulü ve iki bağımsız review turuyla tamamlanmalıdır; ayrı merge gerekmez. [ADR-0013](../../decisions/0013-scoped-capability-cache.md)/[ADR-0014](../../decisions/0014-execution-plan-validity-and-approval.md) Proposed; kullanıcı onayı yokken ready yapılmaz. Temel bağların nedeni Accepted ADR-0004/0005/0011/0012 ve [execution mimarisidir](../../architecture/execution-model.md).
+
+## Sözleşme ve uygulama sınırı
+
+Domain plan/girdi/onay kuralları; application güncel tipli producer, dosya ve state portlarını koordine eder; CLI parse/render yapar. Public caller doğrulanmış girdi/izin veya onay nesnesi enjekte edemez. Önerilen v2/CLI/approval/bakım ayrıntısı ADR-0014'tedir; onay sonrası exact alanlar execution referansına, public komut/hatalar CLI/state referansına bağlanır. Yeni şema eski `load_plan` politikasını zayıflatmaz.
+
+## Kabul
+
+1. Eski v1 golden Plan aynı JSON/digest ile üretilir/yüklenir; güncel profil değişimi saved seçimi yeniden çözmez, v1 execution'a otomatik yükselmez. V2 yükleme/yapı bütünlüğü güncel validity veya onay sayılmaz.
+2. Gerçek yerel dosya, descriptor/stat ve bloklu hash ile bağlanır. Aynı boyut/mtime değişimi, symlink/kök dışı/absolute/traversal yol, hash sırasında değişim ve bütçe aşımı güvenli reddedilir. Manifest dosyasını hash'lemek tüm data closure/model ağırlığını doğrulamış gibi anlatılmaz.
+3. Fixture producer ile olumlu preparation ve public üreticide eksik araç/uzak kanıt engelleri ayrı test edilir; hiçbir public sentetik görev/backend veya run eklenmez. State/IO hatasında sahte başarı yoktur.
+4. Saved plan değişmeden güncel API kökü/origin/hesap/proje/credential ID/nesil/izin/kaynak/model revision/içerik/tool executable/environment/runtime/parametre farkında validity reddedilir. Aynı secret snapshot kullanılır; son transaction'da epoch/revision tekrar denetlenir; çatışma otomatik retry edilmez.
+5. Plan/capability/tahmin expiry'si ve saat anomalisi geçerliliği sınırlar. Yalnız yeni kontrol zamanı, aynı semantik karar için planı değiştirmez veya ilk expiry'yi uzatmaz. Güncel validation sonraki dispatch bileti değildir.
+6. Eksik/yanlış digest çıkış 4; blocked/geçersiz plan approval çıkış 2'dir. Doğru açık onay yalnız aynı plan/schema/digest/store/epoch/süre için kayıt olur. Tekrarlı geçerli onay idempotent yerel sonuçtur; revoke sonraki kullanımı reddeder. Non-TTY prompt/sessiz onay yoktur; insan kimliği veya exactly-once garantisi iddia edilmez.
+7. Plan/onay kotası ve bounded okuma gerçek DB'de sınanır. Forget doğru digest ile yalnız seçilen plan/onayı atomik siler; başka kayda veya cache/identity/backup'a dokunmaz. Planı unutmak uzak iptal değildir; gelecek operation bağı silmeyi engelleyecek açık devir koşuludur.
+8. Reset/restore local-only dahil eski cache/plan/onay etkinliğini bitirir. Preview sonrası yalnız plan/onay değişiminde confirmation stale olur; cache-only değişim onayı bozmaz. Bakım preview v2 kayıp/etkisizleşme kapsamını gösterir.
+9. Gerçek önceki runtime intent'inde stage yok/eski stage/eski live; tamamlanmış pair'de kaynak backup kayıp; yeni şema/kalıcılık öncesi kesinti senaryoları recover ile güvenli tamamlanır. Bozuk payload epoch değişimiyle aklanmaz; operation-capable runtime'da eski snapshot/intent ile kaçış yoktur.
+10. CLI/Python prepare/show/validate/approve/revoke/forget aynı kuralları ve kontrollü JSON/hata zarfını kullanır. Secret/tag/K yeni public payload/digest/repr/loga girmez; show env/girdi okumaz. Metadata ve mevcut offline guard/performance bütçeleri korunur.
+
+## Doğrulama
+
+Unit canonical digest/girdi/onay/saat; contract v1/v2 ve CLI/API; integration gerçek dosya/DB/env, iki süreç, rollback/reset/restore/legacy intent ve sızıntı. [CONTRIBUTING matrisine](../../../CONTRIBUTING.md#doğrulama-seçimi) göre tam test, Ruff/mypy/belge/ajan, wheel/sdist iki temiz kurulum ve başlangıç/cache bütçesi. Gerçek uzak auth, fiziksel güç kesintisi ve Windows bu kabulün kanıtı değildir.
+
+## Teslim kaydı
+
+Henüz ürün teslimi yoktur. Karar onayı, P01-3a önkoşulu ve paket adım 2/3/4 uygulama/test/review kanıtları beklenir. Ürün PR'ı sonunda kullanıcı incelemesine açılır; otomatik merge edilmez.

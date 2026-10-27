@@ -9,7 +9,9 @@
 | [P01-4a](p01-4a-state-foundation.md) | P01-2 PR'ında store/migration ve kimlik kayıt temeli |
 | [P01-2b](p01-2b-credential-identity.md) | Opak credential kimliği/nesli ve hedef bağları |
 | [P01-2c](p01-2c-local-context-management.md) | Yerel init, context yönetimi ve doctor |
+| [P01-3a](p01-3a-scoped-capability-cache.md) | Tam kapsamlı capability cache, kanıt ve tazelik |
+| [P01-3b](p01-3b-execution-plan-validity.md) | Ayrı execution hazırlığı, güncel geçerlilik ve onay bağı |
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 
-Bu dört alt iş [P01-2 teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. Sonraki paket P01-3'tür; P01-3a/3b faz satırları draft, ayrıntılı kartları henüz oluşturulmadı. Bu indeks tamamlanan kanıtı korur, sonraki işi hazır göstermez.
+P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. Aktif P01-3 hazırlığında iki draft kart ve [tek PR planı](../p01-3-delivery-plan.md) oluşturuldu; Proposed ADR onayı ve kartların kendi ready koşulları bekleniyor. Bu indeks hazırlığı uygulama/kabul kanıtı saymaz.

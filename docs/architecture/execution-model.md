@@ -4,6 +4,8 @@
 
 İlk uygulama yalnız offline `draft` üretir: sır, araç sürümü, veri/model içeriği veya uzak yetki doğrulanmadığından `prepared`/onay/yürütme durumuna geçmez. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
+P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Proposed ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı ve ürün kabulü henüz yoktur; bu mimarideki gelecek durumlar mevcut runtime desteği değildir.
+
 ## Planın içerdiği bağlar
 
 Plan; görev türü, veri/model sürümü ve hash'leri, seçilen araç/sürüm, ortam, etkiler, maliyet tahmininin kaynağı/tarihi, parametre eşleme raporu ve deadline politikasını içerir. Kullanılan her hizmet için aşağıdaki bağlar da kanonik temsile ve onay digest'ine dahildir:

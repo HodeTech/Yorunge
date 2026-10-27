@@ -10,6 +10,7 @@
 - [P01-2 B02/B13 karar araştırması](p01-2-state-identity-decision-review.md): seçenekler, resmî kaynaklar ve kullanıcı onayıyla benimsenen ADR'ler; [tekrarlanabilir yerel probe](p01-2-state-identity-probe.py), [ham araştırma sonucu](p01-2-state-identity-probe.json). Ürün kabulü değildir.
 - [P01-2 onay öncesi review kanıtı](p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması): bulgu doğrulaması/düzeltme kaydı; [ek probe](p01-2-review-probe.py) ve [ham sonuç/binding byte vektörleri](p01-2-review-probe.json). Ürün migration/restore kabulü değildir.
 - [P01-2 uygulama ve kabul kaydı](p01-2-implementation-validation.md): adım/commit, iki yeni review turu, doğrulanmış bulgu ve gerçek ürün kanıtı; P01-2 teslim/kabulü tamamlandı; PR #6 development’a merge edildi, [merge/CI kapanışı](p01-2-implementation-validation.md#development-merge-kapanışı) kayıtlıdır.
+- [P01-3 hazırlık incelemesi](p01-3-readiness-review.md): mevcut belge/kod audit'i, resmî teknik kaynaklar, yeni Proposed ADR'ler ve uygulama öncesi karar sınırı; ürün kabulü değildir.
 - [P01-2 adım 1 başlangıç ham ölçümü](p01-2-step-1-startup.json): ikinci review turunun son ürün head'inde ayrı süreçlerle ölçüm; ortam/yöntem ve kapsam uygulama kabul kaydındadır.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
