@@ -43,8 +43,9 @@ def test_product_hmac_uses_independent_exact_byte_vectors():
         del incomplete[field]
         with pytest.raises(ValidationError):
             CredentialBinding(**incomplete)
+    unexpected = {**binding.model_dump(), "profile": "work"}
     with pytest.raises(ValidationError):
-        CredentialBinding(**binding.model_dump(), profile="work")
+        CredentialBinding(**unexpected)
 
 
 def test_reopen_rotation_and_public_private_boundaries(config, tmp_path, monkeypatch, capsys):
@@ -107,12 +108,10 @@ def test_snapshot_bound_once_to_context_and_identity(config, tmp_path, monkeypat
         assert bound.context is context
         assert bound.identity.credential_revision == 1
         assert bound.credential.secret.reveal() != "changed-after-resolve"
+        other_context = context.model_copy(update={"platform_url": "https://other.test"})
+        registry = StateCredentialRegistry(store)
         with pytest.raises(YorungeError) as failure:
-            bind_credential(
-                context.model_copy(update={"platform_url": "https://other.test"}),
-                resolved,
-                StateCredentialRegistry(store),
-            )
+            bind_credential(other_context, resolved, registry)
         assert failure.value.code == "state_changed"
     assert reads == ["EVREN_PLATFORM_API_KEY"]
 

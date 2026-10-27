@@ -78,13 +78,11 @@ class YorungeError(Exception):
     def __init__(self, code: ErrorCode) -> None:
         self.code = code
         self.message = MESSAGES[code]
-        self.exit_code = (
-            5
-            if code == "config_write_uncertain"
-            else 3
-            if code in ("credential_unavailable", "invalid_credential")
-            else 2
-        )
+        self.exit_code = 2
+        if code == "config_write_uncertain":
+            self.exit_code = 5
+        elif code in ("credential_unavailable", "invalid_credential"):
+            self.exit_code = 3
         super().__init__(self.message)
 
     def envelope(self) -> dict[str, object]:

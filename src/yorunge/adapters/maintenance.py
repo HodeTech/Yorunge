@@ -32,6 +32,8 @@ from yorunge.adapters.local_files import (
 )
 from yorunge.adapters.state import (
     DB_NAME,
+    INTENT_NAME,
+    LOCK_NAME,
     Metadata,
     apply_migration,
     backup,
@@ -53,7 +55,7 @@ from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
 from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid
 
-INTENT_NAME = "restore-intent.json"
+STAGE_SUFFIX = ".sqlite3"
 IDENTITY_TABLES = {"state_meta", "schema_migrations", "credential_bindings"}
 
 
@@ -188,10 +190,10 @@ def target_lock(root: Path, deadline: Deadline, *, create: bool) -> Iterator[Non
         durable_private_chain(root)
     else:
         owned_directory(root)
-    lock = root / "store.lock"
+    lock = root / LOCK_NAME
     if not present(lock):
         with os.scandir(root) as entries:
-            payload = any(entry.name != "store.lock" for entry in entries)
+            payload = any(entry.name != LOCK_NAME for entry in entries)
         if payload and not present(lock):
             raise YorungeError("state_repair_required")
     with file_lock(lock, deadline, exclusive=True, create=create and not present(lock)):
@@ -203,7 +205,7 @@ def live_snapshot(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
     path = root / DB_NAME
     if not present(path):
         with os.scandir(root) as entries:
-            if any(entry.name != "store.lock" for entry in entries):
+            if any(entry.name != LOCK_NAME for entry in entries):
                 raise YorungeError("state_repair_required")
         return None
     quiescent(path)
@@ -218,7 +220,7 @@ def inspect_target(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
     if not present(root):
         return None
     owned_directory(root)
-    if not present(root / "store.lock"):
+    if not present(root / LOCK_NAME):
         with os.scandir(root) as entries:
             if any(True for _ in entries):
                 raise YorungeError("state_repair_required")
@@ -388,7 +390,7 @@ def pair_snapshot(
 def stage_snapshot(
     root: Path, intent: RestoreIntent, deadline: Deadline
 ) -> IdentitySnapshot | None:
-    stage = root / ("restore-" + intent.stage_id + ".sqlite3")
+    stage = root / ("restore-" + intent.stage_id + STAGE_SUFFIX)
     if not present(stage):
         return None
     private_stat(stage)
@@ -408,11 +410,10 @@ def stage_snapshot(
 
 def stage_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Path:
     key = intent_key(root, intent)
-    stage = root / ("restore-" + intent.stage_id + ".sqlite3")
-    if present(stage):
-        if stage_snapshot(root, intent, deadline) is not None:
-            sync_private(stage)
-            return stage
+    stage = root / ("restore-" + intent.stage_id + STAGE_SUFFIX)
+    if present(stage) and stage_snapshot(root, intent, deadline) is not None:
+        sync_private(stage)
+        return stage
     source = state_directory(Path(intent.source))
     record = read_backup(source, deadline, schema.MIGRATIONS)
     if (
@@ -433,7 +434,7 @@ def stage_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Path
         # Retain intent-owned partial output, including a sidecar orphaned by a prior cut.
         for candidate in artifacts:
             private_stat(candidate)
-        quarantine = root / ("interrupted-" + str(uuid4()) + ".sqlite3")
+        quarantine = root / ("interrupted-" + str(uuid4()) + STAGE_SUFFIX)
         for candidate in artifacts:
             suffix = candidate.name[len(stage.name) :]
             os.rename(candidate, quarantine.with_name(quarantine.name + suffix))

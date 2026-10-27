@@ -143,3 +143,15 @@ Ek fresh bütünleşme reviewer'ı `p012_final_integration` (GPT-6 Astra/high), 
 [Son 30 süreç başlangıç ölçümü](p01-2-final-startup.json) paket kapanışının kanıtıdır; OS cache'i boşaltılmadı. Daha önceki yük altında başarısız ölçüm korunur. NFS/cloud, aynı UID/root saldırganı ve uygulama dışı DB+K rollback koruması yoktur; destek sınırı Accepted ADR'lerdeki yerel macOS/Linux/stdlib SQLite'tır. Linux kanıtı son development PR CI'ında kaydedilecek.
 
 Son ölçümün sıcak p95 değerleri: help 23.717 / version 25.436 / context 88.245 ms. Üç bütçe de geçti; her komut 30 ayrı süreçte ölçüldü.
+
+## PR #6 — CI ek kapanışı
+
+[PR #6](https://github.com/HodeTech/Yorunge/pull/6) `development` hedefiyle açıldı; merge edilmedi. İlk `b07d13d` [Ubuntu CI](https://github.com/HodeTech/Yorunge/actions/runs/40527548310) CPython 3.11.15/Linux x86_64 üzerinde **750 test**, lint/type/belge ve iki temiz kurulumdan geçti; context sıcak p95 **204,959 ms** ile 200 ms kapısında durdu. [Ham CI ölçümü](p01-2-first-ci-startup.json) korunur, aynı head tekrar çalıştırılarak başarısızlık gizlenmez.
+
+Gözlem: API ve text render, basit context okumasında yeni config/identity/maintenance modellerini eager import ediyordu. Sadece kullanılan açık kullanım senaryosunda import edilir; ortak ServiceId literal'i hafif model modülüne taşındı, hedef/kimlik/sonuç biçimi değişmedi. Yeni subprocess guard context API+text yolunun kullanılmayan feature modellerini yüklemediğini doğrular. [Yerel fix ölçümü](p01-2-ci-fix-startup.json) ayrıca kaydedilir; Linux sonucu yeni commit'in CI'ında doğrulanır.
+
+Sonar'ın 30 bulgusu güncel kodla doğrulandı: complexity dalları origin/path, bağlantı/row doğrulama ve tanı/render yardımcılarına ayrıldı; sabit literal'ler tekilleştirildi; exception testlerinde hazırlık/constructor/dump çağrıları assert dışına taşındı. SQLite body hatasının open_store tarafından dönüştürülmesi korunur. Env fixture bookkeeping okuması ürün tek-okuma ölçümünden ayrıldı. Regex ASCII sınırı ve yüzde kodlama politikası değişmez; raw `\d` Unicode genişlemesi yapılmadı.
+
+İki stdlib araştırma probe'unun keyfî --output sink'i mevcut dosyayı/symlink hedefini ezebiliyordu. Bağımsız reviewer `p012_ci_static_audit` (GPT-6.1 Sol/high) bunu doğruladı; yalnız belgeli sabit dist hedefleri, descriptor/no-follow ve no-clobber 0600 çıktı eklendi. Altı gerçek dosya negatifi ve iki probe'un kopyalanmış geçici repo içinde normal çalışması geçti. Tarihî araştırma JSON/hash kanıtı korunup özgün kaynak commit'leri belgelendi.
+
+Yerel düzeltme kabulü: **757 test** (34,81 s), Ruff format/lint, mypy (31 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. Runtime ve çıktı güvenliği refaktörü için iki fresh review turu ve yeni CI sonucu bekleniyor.

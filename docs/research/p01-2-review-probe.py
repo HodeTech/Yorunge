@@ -15,6 +15,10 @@ import tempfile
 from contextlib import closing
 from pathlib import Path
 
+from probe_output import write_report
+
+BEGIN_IMMEDIATE = "BEGIN IMMEDIATE"
+
 
 def connect(path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(path, isolation_level=None, timeout=0.1)
@@ -29,13 +33,13 @@ def migration_chain(root: Path) -> dict[str, object]:
         connection.execute("CREATE TABLE records(id INTEGER PRIMARY KEY)")
         connection.execute("INSERT INTO schema_migrations VALUES(1)")
         connection.execute("PRAGMA user_version=1")
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         connection.execute("CREATE TABLE version_two(id INTEGER PRIMARY KEY)")
         connection.execute("INSERT INTO records VALUES(2)")
         connection.execute("INSERT INTO schema_migrations VALUES(2)")
         connection.execute("PRAGMA user_version=2")
         connection.execute("COMMIT")
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         try:
             connection.execute("CREATE TABLE version_three(id INTEGER PRIMARY KEY)")
             connection.execute("INSERT INTO schema_migrations VALUES(3)")
@@ -56,7 +60,7 @@ def migration_chain(root: Path) -> dict[str, object]:
             ).fetchall()
             == []
         )
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         connection.execute("CREATE TABLE version_three(id INTEGER PRIMARY KEY)")
         connection.execute("INSERT INTO schema_migrations VALUES(3)")
         connection.execute("PRAGMA user_version=3")
@@ -102,7 +106,7 @@ def backup_gaps(root: Path) -> dict[str, object]:
             os.close(descriptor)
             raise AssertionError("no-clobber must reject existing target")
         assert hashlib.sha256(target.read_bytes()).hexdigest() == before
-        writer.execute("BEGIN IMMEDIATE")
+        writer.execute(BEGIN_IMMEDIATE)
         try:
             with closing(connect(source)) as reader, closing(connect(target)) as destination:
                 # Deliberately overwrite only our own disposable fixture to verify the API risk.
@@ -226,8 +230,8 @@ def byte_vectors() -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
-    arguments = parser.parse_args()
+    parser.add_argument("--output", choices=["dist/p01-2-review-probe.json"], required=True)
+    parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="yorunge-adr-review-") as directory:
         root = Path(directory)
         report = {
@@ -248,9 +252,7 @@ def main() -> None:
                 "No product restore gate; only the missing history risk is demonstrated.",
             ],
         }
-    arguments.output.write_text(
-        json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
-    )
+    write_report("p01-2-review-probe.json", report)
     print("ADR review experiments completed; research only, not product acceptance.")
 
 

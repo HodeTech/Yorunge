@@ -135,46 +135,8 @@ def parser() -> Parser:
 
 
 def text_result(data: Model) -> str:
-    from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
-    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Plan
-    from yorunge.domain.state import StateInfo
 
-    if isinstance(data, ConfigUpdate):
-        return (
-            f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
-            f"Seçili profil projesi: {data.project_id or 'seçilmedi'}\n"
-            f"Backup: {data.backup_path or 'ilk oluşturma'}"
-        )
-    if isinstance(data, ProfilesView):
-        return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
-    if isinstance(data, DoctorReport):
-        return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, MaintenancePreview):
-        lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
-        if data.current:
-            lines.append(f"Mevcut kayıt: {data.current.binding_count}")
-        if data.source:
-            lines.append(f"Snapshot kaydı: {data.source.binding_count}")
-        if data.history_may_be_lost:
-            lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
-        else:
-            lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
-        return "\n".join(lines)
-    if isinstance(data, StateInfo):
-        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
-
-    if isinstance(data, CredentialObservation):
-        return (
-            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
-            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
-        )
-    if isinstance(data, CredentialCheck):
-        return (
-            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
-            "Sır mevcut; uzak erişim doğrulanmadı."
-        )
     if isinstance(data, Context):
         return (
             f"Profil: {data.profile}\nProje: {data.project_id or 'seçilmedi'}\n"
@@ -192,7 +154,55 @@ def text_result(data: Model) -> str:
             f"Engeller: {', '.join(data.blockers)}\n"
             "Plan hazırlandı; yürütülemez. Eğitim veya uzak işlem başlatılmadı."
         )
+
+    return local_text_result(data)
+
+
+def local_text_result(data: Model) -> str:
+    from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.state import StateInfo
+
+    if isinstance(data, ConfigUpdate):
+        return (
+            f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
+            f"Seçili profil projesi: {data.project_id or 'seçilmedi'}\n"
+            f"Backup: {data.backup_path or 'ilk oluşturma'}"
+        )
+    if isinstance(data, ProfilesView):
+        return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
+    if isinstance(data, DoctorReport):
+        return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
+    if isinstance(data, MaintenancePreview):
+        return maintenance_text(data)
+    if isinstance(data, StateInfo):
+        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
+
+    if isinstance(data, CredentialObservation):
+        return (
+            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
+            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
+        )
+    if isinstance(data, CredentialCheck):
+        return (
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
+            "Sır mevcut; uzak erişim doğrulanmadı."
+        )
     raise TypeError("unsupported result type")
+
+
+def maintenance_text(data: MaintenancePreview) -> str:
+    lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
+    if data.current:
+        lines.append(f"Mevcut kayıt: {data.current.binding_count}")
+    if data.source:
+        lines.append(f"Snapshot kaydı: {data.source.binding_count}")
+    if data.history_may_be_lost:
+        lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
+    else:
+        lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
+    return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

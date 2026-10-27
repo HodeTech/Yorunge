@@ -8,15 +8,23 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Annotated, Literal, NoReturn
-from urllib.parse import quote, unquote_to_bytes, urlsplit
+from urllib.parse import SplitResult, quote, unquote_to_bytes, urlsplit
 
 from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import Context, EnvName, Identifier, Model, has_control_characters
+from yorunge.domain.models import (
+    Context,
+    EnvName,
+    Identifier,
+    Model,
+    has_control_characters,
+)
+from yorunge.domain.models import (
+    ServiceId as ServiceId,
+)
 from yorunge.domain.state import canonical_uuid, check_utc
 
-ServiceId = Literal["evren-platform", "evren-llm"]
 SECRET_LIMIT = 16_384
 TAG_FORMAT = "hmac-sha256-v1"
 
@@ -180,6 +188,13 @@ def _target(value: str) -> ServiceTarget:
     ):
         raise ValueError("invalid target")
     parts = urlsplit(value)
+    origin, path = _origin(parts), _path(parts.path)
+    if len(origin + path) > 2048:
+        raise ValueError("canonical target too long")
+    return ServiceTarget(service_origin=origin, api_base_path=path)
+
+
+def _origin(parts: SplitResult) -> str:
     if not parts.netloc.isascii():
         raise ValueError("ASCII authority required")
     host = parts.hostname or ""
@@ -198,7 +213,7 @@ def _target(value: str) -> ServiceTarget:
         else len(parts.netloc.split(":", 1)[0])
     )
     suffix = parts.netloc[authority_end:]
-    if suffix and not re.fullmatch(r":[0-9]+", suffix):
+    if suffix and not re.fullmatch(r":\d+", suffix, flags=re.ASCII):
         raise ValueError("invalid authority suffix")
     if parts.netloc.startswith("["):
         host = "[" + ipaddress.IPv6Address(host).compressed + "]"
@@ -211,10 +226,13 @@ def _target(value: str) -> ServiceTarget:
         ):
             raise ValueError("ASCII DNS name required")
         host = host.lower()
-    path = parts.path
+    return "https://" + host
+
+
+def _path(path: str) -> str:
     if path.endswith("//") or any(segment in (".", "..") for segment in path.split("/")):
         raise ValueError("ambiguous path")
-    if re.search(r"%(?![0-9a-fA-F]{2})|%(?:2f|5c|2e|25)", path, flags=re.IGNORECASE):
+    if re.search(r"%(?![0-9a-f]{2})|%(?:2f|5c|2e|25)", path, flags=re.IGNORECASE):
         raise ValueError("ambiguous escape")
     allowed = "/%ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=:@"
     if any(ord(char) < 128 and char not in allowed for char in path):
@@ -224,10 +242,7 @@ def _target(value: str) -> ServiceTarget:
         raise ValueError("invalid decoded path")
     path = quote(path, safe=allowed).rstrip("/") or "/"
     path = re.sub(r"%[0-9a-fA-F]{2}", lambda match: match[0].upper(), path)
-    origin = "https://" + host
-    if len(origin + path) > 2048:
-        raise ValueError("canonical target too long")
-    return ServiceTarget(service_origin=origin, api_base_path=path)
+    return path
 
 
 def normalize_target(value: str) -> ServiceTarget:

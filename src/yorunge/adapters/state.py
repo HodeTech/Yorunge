@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from pydantic import Field, field_validator
@@ -42,6 +42,8 @@ from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid, check_utc
 
 DB_NAME = "state.sqlite3"
+LOCK_NAME = "store.lock"
+INTENT_NAME = "restore-intent.json"
 
 
 def sqlite_error_code(error: sqlite3.Error) -> ErrorCode:
@@ -212,26 +214,31 @@ def validate(
             "reference_name,credential_id,revision,tag_format,tag,observed_at "
             "FROM credential_bindings"
         )
-        for epoch, service, origin, base, kind, name, identifier, revision, fmt, tag, when in rows:
-            try:
-                canonical_uuid(epoch)
-                canonical_uuid(identifier)
-                EnvReference(service_id=service, kind=kind, name=name)
-                normalized = normalize_target(origin + base)
-                if (
-                    normalized.service_origin != origin
-                    or normalized.api_base_path != base
-                    or type(revision) is not int
-                    or not 1 <= revision <= 2**63 - 1
-                    or fmt != "hmac-sha256-v1"
-                    or not isinstance(tag, bytes)
-                    or len(tag) != 32
-                ):
-                    raise ValueError("invalid binding")
-                check_utc(when)
-            except (ValueError, TypeError, YorungeError):
-                raise YorungeError("state_invalid") from None
+        for row in rows:
+            validate_binding_row(row)
     return version, result
+
+
+def validate_binding_row(row: tuple[Any, ...]) -> None:
+    epoch, service, origin, base, kind, name, identifier, revision, fmt, tag, when = row
+    try:
+        canonical_uuid(epoch)
+        canonical_uuid(identifier)
+        EnvReference(service_id=service, kind=kind, name=name)
+        normalized = normalize_target(origin + base)
+        if (
+            normalized.service_origin != origin
+            or normalized.api_base_path != base
+            or type(revision) is not int
+            or not 1 <= revision <= 2**63 - 1
+            or fmt != "hmac-sha256-v1"
+            or not isinstance(tag, bytes)
+            or len(tag) != 32
+        ):
+            raise ValueError("invalid binding")
+        check_utc(when)
+    except (ValueError, TypeError, YorungeError):
+        raise YorungeError("state_invalid") from None
 
 
 def new_key(root: Path) -> tuple[str, bytes]:
@@ -277,7 +284,7 @@ def apply_migration(connection: sqlite3.Connection, step: schema.Migration) -> N
 
 def bootstrap(root: Path, deadline: Deadline, migrations: tuple[schema.Migration, ...]) -> None:
     with os.scandir(root) as entries:
-        if any(entry.name != "store.lock" for entry in entries):
+        if any(entry.name != LOCK_NAME for entry in entries):
             raise YorungeError("state_repair_required")
     identifier, key = new_key(root)
     store_id, epoch = str(uuid4()), str(uuid4())
@@ -418,8 +425,8 @@ def connect_readonly(path: Path, deadline: Deadline) -> sqlite3.Connection:
 def maintain(
     root: Path, deadline: Deadline, migrations: tuple[schema.Migration, ...], *, check_key: bool
 ) -> None:
-    with file_lock(root / "store.lock", deadline, exclusive=True, create=False):
-        if (root / "restore-intent.json").exists() or (root / "restore-intent.json").is_symlink():
+    with file_lock(root / LOCK_NAME, deadline, exclusive=True, create=False):
+        if (root / INTENT_NAME).exists() or (root / INTENT_NAME).is_symlink():
             raise YorungeError("state_repair_required")
         if not (root / DB_NAME).exists():
             bootstrap(root, deadline, migrations)
@@ -472,65 +479,77 @@ class Store:
         return self.info
 
 
+def require_no_intent(root: Path) -> None:
+    marker = root / INTENT_NAME
+    if marker.exists() or marker.is_symlink():
+        raise YorungeError("state_repair_required")
+
+
+def prepare_root(path: Path | None, migrations: tuple[schema.Migration, ...]) -> Path:
+    root = state_directory(path)
+    if not migrations or any(
+        step.from_version != number or step.to_version != number + 1
+        for number, step in enumerate(migrations)
+    ):
+        raise YorungeError("state_invalid")
+    private_directory(root)
+    durable_private_chain(root)
+    lock = root / LOCK_NAME
+    if not lock.exists():
+        with os.scandir(root) as entries:
+            if any(entry.name != LOCK_NAME for entry in entries) and not lock.exists():
+                raise YorungeError("state_repair_required")
+    return root
+
+
+@contextmanager
+def verified_connection(
+    root: Path,
+    deadline: Deadline,
+    migrations: tuple[schema.Migration, ...],
+    *,
+    check_key: bool,
+) -> Iterator[tuple[sqlite3.Connection, int]]:
+    check_header(root / DB_NAME)
+    connection = connect(root / DB_NAME, deadline)
+    try:
+        version, value = validate(connection, migrations, full=False)
+        if check_key:
+            load_key(root, value)
+        yield connection, version
+    finally:
+        connection.close()
+
+
 @contextmanager
 def open_store(
-    path: Path | None = None, *, check_key: bool = True, timeout: float = 5.0
+    path: Path | None = None,
+    *,
+    check_key: bool = True,
+    timeout: float = 5.0,
 ) -> Iterator[Store]:
     if sys.platform not in ("darwin", "linux") or sqlite3.sqlite_version_info < (3, 37, 0):
         raise YorungeError("state_unsupported")
     try:
-        root, deadline, migrations = state_directory(path), Deadline(timeout), schema.MIGRATIONS
-        if not migrations or any(
-            step.from_version != number or step.to_version != number + 1
-            for number, step in enumerate(migrations)
-        ):
-            raise YorungeError("state_invalid")
-        private_directory(root)
-        durable_private_chain(root)
-        lock, db = root / "store.lock", root / DB_NAME
-        if not lock.exists():
-            with os.scandir(root) as entries:
-                if any(entry.name != "store.lock" for entry in entries) and not lock.exists():
-                    raise YorungeError("state_repair_required")
-        needs_maintenance = False
+        deadline, migrations = Deadline(timeout), schema.MIGRATIONS
+        root = prepare_root(path, migrations)
+        lock, db = root / LOCK_NAME, root / DB_NAME
         with file_lock(lock, deadline, exclusive=False, create=not db.exists()):
-            if (root / "restore-intent.json").exists() or (
-                root / "restore-intent.json"
-            ).is_symlink():
-                raise YorungeError("state_repair_required")
-            if not db.exists():
-                needs_maintenance = True
-            else:
-                check_header(db)
-                connection = connect(db, deadline)
-                try:
-                    version, value = validate(connection, migrations, full=False)
-                    if check_key:
-                        load_key(root, value)
-                    needs_maintenance = version < len(migrations)
-                    if not needs_maintenance:
+            require_no_intent(root)
+            if db.exists():
+                with verified_connection(root, deadline, migrations, check_key=check_key) as opened:
+                    connection, version = opened
+                    if version == len(migrations):
                         yield Store(root, connection, deadline, migrations)
                         return
-                finally:
-                    connection.close()
-        if needs_maintenance:
-            maintain(root, deadline, migrations, check_key=check_key)
+        maintain(root, deadline, migrations, check_key=check_key)
         with file_lock(lock, deadline, exclusive=False, create=False):
-            if (root / "restore-intent.json").exists() or (
-                root / "restore-intent.json"
-            ).is_symlink():
-                raise YorungeError("state_repair_required")
-            check_header(db)
-            connection = connect(db, deadline)
-            try:
-                version, value = validate(connection, migrations, full=False)
+            require_no_intent(root)
+            with verified_connection(root, deadline, migrations, check_key=check_key) as opened:
+                connection, version = opened
                 if version != len(migrations):
                     raise YorungeError("state_invalid")
-                if check_key:
-                    load_key(root, value)
                 yield Store(root, connection, deadline, migrations)
-            finally:
-                connection.close()
     except OSError:
         raise YorungeError("state_write_failed") from None
     except sqlite3.Error as error:

@@ -19,6 +19,8 @@ import time
 from contextlib import closing
 from pathlib import Path
 
+from probe_output import write_report
+
 WORKER = """
 import hmac, sqlite3, sys
 from pathlib import Path
@@ -52,6 +54,9 @@ os._exit(23)
 """
 
 
+BEGIN_IMMEDIATE = "BEGIN IMMEDIATE"
+
+
 def connect(path: Path, mode: str = "DELETE") -> sqlite3.Connection:
     connection = sqlite3.connect(path, isolation_level=None, timeout=0.1)
     actual = connection.execute(f"PRAGMA journal_mode={mode}").fetchone()[0]
@@ -67,7 +72,7 @@ def connect(path: Path, mode: str = "DELETE") -> sqlite3.Connection:
 def migration_probe(root: Path) -> dict[str, object]:
     with closing(connect(root / "migration.db")) as connection:
         connection.execute("PRAGMA user_version=1")
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         try:
             connection.execute("CREATE TABLE pending(id INTEGER PRIMARY KEY) STRICT")
             connection.execute("PRAGMA user_version=2")
@@ -83,7 +88,7 @@ def migration_probe(root: Path) -> dict[str, object]:
         ).fetchall()
         assert version == 1 and not tables
     with closing(connect(root / "executescript.db")) as connection:
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         connection.execute("CREATE TABLE prior(id INTEGER PRIMARY KEY)")
         try:
             connection.executescript("INSERT INTO prior VALUES(1); SELECT * FROM missing_table;")
@@ -100,10 +105,10 @@ def migration_probe(root: Path) -> dict[str, object]:
 def locking_and_crash_probe(root: Path) -> dict[str, object]:
     path = root / "locking.db"
     with closing(connect(path)) as first, closing(connect(path)) as second:
-        first.execute("BEGIN IMMEDIATE")
+        first.execute(BEGIN_IMMEDIATE)
         started = time.monotonic()
         try:
-            second.execute("BEGIN IMMEDIATE")
+            second.execute(BEGIN_IMMEDIATE)
         except sqlite3.OperationalError as error:
             assert error.sqlite_errorcode == sqlite3.SQLITE_BUSY
         else:
@@ -152,7 +157,7 @@ def identity_probe(root: Path) -> dict[str, object]:
     with closing(connect(path)) as connection:
         after_b = connection.execute("SELECT revision FROM identity").fetchone()[0]
         assert after_b == 2
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         connection.execute("UPDATE identity SET tag=?, revision=revision+1", (original_tag,))
         connection.execute("COMMIT")
         after_a = connection.execute("SELECT revision FROM identity").fetchone()[0]
@@ -183,7 +188,7 @@ def timing_probe(root: Path) -> dict[str, object]:
             samples = []
             for _ in range(100):
                 started = time.perf_counter()
-                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(BEGIN_IMMEDIATE)
                 connection.execute("UPDATE timing SET value=value+1 WHERE id=1")
                 connection.execute("COMMIT")
                 samples.append((time.perf_counter() - started) * 1000)
@@ -198,8 +203,8 @@ def timing_probe(root: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
-    arguments = parser.parse_args()
+    parser.add_argument("--output", choices=["dist/p01-2-decision-probe.json"], required=True)
+    parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="yorunge-decision-probe-") as directory:
         root = Path(directory)
         with closing(sqlite3.connect(":memory:")) as connection:
@@ -226,7 +231,7 @@ def main() -> None:
                 "Commit timings exclude startup/schema work; fsync counts differ by policy.",
             ],
         }
-    arguments.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    write_report("p01-2-decision-probe.json", report)
     print(json.dumps(report, indent=2))
 
 

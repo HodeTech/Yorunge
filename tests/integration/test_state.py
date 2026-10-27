@@ -225,8 +225,9 @@ def test_backup_disk_full_does_not_change_live_schema(tmp_path, monkeypatch):
     assert query(root, "PRAGMA user_version") == [(1,)]
     assert not list((root / "backups").glob("*/complete.json"))
     partial = next((root / "backups").iterdir())
+    deadline = Deadline()
     with pytest.raises(YorungeError):
-        state.read_backup(partial, Deadline(), state_schema.MIGRATIONS)
+        state.read_backup(partial, deadline, state_schema.MIGRATIONS)
 
 
 def test_key_directory_parent_sync_failure_prevents_pointer_commit(tmp_path, monkeypatch):
@@ -254,15 +255,17 @@ def test_bounded_file_and_sqlite_lock_wait(tmp_path):
     api.initialize_state(state_dir=root)
     start = time.monotonic()
     with file_lock(root / "store.lock", Deadline(), exclusive=True, create=False):
+        manager = open_store(root, timeout=0.05)
         with pytest.raises(YorungeError) as failure:
-            with open_store(root, timeout=0.05):
-                pytest.fail("locked store unexpectedly opened")
+            with manager:
+                pass
     assert failure.value.code == "state_busy"
     assert time.monotonic() - start < 1.0
     with closing(sqlite3.connect(root / DB_NAME, isolation_level=None)) as writer:
         writer.execute("BEGIN IMMEDIATE")
+        manager = open_store(root, timeout=0.05)
         with pytest.raises(YorungeError) as failure:
-            with open_store(root, timeout=0.05) as store:
+            with manager as store:
                 store.connection.execute("BEGIN IMMEDIATE")
         assert failure.value.code == "state_busy"
         writer.execute("ROLLBACK")
@@ -325,8 +328,9 @@ def test_backup_completion_and_hash_are_required(tmp_path):
     )
     with (saved / "snapshot.sqlite3").open("ab") as output:
         output.write(b"corrupt")
+    deadline = Deadline()
     with pytest.raises(YorungeError) as failure:
-        state.read_backup(saved, Deadline(), state_schema.MIGRATIONS)
+        state.read_backup(saved, deadline, state_schema.MIGRATIONS)
     assert failure.value.code == "state_invalid"
 
 
@@ -455,8 +459,9 @@ def test_invalid_backup_metadata_does_not_modify_snapshot(tmp_path, kind):
     else:
         record.unlink()
     snapshot = (saved / "snapshot.sqlite3").read_bytes()
+    deadline = Deadline()
     with pytest.raises(YorungeError) as failure:
-        state.read_backup(saved, Deadline(), state_schema.MIGRATIONS)
+        state.read_backup(saved, deadline, state_schema.MIGRATIONS)
     assert failure.value.code == "state_invalid"
     assert (saved / "snapshot.sqlite3").read_bytes() == snapshot
 
@@ -489,9 +494,10 @@ def test_expired_lock_budget_closes_opened_descriptor(tmp_path, monkeypatch):
         return descriptor
 
     monkeypatch.setattr(local_files, "open_private", tracked)
+    manager = open_store(root, timeout=0)
     with pytest.raises(YorungeError) as failure:
-        with open_store(root, timeout=0):
-            pytest.fail("expired budget unexpectedly opened state")
+        with manager:
+            pass
     assert failure.value.code == "state_busy"
     assert descriptors
     for descriptor in descriptors:
@@ -648,8 +654,9 @@ raise AssertionError('completion boundary not reached')
     if after_completion:
         assert state.read_backup(saved, Deadline(), state_schema.MIGRATIONS).source_version == 1
     else:
+        deadline = Deadline()
         with pytest.raises(YorungeError):
-            state.read_backup(saved, Deadline(), state_schema.MIGRATIONS)
+            state.read_backup(saved, deadline, state_schema.MIGRATIONS)
     monkeypatch.setattr(
         state_schema,
         "MIGRATIONS",

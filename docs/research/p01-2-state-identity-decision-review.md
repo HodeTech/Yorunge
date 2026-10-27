@@ -156,3 +156,9 @@ Resmî kaynakların erişim tarihi 2026-10-27'dir. Kaynak incelemesi, sentetik y
 - Altı alanlı binding JSON'u 222 bayt; sentetik secret'lar 11/14 UTF-8 bayt. İki observation ve bir ayrı-purpose key-check HMAC vektörü bağımsız OpenSSL komutuyla da eşleşti. Raw JSON'da tam mesaj/tag hex'i ve üretici SHA-256 vardır; gerçek sır yoktur.
 
 Disk dolması/sync hatası enjeksiyonu, yarışan migration yazarları, normalizer uygulaması, ürün backup/reset/restore kilidi/intent akışı ve güç kesintisi bu deneyle doğrulanmadı; ilgili ürün kartlarının kabul kapısıdır. İki ADR ve bağlı sözleşme onay öncesi tur boyunca Proposed kaldı; kullanıcı onayı sonrasında 2026-10-27'de **Accepted/benimsenmiş** olarak güncellendi. Araştırma ve karar onayı ürün teslimi yerine geçmez.
+
+### Probe çıktısının güvenli yeniden üretilmesi
+
+Araştırma probe'ları yalnız yukarıdaki belgelenmiş `dist/p01-2-decision-probe.json` ve `dist/p01-2-review-probe.json` hedeflerini kabul eder. Ortak stdlib [çıktı yardımcısı](probe_output.py) repo `dist` dizinini descriptor üzerinden no-follow açar, mevcut dosyayı ezmeden 0600 oluşturur; symlink ve başkasına yazılabilir dizin reddedilir. Yeni çıktı için mevcut deneme raporunu açıkça başka ada taşıyın; otomatik silme/overwrite yoktur. Araştırma çalıştırmaları kullanıcı config/state/sırrına erişmez.
+
+Bu belgede bağlı hazırlık dönemi JSON raporları özgün deney kanıtı olarak korunur: review probe'u [37133d8 kaynak sürümünde](https://github.com/HodeTech/Yorunge/commit/37133d8), ilk karar probe'u [d0ab9ba kaynak sürümünde](https://github.com/HodeTech/Yorunge/commit/d0ab9ba) üretildi. Rapor içindeki `probe_sha256` o tarihî script baytlarını tanımlar. Sonraki çıktı güvenliği/SQL literal refaktörü deney sonuçlarını geriye dönük yeniden üretilmiş gibi değiştirmez; yeni çalıştırma kendi hash/ortamını raporlar.

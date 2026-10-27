@@ -38,7 +38,7 @@ def check_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Diagnostic]:
 def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Diagnostic]:
     import sqlite3
 
-    from yorunge.adapters.local_files import Deadline, private_stat
+    from yorunge.adapters.local_files import Deadline
     from yorunge.adapters.maintenance import (
         live_snapshot,
         no_intent,
@@ -84,16 +84,7 @@ def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Dia
                 value = metadata(connection)
             finally:
                 connection.close()
-            try:
-                owned_directory(root / "keys")
-                key = private_stat(root / "keys" / (value.active_key_id + ".key"))
-                if key.st_size != 32 or key.st_dev != root.stat().st_dev:
-                    raise YorungeError("state_invalid")
-                key_result = Diagnostic(name="key", status="ok")
-            except FileNotFoundError:
-                key_result = Diagnostic(name="key", status="missing", code="state_repair_required")
-            except YorungeError as error:
-                key_result = Diagnostic(name="key", status="invalid", code=error.code)
+            key_result = check_key_metadata(root, value.active_key_id)
         return Diagnostic(name="state", status="ok"), key_result, unchecked
     except YorungeError as error:
         return (
@@ -120,3 +111,20 @@ def check_existing_state(path: Path | None) -> tuple[Diagnostic, Diagnostic, Dia
             Diagnostic(name="key", status="not_checked"),
             unchecked,
         )
+
+
+def check_key_metadata(root: Path, key_id: str) -> Diagnostic:
+    from yorunge.adapters.local_files import private_stat
+    from yorunge.adapters.maintenance import owned_directory
+
+    try:
+        owned_directory(root / "keys")
+        key = private_stat(root / "keys" / (key_id + ".key"))
+        if key.st_size != 32 or key.st_dev != root.stat().st_dev:
+            raise YorungeError("state_invalid")
+        key_result = Diagnostic(name="key", status="ok")
+    except FileNotFoundError:
+        key_result = Diagnostic(name="key", status="missing", code="state_repair_required")
+    except YorungeError as error:
+        key_result = Diagnostic(name="key", status="invalid", code=error.code)
+    return key_result

@@ -46,7 +46,10 @@ def test_selected_env_is_read_once_and_snapshot_does_not_change(
     monkeypatch.setattr(type(os.environ), "__getitem__", tracked)
     value = resolve_credential(configured(), service, EnvSecretReader())
     assert reads == [name]
-    os.environ[name] = "changed-after-resolution"
+    # Fixture bookkeeping reads the previous env value; measure only product accesses.
+    with monkeypatch.context() as instrumentation:
+        instrumentation.setattr(type(os.environ), "__getitem__", original)
+        monkeypatch.setenv(name, "changed-after-resolution")
     assert value.secret.reveal() == expected
     assert reads == [name]
     assert value.reference.service_id == service
@@ -141,8 +144,9 @@ def test_wrong_service_and_invalid_target_fail_before_secret_read(config, monkey
         api.check_credential("invalid-service", config=config)
     assert failure.value.code == "invalid_request"
     invalid = Profile(platform_url="https://api.example.test/v1?", platform_key_env="SOME_KEY")
+    reader = EnvSecretReader()
     with pytest.raises(YorungeError) as failure:
-        resolve_credential(invalid, "evren-platform", EnvSecretReader())
+        resolve_credential(invalid, "evren-platform", reader)
     assert failure.value.code == "invalid_service_target"
 
 
@@ -290,6 +294,7 @@ def test_non_contract_authority_fails_before_secret_read(url, monkeypatch):
 
     monkeypatch.setattr(EnvSecretReader, "read", denied)
     profile = Profile(platform_url=url, platform_key_env="CUSTOM_API_TOKEN")
+    reader = EnvSecretReader()
     with pytest.raises(YorungeError) as failure:
-        resolve_credential(profile, "evren-platform", EnvSecretReader())
+        resolve_credential(profile, "evren-platform", reader)
     assert failure.value.code == "invalid_service_target"

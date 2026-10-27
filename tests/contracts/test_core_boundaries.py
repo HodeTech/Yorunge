@@ -2,6 +2,10 @@
 
 import hashlib
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +28,28 @@ MALFORMED_TAGS = [
     pytest.param("task: !!timestamp {=: {=: nested}}", id="timestamp-nested-value-mapping"),
 ]
 CONTROLS = [chr(value) for value in (*range(32), *range(127, 160))]
+
+
+def test_context_api_and_text_do_not_import_unused_feature_models():
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(Path(__file__).parents[1] / "fixtures/guards")
+    environment["YORUNGE_TEST_METADATA"] = "0"
+    environment["YORUNGE_TEST_STATE"] = "0"
+    environment["YORUNGE_TEST_CREDENTIAL"] = "0"
+    source = """
+import sys
+from yorunge import api
+from yorunge.cli import text_result
+result = api.show_context()
+assert text_result(result.data)
+for name in ('configuration', 'credentials', 'maintenance', 'state'):
+    assert 'yorunge.domain.' + name not in sys.modules
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", source], env=environment, capture_output=True, text=True, timeout=10
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
 
 
 def write_plan(path, value):

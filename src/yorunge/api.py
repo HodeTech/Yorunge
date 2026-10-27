@@ -3,21 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
-from yorunge.domain.configuration import (
-    ConfigUpdate,
-    Diagnostic,
-    DoctorReport,
-    ProfileSummary,
-    ProfilesView,
-)
-from yorunge.domain.credentials import CredentialCheck, CredentialObservation, ServiceId
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.maintenance import MaintenancePreview
 from yorunge.domain.models import (
     CapabilityView,
     Configuration,
@@ -29,9 +21,15 @@ from yorunge.domain.models import (
     Profile,
     Recipe,
     Result,
+    ServiceId,
     Task,
 )
-from yorunge.domain.state import StateInfo
+
+if TYPE_CHECKING:
+    from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.state import StateInfo
 
 
 class Request(Model):
@@ -50,6 +48,8 @@ def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
     """Explicitly create/validate the local state; never reads service credentials."""
     import sys
 
+    from yorunge.domain.state import StateInfo
+
     if state_dir is not None and not isinstance(state_dir, Path):
         raise YorungeError("invalid_request")
     if sys.platform not in ("darwin", "linux"):
@@ -62,12 +62,14 @@ def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
 
 def preview_identity_reset(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_reset
+    from yorunge.domain.maintenance import MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_reset(state_dir))
 
 
 def reset_identity(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
     from yorunge.adapters.maintenance import reset
+    from yorunge.domain.state import StateInfo
 
     return Result[StateInfo](data=reset(state_dir, confirmation))
 
@@ -76,6 +78,7 @@ def preview_state_restore(
     backup_dir: Path, *, state_dir: Path | None = None
 ) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_restore
+    from yorunge.domain.maintenance import MaintenancePreview
 
     return Result[MaintenancePreview](
         data=preview_restore(backup_dir, state_dir),
@@ -87,6 +90,7 @@ def restore_state(
     backup_dir: Path, confirmation: str, *, state_dir: Path | None = None
 ) -> Result[StateInfo]:
     from yorunge.adapters.maintenance import restore
+    from yorunge.domain.state import StateInfo
 
     return Result[StateInfo](
         data=restore(backup_dir, state_dir, confirmation),
@@ -96,12 +100,14 @@ def restore_state(
 
 def preview_state_recovery(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_recovery
+    from yorunge.domain.maintenance import MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_recovery(state_dir))
 
 
 def recover_state(confirmation: str, *, state_dir: Path | None = None) -> Result[StateInfo]:
     from yorunge.adapters.maintenance import recover
+    from yorunge.domain.state import StateInfo
 
     return Result[StateInfo](
         data=recover(state_dir, confirmation), warnings=("restore_discards_post_backup_history",)
@@ -162,6 +168,7 @@ def initialize_config(
     project: str | None = None,
 ) -> Result[ConfigUpdate]:
     from yorunge.adapters.configuration import initialize
+    from yorunge.domain.configuration import ConfigUpdate
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     return Result[ConfigUpdate](
@@ -170,6 +177,8 @@ def initialize_config(
 
 
 def list_profiles(*, config: Path | None = None) -> Result[ProfilesView]:
+    from yorunge.domain.configuration import ProfileSummary, ProfilesView
+
     configuration, exists = _configuration(config)
     return Result[ProfilesView](
         data=ProfilesView(
@@ -191,6 +200,7 @@ def list_profiles(*, config: Path | None = None) -> Result[ProfilesView]:
 def activate_profile(name: str, *, config: Path | None = None) -> Result[ConfigUpdate]:
     from yorunge.adapters.configuration import update
     from yorunge.application.configuration import activate
+    from yorunge.domain.configuration import ConfigUpdate
 
     request = validate(Request, {"profile": name}, "invalid_request")
     if request.profile is None:
@@ -206,6 +216,7 @@ def set_project(
 ) -> Result[ConfigUpdate]:
     from yorunge.adapters.configuration import update
     from yorunge.application.configuration import project_selection
+    from yorunge.domain.configuration import ConfigUpdate
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     if request.project is None:
@@ -226,6 +237,7 @@ def clear_project(
 ) -> Result[ConfigUpdate]:
     from yorunge.adapters.configuration import update
     from yorunge.application.configuration import project_selection
+    from yorunge.domain.configuration import ConfigUpdate
 
     request = validate(Request, {"profile": profile}, "invalid_request")
     return Result[ConfigUpdate](
@@ -268,12 +280,27 @@ def diagnose_local(
     state_dir: Path | None = None,
 ) -> Result[DoctorReport]:
     from yorunge.adapters.diagnostics import check_state
+    from yorunge.domain.configuration import Diagnostic, DoctorReport
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     if (config is not None and not isinstance(config, Path)) or (
         state_dir is not None and not isinstance(state_dir, Path)
     ):
         raise YorungeError("invalid_request")
+    checks = _config_diagnostics(config, request)
+    checks.extend(check_state(state_dir))
+    checks.append(Diagnostic(name="remote_access", status="not_checked"))
+    return Result[DoctorReport](
+        data=DoctorReport(
+            checks=tuple(checks),
+            issue_count=sum(item.status in ("missing", "invalid", "busy") for item in checks),
+        )
+    )
+
+
+def _config_diagnostics(config: Path | None, request: Request) -> list[Diagnostic]:
+    from yorunge.domain.configuration import Diagnostic
+
     checks: list[Diagnostic] = []
     try:
         configuration, exists = _diagnostic_configuration(config)
@@ -313,14 +340,7 @@ def diagnose_local(
                 Diagnostic(name="llm_reference", status="not_checked"),
             )
         )
-    checks.extend(check_state(state_dir))
-    checks.append(Diagnostic(name="remote_access", status="not_checked"))
-    return Result[DoctorReport](
-        data=DoctorReport(
-            checks=tuple(checks),
-            issue_count=sum(item.status in ("missing", "invalid", "busy") for item in checks),
-        )
-    )
+    return checks
 
 
 def check_credential(
@@ -333,6 +353,7 @@ def check_credential(
     """Check only the selected env reference; never authenticates or persists identity."""
     from yorunge.adapters.secrets import EnvSecretReader
     from yorunge.application.credentials import resolve_credential
+    from yorunge.domain.credentials import CredentialCheck
 
     request = validate(
         CredentialRequest,
@@ -365,6 +386,7 @@ def observe_credential(
     from yorunge.adapters.secrets import EnvSecretReader
     from yorunge.adapters.state import open_store, state_directory
     from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.domain.credentials import CredentialObservation
 
     request = validate(
         CredentialRequest,
