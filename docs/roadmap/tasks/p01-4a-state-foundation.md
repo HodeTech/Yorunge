@@ -1,18 +1,18 @@
 ---
 id: P01-4a
 phase: P01
-status: in_review
+status: verified
 size: M
 depends_on: [P01-2a]
 capabilities: [C01, C12]
 ---
 # P01-4a — Yerel store ve migration temeli
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a doğrulandı. İlk uygulama/test tamam; iki review turu bekleniyor.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). Uygulama ve iki yeni bağımsız review turu tamamlandı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı komutlar ve süreçler arasında aynı kimlik bağını güvenilir biçimde kullanabilmelidir. Bugün SQLite store, şema sürümü ve migration yoktur.
+Kullanıcı komutlar ve süreçler arasında aynı kimlik bağını güvenilir biçimde kullanabilmelidir. Kart açıldığında SQLite store, şema sürümü ve migration yoktu; temel teslim edildi.
 
 ## Giren ve girmeyen kapsam
 
@@ -41,4 +41,6 @@ Gerçek tempfile/SQLite ve ayrı süreçlerle commit/rollback, migration, kilit 
 
 ## Teslim kaydı
 
-İlk ürün uygulaması ve 39 state/505 toplam test sonucu [uygulama kaydındadır](../../research/p01-2-implementation-validation.md). İki yeni bağımsız review turu bekleniyor; kart henüz verified değildir. Bu alt iş P01-2 ile aynı PR'da teslim edilecek; özgün ID'si korunur.
+- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/0b668ed), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/494799b), [review 2 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/93c4de4); tek P01-2 PR'ı paket sonunda açılacak.
+- Sonuç: 100 state/566 toplam test, Ruff format/lint, strict mypy, belge/ajan; wheel/sdist iki temiz kurulum ve başlangıç bütçeleri geçti. Üçer yeni ajanla iki review turu tamamlandı; dört ilk tur ve bir ikinci tur bulgusu doğrulanıp giderildi, odak kapanışında yeni bulgu yok. [Gerçek kabul kaydı](../../research/p01-2-implementation-validation.md).
+- Kalan sınır: Bu alt kartta açık doğrulanmış bulgu/kabul işi yok. Credential gözlemi/reset/restore P01-2b; operation/lease/jobs sonraki P01-4 alt işleridir. Linux CI ve tüm P01-2 bütünleşik kabulü paket PR'ında doğrulanacak; bu yerel kanıt yalnız macOS koşusudur.

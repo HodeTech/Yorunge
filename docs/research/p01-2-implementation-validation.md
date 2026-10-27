@@ -11,8 +11,8 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 | Adım | Teslim | Durum |
 |---|---|---|
 | 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
-| 2 | P01-4a — store/migration/backup/key temeli | İlk uygulama/test tamam; iki review turu bekleniyor |
-| 3 | P01-2b — kalıcı kimlik/nesil | Doğrudan bağımlılık bekliyor |
+| 2 | P01-4a — store/migration/backup/key temeli | İki yeni review turuyla verified |
+| 3 | P01-2b — kalıcı kimlik/nesil | Başladı |
 | 4 | P01-2b — reset/identity-only restore | Adım 3 bekliyor |
 | 5 | P01-2c — init/profil/proje/doctor | Önceki kabul bekleniyor |
 
@@ -61,3 +61,9 @@ Düzeltme sonrası **96 state / 562 toplam test geçti** (11,63 s); Ruff format/
 İncelenen head `494799b`. Yeni ajanlar: `p012_s2_r2_durability` (GPT-6 Astra/high), `p012_s2_r2_sql`, `p012_s2_r2_delivery` (GPT-6.1 Sol/high). R1 düzeltmeleri doğrulandı. Dosya reviewer'ı 20 bariyerli eşzamanlı iki-süreç bootstrap ve nested parent sync hatası sonrası yeniden bariyer probe'unu; delivery reviewer'ı 96 state testi, belge/ajan, iki temiz kurulum ve başlangıç bütçelerini bağımsız doğruladı.
 
 Tek yeni P2: gerçek SQLite FULL kodu 13, yanlışlıkla bozuk state diye sınıflanıyordu; kök ajan gerçek max_page_count sınırıyla yeniden üretti. FULL/IOERR ve genişletilmiş alt kodlar persistence hata sınıfına taşındı; gerçek SQLite FULL rollback/backup ve iki IOERR hata sınırı testi eklendi. Eşzamanlı ilk bootstrap kalıcı, iki child'ın bariyerde buluşup aynı UUID/epoch sonucu verdiği test olarak da eklendi. Kapanış doğrulaması ve bu dar düzeltmenin odak kontrolü bekleniyor.
+
+### Adım 2 kapanışı
+
+Düzeltme head'i `93c4de4`: kök ajan **100 state / 566 toplam test**, format/lint/type/belge/ajan denetimlerini geçti. Bulgu sahibi yeni head'de odak kontrolü yaptı; 12 ilgili test ve 11 hata eşleme örneğiyle FULL/IOERR fix'i ve diğer hata sınıfları doğrulandı, yeni bulgu yok. İki tam tur ve doğrulanmış bulguların kapanışı tamamlandı.
+
+Son kaynaklardan wheel 24 üye (`b2f90c1111b08ae5e52362d46becb0db40333a6afa06e4b6d2f0bc68ff4d4f8b`), sdist 155 üye (`30415c7109982d56e0b9ead037e068d101d5a920431d08167d1217d240676f05`); iki ayrı temiz kurulum/köken/smoke geçti. [Ham başlangıç ölçümü](p01-2-step-2-startup.json): 30 süreç sıcak p95 help 22,318 / version 22,866 / context 84,391 ms; üç bütçe geçti. Bu adım macOS/arm64 üzerinde doğrulandı; Linux ve son PR CI bütünleşik kapanıştadır. P01-4a verified; sonraki adım P01-2b gözlemidir.

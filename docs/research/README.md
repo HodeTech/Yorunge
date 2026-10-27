@@ -11,6 +11,7 @@
 - [P01-2 onay öncesi review kanıtı](p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması): bulgu doğrulaması/düzeltme kaydı; [ek probe](p01-2-review-probe.py) ve [ham sonuç/binding byte vektörleri](p01-2-review-probe.json). Ürün migration/restore kabulü değildir.
 - [P01-2 uygulama ve kabul kaydı](p01-2-implementation-validation.md): adım/commit, iki yeni review turu, doğrulanmış bulgu ve gerçek ürün kanıtı; aktif uygulama tamamlanmış kabul değildir.
 - [P01-2 adım 1 başlangıç ham ölçümü](p01-2-step-1-startup.json): ikinci review turunun son ürün head'inde ayrı süreçlerle ölçüm; ortam/yöntem ve kapsam uygulama kabul kaydındadır.
+- [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
 26 Ekim'deki öncül araştırma LLM/ForgeLM akışını öne almıştı. 27 Ekim kullanıcı talimatı Yörünge'yi EVREN kapsamlı yardımcı araç olarak konumlandırdı ve ForgeLM'i ilgili görevlerin seçilebilir varsayılanı yaptı. Güncel ürün yönü [ADR-0001](../decisions/0001-platform-companion.md) ve [ADR-0002](../decisions/0002-forgelm-default-open-tools.md) ile kayıtlıdır.
 

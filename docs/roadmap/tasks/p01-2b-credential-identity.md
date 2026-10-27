@@ -1,14 +1,14 @@
 ---
 id: P01-2b
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-2a, P01-4a]
 capabilities: [C01, C13]
 ---
 # P01-2b — Credential kimliği, nesli ve hedef bağları
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 kararı Accepted; doğrudan bağımlılıkların teslim kanıtları beklenir.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B13 Accepted, P01-2a/P01-4a verified; önce gözlem, sonra reset/restore adımı uygulanıyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

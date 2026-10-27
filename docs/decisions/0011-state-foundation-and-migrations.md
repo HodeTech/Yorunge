@@ -1,6 +1,6 @@
 # ADR-0011: P01 yerel store ve işlemsel migration temeli
 
-**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; P01-4a ilk uygulaması review'de. **Tarih:** 2026-10-27. **Kayıt:** B02. ADR-0004'teki SQLite kararını ayrıntılandırır; motor seçimini değiştirmez. Gerçek uygulama/kabul [uygulama kaydındadır](../research/p01-2-implementation-validation.md).
+**Durum:** Accepted — 2026-10-27 kullanıcı onayıyla benimsendi; P01-4a temeli iki review turuyla doğrulandı. **Tarih:** 2026-10-27. **Kayıt:** B02. ADR-0004'teki SQLite kararını ayrıntılandırır; motor seçimini değiştirmez. Gerçek uygulama/kabul [uygulama kaydındadır](../research/p01-2-implementation-validation.md); operation/lease tüketicisi sonraki iştir.
 
 ## Bağlam
 
