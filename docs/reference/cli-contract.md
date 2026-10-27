@@ -84,3 +84,7 @@ Sonuç zarfı `schema_version`, `operation_id` (yoksa null), `status`, `data`, `
 | 7 | İçerik/artefakt bütünlüğü uyuşmazlığı |
 
 Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0 olabilir; belirsiz **yan etki** kod 5'tir. Haricî aracın ham kodu `provider_exit_code` olarak ayrıca saklanır. Örneğin ForgeLM'in kod 6'sı Yörünge'de otomatik iptal sayılmaz; adaptör anlamını eşler.
+
+## Açık yerel kimlik gözlemi
+
+`context identity --service evren-platform|evren-llm [--state-dir PATH]` ortak config/profile/project seçiminden sonra tek env snapshot'ını kalıcı yerel kimlikle bağlar. Python karşılığı `api.observe_credential`'dır. `identity` nesnesi opak UUID, pozitif nesil, epoch ve gözlem zamanı taşır; uzak doğrulama false kalır. Eksik/geçersiz secret çıkış 3; state/taşma/bağ değişimi çıkış 2'dir. Aynı değer yeniden gözlendiğinde yazma/zaman güncellemesi yapılmaz. Eski offline komutlar ve Plan biçimi değişmez; ayrıntı [binding v1](credential-binding-v1.md).

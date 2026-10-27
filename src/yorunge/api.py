@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
-from yorunge.domain.credentials import CredentialCheck, ServiceId
+from yorunge.domain.credentials import CredentialCheck, CredentialObservation, ServiceId
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
     CapabilityView,
@@ -120,6 +120,42 @@ def check_credential(
             project_id=context.project_id,
         )
     )
+
+
+def observe_credential(
+    service_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[CredentialObservation]:
+    """Persist one selected env snapshot; does not verify remote authentication."""
+    from yorunge.adapters.identity import StateCredentialRegistry
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.adapters.state import open_store, state_directory
+    from yorunge.application.credentials import bind_credential, resolve_credential
+
+    request = validate(
+        CredentialRequest,
+        {"service_id": service_id, "profile": profile, "project": project},
+        "invalid_request",
+    )
+    root = state_directory(state_dir)
+    context, selected = _context(config, request, None)
+    resolved = resolve_credential(selected, request.service_id, EnvSecretReader())
+    with open_store(root) as store:
+        bound = bind_credential(context, resolved, StateCredentialRegistry(store))
+        return Result[CredentialObservation](
+            data=CredentialObservation(
+                service_id=resolved.reference.service_id,
+                **resolved.target.model_dump(),
+                profile=context.profile,
+                account_id=context.account_id,
+                project_id=context.project_id,
+                identity=bound.identity,
+            )
+        )
 
 
 def _resolve(

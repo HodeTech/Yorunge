@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -13,6 +14,14 @@ def canonical_uuid(value: str) -> str:
     if parsed.version != 4 or str(parsed) != value:
         raise ValueError("canonical UUIDv4 required")
     return value
+
+
+def check_utc(value: object) -> None:
+    if not isinstance(value, str) or len(value) > 40:
+        raise ValueError("UTC timestamp required")
+    timestamp = datetime.fromisoformat(value)
+    if timestamp.utcoffset() != UTC.utcoffset(timestamp):
+        raise ValueError("UTC timestamp required")
 
 
 class StateInfo(Model):

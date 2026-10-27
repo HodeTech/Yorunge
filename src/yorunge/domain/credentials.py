@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
+import json
 import re
 from dataclasses import dataclass
-from typing import Literal, NoReturn
+from typing import Annotated, Literal, NoReturn
 from urllib.parse import quote, unquote_to_bytes, urlsplit
 
+from pydantic import Field, field_validator, model_validator
+
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import EnvName, Identifier, Model, has_control_characters
+from yorunge.domain.models import Context, EnvName, Identifier, Model, has_control_characters
+from yorunge.domain.state import canonical_uuid, check_utc
 
 ServiceId = Literal["evren-platform", "evren-llm"]
 SECRET_LIMIT = 16_384
+TAG_FORMAT = "hmac-sha256-v1"
 
 
 class ServiceTarget(Model):
@@ -77,6 +83,92 @@ class CredentialCheck(Model):
     project_id: Identifier | None
     available: Literal[True] = True
     remote_verified: Literal[False] = False
+
+
+class CredentialBinding(Model):
+    identity_epoch: str
+    service_id: ServiceId
+    service_origin: str
+    api_base_path: str
+    reference_type: Literal["env"]
+    reference_name: EnvName
+
+    @field_validator("identity_epoch")
+    @classmethod
+    def epoch_value(cls, value: str) -> str:
+        return canonical_uuid(value)
+
+    @model_validator(mode="after")
+    def canonical_target(self) -> CredentialBinding:
+        target = normalize_target(self.service_origin + self.api_base_path)
+        if (
+            target.service_origin != self.service_origin
+            or target.api_base_path != self.api_base_path
+        ):
+            raise ValueError("canonical binding target required")
+        return self
+
+    def encoded(self) -> bytes:
+        return json.dumps(
+            self.model_dump(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+
+    def as_key(self) -> tuple[str, str, str, str, str, str]:
+        return (
+            self.identity_epoch,
+            self.service_id,
+            self.service_origin,
+            self.api_base_path,
+            self.reference_type,
+            self.reference_name,
+        )
+
+
+class CredentialIdentity(Model):
+    credential_id: str
+    credential_revision: Annotated[int, Field(ge=1, le=2**63 - 1)]
+    identity_epoch: str
+    observed_at: str
+
+    @field_validator("credential_id", "identity_epoch")
+    @classmethod
+    def uuid_value(cls, value: str) -> str:
+        return canonical_uuid(value)
+
+    @field_validator("observed_at")
+    @classmethod
+    def timestamp_value(cls, value: str) -> str:
+        check_utc(value)
+        return value
+
+
+class CredentialObservation(CredentialCheck):
+    identity: CredentialIdentity
+
+
+@dataclass(frozen=True, slots=True)
+class BoundCredential:
+    context: Context
+    credential: ResolvedCredential
+    identity: CredentialIdentity
+
+
+def observation_tag(binding: CredentialBinding, key: bytes, secret: SecretValue) -> bytes:
+    if not isinstance(key, bytes) or len(key) != 32:
+        raise ValueError("32-byte comparison key required")
+    encoded, value = binding.encoded(), secret.reveal().encode("utf-8")
+    message = (
+        b"yorunge:credential-observation:v1\x00"
+        + len(encoded).to_bytes(8, "big")
+        + encoded
+        + len(value).to_bytes(8, "big")
+        + value
+    )
+    return hmac.digest(key, message, "sha256")
 
 
 def _target(value: str) -> ServiceTarget:

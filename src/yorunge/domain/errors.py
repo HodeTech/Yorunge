@@ -17,6 +17,8 @@ ErrorCode = Literal[
     "state_repair_required",
     "state_write_failed",
     "state_unsupported",
+    "state_changed",
+    "credential_revision_exhausted",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -44,6 +46,10 @@ MESSAGES: dict[ErrorCode, str] = {
         "Yerel durum kalıcılaştırılamadı. Disk ve tanılama sonucunu kontrol edin."
     ),
     "state_unsupported": "Yerel durum için desteklenen macOS/Linux ve SQLite 3.37+ gereklidir.",
+    "state_changed": "Yerel bağ değişti. Güncel durumu inceleyip isteği yeniden hazırlayın.",
+    "credential_revision_exhausted": (
+        "Credential nesil sınırına ulaşıldı. Açık kimlik reset akışını kullanın."
+    ),
 }
 
 

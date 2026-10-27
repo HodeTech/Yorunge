@@ -1,6 +1,6 @@
 # Hizmet hedefi ve özel credential binding v1
 
-**Durum:** Benimsenmiş — Accepted ADR-0012'nin bağlı sözleşmesi; P01-2a hedef kapısı/secret byte sınırı uygulandı, kalıcı binding/HMAC henüz yoktur. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
+**Durum:** Benimsenmiş — Accepted ADR-0012'nin bağlı sözleşmesi; Hedef kapısı, secret byte sınırı ve kalıcı binding/HMAC gözlemi uygulandı; reset/restore kabulü sürüyor. **Tarih:** 2026-10-27. [Kararın nedeni ve tehdit sınırı](../decisions/0012-credential-identity-and-change-detection.md) kanoniktir. Bu belge hedef eşlemesi ve HMAC bayt biçiminin tek kaynağıdır.
 
 ## Hizmet hedefi: service-target-v1
 
@@ -29,7 +29,7 @@ Host/port/case ve yüzde kodlamasının genel sözdizimi [RFC 3986](https://www.
 
 P01-2 mevcut v1 offline Plan üretimi/yükleme ve digest baytlarını değiştirmez. `scope_for` bugün portu atar fakat örneğin IPv6 yazımını sıkıştırmaz; “origin/etkin port” ifadesi bu eski kaydı başka kimlik sayma gerekçesi değildir. Registry için tam context URL'si; gelecekte plan/capability karşılaştırması için kayıtlı origin + API kökü aynı `service-target-v1` kuralıyla **geçici karşılaştırma değeri** üretir. Kayıtlı Plan rewrite edilmez, digest yeniden yazılmaz ve offline Plan execution planına yükseltilmez.
 
-Mevcut parser'ın kabul edip bu yeni credential hedef kapısının reddettiği Unicode host, bozuk escape veya belirsiz path için açık hata gerekir; sessiz hedef düzeltmesi yoktur. Gelecekte prepared plan biçimi değişirse P01-3 kendi açık şema/uyumluluk kararıyla ilerler. P01-2a ürün testleri hedef örnekleri ve eski v1 dosyalarının değişmeden yüklenmesini kapsar; kalıcı registry/kimlik entegrasyonu sonraki adımdır.
+Mevcut parser'ın kabul edip bu yeni credential hedef kapısının reddettiği Unicode host, bozuk escape veya belirsiz path için açık hata gerekir; sessiz hedef düzeltmesi yoktur. Gelecekte prepared plan biçimi değişirse P01-3 kendi açık şema/uyumluluk kararıyla ilerler. P01-2a ürün testleri hedef örnekleri ve eski v1 dosyalarının değişmeden yüklenmesini kapsar; kalıcı registry kimliği açık gözlem API’sinde ayrıca kaydedilir.
 
 ## Binding alan kümesi
 
@@ -62,3 +62,11 @@ tag = HMAC-SHA-256(K, M)   # 32 bayt; DB içinde özel, public kimlik değil
 Uzunluklar **bayt** sayısıdır, uint64 işaretsiz big-endian tam 8 bayttır. Key-check farklı sabit purpose kullanır: `b"yorunge:key-check:v1\x00" + canonical_key_check_json_bytes`; JSON yalnız sıralı/kompakt `active_key_id`, `identity_epoch`, `store_id` kanonik UUIDv4 string alanlarını taşır, aynı JSON encoding kuralını kullanır. Store/epoch/key ID'ler DB satırıyla eşleşmelidir; böylece farklı dosya yanlış credential rotation sanılmaz. Secret veya gözlem tag'i key-check mesajına girmez.
 
 Sentetik K/secret, tam binding/key-check JSON'u, UTF-8 uzunlukları, mesaj hex'i ve beklenen tag hex'leri [review probe'unun ham vektörlerindedir](../research/p01-2-review-probe.json). Bunlar gerçek sır değildir. [Üretici deney](../research/p01-2-review-probe.py) yalnız encoding/standart HMAC vektörünü sabitler; target normalizer veya ürün registry'sini uygulamaz. Ürün testleri aynı vektörleri bağımsız olarak tüketmeli; hedef örnekleri, alan eksikliği ve boundary negatiflerini de doğrulamalıdır.
+
+## Kalıcı gözlem API'si
+
+`api.observe_credential(service_id, *, config=None, profile=None, project=None, state_dir=None)` ve `context identity --service evren-platform|evren-llm [--state-dir PATH]` seçili env değerini bir kez çözüp yerel kimliği kaydeder. JSON `identity` altında `credential_id`, `credential_revision`, `identity_epoch`, `observed_at` taşır. Reference adı, secret ve karşılaştırma tag'i public sonuca girmez. `context credential` kalıcı kayıt açmadan yalnız değerin varlığını denetlemeyi sürdürür.
+
+Aynı altı alan/değer tekrarında kimlik, nesil ve zaman değişmez. Gözlenen değer değişiminde aynı kimliğin nesli transaction içinde bir artar; A→B→A 1→2→3'tür. Eşzamanlı bağımsız env snapshot'ları kilit edinme sırasıyla kaydedilir; süreçlerin başlama zamanı veya uzak sunucunun o andaki durumu hakkında sıra garantisi yoktur. Hiç gözlenmeyen değişimler ve aynı değerin uzak izin değişimleri saptanamaz. Nesil 2^63−1 iken farklı değer `credential_revision_exhausted` verir; otomatik reset olmaz.
+
+Hesap/proje public context'te kalır, binding anahtarının yerine geçmez. Bu gözlem eski offline Plan'a kimlik eklemez veya yürütme yetkisi vermez. Reset/restore kabulü sonraki uygulama adımındadır.

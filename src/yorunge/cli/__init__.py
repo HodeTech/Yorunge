@@ -71,6 +71,10 @@ def parser() -> Parser:
     )
     common(credential)
     credential.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    identity = context_actions.add_parser("identity", help="Seçilen sır gözleminin yerel kimliği")
+    common(identity)
+    identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    identity.add_argument("--state-dir", type=Path)
     state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
     common(state, context=False)
     state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
@@ -94,13 +98,18 @@ def parser() -> Parser:
 
 
 def text_result(data: Model) -> str:
-    from yorunge.domain.credentials import CredentialCheck
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.models import CapabilityView, Context, Plan
     from yorunge.domain.state import StateInfo
 
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
 
+    if isinstance(data, CredentialObservation):
+        return (
+            f"Hizmet: {data.service_id}\nKimlik: {data.identity.credential_id}\n"
+            f"Nesil: {data.identity.credential_revision}\nUzak erişim doğrulanmadı."
+        )
     if isinstance(data, CredentialCheck):
         return (
             f"Hizmet: {data.service_id}\nProfil: {data.profile}\n"
@@ -150,7 +159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     options = vars(args)
     json_output = options.get("output", "text") == "json"
-    from yorunge.domain.credentials import CredentialCheck
+    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.state import StateInfo
 
     result: (
@@ -158,6 +167,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         | Result[Context]
         | Result[CapabilityView]
         | Result[CredentialCheck]
+        | Result[CredentialObservation]
         | Result[StateInfo]
     )
     try:
@@ -172,11 +182,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             context_options = {name: options.get(name) for name in ("config", "profile", "project")}
             if args.command == "context":
-                result = (
-                    api.check_credential(args.service, **context_options)
-                    if args.action == "credential"
-                    else api.show_context(**context_options)
-                )
+                if args.action == "identity":
+                    result = api.observe_credential(
+                        args.service, state_dir=args.state_dir, **context_options
+                    )
+                elif args.action == "credential":
+                    result = api.check_credential(args.service, **context_options)
+                else:
+                    result = api.show_context(**context_options)
             else:
                 task = "llm.train" if args.command == "train" else options.get("task")
                 use_case = (

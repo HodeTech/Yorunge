@@ -1,6 +1,8 @@
 from typing import Protocol
 
 from yorunge.domain.credentials import (
+    BoundCredential,
+    CredentialIdentity,
     EnvReference,
     ResolvedCredential,
     SecretValue,
@@ -8,11 +10,28 @@ from yorunge.domain.credentials import (
     normalize_target,
 )
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import Profile
+from yorunge.domain.models import Context, Profile
 
 
 class SecretReader(Protocol):
     def read(self, reference: EnvReference) -> SecretValue: ...
+
+
+class CredentialRegistry(Protocol):
+    def observe(self, credential: ResolvedCredential) -> CredentialIdentity: ...
+
+
+def bind_credential(
+    context: Context, credential: ResolvedCredential, registry: CredentialRegistry
+) -> BoundCredential:
+    url = (
+        context.platform_url
+        if credential.reference.service_id == "evren-platform"
+        else context.llm_url
+    )
+    if normalize_target(url) != credential.target:
+        raise YorungeError("state_changed")
+    return BoundCredential(context, credential, registry.observe(credential))
 
 
 def resolve_credential(

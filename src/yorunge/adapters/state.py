@@ -39,7 +39,7 @@ from yorunge.adapters.local_files import (
 from yorunge.domain.credentials import EnvReference, normalize_target
 from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.models import Model
-from yorunge.domain.state import StateInfo, canonical_uuid
+from yorunge.domain.state import StateInfo, canonical_uuid, check_utc
 
 DB_NAME = "state.sqlite3"
 
@@ -56,14 +56,6 @@ def sqlite_error_code(error: sqlite3.Error) -> ErrorCode:
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds")
-
-
-def check_utc(value: object) -> None:
-    if not isinstance(value, str) or len(value) > 40:
-        raise ValueError("UTC timestamp required")
-    timestamp = datetime.fromisoformat(value)
-    if timestamp.utcoffset() != UTC.utcoffset(timestamp):
-        raise ValueError("UTC timestamp required")
 
 
 def key_check(key: bytes, store_id: str, epoch: str, key_id: str) -> bytes:
@@ -487,8 +479,10 @@ def open_store(
         private_directory(root)
         durable_private_chain(root)
         lock, db = root / "store.lock", root / DB_NAME
-        if not lock.exists() and db.exists():
-            raise YorungeError("state_repair_required")
+        if not lock.exists():
+            with os.scandir(root) as entries:
+                if any(entry.name != "store.lock" for entry in entries):
+                    raise YorungeError("state_repair_required")
         needs_maintenance = False
         with file_lock(lock, deadline, exclusive=False, create=not db.exists()):
             if (root / "restore-intent.json").exists() or (
