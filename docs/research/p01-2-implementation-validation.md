@@ -11,7 +11,7 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 | Adım | Teslim | Durum |
 |---|---|---|
 | 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
-| 2 | P01-4a — store/migration/backup/key temeli | Başladı |
+| 2 | P01-4a — store/migration/backup/key temeli | İlk uygulama/test tamam; iki review turu bekleniyor |
 | 3 | P01-2b — kalıcı kimlik/nesil | Doğrudan bağımlılık bekliyor |
 | 4 | P01-2b — reset/identity-only restore | Adım 3 bekliyor |
 | 5 | P01-2c — init/profil/proje/doctor | Önceki kabul bekleniyor |
@@ -39,3 +39,11 @@ Guard'ın iki sabit env adıyla sınırlı kanıtı ürün kusuru sayılmadı; t
 İncelenen head `b319001`. Yeni ajanlar: `p012_s1_r2_security` (GPT-6 Astra/high), `p012_s1_r2_target`, `p012_s1_r2_delivery` (GPT-6.1 Sol/high). İlk turdaki üç düzeltme doğrulandı; yeni doğrulanmış bulgu yok. Security reviewer altı serialization yolu ve 332 sentetik hedef/karakter örneğini; target reviewer 2.981 kabul edilen URL'de idempotence ve 15 ek bozuk girdiyi; delivery reviewer tam 466 test, lint/type/belge/ajan, yeniden build ve iki temiz kurulumu doğruladı.
 
 Final adım head'inde wheel 20 üye (`9ef6ff0f0bfe9f6a7283da44e908562e1f2c56ea4d4e06d0a4202c36fc44a084`), sdist 147 üye (`86d4bf3f28082e674602b0bd225cfdcfefed5c178553b401b70d9990411e698d`) ve iki köken/smoke başarılı. [Ham başlangıç ölçümü](p01-2-step-1-startup.json): 30 ayrı süreç sıcak p95 help 79,622 / version 60,863 / context 105,469 ms; build ile eşzamanlı yükte de bütçeler geçti. OS cache'i boşaltılmadı. P01-2a kapanmıştır; P01-2 bütünü tamamlanmadı.
+
+## Adım 2 — İlk uygulama
+
+Özel dosya/dizin ve üst dizin sync zinciri, bounded shared/exclusive bakım kilidi, stdlib SQLite DELETE/EXTRA/fullfsync, üç gerçek tablo ve sıralı checksummed SQL manifesti eklendi. Bootstrap K/key-check'i DB pointer'ından önce kalıcılaştırır; mevcut eksik/bozuk K yeniden oluşturulmaz. Migration her adımda exclusive bakım altında kalıcı no-clobber snapshot alır; backup/hash SQL write transaction'ı dışındadır. Tamamlanma kaydı/snapshot doğrulaması readonly/immutable yapılır. Restore intent normal açılışı engeller; reset/restore/partial bootstrap repair sonraki adımdır. Public `initialize_state` / `state init --state-dir` aynı sır içermeyen sonucu verir, mevcut offline komutlar state açmaz.
+
+İlk doğrulama: **39 state integration testi**, **505 toplam test** geçti (6,58 s); Ruff format/lint, strict mypy (24 kaynak), 96 belge ve 6 skill/5 kart denetimi geçti. İki ayrı migration süreci, iki adımlı hata/yeniden açılış, gerçek hot journal ve commit öncesi/sonrası süreç kesintisi, FK bozulması, izin/symlink, disk/sync ve bozuk backup negatifleri gerçek geçici dosyalarla kapsandı. Bu süreç kesintileri güç kesintisi kanıtı değildir.
+
+İlk wheel 24 üye (`5515aaca3fb05d3d7052fd8802afb57313dfc23d9315f8711e7d467336327758`), sdist 154 üye (`6f67d4a644b6ea0e7392c8060e0948fde19efaa03b8ae757d221b9d584987a76`); iki temiz kurulum/köken/smoke ve 30 süreç başlangıç bütçeleri geçti. İki bağımsız review turu tamamlanmadan P01-4a verified değildir.

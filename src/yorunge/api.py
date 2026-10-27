@@ -23,6 +23,7 @@ from yorunge.domain.models import (
     Result,
     Task,
 )
+from yorunge.domain.state import StateInfo
 
 
 class Request(Model):
@@ -35,6 +36,20 @@ class Request(Model):
 
 class CredentialRequest(Request):
     service_id: ServiceId
+
+
+def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
+    """Explicitly create/validate the local state; never reads service credentials."""
+    import sys
+
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    if sys.platform not in ("darwin", "linux"):
+        raise YorungeError("state_unsupported")
+    from yorunge.adapters.state import open_store
+
+    with open_store(state_dir) as store:
+        return Result[StateInfo](data=store.verify())
 
 
 def _context(

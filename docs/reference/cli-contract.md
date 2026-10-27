@@ -9,6 +9,7 @@
 | `yorunge --help`, `--version` | Yalnız metadata; config/DB/sır/ağ/araç keşfi ve ML import yok |
 | `yorunge context show` | Yerel profil, hesap/proje tercihi; uzak doğrulama yok |
 | `yorunge context credential --service evren-platform\|evren-llm` | Yalnız seçilen hizmetin env değerini bir kez çözer; sırrı göstermeden UTF-8/boyut ve hedef kontrolü; DB/ağ yok |
+| `yorunge state init [--state-dir PATH]` | Açık yerel store/key oluşturma veya mevcut store'u doğrulama; env/ağ yok |
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
@@ -23,6 +24,8 @@ Planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=of
 Uygulanan çıkış kodları **0**, **2** ve açık credential kontrolünde **3**'tür. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. **Plan hazırlamada** tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Geçerli bir `capabilities` sorgusu aynı seçim için çıkış 0 ve ilgili reason code ile `unsupported` kayıt döndürür; sorgunun tamamlanması yürütme desteği değildir. Sorgunun kendisi geçersizse (örneğin bilinmeyen görev veya bozuk dosya) yine 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. `credential_unavailable` (referans/değer yok veya boş) ve `invalid_credential` (UTF-8/16.384 bayt sınırı) çıkış 3; `invalid_service_target` çıkış 2'dir. Credential kontrolü hesap/izin doğrulaması değildir; `available=true`, `remote_verified=false` ve sır içermeyen hedef/context metadata'sı döndürür. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; bozuk standart YAML scalar tag'leri de güvenli `invalid_recipe` olur. JSON hatası tek nesne stderr, stdout boştur. Diğer çıkış kodları aşağıda gelecekteki yürütme sözleşmesidir.
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
+
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesine özeldir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/repair komutları henüz yoktur.
 
 ## Komut alanları
 

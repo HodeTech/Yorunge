@@ -6,6 +6,7 @@ import sys
 
 META = os.environ.get("YORUNGE_TEST_METADATA") == "1"
 CREDENTIAL = os.environ.get("YORUNGE_TEST_CREDENTIAL") == "1"
+STATE = os.environ.get("YORUNGE_TEST_STATE") == "1"
 FORBIDDEN = ("torch", "transformers", "trl", "keyring", "forgelm", "axolotl")
 
 original_getitem = type(os.environ).__getitem__
@@ -26,7 +27,11 @@ type(os.environ).__getitem__ = guarded_getitem
 
 
 def audit(event, args):
-    if event.startswith("socket.") or event in ("sqlite3.connect", "subprocess.Popen"):
+    if (
+        event.startswith("socket.")
+        or event == "subprocess.Popen"
+        or (event == "sqlite3.connect" and (META or not STATE))
+    ):
         raise RuntimeError("forbidden offline side effect")
     if event == "import":
         root = args[0].split(".")[0]

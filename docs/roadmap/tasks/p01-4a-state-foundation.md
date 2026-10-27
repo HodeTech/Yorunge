@@ -1,14 +1,14 @@
 ---
 id: P01-4a
 phase: P01
-status: in_progress
+status: in_review
 size: M
 depends_on: [P01-2a]
 capabilities: [C01, C12]
 ---
 # P01-4a — Yerel store ve migration temeli
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a doğrulandı, uygulama başlıyor.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a doğrulandı. İlk uygulama/test tamam; iki review turu bekleniyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,4 +41,4 @@ Gerçek tempfile/SQLite ve ayrı süreçlerle commit/rollback, migration, kilit 
 
 ## Teslim kaydı
 
-Henüz ürün uygulaması, test sonucu veya teslim PR'sı yoktur. Bu alt iş P01-2 ile aynı PR'da teslim edilecek; özgün ID'si korunur.
+İlk ürün uygulaması ve 39 state/505 toplam test sonucu [uygulama kaydındadır](../../research/p01-2-implementation-validation.md). İki yeni bağımsız review turu bekleniyor; kart henüz verified değildir. Bu alt iş P01-2 ile aynı PR'da teslim edilecek; özgün ID'si korunur.

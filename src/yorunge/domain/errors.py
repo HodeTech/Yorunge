@@ -12,6 +12,11 @@ ErrorCode = Literal[
     "credential_unavailable",
     "invalid_credential",
     "invalid_service_target",
+    "state_invalid",
+    "state_busy",
+    "state_repair_required",
+    "state_write_failed",
+    "state_unsupported",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -32,6 +37,13 @@ MESSAGES: dict[ErrorCode, str] = {
     "invalid_service_target": (
         "Hizmet hedefi credential kullanımı için geçersiz. HTTPS adresini kontrol edin."
     ),
+    "state_invalid": "Yerel durum geçersiz. Sahiplik, izin ve bütünlük denetimini çalıştırın.",
+    "state_busy": "Yerel durum meşgul veya süre bütçesi doldu. Etkin işlemi kontrol edin.",
+    "state_repair_required": "Yerel durum onarım gerektiriyor. Açık kurtarma akışını kullanın.",
+    "state_write_failed": (
+        "Yerel durum kalıcılaştırılamadı. Disk ve tanılama sonucunu kontrol edin."
+    ),
+    "state_unsupported": "Yerel durum için desteklenen macOS/Linux ve SQLite 3.37+ gereklidir.",
 }
 
 

@@ -71,6 +71,12 @@ def parser() -> Parser:
     )
     common(credential)
     credential.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
+    common(state, context=False)
+    state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+    state_init = state.add_subparsers(dest="action", required=True).add_parser("init")
+    common(state_init, context=False)
+    state_init.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
@@ -90,6 +96,10 @@ def parser() -> Parser:
 def text_result(data: Model) -> str:
     from yorunge.domain.credentials import CredentialCheck
     from yorunge.domain.models import CapabilityView, Context, Plan
+    from yorunge.domain.state import StateInfo
+
+    if isinstance(data, StateInfo):
+        return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
 
     if isinstance(data, CredentialCheck):
         return (
@@ -141,10 +151,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     options = vars(args)
     json_output = options.get("output", "text") == "json"
     from yorunge.domain.credentials import CredentialCheck
+    from yorunge.domain.state import StateInfo
 
-    result: Result[Plan] | Result[Context] | Result[CapabilityView] | Result[CredentialCheck]
+    result: (
+        Result[Plan]
+        | Result[Context]
+        | Result[CapabilityView]
+        | Result[CredentialCheck]
+        | Result[StateInfo]
+    )
     try:
-        if args.command == "plan" and args.action == "show":
+        if args.command == "state":
+            if any(options.get(name) is not None for name in ("config", "profile", "project")):
+                raise YorungeError("invalid_request")
+            result = api.initialize_state(state_dir=options.get("state_dir"))
+        elif args.command == "plan" and args.action == "show":
             if any(options.get(name) is not None for name in ("config", "profile", "project")):
                 raise YorungeError("invalid_request")
             result = api.load_plan(args.plan)
