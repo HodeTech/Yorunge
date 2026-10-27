@@ -20,8 +20,8 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | ID | Tek teslim sınırı | Önkoşul | Kanıt / kapsam dışı | Durum |
 |---|---|---|---|---|
 | P01-1a | Mevcut offline çekirdeğin parser/şema hata sınırı ve dağıtım kabulünü sağlamlaştırma | P01-1 | [Tamamlanan kart ve merge/CI kanıtı](tasks/p01-1a-core-acceptance-hardening.md); HTTP/state/secret çözümleme eklemez | `verified` |
-| P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Review'deki alt kart](tasks/p01-2a-secret-resolution.md); P01-2 tek PR'ının ilk uygulama adımı | `in_review` |
-| P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | [Taslak kart](tasks/p01-4a-state-foundation.md); P01-2 PR'ında gerçek DB kabulü, tam operation/lease yok | `draft` |
+| P01-2a | Açık istekle hizmete özel env secret çözümleme; yerel komutların sır okumaması | P01-1 | [Tamamlanan kart](tasks/p01-2a-secret-resolution.md); iki review turu ve gerçek kabul kanıtı | `verified` |
+| P01-4a | Yerel store açma/migration ve kimlik kayıt temeli | P01-2a; B02/B13 kararları | [Aktif kart](tasks/p01-4a-state-foundation.md); P01-2 PR'ında gerçek DB kabulü, tam operation/lease yok | `in_progress` |
 | P01-2b | Opak credential kimliği/nesli ve hedef bağları | P01-2a, P01-4a | [Taslak kart](tasks/p01-2b-credential-identity.md); gözlenen değişimde eski nesil geçersiz, raw secret/hash saklanmaz | `draft` |
 | P01-2c | Yerel init/context yönetimi ve doctor yüzeyi | P01-2a, P01-4a, P01-2b | [Taslak kart](tasks/p01-2c-local-context-management.md); yerel tanılama; HTTP P01-5, uzak keşif P02-0b | `draft` |
 | P01-3a | Kapsamlı capability kaydı ve cache/tazelik politikası | P01-2b, P01-4a | İki credential, hedef/proje/izin farkı, stale saat ve unknown/access ayrımı | `draft` |

@@ -1,20 +1,20 @@
 ---
 id: P01-2a
 phase: P01
-status: in_review
+status: verified
 size: M
 depends_on: [P01-1]
 capabilities: [C01]
 ---
 # P01-2a — Hizmete bağlı env secret çözümleme
 
-**Hazırlandı:** 2026-10-27. İlk uygulama ve testler yazıldı; iki bağımsız review turu bekleniyor. [Güncel kabul kaydı](../../research/p01-2-implementation-validation.md).
+**Hazırlandı:** 2026-10-27. Uygulama ve iki yeni bağımsız review turu tamamlandı. [Güncel kabul kaydı](../../research/p01-2-implementation-validation.md).
 
 [P01-2 tek PR paketinin](../p01-2-delivery-plan.md) ilk uygulama adımıdır. B02/B13 kararları Accepted'dır; bu kart sıradaki uygulamadır. Bağımsız hazır olma durumu bütün paketin hazır veya uygulanmış olduğu anlamına gelmez.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı bir sonraki hizmet işleminde yalnız doğru servisin credential'ının kullanılmasını ister; yerel context/plan okumak için anahtar gerekmemelidir. Bugün profil env adını doğruluyor fakat secret çözümlemiyor.
+Kullanıcı bir sonraki hizmet işleminde yalnız doğru servisin credential'ının kullanılmasını ister; yerel context/plan okumak için anahtar gerekmemelidir. Kart açıldığında profil env adını doğruluyor fakat secret çözümlemiyordu; bu eksik kapatıldı.
 
 ## Giren ve girmeyen kapsam
 
@@ -47,4 +47,6 @@ Gerçek env adaptörü, sentetik değer ve gerçek şema kullanılır; parser ve
 
 ## Teslim kaydı
 
-Henüz uygulama commit/PR'si veya bu karta ait test sonucu yoktur. Teslimde kabul maddeleri gerçek kanıtla eşlenir; bu kart ancak o zaman `verified` olur. Kayıt biçimi [şablondadır](../task-template.md).
+- PR/commit: [İlk uygulama](https://github.com/HodeTech/Yorunge/commit/41c7dba), [review 1 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/b319001); tek P01-2 PR'ı paket sonunda açılacak.
+- Sonuç: 466 test, Ruff format/lint, strict mypy, belge/ajan denetimleri; wheel/sdist iki temiz kurulum ve başlangıç bütçeleri geçti. Üçer yeni ajanla iki bağımsız tur tamamlandı; ilk turdaki üç P2 regresyonla giderildi, ikinci turda açık bulgu kalmadı. [Ayrıntılı kanıt](../../research/p01-2-implementation-validation.md).
+- Kalan sınır: Bu alt kartta açık doğrulanmış bulgu/kabul işi yok. Kalıcı kimlik/state, init/doctor, HTTP/auth ve uzak execution P01-2a'nın teslimi değildir; sonraki adımlar kendi kanıtıyla kapanır.

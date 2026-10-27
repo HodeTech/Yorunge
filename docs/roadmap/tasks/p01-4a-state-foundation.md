@@ -1,14 +1,14 @@
 ---
 id: P01-4a
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-2a]
 capabilities: [C01, C12]
 ---
 # P01-4a — Yerel store ve migration temeli
 
-**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a kanıtı beklenir, uygulama yoktur.
+**Tarih:** 2026-10-27. **Teslim paketi:** [P01-2](../p01-2-delivery-plan.md). B02/B13 kararları Accepted; P01-2a doğrulandı, uygulama başlıyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

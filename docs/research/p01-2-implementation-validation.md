@@ -10,8 +10,8 @@ Root ve iki bağımsız salt okuma ajanı (`p012_document_audit`, `p012_surface_
 
 | Adım | Teslim | Durum |
 |---|---|---|
-| 1 | P01-2a — env/taşıyıcı/hedef kapısı | İlk uygulama/test tamam; iki review turu bekleniyor |
-| 2 | P01-4a — store/migration/backup/key temeli | Doğrudan bağımlılık bekliyor |
+| 1 | P01-2a — env/taşıyıcı/hedef kapısı | İki yeni review turuyla verified |
+| 2 | P01-4a — store/migration/backup/key temeli | Başladı |
 | 3 | P01-2b — kalıcı kimlik/nesil | Doğrudan bağımlılık bekliyor |
 | 4 | P01-2b — reset/identity-only restore | Adım 3 bekliyor |
 | 5 | P01-2c — init/profil/proje/doctor | Önceki kabul bekleniyor |
@@ -33,3 +33,9 @@ Hizmet/ref/immutable gözlem taşıyıcısı ve tek seçili env okuma; strict UT
 Üç yeni bağımsız ajan (GPT-6.1 Sol/high): `p012_s1_r1_secrets` (tek okuma/taşıyıcı/sızıntı), `p012_s1_r1_target` (URL sözleşmesi/eski Plan), `p012_s1_r1_surface` (CLI/API/guard/belge). Kök ajan üç P2'yi yeniden üretti: bracketed IPvFuture'ın DNS'e çevrilmesi, Unicode Kelvin host'un parser lowercase ile ASCII'ye dönüşmesi ve `object.__getstate__` yolunda ham slotted secret açılması. Authority'nin özgün ASCII kontrolü, parantezli host'un zorunlu IPv6 doğrulaması ve güvenli `__getstate__` ile giderildi; secret okunmadan ret ve serialization regresyonları eklendi.
 
 Guard'ın iki sabit env adıyla sınırlı kanıtı ürün kusuru sayılmadı; test yapılandırmasından özel env adları ve `os.environb` de kapsandı. Diğer doğrulanmış ürün bulgusu yok. Düzeltme sonrası **466 test**, Ruff format/lint ve strict mypy geçti. İkinci tur yeni ajanlarla bu head üzerinde yapılır.
+
+### Adım 1 / review 2 ve kapanış
+
+İncelenen head `b319001`. Yeni ajanlar: `p012_s1_r2_security` (GPT-6 Astra/high), `p012_s1_r2_target`, `p012_s1_r2_delivery` (GPT-6.1 Sol/high). İlk turdaki üç düzeltme doğrulandı; yeni doğrulanmış bulgu yok. Security reviewer altı serialization yolu ve 332 sentetik hedef/karakter örneğini; target reviewer 2.981 kabul edilen URL'de idempotence ve 15 ek bozuk girdiyi; delivery reviewer tam 466 test, lint/type/belge/ajan, yeniden build ve iki temiz kurulumu doğruladı.
+
+Final adım head'inde wheel 20 üye (`9ef6ff0f0bfe9f6a7283da44e908562e1f2c56ea4d4e06d0a4202c36fc44a084`), sdist 147 üye (`86d4bf3f28082e674602b0bd225cfdcfefed5c178553b401b70d9990411e698d`) ve iki köken/smoke başarılı. [Ham başlangıç ölçümü](p01-2-step-1-startup.json): 30 ayrı süreç sıcak p95 help 79,622 / version 60,863 / context 105,469 ms; build ile eşzamanlı yükte de bütçeler geçti. OS cache'i boşaltılmadı. P01-2a kapanmıştır; P01-2 bütünü tamamlanmadı.
