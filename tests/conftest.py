@@ -35,10 +35,12 @@ def cli():
         credential: bool = False,
         state: bool = False,
         secret_names: tuple[str, ...] = (),
+        recipe_loader: bool = True,
     ):
         environment = dict(os.environ)
         environment["PYTHONPATH"] = str(ROOT / "tests" / "fixtures" / "guards")
         environment["YORUNGE_TEST_METADATA"] = "1" if metadata else "0"
+        environment["YORUNGE_TEST_YAML"] = "1" if recipe_loader else "0"
         environment["YORUNGE_TEST_CREDENTIAL"] = "1" if credential else "0"
         environment["YORUNGE_TEST_STATE"] = "1" if state else "0"
         environment["YORUNGE_TEST_SECRET_NAMES"] = json.dumps(secret_names)

@@ -135,3 +135,38 @@ def test_cli_config_and_recipe_errors_are_safe(cli, tmp_path):
         assert result.returncode == 2 and result.stdout == ""
         assert json.loads(result.stderr)["code"] == code
         assert "synthetic-secret" not in result.stderr
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "context",
+        "offline-capability",
+        "cached",
+        "refresh",
+        "offline-plan",
+        "execution",
+        "state-init",
+    ],
+)
+def test_commands_without_recipe_do_not_import_yaml(tmp_path, cli, config, case):
+    root = str(tmp_path / "state")
+    commands = {
+        "context": ("context", "show", "--config", str(config)),
+        "offline-capability": ("capabilities", "--task", "llm.train"),
+        "cached": ("capabilities", "--task", "llm.train", "--cached", "--state-dir", root),
+        "refresh": ("capabilities", "--task", "llm.train", "--refresh", "--state-dir", root),
+        "offline-plan": ("plan", "prepare", "--task", "llm.train"),
+        "execution": ("plan", "execution", "prepare", "--task", "llm.train", "--state-dir", root),
+        "state-init": ("state", "init", "--state-dir", root),
+    }
+    result = cli(
+        *commands[case],
+        "--output",
+        "json",
+        recipe_loader=False,
+        state=case in ("cached", "refresh", "execution", "state-init"),
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["status"] == "completed"
+    assert result.stderr == ""

@@ -7,6 +7,7 @@ import sys
 META = os.environ.get("YORUNGE_TEST_METADATA") == "1"
 CREDENTIAL = os.environ.get("YORUNGE_TEST_CREDENTIAL") == "1"
 STATE = os.environ.get("YORUNGE_TEST_STATE") == "1"
+YAML = os.environ.get("YORUNGE_TEST_YAML") != "0"
 FORBIDDEN = ("torch", "transformers", "trl", "keyring", "forgelm", "axolotl")
 
 original_getitem = type(os.environ).__getitem__
@@ -35,7 +36,11 @@ def audit(event, args):
         raise RuntimeError("forbidden offline side effect")
     if event == "import":
         root = args[0].split(".")[0]
-        if root in FORBIDDEN or (META and root in ("pydantic", "yaml", "yorunge.api")):
+        if (
+            root in FORBIDDEN
+            or (META and root in ("pydantic", "yaml", "yorunge.api"))
+            or (root == "yaml" and not YAML)
+        ):
             raise RuntimeError("forbidden eager import")
     if META and event == "open" and isinstance(args[0], (str, bytes)):
         if str(args[0]).endswith((".toml", ".yaml", ".sqlite", ".db")):
