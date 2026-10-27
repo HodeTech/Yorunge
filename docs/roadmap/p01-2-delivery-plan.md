@@ -19,7 +19,9 @@ Bu paketin kullanıcı sonucu: doğru yerel profil/hizmet/proje seçimi, açık 
 | 4 | P01-2c — yerel init/context/doctor | Adım 1/2/3 kanıtı | [Yerel yönetim kartı](tasks/p01-2c-local-context-management.md) |
 | 5 | Bütünleşik kabul ve tek PR | Dört alt işin kendi kabulü | Aşağıdaki paket kapanışı |
 
-Adım 0'ın karar onayı tamamlandı. Yalnız P01-2a'nın bağımsız kartı hazırdır; sonraki kartlar kendi uygulama/bağımlılık kanıtlarını bekler. Kararların benimsenmesi, ürün uygulaması veya bütün paketin kabulü değildir; mevcut tur onay kaydını commit eder.
+Adım 0'ın karar onayı tamamlandı; kullanıcı P01-2 uygulamasını yetkilendirdi. Sonraki kartlar kendi uygulama/bağımlılık kanıtlarını bekler. P01-2b büyük olduğu için iki uygulama/review adımına ayrılır: önce kimlik gözlemi, sonra reset/restore. Ayrı kart/PR üretilmez; kart iki adımın kabulü tamamlandığında kapanır.
+
+Uygulama/review adımları: **1** P01-2a env çözümleme ve hedef kapısı; **2** P01-4a güvenli store/migration/backup ve key temeli; **3** P01-2b kimlik/nesil gözlemi; **4** P01-2b reset/identity-only restore; **5** P01-2c init/profil/proje/doctor. Bütünleşik kapanış ve tek PR bu beş adımın iki review turundan sonra gelir. [Gerçek ilerleme ve kabul kaydı](../research/p01-2-implementation-validation.md).
 
 ## Uygulama ve review
 
