@@ -65,6 +65,8 @@ Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye aç�
 
 ### Dış review: kayıtlar arası clock boşluğu ve global fence
 
+**Bu bölüm merge edilmemiş PR #9 prototipini anlatır; development teslimi şema 4'tür. Nihai V2 manifesti ADR-0015 onayını bekler.** Aşağıdaki algoritma/ölçüm başarısı manifest engelini kapatmaz.
+
 PR #9'daki saat yorumu iki bağımsız ajan ve ana inceleme tarafından gerçek kodda doğrulandı. [Tekrarlanabilir probe](p01-3-clock-frontier-probe.py) ve [tarihsel ham sonuç](p01-3-clock-frontier-reproduction.json), e32cb42 tabanında ve 2865ff3'te aynı boşluğu gösterir: B'nin expiry'si T+60, A'nın T+300; yalnız A sorgulanırken terminal commit UTC'yi T+100'e taşır. A fresh dönerken watermark T'de kalır; yeni StateCache T+50'de B'yi yeniden fresh/supported döndürebilir. Probe bu kusur görüldüğünde exit 1 verir; başarılı ürün kabulü diye kullanılmaz. Bu kontrol mevcut tam takımın kapsamadığı bir senaryoydu.
 
 Önerilen tek satır doğrudan uygulanmadı: son `save_stamp` sonrasında UTC/bütçe/bağ örneği atlanınca ek commit'teki expiry veya 5 saniyelik bütçe aşımı fresh sonuç verebilir. İki reviewer bu ters örneği de bağımsız üretti. Her son UTC örneğini persist edip her commit'ten sonra tekrar UTC okumak genel olarak sonlu başarı garantisi vermez.
@@ -81,7 +83,33 @@ Yeni 13 regresyon; başka cache kaydı/proof, aggregate stale sonrası leaf expi
 
 **Açık P2:** 4→5 prototipinin `backfill_expiries` çağrısı migration checksum'ı dışındadır. ADR-0011 bunu açıkça yasaklar. Eski 1–4 SQL/checksum değerleri değişmemiş olsa da yeni dönüşüm algoritması migration kimliğine bağlı değildir. Zaman protokolünde başka doğrulanmış bulgu yoktur; manifest engeli nedeniyle bu global düzeltme adımı teslim/kabul edilmiş sayılmaz. İkinci fresh code review turu da tamamlanmış değildir.
 
-[ADR-0015](../decisions/0015-checksummed-data-migrations.md), V1 checksum'larını koruyarak kapalı, sürümlü ve kaynak hash'i doğrulanan veri dönüşümünü açık V2 manifestine eklemeyi önerir. **Proposed; kullanıcı onayı bekleniyor.** Bu genişleme henüz uygulanmadı. İki bağımsız reviewer ADR önerisini ve bağlı durum belgelerini inceleyip yeni engelleyici bulgu bulmadı; 106 belge ve ajan/diff denetimleri geçti. Bekleyen V2 öncesi handler hash kontrolü açıkça tanımlandı; normal güncel-store açılışına handler import/hash maliyeti eklenmez. PR #9 taslak kalır; eski prototip şema 5 DB'leri yeniden etiketlenmez/silinmez. Onaydan sonra manifest bulgusu fix/commit edilir, farklı fresh reviewer'larla ikinci tur ve bütün son head kabulleri tamamlanır.
+[ADR-0015](../decisions/0015-checksummed-data-migrations.md), V1 checksum'larını koruyarak kapalı, sürümlü ve kaynak hash'i doğrulanan veri dönüşümünü açık V2 manifestine eklemeyi önerir. **Proposed; kullanıcı onayı bekleniyor.** Bu genişleme henüz uygulanmadı. İlk önerinin iki bağımsız reviewer'ı yeni engelleyici bulgu bildirmedi; o anda 106 belge ve ajan/diff denetimleri geçti. Bu tarihsel sonuç, aşağıdaki kullanıcı review'inde bulunan sözleşme boşluklarını kapatmış sayılmaz. PR #9 taslak kalır; eski prototip şema 5 DB'leri yeniden etiketlenmez/silinmez. Onaydan sonra manifest bulgusu fix/commit edilir, farklı fresh reviewer'larla ikinci tur ve bütün son head kabulleri tamamlanır.
+
+### ADR-0015 kullanıcı review'i — onay öncesi revizyon
+
+2026-10-28 tarihli yanıt onay değildir. İki rapordaki üç ve on iki madde tekilleştirilip mevcut ADR/kodla karşılaştırıldı. Bulgular geçerlidir; önerilerin atomiklik sınırı ve ölçüm yöntemi aşağıdaki nitelendirmelerle kapatıldı. V2 ürün kodu bu belge revizyonunda uygulanmadı.
+
+| Kullanıcı bulgusu | Doğrulama ve revize öneri |
+|---|---|
+| İlk P2-1 + ikinci P2-4: hashlenen kaynak / yürütülen kod ve yardımcılar | Normal import eski timestamp pyc veya `sys.modules` içeriğini kullanabilir. Tek dosya; yerel helper yok; aynı doğrulanmış bytes buffer doğrudan compile/exec edilir, handler import/cache yolu kullanılmaz. Saflık guard'ı sandbox iddiası taşımaz. |
+| İlk P2-2 + ikinci P3-1: bağımsız türetim örnekleri / güncel decoder | Altı sabit schema-4 source-row vektörü ve elle seçilmiş 19 beklenen expiry satırı eklendi. Güncel `decode_entry` geçerliliği ayrı denetlendi; nihai V2 sonrasında literal SQL karşılaştırması, kanonik full validation ve güncel warm/restart kabulü zorunlu. |
+| İlk P3 + ikinci P3-5: teslim edilmiş gibi anlatılan şema 5 | Local-state girişinde development sınırı şema 4 olarak ayrıldı; bu araştırma bölümünün başına prototip/onay sınırı eklendi. Geçmiş deney kayıtları silinmedi. |
+| İkinci P2-1: V1 opsiyonel alan belirsizliği | V1 yalnız üç alan; ekstra alan/null descriptor reddi. Eski 1–4 checksum'ları değişmez. |
+| İkinci P2-2: V2 kapsamı | Adım başına sürüm; bütün yeni adımlar V2. SQL-only descriptor taşımaz, data adımı taşır; nihai 4→5 tek V2 data adımıdır. |
+| İkinci P2-3: ADR-0011 ilişkisi | Yalnız V2 checksum tanımına kısmi değişiklik açık; ADR-0011 ve indekste Proposed bağlantısı var. ADR-0011 Accepted kalır, yürürlükteki kural onaysız değişmez. |
+| İkinci P2-5: saflık / transaction sahipliği | Girdi yalnız source satırlar; caller transaction'ı ve dar SQL facade/authorizer. Env/saat/dosya/ağ, yeni bağlantı, transaction/DDL/PRAGMA ve kaçışlar negatif kabul matrisinde. |
+| İkinci P2-6: migration bütçesi | Öneri mevcut toplam 5 s'yi korur; schema 2/3/4 ve restore-stage için yoğun/byte-limit fixture, en az üç koşu, faz süreleri/VM sayımları/ham ortam ve DDL-only karşılaştırma zorunlu. Failclosed süre ret'i pozitif başarı sayılmaz; henüz kanıtlanmamış bütçe kapanışı açık kalır. |
+| İkinci P3-2 + P3-6: negatif matris / kapalı tip ve hata sözleşmesi | Exact key/type/encoding/ID/hash ve tek execute kuralı; her negatif ayrı test, kesin hata kodu ve DB korunumu. Prototype schema-5 checksum reddi ayrı. |
+| İkinci P3-3: SQL-UDF cümlesi | Var olmayan UDF yoluna dayanan ifade çıkarıldı; descriptor/data → `state_invalid`, I/O → `state_write_failed`, süre/kilit → `state_busy`, runtime → `state_unsupported` eşlemesi açık. |
+| İkinci P3-4: prototip DB kurtarma | Disposable veri için yeni state-dir; gerçek veri korunur, checksum elle değiştirilmez. Yalnız doğrulanmış tamamlanmış schema 1–4 migration backup'ından yeni boş hedefe restore; backup yoksa koruma/destek incelemesi. |
+
+“Bütçe dolunca rollback” önerisi **commit öncesi** için geçerlidir. Tamamlanmış önceki migration adımları veya COMMIT'te kalıcılaşmış geçerli adım geriye çevrilemez; ADR-0011'in adım başına atomiklik sözleşmesi korunur. VM sayısı ayrı ölçüm kanıtıdır; mevcut 5 s yanında ölçülmemiş yeni bir VM limiti uydurulmadı.
+
+[Tekrarlanabilir araştırma probe'u](p01-3-migration-proposal-probe.py), [ham sonuç](p01-3-migration-proposal-evidence.json) ve [sabit vektörler](p01-3-expiry-migration-vectors.json) bu revizyonun dar kanıtıdır. Komut: `.venv/bin/python docs/research/p01-3-migration-proposal-probe.py`. CPython 3.11'de aynı boyut/mtime taşıyan eski pyc ve önceden yüklenmiş modül `old`, aynı doğrulanmış source buffer'ının compile sonucu `new` oldu. Altı vektör güncel canonical decoder'ı geçti ve prototip expiry helper'ı literal 19 satırla eşleşti. Bu probe **V2 loader, gerçek migration, warm/restart, saflık veya süre kabulü değildir**; bunlar ADR onayından sonra uygulanıp doğrulanacaktır. Ham sonuç fixture/probe ve üç ilgili runtime dosyasının SHA-256'larını taşır.
+
+Resmî kaynaklar 2026-10-28'de tekrar incelendi: [Python 3.11 bytecode invalidation](https://docs.python.org/3.11/reference/import.html#cached-bytecode-invalidation), [doğrudan bytes compile](https://docs.python.org/3.11/library/functions.html#compile) ve [SQLite JSON derleme sınırı](https://www.sqlite.org/json1.html#compiling_in_json_support). Bunlar teknik yöntem kanıtıdır; önerilen V2'nin çalıştığını kanıtlamaz. Onaya sunulan üç seçim ADR'de kanoniktir; PR #9 draft ve manifest P2 açık kalır.
+
+Revizyonun yerel kontrolleri: 106 Markdown/0 sorun, altı skill/yedi kart/0 sorun, araştırma probe'unda Ruff format/lint, gerçek bytecode/vektör koşusu ve diff whitespace başarılı. Ürün kodu, CI veya bağımlılık değişmedi; tam ürün testleri bu belge revizyonunda yerelde yeniden çalıştırılmadı.
 
 ## Onay ve yöntem
 
