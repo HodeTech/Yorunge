@@ -12,10 +12,38 @@ import subprocess
 import sys
 import time
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
+
+resource_module: ModuleType | None
+try:
+    import resource
+except ImportError:
+    resource_module = None
+else:
+    resource_module = resource
 
 
-def measure(command: list[str], *, cache_hit: bool = False) -> float:
+@dataclass(frozen=True)
+class Sample:
+    wall_ms: float
+    user_ms: float | None
+    system_ms: float | None
+
+
+def child_cpu() -> tuple[float, float] | None:
+    if resource_module is None:
+        return None
+    try:
+        usage = resource_module.getrusage(resource_module.RUSAGE_CHILDREN)
+        return float(usage.ru_utime) * 1000, float(usage.ru_stime) * 1000
+    except OSError:
+        return None
+
+
+def measure(command: list[str], *, cache_hit: bool = False) -> Sample:
+    before = child_cpu()
     started = time.perf_counter()
     completed = subprocess.run(
         command,
@@ -25,11 +53,16 @@ def measure(command: list[str], *, cache_hit: bool = False) -> float:
         timeout=10,
     )
     duration = (time.perf_counter() - started) * 1000
+    after = child_cpu()
     if cache_hit:
         records = json.loads(completed.stdout)["data"]["records"]
         if not records or not all(r["hit"] is True and r["freshness"] == "fresh" for r in records):
             raise RuntimeError("cache benchmark requires fresh hits, not misses")
-    return duration
+    return Sample(
+        duration,
+        after[0] - before[0] if after is not None and before is not None else None,
+        after[1] - before[1] if after is not None and before is not None else None,
+    )
 
 
 def cpu_label() -> str:
@@ -71,7 +104,8 @@ def main() -> int:
     database = args.cache_state.resolve() / "state.sqlite3"
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)) as reader:
         count, total, largest = reader.execute(
-            "SELECT count(*),sum(length(payload)),max(length(payload)) FROM capability_cache"
+            "SELECT count(*),sum(length(CAST(payload AS BLOB))),"
+            "max(length(CAST(payload AS BLOB))) FROM capability_cache"
         ).fetchone()
     cache_dataset = {"records": count, "payload_bytes": total, "largest_record_bytes": largest}
     cases["cache"] = (
@@ -96,14 +130,27 @@ def main() -> int:
         first = measure(invocation, cache_hit=name == "cache")
         for _ in range(3):
             measure(invocation, cache_hit=name == "cache")
-        samples = [measure(invocation, cache_hit=name == "cache") for _ in range(args.samples)]
+        observed = [measure(invocation, cache_hit=name == "cache") for _ in range(args.samples)]
+        samples = [sample.wall_ms for sample in observed]
         p95 = sorted(samples)[math.ceil(len(samples) * 0.95) - 1]
         passed = passed and p95 <= target
         measurements[name] = {
-            "first_process_ms": round(first, 3),
+            "first_process_ms": round(first.wall_ms, 3),
             "warm_median_ms": round(statistics.median(samples), 3),
             "warm_p95_ms": round(p95, 3),
             "warm_samples_ms": [round(sample, 3) for sample in samples],
+            "warm_child_user_cpu_ms": [
+                round(s.user_ms, 3) if s.user_ms is not None else None for s in observed
+            ],
+            "warm_child_system_cpu_ms": [
+                round(s.system_ms, 3) if s.system_ms is not None else None for s in observed
+            ],
+            "warm_non_cpu_estimate_ms": [
+                round(s.wall_ms - s.user_ms - s.system_ms, 3)
+                if s.user_ms is not None and s.system_ms is not None
+                else None
+                for s in observed
+            ],
             "target_ms": target,
             "passed": p95 <= target,
             "fresh_cache_hit_verified": name == "cache",
@@ -120,6 +167,8 @@ def main() -> int:
         "samples_per_command": args.samples,
         "installation": args.installation_label,
         "cold_method": "first command process; OS/disk caches uncontrolled; not a cold boot",
+        "cpu_method": "RUSAGE_CHILDREN deltas for sequential waited children; wall minus child CPU "
+        "includes parent overhead and wait; does not identify I/O or scheduler cause",
         "measurements": measurements,
     }
     args.output.write_text(json.dumps(report, indent=2) + "\n")

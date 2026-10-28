@@ -593,14 +593,17 @@ def open_store(
                     if version == len(migrations):
                         yield Store(root, connection, deadline, migrations)
                         return
-        maintain(root, deadline, migrations, check_key=check_key)
-        with file_lock(lock, deadline, exclusive=False, create=False):
-            require_no_intent(root)
-            with verified_connection(root, deadline, migrations, check_key=check_key) as opened:
-                connection, version = opened
-                if version != len(migrations):
-                    raise YorungeError("state_invalid")
-                yield Store(root, connection, deadline, migrations)
+        from yorunge.adapters.validation_memo import validation_session
+
+        with validation_session():
+            maintain(root, deadline, migrations, check_key=check_key)
+            with file_lock(lock, deadline, exclusive=False, create=False):
+                require_no_intent(root)
+                with verified_connection(root, deadline, migrations, check_key=check_key) as opened:
+                    connection, version = opened
+                    if version != len(migrations):
+                        raise YorungeError("state_invalid")
+                    yield Store(root, connection, deadline, migrations)
     except OSError:
         raise YorungeError("state_write_failed") from None
     except sqlite3.Error as error:

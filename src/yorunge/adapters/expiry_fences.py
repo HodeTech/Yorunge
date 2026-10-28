@@ -36,11 +36,15 @@ def save_expiries(connection: sqlite3.Connection, record: CapabilityRecord) -> N
 
 
 def check_expiries(connection: sqlite3.Connection, record: CapabilityRecord) -> None:
+    check_expiry_dates(connection, record.key.digest(), cache_expiries(record))
+
+
+def check_expiry_dates(connection: sqlite3.Connection, key: str, dates: tuple[str, ...]) -> None:
     found = connection.execute(
         "SELECT expires_at FROM capability_expiries WHERE cache_key=? ORDER BY expires_at LIMIT ?",
-        (record.key.digest(), MAX_CACHE_EXPIRIES + 1),
+        (key, MAX_CACHE_EXPIRIES + 1),
     ).fetchall()
-    if found != [(date,) for date in cache_expiries(record)]:
+    if found != [(date,) for date in dates]:
         raise YorungeError("state_invalid")
 
 

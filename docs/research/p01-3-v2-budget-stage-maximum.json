@@ -1,0 +1,2736 @@
+{
+  "schema_version": 1,
+  "source_reference": "aba33814a6a3f707984014077c7b3a29c9bd713f",
+  "case": "stage",
+  "maximum": true,
+  "vm_instrumented": true,
+  "samples": 3,
+  "vm_method": "progress callbacks at interval 1; original deadline cadence preserved",
+  "phase_time_method": "inclusive; parent IDs identify nesting; use_case is total",
+  "fixture_preparation_budget_seconds": 60,
+  "python": "3.11.18 (main, Oct 25 2026, 19:41:29) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "package_versions": {
+    "pydantic": "2.14.1",
+    "sqlite": "3.54.1"
+  },
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cpu": "Apple M5 Max",
+  "disk_type": "SSD APFS",
+  "installation": "editable .venv; lock SHA recorded",
+  "lock_sha256": "5c59fb98cadd1ea8337bcb0af1549974939770de5a3fd9c7cdf5d69f6a54b3f6",
+  "command": [
+    ".venv/bin/python",
+    "docs/research/p01-3-migration-budget-probe.py",
+    "--case",
+    "stage",
+    "--vm",
+    "--cpu-label",
+    "Apple M5 Max",
+    "--disk-type",
+    "SSD APFS",
+    "--output",
+    "docs/research/p01-3-v2-budget-stage-maximum.json",
+    "--maximum"
+  ],
+  "source_sha256": {
+    "src/yorunge/__init__.py": "57b855190ea5c79093dda6163847834f46459c2bd700f17247e634f9a3522db7",
+    "src/yorunge/__main__.py": "1f2931c5363fb341e38bdb961a7c4a26d812d005e8dc0ed662725cb654768c70",
+    "src/yorunge/adapters/__init__.py": "0196691b18e9cade994fcf4e8140d7eefc90fde5d58f08f0138e006c094d63ad",
+    "src/yorunge/adapters/capability_cache.py": "5bfb160f812411ae6f209321fa3bd2c3a6a16e993c82adf6b1c7cf5c63206df6",
+    "src/yorunge/adapters/configuration.py": "d780909797218a2aacff70248108bb04cf29b79b34f1950f13a42c253e9cfc0f",
+    "src/yorunge/adapters/data_migrations.py": "f83e0db4eca099d61bccfcf686a707a8a521e8bd1ca08e7ac7ba0e49998d1fec",
+    "src/yorunge/adapters/diagnostics.py": "a0ea8e555dbd0f9b9faaeb05529e3d812934f414362e9d805da50e7dd534106c",
+    "src/yorunge/adapters/execution_store.py": "f21fcd7995f042ec6b9e6a0a0f4cd1d0d2f0e8ca908989009c5fecfbd4b67300",
+    "src/yorunge/adapters/expiry_fences.py": "91a2980eeb38400fa3a8b7929f5bc9b69b7517c6805c464a91bb4e4d84f16cee",
+    "src/yorunge/adapters/files.py": "a76fb1a2e4d5e3bdaa9bc0bd26ac7edb5c4f09e0e6b5c0c6b66a6d49906fa513",
+    "src/yorunge/adapters/identity.py": "a75ccb4c5001085a5e4212f60b22d8540ef27c981ec4b2d982d6361e5f5537dc",
+    "src/yorunge/adapters/input_files.py": "21f2d79b6542746c838eaf18aac8af7d7c6e3e72b223ad5500a0f0a8bfc9e424",
+    "src/yorunge/adapters/local_files.py": "e5f01a54a64b28d458d1145b9e974b88e57ba179daf3c72e180ca3de243a007f",
+    "src/yorunge/adapters/maintenance.py": "5fc60955b2de12c007be4c94f4ffdd8f92fe27f302429dc3b4d9490de62788b9",
+    "src/yorunge/adapters/migration_capability_expiries_v1.py": "b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18",
+    "src/yorunge/adapters/secrets.py": "68d8b5eda388646539ba14952094a68305e699512566b436420e4e503206e967",
+    "src/yorunge/adapters/state.py": "ccbb1c0d738742c33e49e82ced2bfd7e8659c8b5ad163b41cc70a83d5d415996",
+    "src/yorunge/adapters/state_schema.py": "9f4ee3135ee4939a3d7153d43c5e85e6e48a315b406b51102f6fe09c922ea56b",
+    "src/yorunge/adapters/validation_memo.py": "6af9717d961c2096e91a1ec99dd03cddaa85efc50549b8c5d8caaa7e1b07772f",
+    "src/yorunge/api.py": "2d9ec48e1ceaa7006538aff75521f89103211f5509efded58fbde182a321c017",
+    "src/yorunge/application/__init__.py": "989afd15f9cd446488edca28782945c2d75120c926ef02f5565e5c5d99b36a3f",
+    "src/yorunge/application/capabilities.py": "21429721576274f0c45570d7b4a8f9832a65028b06b950e2c1f3c6fa137b352c",
+    "src/yorunge/application/configuration.py": "eb75a9d659a58871e9055da1ae49db3e246a7713adb0f26c75dae725bc3934af",
+    "src/yorunge/application/credentials.py": "630756208402f5bdcd2b5eb65e5e9fc069e89d7cdcebd5d8c914dd695e957e60",
+    "src/yorunge/application/execution.py": "321eafd7da9244d169313c285d76b2faf96c2b042b34392beb10f6381c139e80",
+    "src/yorunge/application/planning.py": "467ab2da49a1661b3b980a14026ca4d20a4333f2b21469866d7bce888bc34fad",
+    "src/yorunge/cli/__init__.py": "d2c2ec5557e53c71f52c6fd011a2de995b2f2bbcd2f0e9d08a528ffee16b6767",
+    "src/yorunge/domain/__init__.py": "6c05023f640bf9a27d597d0ad3ed0c8f7fbb165d2900b2d10f3e6d5fa2ba5e82",
+    "src/yorunge/domain/capabilities.py": "7a290a8a8d39b3bf97a8f652ae5e9e8eb36b97d3b5c1e09be11b7edfe7eb03c1",
+    "src/yorunge/domain/configuration.py": "a43bcf6db87a5c7ef4c61c3767517d95f237d049e08fa23182d4956b3f32c517",
+    "src/yorunge/domain/credentials.py": "db179169ecd933a42106e5f37578972096c88c3f80caa240dd84588476c5c7f3",
+    "src/yorunge/domain/errors.py": "c94063c2cf3fbbb1fb9265ef82cfd178584931b0498f2c3befe7fc8f030e349f",
+    "src/yorunge/domain/execution.py": "1e8ce4e880cc0f4a22ad61de4d7fbf0f446f14a9e1db8930d92159c4323d33f8",
+    "src/yorunge/domain/maintenance.py": "2b41b30751c5900eceb05bed54e5f65321c69cbeb80107b0e1c64114cf5891c2",
+    "src/yorunge/domain/models.py": "571c4174c148239412021fd9ad4b470d3199cac898661acae7d77ed8401695c8",
+    "src/yorunge/domain/state.py": "1d7cd57e666a3f934de779b8fd1c2b8bb7f1f2c7c4f0438897307b1e7aa411a3",
+    "tests/fixtures/seed_migration_state.py": "8caa82c2629147de6f125a25ba15a25b68ba8e4f3e0003c61f4b9a08f63c2777",
+    "tests/fixtures/seed_capability_cache.py": "d2154a88decb02a2f1d47a8093ae04195eb43def3dcdabed189054c79d3a11aa",
+    "tests/fixtures/recovery_upgrade_failure.py": "c7db2402e84a17bb1ac40942920c46b6376bea6ee8f3de4196f52c7ca386bf7a",
+    "docs/research/p01-3-migration-budget-probe.py": "bf6decfa94960136868924b7c8f566602bad1b329bac05f7014d19807b429acb",
+    "tests/conftest.py": "3f1866605b2af1ecbfad58af91250e3380f04caa940e94fecf4c15092f000000"
+  },
+  "source_unchanged_during_runs": true,
+  "runs": [
+    {
+      "outcome": "ok",
+      "target_reached": true,
+      "call_budget_seconds": 5,
+      "within_wall_budget": true,
+      "final_version": 5,
+      "source": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "f846f3e125a6d0d08ba53771fa3ea869b80af09d798bcd7d2cbc3d5ddb2815a4"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "285dfce22166719a6ebe6f18a7b3fb1063d31b063e584bb458ff622d01fdcfc3"
+        }
+      },
+      "target": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "f846f3e125a6d0d08ba53771fa3ea869b80af09d798bcd7d2cbc3d5ddb2815a4"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "285dfce22166719a6ebe6f18a7b3fb1063d31b063e584bb458ff622d01fdcfc3"
+        }
+      },
+      "payload_rows_unchanged": true,
+      "expiry_rows": 0,
+      "post_call_full_validation": "passed",
+      "cpu_user_ms": 1714.748,
+      "cpu_system_ms": 304.96199999999993,
+      "worker_peak_rss_native_through_call": 55541760,
+      "vm_progress_interval": 1,
+      "original_deadline_callback_preserved": true,
+      "original_progress_handlers": 7,
+      "delegated_progress_calls": 1209,
+      "original_progress_intervals": [
+        1000
+      ],
+      "events": [
+        {
+          "id": 0,
+          "parent": null,
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 2099.702083,
+          "vm_callbacks": 1213648
+        },
+        {
+          "id": 1,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.062458,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 2,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.02425,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 3,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.04825,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 4,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.026583,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 5,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.011042,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 6,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.034417,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 7,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019959,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 8,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019041,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 9,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.031375,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 10,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.017583,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 11,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.03925,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 12,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.02725,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 13,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.021459,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 14,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.018834,
+          "vm_callbacks": 108
+        },
+        {
+          "id": 15,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019291,
+          "vm_callbacks": 111
+        },
+        {
+          "id": 16,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 979.012875,
+          "vm_callbacks": 110607
+        },
+        {
+          "id": 17,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.039875,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 18,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.018292,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 19,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.040041,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 20,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.0215,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 21,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.007833,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 22,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.032042,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 23,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.016584,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 24,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.015833,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 25,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.028292,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 26,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.0165,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 27,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.036708,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 28,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.023333,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 29,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.518792,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 30,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 104.343083,
+          "vm_callbacks": 109492
+        },
+        {
+          "id": 31,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 104.264917,
+          "vm_callbacks": 109492
+        },
+        {
+          "id": 32,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.018167,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 33,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 14.566,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 34,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 132.460667,
+          "vm_callbacks": 165149
+        },
+        {
+          "id": 35,
+          "parent": 0,
+          "name": "handler_prepare",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 1.352959,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 36,
+          "parent": 0,
+          "name": "backup",
+          "outcome": "ok",
+          "elapsed_ms": 309.198792,
+          "vm_callbacks": 165506
+        },
+        {
+          "id": 37,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.021584,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 38,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.019917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 39,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010375,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 40,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010083,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 41,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.011625,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 42,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012042,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 43,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008333,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 44,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01375,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 45,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010125,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 46,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.00925,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 47,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010083,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 48,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.2375,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 49,
+          "parent": 36,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 133.207458,
+          "vm_callbacks": 165275
+        },
+        {
+          "id": 50,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.020959,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 51,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.075958,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 52,
+          "parent": 36,
+          "name": "snapshot_hash",
+          "outcome": "ok",
+          "elapsed_ms": 37.397666,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 53,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.017958,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 54,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.868583,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "name": "migration",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 3.109875,
+          "vm_callbacks": 20979
+        },
+        {
+          "id": 56,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.243875,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 57,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.034583,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 58,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.330875,
+          "vm_callbacks": 10348
+        },
+        {
+          "id": 59,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.4035,
+          "vm_callbacks": 10351
+        },
+        {
+          "id": 60,
+          "parent": 55,
+          "name": "backfill",
+          "outcome": "ok",
+          "elapsed_ms": 0.015375,
+          "vm_callbacks": 9
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 138.044375,
+          "vm_callbacks": 177706
+        },
+        {
+          "id": 62,
+          "parent": 0,
+          "name": "commit",
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 12.147916,
+          "vm_callbacks": 3
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 133.218542,
+          "vm_callbacks": 177705
+        },
+        {
+          "id": 64,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012167,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 65,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.174625,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.014208,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 67,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.258708,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 68,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.014541,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 69,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008959,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 70,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.015667,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 71,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.770833,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 72,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 105.879875,
+          "vm_callbacks": 122070
+        },
+        {
+          "id": 73,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.014541,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 74,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01275,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 75,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.1585,
+          "vm_callbacks": 0
+        }
+      ],
+      "ddl_only_baseline": {
+        "events": [
+          {
+            "id": 0,
+            "parent": null,
+            "name": "ddl_only_baseline",
+            "outcome": "ok",
+            "elapsed_ms": 28.055625,
+            "vm_callbacks": 21111
+          },
+          {
+            "id": 1,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 0,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.166125,
+            "vm_callbacks": 124
+          },
+          {
+            "id": 2,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 1,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.02725,
+            "vm_callbacks": 105
+          },
+          {
+            "id": 3,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 2,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.360625,
+            "vm_callbacks": 10348
+          },
+          {
+            "id": 4,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 3,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.3785,
+            "vm_callbacks": 10351
+          },
+          {
+            "id": 5,
+            "parent": 0,
+            "name": "commit",
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 24.814958,
+            "vm_callbacks": 3
+          }
+        ],
+        "includes_backfill_or_validation": false,
+        "valid_final_store": false,
+        "acceptance": "diagnostic_only"
+      },
+      "preview_ms": 970.74625,
+      "preview_within_budget": true
+    },
+    {
+      "outcome": "ok",
+      "target_reached": true,
+      "call_budget_seconds": 5,
+      "within_wall_budget": true,
+      "final_version": 5,
+      "source": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "da79c491a7e24cc1e6861b7601568744a69c56924686eea1110e673dab7d9253"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "fd468f1b6d414c9c62382d92d90575a4fb90df5da7db643c5ac61393221c16f9"
+        }
+      },
+      "target": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "da79c491a7e24cc1e6861b7601568744a69c56924686eea1110e673dab7d9253"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "fd468f1b6d414c9c62382d92d90575a4fb90df5da7db643c5ac61393221c16f9"
+        }
+      },
+      "payload_rows_unchanged": true,
+      "expiry_rows": 0,
+      "post_call_full_validation": "passed",
+      "cpu_user_ms": 1718.928,
+      "cpu_system_ms": 336.024,
+      "worker_peak_rss_native_through_call": 55558144,
+      "vm_progress_interval": 1,
+      "original_deadline_callback_preserved": true,
+      "original_progress_handlers": 7,
+      "delegated_progress_calls": 1209,
+      "original_progress_intervals": [
+        1000
+      ],
+      "events": [
+        {
+          "id": 0,
+          "parent": null,
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 2145.850709,
+          "vm_callbacks": 1213656
+        },
+        {
+          "id": 1,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.074209,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 2,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.02475,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 3,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.047875,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 4,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.026583,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 5,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.010541,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 6,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.034166,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 7,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.022,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 8,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.017125,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 9,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.030625,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 10,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019042,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 11,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.039708,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 12,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.02675,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 13,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019417,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 14,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.018542,
+          "vm_callbacks": 108
+        },
+        {
+          "id": 15,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.018875,
+          "vm_callbacks": 111
+        },
+        {
+          "id": 16,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 978.4015,
+          "vm_callbacks": 110608
+        },
+        {
+          "id": 17,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.037792,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 18,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.018333,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 19,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.039708,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 20,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.0215,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 21,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.007583,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 22,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.029875,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 23,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.016333,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 24,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.0155,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 25,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.028292,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 26,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.016334,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 27,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.036625,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 28,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.022292,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 29,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 5.232,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 30,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 104.926042,
+          "vm_callbacks": 109493
+        },
+        {
+          "id": 31,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 105.707792,
+          "vm_callbacks": 109493
+        },
+        {
+          "id": 32,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01975,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 33,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 10.803542,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 34,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 134.887875,
+          "vm_callbacks": 165150
+        },
+        {
+          "id": 35,
+          "parent": 0,
+          "name": "handler_prepare",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 5.819833,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 36,
+          "parent": 0,
+          "name": "backup",
+          "outcome": "ok",
+          "elapsed_ms": 343.187916,
+          "vm_callbacks": 165507
+        },
+        {
+          "id": 37,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.015166,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 38,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010459,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 39,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010041,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 40,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008667,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 41,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008292,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 42,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.009417,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 43,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.007708,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 44,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012583,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 45,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.009708,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 46,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008542,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 47,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008958,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 48,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.864042,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 49,
+          "parent": 36,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 133.544042,
+          "vm_callbacks": 165276
+        },
+        {
+          "id": 50,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.020666,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 51,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.383917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 52,
+          "parent": 36,
+          "name": "snapshot_hash",
+          "outcome": "ok",
+          "elapsed_ms": 37.824458,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 53,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.018042,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 54,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.99225,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "name": "migration",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 3.149125,
+          "vm_callbacks": 20979
+        },
+        {
+          "id": 56,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.238584,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 57,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.033625,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 58,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.383666,
+          "vm_callbacks": 10348
+        },
+        {
+          "id": 59,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.406417,
+          "vm_callbacks": 10351
+        },
+        {
+          "id": 60,
+          "parent": 55,
+          "name": "backfill",
+          "outcome": "ok",
+          "elapsed_ms": 0.014166,
+          "vm_callbacks": 9
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 138.167292,
+          "vm_callbacks": 177707
+        },
+        {
+          "id": 62,
+          "parent": 0,
+          "name": "commit",
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 11.868917,
+          "vm_callbacks": 3
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 133.963833,
+          "vm_callbacks": 177706
+        },
+        {
+          "id": 64,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01225,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 65,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.483875,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.014458,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 67,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.97425,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 68,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.014,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 69,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.006917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 70,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.037959,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 71,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.691417,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 72,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 107.349125,
+          "vm_callbacks": 122071
+        },
+        {
+          "id": 73,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.013875,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 74,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010833,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 75,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.098292,
+          "vm_callbacks": 0
+        }
+      ],
+      "ddl_only_baseline": {
+        "events": [
+          {
+            "id": 0,
+            "parent": null,
+            "name": "ddl_only_baseline",
+            "outcome": "ok",
+            "elapsed_ms": 31.076166,
+            "vm_callbacks": 21111
+          },
+          {
+            "id": 1,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 0,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.170166,
+            "vm_callbacks": 124
+          },
+          {
+            "id": 2,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 1,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.027125,
+            "vm_callbacks": 105
+          },
+          {
+            "id": 3,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 2,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.32125,
+            "vm_callbacks": 10348
+          },
+          {
+            "id": 4,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 3,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.40175,
+            "vm_callbacks": 10351
+          },
+          {
+            "id": 5,
+            "parent": 0,
+            "name": "commit",
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 27.796708,
+            "vm_callbacks": 3
+          }
+        ],
+        "includes_backfill_or_validation": false,
+        "valid_final_store": false,
+        "acceptance": "diagnostic_only"
+      },
+      "preview_ms": 962.54075,
+      "preview_within_budget": true
+    },
+    {
+      "outcome": "ok",
+      "target_reached": true,
+      "call_budget_seconds": 5,
+      "within_wall_budget": true,
+      "final_version": 5,
+      "source": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "9e5a4e1fdb805953cf0a5399a96b137298efaa070d0934fa948c967e36c89f56"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "893e40340f994106b15cb163048e70759f1f3127afa9991d5b913d9b393daea8"
+        }
+      },
+      "target": {
+        "capability_cache": {
+          "rows": 0,
+          "payload_bytes": 0,
+          "largest_payload_bytes": 0,
+          "row_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "execution_plans": {
+          "rows": 1024,
+          "payload_bytes": 67108864,
+          "largest_payload_bytes": 65536,
+          "row_sha256": "9e5a4e1fdb805953cf0a5399a96b137298efaa070d0934fa948c967e36c89f56"
+        },
+        "execution_approvals": {
+          "rows": 1024,
+          "payload_bytes": 619520,
+          "largest_payload_bytes": 605,
+          "row_sha256": "893e40340f994106b15cb163048e70759f1f3127afa9991d5b913d9b393daea8"
+        }
+      },
+      "payload_rows_unchanged": true,
+      "expiry_rows": 0,
+      "post_call_full_validation": "passed",
+      "cpu_user_ms": 1718.52,
+      "cpu_system_ms": 311.37899999999996,
+      "worker_peak_rss_native_through_call": 56328192,
+      "vm_progress_interval": 1,
+      "original_deadline_callback_preserved": true,
+      "original_progress_handlers": 7,
+      "delegated_progress_calls": 1209,
+      "original_progress_intervals": [
+        1000
+      ],
+      "events": [
+        {
+          "id": 0,
+          "parent": null,
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 2115.154792,
+          "vm_callbacks": 1213640
+        },
+        {
+          "id": 1,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.069375,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 2,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.022541,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 3,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.047291,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 4,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.022083,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 5,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.0095,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 6,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.03025,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 7,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.017667,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 8,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.015041,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 9,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.02725,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 10,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.015625,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 11,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.035625,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 12,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.025584,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 13,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.017375,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 14,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019292,
+          "vm_callbacks": 108
+        },
+        {
+          "id": 15,
+          "parent": 0,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.017125,
+          "vm_callbacks": 111
+        },
+        {
+          "id": 16,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 983.639375,
+          "vm_callbacks": 110606
+        },
+        {
+          "id": 17,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.035125,
+          "vm_callbacks": 82
+        },
+        {
+          "id": 18,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.016542,
+          "vm_callbacks": 57
+        },
+        {
+          "id": 19,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 0,
+          "to_version": 1,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.037542,
+          "vm_callbacks": 104
+        },
+        {
+          "id": 20,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.019042,
+          "vm_callbacks": 69
+        },
+        {
+          "id": 21,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.007125,
+          "vm_callbacks": 15
+        },
+        {
+          "id": 22,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 2,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.026584,
+          "vm_callbacks": 94
+        },
+        {
+          "id": 23,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 3,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.015084,
+          "vm_callbacks": 75
+        },
+        {
+          "id": 24,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 1,
+          "to_version": 2,
+          "statement_index": 4,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.013709,
+          "vm_callbacks": 78
+        },
+        {
+          "id": 25,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.025209,
+          "vm_callbacks": 106
+        },
+        {
+          "id": 26,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 2,
+          "to_version": 3,
+          "statement_index": 1,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.014625,
+          "vm_callbacks": 87
+        },
+        {
+          "id": 27,
+          "parent": 16,
+          "name": "ddl",
+          "from_version": 3,
+          "to_version": 4,
+          "statement_index": 0,
+          "database_role": "schema-template",
+          "outcome": "ok",
+          "elapsed_ms": 0.032625,
+          "vm_callbacks": 137
+        },
+        {
+          "id": 28,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.023708,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 29,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.682458,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 30,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 104.794541,
+          "vm_callbacks": 109491
+        },
+        {
+          "id": 31,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 103.773667,
+          "vm_callbacks": 109491
+        },
+        {
+          "id": 32,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.020125,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 33,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 11.773792,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 34,
+          "parent": 0,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 133.269,
+          "vm_callbacks": 165148
+        },
+        {
+          "id": 35,
+          "parent": 0,
+          "name": "handler_prepare",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 5.70925,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 36,
+          "parent": 0,
+          "name": "backup",
+          "outcome": "ok",
+          "elapsed_ms": 309.784417,
+          "vm_callbacks": 165505
+        },
+        {
+          "id": 37,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.017791,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 38,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.011625,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 39,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012209,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 40,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012292,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 41,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01025,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 42,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.0145,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 43,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.007917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 44,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012625,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 45,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010417,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 46,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.008333,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 47,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.009416,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 48,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.699541,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 49,
+          "parent": 36,
+          "name": "validation",
+          "version": 4,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 132.981958,
+          "vm_callbacks": 165274
+        },
+        {
+          "id": 50,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.018959,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 51,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.285042,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 52,
+          "parent": 36,
+          "name": "snapshot_hash",
+          "outcome": "ok",
+          "elapsed_ms": 37.912667,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 53,
+          "parent": 36,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01875,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 54,
+          "parent": 36,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.122917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "name": "migration",
+          "from_version": 4,
+          "to_version": 5,
+          "outcome": "ok",
+          "elapsed_ms": 3.138583,
+          "vm_callbacks": 20979
+        },
+        {
+          "id": 56,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 0,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.213209,
+          "vm_callbacks": 124
+        },
+        {
+          "id": 57,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 1,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 0.030792,
+          "vm_callbacks": 105
+        },
+        {
+          "id": 58,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 2,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.376584,
+          "vm_callbacks": 10348
+        },
+        {
+          "id": 59,
+          "parent": 55,
+          "name": "ddl",
+          "from_version": 4,
+          "to_version": 5,
+          "statement_index": 3,
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 1.434833,
+          "vm_callbacks": 10351
+        },
+        {
+          "id": 60,
+          "parent": 55,
+          "name": "backfill",
+          "outcome": "ok",
+          "elapsed_ms": 0.014709,
+          "vm_callbacks": 9
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 140.338083,
+          "vm_callbacks": 177705
+        },
+        {
+          "id": 62,
+          "parent": 0,
+          "name": "commit",
+          "database_role": "file",
+          "outcome": "ok",
+          "elapsed_ms": 11.964375,
+          "vm_callbacks": 3
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 134.328416,
+          "vm_callbacks": 177704
+        },
+        {
+          "id": 64,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.012042,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 65,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 4.11975,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.01375,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 67,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.867917,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 68,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.024583,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 69,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.011208,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 70,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.011,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 71,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.671208,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 72,
+          "parent": 0,
+          "name": "validation",
+          "version": 5,
+          "full": true,
+          "outcome": "ok",
+          "elapsed_ms": 106.131459,
+          "vm_callbacks": 122069
+        },
+        {
+          "id": 73,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.017375,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 74,
+          "parent": 0,
+          "name": "directory_sync",
+          "outcome": "ok",
+          "elapsed_ms": 0.010958,
+          "vm_callbacks": 0
+        },
+        {
+          "id": 75,
+          "parent": 0,
+          "name": "file_sync",
+          "outcome": "ok",
+          "elapsed_ms": 3.949209,
+          "vm_callbacks": 0
+        }
+      ],
+      "ddl_only_baseline": {
+        "events": [
+          {
+            "id": 0,
+            "parent": null,
+            "name": "ddl_only_baseline",
+            "outcome": "ok",
+            "elapsed_ms": 27.591125,
+            "vm_callbacks": 21111
+          },
+          {
+            "id": 1,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 0,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.175833,
+            "vm_callbacks": 124
+          },
+          {
+            "id": 2,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 1,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 0.033417,
+            "vm_callbacks": 105
+          },
+          {
+            "id": 3,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 2,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.370708,
+            "vm_callbacks": 10348
+          },
+          {
+            "id": 4,
+            "parent": 0,
+            "name": "ddl",
+            "from_version": 4,
+            "to_version": 5,
+            "statement_index": 3,
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 1.415167,
+            "vm_callbacks": 10351
+          },
+          {
+            "id": 5,
+            "parent": 0,
+            "name": "commit",
+            "database_role": "file",
+            "outcome": "ok",
+            "elapsed_ms": 24.261417,
+            "vm_callbacks": 3
+          }
+        ],
+        "includes_backfill_or_validation": false,
+        "valid_final_store": false,
+        "acceptance": "diagnostic_only"
+      },
+      "preview_ms": 983.001667,
+      "preview_within_budget": true
+    }
+  ]
+}

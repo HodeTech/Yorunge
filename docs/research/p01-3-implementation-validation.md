@@ -136,6 +136,36 @@ Yeni regresyonlar literal altı source-row/19 expiry, güncel warm read ve tekra
 
 **Adım 1 / R2:** Farklı üç fresh reviewer d26f661 üzerinde tüm kaynak/clock protokolünü (Astra/high), storage/kesinti/eşzamanlılığı ve delivery/sözleşmeleri (Sol/high) inceledi; doğrulanmış yeni maddi bulgu yok. Bağımsız koşular 128 migration/cache testi (66,39 s), 87 dar migration/state testi ve 426 migration/platform/CLI-API sınır testi (50,47 s) geçti. İki süreçli gerçek schema-4→5 yarışında tek migration backup/geçmiş satırı, tam 19 literal expiry/payload ve sıcak restart korundu. Gerçek COMMIT ardından enjekte IOERR `state_write_failed` verdi; tamamlanmış şema 5 geri alınmadı ve sonraki full/warm kontrol geçti. Ayrı public API/CLI eksik-handler probu yalnız kontrollü `state_invalid`/stderr JSON verdi, DB değişmedi. Böylece checksum dışı dönüşümün kod düzeltmesi ve iki review turu tamamlandı; adım 2 yoğun bütçe/VM/phase ve son Linux performans/CI kabulü açık kalır.
 
+### V2 uygulaması / adım 2
+
+[İlk yoğun tanı kayıtları](p01-3-v2-budget-initial-diagnostics.json) pozitif kabul değildir: 1.024 × 32 KiB cache ile şema 2 çağrısı 5,100 s'de `state_busy`, sürüm 2; ilk ayrıştırma yeniden kullanımından sonra 64 KiB planlı şema 3/4 yolları hâlâ 5 s sınırında kontrollü reddedildi. Ham kaynak hash'leri ve o anda kullanılan iki tanı driver'ının tam baytları korunur. Profil, uzun alanların Python karakter döngüsünde tarandığını gösterdi; profilli son doğrulamanın 32,155 s'si ölçülen çağrının dışındadır ve profiler maliyetini içerir.
+
+Üretim düzeltmesi iki parçadır. Kanonik decoder'ın başarılı sonucu, tam satırın tür/uzunluk/bayt SHA-256 kimliğiyle yalnız aynı açık kullanım senaryosunda küçük immutable özet olarak yeniden kullanılır. En çok 4.096 özet tutulur; payload/model nesnesi tutulmaz, normal güncel-cache açılışı bu oturumu kurmaz, başarı/hata çıkışında özetler temizlenir. Şema/geçmiş, metadata, clock/generation/revision, FK, kota ve türetilmiş expiry satırları her tam doğrulamada yeniden okunup denetlenir. Payload veya herhangi bir indeks kolonu değişimi yeni kanonik ayrıştırma gerektirir; onay satırı ve plan/onay bağı güncel kontrol edilir. Kullanıcıya dönen plan/capability modelleri bu özetlerden üretilmez.
+
+İkinci parça, `has_control_characters` içindeki aynı C0/C1 aralığını doğrusal regex ile tarar. Politika değişmedi: 1.114.112 Unicode kod noktasının tamamı önceki predicate ile eşitlik testinden geçti; uzun metin baş/orta/son kontrolleri eklendi. 23 memo regresyonu satır kolonları, geçerli yeni plan + eski onay bağı, metadata/clock/FK/index değişimi, hata temizliği, iç içe scope ve payload tutmadan bellek sınırını doğrular. Tam takım **1.304 passed (173,28 s)**; Ruff ve strict mypy 42 kaynakta başarılıdır.
+
+#### Otuz yeni store ile ölçüm
+
+[Probe](p01-3-migration-budget-probe.py) her satır için üç yeni disposable store ve ayrı worker süreci kullanır. macOS 27.0.1/Apple M5 Max/SSD APFS/CPython 3.11.18/editable `.venv`; lock, paket sürümleri, bütün runtime kaynakları, fixture/probe hash'leri ve komutlar ham JSON'dadır. Ölçüm boyunca kaynakların değişmediği denetlendi. VM sayımı interval 1 progress callback sayısıdır; mevcut deadline callback'i özgün 1.000-adım aralığında çağrılmaya devam eder. Enjekte cancellation/disabled-handler testleri bu zinciri ayrıca doğrular. Faz süreleri iç içe/inclusive olduğundan toplanmaz; `use_case` toplamdır. Hazırlık 60 s'lik fixture bütçesiyle ayrı yapılır; ölçülen public çağrı ve recovery önizlemesi mevcut 5 s'yi kullanır.
+
+| Yol | Temsilî en yüksek süre (s) | Azami geçerli hacim en yüksek süre (s) | Ham kayıt |
+|---|---:|---:|---|
+| Şema 2→5 | 0,811 | 1,969 | [temsilî](p01-3-v2-budget-schema-2-representative.json), [azami](p01-3-v2-budget-schema-2-maximum.json) |
+| Şema 3→5 | 0,985 | 3,473 | [temsilî](p01-3-v2-budget-schema-3-representative.json), [azami](p01-3-v2-budget-schema-3-maximum.json) |
+| Şema 4→5 | 0,963 | 3,165 | [temsilî](p01-3-v2-budget-schema-4-representative.json), [azami](p01-3-v2-budget-schema-4-maximum.json) |
+| Eski şema-4 stage | 0,606 | 2,146 | [temsilî](p01-3-v2-budget-stage-representative.json), [azami](p01-3-v2-budget-stage-maximum.json) |
+| Eski şema-4 live | 0,593 | 2,154 | [temsilî](p01-3-v2-budget-live-representative.json), [azami](p01-3-v2-budget-live-maximum.json) |
+
+Tüm **30/30** çağrı şema 5'e ulaştı, ölçülen duvar süresi 5 s altında kaldı, kaynak cache/plan/onay satırları birebir korundu ve çağrı dışı güncel tam doğrulama geçti. Şema 2'de 1.024 cache, şema 3'te ayrıca 1.024 plan, şema 4'te ayrıca 1.024 onay vardır. Temsilî cache 9.200 expiry üretir; azami fixture'ın her cache payload'ı tam 32.768, her planı tam 65.536 bayttır ve 10.240 cache expiry üretir. Kapalı onay modeli, archived epoch/azami generation/revoked alanlarıyla en çok **605 bayta** ulaşır; 4 KiB için modele aykırı dolgu yapılmaz. Plan descriptor'ları ve destek kanıtı yalnız test validator'ının sentetik verisidir; gerçek girdi/araç erişimi veya run yetkisi iddia edilmez.
+
+Eski restore, gerçek önceki-runtime kesintisiyle hazırlanır; kaynak backup silinir. Restore'un reset sözleşmesi cache'i temizlediğinden tamamlanmış stage/live'da cache sayısı sıfırdır; 1.024 plan/onay geçmişi korunur. Önizleme ve uygulama ayrı taze worker'larda yapılır. Snapshot/hash, DDL, load/compile hazırlığı, backfill, kanonik doğrulama ve commit/rollback fazlarının wall/VM sayıları kaydedilir. Şema-4 ve stage/live raporları aynı girdinin ayrı klonunda yalnız 4→5 DDL/COMMIT baseline'ını da içerir; bu baseline veri dönüşümü/tam validation içermez ve geçerli son store/pozitif kabul sayılmaz.
+
+#### Başlangıç ve kalan dış kapı
+
+[Normal](p01-3-v2-final-startup.json) ve [sekiz-proof yoğun](p01-3-v2-final-dense-startup.json) ölçüm, test yükü olmadan aynı yerel ortamda üç ısınma ve 30 ayrı süreç/komutla yapıldı. Cache p95 **118,642 / 119,974 ms**; iki koşuda dört bütçe geçti. Kaynak/komut hash'leri ve fresh hit kontrolü kayıttadır. Startup ölçer artık sıralı tamamlanmış child CPU sürelerini ve wall−CPU tahminini de kaydeder; 30 örnek, p95 ve eşikler değişmedi. Bu fark tek başına I/O/scheduler nedeni atamaz. [Python resource](https://docs.python.org/3.11/library/resource.html#resource.RUSAGE_CHILDREN) ve [SQLite progress callback](https://docs.python.org/3.11/library/sqlite3.html#sqlite3.Connection.set_progress_handler), 2026-10-28'de incelenen yöntem kaynaklarıdır.
+
+Adım 2'nin iki fresh review turu, son paket/temiz kurulum ve son head Linux CI kapanışı henüz tamamlanmadı. PR #9 taslaktır; P01-3'ün PR #8 development teslimi verified kalır.
+
 ## Onay ve yöntem
 
 Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstteki Development merge kapanışı bölümündedir.

@@ -15,6 +15,7 @@
 - [P01-2 adım 1 başlangıç ham ölçümü](p01-2-step-1-startup.json): ikinci review turunun son ürün head'inde ayrı süreçlerle ölçüm; ortam/yöntem ve kapsam uygulama kabul kaydındadır.
 - [P01-3 merge sonrası CI düzeltmesi](p01-3-implementation-validation.md#merge-sonrası-ci-düzeltmesi): başarısız Linux cache ölçümü ve kalıcı clock checkpoint'i için aynı ortamda önce/sonra yerel kanıt; P01-3 tamamlanma durumu korunur.
 - [ADR-0015 onay öncesi kullanıcı review'i](p01-3-implementation-validation.md#adr-0015-kullanıcı-reviewi--onay-öncesi-revizyon): revize Proposed karar, bağımsız expiry vektörleri ve kaynak/bytecode karşı örneği; V2 uygulama kabulü değildir.
+- [V2 yoğun migration kabulü](p01-3-implementation-validation.md#v2-uygulaması--adım-2): 30 gerçek dosya/store koşusu, eski stage/live kurtarması, faz/VM/CPU kayıtları ve normal/yoğun başlangıç; [tekrarlanabilir probe](p01-3-migration-budget-probe.py). Linux son-head CI ve review kapanışı aynı kayıtta izlenir.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
 26 Ekim'deki öncül araştırma LLM/ForgeLM akışını öne almıştı. 27 Ekim kullanıcı talimatı Yörünge'yi EVREN kapsamlı yardımcı araç olarak konumlandırdı ve ForgeLM'i ilgili görevlerin seçilebilir varsayılanı yaptı. Güncel ürün yönü [ADR-0001](../decisions/0001-platform-companion.md) ve [ADR-0002](../decisions/0002-forgelm-default-open-tools.md) ile kayıtlıdır.

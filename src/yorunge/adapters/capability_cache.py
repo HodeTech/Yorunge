@@ -15,7 +15,9 @@ from pydantic import ValidationError
 
 from yorunge.adapters.expiry_fences import (
     MAX_STATE_EXPIRIES,
+    cache_expiries,
     check_expiries,
+    check_expiry_dates,
     next_expiry,
     save_expiries,
 )
@@ -141,6 +143,34 @@ def decode_entry(row: tuple[object, ...]) -> tuple[CapabilityRecord, int]:
     return record, revision
 
 
+@dataclass(frozen=True)
+class CacheValidation:
+    key: str
+    store_id: str
+    identity_epoch: str
+    clock_generation: int
+    revision: int
+    expiries: tuple[str, ...]
+
+
+def cache_validation(row: tuple[object, ...]) -> CacheValidation:
+    from yorunge.adapters.validation_memo import validated
+
+    def build() -> CacheValidation:
+        record, version = decode_entry(row)
+        scope = record.key.scope
+        return CacheValidation(
+            record.key.digest(),
+            scope.store_id,
+            scope.identity_epoch,
+            scope.clock_generation,
+            version,
+            cache_expiries(record),
+        )
+
+    return validated(CacheValidation, row, build)
+
+
 def validate_cache(connection: sqlite3.Connection) -> None:
     # Called only for schema versions that own these tables; no adapters at domain import.
     row = connection.execute(
@@ -170,14 +200,14 @@ def validate_cache(connection: sqlite3.Connection) -> None:
         "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='capability_expiries'"
     ).fetchone()
     for row in connection.execute(f"SELECT {ENTRY_FIELDS} FROM capability_cache"):
-        record, version = decode_entry(row)
+        record = cache_validation(row)
         if indexed:
-            check_expiries(connection, record)
+            check_expiry_dates(connection, record.key, record.expiries)
         if (
-            record.key.scope.store_id != value.store_id
-            or record.key.scope.identity_epoch != value.identity_epoch
-            or record.key.scope.clock_generation > generation
-            or version > revision
+            record.store_id != value.store_id
+            or record.identity_epoch != value.identity_epoch
+            or record.clock_generation > generation
+            or record.revision > revision
         ):
             raise YorungeError("state_invalid")
         count += 1

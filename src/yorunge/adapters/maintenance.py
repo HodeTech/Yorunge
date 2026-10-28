@@ -95,8 +95,11 @@ class RestoreIntent(Model):
 @contextmanager
 def errors() -> Iterator[None]:
     require_local_files()
+    from yorunge.adapters.validation_memo import validation_session
+
     try:
-        yield
+        with validation_session():
+            yield
     except OSError:
         raise YorungeError("state_write_failed") from None
     except sqlite3.Error as error:
