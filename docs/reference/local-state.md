@@ -49,6 +49,8 @@ Cache/clock şema geçişinde snapshot/manifest ve tam payload/index tutarlılı
 
 ## Global expiry indeksi
 
+**PR #9 prototipi:** Bu şema 5 uygulaması development'a merge edilmedi. Checksum kapsamındaki veri dönüşümü [ADR-0015](../decisions/0015-checksummed-data-migrations.md) onayını bekler; mevcut backfill manifest engeli kapanmadan teslim edilmiş sayılmaz.
+
 Şema 5'in cache expiry satırları yeni bir veri otoritesi değildir. 4→5 migration, kayıtları sınırlı Python decoder'ıyla türetir; JSON1 gerektirmez. Cache kaydı ve türetilmiş satırları aynı business transaction'ında değişir; silme/reset FK cascade ile satırları kaldırır. Tam doğrulama ve sıcak kayıt okuması eksik/fazla/uyuşmayan expiry'yi `state_invalid` ile reddeder. Backup/restore/recover allowlist'i bu türevi de kapsar; bilinmeyen operation tüketicileri için ret sürer. Eski migration checksum'ları değişmez.
 
 ## Execution planı tüketicisi

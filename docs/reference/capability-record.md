@@ -44,6 +44,8 @@ Bir kaydın `supported` olması başka hedef/yetki/hesap/araç/sürüm/ortama ya
 
 ## Store genelinde süre kapısı
 
+**PR #9 prototipi:** Bu şema 5 uygulaması development'a merge edilmedi. Checksum kapsamındaki veri dönüşümü [ADR-0015](../decisions/0015-checksummed-data-migrations.md) onayını bekler; mevcut backfill manifest engeli kapanmadan teslim edilmiş sayılmaz.
+
 Son süre kapısı yalnız sorgulanan kaydın expiry'sini kullanmaz. Kalıcı cache kayıtlarının aggregate/evidence/conflict süreleri ile bütün plan/onay expiry'lerinden sonraki global sınır aranır. Cache başına en çok 10 ayrı zaman, 1.024 cache + 1.024 plan + 1.024 onay için en çok 12.288 sınır vardır. Sıcak yol üç sıralı indeks araması yapar; bütün payload'ları taramaz. Kaydı okurken kendi en çok 10 türetilmiş zamanı da tam karşılaştırılır.
 
 Clock, bağlar ve global sınır aynı SQL read snapshot'ında kalırken terminal UTC örneği alınır. Araya daha erken expiry içeren bir writer commit'i giremez. Yeni geçilen global veya kullanılan proof sınırı kalıcı watermark'a taşınır; son UTC/monotonic/bağ kapısı yeniden çalışır. Böylece uzun ömürlü bir kayıt sorgusu sırasında başka bir kaydın gözlenen expiry'si geçmişse restart sonrası saat geri dönüşü onu yeniden etkinleştirmez. Eşzamanlı writer'ların tarihleri değiştirmesi toplam deadline ve ayrıca 12.289 kontrol sınırıyla sınırlanır; tükenmede `state_busy` gelir. Producer/env/discovery otomatik tekrarlanmaz.
