@@ -1,14 +1,14 @@
 ---
 id: P01-4b
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-4a, P01-3b]
 capabilities: [C12, C13]
 ---
 # P01-4b — Kalıcı operation ve güvenli sahiplik
 
-**Güncellendi:** 2026-10-28. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kod başlamadı; ADR-0016 onayı bekleniyor. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1 uygulaması başlıyor. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Yeni gerçek SQLite tüketicisi, atomik kabul/approval snapshot, tek gönderim b
 
 ## Bağımlılıklar ve kararlar
 
-P01-4a PR #6 ile verified; P01-3b PR #8 ile verified, global expiry/V2 takip PR #9 ile development `a9f1f2e` tabanında. [ADR-0016](../../decisions/0016-operation-admission-and-ownership.md) Proposed; onay ve kapalı sözleşme review'u sonrası ready olur. SQLite/DELETE/EXTRA, mevcut 5 s store/30 s execution ve restore/recover ret kararları yeniden açılmaz. [Ön inceleme](../../research/p01-4-readiness-review.md).
+P01-4a PR #6 ile verified; P01-3b PR #8 ile verified, global expiry/V2 takip PR #9 ile development `a9f1f2e` tabanında. [ADR-0016](../../decisions/0016-operation-admission-and-ownership.md) Accepted; kullanıcı yetkisi ve iki fresh belge review'u hazır olma kapısını kapattı. SQLite/DELETE/EXTRA, mevcut 5 s store/30 s execution ve restore/recover ret kararları yeniden açılmaz. [Ön inceleme](../../research/p01-4-readiness-review.md).
 
 ## Sözleşme ve uygulama sınırı
 
@@ -29,13 +29,13 @@ Yaşam döngüsü/ownership/kotalar ADR-0016; wire [operations](../../reference/
 ## Kabul
 
 1. Gerçek 5→6 V2 migration; eski 1–5 SQL/checksum/handler değişmeden yeni boş tablolar, tam schema/FK/index/payload validation. Eski schema 2/3/4/5 yoğun fixture zincirleri mevcut toplam 5 s içinde başarıyla hedefe ulaşır; timeout pozitif kabul değildir. Snapshot/validation/commit süreleri ve VM adımları raw kayıtta ayrılır.
-2. Güncel trusted input/credential/approval validation ile operation+attempt+lease atomik kabul; blocked/stale/değişmiş plan ve revoke/expiry yarışında port çağrısı sıfır. Approval replace/revoke tarihsel snapshot'ı değiştirmez; admission/takeover/arm aynı approval ID/gövdeyi ister. Revoke→reapprove mevcut operation'ı canlandırmaz, idempotent aynı approval sorun yaratmaz. İki ayrı süreç aynı planla tek operation'a yakınsar; repeated admission/terminal iş yeni izin üretmez.
+2. Güncel trusted input/credential/approval validation ile atomik kabul; admission, predispatch takeover ve arm transaction'larının her birinde **her credential'ın ID/revision/epoch/hedefi** tekrar okunur. A snapshot r1→B r2 commit→A final transaction ayrı süreç bariyerleriyle state_changed/sıfır start/tek env çözümü verir. Approval replace/revoke tarihsel snapshot'ı değiştirmez; aynı approval ID/gövde gereklidir. Revoke→reapprove işi canlandırmaz, idempotent approve sorun yaratmaz. İki süreç aynı planla tek operation'a yakınsar. Sahibi ölmüş/latch boş işte revoke/expiry/credential değişimi cleanup takeover ile failed olur; yeni izin/attempt/start yoktur, geçici hata terminal kanıt sayılmaz.
 3. Plan forget FK/restrict ve eşzamanlı admission/forget güvenlidir; plan_in_use kontrollüdür. Full ve warm decode bozuk FK/digest/projection/owner/attempt/outcome/tarihçeyi state_invalid ile reddeder, boş sonuç saymaz.
 4. Gerçek ayrı süreçte: admission, intent commit öncesi/sonrası, port çağrısı öncesi, gözlenebilir yan etki sonrası/yanıt öncesi, outcome commit öncesi/sonrası SIGKILL. Restart son atomik kaydı korur; dış etki sayısı **en fazla bir**, yeniden gönderim sıfır. Intent commit sonrası ama port öncesi kesintide konservatif unknown kabul edilir.
-5. A durur→lease dolar→B devralır→A geç döner; eski token'ın her mutasyonu ve sonucu reddedilir, B start yapmaz. Intent COMMIT gecikmesi/son kontrol öncesi lease veya generation kaybında port çağrısı sıfırdır; eski owner unknown dahi yazamaz, son atomik submitted takeover'a kadar korunur. Tam expiry, renew/release/takeover, fence taşması, ileri/geri saat, başka stateful çağrının lease expiry gözlemi ve reboot-benzeri monotonic referans değişimi ayrı sınanır. Anomaly rollback/restart ile kaybolmaz.
+5. **Predispatch:** A latch boşken ölür/durur→lease dolar→B geçerli aynı onayla eski attempt'i abandoned yapıp yeni attempt ile en fazla bir start yapabilir; A'nın geç arm/yazısı reddedilir. **Postdispatch:** A latch doluyken ölür/durur→B aynı attempt'i yalnız reconcile eder, start sayısı artmaz. Intent COMMIT gecikmesi/son kontrol lease/generation kaybında port sıfır; eski owner unknown bile yazamaz. Tam expiry, renew/takeover, fence taşması, dört frontier indeksi/13.313 kontrol, 1.024 lease'in başka stateful çağrıda gözlenmesi ve saat geri dönüşü testlenir. Anomaly rollback/restart ile kaybolmaz. PID/fork ve iki thread permit tüketimi tek start verir. Port min(call_remaining,lease_remaining)−5 s deadline'ına uyunca maksimum cooperative çağrı sonrasında sonuç yazımı başarıyla tamamlanır; scheduler/I/O gecikmesi ayrı controlled unknown kabulüdür.
 6. Unknown'a yeni approval/reset/epoch/current credential uygulanması ikinci gönderim üretmez. Trusted reconciliation target/account/project/run ID/correlation ve güncel read izni ister; not_found/401/timeout/cancel-accepted/wrong-target/çelişkili observation başarı/iptal sayılmaz. Plan expiry geçmiş read'e tek başına engel değildir. Execution succeeded + delivery pending başarı değildir; doğru teslim/terminal kanıtı gerekir.
-7. Runtime restore/recover: sıfır operation, eski/boş snapshot, eksik hedef, backup sonrası unknown, eski intent/stage/live ve backup kaybında I/O/migration öncesi state_restore_unsupported. Dosyalar/intent korunur. Reset v3 operation/attempt/semantic değişimi onaya bağlar; heartbeat-only onayı bozmaz, takeover/sonuç değişimi bozar. Reset atomik history koruma + ownership invalidation; predispatch cancelled/armed unknown; geç eski sahibin yazısı reddedilir. İleri saatli operation + reset/yeni epoch + geri UTC birleşiminde geçmiş timestamp gerilemez, erken reconcile/reset state_changed olur; UTC yetişince aynı iş read/reconcile edilebilir, yeni start olmaz.
-8. 1.024 operation, operation başına 16 attempt/256 geçiş ve byte sınırlarında kontrollü kapasite; port öncesi slot ayrımı, son terminal slotu, heartbeat no-history, otomatik silme yok. İki ayrı yoğun pozitif fixture: tümü terminal 1.024×256=262.144 geçişli maksimum tarihçede full validation; ayrıca nonterminal işte reset geçişi için normal slotu kalan, en yakın üst hacimli terminal/nonterminal karışımında reset. İkisi mevcut 5 s bütçesinde tamamlanır; kota dolu nonterminal resetinin ilan edilen kontrollü reddi ayrı negatiftir. Gerçek en yakın geçerli payload hacmi, RSS/VM/wall ve kaynak ortam raw kaydedilir; bütçe aşımı başarı sayılmaz. Kota/fence/busy/disk-full/IOERR/progress/commit gecikmesinde yan etki başlamaz veya mevcut intent unknown kalır; hata ID'yi korur. Bağlantı/descriptor/lock ve transaction her yolda kapanır.
+7. Runtime restore/recover: sıfır operation, eski/boş snapshot, eksik hedef, backup sonrası unknown, eski intent/stage/live ve backup kaybında I/O/migration öncesi state_restore_unsupported. Dosyalar/intent korunur. Tam preview v3 root/snapshot/fingerprint ve strict sayılar sınanır. Heartbeat-only onayı bozmaz, owner/semantic/sonuç değişimi bozar. Reset atomik history koruma + ownership invalidation; predispatch cancelled/armed recovery unknown; eski owner yazamaz. **+1 yıl UTC→iş→saati düzelt→credential reset→reconcile** akışı hemen tamamlanabilir: geçmiş event timestamp'i değişmez, yeni gerçek UTC/epoch ve sıra kaydedilir, clock_anomaly görünür, yeni start yoktur.
+8. 1.024 operation, 16 attempt/256 normal geçiş ve byte kotaları; admission/dispatch öncesi slot ayrımı, recovery ownership/renew/reset normal slot tüketmez. **255 dolu + sahibi ölü** iş takeover/read-reconcile yapabilir ve yeni yetkili sahip 256. terminal slotunu yazabilir; dolu predispatch iş cleanup/reset ile terminalleşebilir. History silinmez. İki ayrı yoğun pozitif fixture: tümü terminal 262.144 normal geçişte full validation; en yakın üst hacimli terminal/nonterminal karışımında reset. Mevcut 5 s kontrol deadline'ı açıkken referans ortamında pozitif tamamlanma, raw hacim/RSS/VM/wall/CPU/disk kaydı gerekir; timeout başarı değildir. Kota/fence/busy/disk-full/IOERR/commit gecikmesinde port başlamaz veya latch unknown kalır, ID ve kapasite türü korunur. State/transaction/lock/descriptor her yolda kapanır.
 
 ## Doğrulama
 

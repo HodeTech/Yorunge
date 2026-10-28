@@ -1,6 +1,6 @@
 # P01-4 — Kalıcı koordinasyon ve yerel iş geçmişi
 
-**Durum:** Karar/onay hazırlığı; ürün uygulaması başlamadı. **Tarih:** 2026-10-28. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** P01-4 uygulaması kullanıcı tarafından istendi; yeni ADR için ayrıca açık onay istenmesi de aynı talebin parçasıdır. [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) Proposed; onaya bağımlı ürün kodu başlamaz. Bu belge hazır planı anlatır, uygulanmış kabul iddiası değildir.
+**Durum:** ADR-0016 Accepted; adım 1 uygulaması başladı, ürün kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
 
 ## Paket ve korunacak teslim
 
@@ -12,11 +12,11 @@ Aynı dalda önceden yetkilendirilip tamamlanan `fae087b`, `cabb36b`, `7462103`,
 
 Tek yeni karar paketi ADR-0016 ve ona bağlı [operations wire](../reference/operations.md)'dır. Üç ana seçim birlikte değerlendirilir:
 
-1. **Plan başına tek operation ve geri alınmayan gönderim niyeti.** Sadece başarılı intent commit'inin ilk sahibi bir kez start çağırabilir. Crash/lease/reset/yeni onay ikinci izin üretmez; gönderilmemiş iş dahi konservatif unknown kalabilir. Admission'daki aynı approval arm'a kadar etkin kalır; revoke→yeni onay mevcut operation'ı canlandırmaz. Revoke/reset'in intent sonrası dış etkiyi kesin durduramadığı açık sınırdır.
-2. **30 s UTC lease + mevcut clock/fencing ve bounded kalıcı geçmiş.** 1.024 operation / 16 attempt / 256 business geçişi; otomatik silme yok, dolunca güvenli ret. Reset preview v3, history koruma ve owner invalidation; operation runtime restore/recover yasağı mevcut Accepted sınır olarak uygulanır. Saat eski business zamanının gerisine alınmışsa o işin mutasyonu/reset'i UTC yetişene kadar kontrollü bekler. İş ömrüyle 5/30 s yerel çağrı bütçeleri karıştırılmaz.
+1. **Plan başına tek operation ve geri alınmayan gönderim niyeti.** Başarılı intent commit'inin ilk sahibi PID'ye bağlı tek permit ile start çağırır. Her credential admission/takeover/arm transaction'ında tekrar karşılaştırılır. Aynı etkin approval gerekir; revoke→reapprove yeni execution hakkı üretmez. Latch boş/owner ölü/onay geçersiz işi ayrı cleanup izin vermeden terminalleştirir. Intent sonrası reset/revoke dış etkiyi kesin durdurmaz.
+2. **30 s UTC lease + recovery ve bounded kalıcı geçmiş.** 1.024 lifetime operation/16 attempt/256 normal business geçişi; bütün plan slotları bağlanınca yeni plan üretimi durur, otomatik silme yoktur. Recovery sahipliği/reset slot tüketmez, orphan terminal reserve'i yeni sahibi de kullanır. Event sequence/clock epoch gerçek UTC gerilemesini temsil eder; +1 yıl ileri saat credential reset veya yeni epoch reconciliation'ını kilitlemez. Port için min(kalan çağrı,kalan lease)−5 s deadline ve sonuç payı; I/O için fiziksel duvar saati garantisi verilmez. Restore/recover yasağı mevcut Accepted sınırdır.
 3. **P01-4 public yüzeyi yalnız yerel jobs list/show.** Genel Result v1 ve plan digest'leri korunur. Trusted observation ve sentetik subprocess yalnız iç/test portundadır; public run/backend/remote kontrol P01-5/P02/P03 kapsamındadır.
 
-Bu seçimler onaylanmadan ürün kodu yazılmaz. ADR dışı rutin dosya/yardımcı isimleri için ek onay döngüsü yoktur. Uygulamada gerçek yeni ürün/uyumluluk kararı çıkarsa somut belgeyle kullanıcıya sunulur; settled kararlar yeniden açılmaz.
+2026-10-29 talebi bu revizyonların kapanışı sonrası Accepted geçişini ve uygulamayı yetkilendirir. ADR dışı rutin dosya/yardımcı isimleri için ek onay döngüsü yoktur. Gerçekten bu paketin dışında yeni ürün/uyumluluk kararı çıkarsa somut belgeyle kullanıcıya sunulur; settled kararlar yeniden açılmaz.
 
 ## Uygulama sırası
 
@@ -40,5 +40,5 @@ Ardından current/faz/matris/modül/reference/README/changelog yalnız kanıtlı
 ## Kayıt
 
 - Ön inceleme: [P01-4 hazırlık raporu](../research/p01-4-readiness-review.md).
-- Karar: ADR-0016 Proposed; kullanıcı yanıtı henüz yok.
+- Karar: 2026-10-29 kullanıcı yanıtı, doğrulanan düzeltmeler ve iki fresh tur sonrası ADR-0016 Accepted.
 - Uygulama adımları/review/test/PR: başlamadı; gelecek sonuçlar tarih/head ile ayrı uygulama kabul kaydına bağlanacak.

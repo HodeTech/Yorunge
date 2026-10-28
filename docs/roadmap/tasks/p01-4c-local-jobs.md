@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4c — Yerel jobs list/show
 
-**Güncellendi:** 2026-10-28. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kod başlamadı; P01-4b ve ADR-0016 kabul/onayı eksik.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kod başlamadı; P01-4b doğrudan bağımlılığı henüz uygulanmadı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -32,7 +32,7 @@ Exact CLI/Python/Result/cursor/limits/hatalar operations referansındadır. CLI/
 2. Closed wire/strict API, UUID/status/limit/cursor/store/filtre eşliği; 1–100 limit, çok sayfalı artan immutable sıra, değiştirilmiş status filtresinin ilan edilmiş snapshot sınırı. Repeat/bool/float/extra/non-finite/duplicate/oversize ve bozuk cursor kontrollü hatadır. Liste N+1 ve tüm payload taraması yapmaz; show tek read snapshot'ıdır.
 3. Operation-plan/attempt/outcome/projection bozukluğu state_invalid; geçerli eksik ID operation_not_found; filtrede geçerli eksik plan boş liste. SQLite disk/busy/platform/intent hatası boş sonuç olmaz. JSON stdout/stderr saflığı, secret/path/traceback yokluğu ve CLI/Python/text eşliği sınanır.
 4. Jobs context değiştiren üst/aile/fiil seçeneklerini reddeder. Env/config/manifest/network/keychain/ML/araç keşfi yapılmaz; explicit state açılışının mevcut recovery/migration davranışı doğru belgelenir. Root/jobs help mevcut lazy metadata sınırını korur; --help/--version ve mevcut 30 yardım çıktısı regresyonu kontrol edilir.
-5. Kaynak fixture iki hacimde: normal iş ve 1.024 operation + her birinde 16 attempt + sınıra yakın geçerli metadata/plan/outcome; ayrıca 256 geçişli tek iş. Liste limit+1 ve bounded bellek/query sayısı; show 256 KiB tavanı. Aynı host/disk/kurulu wheel'de en az 30 ayrı süreç; jobs list/show sıcak p95 mevcut yerel 200 ms hedefini geçer. Ulaşılan gerçek byte/row/VM/query ve RSS kaydedilir; hedef başarısızsa sessiz gevşetilmez.
+5. Kaynak fixture iki hacimde: normal iş ve 1.024 operation + her birinde 16 attempt + sınıra yakın geçerli metadata/plan/outcome; ayrıca 256 geçişli tek iş. Liste limit+1 ve bounded bellek/query sayısı; show 256 KiB tavanı. Aynı host/disk/kurulu wheel'de en az 30 ayrı süreç; **yeni P01-4 jobs kabul hedefi** sıcak p95≤200 ms'dir; profil/cache ölçümü jobs kanıtı sayılmaz. Ulaşılan gerçek byte/row/VM/query ve RSS kaydedilir; hedef başarısızsa sessiz gevşetilmez.
 6. Tam test/lint/type/belge/ajan, wheel/sdist ve iki temiz kurulum; temiz kurulumlarda sentetik iç fixture DB'sini okuyan gerçek jobs CLI/API, mevcut v1/cache/execution smoke ve lazy guard. Önceden hazırlanmış startup bakımının paired ölçümü korunur; Linux CI çıktısı bu P01-4 PR'ında incelenir, daha önceki merge CI reddi yeni ürün önkoşulu değildir.
 
 ## Doğrulama

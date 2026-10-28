@@ -1,6 +1,6 @@
 # Operation ve yerel jobs sözleşmesi
 
-**Durum:** Proposed — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) onayı bekleniyor; bu dosyadaki yeni tip/komutlar uygulanmadı. **Tarih:** 2026-10-28. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
+**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; yeni tip/komutların ürün kabulü henüz yok. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
 
 ## Sınır ve kaynak
 
@@ -29,6 +29,8 @@ CLI `--state-dir` jobs aile seviyesinde veya fiilden sonra, `--output text|json`
 
 Show operation, plan, attempt ve outcome'u tek SQLite read snapshot'ından alır. Read-only iş sorgusu env/config/girdi içeriği okumaz, provider sorgulamaz, güncel validation/approval veya yeni execution hakkı vermez. Explicit store erişimi mevcut açılış/migration/hot-journal davranışını taşır; fiziksel DB'nin hiç yazılmayacağı sözü değildir. Eksik store mevcut açık store kuralıyla kurulur; normal draft prepare yine DB açmaz.
 
+Lease expiry kendi başına SQL geçişi çalıştırmaz. Açık iç recover/takeover kullanım senaryosu toparlanmayı tetikler; jobs bunu çağırmaz. Her jobs Result warnings listesinde local_history_only bulunur; metin de submitted/running dahil son kaydın stale olabileceğini belirtir. Provider veya canary sorgusu yapılmış gibi gösterilmez.
+
 ## Kapalı wire
 
 Bütün nesneler strict/frozen/extra-forbid; JSON duplicate key, non-finite, bilinmeyen sürüm/alan ve bool-as-int reddedilir. Mevcut canonical UUIDv4, lowercase SHA-256, canonical UTC ve domain task/tool/execution kimlikleri kullanılır. Alanlar aşağıda tamdır; `?` yalnız null olabilen değeri belirtir, anahtarın atlanmasını değil. Diziler JSON listesi, sayı alanları strict int'tir.
@@ -36,7 +38,7 @@ Bütün nesneler strict/frozen/extra-forbid; JSON duplicate key, non-finite, bil
 | Tip | Tam alan kümesi |
 |---|---|
 | JobsPage | `schema_version=1`, `jobs: JobSummary[]`, `next_cursor: string?` |
-| JobSummary | `operation_id`, `plan_id`, `plan_digest`, `task`, `tool`, `execution`, `created_at`, `updated_at`, `status`, `execution_status`, `delivery_status`, `attempt_count` |
+| JobSummary | `operation_id`, `plan_id`, `plan_digest`, `task`, `tool`, `execution`, `created_at`, `updated_at`, `status`, `execution_status`, `delivery_status`, `attempt_count`, `revision`, `clock_anomaly` |
 | JobView | `schema_version=1`, `operation: JobSummary`, `plan: ExecutionPlan`, `attempts: AttemptView[]`, `outcome: OperationOutcome?` |
 | AttemptView | `attempt_id`, `number`, `created_at`, `updated_at`, `status`, `provider_run_id: string?`, `provider_status: string?`, `provider_exit_code: int?`, `reason_code: string?` |
 | OperationOutcome | `schema_version=1`, `recorded_at`, `execution_status`, `delivery_status`, `provider_exit_code: int?`, `reason_code: string?` |
@@ -45,23 +47,43 @@ Bütün nesneler strict/frozen/extra-forbid; JSON duplicate key, non-finite, bil
 
 Public provider run ID/status yalnız trusted adaptörün sır içermediğini garanti ettiği küçük kimlik/durum alanıdır; ham cevaptan doğrudan kopyalanmaz. ID en çok 256, status en çok 128 ASCII karakter; izinli karakterler `[A-Za-z0-9._:-]`, boş string/control/URL reddedilir. Provider exit code nullable signed-32 int; reason code aşağıdaki OperationReason v1 enum'udur. Serbest açıklama/body/argv/env/secret/HMAC/owner permit eklenmez. Yeni provider/status gereksinimi geldiğinde parser'ın bu sınırı sessizce gevşetilmez.
 
-Operation kabul payload'ı UUID/store/plan/approval bağları, public authorization snapshot ve sabit correlation içerir; provider secret ve mutable Profile/config içermez. Owner/fence ve özel permit jobs çıktısına girmez. Public show geçmiş planı gösterir, planın şu an geçerli/onaylı olduğunu söylemez. Geçiş kaydı DB içindedir; bu pakette yeni history/export komutu yoktur. Payload ve çıktı byte kotaları ADR-0016'dadır.
+Admission payload tam alanları: `schema_version=1`, `operation_id`, `plan_id`, `plan_digest`, `store_id`, `admission_identity_epoch`, `admission_clock_generation`, `approval` (mevcut kapalı ExecutionApproval snapshot), `authorities: AdmissionAuthority[]`, `correlation` (UUIDv4), `delivery_required` (strict bool). En çok üç authority (local ve iki mevcut hizmet); service/hedef sırasına göre tekil/sıralı. Kaynak saved plan scope'u ve aynı çağrının onunla eşleşmiş current credential/authorization snapshot'ıdır; aynı metadata tekrar çözülmez.
+
+AdmissionAuthority tam alanları `service_id`, `service_origin`, `api_base_path`, `account_id`, `project_id`, `credential_id`, `credential_revision`, `authorization_scope`'tur. Service ID mevcut enum; local service'de origin/base/credential ID/revision/authorization null, account/project saved context'i korur. Uzak service'de origin/base/credential UUID/revision zorunlu; account/project/scope saved scope'un nullability ve mevcut kapalı AuthorizationScope kurallarını izler. Nullable anahtarlar atlanmaz. BoundCredential/CredentialBinding/Profile serialize edilmez: K, key_check, tag/verifier, ham secret/hash, env/reference_name/type ve config hiçbir alanın değeri olamaz. Üçten fazla authority gerektiren plan bu sürümde kontrollü reddedilir; 8 KiB toplam admission kotası ayrıca uygulanır.
+
+Owner/fence ve permit jobs çıktısına girmez. Show geçmiş planı gösterir, güncel geçerlilik/onay iddiası değildir. Geçiş kaydı DB içindedir; yeni history/export komutu yoktur. Payload/çıktı byte kotaları ADR-0016'dadır.
 
 ## Durum ve neden invariantları
 
-Güncel attempt, dispatch bağı varsa onun gösterdiği attempt; yoksa en büyük numaralı attempt'tir. Daha eski attempt'ler yalnız abandoned'dır, değişmez ve outcome ile eşitlik zorunluluğu taşımaz. Her business geçişinin summary projection'ı DB payload'ıyla aynı olmalıdır; farklı enum eksenleri birbirine eşitlenmez.
+Numaralar kesintisiz 1…N≤16; güncel attempt en büyük numaralı attempt'tir, diğerleri yalnız abandoned ve değişmezdir. Dispatch bağı varsa aynı operation'ın **bu en büyük** attempt'ine gitmelidir; bağlı attempt claimed/abandoned olamaz ve sonradan attempt eklenemez. Latch null iken yalnız admitted veya kesin gönderim öncesi failed/cancelled vardır. Farklı enum eksenleri literal eşitlenmez; toplam status tek saf reducer'dan gelir.
 
 | Toplam operation | Güncel attempt | Execution/delivery ve outcome koşulu |
 |---|---|---|
 | admitted | claimed | execution not_started; outcome null |
-| submitted | submitted | execution submitted; outcome null veya nonterminal özet |
-| running | running | execution running; veya execution succeeded + delivery pending; outcome varsa aynı eksenler |
-| unknown | unknown | execution unknown; veya kesinleşmiş execution succeeded + delivery unknown/pending; outcome varsa aynı eksenler |
+| submitted | submitted | execution submitted; outcome null |
+| running | running | execution running; veya execution succeeded + delivery pending; outcome null |
+| unknown | unknown | execution unknown; veya execution succeeded + delivery unknown; outcome null |
 | succeeded | succeeded | execution succeeded + delivery complete/not_required; outcome zorunlu |
 | failed | failed | execution failed/not_started; veya execution succeeded + delivery failed; outcome zorunlu |
 | cancelled | cancelled | dispatch öncesi execution not_started, sonrasında kesin kanıtla cancelled; outcome zorunlu |
 
-Not_started iken delivery yalnız pending/not_required; kesin olmayan execution iken delivery complete olamaz. Not_required yalnız admission'da sabitlenen trusted teslim politikasından gelir. Unknown'dan doğrulanmış running'e geçiş yeni dispatch/attempt üretmez. Terminal zaman/durum/sonuç değişmez; created_at ≤ updated_at ve attempt/outcome zamanı operation aralığında olmalıdır. Public updated_at yalnız business geçişi zamanıdır; heartbeat'in private lease zamanı/revision'ı summary/outcome zamanını veya semantic fingerprint'i değiştirmez. Bilinen provider_run_id aynı operation'da bir kez bağlanır, başka ID'ye değiştirilemez.
+Tam execution/delivery cross-product aşağıdaki whitelist'tir; diğer çiftler reddedilir. Not_required iff admission delivery_required=false; bu durumda diğer delivery değerleri yasaktır. Delivery_required=true iken not_required yasaktır. Not_started'ın terminal yerel nedeni reducer'ın ayrı strict failed/cancelled/null girdisidir; bu girdi dispatch sonrası kullanılamaz.
+
+| Execution | İzinli delivery → toplam durum |
+|---|---|
+| not_started | pending/not_required → admitted; kesin yerel terminal girdi varsa failed/cancelled |
+| submitted | pending/not_required → submitted |
+| running | pending/not_required → running |
+| unknown | pending/unknown/not_required → unknown |
+| succeeded | pending → running; unknown → unknown; failed → failed; complete/not_required → succeeded |
+| failed | pending/not_required → failed |
+| cancelled | pending/not_required → cancelled |
+
+OperationOutcome **yalnız terminal** kayıt, terminale geçişte bir kez yazılır; diğer durumlarda null. Summary, güncel attempt ve outcome eksenleri bu tabloya göre eşleşir. Kesinleşmiş execution succeeded, belirsiz delivery yüzünden execution unknown'a çevrilmez. Unknown'dan trusted submitted/running'e dönüş aynı attempt/latch'i kullanır.
+
+Created_at ilk gerçek UTC gözlemidir ve immutable cursor anahtarıdır. Updated_at ve outcome recorded_at son gerçek UTC gözlemidir; wall clock epoch/generation değişiminde created_at'ten eski olabilir. Global created≤updated kuralı **yoktur**. Private normal event tam sıra anahtarı (operation_id, sequence), gözlem identity_epoch/clock_generation ve gerçek observed_at taşır; normal event sequence 1…256, revision positive int64 olur. Aynı clock alanında UTC sırası denetlenir; farklı alanda sıra otoritesi sequence/revision'dır. Saat gerilemesi yaşayan operation'da sticky clock_anomaly=true; eski event timestamp'i değişmez, sahte max(old,now) yazılmaz. Böylece +1 yıl saat→reset→düz UTC→reconcile desteklenir. Heartbeat semantic revision/updated_at/fingerprint'i değiştirmez.
+
+Recovery owner/invalidation normal event eklemeden bounded güncel kontrol kaydını ve semantic revision'ı değiştirir. Recovery marker varsa etkili summary/attempt unknown projection'ı son normal event'ten farklı olabilir; decoder yalnız bu açık marker ile bu farkı kabul eder. En son normal event'in terminal olduğu durumda marker yoktur ve terminal summary/outcome tam eşleşir. Kapasite yüzünden nonterminal observation yazılamazsa marker capacity_exceeded ile unknown kalır; son terminal slotu yeni yetkili recovery sahibine açıktır. Provider_run_id bir kez bağlanır, aynı operation'da değiştirilemez.
 
 **OperationReason v1 tam değer kümesi:** `identity_reset`, `local_cancelled`, `approval_revoked`, `approval_expired`, `approval_changed`, `plan_invalid`, `credential_changed`, `lease_expired`, `clock_changed`, `owner_changed`, `dispatch_interrupted`, `provider_unavailable`, `provider_not_found`, `provider_unauthorized`, `provider_rejected`, `provider_failed`, `provider_cancelled`, `delivery_pending`, `delivery_failed`, `evidence_mismatch`, `outcome_write_failed`, `capacity_exceeded`. Alan/schema sürümü 1 bu enum'u kullanır; yeni wire anlamı için katalog/reference ve consumer testleri birlikte güncellenir.
 
@@ -73,7 +95,7 @@ Attempt ve varsa güncel outcome için neden eşlemesi aşağıdadır; outcome'u
 | running | null; execution succeeded + delivery pending ise yalnız delivery_pending |
 | unknown | identity_reset, lease_expired, clock_changed, owner_changed, dispatch_interrupted, provider_unavailable, provider_not_found, provider_unauthorized, evidence_mismatch, outcome_write_failed, delivery_pending, capacity_exceeded; null yasak |
 | abandoned | owner_changed, lease_expired, clock_changed; null yasak |
-| failed | plan_invalid, provider_rejected, provider_failed, delivery_failed; yalnız gönderim öncesinde approval_revoked/approval_expired/approval_changed/credential_changed da olabilir; null yasak |
+| failed | plan_invalid, provider_rejected, provider_failed, delivery_failed; yalnız gönderim öncesinde approval_revoked/approval_expired/approval_changed/credential_changed/capacity_exceeded da olabilir; null yasak |
 | cancelled | identity_reset/local_cancelled yalnız gönderim öncesinde; provider_cancelled yalnız gönderim sonrası kesin kanıtla; null yasak |
 
 Onay/credential kontrolü reddinde kayıt yoksa yeni job yaratılmaz. Birden çok neden olduğunda eylemi durduran ilk kapının kodu kullanılır; serbest metin veya provider hata adı kabul edilmez.
@@ -93,3 +115,20 @@ Bu kalıcı nedenler exception kodu değildir. İç hata zarfının `details.rea
 Text list her kayıtta operation ID, task, toplam durum ve execution/delivery durumlarını ayrı gösterir; boş listede kayıt olmadığını söyler. Show plan ID/digest, attempt sırası, son kayıtlı durum/sonuç ve bunun yerel tarihsel okuma olduğu bilgisini verir. Ham JSON/sağlayıcı mesajı metne dökülmez. JSON stdout yalnız tek Result; hata stdout boş ve stderr tek mevcut hata zarfıdır. Aynı seçimde text ve JSON aynı tipli okuma sonucundan üretilir.
 
 `operation_not_found` canonical ID bulunamadığında exit 2; malformed istek/cursor/filtre `invalid_request`; bozuk kayıt `state_invalid`. State platform/kilit/I/O/bütçe/repair kodları mevcut davranıştadır. `retryable=false`; path/SQL/secret/traceback yoktur. Operation'a bağlı plan forget `plan_in_use` exit 2 verir. İç coordination hataları/operation_uncertain jobs sonucuyla karıştırılmaz. Kanonik public kod/exit tablosu uygulama adımında [CLI referansına](cli-contract.md) bağlanacaktır.
+
+## Coordination hata sınırı
+
+Yeni OperationError mevcut YorungeError alt sınıfıdır; tam zarf `schema_version=1, code, message, operation_id, retryable=false, details` olur. Operation ID biliniyorsa canonical UUID, bilinmiyorsa null. Details tam `{reason_code: ErrorCode, capacity_kind: store|attempt|transition|null}`; capacity_kind yalnız kapasite hatasında non-null'dır. reason_code exception kataloğundandır; kalıcı OperationReason ayrı tiptir. Eski hataların details={} davranışı değiştirilmez.
+
+| Kod | Exit | Kesin tetik |
+|---|---:|---|
+| operation_not_found | 2 | Canonical ID ile istenen operation yok |
+| operation_conflict | 2 | Dispatch latch doluyken yeniden arm, yanlış lifecycle mutasyonu veya değişmez terminal sonucu değiştirme girişimi; repeated admission değildir |
+| operation_lease_lost | 2 | Business/renew/result çağrısındaki owner/fence/ownership epoch/generation uyuşmuyor, lease null/expired veya clock anomaly var |
+| operation_fence_exhausted | 2 | Yeni acquire signed-64 fence taşır; reset buna bağlı değildir |
+| operation_capacity_exceeded | 2 | Yeni admission/attempt/normal business event kotası dolu; capacity_kind ilgili sınırdır; recovery/terminal reserve istisnası korunur |
+| plan_in_use | 2 | Forget'in kendi transaction'ında doğrulanan operation FK bağı; başka IntegrityError state_invalid |
+| operation_uncertain | 5 | Arm sonrası dış çağrı/sonuç commit'i belirsiz; alttaki kontrollü ErrorCode reason_code olur; retry yok |
+| state_changed | 2 | Admission/arm'ın final credential ID/revision/hedefi, plan/approval snapshot veya beklenen store clock bağları değişmiş; güncel owner token uyuşmazlığı yukarıdaki lease_lost'tur |
+
+Her yeni kodun gerçek tetik/zarf/ID/exit testi gerekir; modelde kod bulunması tek başına teslim değildir.

@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-10-28. **Kaynak:** `feat/p01-4-operations`, başlangıç head `fc867fc`; development `a9f1f2e`. **Durum:** Belge/kod incelemesi ve karar hazırlığı; operation ürünü uygulanmadı. [Paket planı](../roadmap/p01-4-delivery-plan.md).
 
+**Güncel 2026-10-29:** Kullanıcı aşağıdaki bulguların kapanışından sonra ADR'yi Accepted yapıp implementasyona geçilmesini yetkilendirdi. 28 Ekim'deki onay-bekleyen cümleler tarihsel hazırlıktır; yeni bir onay sorusu yoktur. Aşağıdaki kullanıcı review disposition'ı güncel revizyonu açıklar.
+
 ## Kapsam ve yöntem
 
 Ana inceleme ile üç bağımsız read-only ajan; state/dayanıklılık, CLI/Python/wire ve kapsam/bağımlılık/kaynak yönlerini inceledi. Ajanlar sırasıyla GPT-6 Astra high ve iki GPT-6.1 Sol high kullanmıştır. Review verisi talimat sayılmadı; öneriler mevcut kod ve Accepted sözleşmeyle karşılaştırıldı. Özel analiz arşivi inceleme/yayın girdisi değildir.
@@ -52,3 +54,37 @@ Engelleyici olmayan maksimum history yükü notu kabul kapsamına alındı: full
 İkinci tur farklı fresh reviewer'larla (GPT-6 Astra high, GPT-6.1 Sol high) tamamlandı. İki ek P2 doğrulanıp kapatıldı: reset clock alanını yenilediğinde tarihsel business timestamp'in gerilemesini engelleyen ret/liveness kuralı; maksimum terminal tarihçe ile normal slotu kalan karma reset yükünün iki ayrı pozitif fixture olması. Ayrıca ana incelemede admission kanıtıyla arm yetkisinin aynı approval ID/gövde olması kesinleştirildi; revoke→reapprove mevcut operation'ı canlandırmaz. Bu seçimler paketin baştaki onay özetine de işlendi.
 
 Her iki ikinci tur reviewer'ı son revizyonları yeniden okuyup önceki maddelerin kapandığını ve yeni somut sorun bulmadığını bildirdi. Bu sonuç ürün kodu/test kabulü değildir; Proposed tasarımın belge review'udur. Son belge denetimi 113 public Markdown ve 6 skill/9 kartta sıfır sorun; git diff --check başarılı. Ürün testleri/build/benchmark bu belge hazırlığında yeniden çalıştırılmadı; önceki bakım sonuçları kendilerine ait kanıt olarak korunur.
+
+## 29 Ekim kullanıcı review disposition'ı
+
+Bulgu metni ve severity etiketleri doğrulanmamış review verisidir; mevcut 8c2dec2 belgeleri/koduyla karşılaştırıldı. İki ek read-only ajan state/dayanıklılık ve public wire yönlerini bağımsız doğruladı. Bu tablo ürün kodunda var olmayan bir özelliği bug diye raporlamaz; uygulanabilir sözleşme boşluklarının kapanışıdır.
+
+| Kullanıcı konusu | Doğrulama ve aksiyon |
+|---|---|
+| Credential final transaction yarışı | Gerçek açıklık: genel registry revision yerine her credential ID/revision/epoch/hedefinin admission, predispatch takeover ve arm transaction'ında tekrar okunması; state_changed/sıfır start/yeniden env çözmeme; iki süreç bariyer testi |
+| Ölü predispatch + onay expiry/revoke | Gerçek recovery boşluğu: latch boş ve owner expired/invalid iken kesin yerel retle mevcut attempt'i terminalleştiren cleanup; yeni onay/attempt/start yok |
+| Kesin 5/30 s duvar saati | İfade düzeltildi: kontrol deadline'ları ve referans ortam kabulü, fsync/scheduler/uyumsuz portu zorla kesme garantisi değil; pozitif hedefler korunur |
+| Ownership tuple | Tam tip/alan/CAS değişim tablosu; tarihsel admission bağı ile güncel owner epoch/generation ayrıldı; bağımsız ownership generation eklenmedi, fence bu işlevdedir |
+| +1 yıl UTC ve reset kilidi | Önceki ret bilinçliydi ama liveness sorunu gerçek: global timestamp sırası kaldırıldı; immutable event sequence/clock epoch ve gerçek UTC + sticky anomaly; reset eski timestamp'i değiştirmeden owner'ı düşürür, yeni epoch reconcile'i beklemez |
+| 255 slot orphan çıkmazı | Gerçek: recovery owner/reset invalidation normal history slotu tüketmez; bounded güncel kontrol marker'ı; reserved terminal slot her yeni yetkili recovery sahibine açık |
+| Kart kabul 5 | Predispatch ve postdispatch iki ayrı fixture; ilki yeni valid attempt ile en fazla bir start, ikincisi sıfır ek start |
+| Frontier hesabı | Şema 5 gerçek kodu 12.288/12.289/üç; şema 6 önerisi 13.312/13.313/dört; indeks/full/warm/kota kabulü referansa eklendi. expiry_fences.py uygulama adım 1'de aynı tüketiciyle değişecek; bugün kodun eksikliği ürün bug'ı değil |
+| Lease/port payı | min(call_remaining,lease_remaining)−5 s port deadline'ı, outcome için pay; pozitif pay yoksa port yok; cooperative maksimum port kabulü, bloke I/O sınırı |
+| Kod/tetik/OperationError | Tam tetik/exit tablosu, ID üst alanda; details ErrorCode reason ile nullable capacity_kind; eski hata zarfı değişmez |
+| Running/unknown ve queued proof | Tek reducer whitelist'i; succeeded+pending running, succeeded+unknown unknown; unknown→submitted trusted aynı iş kanıtıyla, yeni attempt yok |
+| Dispatch max attempt | Bağ aynı operation'ın max attempt'ine gider; daha büyük numara/claimed/abandoned dispatch attempt yasak; tam decode/yarış kabulü |
+| Preview v3/revision | local-state'te tam root/snapshot/canonical digest/fingerprint; yeni runtime restore/recover preview üretmez; semantic revision değişim/heartbeat istisnası tam tanımlı |
+| Takeover tetikleyicisi | İç açık recover/takeover çağrısı; daemon/sweep veya jobs yan etkisi yok. Son recorded submitted/running stale olabilir; local_history_only warning/metin |
+| Secret allowlist | Tam AdmissionAuthority + admission payload allowlist; key/tag/env/reference/BoundCredential/Profile kopyası yasak; byte/marker sızıntı testi |
+| 1.024 lifetime/store ömrü | Önceden açık bounded tercih, doğrulanmış kod kusuru değil; bütün plan slotlarının da kalıcı bağlanabileceği açıklandı. Retention kapsamını genişletmeden kullanıcı belgesine taşınacak |
+| Nonterminal Outcome/cross-product | Karmaşıklık kaldırıldı: outcome yalnız terminal immutable; güncel nonterminal eksenler summary'de; tam whitelist |
+| Kapasite/FK eşlemesi | capacity_kind store/attempt/transition; yalnız doğrulanmış operation restrict plan_in_use, diğer bozulma state_invalid |
+| ID yeri/diyagram | Üst operation_id ile düzeltildi; uçtan uca kavramsal diyagram ve ayrı operation akışı uygulama adımında hizalanır |
+| Jobs 200 ms / yoğun risk | Yeni jobs hedefi performans standardında açık; mevcut profil/cache sonucu yerine kullanılamaz. Raw/ortam ve maksimum tarihçe ölçümü zorunlu; başarısız hedef gevşetilmez |
+| Fork/not_sent | Permit issuer PID + thread-safe consume + copy/pickle ret; farklı PID start alamaz. P01-4 ayrı trusted not_sent/replay tasarlamaz; arm sonrası ham transient exception konservatif unknown'dır |
+
+Geçersiz/geniş yorumlar: bugün OperationError/şema6 kodunun bulunmaması tek başına hata değildir (başlangıçta ürün yoktu); same-plan reapprove politikası yetkisiz gönderim açığı değildir, bilinçli yeni plan/onay gereğidir; mevcut SQLite/restore/Result kararları yeniden açılmadı. Kullanıcı review'undaki komut önerileri doğrudan uygulanmadı; gerekli kod/test değişiklikleri onaylı implementasyon adımlarında yapılacak.
+
+Revizyon tur 1 (farklı fresh GPT-6 Astra high ve GPT-6.1 Sol high) tamamlandı. State/protokol yönünde somut yeni bulgu yok; planın eski “kullanıcı yanıtı yok” satırı P3 olarak doğrulanıp güncel yetkilendirmeyle düzeltildi. İkinci fresh tur sonucu ve son kontroller aşağıya gerçek sonuçlarıyla eklenecek. Ürün implementasyonu henüz başlamadı.
+
+Revizyon tur 2 farklı fresh GPT-6 Astra high ve GPT-6.1 Sol high ile tamamlandı; somut yeni bulgu yok. Belge/kart/diff denetimleri geçti. Kullanıcının 29 Ekim yetkisiyle ADR-0016 Accepted ve P01-4b in_progress yapıldı; yeniden onay sorulmadı. Bu kapanış ürün test/kabulü değildir; adım 1 uygulaması başlıyor.
