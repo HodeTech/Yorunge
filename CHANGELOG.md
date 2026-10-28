@@ -16,6 +16,9 @@ Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetk
 
 ### Fixed — 2026-10-28
 
+- CLI yalnız seçilen komut ailesinin seçeneklerini parse/help sırasında oluşturur; mevcut yardım, seçenek önceliği ve hata sözleşmesi korunur.
+- Başlangıç CI ölçümü ayrı frozen runtime wheel/venv ortamlarında aynı host'ta AB/BA taban-aday karşılaştırması yapar; tam örnekler, kaynak/paket hash'leri ve runner bilgisi saklanır. Mutlak 500/200 ms kapıları korunur; [yerel kabul ve dış CI sınırı](docs/research/startup-ci-reliability.md) kayıtlıdır.
+
 - Store genelindeki cache/proof/conflict ve plan/onay expiry sınırlarını aynı terminal snapshot’ta denetleyen şema 5; restart/saat geri dönüşünde başka bir kaydın yeniden etkinleşmesi önlendi.
 - Eski migration 1–4 kimliklerini koruyan V2 manifest ve aynı hash-doğrulanmış kaynak baytlarıyla yürütülen veri dönüşümü.
 - Yinelenen clock yazması ve kullanılmayan şema kurulum maliyeti azaltıldı; yoğun migration’da sınırlı kullanım senaryosu içi doğrulama özeti kullanıldı. Başarılı ölçümler ile açık merge-CI başlangıç bütçe reddi [kapanış kaydında](docs/research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) ayrı tutulur.

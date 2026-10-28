@@ -97,5 +97,9 @@ def test_source_changes_and_absolute_budget_failures_cannot_become_success(
 
 def test_source_snapshot_does_not_attribute_an_archive_to_its_enclosing_repository(tmp_path):
     helpers = runpy.run_path(str(SCRIPT))
-    # This directory is not a Git checkout; a parent repository must not become its provenance.
-    assert helpers["revision"](tmp_path) is None
+    parent = tmp_path / "parent"
+    subprocess.run(["git", "init", "-q", str(parent)], check=True, capture_output=True)
+    archive = parent / "archive"
+    archive.mkdir()
+    # git can discover the enclosing checkout; it is not the archive's source revision.
+    assert helpers["revision"](archive) is None
