@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn, TypeAlias
+from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, overload
 
 from yorunge import __version__
 
@@ -50,7 +50,39 @@ class UsageError(Exception):
     pass
 
 
+N = TypeVar("N")
+
+
 class Parser(argparse.ArgumentParser):
+    _configure: Callable[[Parser], None] | None = None
+
+    def _ensure_configured(self) -> None:
+        configure = self._configure
+        if configure is not None:
+            self._configure = None
+            configure(self)
+
+    @overload
+    def parse_known_args(
+        self, args: Sequence[str] | None = None, namespace: None = None
+    ) -> tuple[argparse.Namespace, list[str]]: ...
+
+    @overload
+    def parse_known_args(self, args: Sequence[str] | None, namespace: N) -> tuple[N, list[str]]: ...
+
+    @overload
+    def parse_known_args(self, *, namespace: N) -> tuple[N, list[str]]: ...
+
+    def parse_known_args(
+        self, args: Sequence[str] | None = None, namespace: object | None = None
+    ) -> tuple[object, list[str]]:
+        self._ensure_configured()
+        return super().parse_known_args(args, namespace)
+
+    def format_help(self) -> str:
+        self._ensure_configured()
+        return super().format_help()
+
     def error(self, message: str) -> NoReturn:
         # argparse's message may contain arbitrary user input, including a credential.
         raise UsageError
@@ -92,12 +124,27 @@ def parser() -> Parser:
     root.add_argument("--version", action="version", version=f"yorunge {__version__}")
     common(root)
     commands = root.add_subparsers(dest="command", required=True)
-    initialize = commands.add_parser("init", help="İlk config'i no-clobber oluştur")
-    common(initialize)
-    doctor = commands.add_parser("doctor", help="Yerel ayar ve state tanılaması; sır okumaz")
+
+    def add(name: str, help: str, configure: Callable[[Parser], None]) -> None:
+        command = commands.add_parser(name, help=help)
+        command._configure = configure
+
+    add("init", "İlk config'i no-clobber oluştur", common)
+    add("doctor", "Yerel ayar ve state tanılaması; sır okumaz", _doctor_options)
+    add("context", "Yerel profil bağlamı", _context_options)
+    add("state", "Yerel kimlik durumunu yönet", _state_options)
+    add("capabilities", "Sınırlı çevrimdışı yetenek görünümü", _capability_options)
+    add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
+    add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
+    return root
+
+
+def _doctor_options(doctor: Parser) -> None:
     common(doctor)
     doctor.add_argument("--state-dir", type=Path)
-    context = commands.add_parser("context", help="Yerel profil bağlamı")
+
+
+def _context_options(context: Parser) -> None:
     common(context)
     context_actions = context.add_subparsers(dest="action", required=True)
     show = context_actions.add_parser("show")
@@ -118,7 +165,9 @@ def parser() -> Parser:
     common(identity)
     identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
     identity.add_argument("--state-dir", type=Path)
-    state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
+
+
+def _state_options(state: Parser) -> None:
     common(state, context=False)
     state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
     state_actions = state.add_subparsers(dest="action", required=True)
@@ -132,7 +181,9 @@ def parser() -> Parser:
         maintenance.add_argument("--confirm", help="Güncel önizleme digest'i")
         if name == "restore":
             maintenance.add_argument("--backup", required=True, type=Path)
-    capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
+
+
+def _capability_options(capabilities: Parser) -> None:
     planning_options(capabilities)
     cache_modes = capabilities.add_mutually_exclusive_group()
     cache_modes.add_argument("--cached", action="store_true", help="Açık stateful önbellek okuması")
@@ -140,7 +191,9 @@ def parser() -> Parser:
         "--refresh", action="store_true", help="Uygulanan yerel kanıtı yenile; uzak keşif yok"
     )
     capabilities.add_argument("--state-dir", type=Path)
-    plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
+
+
+def _plan_options(plan: Parser) -> None:
     common(plan)
     actions = plan.add_subparsers(dest="action", required=True)
     planning_options(actions.add_parser("prepare", help="Sabit seçimleri ve engelleri hazırla"))
@@ -148,12 +201,13 @@ def parser() -> Parser:
     common(saved, context=False)
     saved.add_argument("--plan", required=True, type=Path, help="Plan nesnesi içeren JSON dosyası")
     execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
-    execution_options(execution_plan)
-    train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
+    execution_plan._configure = execution_options
+
+
+def _train_options(train: Parser) -> None:
     common(train)
     train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
     planning_options(train_plan, task=False)
-    return root
 
 
 def execution_options(execution_plan: argparse.ArgumentParser) -> None:
