@@ -44,7 +44,7 @@ Bir kaydın `supported` olması başka hedef/yetki/hesap/araç/sürüm/ortama ya
 
 ## Store genelinde süre kapısı
 
-**PR #9 prototipi:** Bu şema 5 uygulaması development'a merge edilmedi. Checksum kapsamındaki veri dönüşümü [ADR-0015](../decisions/0015-checksummed-data-migrations.md) onayını bekler; mevcut backfill manifest engeli kapanmadan teslim edilmiş sayılmaz.
+**PR #9, merge bekleyen doğrulanmış uygulama:** Şema 5 development'a merge edilmedi. Checksum kapsamındaki veri dönüşümü [Accepted ADR-0015](../decisions/0015-checksummed-data-migrations.md) ile uygulanıp iki review turuyla doğrulandı; checksum dışı prototip hook kaldırıldı. [Yoğun bütçe ve CI kanıtı](../research/p01-3-implementation-validation.md#v2-uygulaması--adım-2) kayıtlıdır. Development teslimi şema 4 olarak kalır.
 
 Son süre kapısı yalnız sorgulanan kaydın expiry'sini kullanmaz. Kalıcı cache kayıtlarının aggregate/evidence/conflict süreleri ile bütün plan/onay expiry'lerinden sonraki global sınır aranır. Cache başına en çok 10 ayrı zaman, 1.024 cache + 1.024 plan + 1.024 onay için en çok 12.288 sınır vardır. Sıcak yol üç sıralı indeks araması yapar; bütün payload'ları taramaz. Kaydı okurken kendi en çok 10 türetilmiş zamanı da tam karşılaştırılır.
 
