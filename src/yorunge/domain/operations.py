@@ -388,6 +388,18 @@ class OperationRecord(OperationModel):
             raise ValueError("unarmed execution cannot have started")
         if self.dispatch_attempt_id is not None and s.execution_status == "not_started":
             raise ValueError("dispatch cannot be unstarted")
+        if self.fence < s.attempt_count:
+            raise ValueError("candidate ownership counter mismatch")
+        if s.status == "admitted" and (
+            s.clock_anomaly
+            or self.fence != s.attempt_count
+            or (
+                self.observed_identity_epoch,
+                self.observed_clock_generation,
+            )
+            != (a.admission_identity_epoch, a.admission_clock_generation)
+        ):
+            raise ValueError("new execution candidates retain admission authority")
         if self.lease is not None and (self.lease.fence != self.fence or s.status in TERMINAL):
             raise ValueError("lease projection mismatch")
         if self.recovery_reason is not None and s.status != "unknown":
@@ -458,7 +470,7 @@ class JobView(OperationModel):
         if self.attempts[0].created_at != s.created_at or current.updated_at != s.updated_at:
             raise ValueError("attempt observation time mismatch")
         for old, new in zip(self.attempts[:-1], self.attempts[1:], strict=True):
-            if old.updated_at != new.created_at:
+            if old.updated_at != new.created_at or old.created_at > new.created_at:
                 raise ValueError("abandonment must match the next attempt")
         if not s.clock_anomaly and any(
             not s.created_at <= a.created_at <= a.updated_at <= s.updated_at for a in self.attempts

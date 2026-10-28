@@ -434,3 +434,279 @@ def test_forget_reports_corrupt_operation_as_invalid_state(admitted_operation):
     with pytest.raises(YorungeError) as failure:
         api.forget_execution_plan(plan.plan_id, plan.digest, state_dir=root)
     assert failure.value.code == "state_invalid"
+
+
+@pytest.mark.parametrize("entry", ["warm", "full"])
+def test_predispatch_takeover_is_a_control_change_without_normal_event(
+    admitted_operation,
+    execution_clock,
+    entry,
+):
+    from datetime import timedelta
+
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.adapters.operation_store import write_attempt
+    from yorunge.domain.capabilities import timestamp
+    from yorunge.domain.operations import OperationLease
+
+    root, _, record, attempt, _ = admitted_operation
+    execution_clock.value += timedelta(seconds=31)
+    now = timestamp(execution_clock.value)
+    next_attempt = attempt.model_copy(
+        update={"attempt_id": str(uuid4()), "number": 2, "created_at": now, "updated_at": now}
+    )
+    changed = record.model_copy(
+        update={
+            "summary": record.summary.model_copy(
+                update={"attempt_count": 2, "revision": 2, "updated_at": now}
+            ),
+            "fence": 2,
+            "lease": OperationLease(
+                owner_id=str(uuid4()),
+                fence=2,
+                ownership_identity_epoch=record.admission.admission_identity_epoch,
+                ownership_clock_generation=record.admission.admission_clock_generation,
+                expires_at=timestamp(execution_clock.value + timedelta(seconds=30)),
+            ),
+        }
+    )
+    with open_store(root) as store:
+        StateCache(store).stamp()
+        store.connection.execute("BEGIN IMMEDIATE")
+        write_record(store.connection, changed, expected_revision=1)
+        write_attempt(
+            store.connection,
+            record.summary.operation_id,
+            attempt.model_copy(
+                update={"status": "abandoned", "reason_code": "lease_expired", "updated_at": now}
+            ),
+        )
+        write_attempt(store.connection, record.summary.operation_id, next_attempt)
+        store.connection.execute("COMMIT")
+        if entry == "warm":
+            assert (
+                read_job(store.connection, record.summary.operation_id).attempts[-1] == next_attempt
+            )
+        else:
+            assert store.verify().store_schema_version == 6
+        assert store.connection.execute("SELECT count(*) FROM operation_events").fetchone() == (1,)
+
+
+def pending_delivery_fixture(connection, record, attempt, event):
+    from yorunge.adapters.operation_store import append_event, write_attempt
+
+    # Select the alternate trusted test delivery policy before any dispatch.
+    record = record.model_copy(
+        update={
+            "admission": record.admission.model_copy(update={"delivery_required": True}),
+            "summary": record.summary.model_copy(update={"delivery_status": "pending"}),
+        }
+    )
+    event = event.model_copy(update={"delivery_status": "pending"})
+    raw_record(connection, record)
+    connection.execute(
+        "UPDATE operation_events SET payload=?",
+        (canonical(event.model_dump(mode="json")).decode("ascii"),),
+    )
+    for sequence, status, execution in ((2, "submitted", "submitted"), (3, "running", "succeeded")):
+        reason = "delivery_pending" if sequence == 3 else None
+        changed = record.model_copy(
+            update={
+                "summary": record.summary.model_copy(
+                    update={"status": status, "execution_status": execution, "revision": sequence}
+                ),
+                "dispatch_attempt_id": attempt.attempt_id,
+                "event_count": sequence,
+            }
+        )
+        attempt = attempt.model_copy(
+            update={"status": status, "provider_run_id": "delivery-run", "reason_code": reason}
+        )
+        event = event.model_copy(
+            update={
+                "sequence": sequence,
+                "revision": sequence,
+                "status": status,
+                "execution_status": execution,
+                "reason_code": reason,
+            }
+        )
+        write_record(connection, changed, expected_revision=record.summary.revision)
+        write_attempt(connection, record.summary.operation_id, attempt)
+        append_event(connection, record.summary.operation_id, event)
+        record = changed
+    read_job(connection, record.summary.operation_id)
+    return record, attempt, event
+
+
+@pytest.mark.parametrize("entry", ["warm", "full"])
+@pytest.mark.parametrize("marker", [False, True])
+@pytest.mark.parametrize("preserve_success", [False, True])
+def test_delivery_uncertainty_preserves_confirmed_execution(
+    admitted_operation,
+    entry,
+    marker,
+    preserve_success,
+):
+    root, _, record, attempt, event = admitted_operation
+    with open_store(root) as store:
+        connection = store.connection
+        connection.execute("BEGIN IMMEDIATE")
+        record, attempt, event = pending_delivery_fixture(connection, record, attempt, event)
+        execution = "succeeded" if preserve_success else "unknown"
+        delivery = "unknown" if preserve_success else "pending"
+        reason = "provider_unavailable"
+        raw_record(
+            connection,
+            record.model_copy(
+                update={
+                    "summary": record.summary.model_copy(
+                        update={
+                            "status": "unknown",
+                            "execution_status": execution,
+                            "delivery_status": delivery,
+                            "revision": 4,
+                        }
+                    ),
+                    "event_count": 3 if marker else 4,
+                    "recovery_reason": reason if marker else None,
+                }
+            ),
+        )
+        raw_attempt(
+            connection, attempt.model_copy(update={"status": "unknown", "reason_code": reason})
+        )
+        if not marker:
+            raw_event(
+                connection,
+                record.summary.operation_id,
+                event.model_copy(
+                    update={
+                        "sequence": 4,
+                        "revision": 4,
+                        "status": "unknown",
+                        "execution_status": execution,
+                        "delivery_status": delivery,
+                        "reason_code": reason,
+                    }
+                ),
+            )
+        connection.execute("COMMIT")
+
+        def check():
+            if entry == "warm":
+                return read_job(connection, record.summary.operation_id)
+            return store.verify()
+
+        if preserve_success:
+            check()
+        else:
+            with pytest.raises(YorungeError) as failure:
+                check()
+            assert failure.value.code == "state_invalid"
+
+
+@pytest.mark.parametrize("entry", ["warm", "full"])
+def test_dispatch_event_fence_covers_every_unlogged_candidate_claim(
+    admitted_operation,
+    execution_clock,
+    entry,
+):
+    from datetime import timedelta
+
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.adapters.operation_store import write_attempt
+    from yorunge.domain.capabilities import timestamp
+    from yorunge.domain.operations import OperationLease
+
+    root, _, record, attempt, event = admitted_operation
+    with open_store(root) as store:
+        connection = store.connection
+        for number in (2, 3):
+            execution_clock.value += timedelta(seconds=31)
+            now = timestamp(execution_clock.value)
+            StateCache(store).stamp()
+            connection.execute("BEGIN IMMEDIATE")
+            changed = record.model_copy(
+                update={
+                    "fence": number,
+                    "summary": record.summary.model_copy(
+                        update={"attempt_count": number, "revision": number, "updated_at": now}
+                    ),
+                    "lease": OperationLease(
+                        owner_id=str(uuid4()),
+                        fence=number,
+                        ownership_identity_epoch=record.admission.admission_identity_epoch,
+                        ownership_clock_generation=record.admission.admission_clock_generation,
+                        expires_at=timestamp(execution_clock.value + timedelta(seconds=30)),
+                    ),
+                }
+            )
+            next_attempt = attempt.model_copy(
+                update={
+                    "attempt_id": str(uuid4()),
+                    "number": number,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
+            write_record(connection, changed, expected_revision=record.summary.revision)
+            write_attempt(
+                connection,
+                record.summary.operation_id,
+                attempt.model_copy(
+                    update={
+                        "status": "abandoned",
+                        "reason_code": "lease_expired",
+                        "updated_at": now,
+                    }
+                ),
+            )
+            write_attempt(connection, record.summary.operation_id, next_attempt)
+            connection.execute("COMMIT")
+            record, attempt = changed, next_attempt
+        execution_clock.value += timedelta(seconds=1)
+        now = timestamp(execution_clock.value)
+        connection.execute("BEGIN IMMEDIATE")
+        raw_record(
+            connection,
+            record.model_copy(
+                update={
+                    "event_count": 2,
+                    "dispatch_attempt_id": attempt.attempt_id,
+                    "summary": record.summary.model_copy(
+                        update={
+                            "status": "submitted",
+                            "execution_status": "submitted",
+                            "revision": 4,
+                            "updated_at": now,
+                        }
+                    ),
+                }
+            ),
+        )
+        raw_attempt(
+            connection, attempt.model_copy(update={"status": "submitted", "updated_at": now})
+        )
+        raw_event(
+            connection,
+            record.summary.operation_id,
+            event.model_copy(
+                update={
+                    "sequence": 2,
+                    "revision": 4,
+                    "fence": 2,
+                    "attempt_id": attempt.attempt_id,
+                    "observed_at": now,
+                    "status": "submitted",
+                    "execution_status": "submitted",
+                }
+            ),
+        )
+        connection.execute("COMMIT")
+        with pytest.raises(YorungeError) as failure:
+            if entry == "warm":
+                read_job(connection, record.summary.operation_id)
+            else:
+                store.verify()
+        assert failure.value.code == "state_invalid"

@@ -132,7 +132,7 @@ def read_outcome(connection: sqlite3.Connection, operation_id: str) -> Operation
 
 
 EVENT_TRANSITIONS: dict[OperationStatus, frozenset[OperationStatus]] = {
-    "admitted": frozenset({"admitted", "submitted", "failed", "cancelled"}),
+    "admitted": frozenset({"submitted", "failed", "cancelled"}),
     "submitted": frozenset({"submitted", "running", "unknown", "succeeded", "failed", "cancelled"}),
     "running": frozenset({"running", "unknown", "succeeded", "failed", "cancelled"}),
     "unknown": frozenset({"unknown", "submitted", "running", "succeeded", "failed", "cancelled"}),
@@ -153,6 +153,17 @@ def _event_progress(
     if sending:
         if not armed and item.status != "submitted":
             raise ValueError("submitted intent must precede external progress")
+        if not armed and (
+            (item.identity_epoch, item.clock_generation)
+            != (
+                record.admission.admission_identity_epoch,
+                record.admission.admission_clock_generation,
+            )
+            or not record.admission.approval.approved_at
+            <= item.observed_at
+            < record.admission.approval.expires_at
+        ):
+            raise ValueError("dispatch must retain admission authority")
         if item.attempt_id != record.dispatch_attempt_id:
             raise ValueError("dispatch history cannot be rebound or cleared")
     elif armed:
@@ -177,12 +188,11 @@ def _event_progress(
     )
     if item.status not in EVENT_TRANSITIONS[previous.status] and not recovered:
         raise ValueError("invalid lifecycle transition")
-    if previous.status == "admitted" and item.status == "admitted":
-        if (
-            numbers[item.attempt_id] != numbers[previous.attempt_id] + 1
-            or item.fence <= previous.fence
-        ):
-            raise ValueError("new candidate must have a new attempt and owner")
+    if previous.status == "admitted":
+        if numbers[item.attempt_id] < numbers[previous.attempt_id]:
+            raise ValueError("candidate sequence cannot regress")
+        if item.attempt_id != previous.attempt_id and item.fence <= previous.fence:
+            raise ValueError("new candidate must have a new owner")
     elif item.attempt_id != previous.attempt_id:
         raise ValueError("attempt may change only before dispatch")
     return armed or sending
@@ -217,6 +227,8 @@ def _event_observation(
         raise ValueError("event counter exceeds current state")
     if previous is None:
         return
+    if previous.execution_status == "succeeded" and item.execution_status != "succeeded":
+        raise ValueError("confirmed execution success cannot be lost")
     same_clock = (previous.identity_epoch, previous.clock_generation) == (
         item.identity_epoch,
         item.clock_generation,
@@ -231,10 +243,25 @@ def _history_end(
     record: OperationRecord, previous: OperationEvent, attempts: tuple[AttemptView, ...]
 ) -> None:
     s = record.summary
+    if previous.execution_status == "succeeded" and s.execution_status != "succeeded":
+        raise ValueError("recovery must preserve confirmed execution")
+    if record.recovery_reason is not None:
+        expected_execution = "succeeded" if previous.execution_status == "succeeded" else "unknown"
+        allowed_delivery = {previous.delivery_status}
+        if record.admission.delivery_required:
+            allowed_delivery.add("unknown")
+        if s.execution_status != expected_execution or s.delivery_status not in allowed_delivery:
+            raise ValueError("recovery cannot invent execution or delivery progress")
     if previous.status in TERMINAL and (
         record.recovery_reason is not None or s.status != previous.status
     ):
         raise ValueError("terminal history cannot be reopened")
+    predispatch_control = (
+        previous.status == s.status == "admitted" and record.dispatch_attempt_id is None
+    )
+    expected_attempt = previous.attempt_id if predispatch_control else attempts[-1].attempt_id
+    if predispatch_control and (record.fence < s.attempt_count or s.revision < record.fence):
+        raise ValueError("candidate ownership counters mismatch")
     if record.recovery_reason is None and (
         previous.status,
         previous.execution_status,
@@ -245,7 +272,7 @@ def _history_end(
         s.status,
         s.execution_status,
         s.delivery_status,
-        attempts[-1].attempt_id,
+        expected_attempt,
         attempts[-1].reason_code,
     ):
         raise ValueError("latest history projection mismatch")
@@ -268,7 +295,7 @@ def validate_events(
 ) -> None:
     previous: OperationEvent | None = None
     numbers = {attempt.attempt_id: attempt.number for attempt in attempts}
-    first_seen: dict[str, str] = {}
+    created = {attempt.attempt_id: attempt.created_at for attempt in attempts}
     count, armed = 0, False
     for owner, sequence, attempt_id, payload in connection.execute(
         f"SELECT {EVENT_COLUMNS} FROM operation_events WHERE operation_id=? "
@@ -284,11 +311,17 @@ def validate_events(
         ):
             raise YorungeError("state_invalid")
         try:
+            if item.fence < numbers[item.attempt_id]:
+                raise ValueError("event fence predates its candidate claims")
+            if (item.identity_epoch, item.clock_generation) == (
+                record.admission.admission_identity_epoch,
+                record.admission.admission_clock_generation,
+            ) and item.observed_at < created[item.attempt_id]:
+                raise ValueError("event predates its candidate")
             armed = _event_progress(record, item, previous, numbers, armed)
             _event_observation(record, item, previous)
         except (ValueError, TypeError):
             raise YorungeError("state_invalid") from None
-        first_seen.setdefault(item.attempt_id, item.observed_at)
         previous = item
     try:
         if (
@@ -297,8 +330,6 @@ def validate_events(
             or armed != (record.dispatch_attempt_id is not None)
         ):
             raise ValueError("dispatch history missing")
-        if any(first_seen.get(a.attempt_id) != a.created_at for a in attempts):
-            raise ValueError("attempt creation history missing")
         _history_end(record, previous, attempts)
     except (ValueError, TypeError):
         raise YorungeError("state_invalid") from None

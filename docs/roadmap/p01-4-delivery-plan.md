@@ -41,4 +41,4 @@ Ardından current/faz/matris/modül/reference/README/changelog yalnız kanıtlı
 
 - Ön inceleme: [P01-4 hazırlık raporu](../research/p01-4-readiness-review.md).
 - Karar: 2026-10-29 kullanıcı yanıtı, doğrulanan düzeltmeler ve iki fresh tur sonrası ADR-0016 Accepted.
-- Uygulama: adım 1 şema/repository ve ilk kontroller tamamlandı, commit ve iki fresh review turu sırada; [gerçek kabul kaydı](../research/p01-4-implementation-validation.md). P01-4b/paket henüz verified değil, PR açılmadı.
+- Uygulama: adım 1 şema/repository commit'i a73608a, birinci review fix'i 1049ab2; ikinci fresh tur ve doğrulanmış son fix'ler tamamlandı. [Kabul kaydı](../research/p01-4-implementation-validation.md#adım-1--ikinci-review-ve-kapanış). Adım 2 başlıyor; P01-4b/paket henüz verified değil, PR açılmadı.

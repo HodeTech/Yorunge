@@ -48,6 +48,14 @@ Uygulama a73608a commit'inden sonra iki fresh read-only ajan (GPT-6 Astra high s
 
 Düzeltme sonrası yeni model/repository ve mevcut execution approval hedefli takım **131 passed / 28,99 s**; Ruff/lint/strict mypy geçti. İlk migration ham kaydı a73608a kaynaklarını kanıtlar; R1 değişiklikleri mevcut operation kayıtlarının doğrulama/yazma sınırındadır, boş operation migration fixture'ında kayıt decoder döngüsü çalışmaz. Bu eski kaydın yeni head hash'i olduğu iddia edilmez; son kaynak kabulü kapanışta ayrıca değerlendirilecek. İkinci tur farklı fresh reviewer'larla sıradadır; adım/kart verified değildir.
 
+### Adım 1 — İkinci review ve kapanış
+
+R1 düzeltmeleri 1049ab2 ile commit edildikten sonra farklı fresh state/sözleşme reviewer'ları (GPT-6 Astra high ve GPT-6.1 Sol high) ikinci turu yaptı. Bu head'de tam takım **1.410 passed / 193,14 s** oldu. İki kök neden daha doğrulandı: slotsuz predispatch control takeover gereğinden sıkı reddediliyordu; kesinleşmiş execution succeeded bilgisi hem normal event hem recovery projection'ında kaybolabiliyordu. Root gerçek DB'de altı beklenen ret/geçerli kabul hatasını yeniden üretti, dört olumlu kontrolü korudu.
+
+Kontrol takeover artık normal event tüketmez; claimed adayların sırası/abandonment zamanı/fence ve aynı admission clock alanı doğrulanır. İlk submitted event en son adayı, geçerli aynı onay zamanını ve admission clock alanını göstermelidir. Execution success hem event→event hem event→recovery boyunca korunur; recovery marker yeni kesin execution/teslim ilerlemesi de icat edemez. Son delta incelemesinde, üç adayın dispatch event'inde fence=2 kabulü bulundu; root warm/full iki regresyonla doğrulayıp event fence≥candidate number kuralını ekledi.
+
+Son kaynakta yeni model/repository ve mevcut approval hedefli takım **143 passed / 33,28 s**; Ruff/lint/strict mypy ve belge/ajan/diff kontrolleri başarılı. İki ikinci-tur reviewer'ı son düzeltmeleri bağımsız SQLite negatif/pozitifleriyle tekrar doğruladı; açık somut bulgu kalmadı. Cross-clock recovery/terminal ve slotsuz takeover olumlu yolları korunur. Adım 1 iki review turuyla kapandı; P01-4b bütün kartı ve paket hâlâ in_progress, çünkü adım 2/3/4 henüz yoktur. Migration 1–6 SQL/checksum/handler kimlikleri bu review düzeltmelerinde değişmedi; ilk ham migration kaydı aynı DDL ve boş operation consumer maliyetinin tarihsel kanıtı olarak korunur, final kaynak kabulü paket kapanışında yeniden değerlendirilecek.
+
 ## Sonraki adımlar
 
 Adım 1 commit ve iki fresh review turuyla kapandıktan sonra admission/lease/tek gönderim (adım 2), recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
