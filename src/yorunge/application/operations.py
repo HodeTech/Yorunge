@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from threading import Lock
 from typing import NoReturn, Protocol
@@ -22,6 +23,7 @@ from yorunge.domain.operations import (
     ProviderId,
     ProviderStatus,
 )
+from yorunge.domain.state import canonical_uuid
 
 
 @dataclass(frozen=True)
@@ -117,8 +119,34 @@ class OperationCoordinator:
     ) -> None:
         self.repository, self.validate, self.backend = repository, validate, backend
         self.credentials, self.budget, self.process_id = credentials, budget, process_id
+        self._issuer = process_id()
+
+    def _same_process(self, operation_id: str | None = None) -> None:
+        if self.process_id() != self._issuer:
+            raise OperationError("operation_conflict", operation_id)
+
+    @contextmanager
+    def _identified(self, operation_id: str) -> Iterator[None]:
+        try:
+            canonical_uuid(operation_id)
+        except (ValueError, TypeError, AttributeError):
+            raise YorungeError("invalid_request") from None
+        try:
+            yield
+        except OperationError as error:
+            if error.operation_id is not None:
+                raise
+            raise OperationError(
+                error.code,
+                operation_id,
+                reason_code=error.reason_code,
+                capacity_kind=error.capacity_kind,
+            ) from None
+        except YorungeError as error:
+            raise OperationError(error.code, operation_id) from None
 
     def admit(self, plan_id: str) -> OperationClaim:
+        self._same_process()
         self.budget.check()
         existing = self.repository.existing(plan_id)
         if existing is not None:
@@ -129,10 +157,17 @@ class OperationCoordinator:
         return self.repository.admit(plan, validity)
 
     def renew(self, operation_id: str, owner: OperationLease) -> OperationLease:
-        self.budget.check()
-        return self.repository.renew(operation_id, owner)
+        with self._identified(operation_id):
+            self._same_process(operation_id)
+            self.budget.check()
+            return self.repository.renew(operation_id, owner)
 
     def takeover(self, operation_id: str) -> OperationClaim:
+        with self._identified(operation_id):
+            return self._takeover(operation_id)
+
+    def _takeover(self, operation_id: str) -> OperationClaim:
+        self._same_process(operation_id)
         self.budget.check()
         claim = self.repository.takeover(operation_id, None)
         if claim is not None:
@@ -146,6 +181,12 @@ class OperationCoordinator:
         return claim
 
     def dispatch(self, operation_id: str, owner: OperationLease) -> JobView:
+        with self._identified(operation_id):
+            return self._dispatch(operation_id, owner)
+
+    def _dispatch(self, operation_id: str, owner: OperationLease) -> JobView:
+        self._same_process(operation_id)
+        permit = DispatchPermit(self.process_id)
         before = self.repository.operation(operation_id)
         if before.dispatch_attempt_id is not None:
             raise OperationError("operation_conflict", operation_id)
@@ -153,7 +194,7 @@ class OperationCoordinator:
         validity = self.validate(plan)
         self.budget.check()
         armed = self.repository.arm(operation_id, owner, validity)
-        permit = DispatchPermit(self.process_id)
+        self._same_process(operation_id)
         port_called = False
         try:
             window = self.repository.dispatch_window(operation_id, owner)
@@ -163,8 +204,16 @@ class OperationCoordinator:
             permit.consume()
             port_called = True
             receipt = self.backend.start(request, deadline=window.deadline)
+            self._same_process(operation_id)
             self.budget.check()
             receipt = Submission.model_validate_json(canonical(receipt.model_dump(mode="json")))
+            provider_fields = (receipt.provider_run_id, receipt.provider_status or "")
+            if any(
+                bound.credential.secret.reveal() in value
+                for bound in self.credentials
+                for value in provider_fields
+            ):
+                raise YorungeError("state_changed")
             if (
                 receipt.correlation != armed.admission.correlation
                 or receipt.authority not in armed.admission.authorities
@@ -172,6 +221,7 @@ class OperationCoordinator:
                 raise YorungeError("state_changed")
             return self.repository.submitted(operation_id, owner, receipt)
         except BaseException as error:
+            self._same_process(operation_id)
             try:
                 self.repository.uncertain(operation_id, owner)
             except (YorungeError, OSError):

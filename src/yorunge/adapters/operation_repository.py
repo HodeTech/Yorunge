@@ -58,16 +58,28 @@ class StateOperations:
 
     @contextmanager
     def phase(self, operation_id: str | None = None) -> Iterator[None]:
+        if operation_id is not None:
+            try:
+                canonical_uuid(operation_id)
+            except (ValueError, TypeError, AttributeError):
+                raise YorungeError("invalid_request") from None
         original = self.store.deadline.end
-        self.store.deadline.end = min(
-            original, time.monotonic() + min(5.0, self.budget.remaining())
-        )
         try:
+            self.store.deadline.end = min(
+                original, time.monotonic() + min(5.0, self.budget.remaining())
+            )
             yield
             self.budget.check()
             self.store.deadline.remaining()
-        except OperationError:
-            raise
+        except OperationError as error:
+            if error.operation_id is not None or operation_id is None:
+                raise
+            raise OperationError(
+                error.code,
+                operation_id,
+                reason_code=error.reason_code,
+                capacity_kind=error.capacity_kind,
+            ) from None
         except YorungeError as error:
             raise OperationError(error.code, operation_id) from None
         except sqlite3.Error as error:
@@ -76,6 +88,12 @@ class StateOperations:
             raise OperationError("state_write_failed", operation_id) from None
         finally:
             self.store.deadline.end = original
+
+    def _ownership_stamp(self, operation_id: str) -> Stamp:
+        stamp = self.cache.stamp()
+        if stamp.anomaly:
+            raise OperationError("operation_lease_lost", operation_id)
+        return stamp
 
     def plan(self, plan_id: str) -> ExecutionPlan:
         with self.phase():
@@ -223,7 +241,7 @@ class StateOperations:
                 approval = self._current(plan, validity, stamp, gate)
                 now = self.cache.now()
                 lease = self._lease(stamp, 1, now)
-                admission = OperationAdmission(
+                admission = self._admission(
                     operation_id=identifier,
                     plan_id=plan.plan_id,
                     plan_digest=plan.digest,
@@ -279,6 +297,13 @@ class StateOperations:
                 gate.require_range(now, instant(lease.expires_at))
             return OperationClaim(read_job(self.connection, identifier), lease)
 
+    @staticmethod
+    def _admission(**fields: object) -> OperationAdmission:
+        try:
+            return OperationAdmission.model_validate(fields)
+        except ValueError:
+            raise YorungeError("plan_not_valid") from None
+
     def _owner(
         self, record: OperationRecord, owner: OperationLease, stamp: Stamp, gate: TimeGate
     ) -> None:
@@ -301,7 +326,7 @@ class StateOperations:
         self, operation_id: str, owner: OperationLease, *, execution: bool = False
     ) -> OperationRecord:
         with self.phase(operation_id):
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 read_job(self.connection, operation_id, record=record)
@@ -314,7 +339,7 @@ class StateOperations:
 
     def renew(self, operation_id: str, owner: OperationLease) -> OperationLease:
         with self.phase(operation_id):
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 read_job(self.connection, operation_id, record=record)
@@ -336,7 +361,7 @@ class StateOperations:
         # No UTC observation may bypass the store's global expiry watermark.
         with self.phase(operation_id):
             before = self.budget.clock.monotonic()
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 read_job(self.connection, operation_id, record=record)
@@ -532,7 +557,7 @@ class StateOperations:
         self, operation_id: str, owner: OperationLease, validity: ExecutionValidity
     ) -> OperationRecord:
         with self.phase(operation_id):
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 job = read_job(self.connection, operation_id, record=record)
@@ -607,7 +632,7 @@ class StateOperations:
 
     def submitted(self, operation_id: str, owner: OperationLease, receipt: Submission) -> JobView:
         with self.phase(operation_id):
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 job = read_job(self.connection, operation_id, record=record)
@@ -651,7 +676,7 @@ class StateOperations:
 
     def uncertain(self, operation_id: str, owner: OperationLease) -> None:
         with self.phase(operation_id):
-            stamp = self.cache.stamp()
+            stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp) as gate:
                 record = read_operation(self.connection, operation_id)
                 job = read_job(self.connection, operation_id, record=record)

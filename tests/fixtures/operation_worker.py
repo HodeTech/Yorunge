@@ -57,6 +57,17 @@ def main():
     if point in {"admit_before", "admit_after", "arm_before", "arm_after"}:
         name, timing = point.split("_")
         cut(name, timing)
+    elif point == "fork_after_arm":
+        original_arm = operation_repository.StateOperations.arm
+
+        def fork_after_arm(self, *args):
+            record = original_arm(self, *args)
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            return record
+
+        operation_repository.StateOperations.arm = fork_after_arm
     elif point == "receipt_after":
         cut("submitted", "after")
     elif point in {"admit_mid", "arm_mid", "receipt_mid"}:

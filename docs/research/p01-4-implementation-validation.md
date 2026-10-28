@@ -64,7 +64,19 @@ Submitted latch commit'i dış çağrıdan öncedir. Permit PID/thread/tek kulla
 
 İlk hedefli takım **30 passed / 11,39 s**. İki ayrı gerçek süreç admission yarışında tek operation/attempt/intent ve tek fsync'li sentetik subprocess etkisi üretildi. İki hizmet × admission/arm final transaction credential yarışları state_changed ve sıfır port verdi. Dokuz gerçek SIGKILL kesiti (admission/arm önce-orta-sonra, etki sonrası yanıt kaybı ve receipt orta-sonra) SQLite yeniden açılışıyla doğrulandı; latch commit edilmişse hiçbir resume ikinci start yapmadı. Paused eski sender lease devri sonrası bir geç dış etki yapabildi; yeni owner kaydını değiştiremedi ve yeni owner start yapmadı. Bu test yerel fencing'in dış etkiyi durdurma garantisi olmadığını somut gösterir. Sonuç payına yakın kooperatif portun receipt'i kalıcı oldu; pay tüketilmişse port sıfır kaldı.
 
-Ruff format/lint ve strict mypy geçti. Tam takım ve ilk fresh review turu sıradadır; bu ilk kanıt adım/kart kapanışı değildir. Sentetik subprocess gerçek EVREN/HTTP/GPU kanıtı, SIGKILL fiziksel disk/güç kaybı kanıtı değildir.
+Ruff format/lint ve strict mypy geçti. İlk uygulama 7d75322 ile commit edildi; bu head tam takımda **1.452 passed / 203,00 s** verdi. Aşağıdaki review düzeltmeleri ayrı kanıttır; adım/kart henüz kapanmadı. Sentetik subprocess gerçek EVREN/HTTP/GPU kanıtı, SIGKILL fiziksel disk/güç kaybı kanıtı değildir.
+
+### Adım 2 — Birinci review turu
+
+7d75322 üzerinde farklı iki fresh reviewer (GPT-6 Astra high dayanıklılık, GPT-6.1 Sol high sözleşme/sır/test) dört doğrulanmış bulgu verdi. Root, fork commit sınırında aynı attempt ile iki gerçek subprocess etkisini, iki provider alanında sır yansımasını ve bozuk ID'nin ValueError kaçışını önce başarısız regresyonlarla yeniden üretti. Büyük ama geçerli/onaylı planın admission 8 KiB sınırını aşması bağımsız repro ve root regresyonuyla doğrulandı. Root ayrıca fence taşması/başlangıç bütçesinde bilinen ID kaybını ve başka stateful çağrının lease expiry gözlemi sonrası saat gerilemesinde yanlış hata kodunu doğruladı. Altı kök neden düzeltildi; atlanan bulgu yoktur.
+
+- Permit arm öncesinde oluşturulur; coordinator origin PID'si sabittir. Arm dönüşü/port dönüşü ve catch sınırındaki fork child DB/uncertain yazısı yapamaz. Gerçek arm→fork→iki normal devam regresyonunda yalnız bir etki kalır.
+- Provider ID/status, kalıcılık öncesi yakalanmış credential secret'leriyle karşılaştırılır; echo kontrollü unknown olur, sır JobView/attempt payload'a yazılmaz.
+- Büyük admission kontrollü plan_not_valid verir; operation/port sıfır kalır. Malformed ID sarmalamadan önce doğrulanır, hata zarfında null kalır.
+- Repository ve application hata sınırı bilinen canonical operation ID'yi fence/kapasite/bütçe/validation hatalarında korur; kapalı reason/capacity alanları kaybolmaz.
+- Durable stamp anomaly'si mevcut sahip için operation_lease_lost verir; eski lease saat geri dönüşüyle canlanmaz.
+
+Düzeltme sonrası geniş operation/model/approval hedefli takım **180 passed / 46,95 s**; ek hata-bağlamı regresyonlarıyla coordination takımının tamamı **39 passed / 14,32 s**. Ruff/lint ve strict mypy başarılı. İkinci tur farklı fresh reviewer'larla devam eder; Step 3/4'ün planlanan özellikleri ilk iki adımın teslimi diye gösterilmez.
 
 ## Sonraki adımlar
 

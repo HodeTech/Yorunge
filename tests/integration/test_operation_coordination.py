@@ -533,3 +533,224 @@ def test_exhausted_headroom_after_arm_never_calls_port(
         assert record.dispatch_attempt_id is not None
         assert record.summary.status == "unknown"
     assert backend.calls == 0
+
+
+def test_fork_between_arm_commit_and_permit_cannot_start_twice(operation_setup, execution_clock):
+    from yorunge.domain.capabilities import timestamp
+
+    state, plan, backend = operation_setup
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tests.fixtures.operation_worker",
+            "fork_after_arm",
+            str(state),
+            plan.plan_id,
+            str(backend.marker),
+            timestamp(execution_clock.value),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert child.returncode == 0, child.stderr
+    assert len(backend.effects()) == 1
+
+
+@pytest.mark.parametrize("field", ["provider_status", "provider_run_id"])
+def test_known_credential_secret_is_rejected_before_receipt_persistence(
+    tmp_path, execution_fixture, execution_clock, field
+):
+    from yorunge.application.operations import Submission
+
+    config, state = tmp_path / "config.toml", tmp_path / "state"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\n'
+        'account_id="account"\nplatform_key_env="EVREN_PLATFORM_API_KEY"\n'
+    )
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, state_dir=state
+    ).data.plan
+    api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
+
+    class EchoBackend:
+        def start(self, request, *, deadline):
+            receipt = Submission(
+                correlation=request.admission.correlation,
+                authority=request.admission.authorities[0],
+                provider_run_id="fixture-run",
+                provider_status="queued",
+                running=False,
+            )
+            return receipt.model_copy(
+                update={field: request.credentials[0].credential.secret.reveal()}
+            )
+
+    with api._operation_session(
+        plan.plan_id, EchoBackend(), config=config, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        with pytest.raises(OperationError) as error:
+            coordinator.dispatch(claim.job.operation.operation_id, claim.ownership)
+        assert error.value.code == "operation_uncertain"
+        assert "synthetic-secret" not in str(error.value.envelope())
+    with open_store(state) as store:
+        job = read_job(store.connection, claim.job.operation.operation_id)
+        assert job.operation.status == "unknown"
+        assert "synthetic-secret" not in job.model_dump_json()
+        assert all(
+            "synthetic-secret" not in row[0]
+            for row in store.connection.execute("SELECT payload FROM operation_attempts")
+        )
+
+
+def test_malformed_id_remains_a_controlled_request_error(operation_setup):
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        with pytest.raises(YorungeError) as error:
+            coordinator.repository.operation("malformed")
+        assert error.value.code == "invalid_request"
+        assert error.value.envelope()["operation_id"] is None
+
+
+def test_fence_exhaustion_preserves_known_operation_id(operation_setup, execution_clock):
+    from tests.integration.test_operation_store import raw_attempt, raw_record
+
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        coordinator.dispatch(identifier, claim.ownership)
+    with open_store(state) as store:
+        record, job = (
+            read_operation(store.connection, identifier),
+            read_job(store.connection, identifier),
+        )
+        changed = record.model_copy(
+            update={
+                "fence": 2**63 - 1,
+                "lease": record.lease.model_copy(update={"fence": 2**63 - 1}),
+                "recovery_reason": "owner_changed",
+                "summary": record.summary.model_copy(
+                    update={
+                        "status": "unknown",
+                        "execution_status": "unknown",
+                        "revision": record.summary.revision + 1,
+                    }
+                ),
+            }
+        )
+        raw_record(store.connection, changed)
+        raw_attempt(
+            store.connection,
+            job.attempts[-1].model_copy(
+                update={"status": "unknown", "reason_code": "owner_changed"}
+            ),
+        )
+        validate_contents(store.connection)
+    execution_clock.value += timedelta(seconds=31)
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.takeover(identifier)
+        assert error.value.code == "operation_fence_exhausted"
+        assert error.value.operation_id == identifier
+
+
+def test_other_stateful_observation_of_lease_expiry_prevents_clock_revival(
+    operation_setup, execution_clock
+):
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+    execution_clock.value += timedelta(seconds=31)
+    api.query_capabilities(task="llm.train", state_dir=state)
+    execution_clock.value -= timedelta(seconds=2)
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.renew(claim.job.operation.operation_id, claim.ownership)
+        assert error.value.code == "operation_lease_lost"
+    assert backend.calls == 0
+
+
+def test_valid_plan_that_exceeds_admission_bytes_has_controlled_rejection(
+    tmp_path, execution_fixture, execution_clock
+):
+    from yorunge.domain.capabilities import AuthorizationScope, ResourceGrant
+
+    scope = AuthorizationScope(
+        permissions=("read",),
+        resources=tuple(
+            ResourceGrant(
+                namespace="fixture",
+                resource_type="dataset",
+                resource_id=f"{i:02d}" + "x" * 240,
+                permissions=("read",),
+            )
+            for i in range(40)
+        ),
+    )
+
+    def enrich(assessment):
+        capability = assessment.capabilities[0]
+        return assessment.model_copy(
+            update={
+                "capabilities": (
+                    capability.model_copy(
+                        update={
+                            "key": capability.key.model_copy(
+                                update={
+                                    "scope": capability.key.scope.model_copy(
+                                        update={"authorization_scope": scope}
+                                    )
+                                }
+                            )
+                        }
+                    ),
+                )
+            }
+        )
+
+    execution_fixture.change = enrich
+    config, state = tmp_path / "config.toml", tmp_path / "state"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\n'
+        'account_id="account"\nllm_key_env="EVREN_LLM_API_KEY"\n'
+    )
+    plan = api.prepare_execution_plan(task="llm.chat", config=config, state_dir=state).data.plan
+    assert plan.status == "prepared"
+    assert api.approve_execution_plan(
+        plan.plan_id, plan.digest, config=config, state_dir=state
+    ).data.effective
+    backend = ProcessBackend(tmp_path / "effects")
+    with api._operation_session(
+        plan.plan_id, backend, config=config, state_dir=state
+    ) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.admit(plan.plan_id)
+        assert error.value.code == "plan_not_valid"
+        assert coordinator.repository.existing(plan.plan_id) is None
+    assert backend.calls == 0
+
+
+@pytest.mark.parametrize("failure", ["validation", "budget"])
+def test_known_id_survives_pre_arm_use_case_failure(
+    operation_setup, execution_fixture, execution_clock, failure
+):
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        if failure == "validation":
+            execution_fixture.change = lambda assessment: assessment.model_copy(
+                update={"inputs_verified": False, "blockers": ("fixture_changed",)}
+            )
+        else:
+            execution_clock.elapsed += 31
+        with pytest.raises(YorungeError) as error:
+            if failure == "validation":
+                coordinator.dispatch(identifier, claim.ownership)
+            else:
+                coordinator.renew(identifier, claim.ownership)
+        assert error.value.envelope()["operation_id"] == identifier
+    assert backend.calls == 0

@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4b — Kalıcı operation ve güvenli sahiplik
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1 uygulaması başlıyor. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1 iki review turuyla kapandı, adım 2 ikinci review öncesinde. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -43,4 +43,4 @@ Unit durum/strict model/oracle; contract trusted port ve mevcut execution/CLI za
 
 ## Teslim kaydı
 
-Uygulanmadı; PR/ürün commit'i ve test/ölçüm kanıtı yok. ADR onayı sonrası adımların commit/review/fix/kanıtı [paket planına](../p01-4-delivery-plan.md) bağlanacak. Mevcut startup bakım kanıtı bu kartın operation kabulü sayılmaz.
+Adım 1 şema/repository a73608a, review düzeltmeleri 1049ab2/de109f5 ile kapandı. Adım 2 admission/lease/dispatch 7d75322 ile uygulandı; ilk review düzeltmeleri ve ikinci fresh tur devam ediyor. [Kabul kaydı](../../research/p01-4-implementation-validation.md) kanoniktir; adım 3 tamamlanmadan kart verified değildir. Mevcut startup bakım kanıtı bu kartın operation kabulü sayılmaz.
