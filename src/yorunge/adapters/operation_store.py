@@ -27,8 +27,9 @@ from yorunge.domain.operations import (
     OperationEvent,
     OperationOutcome,
     OperationRecord,
+    OperationStatus,
     operation_status,
-    validate_reason,
+    validate_progress_reason,
 )
 from yorunge.domain.state import canonical_uuid
 
@@ -57,7 +58,7 @@ def decode(model: type[T], payload: object, maximum: int) -> T:
         if not isinstance(payload, str) or len(payload.encode("utf-8")) > maximum:
             raise ValueError("bounded payload required")
         return model.model_validate_json(payload)
-    except (ValueError, TypeError, RecursionError):
+    except (ValueError, TypeError, RecursionError, YorungeError):
         raise YorungeError("state_invalid") from None
 
 
@@ -130,12 +131,145 @@ def read_outcome(connection: sqlite3.Connection, operation_id: str) -> Operation
     return None if row is None else decode(OperationOutcome, row[0], MAX_OUTCOME_BYTES)
 
 
+EVENT_TRANSITIONS: dict[OperationStatus, frozenset[OperationStatus]] = {
+    "admitted": frozenset({"admitted", "submitted", "failed", "cancelled"}),
+    "submitted": frozenset({"submitted", "running", "unknown", "succeeded", "failed", "cancelled"}),
+    "running": frozenset({"running", "unknown", "succeeded", "failed", "cancelled"}),
+    "unknown": frozenset({"unknown", "submitted", "running", "succeeded", "failed", "cancelled"}),
+    "succeeded": frozenset(),
+    "failed": frozenset(),
+    "cancelled": frozenset(),
+}
+
+
+def _event_progress(
+    record: OperationRecord,
+    item: OperationEvent,
+    previous: OperationEvent | None,
+    numbers: dict[str, int],
+    armed: bool,
+) -> bool:
+    sending = item.execution_status != "not_started"
+    if sending:
+        if not armed and item.status != "submitted":
+            raise ValueError("submitted intent must precede external progress")
+        if item.attempt_id != record.dispatch_attempt_id:
+            raise ValueError("dispatch history cannot be rebound or cleared")
+    elif armed:
+        raise ValueError("dispatched history cannot return to admission")
+    if previous is None:
+        if (item.status, item.attempt_id, item.observed_at, item.revision, item.fence) != (
+            "admitted",
+            min(numbers, key=numbers.__getitem__),
+            record.summary.created_at,
+            1,
+            1,
+        ):
+            raise ValueError("admission history required")
+        if (item.identity_epoch, item.clock_generation) != (
+            record.admission.admission_identity_epoch,
+            record.admission.admission_clock_generation,
+        ):
+            raise ValueError("admission clock mismatch")
+        return sending
+    recovered = (
+        item.fence > previous.fence and previous.status == "running" and item.status == "submitted"
+    )
+    if item.status not in EVENT_TRANSITIONS[previous.status] and not recovered:
+        raise ValueError("invalid lifecycle transition")
+    if previous.status == "admitted" and item.status == "admitted":
+        if (
+            numbers[item.attempt_id] != numbers[previous.attempt_id] + 1
+            or item.fence <= previous.fence
+        ):
+            raise ValueError("new candidate must have a new attempt and owner")
+    elif item.attempt_id != previous.attempt_id:
+        raise ValueError("attempt may change only before dispatch")
+    return armed or sending
+
+
+def _event_observation(
+    record: OperationRecord, item: OperationEvent, previous: OperationEvent | None
+) -> None:
+    local: Literal["failed", "cancelled"] | None = None
+    if item.execution_status == "not_started" and item.status == "failed":
+        local = "failed"
+    elif item.execution_status == "not_started" and item.status == "cancelled":
+        local = "cancelled"
+    if (
+        operation_status(
+            item.execution_status,
+            item.delivery_status,
+            delivery_required=record.admission.delivery_required,
+            local_terminal=local,
+        )
+        != item.status
+    ):
+        raise ValueError("event reducer mismatch")
+    validate_progress_reason(
+        item.status,
+        item.reason_code,
+        item.execution_status,
+        item.delivery_status,
+        dispatched=item.execution_status != "not_started",
+    )
+    if item.revision > record.summary.revision or item.fence > record.fence:
+        raise ValueError("event counter exceeds current state")
+    if previous is None:
+        return
+    same_clock = (previous.identity_epoch, previous.clock_generation) == (
+        item.identity_epoch,
+        item.clock_generation,
+    )
+    if item.observed_at < previous.observed_at and (same_clock or not record.summary.clock_anomaly):
+        raise ValueError("invalid clock regression")
+    if item.revision <= previous.revision or item.fence < previous.fence:
+        raise ValueError("event counters must increase")
+
+
+def _history_end(
+    record: OperationRecord, previous: OperationEvent, attempts: tuple[AttemptView, ...]
+) -> None:
+    s = record.summary
+    if previous.status in TERMINAL and (
+        record.recovery_reason is not None or s.status != previous.status
+    ):
+        raise ValueError("terminal history cannot be reopened")
+    if record.recovery_reason is None and (
+        previous.status,
+        previous.execution_status,
+        previous.delivery_status,
+        previous.attempt_id,
+        previous.reason_code,
+    ) != (
+        s.status,
+        s.execution_status,
+        s.delivery_status,
+        attempts[-1].attempt_id,
+        attempts[-1].reason_code,
+    ):
+        raise ValueError("latest history projection mismatch")
+    if s.status in TERMINAL and (
+        previous.observed_at,
+        previous.revision,
+        previous.fence,
+    ) != (s.updated_at, s.revision, record.fence):
+        raise ValueError("terminal history is immutable")
+    if s.updated_at < previous.observed_at:
+        if not s.clock_anomaly or (
+            record.observed_identity_epoch,
+            record.observed_clock_generation,
+        ) == (previous.identity_epoch, previous.clock_generation):
+            raise ValueError("control clock regression must be explicit")
+
+
 def validate_events(
     connection: sqlite3.Connection, record: OperationRecord, attempts: tuple[AttemptView, ...]
 ) -> None:
     previous: OperationEvent | None = None
-    identifiers = {attempt.attempt_id for attempt in attempts}
-    count = 0
+    numbers = {attempt.attempt_id: attempt.number for attempt in attempts}
+    first_seen: dict[str, str] = {}
+    count, armed = 0, False
     for owner, sequence, attempt_id, payload in connection.execute(
         f"SELECT {EVENT_COLUMNS} FROM operation_events WHERE operation_id=? "
         "ORDER BY sequence LIMIT ?",
@@ -146,66 +280,28 @@ def validate_events(
         if (
             (owner, sequence, attempt_id) != (record.summary.operation_id, count, item.attempt_id)
             or sequence != item.sequence
-            or attempt_id not in identifiers
+            or attempt_id not in numbers
         ):
             raise YorungeError("state_invalid")
         try:
-            local: Literal["failed", "cancelled"] | None = None
-            if item.execution_status == "not_started" and item.status == "failed":
-                local = "failed"
-            elif item.execution_status == "not_started" and item.status == "cancelled":
-                local = "cancelled"
-            if (
-                operation_status(
-                    item.execution_status,
-                    item.delivery_status,
-                    delivery_required=record.admission.delivery_required,
-                    local_terminal=local,
-                )
-                != item.status
-            ):
-                raise ValueError("event status mismatch")
-            validate_reason(
-                "claimed" if item.status == "admitted" else item.status, item.reason_code
-            )
-            if previous is not None:
-                if previous.status in TERMINAL:
-                    raise ValueError("terminal history is immutable")
-                same_clock = (previous.identity_epoch, previous.clock_generation) == (
-                    item.identity_epoch,
-                    item.clock_generation,
-                )
-                if same_clock and item.observed_at < previous.observed_at:
-                    raise ValueError("same-clock history regressed")
-                if item.observed_at < previous.observed_at and not record.summary.clock_anomaly:
-                    raise ValueError("clock regression must be visible")
-                if item.revision <= previous.revision or item.fence < previous.fence:
-                    raise ValueError("event counters must increase")
-            elif item.status != "admitted" or item.observed_at != record.summary.created_at:
-                raise ValueError("admission history required")
-            if item.revision > record.summary.revision or item.fence > record.fence:
-                raise ValueError("event counter exceeds current state")
+            armed = _event_progress(record, item, previous, numbers, armed)
+            _event_observation(record, item, previous)
         except (ValueError, TypeError):
             raise YorungeError("state_invalid") from None
+        first_seen.setdefault(item.attempt_id, item.observed_at)
         previous = item
-    if count != record.event_count or previous is None:
-        raise YorungeError("state_invalid")
-    if record.recovery_reason is None and (
-        previous.status,
-        previous.execution_status,
-        previous.delivery_status,
-        previous.attempt_id,
-        previous.reason_code,
-    ) != (
-        record.summary.status,
-        record.summary.execution_status,
-        record.summary.delivery_status,
-        attempts[-1].attempt_id,
-        attempts[-1].reason_code,
-    ):
-        raise YorungeError("state_invalid")
-    if record.summary.status in TERMINAL and previous.observed_at != record.summary.updated_at:
-        raise YorungeError("state_invalid")
+    try:
+        if (
+            count != record.event_count
+            or previous is None
+            or armed != (record.dispatch_attempt_id is not None)
+        ):
+            raise ValueError("dispatch history missing")
+        if any(first_seen.get(a.attempt_id) != a.created_at for a in attempts):
+            raise ValueError("attempt creation history missing")
+        _history_end(record, previous, attempts)
+    except (ValueError, TypeError):
+        raise YorungeError("state_invalid") from None
 
 
 @contextmanager
@@ -261,7 +357,13 @@ def read_job(
                 record.observed_clock_generation,
             ) == (a.admission_identity_epoch, a.admission_clock_generation):
                 raise ValueError("same-clock snapshot regressed")
-            if not plan.prepared_at <= s.created_at < a.approval.expires_at <= plan.expires_at:
+            if (
+                not plan.prepared_at
+                <= a.approval.approved_at
+                <= s.created_at
+                < a.approval.expires_at
+                <= plan.expires_at
+            ):
                 raise ValueError("admission lifetime mismatch")
             job = JobView(operation=s, plan=plan, attempts=attempts, outcome=outcome)
             validate_events(connection, record, attempts)
@@ -392,6 +494,27 @@ def write_attempt(connection: sqlite3.Connection, operation_id: str, attempt: At
     item = decode(
         AttemptView, canonical(attempt.model_dump(mode="json")).decode("ascii"), MAX_ATTEMPT_BYTES
     )
+    record = read_operation(connection, operation_id)
+    saved = connection.execute(
+        "SELECT operation_id,payload FROM operation_attempts WHERE attempt_id=?",
+        (item.attempt_id,),
+    ).fetchone()
+    if saved is None:
+        if record.dispatch_attempt_id is not None or record.summary.status in TERMINAL:
+            raise OperationError("operation_conflict", operation_id)
+    else:
+        old = decode(AttemptView, saved[1], MAX_ATTEMPT_BYTES)
+        if saved[0] != operation_id or (old.number, old.created_at) != (
+            item.number,
+            item.created_at,
+        ):
+            raise OperationError("operation_conflict", operation_id)
+        if old.provider_run_id is not None and old.provider_run_id != item.provider_run_id:
+            raise OperationError("operation_conflict", operation_id)
+        if old.status in TERMINAL or old.status == "abandoned":
+            if old != item:
+                raise OperationError("operation_conflict", operation_id)
+            return
     result = connection.execute(
         "INSERT INTO operation_attempts VALUES(?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE "
         "SET status=excluded.status,payload=excluded.payload "

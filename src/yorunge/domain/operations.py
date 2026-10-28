@@ -262,6 +262,44 @@ def validate_reason(status: str, reason: OperationReason | None) -> None:
         raise ValueError("status reason mismatch")
 
 
+def validate_progress_reason(
+    status: OperationStatus,
+    reason: OperationReason | None,
+    execution: ExecutionStatus,
+    delivery: DeliveryStatus,
+    *,
+    dispatched: bool,
+) -> None:
+    validate_reason("claimed" if status == "admitted" else status, reason)
+    if status == "running":
+        expected = (
+            "delivery_pending" if execution == "succeeded" and delivery == "pending" else None
+        )
+        if reason != expected:
+            raise ValueError("running reason must reflect delivery")
+    if status == "failed":
+        allowed = (
+            {"provider_failed", "provider_rejected"}
+            if dispatched
+            else {
+                "plan_invalid",
+                "approval_revoked",
+                "approval_expired",
+                "approval_changed",
+                "credential_changed",
+                "capacity_exceeded",
+            }
+        )
+        if execution == "succeeded" and delivery == "failed" and dispatched:
+            allowed = {"delivery_failed"}
+        if reason not in allowed:
+            raise ValueError("failure reason must reflect dispatch")
+    if status == "cancelled" and reason not in (
+        {"provider_cancelled"} if dispatched else {"identity_reset", "local_cancelled"}
+    ):
+        raise ValueError("cancellation requires phase-specific proof")
+
+
 class AttemptView(OperationModel):
     attempt_id: str
     number: AttemptNumber
@@ -276,6 +314,15 @@ class AttemptView(OperationModel):
     @model_validator(mode="after")
     def reason(self) -> AttemptView:
         validate_reason(self.status, self.reason_code)
+        if self.status in ("claimed", "abandoned") and any(
+            value is not None
+            for value in (
+                self.provider_run_id,
+                self.provider_status,
+                self.provider_exit_code,
+            )
+        ):
+            raise ValueError("unsubmitted attempts cannot claim provider progress")
         if len(canonical(self.model_dump(mode="json"))) > MAX_ATTEMPT_BYTES:
             raise ValueError("bounded attempt required")
         return self
@@ -337,6 +384,8 @@ class OperationRecord(OperationModel):
             raise ValueError("operation reducer mismatch")
         if self.dispatch_attempt_id is None and s.status not in ("admitted", "failed", "cancelled"):
             raise ValueError("dispatch intent required")
+        if self.dispatch_attempt_id is None and s.execution_status != "not_started":
+            raise ValueError("unarmed execution cannot have started")
         if self.dispatch_attempt_id is not None and s.execution_status == "not_started":
             raise ValueError("dispatch cannot be unstarted")
         if self.lease is not None and (self.lease.fence != self.fence or s.status in TERMINAL):
@@ -399,10 +448,28 @@ class JobView(OperationModel):
         current = self.attempts[-1]
         if current.status != ("claimed" if s.status == "admitted" else s.status):
             raise ValueError("current attempt mismatch")
+        validate_progress_reason(
+            s.status,
+            current.reason_code,
+            s.execution_status,
+            s.delivery_status,
+            dispatched=s.execution_status != "not_started",
+        )
+        if self.attempts[0].created_at != s.created_at or current.updated_at != s.updated_at:
+            raise ValueError("attempt observation time mismatch")
+        for old, new in zip(self.attempts[:-1], self.attempts[1:], strict=True):
+            if old.updated_at != new.created_at:
+                raise ValueError("abandonment must match the next attempt")
+        if not s.clock_anomaly and any(
+            not s.created_at <= a.created_at <= a.updated_at <= s.updated_at for a in self.attempts
+        ):
+            raise ValueError("attempt observation time outside operation")
         if (self.outcome is not None) != (s.status in TERMINAL):
             raise ValueError("terminal outcome required")
         if self.outcome is not None:
             o = self.outcome
+            if o.recorded_at != s.updated_at:
+                raise ValueError("terminal observation time mismatch")
             if (o.execution_status, o.delivery_status, o.provider_exit_code, o.reason_code) != (
                 s.execution_status,
                 s.delivery_status,

@@ -418,15 +418,20 @@ def forget_plan(store: Store, plan_id: str, confirmation: str | None) -> Forgott
         if current != plan:
             raise YorungeError("state_changed")
         approval = read_approval(store.connection, current)
-        if (
-            store.connection.execute(
-                "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='operations'"
+        if store.connection.execute(
+            "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='operations'"
+        ).fetchone():
+            linked = store.connection.execute(
+                "SELECT operation_id FROM operations WHERE plan_id=?", (plan_id,)
             ).fetchone()
-            and store.connection.execute(
-                "SELECT 1 FROM operations WHERE plan_id=?", (plan_id,)
-            ).fetchone()
-        ):
-            raise YorungeError("plan_in_use")
+            if linked is not None:
+                from yorunge.adapters.operation_store import read_job
+
+                try:
+                    read_job(store.connection, linked[0])
+                except YorungeError:
+                    raise YorungeError("state_invalid") from None
+                raise YorungeError("plan_in_use")
         store.deadline.remaining()
         store.connection.execute("DELETE FROM execution_plans WHERE plan_id=?", (plan_id,))
         store.deadline.remaining()

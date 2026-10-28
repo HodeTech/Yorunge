@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from yorunge.domain.errors import OperationError
-from yorunge.domain.operations import AdmissionAuthority, operation_status
+from yorunge.domain.operations import AdmissionAuthority, operation_status, validate_progress_reason
 
 PAIRS = {
     ("not_started", "pending"): "admitted",
@@ -119,3 +119,21 @@ def test_admission_allowlist_preserves_local_context_but_rejects_secret_fields()
         AdmissionAuthority.model_validate_json(
             json.dumps(authority)[:-1] + ',"service_id":"local"}'
         )
+
+
+@pytest.mark.parametrize(
+    "status,reason,execution,delivery,dispatched",
+    [
+        ("failed", "approval_revoked", "failed", "not_required", True),
+        ("cancelled", "identity_reset", "cancelled", "not_required", True),
+        ("cancelled", "provider_cancelled", "not_started", "not_required", False),
+        ("running", None, "succeeded", "pending", True),
+        ("running", "delivery_pending", "running", "pending", True),
+    ],
+)
+def test_reason_requires_dispatch_and_delivery_evidence(
+    status, reason, execution, delivery, dispatched
+):
+    with pytest.raises(ValueError):
+        validate_progress_reason(status, reason, execution, delivery, dispatched=dispatched)
+    validate_progress_reason("running", "delivery_pending", "succeeded", "pending", dispatched=True)

@@ -31,6 +31,23 @@ Operation-capable runtime'ın mevcut restore/recover allowlist kapısı gerçek 
 
 Maksimum şema 4/5 kaynağı 1.024 cache / 33.554.432 payload byte (her kayıt 32.768), 1.024 plan / 67.108.864 byte (her kayıt 65.536) ve 1.024 onay / 619.520 byte (en büyük 605) taşıdı; onay limitine erişmek için geçersiz padding yapılmadı. Kaynak şema 2/3'te henüz bulunmayan tablolar fixture'a eklenmedi. Backup/sync/DDL/validation ve toplam süreler ham kayıtta ayrıdır. Review sonrası kaynak değişirse etkilenen kabul yeniden değerlendirilir.
 
+### Adım 1 — Birinci review turu
+
+Uygulama a73608a commit'inden sonra iki fresh read-only ajan (GPT-6 Astra high state/dayanıklılık, GPT-6.1 Sol high sözleşme/test/kaynak) mevcut kodu inceledi. Beş ve altı yorumun örtüşenleri birleştirildi; sekiz kök neden doğrulandı. Ana ajan gerçek SQLite üzerinde 18 negatif regresyonu önce çalıştırdı: tamamı beklenen reddi vermeyerek bulguları yeniden üretti. Ardından aşağıdaki düzeltmeler yapıldı; geçersiz bulgu diye atlanan madde yoktur, yinelenenler aynı kök nedende kapandı.
+
+| Doğrulanan konu | Düzeltme ve kabul |
+|---|---|
+| Terminal geçmişi recovery marker ile yeniden açma | Son normal event terminalse marker/current nonterminal projection kesin ret; terminal summary/attempt/outcome/revision/fence/zaman eşliği |
+| Submitted witness / lifecycle / latch | İzinli geçiş ve attempt ilerleme grameri; ilk gönderim event'i submitted, dispatch bağı aynı son attempt'te kalır; submitted→admitted/latch temizliği veya admitted→running ret |
+| Attempt değişmezliği | Upsert öncesi mevcut created_at/number/provider ID; terminal/abandoned aynı kayıt dışında yazılamaz. Claimed/abandoned provider çalışması metadata'sı taşıyamaz |
+| Neden bağlamı | Ortak reason denetimi dispatch/execution/delivery bağlamını alır; postdispatch approval-expiry/revoke, sahte reset cancellation veya eksik delivery_pending nedeni ret |
+| Kabul onay zamanı | prepared_at ≤ approved_at ≤ created_at < approval expiry ≤ plan expiry zinciri |
+| Attempt/outcome gözlem zamanı | İlk attempt yaratılışı admission/event'e; güncel attempt summary'ye; terminal outcome terminal event/summary UTC'sine bağlanır. Clock alanı değişimi/gerçek UTC gerilemesi görünür kalır |
+| Forget bozuk child | Aynı forget transaction'ında operation ilişkisi/body/history doğrulanır; yalnız sağlıklı bağ plan_in_use, bozulma state_invalid |
+| Authority decoder hata sınırı | Persist edilmiş bozuk target'ın domain hatası state_invalid olur; public invalid_service_target olarak kaçmaz |
+
+Düzeltme sonrası yeni model/repository ve mevcut execution approval hedefli takım **131 passed / 28,99 s**; Ruff/lint/strict mypy geçti. İlk migration ham kaydı a73608a kaynaklarını kanıtlar; R1 değişiklikleri mevcut operation kayıtlarının doğrulama/yazma sınırındadır, boş operation migration fixture'ında kayıt decoder döngüsü çalışmaz. Bu eski kaydın yeni head hash'i olduğu iddia edilmez; son kaynak kabulü kapanışta ayrıca değerlendirilecek. İkinci tur farklı fresh reviewer'larla sıradadır; adım/kart verified değildir.
+
 ## Sonraki adımlar
 
 Adım 1 commit ve iki fresh review turuyla kapandıktan sonra admission/lease/tek gönderim (adım 2), recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
