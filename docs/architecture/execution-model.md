@@ -1,10 +1,12 @@
 # Plan ve çalıştırma modeli
 
-**Durum:** Benimsenmiş tasarım. **Tarih:** 2026-10-27.
+**Durum:** Benimsenmiş tasarım. **Güncellendi:** 2026-10-28.
 
 Offline v1 stateless draft üretir. P01-3 ayrı kalıcı execution hazırlığı, descriptor input bağı, güncel validation ve onay/yönetim çekirdeğini ekler. Ürün producer'ında araç/uzak auth/tam girdi kapanışı doğrulanmadığı için public plan draft ve onaylanamaz kalır; prepared/onay pozitifliği yalnız test portuyla kanıtlanır. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
 P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; uygulama/test ve iki review turu adımları [kabul kaydındadır](../research/p01-3-implementation-validation.md). Aşağıdaki operation/run durumları P01-4/P02/P03 tasarımıdır; mevcut runtime yan etki başlatmaz.
+
+P01-4'ün somut operation kimliği/gönderim/ownership sınırı [Proposed ADR-0016](../decisions/0016-operation-admission-and-ownership.md) ile onaya hazırlanıyor; henüz uygulanmadı. Aşağıdaki diyagram kavramsal uçtan uca akıştır: uygulanan immutable planın draft/prepared durumu ile gelecekteki ayrı operation durumu aynı DB satırının geçişleri değildir. Tam görev deadline/delivery politikası da uygulanmış plan v2'nin 300 s geçerliliği veya mevcut 30 s validation çağrı bütçesiyle eş tutulmaz.
 
 ## Planın içerdiği bağlar
 
