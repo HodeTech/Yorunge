@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Annotated, Literal, NoReturn
 from urllib.parse import SplitResult, quote, unquote_to_bytes, urlsplit
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
@@ -83,6 +83,8 @@ class ResolvedCredential:
 
 
 class CredentialCheck(Model):
+    model_config = ConfigDict(defer_build=True)
+
     service_id: ServiceId
     service_origin: str
     api_base_path: str

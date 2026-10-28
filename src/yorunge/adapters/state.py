@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import uuid4
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from yorunge.adapters import state_schema as schema
 from yorunge.adapters.files import reject_constant, unique_object
@@ -78,6 +78,8 @@ class Metadata:
 
 
 class BackupManifest(Model):
+    model_config = ConfigDict(defer_build=True)
+
     format_version: Literal[1] = 1
     source_store_id: str
     source_version: Annotated[int, Field(ge=1)]

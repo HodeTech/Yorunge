@@ -32,6 +32,12 @@ e39d951 için iki bağımsız ajanla ilk review turu tamamlandı. Bir P3 belge �
 
 4b876e7 için iki farklı fresh ajanla ikinci review turu tamamlandı; yeni doğrulanmış bulgu yok. Bağımsız 50 cache/plan/approval (16,73 s) ve 12 cache/API/CLI/benchmark (3,12 s) testi ile belge/ajan/diff kontrolleri geçti. Bu yerel inceleme Linux p95 kabulü sayılmaz; son head'in Linux başlangıç ölçümü, dağıtım makbuzları ve zorunlu offline-core/branch-policy sonucu [PR #9 kontrollerinde](https://github.com/HodeTech/Yorunge/pull/9/checks) izlenir. Önceki head'in başarılı sonucu son head yerine kullanılmaz; merge kullanıcıdadır.
 
+0e83ea6 [Linux CI](https://github.com/HodeTech/Yorunge/actions/runs/40640053781) 1.164 testi (114,64 s), lint/type ve iki temiz kurulumu geçti; [cache p95 201,550 ms](p01-3-cache-commit-linux-failed.json) ile 200 ms hedefinde başarısız oldu. Runner AMD EPYC 7763, disk unknown; medyan 196,846 ms ve örnekler 191,542–202,851 ms arasındadır. Önceki büyük sıçramalar bu koşuda yoktur; farklı CPU/disk koşullarını kod hızlanması diye kıyaslamayız. Aynı head yeniden başlatılmadı.
+
+İkinci dar düzeltme, cache yolunda kullanılmayan CapabilityView/Plan/CredentialRequest/BackupManifest/StateInfo/CredentialCheck ve miras alan CredentialObservation için [Pydantic defer_build](https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.defer_build) ile validator/serializer kurulumunu ilk kullanıma taşır. Field/validator, strict/frozen/extra politikası ve wire değişmedi; genel Model veya kullanılan cache şemaları ertelenmedi. 0e83ea6 kaynaklarıyla ayrı süreçlerde yedi modelin JSON schema/çıktı snapshot'ları ve 50 varyantın kabul/ret sonucu karşılaştırıldı: 47 ret ve üç geçerli boş-liste dönüşümü dahil fark yoktur.
+
+[Aynı yerel ortamda yeni ölçüm](p01-3-deferred-startup.json): cache medyan 110,636/p95 114,119 ms; help 24,629/version 24,899/context 75,841 ms p95. Test yükü olmadan yeni 1.024 kayıt/30-process fixture kullanıldı. Önceki checkpoint ölçümünün 111,840 ms medyanına göre ek kazanç küçük; son Linux kabulünün yerine geçirilmez. Yeni kaynakta tam yerel takım **1.164 passed (134,60 s)**, Ruff format/lint ve strict mypy geçti. İki fresh review turu ve son head CI sonucu ayrıca izlenir.
+
 Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye açık/merge yapılmadı ifadeleri o commit anını anlatır; güncel kapanış ve izleyen CI düzeltmesi bu bölümdedir.
 
 ## Onay ve yöntem

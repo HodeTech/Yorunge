@@ -242,12 +242,16 @@ class Capability(Model):
 
 
 class CapabilityView(Model):
+    model_config = ConfigDict(defer_build=True)
+
     context: Context
     selection: Selection
     records: tuple[Capability, ...]
 
 
 class Plan(Model):
+    model_config = ConfigDict(defer_build=True)
+
     schema_version: Literal[1] = 1
     mode: Literal["offline"] = "offline"
     state: Literal["draft"] = "draft"
