@@ -58,6 +58,14 @@ ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` i
 
 Performans kabulü help/version/context ile birlikte 1.024 kayıtlı cache sorgusunu da kapsar; `--cache-state` zorunludur. Yukarıdaki hazırlık her koşu için repo içindeki `.local` altında yeni bir geçici dizin seçer (macOS `/var`/`/tmp` symlink atalarını kullanmaz), mevcut state verisini kullanmaz veya ezmez; sentetik dizin ve ölçüm kaydı denetim için korunur. CPU/disk/kurulum etiketleri ölçülen gerçek ortamı belirtmelidir; bilinmeyen disk türü `unknown` kalır. Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
 
+CI ile aynı izole runtime kurulumunu ve eşli ölçümü yerelde çalıştırmak için, mevcut olmayan bir workspace/çıktı adı seçin:
+
+```sh
+.venv/bin/python scripts/check-startup.py --uv .local/tooling/bin/uv --workspace .local/startup-check --output dist/startup-isolated.json
+```
+
+Önceki bir kaynak checkout'u varsa `--baseline-project PATH` eklenir; aday ve taban tek host'ta AB/BA sırasıyla ölçülür. A/A kontrolü için `--baseline-project .` kullanılabilir. Helper her tarafın frozen runtime gereksinimleriyle ayrı wheel/venv ve yeni fixture oluşturur; hazırlık ölçülen süreç süresine dahil değildir. Test/profiler/büyük build işleri benchmark ile eşzamanlı çalıştırılmaz. Varsayılan disk bilgisi `unknown`'dır; gerçek ortam biliniyorsa `--disk-type`/`--cpu-label` verilir. Sonuç dosyası mevcutsa yeni bir ad seçilir; tekrar koşularından en hızlısını seçerek kabul verilmez. [Ölçüm ve kabul kuralları](docs/standards/performance.md#aynı-makinede-başlangıç-karşılaştırması) kanoniktir.
+
 ## Doğrulama seçimi
 
 Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır.

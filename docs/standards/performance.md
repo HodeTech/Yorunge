@@ -17,6 +17,16 @@ Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota 
 
 Bu değerler hedef olarak seçildi; donanım/Python/işletim sistemi, veri ve komut kaydedilmeden sonuç kıyaslanmaz. İlk gerçek ölçüm sonrası gerekçeli değişiklik yapılabilir; başarısız hedef sessizce gevşetilmez. Soğuk açılış ve kurulum boyutu ayrıca raporlanır.
 
+### Aynı makinede başlangıç karşılaştırması
+
+2026-10-28 kullanıcı onayıyla başlangıç ölçümü, test araçlarını içermeyen iki ayrı runtime ortamında yapılır. `scripts/check-startup.py`, taban ve aday kaynaklardan ayrı wheel üretir; her birinin `uv.lock` dosyasındaki runtime gereksinimlerini hash doğrulamasıyla yeni venv'e kurar. İki taraf aynı Python build'ini kullanır; kurulan paketin import kökeni doğrulanır. Kullanıcı site paketleri ve ortamdan gelen Python seçenekleri ölçüme taşınmaz; yalnız sentetik benchmark süreçlerinde sabit hash seed kullanılır. Ortam/paket sürümleri, wheel ve kaynak hash'leri raporlanır.
+
+İki ayrı yeni fixture aynı profil baytları ve eşit 1.024 kayıt/payload hacmiyle hazırlanır. Aynı komutun taban/adayı aynı host üzerinde AB/BA sırasıyla dönüşümlü, eşzamanlı çocuk süreç olmadan ölçülür. Her tarafın ilk süreci ayrı tutulur; üç ısınma sonrası en az 30 örneğin tamamı kullanılır. p95 nearest-rank yöntemiyle hesaplanır; v2 raporu örnekleri ve eşik kararındaki p95'i tam hassasiyetle saklar. Aynı kaynağın iki kurulumu ile A/A kontrolü, karşılaştırma gürültüsünü ayrıca incelemek için kullanılabilir.
+
+**Kabul adayın mevcut mutlak 500/200 ms bütçesidir.** Tabanın kötü sonucu veya göreli iyileşme, bütçeyi aşan adayı başarılı yapmaz. Taban ölçümleri ve eşli oranlar tanısaldır; yeni bir göreli eşik uydurulmaz. Eksik/uyumsuz baseline veya fixture kontrollü reddedilir; ilk release'in yalnız belge içeren Git tabanı açık `no_runtime_project_at_baseline` durumuyla raporlanabilir ve adayın bütün mutlak kapıları yine çalışır. Kaynak ölçüm boyunca değişmişse helper başarısız olur; mevcut rapor veya çalışma dizini ezilmez.
+
+CI, PR'da ilan edilmiş base SHA'sını, development/Master push'unda önceki SHA'yı ayrı checkout'a sabitler. Manuel/ilk-ref koşusunda fallback aynı commit'tir ve gerçek bir önce/sonra kazancı sayılmaz. Ubuntu ana sürümü sabittir; gerçek image build'i, kernel, CPU ve kullanılabilir CPU affinity kaydedilir. Bu, GitHub'ın fiziksel CPU'sunu veya VM yükünü sabitlemez; farklı host'lardaki mutlak süre farkı kod kazancı diye yorumlanmaz. PR ve merge aynı ölçüm yolunu kullanır. Sonuçların dış CI doğrulaması sonraki P01-4 PR/merge akışında ayrıca yapılır; yerel kabul bu doğrulamanın yerine geçirilmez.
+
 ## Veri, ağ ve hesap verimliliği
 
 Dosyalar bloklu hash/stream ile işlenir. Aynı disk üzerinde gereksiz paralel hash taraması yapılmaz. Hash önbelleği güncel içerik kanıtı yerine geçmez; değişmez snapshot veya güvenilir yeniden doğrulama stratejisi gerekir. Yükleme kuyruğu sadece dosya sayısını değil buffer baytını da sınırlar.

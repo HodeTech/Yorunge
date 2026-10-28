@@ -14,10 +14,16 @@ concurrency:
 jobs:
   offline-core:
     name: offline-core
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Check out pinned startup comparison source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
+          path: .local/startup-baseline
+          persist-credentials: false
       - name: Install locked development environment
         run: |
           python3 -m venv .ci-tools
@@ -39,13 +45,12 @@ jobs:
           cat dist/verification.jsonl
       - name: Enforce startup budgets
         run: |
-          .venv/bin/python tests/fixtures/seed_capability_cache.py .ci-cache-state examples/profile.toml
-          .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --cache-state .ci-cache-state --installation-label "editable .venv; frozen uv environment" --output dist/startup.json
+          .venv/bin/python scripts/check-startup.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --output dist/startup.json
       - name: Diagnose a failed startup budget
         if: ${{ failure() }}
         run: |
-          if test -f dist/startup.json; then
-            .venv/bin/python -X importtime .venv/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .ci-cache-state --output json > /dev/null
-            .venv/bin/python -m cProfile -o dist/cache-startup.prof .venv/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .ci-cache-state --output json > /dev/null
+          if test -f dist/startup.json && test -x .local/startup-check/candidate/env/bin/python; then
+            PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -X importtime .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
+            PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -m cProfile -o dist/cache-startup.prof .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
             .venv/bin/python -c 'import pstats; pstats.Stats("dist/cache-startup.prof").strip_dirs().sort_stats("cumulative").print_stats(35)'
           fi
