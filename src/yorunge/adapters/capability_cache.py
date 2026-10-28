@@ -13,6 +13,14 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from yorunge.adapters.expiry_fences import (
+    MAX_STATE_EXPIRIES,
+    cache_expiries,
+    check_expiries,
+    check_expiry_dates,
+    next_expiry,
+    save_expiries,
+)
 from yorunge.adapters.files import reject_constant, unique_object
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.state import Store, metadata
@@ -37,6 +45,11 @@ ENTRY_FIELDS = (
     "cache_key,key_json,projection_key,group_key,payload,mutation_revision,checked_at,pinned_until"
 )
 SELECT_ENTRY = f"SELECT {ENTRY_FIELDS} FROM capability_cache WHERE cache_key=?"
+SELECT_CLOCK = (
+    "SELECT identity_epoch,clock_generation,high_watermark,anomaly_active,"
+    "mutation_revision FROM cache_clock WHERE singleton=1"
+)
+ClockRow = tuple[str, int, str, int, int]
 
 
 class Clock(Protocol):
@@ -67,9 +80,25 @@ class Token:
     revision: int
 
 
+@dataclass(frozen=True)
+class ClockCheckpoint:
+    stamp: Stamp
+    row: ClockRow
+
+
+@dataclass(frozen=True)
+class TerminalPoint:
+    row: ClockRow | None
+    now: datetime
+    frontier: datetime | None
+    expiries: tuple[datetime, ...]
+    within_budget: bool
+
+
 @dataclass
 class TimeGate:
     intervals: list[tuple[datetime, datetime]] = field(default_factory=list)
+    checkpoint: ClockCheckpoint | None = None
 
     def require(self, record: CapabilityRecord) -> None:
         self.intervals.append((instant(record.checked_at), instant(record.expires_at)))
@@ -114,6 +143,34 @@ def decode_entry(row: tuple[object, ...]) -> tuple[CapabilityRecord, int]:
     return record, revision
 
 
+@dataclass(frozen=True)
+class CacheValidation:
+    key: str
+    store_id: str
+    identity_epoch: str
+    clock_generation: int
+    revision: int
+    expiries: tuple[str, ...]
+
+
+def cache_validation(row: tuple[object, ...]) -> CacheValidation:
+    from yorunge.adapters.validation_memo import validated
+
+    def build() -> CacheValidation:
+        record, version = decode_entry(row)
+        scope = record.key.scope
+        return CacheValidation(
+            record.key.digest(),
+            scope.store_id,
+            scope.identity_epoch,
+            scope.clock_generation,
+            version,
+            cache_expiries(record),
+        )
+
+    return validated(CacheValidation, row, build)
+
+
 def validate_cache(connection: sqlite3.Connection) -> None:
     # Called only for schema versions that own these tables; no adapters at domain import.
     row = connection.execute(
@@ -139,13 +196,18 @@ def validate_cache(connection: sqlite3.Connection) -> None:
         raise YorungeError("state_invalid") from None
     count = 0
     value = metadata(connection)
+    indexed = connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='capability_expiries'"
+    ).fetchone()
     for row in connection.execute(f"SELECT {ENTRY_FIELDS} FROM capability_cache"):
-        record, version = decode_entry(row)
+        record = cache_validation(row)
+        if indexed:
+            check_expiry_dates(connection, record.key, record.expiries)
         if (
-            record.key.scope.store_id != value.store_id
-            or record.key.scope.identity_epoch != value.identity_epoch
-            or record.key.scope.clock_generation > generation
-            or version > revision
+            record.store_id != value.store_id
+            or record.identity_epoch != value.identity_epoch
+            or record.clock_generation > generation
+            or record.revision > revision
         ):
             raise YorungeError("state_invalid")
         count += 1
@@ -183,6 +245,7 @@ class StateCache:
         self.generation = 0
         self.checks: tuple[Callable[[], None], ...] = ()
         self.additional_expiries: Callable[[], tuple[datetime, ...]] = lambda: ()
+        self._checkpoint: ClockCheckpoint | None = None
 
     def now(self) -> datetime:
         self.observed = self.clock.now()
@@ -198,10 +261,7 @@ class StateCache:
     def _tick(self, now: datetime) -> Stamp:
         self.observed = now
         value = metadata(self.connection)
-        row = self.connection.execute(
-            "SELECT identity_epoch,clock_generation,high_watermark,anomaly_active,"
-            "mutation_revision FROM cache_clock WHERE singleton=1"
-        ).fetchone()
+        row = self.connection.execute(SELECT_CLOCK).fetchone()
         if row is None or row[0] != value.identity_epoch:
             raise YorungeError("state_invalid")
         epoch, generation, high, anomaly, revision = row
@@ -243,12 +303,15 @@ class StateCache:
         return Stamp(value.store_id, epoch, generation, now, bool(anomaly))
 
     def _save_stamp(self, rollback: datetime | None = None) -> Stamp:
+        self._checkpoint = None
         self.connection.execute("BEGIN IMMEDIATE")
         try:
             if rollback is not None:
                 self._tick(rollback)
             result = self._tick(self.now())
+            row = self.connection.execute(SELECT_CLOCK).fetchone()
             self.connection.execute("COMMIT")
+            self._checkpoint = ClockCheckpoint(result, row)
             return result
         finally:
             if self.connection.in_transaction:
@@ -257,6 +320,15 @@ class StateCache:
     def stamp(self) -> Stamp:
         """Durable clock point; consumers obtain a terminal point through _finish."""
         return self._save_stamp()
+
+    def _durable_checkpoint(self, observed: datetime | None = None) -> ClockCheckpoint:
+        if observed is None:
+            self.stamp()
+        else:
+            self._save_stamp(observed)
+        if self._checkpoint is None:
+            raise YorungeError("state_invalid")
+        return self._checkpoint
 
     def _bindings(self, stamp: Stamp) -> None:
         value = metadata(self.connection)
@@ -300,8 +372,10 @@ class StateCache:
                 self._same(stamp, self._tick(self.now()))
                 yield gate
                 observed = self.now()
-                self._same(stamp, self._tick(observed))
+                final = self._tick(observed)
+                self._same(stamp, final)
                 gate.check(observed)
+                clock_row = self.connection.execute(SELECT_CLOCK).fetchone()
             except BaseException:
                 observed = self.observed
                 connection.execute("ROLLBACK TO business")
@@ -311,6 +385,7 @@ class StateCache:
                 raise
             connection.execute("RELEASE business")
             connection.execute("COMMIT")
+            gate.checkpoint = ClockCheckpoint(final, clock_row)
         finally:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
@@ -324,6 +399,7 @@ class StateCache:
         if row is None:
             return None, Token(False, mutation)
         record, revision = decode_entry(row)
+        check_expiries(self.connection, record)
         if record.key != key or revision > mutation:
             raise YorungeError("state_invalid")
         return record, Token(True, revision)
@@ -391,6 +467,7 @@ class StateCache:
                     record.pinned_until(),
                 ),
             )
+            save_expiries(self.connection, record)
             if not instant(record.checked_at) <= self.now() < instant(record.expires_at):
                 raise YorungeError("capability_expired")
 
@@ -467,8 +544,9 @@ class StateCache:
         rows: list[tuple[CapabilityRecord | None, tuple[CapabilityRecord, ...]]] = [
             (None, ()) for _ in keys
         ]
+        checkpoint = None
         try:
-            with self.transaction(stamp):
+            with self.transaction(stamp) as gate:
                 for index, key in enumerate(keys):
                     record, _ = self._read(key)
                     candidates: tuple[CapabilityRecord, ...] = ()
@@ -483,46 +561,78 @@ class StateCache:
                             )
                         )
                     rows[index] = record, candidates
+            checkpoint = gate.checkpoint
         except YorungeError as error:
             if error.code == "state_changed":
                 self._bindings(stamp)
             elif error.code != "capability_expired":
                 raise
         final, within_budget = self._finish(
-            stamp, tuple(instant(record.expires_at) for record, _ in rows if record is not None)
+            stamp,
+            tuple(instant(record.expires_at) for record, _ in rows if record is not None),
+            checkpoint=checkpoint,
         )
         return tuple(
             self._present(key, record, candidates, stamp, final, within_budget)
             for key, (record, candidates) in zip(keys, rows, strict=True)
         )
 
-    def _finish(self, stamp: Stamp, expires: tuple[datetime, ...] = ()) -> tuple[Stamp, bool]:
-        current = self.stamp()
-        # Only newly crossed boundaries require another durable watermark. Each
-        # iteration fences at least one boundary, or invalidates the generation.
-        # No producer/discovery retry occurs and the loop is bounded by the view.
-        while True:
-            self._bindings(stamp)
-            self.store.deadline.remaining()
-            within_budget = self.clock.monotonic() < self.end
-            observed = self.now()
-            if current.anomaly or current.generation != stamp.generation:
-                return current, within_budget
-            if observed < current.now or self.required_generation > current.generation:
-                return self._save_stamp(observed), within_budget
-            if any(
-                current.now < boundary <= observed
-                for boundary in (*expires, *self.additional_expiries())
-            ):
-                current = self._save_stamp()
+    def _finish(
+        self,
+        stamp: Stamp,
+        expires: tuple[datetime, ...] = (),
+        *,
+        checkpoint: ClockCheckpoint | None = None,
+    ) -> tuple[Stamp, bool]:
+        checkpoint = checkpoint or self._durable_checkpoint()
+        # The hard cap also bounds concurrent writers replacing expiry dates.
+        # Every continuation persists the observed UTC before the next sample.
+        for _ in range(MAX_STATE_EXPIRIES + 1):
+            current = checkpoint.stamp
+            point = self._terminal_point(stamp, checkpoint)
+            if point.row != checkpoint.row:
+                checkpoint = self._durable_checkpoint(point.now)
                 continue
+            if point.now < current.now or self.required_generation > current.generation:
+                return self._save_stamp(point.now), point.within_budget
+            if self._crossed_expiry(current, point, expires):
+                checkpoint = self._durable_checkpoint(point.now)
+                continue
+            if current.anomaly or current.generation != stamp.generation:
+                return current, point.within_budget
             return Stamp(
                 current.store_id,
                 current.identity_epoch,
                 current.generation,
-                observed,
+                point.now,
                 current.anomaly,
-            ), within_budget
+            ), point.within_budget
+        raise YorungeError("state_busy")
+
+    def _terminal_point(self, stamp: Stamp, checkpoint: ClockCheckpoint) -> TerminalPoint:
+        self.connection.execute("BEGIN")
+        try:
+            # Hold the read snapshot through the UTC sample and frontier lookup:
+            # a writer cannot commit a newly expiring record between them.
+            self._bindings(stamp)
+            self.store.deadline.remaining()
+            observed = self.now()
+            row = self.connection.execute(SELECT_CLOCK).fetchone()
+            frontier = (
+                next_expiry(self.connection, checkpoint.row[2]) if row == checkpoint.row else None
+            )
+            expiries = self.additional_expiries()
+        finally:
+            self.connection.execute("ROLLBACK")
+        return TerminalPoint(row, observed, frontier, expiries, self.clock.monotonic() < self.end)
+
+    @staticmethod
+    def _crossed_expiry(
+        current: Stamp, point: TerminalPoint, expires: tuple[datetime, ...]
+    ) -> bool:
+        return (point.frontier is not None and point.frontier <= point.now) or any(
+            current.now < boundary <= point.now for boundary in (*expires, *point.expiries)
+        )
 
     def _present(
         self,

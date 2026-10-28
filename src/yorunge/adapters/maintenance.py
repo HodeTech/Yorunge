@@ -46,6 +46,7 @@ from yorunge.adapters.state import (
     load_key,
     metadata,
     new_key,
+    prepare_migration,
     read_backup,
     sqlite_error_code,
     state_directory,
@@ -61,6 +62,7 @@ IDENTITY_TABLES = {"state_meta", "schema_migrations", "credential_bindings"}
 RESTORABLE_TABLES = IDENTITY_TABLES | {
     "cache_clock",
     "capability_cache",
+    "capability_expiries",
     "execution_plans",
     "execution_approvals",
 }
@@ -93,8 +95,11 @@ class RestoreIntent(Model):
 @contextmanager
 def errors() -> Iterator[None]:
     require_local_files()
+    from yorunge.adapters.validation_memo import validation_session
+
     try:
-        yield
+        with validation_session():
+            yield
     except OSError:
         raise YorungeError("state_write_failed") from None
     except sqlite3.Error as error:
@@ -317,10 +322,11 @@ def reset_connection(
 def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: Deadline) -> None:
     version, _ = validate(connection, schema.MIGRATIONS, full=True)
     for step in schema.MIGRATIONS[version:]:
+        transform = prepare_migration(step, deadline)
         backup(root, path, deadline, schema.MIGRATIONS)
         connection.execute("BEGIN IMMEDIATE")
         try:
-            apply_migration(connection, step)
+            apply_migration(connection, step, deadline, transform)
             validate(connection, schema.MIGRATIONS, full=True)
             deadline.remaining()
             connection.execute("COMMIT")

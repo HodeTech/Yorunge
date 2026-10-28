@@ -1,11 +1,11 @@
 # P01-3 — Capability ve execution hazırlığı teslim planı
 
-**Tarih:** 2026-10-27. **Durum:** Yerel kabul tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesinde; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. **Dal:** feat/p01-3-capability-planning. **Taban:** development@78d5d77. Dört adım yerel kabul ve ikişer bağımsız review turuyla tamamlandı; tek development PR kullanıcı incelemesi/CI kapısında.
+**Güncellendi:** 2026-10-28. **Durum:** Tamamlandı/verified; kullanıcı [PR #8](https://github.com/HodeTech/Yorunge/pull/8)'i development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile aldı. ADR-0013/0014 ve ScopeV2 Accepted. **Uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Dört adım, ikişer bağımsız review turu ve sonraki PR düzeltmeleri tamamlandı.
 
 
-**Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed ve onay bekleme ifadeleri tarihseldir; uygulama kabulü ayrıca kaydedilir.
+**Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed, onay bekleme, kabulün henüz yapılmadığı ve kontrollerin çalıştırılmadığı ifadeleri ilgili kayıt zamanına aittir; güncel uygulama kabulü aşağıdaki kanonik kayıttadır.
 
-Gerçek kod/test/ölçüm, adım commit'leri ve iki review turunun tek kanonik kaydı [uygulama kabulüdür](../research/p01-3-implementation-validation.md). Cache ve execution hazırlığı/geçerliliği/onay/yönetim ile bütünleşik yerel kabul tamamlandı; PR/CI ve kullanıcı incelemesi ayrıdır. Development merge henüz yapılmadı.
+Gerçek kod/test/ölçüm, adım commit'leri ve iki review turunun tek kanonik kaydı [uygulama kabulüdür](../research/p01-3-implementation-validation.md). Cache ve execution hazırlığı/geçerliliği/onay/yönetim ile bütünleşik kabul tamamlandı; [development merge ve son CI kapanışı](../research/p01-3-implementation-validation.md#development-merge-kapanışı) doğrulandı. Sonraki paket P01-4b/4c'dir; Master aktarımı ve yayın kullanıcıdadır.
 ## Teslim sınırı
 
 Kullanıcı sonucu: capability bilgisinin hangi hedef/kimlik/kanıta ait ve ne kadar güncel olduğunu görmek; ayrı execution hazırlığını kaydetmek; değişmiş girdi/yetkiyle eski plan veya onayın geçerli sayılmasını engellemek. [P01-3a](tasks/p01-3a-scoped-capability-cache.md) ve [P01-3b](tasks/p01-3b-execution-plan-validity.md) tek development PR'ında teslim edilir. Paket L büyüklüğündedir; iki kart ve aşağıdaki M uygulama adımlarına ayrılır. Bunlar süre tahmini değildir.

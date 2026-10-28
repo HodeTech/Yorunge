@@ -1,0 +1,31 @@
+{
+  "bytecode": {
+    "compile_same_verified_buffer": "new",
+    "preloaded_module_import": "old",
+    "source_sha256": "7f706258a3aee732c86636d6fe77accd84e94d3fb459ca6f2867857b5fcc5863",
+    "source_value": "new",
+    "timestamp_pyc_import": "old",
+    "v2_loader_exercised": false
+  },
+  "canonical_decode_entry": "passed",
+  "platform": "Darwin",
+  "probe_sha256": "f636aced4e2b7f01ffaf871ffd05e1535c7169e58074e6592654b2335d9745de",
+  "prototype_expiry_helper_matches_literal_rows": {
+    "aggregate-only": 1,
+    "blocker-only": 2,
+    "coincident-dates": 1,
+    "maximum-evidence": 10,
+    "multiple-proofs": 4,
+    "one-proof": 1
+  },
+  "purpose": "Proposed ADR research; not V2 migration or warm-reader acceptance",
+  "python": "3.11.18",
+  "runtime_source_sha256": {
+    "src/yorunge/adapters/capability_cache.py": "b462722fe80b5fca5ae14c5da585777b03a67fdb529a595fd55f51ea9d19e34a",
+    "src/yorunge/adapters/expiry_fences.py": "07e74d549cd1c2cd4fe4311e952a49a80f355c3d92a2257b1df3e40941acd7be",
+    "src/yorunge/domain/capabilities.py": "7a290a8a8d39b3bf97a8f652ae5e9e8eb36b97d3b5c1e09be11b7edfe7eb03c1"
+  },
+  "sqlite": "3.54.1",
+  "v2_implemented": false,
+  "vectors_sha256": "119c5409116af3e6485fe5752a5cb33f4b23af93b025574a64b12006ec438031"
+}

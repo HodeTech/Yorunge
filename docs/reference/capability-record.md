@@ -42,4 +42,14 @@ SQLite şema 1→2 cache/clock tablolarını immutable migration ve doğrulanmı
 
 Bir kaydın `supported` olması başka hedef/yetki/hesap/araç/sürüm/ortama yayılmaz. Eski kayıt, yenilenmesi gereken kritik planda otomatik geçerli sayılmaz. Her 403 access eksikliği de değildir; yanlış key/endpoint veya sözleşme hatası ayrıca ayrıştırılır.
 
+## Store genelinde süre kapısı
+
+**PR #9, merge bekleyen doğrulanmış uygulama:** Şema 5 development'a merge edilmedi. Checksum kapsamındaki veri dönüşümü [Accepted ADR-0015](../decisions/0015-checksummed-data-migrations.md) ile uygulanıp iki review turuyla doğrulandı; checksum dışı prototip hook kaldırıldı. [Yoğun bütçe ve CI kanıtı](../research/p01-3-implementation-validation.md#v2-uygulaması--adım-2) kayıtlıdır. Development teslimi şema 4 olarak kalır.
+
+Son süre kapısı yalnız sorgulanan kaydın expiry'sini kullanmaz. Kalıcı cache kayıtlarının aggregate/evidence/conflict süreleri ile bütün plan/onay expiry'lerinden sonraki global sınır aranır. Cache başına en çok 10 ayrı zaman, 1.024 cache + 1.024 plan + 1.024 onay için en çok 12.288 sınır vardır. Sıcak yol üç sıralı indeks araması yapar; bütün payload'ları taramaz. Kaydı okurken kendi en çok 10 türetilmiş zamanı da tam karşılaştırılır.
+
+Clock, bağlar ve global sınır aynı SQL read snapshot'ında kalırken terminal UTC örneği alınır. Araya daha erken expiry içeren bir writer commit'i giremez. Yeni geçilen global veya kullanılan proof sınırı kalıcı watermark'a taşınır; son UTC/monotonic/bağ kapısı yeniden çalışır. Böylece uzun ömürlü bir kayıt sorgusu sırasında başka bir kaydın gözlenen expiry'si geçmişse restart sonrası saat geri dönüşü onu yeniden etkinleştirmez. Eşzamanlı writer'ların tarihleri değiştirmesi toplam deadline ve ayrıca 12.289 kontrol sınırıyla sınırlanır; tükenmede `state_busy` gelir. Producer/env/discovery otomatik tekrarlanmaz.
+
+`checked_at` terminal geçerlilik noktasıdır; kalıcı watermark son başarılı clock transaction'ının noktasıdır. İki değerin her mikrosaniyede eşitliği garanti edilmez. Global expiry sınırı geçilmediyse yeni fsync gerekmez; hiçbir başarılı sonuç gözlenen bir kalıcı expiry'nin gerisinde kalmış watermark'a dayanmaz. Güvenilir dış saat, gözlenmeyen geri dönüş veya DB+K+clock'un birlikte eskiye alınmasını saptama garantisi verilmez; noktasal geçerlilik sonraki caller anı için süreyi durdurmaz.
+
 Bu kayıt dış uyumu anlatır. Yörünge özelliğinin planlandı/uygulandı/yayımlandı durumu [yetenek matrisindedir](../capability-matrix.md); iki durum tek enum'da birleştirilmez.

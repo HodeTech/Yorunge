@@ -8,7 +8,7 @@ capabilities: [C02, C12, C13]
 ---
 # P01-3b — Execution hazırlığı, geçerlilik ve onay bağı
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesine açıktır; son CI kapısı takip ediliyor.
+**Güncellendi:** 2026-10-28. **Paket:** [P01-3](../p01-3-delivery-plan.md). ADR onayları ve P01-3a kabulü tamamlandı; dört adımın yerel kabulü ve ikişer review tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) 2026-10-28 tarihinde development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile alındı; merge sonrası CI başarılıdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -50,6 +50,6 @@ Unit canonical digest/girdi/onay/saat; contract v1/v2 ve CLI/API; integration ge
 
 ## Teslim kaydı
 
-- PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [hazırlık 57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetim db9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesi e7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
-- Sonuç: Adım 2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Son yerel ve Linux tam takım 1.133 test, wheel/sdist iki temiz kurulum, son Linux cache p95 191,836 ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; development merge/PR CI ayrı kaydedilir.
-- Kalan sınır: Public producer draft/blocked; run/operation/lease, HTTP ve gerçek EVREN yoktur. Gerçek Windows/fiziksel güç kesintisi kanıtı verilmez. Ürün PR'ı kullanıcı incelemesine açılır, otomatik merge edilmez.
+- PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa), [hazırlık 57fe22c](https://github.com/HodeTech/Yorunge/commit/57fe22c), [onay/yönetim db9ee74](https://github.com/HodeTech/Yorunge/commit/db9ee74), [son cursor düzeltmesi e7f9039](https://github.com/HodeTech/Yorunge/commit/e7f9039).
+- Sonuç: Adım 2/3 ve ikişer fresh review tamamlandı; [test/review/kurulum/ölçüm kanıtı](../../research/p01-3-implementation-validation.md). Son tam takım 1.159 test, wheel/sdist iki temiz kurulum, merge sonrası Linux cache p95 195,928 ms ve input bellek kabulü başarılı; dört adımın her biri iki fresh review turuyla tamamlandı. Kart verified; [merge/CI kapanışı](../../research/p01-3-implementation-validation.md#development-merge-kapanışı) doğrulandı.
+- Kalan sınır: Public producer draft/blocked; run/operation/lease, HTTP ve gerçek EVREN yoktur. Gerçek Windows/fiziksel güç kesintisi kanıtı verilmez. Kullanıcı ürün PR'ını development'a aldı; Master aktarımı/yayın yapılmadı.

@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "purpose": "Historical one-run diagnostics; not final migration acceptance. Profiled post-validation is outside the measured 5 s call and includes profiler overhead.",
+  "before_row_memo": {
+    "version": 2,
+    "maximum": true,
+    "prep_seconds": 9.845555792097002,
+    "sizes": {
+      "capability_cache": [
+        1024,
+        33554432,
+        32768
+      ]
+    },
+    "elapsed_seconds": 5.100214291829616,
+    "error": "state_busy",
+    "final_version": 2,
+    "post_validation_seconds": 1.4890217080246657
+  },
+  "row_memo_before_control_scan_optimization_schema3": {
+    "version": 3,
+    "maximum": true,
+    "prep_seconds": 19.82580479211174,
+    "sizes": {
+      "capability_cache": [
+        1024,
+        33554432,
+        32768
+      ],
+      "execution_plans": [
+        1024,
+        67108864,
+        65536
+      ]
+    },
+    "elapsed_seconds": 5.00028512487188,
+    "error": "state_busy",
+    "final_version": 4,
+    "post_validation_seconds": 4.153578792000189
+  },
+  "row_memo_before_control_scan_optimization_schema4": {
+    "version": 4,
+    "maximum": true,
+    "prep_seconds": 32.985164124984294,
+    "sizes": {
+      "capability_cache": [
+        1024,
+        33554432,
+        32768
+      ],
+      "execution_plans": [
+        1024,
+        67108864,
+        65536
+      ],
+      "execution_approvals": [
+        1024,
+        619520,
+        605
+      ]
+    },
+    "elapsed_seconds": 5.0045892091002315,
+    "error": "state_busy",
+    "final_version": 4,
+    "post_validation_seconds": 32.1547837080434
+  },
+  "source_before_memo": {
+    "head": "aba33814a6a3f707984014077c7b3a29c9bd713f",
+    "python": "3.11.18",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "cpu": "Apple M5 Max",
+    "disk": "SSD APFS (prior local storage verification; no new physical probe)",
+    "source_sha256": {
+      "src/yorunge/adapters/state.py": "9dc08dcbd6bb35e124b68f4511a8e4bd375d0aa23d04d54e99e43c7a71ef45e7",
+      "src/yorunge/adapters/maintenance.py": "616dc5990f2228770dffd0deae3e35caebce086ea4c05c45618937bf23b0e09d",
+      "src/yorunge/adapters/capability_cache.py": "b462722fe80b5fca5ae14c5da585777b03a67fdb529a595fd55f51ea9d19e34a",
+      "src/yorunge/adapters/execution_store.py": "a10e85dc4bac5935051ecc418fdb74d85351d903df4719ac8cd5f96906eb8e01",
+      "src/yorunge/adapters/expiry_fences.py": "8f3e4c4bded1415c8e9f5b0f92b3cba05ea72270af6ce8173b22503f1fe56445",
+      "src/yorunge/adapters/state_schema.py": "9f4ee3135ee4939a3d7153d43c5e85e6e48a315b406b51102f6fe09c922ea56b",
+      "src/yorunge/adapters/data_migrations.py": "f83e0db4eca099d61bccfcf686a707a8a521e8bd1ca08e7ac7ba0e49998d1fec",
+      "src/yorunge/adapters/migration_capability_expiries_v1.py": "b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18",
+      "tests/fixtures/seed_migration_state.py": "8caa82c2629147de6f125a25ba15a25b68ba8e4f3e0003c61f4b9a08f63c2777",
+      ".local/measure-v2-max.py": "8aeee943bea5c1f57ef0c2458789da84043ef0b2ab3e08bdeadce951031af1f8"
+    },
+    "purpose": "pre-optimization max2 baseline, one run, not final acceptance"
+  },
+  "source_before_control_scan_optimization": {
+    "head": "aba33814a6a3f707984014077c7b3a29c9bd713f",
+    "purpose": "pre-regex max3/max4 diagnostic source, validation memo present; not final acceptance",
+    "source_sha256": {
+      "src/yorunge/adapters/validation_memo.py": "6af9717d961c2096e91a1ec99dd03cddaa85efc50549b8c5d8caaa7e1b07772f",
+      "src/yorunge/adapters/capability_cache.py": "5bfb160f812411ae6f209321fa3bd2c3a6a16e993c82adf6b1c7cf5c63206df6",
+      "src/yorunge/adapters/execution_store.py": "f21fcd7995f042ec6b9e6a0a0f4cd1d0d2f0e8ca908989009c5fecfbd4b67300",
+      "src/yorunge/adapters/expiry_fences.py": "91a2980eeb38400fa3a8b7929f5bc9b69b7517c6805c464a91bb4e4d84f16cee",
+      "src/yorunge/adapters/state.py": "ccbb1c0d738742c33e49e82ced2bfd7e8659c8b5ad163b41cc70a83d5d415996",
+      "src/yorunge/adapters/maintenance.py": "5fc60955b2de12c007be4c94f4ffdd8f92fe27f302429dc3b4d9490de62788b9",
+      "src/yorunge/domain/models.py": "fb3d7f38142a35b35a6b65f97fd79152481b06eeb5fc10b4609abd16d5fd2043",
+      "tests/fixtures/seed_migration_state.py": "8caa82c2629147de6f125a25ba15a25b68ba8e4f3e0003c61f4b9a08f63c2777",
+      ".local/measure-v2-max.py": "015288339cbd529550ead9b9d27b8477a7fa5d82fb58b8339a9fbef2034be688"
+    }
+  },
+  "original_diagnostic_driver": "import json\nimport runpy\nimport sqlite3\nimport sys\nimport tempfile\nimport time\nfrom pathlib import Path\nfrom yorunge import api\nfrom yorunge.adapters import state, state_schema\nfrom yorunge.domain.errors import YorungeError\n\nseed = runpy.run_path('tests/fixtures/seed_migration_state.py')['seed']\nversion = int(sys.argv[1])\nmaximum = sys.argv[2] == 'maximum'\nwith tempfile.TemporaryDirectory(dir='.local', prefix='v2-limit-') as folder:\n    root = Path(folder).resolve() / 'state'\n    preparing = time.perf_counter()\n    seed(root, version=version, maximum=maximum)\n    prep = time.perf_counter()-preparing\n    conn=sqlite3.connect(root/state.DB_NAME)\n    sizes={}\n    for table in ('capability_cache','execution_plans','execution_approvals'):\n        if conn.execute('SELECT 1 FROM sqlite_schema WHERE name=?',(table,)).fetchone():\n            sizes[table]=conn.execute(f'SELECT count(*),sum(length(CAST(payload AS BLOB))),max(length(CAST(payload AS BLOB))) FROM {table}').fetchone()\n    conn.close()\n    started=time.perf_counter()\n    error=None\n    try:\n        result=api.initialize_state(state_dir=root)\n    except YorungeError as failure:\n        error=failure.code\n    elapsed=time.perf_counter()-started\n    conn=sqlite3.connect(root/state.DB_NAME)\n    after=conn.execute('PRAGMA user_version').fetchone()[0]\n    valid=time.perf_counter()\n    state.validate(conn,state_schema.MIGRATIONS,full=True)\n    valid=time.perf_counter()-valid\n    conn.close()\n    print(json.dumps({'version':version,'maximum':maximum,'prep_seconds':prep,'sizes':sizes,'elapsed_seconds':elapsed,'error':error,'final_version':after,'post_validation_seconds':valid},indent=2))\n",
+  "profiled_diagnostic_driver": "import json\nimport runpy\nimport sqlite3\nimport sys\nimport tempfile\nimport time\nfrom pathlib import Path\nfrom yorunge import api\nfrom yorunge.adapters import state, state_schema\nfrom yorunge.domain.errors import YorungeError\n\nseed = runpy.run_path('tests/fixtures/seed_migration_state.py')['seed']\nversion = int(sys.argv[1])\nmaximum = sys.argv[2] == 'maximum'\nwith tempfile.TemporaryDirectory(dir='.local', prefix='v2-limit-') as folder:\n    root = Path(folder).resolve() / 'state'\n    preparing = time.perf_counter()\n    seed(root, version=version, maximum=maximum)\n    prep = time.perf_counter()-preparing\n    conn=sqlite3.connect(root/state.DB_NAME)\n    sizes={}\n    for table in ('capability_cache','execution_plans','execution_approvals'):\n        if conn.execute('SELECT 1 FROM sqlite_schema WHERE name=?',(table,)).fetchone():\n            sizes[table]=conn.execute(f'SELECT count(*),sum(length(CAST(payload AS BLOB))),max(length(CAST(payload AS BLOB))) FROM {table}').fetchone()\n    conn.close()\n    started=time.perf_counter()\n    error=None\n    try:\n        result=api.initialize_state(state_dir=root)\n    except YorungeError as failure:\n        error=failure.code\n    elapsed=time.perf_counter()-started\n    conn=sqlite3.connect(root/state.DB_NAME)\n    after=conn.execute('PRAGMA user_version').fetchone()[0]\n    valid=time.perf_counter()\n    if len(sys.argv) > 3 and sys.argv[3] == 'profile':\n        import cProfile\n        with cProfile.Profile() as profile:\n            state.validate(conn,state_schema.MIGRATIONS,full=True)\n        profile.dump_stats(f'.local/p013-max{version}-post-validation.prof')\n    else:\n        state.validate(conn,state_schema.MIGRATIONS,full=True)\n    valid=time.perf_counter()-valid\n    conn.close()\n    print(json.dumps({'version':version,'maximum':maximum,'prep_seconds':prep,'sizes':sizes,'elapsed_seconds':elapsed,'error':error,'final_version':after,'post_validation_seconds':valid},indent=2))\n",
+  "profile_summary": [
+    {
+      "file": "src/yorunge/adapters/state.py",
+      "line": 188,
+      "function": "validate",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 2.5624e-05,
+      "cumulative_seconds": 32.143880833000004
+    },
+    {
+      "file": "src/yorunge/adapters/state.py",
+      "line": 219,
+      "function": "validate_contents",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 4.2583e-05,
+      "cumulative_seconds": 32.143614541000005
+    },
+    {
+      "file": "src/yorunge/adapters/validation_memo.py",
+      "line": 62,
+      "function": "validated",
+      "primitive_calls": 3072,
+      "calls": 3072,
+      "self_seconds": 0.017179833000000002,
+      "cumulative_seconds": 31.910538385000002
+    },
+    {
+      "file": "src/yorunge/domain/capabilities.py",
+      "line": 76,
+      "function": "model_validate_json",
+      "primitive_calls": 4096,
+      "calls": 4096,
+      "self_seconds": 0.012906013000000001,
+      "cumulative_seconds": 31.369193672
+    },
+    {
+      "file": "third_party/pydantic/main.py",
+      "line": 800,
+      "function": "model_validate_json",
+      "primitive_calls": 4096,
+      "calls": 4096,
+      "self_seconds": 0.0015100530000000001,
+      "cumulative_seconds": 31.119063091
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'validate_json' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+      "primitive_calls": 4096,
+      "calls": 4096,
+      "self_seconds": 0.304552127,
+      "cumulative_seconds": 31.117553038
+    },
+    {
+      "file": "src/yorunge/domain/capabilities.py",
+      "line": 100,
+      "function": "unicode_text",
+      "primitive_calls": 1017864,
+      "calls": 1017864,
+      "self_seconds": 0.320452644,
+      "cumulative_seconds": 29.257528041
+    },
+    {
+      "file": "src/yorunge/domain/models.py",
+      "line": 46,
+      "function": "has_control_characters",
+      "primitive_calls": 783366,
+      "calls": 783366,
+      "self_seconds": 0.124976897,
+      "cumulative_seconds": 28.862351418000003
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method builtins.any>",
+      "primitive_calls": 933914,
+      "calls": 933914,
+      "self_seconds": 4.684147603,
+      "cumulative_seconds": 28.845074763000003
+    },
+    {
+      "file": "src/yorunge/adapters/execution_store.py",
+      "line": 66,
+      "function": "plan_validation",
+      "primitive_calls": 2048,
+      "calls": 2048,
+      "self_seconds": 0.0032177240000000004,
+      "cumulative_seconds": 25.277133479000003
+    },
+    {
+      "file": "src/yorunge/adapters/execution_store.py",
+      "line": 69,
+      "function": "build",
+      "primitive_calls": 2048,
+      "calls": 2048,
+      "self_seconds": 0.002220014,
+      "cumulative_seconds": 25.262397504000003
+    },
+    {
+      "file": "src/yorunge/adapters/execution_store.py",
+      "line": 33,
+      "function": "decode_plan",
+      "primitive_calls": 2048,
+      "calls": 2048,
+      "self_seconds": 0.003225589,
+      "cumulative_seconds": 24.879047946
+    },
+    {
+      "file": "src/yorunge/domain/models.py",
+      "line": 47,
+      "function": "<genexpr>",
+      "primitive_calls": 155433006,
+      "calls": 155433006,
+      "self_seconds": 17.879197759,
+      "cumulative_seconds": 24.105826238000002
+    },
+    {
+      "file": "src/yorunge/adapters/execution_store.py",
+      "line": 381,
+      "function": "validate_approvals",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 0.004324102000000001,
+      "cumulative_seconds": 12.767375167
+    },
+    {
+      "file": "src/yorunge/adapters/execution_store.py",
+      "line": 86,
+      "function": "validate_plans",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 0.016458358,
+      "cumulative_seconds": 12.6696165
+    },
+    {
+      "file": "src/yorunge/adapters/capability_cache.py",
+      "line": 174,
+      "function": "validate_cache",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 0.013876897000000001,
+      "cumulative_seconds": 6.652409291000001
+    },
+    {
+      "file": "src/yorunge/adapters/capability_cache.py",
+      "line": 156,
+      "function": "cache_validation",
+      "primitive_calls": 1024,
+      "calls": 1024,
+      "self_seconds": 0.0016745120000000002,
+      "cumulative_seconds": 6.638297142000001
+    },
+    {
+      "file": "src/yorunge/adapters/capability_cache.py",
+      "line": 159,
+      "function": "build",
+      "primitive_calls": 1024,
+      "calls": 1024,
+      "self_seconds": 0.0014754260000000002,
+      "cumulative_seconds": 6.630567952000001
+    },
+    {
+      "file": "src/yorunge/adapters/capability_cache.py",
+      "line": 126,
+      "function": "decode_entry",
+      "primitive_calls": 1024,
+      "calls": 1024,
+      "self_seconds": 0.0071204250000000005,
+      "cumulative_seconds": 6.617628912000001
+    },
+    {
+      "file": "src/yorunge/adapters/capability_cache.py",
+      "line": 114,
+      "function": "decode_record",
+      "primitive_calls": 1024,
+      "calls": 1024,
+      "self_seconds": 0.002137698,
+      "cumulative_seconds": 6.445919161000001
+    }
+  ]
+}

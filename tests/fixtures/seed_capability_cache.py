@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from yorunge import api
-from yorunge.adapters.capability_cache import StateCache, group_key
+from yorunge.adapters.capability_cache import StateCache, decode_entry, group_key
+from yorunge.adapters.expiry_fences import save_expiries
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_store
 from yorunge.application.capabilities import LocalPolicyProducer, combine
@@ -15,6 +17,7 @@ from yorunge.domain.capabilities import (
     CapabilityScopeV2,
     ExecutionBinding,
     canonical,
+    timestamp,
 )
 from yorunge.domain.credentials import (
     EnvReference,
@@ -24,7 +27,9 @@ from yorunge.domain.credentials import (
 )
 
 
-def seed(root: Path, config: Path) -> None:
+def seed(root: Path, config: Path, *, evidence_count: int = 1) -> None:
+    if type(evidence_count) is not int or not 1 <= evidence_count <= 8:
+        raise ValueError("one to eight synthetic proofs required")
     if root.exists() or root.is_symlink():
         raise ValueError("use a new synthetic state directory; existing data is preserved")
     api.query_capabilities(task="llm.train", config=config, state_dir=root, refresh=True)
@@ -67,8 +72,22 @@ def seed(root: Path, config: Path) -> None:
                 key = CapabilityKey(
                     capability_id="fixture.discovery", task="llm.train", scope=scope
                 )
-                proof = LocalPolicyProducer("unknown", "not_verified").observe(key, stamp.now)
-                record = combine(key, None, proof, stamp.now, replace_own=True)
+                proofs = LocalPolicyProducer("unknown", "not_verified").observe(key, stamp.now)
+                if evidence_count > 1:
+                    proofs = tuple(
+                        proofs[0].model_copy(
+                            update={
+                                "producer_id": f"fixture-producer-{index}",
+                                "support": "supported" if index % 2 else "unsupported",
+                                "checked_at": timestamp(stamp.now - timedelta(microseconds=index)),
+                                "expires_at": timestamp(
+                                    stamp.now + timedelta(seconds=300, microseconds=-index)
+                                ),
+                            }
+                        )
+                        for index in range(evidence_count)
+                    )
+                record = combine(key, None, proofs, stamp.now, replace_own=True)
                 rows.append(
                     (
                         key.digest(),
@@ -78,7 +97,7 @@ def seed(root: Path, config: Path) -> None:
                         canonical(record.model_dump(mode="json")).decode("ascii"),
                         len(rows) + 3,
                         record.checked_at,
-                        None,
+                        record.pinned_until(),
                     )
                 )
         store.connection.execute("BEGIN IMMEDIATE")
@@ -86,6 +105,9 @@ def seed(root: Path, config: Path) -> None:
             store.connection.executemany(
                 "INSERT INTO capability_cache VALUES(?,?,?,?,?,?,?,?)", rows
             )
+            for row in rows:
+                record, _ = decode_entry(row)
+                save_expiries(store.connection, record)
             store.connection.execute(
                 "UPDATE cache_clock SET mutation_revision=? WHERE singleton=1", (len(rows) + 2,)
             )

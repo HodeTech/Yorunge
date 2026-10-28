@@ -58,6 +58,7 @@ def test_real_state_reopen_cli_and_pragmas(tmp_path, cli):
             "credential_bindings",
             "cache_clock",
             "capability_cache",
+            "capability_expiries",
             "execution_plans",
             "execution_approvals",
         }

@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-10-27. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-10-28. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -16,7 +16,8 @@
 | [0010](0010-roadmap-readiness-and-agent-skills.md) | Hazır iş kartı, dar faz sınırları ve ortak ajan skill kütüphanesi | Accepted |
 | [0011](0011-state-foundation-and-migrations.md) | B02 yerel store, dayanıklılık ve işlemsel migration temeli | Accepted — P01-4a temeli verified; operation/lease sonraki iş |
 | [0012](0012-credential-identity-and-change-detection.md) | B13 opak kimlik/nesil, özel HMAC doğrulayıcı ve yerel key yaşam döngüsü | Accepted — P01-2b identity gözlem/reset/restore verified; operation tüketicisi sonraki iş |
-| [0013](0013-scoped-capability-cache.md) | P01-3 kapsamlı capability cache, kanıt otoritesi, tazelik/saat ve saklama | Accepted — 2026-10-27 kullanıcı onayı; uygulandı, bütünleşik PR kabulü sürüyor |
-| [0014](0014-execution-plan-validity-and-approval.md) | Ayrı execution v2, geçerlilik/onay ve P01-3 bakım uyumluluğu | Accepted — 2026-10-27 kullanıcı onayı; uygulandı, bütünleşik PR kabulü sürüyor |
+| [0013](0013-scoped-capability-cache.md) | P01-3 kapsamlı capability cache, kanıt otoritesi, tazelik/saat ve saklama | Accepted — 2026-10-27 kullanıcı onayı; PR #8 teslimi verified, PR #9 merge sonrası takip |
+| [0014](0014-execution-plan-validity-and-approval.md) | Ayrı execution v2, geçerlilik/onay ve P01-3 bakım uyumluluğu | Accepted — 2026-10-27 kullanıcı onayı; PR #8 teslimi verified, PR #9 merge sonrası takip |
+| [0015](0015-checksummed-data-migrations.md) | ADR-0011'in yalnız yeni V2 adımlarındaki checksum tanımına kısmi değişiklik; V1 1–4 korunur | Accepted — 2026-10-28 kullanıcı onayı; PR #9 uygulama/review/bütçe doğrulandı, merge bekliyor |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

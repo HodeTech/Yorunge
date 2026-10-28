@@ -48,8 +48,8 @@ else:
             connection.execute("PRAGMA cache_size=1")
         return connection
 
-    def apply(connection, step):
-        original_apply(connection, step)
+    def apply(connection, step, deadline, transform=None):
+        original_apply(connection, step, deadline, transform)
         if boundary == "migration-write":
             cut()
 

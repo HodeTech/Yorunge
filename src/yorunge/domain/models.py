@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Annotated, Generic, Literal, TypeVar
 from urllib.parse import urlsplit
 
@@ -43,8 +44,11 @@ LLM_TASKS: frozenset[str] = frozenset(
 TOOL_IDS: frozenset[str] = frozenset({"forgelm", "axolotl", "llamafactory", "unsloth"})
 
 
+CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
 def has_control_characters(value: str) -> bool:
-    return any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in value)
+    return CONTROL_CHARACTERS.search(value) is not None
 
 
 class Model(BaseModel):
@@ -242,12 +246,16 @@ class Capability(Model):
 
 
 class CapabilityView(Model):
+    model_config = ConfigDict(defer_build=True)
+
     context: Context
     selection: Selection
     records: tuple[Capability, ...]
 
 
 class Plan(Model):
+    model_config = ConfigDict(defer_build=True)
+
     schema_version: Literal[1] = 1
     mode: Literal["offline"] = "offline"
     state: Literal["draft"] = "draft"

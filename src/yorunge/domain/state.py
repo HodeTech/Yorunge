@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 
 from yorunge.domain.models import Model
 
@@ -25,6 +25,8 @@ def check_utc(value: object) -> None:
 
 
 class StateInfo(Model):
+    model_config = ConfigDict(defer_build=True)
+
     schema_version: Literal[1] = 1
     store_schema_version: int
     store_id: str

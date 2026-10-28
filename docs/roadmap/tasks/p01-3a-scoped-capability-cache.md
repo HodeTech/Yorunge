@@ -8,7 +8,7 @@ capabilities: [C02, C13]
 ---
 # P01-3a — Kapsamlı capability cache ve tazelik
 
-**Tarih:** 2026-10-27. **Paket:** [P01-3](../p01-3-delivery-plan.md). Doğrudan önkoşullar verified; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. Adım 1 uygulaması ve iki bağımsız review turu tamamlandı.
+**Güncellendi:** 2026-10-28. **Paket:** [P01-3](../p01-3-delivery-plan.md). Doğrudan önkoşullar verified; ADR-0013/0014 ve bağlı ScopeV2 2026-10-27 kullanıcı onayıyla Accepted. Adım 1 ve bütünleşik kabul tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) 2026-10-28 tarihinde development'a alındı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -48,6 +48,6 @@ Unit kanıt/clock/scope; contract eski v1/new v2/CLI/API/sızıntı; integration
 
 ## Teslim kaydı
 
-- PR/commit: [uygulama a3287b0](https://github.com/HodeTech/Yorunge/commit/a3287b0), [review 1 cd8e812](https://github.com/HodeTech/Yorunge/commit/cd8e812); review 2 saat düzeltmesi ve kapanış aynı dalda kaydedildi.
+- PR/commit: [PR #8](https://github.com/HodeTech/Yorunge/pull/8), [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa); [uygulama a3287b0](https://github.com/HodeTech/Yorunge/commit/a3287b0), [review 1 cd8e812](https://github.com/HodeTech/Yorunge/commit/cd8e812); review 2 saat düzeltmesi ve kapanış aynı dalda kaydedildi.
 - Sonuç: [Kanonik uygulama/test/review/performans kanıtı](../../research/p01-3-implementation-validation.md). Adım 1 kapanışında tam takım 929 test; Ruff/strict mypy, belge/ajan denetimi, wheel/sdist iki temiz kurulum ve 1.024 kayıtta cache p95 157,082 ms başarılıdır. İki tur toplam altı yeni reviewer ve son saat bulgusunun bağımsız yeniden probu tamamlandı.
-- Kalan sınır: Canlı EVREN/Windows/fiziksel güç kesintisi kanıtı yoktur. P01-3b'nin gerçek plan/onay tüketicileriyle bütünleşik kabul tamamlandı. [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesinde; son 1.133 test ve Linux CI kanıtı kanonik kayıttadır.
+- Kalan sınır: Canlı EVREN/Windows/fiziksel güç kesintisi kanıtı yoktur. P01-3b'nin gerçek plan/onay tüketicileriyle bütünleşik kabul tamamlandı. P01-3 development'a alındı; son 1.159 test ve merge sonrası Linux CI kanıtı [merge kapanışındadır](../../research/p01-3-implementation-validation.md#development-merge-kapanışı).

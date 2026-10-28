@@ -14,6 +14,71 @@ from yorunge.adapters.state import open_store
 from yorunge.domain.errors import ApprovalNotEffective, YorungeError
 
 
+@pytest.mark.parametrize("owner", ["plan", "approval"])
+def test_cached_query_fences_other_plan_and_approval_expiry(
+    tmp_path, execution_fixture, execution_clock, monkeypatch, owner
+):
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.domain.capabilities import instant, timestamp
+
+    state, base = tmp_path / "state", execution_clock.value
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    assert plan.status == "prepared"
+    expires = instant(plan.expires_at)
+    if owner == "approval":
+
+        def shorten(assessment):
+            end = timestamp(execution_clock.value + timedelta(seconds=60))
+            return assessment.model_copy(
+                update={
+                    "capabilities": tuple(
+                        record.model_copy(
+                            update={
+                                "expires_at": end,
+                                "evidence": tuple(
+                                    proof.model_copy(update={"expires_at": end})
+                                    for proof in record.evidence
+                                ),
+                            }
+                        )
+                        for record in assessment.capabilities
+                    ),
+                }
+            )
+
+        execution_fixture.change = shorten
+        approval = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state).data
+        assert approval.effective
+        expires = instant(approval.record.expires_at)
+        assert expires < instant(plan.expires_at)
+        execution_fixture.change = None
+    execution_clock.value = base + timedelta(seconds=10)
+    api.query_capabilities(task="llm.train", state_dir=state, refresh=True)
+    finish = StateCache._finish
+
+    def advance_after_query_commit(self, *args, **kwargs):
+        execution_clock.value = expires + timedelta(seconds=1)
+        return finish(self, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(StateCache, "_finish", advance_after_query_commit)
+        records = api.query_capabilities(task="llm.train", state_dir=state).data.records
+        assert all(record.freshness == "fresh" for record in records)
+    with open_store(state) as store:
+        assert store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[
+            0
+        ] >= timestamp(execution_clock.value)
+    execution_clock.value = expires - timedelta(seconds=1)
+    validity = api.validate_execution_plan(plan.plan_id, state_dir=state).data
+    assert not validity.valid
+    if owner == "approval":
+        assert not validity.approval.effective
+    with open_store(state) as store:
+        assert (
+            store.connection.execute("SELECT clock_generation FROM cache_clock").fetchone()[0] == 2
+        )
+
+
 def test_approval_revalidates_is_idempotent_and_revoke_requires_new_validation(
     tmp_path,
     execution_fixture,

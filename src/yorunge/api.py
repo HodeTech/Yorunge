@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic import ValidationError
+from pydantic import ConfigDict, ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
 from yorunge.application.planning import build_plan, capability_records, resolve_selection
@@ -56,6 +56,8 @@ class Request(Model):
 
 
 class CredentialRequest(Request):
+    model_config = ConfigDict(defer_build=True)
+
     service_id: ServiceId
 
 

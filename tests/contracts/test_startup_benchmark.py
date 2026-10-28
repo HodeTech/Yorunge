@@ -41,7 +41,8 @@ def test_full_benchmark_measures_cache_and_reports_its_real_dataset(tmp_path, mo
     def measure(command, *, cache_hit=False):
         calls.append((command, cache_hit))
         assert cache_hit == ("--cached" in command)
-        return 10.0  # Control-flow fixture; this is not a performance measurement.
+        # Control-flow fixture; this is not a performance measurement.
+        return checks["Sample"](10.0, 0.0, 0.0)
 
     monkeypatch.setitem(main.__globals__, "measure", measure)
     report = tmp_path / "startup.json"
@@ -66,4 +67,23 @@ def test_full_benchmark_measures_cache_and_reports_its_real_dataset(tmp_path, mo
     assert set(value["measurements"]) == {"help", "version", "context", "cache"}
     assert value["measurements"]["cache"]["fresh_cache_hit_verified"]
     assert len(value["measurements"]["cache"]["warm_samples_ms"]) == 30
+    assert len(value["measurements"]["cache"]["warm_child_user_cpu_ms"]) == 30
+    assert len(value["measurements"]["cache"]["warm_child_system_cpu_ms"]) == 30
     assert sum(cache_hit for _, cache_hit in calls) == 34
+
+
+def test_child_cpu_diagnostics_preserve_wall_measurement_and_allow_unavailable_metadata(
+    monkeypatch,
+):
+    helpers = runpy.run_path(str(SCRIPT))
+    sample = helpers["measure"]([sys.executable, "-c", "sum(i*i for i in range(250000))"])
+    assert sample.wall_ms > 0
+    if helpers["resource_module"] is not None:
+        assert sample.user_ms >= 0
+        assert sample.system_ms >= 0
+        assert sample.user_ms + sample.system_ms > 0
+    monkeypatch.setitem(helpers["measure"].__globals__, "resource_module", None)
+    unavailable = helpers["measure"]([sys.executable, "--version"])
+    assert unavailable.wall_ms > 0
+    assert unavailable.user_ms is None
+    assert unavailable.system_ms is None

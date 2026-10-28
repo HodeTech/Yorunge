@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
 
@@ -49,12 +50,45 @@ def decode_plan(row: tuple[object, ...]) -> ExecutionPlan:
         raise YorungeError("state_invalid") from None
 
 
+@dataclass(frozen=True)
+class PlanValidation:
+    plan_id: str
+    digest: str
+    store_id: str
+    identity_epoch: str
+    clock_generation: int
+    prepared_at: str
+    expires_at: str
+    status: str
+    bound_digest: str
+
+
+def plan_validation(row: tuple[object, ...]) -> PlanValidation:
+    from yorunge.adapters.validation_memo import validated
+
+    def build() -> PlanValidation:
+        plan = decode_plan(row)
+        return PlanValidation(
+            plan.plan_id,
+            plan.digest,
+            plan.store_id,
+            plan.identity_epoch,
+            plan.clock_generation,
+            plan.prepared_at,
+            plan.expires_at,
+            plan.status,
+            binding_digest(plan),
+        )
+
+    return validated(PlanValidation, row, build)
+
+
 def validate_plans(connection: sqlite3.Connection) -> None:
     value = metadata(connection)
     generation = connection.execute("SELECT clock_generation FROM cache_clock").fetchone()[0]
     count = 0
     for row in connection.execute(f"SELECT {PLAN_COLUMNS} FROM execution_plans"):
-        plan = decode_plan(row)
+        plan = plan_validation(row)
         if plan.store_id != value.store_id or (
             plan.identity_epoch == value.identity_epoch and plan.clock_generation > generation
         ):
@@ -294,7 +328,9 @@ def list_plans(connection: sqlite3.Connection, limit: int, cursor: str | None) -
 APPROVAL_COLUMNS = "plan_id,approval_id,status,approved_at,expires_at,revoked_at,payload"
 
 
-def decode_approval(row: tuple[object, ...], plan: ExecutionPlan) -> ExecutionApproval:
+def decode_approval(
+    row: tuple[object, ...], plan: ExecutionPlan | PlanValidation
+) -> ExecutionApproval:
     try:
         identifier, approval_id, status, approved, expires, revoked, payload = row
         if not isinstance(payload, str) or len(payload.encode("utf-8")) > 4096:
@@ -321,7 +357,7 @@ def decode_approval(row: tuple[object, ...], plan: ExecutionPlan) -> ExecutionAp
             != (
                 plan.plan_id,
                 plan.digest,
-                binding_digest(plan),
+                plan.bound_digest if isinstance(plan, PlanValidation) else binding_digest(plan),
                 plan.store_id,
                 plan.identity_epoch,
                 plan.clock_generation,
@@ -344,10 +380,12 @@ def read_approval(connection: sqlite3.Connection, plan: ExecutionPlan) -> Execut
 
 def validate_approvals(connection: sqlite3.Connection) -> None:
     for row in connection.execute(f"SELECT {APPROVAL_COLUMNS} FROM execution_approvals"):
-        try:
-            plan = read_plan(connection, row[0])
-        except YorungeError:
+        saved = connection.execute(
+            f"SELECT {PLAN_COLUMNS} FROM execution_plans WHERE plan_id=?", (row[0],)
+        ).fetchone()
+        if saved is None:
             raise YorungeError("state_invalid") from None
+        plan = plan_validation(saved)
         decode_approval(row, plan)
 
 

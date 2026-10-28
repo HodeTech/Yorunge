@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "source_store_schema_version": 4,
+  "record_schema_version": 2,
+  "purpose": "Fixed synthetic acceptance inputs for Proposed ADR-0015; not a V2 implementation result",
+  "expected_values": "Hand-authored date sets, independent of migration, combine, expiry helpers and validator; key hashes frozen from canonical input bytes",
+  "source_columns": [
+    "cache_key",
+    "key_json",
+    "projection_key",
+    "group_key",
+    "payload",
+    "mutation_revision",
+    "checked_at",
+    "pinned_until"
+  ],
+  "vectors": [
+    {
+      "id": "aggregate-only",
+      "source_row": [
+        "6f73f1627cede27637073204be99d1fa1461965c3a31db8b963d3f76253386e2",
+        "{\"capability_id\":\"fixture.aggregate-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.aggregate-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":null,\"evidence\":[],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"key\":{\"capability_id\":\"fixture.aggregate-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"unknown\"}",
+        1,
+        "2026-10-28T00:00:00.000000Z",
+        null
+      ],
+      "expected_expiries": [
+        [
+          "6f73f1627cede27637073204be99d1fa1461965c3a31db8b963d3f76253386e2",
+          "2026-10-28T00:00:30.000000Z"
+        ]
+      ]
+    },
+    {
+      "id": "one-proof",
+      "source_row": [
+        "ba8a28655154891b96457c809849be3c76402fc1c7715e24eae8c4541683595b",
+        "{\"capability_id\":\"fixture.one-proof\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.one-proof\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":null,\"evidence\":[{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:05:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-0\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"}],\"expires_at\":\"2026-10-28T00:05:00.000000Z\",\"key\":{\"capability_id\":\"fixture.one-proof\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"supported\"}",
+        2,
+        "2026-10-28T00:00:00.000000Z",
+        null
+      ],
+      "expected_expiries": [
+        [
+          "ba8a28655154891b96457c809849be3c76402fc1c7715e24eae8c4541683595b",
+          "2026-10-28T00:05:00.000000Z"
+        ]
+      ]
+    },
+    {
+      "id": "multiple-proofs",
+      "source_row": [
+        "e6d065670e50c0ef11c6fbf52ea5994c8930e535a875d30ee6eebb68b5b5427f",
+        "{\"capability_id\":\"fixture.multiple-proofs\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.multiple-proofs\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":null,\"evidence\":[{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:05:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-0\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:02:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-1\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unsupported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:01:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-2\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"requires_access\"}],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"key\":{\"capability_id\":\"fixture.multiple-proofs\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"unknown\"}",
+        3,
+        "2026-10-28T00:00:00.000000Z",
+        "2026-10-28T00:05:00.000000Z"
+      ],
+      "expected_expiries": [
+        [
+          "e6d065670e50c0ef11c6fbf52ea5994c8930e535a875d30ee6eebb68b5b5427f",
+          "2026-10-28T00:00:30.000000Z"
+        ],
+        [
+          "e6d065670e50c0ef11c6fbf52ea5994c8930e535a875d30ee6eebb68b5b5427f",
+          "2026-10-28T00:01:00.000000Z"
+        ],
+        [
+          "e6d065670e50c0ef11c6fbf52ea5994c8930e535a875d30ee6eebb68b5b5427f",
+          "2026-10-28T00:02:00.000000Z"
+        ],
+        [
+          "e6d065670e50c0ef11c6fbf52ea5994c8930e535a875d30ee6eebb68b5b5427f",
+          "2026-10-28T00:05:00.000000Z"
+        ]
+      ]
+    },
+    {
+      "id": "blocker-only",
+      "source_row": [
+        "bf60bff66640e5d5c0d7513bcf8f79a861f85694db33b4343e8f933ab59f316a",
+        "{\"capability_id\":\"fixture.blocker-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.blocker-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":\"2026-10-28T00:05:00.000000Z\",\"evidence\":[],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"key\":{\"capability_id\":\"fixture.blocker-only\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"unknown\"}",
+        4,
+        "2026-10-28T00:00:00.000000Z",
+        "2026-10-28T00:05:00.000000Z"
+      ],
+      "expected_expiries": [
+        [
+          "bf60bff66640e5d5c0d7513bcf8f79a861f85694db33b4343e8f933ab59f316a",
+          "2026-10-28T00:00:30.000000Z"
+        ],
+        [
+          "bf60bff66640e5d5c0d7513bcf8f79a861f85694db33b4343e8f933ab59f316a",
+          "2026-10-28T00:05:00.000000Z"
+        ]
+      ]
+    },
+    {
+      "id": "coincident-dates",
+      "source_row": [
+        "af7000417d1fba992ae4f5c3d93270bf87d8bf79b7cf20100ea1591a349338c4",
+        "{\"capability_id\":\"fixture.coincident-dates\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.coincident-dates\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":\"2026-10-28T00:00:30.000000Z\",\"evidence\":[{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-0\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unknown\"}],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"key\":{\"capability_id\":\"fixture.coincident-dates\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"unknown\"}",
+        5,
+        "2026-10-28T00:00:00.000000Z",
+        "2026-10-28T00:00:30.000000Z"
+      ],
+      "expected_expiries": [
+        [
+          "af7000417d1fba992ae4f5c3d93270bf87d8bf79b7cf20100ea1591a349338c4",
+          "2026-10-28T00:00:30.000000Z"
+        ]
+      ]
+    },
+    {
+      "id": "maximum-evidence",
+      "source_row": [
+        "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+        "{\"capability_id\":\"fixture.maximum-evidence\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "{\"capability_id\":\"fixture.maximum-evidence\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"}",
+        "22222222-2222-4222-8222-222222222222:local:0",
+        "{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"conflict_until\":\"2026-10-28T00:04:30.000000Z\",\"evidence\":[{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:01:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-0\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:01:30.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-1\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unsupported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:02:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-2\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:02:30.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-3\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unsupported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:03:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-4\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:03:30.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-5\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unsupported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:04:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-6\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"supported\"},{\"checked_at\":\"2026-10-28T00:00:00.000000Z\",\"constraints\":[],\"expires_at\":\"2026-10-28T00:05:00.000000Z\",\"kind\":\"local_policy\",\"policy_version\":1,\"producer_id\":\"fixture-7\",\"producer_version\":\"v1\",\"provenance\":\"synthetic-only\",\"reason_code\":\"fixture_proof\",\"support\":\"unsupported\"}],\"expires_at\":\"2026-10-28T00:00:30.000000Z\",\"key\":{\"capability_id\":\"fixture.maximum-evidence\",\"scope\":{\"account_id\":null,\"api_base_path\":null,\"authorization_scope\":null,\"clock_generation\":1,\"credential_id\":null,\"credential_revision\":null,\"execution\":{\"backend\":\"local\",\"environment_digest\":null,\"runtime_id\":null,\"runtime_revision\":null},\"identity_epoch\":\"22222222-2222-4222-8222-222222222222\",\"model\":null,\"project_id\":null,\"schema_version\":2,\"service_id\":\"local\",\"service_origin\":null,\"store_id\":\"11111111-1111-4111-8111-111111111111\",\"tool\":null},\"task\":\"llm.train\"},\"message\":\"Synthetic migration acceptance vector\",\"reason_code\":\"fixture_record\",\"schema_version\":2,\"support\":\"unknown\"}",
+        6,
+        "2026-10-28T00:00:00.000000Z",
+        "2026-10-28T00:05:00.000000Z"
+      ],
+      "expected_expiries": [
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:00:30.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:01:00.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:01:30.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:02:00.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:02:30.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:03:00.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:03:30.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:04:00.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:04:30.000000Z"
+        ],
+        [
+          "faca0e0b6f9d6b38b9617c6ab956ee682b1650dbc13beaabae3b0eed2152edd8",
+          "2026-10-28T00:05:00.000000Z"
+        ]
+      ]
+    }
+  ]
+}
