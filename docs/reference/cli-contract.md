@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** v1; aşağıdaki dar çevrimdışı alt küme uygulanmıştır, diğer komutlar tasarımdır. **Tarih:** 2026-10-27.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. HTTP/NDJSON/jobs/run planlandı. **Tarih:** 2026-10-28.
 
 ## Uygulanan alt küme
 
@@ -15,21 +15,23 @@
 | `yorunge state reset/restore/recover` | Varsayılan etki önizlemesi; açık `--confirm DIGEST` ile bakım |
 | `yorunge state init [--state-dir PATH]` | Açık yerel store/key oluşturma veya mevcut store'u doğrulama; env/ağ yok |
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
+| `yorunge capabilities --task TASK --cached\|--refresh [--state-dir PATH]` | Açık private cache/clock kullanımı; yalnız mevcut yerel kanıt, uzak discovery yok |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
+| `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
-İlk sürüm `--config PATH`, `--profile NAME`, `--project ID`, `--output text|json`, `--non-interactive` seçeneklerini uygular. Ortak seçenekler komuttan önce veya sonra verilebilir; kısaltmalar kabul edilmez. Plan/capability için `--recipe PATH`, `--tool ID`, `--execution BACKEND`; genel plan/capability için ayrıca `--task TASK` vardır. `--refresh`, `ndjson`, rehberli mod ve bütün `run` komutları henüz yoktur. `plan show` context değiştiren seçenekleri reddeder; profil değişimiyle seçim yenilemez.
+İlk sürüm `--config PATH`, `--profile NAME`, `--project ID`, `--output text|json`, `--non-interactive` seçeneklerini uygular. Ortak seçenekler komuttan önce veya sonra verilebilir; kısaltmalar kabul edilmez. Plan/capability için `--recipe PATH`, `--tool ID`, `--execution BACKEND`; genel plan/capability için ayrıca `--task TASK` vardır. `--cached`/`--refresh` yalnız capability sorgusunda birbirini dışlayarak desteklenir; bu ailede `--state-dir` ancak bu açık modlardan biriyle geçerlidir. `ndjson`, rehberli mod ve bütün `run` komutları henüz yoktur. `plan show` context değiştiren seçenekleri reddeder; profil değişimiyle seçim yenilemez.
 
 Yeni plan seçim önceliği [config sözleşmesindedir](configuration.md#öncelik-ve-sabitleme). `train plan` görevi açık `llm.train` çağrısı sayılır. Açık görev override'ı reçetedeki parametreyi geçersiz kılarsa hata olur; parametre düşürülmez.
 
-Planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=offline`, `state=draft`, `executable=false`, `inputs_verified=false`, context, seçim/kaynağı, reçete, capability kayıtları, engeller ve SHA-256 digest bulunur. Bu başarı yalnız **plan hazırlığına** aittir. Araç sürümü bilinmiyor; model/veri referanslarının içeriği, yetki veya maliyet doğrulanmaz. Plan yürütülemez ve onay/operation kimliği oluşturulmaz.
+Offline v1 planlama sonucu `status=completed`, `operation_id=null`; `data` içinde `mode=offline`, `state=draft`, `executable=false`, `inputs_verified=false`, context, seçim/kaynağı, reçete, capability kayıtları, engeller ve SHA-256 digest bulunur. Bu başarı yalnız **plan hazırlığına** aittir. Araç sürümü bilinmiyor; model/veri referanslarının içeriği, yetki veya maliyet doğrulanmaz. Plan yürütülemez ve onay/operation kimliği oluşturulmaz.
 
-Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3** ve config yayın belirsizliğinde **5**'tir. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. **Plan hazırlamada** tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Geçerli bir `capabilities` sorgusu aynı seçim için çıkış 0 ve ilgili reason code ile `unsupported` kayıt döndürür; sorgunun tamamlanması yürütme desteği değildir. Sorgunun kendisi geçersizse (örneğin bilinmeyen görev veya bozuk dosya) yine 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. `credential_unavailable` (referans/değer yok veya boş) ve `invalid_credential` (UTF-8/16.384 bayt sınırı) çıkış 3; `invalid_service_target` çıkış 2'dir. Credential kontrolü hesap/izin doğrulaması değildir; `available=true`, `remote_verified=false` ve sır içermeyen hedef/context metadata'sı döndürür. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; bozuk standart YAML scalar tag'leri de güvenli `invalid_recipe` olur. JSON hatası tek nesne stderr, stdout boştur. Diğer çıkış kodları aşağıda gelecekteki yürütme sözleşmesidir.
+Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**, execution/forget digest onayında **4** ve config yayın belirsizliğinde **5**'tir. Bilinen ama adaptörü olmayan araç, seçimi koruyan ve engeli gösteren draft üretebilir; bu okuma/planlama başarıyla tamamlanır. **Offline v1 plan hazırlamada** tanınmayan araç `tool_unavailable`, uyumsuz görev/araç/ortam `unsupported_combination` ile 2 döner. Geçerli bir `capabilities` sorgusu aynı seçim için çıkış 0 ve ilgili reason code ile `unsupported` kayıt döndürür; sorgunun tamamlanması yürütme desteği değildir. Sorgunun kendisi geçersizse (örneğin bilinmeyen görev veya bozuk dosya) yine 2 döner. Diğer kararlı kodlar: `invalid_request`, `invalid_config`, `invalid_recipe`, `invalid_plan`, `file_unreadable`, `profile_not_found`. `credential_unavailable` (referans/değer yok veya boş) ve `invalid_credential` (UTF-8/16.384 bayt sınırı) çıkış 3; `invalid_service_target` çıkış 2'dir. Credential kontrolü hesap/izin doğrulaması değildir; `available=true`, `remote_verified=false` ve sır içermeyen hedef/context metadata'sı döndürür. Ham parser hatası/girdi/traceback kullanıcıya basılmaz; bozuk standart YAML scalar tag'leri de güvenli `invalid_recipe` olur. JSON hatası tek nesne stderr, stdout boştur. 1/6/7 çıkışları aşağıda gelecekteki yürütme sözleşmesidir.
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor` ve açık `context identity` gözleminde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity`, cache sorgusu ve execution planı ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
 
 ## Komut alanları
 
@@ -93,6 +95,12 @@ Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0
 
 `context identity --service evren-platform|evren-llm [--state-dir PATH]` ortak config/profile/project seçiminden sonra tek env snapshot'ını kalıcı yerel kimlikle bağlar. Python karşılığı `api.observe_credential`'dır. `identity` nesnesi opak UUID, pozitif nesil, epoch ve gözlem zamanı taşır; uzak doğrulama false kalır. Eksik/geçersiz secret çıkış 3; state/taşma/bağ değişimi çıkış 2'dir. Aynı değer yeniden gözlendiğinde yazma/zaman güncellemesi yapılmaz. Eski offline komutlar ve Plan biçimi değişmez; ayrıntı [binding v1](credential-binding-v1.md).
 
+## Açık capability cache sorgusu
+
+Python `query_capabilities(*, task=None, config=None, recipe=None, profile=None, project=None, tool=None, execution=None, refresh=False, state_dir=None)` ortak tipli `Result[CachedCapabilityView]` döndürür. `refresh` strict bool, dosya/dizin argümanları Path'tir. CLI `--cached` aynı default refresh=False yoludur; bu yeni API'nin çağrılması başlı başına stateful niyettir. Eski `inspect_capabilities`/CLI varsayılanı aynı stateless v1'i üretir.
+
+Sonuçtaki hit/freshness, etkin destek ve tarihsel kayıt [cache v2 sözleşmesinde](capability-record.md#açık-cache-v2-sorgusu) tanımlıdır. Miss/stale/clock anomaly/unknown başarılı sorgu olabilir ve çıkış 0'dır; stored supported etkin karar yerine gösterilmez. `--refresh` bu sürümde ağ değil yerel politika yenilemesidir. Kapasite dolu ve pinlenmiş çelişkiler korunuyorsa `capability_capacity_exceeded`, refresh sırasında süre/bütçe dolmuşsa `capability_expired`, bağ değişmişse `state_changed` çıkış 2 olur; otomatik retry yoktur. Uzak seçili env referansı varsa eksik/geçersiz değeri mevcut credential çıkış 3 sözleşmesine uyar. Fcntl/platform kapısı bütün I/O ve env gözleminden öncedir.
+
 ## Kimlik bakımı
 
 `state reset`, `state restore --backup PATH`, `state recover` varsayılan önizleme; `--confirm DIGEST` açık uygulamadır. `--state-dir PATH` desteklenir, diğer context seçenekleri reddedilir. Python karşılıkları, önizleme alanları, kesinti/onarım sınırları ve kayıt kaybı [local-state](local-state.md#açık-reset-restore-ve-kesilmiş-restore-kurtarması) içinde kanoniktir. `state_changed`, `credential_revision_exhausted`, `state_restore_unsupported` kontrollü çıkış 2'dir; onay otomatik tekrar veya uzak yürütme izni vermez.
@@ -100,3 +108,8 @@ Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0
 ## Yerel config yönetimi ve doctor
 
 Uygulanan `init`, `context profiles`, `context use-profile NAME`, `context set-project ID`, `context clear-project` ve `doctor` seçenekleri/API sonuçları [config sözleşmesinde](configuration.md#yerel-config-yazma-ve-tanılama) tanımlıdır. Init/update no-clobber/backup/optimistic conflict ve atomik publish kullanır. `config_unsupported`, `config_exists`, `config_conflict`, `config_busy`, `config_write_failed` çıkış 2; yayın sonrası `config_write_uncertain` çıkış 5'tir. Çıkış 5'te güncel dosya ve backup incelenir, otomatik tekrar yoktur. Doctor desteklenmeyen yerel platformda I/O öncesi `state_unsupported` ile 2 döner; desteklenen ortamda tanıların toplanmasında 0 döner; `checks`/`issue_count` değerlendirilir, `not_checked` başarıya çevrilmez. Varsayılan doctor sır/K içeriği okumaz veya state/lock/key yaratmaz.
+
+
+## Kalıcı execution hazırlığı
+
+`plan execution prepare|list|show|validate|approve|revoke|forget` ve Python karşılıkları uygulandı; exact seçenekler, gövde, validity/hata ve dosya/süre sınırları [execution planı v2](execution-plan.md) içindedir. Eski `plan prepare/show` v1 kalır. Digest onayı açık ve güncel validation gerektirir; eksik/yanlış onay çıkış 4, blocked plan çıkış 2. Run/dispatch yoktur.

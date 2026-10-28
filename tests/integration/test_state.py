@@ -20,6 +20,12 @@ from yorunge.adapters.state_schema import Migration
 from yorunge.domain.errors import YorungeError
 
 
+@pytest.fixture
+def identity_only_schema(monkeypatch):
+    """Keep the original v1 migration fault experiments independent of later consumers."""
+    monkeypatch.setattr(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:1])
+
+
 def modify(root, statement, arguments=()):
     with closing(sqlite3.connect(root / DB_NAME, isolation_level=None)) as connection:
         connection.execute(statement, arguments)
@@ -39,12 +45,22 @@ def test_real_state_reopen_cli_and_pragmas(tmp_path, cli):
         assert store.connection.execute("PRAGMA synchronous").fetchone() == (3,)
         assert store.connection.execute("PRAGMA foreign_keys").fetchone() == (1,)
         assert store.connection.execute("PRAGMA trusted_schema").fetchone() == (0,)
-        assert store.connection.execute("PRAGMA user_version").fetchone() == (1,)
+        assert store.connection.execute("PRAGMA user_version").fetchone() == (
+            len(state_schema.MIGRATIONS),
+        )
         assert store.connection.execute("PRAGMA application_id").fetchone() == (0x594F5255,)
         assert {
             row[0]
             for row in store.connection.execute("SELECT name FROM sqlite_schema WHERE type='table'")
-        } == {"state_meta", "schema_migrations", "credential_bindings"}
+        } == {
+            "state_meta",
+            "schema_migrations",
+            "credential_bindings",
+            "cache_clock",
+            "capability_cache",
+            "execution_plans",
+            "execution_approvals",
+        }
     result = cli("state", "init", "--state-dir", str(root), "--output", "json", state=True)
     assert result.returncode == 0
     assert result.stderr == ""
@@ -114,7 +130,7 @@ def test_missing_wrong_key_never_regenerated(tmp_path, kind):
 @pytest.mark.parametrize(
     "sql",
     [
-        "PRAGMA user_version=2",
+        "PRAGMA user_version=999",
         "UPDATE schema_migrations SET checksum='" + "0" * 64 + "'",
         "DELETE FROM schema_migrations",
         "UPDATE schema_migrations SET applied_at='2026-10-27T00:00:00+02:00'",
@@ -146,6 +162,7 @@ def test_existing_empty_or_non_sqlite_file_is_not_adopted(tmp_path, content, exp
     assert (root / DB_NAME).read_bytes() == content
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_two_step_migration_failure_preserves_last_committed_version(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
@@ -180,6 +197,7 @@ def test_two_step_migration_failure_preserves_last_committed_version(tmp_path, m
     ]
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_backup_collision_does_not_overwrite_user_data_or_start_ddl(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
@@ -203,6 +221,7 @@ def test_backup_collision_does_not_overwrite_user_data_or_start_ddl(tmp_path, mo
     assert query(root, "SELECT name FROM sqlite_schema WHERE name='second_step'") == []
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_backup_disk_full_does_not_change_live_schema(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
@@ -272,6 +291,7 @@ def test_bounded_file_and_sqlite_lock_wait(tmp_path):
 
 
 @pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.usefixtures("identity_only_schema")
 def test_two_migration_processes_apply_step_once(tmp_path, existing):
     root = tmp_path / "state"
     if existing:
@@ -280,6 +300,7 @@ def test_two_migration_processes_apply_step_once(tmp_path, existing):
 import sys, time
 from yorunge import api
 from yorunge.adapters import state_schema as s
+s.MIGRATIONS = s.MIGRATIONS[:1]
 s.MIGRATIONS += (s.Migration(1,2,('CREATE TABLE second_step(id INTEGER) STRICT',)),)
 root = Path(sys.argv[1])
 (root.parent / ('ready-' + sys.argv[2])).write_text('ready')
@@ -369,7 +390,7 @@ def test_invalid_api_state_path_is_controlled(path):
 def test_process_exit_and_native_hot_journal_recovery(tmp_path, committed):
     root = tmp_path / "state"
     original = api.initialize_state(state_dir=root)
-    timestamp = query(root, "SELECT applied_at FROM schema_migrations")[0][0]
+    timestamps = query(root, "SELECT applied_at FROM schema_migrations ORDER BY version")
     code = """import os, sys
 from pathlib import Path
 from yorunge.adapters.state import open_store
@@ -398,11 +419,12 @@ with open_store(Path(sys.argv[1])) as store:
         assert journal.stat().st_size > 512
         assert journal.read_bytes()[:8] == bytes.fromhex("d9d505f920a163d7")
     assert api.initialize_state(state_dir=root) == original
-    expected = "2026-10-27T00:00:00+00:00" if committed else timestamp
-    assert query(root, "SELECT applied_at FROM schema_migrations") == [(expected,)]
+    expected = [("2026-10-27T00:00:00+00:00",)] * len(timestamps) if committed else timestamps
+    assert query(root, "SELECT applied_at FROM schema_migrations ORDER BY version") == expected
     assert query(root, "SELECT name FROM sqlite_schema WHERE name='transient_probe'") == []
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_relational_violation_fails_full_state_validation(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
@@ -506,6 +528,7 @@ def test_expired_lock_budget_closes_opened_descriptor(tmp_path, monkeypatch):
         assert closed.value.errno == errno.EBADF
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_migration_key_binding_failure_rolls_back_before_commit(tmp_path, monkeypatch):
     root = tmp_path / "state"
     original = api.initialize_state(state_dir=root)
@@ -529,6 +552,7 @@ def test_migration_key_binding_failure_rolls_back_before_commit(tmp_path, monkey
     assert query(root, "SELECT version FROM schema_migrations") == [(1,)]
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_backup_parent_sync_failure_prevents_migration_ddl(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
@@ -621,6 +645,7 @@ def test_bootstrap_failure_boundaries_never_adopt_partial_identity(tmp_path, mod
 
 
 @pytest.mark.parametrize("after_completion", [False, True])
+@pytest.mark.usefixtures("identity_only_schema")
 def test_migration_process_cut_at_backup_completion_preserves_old_schema(
     tmp_path, monkeypatch, after_completion
 ):
@@ -630,6 +655,7 @@ def test_migration_process_cut_at_backup_completion_preserves_old_schema(
 from pathlib import Path
 from yorunge import api
 from yorunge.adapters import state, state_schema as s
+s.MIGRATIONS = s.MIGRATIONS[:1]
 s.MIGRATIONS += (s.Migration(1,2,('CREATE TABLE second_step(id INTEGER) STRICT',)),)
 original = state.write_new
 def cut(path, content):
@@ -706,6 +732,7 @@ def test_explicit_default_state_initialization_uses_canonical_home_path(tmp_path
     assert api.initialize_state(state_dir=root) == first
 
 
+@pytest.mark.usefixtures("identity_only_schema")
 def test_actual_sqlite_full_is_write_failure_with_rollback(tmp_path, monkeypatch):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)

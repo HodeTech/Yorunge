@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,13 +23,26 @@ from yorunge.domain.models import (
     Profile,
     Recipe,
     Result,
+    Selection,
     ServiceId,
     Task,
 )
 
 if TYPE_CHECKING:
+    from yorunge.adapters.execution_store import PlanRepository
+    from yorunge.adapters.state import Store
+    from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
-    from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlan,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
@@ -521,3 +536,351 @@ def load_plan(path: Path) -> Result[Plan]:
     except YorungeError:
         raise YorungeError("invalid_plan") from None
     return Result[Plan](data=plan, warnings=("offline_draft_not_executable",))
+
+
+def query_capabilities(
+    *,
+    task: str | None = None,
+    config: Path | None = None,
+    recipe: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    tool: str | None = None,
+    execution: str | None = None,
+    refresh: bool = False,
+    state_dir: Path | None = None,
+) -> Result[CachedCapabilityView]:
+    """Explicit stateful query. No caller evidence, producer or authorization input."""
+    import time
+
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    query_started = time.monotonic()
+    if type(refresh) is not bool or (state_dir is not None and not isinstance(state_dir, Path)):
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.adapters.identity import StateCredentialRegistry
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.adapters.state import open_store
+    from yorunge.application.capabilities import (
+        LocalPolicyProducer,
+        current_policy_result,
+        policy_keys,
+    )
+    from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.domain.capabilities import CachedCapabilityView
+
+    context, selected_profile, request, spec = _resolve(
+        config=config,
+        recipe=recipe,
+        profile=profile,
+        project=project,
+        task=task,
+        tool=tool,
+        execution=execution,
+    )
+    selection = resolve_selection(
+        spec.task, selected_profile, spec, request.tool, request.execution
+    )
+    offline = capability_records(context, selection)
+    remote = next(
+        (
+            r.scope.service_id
+            for r in offline
+            if r.capability_id != "planning.offline" and r.scope.service_id != "local"
+        ),
+        None,
+    )
+    remaining = 5.0 - (time.monotonic() - query_started)
+    if remaining <= 0:
+        raise YorungeError("state_busy")
+    with open_store(state_dir, timeout=remaining) as store:
+        identity = None
+        if remote in ("evren-platform", "evren-llm"):
+            name = (
+                selected_profile.platform_key_env
+                if remote == "evren-platform"
+                else selected_profile.llm_key_env
+            )
+            if name is not None:
+                resolved = resolve_credential(selected_profile, remote, EnvSecretReader())
+                identity = bind_credential(
+                    context, resolved, StateCredentialRegistry(store)
+                ).identity
+        cache = StateCache(store, bindings=(identity,) if identity else ())
+        stamp = cache.stamp()
+        records = []
+        for key, old in policy_keys(
+            context,
+            selection,
+            spec,
+            store_id=stamp.store_id,
+            identity_epoch=stamp.identity_epoch,
+            clock_generation=stamp.generation,
+            identity=identity,
+        ):
+            if refresh and not stamp.anomaly:
+                cache.refresh(key, stamp, LocalPolicyProducer(old.support, old.reason_code))
+            records.append(key)
+        final = tuple(
+            current_policy_result(record, frozenset({LocalPolicyProducer.SOURCE}))
+            for record in cache.query_many(tuple(records), stamp)
+        )
+        return Result[CachedCapabilityView](data=CachedCapabilityView(records=final))
+
+
+def _execution_validator() -> ExecutionValidator:
+    from yorunge.application.execution import LocalExecutionValidator
+
+    return LocalExecutionValidator()
+
+
+def _execution_credentials(
+    context: Context, selected: Profile, selection: Selection, store: Store
+) -> tuple[BoundCredential, ...]:
+    from yorunge.adapters.identity import StateCredentialRegistry
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.credentials import bind_credential, resolve_credential
+
+    remote = next(
+        (
+            r.scope.service_id
+            for r in capability_records(context, selection)
+            if r.capability_id != "planning.offline" and r.scope.service_id != "local"
+        ),
+        None,
+    )
+    if remote not in ("evren-platform", "evren-llm"):
+        return ()
+    reference = selected.platform_key_env if remote == "evren-platform" else selected.llm_key_env
+    if reference is None:
+        return ()
+    resolved = resolve_credential(selected, remote, EnvSecretReader())
+    return (bind_credential(context, resolved, StateCredentialRegistry(store)),)
+
+
+def _execution_repository(
+    store: Store, credentials: tuple[BoundCredential, ...], budget: ExecutionBudget
+) -> PlanRepository:
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.adapters.execution_store import PlanRepository
+
+    cache = StateCache(
+        store,
+        budget.clock,
+        bindings=tuple(c.identity for c in credentials),
+        budget_seconds=budget.remaining(),
+    )
+    cache.end = budget.end
+    return PlanRepository(store, cache, budget)
+
+
+def _execution_budget() -> ExecutionBudget:
+    import time
+
+    started = time.monotonic()
+    from yorunge.adapters.input_files import require_input_files
+    from yorunge.adapters.local_files import require_local_files
+
+    require_input_files()
+    require_local_files()
+    from yorunge.adapters.capability_cache import SystemClock
+    from yorunge.application.execution import ExecutionBudget
+
+    return ExecutionBudget(SystemClock(), started)
+
+
+def prepare_execution_plan(
+    *,
+    task: str | None = None,
+    config: Path | None = None,
+    recipe: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    tool: str | None = None,
+    execution: str | None = None,
+    input_root: Path | None = None,
+    state_dir: Path | None = None,
+) -> Result[ExecutionPlanView]:
+    """Persist a separate execution snapshot; no run or caller-supplied evidence."""
+    budget = _execution_budget()
+    if (input_root is not None and not isinstance(input_root, Path)) or (
+        state_dir is not None and not isinstance(state_dir, Path)
+    ):
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.input_files import DescriptorInputs, anchor_input_root
+
+    if input_root is not None:
+        input_root = anchor_input_root(input_root)
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import ExecutionUseCases
+    from yorunge.domain.execution import ExecutionPlanView
+
+    context, selected, request, spec = _resolve(
+        config=config,
+        recipe=recipe,
+        profile=profile,
+        project=project,
+        task=task,
+        tool=tool,
+        execution=execution,
+    )
+    selection = resolve_selection(spec.task, selected, spec, request.tool, request.execution)
+    with open_store(state_dir, timeout=budget.remaining()) as store:
+        credentials = _execution_credentials(context, selected, selection, store)
+        repository = _execution_repository(store, credentials, budget)
+        use_cases = ExecutionUseCases(
+            repository, DescriptorInputs(), _execution_validator(), budget
+        )
+        return Result[ExecutionPlanView](
+            data=use_cases.prepare(context, selection, spec, input_root, credentials),
+            warnings=("execution_does_not_dispatch",),
+        )
+
+
+def list_execution_plans(
+    *, limit: int = 50, cursor: str | None = None, state_dir: Path | None = None
+) -> Result[ExecutionPlans]:
+    """Bounded historical summaries; does not read credentials or input contents."""
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import list_plans
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.execution import ExecutionPlans
+
+    with open_store(state_dir) as store:
+        return Result[ExecutionPlans](data=list_plans(store.connection, limit, cursor))
+
+
+def show_execution_plan(
+    plan_id: str, *, state_dir: Path | None = None
+) -> Result[ExecutionPlanView]:
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import read_approval, read_plan
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import approval_state
+    from yorunge.domain.execution import ExecutionPlanView
+
+    with open_store(state_dir) as store:
+        plan = read_plan(store.connection, plan_id)
+        return Result[ExecutionPlanView](
+            data=ExecutionPlanView(
+                plan=plan,
+                approval=approval_state(plan, read_approval(store.connection, plan), None),
+            )
+        )
+
+
+@contextmanager
+def _execution_validation(
+    plan_id: str,
+    config: Path | None,
+    profile: str | None,
+    project: str | None,
+    state_dir: Path | None,
+    budget: ExecutionBudget,
+    *,
+    confirmation: str | None = None,
+    consent: bool = False,
+) -> Iterator[tuple[ExecutionUseCases, ExecutionPlan, Context, tuple[BoundCredential, ...]]]:
+    from yorunge.adapters.execution_store import read_plan
+    from yorunge.adapters.input_files import DescriptorInputs
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import ExecutionUseCases, require_confirmation
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    with open_store(state_dir, timeout=budget.remaining()) as store:
+        plan = read_plan(store.connection, plan_id)
+        if consent:
+            require_confirmation(plan, confirmation)
+        context, selected = _context(config, request, None)
+        credentials = _execution_credentials(context, selected, plan.selection, store)
+        repository = _execution_repository(store, credentials, budget)
+        if repository.read(plan_id) != plan:
+            raise YorungeError("state_changed")
+        use_cases = ExecutionUseCases(
+            repository, DescriptorInputs(), _execution_validator(), budget
+        )
+        yield use_cases, plan, context, credentials
+
+
+def validate_execution_plan(
+    plan_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ExecutionValidity]:
+    budget = _execution_budget()
+    from yorunge.domain.execution import ExecutionValidity
+
+    with _execution_validation(plan_id, config, profile, project, state_dir, budget) as (
+        use_cases,
+        plan,
+        context,
+        credentials,
+    ):
+        return Result[ExecutionValidity](data=use_cases.validate(plan, context, credentials))
+
+
+def approve_execution_plan(
+    plan_id: str,
+    confirmation: str | None = None,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ExecutionApprovalState]:
+    budget = _execution_budget()
+    from yorunge.domain.execution import ExecutionApprovalState
+
+    with _execution_validation(
+        plan_id,
+        config,
+        profile,
+        project,
+        state_dir,
+        budget,
+        confirmation=confirmation,
+        consent=True,
+    ) as (use_cases, plan, context, credentials):
+        return Result[ExecutionApprovalState](
+            data=use_cases.approve(plan, confirmation, context, credentials)
+        )
+
+
+def revoke_execution_approval(
+    plan_id: str, *, state_dir: Path | None = None
+) -> Result[ExecutionApprovalState]:
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import revoke_approval
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.execution import ExecutionApprovalState
+
+    with open_store(state_dir) as store:
+        return Result[ExecutionApprovalState](data=revoke_approval(store, plan_id))
+
+
+def forget_execution_plan(
+    plan_id: str, confirmation: str | None = None, *, state_dir: Path | None = None
+) -> Result[ForgottenExecutionPlan]:
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.execution_store import forget_plan
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.execution import ForgottenExecutionPlan
+
+    with open_store(state_dir) as store:
+        return Result[ForgottenExecutionPlan](
+            data=forget_plan(store, plan_id, confirmation),
+            warnings=("local_forget_does_not_cancel_remote_work",),
+        )

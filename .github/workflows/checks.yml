@@ -38,6 +38,14 @@ jobs:
           .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
           cat dist/verification.jsonl
       - name: Enforce startup budgets
-        run: >-
-          .venv/bin/python scripts/benchmark-startup.py
-          --command .venv/bin/yorunge --output dist/startup.json
+        run: |
+          .venv/bin/python tests/fixtures/seed_capability_cache.py .ci-cache-state examples/profile.toml
+          .venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --cache-state .ci-cache-state --installation-label "editable .venv; frozen uv environment" --output dist/startup.json
+      - name: Diagnose a failed startup budget
+        if: ${{ failure() }}
+        run: |
+          if test -f dist/startup.json; then
+            .venv/bin/python -X importtime .venv/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .ci-cache-state --output json > /dev/null
+            .venv/bin/python -m cProfile -o dist/cache-startup.prof .venv/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .ci-cache-state --output json > /dev/null
+            .venv/bin/python -c 'import pstats; pstats.Stats("dist/cache-startup.prof").strip_dirs().sort_stats("cumulative").print_stats(35)'
+          fi

@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 27 Ekim 2026:** İlk çevrimdışı CLI/Python dilimi çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
+**Durum — 28 Ekim 2026:** Çevrimdışı CLI/Python ve yerel cache/execution hazırlığı/onay yönetimi çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
 
 ## Çalışan başlangıç
 
@@ -47,7 +47,37 @@ Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarın
 .venv/bin/yorunge context credential --service evren-platform --config examples/profile.toml --output json
 ```
 
-Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi de seçili env'yi açık istekle okur; diğer yerel komutlar okumaz.
+Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi seçili env'yi açık istekle okur; varsayılan offline komutlar okumaz.
+
+Açık yerel capability cache sorgusu:
+
+```sh
+.venv/bin/yorunge capabilities --task llm.train --refresh --output json
+.venv/bin/yorunge capabilities --task llm.train --cached --output json
+```
+
+Bu iki seçenek private SQLite state/clock kullanır; `--state-dir PATH` ile ayrı dizin seçilebilir. `--cached` keşif yapmaz, `--refresh` bu sürümde yalnız uygulanmış yerel politikayı yeniler. Hit/freshness ile etkin destek ve tarihsel kayıt ayrıdır; uzak hesap/araç desteği yaratılmaz. Python karşılığı `api.query_capabilities` ve ayrıntılar [cache sözleşmesindedir](docs/reference/capability-record.md#açık-cache-v2-sorgusu). Ayrı kalıcı execution hazırlığı ve onay yönetimi aşağıdadır; run yoktur.
+
+Yerel ayar ve kimlik yönetimi:
+
+```sh
+.venv/bin/yorunge init --profile work
+.venv/bin/yorunge context profiles
+.venv/bin/yorunge context set-project project-id
+.venv/bin/yorunge doctor --output json
+.venv/bin/yorunge context identity --service evren-platform --output json
+```
+
+`init` var olan config'i ezmez; profil/proje değişimleri özgün dosyayı yedekler. Doctor env/K içeriği veya uzak erişimi kontrol etmez; sonuçtaki durumları değerlendirin. Kimlik gözlemi yerel DB/key oluşturabilir; ağ açmaz veya execution izni vermez. Reset/restore için önce etki önizlemesi ve açık digest onayı gerekir; restore snapshot sonrası geçmişi kaybedebilir. [Config/doctor sözleşmesi](docs/reference/configuration.md#yerel-config-yazma-ve-tanılama), [kimlik bağları](docs/reference/credential-binding-v1.md) ve [bakım/kurtarma](docs/reference/local-state.md#açık-reset-restore-ve-kesilmiş-restore-kurtarması).
+
+Kalıcı execution hazırlığı:
+
+```sh
+.venv/bin/yorunge plan execution prepare --task llm.train --state-dir ./private-state --output json
+.venv/bin/yorunge plan execution list --state-dir ./private-state --output json
+```
+
+Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kaydıdır; gerçek araç/uzak auth/tam girdi kapanışı eksik olduğundan public plan draft ve onaylanamazdır. Yerel manifest bağlamak için recipe ve açık input-root gerekir; yalnız manifest dosyasının hash'i veri kümesinin tamamını doğrulamaz. Güncel validate, tam digest approve ve seçili revoke/forget [execution referansında](docs/reference/execution-plan.md); eski offline v1 komutları stateless kalır. [Test, review ve performans kanıtı](docs/research/p01-3-implementation-validation.md).
 
 ## Ürün yaklaşımı
 
@@ -90,16 +120,3 @@ Proje kayıtları: [değişiklik günlüğü](CHANGELOG.md), [güvenlik bildirim
 ## Lisans ve proje ilişkisi
 
 [MIT License](LICENSE). Yörünge, HodeTech altında geliştirilen bağımsız bir yardımcı araç projesidir. EVREN adı uyumluluk hedefini belirtir; platformun geliştirdiği veya onayladığı bir ürün olduğu iddia edilmez. ForgeLM ayrı bir projedir ve kendi lisansı/sürüm döngüsüyle kullanılır.
-
-
-Yerel ayar ve kimlik yönetimi:
-
-```sh
-.venv/bin/yorunge init --profile work
-.venv/bin/yorunge context profiles
-.venv/bin/yorunge context set-project project-id
-.venv/bin/yorunge doctor --output json
-.venv/bin/yorunge context identity --service evren-platform --output json
-```
-
-`init` var olan config'i ezmez; profil/proje değişimleri özgün dosyayı yedekler. Doctor env/K içeriği veya uzak erişimi kontrol etmez; sonuçtaki durumları değerlendirin. Kimlik gözlemi yerel DB/key oluşturabilir; ağ açmaz veya execution izni vermez. Reset/restore için önce etki önizlemesi ve açık digest onayı gerekir; restore snapshot sonrası geçmişi kaybedebilir. [Config/doctor sözleşmesi](docs/reference/configuration.md#yerel-config-yazma-ve-tanılama), [kimlik bağları](docs/reference/credential-binding-v1.md) ve [bakım/kurtarma](docs/reference/local-state.md#açık-reset-restore-ve-kesilmiş-restore-kurtarması).

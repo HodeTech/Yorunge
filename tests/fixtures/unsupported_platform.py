@@ -25,6 +25,25 @@ def importing(name, *args, **kwargs):
 builtins.__import__ = importing
 confirmation = "0" * 64
 calls = {
+    "execution-approve": lambda: api.approve_execution_plan(
+        "11111111-1111-4111-8111-111111111111", confirmation, state_dir=state_dir
+    ),
+    "execution-revoke": lambda: api.revoke_execution_approval(
+        "11111111-1111-4111-8111-111111111111", state_dir=state_dir
+    ),
+    "execution-forget": lambda: api.forget_execution_plan(
+        "11111111-1111-4111-8111-111111111111", confirmation, state_dir=state_dir
+    ),
+    "execution-prepare": lambda: api.prepare_execution_plan(task="llm.train", state_dir=state_dir),
+    "execution-validate": lambda: api.validate_execution_plan(
+        "11111111-1111-4111-8111-111111111111", state_dir=state_dir
+    ),
+    "execution-list": lambda: api.list_execution_plans(state_dir=state_dir),
+    "execution-show": lambda: api.show_execution_plan(
+        "11111111-1111-4111-8111-111111111111", state_dir=state_dir
+    ),
+    "cache": lambda: api.query_capabilities(task="llm.train", state_dir=state_dir),
+    "refresh": lambda: api.query_capabilities(task="llm.train", refresh=True, state_dir=state_dir),
     "state-init": lambda: api.initialize_state(state_dir=state_dir),
     "reset-preview": lambda: api.preview_identity_reset(state_dir=state_dir),
     "reset": lambda: api.reset_identity(confirmation, state_dir=state_dir),
@@ -44,6 +63,49 @@ calls = {
     "doctor": lambda: api.diagnose_local(config=config, state_dir=state_dir),
 }
 commands = {
+    "execution-approve": [
+        "plan",
+        "execution",
+        "approve",
+        "--plan-id",
+        "11111111-1111-4111-8111-111111111111",
+        "--confirm",
+        confirmation,
+    ],
+    "execution-revoke": [
+        "plan",
+        "execution",
+        "revoke",
+        "--plan-id",
+        "11111111-1111-4111-8111-111111111111",
+    ],
+    "execution-forget": [
+        "plan",
+        "execution",
+        "forget",
+        "--plan-id",
+        "11111111-1111-4111-8111-111111111111",
+        "--confirm",
+        confirmation,
+    ],
+    "execution-prepare": ["plan", "execution", "prepare", "--task", "llm.train"],
+    "execution-validate": [
+        "plan",
+        "execution",
+        "validate",
+        "--plan-id",
+        "11111111-1111-4111-8111-111111111111",
+    ],
+    "execution-list": ["plan", "execution", "list"],
+    "execution-show": [
+        "plan",
+        "execution",
+        "show",
+        "--plan-id",
+        "11111111-1111-4111-8111-111111111111",
+    ],
+    "cache": ["capabilities", "--task", "llm.train", "--cached"],
+    "refresh": ["capabilities", "--task", "llm.train", "--refresh"],
     "state-init": ["state", "init"],
     "reset-preview": ["state", "reset"],
     "reset": ["state", "reset", "--confirm", confirmation],

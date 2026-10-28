@@ -1,6 +1,6 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-27.
+**Güncellendi:** 2026-10-28.
 
 ## Bugün
 
@@ -20,7 +20,15 @@
 
 Teslim edilenler: hizmete bağlı tek env çözümleme/hedef kapısı; güvenli SQLite store, migration ve backup; kalıcı credential kimliği/nesli ve açık reset/restore/recover; config init/profil/proje yönetimi ve yerel doctor. Son ürün head'i ca9502c'de 837 test, lint/type, iki temiz kurulum ve başlangıç bütçeleri geçti. Bu yerel kabuller uzak auth/hesap keşfi, HTTP, capability cache, execution geçerliliği veya operation/lease teslimi sayılmaz. Eski offline Plan biçimi/yürütülemezliği korunur.
 
-**Sıradaki ürün paketi P01-3:** P01-3a kapsam/kanıt/tazelik bağlı capability cache ve P01-3b execution planı/onay bağı. Doğrudan önkoşullar P01-2b/P01-4a development'ta tamamlandı. İki alt iş hâlâ draft; önce kapsam/kabul ve karar boşlukları iş kartlarıyla netleştirilecek, ardından tek development PR'ında uygulanacak. Bu kapanış işi P01-3 planlama veya implementasyonunu başlatmaz.
+**P01-3 yerel uygulama/kabul tamamlandı; aktif iş development PR teslimidir:** feat/p01-3-capability-planning dalı development@78d5d77 tabanındadır. Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını 2026-10-27 tarihinde onayladı; kararlar Accepted. [Paket planı](p01-3-delivery-plan.md) ve [kabul kaydı](../research/p01-3-implementation-validation.md) kanoniktir.
+
+P01-3a/b verified. Cache/clock, tam scope/evidence, immutable execution v2, descriptor input bağı, güncel validation, digest onayı/revoke/forget ve schema1/2/3 eski intent→4 recovery uygulandı. Dört adımın her biri ikişer fresh review turuyla tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) development hedefiyle kullanıcı incelemesine açıktır. Public producer eksik araç/uzak auth/input closure nedeniyle draft/blocked kalır; run/operation/HTTP yoktur.
+
+Son Linux CI takımı 1.133 test; yerel hacimli cache p95 142,181 ms; 16 MiB/256 MiB/1 GiB hash Python allocation peak yaklaşık 2 MiB. Wheel/sdist iki temiz kurulumda import ve public execution-plan komutlarının beklenen başarı/ret sonuçları doğrulandı; yürütme başlatılmaz. Bunlar canlı EVREN, gerçek Windows veya fiziksel güç kesintisi kanıtı değildir. İlk Linux koşusunda test/build başarılı, cache p95 202,724 ms bütçeyi aştı; reçetesiz komutlardaki gereksiz YAML importu ertelendi, İkinci Linux koşusunda da cache p95 231,595 ms ile bütçe aşıldı; sonraki 83f70a8 koşusunda farklı AMD 9V74 runner üzerinde cache p95 191,836 ms ve tüm zorunlu kontroller geçti. Önceki ölçümler korunur; son PR head CI ayrıca takip edilir. [Kabul/CI kaydı](../research/p01-3-implementation-validation.md) günceldir; PR kullanıcı incelemesi için açık bırakılır.
+
+2026-10-28 kullanıcı PR review'inde beş geçerli davranış/kanıt kusuru yeniden üretildi: erken CWD ankrajı, bakım metninde etki kapsamı, katı okuma bütçesi, zorunlu cache benchmark'ı ve revoke sonrası kalıcı kaydın hata zarfı. Düzeltmeler aynı PR'da 1.159 test, hedefli kontroller ve iki yeni fresh review turuyla doğrulandı; son head CI ayrıca beklenir. Sonar S8707 issue düzeyinde False positive olarak değerlendirildi ve kalite kapısı OK/SonarCloud SUCCESS doğrulandı. d9d1117 AMD EPYC 7763 koşusunda cache p95 218,042 ms başarısızlığı korunur; 27f6f27 AMD EPYC 9V45 koşusunda cache p95 134,705 ms ve offline-core/branch-policy/SonarCloud geçti. Donanımlar arası fark kod hızlanması diye sunulmaz; son belge head CI ayrıca doğrulanır; kural/kalite ayarı gevşetilmez.
+
+[Belge incelemesi ve kullanıcı review düzeltmeleri](../research/p01-3-readiness-review.md) tarihsel hazırlık kanıtıdır. Tasarım onayı canlı EVREN/araç desteği, P01-3 teslimi veya yayın değildir.
 
 Ardından P01-4'te operation/attempt, lease/fencing, unknown uzlaştırma ve jobs; P01-5'te HTTP/SDK, akış ve iptal; P01-6'da bütün P01 kabulü/destek matrisi kalır. P01-4a ve P01-6a yeniden yapılacak işler değildir. [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Master/release aktarımı kullanıcıda kalır; henüz paket yayını yoktur.
 

@@ -10,10 +10,16 @@ class IdentitySnapshot(Model):
     identity_epoch: str
     store_schema_version: int
     binding_count: int
+    approval_count: int = 0
+    approval_fingerprint: str = ""
+    plan_count: int = 0
+    plan_fingerprint: str = ""
     binding_fingerprint: str
 
 
 class MaintenancePreview(Model):
+    schema_version: Literal[2] = 2
+    cache_invalidated: Literal[True] = True
     action: Literal["reset", "restore", "recover"]
     current: IdentitySnapshot | None
     source: IdentitySnapshot | None

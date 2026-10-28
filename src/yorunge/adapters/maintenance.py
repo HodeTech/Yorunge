@@ -58,6 +58,12 @@ from yorunge.domain.state import StateInfo, canonical_uuid
 
 STAGE_SUFFIX = ".sqlite3"
 IDENTITY_TABLES = {"state_meta", "schema_migrations", "credential_bindings"}
+RESTORABLE_TABLES = IDENTITY_TABLES | {
+    "cache_clock",
+    "capability_cache",
+    "execution_plans",
+    "execution_approvals",
+}
 
 
 class RestoreIntent(Model):
@@ -124,7 +130,7 @@ def require_identity_runtime() -> None:
     tables = {
         name for kind, name, _, _ in schema.expected_schema(schema.MIGRATIONS) if kind == "table"
     }
-    if tables != IDENTITY_TABLES:
+    if not IDENTITY_TABLES <= tables or not tables <= RESTORABLE_TABLES:
         raise YorungeError("state_restore_unsupported")
 
 
@@ -139,12 +145,40 @@ def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> IdentitySnap
         deadline.remaining()
         digest.update(json.dumps(row, separators=(",", ":"), ensure_ascii=True).encode() + b"\n")
         count += 1
+    plan_digest = hashlib.sha256()
+    plan_count = 0
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='execution_plans'"
+    ).fetchone():
+        for row in connection.execute(
+            "SELECT plan_id,digest,status,prepared_at,expires_at "
+            "FROM execution_plans ORDER BY plan_id"
+        ):
+            deadline.remaining()
+            plan_digest.update(json.dumps(row, separators=(",", ":")).encode() + b"\n")
+            plan_count += 1
+    approval_digest = hashlib.sha256()
+    approval_count = 0
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='execution_approvals'"
+    ).fetchone():
+        for row in connection.execute(
+            "SELECT plan_id,approval_id,status,approved_at,expires_at,revoked_at "
+            "FROM execution_approvals ORDER BY plan_id"
+        ):
+            deadline.remaining()
+            approval_digest.update(json.dumps(row, separators=(",", ":")).encode() + b"\n")
+            approval_count += 1
     return IdentitySnapshot(
         store_id=value.store_id,
         identity_epoch=value.identity_epoch,
         store_schema_version=version,
         binding_count=count,
         binding_fingerprint=digest.hexdigest(),
+        approval_count=approval_count,
+        approval_fingerprint=approval_digest.hexdigest(),
+        plan_count=plan_count,
+        plan_fingerprint=plan_digest.hexdigest(),
     )
 
 
@@ -256,6 +290,16 @@ def reset_connection(
             "UPDATE state_meta SET identity_epoch=?,active_key_id=?,key_check=? WHERE singleton=1",
             (epoch, key_id, key_check(key, old.store_id, epoch, key_id)),
         )
+        if connection.execute(
+            "SELECT 1 FROM sqlite_schema WHERE name='cache_clock' AND type='table'"
+        ).fetchone():
+            connection.execute("DELETE FROM capability_cache")
+            connection.execute(
+                "UPDATE cache_clock SET identity_epoch=?,clock_generation=1,"
+                "high_watermark='0001-01-01T00:00:00.000000Z',anomaly_active=0,"
+                "mutation_revision=0 WHERE singleton=1",
+                (epoch,),
+            )
         _, value = validate(connection, schema.MIGRATIONS, full=True)
         load_key(root, value)
         deadline.remaining()
@@ -414,6 +458,7 @@ def stage_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Path
     key = intent_key(root, intent)
     stage = root / ("restore-" + intent.stage_id + STAGE_SUFFIX)
     if present(stage) and stage_snapshot(root, intent, deadline) is not None:
+        upgrade_pair(root, stage, intent, deadline)
         sync_private(stage)
         return stage
     source = state_directory(Path(intent.source))
@@ -454,6 +499,36 @@ def stage_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Path
     return stage
 
 
+def upgrade_pair(root: Path, path: Path, intent: RestoreIntent, deadline: Deadline) -> None:
+    """Migrate a private shadow; preserve the completed pair through every cut."""
+    current = pair_snapshot(root, path, intent, deadline)
+    if current is None:
+        raise YorungeError("state_invalid")
+    if current.store_schema_version == len(schema.MIGRATIONS):
+        return
+    # A failed shadow (and its journal) is retained, never selected as authority.
+    shadow = root / ("upgrade-" + str(uuid4()) + STAGE_SUFFIX)
+    copy_snapshot(path, shadow, deadline)
+    connection = connect(shadow, deadline)
+    try:
+        if not intended(metadata(connection), intent):
+            raise YorungeError("state_invalid")
+        load_key(root, metadata(connection))
+        upgrade(connection, root, shadow, deadline)
+        if validate(connection, schema.MIGRATIONS, full=True)[0] != len(schema.MIGRATIONS):
+            raise YorungeError("state_invalid")
+        if not intended(metadata(connection), intent):
+            raise YorungeError("state_invalid")
+        load_key(root, metadata(connection))
+    finally:
+        connection.close()
+    quiescent(shadow)
+    sync_private(shadow)
+    deadline.remaining()
+    os.replace(shadow, path)
+    sync_private(path)
+
+
 def finish_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> StateInfo:
     intent_key(root, intent)
     live = root / DB_NAME
@@ -472,6 +547,8 @@ def finish_restore(root: Path, intent: RestoreIntent, deadline: Deadline) -> Sta
         stage = stage_restore(root, intent, deadline)
         deadline.remaining()
         os.replace(stage, live)
+    else:
+        upgrade_pair(root, live, intent, deadline)
     sync_private(live)
     connection = connect_readonly(live, deadline)
     try:

@@ -1,6 +1,15 @@
 from typing import Literal
 
 ErrorCode = Literal[
+    "approval_required",
+    "input_unsupported",
+    "input_invalid",
+    "input_changed",
+    "input_budget_exceeded",
+    "execution_timeout",
+    "plan_not_found",
+    "plan_not_valid",
+    "plan_capacity_exceeded",
     "invalid_request",
     "invalid_config",
     "invalid_recipe",
@@ -26,9 +35,30 @@ ErrorCode = Literal[
     "config_write_failed",
     "config_write_uncertain",
     "config_unsupported",
+    "capability_expired",
+    "capability_capacity_exceeded",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
+    "input_unsupported": "Güvenli dosya bağlama bu platformda desteklenmiyor.",
+    "input_invalid": "Girdi kökü veya dosya geçersiz. Açık kök ve düzenli göreli dosya kullanın.",
+    "input_changed": "Girdi veya kök kimliği değişti. Güncel içerikle yeni plan hazırlayın.",
+    "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
+    "execution_timeout": "Execution hazırlığı veya doğrulaması 30 saniyelik bütçeyi aştı.",
+    "plan_not_found": "Kayıtlı plan bulunamadı. Plan listesini inceleyin.",
+    "plan_not_valid": (
+        "Execution planı güncel ve onaylanabilir değil. Engelleri ve bağları inceleyin."
+    ),
+    "plan_capacity_exceeded": (
+        "Plan kotası dolu. Listeyi inceleyip seçili eski planı açıkça unutun."
+    ),
+    "capability_expired": (
+        "Yetenek kanıtının süresi veya saat/bekleme bütçesi geçersiz. Güncel kaydı inceleyin."
+    ),
+    "capability_capacity_exceeded": (
+        "Yetenek önbelleği kotası dolu; taze çelişkili kanıtlar korunuyor. Süreleri inceleyin."
+    ),
     "invalid_request": "İstek geçersiz. Komut yardımındaki alanları ve türleri kontrol edin.",
     "invalid_config": "Profil geçersiz. v1 alanlarını, türleri ve anahtarları kontrol edin.",
     "invalid_recipe": "Reçete geçersiz. v1 alanlarını, türleri ve YAML sınırlarını kontrol edin.",
@@ -83,7 +113,9 @@ class YorungeError(Exception):
         self.code = code
         self.message = MESSAGES[code]
         self.exit_code = 2
-        if code == "config_write_uncertain":
+        if code == "approval_required":
+            self.exit_code = 4
+        elif code == "config_write_uncertain":
             self.exit_code = 5
         elif code in ("credential_unavailable", "invalid_credential"):
             self.exit_code = 3
@@ -98,3 +130,28 @@ class YorungeError(Exception):
             "retryable": False,
             "details": {},
         }
+
+
+class ApprovalNotEffective(YorungeError):
+    """A committed local record is visible even when terminal validity has elapsed."""
+
+    def __init__(
+        self, plan_id: str, approval_id: str, reason: ErrorCode = "plan_not_valid"
+    ) -> None:
+        super().__init__("plan_not_valid")
+        self.plan_id, self.approval_id, self.reason = plan_id, approval_id, reason
+        self.message = (
+            "Onay kaydı oluştu fakat son kontrolde etkinliği doğrulanamadı. "
+            "plan execution show ile kayıtlı planı inceleyin."
+        )
+        self.args = (self.message,)
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = {
+            "plan_id": self.plan_id,
+            "approval_id": self.approval_id,
+            "recorded": True,
+            "reason_code": self.reason,
+        }
+        return value

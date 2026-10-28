@@ -1,6 +1,6 @@
 # Kullanıcı yolculukları
 
-**Güncellendi:** 2026-10-27. **Durum:** Uçtan uca hedef deneyimler. Bugün yalnız yerel context, capability ve offline plan hazırlığı çalışır; [uygulanan CLI alt kümesi](reference/cli-contract.md#uygulanan-alt-küme). Diğer adımlar planlandı.
+**Güncellendi:** 2026-10-27. **Durum:** Uçtan uca hedef deneyimler. Bugün offline context/capability/plan, yerel config/profil/proje yönetimi, credential kimliği/state bakımı ve doctor alt kümeleri çalışır; [uygulanan CLI sınırı](reference/cli-contract.md#uygulanan-alt-küme). Uzak bağlantı ve aşağıdaki diğer uçtan uca adımlar planlandı.
 
 ## 1. İlk bağlantı
 

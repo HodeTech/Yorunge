@@ -64,6 +64,66 @@ UNIQUE(identity_epoch,service_id,service_origin,api_base_path,reference_type,ref
 ) STRICT""",
         ),
     ),
+    Migration(
+        1,
+        2,
+        (
+            """CREATE TABLE cache_clock (
+singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+identity_epoch TEXT NOT NULL CHECK(length(identity_epoch)=36),
+clock_generation INTEGER NOT NULL CHECK(clock_generation>0),
+high_watermark TEXT NOT NULL CHECK(length(high_watermark)=27),
+anomaly_active INTEGER NOT NULL CHECK(anomaly_active IN (0,1)),
+mutation_revision INTEGER NOT NULL CHECK(mutation_revision>=0)
+) STRICT""",
+            """INSERT INTO cache_clock SELECT 1,identity_epoch,1,
+'0001-01-01T00:00:00.000000Z',0,0 FROM state_meta WHERE singleton=1""",
+            """CREATE TABLE capability_cache (
+cache_key TEXT PRIMARY KEY CHECK(length(cache_key)=64),
+key_json TEXT NOT NULL CHECK(length(key_json)<=18432),
+projection_key TEXT NOT NULL CHECK(length(projection_key)<=18432),
+group_key TEXT NOT NULL CHECK(length(group_key)<=128),
+payload TEXT NOT NULL CHECK(length(payload)<=32768),
+mutation_revision INTEGER NOT NULL CHECK(mutation_revision>0),
+checked_at TEXT NOT NULL CHECK(length(checked_at)=27),
+pinned_until TEXT CHECK(pinned_until IS NULL OR length(pinned_until)=27)
+) STRICT""",
+            "CREATE INDEX capability_projection ON capability_cache"
+            "(projection_key,checked_at DESC,cache_key)",
+            "CREATE INDEX capability_groups ON capability_cache(group_key,checked_at,cache_key)",
+        ),
+    ),
+    Migration(
+        2,
+        3,
+        (
+            """CREATE TABLE execution_plans (
+plan_id TEXT PRIMARY KEY CHECK(length(plan_id)=36),
+digest TEXT NOT NULL CHECK(length(digest)=64),
+task TEXT NOT NULL,
+prepared_at TEXT NOT NULL CHECK(length(prepared_at)=27),
+expires_at TEXT NOT NULL CHECK(length(expires_at)=27),
+status TEXT NOT NULL CHECK(status IN ('draft','prepared')),
+payload TEXT NOT NULL CHECK(length(payload)<=65536)
+) STRICT""",
+            "CREATE INDEX execution_plan_order ON execution_plans(prepared_at,plan_id)",
+        ),
+    ),
+    Migration(
+        3,
+        4,
+        (
+            """CREATE TABLE execution_approvals (
+plan_id TEXT PRIMARY KEY REFERENCES execution_plans(plan_id) ON DELETE CASCADE,
+approval_id TEXT NOT NULL UNIQUE CHECK(length(approval_id)=36),
+status TEXT NOT NULL CHECK(status IN ('approved','revoked')),
+approved_at TEXT NOT NULL CHECK(length(approved_at)=27),
+expires_at TEXT NOT NULL CHECK(length(expires_at)=27),
+revoked_at TEXT CHECK(revoked_at IS NULL OR length(revoked_at)=27),
+payload TEXT NOT NULL CHECK(length(payload)<=4096)
+) STRICT""",
+        ),
+    ),
 )
 
 

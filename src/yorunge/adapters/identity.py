@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+import sqlite3
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -21,6 +22,27 @@ WHERE_BINDING = (
     "identity_epoch=? AND service_id=? AND service_origin=? AND api_base_path=? "
     "AND reference_type=? AND reference_name=?"
 )
+
+
+def credential_matches(
+    connection: sqlite3.Connection,
+    identifier: str,
+    epoch: str,
+    revision: int,
+    *,
+    service: str | None = None,
+    origin: str | None = None,
+    base: str | None = None,
+) -> bool:
+    """Read identity authority in the caller's existing store transaction."""
+    row = connection.execute(
+        "SELECT identity_epoch,revision,service_id,service_origin,api_base_path "
+        "FROM credential_bindings WHERE credential_id=?",
+        (identifier,),
+    ).fetchone()
+    if row is None or row[:2] != (epoch, revision):
+        return False
+    return service is None or row[2:] == (service, origin, base)
 
 
 class StateCredentialRegistry:

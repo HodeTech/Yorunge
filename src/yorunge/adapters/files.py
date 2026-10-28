@@ -6,16 +6,15 @@ import stat
 import tomllib
 from collections.abc import Hashable
 from pathlib import Path
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
-import yaml
 from pydantic import ValidationError
-from yaml.constructor import ConstructorError
-from yaml.nodes import MappingNode, ScalarNode
-from yaml.tokens import AliasToken, AnchorToken
 
 from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.models import Configuration, Model, Plan, Recipe
+
+if TYPE_CHECKING:
+    import yaml
 
 CONFIG_LIMIT = 65_536
 PLAN_LIMIT = 262_144
@@ -45,22 +44,31 @@ def read_text(path: Path, limit: int, code: ErrorCode) -> str:
         raise YorungeError("file_unreadable") from None
 
 
-class RecipeLoader(yaml.SafeLoader):
-    def construct_scalar(self, node: ScalarNode | MappingNode) -> str:
-        if not isinstance(node, ScalarNode):
-            raise ConstructorError(None, None, "scalar node required", node.start_mark)
-        return super().construct_scalar(node)
+def _recipe_loader() -> type[yaml.SafeLoader]:
+    import yaml
+    from yaml.constructor import ConstructorError
+    from yaml.nodes import MappingNode, ScalarNode
 
-    def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Hashable, object]:
-        if not isinstance(node, MappingNode):
-            raise ConstructorError(None, None, "mapping node required", node.start_mark)
-        result: dict[Hashable, object] = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, str) or key in result:
-                raise ValueError("duplicate or non-string key")
-            result[key] = self.construct_object(value_node, deep=deep)
-        return result
+    class RecipeLoader(yaml.SafeLoader):
+        def construct_scalar(self, node: ScalarNode | MappingNode) -> str:
+            if not isinstance(node, ScalarNode):
+                raise ConstructorError(None, None, "scalar node required", node.start_mark)
+            return super().construct_scalar(node)
+
+        def construct_mapping(
+            self, node: MappingNode, deep: bool = False
+        ) -> dict[Hashable, object]:
+            if not isinstance(node, MappingNode):
+                raise ConstructorError(None, None, "mapping node required", node.start_mark)
+            result: dict[Hashable, object] = {}
+            for key_node, value_node in node.value:
+                key = self.construct_object(key_node, deep=deep)
+                if not isinstance(key, str) or key in result:
+                    raise ValueError("duplicate or non-string key")
+                result[key] = self.construct_object(value_node, deep=deep)
+            return result
+
+    return RecipeLoader
 
 
 def bounded_tree(value: object, depth: int = 0, budget: list[int] | None = None) -> None:
@@ -89,11 +97,15 @@ def load_config(path: Path) -> Configuration:
 
 
 def load_recipe(path: Path) -> Recipe:
+    import yaml
+    from yaml.tokens import AliasToken, AnchorToken
+
+    loader = _recipe_loader()
     content = read_text(path, CONFIG_LIMIT, "invalid_recipe")
     try:
         depth = 0
         count = 0
-        for event in yaml.parse(content, Loader=RecipeLoader):
+        for event in yaml.parse(content, Loader=loader):
             count += 1
             if isinstance(event, (yaml.MappingStartEvent, yaml.SequenceStartEvent)):
                 depth += 1
@@ -103,7 +115,7 @@ def load_recipe(path: Path) -> Recipe:
                 raise ValueError("document complexity limit")
         if any(isinstance(token, (AliasToken, AnchorToken)) for token in yaml.scan(content)):
             raise ValueError("aliases and anchors are not allowed")
-        value = yaml.load(content, Loader=RecipeLoader)
+        value = yaml.load(content, Loader=loader)
     # SafeLoader's scalar constructors can raise built-in errors for malformed literals.
     except (
         yaml.YAMLError,

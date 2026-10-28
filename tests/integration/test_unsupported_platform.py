@@ -12,6 +12,15 @@ from yorunge.domain.errors import YorungeError
 SCENARIOS = ["unsupported-missing-fcntl", "unsupported-with-fcntl", "native-missing-fcntl"]
 CONFIG_ACTIONS = ("config-init", "activate", "set-project", "clear-project")
 STATE_ACTIONS = (
+    "execution-approve",
+    "execution-revoke",
+    "execution-forget",
+    "execution-prepare",
+    "execution-validate",
+    "execution-list",
+    "execution-show",
+    "cache",
+    "refresh",
     "state-init",
     "reset-preview",
     "reset",
@@ -52,7 +61,12 @@ def test_unsupported_local_operations_return_safe_error_before_io(
         timeout=10,
     )
     expected = YorungeError(
-        "config_unsupported" if action in CONFIG_ACTIONS else "state_unsupported"
+        "config_unsupported"
+        if action in CONFIG_ACTIONS
+        else "input_unsupported"
+        if action in ("execution-prepare", "execution-validate", "execution-approve")
+        and scenario != "native-missing-fcntl"
+        else "state_unsupported"
     )
     assert result.returncode == 2, result.stderr
     assert result.stdout == ""

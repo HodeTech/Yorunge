@@ -12,9 +12,17 @@ from typing import TYPE_CHECKING, NoReturn, TypeAlias
 from yorunge import __version__
 
 if TYPE_CHECKING:
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
+    from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
     from yorunge.domain.state import StateInfo
 
@@ -29,6 +37,12 @@ if TYPE_CHECKING:
         | Result[ConfigUpdate]
         | Result[ProfilesView]
         | Result[DoctorReport]
+        | Result[CachedCapabilityView]
+        | Result[ExecutionPlanView]
+        | Result[ExecutionPlans]
+        | Result[ExecutionValidity]
+        | Result[ExecutionApprovalState]
+        | Result[ForgottenExecutionPlan]
     )
 
 
@@ -120,6 +134,12 @@ def parser() -> Parser:
             maintenance.add_argument("--backup", required=True, type=Path)
     capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
     planning_options(capabilities)
+    cache_modes = capabilities.add_mutually_exclusive_group()
+    cache_modes.add_argument("--cached", action="store_true", help="Açık stateful önbellek okuması")
+    cache_modes.add_argument(
+        "--refresh", action="store_true", help="Uygulanan yerel kanıtı yenile; uzak keşif yok"
+    )
+    capabilities.add_argument("--state-dir", type=Path)
     plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
     common(plan)
     actions = plan.add_subparsers(dest="action", required=True)
@@ -127,11 +147,33 @@ def parser() -> Parser:
     saved = actions.add_parser("show", help="Kaydedilmiş planı doğrula ve göster")
     common(saved, context=False)
     saved.add_argument("--plan", required=True, type=Path, help="Plan nesnesi içeren JSON dosyası")
+    execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
+    execution_options(execution_plan)
     train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
     common(train)
     train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
     planning_options(train_plan, task=False)
     return root
+
+
+def execution_options(execution_plan: argparse.ArgumentParser) -> None:
+    common(execution_plan)
+    execution_actions = execution_plan.add_subparsers(dest="execution_action", required=True)
+    for name in ("prepare", "list", "show", "validate", "approve", "revoke", "forget"):
+        command = execution_actions.add_parser(name)
+        if name == "prepare":
+            planning_options(command)
+            command.add_argument("--input-root", type=Path)
+        else:
+            common(command, context=name in ("validate", "approve"))
+        command.add_argument("--state-dir", type=Path)
+        if name in ("show", "validate", "approve", "revoke", "forget"):
+            command.add_argument("--plan-id", required=True)
+        if name in ("approve", "forget"):
+            command.add_argument("--confirm", help="Tam plan digest'i; eksik/yanlış ise çıkış 4")
+        if name == "list":
+            command.add_argument("--limit", type=int, default=50)
+            command.add_argument("--cursor")
 
 
 def text_result(data: Model) -> str:
@@ -159,11 +201,20 @@ def text_result(data: Model) -> str:
 
 
 def local_text_result(data: Model) -> str:
+    from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.maintenance import MaintenancePreview
     from yorunge.domain.state import StateInfo
 
+    execution = execution_text_result(data)
+    if execution is not None:
+        return execution
+    if isinstance(data, CachedCapabilityView):
+        return "\n".join(
+            f"{r.key.capability_id}: {r.effective_support} ({r.freshness}) — {r.message}"
+            for r in data.records
+        )
     if isinstance(data, ConfigUpdate):
         return (
             f"Config kaydedildi: {data.config_path}\nAktif profil: {data.active_profile}\n"
@@ -192,17 +243,75 @@ def local_text_result(data: Model) -> str:
     raise TypeError("unsupported result type")
 
 
+def execution_text_result(data: Model) -> str | None:
+    from yorunge.domain.execution import (
+        ExecutionApprovalState,
+        ExecutionPlans,
+        ExecutionPlanView,
+        ExecutionValidity,
+        ForgottenExecutionPlan,
+    )
+
+    if isinstance(data, ExecutionApprovalState):
+        return (
+            f"Plan: {data.plan_id}\nOnay etkin: {data.effective}\n"
+            f"Durum: {data.record.status if data.record else 'none'}\nYürütme başlatılmaz."
+        )
+    if isinstance(data, ForgottenExecutionPlan):
+        return f"Yerel plan unutuldu: {data.plan_id}\nUzak iş iptali değildir."
+    if isinstance(data, ExecutionPlanView):
+        return execution_plan_text(data)
+    if isinstance(data, ExecutionValidity):
+        return (
+            f"Geçerli: {data.valid}\n"
+            f"Onay etkin: {data.approval.effective if data.approval else False}\n"
+            f"Nedenler: {', '.join(data.reasons) or '-'}"
+        )
+    if isinstance(data, ExecutionPlans):
+        return "\n".join(
+            f"{p.plan_id} {p.digest} {p.task} ({p.status}; onay kaydı: {p.approval_status})"
+            for p in data.plans
+        ) + (f"\nSonraki cursor: {data.next_cursor}" if data.next_cursor else "")
+    return None
+
+
+def execution_plan_text(data: ExecutionPlanView) -> str:
+    plan = data.plan
+    approval_status = (
+        data.approval.record.status if data.approval and data.approval.record else "none"
+    )
+    return (
+        f"Execution planı: {plan.plan_id}\nDigest: {plan.digest}\n"
+        f"Hazırlık: {plan.status}; güncel geçerlilik: "
+        f"{data.validity.valid if data.validity else 'denetlenmedi'}\n"
+        f"Onay kaydı: {approval_status}; "
+        "show güncel onay doğrulaması yapmaz.\n"
+        f"Engeller: {', '.join(plan.assessment.blockers) or '-'}\nYürütme başlatılmaz."
+    )
+
+
 def maintenance_text(data: MaintenancePreview) -> str:
     lines = [f"İşlem: {data.action}", f"Onay digest: {data.digest}"]
     if data.current:
-        lines.append(f"Mevcut kayıt: {data.current.binding_count}")
+        lines.extend(maintenance_counts("Mevcut", data.current))
     if data.source:
-        lines.append(f"Snapshot kaydı: {data.source.binding_count}")
+        lines.extend(maintenance_counts("Snapshot", data.source))
+    if data.cache_invalidated:
+        lines.append("Capability cache geçersizleşir.")
     if data.history_may_be_lost:
-        lines.append("Snapshot sonrası geçmiş kaybolabilir. Eski kimlikler geçersizleşir.")
+        lines.append("Snapshot sonrası credential, plan ve onay geçmişi kaybolabilir.")
     else:
-        lines.append("Yeni kimlik alanı açılır; mevcut geçmiş korunur.")
+        lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
+    lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
     return "\n".join(lines)
+
+
+def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
+    return (
+        f"{label} credential bağı: {snapshot.binding_count}",
+        f"{label} plan: {snapshot.plan_count}",
+        f"{label} onay: {snapshot.approval_count}",
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -306,6 +415,8 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return state_result(args)
     if args.command == "context":
         return context_result(args)
+    if args.command == "plan" and args.action == "execution":
+        return execution_result(args)
     if args.command == "plan" and args.action == "show":
         reject_context(args, ("config", "profile", "project"))
         return api.load_plan(args.plan)
@@ -314,8 +425,65 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return api.initialize_config(**context_options)
     if args.command == "doctor":
         return api.diagnose_local(state_dir=args.state_dir, **context_options)
+    return planning_result(args)
+
+
+def planning_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    context_options = {name: options.get(name) for name in ("config", "profile", "project")}
     task = "llm.train" if args.command == "train" else options.get("task")
+    if args.command == "capabilities":
+        if args.cached or args.refresh:
+            return api.query_capabilities(
+                **context_options,
+                task=task,
+                recipe=args.recipe,
+                tool=args.tool,
+                execution=args.execution,
+                refresh=args.refresh,
+                state_dir=args.state_dir,
+            )
+        if args.state_dir is not None:
+            from yorunge.domain.errors import YorungeError
+
+            raise YorungeError("invalid_request")
     use_case = api.inspect_capabilities if args.command == "capabilities" else api.prepare_plan
     return use_case(
         **context_options, task=task, recipe=args.recipe, tool=args.tool, execution=args.execution
+    )
+
+
+def execution_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    options = vars(args)
+    action = args.execution_action
+    if action in ("list", "show", "revoke", "forget"):
+        reject_context(args, ("config", "profile", "project"))
+        if action == "list":
+            return api.list_execution_plans(
+                limit=args.limit, cursor=args.cursor, state_dir=args.state_dir
+            )
+        if action == "revoke":
+            return api.revoke_execution_approval(args.plan_id, state_dir=args.state_dir)
+        if action == "forget":
+            return api.forget_execution_plan(args.plan_id, args.confirm, state_dir=args.state_dir)
+        return api.show_execution_plan(args.plan_id, state_dir=args.state_dir)
+    context = {name: options.get(name) for name in ("config", "profile", "project")}
+    if action == "approve":
+        return api.approve_execution_plan(
+            args.plan_id, args.confirm, state_dir=args.state_dir, **context
+        )
+    if action == "validate":
+        return api.validate_execution_plan(args.plan_id, state_dir=args.state_dir, **context)
+    return api.prepare_execution_plan(
+        task=args.task,
+        recipe=args.recipe,
+        tool=args.tool,
+        execution=args.execution,
+        input_root=args.input_root,
+        state_dir=args.state_dir,
+        **context,
     )

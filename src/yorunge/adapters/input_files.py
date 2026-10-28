@@ -1,0 +1,201 @@
+"""Bounded descriptor-only input binding, with no symlink-following fallback."""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import stat
+import sys
+from contextlib import ExitStack
+from pathlib import Path
+from typing import Protocol
+
+from yorunge.domain.errors import YorungeError
+from yorunge.domain.execution import InputBinding, InputRoot
+from yorunge.domain.models import has_control_characters
+
+BLOCK_BYTES = 1024 * 1024
+MAX_INPUT_BYTES = 1024 * 1024 * 1024
+
+
+class Budget(Protocol):
+    def check(self) -> None: ...
+
+
+def require_input_files() -> None:
+    if (
+        sys.platform not in ("darwin", "linux")
+        or os.open not in os.supports_dir_fd
+        or any(not hasattr(os, name) for name in ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK"))
+    ):
+        raise YorungeError("input_unsupported")
+
+
+def identity(info: os.stat_result) -> tuple[int, int]:
+    return info.st_dev, info.st_ino
+
+
+def signature(info: os.stat_result) -> tuple[int, ...]:
+    return (*identity(info), info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def anchor_input_root(root: Path) -> Path:
+    if ".." in root.parts:
+        raise YorungeError("input_invalid")
+    try:
+        return root if root.is_absolute() else Path.cwd() / root
+    except OSError:
+        raise YorungeError("input_invalid") from None
+
+
+def directory_chain(anchor: str) -> tuple[int, tuple[tuple[int, int], ...]]:
+    if not isinstance(anchor, str) or not anchor.startswith("/"):
+        raise YorungeError("input_invalid")
+    parts = anchor.split("/")[1:] if anchor != "/" else []
+    if any(part in ("", ".", "..") or has_control_characters(part) for part in parts):
+        raise YorungeError("input_invalid")
+    descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        chain = [identity(os.fstat(descriptor))]
+        for part in parts:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+            chain.append(identity(os.fstat(descriptor)))
+        return descriptor, tuple(chain)
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def relative_file(root: int, path: str) -> tuple[int, tuple[tuple[int, int], ...]]:
+    if not isinstance(path, str):
+        raise YorungeError("input_invalid")
+    parts = path.split("/")
+    if any(part in ("", ".", "..") or has_control_characters(part) for part in parts) or (
+        "\\" in path or ":" in path
+    ):
+        raise YorungeError("input_invalid")
+    descriptor = os.dup(root)
+    try:
+        chain = [identity(os.fstat(descriptor))]
+        for part in parts[:-1]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+            chain.append(identity(os.fstat(descriptor)))
+        file = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor)
+        return file, tuple(chain)
+    finally:
+        os.close(descriptor)
+
+
+class DescriptorInputs:
+    def bind(
+        self,
+        root: Path | InputRoot | None,
+        references: tuple[tuple[str, str], ...],
+        budget: Budget,
+    ) -> tuple[InputRoot | None, tuple[InputBinding, ...]]:
+        require_input_files()
+        if root is None:
+            if references:
+                raise YorungeError("input_invalid")
+            return None, ()
+        if not isinstance(root, (Path, InputRoot)) or len(references) > 128:
+            raise YorungeError("input_invalid")
+        try:
+            if isinstance(root, InputRoot):
+                anchor = root.anchor
+            else:
+                anchor = str(anchor_input_root(root))
+            # Validate raw input spelling before any Path normalization or open.
+            for role, path in references:
+                InputBinding(role=role, path=path, size=0, digest="0" * 64)
+            InputRoot(anchor=anchor, device=0, inode=1)
+            return self._bind(anchor, root, references, budget)
+        except (OSError, ValueError):
+            raise YorungeError("input_invalid") from None
+
+    def _bind(
+        self,
+        anchor: str,
+        expected: Path | InputRoot,
+        references: tuple[tuple[str, str], ...],
+        budget: Budget,
+    ) -> tuple[InputRoot, tuple[InputBinding, ...]]:
+        budget.check()
+        with ExitStack() as stack:
+            root_fd, root_chain = directory_chain(anchor)
+            stack.callback(os.close, root_fd)
+            dev, ino = identity(os.fstat(root_fd))
+            bound_root = InputRoot(anchor=anchor, device=dev, inode=ino)
+            if isinstance(expected, InputRoot) and bound_root != expected:
+                raise YorungeError("input_changed")
+            total = 0
+            inputs = []
+            for role, path in sorted(references):
+                item, total = self._bind_file(
+                    root_fd, root_chain, anchor, role, path, total, budget
+                )
+                inputs.append(item)
+            # Also bind/recheck roots when no input references exist.
+            check_root, check_chain = directory_chain(anchor)
+            stack.callback(os.close, check_root)
+            if root_chain != check_chain:
+                raise YorungeError("input_changed")
+            budget.check()
+            return bound_root, tuple(inputs)
+
+    def _bind_file(
+        self,
+        root_fd: int,
+        root_chain: tuple[tuple[int, int], ...],
+        anchor: str,
+        role: str,
+        path: str,
+        total: int,
+        budget: Budget,
+    ) -> tuple[InputBinding, int]:
+        budget.check()
+        with ExitStack() as opened:
+            descriptor, path_chain = relative_file(root_fd, path)
+            opened.callback(os.close, descriptor)
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode):
+                raise YorungeError("input_invalid")
+            if total + before.st_size > MAX_INPUT_BYTES:
+                raise YorungeError("input_budget_exceeded")
+            digest, count, total = self._hash(descriptor, before.st_size, total, budget)
+            if count != before.st_size or signature(os.fstat(descriptor)) != signature(before):
+                raise YorungeError("input_changed")
+            check_root, check_chain = directory_chain(anchor)
+            opened.callback(os.close, check_root)
+            check_file, check_path_chain = relative_file(check_root, path)
+            opened.callback(os.close, check_file)
+            if (
+                root_chain != check_chain
+                or path_chain != check_path_chain
+                or (
+                    signature(os.fstat(check_file)) != signature(before)
+                    or signature(os.fstat(descriptor)) != signature(before)
+                )
+            ):
+                raise YorungeError("input_changed")
+            return InputBinding(role=role, path=path, size=count, digest=digest), total
+
+    @staticmethod
+    def _hash(descriptor: int, size: int, total: int, budget: Budget) -> tuple[str, int, int]:
+        digest, count = hashlib.sha256(), 0
+        while count < size:
+            budget.check()
+            block = os.read(descriptor, min(BLOCK_BYTES, size - count, MAX_INPUT_BYTES - total))
+            if not block:
+                break
+            count += len(block)
+            total += len(block)
+            if total > MAX_INPUT_BYTES:
+                raise YorungeError("input_budget_exceeded")
+            digest.update(block)
+        budget.check()
+        return digest.hexdigest(), count, total
