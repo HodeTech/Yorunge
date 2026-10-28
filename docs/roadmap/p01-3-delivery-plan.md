@@ -1,6 +1,6 @@
 # P01-3 — Capability ve execution hazırlığı teslim planı
 
-**Güncellendi:** 2026-10-28. **Durum:** Tamamlandı/verified; kullanıcı [PR #8](https://github.com/HodeTech/Yorunge/pull/8)'i development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile aldı. ADR-0013/0014 ve ScopeV2 Accepted. **Uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Dört adım, ikişer bağımsız review turu ve sonraki PR düzeltmeleri tamamlandı.
+**Güncellendi:** 2026-10-28. **Durum:** Tamamlandı/verified; kullanıcı [PR #8](https://github.com/HodeTech/Yorunge/pull/8)'i development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile aldı. ADR-0013/0014 ve ScopeV2 Accepted. **Uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Dört adım, ikişer bağımsız review turu ve sonraki PR düzeltmeleri tamamlandı. Takip [PR #9](https://github.com/HodeTech/Yorunge/pull/9) da development’a alındı; [şema 5 teslimi ve açık merge-CI performans takibi](../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) ayrı kayıtlıdır.
 
 
 **Güncel onay:** ADR-0013/0014 ve bağlı ScopeV2, 2026-10-27 açık kullanıcı onayıyla Accepted. Aşağıdaki hazırlık/review kayıtlarındaki Proposed, onay bekleme, kabulün henüz yapılmadığı ve kontrollerin çalıştırılmadığı ifadeleri ilgili kayıt zamanına aittir; güncel uygulama kabulü aşağıdaki kanonik kayıttadır.

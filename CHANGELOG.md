@@ -14,6 +14,12 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetki/tam girdi kapanışı eksiklerini açık blocked gösterir; run, operation/lease ve gerçek EVREN yoktur. [P01-3 kabul/review kanıtı](docs/research/p01-3-implementation-validation.md).
 
+### Fixed — 2026-10-28
+
+- Store genelindeki cache/proof/conflict ve plan/onay expiry sınırlarını aynı terminal snapshot’ta denetleyen şema 5; restart/saat geri dönüşünde başka bir kaydın yeniden etkinleşmesi önlendi.
+- Eski migration 1–4 kimliklerini koruyan V2 manifest ve aynı hash-doğrulanmış kaynak baytlarıyla yürütülen veri dönüşümü.
+- Yinelenen clock yazması ve kullanılmayan şema kurulum maliyeti azaltıldı; yoğun migration’da sınırlı kullanım senaryosu içi doğrulama özeti kullanıldı. Başarılı ölçümler ile açık merge-CI başlangıç bütçe reddi [kapanış kaydında](docs/research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) ayrı tutulur.
+
 ### Fixed — 2026-10-27
 
 - Yerel context yolunda kullanılmayan kimlik/bakım modellerinin eager import maliyeti kaldırıldı; Linux başlangıç bütçesi korundu.

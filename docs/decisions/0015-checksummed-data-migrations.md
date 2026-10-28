@@ -1,10 +1,10 @@
 # ADR-0015: Checksum'lı migration manifest V2
 
-**Durum:** Accepted — 2026-10-28 açık kullanıcı onayı; V2 uygulaması/review/bütçe doğrulandı, PR #9 merge bekliyor. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli).
+**Durum:** Accepted — 2026-10-28 açık kullanıcı onayı; V2 uygulaması/review/bütçe doğrulandı, PR #9 development'a merge edildi. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli), [merge ve açık CI takibi](../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı).
 
 ## Bağlam ve karar ilişkisi
 
-ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks prototipi içerir. İlk prototipte şema 4→5'in Python backfill'i V1 checksum'ının dışındaydı; ADR-0011 bu durumu yasaklar. Bu P2, aşağıdaki V2 uygulaması ve iki review turuyla giderildi; merge öncesi kabul kaydı korunur. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi ayrı onay gerektirir.
+ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks uygulamasını development'a taşıdı. İlk prototipte şema 4→5'in Python backfill'i V1 checksum'ının dışındaydı; ADR-0011 bu durumu yasaklar. Bu P2, aşağıdaki V2 uygulaması ve iki review turuyla giderildi; merge öncesi kabul kaydı korunur. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi için kullanıcı onayı alındı.
 
 **Bu karar, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Kullanıcı üç seçimi de açıkça onayladı. ADR-0011 Accepted kalır; bu karar onu bütünüyle Superseded yapmaz. İndeks ve ADR-0011 notu V1/V2 kapsamını gösterir.
 
@@ -104,7 +104,7 @@ Enjekte edilmiş commit-öncesi tükenmede `state_busy`, I/O tükenmesinde `stat
 
 ### Prototip DB ve güvenli kurtarma
 
-Development teslimi şema 4'tür; şema 5 yalnız merge edilmemiş PR #9 prototipidir. İlk nihai 4→5 V2 olur. Prototip V1 checksum'lı user_version=5 otomatik benimsenmez, yeniden etiketlenmez, silinmez veya downgrade edilmez.
+PR #9 öncesi development teslimi şema 4'tü. Nihai 4→5 V2 adımı PR #9 ile development'a alındı; güncel şema 5'tir. Bu nihai kimlik, merge öncesindeki checksum dışı prototipten ayrıdır. Prototip V1 checksum'lı user_version=5 otomatik benimsenmez, yeniden etiketlenmez, silinmez veya downgrade edilmez.
 
 Disposable test verisi için yeni bir `--state-dir` ile temiz store seçilir. Gerçek veri varsa eski dizin korunur; `schema_migrations`/checksum elle değiştirilmez. Şema 1–4'e ait doğrulanabilir, tamamlanmış `purpose=migration` backup'ı varsa desteklenen restore akışı **yeni boş hedefte** kullanılır. Uygun backup yoksa DB korunur ve destek incelemesi yapılır; prototip DB için otomatik dönüşüm vaadi yoktur. Bu sınır yayımlanmamış geliştirme/test verisi içindir.
 
@@ -112,7 +112,7 @@ Disposable test verisi için yeni bir `--state-dir` ile temiz store seçilir. Ge
 
 Checksum dışı hook, SQL yorumu/UDF içine gizli dönüşüm, migration sonrası görünmez repair, salt ad etiketi veya cache'i boşaltma seçilmez. JSON1 zorunluluğu mevcut runtime desteğini değiştirir. Çok dosyalı bundle yerine tek dosya seçilmiştir; yerel helper import'u bu kararın dışında kalır.
 
-Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; checksum P2 kod/review/kabul ile kapandı. PR #9 development merge öncesinde kullanıcı incelemesine sunulur; son head kontrolleri PR üzerinde izlenir.
+Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; checksum P2 kod/review/kabul ile kapandı. Kullanıcı PR #9'u development'a birleştirdi; [merge sonrası CI performans takibi](../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) açık olarak ayrıca kayıtlıdır.
 
 ## Kabul matrisi
 

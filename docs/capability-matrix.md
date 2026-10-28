@@ -2,12 +2,12 @@
 
 **Güncellendi:** 2026-10-28. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
 
-İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [development’a alınan P01-2 kabulü](research/p01-2-implementation-validation.md#development-merge-kapanışı), [development’a alınan P01-3 kabulü](research/p01-3-implementation-validation.md#development-merge-kapanışı), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
+İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [development’a alınan P01-2 kabulü](research/p01-2-implementation-validation.md#development-merge-kapanışı), [development’a alınan P01-3 ve PR #9 takibi](research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
 
 | Kimlik | Yetenek | Kullanıcı sonucu | EVREN/araç kanıtı | Yörünge durumu | Hedef |
 |---|---|---|---|---|---|
 | C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/proje yönetimi, env ve kalıcı kimlik/nesil/bakım testli; uzak kimlik yok | P01 yerel / P02-0b uzak |
-| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm, yerel doctor ve açık cache/clock testli; P01-3a development’a alındı, uzak keşif yok | P01 yerel / P02 hesap kanıtı |
+| C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm, yerel doctor ve açık cache/global expiry clock testli; P01-3a ve PR #9 takibi development’a alındı, uzak keşif yok | P01 yerel / P02 hesap kanıtı |
 | C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Planlandı | P02 |
 | C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |
 | C05 | Model/veri kataloğu | Uygun modeli bulmak | Platform kataloğu ve LLM model şeması | Planlandı | P02 |
