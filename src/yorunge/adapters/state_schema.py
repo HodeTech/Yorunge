@@ -124,6 +124,20 @@ payload TEXT NOT NULL CHECK(length(payload)<=4096)
 ) STRICT""",
         ),
     ),
+    Migration(
+        4,
+        5,
+        (
+            """CREATE TABLE capability_expiries (
+cache_key TEXT NOT NULL REFERENCES capability_cache(cache_key) ON DELETE CASCADE,
+expires_at TEXT NOT NULL CHECK(length(expires_at)=27),
+PRIMARY KEY(cache_key,expires_at)
+) STRICT""",
+            "CREATE INDEX capability_expiry_order ON capability_expiries(expires_at,cache_key)",
+            "CREATE INDEX execution_plan_expiry ON execution_plans(expires_at,plan_id)",
+            "CREATE INDEX execution_approval_expiry ON execution_approvals(expires_at,plan_id)",
+        ),
+    ),
 )
 
 

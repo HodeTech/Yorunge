@@ -302,6 +302,10 @@ def apply_migration(connection: sqlite3.Connection, step: schema.Migration) -> N
         raise YorungeError("state_invalid")
     for statement in step.statements:
         connection.execute(statement)
+    if step.from_version == 4 and step.to_version == 5:
+        from yorunge.adapters.expiry_fences import backfill_expiries
+
+        backfill_expiries(connection)
     connection.execute(
         "INSERT INTO schema_migrations VALUES(?,?,?)", (step.to_version, step.checksum, utc_now())
     )

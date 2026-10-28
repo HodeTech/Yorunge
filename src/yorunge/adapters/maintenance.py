@@ -61,6 +61,7 @@ IDENTITY_TABLES = {"state_meta", "schema_migrations", "credential_bindings"}
 RESTORABLE_TABLES = IDENTITY_TABLES | {
     "cache_clock",
     "capability_cache",
+    "capability_expiries",
     "execution_plans",
     "execution_approvals",
 }

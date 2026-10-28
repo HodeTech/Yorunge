@@ -175,5 +175,41 @@
       "passed": true,
       "fresh_cache_hit_verified": true
     }
+  },
+  "provenance": {
+    "recorded_after_measurement": true,
+    "method": "Reconstructed from session commands and committed runtime source; no complete at-run git-status snapshot was captured.",
+    "head_commit": "a086bb3ac83b1ce3d4039acd689ed20f89bfbee1",
+    "runtime_equivalent_commit": "e39d951776f3e29932b84dd83359a62c706a3f26",
+    "runtime_source_tree": "04f553dd91c287fb20e3ece0ac26ca3824909703",
+    "worktree_state": "dirty",
+    "known_modified_tracked_files": [
+      "docs/roadmap/p01-3-delivery-plan.md",
+      "src/yorunge/adapters/capability_cache.py",
+      "tests/integration/test_capability_cache.py"
+    ],
+    "complete_worktree_snapshot": "not captured; the known file list is not an independent at-run inventory",
+    "working_directory": "repository root",
+    "seed_argv": [
+      ".venv/bin/python",
+      "tests/fixtures/seed_capability_cache.py",
+      ".local/ci-startup-fix-serial.DMHHEY/state",
+      "examples/profile.toml"
+    ],
+    "benchmark_argv": [
+      ".venv/bin/python",
+      "scripts/benchmark-startup.py",
+      "--command",
+      ".venv/bin/yorunge",
+      "--cache-state",
+      ".local/ci-startup-fix-serial.DMHHEY/state",
+      "--disk-type",
+      "SSD (local APFS)",
+      "--installation-label",
+      "editable .venv; frozen uv environment",
+      "--output",
+      ".local/p013-ci-fix-after-serial.json"
+    ],
+    "stdout_redirect": ".local/p013-ci-fix-after-serial.log"
   }
 }

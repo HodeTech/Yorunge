@@ -175,5 +175,39 @@
       "passed": true,
       "fresh_cache_hit_verified": true
     }
+  },
+  "provenance": {
+    "recorded_after_measurement": true,
+    "method": "Reconstructed from session commands and committed runtime source; no complete at-run git-status snapshot was captured.",
+    "head_commit": "a086bb3ac83b1ce3d4039acd689ed20f89bfbee1",
+    "runtime_equivalent_commit": "a086bb3ac83b1ce3d4039acd689ed20f89bfbee1",
+    "runtime_source_tree": "74f55db1ea07fe8d48b5bbd9ce55a01ec7dabec8",
+    "worktree_state": "dirty",
+    "known_modified_tracked_files": [
+      "docs/roadmap/p01-3-delivery-plan.md"
+    ],
+    "complete_worktree_snapshot": "not captured; the known file list is not an independent at-run inventory",
+    "working_directory": "repository root",
+    "seed_argv": [
+      ".venv/bin/python",
+      "tests/fixtures/seed_capability_cache.py",
+      ".local/ci-startup-fix.GkVmQT/state",
+      "examples/profile.toml"
+    ],
+    "benchmark_argv": [
+      ".venv/bin/python",
+      "scripts/benchmark-startup.py",
+      "--command",
+      ".venv/bin/yorunge",
+      "--cache-state",
+      ".local/ci-startup-fix.GkVmQT/state",
+      "--disk-type",
+      "SSD (local APFS)",
+      "--installation-label",
+      "editable .venv; frozen uv environment",
+      "--output",
+      ".local/p013-ci-fix-before.json"
+    ],
+    "stdout_redirect": ".local/p013-ci-fix-before.log"
   }
 }

@@ -58,6 +58,402 @@ def key_for(stamp, name="fixture.policy", *, identity=None, authorization=None):
     )
 
 
+def seed_different_expiries(cache, clock):
+    base = clock.value
+    clock.value -= timedelta(seconds=240)
+    initial = cache.stamp()
+    cache.refresh(
+        key_for(initial, "fixture.short"),
+        initial,
+        LocalPolicyProducer("supported", "fixture_policy"),
+    )
+    clock.value = base
+    stamp = cache.stamp()
+    cache.refresh(
+        key_for(stamp, "fixture.long"), stamp, LocalPolicyProducer("supported", "fixture_policy")
+    )
+    return base, stamp
+
+
+def test_global_clock_fence_prevents_another_record_reviving_after_restart(tmp_path):
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        base, stamp = seed_different_expiries(cache, clock)
+        commits = 0
+
+        def jump_on_commit(statement):
+            nonlocal commits
+            if statement == "COMMIT":
+                commits += 1
+                if commits == 1:
+                    clock.value = base + timedelta(seconds=100)
+
+        store.connection.set_trace_callback(jump_on_commit)
+        long = cache.query(key_for(stamp, "fixture.long"), stamp)
+        store.connection.set_trace_callback(None)
+        assert long.freshness == "fresh"
+        assert long.checked_at == timestamp(clock.value)
+        high = store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[0]
+        assert high >= long.checked_at
+    clock.value = base + timedelta(seconds=50)
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        current = cache.stamp()
+        assert current.generation == 2
+        short = cache.query(key_for(current, "fixture.short"), current)
+        assert short.effective_support == "unknown"
+        assert short.freshness == "clock_anomaly"
+
+
+def test_global_fence_covers_proof_expiry_after_aggregate_is_stale(tmp_path):
+    class AccessProducer(LocalPolicyProducer):
+        SOURCE = ("fixture-access", "1")
+
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        initial = cache.stamp()
+        conflict = key_for(initial, "fixture.conflict")
+        cache.refresh(conflict, initial, LocalPolicyProducer("supported", "fixture_policy"))
+        cache.refresh(conflict, initial, AccessProducer("requires_access", "fixture_access"))
+        dates = store.connection.execute(
+            "SELECT expires_at FROM capability_expiries WHERE cache_key=? ORDER BY expires_at",
+            (conflict.digest(),),
+        ).fetchall()
+        assert dates == [
+            (timestamp(clock.value + timedelta(seconds=seconds)),) for seconds in (30, 60, 300)
+        ]
+        clock.value += timedelta(seconds=50)
+        current = cache.stamp()
+        cache.refresh(
+            key_for(current, "fixture.long"),
+            current,
+            LocalPolicyProducer("supported", "fixture_policy"),
+        )
+        before = clock.value
+        original = cache._terminal_point
+
+        def advance(*args):
+            clock.value = before + timedelta(seconds=50)
+            return original(*args)
+
+        cache._terminal_point = advance
+        assert cache.query(key_for(current, "fixture.long"), current).freshness == "fresh"
+        assert store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[
+            0
+        ] >= timestamp(clock.value)
+    clock.value = before + timedelta(seconds=5)
+    with open_store(root) as store:
+        assert StateCache(store, clock).stamp().generation == 2
+
+
+@pytest.mark.parametrize("corruption", ["missing", "extra", "wrong"])
+def test_global_expiry_index_corruption_is_rejected_by_warm_and_full_validation(
+    tmp_path, corruption
+):
+    clock = Clock()
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        if corruption == "missing":
+            store.connection.execute("DELETE FROM capability_expiries")
+        elif corruption == "extra":
+            store.connection.execute(
+                "INSERT INTO capability_expiries VALUES(?,?)",
+                (key.digest(), timestamp(clock.value + timedelta(seconds=500))),
+            )
+        else:
+            store.connection.execute(
+                "UPDATE capability_expiries SET expires_at=?",
+                (timestamp(clock.value + timedelta(seconds=301)),),
+            )
+        with pytest.raises(YorungeError) as warm:
+            cache.query(key, stamp)
+        assert warm.value.code == "state_invalid"
+        with pytest.raises(YorungeError) as full:
+            store.verify()
+        assert full.value.code == "state_invalid"
+
+
+def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_path):
+    clock = Clock()
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        old = store.connection.execute("SELECT payload FROM capability_cache").fetchone()[0]
+        dates = store.connection.execute("SELECT * FROM capability_expiries").fetchall()
+        before = clock.value
+
+        def expire_after_index_write(statement):
+            if statement.startswith("INSERT INTO capability_expiries"):
+                clock.value = before + timedelta(seconds=300)
+
+        store.connection.set_trace_callback(expire_after_index_write)
+        with pytest.raises(YorungeError) as failure:
+            cache.refresh(key, stamp, LocalPolicyProducer("unsupported", "fixture_policy"))
+        store.connection.set_trace_callback(None)
+        assert failure.value.code == "capability_expired"
+        assert store.connection.execute("SELECT payload FROM capability_cache").fetchone()[0] == old
+        assert store.connection.execute("SELECT * FROM capability_expiries").fetchall() == dates
+        assert store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[
+            0
+        ] >= timestamp(clock.value)
+        store.verify()
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_global_expiry_migration_backfills_existing_records_atomically(
+    tmp_path, monkeypatch, interrupt
+):
+    from yorunge.adapters import expiry_fences
+
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        original_payload = store.connection.execute(
+            "SELECT payload FROM capability_cache"
+        ).fetchone()[0]
+        # Historical schema-4 fixture; this is not a product downgrade operation.
+        store.connection.execute("DROP TABLE capability_expiries")
+        store.connection.execute("DROP INDEX execution_plan_expiry")
+        store.connection.execute("DROP INDEX execution_approval_expiry")
+        store.connection.execute("DELETE FROM schema_migrations WHERE version=5")
+        store.connection.execute("PRAGMA user_version=4")
+    if interrupt:
+        original = expiry_fences.save_expiries
+
+        def fail_after_backfill(*args):
+            original(*args)
+            raise YorungeError("state_write_failed")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(expiry_fences, "save_expiries", fail_after_backfill)
+            with pytest.raises(YorungeError) as failure:
+                with open_store(root):
+                    pass
+            assert failure.value.code == "state_write_failed"
+        with sqlite3.connect(root / "state.sqlite3") as connection:
+            assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert (
+                connection.execute(
+                    "SELECT 1 FROM sqlite_schema WHERE name='capability_expiries'"
+                ).fetchone()
+                is None
+            )
+    with open_store(root) as store:
+        assert store.verify().store_schema_version == 5
+        assert (
+            store.connection.execute("SELECT payload FROM capability_cache").fetchone()[0]
+            == original_payload
+        )
+        assert (
+            store.connection.execute("SELECT count(*) FROM capability_expiries").fetchone()[0] == 1
+        )
+        cache = StateCache(store, clock)
+        current = cache.stamp()
+        assert cache.query(key_for(current), current).freshness == "fresh"
+
+
+def test_global_frontier_lookup_has_a_bounded_indexed_query_cost(tmp_path, execution_fixture):
+    import hashlib
+    import runpy
+    from pathlib import Path
+    from uuid import uuid4
+
+    from yorunge.adapters.expiry_fences import next_expiry
+    from yorunge.domain.capabilities import canonical
+    from yorunge.domain.execution import binding_digest
+
+    project = Path(__file__).resolve().parents[2]
+    seed = runpy.run_path(str(project / "tests/fixtures/seed_capability_cache.py"))["seed"]
+    root = tmp_path / "state"
+    seed(root, project / "examples/profile.toml", evidence_count=8)
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=root).data.plan
+    approved = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=root).data
+    assert approved.effective
+    with open_store(root, timeout=30) as store:
+        store.connection.execute("BEGIN IMMEDIATE")
+        try:
+            for _ in range(1023):
+                body = plan.model_dump(mode="json", exclude={"digest"})
+                body["plan_id"] = str(uuid4())
+                copied = plan.model_copy(
+                    update={
+                        "plan_id": body["plan_id"],
+                        "digest": hashlib.sha256(canonical(body)).hexdigest(),
+                    }
+                )
+                approval = approved.record.model_copy(
+                    update={
+                        "plan_id": copied.plan_id,
+                        "plan_digest": copied.digest,
+                        "approval_id": str(uuid4()),
+                        "binding_digest": binding_digest(copied),
+                    }
+                )
+                store.connection.execute(
+                    "INSERT INTO execution_plans VALUES(?,?,?,?,?,?,?)",
+                    (
+                        copied.plan_id,
+                        copied.digest,
+                        copied.selection.task,
+                        copied.prepared_at,
+                        copied.expires_at,
+                        copied.status,
+                        canonical(copied.model_dump(mode="json")).decode("ascii"),
+                    ),
+                )
+                store.connection.execute(
+                    "INSERT INTO execution_approvals VALUES(?,?,?,?,?,?,?)",
+                    (
+                        approval.plan_id,
+                        approval.approval_id,
+                        approval.status,
+                        approval.approved_at,
+                        approval.expires_at,
+                        approval.revoked_at,
+                        canonical(approval.model_dump(mode="json")).decode("ascii"),
+                    ),
+                )
+            store.connection.execute("COMMIT")
+        finally:
+            if store.connection.in_transaction:
+                store.connection.execute("ROLLBACK")
+        store.verify()
+        assert (
+            store.connection.execute("SELECT count(*) FROM capability_expiries").fetchone()[0]
+            == 9200
+        )
+        assert (
+            store.connection.execute("SELECT count(*) FROM execution_plans").fetchone()[0] == 1024
+        )
+        assert (
+            store.connection.execute("SELECT count(*) FROM execution_approvals").fetchone()[0]
+            == 1024
+        )
+        steps = 0
+
+        def progress():
+            nonlocal steps
+            steps += 1
+            return 0
+
+        store.connection.set_progress_handler(progress, 1)
+        found = next_expiry(store.connection, "0001-01-01T00:00:00.000000Z")
+        store.connection.set_progress_handler(None, 0)
+        assert found is not None
+        assert steps < 500
+
+
+def test_global_clock_fence_churn_has_a_finite_failclosed_limit(tmp_path, monkeypatch):
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        point = cache._terminal_point
+        clock.value += timedelta(seconds=100)
+
+        def churn(*args):
+            with open_store(root) as writer:
+                other = StateCache(writer, clock)
+                current = other.stamp()
+                other.refresh(
+                    key_for(current, "fixture.churn"),
+                    current,
+                    LocalPolicyProducer("supported", "fixture_policy"),
+                )
+            return point(*args)
+
+        monkeypatch.setattr(cache, "_terminal_point", churn)
+        monkeypatch.setattr("yorunge.adapters.capability_cache.MAX_STATE_EXPIRIES", 2)
+        with pytest.raises(YorungeError) as failure:
+            cache.query(key, stamp)
+        assert failure.value.code == "state_busy"
+        assert store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[
+            0
+        ] >= timestamp(clock.value)
+
+
+def test_global_terminal_snapshot_holds_off_writer_commit_through_utc_sample(tmp_path):
+    from contextlib import closing
+    from threading import Event, Thread
+
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        base, stamp = seed_different_expiries(cache, clock)
+        ready, committing, done = Event(), Event(), Event()
+        errors = []
+        with closing(
+            sqlite3.connect(
+                root / "state.sqlite3", isolation_level=None, timeout=2, check_same_thread=False
+            )
+        ) as writer:
+
+            def write():
+                try:
+                    assert ready.wait(2)
+                    writer.execute("BEGIN IMMEDIATE")
+                    writer.execute("UPDATE cache_clock SET mutation_revision=mutation_revision+1")
+                    writer.set_trace_callback(
+                        lambda sql: committing.set() if sql == "COMMIT" else None
+                    )
+                    writer.execute("COMMIT")
+                except BaseException as error:
+                    errors.append(error)
+                finally:
+                    done.set()
+
+            terminal = False
+            sampled = False
+            original = clock.now
+
+            def mark_read_snapshot(statement):
+                nonlocal terminal
+                if statement == "BEGIN":
+                    terminal = True
+
+            def sample():
+                nonlocal sampled
+                if terminal and not sampled:
+                    sampled = True
+                    ready.set()
+                    assert committing.wait(2)
+                    assert not done.is_set()
+                    clock.value = base + timedelta(seconds=100)
+                return original()
+
+            thread = Thread(target=write)
+            thread.start()
+            clock.now = sample
+            store.connection.set_trace_callback(mark_read_snapshot)
+            try:
+                result = cache.query(key_for(stamp, "fixture.long"), stamp)
+            finally:
+                clock.now = original
+                store.connection.set_trace_callback(None)
+                ready.set()
+                thread.join(3)
+            assert not thread.is_alive()
+            assert errors == []
+            assert sampled
+            assert result.freshness == "fresh"
+            assert store.connection.execute("SELECT high_watermark FROM cache_clock").fetchone()[
+                0
+            ] >= timestamp(clock.value)
+            store.verify()
+
+
 def test_real_api_cli_refresh_and_persistent_reopen_keep_offline_default(tmp_path, cli):
     root = tmp_path / "state"
     missing = api.query_capabilities(task="llm.train", state_dir=root)

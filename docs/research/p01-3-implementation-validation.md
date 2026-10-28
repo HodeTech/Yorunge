@@ -12,7 +12,7 @@ Son PR head'i ef1d39a [offline-core](https://github.com/HodeTech/Yorunge/actions
 
 [Merge sonrası development CI](https://github.com/HodeTech/Yorunge/actions/runs/40633876330) de başarılı: **1.159 passed (110,99 s)**, Ruff format/lint, strict mypy, belge/ajan, wheel/sdist iki ayrı temiz kurulum ve dört başlangıç bütçesi geçti. Wheel 38/sdist 220 üye; import kökeni, metadata, frozen v1, cache ve yedi execution-plan komutu/beklenen negatif çıkışlar doğrulandı. Wheel SHA-256 d9466d54fa0e81bb3caeb05f9db3e40acc62592e6de8f8d9223bb9dea76b7bee; sdist SHA-256 13823be01e1a64c18353afa22a5cd84e407a5f040620ea828d1e8e62269ad950. Bunlar development build'idir; paket yayımlanmadı.
 
-[Merge head'inin ham başlangıç kaydı](p01-3-merged-startup.json): AMD EPYC 9V74 80-Core, CPython 3.11.15, frozen uv editable, disk unknown; 1.024 kayıt ve üç ısınma sonrası 30 ayrı süreç. Help p95 40,001/version 39,219/context 161,592/cache 195,928 ms; 500/200 ms bütçeleri geçti. Önceki farklı-CPU başarısız koşular silinmedi; bu sonuç bütün Linux donanımlarında süre garantisi değildir. İlk a086bb3 belge kapanışında yerel ürün testleri/build/benchmark tekrar çalıştırılmadı; gerçek ürün ve merge CI sonuçları kullanıldı. İzleyen runtime düzeltmesinin yeni kabulü aşağıda ayrı kaydedilir.
+[Merge head'inin ham başlangıç kaydı](p01-3-merged-startup.json): AMD EPYC 9V74 80-Core, CPython 3.11.15, frozen uv editable, disk unknown; 1.024 kayıt ve üç ısınma sonrası 30 ayrı süreç. Help p95 40,001/version 39,219/context 161,592/cache 195,928 ms; ölçümler 500/200 ms bütçelerinin altında kaldı. Önceki farklı-CPU başarısız koşular silinmedi; bu sonuç bütün Linux donanımlarında süre garantisi değildir. İlk a086bb3 belge kapanışında yerel ürün testleri/build/benchmark tekrar çalıştırılmadı; gerçek ürün ve merge CI sonuçları kullanıldı. İzleyen runtime düzeltmesinin yeni kabulü aşağıda ayrı kaydedilir.
 
 Sıradaki ürün paketi P01-4b/4c'dir: operation/attempt, lease/fencing, unknown uzlaştırma ve yerel jobs okuma. P01-4a önceden tamamlandı; yeni pakette operasyon tüketicisinin restore yasağı, yan etki öncesi kalıcı kayıt ve sahiplik devri kabulü daraltılmalıdır. P01-4b/4c henüz draft kapsam satırlarıdır; plan/kart/karar hazırlığı bu kapanışın ürün geliştirmesi değildir. Sonra P01-5 taşıma/akış/iptal, P01-6 faz kabulü; P02/P03 gerçek EVREN ve araç adaptörleri kalır.
 
@@ -42,7 +42,38 @@ e39d951 için iki bağımsız ajanla ilk review turu tamamlandı. Bir P3 belge �
 
 63194ed [Linux CI](https://github.com/HodeTech/Yorunge/actions/runs/40641501050) **1.164 passed (114,46 s)**, format/lint/strict mypy/belge/ajan, build/iki temiz kurulum ve dört başlangıç bütçesinde başarılıdır. [Ham ölçüm](p01-3-closure-linux-startup.json): Intel Xeon Platinum 8573C, CPython 3.11.15, frozen uv editable, disk unknown; 1.024 kayıt ve 30 süreçte help p95 38,232/version 36,477/context 149,348/cache 192,426 ms. Wheel SHA-256 092f507e153eb21b7f90fdf1c0b46c3f4c39a7ffeae09377a8ba6a8baf2a74fe yerel runtime ile aynıdır. Önceki AMD 7763/9V74 koşuları farklı donanımdır; bu fark kod hızlanmasının nedensel kanıtı veya bütün Linux donanımlarında 200 ms garantisi değildir. Son review/ölçüm belgelerini taşıyan head de kendi zorunlu CI'ından geçmelidir; eski başarılı head kabul yerine kullanılmaz.
 
+### Yerel ölçüm kaynakları ve yeniden üretim
+
+Üç yerel rapora sonradan `provenance` eklendi; süre/örnek değerleri değiştirilmedi. Bu metadata oturum komutları ve commit edilmiş runtime içeriklerinden yeniden kuruldu; ölçüm anında bağımsız tam `git status` snapshot'ı alınmadığı açıkça kayıtlıdır. `head_commit` gerçek o-an HEAD'idir; `runtime_equivalent_commit` sonradan commit edilen aynı runtime'ı ve `runtime_source_tree` tam `src` ağacını tanımlar. Bilinen tracked değişiklik listesi eksiksiz anlık envanter diye sunulmaz.
+
+| Ölçüm | O-an HEAD | Runtime eşdeğeri | Bilinen kaynak durumu | Fixture |
+|---|---|---|---|---|
+| [Önce](p01-3-cache-commit-before.json) | a086bb3 | a086bb3 | Dirty: bilinen teslim planı metni; runtime değişikliği yok | `.local/ci-startup-fix.GkVmQT/state` |
+| [Checkpoint sonrası](p01-3-cache-commit-after.json) | a086bb3 | e39d951 | Dirty: capability_cache, cache integration testi ve teslim planı metni | `.local/ci-startup-fix-serial.DMHHEY/state` |
+| [Şema sonrası](p01-3-deferred-startup.json) | 0e83ea6 | 63194ed | Dirty: state adapter, API, credentials/models/state domain dosyaları | `.local/ci-startup-schema.Hqrgl2/state` |
+
+Her rapor seed ve benchmark için tam argüman dizilerini, çıktı dosyasını ve stdout yönlendirmesini taşır. Örneğin checkpoint-sonrası gerçek komut:
+
+```sh
+.venv/bin/python tests/fixtures/seed_capability_cache.py .local/ci-startup-fix-serial.DMHHEY/state examples/profile.toml
+.venv/bin/python scripts/benchmark-startup.py --command .venv/bin/yorunge --cache-state .local/ci-startup-fix-serial.DMHHEY/state --disk-type 'SSD (local APFS)' --installation-label 'editable .venv; frozen uv environment' --output .local/p013-ci-fix-after-serial.json > .local/p013-ci-fix-after-serial.log
+```
+
+Tekrar üretimde ilgili runtime commit'i ve frozen ortam kullanılır; örnekteki mevcut fixture ezilmez, yeni disposable `.local` dizini [CONTRIBUTING komutuyla](../../CONTRIBUTING.md#doğrulama-seçimi) seçilir. Bu yeni koşu tarihsel ölçümün aynısı sayılmaz; hardware/OS/disk cache koşulları ayrıca kaydedilir.
+
 Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye açık/merge yapılmadı ifadeleri o commit anını anlatır; güncel kapanış ve izleyen CI düzeltmesi bu bölümdedir.
+
+### Dış review: kayıtlar arası clock boşluğu ve global fence
+
+PR #9'daki saat yorumu iki bağımsız ajan ve ana inceleme tarafından gerçek kodda doğrulandı. [Tekrarlanabilir probe](p01-3-clock-frontier-probe.py) ve [tarihsel ham sonuç](p01-3-clock-frontier-reproduction.json), e32cb42 tabanında ve 2865ff3'te aynı boşluğu gösterir: B'nin expiry'si T+60, A'nın T+300; yalnız A sorgulanırken terminal commit UTC'yi T+100'e taşır. A fresh dönerken watermark T'de kalır; yeni StateCache T+50'de B'yi yeniden fresh/supported döndürebilir. Probe bu kusur görüldüğünde exit 1 verir; başarılı ürün kabulü diye kullanılmaz. Bu kontrol mevcut tam takımın kapsamadığı bir senaryoydu.
+
+Önerilen tek satır doğrudan uygulanmadı: son `save_stamp` sonrasında UTC/bütçe/bağ örneği atlanınca ek commit'teki expiry veya 5 saniyelik bütçe aşımı fresh sonuç verebilir. İki reviewer bu ters örneği de bağımsız üretti. Her son UTC örneğini persist edip her commit'ten sonra tekrar UTC okumak genel olarak sonlu başarı garantisi vermez.
+
+Düzeltme, Accepted ADR-0013'ün mevcut global yeniden-canlanmama garantisini ADR-0011/0014'ün migration/restore sınırlarında uygular; yeni TTL, yetki, süre bütçesi, bağımlılık veya restore desteği kararı alınmadı. İki bağımsız kapsam incelemesi bunun yeni ADR/onay gerektiren politika değişikliği olmadığını doğruladı. Normatif uygulama sınırı [store genelindeki süre kapısında](../reference/capability-record.md#store-genelinde-süre-kapısı), şema/bakım ayrıntısı [local state](../reference/local-state.md#global-expiry-indeksi) kaydındadır. 4→5 gerçek tüketici migration'ı eski checksum'ları korur; SQL JSON1 bağımlılığı eklenmez.
+
+Yeni 13 regresyon; başka cache kaydı/proof, aggregate stale sonrası leaf expiry, plan ve daha kısa onay expiry'si, eksik/fazla/bozuk türetilmiş satır, business rollback, 4→5 backfill/kesinti, eşzamanlı writer'ın terminal snapshot boyunca beklemesi ve sınırlı churn çıkışını kapsar. 1.024 cache + 1.024 plan + 1.024 onay ve 9.200 cache expiry satırında global minimum sorgusu 500 SQLite VM adımının altında kaldı; tüm payload'ları taramıyor.
+
+İlk tam koşu 1.176 başarılı test ve yeni tabloyu henüz beklemeyen bir şema liste assertion'ıyla bitti. Liste yeni gerçek şemaya güncellendi; hedefli kontroller ve son tam takım **1.177 passed (155,10 s)**, Ruff format/lint, strict mypy başarılıdır. Son [normal](p01-3-global-expiry-startup.json) ve [sekiz proof'lu yoğun](p01-3-global-expiry-dense-startup.json) ölçüm aynı Apple M5 Max/SSD APFS/CPython 3.11.18/frozen editable ortamda test yükü olmadan yapıldı: 1.024/9.200 expiry satırında cache p95 117,316/112,488 ms. Dört bütçe iki koşuda da geçti; bu fark yoğun verinin daha hızlı olduğunu veya Linux kabulünü kanıtlamaz. İki rapor ölçüm anında gerçek HEAD/dirty dosyalar, runtime dosya hash'leri, fixture/benchmark argümanları ve veri sayımlarını kaydetti; ölçüm sırasında runtime değişmediği ayrıca doğrulandı. Bu kaynak değişikliği ayrı iki fresh review turu ve son head CI'ıyla tamamlanır.
 
 ## Onay ve yöntem
 

@@ -175,5 +175,43 @@
       "passed": true,
       "fresh_cache_hit_verified": true
     }
+  },
+  "provenance": {
+    "recorded_after_measurement": true,
+    "method": "Reconstructed from session commands and committed runtime source; no complete at-run git-status snapshot was captured.",
+    "head_commit": "0e83ea692deb991c9c365053e646d1366bf51410",
+    "runtime_equivalent_commit": "63194ed8a609298b3ecfbc0f2f7f7ce8d8e4ea15",
+    "runtime_source_tree": "947a53cf05169e18eba0d83c7e3abf86b4b854f6",
+    "worktree_state": "dirty",
+    "known_modified_tracked_files": [
+      "src/yorunge/adapters/state.py",
+      "src/yorunge/api.py",
+      "src/yorunge/domain/credentials.py",
+      "src/yorunge/domain/models.py",
+      "src/yorunge/domain/state.py"
+    ],
+    "complete_worktree_snapshot": "not captured; the known file list is not an independent at-run inventory",
+    "working_directory": "repository root",
+    "seed_argv": [
+      ".venv/bin/python",
+      "tests/fixtures/seed_capability_cache.py",
+      ".local/ci-startup-schema.Hqrgl2/state",
+      "examples/profile.toml"
+    ],
+    "benchmark_argv": [
+      ".venv/bin/python",
+      "scripts/benchmark-startup.py",
+      "--command",
+      ".venv/bin/yorunge",
+      "--cache-state",
+      ".local/ci-startup-schema.Hqrgl2/state",
+      "--disk-type",
+      "SSD (local APFS)",
+      "--installation-label",
+      "editable .venv; frozen uv environment",
+      "--output",
+      ".local/p013-ci-fix-schema-startup.json"
+    ],
+    "stdout_redirect": ".local/p013-ci-fix-schema-startup.log"
   }
 }

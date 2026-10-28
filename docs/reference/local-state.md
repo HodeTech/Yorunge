@@ -10,7 +10,7 @@ State oluşturma/gözlem ve tüm bakım önizleme/uygulama girişleri desteklenm
 
 İlk açık kullanımda private store, karşılaştırma K'sı ve gerçek şema kurulur. Var olan sağlıklı store'da aynı store/epoch döner; bu çağrı kimlik reset'i veya env çözümleme değildir. Sonuç `Result[StateInfo]`: zarf sürümü 1; data `schema_version=1`, gerçek DB `store_schema_version`, `store_id`, `identity_epoch`. K, key-check ve özel verifier sonuçta yoktur. `state init` mevcut store için tam yapısal/ilişkisel/mantıksal doğrulama yapar.
 
-Metadata/help/version, varsayılan context/capability, offline Plan ve env credential kontrolü bu store'u açmaz/yaratmaz. Açık capability `--cached`/`--refresh` modu private store/clock kullanır; normal capability komutuna gizli DB erişimi eklenmez. State sınıfları explicit kullanımda lazy yüklenir. Tarihsel şema 1 metadata/migration/credential tablolarıdır; şema 2 `cache_clock` ve `capability_cache`, şema 3 `execution_plans`, şema 4 `execution_approvals` ekler. Operation/lease/jobs yoktur. SQL/key dosyalarının sahipliği/izinleri denetlenir; mevcut kullanıcı dosyası chmod/overwrite edilerek benimsenmez.
+Metadata/help/version, varsayılan context/capability, offline Plan ve env credential kontrolü bu store'u açmaz/yaratmaz. Açık capability `--cached`/`--refresh` modu private store/clock kullanır; normal capability komutuna gizli DB erişimi eklenmez. State sınıfları explicit kullanımda lazy yüklenir. Tarihsel şema 1 metadata/migration/credential tablolarıdır; şema 2 `cache_clock` ve `capability_cache`, şema 3 `execution_plans`, şema 4 `execution_approvals` ekler. Şema 5, türetilmiş `capability_expiries` ve plan/onay expiry indeksleriyle [store genelindeki süre kapısını](capability-record.md#store-genelinde-süre-kapısı) uygular. Operation/lease/jobs yoktur. SQL/key dosyalarının sahipliği/izinleri denetlenir; mevcut kullanıcı dosyası chmod/overwrite edilerek benimsenmez.
 
 ## Hata ve süre
 
@@ -46,6 +46,10 @@ Tamamlanmış/yarım backup, orphan key, interrupted stage ve `upgrade-*.sqlite3
 
 Cache/clock şema geçişinde snapshot/manifest ve tam payload/index tutarlılığı doğrulanır; yanlış projection/group/key veya bozuk payload cache miss diye gizlenmez. Reset cache'i temizler, clock alanını yeni identity epoch'a bağlar; kimlik geçmişini silmez. Önceki runtime'ın tamamlanmış eski stage/live restore çifti, kaynak backup kayıpken de intent'in aynı epoch/K'sı korunarak yeni şemaya yükseltilir. Yükseltme ayrı, private no-clobber `upgrade-*.sqlite3` kopyasında tamamlanıp doğrulanır ve sync edilir; ardından tamamlanmış stage/live yerine atomik yayımlanıp dosya/dizin sync edilir. İkinci bir kesinti yayına kadar özgün çifti korur; başarısız gölge ve journal otomatik kaynak sayılmaz. Önizleme gölgeyi açıp journal recovery yapmaz. Tam hedef sürüm ve kalıcılık tamamlanmadan intent kaldırılmaz. Plan/onay tüketicileri ve bakım preview v2 de uygulanmıştır; aşağıdaki bölüm güncel şema/sayaç sınırını verir. Cache temizliği plan/onay geçmişini silmez.
 
+
+## Global expiry indeksi
+
+Şema 5'in cache expiry satırları yeni bir veri otoritesi değildir. 4→5 migration, kayıtları sınırlı Python decoder'ıyla türetir; JSON1 gerektirmez. Cache kaydı ve türetilmiş satırları aynı business transaction'ında değişir; silme/reset FK cascade ile satırları kaldırır. Tam doğrulama ve sıcak kayıt okuması eksik/fazla/uyuşmayan expiry'yi `state_invalid` ile reddeder. Backup/restore/recover allowlist'i bu türevi de kapsar; bilinmeyen operation tüketicileri için ret sürer. Eski migration checksum'ları değişmez.
 
 ## Execution planı tüketicisi
 
