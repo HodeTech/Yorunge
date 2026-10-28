@@ -37,6 +37,10 @@ ENTRY_FIELDS = (
     "cache_key,key_json,projection_key,group_key,payload,mutation_revision,checked_at,pinned_until"
 )
 SELECT_ENTRY = f"SELECT {ENTRY_FIELDS} FROM capability_cache WHERE cache_key=?"
+SELECT_CLOCK = (
+    "SELECT identity_epoch,clock_generation,high_watermark,anomaly_active,"
+    "mutation_revision FROM cache_clock WHERE singleton=1"
+)
 
 
 class Clock(Protocol):
@@ -67,9 +71,16 @@ class Token:
     revision: int
 
 
+@dataclass(frozen=True)
+class ClockCheckpoint:
+    stamp: Stamp
+    row: tuple[object, ...]
+
+
 @dataclass
 class TimeGate:
     intervals: list[tuple[datetime, datetime]] = field(default_factory=list)
+    checkpoint: ClockCheckpoint | None = None
 
     def require(self, record: CapabilityRecord) -> None:
         self.intervals.append((instant(record.checked_at), instant(record.expires_at)))
@@ -198,10 +209,7 @@ class StateCache:
     def _tick(self, now: datetime) -> Stamp:
         self.observed = now
         value = metadata(self.connection)
-        row = self.connection.execute(
-            "SELECT identity_epoch,clock_generation,high_watermark,anomaly_active,"
-            "mutation_revision FROM cache_clock WHERE singleton=1"
-        ).fetchone()
+        row = self.connection.execute(SELECT_CLOCK).fetchone()
         if row is None or row[0] != value.identity_epoch:
             raise YorungeError("state_invalid")
         epoch, generation, high, anomaly, revision = row
@@ -300,8 +308,10 @@ class StateCache:
                 self._same(stamp, self._tick(self.now()))
                 yield gate
                 observed = self.now()
-                self._same(stamp, self._tick(observed))
+                final = self._tick(observed)
+                self._same(stamp, final)
                 gate.check(observed)
+                clock_row = self.connection.execute(SELECT_CLOCK).fetchone()
             except BaseException:
                 observed = self.observed
                 connection.execute("ROLLBACK TO business")
@@ -311,6 +321,7 @@ class StateCache:
                 raise
             connection.execute("RELEASE business")
             connection.execute("COMMIT")
+            gate.checkpoint = ClockCheckpoint(final, clock_row)
         finally:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
@@ -467,8 +478,9 @@ class StateCache:
         rows: list[tuple[CapabilityRecord | None, tuple[CapabilityRecord, ...]]] = [
             (None, ()) for _ in keys
         ]
+        checkpoint = None
         try:
-            with self.transaction(stamp):
+            with self.transaction(stamp) as gate:
                 for index, key in enumerate(keys):
                     record, _ = self._read(key)
                     candidates: tuple[CapabilityRecord, ...] = ()
@@ -483,21 +495,37 @@ class StateCache:
                             )
                         )
                     rows[index] = record, candidates
+            checkpoint = gate.checkpoint
         except YorungeError as error:
             if error.code == "state_changed":
                 self._bindings(stamp)
             elif error.code != "capability_expired":
                 raise
         final, within_budget = self._finish(
-            stamp, tuple(instant(record.expires_at) for record, _ in rows if record is not None)
+            stamp,
+            tuple(instant(record.expires_at) for record, _ in rows if record is not None),
+            checkpoint=checkpoint,
         )
         return tuple(
             self._present(key, record, candidates, stamp, final, within_budget)
             for key, (record, candidates) in zip(keys, rows, strict=True)
         )
 
-    def _finish(self, stamp: Stamp, expires: tuple[datetime, ...] = ()) -> tuple[Stamp, bool]:
-        current = self.stamp()
+    def _finish(
+        self,
+        stamp: Stamp,
+        expires: tuple[datetime, ...] = (),
+        *,
+        checkpoint: ClockCheckpoint | None = None,
+    ) -> tuple[Stamp, bool]:
+        # Reuse only this query's successful durable commit, and only while the
+        # complete clock row is unchanged. Other consumers still take a new stamp.
+        current = (
+            checkpoint.stamp
+            if checkpoint is not None
+            and self.connection.execute(SELECT_CLOCK).fetchone() == checkpoint.row
+            else self.stamp()
+        )
         # Only newly crossed boundaries require another durable watermark. Each
         # iteration fences at least one boundary, or invalidates the generation.
         # No producer/discovery retry occurs and the loop is bounded by the view.

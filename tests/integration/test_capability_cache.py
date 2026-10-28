@@ -607,8 +607,8 @@ def test_last_transaction_time_sample_rejects_expired_write(tmp_path):
         assert store.connection.execute("SELECT count(*) FROM capability_cache").fetchone() == (0,)
 
 
-@pytest.mark.parametrize("advance", [300, -1])
-def test_query_observes_and_fences_time_after_its_clock_commit(tmp_path, advance):
+@pytest.mark.parametrize("advance,elapsed", [(300, 0), (-1, 0), (0, 5)])
+def test_query_observes_and_fences_time_after_its_clock_commit(tmp_path, advance, elapsed):
     clock = Clock()
     with open_store(tmp_path / "state") as store:
         cache = StateCache(store, clock)
@@ -621,20 +621,83 @@ def test_query_observes_and_fences_time_after_its_clock_commit(tmp_path, advance
             nonlocal commits
             if statement == "COMMIT":
                 commits += 1
-                if commits == 2:
+                if commits == 1:
                     clock.value += timedelta(seconds=advance)
+                    clock.elapsed += elapsed
 
         store.connection.set_trace_callback(move_after_clock_commit)
         result = cache.query(key, stamp)
         store.connection.set_trace_callback(None)
         assert result.effective_support == "unknown"
-        assert result.freshness == ("stale" if advance > 0 else "clock_anomaly")
+        assert result.freshness == ("clock_anomaly" if advance < 0 else "stale")
         assert result.checked_at == timestamp(clock.value)
         generation, high = store.connection.execute(
             "SELECT clock_generation,high_watermark FROM cache_clock"
         ).fetchone()
-        assert generation == (1 if advance > 0 else 2)
+        assert generation == (2 if advance < 0 else 1)
         assert high >= timestamp(clock.value)
+
+
+@pytest.mark.parametrize("regression", [False, True])
+def test_query_rechecks_a_concurrent_durable_clock_before_presentation(
+    tmp_path, monkeypatch, regression
+):
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        finish = cache._finish
+
+        def concurrent_clock(*args, **kwargs):
+            other_clock = Clock()
+            other_clock.value += timedelta(seconds=100)
+            with open_store(root) as other:
+                observer = StateCache(other, other_clock)
+                observer.stamp()
+                if regression:
+                    other_clock.value -= timedelta(seconds=1)
+                    observer.stamp()
+            return finish(*args, **kwargs)
+
+        monkeypatch.setattr(cache, "_finish", concurrent_clock)
+        result = cache.query(key, stamp)
+        assert result.effective_support == "unknown"
+        assert result.freshness == "clock_anomaly"
+    clock.value += timedelta(seconds=101)
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        current = cache.stamp()
+        assert current.generation == 2
+        assert cache.query(key_for(current), current).freshness == "miss"
+
+
+@pytest.mark.parametrize("corruption", ["missing", "revision"])
+def test_query_does_not_reuse_a_checkpoint_after_clock_corruption(
+    tmp_path, monkeypatch, corruption
+):
+    clock, root = Clock(), tmp_path / "state"
+    with open_store(root) as store:
+        cache = StateCache(store, clock)
+        stamp = cache.stamp()
+        key = key_for(stamp)
+        cache.refresh(key, stamp, LocalPolicyProducer("supported", "fixture_policy"))
+        finish = cache._finish
+
+        def corrupt_clock(*args, **kwargs):
+            with sqlite3.connect(root / "state.sqlite3") as other:
+                if corruption == "missing":
+                    other.execute("DELETE FROM cache_clock")
+                else:
+                    other.execute("PRAGMA ignore_check_constraints=ON")
+                    other.execute("UPDATE cache_clock SET mutation_revision=-1")
+            return finish(*args, **kwargs)
+
+        monkeypatch.setattr(cache, "_finish", corrupt_clock)
+        with pytest.raises(YorungeError) as failure:
+            cache.query(key, stamp)
+        assert failure.value.code == "state_invalid"
 
 
 @pytest.mark.parametrize("advance", [300, -1])

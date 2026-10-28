@@ -18,7 +18,17 @@ Sıradaki ürün paketi P01-4b/4c'dir: operation/attempt, lease/fencing, unknown
 
 Development merge, gerçek yürütme veya yayın değildir. Public producer araç/uzak yetki/tam girdi kapanışı eksikleriyle draft/blocked; run/operation/lease henüz yoktur. Gerçek Windows, canlı EVREN ve fiziksel güç kesintisi kanıtı üretilmedi. Master aktarımı/release kullanıcıdadır.
 
-Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye açık/merge yapılmadı ifadeleri o commit anını anlatır; güncel kapanış bu bölümdür.
+### Merge sonrası CI düzeltmesi
+
+Kapanış [PR #9](https://github.com/HodeTech/Yorunge/pull/9)'un a086bb3 head'inde [offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40634878341) 1.159 test ve iki temiz kurulumdan sonra cache bütçesinde başarısız oldu. [Ham kayıt](p01-3-closure-ci-startup-failed.json): AMD EPYC 9V74, CPython 3.11.15, frozen uv editable, disk unknown; 1.024 kayıt/30 süreçte medyan 146,998 ve p95 246,461 ms. Dört örnek 200 ms üzerindedir. Wheel merge ile aynıdır; sonradan alınan importtime/cProfile sıçrama anlarını ölçmediğinden disk veya scheduler kesin neden olarak sunulmaz. Aynı head yeniden başlatılmadı.
+
+Normal cache okumasındaki üç kalıcı clock transaction'ından sonuncusu azaltıldı: başarılı okuma transaction'ının son Stamp'i ve tam clock satırı yalnız COMMIT başarılı olduktan sonra checkpoint olur. Son kapı tam satırı yeniden okur; eşzamanlı değişiklik/bozukluk/eksiklikte önceki kalıcı stamp yoluna döner. UTC/monotonic/bağ denetimleri ve commit sırasında geçilen expiry veya saat geri dönüşü için ek kalıcı fence korunur. Execution/approval tüketicileri yeni checkpoint yolunu kullanmaz. SQLite journal/synchronous, rollback'ten bağımsız ilk stamp, 200 ms hedefi, 30 süreç ve fresh-hit doğrulaması değişmedi; yeni ADR gerektiren politika değişikliği yapılmadı.
+
+Aynı yerel Apple M5 Max/SSD APFS/macOS 27.0.1/CPython 3.11.18/frozen uv editable ortamında, test yükü olmadan yeni fixture'larla [önce](p01-3-cache-commit-before.json)/[sonra](p01-3-cache-commit-after.json) ölçüldü. CPU betik çıktısı `arm`; model ayrıca yerel sysctl ile doğrulandı. Cache medyanı 124,240 → 111,840 ms, p95 125,865 → 125,005 ms; diğer üç bütçe de geçti. Medyan azaldı; p95 farkı küçük olduğundan Linux sıçramalarının çözüldüğü veya bütün donanımlarda süre garantisi olduğu iddia edilmez.
+
+Tam yerel takım **1.164 passed (135,10 s)**; Ruff format/lint, strict mypy ve belge/ajan/diff denetimleri geçti. Commit sırasında expiry/UTC geri dönüşü/monotonic bütçe, ikinci bağlantıda ileri watermark ve generation değişimi, eksik/bozuk clock satırı regresyonları eklendi; mevcut execution/approval kabulleri tam takıma dahildir. Bağımsız review ve son head Linux CI kabulü ayrıca kaydedilir.
+
+Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye açık/merge yapılmadı ifadeleri o commit anını anlatır; güncel kapanış ve izleyen CI düzeltmesi bu bölümdedir.
 
 ## Onay ve yöntem
 
