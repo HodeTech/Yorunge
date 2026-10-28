@@ -359,9 +359,10 @@ def test_verified_transform_requires_caller_owned_transaction(tmp_path, monkeypa
     root = tmp_path / "state"
     schema4(root, monkeypatch)
     prepared = dm.prepare(state_schema.MIGRATIONS[-1], Deadline())
+    deadline = Deadline()
     with closing(sqlite3.connect(root / state.DB_NAME, isolation_level=None)) as conn:
         with pytest.raises(YorungeError) as failure:
-            prepared.run(conn, Deadline())
+            prepared.run(conn, deadline)
         assert failure.value.code == "state_invalid"
         assert conn.in_transaction is False
 

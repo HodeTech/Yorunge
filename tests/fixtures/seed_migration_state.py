@@ -136,7 +136,7 @@ def maximum_plan(plan, root):
 
 def plans(root, version, maximum, config):
     validator = runpy.run_path(str(PROJECT / "tests/conftest.py"))["execution_validator_fixture"]()
-    with patch.object(api, "_execution_validator", lambda: validator):
+    with patch.object(api, "_execution_validator", return_value=validator):
         base = api.prepare_execution_plan(task="llm.train", config=config, state_dir=root).data.plan
         if version == 4:
             assert api.approve_execution_plan(

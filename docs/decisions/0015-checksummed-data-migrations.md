@@ -1,10 +1,10 @@
 # ADR-0015: Checksum'lı migration manifest V2
 
-**Durum:** Accepted — 2026-10-28 açık kullanıcı onayı; V2 uygulaması sürüyor. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli).
+**Durum:** Accepted — 2026-10-28 açık kullanıcı onayı; V2 uygulaması/review/bütçe doğrulandı, PR #9 merge bekliyor. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli).
 
 ## Bağlam ve karar ilişkisi
 
-ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks prototipi içerir. Ancak şema 4→5'in Python backfill'i V1 checksum'ının dışındadır; ADR-0011 bu durumu yasaklar. Bu P2 giderilmeden prototip merge edilmez. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi ayrı onay gerektirir.
+ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks prototipi içerir. İlk prototipte şema 4→5'in Python backfill'i V1 checksum'ının dışındaydı; ADR-0011 bu durumu yasaklar. Bu P2, aşağıdaki V2 uygulaması ve iki review turuyla giderildi; merge öncesi kabul kaydı korunur. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi ayrı onay gerektirir.
 
 **Bu karar, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Kullanıcı üç seçimi de açıkça onayladı. ADR-0011 Accepted kalır; bu karar onu bütünüyle Superseded yapmaz. İndeks ve ADR-0011 notu V1/V2 kapsamını gösterir.
 
@@ -88,7 +88,7 @@ Ham SQLite/ImportError, path veya traceback public çıktıya sızmaz. Onay ya d
 
 [Sabit schema-4 vektörleri](../research/p01-3-expiry-migration-vectors.json), gerçek source-row alanları ve **elle seçilmiş** `(cache_key, expires_at)` kümelerini taşır. Beklenen kümeler handler, `cache_expiries`, `combine` veya nihai validator'dan üretilmez/güncellenmez. Kapsam: yalnız aggregate, tek/birden çok proof, evidence'sız conflict marker, çakışan üç tür tarih ve sekiz evidence + aggregate + farklı blocker ile 10 ayrı tarih.
 
-Her vektör gerçek schema-4 dosyasına konur; V2 ile migration sonrası SQL satırları literal beklentiyle karşılaştırılır. Ardından güncel warm query ve global next-boundary/restart regresyonu çalışır. Böylece handler ve validator'ın aynı alanı atlaması tek başına kabul sağlayamaz. Duplicate key, non-finite, 32 KiB üstü ve dokuz evidence negatiflerinde güncel kanonik decoder ile controlled ret ve değişmemiş DB doğrulanır. Henüz V2 bulunmadığı için bugünkü prototype/vektör kontrolü V2 kabulü değildir.
+Her vektör gerçek schema-4 dosyasına konur; V2 ile migration sonrası SQL satırları literal beklentiyle karşılaştırılır. Ardından güncel warm query ve global next-boundary/restart regresyonu çalışır. Böylece handler ve validator'ın aynı alanı atlaması tek başına kabul sağlayamaz. Duplicate key, non-finite, 32 KiB üstü ve dokuz evidence negatiflerinde güncel kanonik decoder ile controlled ret ve değişmemiş DB doğrulanır. Onay öncesindeki yalnız prototype/vektör kontrolü tarihsel araştırma kanıtıdır. Güncel V2, gerçek migration/literal/warm/negatif testleri ve yoğun bütçe ölçümleriyle [kabul kaydında](../research/p01-3-implementation-validation.md#v2-uygulaması--adım-2) doğrulandı.
 
 ### Migration bütçesi ve ölçülebilir kabul
 
@@ -112,7 +112,7 @@ Disposable test verisi için yeni bir `--state-dir` ile temiz store seçilir. Ge
 
 Checksum dışı hook, SQL yorumu/UDF içine gizli dönüşüm, migration sonrası görünmez repair, salt ad etiketi veya cache'i boşaltma seçilmez. JSON1 zorunluluğu mevcut runtime desteğini değiştirir. Çok dosyalı bundle yerine tek dosya seçilmiştir; yerel helper import'u bu kararın dışında kalır.
 
-Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; PR #9 taslak ve checksum P2 uygulama/kabul tamamlanana kadar açık kalır.
+Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; checksum P2 kod/review/kabul ile kapandı. PR #9 development merge öncesinde kullanıcı incelemesine sunulur; son head kontrolleri PR üzerinde izlenir.
 
 ## Kabul matrisi
 
@@ -129,4 +129,4 @@ Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Pyth
 | Kaynak ve süre | Yukarıdaki pozitif/negatif migration bütçesi, phase/VM/raw JSON/baseline; global clock/concurrency/churn; 30-process normal/yoğun startup |
 | Dağıtım/teslim | Wheel/sdist'te aynı handler baytları; iki temiz kurulum; tam test/lint/type/belge; fix/commit sonrası farklı fresh reviewer'larla ikinci tur ve son head zorunlu CI |
 
-Ret testleri tam kararlı hata kodunu ve DB içeriği/manifest/user_version'ın korunmasını doğrular. Kabul listesi gelecekte yapılması gereken işi tanımlar; henüz uygulanmamış V2 için geçmiş test sayısı veya prototip başarısı kabul yerine kullanılmaz.
+Ret testleri tam kararlı hata kodunu ve DB içeriği/manifest/user_version'ın korunmasını doğrular. Matris bu kararın normatif kabul şartlarını tanımlar; güncel V2 bu şartlarla [kabul kaydında](../research/p01-3-implementation-validation.md#v2-uygulaması--adım-2) doğrulandı. Geçmiş test sayısı veya tek başına prototip başarısı kabul yerine kullanılmaz.

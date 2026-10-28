@@ -194,8 +194,9 @@ def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_p
                 clock.value = before + timedelta(seconds=300)
 
         store.connection.set_trace_callback(expire_after_index_write)
+        producer = LocalPolicyProducer("unsupported", "fixture_policy")
         with pytest.raises(YorungeError) as failure:
-            cache.refresh(key, stamp, LocalPolicyProducer("unsupported", "fixture_policy"))
+            cache.refresh(key, stamp, producer)
         store.connection.set_trace_callback(None)
         assert failure.value.code == "capability_expired"
         assert store.connection.execute("SELECT payload FROM capability_cache").fetchone()[0] == old
@@ -402,7 +403,8 @@ def test_global_terminal_snapshot_holds_off_writer_commit_through_utc_sample(tmp
 
             def write():
                 try:
-                    assert ready.wait(2)
+                    if not ready.wait(2):
+                        raise TimeoutError("reader snapshot was not established")
                     writer.execute("BEGIN IMMEDIATE")
                     writer.execute("UPDATE cache_clock SET mutation_revision=mutation_revision+1")
                     writer.set_trace_callback(
