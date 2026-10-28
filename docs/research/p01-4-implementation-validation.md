@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Adım 1 iki review turuyla kapandı; adım 2 uygulanıyor. Paket ve P01-4b/4c kabulü tamamlanmadı. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md).
+**Güncellendi:** 2026-10-29. **Durum:** Adım 1 ve 2 ikişer review turuyla kapandı; adım 3 başlıyor. Paket ve P01-4b/4c kabulü tamamlanmadı. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md).
 
 ## Karar kapanışı
 
@@ -84,8 +84,8 @@ R1 fix 2ba731e sonrasında iki farklı fresh reviewer (GPT-6 Astra high ve GPT-6
 
 TimeGate varsayılan capability davranışını koruyup kontrol sahibine özgü clock/range hata kodu taşır. Ownership transaction'ı clock gereksinimini ilk pre-yield kontrolden önce kurar; giriş ve son kontrol lease_lost verir. Credential/approval state_changed ve execution bütçesi topluca yeniden sınıflandırılmaz. İlk delta review'u stamp ile transaction girişindeki ek saat yarışı penceresini buldu; root bir negatif/bir pozitif kontrolle doğrulayıp kapattı. OperationPhase, mevcut DB kimliğini canonical olarak doğrulayıp decode'dan önce hata bağlamına alır; read/final-transaction/post-check aynı kalıcı ID'yi kullanır.
 
-İlk geniş delta takımı **237 passed / 69,08 s**; son giriş/final expiry/gerileme ve lookup/race read/bütçe regresyonları **8 passed / 2,46 s**. Ruff/strict mypy geçti. Son full takım ve iki reviewer'ın son delta kapanışı devam ediyor; bu paragraf henüz Step 2 kapanışı değildir.
+İlk geniş delta takımı **237 passed / 69,08 s**; son giriş/final expiry/gerileme ve lookup/race read/bütçe regresyonları **8 passed / 2,46 s**. Ruff/strict mypy geçti. Son fix ee7f7a3 üzerinde tam takım **1.469 passed / 196,27 s**. İki reviewer son giriş/final hata ve ID deltalarını kapattı; sözleşme reviewer'ı giriş anomaly/default cache/credential değişimini ayrıca bağımsız SQLite örnekleriyle doğruladı. Ruff/lint/strict mypy, belge/ajan/diff başarılı. Adım 2 iki fresh review turu ve doğrulanmış fix commit'leriyle kapandı; açık bulgu yok. P01-4b adım 3 ve public jobs adım 4 hâlâ uygulama/kabul bekler.
 
 ## Sonraki adımlar
 
-Adım 2 commit ve iki fresh review turuyla kapandıktan sonra recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 2 commit ve iki fresh review turuyla kapandı; recovery/terminal/reset (adım 3), ardından public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
