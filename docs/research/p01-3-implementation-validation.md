@@ -111,6 +111,10 @@ Resmî kaynaklar 2026-10-28'de tekrar incelendi: [Python 3.11 bytecode invalidat
 
 Revizyonun yerel kontrolleri: 106 Markdown/0 sorun, altı skill/yedi kart/0 sorun, araştırma probe'unda Ruff format/lint, gerçek bytecode/vektör koşusu ve diff whitespace başarılı. Ürün kodu, CI veya bağımlılık değişmedi; tam ürün testleri bu belge revizyonunda yerelde yeniden çalıştırılmadı.
 
+Revizyon öncesi 83e415c için [Linux zorunlu CI](https://github.com/HodeTech/Yorunge/actions/runs/40653018547) başarılıdır: 1.177 test (122,13 s), format/lint/strict mypy/belge/ajan, wheel/sdist ve iki temiz kurulum; cache p95 193,039 ms (AMD EPYC 7763, disk unknown, CPython 3.11.15, frozen editable). Bu sonuç prototipin önceki head'ine aittir, V2 kabulü veya yeni belge head'inin CI sonucu değildir.
+
+4f473a8 revizyonu iki ayrı fresh reviewer ile ardışık R1/R2 belge incelemesinden geçti (GPT-6.1 Sol/high). İki reviewer da probe'un kayıtlı hash/çıktısını yeniden üretti; kanonik sözleşme/uygulanabilirlik, bağımsız vektör, bütçe, kurtarma ve durum sınırlarında yeni doğrulanmış maddi bulgu bildirmedi. R2, yukarıdaki tarihsel CI ekini de kontrol etti. Bu turlar **belge önerisi** içindir; açık manifest fix'i sonrası gereken global ürün kodu ikinci review turunun yerine geçmez.
+
 ## Onay ve yöntem
 
 Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstteki Development merge kapanışı bölümündedir.
