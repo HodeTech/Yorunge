@@ -78,6 +78,14 @@ Ruff format/lint ve strict mypy geçti. İlk uygulama 7d75322 ile commit edildi;
 
 Düzeltme sonrası geniş operation/model/approval hedefli takım **180 passed / 46,95 s**; ek hata-bağlamı regresyonlarıyla coordination takımının tamamı **39 passed / 14,32 s**. Ruff/lint ve strict mypy başarılı. İkinci tur farklı fresh reviewer'larla devam eder; Step 3/4'ün planlanan özellikleri ilk iki adımın teslimi diye gösterilmez.
 
+### Adım 2 — İkinci review turu
+
+R1 fix 2ba731e sonrasında iki farklı fresh reviewer (GPT-6 Astra high ve GPT-6.1 Sol high) aynı iki P2 kök nedenini bağımsız doğruladı. Final transaction'da lease expiry veya clock generation/anomaly reddi güvenle rollback olmasına rağmen capability_expired/state_changed dönüyordu. Yarışın kaybedeni mevcut operation'ı bulup son kontrolde hata alınca kullanılmamış aday UUID'sini döndürebiliyor; hızlı lookup da ID'yi null bırakabiliyordu. Root dört başarısız negatifle doğruladı.
+
+TimeGate varsayılan capability davranışını koruyup kontrol sahibine özgü clock/range hata kodu taşır. Ownership transaction'ı clock gereksinimini ilk pre-yield kontrolden önce kurar; giriş ve son kontrol lease_lost verir. Credential/approval state_changed ve execution bütçesi topluca yeniden sınıflandırılmaz. İlk delta review'u stamp ile transaction girişindeki ek saat yarışı penceresini buldu; root bir negatif/bir pozitif kontrolle doğrulayıp kapattı. OperationPhase, mevcut DB kimliğini canonical olarak doğrulayıp decode'dan önce hata bağlamına alır; read/final-transaction/post-check aynı kalıcı ID'yi kullanır.
+
+İlk geniş delta takımı **237 passed / 69,08 s**; son giriş/final expiry/gerileme ve lookup/race read/bütçe regresyonları **8 passed / 2,46 s**. Ruff/strict mypy geçti. Son full takım ve iki reviewer'ın son delta kapanışı devam ediyor; bu paragraf henüz Step 2 kapanışı değildir.
+
 ## Sonraki adımlar
 
 Adım 2 commit ve iki fresh review turuyla kapandıktan sonra recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.

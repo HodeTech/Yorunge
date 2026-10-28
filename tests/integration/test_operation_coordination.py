@@ -754,3 +754,76 @@ def test_known_id_survives_pre_arm_use_case_failure(
                 coordinator.renew(identifier, claim.ownership)
         assert error.value.envelope()["operation_id"] == identifier
     assert backend.calls == 0
+
+
+@pytest.mark.parametrize("jump", [2, -2])
+@pytest.mark.parametrize("point", ["entry", "final"])
+def test_final_transaction_clock_gate_uses_ownership_error_and_rolls_back(
+    operation_setup, execution_clock, monkeypatch, jump, point
+):
+    from yorunge.adapters import operation_repository
+
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        before = coordinator.repository.operation(identifier)
+        execution_clock.value += timedelta(seconds=29)
+        original = operation_repository.write_record
+        original_stamp = operation_repository.StateOperations._ownership_stamp
+
+        def jump_after_write(*args, **kwargs):
+            original(*args, **kwargs)
+            execution_clock.value += timedelta(seconds=jump)
+
+        def jump_after_stamp(self, *args):
+            result = original_stamp(self, *args)
+            execution_clock.value += timedelta(seconds=jump)
+            return result
+
+        with monkeypatch.context() as patch:
+            if point == "final":
+                patch.setattr(operation_repository, "write_record", jump_after_write)
+            else:
+                patch.setattr(
+                    operation_repository.StateOperations, "_ownership_stamp", jump_after_stamp
+                )
+            with pytest.raises(OperationError) as error:
+                coordinator.renew(identifier, claim.ownership)
+            assert error.value.code == "operation_lease_lost"
+            assert error.value.reason_code == "operation_lease_lost"
+            assert error.value.operation_id == identifier
+        assert coordinator.repository.operation(identifier) == before
+    assert backend.calls == 0
+
+
+@pytest.mark.parametrize("path", ["lookup", "raced_admit"])
+@pytest.mark.parametrize("failure", ["budget", "record"])
+def test_repeated_admission_failure_identifies_persisted_operation(
+    operation_setup, execution_clock, monkeypatch, path, failure
+):
+    from yorunge.adapters import operation_repository
+
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        validity = coordinator.validate(plan)
+        original = operation_repository.read_job
+
+        def expire_after_read(*args, **kwargs):
+            if failure == "record":
+                raise YorungeError("state_invalid")
+            result = original(*args, **kwargs)
+            execution_clock.elapsed += 31
+            return result
+
+        with monkeypatch.context() as patch:
+            patch.setattr(operation_repository, "read_job", expire_after_read)
+            with pytest.raises(YorungeError) as error:
+                if path == "lookup":
+                    coordinator.admit(plan.plan_id)
+                else:
+                    coordinator.repository.admit(plan, validity)
+            assert error.value.envelope()["operation_id"] == identifier
+    assert backend.calls == 0
