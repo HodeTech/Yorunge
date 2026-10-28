@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-10-27. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-10-28. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -14,4 +14,4 @@
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 
-P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. P01-3 ADR onayları tamamlandı; [tek PR planı](../p01-3-delivery-plan.md) doğrultusunda P01-3a/b yerel kabulü verified; tek development PR kullanıcı incelemesi/CI kapısında. Bu indeks hazırlığı uygulama/kabul kanıtı saymaz.
+P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. P01-3a/b [tek PR planı](../p01-3-delivery-plan.md) ve [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ile development'a alındı; [merge/CI kapanışı](../../research/p01-3-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Sıradaki P01-4b/4c hâlâ fazdaki draft kapsam satırlarıdır; ayrıntılı plan/kart ve karar incelemesi gereklidir. Bu indeks hazırlığı uygulama/kabul kanıtı saymaz.

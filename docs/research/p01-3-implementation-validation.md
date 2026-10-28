@@ -1,10 +1,28 @@
 # P01-3 uygulama ve kabul kaydı
 
-**Tarih:** 2026-10-27. **Durum:** Dört adımın yerel kabulü ve ikişer review tamamlandı; development PR/CI teslimi ve kullanıcı incelemesi sürüyor. **Dal:** feat/p01-3-capability-planning; **taban:** development@78d5d77. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iki iş kartı](../roadmap/tasks/README.md).
+**Güncellendi:** 2026-10-28. **Durum:** Tamamlandı/verified; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı tarafından development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile alındı. **Uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Paket yayını yapılmadı. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iş kartları](../roadmap/tasks/README.md).
+
+## Development merge kapanışı
+
+Kullanıcı [PR #8](https://github.com/HodeTech/Yorunge/pull/8)'i **2026-10-28 07:42:57 Europe/Istanbul** tarihinde development'a aldı: [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa). İki parent uzak Git kaydından doğrulandı: önceki development 78d5d77 ve son PR head'i ef1d39a. Merge ağacı son PR head'iyle aynıdır; squash/rebase yapılmadı. Yerel development yalnız fast-forward ile güncellendi; bu belge kapanışı docs/p01-3-closure dalındadır.
+
+P01-3a/b ve epik P01-3 verified; bu pakette açık uygulama/kabul işi kalmadı. Dört uygulama adımının ikişer bağımsız review turu, sonraki runtime/performans düzeltmelerinin review'leri ve beş kullanıcı bulgusunun fix/test/referans kapanışı aşağıda kronolojiktir. ADR-0013/0014 ve ScopeV2 Accepted; offline v1 wire/digest ve public draft/blocked sınırı korundu.
+
+Son PR head'i ef1d39a [offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40602497681), branch-policy ve SonarCloud'dan geçti. S8707'nin issue-bazlı False positive disposition'ı ve değişmeyen kalite kapısı [makbuzdadır](p01-3-sonar-disposition.json); diğer üç statik uyarının gerekçeli atlanması yeni açık ürün kusuru olarak değerlendirilmez. CodeRabbit/Sourcery son head'de skipped idi; başarılı analiz gibi sunulmaz.
+
+[Merge sonrası development CI](https://github.com/HodeTech/Yorunge/actions/runs/40633876330) de başarılı: **1.159 passed (110,99 s)**, Ruff format/lint, strict mypy, belge/ajan, wheel/sdist iki ayrı temiz kurulum ve dört başlangıç bütçesi geçti. Wheel 38/sdist 220 üye; import kökeni, metadata, frozen v1, cache ve yedi execution-plan komutu/beklenen negatif çıkışlar doğrulandı. Wheel SHA-256 d9466d54fa0e81bb3caeb05f9db3e40acc62592e6de8f8d9223bb9dea76b7bee; sdist SHA-256 13823be01e1a64c18353afa22a5cd84e407a5f040620ea828d1e8e62269ad950. Bunlar development build'idir; paket yayımlanmadı.
+
+[Merge head'inin ham başlangıç kaydı](p01-3-merged-startup.json): AMD EPYC 9V74 80-Core, CPython 3.11.15, frozen uv editable, disk unknown; 1.024 kayıt ve üç ısınma sonrası 30 ayrı süreç. Help p95 40,001/version 39,219/context 161,592/cache 195,928 ms; 500/200 ms bütçeleri geçti. Önceki farklı-CPU başarısız koşular silinmedi; bu sonuç bütün Linux donanımlarında süre garantisi değildir. Bu yalnız belge kapanışında yerel ürün testleri/build/benchmark tekrar çalıştırılmaz; gerçek ürün ve merge CI sonuçları kullanılır.
+
+Sıradaki ürün paketi P01-4b/4c'dir: operation/attempt, lease/fencing, unknown uzlaştırma ve yerel jobs okuma. P01-4a önceden tamamlandı; yeni pakette operasyon tüketicisinin restore yasağı, yan etki öncesi kalıcı kayıt ve sahiplik devri kabulü daraltılmalıdır. P01-4b/4c henüz draft kapsam satırlarıdır; plan/kart/karar hazırlığı bu kapanışın ürün geliştirmesi değildir. Sonra P01-5 taşıma/akış/iptal, P01-6 faz kabulü; P02/P03 gerçek EVREN ve araç adaptörleri kalır.
+
+Development merge, gerçek yürütme veya yayın değildir. Public producer araç/uzak yetki/tam girdi kapanışı eksikleriyle draft/blocked; run/operation/lease henüz yoktur. Gerçek Windows, canlı EVREN ve fiziksel güç kesintisi kanıtı üretilmedi. Master aktarımı/release kullanıcıdadır.
+
+Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye açık/merge yapılmadı ifadeleri o commit anını anlatır; güncel kapanış bu bölümdür.
 
 ## Onay ve yöntem
 
-Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstte ve son bütünleşik bölümündedir.
+Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstteki Development merge kapanışı bölümündedir.
 
 Kullanıcı ADR-0013/0014 ve bağlı ScopeV2 kararlarını onayladı; `6e91690` onay commit'idir. [Ön inceleme ve iki kullanıcı review'inin doğrulanması](p01-3-readiness-review.md) tasarım kanıtıdır; ürün uygulaması yerine sayılmaz. Her adım kod/test/belge → commit → yeni ajanlarla review 1 → doğrulanmış fix/commit → başka yeni ajanlarla review 2 → doğrulanmış fix/commit döngüsünü tamamlar. Sonunda tek development PR'ı kullanıcı incelemesine açılır; otomatik merge yoktur.
 

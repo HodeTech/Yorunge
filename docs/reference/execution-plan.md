@@ -1,6 +1,6 @@
 # Execution planı v2
 
-**Durum:** P01-3 dört adımın yerel kabulü ve ikişer bağımsız review tamamlandı; development PR/CI ve kullanıcı incelemesi ayrıca kaydedilir. Prepare/list/show/validate/approve/revoke/forget vardır. **Tarih:** 2026-10-28. [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) politika kaynağıdır. Eski offline Plan v1 ve digest'i değişmez.
+**Durum:** P01-3 development’a teslim edildi; [merge/CI kapanışı](../research/p01-3-implementation-validation.md#development-merge-kapanışı) doğrulandı. Prepare/list/show/validate/approve/revoke/forget vardır. **Tarih:** 2026-10-28. [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) politika kaynağıdır. Eski offline Plan v1 ve digest'i değişmez.
 
 ## Kullanıcı akışı
 

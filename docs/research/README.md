@@ -1,6 +1,6 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-10-27. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-10-28. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
@@ -11,7 +11,7 @@
 - [P01-2 onay öncesi review kanıtı](p01-2-state-identity-decision-review.md#onay-öncesi-review-bulgularının-doğrulanması): bulgu doğrulaması/düzeltme kaydı; [ek probe](p01-2-review-probe.py) ve [ham sonuç/binding byte vektörleri](p01-2-review-probe.json). Ürün migration/restore kabulü değildir.
 - [P01-2 uygulama ve kabul kaydı](p01-2-implementation-validation.md): adım/commit, iki yeni review turu, doğrulanmış bulgu ve gerçek ürün kanıtı; P01-2 teslim/kabulü tamamlandı; PR #6 development’a merge edildi, [merge/CI kapanışı](p01-2-implementation-validation.md#development-merge-kapanışı) kayıtlıdır.
 - [P01-3 hazırlık incelemesi](p01-3-readiness-review.md): mevcut belge/kod audit'i, resmî teknik kaynaklar, onay öncesi Proposed ADR geçmişi ve uygulama öncesi karar sınırı; ADR'ler daha sonra kullanıcı onayıyla Accepted; ürün kabulü değildir.
-- [P01-3 uygulama/kabul kaydı](p01-3-implementation-validation.md): kullanıcı ADR onayı, gerçek cache/plan/onay/state/CLI testleri ve dört adım ve review kabulü tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı incelemesine açık, development merge bekleniyor. [İlk cache başlangıç ölçümü](p01-3-step-1-startup.json), [son 1.024 kayıt ölçümü](p01-3-final-startup.json), [büyük input hash/bellek ölçümü](p01-3-input-memory.json), [ilk Linux cache bütçe reddi](p01-3-linux-startup-initial.json), [lazy YAML sonrası yerel ölçüm](p01-3-import-startup.json).
+- [P01-3 uygulama/kabul kaydı](p01-3-implementation-validation.md): kullanıcı ADR onayı, gerçek cache/plan/onay/state/CLI testleri ve dört adım ve review kabulü tamamlandı; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) development'a alındı; [merge/CI kapanışı](p01-3-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. [İlk cache başlangıç ölçümü](p01-3-step-1-startup.json), [son 1.024 kayıt ölçümü](p01-3-final-startup.json), [büyük input hash/bellek ölçümü](p01-3-input-memory.json), [ilk Linux cache bütçe reddi](p01-3-linux-startup-initial.json), [lazy YAML sonrası yerel ölçüm](p01-3-import-startup.json).
 - [P01-2 adım 1 başlangıç ham ölçümü](p01-2-step-1-startup.json): ikinci review turunun son ürün head'inde ayrı süreçlerle ölçüm; ortam/yöntem ve kapsam uygulama kabul kaydındadır.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
@@ -31,3 +31,5 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 - [P01-3 Sonar issue disposition ve gate makbuzu](p01-3-sonar-disposition.json): S8707 issue-bazlı False positive; kalite kapısı OK, kural/izin/eşik değişikliği yok.
 - [P01-3 kullanıcı review sonrası başarılı Linux ölçümü](p01-3-review-linux-startup-passed.json): 27f6f27/AMD EPYC 9V45, dört bütçe geçti; önceki farklı-CPU başarısızlığı korunur.
+
+- [P01-3 merge head başlangıç ölçümü](p01-3-merged-startup.json): e32cb42 development push CI'ı, 1.024 kayıt/30 süreç; ortam ve kabul sınırı merge kapanışındadır.
