@@ -36,6 +36,7 @@ def cli():
         state: bool = False,
         secret_names: tuple[str, ...] = (),
         recipe_loader: bool = True,
+        legacy_schema5: bool = False,
     ):
         environment = dict(os.environ)
         environment["PYTHONPATH"] = str(ROOT / "tests" / "fixtures" / "guards")
@@ -44,8 +45,20 @@ def cli():
         environment["YORUNGE_TEST_CREDENTIAL"] = "1" if credential else "0"
         environment["YORUNGE_TEST_STATE"] = "1" if state else "0"
         environment["YORUNGE_TEST_SECRET_NAMES"] = json.dumps(secret_names)
+        command = [str(Path(sys.executable).parent / "yorunge"), *args]
+        if legacy_schema5:
+            command = [
+                sys.executable,
+                "-c",
+                (
+                    "from yorunge.adapters import state_schema; "
+                    "state_schema.MIGRATIONS=state_schema.MIGRATIONS[:5]; "
+                    "from yorunge.cli import main; raise SystemExit(main())"
+                ),
+                *args,
+            ]
         return subprocess.run(
-            [str(Path(sys.executable).parent / "yorunge"), *args],
+            command,
             capture_output=True,
             text=True,
             env=environment,
@@ -200,3 +213,111 @@ def execution_clock(monkeypatch):
     clock = Clock()
     monkeypatch.setattr("yorunge.adapters.capability_cache.SystemClock", lambda: clock)
     return clock
+
+
+@pytest.fixture
+def admitted_operation(tmp_path, execution_fixture, execution_clock):
+    """Real private DB record; no fixture task is registered in the product."""
+    from datetime import timedelta
+    from uuid import uuid4
+
+    from yorunge import api
+    from yorunge.adapters.operation_store import insert_record, plan_authorities
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.capabilities import timestamp
+    from yorunge.domain.operations import (
+        AttemptView,
+        JobSummary,
+        OperationAdmission,
+        OperationEvent,
+        OperationLease,
+        OperationRecord,
+    )
+
+    root = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=root).data.plan
+    approval = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=root).data.record
+    identifier, attempt_id = str(uuid4()), str(uuid4())
+    now = timestamp(execution_clock.value)
+    admission = OperationAdmission(
+        operation_id=identifier,
+        plan_id=plan.plan_id,
+        plan_digest=plan.digest,
+        store_id=plan.store_id,
+        admission_identity_epoch=plan.identity_epoch,
+        admission_clock_generation=plan.clock_generation,
+        approval=approval,
+        authorities=plan_authorities(plan),
+        correlation=str(uuid4()),
+        delivery_required=False,
+    )
+    summary = JobSummary(
+        operation_id=identifier,
+        plan_id=plan.plan_id,
+        plan_digest=plan.digest,
+        task=plan.selection.task,
+        tool=plan.selection.tool,
+        execution=plan.selection.execution,
+        created_at=now,
+        updated_at=now,
+        status="admitted",
+        execution_status="not_started",
+        delivery_status="not_required",
+        attempt_count=1,
+        revision=1,
+        clock_anomaly=False,
+    )
+    record = OperationRecord(
+        admission=admission,
+        summary=summary,
+        lease=OperationLease(
+            owner_id=str(uuid4()),
+            fence=1,
+            ownership_identity_epoch=plan.identity_epoch,
+            ownership_clock_generation=plan.clock_generation,
+            expires_at=timestamp(execution_clock.value + timedelta(seconds=30)),
+        ),
+        fence=1,
+        dispatch_attempt_id=None,
+        event_count=1,
+        recovery_reason=None,
+        observed_identity_epoch=plan.identity_epoch,
+        observed_clock_generation=plan.clock_generation,
+    )
+    attempt = AttemptView(
+        attempt_id=attempt_id,
+        number=1,
+        created_at=now,
+        updated_at=now,
+        status="claimed",
+        provider_run_id=None,
+        provider_status=None,
+        provider_exit_code=None,
+        reason_code=None,
+    )
+    event = OperationEvent(
+        sequence=1,
+        revision=1,
+        fence=1,
+        attempt_id=attempt_id,
+        observed_at=now,
+        identity_epoch=plan.identity_epoch,
+        clock_generation=plan.clock_generation,
+        status="admitted",
+        execution_status="not_started",
+        delivery_status="not_required",
+        reason_code=None,
+    )
+    with open_store(root) as store:
+        store.connection.execute("BEGIN IMMEDIATE")
+        insert_record(store.connection, record, attempt, event)
+        store.connection.execute("COMMIT")
+    return root, plan, record, attempt, event
+
+
+@pytest.fixture
+def schema5_runtime(monkeypatch):
+    """Replay the delivered pre-operation runtime, never bypass the schema-6 gate."""
+    from yorunge.adapters import state_schema
+
+    monkeypatch.setattr(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:5])

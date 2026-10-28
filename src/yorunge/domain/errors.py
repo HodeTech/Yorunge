@@ -37,9 +37,29 @@ ErrorCode = Literal[
     "config_unsupported",
     "capability_expired",
     "capability_capacity_exceeded",
+    "operation_not_found",
+    "operation_conflict",
+    "operation_lease_lost",
+    "operation_fence_exhausted",
+    "operation_capacity_exceeded",
+    "operation_uncertain",
+    "plan_in_use",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "operation_not_found": "Kayıtlı iş bulunamadı. Yerel iş listesini inceleyin.",
+    "operation_conflict": "İşin mevcut durumu bu geçişe izin vermiyor; yeniden gönderim yok.",
+    "operation_lease_lost": (
+        "İşin sahipliği veya lease geçerliliği kaybedildi; yeniden göndermeyin."
+    ),
+    "operation_fence_exhausted": "İş sahipliği sayacı doldu; geçmişi koruyarak inceleyin.",
+    "operation_capacity_exceeded": (
+        "İş geçmişi kotası dolu. Kayıtları silmeden sınır türünü inceleyin."
+    ),
+    "operation_uncertain": (
+        "İş gönderilmiş olabilir; yerel kaydı ve aynı işi uzlaştırın, yeniden göndermeyin."
+    ),
+    "plan_in_use": "Plan bir operation geçmişine bağlı; unutulamaz ve işi iptal etmez.",
     "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
     "input_unsupported": "Güvenli dosya bağlama bu platformda desteklenmiyor.",
     "input_invalid": "Girdi kökü veya dosya geçersiz. Açık kök ve düzenli göreli dosya kullanın.",
@@ -115,7 +135,7 @@ class YorungeError(Exception):
         self.exit_code = 2
         if code == "approval_required":
             self.exit_code = 4
-        elif code == "config_write_uncertain":
+        elif code in ("config_write_uncertain", "operation_uncertain"):
             self.exit_code = 5
         elif code in ("credential_unavailable", "invalid_credential"):
             self.exit_code = 3
@@ -130,6 +150,42 @@ class YorungeError(Exception):
             "retryable": False,
             "details": {},
         }
+
+
+class OperationError(YorungeError):
+    """Safe coordination failure with a bounded, known operation identity."""
+
+    def __init__(
+        self,
+        code: ErrorCode,
+        operation_id: str | None = None,
+        *,
+        reason_code: ErrorCode | None = None,
+        capacity_kind: Literal["store", "attempt", "transition"] | None = None,
+    ) -> None:
+        from yorunge.domain.state import canonical_uuid
+
+        if operation_id is not None:
+            canonical_uuid(operation_id)
+        if (capacity_kind is not None) != (code == "operation_capacity_exceeded"):
+            raise ValueError("capacity kind required only for capacity errors")
+        if capacity_kind not in (None, "store", "attempt", "transition"):
+            raise ValueError("closed capacity kind required")
+        if code not in MESSAGES or (reason_code is not None and reason_code not in MESSAGES):
+            raise ValueError("closed error code required")
+        super().__init__(code)
+        self.operation_id = operation_id
+        self.reason_code = reason_code or code
+        self.capacity_kind = capacity_kind
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["operation_id"] = self.operation_id
+        value["details"] = {
+            "reason_code": self.reason_code,
+            "capacity_kind": self.capacity_kind,
+        }
+        return value
 
 
 class ApprovalNotEffective(YorungeError):

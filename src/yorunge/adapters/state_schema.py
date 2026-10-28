@@ -268,6 +268,56 @@ PRIMARY KEY(cache_key,expires_at)
             "b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18",
         ),
     ),
+    MigrationV2(
+        5,
+        6,
+        (
+            """CREATE TABLE operations (
+operation_id TEXT PRIMARY KEY CHECK(length(operation_id)=36),
+plan_id TEXT NOT NULL UNIQUE REFERENCES execution_plans(plan_id) ON DELETE RESTRICT,
+plan_digest TEXT NOT NULL CHECK(length(plan_digest)=64),
+task TEXT NOT NULL,
+tool TEXT,
+execution TEXT NOT NULL,
+created_at TEXT NOT NULL CHECK(length(created_at)=27),
+updated_at TEXT NOT NULL CHECK(length(updated_at)=27),
+status TEXT NOT NULL CHECK(status IN (
+'admitted','submitted','running','unknown','succeeded','failed','cancelled')),
+revision INTEGER NOT NULL CHECK(revision>0),
+lease_expires_at TEXT CHECK(lease_expires_at IS NULL OR length(lease_expires_at)=27),
+dispatch_attempt_id TEXT,
+payload TEXT NOT NULL CHECK(length(CAST(payload AS BLOB))<=16384),
+FOREIGN KEY(operation_id,dispatch_attempt_id)
+REFERENCES operation_attempts(operation_id,attempt_id) DEFERRABLE INITIALLY DEFERRED
+) STRICT""",
+            """CREATE TABLE operation_attempts (
+attempt_id TEXT PRIMARY KEY CHECK(length(attempt_id)=36),
+operation_id TEXT NOT NULL REFERENCES operations(operation_id) ON DELETE RESTRICT,
+number INTEGER NOT NULL CHECK(number BETWEEN 1 AND 16),
+status TEXT NOT NULL CHECK(status IN (
+'claimed','abandoned','submitted','running','unknown','succeeded','failed','cancelled')),
+payload TEXT NOT NULL CHECK(length(CAST(payload AS BLOB))<=4096),
+UNIQUE(operation_id,number),
+UNIQUE(operation_id,attempt_id)
+) STRICT""",
+            """CREATE TABLE operation_events (
+operation_id TEXT NOT NULL REFERENCES operations(operation_id) ON DELETE RESTRICT,
+sequence INTEGER NOT NULL CHECK(sequence BETWEEN 1 AND 256),
+attempt_id TEXT NOT NULL,
+payload TEXT NOT NULL CHECK(length(CAST(payload AS BLOB))<=1024),
+PRIMARY KEY(operation_id,sequence),
+FOREIGN KEY(operation_id,attempt_id)
+REFERENCES operation_attempts(operation_id,attempt_id) ON DELETE RESTRICT
+) STRICT""",
+            """CREATE TABLE operation_outcomes (
+operation_id TEXT PRIMARY KEY REFERENCES operations(operation_id) ON DELETE RESTRICT,
+payload TEXT NOT NULL CHECK(length(CAST(payload AS BLOB))<=4096)
+) STRICT""",
+            "CREATE INDEX operation_order ON operations(created_at,operation_id)",
+            "CREATE INDEX operation_status_order ON operations(status,created_at,operation_id)",
+            "CREATE INDEX operation_lease_expiry ON operations(lease_expires_at,operation_id)",
+        ),
+    ),
 )
 
 

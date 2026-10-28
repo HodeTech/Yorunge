@@ -19,6 +19,7 @@
 - [PR #9 development merge kapanışı](p01-3-implementation-validation.md#pr-9-development-merge-kapanışı): kullanıcı merge’i, şema 5/V2 teslimi ve 1.304 test/iki temiz kurulum; [merge head ham başlangıç ölçümü](p01-3-followup-merged-startup.json) cache p95 218,223 ms ile başarısızdır. CI performans takibi açık kalır.
 - [Başlangıç CI güvenilirliği ve CLI bakım kabulü](startup-ci-reliability.md): izole frozen wheel ortamları, aynı-host AB/BA ölçümü, gerçek A/B ve A/A kontrolü; yerel kabul tamamlandı, Linux CI çıktıları P01-4 PR/merge akışında incelenecek.
 - [P01-4 uygulama öncesi inceleme](p01-4-readiness-review.md): üç bağımsız preflight, mevcut kod/Accepted sınırlar, operation/ownership ve jobs karar boşlukları; Proposed ADR-0016 ve ölçülebilir kart/plan hazırlığı, ürün kabulü değildir.
+- [P01-4 uygulama/kabul kaydı](p01-4-implementation-validation.md): kullanıcı review kapanışı ve Accepted ADR-0016; adım 1 gerçek şema/repository çalışması sürüyor, paket kabulü henüz tamamlanmadı.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
 26 Ekim'deki öncül araştırma LLM/ForgeLM akışını öne almıştı. 27 Ekim kullanıcı talimatı Yörünge'yi EVREN kapsamlı yardımcı araç olarak konumlandırdı ve ForgeLM'i ilgili görevlerin seçilebilir varsayılanı yaptı. Güncel ürün yönü [ADR-0001](../decisions/0001-platform-companion.md) ve [ADR-0002](../decisions/0002-forgelm-default-open-tools.md) ile kayıtlıdır.

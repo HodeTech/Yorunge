@@ -6,8 +6,11 @@ import sys
 from pathlib import Path
 
 from yorunge import api
-from yorunge.adapters import local_files, maintenance
+from yorunge.adapters import local_files, maintenance, state_schema
 from yorunge.domain.errors import YorungeError
+
+# This fixture replays cuts in the historical restorable runtime.
+state_schema.MIGRATIONS = state_schema.MIGRATIONS[:5]
 
 root, source, action, phase, mode = Path(sys.argv[1]), Path(sys.argv[2]), *sys.argv[3:]
 preview = (

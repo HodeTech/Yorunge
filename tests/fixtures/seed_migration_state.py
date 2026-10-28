@@ -200,6 +200,13 @@ def plans(root, version, maximum, config):
 
 
 def seed(root: Path, *, version: int, maximum: bool) -> None:
+    # Historical rows are built by the delivered schema-5 runtime, not by
+    # dropping unknown future consumer tables from the current schema.
+    with patch.object(state_schema, "MIGRATIONS", state_schema.MIGRATIONS[:5]):
+        _seed(root, version=version, maximum=maximum)
+
+
+def _seed(root: Path, *, version: int, maximum: bool) -> None:
     if version not in (2, 3, 4):
         raise ValueError("historical schema 2, 3 or 4 required")
     config = PROJECT / "examples/profile.toml"

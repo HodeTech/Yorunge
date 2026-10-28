@@ -32,7 +32,7 @@ def test_published_v1_checksums_and_exact_manifest_fields_are_unchanged():
 
 
 def test_data_v2_and_sql_only_v2_have_distinct_closed_shapes():
-    step = MIGRATIONS[-1]
+    step = MIGRATIONS[4]
     assert isinstance(step, MigrationV2)
     assert step.from_version == 4
     assert step.to_version == 5
@@ -77,7 +77,7 @@ def test_data_v2_and_sql_only_v2_have_distinct_closed_shapes():
     ],
 )
 def test_malformed_v2_is_controlled(patch):
-    manifest = deepcopy(MIGRATIONS[-1].manifest())
+    manifest = deepcopy(MIGRATIONS[4].manifest())
     manifest.update(patch)
     with pytest.raises(YorungeError) as failure:
         migration_from_manifest(manifest)
@@ -93,13 +93,13 @@ def test_v1_does_not_ignore_optional_fields(extra):
 
 
 def test_data_v2_descriptor_cannot_be_removed_or_added_to_sql_only():
-    value = MIGRATIONS[-1].manifest()
+    value = MIGRATIONS[4].manifest()
     del value["data_transform"]
     with pytest.raises(YorungeError) as failure:
         migration_from_manifest(value)
     assert failure.value.code == "state_invalid"
     value = MigrationV2(5, 6, ("SELECT 1",)).manifest()
-    value["data_transform"] = MIGRATIONS[-1].manifest()["data_transform"]
+    value["data_transform"] = MIGRATIONS[4].manifest()["data_transform"]
     with pytest.raises(YorungeError) as failure:
         migration_from_manifest(value)
     assert failure.value.code == "state_invalid"

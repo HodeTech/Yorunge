@@ -1,3 +1,5 @@
+"""Historical schema-5 maintenance; schema-6 denial has real operation tests."""
+
 import json
 import os
 import sqlite3
@@ -12,6 +14,8 @@ from yorunge.adapters import maintenance, state_schema
 from yorunge.adapters.local_files import Deadline
 from yorunge.adapters.state import DB_NAME, backup, metadata, open_store
 from yorunge.domain.errors import YorungeError
+
+pytestmark = pytest.mark.usefixtures("schema5_runtime")
 
 
 def observed(config, root):
@@ -151,7 +155,7 @@ def test_restore_rejects_stale_consent_without_creating_new_target(config, tmp_p
     assert not target.exists()
 
 
-def test_operation_runtime_disables_restore_even_old_snapshot_and_no_target(
+def test_unknown_consumer_runtime_disables_restore_even_old_snapshot_and_no_target(
     config, tmp_path, monkeypatch
 ):
     root = tmp_path / "source"
@@ -159,7 +163,7 @@ def test_operation_runtime_disables_restore_even_old_snapshot_and_no_target(
     saved = migration_backup(root)
     version = len(state_schema.MIGRATIONS)
     step = state_schema.MigrationV2(
-        version, version + 1, ("CREATE TABLE operations(id INTEGER PRIMARY KEY) STRICT",)
+        version, version + 1, ("CREATE TABLE future_consumer(id INTEGER PRIMARY KEY) STRICT",)
     )
     monkeypatch.setattr(state_schema, "MIGRATIONS", (*state_schema.MIGRATIONS, step))
     for call in (
@@ -171,11 +175,11 @@ def test_operation_runtime_disables_restore_even_old_snapshot_and_no_target(
         assert failure.value.code == "state_restore_unsupported"
     api.initialize_state(state_dir=root)
     with sqlite3.connect(root / DB_NAME) as connection:
-        connection.execute("INSERT INTO operations VALUES(123)")
+        connection.execute("INSERT INTO future_consumer VALUES(123)")
     preview = api.preview_identity_reset(state_dir=root).data
     api.reset_identity(preview.digest, state_dir=root)
     with sqlite3.connect(root / DB_NAME) as connection:
-        assert connection.execute("SELECT * FROM operations").fetchall() == [(123,)]
+        assert connection.execute("SELECT * FROM future_consumer").fetchall() == [(123,)]
 
 
 def test_preview_rejects_hot_journal_without_recovery_and_locked_writer(config, tmp_path):
@@ -224,16 +228,16 @@ def test_reset_console_preview_and_apply_share_api_contract(config, tmp_path, cl
     observed(config, root)
     preview = api.preview_identity_reset(state_dir=root)
     command = ("state", "reset", "--state-dir", str(root), "--output", "json")
-    result = cli(*command, state=True)
+    result = cli(*command, state=True, legacy_schema5=True)
     assert result.returncode == 0
     assert result.stderr == ""
     assert json.loads(result.stdout) == preview.model_dump(mode="json")
-    result = cli(*command, "--confirm", preview.data.digest, state=True)
+    result = cli(*command, "--confirm", preview.data.digest, state=True, legacy_schema5=True)
     assert result.returncode == 0
     assert (
         json.loads(result.stdout)["data"] == api.initialize_state(state_dir=root).data.model_dump()
     )
-    result = cli(*command, "--confirm", preview.data.digest, state=True)
+    result = cli(*command, "--confirm", preview.data.digest, state=True, legacy_schema5=True)
     assert result.returncode == 2
     assert result.stdout == ""
     assert json.loads(result.stderr)["code"] == "state_changed"
@@ -452,7 +456,7 @@ def test_explicit_empty_confirmation_is_rejected_before_io(tmp_path, cli, action
     command = ["state", action, "--state-dir", str(root), "--confirm", "", "--output", "json"]
     if action == "restore":
         command += ["--backup", str(source)]
-    result = cli(*command, state=True)
+    result = cli(*command, state=True, legacy_schema5=True)
     assert result.returncode == 2
     assert result.stdout == ""
     assert json.loads(result.stderr) == failure.value.envelope()
@@ -614,8 +618,8 @@ def test_default_preview_text_exposes_same_counts_and_effects_as_json(
     arguments = ["state", action, "--state-dir", str(state)]
     if action == "restore":
         arguments += ["--backup", str(saved)]
-    machine = cli(*arguments, "--output", "json", state=True)
-    text = cli(*arguments, state=True)
+    machine = cli(*arguments, "--output", "json", state=True, legacy_schema5=True)
+    text = cli(*arguments, state=True, legacy_schema5=True)
     assert machine.returncode == 0, machine.stderr
     assert text.returncode == 0, text.stderr
     data = json.loads(machine.stdout)["data"]

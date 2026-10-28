@@ -209,7 +209,7 @@ def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_p
 
 @pytest.mark.parametrize("interrupt", [False, True])
 def test_global_expiry_migration_backfills_existing_records_atomically(
-    tmp_path, monkeypatch, interrupt
+    tmp_path, monkeypatch, interrupt, schema5_runtime
 ):
     from yorunge.adapters.data_migrations import MigrationConnection
 
@@ -633,7 +633,7 @@ def test_conflict_is_retained_after_aggregate_expiry_and_quota_pressure(tmp_path
         assert store.verify().store_schema_version == len(MIGRATIONS)
 
 
-def test_cache_reset_and_restore_never_reactivate_old_epoch(tmp_path):
+def test_cache_reset_and_restore_never_reactivate_old_epoch(tmp_path, schema5_runtime):
     root = tmp_path / "state"
     api.query_capabilities(task="llm.train", state_dir=root, refresh=True)
     from yorunge.adapters import maintenance, state_schema
@@ -807,7 +807,7 @@ def test_real_v1_to_cache_migration_preserves_identity_and_verified_backup(
 @pytest.mark.parametrize("cut", ["intent", "stage", "live"])
 @pytest.mark.parametrize("old_version", [1, 2, 3])
 def test_old_runtime_restore_intent_upgrades_even_when_completed_source_is_gone(
-    config, tmp_path, monkeypatch, cut, old_version, execution_fixture
+    config, tmp_path, monkeypatch, cut, old_version, execution_fixture, schema5_runtime
 ):
     import shutil
     import subprocess
@@ -891,7 +891,7 @@ raise AssertionError('cut not reached')
     preview = api.preview_state_recovery(state_dir=target).data
     result = api.recover_state(preview.digest, state_dir=target).data
     assert result.identity_epoch == announced
-    assert result.store_schema_version == len(MIGRATIONS)
+    assert result.store_schema_version == 5  # Historical restorable runtime.
     assert not (target / "restore-intent.json").exists()
     assert (
         api.query_capabilities(task="llm.train", state_dir=target).data.records[0].freshness

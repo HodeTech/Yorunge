@@ -167,7 +167,7 @@ def test_source_change_after_verification_uses_same_buffer_and_current_open_skip
     assert_literal_rows(root)
     path.unlink()
     assert_literal_rows(root)
-    assert calls == [state_schema.MIGRATIONS[-1].data_transform.code_sha256]
+    assert calls == [state_schema.MIGRATIONS[4].data_transform.code_sha256]
 
 
 @pytest.mark.parametrize(
@@ -221,7 +221,7 @@ def test_forbidden_handler_constructs_rejected_even_with_matching_hash(
     path = tmp_path / "handler.py"
     path.write_bytes(source)
     monkeypatch.setattr(dm, "SOURCE", path)
-    step = state_schema.MIGRATIONS[-1]
+    step = state_schema.MIGRATIONS[4]
     altered = replace(
         step,
         data_transform=replace(step.data_transform, code_sha256=hashlib.sha256(source).hexdigest()),
@@ -259,7 +259,7 @@ def test_old_prototype_schema5_checksum_is_rejected_without_relabeling(tmp_path,
     root = tmp_path / "state"
     schema4(root, monkeypatch)
     assert_literal_rows(root)
-    manifest = state_schema.MIGRATIONS[-1].manifest()
+    manifest = state_schema.MIGRATIONS[4].manifest()
     del manifest["manifest_version"]
     del manifest["data_transform"]
     legacy = hashlib.sha256(
@@ -358,7 +358,7 @@ def test_no_environment_or_wall_clock_input_changes_derived_set(tmp_path, monkey
 def test_verified_transform_requires_caller_owned_transaction(tmp_path, monkeypatch):
     root = tmp_path / "state"
     schema4(root, monkeypatch)
-    prepared = dm.prepare(state_schema.MIGRATIONS[-1], Deadline())
+    prepared = dm.prepare(state_schema.MIGRATIONS[4], Deadline())
     deadline = Deadline()
     with closing(sqlite3.connect(root / state.DB_NAME, isolation_level=None)) as conn:
         with pytest.raises(YorungeError) as failure:
