@@ -65,7 +65,7 @@ Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye aç�
 
 ### Dış review: kayıtlar arası clock boşluğu ve global fence
 
-**Bu bölüm merge edilmemiş PR #9 prototipini anlatır; development teslimi şema 4'tür. Nihai V2 manifesti ADR-0015 onayını bekler.** Aşağıdaki algoritma/ölçüm başarısı manifest engelini kapatmaz.
+**Bu bölüm merge edilmemiş PR #9 prototipini anlatır; development teslimi şema 4'tür. ADR-0015 aşağıdaki kullanıcı review'i ve revizyonundan sonra onaylandı; V2 uygulaması sürüyor.** Aşağıdaki algoritma/ölçüm başarısı manifest engelini kapatmaz.
 
 PR #9'daki saat yorumu iki bağımsız ajan ve ana inceleme tarafından gerçek kodda doğrulandı. [Tekrarlanabilir probe](p01-3-clock-frontier-probe.py) ve [tarihsel ham sonuç](p01-3-clock-frontier-reproduction.json), e32cb42 tabanında ve 2865ff3'te aynı boşluğu gösterir: B'nin expiry'si T+60, A'nın T+300; yalnız A sorgulanırken terminal commit UTC'yi T+100'e taşır. A fresh dönerken watermark T'de kalır; yeni StateCache T+50'de B'yi yeniden fresh/supported döndürebilir. Probe bu kusur görüldüğünde exit 1 verir; başarılı ürün kabulü diye kullanılmaz. Bu kontrol mevcut tam takımın kapsamadığı bir senaryoydu.
 
@@ -114,6 +114,15 @@ Revizyonun yerel kontrolleri: 106 Markdown/0 sorun, altı skill/yedi kart/0 soru
 Revizyon öncesi 83e415c için [Linux zorunlu CI](https://github.com/HodeTech/Yorunge/actions/runs/40653018547) başarılıdır: 1.177 test (122,13 s), format/lint/strict mypy/belge/ajan, wheel/sdist ve iki temiz kurulum; cache p95 193,039 ms (AMD EPYC 7763, disk unknown, CPython 3.11.15, frozen editable). Bu sonuç prototipin önceki head'ine aittir, V2 kabulü veya yeni belge head'inin CI sonucu değildir.
 
 4f473a8 revizyonu iki ayrı fresh reviewer ile ardışık R1/R2 belge incelemesinden geçti (GPT-6.1 Sol/high). İki reviewer da probe'un kayıtlı hash/çıktısını yeniden üretti; kanonik sözleşme/uygulanabilirlik, bağımsız vektör, bütçe, kurtarma ve durum sınırlarında yeni doğrulanmış maddi bulgu bildirmedi. R2, yukarıdaki tarihsel CI ekini de kontrol etti. Bu turlar **belge önerisi** içindir; açık manifest fix'i sonrası gereken global ürün kodu ikinci review turunun yerine geçmez.
+
+### ADR-0015 onayı ve uygulama planı
+
+Kullanıcı, revize ADR-0015'in üç seçimini 2026-10-28'de açıkça onayladı: donmuş V1 1–4 / bütün yeni adımlarda V2; tek dosya ve aynı doğrulanmış source buffer'ının yürütülmesi; mevcut toplam 5 s bütçesi. ADR Accepted olarak kaydedildi; bu onay uygulama veya yoğun migration kabulünün tamamlandığı anlamına gelmez.
+
+1. **Manifest/handler uygulaması:** kapalı V1/V2 kimliği, doğrulanmış cache'siz yükleme, değişmez expiry dönüşümü, dar SQL/transaction sınırı, gerçek 4→5 tüketimi ve literal/negatif/kesinti regresyonları. Commit → fresh R1 → doğrulanmış fix/commit → farklı fresh R2 → fix/commit.
+2. **Yoğun kabul ve Linux CI kapanışı:** schema 2/3/4 ve eski restore-stage/live max-geçerli-hacim bütçeleri, faz/VM/ham ölçümler, ayrı DDL-only karşılaştırma; kalan Linux başlangıç sıçramasının kanıtı/çözümü; build/iki temiz kurulum ve son zorunlu CI. Aynı iki review turu uygulanır. Başarısız ölçüm veya onaysız bütçe artışıyla kabul kapatılmaz.
+
+Revizyon head'i 5048b25'in [Linux CI'ı](https://github.com/HodeTech/Yorunge/actions/runs/40663234820) test/build kontrollerinden geçti (**1.177 passed, 120,79 s**); cache p95 **407,876 ms**, medyan **149,728 ms** ile bütçede başarısız oldu. [Ham ölçüm](p01-3-adr-review-linux-startup.json) 30 örnekten altısının 200 ms üzerinde olduğunu gösterir (AMD EPYC 9V74, disk unknown). Wheel hash'i önceki başarılı 83e415c ile aynıdır. Hızlı örnekten sonra alınan importtime/cProfile sıçramanın nedenini izole etmez; disk/scheduler kesin neden diye sunulmaz. Aynı head yeniden başlatılmadı; performans kapısı açık kalır.
 
 ## Onay ve yöntem
 

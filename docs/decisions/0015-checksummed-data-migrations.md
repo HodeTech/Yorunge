@@ -1,16 +1,16 @@
 # ADR-0015: Checksum'lı migration manifest V2
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; V2 uygulanmadı. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli).
+**Durum:** Accepted — 2026-10-28 açık kullanıcı onayı; V2 uygulaması sürüyor. **Tarih:** 2026-10-28. **İş:** [PR #9](https://github.com/HodeTech/Yorunge/pull/9), P01-3 merge sonrası clock düzeltmesi. [ADR-0011](0011-state-foundation-and-migrations.md#şema-ve-migration), [bulgu ve kanıt](../research/p01-3-implementation-validation.md#global-fence-review-1--açık-manifest-engeli).
 
 ## Bağlam ve karar ilişkisi
 
 ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks prototipi içerir. Ancak şema 4→5'in Python backfill'i V1 checksum'ının dışındadır; ADR-0011 bu durumu yasaklar. Bu P2 giderilmeden prototip merge edilmez. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi ayrı onay gerektirir.
 
-**Bu öneri, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Onay gelene kadar ADR-0011 Accepted ve yürürlüktedir; bu Proposed belge onu Superseded yapmaz. Kabul sonrası indeks ve ADR-0011 notu V1/V2 kapsamını açıkça gösterir.
+**Bu öneri, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Kullanıcı üç seçimi de açıkça onayladı. ADR-0011 Accepted kalır; bu karar onu bütünüyle Superseded yapmaz. İndeks ve ADR-0011 notu V1/V2 kapsamını gösterir.
 
 SQLite alt sınırı 3.37'dir. JSON1 bu seride derleme seçeneğine bağlıdır; daha sonraki sürümlerde de çıkarılabilir. Bu teklif JSON1 bağımlılığı getirmez. [Resmî SQLite açıklaması](https://www.sqlite.org/json1.html#compiling_in_json_support).
 
-## Önerilen karar
+## Karar
 
 ### Manifest sürümü adım başınadır
 
@@ -92,7 +92,7 @@ Her vektör gerçek schema-4 dosyasına konur; V2 ile migration sonrası SQL sat
 
 ### Migration bütçesi ve ölçülebilir kabul
 
-**Öneri mevcut toplam 5 saniye ve en çok 1 saniye busy bütçesini korur; ayrı migration bütçesi eklemez.** Kilit, snapshot/sync, hash/compile, backfill ve doğrulama toplam bütçeye dahildir; zincirde süre sıfırlanmaz. Handler'ın row/SQL geçişlerinde caller deadline kontrol edilir. Mevcut fsync/disk/scheduler nedeniyle katı fiziksel duvar saati garantisi iddia edilmez.
+**Karar mevcut toplam 5 saniye ve en çok 1 saniye busy bütçesini korur; ayrı migration bütçesi eklemez.** Kilit, snapshot/sync, hash/compile, backfill ve doğrulama toplam bütçeye dahildir; zincirde süre sıfırlanmaz. Handler'ın row/SQL geçişlerinde caller deadline kontrol edilir. Mevcut fsync/disk/scheduler nedeniyle katı fiziksel duvar saati garantisi iddia edilmez.
 
 Başarı ölçümü en az üç yeni disposable store üzerinde her yol için yapılır. Kaynak şema 2'de 1.024 cache; şema 3'te ayrıca 1.024 plan; şema 4'te ayrıca 1.024 onay bulunur. Var olmayan eski tablo fixture'a eklenmez. İki veri hacmi gerekir: temsilî sekiz-proof/9.200-expiry ve geçerli kayıtların 32 KiB cache/64 KiB plan/4 KiB onay byte limitlerine en yakın hacmi. Gerçek ulaşılan byte sayıları kaydedilir; modelin kabul etmediği padding ile sahte üst sınır fixture'ı üretilmez. Eski intent/stage/live çifti ve kaynak backup kaybı ayrıca kapsanır.
 
@@ -112,7 +112,7 @@ Disposable test verisi için yeni bir `--state-dir` ile temiz store seçilir. Ge
 
 Checksum dışı hook, SQL yorumu/UDF içine gizli dönüşüm, migration sonrası görünmez repair, salt ad etiketi veya cache'i boşaltma seçilmez. JSON1 zorunluluğu mevcut runtime desteğini değiştirir. Çok dosyalı bundle yerine tek dosya seçilmiştir; yerel helper import'u bu teklifin dışında kalır.
 
-Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 kodu onaydan sonra yazılır; PR #9 taslak ve checksum P2 açık kalır.
+Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; PR #9 taslak ve checksum P2 uygulama/kabul tamamlanana kadar açık kalır.
 
 ## Kabul matrisi
 
