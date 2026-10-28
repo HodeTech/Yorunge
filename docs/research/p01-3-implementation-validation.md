@@ -81,7 +81,7 @@ Yeni 13 regresyon; başka cache kaydı/proof, aggregate stale sonrası leaf expi
 
 **Açık P2:** 4→5 prototipinin `backfill_expiries` çağrısı migration checksum'ı dışındadır. ADR-0011 bunu açıkça yasaklar. Eski 1–4 SQL/checksum değerleri değişmemiş olsa da yeni dönüşüm algoritması migration kimliğine bağlı değildir. Zaman protokolünde başka doğrulanmış bulgu yoktur; manifest engeli nedeniyle bu global düzeltme adımı teslim/kabul edilmiş sayılmaz. İkinci fresh code review turu da tamamlanmış değildir.
 
-[ADR-0015](../decisions/0015-checksummed-data-migrations.md), V1 checksum'larını koruyarak kapalı, sürümlü ve kaynak hash'i doğrulanan veri dönüşümünü açık V2 manifestine eklemeyi önerir. **Proposed; kullanıcı onayı bekleniyor.** Bu genişleme henüz uygulanmadı. PR #9 taslak kalır; eski prototip şema 5 DB'leri yeniden etiketlenmez/silinmez. Onaydan sonra manifest bulgusu fix/commit edilir, farklı fresh reviewer'larla ikinci tur ve bütün son head kabulleri tamamlanır.
+[ADR-0015](../decisions/0015-checksummed-data-migrations.md), V1 checksum'larını koruyarak kapalı, sürümlü ve kaynak hash'i doğrulanan veri dönüşümünü açık V2 manifestine eklemeyi önerir. **Proposed; kullanıcı onayı bekleniyor.** Bu genişleme henüz uygulanmadı. İki bağımsız reviewer ADR önerisini ve bağlı durum belgelerini inceleyip yeni engelleyici bulgu bulmadı; 106 belge ve ajan/diff denetimleri geçti. Bekleyen V2 öncesi handler hash kontrolü açıkça tanımlandı; normal güncel-store açılışına handler import/hash maliyeti eklenmez. PR #9 taslak kalır; eski prototip şema 5 DB'leri yeniden etiketlenmez/silinmez. Onaydan sonra manifest bulgusu fix/commit edilir, farklı fresh reviewer'larla ikinci tur ve bütün son head kabulleri tamamlanır.
 
 ## Onay ve yöntem
 
