@@ -158,7 +158,7 @@ def test_operation_runtime_disables_restore_even_old_snapshot_and_no_target(
     observed(config, root)
     saved = migration_backup(root)
     version = len(state_schema.MIGRATIONS)
-    step = state_schema.Migration(
+    step = state_schema.MigrationV2(
         version, version + 1, ("CREATE TABLE operations(id INTEGER PRIMARY KEY) STRICT",)
     )
     monkeypatch.setattr(state_schema, "MIGRATIONS", (*state_schema.MIGRATIONS, step))

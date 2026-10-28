@@ -46,6 +46,7 @@ from yorunge.adapters.state import (
     load_key,
     metadata,
     new_key,
+    prepare_migration,
     read_backup,
     sqlite_error_code,
     state_directory,
@@ -318,10 +319,11 @@ def reset_connection(
 def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: Deadline) -> None:
     version, _ = validate(connection, schema.MIGRATIONS, full=True)
     for step in schema.MIGRATIONS[version:]:
+        transform = prepare_migration(step, deadline)
         backup(root, path, deadline, schema.MIGRATIONS)
         connection.execute("BEGIN IMMEDIATE")
         try:
-            apply_migration(connection, step)
+            apply_migration(connection, step, deadline, transform)
             validate(connection, schema.MIGRATIONS, full=True)
             deadline.remaining()
             connection.execute("COMMIT")

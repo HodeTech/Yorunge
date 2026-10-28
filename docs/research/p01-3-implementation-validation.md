@@ -124,6 +124,14 @@ Kullanıcı, revize ADR-0015'in üç seçimini 2026-10-28'de açıkça onayladı
 
 Revizyon head'i 5048b25'in [Linux CI'ı](https://github.com/HodeTech/Yorunge/actions/runs/40663234820) test/build kontrollerinden geçti (**1.177 passed, 120,79 s**); cache p95 **407,876 ms**, medyan **149,728 ms** ile bütçede başarısız oldu. [Ham ölçüm](p01-3-adr-review-linux-startup.json) 30 örnekten altısının 200 ms üzerinde olduğunu gösterir (AMD EPYC 9V74, disk unknown). Wheel hash'i önceki başarılı 83e415c ile aynıdır. Hızlı örnekten sonra alınan importtime/cProfile sıçramanın nedenini izole etmez; disk/scheduler kesin neden diye sunulmaz. Aynı head yeniden başlatılmadı; performans kapısı açık kalır.
 
+### V2 uygulaması / adım 1
+
+V1 modeli yalnız üç alanla donduruldu; eski 1–4 golden checksum'ları korundu. Yeni 4→5 `MigrationV2`, `capability-expiries-v1` descriptor'ını checksum'a bağlar. Handler aynı dosyada kendi JSON/expiry yardımcılarını taşır; kaynak SHA-256 `b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18`, V2 checksum `2f627c2b5ae872ca8f36d947e8ecad6e86e73d242dd1e712eb92abf0932b3b33` golden testle sabittir. Bunlar henüz merge edilmemiş ilk uygulama kimlikleridir.
+
+Bekleyen migration, snapshot/DDL öncesi aynı source buffer'ını hash/kapalı AST denetimiyle doğrulayıp cache'siz compile/exec eder. Dar facade yalnız kaynak cache satırlarını ve parametre bağlı expiry INSERT'ünü sunar; SQLite authorizer transaction, şema, başka tablo/fonksiyon ve kaynak değişimini engeller. Caller deadline/transaction/full validation sahibi kalır; normal güncel store açılışı handler modülünü okumaz. State ve eski restore-stage yükseltmesi aynı hazırlık/yürütme yolunu kullanır. Checksum dışı prototip hook kaldırıldı; yalnız fixture'ın ihtiyaç duyduğu seed döngüsü test alanına taşındı.
+
+Yeni regresyonlar literal altı source-row/19 expiry, güncel warm read ve tekrar açılış/global frontier; stale pyc + `sys.modules`, read sonrası kaynak değişimi, eksik/I/O/bozuk kaynak, kapalı manifest ve türler, env/saat/SQL yasakları, FULL/extended IOERR/INTERRUPT, deadline/validation/commit-öncesi rollback ve prototip checksum reddini kapsar. İlk tam takım **1.254 passed (168,22 s)**; ardından küçük handler/fixture temizliğinin 86 hedefli kontrolü geçti. Ruff format/lint ve strict mypy (41 kaynak) başarılıdır. Yoğun migration süresi, son paket/CI ve iki fresh review turu henüz bu adımda kapanmış değildir.
+
 ## Onay ve yöntem
 
 Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstteki Development merge kapanışı bölümündedir.

@@ -44,18 +44,6 @@ def check_expiries(connection: sqlite3.Connection, record: CapabilityRecord) -> 
         raise YorungeError("state_invalid")
 
 
-def backfill_expiries(connection: sqlite3.Connection) -> None:
-    from yorunge.adapters.capability_cache import ENTRY_FIELDS, decode_entry
-
-    for count, row in enumerate(
-        connection.execute(f"SELECT {ENTRY_FIELDS} FROM capability_cache"), 1
-    ):
-        if count > 1024:
-            raise YorungeError("state_invalid")
-        record, _ = decode_entry(row)
-        save_expiries(connection, record)
-
-
 def next_expiry(connection: sqlite3.Connection, high: str) -> datetime | None:
     try:
         dates = []

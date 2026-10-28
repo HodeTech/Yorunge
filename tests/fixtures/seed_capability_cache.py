@@ -7,8 +7,8 @@ from datetime import timedelta
 from pathlib import Path
 
 from yorunge import api
-from yorunge.adapters.capability_cache import StateCache, group_key
-from yorunge.adapters.expiry_fences import backfill_expiries
+from yorunge.adapters.capability_cache import StateCache, decode_entry, group_key
+from yorunge.adapters.expiry_fences import save_expiries
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_store
 from yorunge.application.capabilities import LocalPolicyProducer, combine
@@ -105,7 +105,9 @@ def seed(root: Path, config: Path, *, evidence_count: int = 1) -> None:
             store.connection.executemany(
                 "INSERT INTO capability_cache VALUES(?,?,?,?,?,?,?,?)", rows
             )
-            backfill_expiries(store.connection)
+            for row in rows:
+                record, _ = decode_entry(row)
+                save_expiries(store.connection, record)
             store.connection.execute(
                 "UPDATE cache_clock SET mutation_revision=? WHERE singleton=1", (len(rows) + 2,)
             )

@@ -1,4 +1,4 @@
-"""Immutable, checksummed SQL migration declarations."""
+"""Immutable V1/V2 migration declarations; published SQL identities remain frozen."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from functools import lru_cache
+
+from yorunge.domain.errors import YorungeError
 
 APPLICATION_ID = 0x594F5255
 
@@ -17,17 +19,141 @@ class Migration:
     to_version: int
     statements: tuple[str, ...]
 
-    @property
-    def checksum(self) -> str:
-        payload = {
+    def __post_init__(self) -> None:
+        self.check_fields()
+        if self.to_version > 4:
+            raise YorungeError("state_invalid")
+
+    def check_fields(self) -> None:
+        if (
+            type(self.from_version) is not int
+            or type(self.to_version) is not int
+            or self.from_version < 0
+            or self.to_version != self.from_version + 1
+            or type(self.statements) is not tuple
+            or not self.statements
+        ):
+            raise YorungeError("state_invalid")
+        for statement in self.statements:
+            if (
+                not isinstance(statement, str)
+                or not statement
+                or any(char in statement for char in ("\r", "\ufeff"))
+            ):
+                raise YorungeError("state_invalid")
+            try:
+                statement.encode("utf-8")
+            except UnicodeError:
+                raise YorungeError("state_invalid") from None
+
+    def manifest(self) -> dict[str, object]:
+        return {
             "from_version": self.from_version,
             "to_version": self.to_version,
             "statements": list(self.statements),
         }
+
+    @property
+    def checksum(self) -> str:
         encoded = json.dumps(
-            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+            self.manifest(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
         ).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class DataTransform:
+    id: str
+    code_sha256: str
+
+    def __post_init__(self) -> None:
+        if (
+            self.id != "capability-expiries-v1"
+            or not isinstance(self.code_sha256, str)
+            or len(self.code_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in self.code_sha256)
+        ):
+            raise YorungeError("state_invalid")
+
+
+@dataclass(frozen=True)
+class MigrationV2(Migration):
+    manifest_version: int = 2
+    data_transform: DataTransform | None = None
+
+    def __post_init__(self) -> None:
+        self.check_fields()
+        if (
+            type(self.manifest_version) is not int
+            or self.manifest_version != 2
+            or self.to_version < 5
+            or (self.to_version == 5) != (self.data_transform is not None)
+            or (self.data_transform is not None and type(self.data_transform) is not DataTransform)
+        ):
+            raise YorungeError("state_invalid")
+
+    def manifest(self) -> dict[str, object]:
+        value = super().manifest()
+        value["manifest_version"] = self.manifest_version
+        if self.data_transform is not None:
+            value["data_transform"] = {
+                "id": self.data_transform.id,
+                "code_sha256": self.data_transform.code_sha256,
+            }
+        return value
+
+
+def migration_from_manifest(value: object) -> Migration:
+    """Closed internal decoder, never a DB/config/CLI manifest import surface."""
+    try:
+        if not isinstance(value, dict):
+            raise ValueError("manifest object required")
+        fields = {"from_version", "to_version", "statements"}
+        v2 = "manifest_version" in value
+        if v2:
+            fields.add("manifest_version")
+            if value.get("to_version") == 5:
+                fields.add("data_transform")
+        if set(value) != fields or not isinstance(value["statements"], list):
+            raise ValueError("closed manifest required")
+        args = (value["from_version"], value["to_version"], tuple(value["statements"]))
+        if not v2:
+            return Migration(*args)
+        descriptor = None
+        if "data_transform" in value:
+            raw = value["data_transform"]
+            if not isinstance(raw, dict) or set(raw) != {"id", "code_sha256"}:
+                raise ValueError("closed descriptor required")
+            descriptor = DataTransform(raw["id"], raw["code_sha256"])
+        return MigrationV2(*args, value["manifest_version"], descriptor)
+    except (ValueError, TypeError, KeyError):
+        raise YorungeError("state_invalid") from None
+
+
+def migration_from_json(payload: bytes) -> Migration:
+    """Decode internal manifest evidence; this is not exposed through product inputs."""
+
+    def pairs(items: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for key, item in items:
+            if key in value:
+                raise ValueError("duplicate key")
+            value[key] = item
+        return value
+
+    def reject(value: str) -> None:
+        raise ValueError(value)
+
+    try:
+        return migration_from_manifest(
+            json.loads(payload.decode("utf-8"), object_pairs_hook=pairs, parse_constant=reject)
+        )
+    except (ValueError, TypeError, RecursionError):
+        raise YorungeError("state_invalid") from None
 
 
 MIGRATIONS = (
@@ -124,7 +250,7 @@ payload TEXT NOT NULL CHECK(length(payload)<=4096)
 ) STRICT""",
         ),
     ),
-    Migration(
+    MigrationV2(
         4,
         5,
         (
@@ -136,6 +262,10 @@ PRIMARY KEY(cache_key,expires_at)
             "CREATE INDEX capability_expiry_order ON capability_expiries(expires_at,cache_key)",
             "CREATE INDEX execution_plan_expiry ON execution_plans(expires_at,plan_id)",
             "CREATE INDEX execution_approval_expiry ON execution_approvals(expires_at,plan_id)",
+        ),
+        data_transform=DataTransform(
+            "capability-expiries-v1",
+            "b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18",
         ),
     ),
 )

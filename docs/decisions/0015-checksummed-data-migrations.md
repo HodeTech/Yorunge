@@ -6,9 +6,9 @@
 
 ADR-0013'ün mevcut yeniden-canlanmama garantisi için PR #9, cache/proof/conflict ile plan/onay expiry'lerini kapsayan global indeks prototipi içerir. Ancak şema 4→5'in Python backfill'i V1 checksum'ının dışındadır; ADR-0011 bu durumu yasaklar. Bu P2 giderilmeden prototip merge edilmez. Global fence davranışı yeni bir yetki veya TTL kararı değildir; migration kimliğinin genişletilmesi ayrı onay gerektirir.
 
-**Bu öneri, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Kullanıcı üç seçimi de açıkça onayladı. ADR-0011 Accepted kalır; bu karar onu bütünüyle Superseded yapmaz. İndeks ve ADR-0011 notu V1/V2 kapsamını gösterir.
+**Bu karar, ADR-0011'in üç alanlı checksum tanımını yalnız V2 adımları için kısmen değiştirir.** V1 tanımı ve migration 1–4 kimlikleri aynen kalır. Kullanıcı üç seçimi de açıkça onayladı. ADR-0011 Accepted kalır; bu karar onu bütünüyle Superseded yapmaz. İndeks ve ADR-0011 notu V1/V2 kapsamını gösterir.
 
-SQLite alt sınırı 3.37'dir. JSON1 bu seride derleme seçeneğine bağlıdır; daha sonraki sürümlerde de çıkarılabilir. Bu teklif JSON1 bağımlılığı getirmez. [Resmî SQLite açıklaması](https://www.sqlite.org/json1.html#compiling_in_json_support).
+SQLite alt sınırı 3.37'dir. JSON1 bu seride derleme seçeneğine bağlıdır; daha sonraki sürümlerde de çıkarılabilir. Bu karar JSON1 bağımlılığı getirmez. [Resmî SQLite açıklaması](https://www.sqlite.org/json1.html#compiling_in_json_support).
 
 ## Karar
 
@@ -110,7 +110,7 @@ Disposable test verisi için yeni bir `--state-dir` ile temiz store seçilir. Ge
 
 ## Alternatifler ve sonuçlar
 
-Checksum dışı hook, SQL yorumu/UDF içine gizli dönüşüm, migration sonrası görünmez repair, salt ad etiketi veya cache'i boşaltma seçilmez. JSON1 zorunluluğu mevcut runtime desteğini değiştirir. Çok dosyalı bundle yerine tek dosya seçilmiştir; yerel helper import'u bu teklifin dışında kalır.
+Checksum dışı hook, SQL yorumu/UDF içine gizli dönüşüm, migration sonrası görünmez repair, salt ad etiketi veya cache'i boşaltma seçilmez. JSON1 zorunluluğu mevcut runtime desteğini değiştirir. Çok dosyalı bundle yerine tek dosya seçilmiştir; yerel helper import'u bu kararın dışında kalır.
 
 Bu karar V1 1–4'ü korurken sonraki bütün adımları V2'ye taşır. CLI/Python wire'ı, TTL, kotalar, bütçe, kimlik/K yaşam döngüsü ve gerçek EVREN yetkisi değişmez. V2 uygulaması bu onaya dayanır; PR #9 taslak ve checksum P2 uygulama/kabul tamamlanana kadar açık kalır.
 

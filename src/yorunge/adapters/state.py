@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import uuid4
 
 from pydantic import ConfigDict, Field, field_validator
@@ -41,6 +41,9 @@ from yorunge.domain.credentials import EnvReference, normalize_target
 from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid, check_utc
+
+if TYPE_CHECKING:
+    from yorunge.adapters.data_migrations import VerifiedTransform
 
 DB_NAME = "state.sqlite3"
 LOCK_NAME = "store.lock"
@@ -297,15 +300,30 @@ def load_key(root: Path, value: Metadata) -> bytes:
     return key
 
 
-def apply_migration(connection: sqlite3.Connection, step: schema.Migration) -> None:
+def prepare_migration(step: schema.Migration, deadline: Deadline) -> VerifiedTransform | None:
+    if not isinstance(step, schema.MigrationV2) or step.data_transform is None:
+        return None
+    from yorunge.adapters.data_migrations import prepare
+
+    return prepare(step, deadline)
+
+
+def apply_migration(
+    connection: sqlite3.Connection,
+    step: schema.Migration,
+    deadline: Deadline,
+    transform: VerifiedTransform | None = None,
+) -> None:
+    expected = step.data_transform if isinstance(step, schema.MigrationV2) else None
+    if (transform.descriptor if transform is not None else None) != expected:
+        raise YorungeError("state_invalid")
     if connection.execute("PRAGMA user_version").fetchone()[0] != step.from_version:
         raise YorungeError("state_invalid")
     for statement in step.statements:
+        deadline.remaining()
         connection.execute(statement)
-    if step.from_version == 4 and step.to_version == 5:
-        from yorunge.adapters.expiry_fences import backfill_expiries
-
-        backfill_expiries(connection)
+    if transform is not None:
+        transform.run(connection, deadline)
     connection.execute(
         "INSERT INTO schema_migrations VALUES(?,?,?)", (step.to_version, step.checksum, utc_now())
     )
@@ -323,7 +341,7 @@ def bootstrap(root: Path, deadline: Deadline, migrations: tuple[schema.Migration
     try:
         connection.execute("BEGIN IMMEDIATE")
         connection.execute(f"PRAGMA application_id={schema.APPLICATION_ID}")
-        apply_migration(connection, migrations[0])
+        apply_migration(connection, migrations[0], deadline)
         connection.execute(
             "INSERT INTO state_meta VALUES(1,?,?,?,?,1)",
             (store_id, epoch, identifier, key_check(key, store_id, epoch, identifier)),
@@ -469,12 +487,14 @@ def maintain(
                     load_key(root, value)
                 if version == len(migrations):
                     break
+                step = migrations[version]
+                transform = prepare_migration(step, deadline)
                 backup(root, root / DB_NAME, deadline, migrations)
                 connection.execute("BEGIN IMMEDIATE")
                 try:
                     if validate(connection, migrations, full=True)[0] != version:
                         raise YorungeError("state_invalid")
-                    apply_migration(connection, migrations[version])
+                    apply_migration(connection, step, deadline, transform)
                     _, updated = validate(connection, migrations, full=True)
                     if check_key:
                         load_key(root, updated)

@@ -210,7 +210,7 @@ def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_p
 def test_global_expiry_migration_backfills_existing_records_atomically(
     tmp_path, monkeypatch, interrupt
 ):
-    from yorunge.adapters import expiry_fences
+    from yorunge.adapters.data_migrations import MigrationConnection
 
     clock, root = Clock(), tmp_path / "state"
     with open_store(root) as store:
@@ -228,14 +228,14 @@ def test_global_expiry_migration_backfills_existing_records_atomically(
         store.connection.execute("DELETE FROM schema_migrations WHERE version=5")
         store.connection.execute("PRAGMA user_version=4")
     if interrupt:
-        original = expiry_fences.save_expiries
+        original = MigrationConnection.insert_expiry
 
         def fail_after_backfill(*args):
             original(*args)
             raise YorungeError("state_write_failed")
 
         with monkeypatch.context() as patch:
-            patch.setattr(expiry_fences, "save_expiries", fail_after_backfill)
+            patch.setattr(MigrationConnection, "insert_expiry", fail_after_backfill)
             with pytest.raises(YorungeError) as failure:
                 with open_store(root):
                     pass
