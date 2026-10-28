@@ -164,7 +164,9 @@ Eski restore, gerçek önceki-runtime kesintisiyle hazırlanır; kaynak backup s
 
 [Normal](p01-3-v2-final-startup.json) ve [sekiz-proof yoğun](p01-3-v2-final-dense-startup.json) ölçüm, test yükü olmadan aynı yerel ortamda üç ısınma ve 30 ayrı süreç/komutla yapıldı. Cache p95 **118,642 / 119,974 ms**; iki koşuda dört bütçe geçti. Kaynak/komut hash'leri ve fresh hit kontrolü kayıttadır. Startup ölçer artık sıralı tamamlanmış child CPU sürelerini ve wall−CPU tahminini de kaydeder; 30 örnek, p95 ve eşikler değişmedi. Bu fark tek başına I/O/scheduler nedeni atamaz. [Python resource](https://docs.python.org/3.11/library/resource.html#resource.RUSAGE_CHILDREN) ve [SQLite progress callback](https://docs.python.org/3.11/library/sqlite3.html#sqlite3.Connection.set_progress_handler), 2026-10-28'de incelenen yöntem kaynaklarıdır.
 
-Adım 2'nin iki fresh review turu, son paket/temiz kurulum ve son head Linux CI kapanışı henüz tamamlanmadı. PR #9 taslaktır; P01-3'ün PR #8 development teslimi verified kalır.
+**Adım 2 / R1:** 3883655 üç fresh reviewer ile bütünlük (Astra/high), storage/ölçüm ve delivery/CLI-API/CI (Sol/high) boyutlarında incelendi; doğrulanmış yeni maddi bulgu yok. Bütünlük reviewer'ı 215 testi (84,62 s), aynı memo içindeki bağımsız snapshot metadata/schema/FK/expiry bozulmasını, özet değişmezliğini ve scope temizliğini doğruladı. Ölçüm reviewer'ı 10 ham raporun 30 koşulunu, kaynak hash'lerini, geçerli azami modelleri, callback/deadline zincirini ve tanısal baseline ayrımını inceledi. Delivery reviewer'ı 52 memo/Unicode/benchmark/probe (11,30 s) ve 137 platform/SQLite hata testi (13,49 s), ayrı süreçte normal cache'in memo import etmediğini ve startup p95/CPU dizilerini yeniden doğruladı. Review sırasında benchmark tekrarlanmadı.
+
+Adım 2'nin ikinci fresh review turu, son paket/temiz kurulum ve son head Linux CI kapanışı henüz tamamlanmadı. PR #9 taslaktır; P01-3'ün PR #8 development teslimi verified kalır.
 
 ## Onay ve yöntem
 
