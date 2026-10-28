@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from yorunge.adapters.execution_store import PlanRepository
     from yorunge.adapters.state import Store
     from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
+    from yorunge.application.operations import OperationCoordinator, StartPort
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
@@ -691,6 +692,56 @@ def _execution_budget() -> ExecutionBudget:
     from yorunge.application.execution import ExecutionBudget
 
     return ExecutionBudget(SystemClock(), started)
+
+
+@contextmanager
+def _operation_session(
+    plan_id: str,
+    backend: StartPort,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Iterator[OperationCoordinator]:
+    """Trusted composition only; no public run, backend registration or caller evidence."""
+    import os
+
+    budget = _execution_budget()
+    from yorunge.adapters.input_files import DescriptorInputs
+    from yorunge.adapters.operation_repository import StateOperations
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import ExecutionUseCases
+    from yorunge.application.operations import OperationCoordinator
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    with open_store(state_dir, timeout=min(5.0, budget.remaining())) as store:
+        from yorunge.adapters.execution_store import read_plan
+
+        read_plan(store.connection, plan_id)
+        store.deadline.end = budget.end
+        repository = StateOperations(store, (), budget)
+        snapshot: tuple[Context, tuple[BoundCredential, ...]] | None = None
+
+        def current(plan: ExecutionPlan) -> ExecutionValidity:
+            nonlocal snapshot
+            if plan.plan_id != plan_id:
+                raise YorungeError("invalid_request")
+            if snapshot is None:
+                context, selected = _context(config, request, None)
+                credentials = _execution_credentials(context, selected, plan.selection, store)
+                snapshot = context, credentials
+            context, credentials = snapshot
+            repository.credentials = credentials
+            coordinator.credentials = credentials
+            plans = _execution_repository(store, credentials, budget)
+            if plans.read(plan_id) != plan:
+                raise YorungeError("state_changed")
+            use_cases = ExecutionUseCases(plans, DescriptorInputs(), _execution_validator(), budget)
+            return use_cases.validate(plan, context, credentials)
+
+        coordinator = OperationCoordinator(repository, current, backend, (), budget, os.getpid)
+        yield coordinator
 
 
 def prepare_execution_plan(

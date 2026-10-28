@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Adım 1 uygulanıyor; paket ve P01-4b/4c kabulü tamamlanmadı. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md).
+**Güncellendi:** 2026-10-29. **Durum:** Adım 1 iki review turuyla kapandı; adım 2 uygulanıyor. Paket ve P01-4b/4c kabulü tamamlanmadı. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md).
 
 ## Karar kapanışı
 
@@ -56,6 +56,16 @@ Kontrol takeover artık normal event tüketmez; claimed adayların sırası/aban
 
 Son kaynakta yeni model/repository ve mevcut approval hedefli takım **143 passed / 33,28 s**; Ruff/lint/strict mypy ve belge/ajan/diff kontrolleri başarılı. İki ikinci-tur reviewer'ı son düzeltmeleri bağımsız SQLite negatif/pozitifleriyle tekrar doğruladı; açık somut bulgu kalmadı. Cross-clock recovery/terminal ve slotsuz takeover olumlu yolları korunur. Adım 1 iki review turuyla kapandı; P01-4b bütün kartı ve paket hâlâ in_progress, çünkü adım 2/3/4 henüz yoktur. Migration 1–6 SQL/checksum/handler kimlikleri bu review düzeltmelerinde değişmedi; ilk ham migration kaydı aynı DDL ve boş operation consumer maliyetinin tarihsel kanıtı olarak korunur, final kaynak kabulü paket kapanışında yeniden değerlendirilecek.
 
+## Adım 2 — Admission, sahiplik ve gönderim sınırı
+
+İç coordinator gerçek execution validation tüketir; public run/fixture backend kaydı açılmaz. Yeni admission, predispatch takeover ve arm aynı BEGIN IMMEDIATE içinde saved plan/onay ve her kullanılan credential ID/revision/hedefini tekrar karşılaştırır. Tek çağrının private credential snapshot'ı bir kez çözülür. Aynı planın tekrarı yalnız mevcut job döndürür, ephemeral sahiplik/permit üretmez. Lease 30 s; yenileme semantic revision/fence'i değiştirmez. Geçerli predispatch takeover yeni aday açar, postdispatch takeover aynı attempt için yalnız recovery sahipliği alır. Yetim predispatch kaydın revoke/expiry/yeni approval nedeniyle kesin yerel cleanup'ı env/config okumadan terminalleştirir.
+
+Submitted latch commit'i dış çağrıdan öncedir. Permit PID/thread/tek kullanım sınırını korur; copy/deepcopy/pickle ve fork çocuğu kullanamaz. Dış port mutlak monotonic deadline alır; min(kalan çağrı,kalan lease)−5 s sonuç payı korunur. Deadline için UTC yalnız durable clock transaction'ı içinde gözlenir; commit edilmiş son UTC ile transaction öncesi monotonic örneği birlikte konservatif hesaplanır. Timeout/connection-refused/yanıt kaybı ikinci gönderim hakkı üretmez. Receipt aynı correlation/authority ve current owner tuple ile yazılır.
+
+İlk hedefli takım **30 passed / 11,39 s**. İki ayrı gerçek süreç admission yarışında tek operation/attempt/intent ve tek fsync'li sentetik subprocess etkisi üretildi. İki hizmet × admission/arm final transaction credential yarışları state_changed ve sıfır port verdi. Dokuz gerçek SIGKILL kesiti (admission/arm önce-orta-sonra, etki sonrası yanıt kaybı ve receipt orta-sonra) SQLite yeniden açılışıyla doğrulandı; latch commit edilmişse hiçbir resume ikinci start yapmadı. Paused eski sender lease devri sonrası bir geç dış etki yapabildi; yeni owner kaydını değiştiremedi ve yeni owner start yapmadı. Bu test yerel fencing'in dış etkiyi durdurma garantisi olmadığını somut gösterir. Sonuç payına yakın kooperatif portun receipt'i kalıcı oldu; pay tüketilmişse port sıfır kaldı.
+
+Ruff format/lint ve strict mypy geçti. Tam takım ve ilk fresh review turu sıradadır; bu ilk kanıt adım/kart kapanışı değildir. Sentetik subprocess gerçek EVREN/HTTP/GPU kanıtı, SIGKILL fiziksel disk/güç kaybı kanıtı değildir.
+
 ## Sonraki adımlar
 
-Adım 1 commit ve iki fresh review turuyla kapandıktan sonra admission/lease/tek gönderim (adım 2), recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 2 commit ve iki fresh review turuyla kapandıktan sonra recovery/terminal/reset (adım 3), public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.

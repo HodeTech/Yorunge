@@ -1,6 +1,6 @@
 # P01-4 — Kalıcı koordinasyon ve yerel iş geçmişi
 
-**Durum:** ADR-0016 Accepted; adım 1 uygulaması başladı, ürün kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
+**Durum:** ADR-0016 Accepted; adım 1 iki review turuyla kapandı, adım 2 uygulanıyor; paket kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
 
 ## Paket ve korunacak teslim
 
