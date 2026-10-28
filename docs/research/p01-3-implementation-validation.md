@@ -132,6 +132,8 @@ Bekleyen migration, snapshot/DDL öncesi aynı source buffer'ını hash/kapalı 
 
 Yeni regresyonlar literal altı source-row/19 expiry, güncel warm read ve tekrar açılış/global frontier; stale pyc + `sys.modules`, read sonrası kaynak değişimi, eksik/I/O/bozuk kaynak, kapalı manifest ve türler, env/saat/SQL yasakları, FULL/extended IOERR/INTERRUPT, deadline/validation/commit-öncesi rollback ve prototip checksum reddini kapsar. İlk tam takım **1.254 passed (168,22 s)**; ardından küçük handler/fixture temizliğinin 86 hedefli kontrolü geçti. Ruff format/lint ve strict mypy (41 kaynak) başarılıdır. Yoğun migration süresi, son paket/CI ve iki fresh review turu henüz bu adımda kapanmış değildir.
 
+**Adım 1 / R1:** 24ffed4 üç fresh reviewer tarafından kaynak/yürütme/transaction (Astra/high), state/rollback/kurtarma ve CLI/API/teslim (Sol/high) boyutlarında incelendi; doğrulanmış yeni maddi bulgu yok. Kaynak reviewer'ı 77 testi, cached-COMMIT reddi/caller rollback, ayrı namespace ve sınır tarih probe'larını doğruladı. State reviewer'ı 251 testi (95,56 s), kaynak backup kayıpken schema-4 stage/live × altı kesinti sınırını (12 durum) ve schema-2/3→committed-4→enjekte V2 hata→5 resume'unu literal/full/warm kontrollerle doğruladı. Delivery reviewer'ı wheel/sdist ve iki temiz kurulumu geçti; iki arşivdeki 2.063 baytlık handler kaynakla birebir/hash eşit, güncel-store ayrı süreçte loader/handler import etmiyor. Benchmark koşulmadı; ikinci fresh tur ve yoğun kabul açık kalır.
+
 ## Onay ve yöntem
 
 Aşağıdaki adım/koşu kayıtları kronolojiktir. Eski bir adımın “henüz” ifadesi o commit anını anlatır; güncel teslim durumu üstteki Development merge kapanışı bölümündedir.
