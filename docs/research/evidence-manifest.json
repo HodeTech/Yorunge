@@ -1935,6 +1935,197 @@
       }
     },
     {
+      "name": "p01-6-native-counter-installation.json",
+      "archive": "raw/p01-6-native-counter-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1433,
+      "content_sha256": "03fb0546556eff8bbabcca0768c7d4b25116a6a2231153d93baa2d5b444a2acb",
+      "archive_bytes": 645,
+      "archive_sha256": "7832535369c9b9b4d3742b90266f550be320ef3b0a4151e87e86f4092990a0f9",
+      "summary": {
+        "source_commit": "2551a1f129255bcb31559e281cbc20e8cbd1053d",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-native-counter-startup.json",
+      "archive": "raw/p01-6-native-counter-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 42371,
+      "content_sha256": "98f1be55a4d2221eeaf4b23fa2ae598158e1527bc75f6087caadec887703d762",
+      "archive_bytes": 11599,
+      "archive_sha256": "76b5a8648dc706119ce0109d760424f2fb872fc678779b61a302bf3f9b0e777f",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 26.98508300818503,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 24.388709105551243,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 79.0805839933455,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 133.69562500156462,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 25.923334062099457,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 24.410750018432736,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 78.52554181590676,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 122.80900008045137,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-native-counter-stream-v2.json",
+      "archive": "raw/p01-6-native-counter-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 49074,
+      "content_sha256": "2b1a00e4218b9e30361a725f2f87ce51e1add33747f9daf75f3d5463ba10f050",
+      "archive_bytes": 6162,
+      "archive_sha256": "6aaa91897d5e74c3e8369eeee3f9b4dfc7506a6ae9369b19fcc332ea16a82315",
+      "summary": {
+        "source_commit": "2551a1f129255bcb31559e281cbc20e8cbd1053d",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            49152,
+            49152
+          ],
+          "upper_bound_bytes": [
+            0,
+            49152,
+            49152
+          ],
+          "span_upper_bound_bytes": 49152,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 57802752,
+            "pretransfer_peak_rss_bytes": 57802752,
+            "peak_rss_bytes": 57802752,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 0,
+            "elapsed_seconds": 0.026770208030939102,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 49840128,
+            "pretransfer_peak_rss_bytes": 49840128,
+            "peak_rss_bytes": 49889280,
+            "extra_rss_lower_bound_bytes": 49152,
+            "extra_rss_upper_bound_bytes": 49152,
+            "elapsed_seconds": 0.3962404588237405,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 49790976,
+            "pretransfer_peak_rss_bytes": 49790976,
+            "peak_rss_bytes": 49840128,
+            "extra_rss_lower_bound_bytes": 49152,
+            "extra_rss_upper_bound_bytes": 49152,
+            "elapsed_seconds": 1.5638667501043528,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-pr-review-installation.json",
       "archive": "raw/p01-6-pr-review-installation.json.gz",
       "original_commit": null,
@@ -2175,6 +2366,52 @@
           "dense/show": {
             "samples": 30,
             "p95_ms": 111.04537500068545,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p01-6-reference-jobs-linux-harness.json",
+      "archive": "raw/p01-6-reference-jobs-linux-harness.json.gz",
+      "original_commit": null,
+      "content_bytes": 122437,
+      "content_sha256": "1844c41284da21f4f60c3a4abd0f3368628c7896d51148c6fd48735469bd7bbb",
+      "archive_bytes": 21436,
+      "archive_sha256": "25d72f2f09e2b84a72fb456ac02e50c8f2ae64613f1037a4641f25e06f864d34",
+      "summary": {
+        "source_commit": "2551a1f129255bcb31559e281cbc20e8cbd1053d",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 106.99249990284443,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 120.94733398407698,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 159.97266699559987,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 111.6408749949187,
             "budget_ms": 200.0,
             "passed": true
           }
