@@ -15,6 +15,7 @@ import json
 import math
 import os
 import platform
+import re
 import signal
 import sqlite3
 import ssl
@@ -47,7 +48,9 @@ def self_peak_rss() -> tuple[int | float, int]:
     return native, rss_bytes(native, platform.system())
 
 
-def installed_provenance(expected: dict[str, str], prefix: Path) -> dict[str, Any]:
+def installed_provenance(
+    expected: dict[str, str], prefix: Path, locked: dict[str, str]
+) -> dict[str, Any]:
     """Prove the complete installed package's Python bytes, not only its Git label."""
     import yorunge
 
@@ -77,10 +80,17 @@ def installed_provenance(expected: dict[str, str], prefix: Path) -> dict[str, An
     metadata = Path(str(distribution.locate_file(""))).resolve()
     if not metadata.is_relative_to(prefix):
         raise ValueError("distribution metadata escaped the selected installation")
-    packages = {dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()}
-    forbidden = {"pytest", "ruff", "mypy", "types-pyyaml"}
-    if any(name.lower().replace("_", "-") in forbidden for name in packages):
-        raise ValueError("raw stream measurement requires a runtime-only installation")
+    packages = {}
+    for dist in importlib.metadata.distributions():
+        raw_name = dist.metadata["Name"]
+        if not isinstance(raw_name, str) or not raw_name:
+            raise ValueError("installed distribution has no package name")
+        name = re.sub(r"[-_.]+", "-", raw_name.lower())
+        if name in packages:
+            raise ValueError("duplicate normalized installed distribution")
+        packages[name] = dist.version
+    if not locked or packages != locked:
+        raise ValueError("installed runtime packages do not match the frozen runtime closure")
     if importlib.util.find_spec("pytest") is not None:
         raise ValueError("raw stream measurement must not import test tooling")
     return {
@@ -195,11 +205,17 @@ def client(args: argparse.Namespace) -> int:
     from yorunge.adapters import http_transport  # noqa: F401
     from yorunge.application import http_transport as http_port  # noqa: F401
 
-    before = installed_provenance(expected, args.prefix)
+    before = installed_provenance(
+        expected["source_sha256"], args.prefix, expected["locked_runtime"]
+    )
     measured = asyncio.run(consume(args.port, args.ca, args.size, args.total_seconds))
-    after = installed_provenance(expected, args.prefix)
-    if before["installed_source_sha256"] != after["installed_source_sha256"]:
-        raise ValueError("installed package changed during measurement")
+    after = installed_provenance(expected["source_sha256"], args.prefix, expected["locked_runtime"])
+
+    def identity(value: dict[str, Any]) -> dict[str, Any]:
+        return {name: item for name, item in value.items() if name not in {"pid", "modules"}}
+
+    if identity(before) != identity(after):
+        raise ValueError("installed runtime changed during measurement")
     measured["runtime"] = after
     print(json.dumps(measured, allow_nan=False))
     return 0

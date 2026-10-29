@@ -46,6 +46,7 @@ def runtime_tree(tmp_path_factory):
         "idna",
         "pydantic",
         "pydantic-core",
+        "PyYAML",
         "typing-extensions",
         "typing-inspection",
     ):

@@ -211,6 +211,17 @@ def test_legacy_jobs_summary_does_not_gain_modern_fields():
     }
 
 
+def test_modern_jobs_cannot_downgrade_to_legacy_by_removing_provenance():
+    report = receipt()
+    report["provenance"]["isolated_python"] = False
+    report["passed"] = False
+    assert CHECKS["summarize"](report)["passed"] is False
+    del report["provenance"]
+    report["passed"] = True
+    with pytest.raises(ValueError, match="jobs report"):
+        CHECKS["summarize"](report)
+
+
 def test_macos_jobs_runtime_aliases_are_portable_and_do_not_access_historical_paths(monkeypatch):
     report = receipt()
     for key in ("installed_before", "installed_after"):

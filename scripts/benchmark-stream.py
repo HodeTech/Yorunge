@@ -11,10 +11,12 @@ import hashlib
 import json
 import math
 import os
+import re
 import runpy
 import subprocess
 import sys
 import time
+import tomllib
 from pathlib import Path
 from typing import Any, cast
 
@@ -76,6 +78,34 @@ def source(project: Path) -> dict[str, Any]:
         timeout=10,
     ).stdout.strip()
     return {"commit": revision, "source_sha256": hashes}
+
+
+def locked_runtime(project: Path) -> dict[str, str]:
+    """Follow the frozen runtime dependency closure, excluding development groups."""
+    lock = tomllib.loads((project / "uv.lock").read_text(encoding="utf-8"))
+    packages = {}
+    for item in lock["package"]:
+        name = re.sub(r"[-_.]+", "-", item["name"].lower())
+        if name in packages:
+            raise ValueError("duplicate normalized package in runtime lock")
+        packages[name] = item
+    pending, versions = ["yorunge"], {}
+    while pending:
+        name = pending.pop()
+        if name in versions:
+            continue
+        item = packages[name]
+        versions[name] = item["version"]
+        pending.extend(
+            re.sub(r"[-_.]+", "-", dependency["name"].lower())
+            for dependency in item.get("dependencies", [])
+        )
+    return versions
+
+
+def runtime_identity(runtime: dict[str, Any]) -> dict[str, Any]:
+    """PIDs and the lazily imported module set may differ; runtime identity may not."""
+    return {name: value for name, value in runtime.items() if name not in {"pid", "modules"}}
 
 
 def expected_sha256(size: int) -> str:
@@ -285,7 +315,12 @@ def check(
     before = source(project)
     workspace.mkdir(mode=0o700)
     manifest = workspace / "source-manifest.json"
-    manifest.write_text(json.dumps(before["source_sha256"]), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {"source_sha256": before["source_sha256"], "locked_runtime": locked_runtime(project)}
+        ),
+        encoding="utf-8",
+    )
     certificate = runpy.run_path(str(project / "tests/fixtures/http_server.py"))["certificate"]
     certificates = cast(tuple[Path, Path], certificate(workspace / "certificates"))
     runs = []
@@ -306,6 +341,9 @@ def check(
     stable = stable and before == after
     runtime = runs[0]["runtime"]
     installed_matches = all(run["runtime"]["installed_source_matches"] is True for run in runs)
+    runtime_consistent = all(
+        runtime_identity(run["runtime"]) == runtime_identity(runtime) for run in runs
+    )
     value = {
         "schema_version": 1,
         "report_kind": "raw_stream_budget_v1",
@@ -348,7 +386,10 @@ def check(
             "size_bytes": [run["size_bytes"] for run in runs],
             "extra_rss_bytes": [run["extra_rss_bytes"] for run in runs],
         },
-        "passed": stable and installed_matches and all(run["passed"] is True for run in runs),
+        "passed": stable
+        and installed_matches
+        and runtime_consistent
+        and all(run["passed"] is True for run in runs),
     }
     # Exclusive creation closes the race with another writer and never follows a symlink.
     with new_path(output).open("x", encoding="utf-8") as target:

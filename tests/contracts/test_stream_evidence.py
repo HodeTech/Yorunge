@@ -16,6 +16,24 @@ HASHES = {
 }
 
 
+def test_stream_chunks_require_enough_bytes_for_the_recorded_maximum():
+    report = receipt()
+    run = report["runs"][0]
+    run["chunk_count"] = run["received_bytes"]
+    with pytest.raises(ValueError, match="chunk counters"):
+        CHECKS["summarize"](report)
+
+
+def test_stream_retains_cross_size_runtime_metadata_change_as_a_failure():
+    report = receipt()
+    report["runs"][1]["runtime"]["metadata"] = "/runtime/other-metadata"
+    report["passed"] = False
+    assert CHECKS["summarize"](report)["passed"] is False
+    report["passed"] = True
+    with pytest.raises(ValueError, match="flag"):
+        CHECKS["summarize"](report)
+
+
 def receipt(unit="KiB"):
     """A small independently authored Linux/macOS record, never a producer result."""
     factor = 1024 if unit == "KiB" else 1

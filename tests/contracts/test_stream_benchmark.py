@@ -10,6 +10,7 @@ import runpy
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -161,7 +162,14 @@ def test_small_fixture_uses_isolated_installed_client_and_separate_real_tls_proc
     prefix, python, _ = runtime_tree
     tools = helpers()
     manifest = tmp_path / "manifest.json"
-    manifest.write_text(json.dumps(tools["source"](ROOT)["source_sha256"]))
+    manifest.write_text(
+        json.dumps(
+            {
+                "source_sha256": tools["source"](ROOT)["source_sha256"],
+                "locked_runtime": tools["locked_runtime"](ROOT),
+            }
+        )
+    )
     result = tools["measure_one"](
         ROOT, python, tmp_path / "run", manifest, certificate(tmp_path / "cert"), 65537
     )
@@ -187,7 +195,9 @@ def test_isolated_source_manifest_mismatch_fails_before_any_tls_connection(runti
     source = helpers()["source"](ROOT)["source_sha256"]
     source["src/yorunge/__init__.py"] = "0" * 64
     manifest = tmp_path / "manifest.json"
-    manifest.write_text(json.dumps(source))
+    manifest.write_text(
+        json.dumps({"source_sha256": source, "locked_runtime": helpers()["locked_runtime"](ROOT)})
+    )
     child = subprocess.run(
         [
             str(python),
@@ -240,7 +250,9 @@ def test_output_is_explicit_new_path_and_never_overwrites_existing_evidence(tmp_
         assert target.read_text() == "original"
 
 
-@pytest.mark.parametrize("drift", ["source_bytes", "head_only"])
+@pytest.mark.parametrize(
+    "drift", ["source_bytes", "head_only", "runtime_packages", "runtime_python"]
+)
 def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_failure(
     tmp_path, monkeypatch, drift
 ):
@@ -252,7 +264,7 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
     if drift == "head_only":
         changed_source["commit"] = "0" * 40
         assert changed_source["source_sha256"] == original_source["source_sha256"]
-    else:
+    elif drift == "source_bytes":
         changed_source["source_sha256"]["src/yorunge/__init__.py"] = "0" * 64
 
     def source(project):
@@ -273,6 +285,11 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
                 "packages": {},
             },
         )
+        if len(calls) == 2 and drift.startswith("runtime_"):
+            field = drift.removeprefix("runtime_")
+            record["runtime"][field] = (
+                {"httpx": "0.0.0"} if field == "packages" else "changed-python"
+            )
         return record
 
     monkeypatch.setitem(check.__globals__, "source", source)
@@ -294,7 +311,9 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
     result = json.loads(output.read_text())
     assert calls == [16 * 1024**2, 256 * 1024**2, 1024**3]
     assert result["passed"] is False
-    assert result["provenance"]["source_unchanged_during_measurement"] is False
+    assert result["provenance"]["source_unchanged_during_measurement"] is drift.startswith(
+        "runtime_"
+    )
     assert result["source_commit"] == original_source["commit"]
     assert result["provenance"]["source_before"] == original_source
     assert result["provenance"]["source_after"] == changed_source
@@ -307,3 +326,100 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
             result["provenance"]["source_before"]["commit"]
             != result["provenance"]["source_after"]["commit"]
         )
+
+
+def test_client_rejects_dependency_drift_with_unchanged_product_sources(tmp_path, monkeypatch):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"source_sha256": {}, "locked_runtime": {"httpx": "0.28.1"}}))
+    before = {"installed_source_sha256": {"__init__.py": "a" * 64}, "packages": {"httpx": "0.28.1"}}
+    after = copy.deepcopy(before)
+    after["packages"]["httpx"] = "0.0.0"
+    snapshots = iter([before, after])
+    monkeypatch.setattr(stream_budget, "installed_provenance", lambda *args: next(snapshots))
+    monkeypatch.setattr(stream_budget, "sys", SimpleNamespace(flags=SimpleNamespace(isolated=True)))
+
+    async def consume(*args):
+        return measurement()
+
+    monkeypatch.setattr(stream_budget, "consume", consume)
+    args = SimpleNamespace(
+        size=1,
+        manifest=manifest,
+        prefix=tmp_path,
+        port=1,
+        ca=tmp_path / "unused",
+        total_seconds=120,
+    )
+    with pytest.raises(ValueError, match="installed runtime changed"):
+        stream_budget.client(args)
+
+
+@pytest.mark.parametrize("mutation", ["wrong_version", "unexpected", "duplicate", "missing"])
+def test_frozen_package_set_is_checked_before_tls(runtime_tree, tmp_path, mutation):
+    """Mutate actual installed metadata; no server is listening and no CA exists."""
+    prefix, python, site = runtime_tree
+    tools = helpers()
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "source_sha256": tools["source"](ROOT)["source_sha256"],
+                "locked_runtime": tools["locked_runtime"](ROOT),
+            }
+        )
+    )
+    restored = None
+    created = None
+    removed = None
+    if mutation == "wrong_version":
+        metadata = next(site.glob("httpx-*.dist-info/METADATA"))
+        restored = metadata, metadata.read_bytes()
+        metadata.write_text(metadata.read_text().replace("Version: 0.28.1", "Version: 0.0.0", 1))
+    elif mutation in {"unexpected", "duplicate"}:
+        created = site / "injected-1.0.dist-info"
+        created.mkdir()
+        name = "HTTPX" if mutation == "duplicate" else "unexpected-runtime-helper"
+        (created / "METADATA").write_text(f"Metadata-Version: 2.4\nName: {name}\nVersion: 1.0\n")
+    else:
+        metadata = next(site.glob("[Pp][Yy][Yy][Aa][Mm][Ll]-*.dist-info"))
+        removed = metadata, tmp_path / "removed-metadata"
+        metadata.rename(removed[1])
+    try:
+        child = subprocess.run(
+            [
+                str(python),
+                "-I",
+                str(ROOT / "tests/fixtures/stream_budget.py"),
+                "client",
+                "--ca",
+                str(tmp_path / "missing.pem"),
+                "--port",
+                "1",
+                "--size",
+                "1",
+                "--manifest",
+                str(manifest),
+                "--prefix",
+                str(prefix),
+            ],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert child.returncode != 0
+        assert (
+            "duplicate normalized installed distribution"
+            if mutation == "duplicate"
+            else "do not match the frozen runtime closure"
+        ) in child.stderr
+        assert "ConnectError" not in child.stderr
+        assert not child.stdout
+    finally:
+        if restored is not None:
+            restored[0].write_bytes(restored[1])
+        if created is not None:
+            (created / "METADATA").unlink()
+            created.rmdir()
+        if removed is not None:
+            removed[1].rename(removed[0])

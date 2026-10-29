@@ -295,7 +295,11 @@ def stream_byte_counts(run: dict[str, Any]) -> bool:
     if received == 0:
         if largest or chunks:
             raise ValueError("empty stream has inconsistent chunk counters")
-    elif not (0 < largest <= received and 0 < chunks <= received <= chunks * largest):
+    elif not (
+        0 < largest <= received
+        and 0 < chunks
+        and largest + chunks - 1 <= received <= chunks * largest
+    ):
         raise ValueError("inconsistent stream chunk counters")
     pattern_value(run["received_sha256"], SHA256)
     return (
@@ -446,7 +450,14 @@ def stream_outcome(
             raise ValueError("size growth diagnostic differs from stream measurements")
     installed = all(run["runtime"]["installed_source_matches"] for run in runs)
     flag(report["provenance"]["installed_source_matches"], installed)
+    identity = {
+        key: value for key, value in runs[0]["runtime"].items() if key not in {"pid", "modules"}
+    }
     same_runtime = all(
+        {key: value for key, value in run["runtime"].items() if key not in {"pid", "modules"}}
+        == identity
+        for run in runs
+    ) and all(
         run["runtime"][key] == environment[key]
         for run in runs
         for key in ("os", "machine", "python", "python_executable", "sqlite", "packages")
@@ -766,7 +777,7 @@ def run_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
 def payload_summary(report: dict[str, Any]) -> dict[str, Any]:
     if "report_kind" in report:
         return typed_summary(report)
-    if report.get("kind") == "jobs" and "provenance" in report:
+    if report.get("kind") == "jobs":
         return modern_jobs_summary(report)
     runs = report.get("runs", [])
     if "measurements" in report:
