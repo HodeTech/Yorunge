@@ -253,7 +253,7 @@ def test_plan_changes_stale_maintenance_preview_but_cache_churn_does_not(
     state = tmp_path / "state"
     plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
     preview = api.preview_identity_reset(state_dir=state).data
-    assert preview.schema_version == 2
+    assert preview.schema_version == 3
     assert preview.current.plan_count == 1
     api.query_capabilities(task="llm.train", state_dir=state, refresh=True)
     assert api.preview_identity_reset(state_dir=state).data.digest == preview.digest

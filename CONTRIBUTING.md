@@ -42,6 +42,7 @@ uv sync --frozen --python 3.11
 .venv/bin/pytest
 .venv/bin/python scripts/check-docs.py
 .venv/bin/python scripts/check-agent-guides.py
+.venv/bin/python scripts/research_evidence.py verify
 uv build
 .venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv > dist/verification.jsonl
 mkdir -p .local
@@ -58,6 +59,14 @@ ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` i
 
 Performans kabulü help/version/context ile birlikte 1.024 kayıtlı cache sorgusunu da kapsar; `--cache-state` zorunludur. Yukarıdaki hazırlık her koşu için repo içindeki `.local` altında yeni bir geçici dizin seçer (macOS `/var`/`/tmp` symlink atalarını kullanmaz), mevcut state verisini kullanmaz veya ezmez; sentetik dizin ve ölçüm kaydı denetim için korunur. CPU/disk/kurulum etiketleri ölçülen gerçek ortamı belirtmelidir; bilinmeyen disk türü `unknown` kalır. Performans betiği her komut için ilk süreç süresini ayrı, üç ısınma sonrası en az 30 ayrı sürecin p95'ini ayrıca kaydeder. OS/disk cache'i boşaltmaz. Hedef aşılırsa sıfır dışı kodla çıkar. Belge kontrolü yalnız açıkça seçilmiş genel belge dizinlerini okur; site/doküman yayın sistemi henüz yoktur.
 
+CI ile aynı izole runtime kurulumunu ve eşli ölçümü yerelde çalıştırmak için, mevcut olmayan bir workspace/çıktı adı seçin:
+
+```sh
+.venv/bin/python scripts/check-startup.py --uv .local/tooling/bin/uv --workspace .local/startup-check --output dist/startup-isolated.json
+```
+
+Önceki bir kaynak checkout'u varsa `--baseline-project PATH` eklenir; aday ve taban tek host'ta AB/BA sırasıyla ölçülür. A/A kontrolü için `--baseline-project .` kullanılabilir. Helper her tarafın frozen runtime gereksinimleriyle ayrı wheel/venv ve yeni fixture oluşturur; hazırlık ölçülen süreç süresine dahil değildir. Test/profiler/büyük build işleri benchmark ile eşzamanlı çalıştırılmaz. Varsayılan disk bilgisi `unknown`'dır; gerçek ortam biliniyorsa `--disk-type`/`--cpu-label` verilir. Sonuç dosyası mevcutsa yeni bir ad seçilir; tekrar koşularından en hızlısını seçerek kabul verilmez. [Ölçüm ve kabul kuralları](docs/standards/performance.md#aynı-makinede-başlangıç-karşılaştırması) kanoniktir.
+
 ## Doğrulama seçimi
 
 Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır.
@@ -73,5 +82,7 @@ Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerek
 Rehber denetimi Git checkout'undaki canonical skills/Claude alias'larını, tekil faz ID'lerini, kart metadata/bölümlerini ve işe başlanabilecek durumların bağımlılıklarını kontrol eder. `verified` için teslim alanları aranır; kanıtın doğruluğu ve kabulü karşılaması review gerektirir. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
 
 ## İnceleme ve lisans
+
+Ham ölçümler, sabit test vektörleri ve kabul raporları [kanıt standardına](docs/standards/research-evidence.md) göre ayrılır. `docs/research/raw/` içindeki gzip baytları normal kod review'üne verilmez; manifest/indeks, ölçüm betikleri ve test vektörleri incelenir. CI arşiv ve özgün JSON hash'lerini, bütün örneklerden türetilen özeti ve indeksi denetler. Arşivler source package'a girmez; Git checkout'unda kalır. Önceki fazların kök dizindeki kayıtları geriye dönük taşınmaz; yeni büyük üretilmiş çıktılar bu arşiv akışını kullanır.
 
 PR; problemi, kullanıcı sonucunu, sözleşme etkisini ve gerçek doğrulamayı açıklamalı. Referans projelerin mimari kararları Yörünge'ye otomatik taşınmaz. Devralınan kodun lisans ve köken bildirimleri korunur; katkılar [MIT](LICENSE) altında sunulur. Güvenlik bildirimi için [SECURITY.md](SECURITY.md).

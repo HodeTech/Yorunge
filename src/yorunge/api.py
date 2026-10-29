@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from yorunge.adapters.execution_store import PlanRepository
     from yorunge.adapters.state import Store
     from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
+    from yorunge.application.operation_observations import ReadContext, ReadPort
+    from yorunge.application.operations import OperationCoordinator, StartPort
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
@@ -43,7 +45,8 @@ if TYPE_CHECKING:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
+    from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.state import StateInfo
 
 
@@ -79,7 +82,7 @@ def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
 
 def preview_identity_reset(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_reset
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_reset(state_dir))
 
@@ -95,7 +98,7 @@ def preview_state_restore(
     backup_dir: Path, *, state_dir: Path | None = None
 ) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_restore
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](
         data=preview_restore(backup_dir, state_dir),
@@ -117,7 +120,7 @@ def restore_state(
 
 def preview_state_recovery(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_recovery
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_recovery(state_dir))
 
@@ -693,6 +696,109 @@ def _execution_budget() -> ExecutionBudget:
     return ExecutionBudget(SystemClock(), started)
 
 
+def _operation_read_context(
+    plan: ExecutionPlan, context: Context, credentials: tuple[BoundCredential, ...]
+) -> ReadContext:
+    from yorunge.adapters.operation_store import plan_authorities
+    from yorunge.application.operation_observations import ReadContext
+
+    authorities = []
+    for authority in plan_authorities(plan):
+        if (context.account_id, context.project_id) != (
+            authority.account_id,
+            authority.project_id,
+        ):
+            raise YorungeError("state_changed")
+        if authority.service_id == "local":
+            authorities.append(authority)
+            continue
+        bound = next(
+            (
+                item
+                for item in credentials
+                if (
+                    item.credential.reference.service_id,
+                    item.credential.target.service_origin,
+                    item.credential.target.api_base_path,
+                )
+                == (authority.service_id, authority.service_origin, authority.api_base_path)
+            ),
+            None,
+        )
+        if bound is None:
+            raise YorungeError("credential_unavailable")
+        authorities.append(
+            authority.model_copy(
+                update={
+                    "credential_id": bound.identity.credential_id,
+                    "credential_revision": bound.identity.credential_revision,
+                }
+            )
+        )
+    return ReadContext(tuple(authorities), credentials)
+
+
+@contextmanager
+def _operation_session(
+    plan_id: str,
+    backend: StartPort,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+    observer: ReadPort | None = None,
+) -> Iterator[OperationCoordinator]:
+    """Trusted composition only; no public run, backend registration or caller evidence."""
+    import os
+
+    budget = _execution_budget()
+    from yorunge.adapters.input_files import DescriptorInputs
+    from yorunge.adapters.operation_repository import StateOperations
+    from yorunge.adapters.state import open_store
+    from yorunge.application.execution import ExecutionUseCases
+    from yorunge.application.operations import OperationCoordinator
+
+    request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
+    with open_store(state_dir, timeout=min(5.0, budget.remaining())) as store:
+        from yorunge.adapters.execution_store import read_plan
+
+        read_plan(store.connection, plan_id)
+        store.deadline.end = budget.end
+        repository = StateOperations(store, (), budget)
+        snapshot: tuple[Context, tuple[BoundCredential, ...]] | None = None
+
+        def captured(plan: ExecutionPlan) -> tuple[Context, tuple[BoundCredential, ...]]:
+            nonlocal snapshot
+            if plan.plan_id != plan_id:
+                raise YorungeError("invalid_request")
+            if snapshot is None:
+                context, selected = _context(config, request, None)
+                credentials = _execution_credentials(context, selected, plan.selection, store)
+                snapshot = context, credentials
+            context, credentials = snapshot
+            repository.credentials = credentials
+            coordinator.credentials = credentials
+            return context, credentials
+
+        def current(plan: ExecutionPlan) -> ExecutionValidity:
+            context, credentials = captured(plan)
+            plans = _execution_repository(store, credentials, budget)
+            if plans.read(plan_id) != plan:
+                raise YorungeError("state_changed")
+            use_cases = ExecutionUseCases(plans, DescriptorInputs(), _execution_validator(), budget)
+            return use_cases.validate(plan, context, credentials)
+
+        def read_context(plan: ExecutionPlan) -> ReadContext:
+            context, credentials = captured(plan)
+            return _operation_read_context(plan, context, credentials)
+
+        coordinator = OperationCoordinator(
+            repository, current, backend, (), budget, os.getpid, observer, read_context
+        )
+        yield coordinator
+
+
 def prepare_execution_plan(
     *,
     task: str | None = None,
@@ -754,6 +860,62 @@ def list_execution_plans(
 
     with open_store(state_dir) as store:
         return Result[ExecutionPlans](data=list_plans(store.connection, limit, cursor))
+
+
+def list_jobs(
+    *,
+    status: str | None = None,
+    plan_id: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[JobsPage]:
+    """Page through last local records without config, credentials or provider access."""
+    from yorunge.domain.jobs import JobsCursor, JobsQuery
+
+    query = validate(
+        JobsQuery,
+        {"status": status, "plan_id": plan_id, "limit": limit, "cursor": cursor},
+        "invalid_request",
+    )
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    if query.cursor is not None:
+        JobsCursor.decode(query.cursor)
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.jobs import list_jobs as read_jobs
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.operations import JobsPage
+
+    with open_store(state_dir) as store:
+        return Result[JobsPage](
+            data=read_jobs(store.connection, query), warnings=("local_history_only",)
+        )
+
+
+def show_job(operation_id: str, *, state_dir: Path | None = None) -> Result[JobView]:
+    """Read one complete historical job in one snapshot; never reconciles it."""
+    from yorunge.domain.state import canonical_uuid
+
+    try:
+        canonical_uuid(operation_id)
+    except (ValueError, TypeError, AttributeError):
+        raise YorungeError("invalid_request") from None
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.operation_store import read_job
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.operations import JobView
+
+    with open_store(state_dir) as store:
+        return Result[JobView](
+            data=read_job(store.connection, operation_id), warnings=("local_history_only",)
+        )
 
 
 def show_execution_plan(

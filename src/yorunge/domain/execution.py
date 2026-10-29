@@ -116,18 +116,21 @@ class ExecutionAssessment(WireModel):
         return min(dates)
 
 
+def execution_service(selection: Selection) -> Literal["local", "evren-llm", "evren-platform"]:
+    if selection.task in LLM_TASKS and selection.execution == "local":
+        return "local"
+    if selection.task == "llm.chat":
+        return "evren-llm"
+    return "evren-platform"
+
+
 def validate_assessment_scope(
     assessment: ExecutionAssessment,
     context: Context,
     selection: Selection,
     recipe: Recipe,
 ) -> None:
-    if selection.task in LLM_TASKS and selection.execution == "local":
-        required = "local"
-    elif selection.task == "llm.chat":
-        required = "evren-llm"
-    else:
-        required = "evren-platform"
+    required = execution_service(selection)
     if assessment.ready() and not any(
         c.key.capability_id != "planning.offline" and c.key.scope.service_id == required
         for c in assessment.capabilities
@@ -275,20 +278,24 @@ class ExecutionBody(WireModel):
             raise ValueError("verified runtime required")
 
 
+_PLAN_DIGEST_FIELD = "digest"
+
+
 class ExecutionPlan(ExecutionBody):
     digest: Digest
 
     def computed_digest(self) -> str:
         return hashlib.sha256(
-            canonical(self.model_dump(mode="json", exclude={"digest"}))
+            canonical(self.model_dump(mode="json", exclude={_PLAN_DIGEST_FIELD}))
         ).hexdigest()
 
     @model_validator(mode="after")
     def integrity(self) -> ExecutionPlan:
-        if (
-            self.digest != self.computed_digest()
-            or len(canonical(self.model_dump(mode="json"))) > 65536
-        ):
+        body = canonical(self.model_dump(mode="json", exclude={_PLAN_DIGEST_FIELD}))
+        # Merging two nonempty compact objects removes two braces and adds one comma.
+        # Derive the actual digest field's size; do not reserialize the large body.
+        size = len(body) + len(canonical({_PLAN_DIGEST_FIELD: self.digest})) - 1
+        if self.digest != hashlib.sha256(body).hexdigest() or size > 65536:
             raise ValueError("plan digest or size invalid")
         return self
 

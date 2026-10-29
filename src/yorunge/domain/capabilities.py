@@ -6,7 +6,8 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Any, Literal, Self
+from functools import lru_cache
+from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 from pydantic.config import ExtraValues
@@ -50,6 +51,7 @@ def timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+@lru_cache(maxsize=4096)
 def instant(value: str) -> datetime:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z", value, flags=re.ASCII):
         raise ValueError("canonical UTC required")
@@ -60,11 +62,9 @@ def instant(value: str) -> datetime:
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("duplicate wire key")
-        result[key] = value
+    result = dict(pairs)
+    if len(result) != len(pairs):
+        raise ValueError("duplicate wire key")
     return result
 
 
@@ -72,7 +72,9 @@ def _reject_constant(value: str) -> object:
     raise ValueError("finite JSON required")
 
 
-class WireModel(Model):
+class JsonWireModel(Model):
+    _scalar_json: ClassVar[bool] = False
+
     @classmethod
     def model_validate_json(
         cls,
@@ -87,7 +89,19 @@ class WireModel(Model):
         # Pydantic's JSON parser accepts duplicate keys; v2 wire does not.
         text = json_data if isinstance(json_data, str) else json_data.decode("utf-8")
         text.encode("utf-8", errors="strict")
-        json.loads(text, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+        decoded = json.loads(
+            text, object_pairs_hook=_unique_object, parse_constant=_reject_constant
+        )
+        if cls._scalar_json:
+            # Scalar-only records have identical strict Python/JSON field types.
+            return super().model_validate(
+                decoded,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
         return super().model_validate_json(
             text,
             strict=strict,
@@ -96,6 +110,16 @@ class WireModel(Model):
             by_alias=by_alias,
             by_name=by_name,
         )
+
+
+class WireModel(JsonWireModel):
+    def _integer_json_size(self) -> int:
+        """Compact ASCII size for validated integer-only, strict-text wire schemas.
+
+        Key order changes no length. Canonical hashing still uses canonical().
+        Legacy nested Model text and arbitrary/mutated graphs are not supported here.
+        """
+        return len(self.model_dump_json(ensure_ascii=True))
 
     @field_validator("*", mode="after")
     @classmethod
@@ -224,7 +248,7 @@ class CapabilityScopeV2(WireModel):
                 raise ValueError("canonical target required")
             if self.authorization_scope is not None and self.credential_id is None:
                 raise ValueError("authorization requires credential")
-        if len(canonical(self.model_dump(mode="json"))) > 16384:
+        if self._integer_json_size() > 16384:
             raise ValueError("scope too large")
         return self
 
@@ -275,7 +299,7 @@ class Evidence(WireModel):
         checked, expires = instant(self.checked_at), instant(self.expires_at)
         if not timedelta(0) < expires - checked <= timedelta(seconds=TTL[self.support]):
             raise ValueError("evidence TTL outside policy")
-        if len(canonical(self.model_dump(mode="json"))) > MAX_RECORD_BYTES:
+        if self._integer_json_size() > MAX_RECORD_BYTES:
             raise ValueError("evidence too large")
         return self
 
@@ -318,7 +342,7 @@ class CapabilityRecord(WireModel):
                 raise ValueError("blocker cannot support execution")
         if self.support == "supported":
             self._validate_support()
-        if len(canonical(self.model_dump(mode="json"))) > MAX_RECORD_BYTES:
+        if self._integer_json_size() > MAX_RECORD_BYTES:
             raise ValueError("record too large")
         return self
 

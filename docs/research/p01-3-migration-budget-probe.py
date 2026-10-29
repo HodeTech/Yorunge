@@ -473,4 +473,9 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # This is the historical P01-3/schema-5 proof, including its restore runtime.
+    # New operation consumers deliberately close that recovery gate.
+    from yorunge.adapters import state_schema as historical_schema
+
+    with patch.object(historical_schema, "MIGRATIONS", historical_schema.MIGRATIONS[:5]):
+        raise SystemExit(main())

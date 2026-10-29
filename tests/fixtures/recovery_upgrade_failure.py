@@ -9,6 +9,9 @@ from yorunge import api
 from yorunge.adapters import maintenance as m
 from yorunge.adapters import state_schema
 
+# Recovery was deliberately disabled by the first operation-capable runtime.
+state_schema.MIGRATIONS = state_schema.MIGRATIONS[:5]
+
 mode, root_arg, boundary, version_arg = sys.argv[1:5]
 root, version = Path(root_arg), int(version_arg)
 if mode == "old":

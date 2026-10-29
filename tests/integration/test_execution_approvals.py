@@ -397,6 +397,7 @@ except YorungeError as error:
 def test_restore_retains_historical_plan_approval_and_discards_post_snapshot_history(
     tmp_path,
     execution_fixture,
+    schema5_runtime,
 ):
     from yorunge.adapters.state import DB_NAME, backup
 

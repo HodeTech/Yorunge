@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. HTTP/NDJSON/jobs/run planlandı. **Tarih:** 2026-10-28.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show uygulandı; HTTP/NDJSON/run planlandı. **Tarih:** 2026-10-29.
 
 ## Uygulanan alt küme
 
@@ -18,6 +18,7 @@
 | `yorunge capabilities --task TASK --cached\|--refresh [--state-dir PATH]` | Açık private cache/clock kullanımı; yalnız mevcut yerel kanıt, uzak discovery yok |
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
 | `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
+| `yorunge jobs list/show` | Son yerel summary/plan/attempt/terminal outcome; current validation veya provider sorgusu yok; [exact sözleşme](operations.md) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
@@ -31,7 +32,7 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**,
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity`, cache sorgusu ve execution planı ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity`, cache sorgusu, execution planı ve jobs ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
 
 ## Komut alanları
 
@@ -113,3 +114,23 @@ Uygulanan `init`, `context profiles`, `context use-profile NAME`, `context set-p
 ## Kalıcı execution hazırlığı
 
 `plan execution prepare|list|show|validate|approve|revoke|forget` ve Python karşılıkları uygulandı; exact seçenekler, gövde, validity/hata ve dosya/süre sınırları [execution planı v2](execution-plan.md) içindedir. Eski `plan prepare/show` v1 kalır. Digest onayı açık ve güncel validation gerektirir; eksik/yanlış onay çıkış 4, blocked plan çıkış 2. Run/dispatch yoktur.
+
+
+## Yerel iş sorguları
+
+`jobs list/show` ve `api.list_jobs/show_job` aynı salt kullanım senaryosudur. [Exact filtre, cursor, wire ve snapshot sınırı](operations.md) kanoniktir. Dış Result completed/null, warnings local_history_only; failed/unknown/cancelled işi okumak exit 0'dır. Text son kaydın uzak güncel durum olmayabileceğini belirtir. Jobs config/profil/proje/görev/araç seçmez; tekrar edilen tekil seçenekleri reddeder. Public run/watch/stop/reconcile yoktur.
+
+## Operation hata kataloğu
+
+Jobs yalnız operation_not_found ve mevcut request/state hatalarını üretir; plan_in_use seçili plan forget yüzeyindedir. Diğer coordination kodları trusted iç portlara aittir, yeni public yürütme komutu anlamına gelmez. OperationError zarfı ve kalıcı neden ayrımı [operations referansındadır](operations.md#coordination-hata-sınırı).
+
+| Kod | Exit | Kesin tetik |
+|---|---:|---|
+| operation_not_found | 2 | Canonical ID ile istenen operation yok |
+| operation_conflict | 2 | Dispatch latch doluyken yeniden arm, yanlış lifecycle mutasyonu veya değişmez terminal sonucu değiştirme girişimi; repeated admission değildir |
+| operation_lease_lost | 2 | Business/renew/result çağrısındaki owner/fence/ownership epoch/generation uyuşmuyor, lease null/expired veya clock anomaly var |
+| operation_fence_exhausted | 2 | Yeni acquire signed-64 fence taşır; reset buna bağlı değildir |
+| operation_capacity_exceeded | 2 | Yeni admission/attempt/normal business event kotası dolu; capacity_kind ilgili sınırdır; recovery/terminal reserve istisnası korunur |
+| plan_in_use | 2 | Forget'in kendi transaction'ında doğrulanan operation FK bağı; başka IntegrityError state_invalid |
+| operation_uncertain | 5 | Arm sonrası dış çağrı/sonuç commit'i belirsiz; alttaki kontrollü ErrorCode reason_code olur; retry yok |
+| state_changed | 2 | Admission/arm'ın final credential ID/revision/hedefi, plan/approval snapshot veya beklenen store clock bağları değişmiş; güncel owner token uyuşmazlığı yukarıdaki lease_lost'tur |

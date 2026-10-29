@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn, TypeAlias
+from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, overload
 
 from yorunge import __version__
 
@@ -22,8 +22,10 @@ if TYPE_CHECKING:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
+    from yorunge.domain.maintenance import Snapshot as IdentitySnapshot
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
+    from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.state import StateInfo
 
     CliResult: TypeAlias = (
@@ -43,6 +45,8 @@ if TYPE_CHECKING:
         | Result[ExecutionValidity]
         | Result[ExecutionApprovalState]
         | Result[ForgottenExecutionPlan]
+        | Result[JobsPage]
+        | Result[JobView]
     )
 
 
@@ -50,7 +54,39 @@ class UsageError(Exception):
     pass
 
 
+N = TypeVar("N")
+
+
 class Parser(argparse.ArgumentParser):
+    _configure: Callable[[Parser], None] | None = None
+
+    def _ensure_configured(self) -> None:
+        configure = self._configure
+        if configure is not None:
+            self._configure = None
+            configure(self)
+
+    @overload
+    def parse_known_args(
+        self, args: Sequence[str] | None = None, namespace: None = None
+    ) -> tuple[argparse.Namespace, list[str]]: ...
+
+    @overload
+    def parse_known_args(self, args: Sequence[str] | None, namespace: N) -> tuple[N, list[str]]: ...
+
+    @overload
+    def parse_known_args(self, *, namespace: N) -> tuple[N, list[str]]: ...
+
+    def parse_known_args(
+        self, args: Sequence[str] | None = None, namespace: object | None = None
+    ) -> tuple[object, list[str]]:
+        self._ensure_configured()
+        return super().parse_known_args(args, namespace)
+
+    def format_help(self) -> str:
+        self._ensure_configured()
+        return super().format_help()
+
     def error(self, message: str) -> NoReturn:
         # argparse's message may contain arbitrary user input, including a credential.
         raise UsageError
@@ -92,12 +128,65 @@ def parser() -> Parser:
     root.add_argument("--version", action="version", version=f"yorunge {__version__}")
     common(root)
     commands = root.add_subparsers(dest="command", required=True)
-    initialize = commands.add_parser("init", help="İlk config'i no-clobber oluştur")
-    common(initialize)
-    doctor = commands.add_parser("doctor", help="Yerel ayar ve state tanılaması; sır okumaz")
+
+    def add(name: str, help: str, configure: Callable[[Parser], None]) -> None:
+        command = commands.add_parser(name, help=help)
+        command._configure = configure
+
+    add("init", "İlk config'i no-clobber oluştur", common)
+    add("doctor", "Yerel ayar ve state tanılaması; sır okumaz", _doctor_options)
+    add("context", "Yerel profil bağlamı", _context_options)
+    add("state", "Yerel kimlik durumunu yönet", _state_options)
+    add("capabilities", "Sınırlı çevrimdışı yetenek görünümü", _capability_options)
+    add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
+    add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
+    add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
+    return root
+
+
+def _doctor_options(doctor: Parser) -> None:
     common(doctor)
     doctor.add_argument("--state-dir", type=Path)
-    context = commands.add_parser("context", help="Yerel profil bağlamı")
+
+
+def _jobs_options(jobs: Parser) -> None:
+    common(jobs, context=False)
+    jobs.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+    actions = jobs.add_subparsers(dest="action", required=True)
+    for name in ("list", "show"):
+        command = actions.add_parser(name)
+        common(command, context=False)
+        command.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+        if name == "show":
+            command.add_argument("--operation-id", required=True)
+        else:
+            command.add_argument("--status")
+            command.add_argument("--plan-id")
+            command.add_argument("--limit", type=int, default=50)
+            command.add_argument("--cursor")
+
+
+def _jobs_singletons(arguments: Sequence[str]) -> None:
+    seen: set[str] = set()
+    singleton = {
+        "--output",
+        "--non-interactive",
+        "--state-dir",
+        "--status",
+        "--plan-id",
+        "--limit",
+        "--cursor",
+        "--operation-id",
+    }
+    for argument in arguments:
+        option = argument.split("=", 1)[0]
+        if option in singleton:
+            if option in seen:
+                raise UsageError
+            seen.add(option)
+
+
+def _context_options(context: Parser) -> None:
     common(context)
     context_actions = context.add_subparsers(dest="action", required=True)
     show = context_actions.add_parser("show")
@@ -118,7 +207,9 @@ def parser() -> Parser:
     common(identity)
     identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
     identity.add_argument("--state-dir", type=Path)
-    state = commands.add_parser("state", help="Yerel kimlik durumunu yönet")
+
+
+def _state_options(state: Parser) -> None:
     common(state, context=False)
     state.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
     state_actions = state.add_subparsers(dest="action", required=True)
@@ -132,7 +223,9 @@ def parser() -> Parser:
         maintenance.add_argument("--confirm", help="Güncel önizleme digest'i")
         if name == "restore":
             maintenance.add_argument("--backup", required=True, type=Path)
-    capabilities = commands.add_parser("capabilities", help="Sınırlı çevrimdışı yetenek görünümü")
+
+
+def _capability_options(capabilities: Parser) -> None:
     planning_options(capabilities)
     cache_modes = capabilities.add_mutually_exclusive_group()
     cache_modes.add_argument("--cached", action="store_true", help="Açık stateful önbellek okuması")
@@ -140,7 +233,9 @@ def parser() -> Parser:
         "--refresh", action="store_true", help="Uygulanan yerel kanıtı yenile; uzak keşif yok"
     )
     capabilities.add_argument("--state-dir", type=Path)
-    plan = commands.add_parser("plan", help="Çevrimdışı plan; yürütme başlatmaz")
+
+
+def _plan_options(plan: Parser) -> None:
     common(plan)
     actions = plan.add_subparsers(dest="action", required=True)
     planning_options(actions.add_parser("prepare", help="Sabit seçimleri ve engelleri hazırla"))
@@ -148,12 +243,13 @@ def parser() -> Parser:
     common(saved, context=False)
     saved.add_argument("--plan", required=True, type=Path, help="Plan nesnesi içeren JSON dosyası")
     execution_plan = actions.add_parser("execution", help="Ayrı kalıcı execution planı; yürütmez")
-    execution_options(execution_plan)
-    train = commands.add_parser("train", help="LLM eğitim planı (eğitim çalıştırmaz)")
+    execution_plan._configure = execution_options
+
+
+def _train_options(train: Parser) -> None:
     common(train)
     train_plan = train.add_subparsers(dest="action", required=True).add_parser("plan")
     planning_options(train_plan, task=False)
-    return root
 
 
 def execution_options(execution_plan: argparse.ArgumentParser) -> None:
@@ -174,6 +270,44 @@ def execution_options(execution_plan: argparse.ArgumentParser) -> None:
         if name == "list":
             command.add_argument("--limit", type=int, default=50)
             command.add_argument("--cursor")
+
+
+def jobs_text_result(data: Model) -> str:
+    from yorunge.domain.operations import JobsPage, JobView
+
+    warning = "Yerel geçmiş: son kayıt güncel uzak durumu yansıtmayabilir; uzlaştırma yapılmadı."
+    if isinstance(data, JobsPage):
+        lines = [warning]
+        lines.extend(
+            f"{job.operation_id} {job.task}: {job.status} "
+            f"(execution: {job.execution_status}; delivery: {job.delivery_status})"
+            for job in data.jobs
+        )
+        if not data.jobs:
+            lines.append("Kayıtlı iş yok.")
+        if data.next_cursor is not None:
+            lines.append(f"Sonraki cursor: {data.next_cursor}")
+        return "\n".join(lines)
+    if isinstance(data, JobView):
+        job = data.operation
+        lines = [
+            warning,
+            f"İş: {job.operation_id}\nGörev: {job.task}\nDurum: {job.status}",
+            f"Execution: {job.execution_status}\nDelivery: {job.delivery_status}",
+            f"Plan: {job.plan_id}\nDigest: {job.plan_digest}",
+            f"Son yerel kayıt: {job.updated_at}",
+        ]
+        lines.extend(
+            f"Attempt {item.number}: {item.attempt_id} {item.status}; "
+            f"neden: {item.reason_code or '-'}"
+            for item in data.attempts
+        )
+        if data.outcome is not None:
+            lines.append(
+                f"Sonuç: {data.outcome.recorded_at}; neden: {data.outcome.reason_code or '-'}"
+            )
+        return "\n".join(lines)
+    raise TypeError("unsupported jobs result type")
 
 
 def text_result(data: Model) -> str:
@@ -204,7 +338,7 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import LegacyMaintenancePreview, MaintenancePreview
     from yorunge.domain.state import StateInfo
 
     execution = execution_text_result(data)
@@ -225,7 +359,7 @@ def local_text_result(data: Model) -> str:
         return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
     if isinstance(data, DoctorReport):
         return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, MaintenancePreview):
+    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview)):
         return maintenance_text(data)
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
@@ -303,15 +437,34 @@ def maintenance_text(data: MaintenancePreview) -> str:
     else:
         lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
     lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
+    if data.schema_version == 3:
+        lines.extend(
+            (
+                "Operation, attempt ve terminal sonuç geçmişi korunur.",
+                "Gönderim öncesi işler cancelled; gönderilmiş olabilecek işler unknown olur.",
+                "Önceden arm edilmiş dış çağrının durduğu garanti edilmez.",
+            )
+        )
     return "\n".join(lines)
 
 
 def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
-    return (
+    from yorunge.domain.maintenance import IdentitySnapshot as OperationSnapshot
+
+    common = (
         f"{label} credential bağı: {snapshot.binding_count}",
         f"{label} plan: {snapshot.plan_count}",
         f"{label} onay: {snapshot.approval_count}",
     )
+    if isinstance(snapshot, OperationSnapshot):
+        return (
+            *common,
+            f"{label} operation: {snapshot.operation_count}",
+            f"{label} attempt: {snapshot.attempt_count}",
+            f"{label} terminal olmayan operation: {snapshot.nonterminal_operation_count}",
+            f"{label} unknown operation: {snapshot.unknown_operation_count}",
+        )
+    return common
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -323,6 +476,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     try:
         args = parser().parse_args(args_list)
+        if args.command == "jobs":
+            _jobs_singletons(args_list)
     except UsageError:
         from yorunge.domain.errors import YorungeError
 
@@ -338,7 +493,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     json_output = vars(args).get("output", "text") == "json"
     try:
         result = dispatch(args)
-        print(result.model_dump_json() if json_output else text_result(result.data))
+        if json_output:
+            output = result.model_dump_json()
+        elif args.command == "jobs":
+            output = jobs_text_result(result.data)
+        else:
+            output = text_result(result.data)
+        print(output)
         return 0
     except YorungeError as error:
         print(
@@ -413,6 +574,17 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     options = vars(args)
     if args.command == "state":
         return state_result(args)
+    if args.command == "jobs":
+        reject_context(args, ("config", "profile", "project"))
+        if args.action == "show":
+            return api.show_job(args.operation_id, state_dir=options.get("state_dir"))
+        return api.list_jobs(
+            status=args.status,
+            plan_id=args.plan_id,
+            limit=args.limit,
+            cursor=args.cursor,
+            state_dir=options.get("state_dir"),
+        )
     if args.command == "context":
         return context_result(args)
     if args.command == "plan" and args.action == "execution":

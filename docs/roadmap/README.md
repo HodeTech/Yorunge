@@ -35,7 +35,7 @@ Mevcut ID'ler korunur; bölünme `P01-2a` gibi alt ID üretir. Faz özeti işi v
 
 ## Epik başına PR
 
-Kullanıcının 2026-10-27 tercihiyle P01-2 → P01-3 → P01-4 → P01-5 → P01-6 epik başına tek development PR'ında ilerler. Alt kartlar kabul/test/commit/review birimleridir; her biri için ayrı PR açılmaz. Paket koordinasyon planı kapsamı, iç sırayı ve bütünleşik kapanışı taşır; ayrıntılı alt kabul kartlarda kalır. [P01-2 teslim edildi](p01-2-delivery-plan.md); [P01-3 teslim edildi](p01-3-delivery-plan.md); sıradaki paket P01-4b/4c için plan/kart hazırlığıdır.
+Kullanıcının 2026-10-27 tercihiyle P01-2 → P01-3 → P01-4 → P01-5 → P01-6 epik başına tek development PR'ında ilerler. Alt kartlar kabul/test/commit/review birimleridir; her biri için ayrı PR açılmaz. Paket koordinasyon planı kapsamı, iç sırayı ve bütünleşik kapanışı taşır; ayrıntılı alt kabul kartlarda kalır. [P01-2 teslim edildi](p01-2-delivery-plan.md); [P01-3 teslim edildi](p01-3-delivery-plan.md); [P01-4 plan/kartları](p01-4-delivery-plan.md) ADR-0016 Accepted sonrası uygulandı; dört adımın yerel kabulü bu dalda verified, development merge kullanıcı incelemesine tabidir.
 
 Aynı PR'daki sonraki alt iş, öncekinin gerçek kod/test/review kanıtı oluşunca başlayabilir; bağımlılığın ayrı PR'da merge edilmesi gerekmez. Yerel `verified` alt iş kaydı gerçek commit'e dayanır ve paket/PR durumunu olduğundan ileride göstermez. Epik, bütün alt işler ve bütünleşik kabul tamamlanmadan kapanmaz. Karar bekleyen alt iş taslak kalır; paket büyüklüğü hazır olma kontrolünü veya kullanıcı ADR onayını kaldırmaz.
 

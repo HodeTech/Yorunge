@@ -217,6 +217,13 @@ def validate(
 
 
 def validate_contents(connection: sqlite3.Connection) -> None:
+    from yorunge.adapters.validation_memo import validation_session
+
+    with validation_session():
+        _validate_contents(connection)
+
+
+def _validate_contents(connection: sqlite3.Connection) -> None:
     if connection.execute("PRAGMA integrity_check(1)").fetchall() != [("ok",)]:
         raise YorungeError("state_invalid")
     if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
@@ -246,6 +253,12 @@ def validate_contents(connection: sqlite3.Connection) -> None:
         from yorunge.adapters.execution_store import validate_approvals
 
         validate_approvals(connection)
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='operations'"
+    ).fetchone():
+        from yorunge.adapters.operation_store import validate_operations
+
+        validate_operations(connection)
 
 
 def validate_binding_row(row: tuple[Any, ...]) -> None:

@@ -1,10 +1,12 @@
 # Plan ve çalıştırma modeli
 
-**Durum:** Benimsenmiş tasarım. **Tarih:** 2026-10-27.
+**Durum:** Benimsenmiş tasarım. **Güncellendi:** 2026-10-29.
 
 Offline v1 stateless draft üretir. P01-3 ayrı kalıcı execution hazırlığı, descriptor input bağı, güncel validation ve onay/yönetim çekirdeğini ekler. Ürün producer'ında araç/uzak auth/tam girdi kapanışı doğrulanmadığı için public plan draft ve onaylanamaz kalır; prepared/onay pozitifliği yalnız test portuyla kanıtlanır. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
-P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; uygulama/test ve iki review turu adımları [kabul kaydındadır](../research/p01-3-implementation-validation.md). Aşağıdaki operation/run durumları P01-4/P02/P03 tasarımıdır; mevcut runtime yan etki başlatmaz.
+P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; uygulama/test ve iki review turu adımları [kabul kaydındadır](../research/p01-3-implementation-validation.md). Operation/lease/trusted recovery çekirdeği P01-4 içinde testlidir; public run/EVREN adaptörü P02/P03 tasarımı olarak kalır.
+
+P01-4'ün somut operation kimliği/gönderim/ownership sınırı [Accepted ADR-0016](../decisions/0016-operation-admission-and-ownership.md) ile benimsendi; bu dalda adım 1–3 ve ikişer fresh review kabulü tamamlandı; public jobs adım 4 ve son kaynak yerel paket kabulü de tamamlandı; development merge'i ayrı süreçtir. Aşağıdaki diyagram kavramsal uçtan uca akıştır: uygulanan immutable planın draft/prepared durumu ile ayrı operation durumu aynı DB satırının geçişleri değildir. Tam görev deadline/delivery politikası da uygulanmış plan v2'nin 300 s geçerliliği veya mevcut 30 s validation çağrı bütçesiyle eş tutulmaz.
 
 ## Planın içerdiği bağlar
 
@@ -31,11 +33,15 @@ stateDiagram-v2
     draft --> prepared: girdiler ve yetenekler doğrulandı
     prepared --> awaiting_approval: etki onayı gerekli
     awaiting_approval --> prepared: planla bağlı onay
-    prepared --> submitted: kayıt ve gönderim
+    prepared --> admitted: güncel onay ve atomik operation kabulü
+    admitted --> submitted: kalıcı gönderim niyeti
+    admitted --> failed: kesin yerel ret
+    admitted --> cancelled: gönderim öncesi reset/cleanup
     submitted --> running: uzak iş bulundu
     submitted --> unknown: sonuç belirsiz
     submitted --> cancelled: sağlayıcı iptali doğrulandı
     running --> unknown: yetkili durum okunamıyor
+    unknown --> submitted: aynı işe ait trusted queued kanıtı
     unknown --> running: uzlaştırma
     unknown --> succeeded: sonuç ve teslim doğrulandı
     unknown --> failed: kesin başarısızlık
@@ -43,7 +49,6 @@ stateDiagram-v2
     running --> succeeded: görev ve teslim tamam
     running --> failed: kesin hata
     running --> cancelled: durdurma doğrulandı
-    prepared --> cancelled: gönderim öncesi iptal
 ```
 
 Bu operasyon modeli uzak sağlayıcının ham durumlarını silmez. Execution ve delivery alt durumları ayrı saklanır: örneğin eğitim tamam ama indirme bekliyor olabilir. `succeeded`, görev sözleşmesindeki teslim koşulu da sağlandığında kullanılır.
@@ -61,7 +66,7 @@ Yerel lease veya idempotency kaydı, uzakta tam bir kez çalıştırma garantisi
 
 ## İptal ve toparlanma
 
-Yerel izlemeyi durdurmak uzak eğitimi durdurmaz. `jobs stop` etkiyi önizler, sağlayıcının durdurma sonucunu bekler veya belirsizliği kaydeder. Kısmi dosya/çıktı kaydı korunur; tamamlanmış gibi adlandırılmaz. Sahiplik devrinde günlük ve plan okunamıyorsa yeni yürütüm başlamaz.
+Yerel izlemeyi durdurmak uzak eğitimi durdurmaz. Planlanan `jobs stop` etkiyi önizler, sağlayıcının durdurma sonucunu bekler veya belirsizliği kaydeder. Kısmi dosya/çıktı kaydı korunur; tamamlanmış gibi adlandırılmaz. Sahiplik devrinde günlük ve plan okunamıyorsa yeni yürütüm başlamaz.
 
 `submitted` veya `unknown` işlem, kayıtlı uzak kimlik/korelasyon üzerinden aynı işin sağlayıcı tarafından iptal edildiği doğrulanırsa `cancelled` olur. İptal isteğinin kabulü, timeout, yerel izleyicinin kapanması veya tek başına işin bulunamaması iptal kanıtı değildir; sonuç belirsizse `unknown` korunur. Ham sağlayıcı durumu ve doğrulama kaynağı işlem kaydına eklenir.
 

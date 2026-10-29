@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import json
+import hashlib
 import sqlite3
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from pydantic import ValidationError
 
@@ -21,7 +21,6 @@ from yorunge.adapters.expiry_fences import (
     next_expiry,
     save_expiries,
 )
-from yorunge.adapters.files import reject_constant, unique_object
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.state import Store, metadata
 from yorunge.application.capabilities import Producer, combine
@@ -36,7 +35,7 @@ from yorunge.domain.capabilities import (
     timestamp,
 )
 from yorunge.domain.credentials import CredentialIdentity
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.models import Support
 from yorunge.domain.state import canonical_uuid
 
@@ -97,28 +96,40 @@ class TerminalPoint:
 
 @dataclass
 class TimeGate:
-    intervals: list[tuple[datetime, datetime]] = field(default_factory=list)
+    intervals: list[tuple[datetime, datetime, ErrorCode]] = field(default_factory=list)
+    clocks: list[tuple[str, int, ErrorCode]] = field(default_factory=list)
     checkpoint: ClockCheckpoint | None = None
 
     def require(self, record: CapabilityRecord) -> None:
-        self.intervals.append((instant(record.checked_at), instant(record.expires_at)))
+        self.require_range(instant(record.checked_at), instant(record.expires_at))
 
-    def require_range(self, start: datetime, end: datetime) -> None:
-        self.intervals.append((start, end))
+    def require_range(
+        self, start: datetime, end: datetime, *, error: ErrorCode = "capability_expired"
+    ) -> None:
+        self.intervals.append((start, end, error))
+
+    def require_clock(self, stamp: Stamp, *, error: ErrorCode) -> None:
+        self.clocks.append((stamp.identity_epoch, stamp.generation, error))
+
+    def check_clock(self, stamp: Stamp) -> None:
+        for epoch, generation, error in self.clocks:
+            if stamp.anomaly or (epoch, generation) != (stamp.identity_epoch, stamp.generation):
+                raise YorungeError(error)
 
     def check(self, now: datetime) -> None:
-        if any(not start <= now < end for start, end in self.intervals):
-            raise YorungeError("capability_expired")
+        for start, end, error in self.intervals:
+            if not start <= now < end:
+                raise YorungeError(error)
 
 
 def decode_record(payload: object) -> CapabilityRecord:
     try:
         if not isinstance(payload, str) or len(payload.encode("utf-8")) > MAX_RECORD_BYTES:
             raise ValueError("bounded record required")
-        raw = json.loads(payload, object_pairs_hook=unique_object, parse_constant=reject_constant)
-        if not isinstance(raw, dict) or type(raw.get("schema_version")) is not int:
+        record = CapabilityRecord.model_validate_json(payload)
+        if "schema_version" not in record.model_fields_set:
             raise ValueError("explicit record version required")
-        return CapabilityRecord.model_validate_json(payload)
+        return record
     except (ValueError, ValidationError, RecursionError, YorungeError):
         raise YorungeError("state_invalid") from None
 
@@ -126,11 +137,12 @@ def decode_record(payload: object) -> CapabilityRecord:
 def decode_entry(row: tuple[object, ...]) -> tuple[CapabilityRecord, int]:
     digest, encoded, projection, group, payload, revision, checked, pinned = row
     record = decode_record(payload)
+    key_bytes = record.key.encoded()
     if (
         (digest, encoded, projection, group, checked, pinned)
         != (
-            record.key.digest(),
-            record.key.encoded().decode("ascii"),
+            hashlib.sha256(key_bytes).hexdigest(),
+            key_bytes.decode("ascii"),
             record.key.projection(),
             group_key(record.key),
             record.checked_at,
@@ -160,7 +172,7 @@ def cache_validation(row: tuple[object, ...]) -> CacheValidation:
         record, version = decode_entry(row)
         scope = record.key.scope
         return CacheValidation(
-            record.key.digest(),
+            cast(str, row[0]),  # decode_entry just matched this same row against the key digest.
             scope.store_id,
             scope.identity_epoch,
             scope.clock_generation,
@@ -359,20 +371,27 @@ class StateCache:
         self.store.deadline.remaining()
 
     @contextmanager
-    def transaction(self, stamp: Stamp) -> Iterator[TimeGate]:
+    def transaction(
+        self, stamp: Stamp, *, clock_error: ErrorCode | None = None
+    ) -> Iterator[TimeGate]:
         """Clock changes survive a business rollback, including the final time gate."""
         connection = self.connection
         connection.execute("BEGIN IMMEDIATE")
         observed = self.now()
         gate = TimeGate()
+        if clock_error is not None:
+            gate.require_clock(stamp, error=clock_error)
         try:
             self._tick(observed)
             connection.execute("SAVEPOINT business")
             try:
-                self._same(stamp, self._tick(self.now()))
+                current = self._tick(self.now())
+                gate.check_clock(current)
+                self._same(stamp, current)
                 yield gate
                 observed = self.now()
                 final = self._tick(observed)
+                gate.check_clock(final)
                 self._same(stamp, final)
                 gate.check(observed)
                 clock_row = self.connection.execute(SELECT_CLOCK).fetchone()

@@ -4,6 +4,18 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Changed — 2026-10-29
+
+- PR #10'un büyük ölçüm çıktıları özgün baytları korunarak gzip arşivine ayrıldı; küçük manifest/indeks ve CI bütünlük kontrolü eklendi. CodeRabbit yalnız raw arşivleri dışlar, ajan rehberi hedefli kanıt incelemesini tanımlar. Arşivler sdist'e girmez; sabit test vektörleri ve ölçüm kodu normal incelemede kalır.
+
+### Added — 2026-10-29
+
+- Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.
+- Trusted salt gözlem, execution/delivery ayrımı, bounded recovery ve tarihçeyi koruyan kimlik reset preview v3.
+- Yerel `jobs list/show` ve ortak Python API; store/filtre bağlı keyset cursor, bounded toplu liste sorgusu ve son yerel kayıt uyarısı.
+- Ayrı süreç/SIGKILL/yarış ve azami hacim kaynak kabulü; [adım ve review kaydı](docs/research/p01-4-implementation-validation.md). Dört adım/ikişer fresh review ve son 182f695 ürün kaynağında 1.779 test/iki temiz kurulum/son kaynak bütçeleriyle yerel paket kabulü tamamlandı; canlı EVREN ve public run teslimi değildir.
+- Değişmeyen geçerli sağlayıcı gözlemi operation geçmiş kotasını tüketmez; yeni kanıt ve gerçek recovery geçişi kaydedilir. Son owner/credential/lease/read yetkisi kontrolleri korunur.
+
 ### Added — 2026-10-28
 
 - Ayrı ScopeV2/kanıt, tam credential/hedef kapsamı, kalıcı cache/clock generation, bounded TTL/kota ve açık cached/refresh CLI/Python sorgusu.
@@ -13,6 +25,15 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 - Kurulu wheel/sdist üzerinde stateful komut kontrolleri, 1.024 kayıt başlangıç ve ayrı süreçlerde büyük input bellek/hash kanıtı.
 
 Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetki/tam girdi kapanışı eksiklerini açık blocked gösterir; run, operation/lease ve gerçek EVREN yoktur. [P01-3 kabul/review kanıtı](docs/research/p01-3-implementation-validation.md).
+
+### Fixed — 2026-10-28
+
+- CLI yalnız seçilen komut ailesinin seçeneklerini parse/help sırasında oluşturur; mevcut yardım, seçenek önceliği ve hata sözleşmesi korunur.
+- Başlangıç CI ölçümü ayrı frozen runtime wheel/venv ortamlarında aynı host'ta AB/BA taban-aday karşılaştırması yapar; tam örnekler, kaynak/paket hash'leri ve runner bilgisi saklanır. Mutlak 500/200 ms kapıları korunur; [yerel kabul ve dış CI sınırı](docs/research/startup-ci-reliability.md) kayıtlıdır.
+
+- Store genelindeki cache/proof/conflict ve plan/onay expiry sınırlarını aynı terminal snapshot’ta denetleyen şema 5; restart/saat geri dönüşünde başka bir kaydın yeniden etkinleşmesi önlendi.
+- Eski migration 1–4 kimliklerini koruyan V2 manifest ve aynı hash-doğrulanmış kaynak baytlarıyla yürütülen veri dönüşümü.
+- Yinelenen clock yazması ve kullanılmayan şema kurulum maliyeti azaltıldı; yoğun migration’da sınırlı kullanım senaryosu içi doğrulama özeti kullanıldı. Başarılı ölçümler ile açık merge-CI başlangıç bütçe reddi [kapanış kaydında](docs/research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) ayrı tutulur.
 
 ### Fixed — 2026-10-27
 
@@ -39,7 +60,7 @@ Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetk
 - Strict TOML/dar YAML, yerel context, capability durumları ve sabit seçim/digest içeren yürütülemez offline plan.
 - Offline sözleşme/CLI testleri, format/lint/type, build/temiz kurulum, belge ve başlangıç kontrolleri; CI tanımı.
 
-Yayımlanmış paket yoktur. HTTP/EVREN, gerçek araç adaptörü, eğitim, SQLite operasyon kaydı ve artefakt teslimi henüz uygulanmadı. [İlk dilim kabulü](docs/research/p01-core-validation.md).
+27 Ekim ilk diliminde yayımlanmış paket, HTTP/EVREN, gerçek araç adaptörü, eğitim, SQLite operasyon kaydı ve artefakt teslimi yoktu. [İlk dilim kabulü](docs/research/p01-core-validation.md).
 
 ### Changed — 2026-10-27
 

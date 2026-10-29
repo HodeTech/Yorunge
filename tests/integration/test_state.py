@@ -61,6 +61,10 @@ def test_real_state_reopen_cli_and_pragmas(tmp_path, cli):
             "capability_expiries",
             "execution_plans",
             "execution_approvals",
+            "operations",
+            "operation_attempts",
+            "operation_events",
+            "operation_outcomes",
         }
     result = cli("state", "init", "--state-dir", str(root), "--output", "json", state=True)
     assert result.returncode == 0

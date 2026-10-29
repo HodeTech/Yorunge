@@ -53,7 +53,14 @@ from yorunge.adapters.state import (
     validate,
 )
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
+from yorunge.domain.maintenance import (
+    IdentitySnapshot,
+    LegacyIdentitySnapshot,
+    LegacyMaintenancePreview,
+    MaintenancePreview,
+    Preview,
+    Snapshot,
+)
 from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid
 
@@ -106,6 +113,9 @@ def errors() -> Iterator[None]:
         raise YorungeError(sqlite_error_code(error)) from None
 
 
+BEGIN_IMMEDIATE = "BEGIN IMMEDIATE"
+
+
 def present(path: Path) -> bool:
     return path.exists() or path.is_symlink()
 
@@ -139,7 +149,15 @@ def require_identity_runtime() -> None:
         raise YorungeError("state_restore_unsupported")
 
 
-def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> IdentitySnapshot:
+def operation_runtime() -> bool:
+    return any(
+        name == "operations"
+        for kind, name, _, _ in schema.expected_schema(schema.MIGRATIONS)
+        if kind == "table"
+    )
+
+
+def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> Snapshot:
     version, value = validate(connection, schema.MIGRATIONS, full=True)
     digest = hashlib.sha256()
     count = 0
@@ -174,7 +192,7 @@ def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> IdentitySnap
             deadline.remaining()
             approval_digest.update(json.dumps(row, separators=(",", ":")).encode() + b"\n")
             approval_count += 1
-    return IdentitySnapshot(
+    base = LegacyIdentitySnapshot(
         store_id=value.store_id,
         identity_epoch=value.identity_epoch,
         store_schema_version=version,
@@ -185,32 +203,45 @@ def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> IdentitySnap
         plan_count=plan_count,
         plan_fingerprint=plan_digest.hexdigest(),
     )
+    if not operation_runtime():
+        return base
+    from yorunge.adapters.operation_maintenance import operation_snapshot
+
+    return IdentitySnapshot.model_validate(
+        {**base.model_dump(), **operation_snapshot(connection, deadline)}
+    )
 
 
 def make_preview(
     action: Literal["reset", "restore", "recover"],
-    current: IdentitySnapshot | None,
-    source: IdentitySnapshot | None = None,
+    current: Snapshot | None,
+    source: Snapshot | None = None,
     announced_epoch: str | None = None,
-) -> MaintenancePreview:
-    preview = MaintenancePreview(
-        action=action,
-        current=current,
-        source=source,
-        history_may_be_lost=action != "reset",
-        announced_epoch=announced_epoch,
-        digest="",
-    )
+) -> Preview:
+    payload = {
+        "schema_version": 3 if operation_runtime() else 2,
+        "cache_invalidated": True,
+        "action": action,
+        "current": current.model_dump() if current else None,
+        "source": source.model_dump() if source else None,
+        "history_may_be_lost": action != "reset",
+        "announced_epoch": announced_epoch,
+    }
     digest = hashlib.sha256(
         json.dumps(
-            preview.model_dump(exclude={"digest"}),
+            payload,
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=True,
             allow_nan=False,
         ).encode()
     ).hexdigest()
-    return preview.model_copy(update={"digest": digest})
+    payload["digest"] = digest
+    return (
+        MaintenancePreview.model_validate(payload)
+        if operation_runtime()
+        else LegacyMaintenancePreview.model_validate(payload)
+    )
 
 
 def validate_confirmation(confirmation: str) -> None:
@@ -218,7 +249,7 @@ def validate_confirmation(confirmation: str) -> None:
         raise YorungeError("invalid_request")
 
 
-def consent(preview: MaintenancePreview, confirmation: str) -> None:
+def consent(preview: Preview, confirmation: str) -> None:
     validate_confirmation(confirmation)
     if confirmation != preview.digest:
         raise YorungeError("state_changed")
@@ -241,7 +272,7 @@ def target_lock(root: Path, deadline: Deadline, *, create: bool) -> Iterator[Non
         yield
 
 
-def live_snapshot(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
+def live_snapshot(root: Path, deadline: Deadline) -> Snapshot | None:
     no_intent(root)
     path = root / DB_NAME
     if not present(path):
@@ -257,7 +288,7 @@ def live_snapshot(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
         connection.close()
 
 
-def inspect_target(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
+def inspect_target(root: Path, deadline: Deadline) -> Snapshot | None:
     if not present(root):
         return None
     owned_directory(root)
@@ -270,7 +301,7 @@ def inspect_target(root: Path, deadline: Deadline) -> IdentitySnapshot | None:
         return live_snapshot(root, deadline)
 
 
-def preview_reset(path: Path | None) -> MaintenancePreview:
+def preview_reset(path: Path | None) -> Preview:
     with errors():
         root, deadline = state_directory(path), Deadline()
         with target_lock(root, deadline, create=False):
@@ -278,6 +309,47 @@ def preview_reset(path: Path | None) -> MaintenancePreview:
             if current is None:
                 raise YorungeError("state_repair_required")
             return make_preview("reset", current)
+
+
+def _reset_rows(
+    connection: sqlite3.Connection,
+    root: Path,
+    deadline: Deadline,
+    version: int,
+    old: Metadata,
+    epoch: str,
+    key_id: str,
+    key: bytes,
+) -> StateInfo:
+    connection.execute(
+        "UPDATE state_meta SET identity_epoch=?,active_key_id=?,key_check=? WHERE singleton=1",
+        (epoch, key_id, key_check(key, old.store_id, epoch, key_id)),
+    )
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE name='cache_clock' AND type='table'"
+    ).fetchone():
+        connection.execute("DELETE FROM capability_cache")
+        connection.execute(
+            "UPDATE cache_clock SET identity_epoch=?,clock_generation=1,"
+            "high_watermark='0001-01-01T00:00:00.000000Z',anomaly_active=0,"
+            "mutation_revision=0 WHERE singleton=1",
+            (epoch,),
+        )
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE name='operations' AND type='table'"
+    ).fetchone():
+        from yorunge.adapters.capability_cache import SystemClock
+        from yorunge.adapters.operation_maintenance import invalidate_operations
+
+        invalidate_operations(connection, epoch, SystemClock().now(), deadline)
+    _, value = validate(connection, schema.MIGRATIONS, full=True)
+    load_key(root, value)
+    deadline.remaining()
+    return StateInfo(
+        store_schema_version=version,
+        store_id=value.store_id,
+        identity_epoch=value.identity_epoch,
+    )
 
 
 def reset_connection(
@@ -288,32 +360,12 @@ def reset_connection(
     key_id: str,
     key: bytes,
 ) -> StateInfo:
-    connection.execute("BEGIN IMMEDIATE")
+    connection.execute(BEGIN_IMMEDIATE)
     try:
         version, old = validate(connection, schema.MIGRATIONS, full=True)
-        connection.execute(
-            "UPDATE state_meta SET identity_epoch=?,active_key_id=?,key_check=? WHERE singleton=1",
-            (epoch, key_id, key_check(key, old.store_id, epoch, key_id)),
-        )
-        if connection.execute(
-            "SELECT 1 FROM sqlite_schema WHERE name='cache_clock' AND type='table'"
-        ).fetchone():
-            connection.execute("DELETE FROM capability_cache")
-            connection.execute(
-                "UPDATE cache_clock SET identity_epoch=?,clock_generation=1,"
-                "high_watermark='0001-01-01T00:00:00.000000Z',anomaly_active=0,"
-                "mutation_revision=0 WHERE singleton=1",
-                (epoch,),
-            )
-        _, value = validate(connection, schema.MIGRATIONS, full=True)
-        load_key(root, value)
-        deadline.remaining()
+        result = _reset_rows(connection, root, deadline, version, old, epoch, key_id, key)
         connection.execute("COMMIT")
-        return StateInfo(
-            store_schema_version=version,
-            store_id=value.store_id,
-            identity_epoch=value.identity_epoch,
-        )
+        return result
     finally:
         if connection.in_transaction:
             connection.execute("ROLLBACK")
@@ -324,7 +376,7 @@ def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: De
     for step in schema.MIGRATIONS[version:]:
         transform = prepare_migration(step, deadline)
         backup(root, path, deadline, schema.MIGRATIONS)
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         try:
             apply_migration(connection, step, deadline, transform)
             validate(connection, schema.MIGRATIONS, full=True)
@@ -335,11 +387,45 @@ def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: De
                 connection.execute("ROLLBACK")
 
 
+def _reset_current(
+    connection: sqlite3.Connection, root: Path, deadline: Deadline, confirmation: str
+) -> StateInfo:
+    # One stable writer snapshot supplies both consent and the pre-reset full
+    # validation; the transformed state receives a second full validation.
+    connection.execute(BEGIN_IMMEDIATE)
+    try:
+        current = snapshot(connection, deadline)
+        consent(make_preview("reset", current), confirmation)
+        old = metadata(connection)
+        key_id, key = new_key(root)
+        result = _reset_rows(
+            connection, root, deadline, current.store_schema_version, old, str(uuid4()), key_id, key
+        )
+        connection.execute("COMMIT")
+        return result
+    finally:
+        if connection.in_transaction:
+            connection.execute("ROLLBACK")
+
+
 def reset(path: Path | None, confirmation: str) -> StateInfo:
     validate_confirmation(confirmation)
     with errors():
         root, deadline = state_directory(path), Deadline()
         with target_lock(root, deadline, create=False):
+            if operation_runtime() and present(root / DB_NAME):
+                no_intent(root)
+                quiescent(root / DB_NAME)
+                connection = connect(root / DB_NAME, deadline)
+                try:
+                    if connection.execute("PRAGMA user_version").fetchone() == (
+                        len(schema.MIGRATIONS),
+                    ):
+                        result = _reset_current(connection, root, deadline, confirmation)
+                        sync_private(root / DB_NAME)
+                        return result
+                finally:
+                    connection.close()
             current = live_snapshot(root, deadline)
             if current is None:
                 raise YorungeError("state_repair_required")
@@ -355,7 +441,7 @@ def reset(path: Path | None, confirmation: str) -> StateInfo:
             return result
 
 
-def source_snapshot(source: Path, deadline: Deadline) -> IdentitySnapshot:
+def source_snapshot(source: Path, deadline: Deadline) -> Snapshot:
     record = read_backup(source, deadline, schema.MIGRATIONS)
     if record.purpose != "migration":
         raise YorungeError("state_restore_unsupported")
@@ -366,7 +452,7 @@ def source_snapshot(source: Path, deadline: Deadline) -> IdentitySnapshot:
         connection.close()
 
 
-def preview_restore(source: Path, path: Path | None) -> MaintenancePreview:
+def preview_restore(source: Path, path: Path | None) -> Preview:
     if not isinstance(source, Path):
         raise YorungeError("invalid_request")
     with errors():
@@ -426,7 +512,7 @@ def intent_key(root: Path, intent: RestoreIntent) -> bytes:
 
 def pair_snapshot(
     root: Path, path: Path, intent: RestoreIntent, deadline: Deadline
-) -> IdentitySnapshot | None:
+) -> Snapshot | None:
     quiescent(path)
     connection = connect_readonly(path, deadline)
     try:
@@ -439,9 +525,7 @@ def pair_snapshot(
         connection.close()
 
 
-def stage_snapshot(
-    root: Path, intent: RestoreIntent, deadline: Deadline
-) -> IdentitySnapshot | None:
+def stage_snapshot(root: Path, intent: RestoreIntent, deadline: Deadline) -> Snapshot | None:
     stage = root / ("restore-" + intent.stage_id + STAGE_SUFFIX)
     if not present(stage):
         return None
@@ -610,7 +694,7 @@ def restore(source: Path, path: Path | None, confirmation: str) -> StateInfo:
             return finish_restore(root, intent, deadline)
 
 
-def recovery_preview(root: Path, intent: RestoreIntent, deadline: Deadline) -> MaintenancePreview:
+def recovery_preview(root: Path, intent: RestoreIntent, deadline: Deadline) -> Preview:
     intent_key(root, intent)
     live = root / DB_NAME
     current = pair_snapshot(root, live, intent, deadline) if present(live) else None
@@ -626,7 +710,7 @@ def recovery_preview(root: Path, intent: RestoreIntent, deadline: Deadline) -> M
     return make_preview("recover", None, source_snapshot(source, deadline), intent.identity_epoch)
 
 
-def preview_recovery(path: Path | None) -> MaintenancePreview:
+def preview_recovery(path: Path | None) -> Preview:
     with errors():
         require_identity_runtime()
         root, deadline = state_directory(path), Deadline()

@@ -1,6 +1,6 @@
 # P01-3 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-28. **Durum:** Tamamlandı/verified; [PR #8](https://github.com/HodeTech/Yorunge/pull/8) kullanıcı tarafından development'a [merge e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa) ile alındı. **Uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Paket yayını yapılmadı. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iş kartları](../roadmap/tasks/README.md).
+**Güncellendi:** 2026-10-28. **Durum:** P01-3 ve takip uygulaması tamamlandı/verified; kullanıcı [PR #8](https://github.com/HodeTech/Yorunge/pull/8)'i [e32cb42](https://github.com/HodeTech/Yorunge/commit/e32cb4289e12a15aeb8c8037c0fca4fc6a7082aa), ardından [PR #9](https://github.com/HodeTech/Yorunge/pull/9)'u [a9f1f2e](https://github.com/HodeTech/Yorunge/commit/a9f1f2e12b49279d139b3c39bca2999e561b0b8d) ile development'a aldı. **Açık takip:** PR #9 merge CI'ında cache başlangıç bütçesi başarısız; aşağıdaki yeni kapanış bölümü kanoniktir. **İlk uygulama dalı:** feat/p01-3-capability-planning; **ilk taban:** development@78d5d77. Paket yayını yapılmadı. [Paket planı](../roadmap/p01-3-delivery-plan.md), [iş kartları](../roadmap/tasks/README.md).
 
 ## Development merge kapanışı
 
@@ -17,6 +17,20 @@ Son PR head'i ef1d39a [offline-core](https://github.com/HodeTech/Yorunge/actions
 Sıradaki ürün paketi P01-4b/4c'dir: operation/attempt, lease/fencing, unknown uzlaştırma ve yerel jobs okuma. P01-4a önceden tamamlandı; yeni pakette operasyon tüketicisinin restore yasağı, yan etki öncesi kalıcı kayıt ve sahiplik devri kabulü daraltılmalıdır. P01-4b/4c henüz draft kapsam satırlarıdır; plan/kart/karar hazırlığı bu kapanışın ürün geliştirmesi değildir. Sonra P01-5 taşıma/akış/iptal, P01-6 faz kabulü; P02/P03 gerçek EVREN ve araç adaptörleri kalır.
 
 Development merge, gerçek yürütme veya yayın değildir. Public producer araç/uzak yetki/tam girdi kapanışı eksikleriyle draft/blocked; run/operation/lease henüz yoktur. Gerçek Windows, canlı EVREN ve fiziksel güç kesintisi kanıtı üretilmedi. Master aktarımı/release kullanıcıdadır.
+
+## PR #9 development merge kapanışı
+
+Kullanıcı PR #9'u **2026-10-28 16:04:25 Europe/Istanbul** tarihinde development'a [merge a9f1f2e](https://github.com/HodeTech/Yorunge/commit/a9f1f2e12b49279d139b3c39bca2999e561b0b8d) ile aldı. Uzak Git ve PR metadata'sı iki parent'ı doğruladı: önceki development e32cb42 ve son PR head'i cf852a1. Merge ağacı cf852a1 ile birebir aynıdır; squash/rebase yapılmadı. Yerel development fast-forward ile güncellendi; bu sonraki belge kapanışı güncel development'tan açılan `feat/p01-4-operations` dalına kaydedilir. Kullanıcı talebiyle ayrı belge PR'ı açılmaz; sonraki P01-4 PR'ında incelenir.
+
+Şema 5/global expiry ile ADR-0015 V2 migration uygulaması development'a teslim edildi. Eski 1–4 kimlikleri korunur; tek dosyalı handler'ın hash'i doğrulanan aynı baytları çalışır. Her iki V2 adımı ikişer bağımsız fresh review turuyla kapandı. Yoğun migration'ın 30/30 yeni-store kabulü mevcut 5 s bütçesinde tamamlandı; en yavaş yol 3,473 s idi. P01-3 ve kartları verified kalır; prototip checksum engeli, kaynak/bytecode bağı ve son CodeRabbit belge bulgusu kapandı. P01-4b/4c uygulaması veya hazır iş kartı bu kapanışla oluşmaz.
+
+Son PR head'i cf852a1 için [offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40688875236), branch-policy ve SonarCloud başarılıydı: 1.304 test (126,31 s), build/iki temiz kurulum ve dört başlangıç bütçesi; cache p95 192,217 ms (Intel Xeon Platinum 8573C/disk unknown). Son iki dar belge review'i de farklı fresh reviewer'larla bulgusuz kapandı. Son head'de CodeRabbit review paused, Sourcery 20.000 satır diff sınırı nedeniyle atlandı; başarılı analiz diye sayılmaz. S5655 Enum uyarısı resmî Python sözleşmesi nedeniyle gerekçeli atlandı ve dış issue açık kaldı; kalite kapısı/kural ayarı değiştirilmedi.
+
+**Merge sonrası CI başarısızlığı açık takiptir.** [Development push koşusu](https://github.com/HodeTech/Yorunge/actions/runs/40693146816), **1.304 passed (132,79 s)**, Ruff format/lint, strict mypy, belge/ajan ve wheel/sdist iki temiz kurulumu geçti. Wheel 42 üye/SHA-256 `05c5721db2a9fddb6dc2bf54b755755683d4ff50f2587a9589bd1a48b79f1ee3`; sdist 262 üye/SHA-256 `537ff762672ceaa3159f032c459d8ff609ff657e0b18a4bb5756e24a6756b64f`. Cache ve execution smoke'ları da başarılıdır. Ancak [ham başlangıç ölçümünde](evidence.md#p01-3-followup-merged-startup) cache p95 **218,223 ms**, medyan **208,897 ms** ile 200 ms kapısını geçemedi. Help/version/context p95 **45,871 / 44,031 / 174,407 ms** ile geçti. Ortam AMD EPYC 7763, CPython 3.11.15/frozen uv editable, disk unknown; 1.024 kayıt ve üç ısınma sonrası 30 ayrı süreçtir. Önceki PR başarısı bu merge koşusunun yerine kullanılmaz. Kaynak ağacı ve wheel aynı olsa da donanım/koşu farkının kesin nedeni bu veriden çıkarılmaz.
+
+Merge ve uygulama teslimi tamamlandı; ortak runner'da başlangıç bütçesinin kararlı sağlanması çözülmemiş teknik takiptir. Bu belge kapanışında ajan aynı head için yeniden koşu başlatmadı; eşik, örnek sayısı veya doğrulama gevşetilmedi. Sonraki incelemede görülen ikinci GitHub denemesi ve izleyen yerel bakım [ayrı kayıttadır](startup-ci-reliability.md). P01-4 ürün uygulamasından önce bu takip, aşağıdaki eski başarılı/başarısız ölçümlerle daraltılmalıdır; tek başarılı farklı-CPU koşusu çözüm sayılmaz. Bu belge değişikliğinde ürün testi/build/benchmark yerelde tekrar çalıştırılmadı; gerçek merge CI kanıtı kullanıldı. Master aktarımı, release veya paket yayını yapılmadı.
+
+Aşağıdaki PR #9 uygulama/inceleme kayıtları kronolojiktir. Prototip, Proposed, onay/kabul/merge bekleme, development şema 4 ve kontrollerin henüz çalıştırılmadığı ifadeleri ilgili eski commit anını anlatır; güncel şema 5 teslimi ve açık merge-CI takibi bu bölümdedir.
 
 ### Merge sonrası CI düzeltmesi
 
@@ -65,7 +79,7 @@ Aşağıdaki adım/review/PR kayıtları tarihseldir. Bekleniyor/incelemeye aç�
 
 ### Dış review: kayıtlar arası clock boşluğu ve global fence
 
-**Tarihsel prototip kaydı:** Bu bölüm PR #9'un ilk algoritma/review durumunu anlatır. ADR-0015 daha sonra onaylanıp V2 ve bütçe doğrulaması tamamlandı; [güncel kapanış](#v2-uygulaması--adım-2) aşağıdadır. Development teslimi hâlâ şema 4'tür.
+**Tarihsel prototip kaydı:** Bu bölüm PR #9'un ilk algoritma/review durumunu anlatır; o sırada development teslimi şema 4'tü. ADR-0015 daha sonra onaylanıp V2 ve bütçe doğrulaması tamamlandı; [güncel şema 5 teslimi ve açık merge-CI takibi](#pr-9-development-merge-kapanışı) üstteki kapanıştadır.
 
 PR #9'daki saat yorumu iki bağımsız ajan ve ana inceleme tarafından gerçek kodda doğrulandı. [Tekrarlanabilir probe](p01-3-clock-frontier-probe.py) ve [tarihsel ham sonuç](p01-3-clock-frontier-reproduction.json), e32cb42 tabanında ve 2865ff3'te aynı boşluğu gösterir: B'nin expiry'si T+60, A'nın T+300; yalnız A sorgulanırken terminal commit UTC'yi T+100'e taşır. A fresh dönerken watermark T'de kalır; yeni StateCache T+50'de B'yi yeniden fresh/supported döndürebilir. Probe bu kusur görüldüğünde exit 1 verir; başarılı ürün kabulü diye kullanılmaz. Bu kontrol mevcut tam takımın kapsamadığı bir senaryoydu.
 
