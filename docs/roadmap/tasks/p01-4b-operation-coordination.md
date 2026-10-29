@@ -1,14 +1,14 @@
 ---
 id: P01-4b
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-4a, P01-3b]
 capabilities: [C12, C13]
 ---
 # P01-4b — Kalıcı operation ve güvenli sahiplik
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1/2 ikişer review turuyla kapandı; adım 3 kod/test/kaynak çalışması tamamlandı, review turları sırada. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). ADR-0016 Accepted; bu dalda adım 1–3 uygulama ve ikişer fresh review turu tamamlandı. P01-4c public jobs ve paket/PR kabulü ayrı adım 4'tedir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -43,4 +43,6 @@ Unit durum/strict model/oracle; contract trusted port ve mevcut execution/CLI za
 
 ## Teslim kaydı
 
-Adım 1 şema/repository a73608a, review düzeltmeleri 1049ab2/de109f5 ile kapandı. Adım 2 admission/lease/dispatch 7d75322 ile uygulandı; review düzeltmeleri 2ba731e/ee7f7a3 ile iki fresh turda kapandı (1.469 test). Adım 3 recovery/terminal/reset uygulandı; 1.580 full test ve 27/27 normal/yoğun kaynak işlemi geçti, iki fresh review turu sırada. [Kabul kaydı](../../research/p01-4-implementation-validation.md) kanoniktir; adım 3 tamamlanmadan kart verified değildir. Mevcut startup bakım kanıtı bu kartın operation kabulü sayılmaz.
+- PR/commit: [0092d40](https://github.com/HodeTech/Yorunge/commit/0092d407f933246952a6da4e47d5145eeebf6d0d) son yerel ürün head'i; paket PR'ı adım 4 sonunda açılır. Adım 1 a73608a/1049ab2/de109f5, adım 2 7d75322/2ba731e/ee7f7a3, adım 3 83f55bc/0092d40 ve her adımın iki fresh turu [kayıttadır](../../research/p01-4-implementation-validation.md).
+- Sonuç: 1.594 full test, statik/belge/ajan kontrolleri, 27/27 normal/yoğun operation ve 24/24 eski şema migration kabulü geçti. Kalıcı tek dispatch, current credential/approval, lease/fencing, trusted reconciliation, terminal sonuç ve geçmişi koruyan reset v3 doğrulandı.
+- Kalan sınır: P01-4c public jobs/kurulu artefakt/200 ms ve bütün paket PR kabulü sıradadır; canlı EVREN, fiziksel güç kesintisi veya gerçek Windows kanıtı yoktur. Karma reset marjı referans ortamında 63,35 ms'dir; farklı host için kesin süre garantisi verilmez.

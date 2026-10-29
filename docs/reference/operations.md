@@ -1,6 +1,6 @@
 # Operation ve yerel jobs sözleşmesi
 
-**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; şema/coordination adım 1/2 kabulü tamamlandı, iç uzlaştırma/reset adım 3 doğrulaması sürüyor; public jobs adım 4 henüz uygulanmadı. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
+**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; iç çekirdek adım 1–3 bu dalda verified; public jobs adım 4 başlıyor, henüz teslim edilmedi. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
 
 ## Sınır ve kaynak
 

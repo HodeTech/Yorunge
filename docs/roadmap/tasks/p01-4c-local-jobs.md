@@ -1,14 +1,14 @@
 ---
 id: P01-4c
 phase: P01
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-4b, P01-3b]
 capabilities: [C12, C13]
 ---
 # P01-4c — Yerel jobs list/show
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kod başlamadı; P01-4b doğrudan bağımlılığı henüz uygulanmadı.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b bu dalda verified; bağımlılık kabulü sonrası adım 4 başlıyor. Public jobs henüz teslim edilmedi.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Tek ortak kullanım senaryosuyla jobs list/show, bounded status/plan filtresi, k
 
 ## Bağımlılıklar ve kararlar
 
-P01-3b verified (PR #8/#9); P01-4b bu pakette adım 1–3 test/commit/iki review kanıtı oluşunca verified olabilir. [ADR-0016](../../decisions/0016-operation-admission-and-ownership.md) ve [operations wire](../../reference/operations.md) onaylanmalı; bağımlılık kabulü olmadan ready/in_progress yapılmaz. Ayrı merge zorunlu değildir.
+P01-3b verified (PR #8/#9); P01-4b bu pakette adım 1–3 test/commit/iki review ve son kaynak kabulüyle verified oldu. [ADR-0016](../../decisions/0016-operation-admission-and-ownership.md) ve [operations wire](../../reference/operations.md) Accepted; uygulama yetkisi vardır. Ayrı merge zorunlu değildir.
 
 ## Sözleşme ve uygulama sınırı
 

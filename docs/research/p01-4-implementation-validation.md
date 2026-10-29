@@ -136,6 +136,24 @@ Yeni ilk regresyon koşusunda sekiz negatif beklenen davranışı vermedi; autho
 
 83f55bc kaynak haritasını taşıyan önceki 27/27 kaynak ölçümü tarihsel olarak korunur. Bu review'da runtime değiştiğinden güncel kabul yerine kullanılmaz; ikinci fresh review sonrası son kaynak haritasıyla yoğun kaynak kabulü yeniden yapılacaktır. 4.961,40 ms'lik ilk karma reset marjı açık performans sınırıdır; eşik gevşetilmez.
 
+### Adım 3 — İkinci review ve son kaynak kabulü
+
+0092d40 üzerinde farklı üç fresh salt-okunur reviewer (GPT-6 Astra xhigh state/dayanıklılık, GPT-6.1 Sol high sözleşme/credential, GPT-6 Astra high doğrulama/kaynak) yeni doğrulanmış kusur bulmadı. State reviewer 27 gerçek-store/kesinti/recovery negatifini; sözleşme reviewer 56 reconciliation + 47 wire/relationship testini; kaynak reviewer 52 wire/probe + 23 memo testini çalıştırdı. Bağımsız eski/yeni scalar event karşılaştırması **486 varyantta sıfır ayrışma** verdi. Bu hedefli sayılar yeni full koşu diye toplanmaz. Son runtime kaynağındaki tam takım 1.594 testtir; default strict mypy src/scripts birlikte 49 kaynakta da geçti. Yeni fix gerekmedi.
+
+Bütün reviewer/test süreçleri bittikten sonra, kaynak sabitken [yeni ham 27 işlem](p01-4-step-3-reviewed-operation-budget.json) aynı doğrulanmış SSD/APFS/M5 Max/editable .venv ortamında çalıştırıldı. Kaynak haritası 0092d40'a aittir ve ölçüm boyunca değişmedi; önceki kayıt ezilmedi. **27/27** işlem özgün 5 s deadline ve n=1.000 callback delegasyonuyla pozitif tamamlandı. Plan/onay/event/outcome hash ve hacimleri, satır sayıları ve reset etkileri korundu; örnek atılmadı. Aşağıdaki değerler üç örneğin maksimumudur:
+
+| Fixture | Full ms | Preview ms | Reset ms | Tepe RSS MiB |
+|---|---:|---:|---:|---:|
+| Normal | 471,95 | 560,53 | 1.101,16 | 57,98 |
+| Terminal yoğun | 3.719,60 | 3.734,19 | 4.646,95 | 73,59 |
+| Karma yoğun | 3.705,52 | 3.778,71 | 4.936,65 | 83,44 |
+
+Hacimler önceki kaynak kabulündekiyle aynı kotalardadır; gerçek her örneğin byte/row bilgisi ham kayıttadır. Karma reset'in **63,35 ms** marjı hâlâ dardır; bu kayıt diğer host/işletim sistemi veya her olası payload için kesin süre garantisi değildir. Eşik gevşetilmedi, timeout başarı sayılmadı.
+
+Ardından aynı sabit 0092d40 runtime kaynağıyla [24 yeni migration örneği](p01-4-step-3-reviewed-migration-budget.json), özgün 5 s deadline/callback açıkken eski şema 2/3/4/5'ten şema 6'ya ulaştı; **24/24 geçti**. Her şema/hacim için üç fresh store/worker; normal maksimumları sırasıyla 1.112,27 / 1.356,27 / 1.407,47 / 957,51 ms, yoğun maksimumları **2.468,95 / 4.337,37 / 4.336,78 / 3.270,34 ms** oldu. Kaynak payload/satırları korundu, yeni operation tabloları boş kaldı ve son full validation geçti. CPU/OS/Python/SSD/APFS, kaynak hash'leri, VM/faz kayıtları ham dosyadadır. Bu yeni kabul ilk adımın tarihsel a73608a ölçümü yerine güncel kodu bağlar; eski kayıt silinmedi.
+
+**P01-4b bu dalda verified:** adım 1–3 uygulama, her adımda iki fresh review turu ve doğrulanmış fix'ler, 1.594 test, 27 operation + 24 migration pozitif kaynak kabulü tamamlandı. Public jobs/kurulu artefakt/200 ms kabulü adım 4'te tamamlanacak; paket PR'ı henüz açılmadı.
+
 ## Sonraki adımlar
 
-Adım 2 commit ve iki fresh review turuyla kapandı; recovery/terminal/reset (adım 3), ardından public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 1–3 commit ve ikişer fresh review turuyla kapandı; public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
