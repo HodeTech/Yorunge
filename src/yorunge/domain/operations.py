@@ -17,7 +17,7 @@ from yorunge.domain.capabilities import (
     instant,
 )
 from yorunge.domain.credentials import normalize_target
-from yorunge.domain.execution import ExecutionApproval, ExecutionPlan
+from yorunge.domain.execution import ExecutionApproval, ExecutionPlan, execution_service
 from yorunge.domain.models import Execution, Identifier, Task
 from yorunge.domain.state import canonical_uuid
 
@@ -176,6 +176,14 @@ class AdmissionAuthority(OperationModel):
             ):
                 raise ValueError("canonical target required")
         return self
+
+
+def execution_authority(
+    plan: ExecutionPlan,
+    authority: AdmissionAuthority,
+    authorities: tuple[AdmissionAuthority, ...],
+) -> bool:
+    return authority.service_id == execution_service(plan.selection) and authority in authorities
 
 
 class OperationAdmission(OperationModel):

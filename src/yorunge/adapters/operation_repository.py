@@ -52,6 +52,7 @@ from yorunge.domain.operations import (
     OperationOutcome,
     OperationReason,
     OperationRecord,
+    execution_authority,
     requires_delivery,
 )
 from yorunge.domain.state import canonical_uuid
@@ -760,7 +761,9 @@ class StateOperations:
                 if (
                     record.dispatch_attempt_id is None
                     or receipt.correlation != record.admission.correlation
-                    or receipt.authority not in record.admission.authorities
+                    or not execution_authority(
+                        job.plan, receipt.authority, record.admission.authorities
+                    )
                 ):
                     raise OperationError("operation_conflict", operation_id)
                 if record.event_count >= MAX_EVENTS - 1:
@@ -822,10 +825,25 @@ class StateOperations:
         return read_job(self.connection, record.summary.operation_id)
 
     def uncertain(self, operation_id: str, owner: OperationLease) -> None:
-        self.reconciliation_uncertain(operation_id, owner, "dispatch_interrupted")
+        self._uncertain(operation_id, owner, None, None, "dispatch_interrupted")
 
-    def reconciliation_uncertain(
-        self, operation_id: str, owner: OperationLease, reason: OperationReason
+    def read_failed(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess | None,
+        reason: OperationReason,
+    ) -> JobView:
+        return self._uncertain(operation_id, owner, request, access, reason)
+
+    def _uncertain(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest | None,
+        access: ReadAccess | None,
+        reason: OperationReason,
     ) -> JobView:
         with self.phase(operation_id):
             stamp = self._ownership_stamp(operation_id)
@@ -833,6 +851,8 @@ class StateOperations:
                 record = read_operation(self.connection, operation_id)
                 job = read_job(self.connection, operation_id, record=record)
                 self._owner(record, owner, stamp, gate)
+                if request is not None:
+                    self._read_access(record, request, access, stamp, gate)
                 result = self._recover(record, job, stamp, reason)
             return result
 
@@ -863,9 +883,8 @@ class StateOperations:
         access: ReadAccess,
     ) -> JobView:
         current = job.attempts[-1]
-        if (
-            observation.correlation != record.admission.correlation
-            or observation.authority not in access.authorities
+        if observation.correlation != record.admission.correlation or not execution_authority(
+            job.plan, observation.authority, access.authorities
         ):
             return self._recover(record, job, stamp, "evidence_mismatch")
         if observation.kind != "observed":

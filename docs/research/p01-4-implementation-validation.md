@@ -122,6 +122,20 @@ Yoğun fixture'lar 1.024 cache / **33.554.432 byte**, 1.024 plan / **67.108.864 
 
 Plan/onay/normal history/terminal outcome hash'leri bütün işlemlerde değişmedi; reset cache'i boşaltıp owner'ları kaldırdı, operation/attempt/event/outcome satır sayıları korundu. Karma fixture 255 normal geçişi dolu 512 nonterminal işin reset'ini de pozitif tamamladı; terminal 512 sonuca dokunulmadı. Son karma reset'te tam başlangıç doğrulaması 3.706,78 ms, son tam doğrulama 840,68 ms, COMMIT 33,29 ms idi; kalan süre onay fingerprint'i ve mutation/key/dosya akışıdır. **4.961,40 ms sınırın yakınıdır**; bu yalnız kayıtlı referans ortam/hacim kabulüdür, Linux CI veya farklı veri/host sonucu değildir. Review'da kaynak yolu değişirse etkilenen kabul tekrar değerlendirilecek; önceki kayıt korunur. İlk adımın a73608a migration ham kaydı hâlâ tarihsel olup son kaynak migration kabulü paket kapanışında ayrıca kontrol edilecektir.
 
+### Adım 3 — Birinci review turu
+
+83f55bc üzerinde üç fresh salt-okunur reviewer (GPT-6 Astra xhigh state/dayanıklılık, GPT-6.1 Sol high sözleşme/credential, GPT-6 Astra high kaynak/memo) çalıştı. Örtüşen yorumlar üç kök nedende birleşti; ana ajan her birini mevcut kodda yeniden üretti. Kaynak reviewer ayrıca 245 scalar varyantı eski doğrulamayla karşılaştırdı (sıfır ayrışma), wire/probe/memo takımında 75 test geçti. Yorum metni uygulama talimatı sayılmadı; doğrulanan üç konu düzeltildi, geçerli olmadığı için atlanan bulgu yoktur.
+
+| Bulgu | Minimal düzeltme / regresyon |
+|---|---|
+| Başarısız read observation final credential/read-grant kapısını atlıyordu | ReadFailure doğrulanmış grant'i taşır; read_failed transaction'ı current request/credential ve varsa grant süresini yeniden karşılaştırır. Authorize öncesi ret, timeout, malformed, grant expiry ve outcome-write fallback yarışları ayrı negatiflerdir. İlk dispatch uncertainty sınırı korunur |
+| Aynı owner running → unknown → submitted toparlanması state_invalid veriyordu | Bounded recovery'nin semantic revision boşluğu veya artan fence kalıcı tanıktır. Doğrudan running → submitted evidence_mismatch olur; recovery tanığı olmayan ardışık bozuk history warm/full okumalarda reddedilir. Restart/full validation, aynı attempt/latch ve tek sentetik etki doğrulandı |
+| Local planning authority uzak execution kanıtı sayılıyordu | Plan validation, receipt ve observation aynı execution-service seçimini kullanır; exact snapshot/hedef üyeliği ayrıca korunur. Remote + planning.offline içeren gerçek prepared planda yanlış receipt/observation unknown kalır; terminal başarı oluşmaz |
+
+Yeni ilk regresyon koşusunda sekiz negatif beklenen davranışı vermedi; authorize-denied pozitif sınır geçti. Son hedefli 167 testin 165'i geçti; iki yeni bozuk-history fixture'ı transaction dışı append yaptığı için düzeltildi ve ikisi ayrıca geçti. Bunlar ürün kusuru diye sayılmadı. Son kaynakta tam takım **1.594 passed / 251,88 s**; Ruff format/lint, strict mypy (42 kaynak), 114 Markdown, 6 skill/9 kart ve diff kontrolleri geçti. İkinci fresh review turu sıradadır.
+
+83f55bc kaynak haritasını taşıyan önceki 27/27 kaynak ölçümü tarihsel olarak korunur. Bu review'da runtime değiştiğinden güncel kabul yerine kullanılmaz; ikinci fresh review sonrası son kaynak haritasıyla yoğun kaynak kabulü yeniden yapılacaktır. 4.961,40 ms'lik ilk karma reset marjı açık performans sınırıdır; eşik gevşetilmez.
+
 ## Sonraki adımlar
 
 Adım 2 commit ve iki fresh review turuyla kapandı; recovery/terminal/reset (adım 3), ardından public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.

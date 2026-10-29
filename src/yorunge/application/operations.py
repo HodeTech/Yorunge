@@ -13,6 +13,7 @@ from yorunge.application.operation_observations import (
     OperationObservation,
     ReadAccess,
     ReadContext,
+    ReadFailure,
     ReadPort,
     ReadRequest,
 )
@@ -31,6 +32,7 @@ from yorunge.domain.operations import (
     OperationRecord,
     ProviderId,
     ProviderStatus,
+    execution_authority,
 )
 from yorunge.domain.state import canonical_uuid
 
@@ -100,8 +102,13 @@ class OperationRepository(Protocol):
         access: ReadAccess,
         observation: OperationObservation,
     ) -> JobView: ...
-    def reconciliation_uncertain(
-        self, operation_id: str, owner: OperationLease, reason: OperationReason
+    def read_failed(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess | None,
+        reason: OperationReason,
     ) -> JobView: ...
     def job(self, operation_id: str) -> JobView: ...
     def submitted(
@@ -245,9 +252,8 @@ class OperationCoordinator:
                 for value in provider_fields
             ):
                 raise YorungeError("state_changed")
-            if (
-                receipt.correlation != armed.admission.correlation
-                or receipt.authority not in armed.admission.authorities
+            if receipt.correlation != armed.admission.correlation or not execution_authority(
+                plan, receipt.authority, armed.admission.authorities
             ):
                 raise YorungeError("state_changed")
             return self.repository.submitted(operation_id, owner, receipt)
@@ -288,8 +294,10 @@ class OperationCoordinator:
                 context.credentials,
             )
             result = self._read_observation(operation_id, owner, request, observer)
-            if isinstance(result, str):
-                return self.repository.reconciliation_uncertain(operation_id, owner, result)
+            if isinstance(result, ReadFailure):
+                return self.repository.read_failed(
+                    operation_id, owner, request, result.access, result.reason
+                )
             access, observation = result
             self.budget.check()
             return self._persist_observation(operation_id, owner, request, access, observation)
@@ -300,12 +308,13 @@ class OperationCoordinator:
         owner: OperationLease,
         request: ReadRequest,
         observer: ReadPort,
-    ) -> tuple[ReadAccess, OperationObservation] | OperationReason:
+    ) -> tuple[ReadAccess, OperationObservation] | ReadFailure:
         window = self.repository.read_window(operation_id, owner, request)
+        access = None
         try:
-            access = observer.authorize(request, deadline=window.deadline)
+            candidate = observer.authorize(request, deadline=window.deadline)
             self._same_process(operation_id)
-            access = ReadAccess.model_validate_json(canonical(access.model_dump(mode="json")))
+            access = ReadAccess.model_validate_json(canonical(candidate.model_dump(mode="json")))
             window = self.repository.read_window(operation_id, owner, request, access)
             observation = observer.observe(request, access, deadline=window.deadline)
             self._same_process(operation_id)
@@ -321,15 +330,15 @@ class OperationCoordinator:
             return access, observation
         except (ValueError, TypeError, AttributeError):
             self._same_process(operation_id)
-            return "evidence_mismatch"
+            return ReadFailure("evidence_mismatch", access)
         except PermissionError:
             self._same_process(operation_id)
-            return "provider_unauthorized"
+            return ReadFailure("provider_unauthorized", access)
         except YorungeError:
             raise
         except Exception:
             self._same_process(operation_id)
-            return "provider_unavailable"
+            return ReadFailure("provider_unavailable", access)
 
     def _persist_observation(
         self,
@@ -345,8 +354,8 @@ class OperationCoordinator:
             if error.code not in {"state_write_failed", "state_busy", "execution_timeout"}:
                 raise
             try:
-                self.repository.reconciliation_uncertain(
-                    operation_id, owner, "outcome_write_failed"
+                self.repository.read_failed(
+                    operation_id, owner, request, access, "outcome_write_failed"
                 )
             except YorungeError:
                 pass

@@ -205,7 +205,9 @@ def _event_progress(
             raise ValueError("admission clock mismatch")
         return sending
     recovered = (
-        item.fence > previous.fence and previous.status == "running" and item.status == "submitted"
+        previous.status == "running"
+        and item.status == "submitted"
+        and (item.fence > previous.fence or item.revision > previous.revision + 1)
     )
     if item.status not in EVENT_TRANSITIONS[previous.status] and not recovered:
         raise ValueError("invalid lifecycle transition")

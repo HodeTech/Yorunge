@@ -62,6 +62,12 @@ class ReadAccess(OperationModel):
         return self
 
 
+@dataclass(frozen=True)
+class ReadFailure:
+    reason: OperationReason
+    access: ReadAccess | None
+
+
 class OperationObservation(OperationModel):
     kind: Literal["observed", "not_found", "unauthorized", "cancel_accepted", "unavailable"]
     correlation: str
@@ -88,6 +94,8 @@ class ReadPort(Protocol):
 def observed_status(record: OperationRecord, observation: OperationObservation) -> OperationStatus:
     if observation.execution_status == "not_started":
         raise ValueError("dispatch cannot become unstarted")
+    if record.summary.status == "running" and observation.execution_status == "submitted":
+        raise ValueError("running progress requires explicit uncertainty before recovery")
     if (
         record.summary.execution_status == "succeeded"
         and observation.execution_status != "succeeded"

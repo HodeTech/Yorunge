@@ -116,18 +116,21 @@ class ExecutionAssessment(WireModel):
         return min(dates)
 
 
+def execution_service(selection: Selection) -> Literal["local", "evren-llm", "evren-platform"]:
+    if selection.task in LLM_TASKS and selection.execution == "local":
+        return "local"
+    if selection.task == "llm.chat":
+        return "evren-llm"
+    return "evren-platform"
+
+
 def validate_assessment_scope(
     assessment: ExecutionAssessment,
     context: Context,
     selection: Selection,
     recipe: Recipe,
 ) -> None:
-    if selection.task in LLM_TASKS and selection.execution == "local":
-        required = "local"
-    elif selection.task == "llm.chat":
-        required = "evren-llm"
-    else:
-        required = "evren-platform"
+    required = execution_service(selection)
     if assessment.ready() and not any(
         c.key.capability_id != "planning.offline" and c.key.scope.service_id == required
         for c in assessment.capabilities

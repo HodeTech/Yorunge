@@ -715,3 +715,303 @@ def test_terminal_commit_succeeded_but_return_failed_never_reopens_record(
         assert job.operation.status == "succeeded"
         assert coordinator.reconcile(identifier, owner) == job
     assert len(backend.effects()) == 1
+
+
+@pytest.fixture
+def remote_operation(tmp_path, execution_fixture, execution_clock):
+    state, config = tmp_path / "state", tmp_path / "config.toml"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\n'
+        'account_id="account"\nplatform_key_env="EVREN_PLATFORM_API_KEY"\n'
+    )
+    backend, observer = ProcessBackend(tmp_path / "effects"), ReadObserver(execution_clock)
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, state_dir=state
+    ).data.plan
+    api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
+    with api._operation_session(
+        plan.plan_id, backend, config=config, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        coordinator.dispatch(identifier, claim.ownership)
+        before = coordinator.repository.operation(identifier)
+    return state, config, plan, backend, observer, identifier, claim.ownership, before
+
+
+@pytest.mark.parametrize("failure", ["authorize", "timeout", "malformed"])
+def test_failed_read_final_transaction_rejects_credential_race(
+    remote_operation, monkeypatch, failure
+):
+    state, config, plan, backend, observer, identifier, owner, before = remote_operation
+
+    def rotate_then_fail(result):
+        monkeypatch.setenv("EVREN_PLATFORM_API_KEY", "rotated-private-read-token")
+        identity = api.observe_credential(
+            "evren-platform", config=config, state_dir=state
+        ).data.identity
+        assert identity.credential_revision == 2
+        if failure == "authorize":
+            raise PermissionError("private permission detail")
+        if failure == "timeout":
+            raise TimeoutError("private transport detail")
+        return None
+
+    if failure == "authorize":
+        observer.access_change = rotate_then_fail
+    else:
+        observer.change = rotate_then_fail
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.reconcile(identifier, owner)
+        assert error.value.code == "state_changed"
+        assert error.value.operation_id == identifier
+        assert coordinator.repository.operation(identifier) == before
+    assert len(backend.effects()) == 1
+
+
+def test_failed_read_rechecks_expiring_permission(remote_operation, execution_clock):
+    from yorunge.domain.capabilities import timestamp
+
+    state, config, plan, backend, observer, identifier, owner, before = remote_operation
+    observer.access_change = lambda access: access.model_copy(
+        update={"expires_at": timestamp(execution_clock.value + timedelta(seconds=5))}
+    )
+
+    def expired(result):
+        execution_clock.value += timedelta(seconds=6)
+        raise TimeoutError("private transport detail")
+
+    observer.change = expired
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.reconcile(identifier, owner)
+        assert error.value.code == "state_changed"
+        assert coordinator.repository.operation(identifier) == before
+    assert len(backend.effects()) == 1
+
+
+def test_denied_read_authorization_records_uncertainty_without_observing(remote_operation):
+    state, config, plan, backend, observer, identifier, owner, _ = remote_operation
+
+    def denied(access):
+        raise PermissionError("private permission detail")
+
+    observer.access_change = denied
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        job = coordinator.reconcile(identifier, owner)
+        assert job.operation.status == "unknown"
+        assert job.attempts[-1].reason_code == "provider_unauthorized"
+    assert observer.requests == []
+    assert len(backend.effects()) == 1
+
+
+def test_same_owner_unknown_can_recover_to_submitted_after_running(started_operation):
+    state, plan, backend, observer, identifier, owner = started_operation
+    observer.execution, observer.delivery = "running", "pending"
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, state_dir=state
+    ) as coordinator:
+        running = coordinator.reconcile(identifier, owner)
+        count = coordinator.repository.operation(identifier).event_count
+        observer.kind = "not_found"
+        unknown = coordinator.reconcile(identifier, owner)
+        assert unknown.operation.status == "unknown"
+        assert coordinator.repository.operation(identifier).event_count == count
+        observer.kind, observer.execution = "observed", "submitted"
+        submitted = coordinator.reconcile(identifier, owner)
+        assert submitted.operation.status == "submitted"
+        record = coordinator.repository.operation(identifier)
+        assert record.fence == owner.fence
+        assert record.event_count == count + 1
+        assert submitted.attempts[-1].attempt_id == running.attempts[-1].attempt_id
+    with open_store(state) as store:
+        validate_contents(store.connection)
+        assert read_job(store.connection, identifier) == submitted
+    assert len(backend.effects()) == 1
+
+
+def test_direct_running_to_submitted_observation_is_uncertain(started_operation):
+    state, plan, backend, observer, identifier, owner = started_operation
+    observer.execution, observer.delivery = "running", "pending"
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, state_dir=state
+    ) as coordinator:
+        coordinator.reconcile(identifier, owner)
+        count = coordinator.repository.operation(identifier).event_count
+        observer.execution = "submitted"
+        job = coordinator.reconcile(identifier, owner)
+        assert job.operation.status == "unknown"
+        assert job.attempts[-1].reason_code == "evidence_mismatch"
+        assert coordinator.repository.operation(identifier).event_count == count
+    with open_store(state) as store:
+        validate_contents(store.connection)
+    assert len(backend.effects()) == 1
+
+
+@pytest.mark.parametrize("entry", ["warm", "full"])
+def test_consecutive_running_submitted_history_without_recovery_is_invalid(
+    started_operation, entry
+):
+    from tests.integration.test_operation_store import raw_attempt, raw_record
+    from yorunge.adapters.operation_store import append_event
+    from yorunge.domain.operations import OperationEvent
+
+    state, plan, backend, observer, identifier, owner = started_operation
+    observer.execution, observer.delivery = "running", "pending"
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, state_dir=state
+    ) as coordinator:
+        coordinator.reconcile(identifier, owner)
+    with open_store(state) as store:
+        record = read_operation(store.connection, identifier)
+        job = read_job(store.connection, identifier)
+        store.connection.execute("BEGIN IMMEDIATE")
+        changed = record.model_copy(
+            update={
+                "event_count": record.event_count + 1,
+                "summary": record.summary.model_copy(
+                    update={
+                        "status": "submitted",
+                        "execution_status": "submitted",
+                        "revision": record.summary.revision + 1,
+                    }
+                ),
+            }
+        )
+        raw_record(store.connection, changed)
+        raw_attempt(store.connection, job.attempts[-1].model_copy(update={"status": "submitted"}))
+        append_event(
+            store.connection,
+            identifier,
+            OperationEvent(
+                sequence=changed.event_count,
+                revision=changed.summary.revision,
+                fence=changed.fence,
+                attempt_id=changed.dispatch_attempt_id,
+                observed_at=changed.summary.updated_at,
+                identity_epoch=changed.observed_identity_epoch,
+                clock_generation=changed.observed_clock_generation,
+                status="submitted",
+                execution_status="submitted",
+                delivery_status="pending",
+                reason_code=None,
+            ),
+        )
+        store.connection.execute("COMMIT")
+        with pytest.raises(YorungeError) as error:
+            if entry == "warm":
+                read_job(store.connection, identifier)
+            else:
+                validate_contents(store.connection)
+        assert error.value.code == "state_invalid"
+
+
+def test_outcome_write_fallback_cannot_mutate_after_read_credential_changes(
+    remote_operation, monkeypatch
+):
+    from yorunge.adapters.operation_repository import StateOperations
+
+    state, config, plan, backend, observer, identifier, owner, before = remote_operation
+
+    def failed_write(self, *args):
+        monkeypatch.setenv("EVREN_PLATFORM_API_KEY", "rotated-private-read-token")
+        api.observe_credential("evren-platform", config=config, state_dir=state)
+        raise OperationError("state_write_failed", identifier)
+
+    monkeypatch.setattr(StateOperations, "reconcile", failed_write)
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.reconcile(identifier, owner)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "state_write_failed"
+        assert coordinator.repository.operation(identifier) == before
+    assert len(backend.effects()) == 1
+
+
+@pytest.mark.parametrize("stage", ["receipt", "observation"])
+def test_local_planning_authority_cannot_attest_remote_execution(
+    tmp_path, execution_fixture, execution_clock, stage
+):
+    def with_planning(assessment):
+        remote = assessment.capabilities[0]
+        local_scope = remote.key.scope.model_copy(
+            update=dict.fromkeys(
+                (
+                    "service_origin",
+                    "api_base_path",
+                    "credential_id",
+                    "credential_revision",
+                    "authorization_scope",
+                )
+            )
+            | {"service_id": "local"}
+        )
+        local = remote.model_copy(
+            update={
+                "key": remote.key.model_copy(
+                    update={"capability_id": "planning.offline", "scope": local_scope}
+                ),
+                "evidence": tuple(
+                    e.model_copy(update={"kind": "local_policy"}) for e in remote.evidence
+                ),
+            }
+        )
+        return assessment.model_copy(update={"capabilities": (*assessment.capabilities, local)})
+
+    execution_fixture.change = with_planning
+    state, config = tmp_path / "state", tmp_path / "config.toml"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\naccount_id="account"\n'
+        'platform_key_env="EVREN_PLATFORM_API_KEY"\n'
+    )
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, state_dir=state
+    ).data.plan
+    assert plan.status == "prepared"
+    api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
+    backend, observer = ProcessBackend(tmp_path / "effects"), ReadObserver(execution_clock)
+    original = backend.start
+
+    def receipt(request, *, deadline):
+        result = original(request, deadline=deadline)
+        authority = next(a for a in request.admission.authorities if a.service_id == "local")
+        return result.model_copy(update={"authority": authority})
+
+    if stage == "receipt":
+        backend.start = receipt
+    else:
+        observer.change = lambda result: result.model_copy(
+            update={
+                "authority": next(
+                    a for a in observer.requests[-1].authorities if a.service_id == "local"
+                )
+            }
+        )
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        if stage == "receipt":
+            with pytest.raises(OperationError) as error:
+                coordinator.dispatch(identifier, claim.ownership)
+            assert error.value.code == "operation_uncertain"
+        else:
+            coordinator.dispatch(identifier, claim.ownership)
+            job = coordinator.reconcile(identifier, claim.ownership)
+            assert job.attempts[-1].reason_code == "evidence_mismatch"
+        job = coordinator.repository.job(identifier)
+        assert job.operation.status == "unknown"
+        assert job.outcome is None
+    with open_store(state) as store:
+        validate_contents(store.connection)
+    assert len(backend.effects()) == 1
