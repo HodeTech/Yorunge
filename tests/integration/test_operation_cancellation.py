@@ -160,3 +160,33 @@ def test_pre_port_capacity_failure_keeps_its_closed_details(operation_setup, mon
         assert caught.value.exit_code == 2
         assert caught.value.__context__ is None
     assert backend.calls == 0
+
+
+@pytest.mark.parametrize("interruption", [SystemExit, GeneratorExit])
+def test_process_exit_after_arm_keeps_exception_identity_and_durable_unknown(
+    operation_setup, monkeypatch, interruption
+):
+    state, plan, backend = operation_setup
+    failure = interruption("synthetic process exit")
+    calls = []
+
+    def exited(request, *, deadline):
+        calls.append(request.attempt_id)
+        raise failure
+
+    monkeypatch.setattr(backend, "start", exited)
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        with pytest.raises(interruption) as caught:
+            coordinator.dispatch(identifier, claim.ownership)
+        assert caught.value is failure
+        record = coordinator.repository.operation(identifier)
+        assert record.dispatch_attempt_id is not None
+        assert record.summary.status == "unknown"
+        assert coordinator.admit(plan.plan_id).ownership is None
+        with pytest.raises(OperationError) as repeated:
+            coordinator.dispatch(identifier, claim.ownership)
+        assert repeated.value.code == "operation_conflict"
+    assert len(calls) == 1
+    assert backend.effects() == []

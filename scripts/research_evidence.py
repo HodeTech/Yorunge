@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import binascii
 import gzip
 import hashlib
 import io
@@ -26,6 +25,9 @@ MAX_ENTRIES = 256
 MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
+CI_RUN_URL = re.compile(
+    r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9]\d*", re.ASCII
+)
 SHA256 = re.compile(r"[0-9a-f]{64}")
 STREAM_HASHES = {
     16: "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
@@ -1109,10 +1111,7 @@ def rejected_startup_summary(report: dict[str, Any]) -> dict[str, Any]:
         "unverified_measurement",
     }:
         raise ValueError("unknown rejected startup reason")
-    pattern_value(
-        report["run_url"],
-        re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9][0-9]*"),
-    )
+    pattern_value(report["run_url"], CI_RUN_URL)
     size = integer(report["original_bytes"])
     encoded = report["content_base64"]
     if not isinstance(encoded, str):
@@ -1123,7 +1122,7 @@ def rejected_startup_summary(report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("rejected startup attachment exceeds its byte limit")
     try:
         original = base64.b64decode(encoded, validate=True)
-    except (ValueError, binascii.Error):
+    except ValueError:
         raise ValueError("invalid rejected startup base64") from None
     if len(original) != size or hashlib.sha256(original).hexdigest() != report["original_sha256"]:
         raise ValueError("rejected startup attachment bytes/hash mismatch")

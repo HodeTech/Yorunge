@@ -307,3 +307,41 @@ def test_rejected_provenance_report_is_attached_exactly_instead_of_weakening_val
     assert base64.b64decode(envelope["content_base64"]) == original
     assert original_path.read_bytes() == original
     assert checks["summarize"](envelope)["accepted"] is False
+
+
+@pytest.mark.parametrize("suffix", ["1٢3", "1１3"])
+def test_github_run_ids_remain_ascii_after_concise_digit_regex(suffix):
+    value = diagnostic_receipt(linux_report())
+    value["run_url"] = "https://github.com/HodeTech/Yorunge/actions/runs/" + suffix
+    with pytest.raises(ValueError):
+        HELPERS["receipt_summary"](value)
+    rejected = {
+        "schema_version": 1,
+        "report_kind": "rejected_startup_evidence_v1",
+        "source_commit": "a" * 40,
+        "run_url": value["run_url"],
+        "original_name": "startup.json",
+        "original_sha256": hashlib.sha256(b"").hexdigest(),
+        "original_bytes": 0,
+        "rejection_reason": "invalid_evidence",
+        "content_base64": "",
+    }
+    with pytest.raises(ValueError):
+        HELPERS["CHECKS"]["summarize"](rejected)
+
+
+@pytest.mark.parametrize("content", ["!", "YQ", "\u0131"])
+def test_redundant_base64_exception_removal_still_rejects_invalid_encoding(content):
+    rejected = {
+        "schema_version": 1,
+        "report_kind": "rejected_startup_evidence_v1",
+        "source_commit": "a" * 40,
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/123",
+        "original_name": "startup.json",
+        "original_sha256": hashlib.sha256(b"").hexdigest(),
+        "original_bytes": 0,
+        "rejection_reason": "invalid_evidence",
+        "content_base64": content,
+    }
+    with pytest.raises(ValueError, match="invalid rejected startup base64"):
+        HELPERS["CHECKS"]["summarize"](rejected)

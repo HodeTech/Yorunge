@@ -6,7 +6,6 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import runpy
 import subprocess
 from pathlib import Path
@@ -15,9 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 STARTUP = runpy.run_path(str(ROOT / "scripts/startup_evidence.py"))
 CHECKS = STARTUP["CHECKS"]
-RUN_URL = re.compile(
-    r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9][0-9]*"
-)
+RUN_URL = CHECKS["CI_RUN_URL"]
 OUTCOMES = {"passed", "diagnostic_budget_exceeded", "error"}
 
 

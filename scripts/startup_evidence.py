@@ -26,6 +26,7 @@ CPU_METHOD = (
     "includes parent overhead and wait; does not identify I/O or scheduler cause"
 )
 INSTALLATION = "isolated runtime-only wheel; frozen uv.lock; fixed hash seed"
+TYPE_MARKER = "src/yorunge/py.typed"
 TYPED_OUTPUT_PROBE = """
 import sys
 from yorunge.domain.models import Context, Result
@@ -51,7 +52,7 @@ def source(project: Path) -> dict[str, Any]:
             path.is_file()
             and path.suffix != ".py"
             and "__pycache__" not in path.parts
-            and path != project / "src/yorunge/py.typed"
+            and path != project / TYPE_MARKER
         ):
             raise ValueError("startup source scope requires explicit non-Python runtime inputs")
     result: dict[str, Any] = JOBS["source"](project)
@@ -63,9 +64,9 @@ def source(project: Path) -> dict[str, Any]:
             raise ValueError("startup workflows must not be symlinks")
         if path.is_file():
             result["source_sha256"][str(path.relative_to(project))] = digest(path)
-    marker = project / "src/yorunge/py.typed"
+    marker = project / TYPE_MARKER
     if marker.is_file():
-        result["source_sha256"]["src/yorunge/py.typed"] = digest(marker)
+        result["source_sha256"][TYPE_MARKER] = digest(marker)
     return result
 
 
@@ -105,10 +106,7 @@ def validate_output(
         raise ValueError("startup stdout must be nonempty and bounded")
     text = content.decode("utf-8", "strict")
     if command[-1] == "--help":
-        if not text.startswith("usage: yorunge ") or not all(
-            word in text for word in ("context", "capabilities", "jobs", "--output", "--version")
-        ):
-            raise ValueError("startup help output mismatch")
+        validate_help(text)
         return
     if command[-1] == "--version":
         from yorunge import __version__
@@ -131,6 +129,13 @@ def validate_output(
         raise ValueError("unknown startup command")
     if value["warnings"] != [] or value["operation_id"] is not None:
         raise ValueError("startup must return the unbound warning-free Result")
+
+
+def validate_help(text: str) -> None:
+    if not text.startswith("usage: yorunge ") or not all(
+        word in text for word in ("context", "capabilities", "jobs", "--output", "--version")
+    ):
+        raise ValueError("startup help output mismatch")
 
 
 def validate_typed_output(content: bytes, python: str | None, kind: str, model: Any) -> None:
@@ -445,15 +450,19 @@ def output_checks(
         CHECKS["flag"](row["typed_stdout_verified"], True)
         if CHECKS["integer"](row["verified_processes"]) != samples + 4:
             raise ValueError("startup typed output process count mismatch")
-        if not isinstance(row["stdout_sha256"], list) or len(row["stdout_sha256"]) != samples + 4:
-            raise ValueError("startup output hash count mismatch")
-        for digest_value in row["stdout_sha256"]:
-            CHECKS["pattern_value"](digest_value, CHECKS["SHA256"])
+        validate_output_hashes(row["stdout_sha256"], samples + 4)
         walls = numbers(row["wall_ms"], samples + 4)
         if min(walls) <= 0 or walls[4:] != rows[name]["warm_samples_ms"]:
             raise ValueError("startup output validation timing differs from measured samples")
         if round(walls[0], 3) != rows[name]["first_process_ms"]:
             raise ValueError("startup first process mismatch")
+
+
+def validate_output_hashes(value: object, count: int) -> None:
+    if not isinstance(value, list) or len(value) != count:
+        raise ValueError("startup output hash count mismatch")
+    for digest_value in value:
+        CHECKS["pattern_value"](digest_value, CHECKS["SHA256"])
 
 
 def validate(report: dict[str, Any]) -> dict[str, Any]:

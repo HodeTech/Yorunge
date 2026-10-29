@@ -12,6 +12,7 @@ import threading
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from uuid import uuid4
 
 import httpx
@@ -621,27 +622,65 @@ def test_unreferenced_pending_task_survives_gc_for_private_shutdown(
         gc.collect()
         assert cleanup == []
 
-    body_completed = False
-    with caplog.at_level(logging.DEBUG), pytest.raises(YorungeError) as caught, session:
+    with caplog.at_level(logging.DEBUG), ExitStack() as lifetime:
+        lifetime.enter_context(session)
         session.call(start)
         gc.collect()
         assert cleanup == []
-        body_completed = True
+        # Preparation errors are outside the assertion; target only shutdown.
+        lifetime.pop_all()
         if primary_uncertainty:
-            raise failure
-    assert body_completed
-    assert caught.value.code == (
-        "operation_uncertain" if primary_uncertainty else "transport_failed"
-    )
+            assert session.__exit__(type(failure), failure, None) is None
+            observed = failure
+        else:
+            with pytest.raises(YorungeError) as caught:
+                session.__exit__(None, None, None)
+            observed = caught.value
+    assert observed.code == ("operation_uncertain" if primary_uncertainty else "transport_failed")
     if primary_uncertainty:
-        assert caught.value is failure
-        assert caught.value.exit_code == 5
+        assert observed is failure
+        assert observed.exit_code == 5
     assert cleanup == [True]
     gc.collect()
     captured = capsys.readouterr()
     assert PRIVATE_CALLBACK not in captured.err
     assert PRIVATE_CALLBACK not in captured.out
     assert PRIVATE_CALLBACK not in caplog.text
+
+
+@pytest.mark.parametrize("prior_uncertainty", [False, True])
+def test_base_exception_in_both_shutdown_phases_keeps_priority_and_closes_loop(
+    monkeypatch, prior_uncertainty
+):
+    first, secondary = SystemExit(17), KeyboardInterrupt("secondary cleanup")
+    primary = OperationError("operation_uncertain", str(uuid4()))
+    closed = []
+    original = asyncio.Runner.close
+
+    def interrupted_close(runner):
+        original(runner)
+        closed.append(True)
+        raise secondary
+
+    class InterruptedTransport(HttpxTransport):
+        async def __aexit__(self, *args):
+            await super().__aexit__(*args)
+            raise first
+
+    monkeypatch.setattr(asyncio.Runner, "close", interrupted_close)
+    session = HttpSession(transport_factory=InterruptedTransport)
+    session.__enter__()
+    loop = session._runner.get_loop()
+    if prior_uncertainty:
+        assert session.__exit__(type(primary), primary, None) is None
+        assert primary.code == "operation_uncertain"
+        assert primary.exit_code == 5
+    else:
+        with pytest.raises(SystemExit) as caught:
+            session.__exit__(None, None, None)
+        assert caught.value is first
+    assert closed == [True]
+    assert loop.is_closed()
 
 
 def test_owned_task_factory_forwards_context_and_names():

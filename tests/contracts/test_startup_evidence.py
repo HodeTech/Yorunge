@@ -245,8 +245,10 @@ def test_real_seeded_stdout_is_typed_and_has_independent_semantics(tmp_path):
     ):
         HELPERS["validate_output"](command, json.dumps(value).encode())
     context["data"]["project_id"] = "wrong-but-valid-id"
+    context_output = json.dumps(context).encode()
     with pytest.raises(ValueError, match="fixed profile oracle"):
-        HELPERS["validate_output"](["yorunge", "context", "show"], json.dumps(context).encode())
+        HELPERS["validate_output"](["yorunge", "context", "show"], context_output)
+    cache_command = ["yorunge", "capabilities", "--state-dir", str(state)]
     for change in ("hit", "missing", "support", "tool", "inner_reason", "store", "evidence"):
         wrong = copy.deepcopy(cache)
         if change == "hit":
@@ -266,10 +268,9 @@ def test_real_seeded_stdout_is_typed_and_has_independent_semantics(tmp_path):
                     key["scope"]["tool"]["id"] = "wrongtool"
                 else:
                     key["scope"]["store_id"] = "11111111-1111-4111-8111-111111111111"
+        invalid_output = json.dumps(wrong).encode()
         with pytest.raises(ValueError):
-            HELPERS["validate_output"](
-                ["yorunge", "capabilities", "--state-dir", str(state)], json.dumps(wrong).encode()
-            )
+            HELPERS["validate_output"](cache_command, invalid_output)
 
 
 @pytest.mark.parametrize("content", [b"", b"{}", b"\xff", b"x" * (1024 * 1024 + 1)])
