@@ -143,7 +143,7 @@ jobs:
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-final.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-rss-v2.json > dist/jobs-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}

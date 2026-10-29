@@ -140,7 +140,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p01-6-reference-jobs-final.json > dist/jobs-reference.txt",
+            "p01-6-reference-jobs-rss-v2.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",

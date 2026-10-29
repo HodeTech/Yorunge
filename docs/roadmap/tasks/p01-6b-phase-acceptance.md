@@ -1,18 +1,20 @@
 ---
 id: P01-6b
 phase: P01
-status: verified
+status: in_progress
 size: M
 depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
 capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-5a/b ve bu kart çalışma dalında verified; adım 5 bütünleşik kabulü ve adım 6 gerçek CI/performans kabulü [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-5a/b önceki kabulü, adım 5 bütünleşik testleri ve adım 6 önceki CI/performans sonuçları [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+
+**PR #11 inceleme takibi:** RSS baseline ve boyutlar arası büyüme kanıtı açık olduğundan bu kart yeniden `in_progress`. Önceki teslim kaydı tarihsel kalır; güncel kapanış yeni yöntem/negatif testler/kurulu ölçümle verilir. [Takip planı](../p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve son kaynağın bütünleşik girdi/operation/taşıma/akış, kurulum, kaynak ve ortam kabulü çalışma dalında tamamlandı.
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve önceki bütünleşik test/kurulum sonuçları kayıtlıdır; son bellek yöntemi ve boyutlar arası kabulün yenilenmesi açıktır.
 
 ## Giren ve girmeyen kapsam
 
@@ -33,7 +35,7 @@ Genel test/kurulum komutlarının tek kaynağı [CONTRIBUTING](../../../CONTRIBU
 3. Wheel ve sdist ayrı frozen runtime ortamlarında depo dışından import/konsol/metadata ve yeni transport/stream smoke'unu geçer. Paket üye izin listeleri, özel girdi ve raw arşiv dışlama, mevcut v1/cache/execution/jobs smoke ve lazy network/secret/ML guard korunur.
 4. Son runtime kaynağında tam test/Ruff/mypy/docs/agent/evidence/diff kapıları; kurulum/CI test sonucu source SHA, OS/arch/Python/SQLite ve paket sürümüyle kaydedilir. Linux 3.11/3.14 ve macOS 3.11 uyumluluk işi CI'da çalıştırılır; gerekli offline-core adı korunur ve başarısız/iptal/atlanan alt iş aggregate'i yeşile çeviremez. Bunlar gerçekleşmeden ortam verified yapılmaz. Gerçek SQLite 3.37 veya Windows koşusu yoksa açık not kalır; minimum hedef gerçek koşuyla karıştırılmaz.
 5. Mevcut 500/200 ms paired startup ve normal/yoğun 30-process jobs kapıları son kaynakla tekrar doğrulanır; yeni HTTP import'u yerel yola girmez. Jobs için önceki aynı host/disk şartının [somut referansı](../../standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) korunur; başarılı kaydın bütün kaynak/lock/fixture/ölçüm kodu baytları CI'da güncel checkout ile zorunlu eşleştirilir. Başka ortamın jobs aşımı başarıya çevrilmez veya CI genel yeşiliyle performans geçti sayılmaz. State 5 s/coordinator 30 s kontrol deadline'ları ve yoğun fixture davranışı korunur; ilgili hot-path değiştiyse operation/migration bütçe probe'ları son kaynakla koşulur, eski kayda güvenilmez. Aşım skip veya tolerans artırımıyla gizlenmez.
-6. Gerçek raw stream 16/256/1.024 MiB sentetik byte'ı bütününü biriktirmeden hash/sayıyla tüketir; dosya boyutuyla doğrusal bellek büyümez, 1 GiB istemci ek RSS≤64 MiB, en çok 2 bağlantı/32 KiB parça, bounded backpressure ve request sayısı kayıtlıdır. Server ayrı süreç ve RSS ölçümünden hariç; TLS/istemci baseline ve örnekleme yöntemi açıklanır. Uygulanan byte taşıma kabulü dataset endpoint desteği değildir.
+6. Gerçek raw stream 16/256/1.024 MiB sentetik byte'ı bütününü biriktirmeden hash/sayıyla tüketir; ölçülen üç boyutun RSS aralıkları en çok 8 MiB çapraz boyut farkını kanıtlar; bu sonlu boyut kabulü asimptotik ispat değildir. Her boyutta istemci ek RSS üst sınırı≤64 MiB, en çok 2 bağlantı/32 KiB parça, bounded backpressure ve request sayısı kayıtlıdır. Server ayrı süreç ve RSS ölçümünden hariç; TLS/istemci baseline ve örnekleme yöntemi açıklanır. Uygulanan byte taşıma kabulü dataset endpoint desteği değildir.
 7. Kapanış raporu her kart/step/review/fix ve olumlu/negatif/performans kanıtını eşler; başarısız ara koşular saklanır. Raw arşiv/hash/özet tooling gerekirse kapalı yeni report türüyle genişletilir ve gerçek negatif testlerle denetlenir. current/faz/matris/referans/modül/README/changelog tutarlı; yalnız tamamlanan P01 alt kapsamı verified olur. PR son head CI/review kullanıcıya sunulur; merge/release yapılmaz.
 
 ## Doğrulama

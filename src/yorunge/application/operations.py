@@ -18,6 +18,7 @@ from yorunge.application.operation_observations import (
     ReadPort,
     ReadRequest,
 )
+from yorunge.application.response_json import literal_secret_match
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.errors import OperationError, YorungeError
@@ -270,7 +271,7 @@ class OperationCoordinator:
             receipt = Submission.model_validate_json(canonical(receipt.model_dump(mode="json")))
             provider_fields = (receipt.provider_run_id, receipt.provider_status or "")
             if any(
-                bound.credential.secret.reveal() in value
+                literal_secret_match(value, bound.credential.secret.reveal())
                 for bound in self.credentials
                 for value in provider_fields
             ):
@@ -315,7 +316,7 @@ class OperationCoordinator:
         port_called: bool,
     ) -> OperationError:
         cancelled = isinstance(error, (KeyboardInterrupt, CancelledError))
-        if not armed and (not cancelled or not self._intent_possible(operation_id)):
+        if not armed and not self._intent_possible(operation_id):
             raise error
         self._save_uncertain(operation_id, owner)
         if cancelled:
@@ -324,7 +325,7 @@ class OperationCoordinator:
             )
         if not isinstance(error, Exception):
             raise error
-        if not port_called and isinstance(error, YorungeError):
+        if armed and not port_called and isinstance(error, YorungeError):
             return OperationError(
                 error.code,
                 operation_id,
@@ -387,7 +388,7 @@ class OperationCoordinator:
                 canonical(observation.model_dump(mode="json"))
             )
             if any(
-                bound.credential.secret.reveal() in value
+                literal_secret_match(value, bound.credential.secret.reveal())
                 for bound in request.credentials
                 for value in (observation.provider_run_id or "", observation.provider_status or "")
             ):

@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** ADR-0017/0018 Accepted; P01-5a, P01-5b ve P01-6b çalışma dalında verified. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** ADR-0017/0018 Accepted; P01-5a/b önceki kabulü kayıtlı; P01-6b bellek kanıtı için yeniden in_progress. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 
@@ -41,3 +41,12 @@ Son current/faz/matris/reference/modül/README/changelog kayıtları yalnız uyg
 Aşağıdaki durum yalnız hazırlık anına aittir; sonraki uygulama ve kabul yukarıdaki kapanış kaydındadır.
 
 Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki fresh belge review turu ve doğrulanan iki P2 sözleşme düzeltmesi kapandı. İki ADR, kullanıcının 2026-10-29 yanıtı ve bulgu disposition'larıyla Accepted yapıldı; adım 1'e geçilir. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.
+
+## PR #11 kullanıcı incelemesi takibi
+
+Kısa secret yanlış pozitifliği, eski high-water baseline'ın ek belleği maskeleyebilmesi, büyüme kararının yalnız tanı olması ve referans komutunun disk etiketi doğrulandı. Ayrıca PR tabanında da bulunan arm commit-sonrası bütçe sınırı mevcut belirsizlik/ID sözleşmesi içinde ele alınır; yalnız eski olması gerekçesiyle ertelenmez. Bu takip aynı PR/dalda kalır; yeni ADR, ürün API’si veya temel bağımlılık kararı gerektirmez. 64 MiB bütçe korunur; üç boyutun mevcut büyümeme şartı önceden ilan edilmiş sonlu aralık kapısıyla sayısallaştırılır.
+
+1. Kaynak düzeltmeleri: provider metadata'sında ortak literal secret kuralı; gerçek commit sınırında belirsizlik; anlık native RSS baseline ve ölçüm penceresi HWM aralıkları; kapalı raw v2 producer/verifier ve bağımsız yanlış-yeşil negatifleri; doğru referans komutu. Anlamlı testler ve commit sonrası iki farklı fresh çok boyutlu review turu, doğrulanan fix/test/commit ile kapanır.
+2. Kabul ve belge kapanışı: sabit son kaynakta tam takım/statik/belge denetimleri, iki temiz kurulum, seri startup/jobs/raw v2; eski arşivler korunarak yeni isimler ve güncel kaynak kapısı. Yeni bellek kapısı geçmeden P01-6b verified yapılmaz. Kaynak/ölçüm eşliği ve rapor ayrıca bağımsız incelenir; son PR head'in gerçek üç CI hücresi, Sonar ve review sonuçları izlenir. Kullanıcı merge eder.
+
+Anlık baseline Linux'ta `smaps_rollup` Rss, Darwin'de `MACH_TASK_BASIC_INFO.resident_size`; sonrası yaşam boyu HWM doğrudan baseline'dan çıkarılır. Eski tepe nedeniyle gerçek pencere tepesinin kesin olmadığı durum interval olarak kalır; bu belirsizlik boyutlar arası kapıda saklanmaz. OS sayaçlarının sınırları ve sabit 8 MiB çapraz boyut aralığı [performans standardında](../standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) kanoniktir. Eski raw v1 kayıtları yeniden etiketlenmez veya güncel kabul diye sunulmaz.

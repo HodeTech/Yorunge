@@ -841,3 +841,85 @@ def test_repeated_admission_failure_identifies_persisted_operation(
                 invoke()
             assert error.value.envelope()["operation_id"] == identifier
     assert backend.calls == 0
+
+
+def test_arm_commit_then_budget_expiry_is_uncertain_and_cannot_redispatch(
+    operation_setup, execution_clock, monkeypatch
+):
+    from contextlib import contextmanager
+
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        original = coordinator.repository.cache.transaction
+
+        @contextmanager
+        def expire_after_commit(*args, **kwargs):
+            with original(*args, **kwargs) as gate:
+                yield gate
+            execution_clock.elapsed += 31
+
+        with monkeypatch.context() as patch:
+            patch.setattr(coordinator.repository.cache, "transaction", expire_after_commit)
+            with pytest.raises(OperationError) as error:
+                coordinator.dispatch(identifier, claim.ownership)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.operation_id == identifier
+    with open_store(state) as store:
+        assert read_operation(store.connection, identifier).dispatch_attempt_id is not None
+    execution_clock.elapsed = 0
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        with pytest.raises(OperationError) as error:
+            coordinator.dispatch(identifier, claim.ownership)
+        assert error.value.code == "operation_conflict"
+    assert backend.calls == 0
+
+
+@pytest.mark.parametrize("field", ["provider_run_id", "provider_status"])
+@pytest.mark.parametrize(
+    "secret,value,rejected",
+    [
+        ("a", "ordinary-a-value", False),
+        ("a", "a", True),
+        ("long-secret", "prefix-long-secret-suffix", True),
+    ],
+)
+def test_receipt_secret_provenance_rule(
+    tmp_path, execution_fixture, execution_clock, monkeypatch, field, secret, value, rejected
+):
+    from yorunge.application.operations import Submission
+
+    monkeypatch.setenv("EVREN_PLATFORM_API_KEY", secret)
+    config, state = tmp_path / "config.toml", tmp_path / "state"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\n'
+        'account_id="account"\nplatform_key_env="EVREN_PLATFORM_API_KEY"\n'
+    )
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, state_dir=state
+    ).data.plan
+    api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
+
+    class Backend:
+        def start(self, request, *, deadline):
+            data = dict(provider_run_id="fixture-run", provider_status="queued")
+            data[field] = value
+            return Submission(
+                correlation=request.admission.correlation,
+                authority=request.admission.authorities[0],
+                running=False,
+                **data,
+            )
+
+    with api._operation_session(
+        plan.plan_id, Backend(), config=config, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        if rejected:
+            with pytest.raises(OperationError) as error:
+                coordinator.dispatch(claim.job.operation.operation_id, claim.ownership)
+            assert error.value.code == "operation_uncertain"
+        else:
+            job = coordinator.dispatch(claim.job.operation.operation_id, claim.ownership)
+            assert getattr(job.attempts[-1], field) == value

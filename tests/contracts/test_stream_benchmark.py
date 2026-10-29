@@ -117,17 +117,25 @@ def measurement(size=65537):
         "received_bytes": size,
         "received_sha256": digest,
         "baseline_rss_native": 100_000_000,
+        "baseline_rss_method": "darwin.MACH_TASK_BASIC_INFO.resident_size",
+        "pretransfer_peak_rss_native": 100_000_000,
         "peak_rss_native": 100_000_000,
         "rss_native_unit": "bytes",
         "baseline_rss_bytes": 100_000_000,
+        "pretransfer_peak_rss_bytes": 100_000_000,
         "peak_rss_bytes": 100_000_000,
-        "extra_rss_bytes": 0,
+        "extra_rss_upper_bound_bytes": 0,
+        "extra_rss_lower_bound_bytes": 0,
         "elapsed_seconds": 0.1,
         "max_chunk_bytes": 32768,
         "chunk_count": 3,
         "warmup_requests": 1,
         "measurement_requests": 1,
-        "runtime": {"isolated": True, "installed_source_matches": True},
+        "runtime": {
+            "isolated": True,
+            "installed_source_matches": True,
+            "os": "macOS-27.0.1",
+        },
     }
 
 
@@ -150,11 +158,60 @@ def test_rss_gate_is_exact_and_keeps_failed_measured_values():
         value.update(
             peak_rss_bytes=value["baseline_rss_bytes"] + extra,
             peak_rss_native=value["baseline_rss_bytes"] + extra,
-            extra_rss_bytes=extra,
+            extra_rss_upper_bound_bytes=extra,
+            extra_rss_lower_bound_bytes=extra,
         )
         result = evaluate(value, telemetry(), 65537, value["received_sha256"])
         assert result["passed"] is passed
-        assert result["extra_rss_bytes"] == extra
+        assert result["extra_rss_upper_bound_bytes"] == extra
+        assert result["extra_rss_lower_bound_bytes"] == extra
+
+
+def test_old_lifetime_peak_cannot_mask_an_instantaneous_baseline_rss_failure():
+    record = measurement()
+    record.update(
+        baseline_rss_bytes=40 * 1024**2,
+        baseline_rss_native=40 * 1024**2,
+        pretransfer_peak_rss_bytes=100 * 1024**2,
+        pretransfer_peak_rss_native=100 * 1024**2,
+        peak_rss_bytes=105 * 1024**2,
+        peak_rss_native=105 * 1024**2,
+        extra_rss_upper_bound_bytes=65 * 1024**2,
+        extra_rss_lower_bound_bytes=65 * 1024**2,
+    )
+    result = helpers()["evaluate_run"](record, telemetry(), 65537, record["received_sha256"])
+    assert result["passed"] is False
+    assert result["extra_rss_upper_bound_bytes"] == 68157440
+    assert result["extra_rss_lower_bound_bytes"] == 68157440
+
+
+@pytest.mark.parametrize(
+    "native,baseline,extra,valid",
+    [(40960.0, 41943040, 8388608, True), (40960.5, 41943552, 8388096, False)],
+)
+def test_rss_native_counts_must_be_integral_even_when_byte_conversion_is_consistent(
+    native, baseline, extra, valid
+):
+    record = measurement()
+    record.update(
+        baseline_rss_native=native,
+        baseline_rss_bytes=baseline,
+        baseline_rss_method="linux.proc_self_smaps_rollup.Rss",
+        pretransfer_peak_rss_native=45056.0,
+        pretransfer_peak_rss_bytes=46137344,
+        peak_rss_native=49152.0,
+        peak_rss_bytes=50331648,
+        rss_native_unit="KiB",
+        extra_rss_upper_bound_bytes=extra,
+        extra_rss_lower_bound_bytes=extra,
+        runtime={"isolated": True, "installed_source_matches": True, "os": "Linux-6.1"},
+    )
+    evaluate = helpers()["evaluate_run"]
+    if valid:
+        assert evaluate(record, telemetry(), 65537, record["received_sha256"])["passed"] is True
+    else:
+        with pytest.raises(ValueError, match="native RSS"):
+            evaluate(record, telemetry(), 65537, record["received_sha256"])
 
 
 @pytest.mark.parametrize(
@@ -191,9 +248,24 @@ def test_server_counts_limit_actual_requests_and_connections(field, value):
 @pytest.mark.parametrize(
     "changes",
     [
-        {"extra_rss_bytes": 1},
+        {"extra_rss_upper_bound_bytes": 1},
+        {"extra_rss_lower_bound_bytes": 1},
         {"peak_rss_bytes": 1},
+        {"pretransfer_peak_rss_bytes": 1},
+        {
+            "pretransfer_peak_rss_bytes": 100_000_001,
+            "pretransfer_peak_rss_native": 100_000_001,
+        },
         {"baseline_rss_bytes": True},
+        {"baseline_rss_native": True},
+        {"baseline_rss_native": 99_999_999},
+        {"extra_rss_upper_bound_bytes": True},
+        {"extra_rss_lower_bound_bytes": True},
+        {"extra_rss_lower_bound_bytes": -1},
+        {"pretransfer_peak_rss_native": float("nan")},
+        {"peak_rss_native": float("inf")},
+        {"baseline_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss"},
+        {"rss_native_unit": "KiB"},
         {"elapsed_seconds": float("nan")},
     ],
 )
@@ -263,8 +335,17 @@ def test_small_fixture_uses_isolated_installed_client_and_separate_real_tls_proc
     assert Path(result["runtime"]["prefix"]) == prefix
     assert "pytest" not in result["runtime"]["packages"]
     assert result["server"]["pid"] != result["runtime"]["pid"]
-    assert result["peak_rss_bytes"] >= result["baseline_rss_bytes"] > 0
-    assert result["extra_rss_bytes"] == result["peak_rss_bytes"] - result["baseline_rss_bytes"]
+    assert result["peak_rss_bytes"] >= result["pretransfer_peak_rss_bytes"]
+    assert result["pretransfer_peak_rss_bytes"] >= result["baseline_rss_bytes"] > 0
+    assert (
+        result["extra_rss_upper_bound_bytes"]
+        == result["peak_rss_bytes"] - result["baseline_rss_bytes"]
+    )
+    assert result["extra_rss_lower_bound_bytes"] == (
+        result["extra_rss_upper_bound_bytes"]
+        if result["peak_rss_bytes"] > result["pretransfer_peak_rss_bytes"]
+        else 0
+    )
     assert result["chunk_count"] >= 3
     assert result["request_count"] == 2
     assert result["connection_count"] <= 2
@@ -408,6 +489,103 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
             result["provenance"]["source_before"]["commit"]
             != result["provenance"]["source_after"]["commit"]
         )
+
+
+@pytest.mark.parametrize(
+    "lower,upper,span,passed",
+    [
+        ((1048576, 16777216, 67108864), (1048576, 16777216, 67108864), 66060288, False),
+        ((0, 0, 67108864), (62914560, 62914560, 67108864), 67108864, False),
+        ((0, 0, 0), (8388608, 0, 0), 8388608, True),
+        ((0, 0, 0), (8388609, 0, 0), 8388609, False),
+        ((0, 5242880, 5242880), (10485760, 5242880, 5242880), 5242880, True),
+        ((67108864, 67108864, 67108864), (67108864, 67108864, 67108864), 0, True),
+    ],
+    ids=[
+        "linear-below-individual-budget",
+        "old-peaks-hide-growth",
+        "exact-span-boundary",
+        "span-one-byte-over",
+        "distinct-size-pairs-only",
+        "constant-at-individual-boundary",
+    ],
+)
+def test_growth_gate_persists_all_individual_passes_and_truthful_overall_result(
+    tmp_path, monkeypatch, lower, upper, span, passed
+):
+    """Handwritten intervals exercise orchestration without a large transfer or oracle hash."""
+    tools = helpers()
+    check, evaluate = tools["check"], tools["evaluate_run"]
+    snapshot = tools["source"](ROOT)
+    calls = []
+
+    def measure(project, python, work, manifest, certificates, size):
+        work.mkdir()
+        index = len(calls)
+        calls.append(size)
+        record = measurement(size)
+        baseline = 40 * 1024**2
+        peak = baseline + upper[index]
+        before = peak if lower[index] == 0 else baseline
+        record.update(
+            baseline_rss_bytes=baseline,
+            baseline_rss_native=baseline,
+            pretransfer_peak_rss_bytes=before,
+            pretransfer_peak_rss_native=before,
+            peak_rss_bytes=peak,
+            peak_rss_native=peak,
+            extra_rss_lower_bound_bytes=lower[index],
+            extra_rss_upper_bound_bytes=upper[index],
+            received_sha256="b" * 64,
+            chunk_count=(size + 32767) // 32768,
+            runtime={
+                "installed_source_matches": True,
+                "isolated": True,
+                "os": "macOS-27.0.1",
+                "machine": "arm64",
+                "python": "test",
+                "python_executable": "test",
+                "sqlite": "test",
+                "packages": {},
+            },
+        )
+        return evaluate(record, telemetry(size), size, "b" * 64)
+
+    monkeypatch.setitem(check.__globals__, "source", lambda project: snapshot)
+    monkeypatch.setitem(check.__globals__, "measure_one", measure)
+    monkeypatch.setitem(
+        check.__globals__,
+        "runpy",
+        SimpleNamespace(run_path=lambda path: {"certificate": lambda path: (path, path)}),
+    )
+    output, workspace = tmp_path / "report.json", tmp_path / "work"
+    result = check(ROOT, Path(sys.executable), workspace, output, cpu="unknown", disk="unknown")
+    assert result == (0 if passed else 1)
+    report = json.loads(output.read_text())
+    assert report["schema_version"] == 2
+    assert report["report_kind"] == "raw_stream_budget_v2"
+    assert report["passed"] is passed
+    assert report["size_growth_acceptance"] == {
+        "method": "max_cross_size_upper_minus_lower",
+        "size_bytes": [16777216, 268435456, 1073741824],
+        "lower_bound_bytes": list(lower),
+        "upper_bound_bytes": list(upper),
+        "span_upper_bound_bytes": span,
+        "passed": passed,
+    }
+    assert report["limits"] == {
+        "extra_rss_upper_bound_bytes": 67108864,
+        "cross_size_span_upper_bound_bytes": 8388608,
+        "chunk_bytes": 32768,
+        "connections": 2,
+        "total_deadline_seconds": 120.0,
+    }
+    assert all(run["passed"] is True for run in report["runs"])
+    assert "size_growth_diagnostic" not in report
+    for size_mib in (16, 256, 1024):
+        run = json.loads((workspace / str(size_mib) / "measurement.json").read_text())
+        assert run["passed"] is True
+        assert run["extra_rss_upper_bound_bytes"] == upper[(16, 256, 1024).index(size_mib)]
 
 
 def test_client_rejects_dependency_drift_with_unchanged_product_sources(tmp_path, monkeypatch):

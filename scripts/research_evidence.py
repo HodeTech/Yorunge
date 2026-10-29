@@ -511,6 +511,210 @@ def stream_outcome(
     }
 
 
+def stream_v2_baseline_source(os_name: str) -> str:
+    if stream_native_unit(os_name) == "KiB":
+        return "linux.proc_self_smaps_rollup.Rss"
+    return "darwin.MACH_TASK_BASIC_INFO.resident_size"
+
+
+def stream_v2_method(value: object, os_name: str) -> dict[str, Any]:
+    additions = "rss_baseline_source rss_peak_source rss_interval rss_window".split()
+    common = (
+        "rss_method rss_baseline rss_native_unit server_process_excluded consumer "
+        "server_generation client_process_per_size streams_per_client consumer_queue_chunks "
+        "backpressure phase_timeout_seconds pool_timeout_seconds limit"
+    )
+    method = closed(value, common + " " + " ".join(additions), "stream v2 method")
+    required = {
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": stream_v2_baseline_source(os_name),
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "backpressure": "consumer awaits each next chunk; no producer task or body queue",
+        "limit": "synthetic raw byte transport; no dataset endpoint or hard physical deadline",
+    }
+    if any(method[key] != expected for key, expected in required.items()):
+        raise ValueError("unsupported stream v2 RSS method")
+    # Reuse only the frozen v1 validator's common concurrency/transport checks.
+    common_values = {key: item for key, item in method.items() if key not in additions}
+    common_values["rss_method"] = required["rss_peak_source"]
+    stream_method(common_values, os_name)
+    return method
+
+
+def stream_v2_rss(run: dict[str, Any], native_unit: str) -> None:
+    baseline = integer(run["baseline_rss_bytes"], minimum=1)
+    before = integer(run["pretransfer_peak_rss_bytes"], minimum=baseline)
+    after = integer(run["peak_rss_bytes"], minimum=before)
+    upper = integer(run["extra_rss_upper_bound_bytes"])
+    lower = integer(run["extra_rss_lower_bound_bytes"])
+    if upper != after - baseline or lower != (upper if after > before else 0):
+        raise ValueError("stream RSS interval does not match native counter bounds")
+    expected_method = stream_v2_baseline_source(run["runtime"]["os"])
+    if run["baseline_rss_method"] != expected_method:
+        raise ValueError("stream baseline method differs from runtime OS")
+    factor = 1024 if native_unit == "KiB" else 1
+    for name in ("baseline", "pretransfer_peak", "peak"):
+        native = number(run[name + "_rss_native"])
+        if native <= 0 or native != int(native) or native * factor != run[name + "_rss_bytes"]:
+            raise ValueError("native RSS does not match integer byte measurement")
+
+
+def stream_v2_run(value: object, expected: dict[str, str], native_unit: str) -> dict[str, Any]:
+    run = closed(
+        value,
+        "size_bytes stream_count received_bytes received_sha256 baseline_rss_native "
+        "pretransfer_peak_rss_native pretransfer_peak_rss_bytes baseline_rss_method "
+        "peak_rss_native rss_native_unit baseline_rss_bytes peak_rss_bytes "
+        "extra_rss_lower_bound_bytes extra_rss_upper_bound_bytes elapsed_seconds "
+        "max_chunk_bytes chunk_count warmup_requests measurement_requests runtime size_mib "
+        "expected_bytes expected_sha256 request_count connection_count peak_active_requests "
+        "server passed",
+        "stream v2 run",
+    )
+    additions = {
+        "pretransfer_peak_rss_native",
+        "pretransfer_peak_rss_bytes",
+        "baseline_rss_method",
+        "extra_rss_lower_bound_bytes",
+        "extra_rss_upper_bound_bytes",
+    }
+    # Common byte/hash/server/runtime checks still apply. The private projection's
+    # 'extra' is the v2 upper bound, never the historical peak-minus-peak metric.
+    common = {key: item for key, item in run.items() if key not in additions}
+    common["extra_rss_bytes"] = run["extra_rss_upper_bound_bytes"]
+    stream_run(common, expected, native_unit)
+    stream_v2_rss(run, native_unit)
+    return run
+
+
+def stream_v2_limits(value: object) -> None:
+    limits = closed(
+        value,
+        "extra_rss_upper_bound_bytes cross_size_span_upper_bound_bytes chunk_bytes "
+        "connections total_deadline_seconds",
+        "stream v2 limits",
+    )
+    required = {
+        "extra_rss_upper_bound_bytes": 67108864,
+        "cross_size_span_upper_bound_bytes": 8388608,
+        "chunk_bytes": 32768,
+        "connections": 2,
+    }
+    if any(integer(limits[key]) != expected for key, expected in required.items()):
+        raise ValueError("stream v2 acceptance limits changed")
+    if number(limits["total_deadline_seconds"]) != 120:
+        raise ValueError("stream v2 total deadline changed")
+
+
+def stream_v2_span_bound(runs: list[dict[str, Any]]) -> int:
+    bound = 0
+    for index, first in enumerate(runs):
+        for other, second in enumerate(runs):
+            if index != other:
+                difference = (
+                    first["extra_rss_upper_bound_bytes"] - second["extra_rss_lower_bound_bytes"]
+                )
+                bound = max(bound, difference)
+    return bound
+
+
+def stream_v2_growth(value: object, runs: list[dict[str, Any]]) -> dict[str, Any]:
+    growth = closed(
+        value,
+        "method size_bytes lower_bound_bytes upper_bound_bytes span_upper_bound_bytes passed",
+        "stream size growth acceptance",
+    )
+    if growth["method"] != "max_cross_size_upper_minus_lower":
+        raise ValueError("unsupported stream growth method")
+    expected_arrays = {
+        "size_bytes": [run["size_bytes"] for run in runs],
+        "lower_bound_bytes": [run["extra_rss_lower_bound_bytes"] for run in runs],
+        "upper_bound_bytes": [run["extra_rss_upper_bound_bytes"] for run in runs],
+    }
+    for name, expected in expected_arrays.items():
+        values = growth[name]
+        if not isinstance(values, list) or any(type(item) is not int for item in values):
+            raise ValueError("invalid stream growth acceptance array")
+        if values != expected:
+            raise ValueError("stream growth acceptance differs from RSS measurements")
+    bound = stream_v2_span_bound(runs)
+    if integer(growth["span_upper_bound_bytes"]) != bound:
+        raise ValueError("stream cross-size RSS span bound differs from intervals")
+    flag(growth["passed"], bound <= 8388608)
+    return growth
+
+
+def stream_v2_same_runtime(runs: list[dict[str, Any]], environment: dict[str, Any]) -> bool:
+    identity = {
+        key: value for key, value in runs[0]["runtime"].items() if key not in {"pid", "modules"}
+    }
+    return all(
+        {key: value for key, value in run["runtime"].items() if key not in {"pid", "modules"}}
+        == identity
+        for run in runs
+    ) and all(
+        run["runtime"][key] == environment[key]
+        for run in runs
+        for key in ("os", "machine", "python", "python_executable", "sqlite", "packages")
+    )
+
+
+def stream_summary_v2(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit environment provenance method limits "
+        "runs size_growth_acceptance passed",
+        "stream v2 report",
+    )
+    pattern_value(report["source_commit"], COMMIT)
+    environment = closed(
+        report["environment"],
+        "os machine python python_executable sqlite packages cpu disk",
+        "stream environment",
+    )
+    for name in set(environment) - {"packages"}:
+        text_value(environment[name])
+    package_versions(environment["packages"])
+    method = stream_v2_method(report["method"], environment["os"])
+    stream_v2_limits(report["limits"])
+    expected, stable = stream_provenance(report["provenance"], report["source_commit"])
+    if not isinstance(report["runs"], list) or len(report["runs"]) != 3:
+        raise ValueError("exactly three stream sizes are required")
+    runs = [stream_v2_run(item, expected, method["rss_native_unit"]) for item in report["runs"]]
+    if [run["size_mib"] for run in runs] != list(STREAM_HASHES):
+        raise ValueError("stream sizes must be unique and ordered 16, 256, 1024 MiB")
+    growth = stream_v2_growth(report["size_growth_acceptance"], runs)
+    installed = all(run["runtime"]["installed_source_matches"] for run in runs)
+    flag(report["provenance"]["installed_source_matches"], installed)
+    passed = (
+        stable
+        and installed
+        and stream_v2_same_runtime(runs, environment)
+        and growth["passed"]
+        and all(run["passed"] for run in runs)
+    )
+    flag(report["passed"], passed)
+    fields = (
+        "received_bytes baseline_rss_bytes pretransfer_peak_rss_bytes peak_rss_bytes "
+        "extra_rss_lower_bound_bytes extra_rss_upper_bound_bytes elapsed_seconds "
+        "max_chunk_bytes chunk_count connection_count passed"
+    ).split()
+    return {
+        "kind": "raw_stream_budget_v2",
+        "passed": passed,
+        **{key: method[key] for key in method if key.startswith("rss_")},
+        "source_unchanged_during_measurement": stable,
+        "installed_source_matches": installed,
+        "size_growth_acceptance": growth,
+        "measurements": {
+            str(run["size_mib"]) + "MiB": {key: run[key] for key in fields} for run in runs
+        },
+    }
+
+
 def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
@@ -863,6 +1067,8 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("invalid typed report schema version")
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
+    if kind == "raw_stream_budget_v2" and version == 2:
+        return stream_summary_v2(report)
     if kind == "installation_v2" and version == 2:
         return installation_summary(report)
     raise ValueError("unsupported typed report kind or schema version")

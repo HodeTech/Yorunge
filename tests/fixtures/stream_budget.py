@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import ctypes
 import hashlib
 import importlib.metadata
 import importlib.util
@@ -23,6 +24,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from socketserver import TCPServer
@@ -49,9 +51,14 @@ def rss_bytes(native: int | float, system: str) -> int:
     """ru_maxrss is bytes on macOS and KiB on Linux, never child-process RSS."""
     if system not in {"Darwin", "Linux"}:
         raise ValueError("RSS measurement requires Linux or macOS")
-    if type(native) not in (int, float) or not math.isfinite(native) or native < 0:
+    if (
+        type(native) not in (int, float)
+        or not math.isfinite(native)
+        or native < 0
+        or native != int(native)
+    ):
         raise ValueError("invalid RSS measurement")
-    return int(native * (1024 if system == "Linux" else 1))
+    return int(native) * (1024 if system == "Linux" else 1)
 
 
 def self_peak_rss() -> tuple[int | float, int]:
@@ -59,6 +66,100 @@ def self_peak_rss() -> tuple[int | float, int]:
 
     native = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return native, rss_bytes(native, platform.system())
+
+
+def parse_smaps_rollup_rss(value: str) -> int:
+    """Read the unique current Rss field, in native Linux KiB, without fallback."""
+    if not isinstance(value, str):
+        raise ValueError("smaps_rollup must be text")
+    fields = [line for line in value.splitlines() if line.startswith("Rss:")]
+    if len(fields) != 1:
+        raise ValueError("smaps_rollup must contain exactly one Rss field")
+    match = re.fullmatch(r"Rss:[ \t]+(\d+)[ \t]+kB", fields[0], flags=re.ASCII)
+    if match is None or int(match[1]) <= 0:
+        raise ValueError("invalid smaps_rollup Rss field")
+    return int(match[1])
+
+
+def linux_current_rss() -> int:
+    with Path("/proc/self/smaps_rollup").open(encoding="ascii") as source:
+        value = source.read(65_536)
+    if len(value) == 65_536:
+        raise ValueError("smaps_rollup exceeded the bounded probe input")
+    return parse_smaps_rollup_rss(value)
+
+
+class MachTimeValue(ctypes.Structure):
+    _layout_ = "ms"
+    _pack_ = 4
+    _fields_ = [("seconds", ctypes.c_int32), ("microseconds", ctypes.c_int32)]
+
+
+class MachTaskBasicInfo(ctypes.Structure):
+    # Apple's exported task_info.h uses pragma pack(4), flavor 20, count 12.
+    _layout_ = "ms"
+    _pack_ = 4
+    _fields_ = [
+        ("virtual_size", ctypes.c_uint64),
+        ("resident_size", ctypes.c_uint64),
+        ("resident_size_max", ctypes.c_uint64),
+        ("user_time", MachTimeValue),
+        ("system_time", MachTimeValue),
+        ("policy", ctypes.c_int32),
+        ("suspend_count", ctypes.c_int32),
+    ]
+
+
+class DarwinRssProbe:
+    def __init__(self) -> None:
+        if ctypes.sizeof(MachTaskBasicInfo) != 48 or ctypes.sizeof(ctypes.c_uint32) != 4:
+            raise ValueError("unsupported MACH_TASK_BASIC_INFO ABI")
+        self.library = ctypes.CDLL("/usr/lib/libSystem.B.dylib")
+        self.task = ctypes.c_uint32.in_dll(self.library, "mach_task_self_").value
+        if not self.task:
+            raise ValueError("invalid current Mach task port")
+        self.task_info = self.library.task_info
+        self.task_info.argtypes = [
+            ctypes.c_uint32,
+            ctypes.c_uint32,
+            ctypes.POINTER(MachTaskBasicInfo),
+            ctypes.POINTER(ctypes.c_uint32),
+        ]
+        self.task_info.restype = ctypes.c_int32
+
+    def __call__(self) -> int:
+        info = MachTaskBasicInfo()
+        count = ctypes.c_uint32(12)
+        result = self.task_info(self.task, 20, ctypes.byref(info), ctypes.byref(count))
+        if result != 0 or count.value != 12:
+            raise ValueError("MACH_TASK_BASIC_INFO failed or returned an unexpected count")
+        if info.resident_size <= 0:
+            raise ValueError("invalid MACH_TASK_BASIC_INFO resident_size")
+        return int(info.resident_size)
+
+
+def prepare_current_rss() -> tuple[str, Callable[[], int]]:
+    system = platform.system()
+    if system == "Linux":
+        method, probe = "linux.proc_self_smaps_rollup.Rss", linux_current_rss
+    elif system == "Darwin":
+        method, probe = "darwin.MACH_TASK_BASIC_INFO.resident_size", DarwinRssProbe()
+    else:
+        raise ValueError("RSS measurement requires Linux or macOS")
+    # Initialize native calls and their Python machinery before TLS/baseline.
+    rss_bytes(probe(), system)
+    self_peak_rss()
+    return method, probe
+
+
+def rss_bounds(baseline: int, pretransfer_peak: int, peak: int) -> tuple[int, int]:
+    """Bound measured-window extra RSS without subtracting a historical peak."""
+    if any(type(value) is not int or value <= 0 for value in (baseline, pretransfer_peak, peak)):
+        raise ValueError("invalid process RSS byte measurements")
+    if not baseline <= pretransfer_peak <= peak:
+        raise ValueError("process RSS baseline and high-water counters are inconsistent")
+    upper = peak - baseline
+    return (upper if peak > pretransfer_peak else 0), upper
 
 
 def installed_provenance(
@@ -175,6 +276,7 @@ async def consume(port: int, ca: Path, size: int, total_seconds: float) -> dict[
                 chunks += 1
         return received, digest.hexdigest(), largest, chunks
 
+    baseline_method, current_rss = prepare_current_rss()
     async with HttpxTransport(transport=LoopbackTransport()) as transport:
         warmed = await receive(transport, WARMUP_BYTES)
         if warmed[:2] != (
@@ -182,24 +284,29 @@ async def consume(port: int, ca: Path, size: int, total_seconds: float) -> dict[
             "e11360251d1173650cdcd20f111d8f1ca2e412f572e8b36a4dc067121c1799b8",
         ):
             raise ValueError("TLS warmup bytes did not match the independent fixed oracle")
-        baseline_native, baseline = self_peak_rss()
+        baseline_native = current_rss()
+        baseline = rss_bytes(baseline_native, platform.system())
         started = time.perf_counter()
+        pretransfer_peak_native, pretransfer_peak = self_peak_rss()
         received, digest, largest, chunks = await receive(transport, size)
         elapsed = time.perf_counter() - started
         peak_native, peak = self_peak_rss()
-        if peak < baseline:
-            raise ValueError("process high-water RSS decreased")
+        lower, upper = rss_bounds(baseline, pretransfer_peak, peak)
     return {
         "size_bytes": size,
         "stream_count": 1,
         "received_bytes": received,
         "received_sha256": digest,
         "baseline_rss_native": baseline_native,
+        "baseline_rss_method": baseline_method,
+        "pretransfer_peak_rss_native": pretransfer_peak_native,
+        "pretransfer_peak_rss_bytes": pretransfer_peak,
         "peak_rss_native": peak_native,
         "rss_native_unit": "bytes" if platform.system() == "Darwin" else "KiB",
         "baseline_rss_bytes": baseline,
         "peak_rss_bytes": peak,
-        "extra_rss_bytes": peak - baseline,
+        "extra_rss_lower_bound_bytes": lower,
+        "extra_rss_upper_bound_bytes": upper,
         "elapsed_seconds": elapsed,
         "max_chunk_bytes": largest,
         "chunk_count": chunks,

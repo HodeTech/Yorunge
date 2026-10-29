@@ -1,6 +1,8 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-29. **P01 çalışma dalında verified:** P01-5a/5b/6b kabulü ve [gerçek CI](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) tamamlandı. Tek development PR üzerinden son-head kontrolleri ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. P01-1–4 daha önce development’a alındı; paket yayımlanmadı.
+**Güncellendi:** 2026-10-29. **P01-6b kabulü yeniden açık (`in_progress`).** PR #11 kullanıcı incelemesindeki bellek kanıtı ve operation düzeltmeleri aynı dalda ele alınıyor. P01-1–4 development’a alındı; önceki P01-5a/b ve CI kabulleri tarihsel kayıtta korunur. Yeni kaynak/bellek kabulü tamamlanmadan P01 bütünü verified sayılmaz; merge kullanıcıdadır.
+
+PR #11 kullanıcı incelemesi kısa secret denetimindeki yanlış pozitifliği ve iki bellek kanıtı açığını doğruladı. Önceki CI/ölçümler tarihsel olarak korunur; eski peak-minus-peak RSS yöntemi güncel bellek kabulü sayılmaz. [Düzeltme ve yeniden kabul planı](p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi) tamamlanmadan P01 bütünü kapanmış sayılmaz.
 
 ## Tamamlanan ilk çekirdek
 

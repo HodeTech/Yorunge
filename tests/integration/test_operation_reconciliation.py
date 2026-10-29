@@ -1236,3 +1236,52 @@ def test_local_planning_authority_cannot_attest_remote_execution(
     with open_store(state) as store:
         validate_contents(store.connection)
     assert len(backend.effects()) == 1
+
+
+@pytest.mark.parametrize("field", ["provider_run_id", "provider_status"])
+@pytest.mark.parametrize(
+    "secret,value,rejected",
+    [
+        ("a", "ordinary-a-value", False),
+        ("a", "a", True),
+        ("long-secret", "prefix-long-secret-suffix", True),
+    ],
+)
+def test_observation_secret_provenance_rule(
+    tmp_path, execution_fixture, execution_clock, monkeypatch, field, secret, value, rejected
+):
+    monkeypatch.setenv("EVREN_PLATFORM_API_KEY", secret)
+    config, state = tmp_path / "config.toml", tmp_path / "state"
+    config.write_text(
+        'schema_version=1\nactive_profile="work"\n[profiles.work]\n'
+        'account_id="account"\nplatform_key_env="EVREN_PLATFORM_API_KEY"\n'
+    )
+    plan = api.prepare_execution_plan(
+        task="dataset.upload", config=config, state_dir=state
+    ).data.plan
+    api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
+    backend, observer = ProcessBackend(tmp_path / "effects"), ReadObserver(execution_clock)
+    if field == "provider_run_id" and not rejected:
+        original_start = backend.start
+
+        def start(request, *, deadline):
+            return original_start(request, deadline=deadline).model_copy(
+                update={"provider_run_id": value}
+            )
+
+        backend.start = start
+    with api._operation_session(
+        plan.plan_id, backend, config=config, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        coordinator.dispatch(identifier, claim.ownership)
+    observer.change = lambda result: result.model_copy(update={field: value})
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, config=config, state_dir=state
+    ) as coordinator:
+        job = coordinator.reconcile(identifier, claim.ownership)
+        assert job.operation.status == ("unknown" if rejected else "succeeded")
+        if rejected:
+            assert job.attempts[-1].reason_code == "evidence_mismatch"
+    assert backend.calls == 1

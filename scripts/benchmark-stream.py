@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SIZES_MIB = (16, 256, 1024)
 CHUNK_BYTES = 32_768
 RSS_LIMIT_BYTES = 67_108_864
+CROSS_SIZE_SPAN_LIMIT_BYTES = 8_388_608
 TOTAL_SECONDS = 120.0
 CLIENT_STDOUT = "client-stdout.txt"
 CLIENT_STDERR = "client-stderr.txt"
@@ -134,27 +135,45 @@ def _integer(value: object, *, minimum: int = 0) -> int:
     return value
 
 
-def evaluate_run(
-    measured: dict[str, Any], server: dict[str, Any], size: int, expected: str
-) -> dict[str, Any]:
-    """Keep actual values and apply the byte/RSS limits without rounding tolerance."""
+def rss_interval(measured: dict[str, Any]) -> int:
+    """Check the native RSS evidence and return its conservative extra-RSS upper bound."""
     baseline = _integer(measured["baseline_rss_bytes"], minimum=1)
-    peak = _integer(measured["peak_rss_bytes"], minimum=baseline)
-    extra = _integer(measured["extra_rss_bytes"])
-    if extra != peak - baseline:
-        raise ValueError("reported extra RSS differs from the process high-water difference")
+    before = _integer(measured["pretransfer_peak_rss_bytes"], minimum=baseline)
+    peak = _integer(measured["peak_rss_bytes"], minimum=before)
+    upper = _integer(measured["extra_rss_upper_bound_bytes"])
+    lower = _integer(measured["extra_rss_lower_bound_bytes"])
+    if upper != peak - baseline or lower != (upper if peak > before else 0):
+        raise ValueError("reported extra RSS interval differs from the native counter bounds")
     unit = measured["rss_native_unit"]
-    if unit not in {"bytes", "KiB"}:
-        raise ValueError("unknown native RSS unit")
-    for name in ("baseline", "peak"):
+    os_name = measured["runtime"]["os"]
+    if not isinstance(os_name, str):
+        raise ValueError("invalid native RSS platform")
+    if os_name.startswith("Linux"):
+        expected_unit, method = "KiB", "linux.proc_self_smaps_rollup.Rss"
+    elif os_name.startswith(("Darwin", "macOS")):
+        expected_unit, method = "bytes", "darwin.MACH_TASK_BASIC_INFO.resident_size"
+    else:
+        raise ValueError("unsupported native RSS platform")
+    if unit != expected_unit or measured["baseline_rss_method"] != method:
+        raise ValueError("native RSS unit or baseline method does not match the runtime OS")
+    for name in ("baseline", "pretransfer_peak", "peak"):
         native = measured[name + "_rss_native"]
         if (
             type(native) not in (int, float)
             or not math.isfinite(native)
             or native <= 0
+            or native != int(native)
             or native * (1024 if unit == "KiB" else 1) != measured[name + "_rss_bytes"]
         ):
             raise ValueError("native RSS and byte measurements differ")
+    return upper
+
+
+def evaluate_run(
+    measured: dict[str, Any], server: dict[str, Any], size: int, expected: str
+) -> dict[str, Any]:
+    """Keep actual values and apply the byte/RSS limits without rounding tolerance."""
+    extra = rss_interval(measured)
     elapsed = measured["elapsed_seconds"]
     if type(elapsed) not in (int, float) or not math.isfinite(elapsed) or elapsed <= 0:
         raise ValueError("elapsed stream time must be finite and positive")
@@ -208,6 +227,26 @@ def evaluate_run(
         "peak_active_requests": active,
         "server": server,
         "passed": bool(valid),
+    }
+
+
+def size_growth_acceptance(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Bound all distinct-size peak differences allowed by the native RSS intervals."""
+    lower = [_integer(run["extra_rss_lower_bound_bytes"]) for run in runs]
+    upper = [_integer(run["extra_rss_upper_bound_bytes"]) for run in runs]
+    if any(low > high for low, high in zip(lower, upper, strict=True)):
+        raise ValueError("invalid extra RSS interval")
+    span = max(
+        0,
+        max(high - low for i, high in enumerate(upper) for j, low in enumerate(lower) if i != j),
+    )
+    return {
+        "method": "max_cross_size_upper_minus_lower",
+        "size_bytes": [run["size_bytes"] for run in runs],
+        "lower_bound_bytes": lower,
+        "upper_bound_bytes": upper,
+        "span_upper_bound_bytes": span,
+        "passed": span <= CROSS_SIZE_SPAN_LIMIT_BYTES,
     }
 
 
@@ -423,9 +462,10 @@ def check(
     runtime_consistent = all(
         runtime_identity(run["runtime"]) == runtime_identity(runtime) for run in runs
     )
+    growth = size_growth_acceptance(runs)
     value = {
-        "schema_version": 1,
-        "report_kind": "raw_stream_budget_v1",
+        "schema_version": 2,
+        "report_kind": "raw_stream_budget_v2",
         "source_commit": before["commit"],
         "environment": {
             name: runtime[name]
@@ -439,9 +479,13 @@ def check(
             "installed_source_matches": installed_matches,
         },
         "method": {
-            "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
-            "rss_baseline": "fresh client process high-water maxRSS after imports, source "
-            "verification and fixed 32KiB TLS warmup; not instantaneous RSS",
+            "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+            "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+            "rss_baseline_source": runs[0]["baseline_rss_method"],
+            "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+            "rss_interval": "new_high_water_exact_else_zero_to_upper",
+            "rss_window": "after_pretransfer_peak_until_posttransfer_peak_"
+            "including_instrumentation",
             "rss_native_unit": runs[0]["rss_native_unit"],
             "server_process_excluded": True,
             "consumer": "incremental_sha256_and_count",
@@ -455,19 +499,18 @@ def check(
             "limit": "synthetic raw byte transport; no dataset endpoint or hard physical deadline",
         },
         "limits": {
-            "extra_rss_bytes": RSS_LIMIT_BYTES,
+            "extra_rss_upper_bound_bytes": RSS_LIMIT_BYTES,
+            "cross_size_span_upper_bound_bytes": CROSS_SIZE_SPAN_LIMIT_BYTES,
             "chunk_bytes": CHUNK_BYTES,
             "connections": 2,
             "total_deadline_seconds": TOTAL_SECONDS,
         },
         "runs": runs,
-        "size_growth_diagnostic": {
-            "size_bytes": [run["size_bytes"] for run in runs],
-            "extra_rss_bytes": [run["extra_rss_bytes"] for run in runs],
-        },
+        "size_growth_acceptance": growth,
         "passed": stable
         and installed_matches
         and runtime_consistent
+        and growth["passed"]
         and all(run["passed"] is True for run in runs),
     }
     # Exclusive creation closes the race with another writer and never follows a symlink.
