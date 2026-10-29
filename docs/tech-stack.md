@@ -4,11 +4,11 @@
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
-| Dil | Python 3.11+ | `tomllib`, task/deadline araçları. Linux3.11/3.14 ve macOS3.11 gerçek CI ile testli; minimum hedef bütün platform/Python sürümlerinin doğrulandığı anlamına gelmez. |
+| Dil | Python 3.11+ | `tomllib`, task/deadline araçları. Linux 3.11/3.14 ve macOS 3.11 gerçek CI ile testli; minimum hedef bütün platform/Python sürümlerinin doğrulandığı anlamına gelmez. |
 | Paket yapısı | Tek dağıtım, `src/yorunge`, Hatchling 1.30.1 | Wheel/sdist ve gerçek konsol girişi kuruldu. |
 | Kullanıcı yüzeyi | CLI + Python API | Hızlı ve otomasyona uygun başlangıç; rehberli katman aynı çekirdeği kullanır. |
 | CLI görünümü | Standart `argparse`, düz metin/JSON/NDJSON | Ortak UTF-8 renderer ve yerel iptal/çıktı hata sözleşmesi testli; help/version lazy kalır. Rich eklenmedi. |
-| HTTP | HTTPX0.28.1 AsyncClient/HTTP1.1 | Tipli owned session/tek deadline/bounded retry gerçek yerel TLS ile testli; EVREN adaptörü değildir. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
+| HTTP | HTTPX 0.28.1 AsyncClient/HTTP1.1 | Tipli owned session/tek deadline/bounded retry gerçek yerel TLS ile testli; EVREN adaptörü değildir. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |

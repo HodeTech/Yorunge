@@ -10,7 +10,7 @@ Kullanıcının kalan bütün Faz 1 işleri talebiyle **P01-5a + P01-5b + P01-6b
 
 ## Baştan sunulan kararlar
 
-1. HTTPX async + session-owned sync Runner köprüsü; doğrudan SDK core bağımlılığı yok. Tek total deadline, read-only GET/HEAD'de en çok2 ve effectful'da1 attempt; proxy/redirect/TLS/secret sınırı ADR-0017'de.
+1. HTTPX async + session-owned sync Runner köprüsü; doğrudan SDK core bağımlılığı yok. Tek total deadline, read-only GET/HEAD'de en çok 2 ve effectful'da 1 attempt; proxy/redirect/TLS/secret sınırı ADR-0017'de.
 2. Result v1 korunur; ayrı StreamEvent v1 ve mevcut normal CLI komutlarına tek-result NDJSON. Yerel cancel/output kapanışı uzak cancelled sayılmaz; arm sonrası unknown/5 değişmez. Ayrıntı ADR-0018'de.
 
 Sayı/sınırlar önerilen sözleşmelerde somuttur; yeni hizmet endpoint'i, ödünç provider başarısı veya fake public backend açma onayı istenmez. CI matrix/isim ve doküman hizalaması mevcut görevin rutin uygulamasıdır. Başka ürün/güven sınırı kararı ortaya çıkarsa uygulamadan önce somut belgeyle sunulur; settled ADR'ler yeniden açılmaz.
@@ -24,11 +24,11 @@ Sayı/sınırlar önerilen sözleşmelerde somuttur; yeni hizmet endpoint'i, öd
 | 3 | P01-5b: kapalı StreamEvent, strict bounded codec, terminal/EOF/backpressure ve typed sonuç hattı | Gerçek chunk/UTF-8/duplicate/oversize/trailing/slow-consumer; secret reflection; resource cleanup ve task cancellation |
 | 4 | P01-5b: ortak CLI renderer/NDJSON/error ve SIGINT/BrokenPipe; kullanıcı/API belgeleri | Bütün normal komutlarda eski text/JSON eşliği; single-result NDJSON, parseöncesi hata; mutation/commit uncertainty önceliği; subprocess/pipe ve lazy help |
 | 5 | P01-6b: gerçek loopback/süreç/SQLite ile bütünleşik kabul, restart/unknown ve kurulu artefakt smoke'u | Config→kimlik→kanıt→plan/onay→operation→taşıma/stream→jobs; sıfır ikinci dispatch ve bağımsız beklenen sonuçlar |
-| 6 | P01-6b: ortam/CI matrisi, bütün kaynak ve performans kapıları, kanıt/son belge kapanışı | Tam test/lint/type/docs/agent/evidence; wheel+sdist iki kurulum; Linux3.11/3.14 + macOS3.11 gerçek sonuç; startup/jobs/stream RSS ve bütçeler; nihai PR |
+| 6 | P01-6b: ortam/CI matrisi, bütün kaynak ve performans kapıları, kanıt/son belge kapanışı | Tam test/lint/type/docs/agent/evidence; wheel+sdist iki kurulum; Linux 3.11/3.14 + macOS 3.11 gerçek sonuç; startup/jobs/stream RSS ve bütçeler; nihai PR |
 
 Her adım geliştirme/anlamlı kontrol/commit → **birinci fresh review** → mevcut kodda doğrulanan minimal fix/test/commit → **farklı fresh ajanlarla ikinci tur** → fix/test/commit döngüsünden geçer. En az iki uzmanlık: ağ/güvenlik/dayanıklılık ve sözleşme/UX/test/kaynak. Model/effort iş karmaşıklığına göre seçilir; head/kapsam/bulgu/skip gerekçesi kayıtlı olur. Yeni bulgu aynı settled kararı kişisel tercih diye yeniden açmaz.
 
-Kart P01-5a adım1–2 ve gerçek kabul/review bitince verified; P01-5b adım3–4; P01-6b adım5–6 sonunda bütün kanıtla verified olabilir. P01-6b'ye başlamak için P01-5b'nin aynı dalda gerçek verified kabulü yeterlidir; ayrı merge beklenmez. Draft kart hazır bağımlılık veya başarılı test diye sunulmaz.
+Kart P01-5a adım 1–2 ve gerçek kabul/review bitince verified; P01-5b adım 3–4; P01-6b adım 5–6 sonunda bütün kanıtla verified olabilir. P01-6b'ye başlamak için P01-5b'nin aynı dalda gerçek verified kabulü yeterlidir; ayrı merge beklenmez. Draft kart hazır bağımlılık veya başarılı test diye sunulmaz.
 
 ## Kapanış ve PR
 
@@ -40,4 +40,4 @@ Son current/faz/matris/reference/modül/README/changelog kayıtları yalnız uyg
 
 Aşağıdaki durum yalnız hazırlık anına aittir; sonraki uygulama ve kabul yukarıdaki kapanış kaydındadır.
 
-Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki fresh belge review turu ve doğrulanan iki P2 sözleşme düzeltmesi kapandı. İki ADR, kullanıcının 2026-10-29 yanıtı ve bulgu disposition'larıyla Accepted yapıldı; adım1'e geçilir. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.
+Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki fresh belge review turu ve doğrulanan iki P2 sözleşme düzeltmesi kapandı. İki ADR, kullanıcının 2026-10-29 yanıtı ve bulgu disposition'larıyla Accepted yapıldı; adım 1'e geçilir. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.

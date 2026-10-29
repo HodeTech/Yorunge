@@ -432,6 +432,30 @@ def test_cli_does_not_swallow_library_task_cancellation(monkeypatch):
         cli.main(["context", "show", "--output", "ndjson"])
 
 
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+@pytest.mark.parametrize(
+    "failure", [OSError("private dispatch path"), UnicodeError("private input")]
+)
+def test_dispatch_io_failure_is_not_an_output_failure(monkeypatch, capsys, output, failure):
+    def rejected(args):
+        raise failure
+
+    def output_failure(*args):
+        pytest.fail("dispatch must not silence stdout or classify I/O as output failure")
+
+    monkeypatch.setattr(cli, "dispatch", rejected)
+    monkeypatch.setattr(OutputRenderer, "output_failure", output_failure)
+    assert cli.main(["context", "show", "--output", output]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "private" not in captured.err
+    assert "Traceback" not in captured.err
+    if output == "text":
+        assert captured.err == YorungeError("file_unreadable").message + "\n"
+    else:
+        assert json.loads(captured.err) == YorungeError("file_unreadable").envelope()
+
+
 @pytest.mark.parametrize("output", ["json", "ndjson"])
 def test_result_serialization_failure_is_safe_and_keeps_stdout_empty(monkeypatch, output):
     class Unsupported(Model):

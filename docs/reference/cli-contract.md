@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b verified; bütün faz kabulü sürüyor. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b faz kabulü çalışma dalında verified; development PR review/merge ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
 
 ## Uygulanan alt küme
 
@@ -151,5 +151,7 @@ Bu bölüm **uygulanan kapalı kod/mesaj/exit kataloğudur; P01-5b review ve kab
 | request_cancelled | 6 | Yerel çağrı/izleme SIGINT ile bırakıldı; rollback veya uzak iş cancellation başarısı değildir |
 | output_closed | 6 | Stdout alıcısı kapandı; retry/ikinci write yok, stderr best-effort |
 | output_write_failed | 1 | BrokenPipe dışı stdout I/O hatası; başarılı kalıcı iş değişmez |
+
+Dispatch sırasında API sınırından taşan yerel `OSError` veya `UnicodeError`, mevcut `file_unreadable`/2 ile kontrollü raporlanır; stdout susturulmaz ve bu hata çıktı teslim hatası sayılmaz. `output_closed`/`output_write_failed` eşlemesi renderer yazım/serileştirme sınırına aittir. API’nin daha özel kontrollü hataları ve yan etki belirsizliği önceliği korunur.
 
 Operation bağlamı olmayan yeni genel hatalar mevcut envelope şekli, `retryable=false`, `operation_id=null`, `details={}` kullanır. **Bağlanmış operation ID'li stream istisnası:** invalid_response/stream_interrupted ve diğer genel stream/çıktı hataları `OperationError(code, bound_operation_id)` ile taşınır; envelope ID bağlamla aynıdır, details tam `{reason_code: code, capacity_kind: null}` olur. Genel hata kodu/exit değişmez; yalnız ID taşımak hatayı operation_uncertain/5 veya job durum mutasyonu yapmaz. Gelen upstream hata mesajı/details doğrudan kopyalanmaz; kod yerel katalogdan güvenli zarfı yeniden kurar. Gerçek coordination hatası kendi mevcut OperationError/ID/kapalı details sözleşmesini kullanır. Sync ağ bridge active-loop/reentry/thread/PID uygunsuzluğu mevcut invalid_request/2'dir; state/env/arm/ağ öncesinde reddedilir. Effectful coordinator start sınırında timeout/iptal/yanıt belirsizliği **operation_uncertain/5** ve ilgili reason_code olarak kalır; config yayın belirsizliğinde mevcut config_write_uncertain/5 genel iptal/çıktı hatasından önceliklidir. Async kütüphane iptali CancelledError olarak cleanup sonrası yükselir; yeni hata kodları bunu global yutma izni değildir.

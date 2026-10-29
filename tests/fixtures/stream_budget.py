@@ -20,6 +20,7 @@ import signal
 import sqlite3
 import ssl
 import sys
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,6 +32,17 @@ CHUNK_BYTES = 32_768
 MAX_BYTES = 1_073_741_824
 RSS_LIMIT_BYTES = 67_108_864
 WARMUP_BYTES = CHUNK_BYTES
+
+
+def publish_ready(path: Path, payload: dict[str, int]) -> None:
+    """Expose only complete readiness JSON without replacing another writer."""
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, prefix=".ready-", suffix=".pending"
+    ) as target:
+        json.dump(payload, target)
+        target.flush()
+        os.fsync(target.fileno())
+        os.link(target.name, path)
 
 
 def rss_bytes(native: int | float, system: str) -> int:
@@ -294,9 +306,8 @@ def serve(args: argparse.Namespace) -> int:
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    with args.ready.open("x", encoding="utf-8") as target:
-        json.dump({"port": server.server_address[1], "pid": os.getpid()}, target)
     try:
+        publish_ready(args.ready, {"port": server.server_address[1], "pid": os.getpid()})
         server.serve_forever(poll_interval=0.05)
     finally:
         server.server_close()

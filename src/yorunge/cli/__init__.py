@@ -504,6 +504,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     renderer = OutputRenderer(vars(args).get("output", "text"))
     try:
         result = dispatch(args)
+    except YorungeError as error:
+        return renderer.error(error)
+    except KeyboardInterrupt:
+        return renderer.error(YorungeError("request_cancelled"))
+    except (OSError, UnicodeError):
+        return renderer.error(YorungeError("file_unreadable"))
+
+    try:
         text = None
         if renderer.output == "text":
             text = (

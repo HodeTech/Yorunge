@@ -28,6 +28,51 @@ def helpers():
     return runpy.run_path(str(SCRIPT))
 
 
+def test_readiness_is_invisible_until_the_complete_json_is_published(tmp_path, monkeypatch):
+    ready = tmp_path / "ready.json"
+    payload = {"port": 12345, "pid": 67890}
+    serialized = json.dumps(payload)
+
+    def paused_write(value, target):
+        assert value == payload
+        target.write(serialized[:3])
+        target.flush()
+        assert not ready.exists()
+        target.write(serialized[3:])
+
+    monkeypatch.setattr(stream_budget.json, "dump", paused_write)
+    stream_budget.publish_ready(ready, payload)
+    assert json.loads(ready.read_text()) == payload
+    assert list(tmp_path.iterdir()) == [ready]
+
+
+def test_readiness_publication_preserves_an_existing_file(tmp_path):
+    ready = tmp_path / "ready.json"
+    original = b'{"port": 12345, "pid": 67890}'
+    ready.write_bytes(original)
+    payload = {"port": 54321, "pid": 9876}
+    with pytest.raises(FileExistsError):
+        stream_budget.publish_ready(ready, payload)
+    assert ready.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [ready]
+
+
+def test_failed_readiness_write_leaves_no_partial_file(tmp_path, monkeypatch):
+    ready = tmp_path / "ready.json"
+    payload = {"port": 12345, "pid": 67890}
+
+    def failed_write(_value, target):
+        target.write("{")
+        target.flush()
+        raise OSError("synthetic readiness I/O failure")
+
+    monkeypatch.setattr(stream_budget.json, "dump", failed_write)
+    with pytest.raises(OSError, match="synthetic readiness I/O failure"):
+        stream_budget.publish_ready(ready, payload)
+    assert not ready.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
 @pytest.mark.parametrize(
     "size,expected",
     [

@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-5b — Tipli akış, NDJSON ve yerel iptal
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3–4 ikişer farklı fresh review turu, gerçek TLS/süreç ve iki temiz artifact NDJSON kabulüyle tamamlandı/verified.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım 3–4 ikişer farklı fresh review turu, gerçek TLS/süreç ve iki temiz artifact NDJSON kabulüyle tamamlandı/verified.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -28,9 +28,9 @@ Exact event/sequence/ID/payload/terminal/EOF/byte limitleri [stream referansınd
 
 ## Kabul
 
-1. Bütün mevcut normal komutlar text/JSON anlamını korur; NDJSON başarı tek sequence1/result, payload Python/JSON Result v1 ile eşleşir. Help/version insan metadata'sı; erken parser hatası --output=ndjson dahil stdout boş/stderr JSON; seçenek yerleşimi/tekrar ve non-TTY saflığı sınanır.
-2. Gerçek loopback byte stream'inde UTF-8/JSON chunk bölünmesi, CRLF, 1MiB Result/1MiB+1KiB event sınır−1/sınır/sınır+1, nesting/node, duplicate/nonfinite/unknownfield/version/booleans/order/streamID/operationID bozukluğu sınanır. Terminal adayı messageEOF/trailing doğrulanmadan completed publish etmez; cleanEOF/reset/chunkedtruncation/partialline/terminalsonrası veri ve timeout için referanstaki kesin hata önceliği doğrulanır. Aynı negatifler bağlanmış operation ID ile de çalışır; üretilen tek error ID'yi ve aynı code/exit'i korur, job durumunu değiştirmez.
-3. Açık çok-olay consumer'da sıralı progress + tam1 terminal; first-publish öncesi hata stderr, sonrası tek error stdout. Sahte başarı/ikinci hata/terminal sonrası emit yoktur. Sonuç beklenen kapalı domain modeliyle doğrulanır; provider mantıksal hata 2xx'le success olmaz.
+1. Bütün mevcut normal komutlar text/JSON anlamını korur; NDJSON başarı tek sequence 1/result, payload Python/JSON Result v1 ile eşleşir. Help/version insan metadata'sı; erken parser hatası --output=ndjson dahil stdout boş/stderr JSON; seçenek yerleşimi/tekrar ve non-TTY saflığı sınanır.
+2. Gerçek loopback byte stream'inde UTF-8/JSON chunk bölünmesi, CRLF, 1 MiB Result/1 MiB + 1 KiB event sınır−1/sınır/sınır + 1, nesting/node, duplicate/nonfinite/unknownfield/version/booleans/order/streamID/operationID bozukluğu sınanır. Terminal adayı messageEOF/trailing doğrulanmadan completed publish etmez; cleanEOF/reset/chunkedtruncation/partialline/terminalsonrası veri ve timeout için referanstaki kesin hata önceliği doğrulanır. Aynı negatifler bağlanmış operation ID ile de çalışır; üretilen tek error ID'yi ve aynı code/exit'i korur, job durumunu değiştirmez.
+3. Açık çok-olay consumer'da sıralı progress + tam 1 terminal; first-publish öncesi hata stderr, sonrası tek error stdout. Sahte başarı/ikinci hata/terminal sonrası emit yoktur. Sonuç beklenen kapalı domain modeliyle doğrulanır; provider mantıksal hata 2xx'le success olmaz.
 4. HTTP provenance kuralındaki uzun canary farklı chunk/UTF-8 parçalarında yansırsa publish edilmez; kısa sır/sabit field-code çakışması testleri mutlak alt dize yasağı koymaz. Buffer/queue sınırlı, tüketici yavaşken backpressure ve tek total deadline işler. Normal erken close/context exit kaynak kapatıp istisnasız biter; Task.cancel cleanup sonrası CancelledError yayar. İkisi ayrı testtir; retry/resubscribe yoktur.
 5. LC_ALL=C/PYTHONIOENCODING=ascii altında nonASCII result/error geçerli UTF-8 byte olarak çıkar; traceback yoktur. Gerçek subprocess SIGINT, BrokenPipe ve diğer output I/O kontrollü exit/hata üretir; ikinci stdout write/atexit traceback yoktur. Critical local config/DB commit çevresi iptalinde kesin rollback, kesin publish ve belirsiz publish ayrımı korunur. Store'daki terminal başarı render hatasıyla unknown olmaz.
 6. StartPort arm sonrası iptal/timeout/bozuk receipt operation_uncertain/5 ve ID/latch'i korur; salt izleme iptali request_cancelled/6 ve provider cancelled değildir. Aynı işi tekrar başlatma veya yeni approval ile latch'i açma yoktur. Async CancelledError cleanup sonrası yükselir; global BaseException yutulmaz.
@@ -42,6 +42,6 @@ Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/
 
 ## Teslim kaydı
 
-- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) bu kartın adım4 runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. Nihai development PR’ı paket sonunda açılır.
+- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) bu kartın adım 4 runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. Nihai development PR’ı paket sonunda açılır.
 - Sonuç: İki adım, ikişer farklı fresh review turu ve son fixture review’leri kapandı. Strict tipli olay/codec, normal komutlarda NDJSON/UTF-8, cancel/output ve belirsizlik öncelikleri gerçek TLS/süreç/state testleriyle doğrulandı; iki ayrı artifact’ta gerçek konsol NDJSON ve v1 eşliği geçti. [Kanıt](../../research/p01-remaining-implementation-validation.md#adım4-ve-p01-5b-kapanışı).
 - Kalan sınır: Bütünleşik faz/son kaynak kurulumu, performans ve gerçek CI matrisi P01-6b’de çalışma dalında verified; public uzak watch/run/SSE veya canlı EVREN/ForgeLM adaptörü teslim edilmez. Eski Result/plan wire korunur.
