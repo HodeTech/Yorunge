@@ -1,14 +1,14 @@
 ---
 id: P01-5a
 phase: P01
-status: ready
+status: in_progress
 size: M
 depends_on: [P01-2a, P01-4b]
 capabilities: [C01, C02, C12, C13]
 ---
 # P01-5a — HTTP taşıma ve SDK sınırı
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım1–2. ADR-0017/0018 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası Accepted; adım1 uygulamasına hazır.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım1–2. ADR-0017/0018 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası Accepted; adım1 ürün kodu ve yerel kontrolleri hazırlanıyor; review/kart kabulü sürüyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -42,4 +42,4 @@ Unit/contract ve gerçek TLS/socket/SQLite/alt süreç integration; fault/timeou
 
 ## Teslim kaydı
 
-Henüz ürün commit/test/kabul/PR kaydı yoktur. Hazırlık ve karar önerisi [rapordadır](../../research/p01-remaining-readiness-review.md); bu kart verified değildir.
+Adım1 tipli HTTP/strict JSON/adapter kodu ve yerel ilk tam takım + son hedefli TLS/contract kontrolleri [uygulama kaydındadır](../../research/p01-remaining-implementation-validation.md). İki fresh ürün review turu ve adım2 operation/Runner kabulü henüz tamamlanmadı; bu kart verified değildir. Hazırlık ve karar kabulü [ayrı rapordadır](../../research/p01-remaining-readiness-review.md).

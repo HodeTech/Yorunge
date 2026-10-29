@@ -137,7 +137,7 @@ Jobs yalnız operation_not_found ve mevcut request/state hatalarını üretir; p
 
 ## P01-5 hata kataloğu
 
-Bu bölüm **Accepted tasarım, henüz uygulanmadı**; 2026-10-29 kullanıcı yetkisiyle [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) review düzeltmeleri sonrası benimsendi. Mevcut kod/exit tablosunu uygulandı diye genişletmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
+Bu bölüm **Accepted tasarım; kod/mesaj/exit kataloğu adım1'de uygulanıyor, NDJSON/CLI tüketicisi henüz yok**; 2026-10-29 kullanıcı yetkisiyle [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) review düzeltmeleri sonrası benimsendi. Mevcut kod/exit tablosunu uygulandı diye genişletmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
 
 | Kod | Exit | Kesin tetik |
 |---|---:|---|

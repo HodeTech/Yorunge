@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** Uygulama yetkili; ADR-0017/0018 Accepted, P01-5a ready, P01-5b/6b draft. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** Uygulama yetkili; ADR-0017/0018 Accepted, P01-5a in_progress, P01-5b/6b draft. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 

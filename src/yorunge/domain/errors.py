@@ -44,9 +44,29 @@ ErrorCode = Literal[
     "operation_capacity_exceeded",
     "operation_uncertain",
     "plan_in_use",
+    "transport_timeout",
+    "transport_failed",
+    "remote_access_denied",
+    "remote_rate_limited",
+    "remote_failed",
+    "invalid_response",
+    "stream_interrupted",
+    "request_cancelled",
+    "output_closed",
+    "output_write_failed",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "transport_timeout": "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok.",
+    "transport_failed": "Ağ bağlantısı veya güvenli taşıma tamamlanamadı. Hedefi kontrol edin.",
+    "remote_access_denied": "Uzak hizmet erişimi reddetti. Seçili hizmet kimliğini kontrol edin.",
+    "remote_rate_limited": "Uzak hizmet istek sınırına ulaşıldı. Bekleyip durumu inceleyin.",
+    "remote_failed": "Uzak hizmet beklenen isteği tamamlamadı. Sonucu inceleyin.",
+    "invalid_response": "Yanıt beklenen biçim, içerik veya boyut koşullarını karşılamıyor.",
+    "stream_interrupted": "Yanıt akışı doğrulanmış terminal sonuç olmadan kesildi.",
+    "request_cancelled": "Yerel çağrı veya izleme bırakıldı. Bu, uzak işin iptal kanıtı değildir.",
+    "output_closed": "Çıktı alıcısı kapandı. Kayıtlı işin sonucu değiştirilmedi.",
+    "output_write_failed": "Sonuç çıktısı teslim edilemedi. Kayıtlı sonucu inceleyin.",
     "operation_not_found": "Kayıtlı iş bulunamadı. Yerel iş listesini inceleyin.",
     "operation_conflict": "İşin mevcut durumu bu geçişe izin vermiyor; yeniden gönderim yok.",
     "operation_lease_lost": (
@@ -137,8 +157,20 @@ class YorungeError(Exception):
             self.exit_code = 4
         elif code in ("config_write_uncertain", "operation_uncertain"):
             self.exit_code = 5
-        elif code in ("credential_unavailable", "invalid_credential"):
+        elif code in ("credential_unavailable", "invalid_credential", "remote_access_denied"):
             self.exit_code = 3
+        elif code in ("request_cancelled", "output_closed"):
+            self.exit_code = 6
+        elif code in (
+            "transport_timeout",
+            "transport_failed",
+            "remote_rate_limited",
+            "remote_failed",
+            "invalid_response",
+            "stream_interrupted",
+            "output_write_failed",
+        ):
+            self.exit_code = 1
         super().__init__(self.message)
 
     def envelope(self) -> dict[str, object]:

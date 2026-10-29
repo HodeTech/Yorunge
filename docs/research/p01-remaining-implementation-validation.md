@@ -1,0 +1,29 @@
+# Kalan P01 uygulama ve doğrulama kaydı
+
+**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a adım1 geliştirme/review; paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
+
+## Karar ve yetki
+
+ADR-0017/0018, kullanıcının bulguları doğrulayıp düzelttikten sonra Accepted yapma ve uygulamaya başlama talebiyle **2f97118** commit'inde kabul edildi. Yeni ADR onayı tekrar istenmedi. Short-secret provenance, cookie/raw okuma/log, close/cancel ve ReadPort/error/UTF8/frame sınırları Accepted sözleşmelerdir. Public run/watch/demo veya gerçek EVREN istekleri açılmaz; Master/release kullanıcıdadır.
+
+## Adım1 — Tipli HTTP portu, strict JSON ve gerçek TLS
+
+Application HttpRequest/HttpCredential/HttpResponse/HttpTransport ve adapter HttpxTransport eklendi. HTTPX0.28.1; HTTPcore1.0.9, AnyIO4.15.1, certifi2026.10.23, h110.16.0, idna3.20 lock/hash ile sabitlendi. HTTP importu explicit adapter içindedir; mevcut yerel komutların subprocess guard'ı HTTPX/HTTPcore/AnyIO/certifi importunu ayrıca reddeder.
+
+- Request canonical HTTPS443 hedef ve zorunlu hizmet ID'sine bağlı; aynı target'ta cross-service credential reddedilir. Auth/header/framing/query/endpoint/raw byte sınırları ağdan önce kontrol edilir. Dinamik endpoint/query'de credential URL'ye taşınamaz.
+- Async session loop/thread/PID, her response/timeout context onu açan task sahibidir. Session havuzu ardışık tam consume task'larında aynı loop'ta kullanılabilir; açık timeout/task taşınmaz. En çok2 bağlantı/response slotu,1s pool ve faz/total deadline; response raw32KiB ve açık totalbyte tavanıyla okunur. Normal erken close ve gerçek task cancellation farklıdır.
+- Cookie deny policy+clear, explicit request/no default merge, no redirect/env/proxy/auth/cookie; private context'te HTTPX/httpcore log filtresi, ilgisiz caller log'u etkilenmez. TLS doğrulanır. Response Content-Encoding/gövde/headers sınırları convenience decode öncesi uygulanır.
+- Default1 attempt; explicit read-only GET/HEAD'de en çok2, transient status/connect hatası; Retry-After ve jitter tek kalan total'dadır. Partial body/TLS/auth/schema/oversize replay yoktur. Yeni10 ErrorCode/MESSAGES/exit1/3/6 ve OperationError reason_code eşliği eklendi.
+- Strict JSON UTF8/duplicate/nonfinite/overflow/surrogate/sürüm ve byte/depth/node kontrolünden sonra beklenen tipli model doğrulanır. Dinamik serbest değer/map key provenance kuralıyla taranır; fixed keys/Literal/Enum muaf, belirsiz union container ve rich scalar sessiz kaçış oluşturmaz. Root incelemesinde exact service bağı, URL credential ve union dalı tahmin bypass'ı ayrıca kapatıldı.
+
+### Yerel kontroller
+
+macOS27.0.1 arm64, CPython3.11.18, SQLite3.54.1; editable frozen uv ortamı. İlk tam takım **1.973 passed /349,72s**; bu ilk kaynak revizyonudur. Sonraki hizmet-ID/union/URL/close sertleştirmeleri ve negatif testler ayrı hedefli koşuda **180 passed /23,04s**:144 contract +36 gerçekTLS/socket testi. Bu180 sonuç, son kaynağın tam takımını yeniden çalıştırmış gibi sunulmaz; final kaynak/kart/faz kabulü ilerleyen adımlarda ayrıca yapılacaktır. Ruff format/lint ve strict mypy55sourcefile geçti; belge/kart ve son diff kontrolleri commit öncesi çalıştırılır.
+
+TLS fixture yalnız testte openssl ile ephemeral CA/SANlocalhost oluşturur; ağ guard'ı yalnız loopback'e açılır, gerçek HTTPX soketi/TLS çalışır. Sertifika/hostname negatifleri, redirect ikinci sunucuya sıfır istek, cookie path/hizmet/retry, rootINFO/DEBUG canary, gerçek Retry-After1s, header/body damlatma, yavaş consumer, pool1s, raw/gzip/bomb/byte limitleri, cancel/normalclose/task sınırı ve closure I/O hata önceliği geçti. Fiziksel güç kesintisi/canlı hizmet kabulü değildir.
+
+İlk bağımlılık kurulum/build aşamasında ayrı wheel/sdist temiz venv kurulumları geçti: wheel53üye SHA-256 `c5506c646ca84d40ee3c4ac7ae5d245e546632069a184bb198a6eaa0f111e637`, sdist323üye `84d3b35a652d623856adad6f539a434c59628d86338d7734c7eef7b98cc6c436`. Her ikisinde origin/basic/cache/execution/jobs smoke başarılı. Bu artefaktlar sonraki source sertleştirmelerinin final kurulumu diye etiketlenmez; son paket kurulum/transport smoke'u P01-6b kapanışında tekrar alınır. Kaynak-sabit performans henüz bu adımda koşulmadı; önceki PR10 performansı yeni kaynak kabulü değildir.
+
+### Review durumu
+
+Ürün adım1 ilk commit'inden sonra iki fresh review turu yapılacaktır; henüz review tamamlandı veya kart verified iddiası yoktur. Adım2 Runner/operation/ReadPort bütünleşmesi, adım3–4 stream/CLI, adım5–6 faz kabulü başlamadı. Her tur/fix/kanıt burada gerçek head ile kaydedilir.

@@ -1,6 +1,6 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 çekirdeği development'a teslim edildi; HTTP/SDK taşıma seçimi P01-5'te açık. İlk offline seçim [ADR-0008](decisions/0008-offline-core-stack.md), güncel teslim [P01-4 kapanışındadır](research/p01-4-implementation-validation.md#development-merge-kapanışı).
+**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 çekirdeği development'a teslim edildi; HTTP/SDK kararı ADR-0017 Accepted; P01-5 taşıma uygulaması/review sürüyor. İlk offline seçim [ADR-0008](decisions/0008-offline-core-stack.md), güncel teslim [P01-4 kapanışındadır](research/p01-4-implementation-validation.md#development-merge-kapanışı).
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
@@ -8,7 +8,7 @@
 | Paket yapısı | Tek dağıtım, `src/yorunge`, Hatchling 1.30.1 | Wheel/sdist ve gerçek konsol girişi kuruldu. |
 | Kullanıcı yüzeyi | CLI + Python API | Hızlı ve otomasyona uygun başlangıç; rehberli katman aynı çekirdeği kullanır. |
 | CLI görünümü | Standart `argparse`, düz metin/JSON | Küçük komut ağacı için yeterli; Click/Typer import deneyinde daha yüksek başlangıç maliyeti. Rich eklenmedi. |
-| HTTP | Henüz seçilmedi; HTTPX/SDK aday | Bu dilim ağ yapmıyor; gereksiz bağımlılık eklenmedi. P01-5'te taşıma deneyi gerekli. |
+| HTTP | HTTPX0.28.1 AsyncClient/HTTP1.1 | ADR-0017 Accepted; tipli owned session/tek deadline/retry geliştiriliyor. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |
