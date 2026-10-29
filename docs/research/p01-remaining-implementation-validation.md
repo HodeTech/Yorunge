@@ -52,4 +52,10 @@ Son kaynak yeni birleşik **73 passed /28,07s**:32session +2preflight +4postarmc
 
 Gerçek loopback admission/start/access/observe, captured env snapshot, retry/pool, timeout/truncated reply/iptal/bozuk2xx, admission/arm ve read-final credential yarışları, reset/yeni onay sonrası latch, prearm control ve geçersiz context0HTTP, readcancel unchanged, yeni Python süreçte takeover/reconcile ve tek effect sınırı kanıtlandı. Sentetik provider yalnız tests/fixtures içindedir; public backend/uzak ürün desteği veya yeni DB şeması yoktur.
 
-Adım2 ilk kod commit'inden sonra iki fresh ürün review turu yapılacak; P01-5a henüz verified değildir. Stream/CLI adım3–4 ve faz kapanışı5–6 başlamadı.
+İlk adım2 ürün commit'i **61fe655**. İlk fresh tur aşağıda kapandı; P01-5a henüz verified değildir. Stream/CLI adım3–4 ve faz kapanışı5–6 başlamadı.
+
+### Adım2 — R1
+
+İki fresh reviewer (gpt-6.1-terra/high lifecycle ve gpt-6.1-sol/high sözleşme)61fe655 üzerinde birP1 ve birP2 doğruladı. P1: arm commit'inden hemen sonraki process denetimi try dışında kalıp cancel'ın ID/unknown5 olmadan kaçmasına izin veriyordu. Arm çağrısı ve dönüşü korumalı bölgeye alındı; arm return'ü kesilirse bounded güncel latch okunur. Kesin latchNone rollback/prearm cancellation kendi control exception'ını korur; latch varsa veya son okuma yapılamıyorsa conservative operation_uncertain5/ID/reasonrequest_cancelled, no replay ve best-effort unknown uygulanır. Commit dönüşü, hemen sonraki process callback'i ve okunamayan commit sınırı iki cancel türüyle gerçek DB regresyonudur.
+
+P2: renew diğer girişlerden farklı olarak owned-session preflight'ını atlayabiliyordu. Aynı guard renew'e de eklendi; closed session ve active loop altında değişmeyen kalıcı lease/snapshot doğrulandı. Root hata taşımada pre-port capacity_kind/reason_code kapalı metadata'sının korunmasını da negatif fixture ile sabitledi. Son yeni cancellation+TLS kontrolü **48passed/29,45s**, format/lint/strict mypy56sourcefile geçti. İkinci farklı fresh çift fix commit'inden sonra inceleyecek; adım2 ve P01-5a henüz kapanmadı.

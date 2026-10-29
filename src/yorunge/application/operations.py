@@ -20,7 +20,7 @@ from yorunge.application.operation_observations import (
 )
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.execution import ExecutionPlan, ExecutionValidity
 from yorunge.domain.operations import (
     TERMINAL,
@@ -214,6 +214,7 @@ class OperationCoordinator:
 
     def renew(self, operation_id: str, owner: OperationLease) -> OperationLease:
         with self._identified(operation_id):
+            self._preflight()
             self._same_process(operation_id)
             self.budget.check()
             return self.repository.renew(operation_id, owner)
@@ -251,12 +252,12 @@ class OperationCoordinator:
         plan = self.repository.plan(before.admission.plan_id)
         validity = self.validate(plan)
         self.budget.check()
-        armed = self.repository.arm(operation_id, owner, validity)
-        self._same_process(operation_id)
+        armed: OperationRecord | None = None
         port_called = False
-        failure: ErrorCode = "operation_uncertain"
-        reason: ErrorCode = "operation_uncertain"
+        failure: OperationError | None = None
         try:
+            armed = self.repository.arm(operation_id, owner, validity)
+            self._same_process(operation_id)
             window = self.repository.dispatch_window(operation_id, owner)
             request = DispatchRequest(
                 plan, armed.admission, str(armed.dispatch_attempt_id), self.credentials
@@ -280,22 +281,61 @@ class OperationCoordinator:
                 raise YorungeError("state_changed")
             return self.repository.submitted(operation_id, owner, receipt)
         except BaseException as error:
-            self._same_process(operation_id)
-            try:
-                self.repository.uncertain(operation_id, owner)
-            except (YorungeError, OSError, KeyboardInterrupt, CancelledError):
-                # The durable submitted latch remains even if uncertainty cannot be saved.
-                pass
-            if isinstance(error, (KeyboardInterrupt, CancelledError)):
-                reason = "request_cancelled"
-            elif not isinstance(error, Exception):
-                raise
-            elif not port_called and isinstance(error, YorungeError):
-                failure, reason = error.code, error.code
-            elif isinstance(error, YorungeError):
-                reason = error.code
+            failure = self._dispatch_problem(
+                operation_id, owner, error, armed is not None, port_called
+            )
         # Do not retain a private port exception (or its request) as public context.
-        raise OperationError(failure, operation_id, reason_code=reason)
+        assert failure is not None
+        raise failure
+
+    def _intent_possible(self, operation_id: str) -> bool:
+        try:
+            return self.repository.operation(operation_id).dispatch_attempt_id is not None
+        except (YorungeError, OSError, KeyboardInterrupt, CancelledError):
+            # An unreadable post-arm boundary cannot prove that the commit rolled back.
+            return True
+
+    def _save_uncertain(self, operation_id: str, owner: OperationLease) -> None:
+        try:
+            self._same_process(operation_id)
+        except (KeyboardInterrupt, CancelledError):
+            return
+        try:
+            self.repository.uncertain(operation_id, owner)
+        except (YorungeError, OSError, KeyboardInterrupt, CancelledError):
+            # The latch survives even if the local unknown marker cannot be saved.
+            pass
+
+    def _dispatch_problem(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        error: BaseException,
+        armed: bool,
+        port_called: bool,
+    ) -> OperationError:
+        cancelled = isinstance(error, (KeyboardInterrupt, CancelledError))
+        if not armed and (not cancelled or not self._intent_possible(operation_id)):
+            raise error
+        self._save_uncertain(operation_id, owner)
+        if cancelled:
+            return OperationError(
+                "operation_uncertain", operation_id, reason_code="request_cancelled"
+            )
+        if not isinstance(error, Exception):
+            raise error
+        if not port_called and isinstance(error, YorungeError):
+            return OperationError(
+                error.code,
+                operation_id,
+                reason_code=error.reason_code if isinstance(error, OperationError) else error.code,
+                capacity_kind=error.capacity_kind if isinstance(error, OperationError) else None,
+            )
+        return OperationError(
+            "operation_uncertain",
+            operation_id,
+            reason_code=error.code if isinstance(error, YorungeError) else "operation_uncertain",
+        )
 
     def reconcile(self, operation_id: str, owner: OperationLease) -> JobView:
         with self._identified(operation_id):
