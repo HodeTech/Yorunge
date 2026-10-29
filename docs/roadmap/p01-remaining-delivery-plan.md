@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** ADR-0017/0018 Accepted; P01-5a/b verified; kullanıcı review ürün/secret/RSS düzeltmeleri ve [bf652f6 kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. P01-6b c2d8029 startup CI reddi nedeniyle yeniden in_progress; [ADR-0019](../decisions/0019-reference-startup-performance.md) Proposed. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** ADR-0017/0018 Accepted; P01-5a/b verified; kullanıcı review ürün/secret/RSS düzeltmeleri ve [bf652f6 kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. P01-6b c2d8029 startup CI reddi nedeniyle yeniden in_progress; [ADR-0019](../decisions/0019-reference-startup-performance.md) Accepted; uygulama sürüyor. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 
@@ -37,6 +37,14 @@ Kaynak kimliği, tüm başarısız/başarılı örnekler ve ölçüm ortamı kor
 Son current/faz/matris/reference/modül/README/changelog kayıtları yalnız uygulanan sınıra güncellenir. Bir development PR'ı açılır; son head'in CI ve review sonuçları izlenir, kullanıcı review/merge'ü beklenir. Merge/release yapılmaz. P01 tamamlandı ifadesi bütün kart kabulü bitmeden yazılmaz; P02/P03 canlı hizmet/araç kapsamı P01 teknik borcu diye içeri alınmaz.
 
 ## Hazırlık kaydı
+
+### ADR-0019 uygulama takibi — 2026-10-30
+
+Kullanıcı, iki kanıt sözleşmesi review bulgusu kapatıldıktan sonra ADR-0019'un Accepted yapılmasını ve uygulamayı yetkilendirdi. Wheel'in tarihsel kimliği/güncel runtime eşliği ve Linux tanısının görünürlük/kalıcı saklama sorumluluğu kararda ayrıldı. Linux'a özgü yavaşlamanın M5 kapısına rağmen geçebilmesi açık bir kabul sınırıdır.
+
+1. Kapalı startup evidence biçimi, güncel kaynak/kurulu runtime/fixture ve her süreçte süre dışı typed çıktı doğrulaması; bağımsız pozitif/negatif vektörler ve reference verifier. Commit, iki fresh review turu ve doğrulanan fix'ler.
+2. Strict Linux diagnostic sınıflandırması, görünür summary/warning/receipt ve 90 günlük artifact; zorunlu M5 startup/jobs ve Linux raw kapıları. Katkı/performans/kanıt belgeleri, CI hata testleri; commit ve iki fresh review turu.
+3. Kaynak dondurulduktan sonra yeni wheel/sdist/temiz kurulum, seri fresh M5 startup/jobs/raw kanıtı, üç ortam CI ve kalıcı kayıtlar. Geçmiş başarısızlıklar korunur; açık saklama takibi ve son-head sonuçlarıyla PR #11 güncellenir. Kullanıcı merge eder.
 
 Aşağıdaki durum yalnız hazırlık anına aittir; sonraki uygulama ve kabul yukarıdaki kapanış kaydındadır.
 

@@ -10,11 +10,11 @@ capabilities: [C01, C02, C12, C13]
 
 **Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-5a/b önceki kabulü, adım 5 bütünleşik testleri ve adım 6 önceki CI/performans sonuçları [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
-**PR #11 inceleme takibi:** RSS baseline/büyüme ve bf652f6 kabulü tamamlandı. Son belge head c2d8029 startup CI reddi sonrası kart yeniden `in_progress`; [ADR-0019](../../decisions/0019-reference-startup-performance.md) onay bekliyor. Kapı henüz değiştirilmedi. [bf652f6 kaynak kabulü](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı); önceki teslim kaydı tarihseldir. [Takip planı](../p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi).
+**PR #11 inceleme takibi:** RSS baseline/büyüme ve bf652f6 kabulü tamamlandı. Son belge head c2d8029 startup CI reddi sonrası kart yeniden `in_progress`; [ADR-0019](../../decisions/0019-reference-startup-performance.md) Accepted; iki P2 kapandı, uygulama sürüyor. [bf652f6 kaynak kabulü](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı); önceki teslim kaydı tarihseldir. [Takip planı](../p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve önceki bütünleşik test/kurulum sonuçları kayıtlıdır; son raw v2 ve bf652f6 native Linux kabulü tamamlandı; son head startup CI takibi ve ADR-0019 onayı açıktır.
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve önceki bütünleşik test/kurulum sonuçları kayıtlıdır; son raw v2 ve bf652f6 native Linux kabulü tamamlandı; son head startup CI takibi ve Accepted ADR-0019 uygulaması açıktır.
 
 ## Giren ve girmeyen kapsam
 
