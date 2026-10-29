@@ -1476,6 +1476,52 @@
       }
     },
     {
+      "name": "p01-6-reference-jobs-idle.json",
+      "archive": "raw/p01-6-reference-jobs-idle.json.gz",
+      "original_commit": null,
+      "content_bytes": 121771,
+      "content_sha256": "c861b321a8c1dc0f8740e756c33f7f1e2a97e869672d2fb7877672116a4306d3",
+      "archive_bytes": 21327,
+      "archive_sha256": "bc388229d999ada0e04070c91e91a33080144ba8d6c5d9fea2412238014f6dc9",
+      "summary": {
+        "source_commit": "c3d43ea970127fb52781fe79d06fc352bbe2a774",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 100.32166610471904,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 104.82287500053644,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 160.01574997790158,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 111.04537500068545,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
       "name": "p01-6-reference-jobs.json",
       "archive": "raw/p01-6-reference-jobs.json.gz",
       "original_commit": null,
@@ -1622,6 +1668,61 @@
             "samples": 30,
             "p95_ms": 124.84737485647202,
             "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-reviewed-stream.json",
+      "archive": "raw/p01-6-reviewed-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 47645,
+      "content_sha256": "cddea31167bbeb8d31c02f74a714f7b72044161f85ba0442a6f20d49a52b8903",
+      "archive_bytes": 5950,
+      "archive_sha256": "d5d11e022f3b481a65c3ca02c3d605cd5d35465353c2e202dedc7fccc4c3cb9d",
+      "summary": {
+        "source_commit": "c3d43ea970127fb52781fe79d06fc352bbe2a774",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v1",
+        "passed": true,
+        "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_baseline": "fresh client process high-water maxRSS after imports, source verification and fixed 32KiB TLS warmup; not instantaneous RSS",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "extra_rss_bytes": 0,
+            "baseline_rss_bytes": 57294848,
+            "peak_rss_bytes": 57294848,
+            "elapsed_seconds": 0.025762417120859027,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "extra_rss_bytes": 0,
+            "baseline_rss_bytes": 49643520,
+            "peak_rss_bytes": 49643520,
+            "elapsed_seconds": 0.39515329198911786,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "extra_rss_bytes": 704512,
+            "baseline_rss_bytes": 49414144,
+            "peak_rss_bytes": 50118656,
+            "elapsed_seconds": 1.5931844578590244,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
             "passed": true
           }
         }
