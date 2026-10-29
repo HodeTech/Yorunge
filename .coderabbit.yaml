@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  path_filters:
+    - "!docs/research/raw/**"
+  path_instructions:
+    - path: "docs/research/evidence-manifest.json"
+      instructions: >-
+        Review source provenance, sample counts, failed outcomes and budget claims.
+        Full raw measurements are losslessly archived and checked by CI.
+        Historical successes must not be presented as current-source acceptance.

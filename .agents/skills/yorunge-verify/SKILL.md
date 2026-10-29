@@ -11,5 +11,6 @@ description: Yörünge değişikliği için yerel test, belge/skill denetimi, bu
 3. Testler çevrimdışı/sentetik kalmalı. Gerçek EVREN hesabı, veri aktarımı, GPU işi veya haricî araç kurulumu için bu skill yeni yetki sağlamaz.
 4. Paket değişikliğinde wheel/sdist üyelerini ve temiz venv import/konsol kökenini denetle. Ajanın CLI'dan kaynak import etmesi, kurulan artefaktın doğru olduğuna tek başına kanıt değildir.
 5. Performansta standarttaki örnek sayısı, ortam ve p95 yöntemini kullan; ilk süreç ölçümünü OS cache'i boşaltılmış fiziksel soğuk başlangıç diye anlatma. Aktarım yoksa RSS/eşzamanlılık kabulünü yapılmış gösterme.
+6. Arşivlenmiş ölçüm değiştiyse [kanıt standardındaki](../../../docs/standards/research-evidence.md) bütünlük kontrolünü çalıştır. Başarısız eski koşunun doğru saklanması yeni performans kabulü değildir; kaynak ve son kabul ilişkisi ayrıca incelenir.
 
 Çıktı: geçen, kalan/başarısız ve çalıştırılmayan kontroller; komut/ortam ve kanıt yeri. İlgili kartın `verified` kararı ancak kendi kabul ölçütleri sağlanınca verilir. Metadata ve link doğrulaması, modelin skill'i gerçekten doğru seçtiği veya canlı API'nin uyduğu anlamına gelmez.

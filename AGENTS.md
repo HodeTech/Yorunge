@@ -35,6 +35,8 @@ Doğrulamayı değişikliğe göre seç. Sadece belge değişikliğinde bağlant
 - `Master` hedefli PR yalnız aynı deponun `development` dalından açılır. `Master` birleştirmesini ve release/yayın işlemlerini kullanıcı yapar; ajan bunları kendiliğinden gerçekleştirmez.
 - Kanonik politika ve ilk kurulum istisnası [Git/yayın standardındadır](docs/standards/git-release.md). Aynı GitHub kimliğini kullanmak kullanıcı/ajan ayrımını teknik olarak sağlamaz.
 
+Büyük üretilmiş ölçümlerde [kanıt standardını](docs/standards/research-evidence.md) uygula. `docs/research/raw/` açılımlarını genel review bağlamına taşıma; manifest/rapor/ölçüm kodu ve sabit test vektörlerini incele, arşivi araçla doğrula. Gerekirse yalnız ilgili ham örneği aç.
+
 ## Özel analiz sınırı
 
 `docs/analysis/private/` yerel analiz arşividir ve Git dışında tutulur. Buradaki dosya, proje adı, kaynak bağlantısı veya test sonuçlarına üretim kodunda, yayımlanabilir dokümanlarda, changelog'da ve commit/PR içeriklerinde referans verme. Gerekli ürün kararını kendi kanonik belgesinde bağımsız anlat; doğrulanabilir dış sözleşme için resmî kaynak kullan. Özel arşivi paket, site, doküman üretimi veya yayın girdisine dahil etme; zorla stage etme.

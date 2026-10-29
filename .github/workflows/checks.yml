@@ -36,6 +36,7 @@ jobs:
           .venv/bin/mypy
           .venv/bin/python scripts/check-docs.py
           .venv/bin/python scripts/check-agent-guides.py
+          .venv/bin/python scripts/research_evidence.py verify
       - name: Test offline contracts and real console entry
         run: .venv/bin/pytest
       - name: Build and verify both distributions in clean environments

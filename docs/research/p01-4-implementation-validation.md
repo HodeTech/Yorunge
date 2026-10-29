@@ -20,7 +20,7 @@ Operation-capable runtime'ın mevcut restore/recover allowlist kapısı gerçek 
 
 ### İlk migration kaynak kabulü
 
-[Ham 24 koşu](p01-4-step-1-migration.json): Apple M5 Max, macOS 27.0.1 arm64, CPython 3.11.18, SQLite sürümü ham kayıtta, SSD/APFS. Kaynak c3dbfe7 üzerindeki adım 1 çalışma ağacının dosya SHA-256'larıdır; ölçüm öncesi/sonrası aynıdır. Başka ağır test çalışmadan ölçüldü. Bütün koşular gerçek şema 6'ya, sıfır operation ile ve mevcut 5 s deadline açıkken ulaştı; eski payload satır SHA'ları eşit kaldı. VM progress sayımı deadline callback'ini korudu. Bu tablo her üç örneğin **en yavaşıdır**, p95 veya genel donanım garantisi değildir.
+[Ham 24 koşu](evidence.md#p01-4-step-1-migration): Apple M5 Max, macOS 27.0.1 arm64, CPython 3.11.18, SQLite sürümü ham kayıtta, SSD/APFS. Kaynak c3dbfe7 üzerindeki adım 1 çalışma ağacının dosya SHA-256'larıdır; ölçüm öncesi/sonrası aynıdır. Başka ağır test çalışmadan ölçüldü. Bütün koşular gerçek şema 6'ya, sıfır operation ile ve mevcut 5 s deadline açıkken ulaştı; eski payload satır SHA'ları eşit kaldı. VM progress sayımı deadline callback'ini korudu. Bu tablo her üç örneğin **en yavaşıdır**, p95 veya genel donanım garantisi değildir.
 
 | Kaynak şema | Temsilî hacim en yavaş ms | Maksimum geçerli hacim en yavaş ms |
 |---|---:|---:|
@@ -108,7 +108,7 @@ Tanısal aynı-fixture koşuları yaklaşık 3,0 s full/2,9 s preview/3,7 s rese
 
 Runtime kaynakları sabitken tam takım **1.580 passed / 239,09 s**; Ruff format/lint, strict mypy (49 kaynak), 114 Markdown ve 6 skill/9 kart denetimi geçti. Sonrasında probe ortam guard'ının iki ek negatif testiyle beş helper testi ayrıca geçti. Bu sayıların toplamı yeni bir full test koşusu diye sunulmaz. Ürün commit'i sonrası iki fresh review turu sıradadır; P01-4b henüz verified değildir.
 
-[Ham 27 işlem](p01-4-step-3-operation-budget.json): Apple M5 Max, macOS 27.0.1 arm64, CPython 3.11.18, SQLite sürümü ham kayıtta, doğrulanmış SSD/APFS; repo frozen .venv/editable import kökeni açıkça denetlendi. Her layout için üç yeni store ve her işlem için ayrı worker; hazırlık/hash maliyeti kullanım senaryosu süresine dahil değil, OS/disk cache'i boşaltılmadı. Test/build/başka profiler eşzamanlı çalıştırılmadı. İlk kaynak çalışma ağacı tabanı 0b8c2cf; runtime/seeder/probe SHA-256'ları ölçüm boyunca sabit. Commit hash'i yerine bu tam kaynak haritası ölçülen içeriği tanımlar.
+[Ham 27 işlem](evidence.md#p01-4-step-3-operation-budget): Apple M5 Max, macOS 27.0.1 arm64, CPython 3.11.18, SQLite sürümü ham kayıtta, doğrulanmış SSD/APFS; repo frozen .venv/editable import kökeni açıkça denetlendi. Her layout için üç yeni store ve her işlem için ayrı worker; hazırlık/hash maliyeti kullanım senaryosu süresine dahil değil, OS/disk cache'i boşaltılmadı. Test/build/başka profiler eşzamanlı çalıştırılmadı. İlk kaynak çalışma ağacı tabanı 0b8c2cf; runtime/seeder/probe SHA-256'ları ölçüm boyunca sabit. Commit hash'i yerine bu tam kaynak haritası ölçülen içeriği tanımlar.
 
 Aşağıdakiler her grubun üç örneğindeki **en yüksek** değerdir; 3 örnek p95 diye adlandırılmaz. 27/27 çağrı kendi özgün 5 s kontrol deadline'ıyla ve wall ölçümünde 5.000 ms altında tamamlandı; timeout başarı sayılmadı, örnek atılmadı. SQLite VM bilgisi özgün n=1.000 progress callback'inin çağrı×quantum örneklemesidir; her callback deadline'a delege edildi, exact opcode sayısı iddia edilmez.
 
@@ -140,7 +140,7 @@ Yeni ilk regresyon koşusunda sekiz negatif beklenen davranışı vermedi; autho
 
 0092d40 üzerinde farklı üç fresh salt-okunur reviewer (GPT-6 Astra xhigh state/dayanıklılık, GPT-6.1 Sol high sözleşme/credential, GPT-6 Astra high doğrulama/kaynak) yeni doğrulanmış kusur bulmadı. State reviewer 27 gerçek-store/kesinti/recovery negatifini; sözleşme reviewer 56 reconciliation + 47 wire/relationship testini; kaynak reviewer 52 wire/probe + 23 memo testini çalıştırdı. Bağımsız eski/yeni scalar event karşılaştırması **486 varyantta sıfır ayrışma** verdi. Bu hedefli sayılar yeni full koşu diye toplanmaz. Son runtime kaynağındaki tam takım 1.594 testtir; default strict mypy src/scripts birlikte 49 kaynakta da geçti. Yeni fix gerekmedi.
 
-Bütün reviewer/test süreçleri bittikten sonra, kaynak sabitken [yeni ham 27 işlem](p01-4-step-3-reviewed-operation-budget.json) aynı doğrulanmış SSD/APFS/M5 Max/editable .venv ortamında çalıştırıldı. Kaynak haritası 0092d40'a aittir ve ölçüm boyunca değişmedi; önceki kayıt ezilmedi. **27/27** işlem özgün 5 s deadline ve n=1.000 callback delegasyonuyla pozitif tamamlandı. Plan/onay/event/outcome hash ve hacimleri, satır sayıları ve reset etkileri korundu; örnek atılmadı. Aşağıdaki değerler üç örneğin maksimumudur:
+Bütün reviewer/test süreçleri bittikten sonra, kaynak sabitken [yeni ham 27 işlem](evidence.md#p01-4-step-3-reviewed-operation-budget) aynı doğrulanmış SSD/APFS/M5 Max/editable .venv ortamında çalıştırıldı. Kaynak haritası 0092d40'a aittir ve ölçüm boyunca değişmedi; önceki kayıt ezilmedi. **27/27** işlem özgün 5 s deadline ve n=1.000 callback delegasyonuyla pozitif tamamlandı. Plan/onay/event/outcome hash ve hacimleri, satır sayıları ve reset etkileri korundu; örnek atılmadı. Aşağıdaki değerler üç örneğin maksimumudur:
 
 | Fixture | Full ms | Preview ms | Reset ms | Tepe RSS MiB |
 |---|---:|---:|---:|---:|
@@ -150,7 +150,7 @@ Bütün reviewer/test süreçleri bittikten sonra, kaynak sabitken [yeni ham 27 
 
 Hacimler önceki kaynak kabulündekiyle aynı kotalardadır; gerçek her örneğin byte/row bilgisi ham kayıttadır. Karma reset'in **63,35 ms** marjı hâlâ dardır; bu kayıt diğer host/işletim sistemi veya her olası payload için kesin süre garantisi değildir. Eşik gevşetilmedi, timeout başarı sayılmadı.
 
-Ardından aynı sabit 0092d40 runtime kaynağıyla [24 yeni migration örneği](p01-4-step-3-reviewed-migration-budget.json), özgün 5 s deadline/callback açıkken eski şema 2/3/4/5'ten şema 6'ya ulaştı; **24/24 geçti**. Her şema/hacim için üç fresh store/worker; normal maksimumları sırasıyla 1.112,27 / 1.356,27 / 1.407,47 / 957,51 ms, yoğun maksimumları **2.468,95 / 4.337,37 / 4.336,78 / 3.270,34 ms** oldu. Kaynak payload/satırları korundu, yeni operation tabloları boş kaldı ve son full validation geçti. CPU/OS/Python/SSD/APFS, kaynak hash'leri, VM/faz kayıtları ham dosyadadır. Bu yeni kabul ilk adımın tarihsel a73608a ölçümü yerine güncel kodu bağlar; eski kayıt silinmedi.
+Ardından aynı sabit 0092d40 runtime kaynağıyla [24 yeni migration örneği](evidence.md#p01-4-step-3-reviewed-migration-budget), özgün 5 s deadline/callback açıkken eski şema 2/3/4/5'ten şema 6'ya ulaştı; **24/24 geçti**. Her şema/hacim için üç fresh store/worker; normal maksimumları sırasıyla 1.112,27 / 1.356,27 / 1.407,47 / 957,51 ms, yoğun maksimumları **2.468,95 / 4.337,37 / 4.336,78 / 3.270,34 ms** oldu. Kaynak payload/satırları korundu, yeni operation tabloları boş kaldı ve son full validation geçti. CPU/OS/Python/SSD/APFS, kaynak hash'leri, VM/faz kayıtları ham dosyadadır. Bu yeni kabul ilk adımın tarihsel a73608a ölçümü yerine güncel kodu bağlar; eski kayıt silinmedi.
 
 **P01-4b bu dalda verified:** adım 1–3 uygulama, her adımda iki fresh review turu ve doğrulanmış fix'ler, 1.594 test, 27 operation + 24 migration pozitif kaynak kabulü tamamlandı. Public jobs/kurulu artefakt/200 ms kabulü adım 4'te tamamlanacak; paket PR'ı henüz açılmadı.
 
@@ -166,7 +166,7 @@ Kapalı cursor store/filtre ve artan immutable created_at/ID anahtarına bağlı
 
 ### Kurulu jobs performansı ve veri hacmi
 
-[İlk jobs ham kaydı](p01-4-step-4-initial-jobs-budget.json), M5 Max/macOS 27.0.1/CPython 3.11.18/SSD/APFS üzerinde, geliştirme araçları içermeyen ayrı frozen runtime venv'e kurulu wheel'i kullanır. Her modda ilk süreç ayrı, üç warmup ve **30 yeni süreç**; nearest-rank p95, tüm örnekler ve tam kaynak hash haritası korunur. Kaynak ölçüm boyunca değişmedi, kurulu tüm Python kaynak baytları checkout adayıyla eşleşti. Setup/hash/ek tanısal worker süreleri komut ölçümüne katılmadı; OS cache'i boşaltılmadı ve fiziksel soğuk başlangıç iddiası yoktur. Yeni jobs için önceki sürüm karşılaştırması uydurulmadı; mutlak 200 ms hedefidir.
+[İlk jobs ham kaydı](evidence.md#p01-4-step-4-initial-jobs-budget), M5 Max/macOS 27.0.1/CPython 3.11.18/SSD/APFS üzerinde, geliştirme araçları içermeyen ayrı frozen runtime venv'e kurulu wheel'i kullanır. Her modda ilk süreç ayrı, üç warmup ve **30 yeni süreç**; nearest-rank p95, tüm örnekler ve tam kaynak hash haritası korunur. Kaynak ölçüm boyunca değişmedi, kurulu tüm Python kaynak baytları checkout adayıyla eşleşti. Setup/hash/ek tanısal worker süreleri komut ölçümüne katılmadı; OS cache'i boşaltılmadı ve fiziksel soğuk başlangıç iddiası yoktur. Yeni jobs için önceki sürüm karşılaştırması uydurulmadı; mutlak 200 ms hedefidir.
 
 | Yol | p95 ms | Sınır ms | Ayrı tanısal worker tepe RSS MiB |
 |---|---:|---:|---:|
@@ -181,11 +181,11 @@ Ek tanısal worker bütün interpreter/import yaşamının RSS tepesini ölçer;
 
 ### Artefakt, yardım ve mevcut başlangıç kapıları
 
-[İlk iki temiz kurulum](p01-4-step-4-initial-installations.json): wheel **50**, sdist **310** izinli üye. İkisinde de konsol/import kökeni ve eski v1/cache/execution + yeni boş olmayan jobs CLI/API/text smoke geçti. Kurulu ölçüm wheel SHA-256'sı ve temiz kurulum wheel'i aynıdır: `03829c63cd3e0b2c0206ddcb92a8456489c7c5a4711566be000201ac200398b3`. Fixture kaynak geliştirme ortamında hazırlanır; temiz runtime'a pytest veya fixture backend kurulmaz. Bu ilk build kanıtıdır, yayın veya son review head artefaktı değildir.
+[İlk iki temiz kurulum](evidence.md#p01-4-step-4-initial-installations): wheel **50**, sdist **310** izinli üye. İkisinde de konsol/import kökeni ve eski v1/cache/execution + yeni boş olmayan jobs CLI/API/text smoke geçti. Kurulu ölçüm wheel SHA-256'sı ve temiz kurulum wheel'i aynıdır: `03829c63cd3e0b2c0206ddcb92a8456489c7c5a4711566be000201ac200398b3`. Fixture kaynak geliştirme ortamında hazırlanır; temiz runtime'a pytest veya fixture backend kurulmaz. Bu ilk build kanıtıdır, yayın veya son review head artefaktı değildir.
 
-[30 yardım çıktısı](p01-4-initial-help-parity.json) adım 3 sonuyla karşılaştırıldı: 29'u bayt düzeyinde aynı, kökte yalnız beklenen jobs seçeneği/açıklaması değişti. Yeni jobs/aile/fiil yardımının metadata guard'ı da geçti.
+[30 yardım çıktısı](evidence.md#p01-4-initial-help-parity) adım 3 sonuyla karşılaştırıldı: 29'u bayt düzeyinde aynı, kökte yalnız beklenen jobs seçeneği/açıklaması değişti. Yeni jobs/aile/fiil yardımının metadata guard'ı da geçti.
 
-[İlk eşli startup kabulü](p01-4-step-4-initial-startup.json), development a9f1f2e detached checkout'u ile bu adayın ayrı frozen wheel/runtime ortamlarını aynı host'ta AB/BA sırasıyla ölçer. Üç warmup + 30 çift, eşit 1.024 cache/1.212.625 payload byte ve bütün örnekler korunur; kaynak sabittir. Aday p95 help **24,766**, version **23,005**, context **72,323**, cache **112,890 ms** ile mevcut 500/200 ms kapılarını geçti. Bu yerel kabul Linux PR/merge çıktısı değildir; kullanıcının açık tercihiyle o dış takip paket PR'ında değerlendirilecektir.
+[İlk eşli startup kabulü](evidence.md#p01-4-step-4-initial-startup), development a9f1f2e detached checkout'u ile bu adayın ayrı frozen wheel/runtime ortamlarını aynı host'ta AB/BA sırasıyla ölçer. Üç warmup + 30 çift, eşit 1.024 cache/1.212.625 payload byte ve bütün örnekler korunur; kaynak sabittir. Aday p95 help **24,766**, version **23,005**, context **72,323**, cache **112,890 ms** ile mevcut 500/200 ms kapılarını geçti. Bu yerel kabul Linux PR/merge çıktısı değildir; kullanıcının açık tercihiyle o dış takip paket PR'ında değerlendirilecektir.
 
 ### Adım 4 — Birinci review turu
 
@@ -215,7 +215,7 @@ Kapanış belge/kanıt audit'inde GPT-6 Astra high son metrikleri ve kaynak hari
 
 ### Son operation ve migration kabulü
 
-[Son 27 operation işlemi](p01-4-final-operation-budget.json), normal/terminal yoğun/karma yoğun fixture başına üç yeni store ve fresh worker ile **27/27** geçti. Özgün 5 s deadline, n=1.000 progress quantum ve her callback'in asıl deadline'a delegasyonu korundu; timeout kabul sayılmadı, örnek atılmadı. Üç örneğin maksimumları:
+[Son 27 operation işlemi](evidence.md#p01-4-final-operation-budget), normal/terminal yoğun/karma yoğun fixture başına üç yeni store ve fresh worker ile **27/27** geçti. Özgün 5 s deadline, n=1.000 progress quantum ve her callback'in asıl deadline'a delegasyonu korundu; timeout kabul sayılmadı, örnek atılmadı. Üç örneğin maksimumları:
 
 | Fixture | Full ms | Preview ms | Reset ms | Tepe worker RSS MiB |
 |---|---:|---:|---:|---:|
@@ -225,11 +225,11 @@ Kapanış belge/kanıt audit'inde GPT-6 Astra high son metrikleri ve kaynak hari
 
 Azami 1.024 operation/16.384 attempt/262.144 normal event, karma fixture'da 512 terminal + 512 adet 255 normal geçişli iş ve maksimum eski cache/plan payload hacmi korundu. Reset immutable history/plan/onay/outcome'u koruyup current owner/cache'i invalid etti; ham kayıt logical row/hash/hacim ve reset etkisini ayrı doğrular. **En yavaş karma reset 4.931,328083 ms; marj 68,671917 ms'dir.** Bu dar marj yalnız kayıtlı M5 Max/macOS/SSD/APFS referans kabulüdür; farklı host veya engellenemeyen sistem I/O'su için mutlak süre garantisi değildir. Eşik/kapasite/validation gevşetilmedi.
 
-[Son 24 migration](p01-4-final-migration-budget.json), şema 2/3/4/5 normal ve yoğun kaynakları üçer yeni store/worker'da şema 6'ya yükseltti: **24/24** pozitif, kaynak payload/satırları aynı, yeni operation tabloları boş, son full validation başarılı. Normal maksimumları 1.087,95 / 1.375,90 / 1.412,69 / 954,26 ms; yoğun maksimumları 2.455,23 / 4.316,42 / 4.241,66 / 3.151,94 ms. Kaynak/ortam, VM ve faz kayıtları ham dosyadadır.
+[Son 24 migration](evidence.md#p01-4-final-migration-budget), şema 2/3/4/5 normal ve yoğun kaynakları üçer yeni store/worker'da şema 6'ya yükseltti: **24/24** pozitif, kaynak payload/satırları aynı, yeni operation tabloları boş, son full validation başarılı. Normal maksimumları 1.087,95 / 1.375,90 / 1.412,69 / 954,26 ms; yoğun maksimumları 2.455,23 / 4.316,42 / 4.241,66 / 3.151,94 ms. Kaynak/ortam, VM ve faz kayıtları ham dosyadadır.
 
 ### Son kurulu jobs, startup ve artefakt kabulü
 
-[Son jobs ölçümü](p01-4-final-jobs-budget.json), iki review fix'i dahil aynı 17de965 Python kaynak baytlarını içeren ayrı frozen runtime-only wheel kurulumundadır. İlk süreç ayrı, üç warmup ve her yol için **30 ayrı süreç**, nearest-rank p95 ve bütün örnekler korunur. Normal/yoğun hacimler ve yöntemin sınırları ilk ölçümde açıklandığı gibidir; gerçek byte/row değerleri bu son ham dosyada da vardır.
+[Son jobs ölçümü](evidence.md#p01-4-final-jobs-budget), iki review fix'i dahil aynı 17de965 Python kaynak baytlarını içeren ayrı frozen runtime-only wheel kurulumundadır. İlk süreç ayrı, üç warmup ve her yol için **30 ayrı süreç**, nearest-rank p95 ve bütün örnekler korunur. Normal/yoğun hacimler ve yöntemin sınırları ilk ölçümde açıklandığı gibidir; gerçek byte/row değerleri bu son ham dosyada da vardır.
 
 | Yol | p95 ms | Sınır ms | Ayrı tanısal worker tepe RSS MiB |
 |---|---:|---:|---:|
@@ -240,9 +240,9 @@ Azami 1.024 operation/16.384 attempt/262.144 normal event, karma fixture'da 512 
 
 Diagnostic list/show toplam 44/46 SQLite statement; yoğun örneklenmiş VM quanta 203.000/2.000, bütün callback'ler delege edildi. Normal callback sıfır olması gerçek VM adımı sıfır demek değildir. Ayrı diagnostic RSS, timed CLI süreçlerinin bireysel RSS'i diye gösterilmez. Bu snapshot'ın mutable payload hash kapsamı sınırlıdır; source/read-only sözleşmesi ve gerçek snapshot/bozuk projection testleri ayrı kanıttır.
 
-[Son eşli startup](p01-4-final-startup.json), a9f1f2e baseline ile aynı host'ta AB/BA, eşit 1.024 kayıtlı cache ve 30 çift kullanır. Aday p95 help **23,374**, version **21,446**, context **90,236**, cache **114,536 ms** ile mevcut 500/200 ms kapılarını geçti. Kaynak ölçüm boyunca değişmedi; aynı interpreter ve frozen runtime paketleriyle yapılan yerel ölçümdür. Linux PR/merge çıktısı yerine kullanılmaz.
+[Son eşli startup](evidence.md#p01-4-final-startup), a9f1f2e baseline ile aynı host'ta AB/BA, eşit 1.024 kayıtlı cache ve 30 çift kullanır. Aday p95 help **23,374**, version **21,446**, context **90,236**, cache **114,536 ms** ile mevcut 500/200 ms kapılarını geçti. Kaynak ölçüm boyunca değişmedi; aynı interpreter ve frozen runtime paketleriyle yapılan yerel ölçümdür. Linux PR/merge çıktısı yerine kullanılmaz.
 
-[İki son ürün temiz kurulumu](p01-4-final-installations.json), wheel 50/sdist 314 izinli üye; konsol/import kökeni, eski v1/cache/execution ve yeni boş olmayan jobs CLI/API/text smoke geçti. Performans ölçümleri test/build/profiler ile çakıştırılmadı; performans dışındaki son test/build hazırlığı aynı anda çalıştı. Jobs, paired startup ve iki kurulumun wheel SHA-256'sı aynıdır: **d834ec89c0d415b92bb65f7916b42a9d6237d87e6bc75846671501884b6ac9ff**. Bu ürün-kaynak build kanıtı son kanıt/durum belgeleri eklenmeden alınmıştır; PR CI tam teslim tree'sinden yeniden paket üretir. Yardım source'u 5c7ad8c'den sonra değişmedi; [30 çıktı kabulü](p01-4-initial-help-parity.json) geçerlidir.
+[İki son ürün temiz kurulumu](evidence.md#p01-4-final-installations), wheel 50/sdist 314 izinli üye; konsol/import kökeni, eski v1/cache/execution ve yeni boş olmayan jobs CLI/API/text smoke geçti. Performans ölçümleri test/build/profiler ile çakıştırılmadı; performans dışındaki son test/build hazırlığı aynı anda çalıştı. Jobs, paired startup ve iki kurulumun wheel SHA-256'sı aynıdır: **d834ec89c0d415b92bb65f7916b42a9d6237d87e6bc75846671501884b6ac9ff**. Bu ürün-kaynak build kanıtı son kanıt/durum belgeleri eklenmeden alınmıştır; PR CI tam teslim tree'sinden yeniden paket üretir. Yardım source'u 5c7ad8c'den sonra değişmedi; [30 çıktı kabulü](evidence.md#p01-4-initial-help-parity) geçerlidir.
 
 **P01-4 yerel paket kabulü tamamlandı:** P01-4a önceki PR #6'da, P01-4b ve P01-4c bu dalda verified. Genel P01 devam eder; sıradaki paket P01-5a HTTP/SDK ve ortak taşıma, ardından P01-5b sonuç/akış/iptal hattıdır. PR development'a kullanıcı incelemesi için açılır; bu kayıt development merge'i, Master aktarımı, release veya canlı EVREN kabulü değildir.
 
@@ -272,7 +272,7 @@ Aynı 410c29e head ve aynı `d834ec89…` wheel ile [40807762132](https://github
 
 227e800 ürün kaynaklarını içeren e638194 üzerinde tam takım **1.705 passed / 275,60 s**, iki temiz kurulum ve 30 kurulu yardım çıktısının ilk P01-4 çıktılarıyla byte eşliği geçti. Ek ölçüm betiğinin CPU yardımcısı değişikliği altı sözleşme testiyle ayrıca doğrulandı. İki bağımsız statik inceleme turunda yeni kusur bulunmadı. Sonar e638194 taraması başarılı ve **0 annotation**; S8705 `RESOLVED / FALSE-POSITIVE`, S8707 kod düzeltmesi sonrası `CLOSED / FIXED` durumundadır.
 
-Buna rağmen [aynı kaynaktaki 27 yoğun işlem](p01-4-quality-operation-budget.json) **yerel kabulü geçmedi**: 21 pozitif, iki terminal reset, üç karma reset ve bir karma full işlemi `state_busy` ile reddedildi. Kaynak sabit, 5 s/n=1.000 kapıları değişmedi; immutable history/hacim ve satır sayıları korundu. Bu dosya başarısız tanı olarak tutulur, son kabul yerine sunulmaz. Güncel dış Linux CI'ın başarılı olması bu yerel başarısızlığı kapatmaz.
+Buna rağmen [aynı kaynaktaki 27 yoğun işlem](evidence.md#p01-4-quality-operation-budget) **yerel kabulü geçmedi**: 21 pozitif, iki terminal reset, üç karma reset ve bir karma full işlemi `state_busy` ile reddedildi. Kaynak sabit, 5 s/n=1.000 kapıları değişmedi; immutable history/hacim ve satır sayıları korundu. Bu dosya başarısız tanı olarak tutulur, son kabul yerine sunulmaz. Güncel dış Linux CI'ın başarılı olması bu yerel başarısızlığı kapatmaz.
 
 Orijinal 5 s deadline ile alınan ayrı cProfile tanısı max-karma full kontrolde süreyle kesildi; bütün resetin veya başarıyla tamamlanmış işlemin profili değildir. Kesilene kadar 765.411 genel metin kontrolü yaklaşık 0,729 s, satır fingerprint'leri 0,425 s; metadata/operation-clock okuması yaklaşık 0,005 s idi. Bu nedenle metadata için değişiklik yapılmadı. Gerçek event satırları üzerinde AB/BA mikro karşılaştırmada hash update birleştirmesi daha yavaştı ve uygulanmadı; duplicate hook'un `dict(pairs)` + uzunluk kontrolü eşdeğer veriyle yaklaşık 0,707 yeni/eski medyan oranı verdi. Mikro kazanç paket kabulü sayılmaz.
 
@@ -282,7 +282,7 @@ Plan boyutu için sabit digest-ek-maliyeti formülü gibi daha kırılgan bir op
 
 ### Sonraki tanı — tekrar parse ve aynı key baytları
 
-[ad6cb92 üzerindeki ikinci 27 işlem](p01-4-hotpath-operation-budget.json) kaynak sabitken yine **21 pozitif / 6 reset state_busy** üretti; bütün örnekler tutuldu. [Kurulu önce/sonra A/B tanısı](p01-4-hotpaths-ab-full.json), aynı max-karma salt-okunur fixture'da üç AB/BA çiftinin tümünü özgün 5 s full kontrolünde tamamladı. Önce/sonra medyan CPU **4.066,555 / 4.101,192 ms**, wall **4.084,400 / 4.140,554 ms**; bu küçük tanı toplam bir kazanç göstermedi ve reset kabulü değildir. Kaynak Git baytları/wheel hash'leri ayrıca doğrulandı. Tekil LRU etkisini diğer iki değişiklikten ayıran bir iddia kurulmaz. Ek global metin cache'i kaldırıldı; uzunluk/Unicode kontrolü önceki doğrudan uygulamasına döndü.
+[ad6cb92 üzerindeki ikinci 27 işlem](evidence.md#p01-4-hotpath-operation-budget) kaynak sabitken yine **21 pozitif / 6 reset state_busy** üretti; bütün örnekler tutuldu. [Kurulu önce/sonra A/B tanısı](evidence.md#p01-4-hotpaths-ab-full), aynı max-karma salt-okunur fixture'da üç AB/BA çiftinin tümünü özgün 5 s full kontrolünde tamamladı. Önce/sonra medyan CPU **4.066,555 / 4.101,192 ms**, wall **4.084,400 / 4.140,554 ms**; bu küçük tanı toplam bir kazanç göstermedi ve reset kabulü değildir. Kaynak Git baytları/wheel hash'leri ayrıca doğrulandı. Tekil LRU etkisini diğer iki değişiklikten ayıran bir iddia kurulmaz. Ek global metin cache'i kaldırıldı; uzunluk/Unicode kontrolü önceki doğrudan uygulamasına döndü.
 
 İkinci dar azaltım, `decode_record` içindeki yinelenen tam JSON parse'ını kaldırır. Kanonik `CapabilityRecord.model_validate_json` hâlâ duplicate/nested/escaped key, nonfinite, strict UTF-8 ve tipleri doğrular. Başarılı modelde `schema_version` alanının `model_fields_set` içinde bulunması ayrıca zorunludur; default 2, açık sürümün yerine geçemez. Verilmiş sürümün tam integer olması mevcut before-validator ile korunur. Geçerli gerçek önbellek kaydının kök `schema_version` alanını silen; bu alanı bool, float, string, null veya yanlış integer yapan; eşit ya da kaçışla yazılmış yinelenen anahtar içeren varyantlar ayrı ayrı oluşturulur. Her varyant doğrudan kayıt çözücüsünde, ilk tam kontrolde ve sıcak önbellek sorgusunda `state_invalid` bekleyen testlerle denetlenir.
 
@@ -290,9 +290,9 @@ Aynı immutable satırın key baytları bir kez üretilip hem SHA-256 hem ASCII 
 
 ### Kota hesabının tekrarlanan serileştirme maliyeti
 
-[5d0b3a4 kaynak ölçümü](p01-4-cache-parse-operation-budget.json), 27 işlemin 24'ünü tamamladı; üç karma reset yine özgün 5 s kapısında `state_busy` verdi. Kaynak sabitti ve bütün sonuçlar korunur. [Ayrı tam reset tanısı](p01-4-reset-diagnostic.json) cProfile overhead'ini görmek için yalnız disposable fixture/test sürecinde 60 s pencere kullandı; **kabul değildir ve ürünün 5 s bütçesini değiştirmez**. Tanıda iki full validation, snapshot ve mutation/commit birlikte görüldü; byte kotası için model dump + Python canonical JSON tekrarları ölçüldü. JSON tabanlı yeni fingerprint önerisi de mevcut akıştan daha yavaş bulundu ve uygulanmadı.
+[5d0b3a4 kaynak ölçümü](evidence.md#p01-4-cache-parse-operation-budget), 27 işlemin 24'ünü tamamladı; üç karma reset yine özgün 5 s kapısında `state_busy` verdi. Kaynak sabitti ve bütün sonuçlar korunur. [Ayrı tam reset tanısı](evidence.md#p01-4-reset-diagnostic) cProfile overhead'ini görmek için yalnız disposable fixture/test sürecinde 60 s pencere kullandı; **kabul değildir ve ürünün 5 s bütçesini değiştirmez**. Tanıda iki full validation, snapshot ve mutation/commit birlikte görüldü; byte kotası için model dump + Python canonical JSON tekrarları ölçüldü. JSON tabanlı yeni fingerprint önerisi de mevcut akıştan daha yavaş bulundu ve uygulanmadı.
 
-[ASCII boyut mikro tanısı](p01-4-wire-size-micro.json), doğrulanmış plan **65.536**, capability **1.424** ve operation **1.984 byte** örneklerinde iki yöntem arasında eşit boyutla yaklaşık **0,642 / 0,504 / 0,455** yeni/eski medyan oranı gösterdi; bu yalnız yöntem tanısıdır. Desteklenen Pydantic alt sınırı 2.14.1'dir. Kısa metin LRU'su geri eklenmedi.
+[ASCII boyut mikro tanısı](evidence.md#p01-4-wire-size-micro), doğrulanmış plan **65.536**, capability **1.424** ve operation **1.984 byte** örneklerinde iki yöntem arasında eşit boyutla yaklaşık **0,642 / 0,504 / 0,455** yeni/eski medyan oranı gösterdi; bu yalnız yöntem tanısıdır. Desteklenen Pydantic alt sınırı 2.14.1'dir. Kısa metin LRU'su geri eklenmedi.
 
 Yedi sık kota kontrolü, yalnız doğrulanmış integer/bool sayıları ve strict-text alanları olan ScopeV2, Evidence, CapabilityRecord, OperationAdmission, AttemptView, OperationRecord ve OperationOutcome için doğrudan compact ASCII JSON uzunluğunu kullanır. Alan sırası byte sayısını değiştirmez; canonical hash/digest/key üretimi aynı kalır. Bu korumalı helper genel float veya model-copy ile bozulmuş keyfi model boyut fonksiyonu değildir. Legacy nested Context taşıyan **JobView eski canonical hesabında kalır**.
 
@@ -312,7 +312,7 @@ Düzeltme bütün correlation/hedef/yetki, run ID ve reducer kontrollerinden son
 
 Düzeltme sonrası uzlaştırma takımı 71 test geçti; aynı gözleme benzer credential yarışına ilişkin ek örnek ayrıca sınandı. Uzun sorgulama testi her çağrıya ayrı kullanım senaryosu bütçesi verir; 260 adet 5 s UTC adımı ve explicit renew ile 21 dakikadan uzun sentetik süreyi sınar, gerçek süre beklemez. Salt gözlemin kalıcı iş payload'ını değiştirmemesi, yeni kanıtın yazılması, aynı unknown eksenlerinde recovery marker temizliği, yanlış correlation/account/run/gerileme reddi ve son lease/read yetkisi expiry'si ayrı örneklerdir.
 
-Diğer P2, incelenen e638194 için geçerliydi: başarısız 27 örnek korunmuştur. Sonraki 552d3e3 ürün kaynağında [27/27 operation](p01-4-quota-operation-budget.json) ve [24/24 migration](p01-4-quota-migration-budget.json) pozitif kabul sağlandı; en yavaş karma reset **4.965,896083 ms**, marj **34,103917 ms** ile dardır. [9600416 yardımcı kaynağıyla kurulu jobs](p01-4-closing-jobs-budget.json) normal list/show **124,486/121,779**, yoğun **178,063/120,208 ms** ile geçti. Bunlar yeni aynı-gözlem düzeltmesinden önceki kaynak kanıtlarıdır; son kaynak kabulü yeniden alınacak. GitHub startup yeşili operation bütçesi yerine sunulmaz.
+Diğer P2, incelenen e638194 için geçerliydi: başarısız 27 örnek korunmuştur. Sonraki 552d3e3 ürün kaynağında [27/27 operation](evidence.md#p01-4-quota-operation-budget) ve [24/24 migration](evidence.md#p01-4-quota-migration-budget) pozitif kabul sağlandı; en yavaş karma reset **4.965,896083 ms**, marj **34,103917 ms** ile dardır. [9600416 yardımcı kaynağıyla kurulu jobs](evidence.md#p01-4-closing-jobs-budget) normal list/show **124,486/121,779**, yoğun **178,063/120,208 ms** ile geçti. Bunlar yeni aynı-gözlem düzeltmesinden önceki kaynak kanıtlarıdır; son kaynak kabulü yeniden alınacak. GitHub startup yeşili operation bütçesi yerine sunulmaz.
 
 P3 checkout dışı runtime kusuru 9600416'da başarısız-önce/geçen-sonra regresyonu ve iki bağımsız incelemeyle kapandı; tekrar kod değişikliği yapılmadı. Önceki PR Lens takeover iddiası, terminal reducer/erken dönüş nedeniyle uygulanabilir olmadığı için açık bulgu değildir.
 
@@ -328,7 +328,7 @@ Uzlaştırma regresyonları, dört nonterminal biçimde 260 ayrı gözlem/5 s se
 
 Ölçümler test/build/profiler ile çakıştırılmadan sıralı alındı. Ortam **Apple M5 Max / macOS 27.0.1 arm64 / SSD–APFS / Python 3.11.18 / SQLite 3.54.1**; operation/migration editable frozen `.venv`, jobs/startup ayrı frozen runtime-only wheel ortamıdır. OS/disk cache'i boşaltılmadı; farklı host/sistem I/O'su için mutlak süre garantisi verilmez.
 
-[Operation ham kaydı](p01-4-noop-operation-budget.json): normal/azami terminal/azami karma fixture × full/preview/reset × üç yeni worker, **27/27 başarılı**. Her çağrı özgün **5 s**, n=1.000 progress callback ve gerçek deadline kontrolünü korur; timeout başarı sayılmaz. En yüksek wall süreleri:
+[Operation ham kaydı](evidence.md#p01-4-noop-operation-budget): normal/azami terminal/azami karma fixture × full/preview/reset × üç yeni worker, **27/27 başarılı**. Her çağrı özgün **5 s**, n=1.000 progress callback ve gerçek deadline kontrolünü korur; timeout başarı sayılmaz. En yüksek wall süreleri:
 
 | Fixture | Full (ms) | Preview (ms) | Reset (ms) |
 |---|---:|---:|---:|
@@ -338,15 +338,15 @@ Uzlaştırma regresyonları, dört nonterminal biçimde 260 ayrı gözlem/5 s se
 
 En dar referans marjı **148,292 ms**'dir. Azami terminal fixture 1.024 operation/16.384 attempt/262.144 event; karma fixture 512 terminal + 512 running ve 261.632 event içerir. Azami cache 33.554.432, plan 67.108.864 payload byte'tır. Plan/onay ve immutable event/outcome hash'leri korunur; reset cache/kimliği ve aktif sahipliği değiştirirken geçmişi silmez. En yüksek RSS yaklaşık **84,33 MiB**. VM quanta özgün callback×1.000 örneklemesidir, tam instruction sayısı değildir.
 
-[Migration ham kaydı](p01-4-noop-migration-budget.json): şema 2/3/4/5 × normal/azami × üç yeni store, **24/24 başarılı**. Bütün örnekler özgün 5 s içinde şema 6'ya ulaştı; en yavaş **4.456,741 ms**. Kaynak cache/plan/onay payload satırları byte olarak aynı kaldı, operation sayısı sıfır ve çağrı sonrası tam doğrulama geçti. Backup/sync/DDL/handler/validation/commit fazları ve VM sayımı ham dosyada ayrıdır; özgün deadline callback devrededir. Migration 1–5 kimlikleri ve frozen handler değişmedi.
+[Migration ham kaydı](evidence.md#p01-4-noop-migration-budget): şema 2/3/4/5 × normal/azami × üç yeni store, **24/24 başarılı**. Bütün örnekler özgün 5 s içinde şema 6'ya ulaştı; en yavaş **4.456,741 ms**. Kaynak cache/plan/onay payload satırları byte olarak aynı kaldı, operation sayısı sıfır ve çağrı sonrası tam doğrulama geçti. Backup/sync/DDL/handler/validation/commit fazları ve VM sayımı ham dosyada ayrıdır; özgün deadline callback devrededir. Migration 1–5 kimlikleri ve frozen handler değişmedi.
 
 e638194/ad6cb92/5d0b3a4 kaynaklarında başarısız ara ölçümlerin **6/6/3** kontrollü ret örnekleri önceki bölümlerde ve ham dosyalarda korunur. Başarısızlıklar atılmadı; bu son kaynak kabulünde kota, güvenlik kontrolü veya deadline gevşetilmedi. 60 s cProfile tanısı ve mikro A/B ölçümleri kabul yerine kullanılmadı.
 
 ### Kurulu ürün ve başlangıç
 
-[Wheel/sdist iki temiz kurulum](p01-4-noop-installations.json): 50/330 izinli üye, doğru import/konsol kökeni, v1/cache/execution ve boş olmayan jobs CLI/API/text smoke geçti. Wheel SHA-256 **54d371d61c6eb5dc4b021c1ad989ed37ce447179ad1f30c89e1880ec18b45851**; sdist **19f7640dfaab36e55e77708ba6f50c4ed817661f188e8ebdd6bcfe9c5d65c607**. Bu build son kanıt/belge kapanışından önceki ürün kaynağıdır; kendi sonradan üretilmiş kanıtlarını içerdiği iddia edilmez. PR CI tam teslim ağacından yeniden paket üretir.
+[Wheel/sdist iki temiz kurulum](evidence.md#p01-4-noop-installations): 50/330 izinli üye, doğru import/konsol kökeni, v1/cache/execution ve boş olmayan jobs CLI/API/text smoke geçti. Wheel SHA-256 **54d371d61c6eb5dc4b021c1ad989ed37ce447179ad1f30c89e1880ec18b45851**; sdist **19f7640dfaab36e55e77708ba6f50c4ed817661f188e8ebdd6bcfe9c5d65c607**. Bu build son kanıt/belge kapanışından önceki ürün kaynağıdır; kendi sonradan üretilmiş kanıtlarını içerdiği iddia edilmez. PR CI tam teslim ağacından yeniden paket üretir.
 
-[Kurulu jobs ham kaydı](p01-4-noop-jobs-budget.json), aynı wheel'de dört yolun her birinde 30 yeni süreç/sıcak p95:
+[Kurulu jobs ham kaydı](evidence.md#p01-4-noop-jobs-budget), aynı wheel'de dört yolun her birinde 30 yeni süreç/sıcak p95:
 
 | Fixture | List (ms) | Show (ms) | Kapı |
 |---|---:|---:|---|
@@ -355,8 +355,16 @@ e638194/ad6cb92/5d0b3a4 kaynaklarında başarısız ara ölçümlerin **6/6/3** 
 
 İlk süreç ve warmup örnekleri ayrı tutulur; sıcak p95 yerine kullanılmaz. Salt-okunur sorgu/snapshot/RSS/byte/VM tanısı ayrı kayıttır; metadata için checkout içi/dışı runtime yolu desteği performans sonucu gibi sayılmaz.
 
-[Eşli startup ham kaydı](p01-4-noop-startup.json), aynı host'ta development a9f1f2e tabanı ve aday arasında 30 AB/BA süreç çifti kullanır. Aday p95 help/version/context/cache **26,897 / 25,323 / 82,742 / 123,185 ms**; karşılık gelen taban **27,707 / 27,390 / 84,495 / 123,790 ms**. Mevcut 500/200 ms kapıları iki tarafta da geçti. Aday wheel hash'i jobs/kurulum kaydıyla aynıdır; runtime no-dev/frozen ve kaynak kökeni doğrulanır. Bir host'un sonucu sabit GitHub runner performansı veya fiziksel soğuk başlangıç kanıtı değildir.
+[Eşli startup ham kaydı](evidence.md#p01-4-noop-startup), aynı host'ta development a9f1f2e tabanı ve aday arasında 30 AB/BA süreç çifti kullanır. Aday p95 help/version/context/cache **26,897 / 25,323 / 82,742 / 123,185 ms**; karşılık gelen taban **27,707 / 27,390 / 84,495 / 123,790 ms**. Mevcut 500/200 ms kapıları iki tarafta da geçti. Aday wheel hash'i jobs/kurulum kaydıyla aynıdır; runtime no-dev/frozen ve kaynak kökeni doğrulanır. Bir host'un sonucu sabit GitHub runner performansı veya fiziksel soğuk başlangıç kanıtı değildir.
 
 Ürün head'i 182f695 için [GitHub offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40826046460) ve [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40826046139) başarılı; SonarCloud başarılı/0 annotation, CodeRabbit ve Sourcery bu head'de skipped. Son belge tesliminin CI'ı ayrıca izlenir; önceki head sonucu yeni head'e yazılmaz. Sonar S8705 gerekçeli false positive, S8707 kod düzeltmesiyle fixed durumundadır; genel kural/eşik değiştirilmedi.
 
 **P01-4b/4c yerel kabulü verified; PR #10 kullanıcı incelemesine açıktır.** Sıradaki paket P01-5a/5b, ardından P01-6b faz kapanışıdır. Bu çalışma P01-5 uygulamasını başlatmaz. Development merge'i, Master/release, gerçek EVREN/ForgeLM, Windows veya fiziksel güç kesintisi kabulü değildir.
+
+## PR #10 ham kanıtların ayrılması
+
+Kullanıcı review yükünü azaltma önerisini uygulamaya yetkilendirdi. f186d27 head'inin 226.702 eklemesinin 214.340'ı, bu PR'ın eklediği 33 ham JSON raporuydu. Bu raporların özgün Git blob baytları okunup mevcut dosyayla karşılaştırıldı, gzip açılımı aynı baytlarla tekrar eşitlendi ve yalnız bundan sonra açılmış kopyalar kaldırıldı. Kaynak ve arşiv SHA-256/boyutları [manifesttedir](evidence-manifest.json); başarısız 6/6/3 ara koşular dahil bütün kayıtlar korunur. 5.677.252 byte özgün veri, 417.447 byte arşiv olarak saklanır. Eski Git geçmişi yeniden yazılmadı.
+
+[Kanıt indeksi](evidence.md), raporlar, ölçüm betikleri ve sabit test vektörleri review'de kalır; yalnız raw gzip dizini CodeRabbit/GitHub normal diff'inden ayrılır. Diğer ajanların hedefli akışı kanonik rehbere ve review/verify skill'lerine eklendi. CI strict JSON, bounded gzip, iki hash/boyut, p95/kapı/özet ve indeks eşliğini denetler; bu mekanik kontrol gerçek ölçümün yeniden çalışması veya kaynağın bağımsız doğrulanması değildir.
+
+İlk arşiv/paket/probe hedefli takım **93 passed**, ayrıca bağımsız migration/credential vektörlerini kullanan mevcut integration takımı **63 passed**. Belge/ajan/strict mypy ve Ruff kontrolleri geçti. Yerel hazırlık wheel/sdist build'i ve ayrı temiz kurulumlar doğru köken/v1/cache/execution/jobs smoke'u geçti; wheel 50, sdist 307 üyedir ve ikisinde de raw arşiv yoktur. İki bağımsız test vektörü sdist'te kalır. Bu kapanış metninden önceki build son teslim CI'ı yerine sunulmaz; son head ayrıca sınanır. Ürün kaynağı 182f695 ve wheel Python baytları değişmedi; mevcut 27/24/30-process bütçeler yeniden koşulmadı veya gevşetilmedi.

@@ -136,6 +136,8 @@ def _agents_allowed(parts: tuple[str, ...], directory: bool) -> bool:
 
 
 def _docs_allowed(parts: tuple[str, ...], directory: bool) -> bool:
+    if parts[:3] == ("docs", "research", "raw"):
+        return False
     if directory:
         return (
             len(parts) == 1

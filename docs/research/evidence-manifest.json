@@ -1,0 +1,1035 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "name": "p01-3-followup-merged-startup.json",
+      "archive": "raw/p01-3-followup-merged-startup.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 10398,
+      "content_sha256": "8938a2827a3000a6983d39d734da60653cea8421e1f0393a3534f0dd5068802b",
+      "archive_bytes": 2812,
+      "archive_sha256": "0b978613e899516ff5e1bf25f94e622f42ce66f2892dfff6324d035865cd689a",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 45.871,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 44.031,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 174.407,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 218.223,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-cache-parse-operation-budget.json",
+      "archive": "raw/p01-4-cache-parse-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117877,
+      "content_sha256": "24a45124230e90bd728e5109238cbfa92d87607f11f7fd13408c00ede7686ce0",
+      "archive_bytes": 7574,
+      "archive_sha256": "858a075efb11e59016ccafd69a73e8fb3ad3732bdf33ad658912a363a6a35444",
+      "summary": {
+        "source_commit": "5d0b3a47f0ab3b2faec3be86bac6151c6eecfdb5",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 24,
+          "state_busy": 3
+        },
+        "max_elapsed_ms": 5034.169083
+      }
+    },
+    {
+      "name": "p01-4-ci-startup-40807762132.json",
+      "archive": "raw/p01-4-ci-startup-40807762132.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 39719,
+      "content_sha256": "b7da75f2680cce2813d0a12197978668b06578beeb434499d43658c6981115d2",
+      "archive_bytes": 10733,
+      "archive_sha256": "a11ae1f3a13fd6a8f1593e09c31cd9f1e242c1310c9169176f4d840337ea8761",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 21.959119999991117,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 21.349657999991223,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 91.73733599999423,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 116.57509900001628,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 24.742677000006097,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 23.760992999996233,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 93.38375499999074,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 119.01860200001124,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-ci-startup-40808159684.json",
+      "archive": "raw/p01-4-ci-startup-40808159684.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 39931,
+      "content_sha256": "594f7305ef1f398298c051c1d00f7359a483ee860e2961c36f5e419bd500923e",
+      "archive_bytes": 10957,
+      "archive_sha256": "1e799c1b8c62d2b8b83c72e567bf2af2b66c2ea3400dea85b919164345ee4c96",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 28.465944999993553,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 27.52818499999421,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 119.64243199997782,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 392.3889300000383,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 32.087685999954374,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 30.982848000007834,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 121.93917500002271,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 355.91988900000615,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-closing-jobs-budget.json",
+      "archive": "raw/p01-4-closing-jobs-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 14652,
+      "content_sha256": "cb154c8d655f47fed9169c507570dcc8abdbe4711add58b560b40eddf7b02619",
+      "archive_bytes": 5117,
+      "archive_sha256": "6464507f99aedde640d10078884bee6623cd65dfdf0fa7fdf9ef6e5698e60c62",
+      "summary": {
+        "source_commit": "9600416e58ac3f7e604feef7ba25fff0dbfeff2f",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 124.486167,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 121.778791,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 178.063125,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 120.208084,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-final-installations.json",
+      "archive": "raw/p01-4-final-installations.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 749,
+      "content_sha256": "f851a28d0e25ed56f1f4b11f83bc7462d06c400fb6516d77b341bcfa43f98d44",
+      "archive_bytes": 337,
+      "archive_sha256": "bf42cb6c85a61070265cbf35bb116537be5b8b68cf7401e7c9550fd1e0c1143d",
+      "summary": {
+        "source_commit": "17de9652372f1ebd0fd4725d8616d16efa1ee169",
+        "diagnostic_only": false,
+        "kind": "installation",
+        "cases": 2,
+        "smoke": {
+          "passed": 2
+        }
+      }
+    },
+    {
+      "name": "p01-4-final-jobs-budget.json",
+      "archive": "raw/p01-4-final-jobs-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 14635,
+      "content_sha256": "66b89e1d31189cc48f9d587e9fc602d13e04f79ecb1c0b0c509a0851a28e88e2",
+      "archive_bytes": 5121,
+      "archive_sha256": "6b289b27181db7843cd41081914b047fdf5cc8618516798ac60111d2c5ec5bcf",
+      "summary": {
+        "source_commit": "17de9652372f1ebd0fd4725d8616d16efa1ee169",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 120.620875,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 105.247583,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 166.939,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 104.432042,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-final-migration-budget.json",
+      "archive": "raw/p01-4-final-migration-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 871309,
+      "content_sha256": "43edb6deafec81ff7d5ef0aec0dde7b5f6f2bf95198f3454d291b7cd1250e405",
+      "archive_bytes": 50150,
+      "archive_sha256": "1da8e9aa3fc1f1048c0338d0166e007a5b9862955695343ceafc892d09d926a4",
+      "summary": {
+        "source_commit": "17de9652372f1ebd0fd4725d8616d16efa1ee169",
+        "diagnostic_only": false,
+        "kind": "migration",
+        "cases": 24,
+        "outcomes": {
+          "ok": 24
+        },
+        "max_elapsed_ms": 4316.419583
+      }
+    },
+    {
+      "name": "p01-4-final-operation-budget.json",
+      "archive": "raw/p01-4-final-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117752,
+      "content_sha256": "6171238f6d54e4e5b592364f20bb71ff4b1f81f40e5d6e58ae83c223da4be5de",
+      "archive_bytes": 7471,
+      "archive_sha256": "fed1ee082508495e8b190d2337a32c4ae43572b8da5d9b6d5adff1dab0f2d083",
+      "summary": {
+        "source_commit": "17de9652372f1ebd0fd4725d8616d16efa1ee169",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 27
+        },
+        "max_elapsed_ms": 4931.328083
+      }
+    },
+    {
+      "name": "p01-4-final-startup.json",
+      "archive": "raw/p01-4-final-startup.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 39825,
+      "content_sha256": "d0e48803b4a7cb35cf4ba9194bf4e73863a86ac5af1721f614b100c13580e58e",
+      "archive_bytes": 10990,
+      "archive_sha256": "ff20e452dee85caab0da57eca7dd85acba5a75b211e9b0734ed19853462acee4",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 23.374042008072138,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 21.44575002603233,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 90.23562516085804,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 114.53570914454758,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 25.277000153437257,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 23.19595799781382,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 77.75479182600975,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 123.77254199236631,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-hotpath-operation-budget.json",
+      "archive": "raw/p01-4-hotpath-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 118024,
+      "content_sha256": "cd2f6968a80c64c86c27a71caa60f950a734569ca1a5f0001623417ffb603889",
+      "archive_bytes": 7648,
+      "archive_sha256": "cc5bb711b3663f803d8a10073e53c583f21fa7856ec32b859ee94481d806509d",
+      "summary": {
+        "source_commit": "ad6cb924f6b0a3abc71655b7eb1afa9d6655e340",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 21,
+          "state_busy": 6
+        },
+        "max_elapsed_ms": 5034.559042
+      }
+    },
+    {
+      "name": "p01-4-hotpaths-ab-full.json",
+      "archive": "raw/p01-4-hotpaths-ab-full.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 11364,
+      "content_sha256": "12497116bb00e34f32b3af1613650036118df60371a2581684c68dc6c716e602",
+      "archive_bytes": 2937,
+      "archive_sha256": "905952b19f589458ffe8d57223a7092c07b65cf8f5ed112055d07bb99dad4b67",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": true,
+        "kind": "comparison",
+        "cases": 6,
+        "outcomes": {
+          "ok": 6
+        }
+      }
+    },
+    {
+      "name": "p01-4-initial-help-parity.json",
+      "archive": "raw/p01-4-initial-help-parity.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 10332,
+      "content_sha256": "74d2fd9fe5b564007e9c465b496cdef607ffcd2e7f743878a2f704de375bd559",
+      "archive_bytes": 1908,
+      "archive_sha256": "b499a9753261485226d6e1709fdc3b6a495045189f0bbf7fbd61bafe5760c00d",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "help-parity",
+        "cases": 30
+      }
+    },
+    {
+      "name": "p01-4-noop-installations.json",
+      "archive": "raw/p01-4-noop-installations.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 925,
+      "content_sha256": "f19ea619ca4c7e6e64579ecdb62c3cede50a6e39923fec3eb68cf2f248b7e694",
+      "archive_bytes": 452,
+      "archive_sha256": "2307fee794aae09b0f0b933f4648afa0ddf801b1c3d201b3b699404dbfad2749",
+      "summary": {
+        "source_commit": "182f695f656c374530d9a496a59d9e7ee714932f",
+        "diagnostic_only": false,
+        "kind": "installation",
+        "cases": 2,
+        "smoke": {
+          "passed": 2
+        }
+      }
+    },
+    {
+      "name": "p01-4-noop-jobs-budget.json",
+      "archive": "raw/p01-4-noop-jobs-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 14669,
+      "content_sha256": "0d16c259bec38102f7002ac664e30096410ad01ae24abf180b8e412fb7fbe483",
+      "archive_bytes": 5138,
+      "archive_sha256": "0347dba3ec537dec80a4e941c00b06c170e0ccb4017ad155c29905922d96d20a",
+      "summary": {
+        "source_commit": "bc0d3c9a3f8c8aa5fdfe20b1aa69dd375319538e",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 133.52175,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 118.805833,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 175.711583,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 122.114375,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-noop-migration-budget.json",
+      "archive": "raw/p01-4-noop-migration-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 871241,
+      "content_sha256": "3c6d36e4eecc2809cadf30ca7b21cfe3497e08212df6d186f97918a6c07d6bc2",
+      "archive_bytes": 50172,
+      "archive_sha256": "71a149a3bfc819e42e0bb9f57a98a20f56e1557e1b7a3c4c9854ffdd1d15c4dc",
+      "summary": {
+        "source_commit": "bc0d3c9a3f8c8aa5fdfe20b1aa69dd375319538e",
+        "diagnostic_only": false,
+        "kind": "migration",
+        "cases": 24,
+        "outcomes": {
+          "ok": 24
+        },
+        "max_elapsed_ms": 4456.741375
+      }
+    },
+    {
+      "name": "p01-4-noop-operation-budget.json",
+      "archive": "raw/p01-4-noop-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117762,
+      "content_sha256": "9dd3a4e3f8f8fb26c9443f802a10d099dd28c21ae40b6c9a967809bda6225812",
+      "archive_bytes": 7499,
+      "archive_sha256": "84adddc612c9f236e001500a1b2b10ed4bf495f70300f14827ea8554f7dc2828",
+      "summary": {
+        "source_commit": "bc0d3c9a3f8c8aa5fdfe20b1aa69dd375319538e",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 27
+        },
+        "max_elapsed_ms": 4851.707875
+      }
+    },
+    {
+      "name": "p01-4-noop-startup.json",
+      "archive": "raw/p01-4-noop-startup.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 39765,
+      "content_sha256": "00b45552acdfd0a0252449d6aa7c36bbe8bba78f6ca3ad1d65d7012b692b9bb8",
+      "archive_bytes": 11061,
+      "archive_sha256": "dab7d10105192872aec1a2e9f66aae6ae6cee8d62e17c2bae7377ab3f1fb0705",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 26.896916795521975,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 25.322833796963096,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 82.74233294650912,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 123.1852921191603,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 27.706583961844444,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 27.38975011743605,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 84.49516608379781,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 123.78991581499577,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-quality-help-parity.json",
+      "archive": "raw/p01-4-quality-help-parity.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 6582,
+      "content_sha256": "aa3a82ea0007ae8326eb7525da666d0d2b06ad3ba9f92215858452f4de32248e",
+      "archive_bytes": 1686,
+      "archive_sha256": "30704174de01ebc379ef53fb2f6ab094e9ace1e438e7ca744e44ec077ec270c9",
+      "summary": {
+        "source_commit": "e638194a37fecd273574cd84e415a1085479c943",
+        "diagnostic_only": false,
+        "kind": "help-parity",
+        "cases": 30
+      }
+    },
+    {
+      "name": "p01-4-quality-operation-budget.json",
+      "archive": "raw/p01-4-quality-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117994,
+      "content_sha256": "4434f6677c6aacf40dd49366980045b319616e2955f8a3a18d62d602597f0eb3",
+      "archive_bytes": 7650,
+      "archive_sha256": "44432e0beef9263c4a24972dfb0770adea7dfabaf35b9bb2723ec6954c32d9a8",
+      "summary": {
+        "source_commit": "e638194a37fecd273574cd84e415a1085479c943",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 21,
+          "state_busy": 6
+        },
+        "max_elapsed_ms": 5033.784375
+      }
+    },
+    {
+      "name": "p01-4-quota-migration-budget.json",
+      "archive": "raw/p01-4-quota-migration-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 871327,
+      "content_sha256": "f603f216fa3dfa8d5d99cefa945a1cee786860d7bf1d61927911505d146b5387",
+      "archive_bytes": 50196,
+      "archive_sha256": "043067b336f7854941a71ff319efc58a5cde74a29907aa247557d2a877d81415",
+      "summary": {
+        "source_commit": "dbdc9562c439091ae411246f006772e04460acce",
+        "diagnostic_only": false,
+        "kind": "migration",
+        "cases": 24,
+        "outcomes": {
+          "ok": 24
+        },
+        "max_elapsed_ms": 4541.755791
+      }
+    },
+    {
+      "name": "p01-4-quota-operation-budget.json",
+      "archive": "raw/p01-4-quota-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117747,
+      "content_sha256": "014a18940f859d4d91022c7e445ff39f48e8e1b4647b82b4d855410760e5fc7b",
+      "archive_bytes": 7502,
+      "archive_sha256": "d097a792f5d0c92a8f525420f22ccff509459d91e6920ccf297d89aa7c625343",
+      "summary": {
+        "source_commit": "dbdc9562c439091ae411246f006772e04460acce",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 27
+        },
+        "max_elapsed_ms": 4965.896083
+      }
+    },
+    {
+      "name": "p01-4-reset-diagnostic.json",
+      "archive": "raw/p01-4-reset-diagnostic.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 820,
+      "content_sha256": "67d0cc491804914c87ad9ea4ad3b51f044ca11811754a3d768b73c16c21e537e",
+      "archive_bytes": 405,
+      "archive_sha256": "39e5ecce4c080476d3ae42a3f9a390d0e8fc418cae9c429a00b915deb0d61914",
+      "summary": {
+        "source_commit": "5d0b3a47f0ab3b2faec3be86bac6151c6eecfdb5",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "ok"
+      }
+    },
+    {
+      "name": "p01-4-step-1-migration.json",
+      "archive": "raw/p01-4-step-1-migration.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 870561,
+      "content_sha256": "0aede2bacaa72702a78f210e19b7a71ed446f9944d9df022f5f192a68d8f266f",
+      "archive_bytes": 49836,
+      "archive_sha256": "8fd04f320a4d29392d9c0fdf0bbf131202523dddf4ffd0c71ba4a2eca5d680f3",
+      "summary": {
+        "source_commit": "c3dbfe7b5e983d0075718edc065a8f815c1f8ff4",
+        "diagnostic_only": false,
+        "kind": "migration",
+        "cases": 24,
+        "outcomes": {
+          "ok": 24
+        },
+        "max_elapsed_ms": 4528.112625
+      }
+    },
+    {
+      "name": "p01-4-step-3-operation-budget.json",
+      "archive": "raw/p01-4-step-3-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117528,
+      "content_sha256": "f297eeb3656a71903834d7a6e78b1900cea6ef911deab3db1e34946a2d1f57f3",
+      "archive_bytes": 7351,
+      "archive_sha256": "7ea14e5d642ad8c9938cf392ac0e9acb574ed47d3b1f40d30034626db789bd7f",
+      "summary": {
+        "source_commit": "0b8c2cf2990345af4bad2a73b630431055fb1117",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 27
+        },
+        "max_elapsed_ms": 4961.403375
+      }
+    },
+    {
+      "name": "p01-4-step-3-reviewed-migration-budget.json",
+      "archive": "raw/p01-4-step-3-reviewed-migration-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 871089,
+      "content_sha256": "049703e60df29dd941f38ab6ab7018822673b10f8dba12c6bcade9dfbc6306b2",
+      "archive_bytes": 50053,
+      "archive_sha256": "e29d062cdec7a540667d5aea7a57c0d32ba8b845ca5c5eaa82ac74836e265442",
+      "summary": {
+        "source_commit": "0092d407f933246952a6da4e47d5145eeebf6d0d",
+        "diagnostic_only": false,
+        "kind": "migration",
+        "cases": 24,
+        "outcomes": {
+          "ok": 24
+        },
+        "max_elapsed_ms": 4337.36875
+      }
+    },
+    {
+      "name": "p01-4-step-3-reviewed-operation-budget.json",
+      "archive": "raw/p01-4-step-3-reviewed-operation-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 117581,
+      "content_sha256": "b19dc6718da161af6b51096dde0fb635171f0a0617548a939ad970f03d1c8dd7",
+      "archive_bytes": 7394,
+      "archive_sha256": "834b2ed0267decdc262e4f359fc5e2f559968f8b1af0933c59caedcc40a20486",
+      "summary": {
+        "source_commit": "0092d407f933246952a6da4e47d5145eeebf6d0d",
+        "diagnostic_only": false,
+        "kind": "operation",
+        "cases": 27,
+        "outcomes": {
+          "ok": 27
+        },
+        "max_elapsed_ms": 4936.653875
+      }
+    },
+    {
+      "name": "p01-4-step-4-initial-installations.json",
+      "archive": "raw/p01-4-step-4-initial-installations.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 722,
+      "content_sha256": "880d1784557069aac59c3847c8678c4e346e3a9220ab88f95fbec37e4660d95a",
+      "archive_bytes": 317,
+      "archive_sha256": "06a90aaa2bcb72215314b045996e055af50d380a1a8d07ceefcd76c0c7055ff8",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "installation",
+        "cases": 2,
+        "smoke": {
+          "passed": 2
+        }
+      }
+    },
+    {
+      "name": "p01-4-step-4-initial-jobs-budget.json",
+      "archive": "raw/p01-4-step-4-initial-jobs-budget.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 14652,
+      "content_sha256": "919cd1a16d3caf73bcbb8d678f5b035d32070eee99b51afc35f1aad32a3158b9",
+      "archive_bytes": 5135,
+      "archive_sha256": "c259017fd5bd2868bc3ec84e1dfacdb04dfe609ae9427701651b6db598bc250d",
+      "summary": {
+        "source_commit": "39251184d3a4fd742a8680f0edeb2d42c6880c1c",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 111.118875,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 104.767333,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 165.678333,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 104.372,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-step-4-initial-startup.json",
+      "archive": "raw/p01-4-step-4-initial-startup.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 39804,
+      "content_sha256": "c03ab360e04c457d1887a80c0c4b47f1fa7f820aafc656a3fce5f2dc65511d9f",
+      "archive_bytes": 11006,
+      "archive_sha256": "6b87a6a6598ac8480e6db44956179098d4166d515e1f280ac96309c6e81f2f7b",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 24.766458896920085,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 23.005208931863308,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 72.32283311896026,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 112.88970895111561,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 24.93483293801546,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 24.77424987591803,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 74.06549993902445,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 124.26991597749293,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-4-wire-size-micro.json",
+      "archive": "raw/p01-4-wire-size-micro.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 2162,
+      "content_sha256": "5a005c1c7163038f318b0ffcb2c210c5783963ebf011c0fba5e2e79d5f157ae4",
+      "archive_bytes": 683,
+      "archive_sha256": "393c99593e7cdad8eb461c672056fe5e1685316913bdb0fefddb38e06e719f62",
+      "summary": {
+        "source_commit": "5d0b3a47f0ab3b2faec3be86bac6151c6eecfdb5",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "cases": 3
+      }
+    },
+    {
+      "name": "startup-ci-control.json",
+      "archive": "raw/startup-ci-control.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 38951,
+      "content_sha256": "9cb35022e9ec958c1ae1c5f4190e4dfefd964b7c0dc7ec4a5ae151811d51c1c7",
+      "archive_bytes": 10155,
+      "archive_sha256": "dfcf0190b95a64fa77e00d0c0c9b2783d9be865797b41c174a853e3f4274e202",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 57.37687484361231,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 24.313292000442743,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 85.22891695611179,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 123.00616595894098,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 92.26295817643404,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 26.12408297136426,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 97.559834131971,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 121.04508304037154,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "startup-ci-paired.json",
+      "archive": "raw/startup-ci-paired.json.gz",
+      "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
+      "content_bytes": 38803,
+      "content_sha256": "e111e614c9fd5d3ad58b53d99678c4733130b2e1d93fa7085ee689998d971db7",
+      "archive_bytes": 10001,
+      "archive_sha256": "83214796789a2b254d3c8a1ab51a8a2dc005712646a790ae4ba572a9aaed1c69",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 24.29741690866649,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 22.593999980017543,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 83.85437494143844,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 114.30612509138882,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 26.900457916781306,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 25.615291204303503,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 76.45354187116027,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 115.89816701598465,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    }
+  ]
+}

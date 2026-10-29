@@ -42,6 +42,7 @@ uv sync --frozen --python 3.11
 .venv/bin/pytest
 .venv/bin/python scripts/check-docs.py
 .venv/bin/python scripts/check-agent-guides.py
+.venv/bin/python scripts/research_evidence.py verify
 uv build
 .venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv > dist/verification.jsonl
 mkdir -p .local
@@ -81,5 +82,7 @@ Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerek
 Rehber denetimi Git checkout'undaki canonical skills/Claude alias'larını, tekil faz ID'lerini, kart metadata/bölümlerini ve işe başlanabilecek durumların bağımlılıklarını kontrol eder. `verified` için teslim alanları aranır; kanıtın doğruluğu ve kabulü karşılaması review gerektirir. Doğal dil skill seçimi, inceleme kalitesi veya live EVREN desteği bu araçla kanıtlanmaz. Ajan kullanımı [katalogda](.agents/README.md); anlamlı yeni işin hazır olma koşulu [roadmap'tedir](docs/roadmap/README.md#hazır-iş-paketi). Ajan materyali sdist'te geliştirme kaynağıdır; Claude alias'ları yalnız checkout'ta, wheel ise yalnız runtime'dır.
 
 ## İnceleme ve lisans
+
+Ham ölçümler, sabit test vektörleri ve kabul raporları [kanıt standardına](docs/standards/research-evidence.md) göre ayrılır. `docs/research/raw/` içindeki gzip baytları normal kod review'üne verilmez; manifest/indeks, ölçüm betikleri ve test vektörleri incelenir. CI arşiv ve özgün JSON hash'lerini, bütün örneklerden türetilen özeti ve indeksi denetler. Arşivler source package'a girmez; Git checkout'unda kalır. Önceki fazların kök dizindeki kayıtları geriye dönük taşınmaz; yeni büyük üretilmiş çıktılar bu arşiv akışını kullanır.
 
 PR; problemi, kullanıcı sonucunu, sözleşme etkisini ve gerçek doğrulamayı açıklamalı. Referans projelerin mimari kararları Yörünge'ye otomatik taşınmaz. Devralınan kodun lisans ve köken bildirimleri korunur; katkılar [MIT](LICENSE) altında sunulur. Güvenlik bildirimi için [SECURITY.md](SECURITY.md).

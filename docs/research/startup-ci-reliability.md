@@ -4,7 +4,7 @@
 
 ## Sorun ve sınır
 
-PR #9'un son PR koşusu Intel Xeon 8573C'de cache p95 192,217 ms ile başarılıydı. Aynı kaynak ağacı/wheel development merge'ünde AMD EPYC 7763'te 218,223 ms gördü; [ham kayıt](p01-3-followup-merged-startup.json) korunur. [GitHub'ın ikinci merge denemesi](https://github.com/HodeTech/Yorunge/actions/runs/40693146816/attempts/2) 200,926 ms ile yine başarısızdır; bu bakımda yeni uzak koşu başlatılmadı. Kod eşitliği, farklı host'ların aynı mutlak süreyi vereceğini kanıtlamaz. [Önceki merge ve CI kaydı](p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) tarihseldir.
+PR #9'un son PR koşusu Intel Xeon 8573C'de cache p95 192,217 ms ile başarılıydı. Aynı kaynak ağacı/wheel development merge'ünde AMD EPYC 7763'te 218,223 ms gördü; [ham kayıt](evidence.md#p01-3-followup-merged-startup) korunur. [GitHub'ın ikinci merge denemesi](https://github.com/HodeTech/Yorunge/actions/runs/40693146816/attempts/2) 200,926 ms ile yine başarısızdır; bu bakımda yeni uzak koşu başlatılmadı. Kod eşitliği, farklı host'ların aynı mutlak süreyi vereceğini kanıtlamaz. [Önceki merge ve CI kaydı](p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) tarihseldir.
 
 Kabul hedefleri değişmedi: help/version 500 ms, context/cache 200 ms ve cache için 1.024 gerçek sentetik kayıt. Tabanın kötü sonucu veya göreli iyileşme bu kapıyı aşan adayı başarılı yapmaz. Yeni fiziksel runner kurulumu veya repository koruma değişikliği bu işin çıktısı değildir. Mevcut 5 saniyelik state bütçesi, doğrulama ve dayanıklılık kuralları korunur.
 
@@ -20,7 +20,7 @@ CI aynı helper'ı PR ve push'ta kullanır. PR base SHA'sı veya push öncesi SH
 
 ## Gerçek eşli ölçüm
 
-[Ham A/B kaydı](startup-ci-paired.json), a9f1f2e tabanı ile 7462103 adayını ayrı yeni runtime ortamlarında ölçer. Apple M5 Max, macOS 27.0.1, APFS/SSD, CPython 3.11.18; aynı yedi runtime paketi, 1.024 kayıt/1.212.625 payload baytı/en büyük 1.233 bayt. Test/build/profiler işi ölçümle eşzamanlı başlatılmadı. Her komut için 30 çiftin tamamı ve kaynakların değişmediği kanıtı kayıttadır.
+[Ham A/B kaydı](evidence.md#startup-ci-paired), a9f1f2e tabanı ile 7462103 adayını ayrı yeni runtime ortamlarında ölçer. Apple M5 Max, macOS 27.0.1, APFS/SSD, CPython 3.11.18; aynı yedi runtime paketi, 1.024 kayıt/1.212.625 payload baytı/en büyük 1.233 bayt. Test/build/profiler işi ölçümle eşzamanlı başlatılmadı. Her komut için 30 çiftin tamamı ve kaynakların değişmediği kanıtı kayıttadır.
 
 | Komut | Taban p95 (ms) | Aday p95 (ms) | Eşli medyan aday/taban oranı | Aday daha hızlı çift |
 |---|---:|---:|---:|---:|
@@ -31,7 +31,7 @@ CI aynı helper'ı PR ve push'ta kullanır. PR base SHA'sı veya push öncesi SH
 
 Aday bütün mutlak bütçeleri geçti. Help/version için bu koşuda eşli medyan yaklaşık %7 azaldı; cache kazancı yaklaşık %1,5 ile küçüktür. Context p95 bu koşuda yükselmiştir; eşli medyanın azalması bu kuyruk gözlemini silmez. Bu sonuçlardan bütün komutların p95'inin kalıcı iyileştiği veya Linux merge hatasının kesin çözüldüğü çıkarılmaz.
 
-[A/A kontrolünde](startup-ci-control.json) aynı 7462103 kaynağı iki yeni ortama kuruldu; iki wheel SHA-256'sı da `072efd7c3aac4c751ce9ca29af833d707a9d1b94aaf272326f8cd047893bf76f`. Cache eşli medyan oranı 0,999343 ve daha hızlı çift 15/30'dur. Taban/aday cache p95 121,045/123,006 ms; context 97,560/85,229, help 92,263/57,377 ms'dir. Aynı kodda bile kuyruk süreleri oynayabilir; bu kontrol gürültüyü görünür kılar ve A/B'deki küçük etkileri aşırı yorumlamayı önler. Tüm örnekler korunur, A/A da dört mutlak bütçeyi geçti. OS/disk cache'i fiziksel olarak boşaltılmadı ve host'un arka plan yükü tamamen yalıtılmadı.
+[A/A kontrolünde](evidence.md#startup-ci-control) aynı 7462103 kaynağı iki yeni ortama kuruldu; iki wheel SHA-256'sı da `072efd7c3aac4c751ce9ca29af833d707a9d1b94aaf272326f8cd047893bf76f`. Cache eşli medyan oranı 0,999343 ve daha hızlı çift 15/30'dur. Taban/aday cache p95 121,045/123,006 ms; context 97,560/85,229, help 92,263/57,377 ms'dir. Aynı kodda bile kuyruk süreleri oynayabilir; bu kontrol gürültüyü görünür kılar ve A/B'deki küçük etkileri aşırı yorumlamayı önler. Tüm örnekler korunur, A/A da dört mutlak bütçeyi geçti. OS/disk cache'i fiziksel olarak boşaltılmadı ve host'un arka plan yükü tamamen yalıtılmadı.
 
 ## Doğrulama ve kalan dış kabul
 

@@ -169,6 +169,7 @@ def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
         ROOT + "/src/unsafe\x85.py",
         ROOT + "/src/__pycache__/file.pyc",
         ROOT + "/docs/analysis/not-public.md",
+        ROOT + "/docs/research/raw/report.json.gz",
         ROOT + "/docs/README.md/child",
         ROOT + "/.github/unsafe.yml",
         ROOT + "/.agents/settings.json",
@@ -202,6 +203,12 @@ def test_sdist_file_allowlist_entry_cannot_be_a_directory(tmp_path):
     entries = [(ROOT + "/.github/pull_request_template.md/", tarfile.DIRTYPE)]
     path = sdist(tmp_path, entries)
     with pytest.raises(ValueError):
+        inspect_archive(path)
+
+
+def test_sdist_rejects_even_an_empty_raw_evidence_directory(tmp_path):
+    path = sdist(tmp_path, [(ROOT + "/docs/research/raw/", tarfile.DIRTYPE)])
+    with pytest.raises(ValueError, match="unexpected sdist member"):
         inspect_archive(path)
 
 

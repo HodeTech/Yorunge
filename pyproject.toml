@@ -21,6 +21,7 @@ dev = ["pytest>=9,<10", "ruff>=0.15,<0.16", "mypy>=1.19,<2", "types-PyYAML>=6,<7
 packages = ["src/yorunge"]
 
 [tool.hatch.build.targets.sdist]
+exclude = ["/docs/research/raw/**"]
 include = [
   "/src", "/tests", "/scripts", "/examples", "/.github/workflows",
   "/.github/pull_request_template.md", "/.agents/README.md", "/.agents/skills",
