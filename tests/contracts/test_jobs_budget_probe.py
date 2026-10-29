@@ -47,6 +47,33 @@ def test_probe_rejects_repository_import_instead_of_installed_runtime(tmp_path):
         module["installation"](prefix, expected)
 
 
+def test_probe_describes_external_runtime_without_a_checkout_relative_prefix(tmp_path, monkeypatch):
+    """Controlled provenance fixture; this does not measure an installed runtime."""
+    import hashlib
+    import importlib.metadata
+    from types import SimpleNamespace
+
+    import yorunge
+
+    module = runpy.run_path(str(PROBE))
+    prefix = tmp_path / "external-runtime"
+    package_file = prefix / "lib/yorunge/__init__.py"
+    package_file.parent.mkdir(parents=True)
+    package_file.write_bytes(b"synthetic-package-source")
+    expected = {"src/yorunge/__init__.py": hashlib.sha256(package_file.read_bytes()).hexdigest()}
+    monkeypatch.setattr(sys, "prefix", str(prefix))
+    monkeypatch.setattr(yorunge, "__file__", str(package_file))
+    monkeypatch.setattr(
+        importlib.metadata,
+        "distributions",
+        lambda: (SimpleNamespace(metadata={"Name": "yorunge"}, version="0.1.0.dev0"),),
+    )
+    result = module["installation"](prefix, expected)
+    assert result["prefix_relative"] is None
+    assert result["prefix_absolute"] == str(prefix)
+    assert result["source_origin_matches"] is True
+
+
 def test_probe_rejects_unmarked_worker_before_state_access(tmp_path, monkeypatch):
     import sqlite3
     from argparse import Namespace

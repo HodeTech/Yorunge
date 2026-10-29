@@ -56,10 +56,9 @@ def sources():
 def installation(prefix, expected):
     import yorunge
 
+    prefix = prefix.resolve()
     package = Path(yorunge.__file__).resolve().parent
-    if Path(sys.prefix).resolve() != prefix.resolve() or not package.is_relative_to(
-        prefix.resolve()
-    ):
+    if Path(sys.prefix).resolve() != prefix or not package.is_relative_to(prefix):
         raise ValueError("isolated installed runtime origin required")
     for name, digest in expected.items():
         if name.startswith("src/yorunge/"):
@@ -74,7 +73,10 @@ def installation(prefix, expected):
         "python": sys.version,
         "packages": packages,
         "source_origin_matches": True,
-        "prefix_relative": str(prefix.relative_to(PROJECT)),
+        "prefix_relative": str(prefix.relative_to(PROJECT))
+        if prefix.is_relative_to(PROJECT)
+        else None,
+        "prefix_absolute": str(prefix) if not prefix.is_relative_to(PROJECT) else None,
     }
 
 
