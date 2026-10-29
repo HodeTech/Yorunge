@@ -234,6 +234,70 @@
       }
     },
     {
+      "name": "p01-4-evidence-ci-startup-a24c71f.json",
+      "archive": "raw/p01-4-evidence-ci-startup-a24c71f.json.gz",
+      "original_commit": null,
+      "content_bytes": 39987,
+      "content_sha256": "fcde6c87c89d69f550177f1629efcd8127508f4dbdeaf4c602f8a241dfa5323d",
+      "archive_bytes": 11106,
+      "archive_sha256": "627e52ebfdaaaaa5a2d9869a61d6c1072779f10f8abbbf5a3cda7485807f4f8b",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 38.83290199996736,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 36.38817700004893,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 161.3148749999027,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 222.37509100000352,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 43.87156899997535,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 42.31549899998299,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 163.49130399999012,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 225.49458100002084,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
       "name": "p01-4-final-installations.json",
       "archive": "raw/p01-4-final-installations.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",

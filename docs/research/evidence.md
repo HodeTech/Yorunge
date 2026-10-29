@@ -40,6 +40,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 [İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/f186d27ac9b7313d5640877e574e9337fbd6b4ff/docs/research/p01-4-closing-jobs-budget.json); yerel arşiv `raw/p01-4-closing-jobs-budget.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 178.063125, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 120.208084, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 124.486167, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 121.778791, "passed": true, "samples": 30}}, "source_commit": "9600416e58ac3f7e604feef7ba25fff0dbfeff2f"}`.
 
+## p01-4-evidence-ci-startup-a24c71f
+
+**Tür:** `startup`.
+**Özgün JSON SHA-256:** `fcde6c87c89d69f550177f1629efcd8127508f4dbdeaf4c602f8a241dfa5323d`.
+**Yerel arşiv:** `raw/p01-4-evidence-ci-startup-a24c71f.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 225.49458100002084, "passed": false, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 163.49130399999012, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 43.87156899997535, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 42.31549899998299, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 222.37509100000352, "passed": false, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 161.3148749999027, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 38.83290199996736, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 36.38817700004893, "passed": true, "samples": 30}}, "source_commit": null}`.
+
 ## p01-4-final-installations
 
 **Tür:** `installation`.

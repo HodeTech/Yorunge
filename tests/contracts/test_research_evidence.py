@@ -89,7 +89,8 @@ def test_archive_does_not_follow_metadata_or_directory_symlinks(tmp_path, target
     sentinel = outside / "retained"
     sentinel.write_bytes(b"unchanged")
     (directory / target).symlink_to(outside if target == "raw" else sentinel)
-    source = root / "report.json"
+    (root / "dist").mkdir()
+    source = root / "dist/report.json"
     source.write_text('{"runs": [{"outcome": "ok", "elapsed_ms": 1}]}')
     with pytest.raises(ValueError):
         archive_report(root, source, None)
@@ -244,3 +245,46 @@ def test_archive_accepts_the_producers_standalone_startup_comparison_null(tmp_pa
     assert metrics["candidate/help"]["passed"] is True
     packed = root / "docs/research/raw/operation-budget.json.gz"
     assert gzip.decompress(packed.read_bytes()) == original
+
+
+@pytest.mark.parametrize(
+    "location", [".local", "src", "docs/analysis/private", "docs/research", "outside"]
+)
+def test_archive_rejects_unrelated_inputs_before_creating_evidence(tmp_path, location):
+    root = tmp_path / "repo"
+    (root / "docs/research").mkdir(parents=True)
+    parent = tmp_path / "outside" if location == "outside" else root / location
+    parent.mkdir(parents=True, exist_ok=True)
+    source = parent / "report.json"
+    content = b'{"runs":[{"outcome":"ok","elapsed_ms":1}]}'
+    source.write_bytes(content)
+    with pytest.raises(ValueError, match="input must be directly inside"):
+        archive_report(root, source, None)
+    assert source.read_bytes() == content
+    assert not (root / "docs/research/raw").exists()
+    assert not (root / "docs/research/evidence-manifest.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["directory-link", "file-link", "traversal"])
+def test_allowed_input_locations_do_not_allow_symlink_or_traversal_escape(tmp_path, kind):
+    root = tmp_path / "repo"
+    (root / "docs/research").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    retained = outside / "report.json"
+    content = b'{"runs":[{"outcome":"ok","elapsed_ms":1}]}'
+    retained.write_bytes(content)
+    if kind == "directory-link":
+        (root / "dist").symlink_to(outside)
+        source = root / "dist/report.json"
+    else:
+        (root / "dist").mkdir()
+        source = root / "dist/report.json"
+        if kind == "file-link":
+            source.symlink_to(retained)
+        else:
+            source = root / "dist/../../outside/report.json"
+    with pytest.raises(ValueError):
+        archive_report(root, source, None)
+    assert retained.read_bytes() == content
+    assert list((root / "docs/research").iterdir()) == []

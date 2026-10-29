@@ -328,12 +328,21 @@ def replace_metadata(path: Path, content: bytes) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def report_source(root: Path, source: Path) -> Path:
+    source = source.absolute()
+    if NAME.fullmatch(source.name) is None or ".." in source.parts:
+        raise ValueError("expected a canonical measurement filename")
+    directory = root / "dist"
+    if source.parent != directory:
+        raise ValueError("report input must be directly inside dist")
+    if directory.is_symlink():
+        raise ValueError("report input directory must not be a symlink")
+    return directory / source.name
+
+
 def archive_report(root: Path, source: Path, original_commit: str | None) -> None:
     directory = research_directory(root)
-    if not source.resolve().is_relative_to(root.resolve()) or source.resolve().is_relative_to(
-        root / "docs/analysis/private"
-    ):
-        raise ValueError("only public checkout reports can be archived")
+    source = report_source(root, source)
     content = read_bounded(source, MAX_REPORT_BYTES)
     archive = gzip.compress(content, mtime=0)
     if len(archive) > MAX_ARCHIVE_BYTES:

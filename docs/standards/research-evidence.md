@@ -19,7 +19,7 @@ Bu ayrım PR #10'un eklediği 33 ham ölçüme uygulandı. Önceki fazların kö
 .venv/bin/python scripts/research_evidence.py verify
 ```
 
-`archive` yalnız desteklenen kamuya açık ölçüm raporlarını alır; girdi dosyasını silmez, aynı adla kayıtlı arşivi ezmez. Yeni örnek için yeni ad kullanılır. Gzip, manifest ve indeks birlikte commit edilir. Tek yazarlı yerel hazırlık aracıdır; bu üç dosyayı güncelleme işlemi tek bir transaction değildir. Hata/kesinti sonrasında girdi korunur; eksik/orphan arşiv veya eski indeks `verify` ile reddedilir, başarılı kayıt sayılmaz.
+`archive` yalnız doğrudan repo `dist/` altındaki canonical JSON dosya adlarını alır; başka checkout yolu, alt dizin, `..` veya symlink girdi alınmaz. Girdi dosyasını silmez, aynı adla kayıtlı arşivi ezmez. Eski bir raporu taşımak gerekirse önce `dist/` altına açıkça kopyalanır; bayt eşliği doğrulandıktan sonra eski kopya ayrı kaldırılır. Yeni örnek için yeni ad kullanılır. Gzip, manifest ve indeks birlikte commit edilir. Tek yazarlı yerel hazırlık aracıdır; bu üç dosyayı güncelleme işlemi tek bir transaction değildir. Hata/kesinti sonrasında girdi korunur; eksik/orphan arşiv veya eski indeks `verify` ile reddedilir, başarılı kayıt sayılmaz.
 
 `verify` CI'da gerçek Git checkout'unda çalışır. Arşiv listesi, sınırlı açma, strict UTF-8/JSON, duplicate/nonfinite reddi, iki SHA-256 ve boyut, özet ve indeks eşliği kontrol edilir. Startup/jobs için bütün sıcak örneklerden nearest-rank p95 ve ilan edilen kapı sonucu yeniden hesaplanır; tarihsel v1 yuvarlama hassasiyeti korunur. Eski başarısız koşunun doğru saklanmış olması bu kontrolü geçebilir: arşiv bütünlüğü, performans kabulü değildir.
 
