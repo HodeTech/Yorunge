@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import socket
 import ssl
+import struct
 import subprocess
 import threading
 import time
@@ -40,6 +41,7 @@ class Reply:
     chunk_delay: float = 0.0
     truncate_at: int | None = None
     after_first_chunk: Callable[[], None] | None = None
+    reset_after_body: bool = False
 
 
 Route = Reply | Callable[[RequestRecord, int], Reply]
@@ -168,8 +170,13 @@ class TlsServer:
                     self.command, self.path, tuple(self.headers.items()), body, self.client_address
                 )
                 reply = owner._reply(record)
+                length = (
+                    ()
+                    if any(name.lower() == "transfer-encoding" for name, _ in reply.headers)
+                    else (("Content-Length", str(len(reply.body))),)
+                )
                 fields = (
-                    ("Content-Length", str(len(reply.body))),
+                    *length,
                     ("Content-Type", "application/json"),
                     *reply.headers,
                 )
@@ -198,6 +205,14 @@ class TlsServer:
                             if reply.chunk_delay:
                                 time.sleep(reply.chunk_delay)
                     if reply.truncate_at is not None:
+                        self.close_connection = True
+                    if reply.reset_after_body:
+                        self.connection.setsockopt(
+                            socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+                        )
+                        # Abort before TCPServer's later orderly SHUT_WR can
+                        # turn this into a plain FIN/truncated-message fixture.
+                        socket.close(self.connection.detach())
                         self.close_connection = True
                 except (BrokenPipeError, ConnectionError, ssl.SSLError):
                     owner.disconnected.set()

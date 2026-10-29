@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 
+import httpx
 import pytest
 
 from tests.fixtures.http_server import Reply, TlsServer, certificate, loopback_sockets
@@ -256,14 +257,26 @@ def test_clean_message_eof_without_terminal_is_interrupted(certificates, body):
     ],
     ids=["before-record", "partial-first", "after-progress", "after-terminal", "partial-last"],
 )
-def test_real_truncated_http_body_priority(certificates, prefix, expected):
+@pytest.mark.parametrize("framing", ["content-length", "chunked"])
+def test_real_truncated_http_body_priority(certificates, prefix, expected, framing):
     prefix = prefix.replace(
         b'"operation_id":null', b'"operation_id":"' + OPERATION.encode() + b'"', 1
     )
-    body = prefix + b"missing-content-length-tail"
+    if framing == "chunked":
+        sent = (f"{len(prefix):x}\r\n".encode() + prefix + b"\r\n") if prefix else b""
+        reply = Reply(
+            body=sent + b"0\r\n\r\n",
+            headers=(("Transfer-Encoding", "chunked"),),
+            truncate_at=len(sent),
+            chunk_size=7,
+        )
+    else:
+        reply = Reply(
+            body=prefix + b"missing-content-length-tail", truncate_at=len(prefix), chunk_size=7
+        )
     with TlsServer(
         certificates,
-        {"/v1/events": Reply(body=body, truncate_at=len(prefix), chunk_size=7)},
+        {"/v1/events": reply},
     ) as server:
         with pytest.raises(YorungeError) as caught:
             collect(server, operation_id=OPERATION)
@@ -274,6 +287,103 @@ def test_real_truncated_http_body_priority(certificates, prefix, expected):
         assert caught.value.__context__ is None
         assert caught.value.__cause__ is None
         assert len(server.requests) == 1
+
+
+def test_valid_chunked_message_eof_allows_terminal_and_connection_reuse(certificates):
+    records = [encode_event(progress()), encode_event(result())]
+    framed = b"".join(f"{len(part):x}\r\n".encode() + part + b"\r\n" for part in records)
+    reply = Reply(body=framed + b"0\r\n\r\n", headers=(("Transfer-Encoding", "chunked"),))
+    with TlsServer(certificates, {"/v1/events": reply}) as server:
+
+        async def run():
+            async with HttpxTransport(transport=server.transport()) as transport:
+                for _ in range(2):
+                    async with open_stream(
+                        transport, request(), Value, deadline=time.monotonic() + 3, stream_id=STREAM
+                    ) as stream:
+                        events = [event async for event in stream]
+                    assert [event.event for event in events] == ["progress", "result"]
+
+        asyncio.run(run())
+        assert len(server.requests) == 2
+        assert len({record.connection for record in server.requests}) == 1
+
+
+def test_real_tls_tcp_reset_after_progress_is_interrupted_with_bound_id(certificates):
+    first = encode_event(progress(operation_id=OPERATION))
+    release = threading.Event()
+
+    def after_first():
+        assert release.wait(3)
+
+    reply = Reply(
+        body=first + b"unreceived-tail",
+        truncate_at=len(first),
+        chunk_size=len(first),
+        after_first_chunk=after_first,
+        reset_after_body=True,
+    )
+    with TlsServer(certificates, {"/v1/events": reply}) as server:
+
+        async def run():
+            async with HttpxTransport(transport=server.transport()) as transport:
+                async with open_stream(
+                    transport,
+                    request(),
+                    Value,
+                    deadline=time.monotonic() + 3,
+                    stream_id=STREAM,
+                    operation_id=OPERATION,
+                ) as stream:
+                    assert isinstance(await anext(stream), ProgressEvent)
+                    release.set()
+                    with pytest.raises(OperationError) as caught:
+                        await anext(stream)
+                    assert caught.value.code == "stream_interrupted"
+                    assert caught.value.operation_id == OPERATION
+                    assert caught.value.__context__ is None
+
+        try:
+            asyncio.run(run())
+        finally:
+            release.set()
+        assert len(server.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "reset,expected", [(False, httpx.RemoteProtocolError), (True, httpx.ReadError)]
+)
+def test_fixture_distinguishes_orderly_truncation_from_tcp_reset(certificates, reset, expected):
+    release = threading.Event()
+
+    def after_first():
+        assert release.wait(3)
+
+    prefix = b"already-received-prefix"
+    reply = Reply(
+        body=prefix + b"unreceived-tail",
+        truncate_at=len(prefix),
+        chunk_size=len(prefix),
+        after_first_chunk=after_first,
+        reset_after_body=reset,
+    )
+    with TlsServer(certificates, {"/v1/events": reply}) as server:
+
+        async def run():
+            # This test checks the fixture's TCP oracle below the product's safe
+            # error normalization; the product regression above checks its API.
+            async with httpx.AsyncClient(transport=server.transport(), trust_env=False) as client:
+                async with client.stream("GET", "https://localhost/v1/events") as response:
+                    chunks = response.aiter_raw()
+                    assert await anext(chunks) == prefix
+                    release.set()
+                    with pytest.raises(expected):
+                        await anext(chunks)
+
+        try:
+            asyncio.run(run())
+        finally:
+            release.set()
 
 
 def test_terminal_wait_timeout_is_timeout_and_not_success(certificates):
