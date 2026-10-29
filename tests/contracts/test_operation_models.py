@@ -113,12 +113,12 @@ def test_admission_allowlist_preserves_local_context_but_rejects_secret_fields()
     assert AdmissionAuthority.model_validate_json(json.dumps(authority)).account_id == "account"
     for field in ("tag", "key_check", "reference_name", "secret", "K", "profile"):
         body = dict(authority, **{field: "SYNTHETIC_PRIVATE_MARKER"})
+        encoded = json.dumps(body)
         with pytest.raises(ValidationError):
-            AdmissionAuthority.model_validate_json(json.dumps(body))
+            AdmissionAuthority.model_validate_json(encoded)
+    duplicate = json.dumps(authority)[:-1] + ',"service_id":"local"}'
     with pytest.raises(ValueError):
-        AdmissionAuthority.model_validate_json(
-            json.dumps(authority)[:-1] + ',"service_id":"local"}'
-        )
+        AdmissionAuthority.model_validate_json(duplicate)
 
 
 @pytest.mark.parametrize(

@@ -289,6 +289,30 @@ def validate_reason(status: str, reason: OperationReason | None) -> None:
         raise ValueError("status reason mismatch")
 
 
+def _validate_failure_reason(
+    reason: OperationReason | None,
+    execution: ExecutionStatus,
+    delivery: DeliveryStatus,
+    dispatched: bool,
+) -> None:
+    allowed = (
+        {"provider_failed", "provider_rejected"}
+        if dispatched
+        else {
+            "plan_invalid",
+            "approval_revoked",
+            "approval_expired",
+            "approval_changed",
+            "credential_changed",
+            "capacity_exceeded",
+        }
+    )
+    if execution == "succeeded" and delivery == "failed" and dispatched:
+        allowed = {"delivery_failed"}
+    if reason not in allowed:
+        raise ValueError("failure reason must reflect dispatch")
+
+
 def validate_progress_reason(
     status: OperationStatus,
     reason: OperationReason | None,
@@ -305,22 +329,7 @@ def validate_progress_reason(
         if reason != expected:
             raise ValueError("running reason must reflect delivery")
     if status == "failed":
-        allowed = (
-            {"provider_failed", "provider_rejected"}
-            if dispatched
-            else {
-                "plan_invalid",
-                "approval_revoked",
-                "approval_expired",
-                "approval_changed",
-                "credential_changed",
-                "capacity_exceeded",
-            }
-        )
-        if execution == "succeeded" and delivery == "failed" and dispatched:
-            allowed = {"delivery_failed"}
-        if reason not in allowed:
-            raise ValueError("failure reason must reflect dispatch")
+        _validate_failure_reason(reason, execution, delivery, dispatched)
     if status == "cancelled" and reason not in (
         {"provider_cancelled"} if dispatched else {"identity_reset", "local_cancelled"}
     ):
@@ -409,32 +418,8 @@ class OperationRecord(OperationModel):
             local_terminal=local,
         ):
             raise ValueError("operation reducer mismatch")
-        if self.dispatch_attempt_id is None and s.status not in ("admitted", "failed", "cancelled"):
-            raise ValueError("dispatch intent required")
-        if self.dispatch_attempt_id is None and s.execution_status != "not_started":
-            raise ValueError("unarmed execution cannot have started")
-        if self.dispatch_attempt_id is not None and s.execution_status == "not_started":
-            raise ValueError("dispatch cannot be unstarted")
-        if self.fence < s.attempt_count:
-            raise ValueError("candidate ownership counter mismatch")
-        if s.status == "admitted" and (
-            s.clock_anomaly
-            or self.fence != s.attempt_count
-            or (
-                self.observed_identity_epoch,
-                self.observed_clock_generation,
-            )
-            != (a.admission_identity_epoch, a.admission_clock_generation)
-        ):
-            raise ValueError("new execution candidates retain admission authority")
-        if self.lease is not None and (self.lease.fence != self.fence or s.status in TERMINAL):
-            raise ValueError("lease projection mismatch")
-        if self.lease is not None and (
-            (self.lease.ownership_identity_epoch, self.lease.ownership_clock_generation)
-            != (self.observed_identity_epoch, self.observed_clock_generation)
-            or self.lease.expires_at <= s.updated_at
-        ):
-            raise ValueError("lease must cover its last ownership observation")
+        _validate_record_dispatch(self)
+        _validate_record_lease(self)
         if self.recovery_reason is not None and s.status != "unknown":
             raise ValueError("recovery marker requires unknown")
         if self.event_count == MAX_EVENTS and s.status not in TERMINAL:
@@ -442,6 +427,40 @@ class OperationRecord(OperationModel):
         if len(canonical(self.model_dump(mode="json"))) > MAX_OPERATION_BYTES:
             raise ValueError("bounded operation required")
         return self
+
+
+def _validate_record_dispatch(record: OperationRecord) -> None:
+    a, s = record.admission, record.summary
+    if record.dispatch_attempt_id is None and s.status not in ("admitted", "failed", "cancelled"):
+        raise ValueError("dispatch intent required")
+    if record.dispatch_attempt_id is None and s.execution_status != "not_started":
+        raise ValueError("unarmed execution cannot have started")
+    if record.dispatch_attempt_id is not None and s.execution_status == "not_started":
+        raise ValueError("dispatch cannot be unstarted")
+    if record.fence < s.attempt_count:
+        raise ValueError("candidate ownership counter mismatch")
+    if s.status == "admitted" and (
+        s.clock_anomaly
+        or record.fence != s.attempt_count
+        or (
+            record.observed_identity_epoch,
+            record.observed_clock_generation,
+        )
+        != (a.admission_identity_epoch, a.admission_clock_generation)
+    ):
+        raise ValueError("new execution candidates retain admission authority")
+
+
+def _validate_record_lease(record: OperationRecord) -> None:
+    s = record.summary
+    if record.lease is not None and (record.lease.fence != record.fence or s.status in TERMINAL):
+        raise ValueError("lease projection mismatch")
+    if record.lease is not None and (
+        (record.lease.ownership_identity_epoch, record.lease.ownership_clock_generation)
+        != (record.observed_identity_epoch, record.observed_clock_generation)
+        or record.lease.expires_at <= s.updated_at
+    ):
+        raise ValueError("lease must cover its last ownership observation")
 
 
 EventUUID = Annotated[
@@ -530,6 +549,12 @@ def validate_job_relationships(
         s.delivery_status,
         dispatched=s.execution_status != "not_started",
     )
+    _validate_attempt_times(s, attempts)
+    _validate_job_outcome(s, current, outcome)
+
+
+def _validate_attempt_times(s: JobSummary, attempts: tuple[AttemptView, ...]) -> None:
+    current = attempts[-1]
     if attempts[0].created_at != s.created_at or current.updated_at != s.updated_at:
         raise ValueError("attempt observation time mismatch")
     for old, new in zip(attempts[:-1], attempts[1:], strict=True):
@@ -539,6 +564,11 @@ def validate_job_relationships(
         not s.created_at <= a.created_at <= a.updated_at <= s.updated_at for a in attempts
     ):
         raise ValueError("attempt observation time outside operation")
+
+
+def _validate_job_outcome(
+    s: JobSummary, current: AttemptView, outcome: OperationOutcome | None
+) -> None:
     if (outcome is not None) != (s.status in TERMINAL):
         raise ValueError("terminal outcome required")
     if outcome is not None:

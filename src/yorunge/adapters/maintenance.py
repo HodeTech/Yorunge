@@ -113,6 +113,9 @@ def errors() -> Iterator[None]:
         raise YorungeError(sqlite_error_code(error)) from None
 
 
+BEGIN_IMMEDIATE = "BEGIN IMMEDIATE"
+
+
 def present(path: Path) -> bool:
     return path.exists() or path.is_symlink()
 
@@ -215,15 +218,15 @@ def make_preview(
     source: Snapshot | None = None,
     announced_epoch: str | None = None,
 ) -> Preview:
-    payload = dict(
-        schema_version=3 if operation_runtime() else 2,
-        cache_invalidated=True,
-        action=action,
-        current=current.model_dump() if current else None,
-        source=source.model_dump() if source else None,
-        history_may_be_lost=action != "reset",
-        announced_epoch=announced_epoch,
-    )
+    payload = {
+        "schema_version": 3 if operation_runtime() else 2,
+        "cache_invalidated": True,
+        "action": action,
+        "current": current.model_dump() if current else None,
+        "source": source.model_dump() if source else None,
+        "history_may_be_lost": action != "reset",
+        "announced_epoch": announced_epoch,
+    }
     digest = hashlib.sha256(
         json.dumps(
             payload,
@@ -357,7 +360,7 @@ def reset_connection(
     key_id: str,
     key: bytes,
 ) -> StateInfo:
-    connection.execute("BEGIN IMMEDIATE")
+    connection.execute(BEGIN_IMMEDIATE)
     try:
         version, old = validate(connection, schema.MIGRATIONS, full=True)
         result = _reset_rows(connection, root, deadline, version, old, epoch, key_id, key)
@@ -373,7 +376,7 @@ def upgrade(connection: sqlite3.Connection, root: Path, path: Path, deadline: De
     for step in schema.MIGRATIONS[version:]:
         transform = prepare_migration(step, deadline)
         backup(root, path, deadline, schema.MIGRATIONS)
-        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(BEGIN_IMMEDIATE)
         try:
             apply_migration(connection, step, deadline, transform)
             validate(connection, schema.MIGRATIONS, full=True)
@@ -389,7 +392,7 @@ def _reset_current(
 ) -> StateInfo:
     # One stable writer snapshot supplies both consent and the pre-reset full
     # validation; the transformed state receives a second full validation.
-    connection.execute("BEGIN IMMEDIATE")
+    connection.execute(BEGIN_IMMEDIATE)
     try:
         current = snapshot(connection, deadline)
         consent(make_preview("reset", current), confirmation)

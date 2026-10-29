@@ -29,7 +29,7 @@ def test_vm_measurement_delegates_each_original_callback_without_changing_quantu
             )
             if interrupt:
                 with pytest.raises(sqlite3.OperationalError, match="interrupted"):
-                    connection.execute(query).fetchone()
+                    connection.execute(query)
             else:
                 assert connection.execute(query).fetchone() == (50005000,)
     assert len(calls) > 0

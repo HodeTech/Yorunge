@@ -103,6 +103,76 @@ def synthetic_dataset(root, payload="x", count=1024):
         connection.commit()
 
 
+@pytest.mark.parametrize("kind", ["file", "symlink", "dangling_symlink", "missing_parent"])
+def test_benchmark_preserves_existing_reports_before_accessing_inputs(
+    tmp_path, monkeypatch, capsys, kind
+):
+    checks = runpy.run_path(str(SCRIPT))
+    report, target = tmp_path / "report.json", tmp_path / "target.json"
+    if kind == "file":
+        report.write_text("original")
+    elif kind in ("symlink", "dangling_symlink"):
+        if kind == "symlink":
+            target.write_text("original")
+        report.symlink_to(target)
+    else:
+        report = tmp_path / "absent" / "report.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(SCRIPT), "--command", "unused", "--cache-state", "absent", "--output", str(report)],
+    )
+    with pytest.raises(SystemExit) as result:
+        checks["main"]()
+    assert result.value.code == 2
+    assert "output must be a new file" in capsys.readouterr().err
+    if kind == "file":
+        assert report.read_text() == "original"
+    elif kind in ("symlink", "dangling_symlink"):
+        assert report.is_symlink()
+        if kind == "symlink":
+            assert target.read_text() == "original"
+        else:
+            assert not target.exists()
+    else:
+        assert not report.exists()
+
+
+def test_benchmark_preserves_report_created_during_measurement(tmp_path, monkeypatch, capsys):
+    synthetic_dataset(tmp_path / "state")
+    profile = tmp_path / "profile.toml"
+    profile.write_text("same")
+    report = tmp_path / "report.json"
+    checks = runpy.run_path(str(SCRIPT))
+
+    def measure(command, *, cache_hit=False):
+        if not report.exists():
+            report.write_text("concurrent report")
+        return checks["Sample"](10.0, 0.0, 0.0)
+
+    monkeypatch.setitem(checks["main"].__globals__, "measure", measure)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(SCRIPT),
+            "--command",
+            "unused",
+            "--profile",
+            str(profile),
+            "--cache-state",
+            str(tmp_path / "state"),
+            "--output",
+            str(report),
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        checks["main"]()
+    assert result.value.code == 2
+    assert "output must be a new file" in capsys.readouterr().err
+    assert report.read_text() == "concurrent report"
+
+
 def test_comparison_alternates_every_pair_and_keeps_head_absolute_gate(tmp_path, monkeypatch):
     synthetic_dataset(tmp_path / "head")
     synthetic_dataset(tmp_path / "base")

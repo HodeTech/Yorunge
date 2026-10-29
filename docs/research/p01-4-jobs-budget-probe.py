@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[2]
+OPERATION_PROBE = PROJECT / "docs/research/p01-4-operation-budget-probe.py"
 
 
 def environment():
@@ -46,7 +47,7 @@ def sources():
                 "seed_capability_cache.py",
             )
         ),
-        PROJECT / "docs/research/p01-4-operation-budget-probe.py",
+        OPERATION_PROBE,
         Path(__file__).resolve(),
     ]
     return {str(p.relative_to(PROJECT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
@@ -68,13 +69,13 @@ def installation(prefix, expected):
     packages = {dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()}
     if any(name.lower() in {"pytest", "mypy", "ruff", "types-pyyaml"} for name in packages):
         raise ValueError("runtime contains development tools")
-    return dict(
-        label="installed wheel; separate frozen runtime venv",
-        python=sys.version,
-        packages=packages,
-        source_origin_matches=True,
-        prefix_relative=str(prefix.relative_to(PROJECT)),
-    )
+    return {
+        "label": "installed wheel; separate frozen runtime venv",
+        "python": sys.version,
+        "packages": packages,
+        "source_origin_matches": True,
+        "prefix_relative": str(prefix.relative_to(PROJECT)),
+    }
 
 
 def manifest(path):
@@ -102,7 +103,7 @@ def worker(args):
     if args.layout not in saved["fixtures"]:
         raise ValueError("known marked fixture required")
     identifier = saved["fixtures"][args.layout]
-    helpers = runpy.run_path(str(PROJECT / "docs/research/p01-4-operation-budget-probe.py"))
+    helpers = runpy.run_path(str(OPERATION_PROBE))
     recorder = helpers["Recorder"]()
     with helpers["instrument"](recorder), recorder.phase("query"):
         result = (
@@ -111,16 +112,16 @@ def worker(args):
             else api.show_job(identifier, state_dir=root)
         )
     maximum = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return dict(
-        peak_rss_bytes=maximum if sys.platform == "darwin" else maximum * 1024,
-        sqlite_statements=recorder.statements,
-        progress_quantum=sorted(recorder.intervals),
-        sampled_vm_steps=recorder.nominal_steps,
-        progress_calls=recorder.callbacks,
-        delegated_deadline_calls=recorder.delegated,
-        diagnostic_ms=recorder.events[0]["elapsed_ms"],
-        result_bytes=len(result.model_dump_json().encode()),
-    )
+    return {
+        "peak_rss_bytes": maximum if sys.platform == "darwin" else maximum * 1024,
+        "sqlite_statements": recorder.statements,
+        "progress_quantum": sorted(recorder.intervals),
+        "sampled_vm_steps": recorder.nominal_steps,
+        "progress_calls": recorder.callbacks,
+        "delegated_deadline_calls": recorder.delegated,
+        "diagnostic_ms": recorder.events[0]["elapsed_ms"],
+        "result_bytes": len(result.model_dump_json().encode()),
+    }
 
 
 def measure(command, cwd, env, action, identifier, dense):
@@ -148,22 +149,7 @@ def measure(command, cwd, env, action, identifier, dense):
     return elapsed
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worker", choices=("origin", "diagnostic"), help=argparse.SUPPRESS)
-    parser.add_argument("--manifest", type=Path, help=argparse.SUPPRESS)
-    parser.add_argument("--layout", help=argparse.SUPPRESS)
-    parser.add_argument("--action", choices=("list", "show"), help=argparse.SUPPRESS)
-    parser.add_argument("--python", type=Path)
-    parser.add_argument("--command", type=Path)
-    parser.add_argument("--wheel", type=Path)
-    parser.add_argument("--samples", type=int, default=30)
-    parser.add_argument("--disk-type", default="unknown")
-    parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
-    if args.worker:
-        print(json.dumps(worker(args), allow_nan=False))
-        return 0
+def _validate_arguments(parser, args):
     if (
         Path.cwd().resolve() != PROJECT
         or args.samples < 30
@@ -182,6 +168,25 @@ def main():
     args.python, args.command, args.wheel = (
         path.absolute() for path in (args.python, args.command, args.wheel)
     )
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--worker", choices=("origin", "diagnostic"), help=argparse.SUPPRESS)
+    parser.add_argument("--manifest", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--layout", help=argparse.SUPPRESS)
+    parser.add_argument("--action", choices=("list", "show"), help=argparse.SUPPRESS)
+    parser.add_argument("--python", type=Path)
+    parser.add_argument("--command", type=Path)
+    parser.add_argument("--wheel", type=Path)
+    parser.add_argument("--samples", type=int, default=30)
+    parser.add_argument("--disk-type", default="unknown")
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    if args.worker:
+        print(json.dumps(worker(args), allow_nan=False))
+        return 0
+    _validate_arguments(parser, args)
     import yorunge
 
     if Path(yorunge.__file__).resolve() != (PROJECT / "src/yorunge/__init__.py").resolve():
@@ -189,12 +194,16 @@ def main():
     sys.path.insert(0, str(PROJECT))
     from tests.fixtures.seed_jobs import seed
 
-    helpers = runpy.run_path(str(PROJECT / "docs/research/p01-4-operation-budget-probe.py"))
+    helpers = runpy.run_path(str(OPERATION_PROBE))
     before, runs, volumes = sources(), [], {}
     env = environment()
     with tempfile.TemporaryDirectory(prefix="p014-jobs-budget-", dir=PROJECT / ".local") as folder:
         work = Path(folder).resolve()
-        saved = dict(prefix=str(args.python.parent.parent.resolve()), sources=before, fixtures={})
+        saved = {
+            "prefix": str(args.python.parent.parent.resolve()),
+            "sources": before,
+            "fixtures": {},
+        }
         marker = work / "manifest.json"
         marker.write_text(json.dumps(saved))
 
@@ -266,17 +275,17 @@ def main():
                 p95 = sorted(samples)[math.ceil(len(samples) * 0.95) - 1]
                 diagnostic = child("diagnostic", "--layout", layout, "--action", action)
                 runs.append(
-                    dict(
-                        layout=layout,
-                        action=action,
-                        first_ms=first,
-                        warmup_ms=warmup,
-                        samples_ms=samples,
-                        p95_ms=p95,
-                        budget_ms=200,
-                        passed=p95 <= 200,
-                        diagnostic=diagnostic,
-                    )
+                    {
+                        "layout": layout,
+                        "action": action,
+                        "first_ms": first,
+                        "warmup_ms": warmup,
+                        "samples_ms": samples,
+                        "p95_ms": p95,
+                        "budget_ms": 200,
+                        "passed": p95 <= 200,
+                        "diagnostic": diagnostic,
+                    }
                 )
                 print(f"{layout} {action}: p95 {p95:.3f} ms", file=sys.stderr, flush=True)
             after = helpers["contents"](root)
@@ -287,27 +296,31 @@ def main():
             }:
                 raise ValueError("read-only jobs changed fixture state")
     unchanged = before == sources()
-    report = dict(
-        schema_version=1,
-        source_base_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-        source_sha256=before,
-        source_unchanged=unchanged,
-        installation=provenance,
-        wheel_sha256=hashlib.sha256(args.wheel.read_bytes()).hexdigest(),
-        platform=platform.platform(),
-        machine=platform.machine(),
-        sqlite=sqlite3.sqlite_version,
-        cpu=subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
+    report = {
+        "schema_version": 1,
+        "source_base_commit": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip(),
+        "source_sha256": before,
+        "source_unchanged": unchanged,
+        "installation": provenance,
+        "wheel_sha256": hashlib.sha256(args.wheel.read_bytes()).hexdigest(),
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "sqlite": sqlite3.sqlite_version,
+        "cpu": subprocess.check_output(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+        ).strip()
         if sys.platform == "darwin"
         else platform.processor() or "unknown",
-        disk_type=args.disk_type,
-        fixture=volumes,
-        runs=runs,
-        measurement_note=(
+        "disk_type": args.disk_type,
+        "fixture": volumes,
+        "runs": runs,
+        "measurement_note": (
             "first separate; three warmups; >=30 fresh processes; nearest-rank p95; "
             "no OS cache flush; setup/hash/diagnostic outside timed commands; all samples retained"
         ),
-    )
+    }
     with args.output.open("x") as output:
         json.dump(report, output, indent=2, allow_nan=False)
         output.write("\n")

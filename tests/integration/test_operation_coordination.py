@@ -6,6 +6,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from functools import partial
 
 import pytest
 
@@ -208,11 +209,19 @@ def test_permit_thread_copy_pickle_and_fork_boundaries():
     with forked._lock:
         pid = os.fork()
         if pid == 0:
+            code = 1
             try:
+                import signal
+
+                signal.signal(signal.SIGALRM, signal.SIG_DFL)
+                signal.alarm(5)
                 forked.consume()
             except OperationError:
-                os._exit(0)
-            os._exit(1)
+                code = 0
+            except BaseException:
+                code = 2
+            finally:
+                os._exit(code)
         assert os.waitpid(pid, 0)[1] == 0
     forked.consume()
 
@@ -279,13 +288,16 @@ def test_final_transaction_rechecks_credential_revision_across_processes(
             execution_clock.value += timedelta(seconds=31)
         monkeypatch.setattr(StateOperations, point, raced)
         monkeypatch.setattr(EnvSecretReader, "read", read)
+        if point == "takeover":
+            invoke = partial(coordinator.takeover, first.job.operation.operation_id)
+        elif first:
+            invoke = partial(
+                coordinator.dispatch, first.job.operation.operation_id, first.ownership
+            )
+        else:
+            invoke = partial(coordinator.admit, plan.plan_id)
         with pytest.raises(YorungeError) as error:
-            if point == "takeover":
-                coordinator.takeover(first.job.operation.operation_id)
-            elif first:
-                coordinator.dispatch(first.job.operation.operation_id, first.ownership)
-            else:
-                coordinator.admit(plan.plan_id)
+            invoke()
         assert error.value.code == "state_changed"
     # A single call captures once; no automatic reread of a changed environment.
     assert len(reads) == (1 if point == "admit" else 0)
@@ -316,11 +328,14 @@ def test_business_write_failure_rolls_back_before_external_effect(
 
         with monkeypatch.context() as patch:
             patch.setattr(operation_repository, name, fail_after_write)
+            if first:
+                invoke = partial(
+                    coordinator.dispatch, first.job.operation.operation_id, first.ownership
+                )
+            else:
+                invoke = partial(coordinator.admit, plan.plan_id)
             with pytest.raises(OperationError) as error:
-                if first:
-                    coordinator.dispatch(first.job.operation.operation_id, first.ownership)
-                else:
-                    coordinator.admit(plan.plan_id)
+                invoke()
             assert error.value.code == "state_write_failed"
         if first:
             record = coordinator.repository.operation(first.job.operation.operation_id)
@@ -744,11 +759,12 @@ def test_known_id_survives_pre_arm_use_case_failure(
             )
         else:
             execution_clock.elapsed += 31
+        if failure == "validation":
+            invoke = partial(coordinator.dispatch, identifier, claim.ownership)
+        else:
+            invoke = partial(coordinator.renew, identifier, claim.ownership)
         with pytest.raises(YorungeError) as error:
-            if failure == "validation":
-                coordinator.dispatch(identifier, claim.ownership)
-            else:
-                coordinator.renew(identifier, claim.ownership)
+            invoke()
         assert error.value.envelope()["operation_id"] == identifier
     assert backend.calls == 0
 
@@ -817,10 +833,11 @@ def test_repeated_admission_failure_identifies_persisted_operation(
 
         with monkeypatch.context() as patch:
             patch.setattr(operation_repository, "read_job", expire_after_read)
+            if path == "lookup":
+                invoke = partial(coordinator.admit, plan.plan_id)
+            else:
+                invoke = partial(coordinator.repository.admit, plan, validity)
             with pytest.raises(YorungeError) as error:
-                if path == "lookup":
-                    coordinator.admit(plan.plan_id)
-                else:
-                    coordinator.repository.admit(plan, validity)
+                invoke()
             assert error.value.envelope()["operation_id"] == identifier
     assert backend.calls == 0

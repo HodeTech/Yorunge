@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -185,15 +186,16 @@ def test_operation_runtime_restore_gate_precedes_source_and_target_io(tmp_path, 
         api.initialize_state(state_dir=root)
     backup = tmp_path / "missing-backup"
     before = {str(p): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    if action == "restore-preview":
+        invoke = partial(api.preview_state_restore, backup, state_dir=root)
+    elif action == "restore":
+        invoke = partial(api.restore_state, backup, "a" * 64, state_dir=root)
+    elif action == "recover-preview":
+        invoke = partial(api.preview_state_recovery, state_dir=root)
+    else:
+        invoke = partial(api.recover_state, "a" * 64, state_dir=root)
     with pytest.raises(YorungeError) as failure:
-        if action == "restore-preview":
-            api.preview_state_restore(backup, state_dir=root)
-        elif action == "restore":
-            api.restore_state(backup, "a" * 64, state_dir=root)
-        elif action == "recover-preview":
-            api.preview_state_recovery(state_dir=root)
-        else:
-            api.recover_state("a" * 64, state_dir=root)
+        invoke()
     assert failure.value.code == "state_restore_unsupported"
     assert {str(p): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
 
@@ -396,11 +398,12 @@ def test_reviewed_integrity_regressions_fail_closed(admitted_operation, damage, 
             )
             connection.execute("UPDATE operations SET payload=?", (json.dumps(body),))
         connection.execute("COMMIT")
+        if entry == "warm":
+            invoke = partial(read_job, connection, identifier)
+        else:
+            invoke = partial(store.verify)
         with pytest.raises(YorungeError) as failure:
-            if entry == "warm":
-                read_job(connection, identifier)
-            else:
-                store.verify()
+            invoke()
         assert failure.value.code == "state_invalid"
 
 
@@ -694,9 +697,10 @@ def test_dispatch_event_fence_covers_every_unlogged_candidate_claim(
             ),
         )
         connection.execute("COMMIT")
+        if entry == "warm":
+            invoke = partial(read_job, connection, record.summary.operation_id)
+        else:
+            invoke = partial(store.verify)
         with pytest.raises(YorungeError) as failure:
-            if entry == "warm":
-                read_job(connection, record.summary.operation_id)
-            else:
-                store.verify()
+            invoke()
         assert failure.value.code == "state_invalid"

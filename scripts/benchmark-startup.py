@@ -234,6 +234,8 @@ def main() -> int:
         value is not None for value in baseline_args
     ):
         parser.error("all three --baseline options must be supplied together")
+    if args.output.exists() or args.output.is_symlink() or not args.output.parent.is_dir():
+        parser.error("output must be a new file in an existing directory")
     profile = args.profile.resolve()
     head_dataset = dataset(args.cache_state)
     current_cases = cases(args.command, profile, args.cache_state)
@@ -286,8 +288,13 @@ def main() -> int:
         if baseline_cases
         else None,
     }
-    args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    print(json.dumps(report, indent=2, allow_nan=False))
+    encoded = json.dumps(report, indent=2, allow_nan=False)
+    try:
+        with args.output.open("x", encoding="utf-8") as output:
+            output.write(encoded + "\n")
+    except FileExistsError:
+        parser.error("output must be a new file in an existing directory")
+    print(encoded)
     return 0 if passed else 1
 
 

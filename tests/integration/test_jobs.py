@@ -4,6 +4,7 @@ import json
 import sqlite3
 from contextlib import nullcontext
 from datetime import timedelta
+from functools import partial
 from threading import Event, Thread
 from uuid import uuid4
 
@@ -281,11 +282,12 @@ def test_state_failures_never_become_empty_or_unknown_jobs(
         if failure == "busy"
         else nullcontext()
     )
+    if action == "list":
+        invoke = partial(api.list_jobs, state_dir=state)
+    else:
+        invoke = partial(api.show_job, record.summary.operation_id, state_dir=state)
     with lock, pytest.raises(YorungeError) as error:
-        if action == "list":
-            api.list_jobs(state_dir=state)
-        else:
-            api.show_job(record.summary.operation_id, state_dir=state)
+        invoke()
     assert error.value.code == code
     assert "private-path-marker" not in str(error.value)
     if failure == "intent":
@@ -425,13 +427,14 @@ def test_persisted_execution_success_cannot_have_nonzero_exit(admitted_operation
         raw = json.loads(connection.execute("SELECT payload FROM operation_outcomes").fetchone()[0])
         raw["provider_exit_code"] = 1
         connection.execute("UPDATE operation_outcomes SET payload=?", (canonical(raw).decode(),))
+    if action == "list":
+        invoke = partial(api.list_jobs, state_dir=state)
+    elif action == "show":
+        invoke = partial(api.show_job, identifier, state_dir=state)
+    else:
+        invoke = partial(api.initialize_state, state_dir=state)
     with pytest.raises(YorungeError) as error:
-        if action == "list":
-            api.list_jobs(state_dir=state)
-        elif action == "show":
-            api.show_job(identifier, state_dir=state)
-        else:
-            api.initialize_state(state_dir=state)
+        invoke()
     assert error.value.code == "state_invalid"
 
 

@@ -182,6 +182,33 @@ def _dispatch_authority(record: OperationRecord, item: OperationEvent) -> None:
         raise ValueError("dispatch must retain admission authority")
 
 
+def _validate_admission_event(
+    record: OperationRecord, item: OperationEvent, numbers: dict[str, int]
+) -> None:
+    if (item.status, item.attempt_id, item.observed_at, item.revision, item.fence) != (
+        "admitted",
+        min(numbers, key=numbers.__getitem__),
+        record.summary.created_at,
+        1,
+        1,
+    ):
+        raise ValueError("admission history required")
+    if (item.identity_epoch, item.clock_generation) != (
+        record.admission.admission_identity_epoch,
+        record.admission.admission_clock_generation,
+    ):
+        raise ValueError("admission clock mismatch")
+
+
+def _validate_candidate_transition(
+    item: OperationEvent, previous: OperationEvent, numbers: dict[str, int]
+) -> None:
+    if numbers[item.attempt_id] < numbers[previous.attempt_id]:
+        raise ValueError("candidate sequence cannot regress")
+    if item.attempt_id != previous.attempt_id and item.fence <= previous.fence:
+        raise ValueError("new candidate must have a new owner")
+
+
 def _event_progress(
     record: OperationRecord,
     item: OperationEvent,
@@ -196,19 +223,7 @@ def _event_progress(
     elif armed:
         raise ValueError("dispatched history cannot return to admission")
     if previous is None:
-        if (item.status, item.attempt_id, item.observed_at, item.revision, item.fence) != (
-            "admitted",
-            min(numbers, key=numbers.__getitem__),
-            record.summary.created_at,
-            1,
-            1,
-        ):
-            raise ValueError("admission history required")
-        if (item.identity_epoch, item.clock_generation) != (
-            record.admission.admission_identity_epoch,
-            record.admission.admission_clock_generation,
-        ):
-            raise ValueError("admission clock mismatch")
+        _validate_admission_event(record, item, numbers)
         return sending
     recovered = (
         previous.status == "running"
@@ -218,10 +233,7 @@ def _event_progress(
     if item.status not in EVENT_TRANSITIONS[previous.status] and not recovered:
         raise ValueError("invalid lifecycle transition")
     if previous.status == "admitted":
-        if numbers[item.attempt_id] < numbers[previous.attempt_id]:
-            raise ValueError("candidate sequence cannot regress")
-        if item.attempt_id != previous.attempt_id and item.fence <= previous.fence:
-            raise ValueError("new candidate must have a new owner")
+        _validate_candidate_transition(item, previous, numbers)
     elif item.attempt_id != previous.attempt_id:
         raise ValueError("attempt may change only before dispatch")
     return armed or sending
@@ -273,9 +285,7 @@ def _event_observation(
     return regressed
 
 
-def _history_end(
-    record: OperationRecord, previous: OperationEvent, attempts: tuple[AttemptView, ...]
-) -> None:
+def _validate_history_recovery(record: OperationRecord, previous: OperationEvent) -> None:
     s = record.summary
     if previous.execution_status == "succeeded" and s.execution_status != "succeeded":
         raise ValueError("recovery must preserve confirmed execution")
@@ -290,6 +300,12 @@ def _history_end(
         record.recovery_reason is not None or s.status != previous.status
     ):
         raise ValueError("terminal history cannot be reopened")
+
+
+def _validate_history_current(
+    record: OperationRecord, previous: OperationEvent, attempts: tuple[AttemptView, ...]
+) -> None:
+    s = record.summary
     predispatch_control = (
         previous.status == s.status == "admitted" and record.dispatch_attempt_id is None
     )
@@ -320,6 +336,10 @@ def _history_end(
         attempts[-1].reason_code,
     ):
         raise ValueError("latest history projection mismatch")
+
+
+def _validate_history_observation(record: OperationRecord, previous: OperationEvent) -> None:
+    s = record.summary
     if s.status in TERMINAL and (
         previous.observed_at,
         previous.revision,
@@ -332,6 +352,14 @@ def _history_end(
             record.observed_clock_generation,
         ) == (previous.identity_epoch, previous.clock_generation):
             raise ValueError("control clock regression must be explicit")
+
+
+def _history_end(
+    record: OperationRecord, previous: OperationEvent, attempts: tuple[AttemptView, ...]
+) -> None:
+    _validate_history_recovery(record, previous)
+    _validate_history_current(record, previous, attempts)
+    _validate_history_observation(record, previous)
 
 
 @dataclass(frozen=True)
@@ -492,12 +520,7 @@ def _validate_view(
     validate_events(connection, record, attempts)
 
 
-def validate_job_facts(
-    record: OperationRecord,
-    plan: PlanValidation,
-    attempts: tuple[AttemptView, ...],
-    outcome: OperationOutcome | None,
-) -> None:
+def _validate_admission_plan(record: OperationRecord, plan: PlanValidation) -> None:
     a, s = record.admission, record.summary
     if (s.plan_id, s.plan_digest, s.task, s.tool, s.execution) != (
         plan.plan_id,
@@ -514,6 +537,16 @@ def validate_job_facts(
         plan.clock_generation,
     ):
         raise ValueError("operation plan identity mismatch")
+
+
+def validate_job_facts(
+    record: OperationRecord,
+    plan: PlanValidation,
+    attempts: tuple[AttemptView, ...],
+    outcome: OperationOutcome | None,
+) -> None:
+    _validate_admission_plan(record, plan)
+    a, s = record.admission, record.summary
     if (
         record.dispatch_attempt_id is not None
         and record.dispatch_attempt_id != attempts[-1].attempt_id
@@ -650,24 +683,10 @@ def insert_record(
     read_job(connection, record.summary.operation_id)
 
 
-def write_record(
-    connection: sqlite3.Connection, record: OperationRecord, *, expected_revision: int
+def _validate_record_change(
+    current: OperationRecord, record: OperationRecord, expected_revision: int
 ) -> None:
-    if not connection.in_transaction:
-        raise YorungeError("state_invalid")
-    record = decode(
-        OperationRecord,
-        canonical(record.model_dump(mode="json")).decode("ascii"),
-        MAX_OPERATION_BYTES,
-    )
-    current = read_operation(connection, record.summary.operation_id)
     old, new = current.summary, record.summary
-    if old.revision != expected_revision:
-        raise OperationError("operation_lease_lost", old.operation_id)
-    if old.status in TERMINAL:
-        if current == record:
-            return
-        raise OperationError("operation_conflict", old.operation_id)
     if (
         current.admission != record.admission
         or (
@@ -715,6 +734,27 @@ def write_record(
         or not current.fence <= record.fence <= current.fence + 1
     ):
         raise OperationError("operation_conflict", old.operation_id)
+
+
+def write_record(
+    connection: sqlite3.Connection, record: OperationRecord, *, expected_revision: int
+) -> None:
+    if not connection.in_transaction:
+        raise YorungeError("state_invalid")
+    record = decode(
+        OperationRecord,
+        canonical(record.model_dump(mode="json")).decode("ascii"),
+        MAX_OPERATION_BYTES,
+    )
+    current = read_operation(connection, record.summary.operation_id)
+    old = current.summary
+    if old.revision != expected_revision:
+        raise OperationError("operation_lease_lost", old.operation_id)
+    if old.status in TERMINAL:
+        if current == record:
+            return
+        raise OperationError("operation_conflict", old.operation_id)
+    _validate_record_change(current, record, expected_revision)
     row = operation_row(record)
     result = connection.execute(
         "UPDATE operations SET plan_id=?,plan_digest=?,task=?,tool=?,execution=?,created_at=?,"
@@ -724,6 +764,24 @@ def write_record(
     )
     if result.rowcount != 1:
         raise OperationError("operation_lease_lost", record.summary.operation_id)
+
+
+def _existing_attempt_needs_write(
+    operation_id: str, item: AttemptView, saved: tuple[object, ...]
+) -> bool:
+    old = decode(AttemptView, saved[1], MAX_ATTEMPT_BYTES)
+    if saved[0] != operation_id or (old.number, old.created_at) != (
+        item.number,
+        item.created_at,
+    ):
+        raise OperationError("operation_conflict", operation_id)
+    if old.provider_run_id is not None and old.provider_run_id != item.provider_run_id:
+        raise OperationError("operation_conflict", operation_id)
+    if old.status in TERMINAL or old.status == "abandoned":
+        if old != item:
+            raise OperationError("operation_conflict", operation_id)
+        return False
+    return True
 
 
 def write_attempt(connection: sqlite3.Connection, operation_id: str, attempt: AttemptView) -> None:
@@ -740,19 +798,8 @@ def write_attempt(connection: sqlite3.Connection, operation_id: str, attempt: At
     if saved is None:
         if record.dispatch_attempt_id is not None or record.summary.status in TERMINAL:
             raise OperationError("operation_conflict", operation_id)
-    else:
-        old = decode(AttemptView, saved[1], MAX_ATTEMPT_BYTES)
-        if saved[0] != operation_id or (old.number, old.created_at) != (
-            item.number,
-            item.created_at,
-        ):
-            raise OperationError("operation_conflict", operation_id)
-        if old.provider_run_id is not None and old.provider_run_id != item.provider_run_id:
-            raise OperationError("operation_conflict", operation_id)
-        if old.status in TERMINAL or old.status == "abandoned":
-            if old != item:
-                raise OperationError("operation_conflict", operation_id)
-            return
+    elif not _existing_attempt_needs_write(operation_id, item, saved):
+        return
     result = connection.execute(
         "INSERT INTO operation_attempts VALUES(?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE "
         "SET status=excluded.status,payload=excluded.payload "

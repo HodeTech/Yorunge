@@ -249,3 +249,21 @@ Diagnostic list/show toplam 44/46 SQLite statement; yoğun örneklenmiş VM quan
 ## Sonraki adımlar
 
 Adım 1–4, ikişer fresh review ve bütünleşik son kaynak kabulü tamamlandı. Development PR'ında dış CI/kalite sonuçları ayrıca izlenir; kullanıcı incelemesi ve merge'i beklenir. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. Master/release aktarımı kullanıcıdadır.
+
+## PR #10 kalite incelemesi — takip
+
+410c29e PR head'inde SonarCloud iki güvenlik ve 45 bakım/test uyarısı yayımladı. Üç bağımsız salt-okunur reviewer güvenlik sınırını, doğrulama dallarını ve test iddialarını inceledi. Bakım düzenlemeleri kontrol sırasını, SQL CAS/transaction sınırını ve bütün kapalı doğrulama kurallarını korur; yoğun normal event döngüsüne ek genel helper çağrısı eklenmedi. `pytest.raises` hazırlıkları/dal seçimi blok dışına taşındı. Sabit dalların önceki halinde yanlış başarı yeniden üretilmedi; bunlar assertion kapsamı ve okunabilirlik düzenlemeleridir.
+
+Doğrudan `benchmark-startup.py --output` girişinin mevcut dosya veya symlink hedefini ezebildiği ayrı bir **P2 kanıt kaybı kusuru** doğrulandı. Erken yeni-dosya kontrolü ve son exclusive-create ile düzeltildi; mevcut dosya, mevcut/dangling symlink, eksik parent ve ölçüm sırasında oluşan dosya regresyonları eklendi. Kısıtlı bir kökten kaçış olmadığı için bu kusur path traversal olarak adlandırılmaz. Çıktı yolu çağıranın açık geliştirici rapor hedefidir.
+
+`check-startup.py` S8705 akışı HTTP/ürün isteği almaz; açık CLI metadata'sı sabit yapılı argv listesinde `shell=False` ile taşınır. Offline literal argv deneyi ve kaynak incelemesi komut enjeksiyonunu doğrulamadı. Issue `AaGFhdKHvoIUrs5RY6NC`, gerekçesiyle SonarCloud'da **False positive** olarak değerlendirildi; genel kural/quality gate değiştirilmedi. Benchmark S8707 için de yetki sınırı aşımı doğrulanmadı; issue bazlı dış değerlendirme ve güncel tarama ayrıca izlenir.
+
+CodeRabbit'teki beş güncel durum ifadesi kaynak/kartlarla karşılaştırılıp düzeltildi; indeks kart durumunu tekrar etmez. Fork testinin kilit/PID regresyonunda süresiz bekleyebilmesi ve beklenmeyen child istisnasında pytest'e dönebilmesi doğrulandı; child alarm ve zorunlu `finally` çıkışı eklendi. PR Lens'in delivery-required olmayan succeeded işte takeover iddiası uygulanabilir bulunmadı: bu kombinasyon reducer gereği terminal `succeeded` olur ve takeover terminal dalı mutasyondan önce döner. Bu nedenle varsayımsal guard değişikliği yapılmadı.
+
+Düzenlemeler sonrası hedefli takım **312 passed / 79,99 s**; ayrıca güncellenen permit testi geçti. Ruff, strict mypy 51 kaynak, 114 Markdown, 6 skill/9 kart ve diff denetimleri geçti. Yeni kaynak refaktörünün fresh review ve bütünleşik performans/build kabulü henüz bu takip kaydına eklenmedi; yukarıdaki 17de965 ölçümleri tarihsel kaynak kanıtı olarak korunur.
+
+### Linux CI gözlemi
+
+Aynı 410c29e head ve aynı `d834ec89…` wheel ile [40807762132](https://github.com/HodeTech/Yorunge/actions/runs/40807762132) başarılı; [40808159684](https://github.com/HodeTech/Yorunge/actions/runs/40808159684) startup cache kapısında başarısızdır. Başarılı AMD EPYC 9V45 host'ta aday/taban cache p95 **116,575 / 119,019 ms**; AMD EPYC 9V74 başarısız koşuda **392,389 / 355,920 ms**. İki taraf da etkilenmiştir. Wall–child CPU farkı medyanı adayda yaklaşık **2,021 → 55,746 ms** artar; bu fark I/O ile scheduler nedenini ayırmaz. Disk türü `unknown`; setup image ile benchmark ortam metadata'sı farklı değerler taşıdığından image değişimi neden olarak ileri sürülmez.
+
+İlk koşunun iptali PR açıklama güncellemesiyle açılan `edited` koşusunun concurrency davranışıdır. Sonraki başarısız startup gerçek bir kapı başarısızlığıdır; iptal ile karıştırılmaz. Eşik artırılmadı, başarısız örnek atılmadı ve aynı head'i yeşil göstermek için manuel rerun yapılmadı.

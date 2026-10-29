@@ -50,8 +50,9 @@ EVENT = dict(
 )
 def test_scalar_event_path_rejects_noncanonical_types_and_text(field, value):
     payload = {**EVENT, field: value}
+    encoded = json.dumps(payload)
     with pytest.raises(ValueError):
-        OperationEvent.model_validate_json(json.dumps(payload))
+        OperationEvent.model_validate_json(encoded)
 
 
 @pytest.mark.parametrize(
@@ -125,13 +126,15 @@ def test_preview_v3_strict_snapshot_and_count_relationships(field, value):
     raw["digest"] = hashlib.sha256(
         canonical({k: v for k, v in raw.items() if k != "digest"})
     ).hexdigest()
+    encoded = canonical(raw)
     with pytest.raises(ValueError):
-        MaintenancePreview.model_validate_json(canonical(raw))
+        MaintenancePreview.model_validate_json(encoded)
 
 
 def test_preview_digest_is_canonical_and_literal_boolean_is_strict():
     raw = preview_payload()
     assert MaintenancePreview.model_validate_json(canonical(raw)).schema_version == 3
     for field, value in (("cache_invalidated", 1), ("digest", "0" * 64), ("schema_version", 3.0)):
+        encoded = canonical({**raw, field: value})
         with pytest.raises(ValueError):
-            MaintenancePreview.model_validate_json(canonical({**raw, field: value}))
+            MaintenancePreview.model_validate_json(encoded)

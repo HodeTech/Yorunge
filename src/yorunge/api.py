@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from yorunge.adapters.execution_store import PlanRepository
     from yorunge.adapters.state import Store
     from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
-    from yorunge.application.operation_observations import ReadPort
+    from yorunge.application.operation_observations import ReadContext, ReadPort
     from yorunge.application.operations import OperationCoordinator, StartPort
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
@@ -696,6 +696,48 @@ def _execution_budget() -> ExecutionBudget:
     return ExecutionBudget(SystemClock(), started)
 
 
+def _operation_read_context(
+    plan: ExecutionPlan, context: Context, credentials: tuple[BoundCredential, ...]
+) -> ReadContext:
+    from yorunge.adapters.operation_store import plan_authorities
+    from yorunge.application.operation_observations import ReadContext
+
+    authorities = []
+    for authority in plan_authorities(plan):
+        if (context.account_id, context.project_id) != (
+            authority.account_id,
+            authority.project_id,
+        ):
+            raise YorungeError("state_changed")
+        if authority.service_id == "local":
+            authorities.append(authority)
+            continue
+        bound = next(
+            (
+                item
+                for item in credentials
+                if (
+                    item.credential.reference.service_id,
+                    item.credential.target.service_origin,
+                    item.credential.target.api_base_path,
+                )
+                == (authority.service_id, authority.service_origin, authority.api_base_path)
+            ),
+            None,
+        )
+        if bound is None:
+            raise YorungeError("credential_unavailable")
+        authorities.append(
+            authority.model_copy(
+                update={
+                    "credential_id": bound.identity.credential_id,
+                    "credential_revision": bound.identity.credential_revision,
+                }
+            )
+        )
+    return ReadContext(tuple(authorities), credentials)
+
+
 @contextmanager
 def _operation_session(
     plan_id: str,
@@ -715,7 +757,6 @@ def _operation_session(
     from yorunge.adapters.operation_repository import StateOperations
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
-    from yorunge.application.operation_observations import ReadContext
     from yorunge.application.operations import OperationCoordinator
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
@@ -750,42 +791,7 @@ def _operation_session(
 
         def read_context(plan: ExecutionPlan) -> ReadContext:
             context, credentials = captured(plan)
-            from yorunge.adapters.operation_store import plan_authorities
-
-            authorities = []
-            for authority in plan_authorities(plan):
-                if (context.account_id, context.project_id) != (
-                    authority.account_id,
-                    authority.project_id,
-                ):
-                    raise YorungeError("state_changed")
-                if authority.service_id == "local":
-                    authorities.append(authority)
-                    continue
-                bound = next(
-                    (
-                        item
-                        for item in credentials
-                        if (
-                            item.credential.reference.service_id,
-                            item.credential.target.service_origin,
-                            item.credential.target.api_base_path,
-                        )
-                        == (authority.service_id, authority.service_origin, authority.api_base_path)
-                    ),
-                    None,
-                )
-                if bound is None:
-                    raise YorungeError("credential_unavailable")
-                authorities.append(
-                    authority.model_copy(
-                        update={
-                            "credential_id": bound.identity.credential_id,
-                            "credential_revision": bound.identity.credential_revision,
-                        }
-                    )
-                )
-            return ReadContext(tuple(authorities), credentials)
+            return _operation_read_context(plan, context, credentials)
 
         coordinator = OperationCoordinator(
             repository, current, backend, (), budget, os.getpid, observer, read_context
@@ -869,7 +875,7 @@ def list_jobs(
 
     query = validate(
         JobsQuery,
-        dict(status=status, plan_id=plan_id, limit=limit, cursor=cursor),
+        {"status": status, "plan_id": plan_id, "limit": limit, "cursor": cursor},
         "invalid_request",
     )
     if state_dir is not None and not isinstance(state_dir, Path):

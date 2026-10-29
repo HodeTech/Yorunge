@@ -493,13 +493,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     json_output = vars(args).get("output", "text") == "json"
     try:
         result = dispatch(args)
-        print(
-            result.model_dump_json()
-            if json_output
-            else jobs_text_result(result.data)
-            if args.command == "jobs"
-            else text_result(result.data)
-        )
+        if json_output:
+            output = result.model_dump_json()
+        elif args.command == "jobs":
+            output = jobs_text_result(result.data)
+        else:
+            output = text_result(result.data)
+        print(output)
         return 0
     except YorungeError as error:
         print(

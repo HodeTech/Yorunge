@@ -1,6 +1,6 @@
 # ADR-0016: Kalıcı operation kabulü, tek gönderim ve sahiplik
 
-**Durum:** Accepted — 2026-10-29 kullanıcı yetkisiyle, review bulgularının doğrulanmış revizyonu ve iki fresh review turu sonrası benimsendi. Tasarım kabulüdür; ürün/kabul henüz tamamlanmadı. **Tarih:** 2026-10-29. **İş:** P01-4b/4c. [Ön inceleme ve disposition](../research/p01-4-readiness-review.md), [teslim planı](../roadmap/p01-4-delivery-plan.md), [wire](../reference/operations.md).
+**Durum:** Accepted — 2026-10-29 kullanıcı yetkisiyle, review bulgularının doğrulanmış revizyonu ve iki fresh review turu sonrası benimsendi. Tasarım kabulüdür; dört adımın yerel ürün kabulü bu dalda verified. Development merge ve canlı EVREN doğrulaması ayrı aşamalardır. **Tarih:** 2026-10-29. **İş:** P01-4b/4c. [Ön inceleme ve disposition](../research/p01-4-readiness-review.md), [teslim planı](../roadmap/p01-4-delivery-plan.md), [wire](../reference/operations.md).
 
 ## Bağlam
 

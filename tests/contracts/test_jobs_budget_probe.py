@@ -42,8 +42,9 @@ def test_normal_fixture_is_one_valid_nonterminal_job_and_has_no_public_seed_comm
 
 def test_probe_rejects_repository_import_instead_of_installed_runtime(tmp_path):
     module = runpy.run_path(str(PROBE))
+    prefix, expected = Path(sys.prefix), module["sources"]()
     with pytest.raises(ValueError, match="isolated installed"):
-        module["installation"](Path(sys.prefix), module["sources"]())
+        module["installation"](prefix, expected)
 
 
 def test_probe_rejects_unmarked_worker_before_state_access(tmp_path, monkeypatch):
@@ -56,5 +57,6 @@ def test_probe_rejects_unmarked_worker_before_state_access(tmp_path, monkeypatch
         pytest.fail("unmarked worker accessed SQLite")
 
     monkeypatch.setattr(sqlite3, "connect", denied)
+    args = Namespace(manifest=tmp_path / "manifest.json")
     with pytest.raises(ValueError, match="orchestrator-owned"):
-        module["worker"](Namespace(manifest=tmp_path / "manifest.json"))
+        module["worker"](args)

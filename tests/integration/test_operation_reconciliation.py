@@ -2,6 +2,7 @@ import hashlib
 import subprocess
 import sys
 from datetime import timedelta
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -486,11 +487,12 @@ def test_recovery_owner_cannot_claim_a_future_generation_of_current_store(starte
                 update={"status": "unknown", "reason_code": "owner_changed"}
             ),
         )
+        if entry == "warm":
+            invoke = partial(read_job, store.connection, identifier)
+        else:
+            invoke = partial(validate_contents, store.connection)
         with pytest.raises(YorungeError) as error:
-            if entry == "warm":
-                read_job(store.connection, identifier)
-            else:
-                validate_contents(store.connection)
+            invoke()
         assert error.value.code == "state_invalid"
 
 
@@ -905,11 +907,12 @@ def test_consecutive_running_submitted_history_without_recovery_is_invalid(
             ),
         )
         store.connection.execute("COMMIT")
+        if entry == "warm":
+            invoke = partial(read_job, store.connection, identifier)
+        else:
+            invoke = partial(validate_contents, store.connection)
         with pytest.raises(YorungeError) as error:
-            if entry == "warm":
-                read_job(store.connection, identifier)
-            else:
-                validate_contents(store.connection)
+            invoke()
         assert error.value.code == "state_invalid"
 
 

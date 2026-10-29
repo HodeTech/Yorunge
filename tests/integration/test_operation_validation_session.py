@@ -1,6 +1,7 @@
 """Immutable decode reuse never caches live relationships or accepts changed rows."""
 
 import json
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -36,11 +37,12 @@ def test_persisted_owner_scope_and_interval_match_its_last_business_observation(
     changed = record.model_copy(update={"lease": record.lease.model_copy(update={field: value})})
     with open_store(root) as store:
         raw_record(store.connection, changed)
+        if entry == "warm":
+            invoke = partial(read_job, store.connection, record.summary.operation_id)
+        else:
+            invoke = partial(validate_contents, store.connection)
         with pytest.raises(YorungeError) as error:
-            if entry == "warm":
-                read_job(store.connection, record.summary.operation_id)
-            else:
-                validate_contents(store.connection)
+            invoke()
         assert error.value.code == "state_invalid"
 
 
@@ -63,11 +65,12 @@ def test_delivery_policy_cannot_be_changed_in_stored_admission(admitted_operatio
                 ).decode(),
             ),
         )
+        if entry == "warm":
+            invoke = partial(read_job, store.connection, record.summary.operation_id)
+        else:
+            invoke = partial(validate_contents, store.connection)
         with pytest.raises(YorungeError) as error:
-            if entry == "warm":
-                read_job(store.connection, record.summary.operation_id)
-            else:
-                validate_contents(store.connection)
+            invoke()
         assert error.value.code == "state_invalid"
 
 

@@ -561,6 +561,87 @@ class StateOperations:
             ),
         )
 
+    def _write_takeover(
+        self,
+        record: OperationRecord,
+        job: JobView,
+        stamp: Stamp,
+        now: datetime,
+        lease: OperationLease,
+    ) -> None:
+        operation_id, old = record.summary.operation_id, record.lease
+        if record.dispatch_attempt_id is None:
+            attempt = AttemptView(
+                attempt_id=str(uuid4()),
+                number=record.summary.attempt_count + 1,
+                created_at=timestamp(now),
+                updated_at=timestamp(now),
+                status="claimed",
+                provider_run_id=None,
+                provider_status=None,
+                provider_exit_code=None,
+                reason_code=None,
+            )
+            changed = self._progress(
+                record,
+                stamp,
+                now,
+                status="admitted",
+                execution="not_started",
+                delivery=record.summary.delivery_status,
+                reason=None,
+                normal=False,
+            )
+            changed = changed.model_copy(
+                update={
+                    "summary": changed.summary.model_copy(update={"attempt_count": attempt.number}),
+                    "fence": lease.fence,
+                    "lease": lease,
+                }
+            )
+            write_record(self.connection, changed, expected_revision=record.summary.revision)
+            write_attempt(
+                self.connection,
+                operation_id,
+                job.attempts[-1].model_copy(
+                    update={
+                        "status": "abandoned",
+                        "updated_at": timestamp(now),
+                        "reason_code": "lease_expired" if old else "owner_changed",
+                    }
+                ),
+            )
+            write_attempt(self.connection, operation_id, attempt)
+        else:
+            reason: OperationReason = "lease_expired" if old else "owner_changed"
+            changed = self._progress(
+                record,
+                stamp,
+                now,
+                status="unknown",
+                execution="succeeded"
+                if record.summary.execution_status == "succeeded"
+                else "unknown",
+                delivery="unknown"
+                if record.summary.execution_status == "succeeded"
+                else record.summary.delivery_status,
+                reason=reason,
+                normal=False,
+            )
+            changed = changed.model_copy(update={"fence": lease.fence, "lease": lease})
+            write_record(self.connection, changed, expected_revision=record.summary.revision)
+            write_attempt(
+                self.connection,
+                operation_id,
+                job.attempts[-1].model_copy(
+                    update={
+                        "status": "unknown",
+                        "updated_at": timestamp(now),
+                        "reason_code": reason,
+                    }
+                ),
+            )
+
     def takeover(
         self, operation_id: str, validity: ExecutionValidity | None
     ) -> OperationClaim | None:
@@ -593,83 +674,7 @@ class StateOperations:
                         return None
                 now = self.cache.now()
                 lease = self._lease(stamp, record.fence + 1, now)
-                if record.dispatch_attempt_id is None:
-                    attempt = AttemptView(
-                        attempt_id=str(uuid4()),
-                        number=record.summary.attempt_count + 1,
-                        created_at=timestamp(now),
-                        updated_at=timestamp(now),
-                        status="claimed",
-                        provider_run_id=None,
-                        provider_status=None,
-                        provider_exit_code=None,
-                        reason_code=None,
-                    )
-                    changed = self._progress(
-                        record,
-                        stamp,
-                        now,
-                        status="admitted",
-                        execution="not_started",
-                        delivery=record.summary.delivery_status,
-                        reason=None,
-                        normal=False,
-                    )
-                    changed = changed.model_copy(
-                        update={
-                            "summary": changed.summary.model_copy(
-                                update={"attempt_count": attempt.number}
-                            ),
-                            "fence": lease.fence,
-                            "lease": lease,
-                        }
-                    )
-                    write_record(
-                        self.connection, changed, expected_revision=record.summary.revision
-                    )
-                    write_attempt(
-                        self.connection,
-                        operation_id,
-                        job.attempts[-1].model_copy(
-                            update={
-                                "status": "abandoned",
-                                "updated_at": timestamp(now),
-                                "reason_code": "lease_expired" if old else "owner_changed",
-                            }
-                        ),
-                    )
-                    write_attempt(self.connection, operation_id, attempt)
-                else:
-                    reason: OperationReason = "lease_expired" if old else "owner_changed"
-                    changed = self._progress(
-                        record,
-                        stamp,
-                        now,
-                        status="unknown",
-                        execution="succeeded"
-                        if record.summary.execution_status == "succeeded"
-                        else "unknown",
-                        delivery="unknown"
-                        if record.summary.execution_status == "succeeded"
-                        else record.summary.delivery_status,
-                        reason=reason,
-                        normal=False,
-                    )
-                    changed = changed.model_copy(update={"fence": lease.fence, "lease": lease})
-                    write_record(
-                        self.connection, changed, expected_revision=record.summary.revision
-                    )
-                    write_attempt(
-                        self.connection,
-                        operation_id,
-                        job.attempts[-1].model_copy(
-                            update={
-                                "status": "unknown",
-                                "updated_at": timestamp(now),
-                                "reason_code": reason,
-                            }
-                        ),
-                    )
+                self._write_takeover(record, job, stamp, now, lease)
                 gate.require_range(now, instant(lease.expires_at))
                 result = read_job(self.connection, operation_id)
             return OperationClaim(result, lease)
