@@ -170,6 +170,12 @@ def _validate_arguments(parser, args):
     )
 
 
+def cpu_label():
+    if sys.platform == "darwin":
+        return subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
+    return platform.processor() or "unknown"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker", choices=("origin", "diagnostic"), help=argparse.SUPPRESS)
@@ -308,11 +314,7 @@ def main():
         "platform": platform.platform(),
         "machine": platform.machine(),
         "sqlite": sqlite3.sqlite_version,
-        "cpu": subprocess.check_output(
-            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
-        ).strip()
-        if sys.platform == "darwin"
-        else platform.processor() or "unknown",
+        "cpu": cpu_label(),
         "disk_type": args.disk_type,
         "fixture": volumes,
         "runs": runs,
