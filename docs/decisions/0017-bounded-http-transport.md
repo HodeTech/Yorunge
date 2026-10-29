@@ -36,6 +36,10 @@ Retry sahibi yalnız ortak uygulama politikasıdır; HTTPX transport retry **0**
 
 İlk backoff uniform `[0, 0,25]` s jitter'dır; `Retry-After` geçerli delta veya HTTP-date ise gereken beklemenin altına inilmez. Geçersiz değer normal backoff'a düşer, deadline'a sığmayan bekleme/ikinci deneme yapılmaz. Sınırsız `Retry-After`, her katmanda yeni bütçe veya parçadan sonra akışı yeniden başlatma yoktur. Kesin tip/limit/hata sözleşmesi [taşıma referansındadır](../reference/http-transport.md).
 
+### Operation gözlem tüketicisi
+
+ReadPort transport/status/malformed hatasını generic public endpoint hatası olarak coordinator'a kaçırmaz; HTTP referansındaki kapalı eşlemeyi uygular. Authorize ReadAccess üretemeden sona ererse yalnız güncel credential/owner/request ile yerel unknown diagnostic (unauthorized/unavailable/evidence_mismatch) mümkündür. Bu mevcut negatif hata yolunun açıklığıdır, uzak yetki/gözlem veya yeni dispatch izni değildir; ReadAccess olmadan observe/pozitif terminal sonuç yasaktır.
+
 ### SDK sınırı
 
 EVREN SDK çekirdek bağımlılığı yapılmaz. B03'ün P01 çıktısı, ortak taşıma politikasını atlatan SDK kullanımının yasak olduğudur; gerçek SDK/endpoint uyumu P02'de güncel sürüm sabitlenerek denetlenir. SDK'nın retry, timeout, env, redirect, stream ve hata davranışı bu portun kabulünü karşılamadan adaptör hazır sayılmaz. Bu karar SDK'nın bütün işlevlerinin uygunsuz olduğunu veya canlı endpoint desteğini kanıtlamaz.

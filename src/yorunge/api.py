@@ -752,12 +752,15 @@ def _operation_session(
     """Trusted composition only; no public run, backend registration or caller evidence."""
     import os
 
+    from yorunge.application.operations import OperationCoordinator, preflight_port
+
+    preflight_port(backend)
+    preflight_port(observer)
     budget = _execution_budget()
     from yorunge.adapters.input_files import DescriptorInputs
     from yorunge.adapters.operation_repository import StateOperations
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
-    from yorunge.application.operations import OperationCoordinator
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     with open_store(state_dir, timeout=min(5.0, budget.remaining())) as store:
