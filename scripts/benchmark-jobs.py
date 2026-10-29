@@ -144,24 +144,47 @@ def decode(content: str) -> dict[str, Any]:
 
 
 def source(project: Path) -> dict[str, Any]:
-    paths = sorted((project / "src/yorunge").rglob("*.py"))
+    for directory in (project / name for name in ("src", "scripts", "tests")):
+        if directory.is_symlink() or any(path.is_symlink() for path in directory.rglob("*")):
+            raise ValueError("public measurement sources must not contain symlinks")
+    paths = sorted(project.glob("*.py"))
+    paths += sorted((project / "src").rglob("*.py"))
     paths += sorted((project / "scripts").glob("*.py"))
-    paths += sorted((project / "tests/fixtures").glob("*.py"))
+    paths += sorted((project / "tests").rglob("*.py"))
     paths += [
         project / name
         for name in (
             "pyproject.toml",
             "uv.lock",
-            "tests/conftest.py",
             "examples/profile.toml",
             ".github/workflows/checks.yml",
         )
     ]
+    if any(path.is_symlink() for path in paths):
+        raise ValueError("measured source inputs must not be symlinks")
     revision = run(["git", "rev-parse", "HEAD"], cwd=project).stdout.strip()
     return {
         "commit": revision,
         "source_sha256": {str(path.relative_to(project)): digest(path) for path in paths},
     }
+
+
+def prepare_fixture(project: Path, workspace: Path, layout: str) -> None:
+    """Import checked fixture sources with a fresh bytecode namespace per layout."""
+    run(
+        [
+            sys.executable,
+            "-X",
+            f"pycache_prefix={workspace / 'fixture-pycache' / layout}",
+            "-c",
+            SEED,
+            str(project),
+            str(workspace / layout),
+            layout,
+        ],
+        cwd=workspace,
+        timeout=600,
+    )
 
 
 def locked_runtime(project: Path) -> dict[str, str]:
@@ -415,11 +438,7 @@ def check(
     wheel_before = digest(wheel) if wheel else None
     fixtures = {}
     for layout in ("normal", "dense"):
-        run(
-            [sys.executable, "-c", SEED, str(ROOT), str(workspace / layout), layout],
-            cwd=workspace,
-            timeout=600,
-        )
+        prepare_fixture(ROOT, workspace, layout)
         fixtures[layout] = fixture(workspace / layout, layout)
     runs = [
         measure_case(

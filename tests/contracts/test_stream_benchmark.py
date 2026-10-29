@@ -583,3 +583,60 @@ def test_live_server_readiness_timeout_is_distinct_without_waiting_for_the_deadl
         )
     assert not (work / "ready.json").exists()
     assert (work / "server-stderr.txt").is_file()
+
+
+@pytest.mark.parametrize("failure_kind", ["timeout", "value_error"])
+def test_server_log_write_error_preserves_original_worker_exception(
+    tmp_path, monkeypatch, failure_kind
+):
+    certs = certificate(tmp_path / "cert")
+    failure = (
+        subprocess.TimeoutExpired("synthetic-client", 270, stderr=b"partial")
+        if failure_kind == "timeout"
+        else ValueError("synthetic worker failure")
+    )
+    write_text = Path.write_text
+
+    def denied(self, *args, **kwargs):
+        if self.name == "server-stderr.txt":
+            raise PermissionError("synthetic diagnostic write denial")
+        return write_text(self, *args, **kwargs)
+
+    def failed(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(Path, "write_text", denied)
+    monkeypatch.setattr(subprocess, "run", failed)
+    with pytest.raises(type(failure)) as caught:
+        helpers()["measure_one"](
+            ROOT, Path(sys.executable), tmp_path / "run", tmp_path / "unused", certs, 65537
+        )
+    assert caught.value is failure
+    assert (tmp_path / "run/server-stdout.txt").is_file()
+
+
+def test_server_log_write_error_still_fails_without_measurement_error(tmp_path, monkeypatch):
+    """A caller's enclosing except block is not an error in this measurement."""
+    certs = certificate(tmp_path / "cert")
+    failure = PermissionError("synthetic diagnostic write denial")
+    write_text = Path.write_text
+
+    def denied(self, *args, **kwargs):
+        if self.name == "server-stderr.txt":
+            raise failure
+        return write_text(self, *args, **kwargs)
+
+    def completed(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, json.dumps(measurement()), "")
+
+    monkeypatch.setattr(Path, "write_text", denied)
+    monkeypatch.setattr(subprocess, "run", completed)
+    try:
+        raise ValueError("outer caller exception")
+    except ValueError:
+        with pytest.raises(PermissionError) as caught:
+            helpers()["measure_one"](
+                ROOT, Path(sys.executable), tmp_path / "run", tmp_path / "unused", certs, 65537
+            )
+    assert caught.value is failure
+    assert (tmp_path / "run/server-stdout.txt").is_file()

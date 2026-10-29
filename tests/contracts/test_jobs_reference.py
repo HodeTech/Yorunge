@@ -92,7 +92,7 @@ def receipt(source_hashes):
                         "jobs",
                         action,
                         "--limit" if action == "list" else "--operation-id",
-                        "50" if action == "list" else "fixture-operation",
+                        "50" if action == "list" else "00000000-0000-4000-8000-000000000001",
                         "--state-dir",
                         "/fixture/" + layout,
                         "--output",
@@ -111,7 +111,9 @@ def receipt(source_hashes):
                     "expected_list_rows": (1 if layout == "normal" else 50)
                     if action == "list"
                     else None,
-                    "expected_operation_id": None if action == "list" else "fixture-operation",
+                    "expected_operation_id": None
+                    if action == "list"
+                    else "00000000-0000-4000-8000-000000000001",
                     "expected_plan_digest": None if action == "list" else "e" * 64,
                 }
             )
@@ -149,6 +151,15 @@ def receipt(source_hashes):
     }
 
 
+def test_reference_page_cannot_reuse_one_plan_for_multiple_operations(reference):
+    root, report, _ = reference
+    summaries = report["fixtures"]["dense"]["list_summaries"]
+    summaries[-1]["plan_id"] = summaries[0]["plan_id"]
+    archive(root, report)
+    with pytest.raises(ValueError, match="duplicate plan IDs"):
+        CHECKS["verify_jobs_reference"](root, NAME)
+
+
 def fixture(layout):
     counts = {
         "operations": (1, 1024),
@@ -170,12 +181,7 @@ def fixture(layout):
     if layout == "dense":
         rows["execution_plans"].update(payload_bytes=67108864, largest_record_bytes=65536)
         rows["capability_cache"].update(payload_bytes=33554432, largest_record_bytes=32768)
-    summaries = [{"operation_id": "fixture-operation", "plan_digest": "e" * 64}]
-    if layout == "dense":
-        summaries += [
-            {"operation_id": f"fixture-operation-{index}", "plan_digest": "e" * 64}
-            for index in range(1, 50)
-        ]
+    summaries = [summary(index, layout) for index in range(50 if layout == "dense" else 1)]
     return {
         "rows": rows,
         "database_bytes": 200 * 1024 * 1024,
@@ -183,8 +189,53 @@ def fixture(layout):
         "list_summaries": summaries,
         "has_next_cursor": layout == "dense",
         "show_summary": summaries[0],
-        "show_attempts": [],
-        "show_outcome": None,
+        "show_attempts": [
+            attempt(index, layout) for index in range(1, 17 if layout == "dense" else 2)
+        ],
+        "show_outcome": {
+            "schema_version": 1,
+            "recorded_at": "2026-10-29T00:00:00.000000Z",
+            "execution_status": "succeeded",
+            "delivery_status": "complete",
+            "provider_exit_code": 0,
+            "reason_code": None,
+        }
+        if layout == "dense"
+        else None,
+    }
+
+
+def summary(index, layout):
+    return {
+        "operation_id": f"00000000-0000-4000-8000-{index + 1:012d}",
+        "plan_id": f"10000000-0000-4000-8000-{index + 1:012d}",
+        "plan_digest": "e" * 64,
+        "task": "llm.train",
+        "tool": "forgelm",
+        "execution": "local",
+        "created_at": "2026-10-29T00:00:00.000000Z",
+        "updated_at": "2026-10-29T00:00:00.000000Z",
+        "status": "succeeded" if layout == "dense" else "running",
+        "execution_status": "succeeded" if layout == "dense" else "running",
+        "delivery_status": "complete" if layout == "dense" else "pending",
+        "attempt_count": 16 if layout == "dense" else 1,
+        "revision": 271 if layout == "dense" else 3,
+        "clock_anomaly": False,
+    }
+
+
+def attempt(index, layout):
+    current = index == (16 if layout == "dense" else 1)
+    return {
+        "attempt_id": f"20000000-0000-4000-8000-{index:012d}",
+        "number": index,
+        "created_at": "2026-10-29T00:00:00.000000Z",
+        "updated_at": "2026-10-29T00:00:00.000000Z",
+        "status": ("succeeded" if layout == "dense" else "running") if current else "abandoned",
+        "provider_run_id": "fixture-current" if current else None,
+        "provider_status": ("complete" if layout == "dense" else "running") if current else None,
+        "provider_exit_code": 0 if layout == "dense" and current else None,
+        "reason_code": None if current else "owner_changed",
     }
 
 
@@ -270,13 +321,58 @@ def test_every_changed_measured_input_invalidates_reference_even_before_git_comm
         CHECKS["verify_jobs_reference"](root, NAME)
 
 
-@pytest.mark.parametrize("path", ["src/yorunge/new.py", "scripts/new.py", "tests/fixtures/new.py"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "src/yorunge/new.py",
+        "scripts/new.py",
+        "tests/fixtures/new.py",
+        "tests/__init__.py",
+        "tests/fixtures/__init__.py",
+        "tests/contracts/__init__.py",
+        "tests.py",
+        "fixtures.py",
+        "src/tests.py",
+        "src/unrelated/import_guard.py",
+        "tests/fixtures.py",
+    ],
+)
 def test_new_measured_inputs_invalidate_prior_reference(reference, path):
     root, report, _ = reference
     archive(root, report)
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
     (root / path).write_text("# newly added source\n")
     with pytest.raises(ValueError, match="complete current source bytes"):
         CHECKS["verify_jobs_reference"](root, NAME)
+
+
+@pytest.mark.parametrize("change", ["modify", "delete"])
+def test_checked_initializer_edits_and_removal_invalidate_reference(reference, change):
+    root, report, _ = reference
+    initializer = root / "tests/__init__.py"
+    original = b"CHECKED_INITIALIZER = True\n"
+    initializer.write_bytes(original)
+    for snapshot in ("source_before", "source_after"):
+        report["provenance"][snapshot]["source_sha256"]["tests/__init__.py"] = hashlib.sha256(
+            original
+        ).hexdigest()
+    archive(root, report)
+    if change == "modify":
+        initializer.write_text("raise RuntimeError('changed initializer')\n")
+    else:
+        initializer.unlink()
+    with pytest.raises(ValueError, match="complete current source bytes"):
+        CHECKS["verify_jobs_reference"](root, NAME)
+
+
+def test_unrelated_local_and_document_python_are_outside_the_public_import_scope(reference):
+    root, report, _ = reference
+    archive(root, report)
+    for name in (".local/ignored.py", "docs/ignored.py"):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("raise RuntimeError('not an import input')\n")
+    assert CHECKS["verify_jobs_reference"](root, NAME)["cpu"] == "Apple M5 Max"
 
 
 @pytest.mark.parametrize(
@@ -399,6 +495,113 @@ def test_reference_requires_the_declared_normal_and_dense_acceptance_workloads(r
         dense["show_summary"] = {"operation_id": "other-operation", "plan_digest": "0" * 64}
     archive(root, report)
     with pytest.raises(ValueError):
+        CHECKS["verify_jobs_reference"](root, NAME)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "last_none",
+        "last_extra",
+        "last_bad_time",
+        "last_bool_attempts",
+        "last_bool_clock",
+        "last_wrong_layout",
+        "duplicate_operation_id",
+        "attempts_text",
+        "attempt_none",
+        "attempt_bool_number",
+        "missing_attempt",
+        "attempt_order",
+        "duplicate_attempt_id",
+        "attempt_wrong_status",
+        "attempt_bool_exit",
+        "outcome_false",
+        "outcome_none",
+        "outcome_bool_exit",
+        "outcome_bool_version",
+        "outcome_wrong_layout",
+        "normal_outcome_false",
+    ],
+)
+def test_every_reference_summary_attempt_and_outcome_has_strict_typed_layout_shape(
+    reference, damage
+):
+    root, report, _ = reference
+    dense = report["fixtures"]["dense"]
+    last = dense["list_summaries"][-1]
+    attempts = dense["show_attempts"]
+    if damage == "last_none":
+        dense["list_summaries"][-1] = None
+    elif damage == "last_extra":
+        last["unchecked"] = True
+    elif damage == "last_bad_time":
+        last["created_at"] = "yesterday"
+    elif damage == "last_bool_attempts":
+        last["attempt_count"] = True
+    elif damage == "last_bool_clock":
+        last["clock_anomaly"] = 0
+    elif damage == "last_wrong_layout":
+        last.update(
+            status="running", execution_status="running", delivery_status="pending", attempt_count=1
+        )
+    elif damage == "duplicate_operation_id":
+        last["operation_id"] = dense["list_summaries"][0]["operation_id"]
+    elif damage == "attempts_text":
+        dense["show_attempts"] = "invalid"
+    elif damage == "attempt_none":
+        attempts[14] = None
+    elif damage == "attempt_bool_number":
+        attempts[0]["number"] = True
+    elif damage == "missing_attempt":
+        attempts.pop()
+    elif damage == "attempt_order":
+        attempts[0], attempts[1] = attempts[1], attempts[0]
+    elif damage == "duplicate_attempt_id":
+        attempts[-1]["attempt_id"] = attempts[0]["attempt_id"]
+    elif damage == "attempt_wrong_status":
+        attempts[-1]["status"] = "running"
+    elif damage == "attempt_bool_exit":
+        attempts[-1]["provider_exit_code"] = False
+    elif damage == "outcome_false":
+        dense["show_outcome"] = False
+    elif damage == "outcome_none":
+        dense["show_outcome"] = None
+    elif damage == "outcome_bool_exit":
+        dense["show_outcome"]["provider_exit_code"] = False
+    elif damage == "outcome_bool_version":
+        dense["show_outcome"]["schema_version"] = True
+    elif damage == "outcome_wrong_layout":
+        dense["show_outcome"].update(execution_status="running", delivery_status="pending")
+    else:
+        report["fixtures"]["normal"]["show_outcome"] = False
+    archive(root, report)
+    # Generic archived receipt semantics stay descriptive; only the reference gate tightens.
+    assert CHECKS["verify"](root) == 1
+    with pytest.raises(ValueError):
+        CHECKS["verify_jobs_reference"](root, NAME)
+
+
+@pytest.mark.parametrize(
+    "damage", ["one_layout", "all_normal", "alias_same_store", "normal_mismatch"]
+)
+def test_reference_commands_bind_both_actions_to_distinct_canonical_layout_state_paths(
+    reference, damage
+):
+    root, report, _ = reference
+    runs = report["runs"]
+    if damage == "one_layout":
+        runs[3]["command"][8] = "/different/dense"
+    elif damage == "all_normal":
+        for run in runs:
+            run["command"][8] = "/fixture/normal"
+    elif damage == "alias_same_store":
+        for run in runs:
+            run["command"][8] = "/tmp/same" if run["layout"] == "normal" else "/private/tmp/same"
+    else:
+        runs[1]["command"][8] = "/different/normal"
+    archive(root, report)
+    with pytest.raises(ValueError, match="distinct state path"):
         CHECKS["verify_jobs_reference"](root, NAME)
 
 

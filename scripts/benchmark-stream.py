@@ -242,6 +242,7 @@ def measure_one(
         stderr=subprocess.PIPE,
         text=True,
     ) as server:
+        measurement_failed = False
         try:
             until = time.monotonic() + 10
             while not ready.is_file():
@@ -308,15 +309,27 @@ def measure_one(
                     "installed stream worker failed; retained workspace has diagnostics"
                 )
             measured = json.loads(result.stdout)
+        except BaseException:
+            # Track this measurement's failure, not a caller's enclosing except.
+            # Control exceptions are immediately re-raised, never normalized.
+            measurement_failed = True
+            raise
         finally:
-            server.terminate()
             try:
-                stdout, stderr = server.communicate(timeout=10)
-            except subprocess.TimeoutExpired:
-                server.kill()
-                stdout, stderr = server.communicate(timeout=10)
-            (work / "server-stdout.txt").write_text(stdout, encoding="utf-8")
-            (work / "server-stderr.txt").write_text(stderr, encoding="utf-8")
+                try:
+                    server.terminate()
+                finally:
+                    # Reap even if terminate itself reports an ordinary OS error.
+                    try:
+                        stdout, stderr = server.communicate(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        server.kill()
+                        stdout, stderr = server.communicate(timeout=10)
+                    (work / "server-stdout.txt").write_text(stdout, encoding="utf-8")
+                    (work / "server-stderr.txt").write_text(stderr, encoding="utf-8")
+            except (OSError, subprocess.TimeoutExpired):
+                if not measurement_failed:
+                    raise
         if server.returncode != 0 or stderr:
             raise ValueError("synthetic TLS server failed; retained workspace has diagnostics")
     return evaluate_run(measured, json.loads(stdout), size, expected_sha256(size))

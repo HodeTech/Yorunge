@@ -1049,7 +1049,106 @@ def jobs_reference_fixture(value: object, layout: str) -> dict[str, Any]:
         raise ValueError("jobs reference show fixture differs from the selected list result")
     text_value(target.get("operation_id"))
     pattern_value(target.get("plan_digest"), SHA256)
+    jobs_reference_summaries(fixture, layout)
+    jobs_reference_attempts(fixture, layout)
+    jobs_reference_outcome(fixture, layout)
     return fixture
+
+
+def jobs_reference_summaries(fixture: dict[str, Any], layout: str) -> None:
+    from yorunge.domain.operations import JobSummary
+
+    summaries = [
+        JobSummary.model_validate(value, strict=True) for value in fixture["list_summaries"]
+    ]
+    if len({summary.operation_id for summary in summaries}) != len(summaries):
+        raise ValueError("jobs reference list contains duplicate operation IDs")
+    if len({summary.plan_id for summary in summaries}) != len(summaries):
+        raise ValueError("jobs reference list contains duplicate plan IDs")
+    expected = (
+        ("succeeded", "succeeded", "complete", 16, False)
+        if layout == "dense"
+        else (
+            "running",
+            "running",
+            "pending",
+            1,
+            False,
+        )
+    )
+    for summary in summaries:
+        actual = (
+            summary.status,
+            summary.execution_status,
+            summary.delivery_status,
+            summary.attempt_count,
+            summary.clock_anomaly,
+        )
+        if actual != expected:
+            raise ValueError("jobs reference summary differs from the declared fixture layout")
+
+
+def jobs_reference_attempts(fixture: dict[str, Any], layout: str) -> None:
+    from yorunge.domain.operations import AttemptView
+
+    values = fixture["show_attempts"]
+    count = 16 if layout == "dense" else 1
+    if not isinstance(values, list) or len(values) != count:
+        raise ValueError("jobs reference show requires every fixture attempt")
+    attempts = [AttemptView.model_validate(value, strict=True) for value in values]
+    if [attempt.number for attempt in attempts] != list(range(1, count + 1)) or len(
+        {attempt.attempt_id for attempt in attempts}
+    ) != count:
+        raise ValueError("jobs reference attempts require sequential numbers and unique IDs")
+    for attempt in attempts[:-1]:
+        if attempt.status != "abandoned" or attempt.reason_code != "owner_changed":
+            raise ValueError("jobs reference historical attempts differ from the fixture layout")
+    current = attempts[-1]
+    expected_status, expected_exit = ("succeeded", 0) if layout == "dense" else ("running", None)
+    if (
+        current.status != expected_status
+        or current.reason_code is not None
+        or current.provider_run_id is None
+        or current.provider_status is None
+        or current.provider_exit_code != expected_exit
+    ):
+        raise ValueError("jobs reference current attempt differs from the fixture layout")
+
+
+def jobs_reference_outcome(fixture: dict[str, Any], layout: str) -> None:
+    from yorunge.domain.operations import OperationOutcome
+
+    value = fixture["show_outcome"]
+    if layout == "normal":
+        if value is not None:
+            raise ValueError("jobs reference running fixture cannot have a terminal outcome")
+        return
+    outcome_fields = " ".join(OperationOutcome.model_fields)
+    data = closed(value, outcome_fields, "jobs reference terminal outcome")
+    if integer(data["schema_version"], minimum=1) != 1:
+        raise ValueError("jobs reference outcome requires schema version 1")
+    outcome = OperationOutcome.model_validate(data, strict=True)
+    if (
+        outcome.execution_status != "succeeded"
+        or outcome.delivery_status != "complete"
+        or outcome.provider_exit_code != 0
+        or outcome.reason_code is not None
+    ):
+        raise ValueError("jobs reference terminal outcome differs from the fixture layout")
+
+
+def jobs_reference_state_paths(report: dict[str, Any]) -> None:
+    platform = report["environment"]["runtime"]["platform"]
+    paths = {
+        layout: {
+            canonical_runtime_path(run["command"][8], platform)
+            for run in report["runs"]
+            if run["layout"] == layout
+        }
+        for layout in ("normal", "dense")
+    }
+    if any(len(values) != 1 for values in paths.values()) or paths["normal"] == paths["dense"]:
+        raise ValueError("jobs reference requires one distinct state path per fixture layout")
 
 
 def jobs_reference_fixtures(report: dict[str, Any]) -> None:
@@ -1068,6 +1167,7 @@ def jobs_reference_fixtures(report: dict[str, Any]) -> None:
             or run["expected_plan_digest"] != fixture["show_summary"]["plan_digest"]
         ):
             raise ValueError("jobs reference show expectation differs from its fixture")
+    jobs_reference_state_paths(report)
 
 
 def verify_jobs_reference(root: Path, name: str) -> dict[str, Any]:

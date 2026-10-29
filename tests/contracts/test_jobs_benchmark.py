@@ -3,6 +3,8 @@
 import copy
 import hashlib
 import json
+import os
+import py_compile
 import runpy
 import sqlite3
 import subprocess
@@ -392,3 +394,122 @@ def test_cli_cannot_lower_the_required_sample_count(tmp_path):
     assert result.returncode == 2
     assert "at least 30 samples" in result.stderr
     assert not (tmp_path / "work").exists()
+
+
+def source_project(root):
+    contents = {
+        "src/yorunge/__init__.py": "# product import\n",
+        "src/shadow.py": "# source namespace import\n",
+        "tests/__init__.py": "# test package import\n",
+        "tests/fixtures/__init__.py": "# fixture package import\n",
+        "tests/fixtures/seed_jobs.py": "# fixture import\n",
+        "tests/conftest.py": "# test setup\n",
+        "scripts/benchmark-jobs.py": "# benchmark input\n",
+        "tests.py": "raise RuntimeError('shadow candidate')\n",
+        "pyproject.toml": "# package contract\n",
+        "uv.lock": "# frozen dependencies\n",
+        "examples/profile.toml": "# profile fixture\n",
+        ".github/workflows/checks.yml": "# invocation contract\n",
+    }
+    for name, content in contents.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    return contents
+
+
+def test_source_scope_hashes_complete_public_python_inputs_without_importing_them(
+    helpers,
+    tmp_path,
+    monkeypatch,
+):
+    project = tmp_path / "project"
+    contents = source_project(project)
+    for name in (".local/ignored.py", "docs/ignored.py"):
+        path = project / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("raise RuntimeError('not a public import input')\n")
+    source = helpers["source"]
+    monkeypatch.setitem(
+        source.__globals__,
+        "run",
+        lambda *_, **__: subprocess.CompletedProcess([], 0, "a" * 40 + "\n", ""),
+    )
+    assert source(project) == {
+        "commit": "a" * 40,
+        "source_sha256": {
+            name: hashlib.sha256(content.encode()).hexdigest() for name, content in contents.items()
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["tests.py", "src/shadow.py", "tests/fixtures/__init__.py", "tests/linked_directory", "src"],
+)
+def test_source_scope_rejects_public_source_file_or_directory_symlinks(helpers, tmp_path, path):
+    project = tmp_path / "project"
+    source_project(project)
+    target = tmp_path / "outside.py"
+    target.write_text("# not an input inside the checkout\n")
+    linked = project / path
+    if linked.is_dir():
+        linked.rename(project / "saved-src")
+        linked.symlink_to(project / "saved-src", target_is_directory=True)
+    else:
+        linked.unlink(missing_ok=True)
+        linked.symlink_to(target)
+    with pytest.raises(ValueError, match="symlinks"):
+        helpers["source"](project)
+
+
+def test_fixture_preparation_uses_a_fresh_bytecode_namespace_for_each_layout(
+    helpers,
+    tmp_path,
+    monkeypatch,
+):
+    prepare = helpers["prepare_fixture"]
+    calls = []
+
+    def checked(command, *, cwd, timeout):
+        assert cwd == tmp_path
+        assert timeout == 600
+        calls.append(command)
+
+    monkeypatch.setitem(prepare.__globals__, "run", checked)
+    for layout in ("normal", "dense"):
+        prepare(Path("/checkout"), tmp_path, layout)
+    assert [command[1:3] for command in calls] == [
+        ["-X", f"pycache_prefix={tmp_path / 'fixture-pycache' / layout}"]
+        for layout in ("normal", "dense")
+    ]
+    assert all(command[3:5] == ["-c", helpers["SEED"]] for command in calls)
+
+
+def test_fixture_preparation_executes_current_initializer_bytes_even_with_a_valid_stale_pyc(
+    helpers,
+    tmp_path,
+    monkeypatch,
+):
+    project, workspace = tmp_path / "checkout", tmp_path / "work"
+    initializer = project / "tests/__init__.py"
+    initializer.parent.mkdir(parents=True)
+    workspace.mkdir()
+    changed = "raise RuntimeError('fresh initializer bytes')\n"
+    initializer.write_text("VALUE = 1\n".ljust(len(changed)))
+    timestamp = initializer.stat()
+    py_compile.compile(
+        str(initializer),
+        doraise=True,
+        invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP,
+    )
+    initializer.write_text(changed)
+    os.utime(initializer, ns=(timestamp.st_atime_ns, timestamp.st_mtime_ns))
+    probe = "import sys; sys.path.insert(0, sys.argv[1]); import tests"
+    # Equal mtime/size make the old timestamp pyc look valid without a fresh prefix.
+    helpers["run"]([sys.executable, "-c", probe, str(project)], cwd=workspace)
+    prepare = helpers["prepare_fixture"]
+    monkeypatch.setitem(prepare.__globals__, "SEED", probe)
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        prepare(project, workspace, "normal")
+    assert "fresh initializer bytes" in error.value.stderr
