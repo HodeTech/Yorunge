@@ -1980,6 +1980,85 @@
       }
     },
     {
+      "name": "p01-6-final-doc-ci-failed-checkpoint.json",
+      "archive": "raw/p01-6-final-doc-ci-failed-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 10328,
+      "content_sha256": "31b69ce4087028fcd3c8370723fd1a684729369bdd931cc332ebed4cfbcd3819",
+      "archive_bytes": 1857,
+      "archive_sha256": "d528c88de58ca3d256a195605d93dbdaebdc8364daa38390ecd7d865652fa3c2",
+      "summary": {
+        "source_commit": "f9eb21586acce23ef53176464093547a5cb027e3",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "failed"
+      }
+    },
+    {
+      "name": "p01-6-final-doc-startup-failed.json",
+      "archive": "raw/p01-6-final-doc-startup-failed.json.gz",
+      "original_commit": null,
+      "content_bytes": 42438,
+      "content_sha256": "b215cbe6805e213d24ab28ed64c32f04c9b7479454d730fbfabf98069d77e057",
+      "archive_bytes": 11462,
+      "archive_sha256": "790da4b94aefaf7a01bed500fcc66f9d9e2af35fc74dc516cacb9d90a36a3a3f",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 40.90816600000835,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 47.50473899991903,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 169.5197569999891,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 232.64124400009223,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 39.28417600002376,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 37.13054000002103,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 182.2675270000218,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 218.99762700002157,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-final-installation.json",
       "archive": "raw/p01-6-final-installation.json.gz",
       "original_commit": null,

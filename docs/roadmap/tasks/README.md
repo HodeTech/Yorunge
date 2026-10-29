@@ -17,7 +17,7 @@
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
 
-[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı son kullanıcı talebiyle tek nihai PR’da toplar; ADR-0017/0018 Accepted. P01-5a/b iki adım/ikişer fresh review ve gerçek kurulumla verified; P01-6b kullanıcı review sonrası native Linux/raw v2 ve üç hücreli kaynak kabulüyle verified; PR #11 kullanıcı review/merge bekliyor. Güncel durum kart metadata'sındadır.
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı son kullanıcı talebiyle tek nihai PR’da toplar; ADR-0017/0018 Accepted. P01-5a/b iki adım/ikişer fresh review ve gerçek kurulumla verified; P01-6b native Linux/raw v2 ve bf652f6 kabulü kayıtlı; son-head startup CI takibi ve ADR-0019 onayı açık. Güncel durum kart metadata'sındadır.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 

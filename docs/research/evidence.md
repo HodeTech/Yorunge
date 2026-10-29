@@ -369,6 +369,20 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p01-6-final-cli-stream.json.gz`.
 **Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v1", "measurements": {"1024MiB": {"baseline_rss_bytes": 50036736, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 2.205894625047222, "extra_rss_bytes": 622592, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 50659328, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 57294848, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.03551541594788432, "extra_rss_bytes": 131072, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 57425920, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 49922048, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.5081543331034482, "extra_rss_bytes": 688128, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 50610176, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "fresh client process high-water maxRSS after imports, source verification and fixed 32KiB TLS warmup; not instantaneous RSS", "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_native_unit": "bytes", "source_commit": "30a3e28260df6bb249226dfd6641475b5ab98d74", "source_unchanged_during_measurement": true}`.
 
+## p01-6-final-doc-ci-failed-checkpoint
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `31b69ce4087028fcd3c8370723fd1a684729369bdd931cc332ebed4cfbcd3819`.
+**Yerel arşiv:** `raw/p01-6-final-doc-ci-failed-checkpoint.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "failed", "source_commit": "f9eb21586acce23ef53176464093547a5cb027e3"}`.
+
+## p01-6-final-doc-startup-failed
+
+**Tür:** `startup`.
+**Özgün JSON SHA-256:** `b215cbe6805e213d24ab28ed64c32f04c9b7479454d730fbfabf98069d77e057`.
+**Yerel arşiv:** `raw/p01-6-final-doc-startup-failed.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 218.99762700002157, "passed": false, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 182.2675270000218, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 39.28417600002376, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 37.13054000002103, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 232.64124400009223, "passed": false, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 169.5197569999891, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 40.90816600000835, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 47.50473899991903, "passed": true, "samples": 30}}, "source_commit": null}`.
+
 ## p01-6-final-installation
 
 **Tür:** `installation_v2`.

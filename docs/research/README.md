@@ -4,7 +4,7 @@
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
-- [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı): altı adım/ikişer fresh review ve CI takibi tamamlandı; üç gerçek ortam/iki kurulum/son kaynak bütçeleriyle çalışma dalında verified. Development PR review/merge ve yayın ayrıdır; önceki başarısız ölçümler korunur.
+- [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı): altı adım/ikişer fresh review ve CI takibi tamamlandı; bf652f6 için üç gerçek ortam/iki kurulum/kaynak bütçeleri verified; [son head startup CI takibi](p01-remaining-implementation-validation.md#son-head-başlangıç-ci-takibi) ve ADR-0019 onayı açıktır. Development PR review/merge ve yayın ayrıdır; önceki başarısız ölçümler korunur.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.

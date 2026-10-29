@@ -1,6 +1,6 @@
 # Katkı rehberi
 
-Yörünge'nin P01 hafif çekirdeği ve kullanıcı review sonrası faz kabulü çalışma dalında verified. Güncel gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
+Yörünge'nin P01 hafif çekirdeği ve kullanıcı review ürün düzeltmeleri çalışma dalında testli; P01-6b son-head startup CI takibi/ADR-0019 onayı açık. bf652f6 gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
 
 ## Çalışma akışı
 

@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** Önceki startup/M5 jobs/state kapıları kayıtlı; PR #11 review sonrası raw TLS bellek yöntemi ve son kaynak kabulü yenileniyor; [gerçek ortam/yöntem ve sınırlar](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) kayıtlıdır. **Tarih:** 2026-10-29. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux](../research/p01-2-implementation-validation.md), [P01-3 cache/input](../research/p01-3-implementation-validation.md) tarihsel kalır. Hash/raw stream kabulü EVREN veri aktarım desteği veya bütün host'larda kesin süre garantisi değildir.
+**Durum:** bf652f6 raw v2/kaynak kabulü kayıtlı; son-head Linux startup reddi için [ADR-0019](../decisions/0019-reference-startup-performance.md) Proposed. Aşağıdaki mevcut CI kuralı onay/uygulama gelmeden değişmez; [gerçek ortam/yöntem ve sınırlar](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) kayıtlıdır. **Tarih:** 2026-10-29. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux](../research/p01-2-implementation-validation.md), [P01-3 cache/input](../research/p01-3-implementation-validation.md) tarihsel kalır. Hash/raw stream kabulü EVREN veri aktarım desteği veya bütün host'larda kesin süre garantisi değildir.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

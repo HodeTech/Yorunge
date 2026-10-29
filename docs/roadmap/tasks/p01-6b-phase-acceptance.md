@@ -1,7 +1,7 @@
 ---
 id: P01-6b
 phase: P01
-status: verified
+status: in_progress
 size: M
 depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
 capabilities: [C01, C02, C12, C13]
@@ -10,11 +10,11 @@ capabilities: [C01, C02, C12, C13]
 
 **Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-5a/b önceki kabulü, adım 5 bütünleşik testleri ve adım 6 önceki CI/performans sonuçları [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
-**PR #11 inceleme takibi:** RSS baseline ve büyüme kanıtı için yeniden açılan kabul, yeni yöntem/negatif testler/kurulu ölçüm ve üç gerçek CI hücresiyle tamamlandı; kart `verified`. [Güncel kapanış](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı); önceki teslim kaydı tarihseldir. [Takip planı](../p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi).
+**PR #11 inceleme takibi:** RSS baseline/büyüme ve bf652f6 kabulü tamamlandı. Son belge head c2d8029 startup CI reddi sonrası kart yeniden `in_progress`; [ADR-0019](../../decisions/0019-reference-startup-performance.md) onay bekliyor. Kapı henüz değiştirilmedi. [bf652f6 kaynak kabulü](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı); önceki teslim kaydı tarihseldir. [Takip planı](../p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve önceki bütünleşik test/kurulum sonuçları kayıtlıdır; son raw v2 yöntemi, boyutlar arası kapı ve native Linux dahil yeniden kabul tamamlandı.
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve önceki bütünleşik test/kurulum sonuçları kayıtlıdır; son raw v2 ve bf652f6 native Linux kabulü tamamlandı; son head startup CI takibi ve ADR-0019 onayı açıktır.
 
 ## Giren ve girmeyen kapsam
 
@@ -45,5 +45,5 @@ Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, ar
 ## Teslim kaydı
 
 - PR/commit: [PR #11](https://github.com/HodeTech/Yorunge/pull/11), [bf652f6 kaynak](https://github.com/HodeTech/Yorunge/commit/bf652f668073a5f9d06017ebbedee5b6b60ff8af), [yeni gerçek CI](https://github.com/HodeTech/Yorunge/actions/runs/40945597506). Tek development PR'ın son-head CI/review ve kullanıcı merge kararı ayrıca izlenir.
-- Sonuç: Adım 5–6 ve kullanıcı review takibi [güncel kapanış kaydında](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) verified. Linux hücrelerinde 3.312’şer, macOS’ta 3.311 test/bir Linux skip; üç ortamın altı temiz kurulumu, native Linux raw v2, startup ve gerçek kaynak bağlı jobs referansı geçti. 81 arşiv doğrulandı; eski v1 belleği güncel kabul diye kullanılmaz.
+- Sonuç: Adım 5–6 ve kullanıcı review takibi bf652f6 kaynağı için [tarihsel kapanış kaydında](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) verified. Linux hücrelerinde 3.312’şer, macOS’ta 3.311 test/bir Linux skip; üç ortamın altı temiz kurulumu, native Linux raw v2, startup ve gerçek kaynak bağlı jobs referansı geçti. 81 arşiv doğrulandı; eski v1 belleği güncel kabul diye kullanılmaz.
 - Kalan sınır: M5 jobs referansı Linux jobs performansı değildir; önceki Linux ve M5 aşım kayıtları korunur. Canlı EVREN, Windows state, fiziksel güç kesintisi ve yayın bu kabul değildir.

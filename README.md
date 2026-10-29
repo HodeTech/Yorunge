@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 29 Ekim 2026:** P01 hafif çekirdek uygulaması ve kullanıcı review sonrası kaynak/bellek kabulü çalışma dalında verified (`0.1.0.dev0`, yayımlanmadı; development PR incelemesi/merge ayrı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON altyapısı testlidir. Üç gerçek CI ortamı, iki temiz kurulum ve kaynak bütçeleri [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Gerçek EVREN uç adaptörü, eğitim, veri aktarımı ve artefakt teslimi sonraki fazlardadır.
+**Durum — 29 Ekim 2026:** P01 hafif çekirdek uygulaması ve kullanıcı review ürün/secret/RSS düzeltmeleri çalışma dalında testli; son-head startup CI takibi ve ADR-0019 onayı açık (`0.1.0.dev0`, yayımlanmadı; development PR incelemesi/merge ayrı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON altyapısı testlidir. Üç gerçek CI ortamı, iki temiz kurulum ve kaynak bütçeleri [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Gerçek EVREN uç adaptörü, eğitim, veri aktarımı ve artefakt teslimi sonraki fazlardadır.
 
 ## Çalışan başlangıç
 
