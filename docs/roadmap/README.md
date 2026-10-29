@@ -5,7 +5,7 @@
 | Faz | Kullanıcı sonucu | Bugünkü durum | Fazın sınırı |
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
-| [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Kısmen uygulandı | Gerçek EVREN veya eğitim adaptörü değil |
+| [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Çalışma dalında verified; development PR bekleniyor | Gerçek EVREN veya eğitim adaptörü değil |
 | [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | Planlandı; dış sözleşme kapılı | Eğitim bağımlılığı yok |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |

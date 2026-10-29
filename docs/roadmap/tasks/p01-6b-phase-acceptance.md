@@ -1,18 +1,18 @@
 ---
 id: P01-6b
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
 capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 iki fresh review ve gerçek TLS/process/SQLite/iki kurulum kabulüyle kapandı; adım6 CI/performans sürüyor. Kartın final kabulü henüz yoktur. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b ve bu kart çalışma dalında verified; adım5 bütünleşik kabulü ve adım6 gerçek CI/performans kabulü [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü var; son kaynağın bütünleşik girdi/operation/taşıma/akış, kurulum, kaynak ve ortam kabulü eksiktir.
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü ve son kaynağın bütünleşik girdi/operation/taşıma/akış, kurulum, kaynak ve ortam kabulü çalışma dalında tamamlandı.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,4 +42,6 @@ Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, ar
 
 ## Teslim kaydı
 
-Adım5 bütünleşik test ve iki kurulum kabulü, iki fresh review turu ve ikiP2 fixture fix’iyle [kapandı](../../research/p01-remaining-implementation-validation.md#adım5-kapanışı). Son kaynak tam takım, CI/performans ve PR kabulü henüz yoktur. P01 bütünü tamamlanmadı. [P01-4 tarihsel merge kanıtı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) yeni taşıma/akış kaynağının kabulü değildir.
+- PR/commit: [3d4f341 kaynak](https://github.com/HodeTech/Yorunge/commit/3d4f341569af72176b0bb0625e22b12bed1633bd), [gerçek CI](https://github.com/HodeTech/Yorunge/actions/runs/40906015073). Tek development PR'ın son-head CI/review ve kullanıcı merge kararı ayrıca izlenir.
+- Sonuç: Adım5 bütünleşik kabulü ve adım6 review, kurulum, kaynak bağlı performans ve üç gerçek CI hücresi [kapanış kaydında](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) doğrulandı. P01 çalışma dalında verified.
+- Kalan sınır: M5 jobs referansı Linux jobs performansı değildir; önceki Linux ve M5 aşım kayıtları korunur. Canlı EVREN, Windows state, fiziksel güç kesintisi ve yayın bu kabul değildir.

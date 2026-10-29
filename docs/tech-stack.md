@@ -1,10 +1,10 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 çekirdeği development'a teslim edildi; ADR-0017/0018 Accepted. P01-5a/b taşıma/stream/CLI çalışma dalında verified; P01-6b son kaynak/CI/performans kapanışı sürüyor. [Dal kabulü](research/p01-remaining-implementation-validation.md), [ilk offline seçim](decisions/0008-offline-core-stack.md) ve [development teslimi](research/p01-4-implementation-validation.md#development-merge-kapanışı) ayrı kayıtlardır.
+**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 development'a teslim edildi; ADR-0017/0018 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; gerçek üçlü CI/kurulum/kaynak kabulü [kapanıştadır](research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrı kalır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve [önceki development teslimi](research/p01-4-implementation-validation.md#development-merge-kapanışı) korunur.
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
-| Dil | Python 3.11+ | EVREN ve eğitim ekosistemiyle uyum; `tomllib`, task/deadline araçları. Asgari hedef; test edilmiş platform iddiası değil. |
+| Dil | Python 3.11+ | `tomllib`, task/deadline araçları. Linux3.11/3.14 ve macOS3.11 gerçek CI ile testli; minimum hedef bütün platform/Python sürümlerinin doğrulandığı anlamına gelmez. |
 | Paket yapısı | Tek dağıtım, `src/yorunge`, Hatchling 1.30.1 | Wheel/sdist ve gerçek konsol girişi kuruldu. |
 | Kullanıcı yüzeyi | CLI + Python API | Hızlı ve otomasyona uygun başlangıç; rehberli katman aynı çekirdeği kullanır. |
 | CLI görünümü | Standart `argparse`, düz metin/JSON/NDJSON | Ortak UTF-8 renderer ve yerel iptal/çıktı hata sözleşmesi testli; help/version lazy kalır. Rich eklenmedi. |

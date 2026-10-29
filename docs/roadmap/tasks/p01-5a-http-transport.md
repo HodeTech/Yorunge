@@ -8,7 +8,7 @@ capabilities: [C01, C02, C12, C13]
 ---
 # P01-5a — HTTP taşıma ve SDK sınırı
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım1–2. ADR-0017/0018 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle tamamlandı/verified; paket bütünü devam ediyor.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım1–2. ADR-0017/0018 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle tamamlandı/verified; P01-6b dahil paket çalışma dalında verified; development PR bekleniyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -42,6 +42,6 @@ Unit/contract ve gerçek TLS/socket/SQLite/alt süreç integration; fault/timeou
 
 ## Teslim kaydı
 
-- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202); adım1 3c68e22/a2250db/2dee624 ve adım2 61fe655/ec2d202 aynı paket dalındadır, henüz PR/merge yoktur.
+- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım1 3c68e22/a2250db/2dee624 ve adım2 61fe655/ec2d202 aynı paket dalındadır, henüz PR/merge yoktur.
 - Sonuç: İki adımın ikişer fresh review turu/fix'leri ve source-matched hedefli HTTP/JSON/TLS/session/SQLite/cancel/race/restart kontrolleri [uygulama kaydındadır](../../research/p01-remaining-implementation-validation.md). Son runtime kaynağında wheel/sdist iki temiz kurulum, import kökeni ve mevcut smoke'lar geçti; Ruff/strict mypy/belge/kart/diff temiz.
-- Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b, bütünleşik final kurulum/ortam/performans P01-6b'dir; bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.
+- Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b ve bütünleşik final kurulum/ortam/performans P01-6b çalışma dalında verified; bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.

@@ -1,6 +1,6 @@
 # Katkı rehberi
 
-Yörünge'nin ilk çevrimdışı paket/CLI/API dilimi uygulanmıştır; P01 devam ediyor. Ürün kapsamını [product-scope.md](docs/product-scope.md), etkin işi [current.md](docs/roadmap/current.md) tanımlar.
+Yörünge'nin P01 hafif çekirdek kabulü çalışma dalında tamamlandı; gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
 
 ## Çalışma akışı
 

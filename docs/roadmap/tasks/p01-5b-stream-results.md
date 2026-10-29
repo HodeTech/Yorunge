@@ -38,10 +38,10 @@ Exact event/sequence/ID/payload/terminal/EOF/byte limitleri [stream referansınd
 
 ## Doğrulama
 
-Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/signal integration. Ruff/mypy ve doküman/ajan kontrolü; kurulu artefakt ve startup etkisi [P01-6b](p01-6b-phase-acceptance.md)'de son kaynakla birleştirilir. NDJSON protokolü sağlayıcı SSE desteği veya canlı EVREN kanıtı değildir.
+Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/signal integration. Ruff/mypy ve doküman/ajan kontrolü; kurulu artefakt ve startup etkisi [P01-6b](p01-6b-phase-acceptance.md)'de son kaynakla birleştirildi. NDJSON protokolü sağlayıcı SSE desteği veya canlı EVREN kanıtı değildir.
 
 ## Teslim kaydı
 
-- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) son runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. Nihai development PR’ı paket sonunda açılır.
+- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) bu kartın adım4 runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. Nihai development PR’ı paket sonunda açılır.
 - Sonuç: İki adım, ikişer farklı fresh review turu ve son fixture review’leri kapandı. Strict tipli olay/codec, normal komutlarda NDJSON/UTF-8, cancel/output ve belirsizlik öncelikleri gerçek TLS/süreç/state testleriyle doğrulandı; iki ayrı artifact’ta gerçek konsol NDJSON ve v1 eşliği geçti. [Kanıt](../../research/p01-remaining-implementation-validation.md#adım4-ve-p01-5b-kapanışı).
-- Kalan sınır: Bütünleşik faz/son kaynak kurulumu, performans ve gerçek CI matrisi P01-6b’de sürer; public uzak watch/run/SSE veya canlı EVREN/ForgeLM adaptörü teslim edilmez. Eski Result/plan wire korunur.
+- Kalan sınır: Bütünleşik faz/son kaynak kurulumu, performans ve gerçek CI matrisi P01-6b’de çalışma dalında verified; public uzak watch/run/SSE veya canlı EVREN/ForgeLM adaptörü teslim edilmez. Eski Result/plan wire korunur.

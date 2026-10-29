@@ -17,4 +17,4 @@
 
 Modüller alan sahipliğidir; hepsi ayrı paket/servis olmak zorunda değildir. Başka modülün tablosuna veya özel yardımcısına doğrudan erişim yoktur. İş akışı farklı modül sonuçlarını açık portlarla bağlar. Somut kaynak yerleşimi P01'de [proje yapısına](../project-structure.md) göre kurulur.
 
-P01-5 çalışma dalında ortak [HTTP/session](../reference/http-transport.md) ve [tipli stream/NDJSON/iptal](../reference/stream-results.md) altyapısı gerçekTLS/süreç ve kurulu artifact ile verified. Bunlar modüllerin kullanacağı ortak çekirdektir; veri/LLM/eğitim hizmet adaptörlerinin uygulanması veya canlı erişimi anlamına gelmez. [Kabul ve faz kapanışı](../research/p01-remaining-implementation-validation.md) ayrı izlenir.
+Ortak [HTTP/session](../reference/http-transport.md) ve [tipli stream/NDJSON/iptal](../reference/stream-results.md) altyapısı gerçekTLS/süreç ve kurulu artifact ile verified; [P01 faz/gerçek CI kabulü](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) çalışma dalında tamamlandı. Bunlar modüllerin kullanacağı ortak çekirdektir; veri/LLM/eğitim hizmet adaptörü ve canlı erişim sonraki fazlardadır.

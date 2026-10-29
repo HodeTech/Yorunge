@@ -1,12 +1,12 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** Uygulama yetkili; ADR-0017/0018 Accepted, P01-5a verified, P01-5b verified, P01-6b in_progress. İlk iki adım ikişer fresh review/kurulum kabulüyle, adım3–4 tipli codec/CLI iki fresh review turu, gerçek TLS/süreç ve iki artifact NDJSON kabulüyle kapandı; adım5 bütünleşik yolculuk/iki kurulum ve iki fresh review ile kapandı; adım6 CI/performans kapanışına geçilir. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** ADR-0017/0018 Accepted; P01-5a, P01-5b ve P01-6b çalışma dalında verified. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 
 Kullanıcının kalan bütün Faz 1 işleri talebiyle **P01-5a + P01-5b + P01-6b tek nihai development PR'ında** tamamlanır. Önceki epik başına PR tercihinin bu kapanış paketi için istisnasıdır; her kart/adımın commit ve iki fresh review turu korunur. Önceki P01-1–4 teslimi yeniden yapılmaz. Master/release ve canlı EVREN pilotu kapsamda değildir.
 
-Önce [hazırlık incelemesi](../research/p01-remaining-readiness-review.md), ardından Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md), [ADR-0018](../decisions/0018-stream-results-and-cancellation.md), [HTTP](../reference/http-transport.md) ve [stream](../reference/stream-results.md) sözleşmeleri okunur. 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri ve Accepted geçişi tamamlandı; bağımlı ürün uygulaması başlayabilir. Bu hazırlık commit'i ürün adımının tamamlanması değildir.
+Önce [hazırlık incelemesi](../research/p01-remaining-readiness-review.md), ardından Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md), [ADR-0018](../decisions/0018-stream-results-and-cancellation.md), [HTTP](../reference/http-transport.md) ve [stream](../reference/stream-results.md) sözleşmeleri okunur. 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri ve Accepted geçişi tamamlandı; bağımlı ürün uygulaması başlatıldı ve tamamlandı. Bu hazırlık commit'i ürün adımının tamamlanması değildir.
 
 ## Baştan sunulan kararlar
 
@@ -37,5 +37,7 @@ Kaynak kimliği, tüm başarısız/başarılı örnekler ve ölçüm ortamı kor
 Son current/faz/matris/reference/modül/README/changelog kayıtları yalnız uygulanan sınıra güncellenir. Bir development PR'ı açılır; son head'in CI ve review sonuçları izlenir, kullanıcı review/merge'ü beklenir. Merge/release yapılmaz. P01 tamamlandı ifadesi bütün kart kabulü bitmeden yazılmaz; P02/P03 canlı hizmet/araç kapsamı P01 teknik borcu diye içeri alınmaz.
 
 ## Hazırlık kaydı
+
+Aşağıdaki durum yalnız hazırlık anına aittir; sonraki uygulama ve kabul yukarıdaki kapanış kaydındadır.
 
 Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki fresh belge review turu ve doğrulanan iki P2 sözleşme düzeltmesi kapandı. İki ADR, kullanıcının 2026-10-29 yanıtı ve bulgu disposition'larıyla Accepted yapıldı; adım1'e geçilir. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.

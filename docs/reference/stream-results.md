@@ -1,6 +1,6 @@
 # Akış sonucu sözleşmesi
 
-**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) sözleşmesi; tipli model/codec ve owned HTTP reader adım3’te iki fresh review turuyla tamamlandı. CLI NDJSON/iptal adım4 ve P01-5b iki fresh review, gerçek TLS/süreç ve iki kurulum kabulüyle verified; P01-6b faz kabulü sürüyor. **Tarih:** 2026-10-29.
+**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md); tipli model/codec/owned reader ve CLI NDJSON/iptal iki fresh review turuyla verified. [P01-6b gerçek CI/kurulum/kaynak kabulü](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) çalışma dalında tamamlandı; development PR/merge ayrıdır. **Tarih:** 2026-10-29.
 
 ## Kapalı StreamEvent v1
 

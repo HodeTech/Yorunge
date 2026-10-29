@@ -1,6 +1,6 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-29.
+**Güncellendi:** 2026-10-29. **P01 çalışma dalında verified:** P01-5a/5b/6b kabulü ve [gerçek CI](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) tamamlandı. Tek development PR üzerinden son-head kontrolleri ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. P01-1–4 daha önce development’a alındı; paket yayımlanmadı.
 
 ## Tamamlanan ilk çekirdek
 
@@ -8,11 +8,11 @@
 - Kullanıcı onayıyla `development`, Master belge temelinden oluşturuldu ve varsayılan dal yapıldı. [PR #1](https://github.com/HodeTech/Yorunge/pull/1) merge commit ile development'a alındı. Koruma ve CI doğrulaması [canlı kayıtta](../research/branch-workflow-validation.md); [kanonik politika](../standards/git-release.md). `Master` birleştirmesi kullanıcıda kalır.
 - P00 tamamlandı. İlk çalışan dilim: Python paketi/konsol girişi, yerel TOML context, dar YAML reçetesi, dört durumlu capability görünümü, araç seçimi ve digest'li çevrimdışı plan. CLI/Python API ortak kullanım senaryolarına bağlı.
 - Offline v1 plan yalnız şema/seçim düzeyinde doğrulanır; `draft`, `executable=false`, `inputs_verified=false`. Adaptör, uzak yetki, veri/model içeriği ve yürütme desteği iddia edilmez. Sahte eğitim başarısı üretilmez.
-- P01-1 paket/CLI/şema/build kısmı tamamlandı; HTTP seçimi kapsam gereği P01-5'e bırakıldı. P01-2/P01-3'ün dar yerel alt kümeleri ve P01-6 kontrol altyapısı eklendi. P01 bütünü tamamlanmadı.
+- P01-1 paket/CLI/şema/build kısmı tamamlandı; HTTP seçimi kapsam gereği P01-5'e bırakıldı. P01-2/P01-3'ün dar yerel alt kümeleri ve P01-6 kontrol altyapısı eklendi. O tarihte P01 bütünü tamamlanmamıştı.
 - Yerel test, tip/lint/format, dağıtım/temiz kurulum ve başlangıç kanıtı [kabul kaydında](../research/p01-core-validation.md). İlk PR'da 100 test ve bütün CI kontrolleri Ubuntu/Python 3.11'de geçti. Metadata kontrolü PR #2'de doğrulandı; iki dalda `offline-core` ve `branch-policy` zorunlu. Yayımlanmış paket yok.
 - Genel belge ve paket girdileri izin listeleriyle sınırlandırıldı; yerel analiz arşivi üretim girdisi değildir. Site/doküman yayın sistemi henüz yoktur.
 - Aktif ürün kodlaması öncesi roadmap ve ajan hazırlığı gözden geçirildi; [bulgu ve karar kaydı](../research/roadmap-readiness-review.md). P01 bağımlılık sırası ve uzak fazların paket sınırı netleştirildi. Bu hazırlık yeni ürün capability'si uygulamaz.
-- P01-1 kapanış düzeltmeleri ve bağımsız review turları tamamlandı; [P01-1a teslim kaydı](tasks/p01-1a-core-acceptance-hardening.md). Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü `3d3c86b` merge commit'iyle development'a aldı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) başarılı. Kapanış belgeleri [PR #5](https://github.com/HodeTech/Yorunge/pull/5) ile `83bcd83` tabanına alındı. P01-1 kapsamında açık iş kalmadı; P01 bütünü devam ediyor.
+- P01-1 kapanış düzeltmeleri ve bağımsız review turları tamamlandı; [P01-1a teslim kaydı](tasks/p01-1a-core-acceptance-hardening.md). Kullanıcı [PR #4](https://github.com/HodeTech/Yorunge/pull/4)'ü `3d3c86b` merge commit'iyle development'a aldı; [merge sonrası CI](https://github.com/HodeTech/Yorunge/actions/runs/40489316036) başarılı. Kapanış belgeleri [PR #5](https://github.com/HodeTech/Yorunge/pull/5) ile `83bcd83` tabanına alındı. P01-1 kapsamında açık iş kalmadı; o tarihte P01 bütünü devam ediyordu.
 
 ## Tamamlanan P01-2
 
@@ -40,13 +40,13 @@ Son PR head'i **36ae2a4** için offline-core/branch-policy/SonarCloud ve CodeRab
 
 Ham ölçümler [manifest/indeks](../research/evidence.md) ve CI hash/özet denetimiyle kayıpsız arşivlenir; CodeRabbit yalnız raw dizinini dışlar, ajanlar hedefli kanıt incelemesi yapar. Başarısız ara ölçümler ve merge kaydı korunur. Arşivler sdist'e girmez; test vektörleri ve ölçüm kodu normal incelemede kalır. Development teslimi paket yayını değildir; Master/release aktarımı kullanıcıdadır.
 
-## Aktif paket: kalan P01 kapanışı
+## Çalışma dalında doğrulanan P01 kapanışı
 
-**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında; P01-4 kapanış commit'i d686c8f korunur. Kullanıcının 2026-10-29 talebiyle **P01-5a + P01-5b + P01-6b tek nihai development PR'ında**, [altı adımlı planla](p01-remaining-delivery-plan.md) ele alınır. [Ön inceleme](../research/p01-remaining-readiness-review.md) ve üç kart hazırlandı; ADR-0017/0018, 2026-10-29 kullanıcı review'ü doğrulanıp düzeltildikten sonra verdiği açık yetkiyle Accepted. P01-5a verified: iki adım/ikişer fresh review ve ec2d202 runtime kaynağında iki artifact kurulumu kapandı. [Kabul kaydı](../research/p01-remaining-implementation-validation.md). P01-5b de adım3–4, ikişer fresh review, gerçek TLS/ayrı süreç ve 0bf70a4 runtime iki artifact NDJSON kabulüyle verified. P01-6b in_progress: adım5 gerçek TLS/process/SQLite yolculuğu, iki fresh review ve eadc7b1 iki kurulu HTTP/stream kabulüyle kapandı; adım6 CI/performans ve faz kapanışına geçilir. Her adım commit ve iki farklı fresh review turuyla ilerler. Ayrı belge PR'ı/merge yapılmaz.
+**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ikişer adım ve fresh review turlarıyla; P01-6b bütünleşik TLS/process/SQLite, iki kurulum, performans ve gerçek ortam matrisiyle çalışma dalında verified. [Kabul ve CI kaydı](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). ADR-0017/0018 Accepted; önceki adım artifact'ları son kaynak artifact'ı sayılmaz.
 
-1. **P01-5a — HTTP/SDK seçimi ve ortak taşıma portu:** B01 ve SDK sınırı B03 ön incelemesi; TLS/hedef/redirect/sır koruması, tek retry/total deadline bütçesi ve gerçek loopback kabulü. Async HTTPX ve SDK'yı core'a almama kararı ADR-0017'de Accepted; Taşıma kartı verified; stream/CLI ve faz kapanışı tamamlanmadığı için paket/P01 bütünü verified değildir. Ücretli/canlı EVREN isteği bu yerel kabul değildir.
-2. **P01-5b — Ortak sonuç/akış/iptal hattı:** Mevcut JSON zarfı üzerine JSON/NDJSON akışı, kesilme ve iptal ayrımı; gerçek loopback/süreç sınırında CLI/Python eşliği. Yerel izlemeyi bırakmak uzak işi durdurma sayılmaz.
-3. **Ardından P01-6b — Faz kapanışı:** Bütün kabul kanıtları, kurulum/restart/hata/performans akışı ve gerçekten doğrulanmış ortam matrisi. P01-6a CI temeli tamamlandı; **P01 bütünü henüz tamamlanmadı**.
+[3d4f341 kaynaklı CI](https://github.com/HodeTech/Yorunge/actions/runs/40906015073) Linux 3.11/3.14 ve macOS 3.11 hücrelerinde 3.134'er test, statik kontroller, build ve iki temiz kurulumu; zorunlu aggregate'i geçti. Kaynağa bağlı M5 jobs referansı dört 200 ms kapısını geçti; bu, ilk Linux jobs aşımını başarıya çevirmez veya Linux jobs performans kabulü değildir. Başarısız ölçümler korunur.
+
+Kalan P01 paketi tek development PR üzerinden incelemeye sunulur; son head CI/review izlenir ve kullanıcı inceleme/merge yapar. Master/release kullanıcıdadır. Sonraki P02-0a araştırma/SDK pilot planı taslaktır ve başlamadı; P02-0b hesap keşfi ayrı iştir.
 
 [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Gerçek hesap keşfi/veri/çıkarım P02; ForgeLM/muadil araç adaptörleri ve uzak yürütme P03 kapsamındadır. Plan seçimi adaptör desteği değildir. Canlı EVREN, gerçek Windows veya fiziksel güç kesintisi kabulü iddia edilmez.
 

@@ -16,4 +16,4 @@
 | [HTTP taşıma](http-transport.md) | Çalışma dalında verified — ADR-0017; hedef/sır/deadline/retry ve owned async session; gerçek TLS/kurulu artifact kabulü |
 | [Akış sonucu](stream-results.md) | Çalışma dalında verified — ADR-0018; kapalı event, terminal/EOF, NDJSON ve yerel iptal; CLI/Python ve gerçek süreç kabulü |
 
-Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).
+Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [çalışma dalında tamamlanan faz kabulü](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) ayrı kayıtlardır.

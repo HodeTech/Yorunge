@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** Başlangıç/profil/jobs hedeflerinin önceki kaynak kabulü var; P01-5 son kaynağı için kurulu jobs ve raw TLS stream ölçüm araçları hazırlanıyor. Yeni kaynağın gerçek sonuçları [P01 kapanış kaydında](../research/p01-remaining-implementation-validation.md) ayrı belirtilir. **Tarih:** 2026-10-29. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux ölçümleri](../research/p01-2-implementation-validation.md), [P01-3 cache/input ölçümleri](../research/p01-3-implementation-validation.md). Büyük hash veya raw stream ölçümü EVREN veri aktarım desteği sayılmaz.
+**Durum:** P01 son kaynakta startup, M5 jobs referansı, raw TLS RSS ve yoğun state/migration kapıları geçti; [gerçek ortam/yöntem ve sınırlar](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) kayıtlıdır. **Tarih:** 2026-10-29. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux](../research/p01-2-implementation-validation.md), [P01-3 cache/input](../research/p01-3-implementation-validation.md) tarihsel kalır. Hash/raw stream kabulü EVREN veri aktarım desteği veya bütün host'larda kesin süre garantisi değildir.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

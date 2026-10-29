@@ -1,6 +1,6 @@
 # Kalan P01 uygulama ve doğrulama kaydı
 
-**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a/b verified; P01-6b adım5 kapandı; adım6 CI/performans ve faz kapanışı sürüyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
+**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a/b, P01-6b ve P01 faz kabulü çalışma dalında verified. Altı adım ve CI takibi ikişer farklı fresh review turuyla kapandı; gerçek üçlü CI, iki kurulum, referans/startup/raw stream ve5s yoğun state kabulü aşağıdadır. Nihai development PR'ının son-head kontrolleri/kullanıcı review'ü ve merge/release ayrı süreçtir. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29). Önceki bölümlerin henüz kabul/test/onay yok ifadeleri kendi adımlarının tarihsel durumudur; bu kapanış durumunu değiştirmez.
 
 ## Karar ve yetki
 
@@ -279,3 +279,29 @@ Kullanıcının diğer çalışmaların bittiğini bildirmesinden sonra **c3d43e
 Arşivlendikten sonra **gerçek verify-jobs-reference** komutu güncel checkout üzerinde başarılı oldu. Gate tam public Python/fixture/lock/workflow haritasını, paketleri, kurulu ürün baytlarını, referans donanımı, azami fixture yükünü ve dört200ms/30süreç sonucunu doğruladı.48arşiv/indeks geçti. Yeni referans elde edilmeden kapı açılmadı; Linux'ta jobs performansı200ms geçti veya fiziksel donanım CI tarafından atteste edildi iddiası yoktur.
 
 Aynı sabit kaynak/candidate ile [16/256/1024MiB raw TLS kabulü](evidence.md#p01-6-reviewed-stream) geçti: **0,026/0,395/1,593s**, bağımsız byte/SHA eşliği; her istemcide bir bağlantı, bir warmup+bir ölçüm isteği, maksimum16KiB chunk. Baseline/son tepe RSS byte değerleri sırasıyla **57.294.848/57.294.848**, **49.643.520/49.643.520**, **49.414.144/50.118.656**; ek high-water RSS **0/0/704.512bayt**.1GiB64MiB kapısı geçti, üç boyutta doğrusal ek bellek büyümesi gözlenmedi. Bu ölçüm toplam/anlık RSS sıfır veya EVREN veri seti aktarım desteği değildir. Sonraki Git işlemleri yalnız kanıt/belge kapanışıdır; referansın kaynak-byte kapısı yeni CI'da tekrar zorunlu çalışacak. Gerçek üçlü CI sonucu henüz alınmadı.
+
+## Faz kapanışı ve gerçek CI
+
+**3d4f341** için [gerçek koşu40906015073](https://github.com/HodeTech/Yorunge/actions/runs/40906015073) üç uyumluluk hücresinde ve zorunlu **offline-core** aggregate'inde **başarılıdır**. [Kalıcı CI checkpoint'i](evidence.md#p01-6-ci-reviewed-checkpoint) gerçek run/source SHA, ortam/paket ve kurulum özetlerini taşır. Önceki40891566324 başarısızlığı ve iki ortamın jobs retleri korunur; yeni source/fix ve kullanıcı tarafından bildirilen farklı ölçüm penceresiyle alınmış kabuller bunları geriye dönük başarıya çevirmez.
+
+| Gerçek CI hücresi | Ortam | Tam test | Kurulum/statik kapıları |
+|---|---|---|---|
+| Linux/Python3.11 | Ubuntu24.04, kernel7.0.0-1017-azure, x86_64, CPython3.11.17, SQLite3.45.1; AMD EPYC9V45 | **3.134passed/356,80s** | Format/lint/mypy/docs/agent/evidence, wheel+sdist iki temiz kurulum: passed |
+| Linux/Python3.14 | Ubuntu24.04, aynı kernel/x86_64, CPython3.14.9, SQLite3.45.1; AMD EPYC7763 | **3.134passed/593,75s** | Aynı tam kapılar ve iki temiz kurulum: passed |
+| macOS/Python3.11 | macOS15, Darwin24.6.0/arm64, CPython3.11.9, SQLite3.45.1; Apple M1 Virtual | **3.134passed/541,33s** | Aynı tam kapılar ve iki temiz kurulum: passed |
+
+Disk türü üç CI ortamında **unknown** olarak kaydedildi. Minimum SQLite3.37 hedefi veya gerçek Windows koşusu bu matrisle doğrulanmış sayılmaz. Önceki platform-taklidi ve küçük TLS test hataları yeni koşuda yeniden oluşmadı; ilk Mac timeout'unun özgün nedeni bu pozitif sonuçla ayrıca kanıtlanmış olmaz.
+
+Üç ortamda wheel58üye SHA-256 **1efb81cf1b8b4dcde75574dce972be67866b2414cd4dac0dbc7dc9befce1a654**, sdist362üye SHA-256 **dcbdea0e21c33e046087828a5c66a8c9356c95556ab44903287a29951f59d370** aynıdır. Origin/basic/NDJSON/HTTP/stream/cache/execution/jobs kontrollerinin sekizi her artifact'ta geçti. [Linux3.11](evidence.md#p01-6-ci-reviewed-linux311-installation), [Linux3.14](evidence.md#p01-6-ci-reviewed-linux314-installation), [macOS3.11](evidence.md#p01-6-ci-reviewed-macos311-installation) kurulum kayıtları ayrıdır. Son belge kapanışı bu önceki sdist'te varmış gibi sunulmaz; ürün Python baytları aynıdır.
+
+Linux3.11 hücresi [başlangıcı gerçekten ölçtü](evidence.md#p01-6-ci-reviewed-startup): help/version/context/cache p95 **30,732/25,589/157,135/153,992ms**, mutlak500/200ms geçti. Manuel baseline aynı commit A/A'dır; göreli kazanç değildir. Zorunlu jobs adımı **gerçek source-bound M5 referansını doğruladı**; Linux jobs200ms kabulü diye gösterilmez. [Gerçek Linux raw stream](evidence.md#p01-6-ci-reviewed-stream)16/256/1024MiB'da **0/655.360/1.179.648bayt** ek tepe RSS, **0,036/0,576/2,226s**, maksimum16KiB chunk ve bir bağlantı/iki request ile byte/SHA kapılarını geçti.1GiB ek RSS64MiB sınırındadır.
+
+Bu CI ve yerel referans kod haritası aynı kaynak baytlarını kapsar; c3d43ea ölçüm commit'i ile3d4f341 CI commit'i arasındaki fark yalnız belge/kanıttır. PR son-head CI/review, kullanıcı development merge'ü ve Master/release ayrı işlemlerdir. Bu kayıt gerçek EVREN, fiziksel güç kesintisi veya eğitim/artefakt teslimi iddia etmez.
+
+### Son5s state ve migration kapıları
+
+Ortak ASCII doğrulama hızlandırması state sıcak yolunda da kullanıldığı için eski P01-4 kanıtıyla yetinilmedi. Son **3d4f341** kaynak haritasında mevcut reviewed probe'lar, editable .venv/CPython3.11.18/SQLite3.54.1/M5 Max/internalSSD/APFS üzerinde test/build ile eşzamanlı olmadan seri çalıştırıldı. Bütün örnekler yeni sentetik store/worker'dır; özgün5s deadline ve asıl kontrol callback'ine delegasyon korunur. Kaynak boyunca değişmedi, timeout başarı sayılmadı ve örnek atılmadı.
+
+[27operation örneği](evidence.md#p01-6-final-operation-budget): normal/azami terminal/azami karma × full/preview/reset × üç fresh worker, **27/27ok**; en yüksek wall **4.447,145ms**. [24migration örneği](evidence.md#p01-6-final-migration-budget): şema2/3/4/5 × normal/azami × üç fresh worker, **24/24ok**; yoğun şema2/3/4/5 maksimumları **2.434,800/3.881,899/3.747,701/2.677,767ms**. Kaynak payload/satırları ve migration kimlikleri korunur; son full validation başarılıdır. Bu değerler fiziksel I/O için bütün host'larda kesin süre garantisi değildir.
+
+**P01-6b ve P01 kabulü çalışma dalında tamamlandı/verified.** Kod/test/wire, altı adım/ikişer fresh review, doğrulanmış bulguların minimal düzeltmeleri ve CI takibi kapandı. **56kayıpsız arşiv/indeks**, gerçek M5 kaynak-byte referans kapısı ve belge/ajan denetimleri kapanışta tekrar doğrulanır. İlk başarısız CI/jobs ölçümleri yerinde kalır. P02-0a sözleşme/SDK/pilot hazırlığı sıradaki taslak iştir; P02 uygulaması bu pakette başlamadı. Paket yayımlanmadı, development/Master birleştirilmedi.
