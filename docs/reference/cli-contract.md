@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b çalışma dalında testli; P01-6b bf652f6 kaynak/bellek kabulü kayıtlı; son-head startup CI takibi açık; development PR review/merge ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) çalışma dalında verified. Önceki bf652f6 kaydı tarihseldir; development PR review/merge ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-30.
 
 ## Uygulanan alt küme
 

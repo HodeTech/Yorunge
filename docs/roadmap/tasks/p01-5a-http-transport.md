@@ -8,11 +8,11 @@ capabilities: [C01, C02, C12, C13]
 ---
 # P01-5a — HTTP taşıma ve SDK sınırı
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 1–2. ADR-0017/0018 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle tamamlandı/verified; P01-6b bf652f6 kaynak/bellek kabulü kayıtlı; son-head startup CI takibi ve ADR-0019 onayı açık.
+**Tarih:** 2026-10-30. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 1–2. ADR-0017/0018 Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle verified. P01-6b/Accepted ADR-0019 ve Sonar [son kaynak kabulü](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) tamamlandı; PR #11 kullanıcı review/merge bekler. Önceki bf652f6 kabulü kendi kaynağının tarihsel kaydıdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Gelecek hizmet adaptörü seçilmiş hedef/credential ile bounded ve iptal edilebilir ağ çağrısı yapabilmeli; katmanlar istekleri kontrolsüz tekrar etmemeli. Bugünkü API yalnız yerel kullanım senaryoları ve sync trusted operation portları taşır; HTTP istemcisi seçilmedi.
+Kartın başlangıcında HTTP istemcisi seçilmemişti. Bu kartla seçilmiş hedef/credential'a bağlı async HTTPX portu, bounded deadline/retry ve owned session/Runner köprüsü uygulandı. Hizmet endpoint adaptörü sonraki fazdadır; ortak çekirdek gerçek TLS/operation fixture'larıyla doğrulandı.
 
 ## Giren ve girmeyen kapsam
 
@@ -44,4 +44,4 @@ Unit/contract ve gerçek TLS/socket/SQLite/alt süreç integration; fault/timeou
 
 - PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım 1 3c68e22/a2250db/2dee624 ve adım 2 61fe655/ec2d202 aynı paket dalındadır. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development hedefiyle açıktır; merge kullanıcı incelemesini bekler.
 - Sonuç: İki adımın ikişer fresh review turu/fix'leri ve source-matched hedefli HTTP/JSON/TLS/session/SQLite/cancel/race/restart kontrolleri [uygulama kaydındadır](../../research/p01-remaining-implementation-validation.md). Son runtime kaynağında wheel/sdist iki temiz kurulum, import kökeni ve mevcut smoke'lar geçti; Ruff/strict mypy/belge/kart/diff temiz.
-- Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b ve bütünleşik final kurulum/ortam/performans P01-6b’nin [bf652f6 kaynak/bellek kabulünde](../../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) bf652f6 kaynağı için verified; son-head startup CI takibi açıktır; bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.
+- Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b ve bütünleşik final kurulum/ortam/performans P01-6b [son kaynak kapanışında](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified; eski bf652f6 kabulü tarihseldir. Bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.
