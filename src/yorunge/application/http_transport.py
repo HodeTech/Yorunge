@@ -18,6 +18,7 @@ CHUNK_SIZE = 32_768
 RAW_LIMIT = 1_073_741_824
 PAIR_LIMIT = 64
 METADATA_LIMIT = 65_536
+URL_LIMIT = 65_536
 NAME_LIMIT = 128
 VALUE_LIMIT = 16_384
 HEADER_NAME = re.compile(r"[!#$%&'*+.^_`|~\da-zA-Z-]+", flags=re.ASCII)
@@ -248,7 +249,10 @@ class HttpRequest:
             if not valid_json:
                 raise YorungeError("invalid_request")
         query = urlencode(self.query)
-        object.__setattr__(self, "_url", url + ("?" + query if query else ""))
+        wire_url = url + ("?" + query if query else "")
+        if len(wire_url.encode("ascii")) > URL_LIMIT:
+            raise YorungeError("invalid_request")
+        object.__setattr__(self, "_url", wire_url)
 
     def __repr__(self) -> str:
         return "<HttpRequest private>"

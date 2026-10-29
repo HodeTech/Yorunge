@@ -9,7 +9,7 @@ from enum import Enum
 from types import UnionType
 from typing import Annotated, Literal, TypeVar, Union, get_args, get_origin
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.errors import YorungeError
@@ -85,10 +85,52 @@ def _fixed_annotation(annotation: object) -> bool:
         return _fixed_annotation(get_args(annotation)[0])
     if origin is Literal:
         return True
+    if isinstance(annotation, type) and issubclass(annotation, Enum):
+        return True
     args = get_args(annotation)
     return origin in (Union, UnionType) and all(
         arg is type(None) or _fixed_annotation(arg) for arg in args
     )
+
+
+def _canonical_enum(item: Enum) -> bool:
+    value = item.value
+    if type(value) not in (str, int, bool, float, type(None)):
+        return False
+    if isinstance(value, float) and not math.isfinite(value):
+        return False
+    return any(
+        member is item and type(key) is type(value) and key == value
+        for key, member in type(item)._value2member_map_.items()
+    )
+
+
+def _fixed_value_matches(item: object, annotation: object) -> bool:
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        return _fixed_value_matches(item, get_args(annotation)[0])
+    if annotation is type(None):
+        return item is None
+    if origin is Literal:
+        return any(
+            type(item) is type(expected)
+            and item == expected
+            and (not isinstance(item, Enum) or _canonical_enum(item))
+            for expected in get_args(annotation)
+        )
+    if isinstance(annotation, type) and issubclass(annotation, Enum):
+        return type(item) is annotation and isinstance(item, Enum) and _canonical_enum(item)
+    if origin in (Union, UnionType):
+        return any(_fixed_value_matches(item, arg) for arg in get_args(annotation))
+    return False
+
+
+def _protocol_constant(item: object, annotation: object) -> bool:
+    if not _fixed_annotation(annotation) and not isinstance(item, Enum):
+        return False
+    if not _fixed_value_matches(item, annotation):
+        raise YorungeError("invalid_response")
+    return True
 
 
 def _container_annotation(annotation: object) -> object:
@@ -189,7 +231,7 @@ def _response_children(
     captured: tuple[str, ...],
     checked_types: set[type[BaseModel]],
 ) -> list[tuple[object, object]]:
-    if _fixed_annotation(annotation) or isinstance(item, Enum):
+    if _protocol_constant(item, annotation):
         return []
     if isinstance(item, BaseModel):
         return _model_children(item, checked_types)
@@ -233,7 +275,9 @@ def decode_response(data: bytes, model: type[T], *, secrets: tuple[SecretValue, 
     value: T | None = None
     try:
         value = model.model_validate_json(data, strict=True)
-    except (ValidationError, ValueError, TypeError, AttributeError):
+    except Exception:
+        # A validator may raise an ordinary error containing the raw provider value.
+        # Cancellation and other BaseException control flow deliberately propagate.
         pass
     if value is None:
         raise YorungeError("invalid_response")

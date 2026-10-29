@@ -59,8 +59,9 @@ def test_private_library_fault_chain_is_removed_not_only_hidden(fault):
                 async for _ in response.chunks():
                     pass
 
+    running = run()
     with pytest.raises(YorungeError) as caught:
-        asyncio.run(run())
+        asyncio.run(running)
     error = caught.value
     assert error.code == ("transport_timeout" if fault == "timeout" else "transport_failed")
     assert error.__context__ is None
@@ -82,8 +83,9 @@ def test_invalid_deadline_never_reaches_the_wire(deadline):
             async with transport.open(request(), deadline=deadline):
                 pytest.fail("invalid deadline reached consumer")
 
+    running = run()
     with pytest.raises(YorungeError) as caught:
-        asyncio.run(run())
+        asyncio.run(running)
     assert caught.value.code == "invalid_request"
     assert caught.value.__context__ is None
     assert calls == []
@@ -106,8 +108,9 @@ def test_foreign_context_exit_is_rejected_before_it_changes_the_owner_context(ca
                 async def foreign_exit():
                     await context.__aexit__(None, None, None)
 
+                foreign = asyncio.create_task(foreign_exit())
                 with pytest.raises(YorungeError) as caught:
-                    await asyncio.create_task(foreign_exit())
+                    await foreign
                 assert caught.value.code == "invalid_request"
                 logging.getLogger("httpx").info(CANARY)
                 assert b"".join([chunk async for chunk in response.chunks()]) == b"response"
@@ -139,8 +142,9 @@ def test_ownership_is_checked_on_every_next_and_foreign_next_preserves_iterator(
                 async def foreign_next():
                     return await anext(iterator)
 
+                foreign = asyncio.create_task(foreign_next())
                 with pytest.raises(YorungeError) as caught:
-                    await asyncio.create_task(foreign_next())
+                    await foreign
                 assert caught.value.code == "invalid_request"
                 assert await anext(iterator) == b"b" * 32_768
                 with pytest.raises(StopAsyncIteration):
@@ -159,8 +163,52 @@ def test_client_construction_failure_has_no_private_exception_chain(monkeypatch)
         async with HttpxTransport():
             pytest.fail("unavailable client entered")
 
+    running = run()
     with pytest.raises(YorungeError) as caught:
-        asyncio.run(run())
+        asyncio.run(running)
     assert caught.value.code == "transport_failed"
     assert caught.value.__context__ is None
     assert CANARY not in str(caught.value)
+
+
+def test_unexpected_library_invalid_url_is_a_chain_free_request_failure(monkeypatch):
+    wanted = request()
+
+    def invalid(*args, **kwargs):
+        raise httpx.InvalidURL(CANARY)
+
+    monkeypatch.setattr(httpx, "Request", invalid)
+
+    async def run():
+        async with HttpxTransport(transport=httpx.MockTransport(lambda _: None)) as transport:
+            async with transport.open(wanted, deadline=time.monotonic() + 1):
+                pytest.fail("invalid wire URL reached consumer")
+
+    running = run()
+    with pytest.raises(YorungeError) as caught:
+        asyncio.run(running)
+    assert caught.value.code == "invalid_request"
+    assert caught.value.__context__ is None
+    assert caught.value.__cause__ is None
+    assert CANARY not in str(caught.value)
+
+
+def test_consumer_output_failure_is_not_reclassified_as_network_failure():
+    class Stream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"response"
+
+    error = BrokenPipeError("the consumer owns this failure")
+
+    async def handler(wire):
+        return httpx.Response(200, stream=Stream())
+
+    async def run():
+        async with HttpxTransport(transport=httpx.MockTransport(handler)) as transport:
+            async with transport.open(request(), deadline=time.monotonic() + 1):
+                raise error
+
+    running = run()
+    with pytest.raises(BrokenPipeError) as caught:
+        asyncio.run(running)
+    assert caught.value is error

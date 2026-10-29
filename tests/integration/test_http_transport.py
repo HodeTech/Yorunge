@@ -101,8 +101,9 @@ def test_tls_ca_and_hostname_verification_are_real(certificates, failure):
             if failure == "ca"
             else server.transport(hostname="127.0.0.1")
         )
+        wanted = request(authenticated=True, read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(authenticated=True, read_only=True), transport=transport)
+            collect(server, wanted, transport=transport)
         assert caught.value.code == "transport_failed"
         assert SECRET not in str(caught.value)
         assert "localhost" not in str(caught.value.envelope())
@@ -116,8 +117,9 @@ def test_redirect_never_contacts_second_tls_server_or_replays_auth(certificates)
             certificates,
             {"/v1/data": Reply(status=307, headers=(("Location", location),))},
         ) as server:
+            wanted = request(method="POST", authenticated=True)
             with pytest.raises(YorungeError) as caught:
-                collect(server, request(method="POST", authenticated=True))
+                collect(server, wanted)
             assert caught.value.code == "remote_failed"
             assert len(server.requests) == 1
             assert other.requests == []
@@ -169,8 +171,9 @@ def test_explicit_read_only_get_has_at_most_two_attempts(certificates, status):
 @pytest.mark.parametrize("method,read_only", [("GET", False), ("POST", False)])
 def test_default_read_and_effectful_calls_never_retry(certificates, method, read_only):
     with TlsServer(certificates, {"/v1/data": Reply(status=503)}) as server:
+        wanted = request(method=method, read_only=read_only)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(method=method, read_only=read_only))
+            collect(server, wanted)
         assert caught.value.code == "remote_failed"
         assert len(server.requests) == 1
 
@@ -178,8 +181,9 @@ def test_default_read_and_effectful_calls_never_retry(certificates, method, read
 @pytest.mark.parametrize("status", [401, 403])
 def test_auth_failure_is_controlled_and_not_retried(certificates, status):
     with TlsServer(certificates, {"/v1/data": Reply(status=status)}) as server:
+        wanted = request(authenticated=True, read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(authenticated=True, read_only=True))
+            collect(server, wanted)
         assert caught.value.code == "remote_access_denied"
         assert caught.value.exit_code == 3
         assert len(server.requests) == 1
@@ -192,8 +196,9 @@ def test_retry_after_that_does_not_fit_total_is_not_shortened(certificates):
         {"/v1/data": Reply(status=429, headers=(("Retry-After", "60"),))},
     ) as server:
         started = time.monotonic()
+        wanted = request(read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(read_only=True), timeout=0.4)
+            collect(server, wanted, timeout=0.4)
         assert caught.value.code == "remote_rate_limited"
         assert len(server.requests) == 1
         assert time.monotonic() - started < 1.0
@@ -227,8 +232,9 @@ def test_retry_after_minimum_is_honored_inside_shared_total(certificates):
 def test_total_deadline_covers_real_header_and_body_wait(certificates, reply):
     with TlsServer(certificates, {"/v1/data": reply}) as server:
         started = time.monotonic()
+        wanted = request(read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(read_only=True), timeout=0.15)
+            collect(server, wanted, timeout=0.15)
         assert caught.value.code == "transport_timeout"
         assert time.monotonic() - started < 1.0
         assert len(server.requests) == 1
@@ -242,8 +248,9 @@ def test_deadline_also_covers_consumer_work_inside_response_context(certificates
                 async with client.open(request(), deadline=time.monotonic() + 0.15):
                     await asyncio.sleep(0.6)
 
+        running = run()
         with pytest.raises(YorungeError) as caught:
-            asyncio.run(run())
+            asyncio.run(running)
         assert caught.value.code == "transport_timeout"
         assert len(server.requests) == 1
 
@@ -256,8 +263,9 @@ def test_past_deadline_is_rejected_before_any_request(certificates):
                 async with client.open(request(), deadline=time.monotonic() - 1):
                     pytest.fail("expired request reached the consumer")
 
+        running = run()
         with pytest.raises(YorungeError) as caught:
-            asyncio.run(run())
+            asyncio.run(running)
         assert caught.value.code == "transport_timeout"
         assert server.requests == []
 
@@ -304,16 +312,18 @@ def test_content_encoding_is_rejected_before_decompression(certificates, bomb):
         certificates,
         {"/v1/data": Reply(body=body, headers=(("Content-Encoding", "gzip"),))},
     ) as server:
+        wanted = request(read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(read_only=True))
+            collect(server, wanted)
         assert caught.value.code == "invalid_response"
         assert len(server.requests) == 1
 
 
 def test_total_byte_limit_is_enforced_without_retry(certificates):
     with TlsServer(certificates, {"/v1/data": Reply(body=b"123456789")}) as server:
+        wanted = request(max_bytes=8, read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(max_bytes=8, read_only=True))
+            collect(server, wanted)
         assert caught.value.code == "invalid_response"
         assert len(server.requests) == 1
 
@@ -323,8 +333,9 @@ def test_truncated_raw_body_is_not_replayed(certificates):
         certificates,
         {"/v1/data": Reply(body=b"x" * 65_536, truncate_at=32_768)},
     ) as server:
+        wanted = request(read_only=True)
         with pytest.raises(YorungeError) as caught:
-            collect(server, request(read_only=True))
+            collect(server, wanted)
         assert caught.value.code == "transport_failed"
         assert len(server.requests) == 1
 
@@ -405,8 +416,9 @@ def test_third_response_waits_for_bounded_pool_and_times_out_without_request(cer
                     while len(ready) != 2:
                         assert time.monotonic() < end
                         await asyncio.sleep(0.005)
+                    wanted = request()
                     with pytest.raises(YorungeError) as caught:
-                        await consume(client, request(), timeout=1.5)
+                        await consume(client, wanted, timeout=1.5)
                     assert caught.value.code == "transport_timeout"
                     assert len(server.requests) == 2
                 finally:
@@ -426,12 +438,13 @@ def test_response_cannot_be_consumed_by_another_task_or_after_close(certificates
                     async def foreign_reader():
                         return [chunk async for chunk in response.chunks()]
 
+                    foreign = asyncio.create_task(foreign_reader())
                     with pytest.raises(YorungeError) as caught:
-                        await asyncio.create_task(foreign_reader())
+                        await foreign
                     assert caught.value.code == "invalid_request"
                     assert b"".join([chunk async for chunk in response.chunks()])
                 with pytest.raises(YorungeError) as caught:
-                    await anext(response.chunks())
+                    response.chunks()
                 assert caught.value.code == "invalid_request"
 
         asyncio.run(run())
@@ -485,10 +498,12 @@ def test_session_close_io_failure_is_safe_and_does_not_replace_prior_failure(cer
                     raise YorungeError(prior)
 
         if prior == "cancelled":
+            running = run()
             with pytest.raises(asyncio.CancelledError):
-                asyncio.run(run())
+                asyncio.run(running)
         else:
+            running = run()
             with pytest.raises(YorungeError) as caught:
-                asyncio.run(run())
+                asyncio.run(running)
             assert caught.value.code == (prior or "transport_failed")
             assert SECRET not in str(caught.value.envelope())

@@ -25,6 +25,7 @@ Redirect kapalıdır, hiçbir 3xx takip edilmez. `trust_env=False`, transport re
 | Akış okuma parçası | En çok 32 KiB; dosyanın bütünü biriktirilmez |
 | NDJSON frame | En çok 1 MiB + 1 KiB UTF-8; LF/CRLF hariç; Result payload en çok 1 MiB encoded JSON |
 | Raw stream toplamı | İstek için açık byte tavanı; en çok 1 GiB |
+| Encoded wire URL | En çok65.536 ASCII byte; query percent-encoding sonrası ayrıca denetlenir, aşım sıfır ağ/invalid_request |
 | Query/header metadata | En çok 64 çift, isim başına 128 ve değer başına 16.384 byte; toplam en çok 64 KiB |
 | İstek phase timeout | Connect/read/write en çok 5 s, pool en çok 1 s; kalan total'dan büyük olamaz |
 | Total | Çağıranın mutlak monotonic deadline'ı; production caller için zorunlu, default yok; fixture açık 30 s verir, operation mevcut daha dar port deadline'ını verir |

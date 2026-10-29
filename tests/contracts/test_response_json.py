@@ -1,5 +1,6 @@
 """Independent JSON boundary and provider-reflection examples."""
 
+import asyncio
 import json
 from datetime import datetime
 from enum import StrEnum
@@ -16,7 +17,9 @@ from pydantic import (
     computed_field,
     create_model,
     field_serializer,
+    field_validator,
     model_serializer,
+    model_validator,
 )
 
 from yorunge.application.response_json import (
@@ -409,3 +412,178 @@ def test_ordinary_default_json_data_is_not_core_schema_serialization_metadata():
 
     value = decode_response(b"{}", WithDefault, secrets=(SecretValue("unrelated-canary"),))
     assert value.metadata == {"type": "ordinary", "serialization": "ordinary"}
+
+
+def literal_drift_model(mode, secret):
+    def restored(source):
+        return chr(int(source)) if secret == "a" else unquote(source)
+
+    class Source(Model):
+        source: str
+        state: Literal["ok"]
+
+    if mode == "wrap":
+
+        class Wrap(Source):
+            @field_validator("state", mode="wrap")
+            @classmethod
+            def changed(cls, value, handler):
+                return restored(value)
+
+        return Wrap
+    if mode == "after":
+
+        class After(Source):
+            @field_validator("state", mode="after")
+            @classmethod
+            def changed(cls, value, info):
+                return restored(info.data["source"])
+
+        return After
+
+    class ModelAfter(Source):
+        @model_validator(mode="after")
+        def changed(self):
+            return self.model_copy(update={"state": restored(self.source)})
+
+    return ModelAfter
+
+
+@pytest.mark.parametrize("mode", ["wrap", "after", "model"])
+@pytest.mark.parametrize("secret", ["a", "synthetic-literal-canary"])
+@pytest.mark.parametrize("nested", [False, True])
+def test_literal_exemption_checks_the_actual_post_validator_value(mode, secret, nested):
+    inner = literal_drift_model(mode, secret)
+    source = "97" if secret == "a" else secret.replace("-", "%2D")
+    payload = {"source": source, "state": source if mode == "wrap" else "ok"}
+    expected_model, expected_payload = inner, payload
+    if nested:
+        expected_model = create_model("NestedLiteralDrift", __base__=Model, child=(inner, ...))
+        expected_payload = {"child": payload}
+    raw = json.dumps(expected_payload).encode()
+    unguarded = expected_model.model_validate_json(raw)
+    assert (unguarded.child if nested else unguarded).state == secret
+    with pytest.raises(YorungeError) as failure:
+        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+    assert failure.value.code == "invalid_response"
+
+
+def enum_drift_model(kind, secret):
+    class Expected(StrEnum):
+        OK = "ok"
+
+    class Different(StrEnum):
+        VALUE = secret
+
+    class Response(Model):
+        state: Expected
+
+        @field_validator("state", mode="wrap")
+        @classmethod
+        def changed(cls, value, handler):
+            if kind == "wrong_class":
+                return Different.VALUE
+            if kind == "raw_string":
+                return secret
+            if kind == "mutated_member":
+                Expected.OK._value_ = secret
+                return Expected.OK
+            forged = str.__new__(Expected, secret)
+            forged._name_, forged._value_ = "FORGED", secret
+            return forged
+
+    return Response
+
+
+@pytest.mark.parametrize("kind", ["wrong_class", "raw_string", "mutated_member", "forged"])
+@pytest.mark.parametrize("secret", ["a", "synthetic-enum-canary"])
+def test_enum_exemption_requires_the_declared_canonical_member(kind, secret):
+    expected_model = enum_drift_model(kind, secret)
+    raw = b'{"state":"ok"}'
+    unguarded = expected_model.model_validate_json(raw).state
+    assert getattr(unguarded, "value", unguarded) == secret
+    with pytest.raises(YorungeError) as failure:
+        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+    assert failure.value.code == "invalid_response"
+
+
+def test_literal_numeric_membership_does_not_treat_true_as_integer_one():
+    class DriftedVersion(Model):
+        schema_version: Literal[1]
+
+        @field_validator("schema_version", mode="after")
+        @classmethod
+        def changed(cls, value):
+            return True
+
+    with pytest.raises(YorungeError) as failure:
+        decode_response(
+            b'{"schema_version":1}', DriftedVersion, secrets=(SecretValue("unrelated-canary"),)
+        )
+    assert failure.value.code == "invalid_response"
+
+
+def test_ordinary_validators_that_preserve_protocol_constants_remain_supported():
+    class Normal(Model):
+        state: Literal["ok"]
+        value: str
+
+        @field_validator("state", mode="after")
+        @classmethod
+        def kept(cls, value):
+            return value
+
+        @field_validator("value", mode="after")
+        @classmethod
+        def normalized(cls, value):
+            return value.strip()
+
+    value = decode_response(
+        b'{"state":"ok","value":" ordinary "}', Normal, secrets=(SecretValue("ok"),)
+    )
+    assert value.state == "ok"
+    assert value.value == "ordinary"
+
+
+def raising_model(mode, error_type):
+    class FieldFailure(Model):
+        value: str
+
+        @field_validator("value", mode="after")
+        @classmethod
+        def crashed(cls, value):
+            raise error_type(value)
+
+    if mode == "field":
+        return FieldFailure
+
+    class ModelFailure(Model):
+        value: str
+
+        @model_validator(mode="after")
+        def crashed(self):
+            raise error_type(self.value)
+
+    return ModelFailure
+
+
+@pytest.mark.parametrize("mode", ["field", "model"])
+@pytest.mark.parametrize("error_type", [RuntimeError, KeyError])
+def test_ordinary_validator_exceptions_are_sanitized_outside_the_active_exception(mode, error_type):
+    secret = "synthetic-validator-exception-canary"
+    expected_model = raising_model(mode, error_type)
+    with pytest.raises(YorungeError) as failure:
+        decode_response(json.dumps({"value": secret}).encode(), expected_model)
+    assert failure.value.code == "invalid_response"
+    assert failure.value.__context__ is None
+    assert failure.value.__cause__ is None
+    assert secret not in str(failure.value)
+    assert secret not in json.dumps(failure.value.envelope())
+
+
+@pytest.mark.parametrize("mode", ["field", "model"])
+@pytest.mark.parametrize("error_type", [asyncio.CancelledError, KeyboardInterrupt, SystemExit])
+def test_validator_cancellation_and_base_exception_control_flow_is_preserved(mode, error_type):
+    expected_model = raising_model(mode, error_type)
+    with pytest.raises(error_type):
+        decode_response(b'{"value":"ordinary"}', expected_model)

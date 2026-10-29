@@ -10,6 +10,7 @@ import pytest
 from yorunge.application.http_transport import (
     JSON_LIMIT,
     RAW_LIMIT,
+    URL_LIMIT,
     HttpCredential,
     HttpRequest,
     HttpStatusFailure,
@@ -251,10 +252,47 @@ def test_invalid_request_does_not_silently_coerce_types_or_expand_resource_budge
 def test_explicit_byte_and_pair_limits_accept_the_boundary_and_reject_the_next_value():
     assert request(content=b"x" * JSON_LIMIT, max_bytes=RAW_LIMIT).max_bytes == RAW_LIMIT
     assert len(request(query=tuple((str(i), "value") for i in range(64))).query) == 64
-    valid = tuple((f"x{i}", "v" * 16_381) for i in range(4))
-    assert request(query=valid).query == valid
+    # Header metadata can reach the 64KiB quota without the separate URL wire quota.
+    valid = tuple((f"X{i}", "v" * 16_381) for i in range(4))
+    assert request(headers=valid).headers == valid
     with pytest.raises(YorungeError) as failure:
-        request(query=valid + (("extra", "value"),))
+        request(headers=valid + (("extra", "value"),))
+    assert failure.value.code == "invalid_request"
+
+
+def query_at_wire_size(size):
+    # Independent fixed target + query framing; only ASCII alphanumeric values follow.
+    prefix = "https://api.example.test/api/v1/records?a=&b=&c=&d="
+    remaining = size - len(prefix)
+    result = []
+    for name in ("a", "b", "c", "d"):
+        length = min(16_384, remaining)
+        result.append((name, "x" * length))
+        remaining -= length
+    assert remaining == 0
+    return tuple(result)
+
+
+@pytest.mark.parametrize("size", [65_535, 65_536])
+def test_url_wire_byte_limit_accepts_the_boundary_without_relaxing_metadata_limits(size):
+    value = request(query=query_at_wire_size(size))
+    assert len(value.url.encode("ascii")) == size
+    assert URL_LIMIT == 65_536
+
+
+def test_url_wire_byte_limit_rejects_the_next_byte_before_network_preparation():
+    with pytest.raises(YorungeError) as failure:
+        request(query=query_at_wire_size(65_537))
+    assert failure.value.code == "invalid_request"
+    assert failure.value.__context__ is None
+
+
+@pytest.mark.parametrize("value", ["&" * 16_380, "ğ" * 8190])
+def test_percent_encoding_cannot_expand_bounded_query_metadata_beyond_the_url_limit(value):
+    query = tuple((str(index), value) for index in range(4))
+    assert sum(len(key.encode()) + len(text.encode()) for key, text in query) == 65_524
+    with pytest.raises(YorungeError) as failure:
+        request(query=query)
     assert failure.value.code == "invalid_request"
 
 

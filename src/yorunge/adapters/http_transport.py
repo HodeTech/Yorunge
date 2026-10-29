@@ -272,6 +272,13 @@ class HttpxTransport:
         return True
 
     async def _send(self, request: HttpRequest, deadline: float) -> httpx.Response:
+        try:
+            return await self._attempts(request, deadline)
+        except OSError:
+            pass
+        raise YorungeError("transport_failed")
+
+    async def _attempts(self, request: HttpRequest, deadline: float) -> httpx.Response:
         client = self._client
         assert client is not None
         attempts = 2 if request.read_only else 1
@@ -374,7 +381,9 @@ class HttpxTransport:
                     _remaining(deadline)
             except (TimeoutError, httpx.TimeoutException):
                 failure = "transport_timeout"
-            except (httpx.HTTPError, OSError):
+            except httpx.InvalidURL:
+                failure = "invalid_request"
+            except httpx.HTTPError:
                 failure = "transport_failed"
             finally:
                 pending_error = sys.exc_info()[0] is not None
