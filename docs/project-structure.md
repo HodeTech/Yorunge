@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-29. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON altyapısı uygulandı; P01 bütünleşik/kurulum/gerçek CI ve kaynak kabulü çalışma dalında verified. Development PR/merge ve yayın ayrı süreçtir.
+**Güncellendi:** 2026-10-29. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON altyapısı uygulandı; bf652f6 bütünleşik/kurulum/gerçek CI ve kaynak kabulü tarihseldir; P01-6b son-head startup CI takibi ve ADR-0019 onayı açıktır. Development PR/merge ve yayın ayrı süreçtir.
 
 ```text
 src/yorunge/
@@ -39,7 +39,7 @@ examples/                 # Küçük sentetik profil ve reçete
 docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kartları
 ```
 
-`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. HTTP/session/stream ve CLI renderer gerçek TLS/süreç ve kurulu artifact ile testlidir; [P01 CI/performans kabulü](research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) çalışma dalında tamamlandı. Public run/execution backend ve araç adaptörleri sonraki fazlardadır; boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
+`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. HTTP/session/stream ve CLI renderer gerçek TLS/süreç ve kurulu artifact ile testlidir; [bf652f6 CI/performans kabulü](research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tarihsel olarak tamamlandı; [son-head startup CI takibi](research/p01-remaining-implementation-validation.md#son-head-başlangıç-ci-takibi) açıktır. Public run/execution backend ve araç adaptörleri sonraki fazlardadır; boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
 
 [Ajan kataloğu](../.agents/README.md) repo geliştirme girdisidir; runtime bağımlılığı değildir. Canonical `.agents` materyali sdist'e seçilir; wheel ve Claude alias symlink'leriyle karıştırılmaz. İstemci/global ayar veya otomatik izin hook'u eklenmez.
 
