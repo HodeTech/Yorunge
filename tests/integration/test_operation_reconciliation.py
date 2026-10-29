@@ -1261,6 +1261,8 @@ def test_observation_secret_provenance_rule(
     ).data.plan
     api.approve_execution_plan(plan.plan_id, plan.digest, config=config, state_dir=state)
     backend, observer = ProcessBackend(tmp_path / "effects"), ReadObserver(execution_clock)
+    if rejected:
+        backend.mode = "lost_reply"
     if field == "provider_run_id" and not rejected:
         original_start = backend.start
 
@@ -1275,7 +1277,17 @@ def test_observation_secret_provenance_rule(
     ) as coordinator:
         claim = coordinator.admit(plan.plan_id)
         identifier = claim.job.operation.operation_id
-        coordinator.dispatch(identifier, claim.ownership)
+        if rejected:
+            with pytest.raises(OperationError) as error:
+                coordinator.dispatch(identifier, claim.ownership)
+            assert error.value.code == "operation_uncertain"
+        else:
+            coordinator.dispatch(identifier, claim.ownership)
+    if rejected:
+        before = api.show_job(identifier, state_dir=state).data
+        assert before.operation.status == "unknown"
+        assert before.attempts[-1].provider_run_id is None
+        assert before.attempts[-1].provider_status is None
     observer.change = lambda result: result.model_copy(update={field: value})
     with api._operation_session(
         plan.plan_id, backend, observer=observer, config=config, state_dir=state
@@ -1284,4 +1296,7 @@ def test_observation_secret_provenance_rule(
         assert job.operation.status == ("unknown" if rejected else "succeeded")
         if rejected:
             assert job.attempts[-1].reason_code == "evidence_mismatch"
+            assert job.attempts[-1].provider_run_id is None
+            assert job.attempts[-1].provider_status is None
     assert backend.calls == 1
+    assert len(backend.effects()) == 1

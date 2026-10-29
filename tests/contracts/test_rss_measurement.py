@@ -104,8 +104,9 @@ def test_mach_current_probe_returns_resident_bytes_without_unit_conversion():
     "arguments", [{"result": 5}, {"count": 11}, {"count": 13}, {"resident_size": 0}]
 )
 def test_mach_call_errors_count_changes_and_zero_rss_are_rejected(arguments):
+    probe = mach_probe(**arguments)
     with pytest.raises(ValueError):
-        mach_probe(**arguments)()
+        probe()
 
 
 def test_mach_initialization_loads_system_library_and_declares_the_abi(monkeypatch):

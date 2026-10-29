@@ -210,8 +210,9 @@ def test_rss_native_counts_must_be_integral_even_when_byte_conversion_is_consist
     if valid:
         assert evaluate(record, telemetry(), 65537, record["received_sha256"])["passed"] is True
     else:
+        server = telemetry()
         with pytest.raises(ValueError, match="native RSS"):
-            evaluate(record, telemetry(), 65537, record["received_sha256"])
+            evaluate(record, server, 65537, record["received_sha256"])
 
 
 @pytest.mark.parametrize(
@@ -720,8 +721,9 @@ def test_completed_receipts_survive_later_worker_failure(
         SimpleNamespace(run_path=lambda path: {"certificate": lambda path: (path, path)}),
     )
     output, workspace = tmp_path / "report.json", tmp_path / "work"
+    python = Path(sys.executable)
     with pytest.raises(ValueError) as caught:
-        check(ROOT, Path(sys.executable), workspace, output, cpu="unknown", disk="unknown")
+        check(ROOT, python, workspace, output, cpu="unknown", disk="unknown")
     assert caught.value is failure
     assert not output.exists()
     for size, original in completed.items():
@@ -799,12 +801,13 @@ def test_live_server_readiness_timeout_is_distinct_without_waiting_for_the_deadl
     clock = iter([0.0, 11.0])
     monkeypatch.setitem(measure.__globals__, "time", SimpleNamespace(monotonic=lambda: next(clock)))
     work = tmp_path / "run"
+    python = Path(sys.executable)
     with pytest.raises(
         ValueError, match="readiness timed out after 10 seconds while process was running"
     ):
         measure(
             project,
-            Path(sys.executable),
+            python,
             work,
             tmp_path / "unused-manifest",
             (tmp_path / "unused-cert", tmp_path / "unused-key"),
