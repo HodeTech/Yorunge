@@ -1,6 +1,6 @@
 # HTTP taşıma sözleşmesi
 
-**Durum:** Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md) sözleşmesi; adım1 tipli byte/JSON taşıması uygulanıyor, review ve kart kabulü sürüyor; public ağ komutu yok. **Tarih:** 2026-10-29.
+**Durum:** Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md) sözleşmesi; tipli byte/JSON taşıması ve owned session uygulandı, P01-5a iki adım ve ikişer fresh review turuyla verified; public ağ komutu yok. **Tarih:** 2026-10-29.
 
 ## Port ve sahiplik
 

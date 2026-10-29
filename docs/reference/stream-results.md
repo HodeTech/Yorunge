@@ -1,6 +1,6 @@
 # Akış sonucu sözleşmesi
 
-**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) sözleşmesi; tipli model/codec ve owned HTTP reader uygulanıyor. CLI NDJSON/iptal adım4 ve kart kabulü henüz tamamlanmadı. **Tarih:** 2026-10-29.
+**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) sözleşmesi; tipli model/codec ve owned HTTP reader adım3’te iki fresh review turuyla tamamlandı. CLI NDJSON/iptal adım4 uygulandı; review ve kart kabulü sürüyor. **Tarih:** 2026-10-29.
 
 ## Kapalı StreamEvent v1
 
@@ -12,7 +12,7 @@ Her olayın tam anahtar kümesi `schema_version`, `stream_id`, `sequence`, `even
 | result | Çağrının beklenen domain modeline bağlı **mevcut Result v1**, status=completed/operation_id=null; serbest dict değil | Evet |
 | error | Güvenli mevcut YorungeError/OperationError zarfı; bilinen code, o kodun kapalı details'i, operation ID bağlamla aynı | Evet |
 
-Outer operation ID akışın bağlamıdır; Result v1'in null ID'sini değiştirmez. Error zarfında operation biliniyorsa aynı ID bulunur. Bu, EOF/trailing/decoder veya output kaynaklı genel hatalarda da `OperationError(code, bound_operation_id)` ile sağlanır; code/exit korunur, details `{reason_code: code, capacity_kind: null}` olur. ID yoksa genel YorungeError zarfı null/boş details kullanır. Error payload mesajı/retryable/details yerel kapalı katalogdan yeniden kurulur; upstream serbest mesaj veya key taşınmaz. Progress provider metni, prompt, raw URL, body/header, env adı veya secret taşımaz. Normal tek-sonuç komut başarıda progress üretmez; sequence=1 tek result emit eder. Metadata `--help`/`--version` makine akışına dönüşmez.
+Result fabrikası mevcut zarfın somut modelini veya yalnız somut model dallarından oluşan tanımlı union’ını korur; data’nın runtime alt sınıfına göre serialization kapsamını genişletmez. Açık BaseModel/None/dict dalı generic yer tutucu olarak kabul edilmez. Outer operation ID akışın bağlamıdır; Result v1'in null ID'sini değiştirmez. Error zarfında operation biliniyorsa aynı ID bulunur. Bu, EOF/trailing/decoder veya output kaynaklı genel hatalarda da `OperationError(code, bound_operation_id)` ile sağlanır; code/exit korunur, details `{reason_code: code, capacity_kind: null}` olur. ID yoksa genel YorungeError zarfı null/boş details kullanır. Error payload mesajı/retryable/details yerel kapalı katalogdan yeniden kurulur; upstream serbest mesaj veya key taşınmaz. Progress provider metni, prompt, raw URL, body/header, env adı veya secret taşımaz. Normal tek-sonuç komut başarıda progress üretmez; sequence=1 tek result emit eder. Metadata `--help`/`--version` makine akışına dönüşmez.
 
 ## Byte ve protokol kuralları
 

@@ -12,6 +12,9 @@ P01-4, [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile development’a
 
 ### Added — 2026-10-29
 
+- Session-owned async HTTPX taşıması ve sync Runner; canonical hedef/credential, bounded deadline/retry, TLS/cookie/log/yanıt doğrulama sınırları. Doğrudan SDK bağımlılığı veya EVREN endpoint adaptörü eklenmedi.
+- Tipli StreamEvent v1, bounded NDJSON codec, HTTP message EOF’a kadar tutulan terminal ve mevcut normal CLI komutlarında tek-result NDJSON. Eski Result/JSON v1, plan digest’i ve yerel komutların lazy import sınırı korunur.
+- UTF-8 byte çıktı, kontrollü SIGINT/pipe/I/O ve kritik config yayınında korunmuş uncertainty5. CLI/akış kabulü ve iki fresh review döngüleri [kapanış kaydında](docs/research/p01-remaining-implementation-validation.md) sürüyor; P01 bütünü henüz tamamlanmadı.
 - Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.
 - Trusted salt gözlem, execution/delivery ayrımı, bounded recovery ve tarihçeyi koruyan kimlik reset preview v3.
 - Yerel `jobs list/show` ve ortak Python API; store/filtre bağlı keyset cursor, bounded toplu liste sorgusu ve son yerel kayıt uyarısı.

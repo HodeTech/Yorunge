@@ -92,6 +92,19 @@ Bu sorgular yalnız son yerel kaydı gösterir; `running` güncel uzak çalışm
 
 İç koordinasyon plan başına tek operation ve kalıcı gönderim niyetiyle ikinci gönderimi önler. Kimlik reset'i gönderim öncesi işi cancelled, gönderim niyeti olan işi unknown yapar; daha önce arm edilmiş dış etkiyi kesin durdurmaz. Tarihçe otomatik silinmez; 1.024 lifetime operation bütün plan slotlarını bağladıysa yeni plan üretimi kontrollü reddedilir. Yeni state dizini eski unknown işi yeniden gönderme çözümü değildir.
 
+## Otomasyonda çıktı ve yerel iptal
+
+Mevcut normal komutlarda `--output ndjson` veya `--output=ndjson`, tek başarılı sonucu tek UTF-8 `result` olayıyla verir. Olayın `payload` alanı mevcut JSON Result v1 ile aynıdır; text/JSON varsayımları değişmez. Örneğin:
+
+```sh
+.venv/bin/yorunge context show --config examples/profile.toml --output ndjson
+.venv/bin/yorunge jobs list --state-dir ./private-state --output=ndjson
+```
+
+Help/version insan çıktısı kalır. İlk sonuçtan önceki hata stdout’u boş bırakıp stderr’e tek JSON yazar. Ctrl-C ve kapalı pipe yerel çağrıyı bırakır (exit6); kayıtlı işi geri almaz veya uzakta durdurmaz. Config yayınında veya operation gönderiminde belirsizlik varsa exit5 ve ilgili kimlik korunur; otomatik tekrar yapılmaz. Kesin wire ve çıktı boyutu sınırları [akış sözleşmesindedir](docs/reference/stream-results.md).
+
+Ortak HTTP/stream altyapısı gerçek TLS loopback ile sınanır; bu, EVREN endpoint adaptörü veya kullanıcıya açık uzak watch/run komutu değildir. [Kalan P01 kabulü](docs/research/p01-remaining-implementation-validation.md) sürüyor.
+
 ## Ürün yaklaşımı
 
 - **EVREN odaklı kapsam:** Veri aktarımı, model keşfi, çıkarım, eğitim, kaynak görünürlüğü ve sonuç yönetimi aynı ürünün alanlarıdır.

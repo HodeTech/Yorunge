@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, cast, overload
 
 from yorunge import __version__
+from yorunge.cli.output import OutputRenderer, write_utf8
 
 if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
@@ -91,12 +91,18 @@ class Parser(argparse.ArgumentParser):
         # argparse's message may contain arbitrary user input, including a credential.
         raise UsageError
 
+    def _print_message(self, message: str, file: object | None = None) -> None:
+        if message:
+            from typing import TextIO, cast
+
+            write_utf8(message, cast(TextIO, file or sys.stderr))
+
 
 def common(parser: argparse.ArgumentParser, *, context: bool = True) -> None:
     parser.allow_abbrev = False
     parser.add_argument(
         "--output",
-        choices=("text", "json"),
+        choices=("text", "json", "ndjson"),
         default=argparse.SUPPRESS,
         help="Sonuç biçimi (varsayılan: text)",
     )
@@ -470,10 +476,12 @@ def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...
 def main(argv: Sequence[str] | None = None) -> int:
     args_list = list(sys.argv[1:] if argv is None else argv)
     # Error format is known even when parsing fails before reaching --output.
-    json_output = any(
-        arg == "--output=json" or (arg == "--output" and args_list[i + 1 : i + 2] == ["json"])
+    machine_output = any(
+        arg in ("--output=json", "--output=ndjson")
+        or (arg == "--output" and args_list[i + 1 : i + 2] in (["json"], ["ndjson"]))
         for i, arg in enumerate(args_list)
     )
+    renderer = OutputRenderer("json" if machine_output else "text")
     try:
         args = parser().parse_args(args_list)
         if args.command == "jobs":
@@ -481,32 +489,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     except UsageError:
         from yorunge.domain.errors import YorungeError
 
-        error = YorungeError("invalid_request")
-        print(
-            json.dumps(error.envelope(), ensure_ascii=False) if json_output else error.message,
-            file=sys.stderr,
-        )
-        return error.exit_code
+        return renderer.error(YorungeError("invalid_request"))
+    except KeyboardInterrupt:
+        from yorunge.domain.errors import YorungeError
+
+        return renderer.error(YorungeError("request_cancelled"))
+    except (OSError, UnicodeError) as error:
+        return renderer.error(renderer.output_failure(error))
 
     from yorunge.domain.errors import YorungeError
 
-    json_output = vars(args).get("output", "text") == "json"
+    renderer = OutputRenderer(vars(args).get("output", "text"))
     try:
         result = dispatch(args)
-        if json_output:
-            output = result.model_dump_json()
-        elif args.command == "jobs":
-            output = jobs_text_result(result.data)
-        else:
-            output = text_result(result.data)
-        print(output)
+        text = None
+        if renderer.output == "text":
+            text = (
+                jobs_text_result(result.data)
+                if args.command == "jobs"
+                else text_result(result.data)
+            )
+        renderer.result(cast("Result[Model]", result), text=text)
         return 0
     except YorungeError as error:
-        print(
-            json.dumps(error.envelope(), ensure_ascii=False) if json_output else error.message,
-            file=sys.stderr,
-        )
-        return error.exit_code
+        return renderer.error(error)
+    except KeyboardInterrupt:
+        return renderer.error(YorungeError("request_cancelled"))
+    except (OSError, UnicodeError) as error:
+        return renderer.error(renderer.output_failure(error))
 
 
 def reject_context(args: argparse.Namespace, names: tuple[str, ...]) -> None:

@@ -209,6 +209,24 @@ def test_result_factory_preserves_warnings_and_original_declared_serialization_s
     assert event.payload.warnings == ("yerel uyarı",)
 
 
+def test_result_factory_keeps_declared_model_union_and_subclass_privacy() -> None:
+    from yorunge.application.stream_results import encode_event
+
+    class Alternative(Model):
+        other: str
+
+    class PrivateItem(Item):
+        private: str
+
+    original = Result[Item | Alternative](data=PrivateItem(value="public", private=PRIVATE_MESSAGE))
+    event = result_event(original, stream_id=STREAM_ID)
+    assert type(event).__pydantic_generic_metadata__["args"] == (Item | Alternative,)
+    assert event.payload.model_dump(mode="json") == original.model_dump(mode="json")
+    encoded = encode_event(event)
+    assert json.loads(encoded)["payload"] == original.model_dump(mode="json")
+    assert PRIVATE_MESSAGE not in encoded.decode()
+
+
 def test_unparameterized_result_cannot_silently_erase_data_fields() -> None:
     from pydantic import BaseModel
 
@@ -219,6 +237,14 @@ def test_unparameterized_result_cannot_silently_erase_data_fields() -> None:
         ResultEvent[BaseModel].model_validate({**metadata("result"), "payload": original})
     with pytest.raises(ValueError, match="concrete result data model required"):
         result_event(Result(data=original.data), stream_id=STREAM_ID)
+
+
+@pytest.mark.parametrize("alternative", [None, dict])
+def test_model_union_cannot_add_an_untyped_payload_branch(alternative: object) -> None:
+    annotation = Item | (type(None) if alternative is None else alternative)
+    raw = Result[annotation].model_construct(data=Item(value="public"))
+    with pytest.raises(ValueError, match="concrete result data model required"):
+        result_event(raw, stream_id=STREAM_ID)
 
 
 @pytest.mark.parametrize(

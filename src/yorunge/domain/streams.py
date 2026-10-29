@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-from typing import Annotated, Generic, Literal, TypeAlias, TypeVar, cast
+from types import UnionType
+from typing import (
+    Annotated,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -160,16 +171,23 @@ class ErrorEvent(EventMeta):
 StreamEvent: TypeAlias = ProgressEvent | ResultEvent[T] | ErrorEvent
 
 
+def _concrete_data_type(annotation: object) -> bool:
+    if get_origin(annotation) in (Union, UnionType):
+        return all(_concrete_data_type(member) for member in get_args(annotation))
+    return (
+        isinstance(annotation, type)
+        and issubclass(annotation, BaseModel)
+        and annotation is not BaseModel
+    )
+
+
 def _result_model_type(model: type[BaseModel]) -> type[BaseModel]:
     arguments = model.__pydantic_generic_metadata__["args"]
-    if (
-        len(arguments) != 1
-        or not isinstance(arguments[0], type)
-        or not issubclass(arguments[0], BaseModel)
-        or arguments[0] is BaseModel
-    ):
+    if len(arguments) != 1 or not _concrete_data_type(arguments[0]):
         raise ValueError("concrete result data model required")
-    return arguments[0]
+    # Pydantic's generic schema parameter also accepts a union of model types.
+    # Keep it intact; inferring type(result.data) would widen serialization.
+    return cast(type[BaseModel], arguments[0])
 
 
 def result_event(

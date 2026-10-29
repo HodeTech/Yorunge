@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-5b — Tipli akış, NDJSON ve yerel iptal
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3 tipli model/codec uygulaması sürüyor; CLI adım4 ve kart kabulü henüz tamamlanmadı.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3 tipli model/codec iki fresh review turuyla tamamlandı; CLI adım4 uygulandı, review ve kart kabulü sürüyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -42,4 +42,4 @@ Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/
 
 ## Teslim kaydı
 
-Adım3 tipli model/codec uygulaması sürüyor; gerçek ürün/review kanıtı [uygulama kaydında](../../research/p01-remaining-implementation-validation.md) tutulur. [Hazırlık raporu](../../research/p01-remaining-readiness-review.md) ürün kabulü sayılmaz. CLI adım4 ve kartın bütün kabulü henüz kapanmadı.
+Adım3 iki fresh review turuyla tamamlandı; CLI adım4 uygulandı, review sürüyor; gerçek ürün/review kanıtı [uygulama kaydında](../../research/p01-remaining-implementation-validation.md) tutulur. [Hazırlık raporu](../../research/p01-remaining-readiness-review.md) ürün kabulü sayılmaz. CLI adım4 ve kartın bütün kabulü henüz kapanmadı.

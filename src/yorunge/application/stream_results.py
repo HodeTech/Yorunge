@@ -25,6 +25,7 @@ from yorunge.domain.streams import (
     ProgressEvent,
     ResultEvent,
     StreamEvent,
+    _result_model_type,
 )
 from yorunge.domain.wire_limits import FRAME_LIMIT, JSON_LIMIT
 
@@ -157,14 +158,7 @@ def encode_event(event: StreamEvent[T], *, secrets: tuple[SecretValue, ...] = ()
         operation_id = meta.operation_id
         model: type[BaseModel] = BaseModel
         if isinstance(event, ResultEvent):
-            args = type(event).__pydantic_generic_metadata__["args"]
-            if (
-                len(args) != 1
-                or not isinstance(args[0], type)
-                or not issubclass(args[0], BaseModel)
-            ):
-                raise ValueError("concrete result model required")
-            model = args[0]
+            model = _result_model_type(type(event))
         raw = _compact(event.model_dump(mode="json", warnings="error"))
         normalized = _validated_event(
             raw,
