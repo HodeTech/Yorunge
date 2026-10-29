@@ -38,4 +38,4 @@ Son current/faz/matris/reference/modül/README/changelog kayıtları yalnız uyg
 
 ## Hazırlık kaydı
 
-Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki yeni ADR Proposed ve kullanıcı onayı bekler. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.
+Bu plan ve üç kart hazırlanmıştır; ürün kodu başlamamıştır. İki fresh belge review turu ve doğrulanan iki P2 sözleşme düzeltmesi kapandı. İki yeni ADR Proposed ve kullanıcı onayı bekler. Belge review/doğrulama sonucu [hazırlık raporuna](../research/p01-remaining-readiness-review.md#bağımsız-belge-review-kaydı) kaydedilir; henüz ürün testi/CI/PR kapanışı yoktur.

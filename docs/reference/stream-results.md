@@ -12,7 +12,7 @@ Her olayın tam anahtar kümesi `schema_version`, `stream_id`, `sequence`, `even
 | result | Çağrının beklenen domain modeline bağlı **mevcut Result v1**, status=completed/operation_id=null; serbest dict değil | Evet |
 | error | Güvenli mevcut YorungeError/OperationError zarfı; bilinen code, o kodun kapalı details'i, operation ID bağlamla aynı | Evet |
 
-Outer operation ID akışın bağlamıdır; Result v1'in null ID'sini değiştirmez. Error zarfında operation biliniyorsa aynı ID bulunur. Progress provider metni, prompt, raw URL, body/header, env adı veya secret taşımaz. Normal tek-sonuç komut başarıda progress üretmez; sequence=1 tek result emit eder. Metadata `--help`/`--version` makine akışına dönüşmez.
+Outer operation ID akışın bağlamıdır; Result v1'in null ID'sini değiştirmez. Error zarfında operation biliniyorsa aynı ID bulunur. Bu, EOF/trailing/decoder veya output kaynaklı genel hatalarda da `OperationError(code, bound_operation_id)` ile sağlanır; code/exit korunur, details `{reason_code: code, capacity_kind: null}` olur. ID yoksa genel YorungeError zarfı null/boş details kullanır. Error payload mesajı/retryable/details yerel kapalı katalogdan yeniden kurulur; upstream serbest mesaj veya key taşınmaz. Progress provider metni, prompt, raw URL, body/header, env adı veya secret taşımaz. Normal tek-sonuç komut başarıda progress üretmez; sequence=1 tek result emit eder. Metadata `--help`/`--version` makine akışına dönüşmez.
 
 ## Byte ve protokol kuralları
 

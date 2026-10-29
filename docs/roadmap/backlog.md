@@ -1,6 +1,6 @@
 # Açık karar ve araştırma kayıtları
 
-**Güncellendi:** 2026-10-27. Bu liste uygulanmış özellik değildir. Yeni iş kaydı oluştuğunda ilgili satırdan bağlantı verilir; henüz GitHub issue açılmadı.
+**Güncellendi:** 2026-10-29. Bu liste uygulanmış özellik değildir. Yeni iş kaydı oluştuğunda ilgili satırdan bağlantı verilir; henüz GitHub issue açılmadı.
 
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
