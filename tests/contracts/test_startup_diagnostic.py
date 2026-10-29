@@ -48,6 +48,7 @@ def pinned_inputs(monkeypatch):
         lambda root: copy.deepcopy(report["snapshots"]["before"]["baseline"]["source"]),
     )
     monkeypatch.setitem(startup["JOBS"], "locked_runtime", lambda root: {"yorunge": "0.1.0.dev0"})
+    monkeypatch.setitem(HELPERS["BASELINE"]["STARTUP"], "source", startup["source"])
     return report
 
 
@@ -151,6 +152,9 @@ def test_upload_guard_rechecks_original_report_bytes_and_requires_both_files(
     report, receipt_path = tmp_path / "startup.json", tmp_path / "receipt.json"
     report.write_text(json.dumps(pinned_inputs, indent=2))
     receipt_path.write_text(json.dumps(diagnostic_receipt(pinned_inputs)))
+    _, selection = HELPERS["BASELINE"]["select"](ROOT, ROOT)
+    selection["report_sha256"] = hashlib.sha256(report.read_bytes()).hexdigest()
+    (tmp_path / "startup-baseline-selection.json").write_text(json.dumps(selection))
     assert (
         HELPERS["verify_files"](ROOT, ROOT, report, receipt_path)["outcome"]
         == "diagnostic_budget_exceeded"

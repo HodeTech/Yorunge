@@ -13,6 +13,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 STARTUP = runpy.run_path(str(ROOT / "scripts/startup_evidence.py"))
+BASELINE = runpy.run_path(str(ROOT / "scripts/startup_baseline.py"))
 CHECKS = STARTUP["CHECKS"]
 RUN_URL = CHECKS["CI_RUN_URL"]
 OUTCOMES = {"passed", "diagnostic_budget_exceeded", "error"}
@@ -25,8 +26,9 @@ def classify(root: Path, baseline: Path, report: dict[str, Any], code: int) -> d
         raise ValueError("startup producer exit differs from the verified measurement")
     if not report["measurement"]["platform"].startswith("Linux-"):
         raise ValueError("startup diagnostic policy applies only to Linux")
-    expected = STARTUP["source"](baseline)
-    packages = STARTUP["JOBS"]["locked_runtime"](baseline)
+    effective, _ = BASELINE["select"](root, baseline)
+    expected = STARTUP["source"](effective)
+    packages = STARTUP["JOBS"]["locked_runtime"](effective)
     for point in ("before", "after"):
         saved = report["snapshots"][point]["baseline"]
         if saved["source"] != expected or saved["installed"]["packages"] != packages:
@@ -111,10 +113,14 @@ def verify_files(
         != {name: row["p95_ms"] for name, row in summary["measurements"].items()}
     ):
         raise ValueError("startup diagnostic receipt differs from its original report bytes")
+    selection = CHECKS["decode"](
+        CHECKS["read_bounded"](receipt_path.with_name("startup-baseline-selection.json"), 4096)
+    )
+    BASELINE["verify"](root, baseline, report, raw, selection)
     return receipt
 
 
-def publish(value: dict[str, Any]) -> None:
+def publish(value: dict[str, Any], selection: dict[str, Any] | None = None) -> None:
     receipt_summary(value)
     outcome = value["outcome"]
     lines = [
@@ -127,6 +133,19 @@ def publish(value: dict[str, Any]) -> None:
         "| Command | Candidate p95 ms | Baseline p95 ms |",
         "|---|---:|---:|",
     ]
+    if selection is not None:
+        BASELINE["summarize"](selection)
+        lines[5:5] = [
+            f"Baseline mode: `{selection['mode']}`",
+            f"Pinned base: `{selection['pinned_baseline_commit']}`; "
+            f"effective runtime: `{selection['effective_baseline_commit']}`",
+        ]
+        if selection["mode"] == BASELINE["INITIAL_CONTROL"]:
+            lines.insert(
+                8,
+                "Initial-runtime control uses two fresh installations of the same "
+                "source; it does not measure improvement over a previous runtime.",
+            )
     if outcome != "error":
         for name in STARTUP["BUDGETS"]:
             lines.append(
@@ -146,6 +165,8 @@ def publish(value: dict[str, Any]) -> None:
     if path := os.environ.get("GITHUB_OUTPUT"):
         with Path(path).open("a", encoding="utf-8") as output:
             output.write(f"outcome={outcome}\n")
+            if selection is not None:
+                output.write(f"baseline_mode={selection['mode']}\n")
     if outcome == "diagnostic_budget_exceeded":
         print(
             "::warning title=Linux startup diagnostic_budget_exceeded::Absolute startup budget "
@@ -158,6 +179,10 @@ def publish(value: dict[str, Any]) -> None:
 def run(args: argparse.Namespace) -> int:
     if args.receipt.exists() or args.receipt.is_symlink():
         raise ValueError("use a new startup diagnostic receipt path")
+    selection_path = args.receipt.with_name("startup-baseline-selection.json")
+    effective, selection = BASELINE["select"](ROOT, args.baseline_project)
+    with selection_path.open("x", encoding="utf-8") as output:
+        output.write(json.dumps(selection, indent=2, allow_nan=False) + "\n")
     source = STARTUP["source"](ROOT)
     value: dict[str, Any] = {
         "schema_version": 1,
@@ -175,7 +200,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         value["producer_exit"] = producer["check"](
             ROOT,
-            args.baseline_project,
+            effective,
             args.workspace,
             args.report,
             args.uv,
@@ -199,12 +224,14 @@ def run(args: argparse.Namespace) -> int:
         try:
             bounded = CHECKS["read_bounded"](args.report, CHECKS["MAX_REPORT_BYTES"])
             value["report_sha256"] = hashlib.sha256(bounded).hexdigest()
+            selection["report_sha256"] = value["report_sha256"]
+            CHECKS["replace_metadata"](selection_path, CHECKS["encode"](selection))
         except ValueError:
             value.update(outcome="error", reason="invalid_evidence", p95_ms={})
     receipt_summary(value)
     with args.receipt.open("x", encoding="utf-8") as output:
         output.write(json.dumps(value, indent=2, allow_nan=False) + "\n")
-    publish(value)
+    publish(value, selection)
     return 1 if value["outcome"] == "error" else 0
 
 
@@ -222,7 +249,7 @@ def main() -> int:
         f"/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}",
     )
     args = parser.parse_args()
-    args.baseline_project = args.baseline_project.resolve()
+    args.baseline_project = args.baseline_project.absolute()
     args.report, args.receipt = args.report.absolute(), args.receipt.absolute()
     try:
         CHECKS["pattern_value"](args.run_url, RUN_URL)

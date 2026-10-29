@@ -143,12 +143,12 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p01-6-reference-startup-adr19-sonar.json > dist/startup-reference.txt",
+            "p01-6-reference-startup-adr19-initial-runtime.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p01-6-reference-jobs-adr19-sonar.json > dist/jobs-reference.txt",
+            "p01-6-reference-jobs-adr19-initial-runtime.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -180,6 +180,7 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         "dist/verification.jsonl",
         "dist/startup.json",
         "dist/startup-diagnostic.json",
+        "dist/startup-baseline-selection.json",
         "dist/startup-reference.txt",
         "dist/jobs-reference.txt",
         "dist/stream.json",
@@ -213,7 +214,16 @@ def invoke_gate(workflow, tmp_path, content):
 def successful_needs():
     needs = {cell: {"result": "success", "outputs": {}} for cell in CELLS}
     needs["linux311"]["outputs"]["startup_diagnostic"] = "passed"
+    needs["linux311"]["outputs"]["startup_baseline_mode"] = "pinned_runtime"
     return needs
+
+
+@pytest.mark.parametrize("mode", [None, "", "fallback", "initial_runtime_same_source_control"])
+def test_aggregate_requires_and_displays_explicit_baseline_selection(workflow, tmp_path, mode):
+    needs = successful_needs()
+    needs["linux311"]["outputs"]["startup_baseline_mode"] = mode
+    result = invoke_gate(workflow, tmp_path, json.dumps(needs))
+    assert (result.returncode == 0) is (mode == "initial_runtime_same_source_control")
 
 
 def test_actual_gate_accepts_all_success_without_a_checkout(workflow, tmp_path):
@@ -365,7 +375,10 @@ def test_aggregate_allows_verified_budget_overrun_and_shows_it_without_performan
 
 def test_completed_measurement_is_guarded_before_artifact_upload(workflow):
     job = workflow["jobs"]["linux311"]
-    assert job["outputs"] == {"startup_diagnostic": "${{ steps.startup-budgets.outputs.outcome }}"}
+    assert job["outputs"] == {
+        "startup_diagnostic": "${{ steps.startup-budgets.outputs.outcome }}",
+        "startup_baseline_mode": "${{ steps.startup-budgets.outputs.baseline_mode }}",
+    }
     steps = steps_by_id(job)
     guard = steps["startup-evidence-guard"]
     assert guard["if"] == (

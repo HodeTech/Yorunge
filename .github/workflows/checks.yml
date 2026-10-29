@@ -22,6 +22,7 @@ jobs:
       RUNNER_LABEL: ubuntu-24.04
     outputs:
       startup_diagnostic: ${{ steps.startup-budgets.outputs.outcome }}
+      startup_baseline_mode: ${{ steps.startup-budgets.outputs.baseline_mode }}
     steps: &compatibility-steps
       - uses: actions/checkout@v4
         with:
@@ -145,12 +146,12 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-adr19-sonar.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-adr19-initial-runtime.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-adr19-sonar.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-adr19-initial-runtime.json > dist/jobs-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -184,6 +185,7 @@ jobs:
             dist/verification.jsonl
             dist/startup.json
             dist/startup-diagnostic.json
+            dist/startup-baseline-selection.json
             dist/startup-reference.txt
             dist/jobs-reference.txt
             dist/stream.json
@@ -247,9 +249,13 @@ jobs:
           startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
           if startup not in {"passed", "diagnostic_budget_exceeded"}:
               raise SystemExit("a verified Linux startup diagnostic outcome is required")
+          mode = needs["linux311"].get("outputs", {}).get("startup_baseline_mode")
+          if mode not in {"pinned_runtime", "initial_runtime_same_source_control"}:
+              raise SystemExit("an explicit verified startup baseline mode is required")
           if path := os.environ.get("GITHUB_STEP_SUMMARY"):
               with Path(path).open("a", encoding="utf-8") as summary:
                   summary.write(f"Linux startup: **{startup}** (diagnostic only). "
+                                f"Baseline mode: **{mode}**. "
                                 "See Linux job summary/artifact for all candidate/base p95 values. "
                                 "M5 startup/jobs and Linux raw gates remain required. "
                                 "Permanent archival/human review follows ADR-0019.\n")
