@@ -178,6 +178,8 @@ def encode_event(event: StreamEvent[T], *, secrets: tuple[SecretValue, ...] = ()
         # a private message. Only the validated, locally rebuilt envelope is emitted.
         candidate = _compact(normalized.model_dump(mode="json", warnings="error"))
         parse_json(candidate, max_bytes=FRAME_LIMIT)
+        if isinstance(normalized, ResultEvent) and len(_payload_bytes(candidate)) > JSON_LIMIT:
+            raise ValueError("normalized result payload byte limit")
         encoded = candidate
     except Exception:
         pass
@@ -234,7 +236,9 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
             raise YorungeError("invalid_request")
         self._transport, self._request, self._model = transport, request, model
         self._deadline, self._stream_id, self._operation_id = deadline, stream_id, operation_id
-        self._secrets = secrets
+        # A request's selected credential is already known to this consumer;
+        # callers need only supply any additional captured credentials.
+        self._secrets = secrets + ((request.credential.secret,) if request.credential else ())
         self._context: AbstractAsyncContextManager[HttpResponse] | None = None
         self._chunks: AsyncIterator[bytes] | None = None
         self._task: asyncio.Task[object] | None = None

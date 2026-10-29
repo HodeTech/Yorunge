@@ -108,6 +108,31 @@ def test_exact_result_payload_byte_boundary_is_separate_from_frame_budget(delta:
 
 
 @pytest.mark.parametrize("delta", [-1, 0, 1])
+def test_encoder_rechecks_payload_limit_after_model_normalization(delta: int) -> None:
+    class Normalized(Model):
+        text: str
+
+        @field_validator("text")
+        @classmethod
+        def append_suffix(cls, value: str) -> str:
+            return value + "x"
+
+    base = Result[Normalized](data=Normalized(text=""))
+    baseline = len(compact(base.model_dump(mode="json")))
+    initial_size = JSON_LIMIT + delta - 1
+    result = Result[Normalized](data=Normalized(text="x" * (initial_size - baseline)))
+    assert len(compact(result.model_dump(mode="json"))) == initial_size
+    event = result_event(result, stream_id=STREAM_ID)
+    if delta > 0:
+        with pytest.raises(YorungeError) as caught:
+            encode_event(event)
+        assert_safe_failure(caught, "output_write_failed")
+    else:
+        encoded = encode_event(event)
+        assert len(compact(json.loads(encoded)["payload"])) == JSON_LIMIT + delta
+
+
+@pytest.mark.parametrize("delta", [-1, 0, 1])
 def test_exact_encoded_frame_budget_includes_json_whitespace(delta: int) -> None:
     base = wire(text_result().model_dump(mode="json"))
     # The small valid payload is unchanged; only the raw frame grows.

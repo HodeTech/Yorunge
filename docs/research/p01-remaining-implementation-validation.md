@@ -84,3 +84,10 @@ Bağımsız contract hazırlığında constructed model’in Pydantic serializer
 
 
 Son birleşik odaklı koşu warnings-as-errors altında **444passed/38,43s**:191model+66codec+8limits+96JSON+14HTTP lifecycle+32streamTLS+37HTTP TLS. En son aclose hata zinciri sınırı için close/cancel/backpressure testleri ayrıca çalıştırıldı. Format/lint, strict mypy59sourcefile,126publicMarkdown,6skill/12kart ve diff kontrolleri geçti. İlk adım3 ürün commit’i sonrası iki fresh review turu bu kayda eklenecek; P01-5b bütününün CLI kabulü henüz yoktur.
+
+
+### Adım3 — R1
+
+İlk ürün head’i **16ebe8f** iki fresh reviewer tarafından incelendi: gpt-6.1-terra/high lifecycle/ağ ve gpt-6.1-sol/high tipli sözleşme/kaynak. BirP1 ve birP2 doğrulandı ve kapatıldı. P1: reader istekte zaten kullanılan credential’ı kendiliğinden sır listesine eklemiyor, çağıranın ek liste vermesine güveniyordu. Root gerçekTLS’de varsayılan seçenekle credential echo’nun kabul edildiğini red testle doğruladı; reader artık seçilmiş request credential’ını otomatik ekler, ek secrets korunur. Varsayılan ve ek credential yolları iki gerçekTLS testinde geçti. P2: model validator normalize sırasında payload’ı büyütürse yalnız final frame tavanı kontrol ediliyor, 1MiB+1byte payload daha geniş wrapper tavanından geçebiliyordu. Root doğal typed validator ve−1/0/+1 örneklerinde red testle doğruladı; final encoded payload span ayrıca1MiB denetlenir, yeni validation döngüsü eklenmez.
+
+Son model/codec/sınır/gerçek stream TLS kontrolü warnings-as-errors ile **302passed/17,55s**. Değişen raw okumanın önceki Runner/operation/ReadPort tüketicilerinde **82passed/31,60s** regresyonu geçti. Format/lint ve strict mypy59sourcefile temiz. Reviewer’ın secrets boşken caller-owned açık BaseModel kabulü gözlemi mevcut HTTP sözleşmesinin credential denetimine bağlı codec kuralını değiştirmediğinden ayrı kusur sayılmadı; ürün domain modelleri kapalıdır. Bu bir yeni endpoint codec desteği iddiası değildir. İkinci farklı fresh çift fix commit’i üzerinden inceleyecek; adım3 henüz kapanmadı.

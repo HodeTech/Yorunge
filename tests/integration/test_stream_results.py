@@ -10,7 +10,7 @@ import pytest
 
 from tests.fixtures.http_server import Reply, TlsServer, certificate, loopback_sockets
 from yorunge.adapters.http_transport import HttpxTransport
-from yorunge.application.http_transport import RAW_LIMIT, HttpRequest
+from yorunge.application.http_transport import RAW_LIMIT, HttpCredential, HttpRequest
 from yorunge.application.stream_results import encode_event, open_stream
 from yorunge.domain.credentials import SecretValue, normalize_target
 from yorunge.domain.errors import MESSAGES, OperationError, YorungeError
@@ -77,12 +77,12 @@ def record(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
 
 
-def collect(server, *, operation_id=None, secrets=(), timeout=3):
+def collect(server, *, operation_id=None, secrets=(), timeout=3, wanted=None):
     async def run():
         async with HttpxTransport(transport=server.transport()) as transport:
             async with open_stream(
                 transport,
-                request(),
+                wanted or request(),
                 Value,
                 deadline=time.monotonic() + timeout,
                 stream_id=STREAM,
@@ -305,6 +305,31 @@ def test_provider_error_is_terminal_and_message_rebuilt_locally(certificates):
         assert isinstance(events[-1], ErrorEvent)
         assert events[-1].payload.message == MESSAGES["remote_failed"]
         assert SECRET not in str(events[-1].model_dump(mode="json"))
+
+
+@pytest.mark.parametrize("echo", ["request", "extra"])
+def test_request_credential_is_always_checked_alongside_extra_secrets(certificates, echo):
+    extra = "extra-selected-credential-canary-81293"
+    reflected = SECRET if echo == "request" else extra
+    credential = HttpCredential(
+        "Authorization",
+        SecretValue(SECRET),
+        target=TARGET,
+        service_id="evren-platform",
+    )
+    wanted = HttpRequest(
+        TARGET, "GET", "events", service_id="evren-platform", credential=credential
+    )
+    body = encode_event(result(1, text="prefix " + reflected + " suffix"))
+    with TlsServer(certificates, {"/v1/events": Reply(body=body, chunk_size=17)}) as server:
+        options = {"secrets": (SecretValue(extra),)} if echo == "extra" else {}
+        with pytest.raises(YorungeError) as caught:
+            collect(server, wanted=wanted, **options)
+        assert caught.value.code == "invalid_response"
+        assert SECRET not in str(caught.value.envelope())
+        assert extra not in str(caught.value.envelope())
+        assert len(server.requests) == 1
+        assert server.requests[0].header("Authorization") == SECRET
 
 
 def test_chunk_split_secret_never_becomes_a_result(certificates):
