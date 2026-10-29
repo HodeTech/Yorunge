@@ -195,6 +195,16 @@ State reviewer **bir P2 kök nedenin beş varyantını** doğruladı: liste son 
 
 Düzeltme sonrası jobs + operation full/warm/relationship/reconciliation hedefli takım **147 passed / 49,46 s**; Ruff ve strict mypy 51 kaynakta geçti. İlk ölçüm/kurulum dosyaları 5c7ad8c kaynak kanıtı olarak korunur; değişen decoder kaynağı için son kabul sayılmaz. İkinci fresh review ve ardından güncel kaynakla full/build/kurulu jobs/startup/operation bütçe kapanışı sıradadır; kart/paket henüz verified değildir.
 
+### Adım 4 — İkinci review turu
+
+4941bf3 üzerinde farklı üç fresh salt-okunur reviewer (GPT-6 Astra xhigh state/query, GPT-6.1 Sol high public sözleşme, GPT-6 Astra high kaynak/paket/kanıt) çalıştı. Public sözleşme 92, kaynak reviewer 35 ve state reviewer 31 hedefli test çalıştırdı; bu sayılar full takım diye toplanmaz. Kaynak reviewer dört jobs/dört aday/dört baseline p95'ini yeniden hesapladı, kaynak/installed bytes ve arşiv üye/hash bağlarını doğruladı; yeni public/artefakt kusuru bulunmadı.
+
+State incelemesinde **üç P2** doğrulandı: son normal event revision'ı sequence'den küçük olabiliyordu; iki event'li dispatched işin zorunlu ilk intent'inde admission clock/approved interval/submitted kontrolü listede eksikti; ayrıca eski adım 3 kalıcı relationship consumer'ı succeeded execution ile beraber değiştirilmiş nonzero attempt/outcome exit'i kabul ediyordu. Sonuncu konu yeni list regresyonu değildir; root ek sözleşme kontrolü ve reviewer'ın bağımsız gerçek-store deneyiyle list/show/full için doğrulandı. Port reducer aynı çelişkiyi zaten reddediyordu.
+
+Root dört first-intent varyantı (revision/epoch/generation/status), üç terminal list/show/full exit ve bir delivery-pending exit negatifini mevcut kodda çalıştırdı; **sekizinin hepsi önce başarısız oldu**. Düzeltmede full/son intent ortak tarihsel dispatch authority kontrolünü kullanır; candidate kontrolü revision≥sequence şartını taşır; ortak relationship execution succeeded için exit null/0 ister. Yeni history scan, alan, execution yetkisi veya ADR kararı eklenmedi. Geçersiz diye atlanan bulgu yoktur.
+
+Düzeltme sonrası geniş jobs/store/warm-full/reconciliation takımı **155 passed / 52,34 s**; Ruff ve strict mypy 51 kaynakta geçti. İki fresh tur tamamlandı; son ürün kaynağında bütünleşik full/build/kurulu jobs/startup ve yoğun operation kabulü yapılmadan kart/paket verified değildir. İlk kaynak dosyaları tarihsel kanıt olarak korunur.
+
 ## Sonraki adımlar
 
-Adım 1–3 commit ve ikişer fresh review turuyla kapandı; adım 4 ilk uygulama ve ilk review düzeltmesi sonrası ikinci fresh review turu sıradadır. Son runtime kaynağı değişen operation decoder yolu için yoğun kabul paket kapanışında tekrar değerlendirilecek. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 1–4 uygulama ve ikişer fresh review turu tamamlandı; adım 4 doğrulanmış son düzeltmelerinden sonra bütünleşik son kaynak kabulü sürer. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.

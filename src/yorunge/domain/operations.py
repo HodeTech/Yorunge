@@ -519,6 +519,8 @@ def validate_job_relationships(
     ):
         raise ValueError("historical attempts must be abandoned")
     current = attempts[-1]
+    if s.execution_status == "succeeded" and current.provider_exit_code not in (None, 0):
+        raise ValueError("confirmed execution contradicts provider exit code")
     if current.status != ("claimed" if s.status == "admitted" else s.status):
         raise ValueError("current attempt mismatch")
     validate_progress_reason(

@@ -370,3 +370,92 @@ def test_list_rejects_impossible_extra_predispatch_normal_event(admitted_operati
         with pytest.raises(YorungeError) as error:
             invoke(state_dir=state)
         assert error.value.code == "state_invalid"
+
+
+@pytest.mark.parametrize("damage", ["revision", "epoch", "generation", "first_status"])
+def test_latest_first_dispatch_retains_original_intent_authority(operation_setup, damage):
+    from yorunge.domain.capabilities import canonical
+    from yorunge.domain.errors import OperationError
+
+    state, plan, backend = operation_setup
+    backend.mode = "not_sent"
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        with pytest.raises(OperationError) as error:
+            coordinator.dispatch(identifier, claim.ownership)
+        assert error.value.code == "operation_uncertain"
+    with sqlite3.connect(state / DB_NAME) as connection:
+        payload = connection.execute(
+            "SELECT payload FROM operation_events WHERE sequence=2"
+        ).fetchone()[0]
+        raw = json.loads(payload)
+        if damage == "revision":
+            raw["revision"] = 1
+        elif damage == "epoch":
+            raw["identity_epoch"] = str(uuid4())
+        elif damage == "generation":
+            raw["clock_generation"] += 1
+        else:
+            raw["status"] = raw["execution_status"] = "running"
+        connection.execute(
+            "UPDATE operation_events SET payload=? WHERE sequence=2", (canonical(raw).decode(),)
+        )
+    for invoke in (lambda **kw: api.show_job(identifier, **kw), api.list_jobs):
+        with pytest.raises(YorungeError) as error:
+            invoke(state_dir=state)
+        assert error.value.code == "state_invalid"
+    assert backend.effects() == []
+
+
+@pytest.mark.parametrize("action", ["list", "show", "full"])
+def test_persisted_execution_success_cannot_have_nonzero_exit(admitted_operation, action):
+    from tests.integration.test_operation_store import raw_attempt, terminal_fixture
+    from yorunge.domain.capabilities import canonical
+
+    state, _, record, attempt, event = admitted_operation
+    identifier = record.summary.operation_id
+    with open_store(state) as store:
+        connection = store.connection
+        connection.execute("BEGIN IMMEDIATE")
+        _, attempt, _ = terminal_fixture(connection, record, attempt, event)
+        connection.execute("COMMIT")
+        assert operation_store.read_job(connection, identifier).operation.status == "succeeded"
+        raw_attempt(connection, attempt.model_copy(update={"provider_exit_code": 1}))
+        raw = json.loads(connection.execute("SELECT payload FROM operation_outcomes").fetchone()[0])
+        raw["provider_exit_code"] = 1
+        connection.execute("UPDATE operation_outcomes SET payload=?", (canonical(raw).decode(),))
+    with pytest.raises(YorungeError) as error:
+        if action == "list":
+            api.list_jobs(state_dir=state)
+        elif action == "show":
+            api.show_job(identifier, state_dir=state)
+        else:
+            api.initialize_state(state_dir=state)
+    assert error.value.code == "state_invalid"
+
+
+def test_nonzero_exit_cannot_contradict_confirmed_execution_during_delivery(
+    operation_setup, execution_clock
+):
+    from tests.fixtures.operation_backend import ReadObserver
+    from tests.integration.test_operation_store import raw_attempt
+
+    state, plan, backend = operation_setup
+    observer = ReadObserver(execution_clock)
+    observer.delivery = "pending"
+    with api._operation_session(
+        plan.plan_id, backend, observer=observer, state_dir=state
+    ) as coordinator:
+        claim = coordinator.admit(plan.plan_id)
+        identifier = claim.job.operation.operation_id
+        coordinator.dispatch(identifier, claim.ownership)
+        job = coordinator.reconcile(identifier, claim.ownership)
+        assert job.operation.status == "running"
+        assert job.operation.execution_status == "succeeded"
+        assert job.outcome is None
+    with open_store(state) as store:
+        raw_attempt(store.connection, job.attempts[-1].model_copy(update={"provider_exit_code": 1}))
+    with pytest.raises(YorungeError) as error:
+        api.show_job(identifier, state_dir=state)
+    assert error.value.code == "state_invalid"

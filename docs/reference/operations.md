@@ -59,6 +59,8 @@ Numaralar kesintisiz 1…N≤16; güncel attempt en büyük numaralı attempt'ti
 
 Son event dahil her normal event'in fence'i bağlı attempt numarasından küçük olamaz; admission ile aynı clock alanındaysa attempt oluşturulmasından önce gözlenemez. Dispatched event aynı kalıcı dispatch attempt'ine bağlıdır; recovery marker bu bağı kaldırmaz. Gönderim öncesi ownership kontrolleri normal event üretmediğinden latch null/admitted iş tam bir, latch null/yerel terminal iş tam iki normal event taşır. Liste bunları zaten batch okuduğu verilerle denetler.
 
+Her normal event'in semantic revision'ı en az sequence değeridir. Latch dolu ve toplam iki normal event varsa sonuncusu zorunlu ilk submitted intent'tir; admission clock'u ve tarihsel approval zaman aralığı aynen denetlenir. Recovery marker ilk gönderimin yetki bağını ortadan kaldırmaz.
+
 | Toplam operation | Güncel attempt | Execution/delivery ve outcome koşulu |
 |---|---|---|
 | admitted | claimed | execution not_started; outcome null |
@@ -82,6 +84,8 @@ Tam execution/delivery cross-product aşağıdaki whitelist'tir; diğer çiftler
 | cancelled | pending/not_required → cancelled |
 
 OperationOutcome **yalnız terminal** kayıt, terminale geçişte bir kez yazılır; diğer durumlarda null. Summary, güncel attempt ve outcome eksenleri bu tabloya göre eşleşir. Kesinleşmiş execution succeeded, belirsiz delivery yüzünden execution unknown'a çevrilmez. Unknown'dan trusted submitted/running'e dönüş aynı attempt/latch'i kullanır.
+
+Execution succeeded ise current attempt ve varsa outcome exit code'u yalnız null veya 0 olabilir; sıfır dışı exit ile başarı çelişkisi port gözleminde olduğu gibi list/show/full kalıcı tüketicilerinde de reddedilir. Bu kural delivery beklerken toplam durum running/unknown/failed olsa da execution eksenini izler.
 
 Created_at ilk gerçek UTC gözlemidir ve immutable cursor anahtarıdır. Updated_at ve outcome recorded_at son gerçek UTC gözlemidir; wall clock epoch/generation değişiminde created_at'ten eski olabilir. Global created≤updated kuralı **yoktur**. Private normal event tam sıra anahtarı (operation_id, sequence), gözlem identity_epoch/clock_generation ve gerçek observed_at taşır; normal event sequence 1…256, revision positive int64 olur. Aynı clock alanında UTC sırası denetlenir; farklı alanda sıra otoritesi sequence/revision'dır. Saat gerilemesi yaşayan operation'da sticky clock_anomaly=true; eski event timestamp'i değişmez, sahte max(old,now) yazılmaz. Böylece +1 yıl saat→reset→düz UTC→reconcile desteklenir. Heartbeat semantic revision/updated_at/fingerprint'i değiştirmez.
 

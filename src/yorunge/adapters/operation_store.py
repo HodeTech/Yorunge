@@ -166,6 +166,22 @@ EVENT_TRANSITIONS: dict[OperationStatus, frozenset[OperationStatus]] = {
 }
 
 
+def _dispatch_authority(record: OperationRecord, item: OperationEvent) -> None:
+    if item.status != "submitted":
+        raise ValueError("submitted intent must precede external progress")
+    if (
+        (item.identity_epoch, item.clock_generation)
+        != (
+            record.admission.admission_identity_epoch,
+            record.admission.admission_clock_generation,
+        )
+        or not record.admission.approval.approved_at
+        <= item.observed_at
+        < record.admission.approval.expires_at
+    ):
+        raise ValueError("dispatch must retain admission authority")
+
+
 def _event_progress(
     record: OperationRecord,
     item: OperationEvent,
@@ -175,19 +191,8 @@ def _event_progress(
 ) -> bool:
     sending = item.execution_status != "not_started"
     if sending:
-        if not armed and item.status != "submitted":
-            raise ValueError("submitted intent must precede external progress")
-        if not armed and (
-            (item.identity_epoch, item.clock_generation)
-            != (
-                record.admission.admission_identity_epoch,
-                record.admission.admission_clock_generation,
-            )
-            or not record.admission.approval.approved_at
-            <= item.observed_at
-            < record.admission.approval.expires_at
-        ):
-            raise ValueError("dispatch must retain admission authority")
+        if not armed:
+            _dispatch_authority(record, item)
     elif armed:
         raise ValueError("dispatched history cannot return to admission")
     if previous is None:
@@ -340,6 +345,8 @@ class HistoryProof:
 def _event_candidate(
     record: OperationRecord, item: OperationEvent, number: int, created_at: str
 ) -> None:
+    if item.revision < item.sequence:
+        raise ValueError("normal event revision cannot precede its sequence")
     if item.fence < number:
         raise ValueError("event fence predates its candidate claims")
     if (item.identity_epoch, item.clock_generation) == (
@@ -560,6 +567,8 @@ def validate_history_projection(
         raise ValueError("history projection mismatch")
     if count == 1:
         _event_progress(record, last, None, {a.attempt_id: a.number for a in attempts}, False)
+    elif count == 2 and record.dispatch_attempt_id is not None:
+        _dispatch_authority(record, last)
     candidate = next(a for a in attempts if a.attempt_id == last.attempt_id)
     _event_candidate(record, last, candidate.number, candidate.created_at)
     _event_observation(record, last, None)
