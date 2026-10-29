@@ -1529,6 +1529,167 @@
       }
     },
     {
+      "name": "p01-6-final-cli-installation.json",
+      "archive": "raw/p01-6-final-cli-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1433,
+      "content_sha256": "7e939685187011ad40e0414b742f410957ac65571f0bc43bcf6574117d1bb2b4",
+      "archive_bytes": 647,
+      "archive_sha256": "dd79f935f847998f53994b07f57ee24b57e8f5290921ea4805f8170c5b48356a",
+      "summary": {
+        "source_commit": "30a3e28260df6bb249226dfd6641475b5ab98d74",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-final-cli-startup.json",
+      "archive": "raw/p01-6-final-cli-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 42356,
+      "content_sha256": "86ef3e81c97029be1aec6b48670b80031e23f56a64a73dbc1d6e295d21eb914b",
+      "archive_bytes": 11905,
+      "archive_sha256": "9bb47f61cc46d978abd431eece7c45c25ec876a21b24a9f26203339cb24aed20",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 33.778417157009244,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 33.636749954894185,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 90.6360000371933,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 141.85712486505508,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 31.626584008336067,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 37.95841685496271,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 87.68395893275738,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 141.66941680014133,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-final-cli-stream.json",
+      "archive": "raw/p01-6-final-cli-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 47709,
+      "content_sha256": "347f324f8508990fbb4c1af2087863db4b13eb3a71f4b8c6a73c9006dabbc875",
+      "archive_bytes": 5952,
+      "archive_sha256": "b3c638742d8b0ff25f045e08d44faf401f9212a490f8b9f8680b872927f093c4",
+      "summary": {
+        "source_commit": "30a3e28260df6bb249226dfd6641475b5ab98d74",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v1",
+        "passed": true,
+        "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_baseline": "fresh client process high-water maxRSS after imports, source verification and fixed 32KiB TLS warmup; not instantaneous RSS",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "extra_rss_bytes": 131072,
+            "baseline_rss_bytes": 57294848,
+            "peak_rss_bytes": 57425920,
+            "elapsed_seconds": 0.03551541594788432,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "extra_rss_bytes": 688128,
+            "baseline_rss_bytes": 49922048,
+            "peak_rss_bytes": 50610176,
+            "elapsed_seconds": 0.5081543331034482,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "extra_rss_bytes": 622592,
+            "baseline_rss_bytes": 50036736,
+            "peak_rss_bytes": 50659328,
+            "elapsed_seconds": 2.205894625047222,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-final-installation.json",
       "archive": "raw/p01-6-final-installation.json.gz",
       "original_commit": null,
@@ -1932,6 +2093,52 @@
             "passed": true
           }
         }
+      }
+    },
+    {
+      "name": "p01-6-reference-jobs-final.json",
+      "archive": "raw/p01-6-reference-jobs-final.json.gz",
+      "original_commit": null,
+      "content_bytes": 121872,
+      "content_sha256": "965b1bebf793d322a8e768a0c53a0d2f26010c0314544dad8bb3af6b20bfe59e",
+      "archive_bytes": 21373,
+      "archive_sha256": "61286f4ab9e27fd0accc5d7dab925ee419405a932cdf05da60e389e41382bddb",
+      "summary": {
+        "source_commit": "30a3e28260df6bb249226dfd6641475b5ab98d74",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 127.5727089960128,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 126.58470892347395,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 186.87270814552903,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 140.04766615107656,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
       }
     },
     {

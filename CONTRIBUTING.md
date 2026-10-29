@@ -76,6 +76,8 @@ Aynı aday runtime ile, önceki komut tamamlandıktan sonra jobs ve raw stream k
 
 Jobs normal/yoğun list/show için ayrı ilk süreç, üç ısınma ve en az 30 ölçülmüş süreç kullanır; sonuç doğruluğu süre dışında bağımsız doğrulanır. Raw stream ayrı TLS sunucusu ve kurulu istemci sürecinde 16/256/1024 MiB okur; byte/SHA-256 ve native RSS high-water farkını kaydeder. Sunucu RSS'i istemciye eklenmez. [Bellek yöntemi ve sınırları](docs/standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) kanoniktir. Kaynak/kurulum/fixture değişirse ölçüm kabul edilmez. Üretilmiş JSON, [kanıt aracıyla](docs/standards/research-evidence.md) arşivlenir.
 
+Kaynak bağlı jobs kapısı test-only ve workflow değişikliklerini de kapsar; böyle bir PR için eski yeşil kayıt yeterli değildir. Bu bakımın mevcut M5/SSD referansına erişebilen bir sahibi olmalıdır. Yeni kayıt adını workflow ve testte ölçümden önce seçin, kaynakları sabitleyin, yukarıdaki kurulu hazırlık/ölçüm komutlarını seri çalıştırın ve [kanıt standardındaki](docs/standards/research-evidence.md) arşiv/gerçek referans doğrulamasını tamamlayın. Hazırlık ve ölçüm için ayrıca zaman ayırın; toplam süre host/I/O yüküne bağlıdır. Kaynak kapsamını daraltmak bu zorunluluğun yerine geçmez; yalnız belge değişikliği mevcut kaynak baytlarını koruyorsa yeniden ölçüm gerektirmez.
+
 ## Doğrulama seçimi
 
 Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır.
