@@ -9,16 +9,25 @@ from threading import Lock
 from typing import NoReturn, Protocol
 
 from yorunge.application.execution import ExecutionBudget
+from yorunge.application.operation_observations import (
+    OperationObservation,
+    ReadAccess,
+    ReadContext,
+    ReadPort,
+    ReadRequest,
+)
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
 from yorunge.domain.execution import ExecutionPlan, ExecutionValidity
 from yorunge.domain.operations import (
+    TERMINAL,
     AdmissionAuthority,
     JobView,
     OperationAdmission,
     OperationLease,
     OperationModel,
+    OperationReason,
     OperationRecord,
     ProviderId,
     ProviderStatus,
@@ -76,6 +85,25 @@ class OperationRepository(Protocol):
         self, operation_id: str, owner: OperationLease, *, execution: bool = False
     ) -> OperationRecord: ...
     def dispatch_window(self, operation_id: str, owner: OperationLease) -> DispatchWindow: ...
+    def read_window(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess | None = None,
+    ) -> DispatchWindow: ...
+    def reconcile(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess,
+        observation: OperationObservation,
+    ) -> JobView: ...
+    def reconciliation_uncertain(
+        self, operation_id: str, owner: OperationLease, reason: OperationReason
+    ) -> JobView: ...
+    def job(self, operation_id: str) -> JobView: ...
     def submitted(
         self, operation_id: str, owner: OperationLease, receipt: Submission
     ) -> JobView: ...
@@ -116,10 +144,13 @@ class OperationCoordinator:
         credentials: tuple[BoundCredential, ...],
         budget: ExecutionBudget,
         process_id: Callable[[], int],
+        observer: ReadPort | None = None,
+        resolve_read: Callable[[ExecutionPlan], ReadContext] | None = None,
     ) -> None:
         self.repository, self.validate, self.backend = repository, validate, backend
         self.credentials, self.budget, self.process_id = credentials, budget, process_id
         self._issuer = process_id()
+        self.observer, self.resolve_read = observer, resolve_read
 
     def _same_process(self, operation_id: str | None = None) -> None:
         if self.process_id() != self._issuer:
@@ -235,3 +266,90 @@ class OperationCoordinator:
                 error.code if isinstance(error, YorungeError) else "operation_uncertain"
             )
             raise OperationError("operation_uncertain", operation_id, reason_code=reason) from None
+
+    def reconcile(self, operation_id: str, owner: OperationLease) -> JobView:
+        with self._identified(operation_id):
+            self._same_process(operation_id)
+            self.budget.check()
+            record = self.repository.operation(operation_id)
+            if record.summary.status in TERMINAL:
+                return self.repository.job(operation_id)
+            observer, resolve = self.observer, self.resolve_read
+            if record.dispatch_attempt_id is None or observer is None or resolve is None:
+                raise OperationError("operation_conflict", operation_id)
+            job = self.repository.job(operation_id)
+            context = resolve(job.plan)
+            request = ReadRequest(
+                job.plan,
+                record.admission,
+                record.dispatch_attempt_id,
+                job.attempts[-1].provider_run_id,
+                context.authorities,
+                context.credentials,
+            )
+            result = self._read_observation(operation_id, owner, request, observer)
+            if isinstance(result, str):
+                return self.repository.reconciliation_uncertain(operation_id, owner, result)
+            access, observation = result
+            self.budget.check()
+            return self._persist_observation(operation_id, owner, request, access, observation)
+
+    def _read_observation(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        observer: ReadPort,
+    ) -> tuple[ReadAccess, OperationObservation] | OperationReason:
+        window = self.repository.read_window(operation_id, owner, request)
+        try:
+            access = observer.authorize(request, deadline=window.deadline)
+            self._same_process(operation_id)
+            access = ReadAccess.model_validate_json(canonical(access.model_dump(mode="json")))
+            window = self.repository.read_window(operation_id, owner, request, access)
+            observation = observer.observe(request, access, deadline=window.deadline)
+            self._same_process(operation_id)
+            observation = OperationObservation.model_validate_json(
+                canonical(observation.model_dump(mode="json"))
+            )
+            if any(
+                bound.credential.secret.reveal() in value
+                for bound in request.credentials
+                for value in (observation.provider_run_id or "", observation.provider_status or "")
+            ):
+                raise ValueError("private observation")
+            return access, observation
+        except (ValueError, TypeError, AttributeError):
+            self._same_process(operation_id)
+            return "evidence_mismatch"
+        except PermissionError:
+            self._same_process(operation_id)
+            return "provider_unauthorized"
+        except YorungeError:
+            raise
+        except Exception:
+            self._same_process(operation_id)
+            return "provider_unavailable"
+
+    def _persist_observation(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess,
+        observation: OperationObservation,
+    ) -> JobView:
+        try:
+            return self.repository.reconcile(operation_id, owner, request, access, observation)
+        except OperationError as error:
+            if error.code not in {"state_write_failed", "state_busy", "execution_timeout"}:
+                raise
+            try:
+                self.repository.reconciliation_uncertain(
+                    operation_id, owner, "outcome_write_failed"
+                )
+            except YorungeError:
+                pass
+            raise OperationError(
+                "operation_uncertain", operation_id, reason_code=error.code
+            ) from None

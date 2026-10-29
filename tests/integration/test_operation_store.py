@@ -495,19 +495,8 @@ def test_predispatch_takeover_is_a_control_change_without_normal_event(
 def pending_delivery_fixture(connection, record, attempt, event):
     from yorunge.adapters.operation_store import append_event, write_attempt
 
-    # Select the alternate trusted test delivery policy before any dispatch.
-    record = record.model_copy(
-        update={
-            "admission": record.admission.model_copy(update={"delivery_required": True}),
-            "summary": record.summary.model_copy(update={"delivery_status": "pending"}),
-        }
-    )
-    event = event.model_copy(update={"delivery_status": "pending"})
-    raw_record(connection, record)
-    connection.execute(
-        "UPDATE operation_events SET payload=?",
-        (canonical(event.model_dump(mode="json")).decode("ascii"),),
-    )
+    assert record.admission.delivery_required
+    assert record.summary.delivery_status == event.delivery_status == "pending"
     for sequence, status, execution in ((2, "submitted", "submitted"), (3, "running", "succeeded")):
         reason = "delivery_pending" if sequence == 3 else None
         changed = record.model_copy(
@@ -542,6 +531,7 @@ def pending_delivery_fixture(connection, record, attempt, event):
 @pytest.mark.parametrize("entry", ["warm", "full"])
 @pytest.mark.parametrize("marker", [False, True])
 @pytest.mark.parametrize("preserve_success", [False, True])
+@pytest.mark.parametrize("admitted_operation", [True], indirect=True)
 def test_delivery_uncertainty_preserves_confirmed_execution(
     admitted_operation,
     entry,

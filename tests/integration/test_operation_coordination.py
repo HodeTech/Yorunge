@@ -17,15 +17,6 @@ from yorunge.application.operations import DispatchPermit
 from yorunge.domain.errors import OperationError, YorungeError
 
 
-@pytest.fixture
-def operation_setup(tmp_path, execution_fixture, execution_clock):
-    state = tmp_path / "state"
-    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
-    approval = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state).data
-    assert approval.effective
-    return state, plan, ProcessBackend(tmp_path / "effects")
-
-
 def test_admission_dispatch_and_restart_never_repeat(operation_setup):
     state, plan, backend = operation_setup
     with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
@@ -226,7 +217,7 @@ def test_permit_thread_copy_pickle_and_fork_boundaries():
     forked.consume()
 
 
-@pytest.mark.parametrize("point", ["admit", "arm"])
+@pytest.mark.parametrize("point", ["admit", "arm", "takeover"])
 @pytest.mark.parametrize(
     "task,service", [("llm.chat", "evren-llm"), ("dataset.upload", "evren-platform")]
 )
@@ -258,6 +249,8 @@ def test_final_transaction_rechecks_credential_revision_across_processes(
     original = getattr(StateOperations, point)
 
     def raced(self, *args):
+        if point == "takeover" and args[-1] is None:
+            return original(self, *args)
         child = subprocess.run(
             [
                 sys.executable,
@@ -281,17 +274,21 @@ def test_final_transaction_rechecks_credential_revision_across_processes(
     with api._operation_session(
         plan.plan_id, backend, config=config, state_dir=state
     ) as coordinator:
-        first = coordinator.admit(plan.plan_id) if point == "arm" else None
+        first = coordinator.admit(plan.plan_id) if point != "admit" else None
+        if point == "takeover":
+            execution_clock.value += timedelta(seconds=31)
         monkeypatch.setattr(StateOperations, point, raced)
         monkeypatch.setattr(EnvSecretReader, "read", read)
         with pytest.raises(YorungeError) as error:
-            if first:
+            if point == "takeover":
+                coordinator.takeover(first.job.operation.operation_id)
+            elif first:
                 coordinator.dispatch(first.job.operation.operation_id, first.ownership)
             else:
                 coordinator.admit(plan.plan_id)
         assert error.value.code == "state_changed"
     # A single call captures once; no automatic reread of a changed environment.
-    assert len(reads) == (0 if point == "arm" else 1)
+    assert len(reads) == (1 if point == "admit" else 0)
     assert backend.calls == 0
     with open_store(state) as store:
         validate_contents(store.connection)

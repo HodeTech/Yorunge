@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4b — Kalıcı operation ve güvenli sahiplik
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1/2 ikişer review turuyla kapandı; adım 3 başlıyor. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı, ADR-0016 Accepted; adım 1/2 ikişer review turuyla kapandı; adım 3 kod/test/kaynak çalışması tamamlandı, review turları sırada. Bu kart paket adım 1–3'ü kapsar; her adım ayrı commit ve iki fresh review turudur.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -43,4 +43,4 @@ Unit durum/strict model/oracle; contract trusted port ve mevcut execution/CLI za
 
 ## Teslim kaydı
 
-Adım 1 şema/repository a73608a, review düzeltmeleri 1049ab2/de109f5 ile kapandı. Adım 2 admission/lease/dispatch 7d75322 ile uygulandı; review düzeltmeleri 2ba731e/ee7f7a3 ile iki fresh turda kapandı (1.469 test). Adım 3 recovery/terminal/reset başlıyor. [Kabul kaydı](../../research/p01-4-implementation-validation.md) kanoniktir; adım 3 tamamlanmadan kart verified değildir. Mevcut startup bakım kanıtı bu kartın operation kabulü sayılmaz.
+Adım 1 şema/repository a73608a, review düzeltmeleri 1049ab2/de109f5 ile kapandı. Adım 2 admission/lease/dispatch 7d75322 ile uygulandı; review düzeltmeleri 2ba731e/ee7f7a3 ile iki fresh turda kapandı (1.469 test). Adım 3 recovery/terminal/reset uygulandı; 1.580 full test ve 27/27 normal/yoğun kaynak işlemi geçti, iki fresh review turu sırada. [Kabul kaydı](../../research/p01-4-implementation-validation.md) kanoniktir; adım 3 tamamlanmadan kart verified değildir. Mevcut startup bakım kanıtı bu kartın operation kabulü sayılmaz.

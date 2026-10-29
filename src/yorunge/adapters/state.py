@@ -217,6 +217,13 @@ def validate(
 
 
 def validate_contents(connection: sqlite3.Connection) -> None:
+    from yorunge.adapters.validation_memo import validation_session
+
+    with validation_session():
+        _validate_contents(connection)
+
+
+def _validate_contents(connection: sqlite3.Connection) -> None:
     if connection.execute("PRAGMA integrity_check(1)").fetchall() != [("ok",)]:
         raise YorungeError("state_invalid")
     if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:

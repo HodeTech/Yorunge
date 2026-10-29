@@ -26,6 +26,14 @@ from yorunge.adapters.operation_store import (
 )
 from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.application.execution import ExecutionBudget
+from yorunge.application.operation_observations import (
+    OperationObservation,
+    ReadAccess,
+    ReadRequest,
+    authority_target,
+    observed_reason,
+    observed_status,
+)
 from yorunge.application.operations import DispatchWindow, OperationClaim, Submission
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
@@ -44,6 +52,7 @@ from yorunge.domain.operations import (
     OperationOutcome,
     OperationReason,
     OperationRecord,
+    requires_delivery,
 )
 from yorunge.domain.state import canonical_uuid
 
@@ -134,7 +143,11 @@ class StateOperations:
             read_job(self.connection, operation_id, record=record)
             return record
 
-    def _credentials_current(self, plan: ExecutionPlan, stamp: Stamp) -> None:
+    def job(self, operation_id: str) -> JobView:
+        with self.phase(operation_id):
+            return read_job(self.connection, operation_id)
+
+    def _snapshot_current(self, stamp: Stamp) -> None:
         for bound in self.credentials:
             identity, credential = bound.identity, bound.credential
             if identity.identity_epoch != stamp.identity_epoch or not credential_matches(
@@ -147,6 +160,9 @@ class StateOperations:
                 base=credential.target.api_base_path,
             ):
                 raise YorungeError("state_changed")
+
+    def _credentials_current(self, plan: ExecutionPlan, stamp: Stamp) -> None:
+        self._snapshot_current(stamp)
         try:
             authorities = plan_authorities(plan)
         except (ValueError, YorungeError):
@@ -271,9 +287,7 @@ class StateOperations:
                     approval=approval,
                     authorities=plan_authorities(plan),
                     correlation=str(uuid4()),
-                    delivery_required=any(
-                        effect.kind != "local_read" for effect in plan.assessment.effects
-                    ),
+                    delivery_required=requires_delivery(plan),
                 )
                 s = JobSummary(
                     operation_id=identifier,
@@ -381,6 +395,24 @@ class StateOperations:
             return lease
 
     def dispatch_window(self, operation_id: str, owner: OperationLease) -> DispatchWindow:
+        return self._window(operation_id, owner, None, None)
+
+    def read_window(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess | None = None,
+    ) -> DispatchWindow:
+        return self._window(operation_id, owner, request, access)
+
+    def _window(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest | None,
+        access: ReadAccess | None,
+    ) -> DispatchWindow:
         # Associate the durable final UTC observation with an earlier monotonic sample.
         # No UTC observation may bypass the store's global expiry watermark.
         with self.phase(operation_id):
@@ -390,9 +422,12 @@ class StateOperations:
                 record = read_operation(self.connection, operation_id)
                 read_job(self.connection, operation_id, record=record)
                 self._owner(record, owner, stamp, gate)
-                self._credentials_current(
-                    read_plan(self.connection, record.admission.plan_id), stamp
-                )
+                if request is None:
+                    self._credentials_current(
+                        read_plan(self.connection, record.admission.plan_id), stamp
+                    )
+                else:
+                    self._read_access(record, request, access, stamp, gate)
             if record.lease is None or gate.checkpoint is None:
                 raise OperationError("operation_lease_lost", operation_id)
             remaining = (
@@ -402,6 +437,66 @@ class StateOperations:
             if self.budget.clock.monotonic() >= deadline:
                 raise OperationError("execution_timeout", operation_id)
             return DispatchWindow(record, deadline)
+
+    def _read_access(
+        self,
+        record: OperationRecord,
+        request: ReadRequest,
+        access: ReadAccess | None,
+        stamp: Stamp,
+        gate: TimeGate,
+    ) -> None:
+        self._snapshot_current(stamp)
+        if (
+            request.admission != record.admission
+            or request.plan != read_plan(self.connection, record.admission.plan_id)
+            or request.attempt_id != record.dispatch_attempt_id
+            or request.credentials != self.credentials
+            or len(request.authorities) != len(record.admission.authorities)
+            or tuple(authority_target(a) for a in request.authorities)
+            != tuple(authority_target(a) for a in record.admission.authorities)
+        ):
+            raise YorungeError("state_changed")
+        for authority in request.authorities:
+            if authority.service_id != "local" and not any(
+                (
+                    bound.identity.credential_id,
+                    bound.identity.credential_revision,
+                    bound.credential.reference.service_id,
+                    bound.credential.target.service_origin,
+                    bound.credential.target.api_base_path,
+                )
+                == (
+                    authority.credential_id,
+                    authority.credential_revision,
+                    authority.service_id,
+                    authority.service_origin,
+                    authority.api_base_path,
+                )
+                for bound in self.credentials
+            ):
+                raise YorungeError("state_changed")
+        if access is None:
+            return
+        if len(access.authorities) != len(request.authorities):
+            raise YorungeError("state_changed")
+        for actual, expected in zip(access.authorities, request.authorities, strict=True):
+            if actual.model_dump(exclude={"authorization_scope"}) != expected.model_dump(
+                exclude={"authorization_scope"}
+            ) or (
+                actual.service_id != "local"
+                and (
+                    actual.authorization_scope is None
+                    or "read" not in actual.authorization_scope.permissions
+                )
+            ):
+                raise YorungeError("state_changed")
+        now = self.cache.now()
+        if not instant(access.checked_at) <= now < instant(access.expires_at):
+            raise YorungeError("state_changed")
+        gate.require_range(
+            instant(access.checked_at), instant(access.expires_at), error="state_changed"
+        )
 
     def _local_rejection(self, record: OperationRecord, stamp: Stamp) -> OperationReason | None:
         a = record.admission
@@ -487,13 +582,14 @@ class StateOperations:
                 ):
                     raise OperationError("operation_lease_lost", operation_id)
                 if record.dispatch_attempt_id is None:
+                    if validity is not None:
+                        self._current(job.plan, validity, stamp, gate, record.admission.approval)
                     rejection = self._local_rejection(record, stamp)
                     if rejection is not None:
                         self._local_terminal(record, job, stamp, rejection)
                         return OperationClaim(read_job(self.connection, operation_id), None)
                     if validity is None:
                         return None
-                    self._current(job.plan, validity, stamp, gate, record.admission.approval)
                 now = self.cache.now()
                 lease = self._lease(stamp, record.fence + 1, now)
                 if record.dispatch_attempt_id is None:
@@ -698,35 +794,136 @@ class StateOperations:
                 result = read_job(self.connection, operation_id)
             return result
 
+    def _recover(
+        self, record: OperationRecord, job: JobView, stamp: Stamp, reason: OperationReason
+    ) -> JobView:
+        now = self.cache.now()
+        changed = self._progress(
+            record,
+            stamp,
+            now,
+            status="unknown",
+            execution="succeeded" if record.summary.execution_status == "succeeded" else "unknown",
+            delivery="unknown"
+            if record.summary.execution_status == "succeeded" and record.admission.delivery_required
+            else record.summary.delivery_status,
+            reason=reason,
+            normal=False,
+        )
+        attempt = job.attempts[-1].model_copy(
+            update={
+                "status": "unknown",
+                "updated_at": timestamp(now),
+                "reason_code": reason,
+            }
+        )
+        write_record(self.connection, changed, expected_revision=record.summary.revision)
+        write_attempt(self.connection, record.summary.operation_id, attempt)
+        return read_job(self.connection, record.summary.operation_id)
+
     def uncertain(self, operation_id: str, owner: OperationLease) -> None:
+        self.reconciliation_uncertain(operation_id, owner, "dispatch_interrupted")
+
+    def reconciliation_uncertain(
+        self, operation_id: str, owner: OperationLease, reason: OperationReason
+    ) -> JobView:
         with self.phase(operation_id):
             stamp = self._ownership_stamp(operation_id)
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 record = read_operation(self.connection, operation_id)
                 job = read_job(self.connection, operation_id, record=record)
                 self._owner(record, owner, stamp, gate)
-                now = self.cache.now()
-                changed = self._progress(
-                    record,
-                    stamp,
-                    now,
-                    status="unknown",
-                    execution="succeeded"
-                    if record.summary.execution_status == "succeeded"
-                    else "unknown",
-                    delivery="unknown"
-                    if record.summary.execution_status == "succeeded"
-                    else record.summary.delivery_status,
-                    reason="dispatch_interrupted",
-                    normal=False,
-                )
-                attempt = job.attempts[-1].model_copy(
-                    update={
-                        "status": "unknown",
-                        "updated_at": timestamp(now),
-                        "reason_code": "dispatch_interrupted",
-                    }
-                )
-                write_record(self.connection, changed, expected_revision=record.summary.revision)
-                write_attempt(self.connection, operation_id, attempt)
-                read_job(self.connection, operation_id)
+                result = self._recover(record, job, stamp, reason)
+            return result
+
+    def reconcile(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        request: ReadRequest,
+        access: ReadAccess,
+        observation: OperationObservation,
+    ) -> JobView:
+        with self.phase(operation_id):
+            stamp = self._ownership_stamp(operation_id)
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                record = read_operation(self.connection, operation_id)
+                job = read_job(self.connection, operation_id, record=record)
+                self._owner(record, owner, stamp, gate)
+                self._read_access(record, request, access, stamp, gate)
+                result = self._observe(record, job, stamp, observation, access)
+            return result
+
+    def _observe(
+        self,
+        record: OperationRecord,
+        job: JobView,
+        stamp: Stamp,
+        observation: OperationObservation,
+        access: ReadAccess,
+    ) -> JobView:
+        current = job.attempts[-1]
+        if (
+            observation.correlation != record.admission.correlation
+            or observation.authority not in access.authorities
+        ):
+            return self._recover(record, job, stamp, "evidence_mismatch")
+        if observation.kind != "observed":
+            reasons: dict[str, OperationReason] = {
+                "not_found": "provider_not_found",
+                "unauthorized": "provider_unauthorized",
+                "cancel_accepted": "provider_unavailable",
+                "unavailable": "provider_unavailable",
+            }
+            return self._recover(record, job, stamp, reasons[observation.kind])
+        if observation.provider_run_id is None or (
+            current.provider_run_id is not None
+            and current.provider_run_id != observation.provider_run_id
+        ):
+            return self._recover(record, job, stamp, "evidence_mismatch")
+        try:
+            status = observed_status(record, observation)
+        except ValueError:
+            return self._recover(record, job, stamp, "evidence_mismatch")
+        if record.event_count >= MAX_EVENTS - 1 and status not in TERMINAL:
+            return self._recover(record, job, stamp, "capacity_exceeded")
+        reason = observed_reason(status, observation.execution_status)
+        now = self.cache.now()
+        changed = self._progress(
+            record,
+            stamp,
+            now,
+            status=status,
+            execution=observation.execution_status,
+            delivery=observation.delivery_status,
+            reason=None,
+            normal=True,
+        )
+        if status in TERMINAL:
+            changed = changed.model_copy(update={"lease": None})
+        attempt = current.model_copy(
+            update={
+                "status": status,
+                "updated_at": timestamp(now),
+                "provider_run_id": observation.provider_run_id,
+                "provider_status": observation.provider_status,
+                "provider_exit_code": observation.provider_exit_code,
+                "reason_code": reason,
+            }
+        )
+        write_record(self.connection, changed, expected_revision=record.summary.revision)
+        write_attempt(self.connection, record.summary.operation_id, attempt)
+        append_event(self.connection, record.summary.operation_id, self._event(changed, attempt))
+        if status in TERMINAL:
+            write_outcome(
+                self.connection,
+                record.summary.operation_id,
+                OperationOutcome(
+                    recorded_at=timestamp(now),
+                    execution_status=observation.execution_status,
+                    delivery_status=observation.delivery_status,
+                    provider_exit_code=observation.provider_exit_code,
+                    reason_code=reason,
+                ),
+            )
+        return read_job(self.connection, record.summary.operation_id)

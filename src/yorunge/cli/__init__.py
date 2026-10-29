@@ -22,7 +22,8 @@ if TYPE_CHECKING:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import IdentitySnapshot, MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
+    from yorunge.domain.maintenance import Snapshot as IdentitySnapshot
     from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
     from yorunge.domain.state import StateInfo
 
@@ -258,7 +259,7 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import LegacyMaintenancePreview, MaintenancePreview
     from yorunge.domain.state import StateInfo
 
     execution = execution_text_result(data)
@@ -279,7 +280,7 @@ def local_text_result(data: Model) -> str:
         return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
     if isinstance(data, DoctorReport):
         return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, MaintenancePreview):
+    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview)):
         return maintenance_text(data)
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
@@ -357,15 +358,34 @@ def maintenance_text(data: MaintenancePreview) -> str:
     else:
         lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
     lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
+    if data.schema_version == 3:
+        lines.extend(
+            (
+                "Operation, attempt ve terminal sonuç geçmişi korunur.",
+                "Gönderim öncesi işler cancelled; gönderilmiş olabilecek işler unknown olur.",
+                "Önceden arm edilmiş dış çağrının durduğu garanti edilmez.",
+            )
+        )
     return "\n".join(lines)
 
 
 def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
-    return (
+    from yorunge.domain.maintenance import IdentitySnapshot as OperationSnapshot
+
+    common = (
         f"{label} credential bağı: {snapshot.binding_count}",
         f"{label} plan: {snapshot.plan_count}",
         f"{label} onay: {snapshot.approval_count}",
     )
+    if isinstance(snapshot, OperationSnapshot):
+        return (
+            *common,
+            f"{label} operation: {snapshot.operation_count}",
+            f"{label} attempt: {snapshot.attempt_count}",
+            f"{label} terminal olmayan operation: {snapshot.nonterminal_operation_count}",
+            f"{label} unknown operation: {snapshot.unknown_operation_count}",
+        )
+    return common
 
 
 def main(argv: Sequence[str] | None = None) -> int:

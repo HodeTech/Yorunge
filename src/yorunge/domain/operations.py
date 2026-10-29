@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from types import MappingProxyType
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import (
     AuthorizationScope,
     Digest,
+    JsonWireModel,
     PositiveInt64,
     WireModel,
     canonical,
@@ -72,6 +74,23 @@ EventNumber = Annotated[int, Field(ge=1, le=MAX_EVENTS)]
 Fence = Annotated[int, Field(ge=0, le=2**63 - 1)]
 
 
+def requires_delivery(plan: ExecutionPlan) -> bool:
+    return any(effect.kind != "local_read" for effect in plan.assessment.effects)
+
+
+_ALLOWED_DELIVERIES = MappingProxyType(
+    {
+        "not_started": frozenset({"pending", "not_required"}),
+        "submitted": frozenset({"pending", "not_required"}),
+        "running": frozenset({"pending", "not_required"}),
+        "unknown": frozenset({"pending", "unknown", "not_required"}),
+        "succeeded": frozenset({"pending", "unknown", "failed", "complete", "not_required"}),
+        "failed": frozenset({"pending", "not_required"}),
+        "cancelled": frozenset({"pending", "not_required"}),
+    }
+)
+
+
 def operation_status(
     execution: ExecutionStatus,
     delivery: DeliveryStatus,
@@ -82,16 +101,7 @@ def operation_status(
     """One reducer for every permitted execution/delivery pair."""
     if type(delivery_required) is not bool or (delivery == "not_required") == delivery_required:
         raise ValueError("delivery policy mismatch")
-    allowed: dict[ExecutionStatus, frozenset[str]] = {
-        "not_started": frozenset({"pending", "not_required"}),
-        "submitted": frozenset({"pending", "not_required"}),
-        "running": frozenset({"pending", "not_required"}),
-        "unknown": frozenset({"pending", "unknown", "not_required"}),
-        "succeeded": frozenset({"pending", "unknown", "failed", "complete", "not_required"}),
-        "failed": frozenset({"pending", "not_required"}),
-        "cancelled": frozenset({"pending", "not_required"}),
-    }
-    if delivery not in allowed[execution] or (
+    if delivery not in _ALLOWED_DELIVERIES[execution] or (
         local_terminal is not None and execution != "not_started"
     ):
         raise ValueError("invalid execution/delivery pair")
@@ -224,41 +234,50 @@ class JobSummary(OperationModel):
     clock_anomaly: bool
 
 
-def validate_reason(status: str, reason: OperationReason | None) -> None:
-    reasons: dict[str, set[str | None]] = {
-        "claimed": {None},
-        "submitted": {None},
-        "succeeded": {None},
-        "running": {None, "delivery_pending"},
-        "abandoned": {"owner_changed", "lease_expired", "clock_changed"},
-        "unknown": {
-            "identity_reset",
-            "lease_expired",
-            "clock_changed",
-            "owner_changed",
-            "dispatch_interrupted",
-            "provider_unavailable",
-            "provider_not_found",
-            "provider_unauthorized",
-            "evidence_mismatch",
-            "outcome_write_failed",
-            "delivery_pending",
-            "capacity_exceeded",
-        },
-        "failed": {
-            "plan_invalid",
-            "provider_rejected",
-            "provider_failed",
-            "delivery_failed",
-            "approval_revoked",
-            "approval_expired",
-            "approval_changed",
-            "credential_changed",
-            "capacity_exceeded",
-        },
-        "cancelled": {"identity_reset", "local_cancelled", "provider_cancelled"},
+_REASONS = MappingProxyType(
+    {
+        key: frozenset(values)
+        for key, values in dict[str, set[str | None]](
+            {
+                "claimed": {None},
+                "submitted": {None},
+                "succeeded": {None},
+                "running": {None, "delivery_pending"},
+                "abandoned": {"owner_changed", "lease_expired", "clock_changed"},
+                "unknown": {
+                    "identity_reset",
+                    "lease_expired",
+                    "clock_changed",
+                    "owner_changed",
+                    "dispatch_interrupted",
+                    "provider_unavailable",
+                    "provider_not_found",
+                    "provider_unauthorized",
+                    "evidence_mismatch",
+                    "outcome_write_failed",
+                    "delivery_pending",
+                    "capacity_exceeded",
+                },
+                "failed": {
+                    "plan_invalid",
+                    "provider_rejected",
+                    "provider_failed",
+                    "delivery_failed",
+                    "approval_revoked",
+                    "approval_expired",
+                    "approval_changed",
+                    "credential_changed",
+                    "capacity_exceeded",
+                },
+                "cancelled": {"identity_reset", "local_cancelled", "provider_cancelled"},
+            }
+        ).items()
     }
-    if status not in reasons or reason not in reasons[status]:
+)
+
+
+def validate_reason(status: str, reason: OperationReason | None) -> None:
+    if status not in _REASONS or reason not in _REASONS[status]:
         raise ValueError("status reason mismatch")
 
 
@@ -402,6 +421,12 @@ class OperationRecord(OperationModel):
             raise ValueError("new execution candidates retain admission authority")
         if self.lease is not None and (self.lease.fence != self.fence or s.status in TERMINAL):
             raise ValueError("lease projection mismatch")
+        if self.lease is not None and (
+            (self.lease.ownership_identity_epoch, self.lease.ownership_clock_generation)
+            != (self.observed_identity_epoch, self.observed_clock_generation)
+            or self.lease.expires_at <= s.updated_at
+        ):
+            raise ValueError("lease must cover its last ownership observation")
         if self.recovery_reason is not None and s.status != "unknown":
             raise ValueError("recovery marker requires unknown")
         if self.event_count == MAX_EVENTS and s.status not in TERMINAL:
@@ -411,18 +436,37 @@ class OperationRecord(OperationModel):
         return self
 
 
-class OperationEvent(OperationModel):
+EventUUID = Annotated[
+    str,
+    Field(
+        min_length=36,
+        max_length=36,
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    ),
+]
+
+
+class OperationEvent(JsonWireModel):
+    _scalar_json: ClassVar[bool] = True
+    # All strings have canonical UUID/UTC or closed literal constraints. Unlike
+    # free-text wire models this dense scalar record needs no generic text scan.
     sequence: EventNumber
     revision: PositiveInt64
     fence: PositiveInt64
-    attempt_id: str
+    attempt_id: EventUUID
     observed_at: str
-    identity_epoch: str
+    identity_epoch: EventUUID
     clock_generation: PositiveInt64
     status: OperationStatus
     execution_status: ExecutionStatus
     delivery_status: DeliveryStatus
     reason_code: OperationReason | None
+
+    @field_validator("observed_at")
+    @classmethod
+    def observed_time(cls, value: str) -> str:
+        instant(value)
+        return value
 
 
 class JobsPage(OperationModel):
@@ -449,48 +493,54 @@ class JobView(OperationModel):
             p.selection.execution,
         ):
             raise ValueError("job plan mismatch")
-        if len(self.attempts) != s.attempt_count or tuple(a.number for a in self.attempts) != tuple(
-            range(1, len(self.attempts) + 1)
-        ):
-            raise ValueError("attempt sequence mismatch")
-        if len({a.attempt_id for a in self.attempts}) != len(self.attempts) or any(
-            a.status != "abandoned" for a in self.attempts[:-1]
-        ):
-            raise ValueError("historical attempts must be abandoned")
-        current = self.attempts[-1]
-        if current.status != ("claimed" if s.status == "admitted" else s.status):
-            raise ValueError("current attempt mismatch")
-        validate_progress_reason(
-            s.status,
-            current.reason_code,
-            s.execution_status,
-            s.delivery_status,
-            dispatched=s.execution_status != "not_started",
-        )
-        if self.attempts[0].created_at != s.created_at or current.updated_at != s.updated_at:
-            raise ValueError("attempt observation time mismatch")
-        for old, new in zip(self.attempts[:-1], self.attempts[1:], strict=True):
-            if old.updated_at != new.created_at or old.created_at > new.created_at:
-                raise ValueError("abandonment must match the next attempt")
-        if not s.clock_anomaly and any(
-            not s.created_at <= a.created_at <= a.updated_at <= s.updated_at for a in self.attempts
-        ):
-            raise ValueError("attempt observation time outside operation")
-        if (self.outcome is not None) != (s.status in TERMINAL):
-            raise ValueError("terminal outcome required")
-        if self.outcome is not None:
-            o = self.outcome
-            if o.recorded_at != s.updated_at:
-                raise ValueError("terminal observation time mismatch")
-            if (o.execution_status, o.delivery_status, o.provider_exit_code, o.reason_code) != (
-                s.execution_status,
-                s.delivery_status,
-                current.provider_exit_code,
-                current.reason_code,
-            ):
-                raise ValueError("outcome projection mismatch")
-            if len(canonical(o.model_dump(mode="json"))) > MAX_OUTCOME_BYTES:
-                raise ValueError("bounded outcome required")
+        validate_job_relationships(s, self.attempts, self.outcome)
         if len(canonical(self.model_dump(mode="json"))) > MAX_JOB_BYTES:
             raise ValueError("bounded job required")
         return self
+
+
+def validate_job_relationships(
+    s: JobSummary, attempts: tuple[AttemptView, ...], outcome: OperationOutcome | None
+) -> None:
+    if len(attempts) != s.attempt_count or tuple(a.number for a in attempts) != tuple(
+        range(1, len(attempts) + 1)
+    ):
+        raise ValueError("attempt sequence mismatch")
+    if len({a.attempt_id for a in attempts}) != len(attempts) or any(
+        a.status != "abandoned" for a in attempts[:-1]
+    ):
+        raise ValueError("historical attempts must be abandoned")
+    current = attempts[-1]
+    if current.status != ("claimed" if s.status == "admitted" else s.status):
+        raise ValueError("current attempt mismatch")
+    validate_progress_reason(
+        s.status,
+        current.reason_code,
+        s.execution_status,
+        s.delivery_status,
+        dispatched=s.execution_status != "not_started",
+    )
+    if attempts[0].created_at != s.created_at or current.updated_at != s.updated_at:
+        raise ValueError("attempt observation time mismatch")
+    for old, new in zip(attempts[:-1], attempts[1:], strict=True):
+        if old.updated_at != new.created_at or old.created_at > new.created_at:
+            raise ValueError("abandonment must match the next attempt")
+    if not s.clock_anomaly and any(
+        not s.created_at <= a.created_at <= a.updated_at <= s.updated_at for a in attempts
+    ):
+        raise ValueError("attempt observation time outside operation")
+    if (outcome is not None) != (s.status in TERMINAL):
+        raise ValueError("terminal outcome required")
+    if outcome is not None:
+        o = outcome
+        if o.recorded_at != s.updated_at:
+            raise ValueError("terminal observation time mismatch")
+        if (o.execution_status, o.delivery_status, o.provider_exit_code, o.reason_code) != (
+            s.execution_status,
+            s.delivery_status,
+            current.provider_exit_code,
+            current.reason_code,
+        ):
+            raise ValueError("outcome projection mismatch")
+        if len(canonical(o.model_dump(mode="json"))) > MAX_OUTCOME_BYTES:
+            raise ValueError("bounded outcome required")

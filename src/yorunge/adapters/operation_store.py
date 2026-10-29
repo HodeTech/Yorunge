@@ -5,13 +5,20 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Literal, TypeVar
 
-from yorunge.adapters.execution_store import read_plan
+from yorunge.adapters.execution_store import (
+    PLAN_COLUMNS,
+    PlanValidation,
+    describe_plan,
+    plan_validation,
+    read_plan,
+)
 from yorunge.adapters.state import metadata
-from yorunge.domain.capabilities import WireModel, canonical
+from yorunge.domain.capabilities import JsonWireModel, canonical
 from yorunge.domain.errors import OperationError, YorungeError
-from yorunge.domain.execution import ExecutionPlan, binding_digest
+from yorunge.domain.execution import ExecutionPlan
 from yorunge.domain.operations import (
     MAX_ATTEMPT_BYTES,
     MAX_ATTEMPTS,
@@ -29,6 +36,7 @@ from yorunge.domain.operations import (
     OperationRecord,
     OperationStatus,
     operation_status,
+    validate_job_relationships,
     validate_progress_reason,
 )
 from yorunge.domain.state import canonical_uuid
@@ -39,7 +47,7 @@ OPERATION_COLUMNS = (
 )
 ATTEMPT_COLUMNS = "attempt_id,operation_id,number,status,payload"
 EVENT_COLUMNS = "operation_id,sequence,attempt_id,payload"
-T = TypeVar("T", bound=WireModel)
+T = TypeVar("T", bound=JsonWireModel)
 
 
 def plan_authorities(plan: ExecutionPlan) -> tuple[AdmissionAuthority, ...]:
@@ -103,25 +111,38 @@ def read_operation(connection: sqlite3.Connection, operation_id: str) -> Operati
     return decode_operation(row)
 
 
+@dataclass(frozen=True)
+class AttemptSet:
+    items: tuple[AttemptView, ...]
+
+
 def read_attempts(connection: sqlite3.Connection, operation_id: str) -> tuple[AttemptView, ...]:
-    result = []
-    for identifier, owner, number, status, payload in connection.execute(
+    from yorunge.adapters.validation_memo import validated
+
+    rows = connection.execute(
         f"SELECT {ATTEMPT_COLUMNS} FROM operation_attempts WHERE operation_id=? "
         "ORDER BY number LIMIT ?",
         (operation_id, MAX_ATTEMPTS + 1),
-    ):
-        item = decode(AttemptView, payload, MAX_ATTEMPT_BYTES)
-        if (identifier, owner, number, status) != (
-            item.attempt_id,
-            operation_id,
-            item.number,
-            item.status,
-        ):
+    ).fetchall()
+
+    def build() -> AttemptSet:
+        result = []
+        for identifier, owner, number, status, payload in rows:
+            item = decode(AttemptView, payload, MAX_ATTEMPT_BYTES)
+            if (identifier, owner, number, status) != (
+                item.attempt_id,
+                operation_id,
+                item.number,
+                item.status,
+            ):
+                raise YorungeError("state_invalid")
+            result.append(item)
+        if not 1 <= len(result) <= MAX_ATTEMPTS:
             raise YorungeError("state_invalid")
-        result.append(item)
-    if not 1 <= len(result) <= MAX_ATTEMPTS:
-        raise YorungeError("state_invalid")
-    return tuple(result)
+        return AttemptSet(tuple(result))
+
+    identity = (operation_id, *(part for row in rows for part in row))
+    return validated(AttemptSet, identity, build).items
 
 
 def read_outcome(connection: sqlite3.Connection, operation_id: str) -> OperationOutcome | None:
@@ -200,7 +221,7 @@ def _event_progress(
 
 def _event_observation(
     record: OperationRecord, item: OperationEvent, previous: OperationEvent | None
-) -> None:
+) -> bool:
     local: Literal["failed", "cancelled"] | None = None
     if item.execution_status == "not_started" and item.status == "failed":
         local = "failed"
@@ -223,20 +244,25 @@ def _event_observation(
         item.delivery_status,
         dispatched=item.execution_status != "not_started",
     )
-    if item.revision > record.summary.revision or item.fence > record.fence:
-        raise ValueError("event counter exceeds current state")
     if previous is None:
-        return
+        return False
     if previous.execution_status == "succeeded" and item.execution_status != "succeeded":
         raise ValueError("confirmed execution success cannot be lost")
+    if (
+        previous.identity_epoch == item.identity_epoch
+        and item.clock_generation < previous.clock_generation
+    ):
+        raise ValueError("clock generation cannot regress within an identity epoch")
     same_clock = (previous.identity_epoch, previous.clock_generation) == (
         item.identity_epoch,
         item.clock_generation,
     )
-    if item.observed_at < previous.observed_at and (same_clock or not record.summary.clock_anomaly):
+    regressed = item.observed_at < previous.observed_at
+    if regressed and same_clock:
         raise ValueError("invalid clock regression")
     if item.revision <= previous.revision or item.fence < previous.fence:
         raise ValueError("event counters must increase")
+    return regressed
 
 
 def _history_end(
@@ -259,6 +285,16 @@ def _history_end(
     predispatch_control = (
         previous.status == s.status == "admitted" and record.dispatch_attempt_id is None
     )
+    if (
+        record.recovery_reason is None
+        and not predispatch_control
+        and (
+            record.observed_identity_epoch,
+            record.observed_clock_generation,
+        )
+        != (previous.identity_epoch, previous.clock_generation)
+    ):
+        raise ValueError("normal projection clock must match its event")
     expected_attempt = previous.attempt_id if predispatch_control else attempts[-1].attempt_id
     if predispatch_control and (record.fence < s.attempt_count or s.revision < record.fence):
         raise ValueError("candidate ownership counters mismatch")
@@ -290,27 +326,46 @@ def _history_end(
             raise ValueError("control clock regression must be explicit")
 
 
-def validate_events(
-    connection: sqlite3.Connection, record: OperationRecord, attempts: tuple[AttemptView, ...]
-) -> None:
-    previous: OperationEvent | None = None
+@dataclass(frozen=True)
+class HistoryProof:
+    last: OperationEvent
+    count: int
+    armed: bool
+    clock_regressed: bool
+
+
+def _history_proof(
+    record: OperationRecord, attempts: tuple[AttemptView, ...], rows: list[tuple[object, ...]]
+) -> HistoryProof:
+    from yorunge.adapters.validation_memo import validated
+
     numbers = {attempt.attempt_id: attempt.number for attempt in attempts}
     created = {attempt.attempt_id: attempt.created_at for attempt in attempts}
-    count, armed = 0, False
-    for owner, sequence, attempt_id, payload in connection.execute(
-        f"SELECT {EVENT_COLUMNS} FROM operation_events WHERE operation_id=? "
-        "ORDER BY sequence LIMIT ?",
-        (record.summary.operation_id, MAX_EVENTS + 1),
-    ):
-        item = decode(OperationEvent, payload, MAX_EVENT_BYTES)
-        count += 1
-        if (
-            (owner, sequence, attempt_id) != (record.summary.operation_id, count, item.attempt_id)
-            or sequence != item.sequence
-            or attempt_id not in numbers
-        ):
-            raise YorungeError("state_invalid")
-        try:
+    identity: tuple[object, ...] = (
+        canonical(record.admission.model_dump(mode="json")),
+        record.summary.created_at,
+        record.dispatch_attempt_id,
+        *(
+            part
+            for attempt in attempts
+            for part in (attempt.attempt_id, attempt.number, attempt.created_at)
+        ),
+        *(part for row in rows for part in row),
+    )
+
+    def build() -> HistoryProof:
+        previous: OperationEvent | None = None
+        count, armed, regressed = 0, False, False
+        for owner, sequence, attempt_id, payload in rows:
+            item = decode(OperationEvent, payload, MAX_EVENT_BYTES)
+            count += 1
+            if (
+                (owner, sequence, attempt_id)
+                != (record.summary.operation_id, count, item.attempt_id)
+                or sequence != item.sequence
+                or attempt_id not in numbers
+            ):
+                raise YorungeError("state_invalid")
             if item.fence < numbers[item.attempt_id]:
                 raise ValueError("event fence predates its candidate claims")
             if (item.identity_epoch, item.clock_generation) == (
@@ -319,18 +374,36 @@ def validate_events(
             ) and item.observed_at < created[item.attempt_id]:
                 raise ValueError("event predates its candidate")
             armed = _event_progress(record, item, previous, numbers, armed)
-            _event_observation(record, item, previous)
-        except (ValueError, TypeError):
-            raise YorungeError("state_invalid") from None
-        previous = item
+            regressed = _event_observation(record, item, previous) or regressed
+            previous = item
+        if previous is None or count > MAX_EVENTS:
+            raise ValueError("bounded non-empty history required")
+        return HistoryProof(previous, count, armed, regressed)
+
+    return validated(HistoryProof, identity, build)
+
+
+def validate_events(
+    connection: sqlite3.Connection, record: OperationRecord, attempts: tuple[AttemptView, ...]
+) -> None:
+    # At most 257 small rows are resident. Every read fingerprints all exact rows;
+    # only pure immutable history facts are reused inside one validation session.
+    rows = connection.execute(
+        f"SELECT {EVENT_COLUMNS} FROM operation_events WHERE operation_id=? "
+        "ORDER BY sequence LIMIT ?",
+        (record.summary.operation_id, MAX_EVENTS + 1),
+    ).fetchall()
     try:
+        proof = _history_proof(record, attempts, rows)
         if (
-            count != record.event_count
-            or previous is None
-            or armed != (record.dispatch_attempt_id is not None)
+            proof.count != record.event_count
+            or proof.armed != (record.dispatch_attempt_id is not None)
+            or proof.last.fence > record.fence
+            or proof.last.revision > record.summary.revision
+            or (proof.clock_regressed and not record.summary.clock_anomaly)
         ):
-            raise ValueError("dispatch history missing")
-        _history_end(record, previous, attempts)
+            raise ValueError("dispatch history/counters/clock mismatch")
+        _history_end(record, proof.last, attempts)
     except (ValueError, TypeError):
         raise YorungeError("state_invalid") from None
 
@@ -347,58 +420,97 @@ def read_snapshot(connection: sqlite3.Connection) -> Iterator[None]:
             connection.execute("ROLLBACK")
 
 
+def _validate_clock(
+    connection: sqlite3.Connection, record: OperationRecord, plan: PlanValidation
+) -> None:
+    value = metadata(connection)
+    clock = connection.execute(
+        "SELECT identity_epoch,clock_generation FROM cache_clock WHERE singleton=1"
+    ).fetchone()
+    if (
+        clock is None
+        or clock[0] != value.identity_epoch
+        or type(clock[1]) is not int
+        or not 1 <= clock[1] <= 2**63 - 1
+    ):
+        raise ValueError("invalid operation clock")
+    if record.admission.store_id != value.store_id or plan.store_id != value.store_id:
+        raise ValueError("operation store mismatch")
+    scopes = [
+        (plan.identity_epoch, plan.clock_generation),
+        (record.observed_identity_epoch, record.observed_clock_generation),
+    ]
+    if record.lease is not None:
+        scopes.append(
+            (record.lease.ownership_identity_epoch, record.lease.ownership_clock_generation)
+        )
+    if any(epoch == value.identity_epoch and generation > clock[1] for epoch, generation in scopes):
+        raise ValueError("future operation clock generation")
+
+
+def _validate_view(
+    connection: sqlite3.Connection,
+    record: OperationRecord,
+    plan: PlanValidation,
+    attempts: tuple[AttemptView, ...],
+    outcome: OperationOutcome | None,
+) -> None:
+    a, s = record.admission, record.summary
+    _validate_clock(connection, record, plan)
+    if (s.plan_id, s.plan_digest, s.task, s.tool, s.execution) != (
+        plan.plan_id,
+        plan.digest,
+        *plan.selection,
+    ):
+        raise ValueError("job plan mismatch")
+    if plan.status != "prepared" or a.delivery_required != plan.delivery_required:
+        raise ValueError("prepared plan and its delivery policy required")
+    if a.approval.binding_digest != plan.bound_digest or a.authorities != plan.authorities:
+        raise ValueError("operation authority mismatch")
+    if (a.admission_identity_epoch, a.admission_clock_generation) != (
+        plan.identity_epoch,
+        plan.clock_generation,
+    ):
+        raise ValueError("operation plan identity mismatch")
+    if (
+        record.dispatch_attempt_id is not None
+        and record.dispatch_attempt_id != attempts[-1].attempt_id
+    ):
+        raise ValueError("dispatch must bind final attempt")
+    if record.recovery_reason is not None and attempts[-1].reason_code != record.recovery_reason:
+        raise ValueError("recovery reason projection mismatch")
+    if s.updated_at < s.created_at and (
+        not s.clock_anomaly
+        or (
+            record.observed_identity_epoch,
+            record.observed_clock_generation,
+        )
+        == (a.admission_identity_epoch, a.admission_clock_generation)
+    ):
+        raise ValueError("same-clock snapshot regressed or missing anomaly flag")
+    if (
+        not plan.prepared_at
+        <= a.approval.approved_at
+        <= s.created_at
+        < a.approval.expires_at
+        <= plan.expires_at
+    ):
+        raise ValueError("admission lifetime mismatch")
+    validate_job_relationships(s, attempts, outcome)
+    validate_events(connection, record, attempts)
+
+
 def read_job(
     connection: sqlite3.Connection, operation_id: str, *, record: OperationRecord | None = None
 ) -> JobView:
     with read_snapshot(connection):
         record = record or read_operation(connection, operation_id)
-        a, s = record.admission, record.summary
-        value = metadata(connection)
         try:
-            plan = read_plan(connection, s.plan_id)
+            plan = read_plan(connection, record.summary.plan_id)
             attempts = read_attempts(connection, operation_id)
             outcome = read_outcome(connection, operation_id)
-            if plan.status != "prepared":
-                raise ValueError("operation requires a prepared plan")
-            if (
-                a.store_id != value.store_id
-                or a.approval.binding_digest != binding_digest(plan)
-                or a.authorities != plan_authorities(plan)
-            ):
-                raise ValueError("operation authority mismatch")
-            if (a.admission_identity_epoch, a.admission_clock_generation) != (
-                plan.identity_epoch,
-                plan.clock_generation,
-            ):
-                raise ValueError("operation plan identity mismatch")
-            if (
-                record.dispatch_attempt_id is not None
-                and record.dispatch_attempt_id != attempts[-1].attempt_id
-            ):
-                raise ValueError("dispatch must bind final attempt")
-            if (
-                record.recovery_reason is not None
-                and attempts[-1].reason_code != record.recovery_reason
-            ):
-                raise ValueError("recovery reason projection mismatch")
-            if s.updated_at < s.created_at and not s.clock_anomaly:
-                raise ValueError("clock regression must be visible")
-            if s.updated_at < s.created_at and (
-                record.observed_identity_epoch,
-                record.observed_clock_generation,
-            ) == (a.admission_identity_epoch, a.admission_clock_generation):
-                raise ValueError("same-clock snapshot regressed")
-            if (
-                not plan.prepared_at
-                <= a.approval.approved_at
-                <= s.created_at
-                < a.approval.expires_at
-                <= plan.expires_at
-            ):
-                raise ValueError("admission lifetime mismatch")
-            job = JobView(operation=s, plan=plan, attempts=attempts, outcome=outcome)
-            validate_events(connection, record, attempts)
-            return job
+            _validate_view(connection, record, describe_plan(plan), attempts, outcome)
+            return JobView(operation=record.summary, plan=plan, attempts=attempts, outcome=outcome)
         except YorungeError as error:
             if error.code == "plan_not_found":
                 raise YorungeError("state_invalid") from None
@@ -408,14 +520,34 @@ def read_job(
 
 
 def validate_operations(connection: sqlite3.Connection) -> None:
+    # Validated plan facts reuse the preceding full plan pass, without retaining
+    # mutable plan objects or reserializing up to 64 MiB of public show payloads.
+    # The independent public quotas compose below MAX_JOB_BYTES; read_job also
+    # validates the actual encoded JobView on every public show.
     with read_snapshot(connection):
         count = 0
-        for row in connection.execute(f"SELECT {OPERATION_COLUMNS} FROM operations"):
-            count += 1
-            if count > MAX_OPERATIONS:
-                raise YorungeError("state_invalid")
-            record = decode_operation(row)
-            read_job(connection, record.summary.operation_id, record=record)
+        try:
+            for row in connection.execute(f"SELECT {OPERATION_COLUMNS} FROM operations"):
+                count += 1
+                if count > MAX_OPERATIONS:
+                    raise YorungeError("state_invalid")
+                record = decode_operation(row)
+                identifier = record.summary.operation_id
+                saved = connection.execute(
+                    f"SELECT {PLAN_COLUMNS} FROM execution_plans WHERE plan_id=?",
+                    (record.summary.plan_id,),
+                ).fetchone()
+                if saved is None:
+                    raise YorungeError("state_invalid")
+                _validate_view(
+                    connection,
+                    record,
+                    plan_validation(saved),
+                    read_attempts(connection, identifier),
+                    read_outcome(connection, identifier),
+                )
+        except (ValueError, TypeError, RecursionError):
+            raise YorungeError("state_invalid") from None
 
 
 def insert_record(

@@ -1,10 +1,10 @@
 # Operation ve yerel jobs sözleşmesi
 
-**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; yeni tip/komutların ürün kabulü henüz yok. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
+**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; şema/coordination adım 1/2 kabulü tamamlandı, iç uzlaştırma/reset adım 3 doğrulaması sürüyor; public jobs adım 4 henüz uygulanmadı. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
 
 ## Sınır ve kaynak
 
-Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; kod başlamadan bu öneri birlikte onaylanır.
+Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; tasarım kullanıcı tarafından uygulamadan önce onaylandı. Aşağıdaki public jobs yüzeyi adım 4 teslimine kadar planlanandır.
 
 Önerilen CLI:
 
@@ -115,6 +115,16 @@ Bu kalıcı nedenler exception kodu değildir. İç hata zarfının `details.rea
 Text list her kayıtta operation ID, task, toplam durum ve execution/delivery durumlarını ayrı gösterir; boş listede kayıt olmadığını söyler. Show plan ID/digest, attempt sırası, son kayıtlı durum/sonuç ve bunun yerel tarihsel okuma olduğu bilgisini verir. Ham JSON/sağlayıcı mesajı metne dökülmez. JSON stdout yalnız tek Result; hata stdout boş ve stderr tek mevcut hata zarfıdır. Aynı seçimde text ve JSON aynı tipli okuma sonucundan üretilir.
 
 `operation_not_found` canonical ID bulunamadığında exit 2; malformed istek/cursor/filtre `invalid_request`; bozuk kayıt `state_invalid`. State platform/kilit/I/O/bütçe/repair kodları mevcut davranıştadır. `retryable=false`; path/SQL/secret/traceback yoktur. Operation'a bağlı plan forget `plan_in_use` exit 2 verir. İç coordination hataları/operation_uncertain jobs sonucuyla karıştırılmaz. Kanonik public kod/exit tablosu uygulama adımında [CLI referansına](cli-contract.md) bağlanacaktır.
+
+## İç uzlaştırma sınırı
+
+Public jobs sorgusu uzlaştırma yapmaz. İç ReadPort yalnız authorize/observe metodlarıyla çalışır; start, cancel veya artefakt fetch metodları içermez. Composition provider JSON'u veya caller verified bayrağı kabul eden bir public API açmaz. Geçmiş plan/onay expiry'si tek başına geçmiş işi okumayı engellemez; execution validator ve input hash tekrar çalıştırılmaz. Saved hizmet/origin/API base/account/project korunur, profil değişimi başka hedefe yönlendirmez. Aynı çağrının bir kez yakalanmış güncel read credential ID/revision/epoch/hedefi son transaction'da tekrar okunur; değişiklik state_changed/sıfır yeni start verir, env otomatik tekrar çözülmez. Kabuldeki credential/onay snapshot'ı değişmez.
+
+İç ReadAccess kapalı alanları authorities (1–3 AdmissionAuthority), checked_at ve expires_at'tir. Authorize portu istenen aynı job/hedef için güncel okuma hakkını kanıtlar; uzak authority'nin authorization_scope.permissions kümesi read içermelidir. Target/account/project ve güncel credential metadata'sı aynı kalır; eski execution yetkisi bu okuma kanıtıyla yeniden etkinleşmez. Aralık checked_at ≤ current UTC < expires_at olmalı; gelecek tarihli, geçmiş veya yanlış hedef/yetki kanıtı observe öncesi reddedilir. Lease/generation ve yetki süreleri final transaction'da da denetlenir. ReadRequest sadece iç composition nesnesidir, private credential serialize edilmez.
+
+İç OperationObservation tam alanları kind (observed/not_found/unauthorized/cancel_accepted/unavailable), correlation, authority, provider_run_id, provider_status, provider_exit_code, execution_status ve delivery_status'tur. ID/status/exit tür ve sınırları yukarıdaki wire ile aynıdır. Pozitif observed sonucu aynı correlation/authority ve kalıcı run ID'yi ister; ID ilk kez kesin correlation kanıtıyla bağlanabilir, sonradan değişmez. Yanlış bağ, çelişkili execution/exit/delivery, not_found, iptal isteği kabulü veya taşıma hatası terminal sonuç değildir. Bilinen credential secret'inin provider alanına yansıması kalıcılıktan önce reddedilir.
+
+Terminal sonucu yazarken I/O/bütçe veya commit dönüşü belirsizse bellekteki başarı döndürülmez: operation_uncertain/5, alttaki ErrorCode ve bilinen operation ID korunur. Yetkili yazı hâlâ mümkünse bounded outcome_write_failed/unknown marker'ı yazılır; zaten commit edilmiş terminal satır yeniden açılmaz. Son atomik kayıt korunur ve aynı job salt gözlemle uzlaştırılabilir; yeni start yoktur. Güncel read credential değişimi veya stale owner ise kendi state_changed/operation_lease_lost kodunu korur.
 
 ## Coordination hata sınırı
 

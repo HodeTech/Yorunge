@@ -1,0 +1,3758 @@
+{
+  "schema_version": 1,
+  "source_base_commit": "0b8c2cf2990345af4bad2a73b630431055fb1117",
+  "source_sha256": {
+    "src/yorunge/__init__.py": "57b855190ea5c79093dda6163847834f46459c2bd700f17247e634f9a3522db7",
+    "src/yorunge/__main__.py": "1f2931c5363fb341e38bdb961a7c4a26d812d005e8dc0ed662725cb654768c70",
+    "src/yorunge/adapters/__init__.py": "0196691b18e9cade994fcf4e8140d7eefc90fde5d58f08f0138e006c094d63ad",
+    "src/yorunge/adapters/capability_cache.py": "bed267140425fe2bc5a930c566677a1b040bb9fda41ac5b338997f6a3fee0a2f",
+    "src/yorunge/adapters/configuration.py": "d780909797218a2aacff70248108bb04cf29b79b34f1950f13a42c253e9cfc0f",
+    "src/yorunge/adapters/data_migrations.py": "f83e0db4eca099d61bccfcf686a707a8a521e8bd1ca08e7ac7ba0e49998d1fec",
+    "src/yorunge/adapters/diagnostics.py": "a0ea8e555dbd0f9b9faaeb05529e3d812934f414362e9d805da50e7dd534106c",
+    "src/yorunge/adapters/execution_store.py": "56cbb7ac6797edfe149834a5aee257c7d452e6cb9affb0497ebf76a552ec0cae",
+    "src/yorunge/adapters/expiry_fences.py": "1c683ff1db04412c9316d82482980cfa104ca9bc3859a9e0e1ff1e201a058d64",
+    "src/yorunge/adapters/files.py": "a76fb1a2e4d5e3bdaa9bc0bd26ac7edb5c4f09e0e6b5c0c6b66a6d49906fa513",
+    "src/yorunge/adapters/identity.py": "a75ccb4c5001085a5e4212f60b22d8540ef27c981ec4b2d982d6361e5f5537dc",
+    "src/yorunge/adapters/input_files.py": "21f2d79b6542746c838eaf18aac8af7d7c6e3e72b223ad5500a0f0a8bfc9e424",
+    "src/yorunge/adapters/local_files.py": "e5f01a54a64b28d458d1145b9e974b88e57ba179daf3c72e180ca3de243a007f",
+    "src/yorunge/adapters/maintenance.py": "ab628310152c8d29f4961711c7d9fd9b0ce52682cd5fd919d015b9f7d9cef713",
+    "src/yorunge/adapters/migration_capability_expiries_v1.py": "b1ffc8e3ce1dc6fc04c2afe4c2aa50ed6cd2e26deaf0b07ef0caab6fc0c83d18",
+    "src/yorunge/adapters/operation_maintenance.py": "331c5b2e610fabfd684e5e26b6dcebdc71878c8b5cf2f0f8861145846b580f8f",
+    "src/yorunge/adapters/operation_repository.py": "aa42699735b7c82f0e825c46995a8add879f1b3c7f7934cbb379f68384012a5d",
+    "src/yorunge/adapters/operation_store.py": "820b2535ddfc22adbf66eeea26ff04250e3e9b70ab15f6b8a3b9285c9fcd0838",
+    "src/yorunge/adapters/secrets.py": "68d8b5eda388646539ba14952094a68305e699512566b436420e4e503206e967",
+    "src/yorunge/adapters/state.py": "44be5d6faed805c2238621d4e27fc7619220234dd400810020331ad81671fdb4",
+    "src/yorunge/adapters/state_schema.py": "e47adb20f583a41adc546d841428745c06c0725d702d190be217d50993336e2a",
+    "src/yorunge/adapters/validation_memo.py": "6af9717d961c2096e91a1ec99dd03cddaa85efc50549b8c5d8caaa7e1b07772f",
+    "src/yorunge/api.py": "5ae0a5423e5ea22251de1d69f218556fa4dea5057cec2d26747baa0bb8b4416a",
+    "src/yorunge/application/__init__.py": "989afd15f9cd446488edca28782945c2d75120c926ef02f5565e5c5d99b36a3f",
+    "src/yorunge/application/capabilities.py": "21429721576274f0c45570d7b4a8f9832a65028b06b950e2c1f3c6fa137b352c",
+    "src/yorunge/application/configuration.py": "eb75a9d659a58871e9055da1ae49db3e246a7713adb0f26c75dae725bc3934af",
+    "src/yorunge/application/credentials.py": "630756208402f5bdcd2b5eb65e5e9fc069e89d7cdcebd5d8c914dd695e957e60",
+    "src/yorunge/application/execution.py": "321eafd7da9244d169313c285d76b2faf96c2b042b34392beb10f6381c139e80",
+    "src/yorunge/application/operation_observations.py": "a1028f52917bfaaa702b83d6d1959d69959c0275e3d75aa02214bcd0710649df",
+    "src/yorunge/application/operations.py": "0d2bd75c49b9a09cfe4da52ed54b56250977277513deb9004a509092264bca5f",
+    "src/yorunge/application/planning.py": "467ab2da49a1661b3b980a14026ca4d20a4333f2b21469866d7bce888bc34fad",
+    "src/yorunge/cli/__init__.py": "b24a461f9841ccb57d8fbd810cfa7f1bbf1ae6d4d350e87f8ab74a650538b182",
+    "src/yorunge/domain/__init__.py": "6c05023f640bf9a27d597d0ad3ed0c8f7fbb165d2900b2d10f3e6d5fa2ba5e82",
+    "src/yorunge/domain/capabilities.py": "50ced1a0b8abc839e01108453fd960785e7e44ebfccbdf7a5b78f741a7938fab",
+    "src/yorunge/domain/configuration.py": "a43bcf6db87a5c7ef4c61c3767517d95f237d049e08fa23182d4956b3f32c517",
+    "src/yorunge/domain/credentials.py": "db179169ecd933a42106e5f37578972096c88c3f80caa240dd84588476c5c7f3",
+    "src/yorunge/domain/errors.py": "dfd0a58d7e7aec275964e8c2903f0cc256da2ff22b622934d8e8610062f6383a",
+    "src/yorunge/domain/execution.py": "1e8ce4e880cc0f4a22ad61de4d7fbf0f446f14a9e1db8930d92159c4323d33f8",
+    "src/yorunge/domain/maintenance.py": "98c1de77bae44b545d3f68ef00f06b31835e44b0bd484eef2e170b8c00e35db2",
+    "src/yorunge/domain/models.py": "571c4174c148239412021fd9ad4b470d3199cac898661acae7d77ed8401695c8",
+    "src/yorunge/domain/operations.py": "d0c1ee6a3d95bd5414e45649b181161be291b2177bc6e55ad5d341f9dbfb7ecc",
+    "src/yorunge/domain/state.py": "5ba12d0efa5e961a59d577f65bcc06e08858523ea91f886926434765801535fd",
+    "tests/conftest.py": "23d5cbcb27fd0dd273ae30a2edc66602143c12ab4f3afd57fe3866aeaaf170e9",
+    "tests/fixtures/seed_operation_state.py": "8c6c1be900e35f5e6fd12e31c82f8743dd6bbd0ac6e06d99a3e8301a4faf8957",
+    "tests/fixtures/seed_migration_state.py": "50149ebdf073e375522222959a903730c21d41a07f9128d6a9ae089ea2e76386",
+    "tests/fixtures/seed_capability_cache.py": "d2154a88decb02a2f1d47a8093ae04195eb43def3dcdabed189054c79d3a11aa",
+    "docs/research/p01-4-operation-budget-probe.py": "00798d0107cfa1ac11c20befd30c52e4a99cff90dc5798cdc757c07e2b2cec24"
+  },
+  "source_unchanged": true,
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "cpu": "Apple M5 Max",
+  "python": "3.11.18 (main, Oct 25 2026, 19:41:29) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "sqlite": "3.54.1",
+  "disk_type": "SSD/APFS",
+  "installation": {
+    "label": "editable .venv; repository frozen uv environment",
+    "interpreter": ".venv/bin/python",
+    "import_origin": "src/yorunge/__init__.py"
+  },
+  "measurement_note": "fresh workers; setup and row hashes outside call; OS/disk caches not flushed; all samples retained",
+  "runs": [
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 470.851375,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56197120,
+      "baseline_peak_rss_bytes": 43974656,
+      "vm_progress_callbacks": 1085,
+      "vm_nominal_step_quanta": 1085000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 1085,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 470.851375,
+          "progress_callbacks": 1085
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 469.017209,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.010458,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 547.870958,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56246272,
+      "baseline_peak_rss_bytes": 43827200,
+      "vm_progress_callbacks": 895,
+      "vm_nominal_step_quanta": 895000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 895,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 547.870958,
+          "progress_callbacks": 895
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 463.449167,
+          "progress_callbacks": 829
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.006083,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 1123.239625,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 1988608
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 292778
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "f789cf6cea492f40c0944de4379449244f136d23ec13b856f91537e69deb736c",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "99c4f0f3101d2dedc33ad1d9b78bb1e3f8c2e51eae2357907464d646a9a40813",
+          "execution_approvals": "a237e2860342d68fdd5cc8f074c95d9e70520970fb3020cc6782c97c39e18c3b"
+        },
+        "leases": 0,
+        "states": {
+          "unknown": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 60997632,
+      "baseline_peak_rss_bytes": 44023808,
+      "vm_progress_callbacks": 2496,
+      "vm_nominal_step_quanta": 2496000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 2496,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 23648,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 1123.239625,
+          "progress_callbacks": 2496
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 490.804,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 135.520916,
+          "progress_callbacks": 648
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 15.525,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 474.866,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56197120,
+      "baseline_peak_rss_bytes": 43941888,
+      "vm_progress_callbacks": 1085,
+      "vm_nominal_step_quanta": 1085000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 1085,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 474.866,
+          "progress_callbacks": 1085
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 473.005084,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.016375,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 546.2775,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56328192,
+      "baseline_peak_rss_bytes": 43941888,
+      "vm_progress_callbacks": 895,
+      "vm_nominal_step_quanta": 895000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 895,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 546.2775,
+          "progress_callbacks": 895
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 462.891458,
+          "progress_callbacks": 829
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.006791,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 1106.412125,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 1988608
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 292778
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "d6c5a5358efaec01d49af0360ba0a7c07da24cb61b0b8cc18d78fe4a61a9152b",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "2e3633e7396fb3f7aa3b37bc3c14944958df0c2300a2367cb039c60991790786",
+          "execution_approvals": "f229bc90c63f44a10cecf20572e3200e4e893cb4855c08b5aa2fc99f02e85bda"
+        },
+        "leases": 0,
+        "states": {
+          "unknown": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 60784640,
+      "baseline_peak_rss_bytes": 44007424,
+      "vm_progress_callbacks": 2496,
+      "vm_nominal_step_quanta": 2496000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 2496,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 23648,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 1106.412125,
+          "progress_callbacks": 2496
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 476.350125,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 135.090208,
+          "progress_callbacks": 648
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 16.17575,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 471.437584,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56197120,
+      "baseline_peak_rss_bytes": 43859968,
+      "vm_progress_callbacks": 1085,
+      "vm_nominal_step_quanta": 1085000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 1085,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 471.437584,
+          "progress_callbacks": 1085
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 469.531167,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.01275,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 551.78925,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 56328192,
+      "baseline_peak_rss_bytes": 44056576,
+      "vm_progress_callbacks": 895,
+      "vm_nominal_step_quanta": 895000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 895,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 551.78925,
+          "progress_callbacks": 895
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 467.53675,
+          "progress_callbacks": 829
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.0055,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 1107.538666,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 3331231
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2178048
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 280490
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 1024,
+        "states": {
+          "running": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 2673664
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 576512
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 1988608
+          },
+          "operation_attempts": {
+            "rows": 1024,
+            "payload_bytes": 292778
+          },
+          "operation_events": {
+            "rows": 3072,
+            "payload_bytes": 946176
+          },
+          "operation_outcomes": {
+            "rows": 0,
+            "payload_bytes": 0
+          }
+        },
+        "hashes": {
+          "operation_events": "aaaa8597e53d45ac452e0dcde7692d61cc564f7890946a57844d614c8b0091a6",
+          "operation_outcomes": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "execution_plans": "58b391c2d0702d5170b5ca8f05cdca333470cd0a7d11425aae9b4456913a205b",
+          "execution_approvals": "235458f80917cff5e0f6ca37fc02431f7bddb7aeeb6f631f1b3df188f2c6f1b7"
+        },
+        "leases": 0,
+        "states": {
+          "unknown": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 60637184,
+      "baseline_peak_rss_bytes": 43925504,
+      "vm_progress_callbacks": 2496,
+      "vm_nominal_step_quanta": 2496000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 2496,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 23648,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 1107.538666,
+          "progress_callbacks": 2496
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 477.367458,
+          "progress_callbacks": 1084
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 134.264375,
+          "progress_callbacks": 648
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 16.164542,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "normal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 1024,
+        "events": 3072,
+        "outcomes": 0
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3730.45075,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76333056,
+      "baseline_peak_rss_bytes": 43810816,
+      "vm_progress_callbacks": 15616,
+      "vm_nominal_step_quanta": 15616000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15616,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3730.45075,
+          "progress_callbacks": 15616
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3728.473708,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.016417,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3749.244208,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76070912,
+      "baseline_peak_rss_bytes": 43909120,
+      "vm_progress_callbacks": 12304,
+      "vm_nominal_step_quanta": 12304000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12304,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3749.244208,
+          "progress_callbacks": 12304
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3645.246792,
+          "progress_callbacks": 12082
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.008584,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4620.873875,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "402e3d4b2d2cd9df0e4ca7ae68da969877932137770db8f6fe2a09e65ae0cbf9",
+          "operation_outcomes": "54c16184d06a032d0cb662b3eed1d861c3243d98f455666542c03fb97502cb45",
+          "execution_plans": "5e7feea74a8d75d8cab266a12f0e2b04959781aa188bdc5c37ad76b91663bee1",
+          "execution_approvals": "fc4563377a1f95ac2b62a93ace57438002bb4f936c833c4062ef24661aee0905"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76808192,
+      "baseline_peak_rss_bytes": 44007424,
+      "vm_progress_callbacks": 31317,
+      "vm_nominal_step_quanta": 31317000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31317,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 17504,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4620.873875,
+          "progress_callbacks": 31317
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3695.120542,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 739.102917,
+          "progress_callbacks": 15145
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 21.202834,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3664.403792,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 75923456,
+      "baseline_peak_rss_bytes": 44056576,
+      "vm_progress_callbacks": 15616,
+      "vm_nominal_step_quanta": 15616000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15616,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3664.403792,
+          "progress_callbacks": 15616
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3662.385792,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.015667,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3738.238375,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76283904,
+      "baseline_peak_rss_bytes": 43925504,
+      "vm_progress_callbacks": 12304,
+      "vm_nominal_step_quanta": 12304000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12304,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3738.238375,
+          "progress_callbacks": 12304
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3634.6925,
+          "progress_callbacks": 12082
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.009167,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4598.513125,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "4d1e39f1e565d16ec6abf3a0507b7b112065c966a90f4f867925fa2589b2befb",
+          "operation_outcomes": "3ff27ed9d07919d2674467658d5a3f024c4348d5014fffa006a297cc1a776eb2",
+          "execution_plans": "75fe9638f4581070b9b4a40ebae9e5d56afa301a49f74dce00e4e732ed363069",
+          "execution_approvals": "70141cde9fec574648fb8bb9fe47c7bd044b81514bca6af44f948331899a9143"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76398592,
+      "baseline_peak_rss_bytes": 43958272,
+      "vm_progress_callbacks": 31317,
+      "vm_nominal_step_quanta": 31317000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31317,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 17504,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4598.513125,
+          "progress_callbacks": 31317
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3679.946292,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 737.844792,
+          "progress_callbacks": 15145
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 18.011125,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3692.37325,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 75710464,
+      "baseline_peak_rss_bytes": 43810816,
+      "vm_progress_callbacks": 15616,
+      "vm_nominal_step_quanta": 15616000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15616,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3692.37325,
+          "progress_callbacks": 15616
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3690.230625,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.013167,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3709.567084,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 75874304,
+      "baseline_peak_rss_bytes": 44056576,
+      "vm_progress_callbacks": 12304,
+      "vm_nominal_step_quanta": 12304000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12304,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3709.567084,
+          "progress_callbacks": 12304
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3604.878625,
+          "progress_callbacks": 12082
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.00875,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4672.947083,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2042880
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 262144,
+            "payload_bytes": 85798912
+          },
+          "operation_outcomes": {
+            "rows": 1024,
+            "payload_bytes": 169984
+          }
+        },
+        "hashes": {
+          "operation_events": "89f20a5e126d524089039d889c605f283c0d42a633fa3de04b53c69bbf83e1f0",
+          "operation_outcomes": "e2bf91a44f222423ab64bbf6bf3d738aeb37a168dc78a475e3e5ee606d614653",
+          "execution_plans": "8204dbaf2bafc933a42113de7b13420b900c01dd17468c0f8724a6ce896347fb",
+          "execution_approvals": "8e88b237bc5f9294512b41655eb64198c45057e439cbd2ac10ec0877333ba1f3"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 1024
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76742656,
+      "baseline_peak_rss_bytes": 44040192,
+      "vm_progress_callbacks": 31317,
+      "vm_nominal_step_quanta": 31317000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31317,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 17504,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4672.947083,
+          "progress_callbacks": 31317
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3716.765,
+          "progress_callbacks": 15615
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 771.709667,
+          "progress_callbacks": 15145
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 20.14675,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "terminal",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 262144,
+        "outcomes": 1024
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3696.540625,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76333056,
+      "baseline_peak_rss_bytes": 43925504,
+      "vm_progress_callbacks": 15577,
+      "vm_nominal_step_quanta": 15577000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15577,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3696.540625,
+          "progress_callbacks": 15577
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3694.604,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.014875,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3713.085958,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76218368,
+      "baseline_peak_rss_bytes": 44023808,
+      "vm_progress_callbacks": 12270,
+      "vm_nominal_step_quanta": 12270000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12270,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3713.085958,
+          "progress_callbacks": 12270
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3601.223,
+          "progress_callbacks": 12049
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.00825,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4927.166,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2037248
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4487082
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "66dfaf3a4b9db350cf014216738bab866b9b1c79c4b1c290bca8d38222414991",
+          "operation_outcomes": "a5935cd25156405ee17189f03771bab5391f837e18020f18451a4a6a8c5449fe",
+          "execution_plans": "347923979c57444c9a10beba5d6bbb44e58fd4028a15461156d653ac385d7273",
+          "execution_approvals": "74adb2a99c6da2a62c63c9dc5ec2e9c328a261ed449e0f73e534d164354d94d9"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 512,
+          "unknown": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 87310336,
+      "baseline_peak_rss_bytes": 43958272,
+      "vm_progress_callbacks": 31509,
+      "vm_nominal_step_quanta": 31509000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31509,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 20576,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4927.166,
+          "progress_callbacks": 31509
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3700.31075,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 818.601084,
+          "progress_callbacks": 15105
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 30.926625,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 1,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3735.609708,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76300288,
+      "baseline_peak_rss_bytes": 43909120,
+      "vm_progress_callbacks": 15577,
+      "vm_nominal_step_quanta": 15577000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15577,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3735.609708,
+          "progress_callbacks": 15577
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3733.568875,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.014208,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3758.497084,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 75956224,
+      "baseline_peak_rss_bytes": 44171264,
+      "vm_progress_callbacks": 12270,
+      "vm_nominal_step_quanta": 12270000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12270,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3758.497084,
+          "progress_callbacks": 12270
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3652.397334,
+          "progress_callbacks": 12049
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.009375,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4936.057917,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2037248
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4487082
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "7883577428ba1cdbfa683a59dfd15e63843fcf492770cdd4de709ca0975df305",
+          "operation_outcomes": "d1e6a164938d6e4ecbf5880cc8d9eb12e7f9bee13cbad33ac27a1a3a144dc6b8",
+          "execution_plans": "00055203547d25b75bb816795249a4588187a6d2f1833e2dfcc5af2e2d3c79a8",
+          "execution_approvals": "5e32472dcc53922a0fa6326b38379e18a8dd80126a29e588d6411259fe03d1b7"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 512,
+          "unknown": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 87719936,
+      "baseline_peak_rss_bytes": 43827200,
+      "vm_progress_callbacks": 31509,
+      "vm_nominal_step_quanta": 31509000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31509,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 20576,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4936.057917,
+          "progress_callbacks": 31509
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3684.514792,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 820.115709,
+          "progress_callbacks": 15105
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 33.165875,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 2,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "full",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3716.454625,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76529664,
+      "baseline_peak_rss_bytes": 44285952,
+      "vm_progress_callbacks": 15577,
+      "vm_nominal_step_quanta": 15577000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 15577,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 8259,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3716.454625,
+          "progress_callbacks": 15577
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3714.30175,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.013875,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "preview",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 3725.259708,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 76005376,
+      "baseline_peak_rss_bytes": 44072960,
+      "vm_progress_callbacks": 12270,
+      "vm_nominal_step_quanta": 12270000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 12270,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 10298,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 3725.259708,
+          "progress_callbacks": 12270
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3620.09425,
+          "progress_callbacks": 12049
+        },
+        {
+          "name": "rollback",
+          "outcome": "ok",
+          "elapsed_ms": 0.008291,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    },
+    {
+      "action": "reset",
+      "outcome": "ok",
+      "call_budget_seconds": 5,
+      "elapsed_ms": 4961.403375,
+      "within_wall_budget": true,
+      "before": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 1024,
+            "payload_bytes": 33554432
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2150912
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4480938
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 512,
+        "states": {
+          "running": 512,
+          "succeeded": 512
+        }
+      },
+      "after": {
+        "volumes": {
+          "capability_cache": {
+            "rows": 0,
+            "payload_bytes": 0
+          },
+          "execution_plans": {
+            "rows": 1024,
+            "payload_bytes": 67108864
+          },
+          "execution_approvals": {
+            "rows": 1024,
+            "payload_bytes": 619520
+          },
+          "operations": {
+            "rows": 1024,
+            "payload_bytes": 2037248
+          },
+          "operation_attempts": {
+            "rows": 16384,
+            "payload_bytes": 4487082
+          },
+          "operation_events": {
+            "rows": 261632,
+            "payload_bytes": 85628416
+          },
+          "operation_outcomes": {
+            "rows": 512,
+            "payload_bytes": 84992
+          }
+        },
+        "hashes": {
+          "operation_events": "edeabd9e25d29064a4c836d3aa9f7d7b5bf003d700f25e29eebd65988d1495c9",
+          "operation_outcomes": "3ffd4b00f0269c4d87ca706d700cb3ca7b2f3959a8038c2ba98a17a0ad22b597",
+          "execution_plans": "37bc2878a3036ec5013201f81c986417f845390811f6d4bc06818c9057aad8ae",
+          "execution_approvals": "0cf6f5f8dfe51976a9f8b310be855aec702d7266a5d5915c5ba22da48ff19f5c"
+        },
+        "leases": 0,
+        "states": {
+          "succeeded": 512,
+          "unknown": 512
+        }
+      },
+      "immutable_history_preserved": true,
+      "immutable_volumes_preserved": true,
+      "row_counts_preserved": true,
+      "reset_effect_confirmed": true,
+      "peak_rss_bytes": 87343104,
+      "baseline_peak_rss_bytes": 43876352,
+      "vm_progress_callbacks": 31509,
+      "vm_nominal_step_quanta": 31509000,
+      "vm_count_method": "original progress callbacks times their unchanged quantum; sampled, not exact instructions",
+      "original_progress_intervals": [
+        1000
+      ],
+      "deadline_calls": 31509,
+      "original_deadline_callback_preserved": true,
+      "sql_statements": 20576,
+      "events": [
+        {
+          "name": "use_case",
+          "outcome": "ok",
+          "elapsed_ms": 4961.403375,
+          "progress_callbacks": 31509
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 3706.780375,
+          "progress_callbacks": 15576
+        },
+        {
+          "name": "full_validation",
+          "outcome": "ok",
+          "elapsed_ms": 840.675583,
+          "progress_callbacks": 15105
+        },
+        {
+          "name": "commit",
+          "outcome": "ok",
+          "elapsed_ms": 33.294333,
+          "progress_callbacks": 0
+        }
+      ],
+      "layout": "mixed",
+      "sample": 3,
+      "fixture_counts": {
+        "operations": 1024,
+        "attempts": 16384,
+        "events": 261632,
+        "outcomes": 512
+      }
+    }
+  ]
+}

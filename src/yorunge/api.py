@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from yorunge.adapters.execution_store import PlanRepository
     from yorunge.adapters.state import Store
     from yorunge.application.execution import ExecutionBudget, ExecutionUseCases, ExecutionValidator
+    from yorunge.application.operation_observations import ReadPort
     from yorunge.application.operations import OperationCoordinator, StartPort
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
         ExecutionValidity,
         ForgottenExecutionPlan,
     )
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
     from yorunge.domain.state import StateInfo
 
 
@@ -80,7 +81,7 @@ def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
 
 def preview_identity_reset(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_reset
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_reset(state_dir))
 
@@ -96,7 +97,7 @@ def preview_state_restore(
     backup_dir: Path, *, state_dir: Path | None = None
 ) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_restore
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](
         data=preview_restore(backup_dir, state_dir),
@@ -118,7 +119,7 @@ def restore_state(
 
 def preview_state_recovery(*, state_dir: Path | None = None) -> Result[MaintenancePreview]:
     from yorunge.adapters.maintenance import preview_recovery
-    from yorunge.domain.maintenance import MaintenancePreview
+    from yorunge.domain.maintenance import Preview as MaintenancePreview
 
     return Result[MaintenancePreview](data=preview_recovery(state_dir))
 
@@ -703,6 +704,7 @@ def _operation_session(
     profile: str | None = None,
     project: str | None = None,
     state_dir: Path | None = None,
+    observer: ReadPort | None = None,
 ) -> Iterator[OperationCoordinator]:
     """Trusted composition only; no public run, backend registration or caller evidence."""
     import os
@@ -712,6 +714,7 @@ def _operation_session(
     from yorunge.adapters.operation_repository import StateOperations
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
+    from yorunge.application.operation_observations import ReadContext
     from yorunge.application.operations import OperationCoordinator
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
@@ -723,7 +726,7 @@ def _operation_session(
         repository = StateOperations(store, (), budget)
         snapshot: tuple[Context, tuple[BoundCredential, ...]] | None = None
 
-        def current(plan: ExecutionPlan) -> ExecutionValidity:
+        def captured(plan: ExecutionPlan) -> tuple[Context, tuple[BoundCredential, ...]]:
             nonlocal snapshot
             if plan.plan_id != plan_id:
                 raise YorungeError("invalid_request")
@@ -734,13 +737,58 @@ def _operation_session(
             context, credentials = snapshot
             repository.credentials = credentials
             coordinator.credentials = credentials
+            return context, credentials
+
+        def current(plan: ExecutionPlan) -> ExecutionValidity:
+            context, credentials = captured(plan)
             plans = _execution_repository(store, credentials, budget)
             if plans.read(plan_id) != plan:
                 raise YorungeError("state_changed")
             use_cases = ExecutionUseCases(plans, DescriptorInputs(), _execution_validator(), budget)
             return use_cases.validate(plan, context, credentials)
 
-        coordinator = OperationCoordinator(repository, current, backend, (), budget, os.getpid)
+        def read_context(plan: ExecutionPlan) -> ReadContext:
+            context, credentials = captured(plan)
+            from yorunge.adapters.operation_store import plan_authorities
+
+            authorities = []
+            for authority in plan_authorities(plan):
+                if (context.account_id, context.project_id) != (
+                    authority.account_id,
+                    authority.project_id,
+                ):
+                    raise YorungeError("state_changed")
+                if authority.service_id == "local":
+                    authorities.append(authority)
+                    continue
+                bound = next(
+                    (
+                        item
+                        for item in credentials
+                        if (
+                            item.credential.reference.service_id,
+                            item.credential.target.service_origin,
+                            item.credential.target.api_base_path,
+                        )
+                        == (authority.service_id, authority.service_origin, authority.api_base_path)
+                    ),
+                    None,
+                )
+                if bound is None:
+                    raise YorungeError("credential_unavailable")
+                authorities.append(
+                    authority.model_copy(
+                        update={
+                            "credential_id": bound.identity.credential_id,
+                            "credential_revision": bound.identity.credential_revision,
+                        }
+                    )
+                )
+            return ReadContext(tuple(authorities), credentials)
+
+        coordinator = OperationCoordinator(
+            repository, current, backend, (), budget, os.getpid, observer, read_context
+        )
         yield coordinator
 
 

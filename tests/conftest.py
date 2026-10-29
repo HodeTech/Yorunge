@@ -216,7 +216,19 @@ def execution_clock(monkeypatch):
 
 
 @pytest.fixture
-def admitted_operation(tmp_path, execution_fixture, execution_clock):
+def operation_setup(tmp_path, execution_fixture, execution_clock):
+    from tests.fixtures.operation_backend import ProcessBackend
+    from yorunge import api
+
+    state = tmp_path / "state"
+    plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
+    approval = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=state).data
+    assert approval.effective
+    return state, plan, ProcessBackend(tmp_path / "effects")
+
+
+@pytest.fixture
+def admitted_operation(tmp_path, execution_fixture, execution_clock, request):
     """Real private DB record; no fixture task is registered in the product."""
     from datetime import timedelta
     from uuid import uuid4
@@ -235,6 +247,16 @@ def admitted_operation(tmp_path, execution_fixture, execution_clock):
     )
 
     root = tmp_path / "state"
+    delivery_required = getattr(request, "param", False)
+    if not delivery_required:
+        execution_fixture.change = lambda assessment: assessment.model_copy(
+            update={
+                "effects": tuple(
+                    effect.model_copy(update={"kind": "local_read"})
+                    for effect in assessment.effects
+                )
+            }
+        )
     plan = api.prepare_execution_plan(task="llm.train", state_dir=root).data.plan
     approval = api.approve_execution_plan(plan.plan_id, plan.digest, state_dir=root).data.record
     identifier, attempt_id = str(uuid4()), str(uuid4())
@@ -249,7 +271,7 @@ def admitted_operation(tmp_path, execution_fixture, execution_clock):
         approval=approval,
         authorities=plan_authorities(plan),
         correlation=str(uuid4()),
-        delivery_required=False,
+        delivery_required=delivery_required,
     )
     summary = JobSummary(
         operation_id=identifier,
@@ -262,7 +284,7 @@ def admitted_operation(tmp_path, execution_fixture, execution_clock):
         updated_at=now,
         status="admitted",
         execution_status="not_started",
-        delivery_status="not_required",
+        delivery_status="pending" if delivery_required else "not_required",
         attempt_count=1,
         revision=1,
         clock_anomaly=False,
@@ -305,7 +327,7 @@ def admitted_operation(tmp_path, execution_fixture, execution_clock):
         clock_generation=plan.clock_generation,
         status="admitted",
         execution_status="not_started",
-        delivery_status="not_required",
+        delivery_status="pending" if delivery_required else "not_required",
         reason_code=None,
     )
     with open_store(root) as store:

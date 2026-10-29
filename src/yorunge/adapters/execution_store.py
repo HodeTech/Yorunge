@@ -7,6 +7,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Stamp, StateCache
@@ -26,6 +27,9 @@ from yorunge.domain.execution import (
     binding_digest,
 )
 from yorunge.domain.state import canonical_uuid
+
+if TYPE_CHECKING:
+    from yorunge.domain.operations import AdmissionAuthority
 
 PLAN_COLUMNS = "plan_id,digest,task,prepared_at,expires_at,status,payload"
 
@@ -61,24 +65,36 @@ class PlanValidation:
     expires_at: str
     status: str
     bound_digest: str
+    selection: tuple[str, str | None, str]
+    authorities: tuple[AdmissionAuthority, ...] | None
+    delivery_required: bool | None
+
+
+def describe_plan(plan: ExecutionPlan) -> PlanValidation:
+    from yorunge.adapters.operation_store import plan_authorities
+    from yorunge.domain.operations import requires_delivery
+
+    return PlanValidation(
+        plan.plan_id,
+        plan.digest,
+        plan.store_id,
+        plan.identity_epoch,
+        plan.clock_generation,
+        plan.prepared_at,
+        plan.expires_at,
+        plan.status,
+        binding_digest(plan),
+        (plan.selection.task, plan.selection.tool, plan.selection.execution),
+        plan_authorities(plan) if plan.status == "prepared" else None,
+        requires_delivery(plan) if plan.status == "prepared" else None,
+    )
 
 
 def plan_validation(row: tuple[object, ...]) -> PlanValidation:
     from yorunge.adapters.validation_memo import validated
 
     def build() -> PlanValidation:
-        plan = decode_plan(row)
-        return PlanValidation(
-            plan.plan_id,
-            plan.digest,
-            plan.store_id,
-            plan.identity_epoch,
-            plan.clock_generation,
-            plan.prepared_at,
-            plan.expires_at,
-            plan.status,
-            binding_digest(plan),
-        )
+        return describe_plan(decode_plan(row))
 
     return validated(PlanValidation, row, build)
 

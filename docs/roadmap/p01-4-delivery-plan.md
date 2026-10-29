@@ -1,6 +1,6 @@
 # P01-4 — Kalıcı koordinasyon ve yerel iş geçmişi
 
-**Durum:** ADR-0016 Accepted; adım 1/2 ikişer review turuyla kapandı, adım 3 başlıyor; paket kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
+**Durum:** ADR-0016 Accepted; adım 1/2 ikişer review turuyla kapandı, adım 3 kod/test/kaynak kabulü tamamlandı, review turları sırada; paket kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
 
 ## Paket ve korunacak teslim
 
@@ -41,4 +41,4 @@ Ardından current/faz/matris/modül/reference/README/changelog yalnız kanıtlı
 
 - Ön inceleme: [P01-4 hazırlık raporu](../research/p01-4-readiness-review.md).
 - Karar: 2026-10-29 kullanıcı yanıtı, doğrulanan düzeltmeler ve iki fresh tur sonrası ADR-0016 Accepted.
-- Uygulama: adım 1 şema/repository commit'i a73608a, birinci review fix'i 1049ab2; ikinci fresh tur ve doğrulanmış son fix'ler tamamlandı. [Kabul kaydı](../research/p01-4-implementation-validation.md#adım-1--ikinci-review-ve-kapanış). Adım 2 admission/lease/dispatch 7d75322, review fix'leri 2ba731e/ee7f7a3 ile iki fresh turda kapandı; 1.469 test geçti. Adım 3 recovery/terminal/reset başlıyor; P01-4b/paket henüz verified değil, PR açılmadı.
+- Uygulama: adım 1 şema/repository commit'i a73608a, birinci review fix'i 1049ab2; ikinci fresh tur ve doğrulanmış son fix'ler tamamlandı. [Kabul kaydı](../research/p01-4-implementation-validation.md#adım-1--ikinci-review-ve-kapanış). Adım 2 admission/lease/dispatch 7d75322, review fix'leri 2ba731e/ee7f7a3 ile iki fresh turda kapandı; 1.469 test geçti. Adım 3 recovery/terminal/reset kodu, 1.580 test ve 27/27 kaynak işlemi tamamlandı; iki fresh review turu sırada; P01-4b/paket henüz verified değil, PR açılmadı.

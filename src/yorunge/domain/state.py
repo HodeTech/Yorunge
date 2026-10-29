@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Literal
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from pydantic import ConfigDict, field_validator
 from yorunge.domain.models import Model
 
 
+@lru_cache(maxsize=4096)
 def canonical_uuid(value: str) -> str:
     parsed = UUID(value)
     if parsed.version != 4 or str(parsed) != value:

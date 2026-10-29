@@ -6,7 +6,8 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Any, Literal, Self
+from functools import lru_cache
+from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 from pydantic.config import ExtraValues
@@ -50,6 +51,7 @@ def timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+@lru_cache(maxsize=4096)
 def instant(value: str) -> datetime:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z", value, flags=re.ASCII):
         raise ValueError("canonical UTC required")
@@ -72,7 +74,9 @@ def _reject_constant(value: str) -> object:
     raise ValueError("finite JSON required")
 
 
-class WireModel(Model):
+class JsonWireModel(Model):
+    _scalar_json: ClassVar[bool] = False
+
     @classmethod
     def model_validate_json(
         cls,
@@ -87,7 +91,19 @@ class WireModel(Model):
         # Pydantic's JSON parser accepts duplicate keys; v2 wire does not.
         text = json_data if isinstance(json_data, str) else json_data.decode("utf-8")
         text.encode("utf-8", errors="strict")
-        json.loads(text, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+        decoded = json.loads(
+            text, object_pairs_hook=_unique_object, parse_constant=_reject_constant
+        )
+        if cls._scalar_json:
+            # Scalar-only records have identical strict Python/JSON field types.
+            return super().model_validate(
+                decoded,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
         return super().model_validate_json(
             text,
             strict=strict,
@@ -97,6 +113,8 @@ class WireModel(Model):
             by_name=by_name,
         )
 
+
+class WireModel(JsonWireModel):
     @field_validator("*", mode="after")
     @classmethod
     def unicode_text(cls, value: object) -> object:

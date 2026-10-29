@@ -1,6 +1,6 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-10-28. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-10-29. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
@@ -19,7 +19,8 @@
 - [PR #9 development merge kapanışı](p01-3-implementation-validation.md#pr-9-development-merge-kapanışı): kullanıcı merge’i, şema 5/V2 teslimi ve 1.304 test/iki temiz kurulum; [merge head ham başlangıç ölçümü](p01-3-followup-merged-startup.json) cache p95 218,223 ms ile başarısızdır. CI performans takibi açık kalır.
 - [Başlangıç CI güvenilirliği ve CLI bakım kabulü](startup-ci-reliability.md): izole frozen wheel ortamları, aynı-host AB/BA ölçümü, gerçek A/B ve A/A kontrolü; yerel kabul tamamlandı, Linux CI çıktıları P01-4 PR/merge akışında incelenecek.
 - [P01-4 uygulama öncesi inceleme](p01-4-readiness-review.md): üç bağımsız preflight, mevcut kod/Accepted sınırlar, operation/ownership ve jobs karar boşlukları; Proposed ADR-0016 ve ölçülebilir kart/plan hazırlığı, ürün kabulü değildir.
-- [P01-4 uygulama/kabul kaydı](p01-4-implementation-validation.md): kullanıcı review kapanışı ve Accepted ADR-0016; adım 1 gerçek şema/repository çalışması sürüyor, paket kabulü henüz tamamlanmadı.
+- [P01-4 uygulama/kabul kaydı](p01-4-implementation-validation.md): kullanıcı review kapanışı ve Accepted ADR-0016; adım 1 şema/repository ve adım 2 admission/lease/dispatch ikişer review turuyla kapandı; adım 3 uzlaştırma/reset/kaynak doğrulaması sürüyor, paket kabulü henüz tamamlanmadı.
+- [P01-4 operation bütçe probe'u](p01-4-operation-budget-probe.py): yeni sentetik normal/azami terminal/karma store'larda fresh süreç, özgün 5 s deadline/callback, wall/RSS ve örneklenmiş VM callback quanta kaydı; [ilk ham 27 işlem](p01-4-step-3-operation-budget.json); ürün ve review kabulü uygulama kaydında tutulur.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
 26 Ekim'deki öncül araştırma LLM/ForgeLM akışını öne almıştı. 27 Ekim kullanıcı talimatı Yörünge'yi EVREN kapsamlı yardımcı araç olarak konumlandırdı ve ForgeLM'i ilgili görevlerin seçilebilir varsayılanı yaptı. Güncel ürün yönü [ADR-0001](../decisions/0001-platform-companion.md) ve [ADR-0002](../decisions/0002-forgelm-default-open-tools.md) ile kayıtlıdır.
