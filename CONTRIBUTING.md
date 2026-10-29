@@ -21,7 +21,7 @@ Türkçe açıklama, İngilizce dosya/kimlik adları, UTF-8/LF ve göreli bağla
 
 ## Geliştirme ve doğrulama
 
-[Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. Ubuntu/Python 3.11 CI tanımı gerçek PR ve dal koşularıyla doğrulanır; yerel kontrol uzak CI koşmuş sayılmaz.
+[Python](docs/standards/python.md), [test](docs/standards/testing.md), [güvenlik](docs/standards/security.md), [performans](docs/standards/performance.md) ve [hata/çıktı](docs/standards/error-handling-observability.md) standartları uygulanır. Python 3.11+ hedeflenir; yerelde macOS/arm64 + CPython 3.11.18 doğrulandı. CI tanımı Linux/Python 3.11, Linux/Python 3.14 ve macOS/Python 3.11 hücrelerinde tam test, statik kontroller, build ve iki temiz kurulum çalıştırır. Zorunlu `offline-core` bu üç hücrenin tamamı başarılıysa geçer; failure/cancelled/skipped kabul edilmez. Başlangıç/jobs/raw stream bütçeleri yalnız referans Linux/Python 3.11 hücresinde seri çalışır. Tanım ve yerel test, uzak matrisin çalıştığına kanıt değildir; gerçek sonuç [kabul kaydına](docs/research/p01-remaining-implementation-validation.md) eklenir.
 
 Ajan alias'ları ve bunları sınayan fixture'lar gerçek göreli symlink gerektirir. Desteklenen tam geliştirme/test checkout ortamı macOS veya Linux'tur; Git symlink'leri normal dosyaya dönüştüren Windows checkout'ları doğrulanmamıştır ve bu kontrolü çalıştıramaz. Bu sınır runtime için Windows desteği kanıtı veya yeni bir runtime kısıtı değildir.
 
@@ -53,7 +53,7 @@ startup_fixture=$(mktemp -d .local/yorunge-startup.XXXXXX)
 
 `--uv` için gerçekten kullanılan uv executable yolunu verin. `uv.lock` geliştirme/runtime sürümleri ve hash'lerini sabitler; build backend'i `pyproject.toml` içinde sabittir. İlk kurulum/build paket indirmek için ağ kullanabilir; uygulama ve test senaryoları çevrimdışıdır. `uv build` wheel'i sdist'ten üretir. Dağıtım denetimi üyeleri izin listesiyle kontrol eder, her arşivi ayrı temiz ortama kurar, import kökenini ve konsol komutunu depo dışından doğrular. Build çıktısı `dist/` altında Git dışında kalır.
 
-Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye adı kök kırpılmadan denetlenir; mutlak/traversal/kanonik olmayan yol, yinelenen ad, dosya/dizin çakışması, link ve özel dosya reddedilir. Sdist'in tek kökü arşiv adıyla, wheel metadata dizini dağıtım/sürümle eşleşir. `dist/verification.jsonl` her başarılı temiz kurulum için arşiv adı/SHA-256/üye sayısı/köken/smoke sonucu taşır; komutun başarısı ve iki kayıt birlikte tam kabul kanıtıdır. Hatalı koşunun kısmi kaydı başarı sayılmaz. CI aynı kayıtları iş günlüğünde gösterir.
+Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye adı kök kırpılmadan denetlenir; mutlak/traversal/kanonik olmayan yol, yinelenen ad, dosya/dizin çakışması, link ve özel dosya reddedilir. Sdist'in tek kökü arşiv adıyla, wheel metadata dizini dağıtım/sürümle eşleşir. `dist/verification.jsonl` her başarılı temiz kurulum için arşiv adı/SHA-256/üye sayısı/köken ve basic/NDJSON/HTTP/stream/cache/execution/jobs smoke sonucunu taşır. HTTP/stream sınaması gerçek yerel TLS sunucusu ve ayrı `-I` runtime-only süreç kullanır; EVREN erişimi değildir. Komutun başarısı ve iki kayıt birlikte tam kabul kanıtıdır. Hatalı koşunun kısmi kaydı başarı sayılmaz. CI aynı kayıtları iş günlüğünde gösterir.
 
 ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` ile Python'un farklı ad seçmesine yol açan Unicode Path (`0x7075`) alternatif ad alanı ve bozuk extra metadata reddedilir; diğer düzgün metadata alanları korunur. Bu denetim bu deponun ürettiği paketler içindir, genel amaçlı arşiv çıkarıcı değildir.
 
@@ -66,6 +66,15 @@ CI ile aynı izole runtime kurulumunu ve eşli ölçümü yerelde çalıştırma
 ```
 
 Önceki bir kaynak checkout'u varsa `--baseline-project PATH` eklenir; aday ve taban tek host'ta AB/BA sırasıyla ölçülür. A/A kontrolü için `--baseline-project .` kullanılabilir. Helper her tarafın frozen runtime gereksinimleriyle ayrı wheel/venv ve yeni fixture oluşturur; hazırlık ölçülen süreç süresine dahil değildir. Test/profiler/büyük build işleri benchmark ile eşzamanlı çalıştırılmaz. Varsayılan disk bilgisi `unknown`'dır; gerçek ortam biliniyorsa `--disk-type`/`--cpu-label` verilir. Sonuç dosyası mevcutsa yeni bir ad seçilir; tekrar koşularından en hızlısını seçerek kabul verilmez. [Ölçüm ve kabul kuralları](docs/standards/performance.md#aynı-makinede-başlangıç-karşılaştırması) kanoniktir.
+
+Aynı aday runtime ile, önceki komut tamamlandıktan sonra jobs ve raw stream kabulünü ayrı ve yeni workspace/çıktılara seri çalıştırın:
+
+```sh
+.venv/bin/python scripts/benchmark-jobs.py --python .local/startup-check/candidate/env/bin/python --workspace .local/jobs-check --output dist/jobs.json --wheel .local/startup-check/candidate/dist/*.whl --disk-type unknown
+.venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
+```
+
+Jobs normal/yoğun list/show için ayrı ilk süreç, üç ısınma ve en az30 ölçülmüş süreç kullanır; sonuç doğruluğu süre dışında bağımsız doğrulanır. Raw stream ayrı TLS sunucusu ve kurulu istemci sürecinde 16/256/1024MiB okur; byte/SHA-256 ve native RSS high-water farkını kaydeder. Sunucu RSS'i istemciye eklenmez. [Bellek yöntemi ve sınırları](docs/standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) kanoniktir. Kaynak/kurulum/fixture değişirse ölçüm kabul edilmez. Üretilmiş JSON, [kanıt aracıyla](docs/standards/research-evidence.md) arşivlenir.
 
 ## Doğrulama seçimi
 

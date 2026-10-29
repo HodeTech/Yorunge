@@ -10,10 +10,11 @@ import json
 import math
 import os
 import re
+import statistics
 import sys
 import tempfile
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
@@ -21,6 +22,22 @@ MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
 MAX_ENTRIES = 256
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
+SHA256 = re.compile(r"[0-9a-f]{64}")
+STREAM_HASHES = {
+    16: "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+    256: "486cc817b95d853d3c357ff283b204c0144bd255e73fe2deb1389493b257e3c0",
+    1024: "2c06ade942ee3f17a048dd1064b2fab046a4bb95386d8bb41b68dc6711ac2af3",
+}
+INSTALL_CHECKS = (
+    "origin_verified",
+    "smoke",
+    "ndjson_smoke",
+    "http_smoke",
+    "stream_smoke",
+    "cache_smoke",
+    "execution_smoke",
+    "jobs_smoke",
+)
 MANIFEST = "evidence-manifest.json"
 INDEX = "evidence.md"
 
@@ -78,9 +95,440 @@ def research_directory(root: Path) -> Path:
 
 
 def number(value: object) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError("expected a finite measurement")
-    return float(value)
+    try:
+        result = float(value)
+    except OverflowError as error:
+        raise ValueError("expected a finite measurement") from error
+    if not math.isfinite(result):
+        raise ValueError("expected a finite measurement")
+    return result
+
+
+def closed(value: object, fields: str, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != set(fields.split()):
+        raise ValueError(f"invalid {label} fields")
+    return dict(value)
+
+
+def integer(value: object, *, minimum: int = 0) -> int:
+    if type(value) is not int or value < minimum:
+        raise ValueError("expected an integer measurement in range")
+    return value
+
+
+def text_value(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("expected nonempty evidence text")
+    return value
+
+
+def pattern_value(value: object, pattern: re.Pattern[str]) -> str:
+    if not isinstance(value, str) or pattern.fullmatch(value) is None:
+        raise ValueError("invalid evidence digest or identifier")
+    return value
+
+
+def flag(value: object, expected: bool) -> None:
+    if type(value) is not bool or value != expected:
+        raise ValueError("reported flag does not match evidence")
+
+
+def hash_map(value: object) -> dict[str, str]:
+    if not isinstance(value, dict) or not value:
+        raise ValueError("expected nonempty source hashes")
+    result = {}
+    for name, digest in value.items():
+        if (
+            not isinstance(name, str)
+            or not name
+            or name.startswith("/")
+            or "\\" in name
+            or any(part in {"", ".", ".."} for part in name.split("/"))
+        ):
+            raise ValueError("invalid source hash path")
+        result[name] = pattern_value(digest, SHA256)
+    return result
+
+
+def source_snapshot(value: object) -> dict[str, Any]:
+    source = closed(value, "commit source_sha256", "source snapshot")
+    pattern_value(source["commit"], COMMIT)
+    hashes = hash_map(source["source_sha256"])
+    if not any(name.startswith("src/yorunge/") and name.endswith(".py") for name in hashes):
+        raise ValueError("source snapshot has no product Python files")
+    return source
+
+
+def python_hashes(source: dict[str, Any], *, package_prefix: bool = False) -> dict[str, str]:
+    return {
+        name.removeprefix("src/" if package_prefix else "src/yorunge/"): digest
+        for name, digest in source["source_sha256"].items()
+        if name.startswith("src/yorunge/") and name.endswith(".py")
+    }
+
+
+def package_versions(value: object) -> dict[str, str]:
+    if not isinstance(value, dict) or not value:
+        raise ValueError("expected installed package versions")
+    for name, version in value.items():
+        text_value(name)
+        text_value(version)
+        if name.lower().replace("_", "-") in {"pytest", "ruff", "mypy", "types-pyyaml"}:
+            raise ValueError("measurement runtime contains development tools")
+    return dict(value)
+
+
+def runtime_path(value: object) -> PurePosixPath:
+    path = PurePosixPath(text_value(value))
+    if not path.is_absolute() or any(part in {".", ".."} for part in path.parts):
+        raise ValueError("runtime path must be absolute without traversal")
+    return path
+
+
+def canonical_runtime_path(value: object, os_name: str) -> PurePosixPath:
+    path = runtime_path(value)
+    if os_name.startswith(("Darwin", "macOS")):
+        # macOS resolves these system aliases in sys.prefix, but not sys.executable.
+        for alias in ("tmp", "var"):
+            base = PurePosixPath("/") / alias
+            if path.is_relative_to(base):
+                path = PurePosixPath("/private") / alias / path.relative_to(base)
+                break
+    return path
+
+
+def runtime_origin(value: object, prefix: PurePosixPath, os_name: str) -> bool:
+    return canonical_runtime_path(value, os_name).is_relative_to(
+        canonical_runtime_path(str(prefix), os_name)
+    )
+
+
+def stream_runtime(value: object, expected: dict[str, str]) -> dict[str, Any]:
+    runtime = closed(
+        value,
+        "prefix pid modules installed_source_sha256 installed_source_matches metadata packages "
+        "python python_executable isolated sqlite os machine",
+        "stream runtime",
+    )
+    integer(runtime["pid"], minimum=1)
+    prefix = runtime_path(runtime["prefix"])
+    origins = runtime["modules"]
+    if not isinstance(origins, dict) or "yorunge" not in origins:
+        raise ValueError("missing installed product module origins")
+    for name, origin in origins.items():
+        if not isinstance(name, str) or not (name == "yorunge" or name.startswith("yorunge.")):
+            raise ValueError("invalid product module origin name")
+        if not runtime_origin(origin, prefix, text_value(runtime["os"])):
+            raise ValueError("product module escaped its runtime prefix")
+    for name in ("metadata", "python_executable"):
+        if not runtime_origin(runtime[name], prefix, text_value(runtime["os"])):
+            raise ValueError("runtime metadata or interpreter escaped its prefix")
+    for name in ("python", "sqlite", "os", "machine"):
+        text_value(runtime[name])
+    package_versions(runtime["packages"])
+    actual = hash_map(runtime["installed_source_sha256"])
+    flag(runtime["installed_source_matches"], actual == expected)
+    if type(runtime["isolated"]) is not bool:
+        raise ValueError("runtime isolation flag must be boolean")
+    return runtime
+
+
+def stream_rss(run: dict[str, Any], native_unit: str) -> None:
+    baseline = integer(run["baseline_rss_bytes"], minimum=1)
+    peak = integer(run["peak_rss_bytes"], minimum=baseline)
+    if integer(run["extra_rss_bytes"]) != peak - baseline:
+        raise ValueError("extra RSS does not match baseline and peak")
+    if run["rss_native_unit"] != native_unit or native_unit != stream_native_unit(
+        run["runtime"]["os"]
+    ):
+        raise ValueError("native RSS unit does not match the runtime OS")
+    factor = 1024 if native_unit == "KiB" else 1
+    for name in ("baseline", "peak"):
+        native = number(run[name + "_rss_native"])
+        if native <= 0 or native * factor != run[name + "_rss_bytes"]:
+            raise ValueError("native RSS does not match byte measurement")
+
+
+def stream_server(run: dict[str, Any], size: int) -> bool:
+    server = closed(
+        run["server"],
+        "requests request_count connection_count peak_active_requests pid",
+        "stream server",
+    )
+    integer(server["pid"], minimum=1)
+    for name in ("request_count", "connection_count", "peak_active_requests"):
+        integer(server[name])
+        integer(run[name])
+        if run[name] != server[name]:
+            raise ValueError("server telemetry differs from copied counters")
+    requests = server["requests"]
+    if not isinstance(requests, list) or len(requests) > 16:
+        raise ValueError("invalid bounded server request telemetry")
+    for item in requests:
+        request = closed(item, "size_bytes sent_bytes completed", "stream request")
+        integer(request["size_bytes"], minimum=1)
+        integer(request["sent_bytes"])
+        if type(request["completed"]) is not bool:
+            raise ValueError("request completion must be boolean")
+    if len(requests) != server["request_count"]:
+        raise ValueError("server request count does not match telemetry")
+    expected = [
+        {"size_bytes": 32768, "sent_bytes": 32768, "completed": True},
+        {"size_bytes": size, "sent_bytes": size, "completed": True},
+    ]
+    return (
+        requests == expected
+        and 1 <= server["connection_count"] <= 2
+        and 1 <= server["peak_active_requests"] <= 2
+        and server["pid"] != run["runtime"]["pid"]
+    )
+
+
+def stream_byte_counts(run: dict[str, Any]) -> bool:
+    received = integer(run["received_bytes"])
+    largest = integer(run["max_chunk_bytes"])
+    chunks = integer(run["chunk_count"])
+    for name in ("stream_count", "warmup_requests", "measurement_requests"):
+        integer(run[name])
+    if received == 0:
+        if largest or chunks:
+            raise ValueError("empty stream has inconsistent chunk counters")
+    elif not (0 < largest <= received and 0 < chunks <= received <= chunks * largest):
+        raise ValueError("inconsistent stream chunk counters")
+    pattern_value(run["received_sha256"], SHA256)
+    return (
+        received == run["expected_bytes"]
+        and run["received_sha256"] == run["expected_sha256"]
+        and 0 < largest <= 32768
+        and all(
+            run[name] == 1 for name in ("stream_count", "warmup_requests", "measurement_requests")
+        )
+    )
+
+
+def stream_run(value: object, expected_source: dict[str, str], native_unit: str) -> dict[str, Any]:
+    run = closed(
+        value,
+        "size_bytes stream_count received_bytes received_sha256 baseline_rss_native "
+        "peak_rss_native rss_native_unit baseline_rss_bytes peak_rss_bytes extra_rss_bytes "
+        "elapsed_seconds max_chunk_bytes chunk_count warmup_requests measurement_requests "
+        "runtime size_mib expected_bytes expected_sha256 request_count connection_count "
+        "peak_active_requests server passed",
+        "stream run",
+    )
+    mib = integer(run["size_mib"], minimum=1)
+    size = integer(run["size_bytes"], minimum=1)
+    if mib not in STREAM_HASHES or size != mib * 1024 * 1024:
+        raise ValueError("unknown stream measurement size")
+    integer(run["expected_bytes"], minimum=1)
+    if run["expected_bytes"] != size or run["expected_sha256"] != STREAM_HASHES[mib]:
+        raise ValueError("stream expected bytes or fixed SHA-256 oracle differs")
+    runtime = stream_runtime(run["runtime"], expected_source)
+    stream_rss(run, native_unit)
+    if number(run["elapsed_seconds"]) <= 0:
+        raise ValueError("stream elapsed time must be positive")
+    bytes_ok, server_ok = stream_byte_counts(run), stream_server(run, size)
+    passed = (
+        bytes_ok
+        and server_ok
+        and run["extra_rss_bytes"] <= 67108864
+        and runtime["isolated"]
+        and runtime["installed_source_matches"]
+    )
+    flag(run["passed"], passed)
+    return run
+
+
+def stream_native_unit(os_name: str) -> str:
+    if os_name.startswith("Linux"):
+        return "KiB"
+    if os_name.startswith(("Darwin", "macOS")):
+        return "bytes"
+    raise ValueError("unsupported native RSS platform")
+
+
+def stream_method(value: object, os_name: str) -> dict[str, Any]:
+    method = closed(
+        value,
+        "rss_method rss_baseline rss_native_unit server_process_excluded consumer "
+        "server_generation client_process_per_size streams_per_client consumer_queue_chunks "
+        "backpressure phase_timeout_seconds pool_timeout_seconds limit",
+        "stream method",
+    )
+    native_unit = stream_native_unit(os_name)
+    required = {
+        "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_native_unit": native_unit,
+        "consumer": "incremental_sha256_and_count",
+        "server_generation": "repeating_0_to_255_bounded_32768_bytes",
+    }
+    if any(method[key] != expected for key, expected in required.items()):
+        raise ValueError("unsupported stream measurement method")
+    for name in ("server_process_excluded", "client_process_per_size"):
+        flag(method[name], True)
+    for name, expected in (("streams_per_client", 1), ("consumer_queue_chunks", 0)):
+        if integer(method[name]) != expected:
+            raise ValueError("unsupported stream concurrency method")
+    for name, expected in (("phase_timeout_seconds", 5), ("pool_timeout_seconds", 1)):
+        if number(method[name]) != expected:
+            raise ValueError("unsupported stream timeout method")
+    for name in ("rss_baseline", "backpressure", "limit"):
+        text_value(method[name])
+    return method
+
+
+def stream_provenance(value: object, source_commit: str) -> tuple[dict[str, str], bool]:
+    provenance = closed(
+        value,
+        "source_before source_after source_unchanged_during_measurement installed_source_matches",
+        "stream provenance",
+    )
+    before, after = (source_snapshot(provenance[key]) for key in ("source_before", "source_after"))
+    if before["commit"] != source_commit:
+        raise ValueError("source commit differs from source snapshot")
+    stable = provenance["source_unchanged_during_measurement"]
+    if type(stable) is not bool or (stable and before != after):
+        raise ValueError("source stability flag does not match snapshots")
+    return python_hashes(before), stable
+
+
+def stream_summary(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit environment provenance method limits "
+        "runs size_growth_diagnostic passed",
+        "stream report",
+    )
+    pattern_value(report["source_commit"], COMMIT)
+    env = closed(
+        report["environment"],
+        "os machine python python_executable sqlite packages cpu disk",
+        "stream environment",
+    )
+    for name in set(env) - {"packages"}:
+        text_value(env[name])
+    package_versions(env["packages"])
+    method = stream_method(report["method"], env["os"])
+    limits = closed(
+        report["limits"],
+        "extra_rss_bytes chunk_bytes connections total_deadline_seconds",
+        "stream limits",
+    )
+    expected_limits = {"extra_rss_bytes": 67108864, "chunk_bytes": 32768, "connections": 2}
+    if any(integer(limits[key]) != value for key, value in expected_limits.items()):
+        raise ValueError("stream acceptance limits changed")
+    if number(limits["total_deadline_seconds"]) != 120:
+        raise ValueError("stream total deadline changed")
+    expected, stable = stream_provenance(report["provenance"], report["source_commit"])
+    if not isinstance(report["runs"], list) or len(report["runs"]) != 3:
+        raise ValueError("exactly three stream sizes are required")
+    runs = [stream_run(item, expected, method["rss_native_unit"]) for item in report["runs"]]
+    if [run["size_mib"] for run in runs] != list(STREAM_HASHES):
+        raise ValueError("stream sizes must be unique and ordered 16, 256, 1024 MiB")
+    return stream_outcome(report, runs, stable, env, method)
+
+
+def stream_outcome(
+    report: dict[str, Any],
+    runs: list[dict[str, Any]],
+    stable: bool,
+    environment: dict[str, Any],
+    method: dict[str, Any],
+) -> dict[str, Any]:
+    growth = closed(report["size_growth_diagnostic"], "size_bytes extra_rss_bytes", "size growth")
+    for name in ("size_bytes", "extra_rss_bytes"):
+        values = growth[name]
+        if not isinstance(values, list) or any(type(value) is not int for value in values):
+            raise ValueError("invalid size growth diagnostic values")
+        if values != [run[name] for run in runs]:
+            raise ValueError("size growth diagnostic differs from stream measurements")
+    installed = all(run["runtime"]["installed_source_matches"] for run in runs)
+    flag(report["provenance"]["installed_source_matches"], installed)
+    same_runtime = all(
+        run["runtime"][key] == environment[key]
+        for run in runs
+        for key in ("os", "machine", "python", "python_executable", "sqlite", "packages")
+    )
+    passed = stable and installed and same_runtime and all(run["passed"] for run in runs)
+    flag(report["passed"], passed)
+    return {
+        "kind": "raw_stream_budget_v1",
+        "passed": passed,
+        "rss_method": method["rss_method"],
+        "rss_baseline": method["rss_baseline"],
+        "rss_native_unit": method["rss_native_unit"],
+        "source_unchanged_during_measurement": stable,
+        "installed_source_matches": installed,
+        "measurements": {
+            str(run["size_mib"]) + "MiB": {
+                key: run[key]
+                for key in (
+                    "received_bytes",
+                    "extra_rss_bytes",
+                    "baseline_rss_bytes",
+                    "peak_rss_bytes",
+                    "elapsed_seconds",
+                    "max_chunk_bytes",
+                    "chunk_count",
+                    "connection_count",
+                    "passed",
+                )
+            }
+            for run in runs
+        },
+    }
+
+
+def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit environment results passed",
+        "installation",
+    )
+    pattern_value(report["source_commit"], COMMIT)
+    if not isinstance(report["environment"], dict):
+        raise ValueError("installation environment must be an object")
+    results = report["results"]
+    if not isinstance(results, list) or len(results) != 2:
+        raise ValueError("one wheel and one sdist installation are required")
+    kinds = [installation_row(row) for row in results]
+    if set(kinds) != {"wheel", "sdist"}:
+        raise ValueError("installation artifacts must be unique wheel and sdist")
+    passed = all(
+        row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS[1:])
+        for row in results
+    )
+    flag(report["passed"], passed)
+    return {
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": passed,
+        "checks": check_counts(results, INSTALL_CHECKS),
+    }
+
+
+def installation_row(value: object) -> str:
+    row = closed(value, "archive sha256 members " + " ".join(INSTALL_CHECKS), "installation result")
+    archive = text_value(row["archive"])
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*", archive) is None or ".." in archive:
+        raise ValueError("invalid installation artifact filename")
+    kind = "wheel" if archive.endswith(".whl") else "sdist" if archive.endswith(".tar.gz") else None
+    if kind is None:
+        raise ValueError("unknown installation artifact type")
+    pattern_value(row["sha256"], SHA256)
+    integer(row["members"], minimum=1)
+    if type(row["origin_verified"]) is not bool:
+        raise ValueError("installation origin result must be boolean")
+    for name in INSTALL_CHECKS[1:]:
+        if not isinstance(row[name], str) or row[name] not in {
+            "passed",
+            "failed",
+            "not_run_unsupported_platform",
+        }:
+            raise ValueError("unknown installation smoke status")
+    return kind
 
 
 def measurement(value: dict[str, Any], *, startup: bool, rounded: bool = False) -> dict[str, Any]:
@@ -153,6 +601,156 @@ def jobs_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
     return {"kind": "jobs", "measurements": metrics}
 
 
+def jobs_runtime(value: object) -> dict[str, Any]:
+    runtime = closed(
+        value,
+        "python executable prefix platform machine sqlite packages product_origin product_version "
+        "console console_sha256 installed_source_sha256",
+        "jobs runtime",
+    )
+    prefix = runtime_path(runtime["prefix"])
+    for name in ("executable", "product_origin", "console"):
+        if not runtime_origin(runtime[name], prefix, text_value(runtime["platform"])):
+            raise ValueError("jobs runtime origin escaped its installed environment")
+    for name in ("python", "platform", "machine", "sqlite", "product_version"):
+        text_value(runtime[name])
+    pattern_value(runtime["console_sha256"], SHA256)
+    package_versions(runtime["packages"])
+    hash_map(runtime["installed_source_sha256"])
+    return runtime
+
+
+def jobs_artifact_metadata(provenance: dict[str, Any]) -> None:
+    for key in ("fixture_preparation_python", "fixture_preparation"):
+        text_value(provenance[key])
+    if provenance["wheel_sha256"] is not None:
+        pattern_value(provenance["wheel_sha256"], SHA256)
+        text_value(provenance["wheel_path"])
+    elif provenance["wheel_path"] is not None:
+        raise ValueError("jobs wheel path without wheel digest")
+
+
+def jobs_provenance(report: dict[str, Any]) -> dict[str, Any]:
+    provenance = closed(
+        report["provenance"],
+        "source_before source_after installed_before installed_after wheel_sha256 wheel_path "
+        "source_unchanged_during_measurement installed_unchanged_during_measurement "
+        "fixtures_unchanged_during_measurement unchanged isolated_python "
+        "fixture_preparation_python fixture_preparation",
+        "jobs provenance",
+    )
+    before, after = (source_snapshot(provenance[key]) for key in ("source_before", "source_after"))
+    if before["commit"] != report["source_commit"]:
+        raise ValueError("jobs source commit differs from snapshot")
+    installed_before, installed_after = (
+        jobs_runtime(provenance[key]) for key in ("installed_before", "installed_after")
+    )
+    flag(provenance["source_unchanged_during_measurement"], before == after)
+    flag(provenance["installed_unchanged_during_measurement"], installed_before == installed_after)
+    for key in ("fixtures_unchanged_during_measurement", "unchanged", "isolated_python"):
+        if type(provenance[key]) is not bool:
+            raise ValueError("jobs provenance flags must be boolean")
+    known_stable = (
+        before == after
+        and installed_before == installed_after
+        and provenance["fixtures_unchanged_during_measurement"]
+    )
+    # The producer retains the initial wheel hash, not a second wheel/fixture snapshot.
+    # A false unchanged flag can therefore record a real transient artifact change.
+    if provenance["unchanged"] and not known_stable:
+        raise ValueError("jobs unchanged flag contradicts retained snapshots")
+    jobs_artifact_metadata(provenance)
+    for source, installed in ((before, installed_before), (after, installed_after)):
+        expected = python_hashes(source, package_prefix=True)
+        if provenance["unchanged"] and installed["installed_source_sha256"] != expected:
+            raise ValueError("jobs installed Python bytes differ from source")
+    if report["environment"]["runtime"] != installed_before:
+        raise ValueError("jobs environment differs from installed provenance")
+    return provenance
+
+
+def jobs_run_checks(run: dict[str, Any], samples: int) -> bool:
+    closed(
+        run,
+        "layout action command first_process_ms warmups_ms samples_ms median_ms p95_ms budget_ms "
+        "passed typed_stdout_verified verified_processes stdout_sha256 expected_list_rows "
+        "expected_operation_id expected_plan_digest",
+        "jobs run",
+    )
+    if len(run["samples_ms"]) != samples or number(run["budget_ms"]) != 200:
+        raise ValueError("jobs sample count or acceptance budget differs")
+    if number(run["median_ms"]) != statistics.median(run["samples_ms"]):
+        raise ValueError("jobs median differs from all samples")
+    warmups = run["warmups_ms"]
+    if not isinstance(warmups, list) or len(warmups) != 3:
+        raise ValueError("jobs requires three warmup processes")
+    if any(number(value) <= 0 for value in [run["first_process_ms"], *warmups, *run["samples_ms"]]):
+        raise ValueError("jobs process times must be positive")
+    processes = integer(run["verified_processes"], minimum=1)
+    hashes = run["stdout_sha256"]
+    if processes != samples + 4 or not isinstance(hashes, list) or len(hashes) != processes:
+        raise ValueError("jobs output verification must cover every process")
+    for digest in hashes:
+        pattern_value(digest, SHA256)
+    if type(run["typed_stdout_verified"]) is not bool:
+        raise ValueError("jobs typed output verification must be boolean")
+    command = run["command"]
+    if not isinstance(command, list) or not command:
+        raise ValueError("jobs command must be recorded")
+    for part in command:
+        text_value(part)
+    return bool(run["typed_stdout_verified"])
+
+
+def modern_jobs_summary(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version kind source_commit samples_per_command method cold_method "
+        "validation_method "
+        "environment fixtures runs provenance passed",
+        "jobs report",
+    )
+    if type(report["schema_version"]) is not int or report["schema_version"] != 1:
+        raise ValueError("unsupported jobs report schema version")
+    pattern_value(report["source_commit"], COMMIT)
+    samples = integer(report["samples_per_command"], minimum=30)
+    for key in ("method", "cold_method", "validation_method"):
+        text_value(report[key])
+    if not isinstance(report["environment"], dict) or "runtime" not in report["environment"]:
+        raise ValueError("missing jobs environment runtime")
+    if not isinstance(report["fixtures"], dict) or set(report["fixtures"]) != {"normal", "dense"}:
+        raise ValueError("jobs requires normal and dense fixtures")
+    runs = report["runs"]
+    if not isinstance(runs, list) or len(runs) != 4:
+        raise ValueError("jobs requires four measurement groups")
+    summary = jobs_summary(runs)
+    if set(summary["measurements"]) != {"normal/list", "normal/show", "dense/list", "dense/show"}:
+        raise ValueError("jobs measurement groups differ from acceptance cases")
+    checked = [jobs_run_checks(run, samples) for run in runs]
+    provenance = jobs_provenance(report)
+    passed = (
+        provenance["unchanged"]
+        and provenance["isolated_python"]
+        and all(checked)
+        and all(run["passed"] for run in runs)
+    )
+    flag(report["passed"], passed)
+    summary.update(
+        {
+            key: provenance[key]
+            for key in (
+                "source_unchanged_during_measurement",
+                "installed_unchanged_during_measurement",
+                "fixtures_unchanged_during_measurement",
+                "unchanged",
+                "isolated_python",
+            )
+        }
+    )
+    summary["passed"] = passed
+    return summary
+
+
 def run_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {
         "kind": "migration" if "source_version" in runs[0] else "operation",
@@ -166,6 +764,10 @@ def run_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def payload_summary(report: dict[str, Any]) -> dict[str, Any]:
+    if "report_kind" in report:
+        return typed_summary(report)
+    if report.get("kind") == "jobs" and "provenance" in report:
+        return modern_jobs_summary(report)
     runs = report.get("runs", [])
     if "measurements" in report:
         return startup_summary(report)
@@ -202,6 +804,18 @@ def payload_summary(report: dict[str, Any]) -> dict[str, Any]:
     if report.get("diagnostic_only") is True:
         return {"kind": "diagnostic", "cases": len(runs), "diagnostic_only": True}
     raise ValueError("unsupported measurement report; test vectors are not raw receipts")
+
+
+def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
+    kind = report["report_kind"]
+    version = report.get("schema_version")
+    if type(version) is not int:
+        raise ValueError("invalid typed report schema version")
+    if kind == "raw_stream_budget_v1" and version == 1:
+        return stream_summary(report)
+    if kind == "installation_v2" and version == 2:
+        return installation_summary(report)
+    raise ValueError("unsupported typed report kind or schema version")
 
 
 def summarize(report: dict[str, Any]) -> dict[str, Any]:

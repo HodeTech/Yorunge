@@ -7,7 +7,6 @@ import json
 import os
 import stat
 import tomllib
-from asyncio import CancelledError
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -150,6 +149,10 @@ def stage(path: Path, content: bytes) -> Path:
 
 
 def publish(path: Path, temporary: Path, *, initial: bool) -> None:
+    # Configuration entry points reject unsupported platforms before importing
+    # asyncio's platform-specific event-loop implementation or attempting I/O.
+    from asyncio import CancelledError
+
     try:
         if initial:
             os.link(temporary, path, follow_symlinks=False)

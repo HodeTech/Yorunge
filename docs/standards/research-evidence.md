@@ -27,6 +27,8 @@ Bu araç ölçümü tekrar çalıştırmaz, donanım/komut iddiasını bağıms�
 
 Eski startup v1 örnekleri ve p95'i üç ondalığa yuvarlar; karar ise yuvarlanmadan önce verilmiştir. Eşiğe yarım mikro-saniye kadar yakın kayıtta özgün pass/fail korunur ve özet bu belirsizliği işaretler. v2/jobs için bu tolerans uygulanmaz. Kurulum özeti bütün origin/cache/execution/jobs smoke sonuçlarını, yardım özeti de beklenen root farkını ve gerçek eşlik sonuçlarını ayrı sayar; eksik alan `not_recorded` kalır. Katalog en çok 256 kayıttır; kapasite doluysa yeni yazı başlamadan ret verilir.
 
+Yeni `installation_v2` kaydı kapalı schema2 biçiminde iki artifact'ı ve origin/basic/NDJSON/HTTP/stream/cache/execution/jobs kontrollerinin tamamını zorunlu tutar; eksik alan eski kayıt gibi `not_recorded` ile kabul edilmez. Modern jobs kaydı typed stdout/process sayısı, p95 ve kaynak/kurulum/fixture bayraklarını denetler. `raw_stream_budget_v1` kapalı schema1 biçiminde üç sabit boyutun bağımsız byte/SHA beklentisini, native RSS dönüşümü/farkını, chunk/connection/request sınırlarını, ayrı süreçleri ve provenance tutarlılığını yeniden hesaplar. Dürüst başarısız kayıt arşivlenebilir; uyumsuz `passed=true` reddedilir. Tarihsel kayıtlar bu yeni biçimlere dönüştürülmez. Arşiv yolları raporun üretildiği host'ta varmış gibi yerel dosya sisteminden çözülmez; bu kontroller ölçümün gerçekten yapıldığını onaylayan bir imza değildir.
+
 ## İnceleme sırası
 
 Önce ürün kodu/testler, ölçüm betikleri, kabul raporu ve manifest özeti incelenir. Varsayılan tam `git diff` çıktısı veya gzip açılımı model bağlamına dökülmez. Örneğin mevcut taban commit'i seçildikten sonra:

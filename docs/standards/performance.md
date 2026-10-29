@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** Başlangıç/profil hedefleri ilk referans ortamda ölçüldü; aktarım/ağ hedefleri henüz ölçülmedi. **Tarih:** 2026-10-27. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux ölçümleri](../research/p01-2-implementation-validation.md), [P01-3 cache/input ölçümleri](../research/p01-3-implementation-validation.md). Büyük hash ölçümü gerçek aktarım desteği sayılmaz.
+**Durum:** Başlangıç/profil/jobs hedeflerinin önceki kaynak kabulü var; P01-5 son kaynağı için kurulu jobs ve raw TLS stream ölçüm araçları hazırlanıyor. Yeni kaynağın gerçek sonuçları [P01 kapanış kaydında](../research/p01-remaining-implementation-validation.md) ayrı belirtilir. **Tarih:** 2026-10-29. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux ölçümleri](../research/p01-2-implementation-validation.md), [P01-3 cache/input ölçümleri](../research/p01-3-implementation-validation.md). Büyük hash veya raw stream ölçümü EVREN veri aktarım desteği sayılmaz.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 
@@ -27,6 +27,16 @@ Bu değerler hedef olarak seçildi; donanım/Python/işletim sistemi, veri ve ko
 **Kabul adayın mevcut mutlak 500/200 ms bütçesidir.** Tabanın kötü sonucu veya göreli iyileşme, bütçeyi aşan adayı başarılı yapmaz. Taban ölçümleri ve eşli oranlar tanısaldır; yeni bir göreli eşik uydurulmaz. Eksik/uyumsuz baseline veya fixture kontrollü reddedilir; ilk release'in yalnız belge içeren Git tabanı açık `no_runtime_project_at_baseline` durumuyla raporlanabilir ve adayın bütün mutlak kapıları yine çalışır. Kaynak ölçüm boyunca değişmişse helper başarısız olur; mevcut rapor veya çalışma dizini ezilmez.
 
 CI, PR'da ilan edilmiş base SHA'sını, development/Master push'unda önceki SHA'yı ayrı checkout'a sabitler. Manuel/ilk-ref koşusunda fallback aynı commit'tir ve gerçek bir önce/sonra kazancı sayılmaz. Ubuntu ana sürümü sabittir; gerçek image build'i, kernel, CPU ve kullanılabilir CPU affinity kaydedilir. Bu, GitHub'ın fiziksel CPU'sunu veya VM yükünü sabitlemez; farklı host'lardaki mutlak süre farkı kod kazancı diye yorumlanmaz. PR ve merge aynı ölçüm yolunu kullanır. İlk bakımın dış CI doğrulaması [P01-4 PR/merge akışında tamamlandı](../research/p01-4-implementation-validation.md#development-merge-kapanışı); bu önceki kaynağın tarihsel kabulüdür. Yeni kaynak/bağımlılık için ilgili PR ve merge akışı ayrıca doğrulanır; yerel kabul dış CI yerine geçirilmez.
+
+### Kurulu jobs ve raw stream ölçümü
+
+`scripts/benchmark-jobs.py`, frozen runtime-only wheel kurulumunda normal/yoğun jobs list/show yollarını ayrı ölçer. İlk süreç kaydı, üç ısınma ve her yol için en az30 ayrı süreçten nearest-rank p95 saklanır. Dört p95'in her biri mevcut200ms kapısına tabidir. Fixture hazırlığı ve bağımsız typed çıktı/DB oracle kontrolü kaydedilen süreç süresinin dışındadır; bütün örnekler korunur. Kaynak snapshot'ı, kurulu Python baytları/metadata, fixture ve varsa wheel hash'i öncesi/sonrası denetlenir. İlk süreç fiziksel soğuk disk ölçümü değildir.
+
+`scripts/benchmark-stream.py`, ayrı TLS sunucusu ve her boyut için yeni kurulu `-I` istemci süreciyle16/256/1024MiB'ı seri okur. Veri artımlı üretilir/tüketilir; istemci tek stream, en çok2 bağlantı,32KiB chunk ve kuyruksuz tüketici kullanır. Alınan byte/SHA-256, chunk/request/connection sayıları ve farklı server/client PID'leri kaydedilir. Her boyutta ek RSS≤64MiB olmalı; üç boyutun farkı ve boyut büyüme eğilimi birlikte incelenir. Bu ortak raw taşıma kabulüdür; veri seti endpoint'i, NDJSON veya eğitim worker'ı kabulü değildir.
+
+RSS yöntemi `resource.getrusage(RUSAGE_SELF).ru_maxrss` high-water değeridir: import/köken kontrolü ve32KiB TLS ısınmasından sonraki süreç tepe değeri baseline; ölçüm sonrası tepe eksi baseline ek RSS'tir. Bu anlık RSS farkı değildir ve ısınmanın daha önce oluşturduğu tepeyi yeniden saymaz. Native değer Darwin'de byte, Linux'taKiB olarak açıkça çevrilir; native/baseline/peak/extra birlikte korunur. Ayrı sunucu ve parent hazırlık süreci hariçtir. Boyut başına tek istemci ve tek ölçüm isteği kullanılır; sonuç başarısızsa daha hızlı/az bellekli örnek seçilmez. Raw benchmark'ın açık120s total deadline'ı,5s phase ve1s pool sınırları kontrol noktalarında uygulanır; sistem I/O'sunu zorla kesen fiziksel süre garantisi değildir.
+
+CI bu üç performans grubunu Linux/Python3.11 referans hücresinde test/build sonrasında seri çalıştırır. Linux3.14 ve macOS3.11 hücreleri uyumluluk/test/kurulum içindir; farklı host'larda200ms kapısına geçirilmiş gibi gösterilmez. Tanım, gerçek CI kabulünden ayrıdır. Ortam, bütün başarılı/başarısız ham örnekler ve kaynak kimliği kanıt arşivinde saklanır.
 
 ## Veri, ağ ve hesap verimliliği
 

@@ -20,7 +20,12 @@ src/yorunge/
   adapters/maintenance.py # Açık reset/restore/recover
   adapters/local_files.py # Private dosya/kilit/deadline ve platform sınırı
   adapters/configuration.py # Atomik config yazımı/backup; diagnostics ayrı adaptörde
-  cli/                    # Argparse; metin/JSON render ve çıkış kodu
+  adapters/http_session.py # Owned async session ve sync Runner köprüsü
+  adapters/http_transport.py # Bounded HTTPX/TLS, raw okuma ve retry/deadline
+  application/response_json.py # Strict sınırlı JSON ve sır provenance kontrolü
+  domain/streams.py        # Result v1 üzerine ayrı tipli event zarfı
+  application/stream*.py   # Kaynak sahipliği, terminal/EOF ve bounded codec
+  cli/                    # Argparse; ortak UTF-8 metin/JSON/NDJSON renderer
 tests/
   unit/                   # Öncelik, seçim, plan bağları
   contracts/              # Şema, hatalı girdi, sır ve dosya sınırları
@@ -34,7 +39,7 @@ examples/                 # Küçük sentetik profil ve reçete
 docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kartları
 ```
 
-`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. Henüz uygulanmayan HTTP, run/execution backend ve araç adaptörleri için boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
+`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. HTTP/session/stream ve CLI renderer P01-5 çalışma dalında gerçek TLS/süreç ve kurulu artifact ile testlidir; son CI/performans kapanışı ayrı sürer. Henüz uygulanmayan public run/execution backend ve araç adaptörleri için boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
 
 [Ajan kataloğu](../.agents/README.md) repo geliştirme girdisidir; runtime bağımlılığı değildir. Canonical `.agents` materyali sdist'e seçilir; wheel ve Claude alias symlink'leriyle karıştırılmaz. İstemci/global ayar veya otomatik izin hook'u eklenmez.
 
