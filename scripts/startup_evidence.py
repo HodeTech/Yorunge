@@ -333,6 +333,16 @@ def raw_metadata(value: object) -> dict[str, Any]:
         raise ValueError("startup measurement method mismatch")
     for key in ("python", "platform", "machine", "cpu", "disk_type"):
         CHECKS["text_value"](raw[key])
+    validate_scheduling(raw)
+    dataset = closed(raw["cache_dataset"], "records payload_bytes largest_record_bytes")
+    for item in dataset.values():
+        CHECKS["integer"](item, minimum=1)
+    CHECKS["integer"](raw["profile_bytes"], minimum=1)
+    CHECKS["pattern_value"](raw["profile_sha256"], CHECKS["SHA256"])
+    return raw
+
+
+def validate_scheduling(raw: dict[str, Any]) -> None:
     for item in closed(raw["runner_image"], "ImageOS ImageVersion").values():
         if item is not None:
             CHECKS["text_value"](item)
@@ -344,12 +354,6 @@ def raw_metadata(value: object) -> dict[str, Any]:
             CHECKS["integer"](item)
         if affinity != sorted(set(affinity)):
             raise ValueError("invalid CPU affinity order")
-    dataset = closed(raw["cache_dataset"], "records payload_bytes largest_record_bytes")
-    for item in dataset.values():
-        CHECKS["integer"](item, minimum=1)
-    CHECKS["integer"](raw["profile_bytes"], minimum=1)
-    CHECKS["pattern_value"](raw["profile_sha256"], CHECKS["SHA256"])
-    return raw
 
 
 def paired_comparison(raw: dict[str, Any], rows: dict[str, Any]) -> dict[str, Any]:

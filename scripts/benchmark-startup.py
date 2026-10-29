@@ -289,8 +289,72 @@ def measure_cases(
     return measurements, baseline_measurements, comparisons, passed
 
 
-def main() -> int:
+def configure_audit(
+    args: argparse.Namespace, parser: argparse.ArgumentParser
+) -> tuple[dict[str, str], dict[str, str]]:
     global AUDIT, VALIDATE_OUTPUT
+    AUDIT = None
+    if args.audit_output is None:
+        return {}, {}
+    if args.audit_output.exists() or args.audit_output.is_symlink():
+        parser.error("audit output must be a new file")
+    AUDIT = {}
+    validator = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))[
+        "validate_output"
+    ]
+    if not all((args.baseline_command, args.audit_candidate_version, args.audit_baseline_version)):
+        parser.error("audited startup requires both installed product versions")
+    versions = {
+        str(args.command.resolve()): args.audit_candidate_version,
+        str(args.baseline_command.resolve()): args.audit_baseline_version,
+    }
+    pythons = {
+        str(args.command.resolve()): args.audit_candidate_python,
+        str(args.baseline_command.resolve()): args.audit_baseline_python,
+    }
+    if not all(pythons.values()):
+        parser.error("audited startup requires both isolated Python executables")
+    if len(versions) != 2:
+        parser.error("audited startup requires separate installed consoles")
+
+    def validate_installed(command: list[str], content: bytes) -> None:
+        validator(command, content, version=versions[command[0]], python=pythons[command[0]])
+
+    VALIDATE_OUTPUT = validate_installed
+    return versions, pythons
+
+
+def write_audit(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+    current_cases: dict[str, tuple[list[str], int]],
+    baseline_cases: dict[str, tuple[list[str], int]] | None,
+    versions: dict[str, str],
+    pythons: dict[str, str],
+) -> None:
+    if args.audit_output is None:
+        return
+    audit = {}
+    for side, entries in (("candidate", current_cases), ("baseline", baseline_cases)):
+        if entries is None:
+            parser.error("audited startup requires a paired baseline")
+        assert AUDIT is not None
+        audit[side] = {
+            name: {
+                "typed_stdout_verified": True,
+                "verified_processes": len(AUDIT["\0".join(command)]["stdout_sha256"]),
+                "stdout_sha256": AUDIT["\0".join(command)]["stdout_sha256"],
+                "wall_ms": AUDIT["\0".join(command)]["wall_ms"],
+                "expected_version": versions[command[0]],
+                "expected_python": pythons[command[0]],
+            }
+            for name, (command, _) in entries.items()
+        }
+    with args.audit_output.open("x", encoding="utf-8") as destination:
+        destination.write(json.dumps(audit, indent=2, allow_nan=False) + "\n")
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--command", type=Path, required=True)
     parser.add_argument("--profile", type=Path, default=Path("examples/profile.toml"))
@@ -311,34 +375,7 @@ def main() -> int:
     parser.add_argument("--cpu-label", default=cpu_label())
     parser.add_argument("--installation-label", default="unknown; specify measured environment")
     args = parser.parse_args()
-    if args.audit_output is not None:
-        if args.audit_output.exists() or args.audit_output.is_symlink():
-            parser.error("audit output must be a new file")
-        AUDIT = {}
-        validator = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))[
-            "validate_output"
-        ]
-        if not all(
-            (args.baseline_command, args.audit_candidate_version, args.audit_baseline_version)
-        ):
-            parser.error("audited startup requires both installed product versions")
-        versions = {
-            str(args.command.resolve()): args.audit_candidate_version,
-            str(args.baseline_command.resolve()): args.audit_baseline_version,
-        }
-        pythons = {
-            str(args.command.resolve()): args.audit_candidate_python,
-            str(args.baseline_command.resolve()): args.audit_baseline_python,
-        }
-        if not all(pythons.values()):
-            parser.error("audited startup requires both isolated Python executables")
-        if len(versions) != 2:
-            parser.error("audited startup requires separate installed consoles")
-
-        def validate_installed(command: list[str], content: bytes) -> None:
-            validator(command, content, version=versions[command[0]], python=pythons[command[0]])
-
-        VALIDATE_OUTPUT = validate_installed
+    versions, pythons = configure_audit(args, parser)
     if args.samples < 30:
         parser.error("at least 30 samples are required")
     baseline_args = (args.baseline_command, args.baseline_profile, args.baseline_cache_state)
@@ -407,25 +444,7 @@ def main() -> int:
     except FileExistsError:
         parser.error("output must be a new file in an existing directory")
     print(encoded)
-    if args.audit_output is not None:
-        audit = {}
-        for side, entries in (("candidate", current_cases), ("baseline", baseline_cases)):
-            if entries is None:
-                parser.error("audited startup requires a paired baseline")
-            assert AUDIT is not None
-            audit[side] = {
-                name: {
-                    "typed_stdout_verified": True,
-                    "verified_processes": len(AUDIT["\0".join(command)]["stdout_sha256"]),
-                    "stdout_sha256": AUDIT["\0".join(command)]["stdout_sha256"],
-                    "wall_ms": AUDIT["\0".join(command)]["wall_ms"],
-                    "expected_version": versions[command[0]],
-                    "expected_python": pythons[command[0]],
-                }
-                for name, (command, _) in entries.items()
-            }
-        with args.audit_output.open("x", encoding="utf-8") as destination:
-            destination.write(json.dumps(audit, indent=2, allow_nan=False) + "\n")
+    write_audit(args, parser, current_cases, baseline_cases, versions, pythons)
     return 0 if passed else 1
 
 
