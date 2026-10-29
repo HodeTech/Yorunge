@@ -326,16 +326,44 @@ def check(
     runs = []
     stable = True
     for size_mib in SIZES_MIB:
-        runs.append(
-            measure_one(
-                project,
-                python,
-                workspace / str(size_mib),
-                manifest,
-                certificates,
-                size_mib * 1024 * 1024,
-            )
-        )
+        run_work = workspace / str(size_mib)
+        size = size_mib * 1024 * 1024
+        try:
+            measured = measure_one(project, python, run_work, manifest, certificates, size)
+            # Keep each complete result before another worker can fail. This is
+            # an individual observation, never a substitute for full acceptance.
+            with (run_work / "measurement.json").open("x", encoding="utf-8") as target:
+                json.dump(measured, target, ensure_ascii=False, allow_nan=False, indent=2)
+                target.write("\n")
+        except Exception as error:
+            if run_work.is_dir() and not run_work.is_symlink():
+                diagnostics = [
+                    name
+                    for name in (
+                        "client-stdout.txt",
+                        "client-stderr.txt",
+                        "server-stdout.txt",
+                        "server-stderr.txt",
+                    )
+                    if (run_work / name).is_file() and not (run_work / name).is_symlink()
+                ]
+                try:
+                    with (run_work / "failure.json").open("x", encoding="utf-8") as target:
+                        json.dump(
+                            {
+                                "error_type": type(error).__name__,
+                                "size_bytes": size,
+                                "diagnostics": diagnostics,
+                            },
+                            target,
+                        )
+                        target.write("\n")
+                except OSError:
+                    # A diagnostic-write failure must not mask the original
+                    # measurement failure or overwrite another writer's file.
+                    pass
+            raise
+        runs.append(measured)
         stable = source(project) == before and stable
     after = source(project)
     stable = stable and before == after

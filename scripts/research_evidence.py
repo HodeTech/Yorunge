@@ -680,7 +680,25 @@ def jobs_provenance(report: dict[str, Any]) -> dict[str, Any]:
     return provenance
 
 
-def jobs_run_checks(run: dict[str, Any], samples: int) -> bool:
+def jobs_command(run: dict[str, Any], runtime: dict[str, Any]) -> None:
+    command = run["command"]
+    if not isinstance(command, list) or len(command) != 11:
+        raise ValueError("jobs command must record the complete measured invocation")
+    for part in command:
+        text_value(part)
+    prefix = [runtime["executable"], "-I", runtime["console"], "jobs", run["action"]]
+    selection = (
+        ["--limit", "50"]
+        if run["action"] == "list"
+        else ["--operation-id", run["expected_operation_id"]]
+    )
+    expected = prefix + selection + ["--state-dir", command[8], "--output", "json"]
+    if command != expected:
+        raise ValueError("jobs command contradicts its installed runtime or measurement")
+    runtime_path(command[8])
+
+
+def jobs_run_checks(run: dict[str, Any], samples: int, runtime: dict[str, Any]) -> bool:
     closed(
         run,
         "layout action command first_process_ms warmups_ms samples_ms median_ms p95_ms budget_ms "
@@ -705,11 +723,7 @@ def jobs_run_checks(run: dict[str, Any], samples: int) -> bool:
         pattern_value(digest, SHA256)
     if type(run["typed_stdout_verified"]) is not bool:
         raise ValueError("jobs typed output verification must be boolean")
-    command = run["command"]
-    if not isinstance(command, list) or not command:
-        raise ValueError("jobs command must be recorded")
-    for part in command:
-        text_value(part)
+    jobs_command(run, runtime)
     return bool(run["typed_stdout_verified"])
 
 
@@ -737,8 +751,8 @@ def modern_jobs_summary(report: dict[str, Any]) -> dict[str, Any]:
     summary = jobs_summary(runs)
     if set(summary["measurements"]) != {"normal/list", "normal/show", "dense/list", "dense/show"}:
         raise ValueError("jobs measurement groups differ from acceptance cases")
-    checked = [jobs_run_checks(run, samples) for run in runs]
     provenance = jobs_provenance(report)
+    checked = [jobs_run_checks(run, samples, provenance["installed_before"]) for run in runs]
     passed = (
         provenance["unchanged"]
         and provenance["isolated_python"]

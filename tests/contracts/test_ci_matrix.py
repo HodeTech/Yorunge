@@ -167,6 +167,7 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
     assert upload["uses"] == "actions/upload-artifact@v4"
     assert upload["with"]["name"] == "compatibility-${{ github.job }}"
     assert upload["with"]["if-no-files-found"] == "warn"
+    assert upload["with"]["include-hidden-files"] == "true"
     assert set(upload["with"]["path"].splitlines()) == {
         "dist/ci-environment.json",
         "dist/verification.jsonl",
@@ -174,6 +175,13 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         "dist/jobs.json",
         "dist/stream.json",
         "dist/cache-startup.prof",
+        ".local/stream-check/source-manifest.json",
+        ".local/stream-check/*/measurement.json",
+        ".local/stream-check/*/failure.json",
+        ".local/stream-check/*/client-stdout.txt",
+        ".local/stream-check/*/client-stderr.txt",
+        ".local/stream-check/*/server-stdout.txt",
+        ".local/stream-check/*/server-stderr.txt",
     }
 
 

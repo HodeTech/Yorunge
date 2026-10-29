@@ -165,6 +165,7 @@ jobs:
         with:
           name: compatibility-${{ github.job }}
           if-no-files-found: warn
+          include-hidden-files: true
           path: |
             dist/ci-environment.json
             dist/verification.jsonl
@@ -172,6 +173,13 @@ jobs:
             dist/jobs.json
             dist/stream.json
             dist/cache-startup.prof
+            .local/stream-check/source-manifest.json
+            .local/stream-check/*/measurement.json
+            .local/stream-check/*/failure.json
+            .local/stream-check/*/client-stdout.txt
+            .local/stream-check/*/client-stderr.txt
+            .local/stream-check/*/server-stdout.txt
+            .local/stream-check/*/server-stderr.txt
   linux314:
     name: Linux / Python 3.14
     runs-on: ubuntu-24.04

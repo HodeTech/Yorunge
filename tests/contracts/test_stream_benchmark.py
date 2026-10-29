@@ -271,6 +271,7 @@ def test_full_orchestrator_keeps_all_three_required_sizes_and_source_change_fail
         return original_source if not calls else changed_source
 
     def measure(project, python, work, manifest, certificates, size):
+        work.mkdir()
         calls.append(size)
         record = measurement(size)
         record.update(
@@ -423,3 +424,59 @@ def test_frozen_package_set_is_checked_before_tls(runtime_tree, tmp_path, mutati
             created.rmdir()
         if removed is not None:
             removed[1].rename(removed[0])
+
+
+@pytest.mark.parametrize("first_passed", [True, False])
+@pytest.mark.parametrize("fail_on", [2, 3])
+def test_completed_receipts_survive_later_worker_failure(
+    tmp_path, monkeypatch, first_passed, fail_on
+):
+    """Control-flow fixture: preserve truthful run data without inventing acceptance."""
+    tools = helpers()
+    check = tools["check"]
+    original_source = tools["source"](ROOT)
+    calls, completed = [], {}
+    failure = ValueError("private exception detail must not enter the failure receipt")
+
+    def measure(project, python, work, manifest, certificates, size):
+        work.mkdir()
+        for previous_size, previous in completed.items():
+            # The earlier receipt must already exist before this worker starts.
+            retained = work.parent / str(previous_size // 1024**2) / "measurement.json"
+            assert json.loads(retained.read_text()) == previous
+        calls.append(size)
+        if len(calls) == fail_on:
+            (work / "client-stderr.txt").write_text("retained private subprocess diagnostic")
+            raise failure
+        record = measurement(size)
+        record.update(passed=first_passed if len(calls) == 1 else True, server=telemetry(size))
+        completed[size] = record
+        return record
+
+    monkeypatch.setitem(check.__globals__, "source", lambda project: original_source)
+    monkeypatch.setitem(check.__globals__, "measure_one", measure)
+    monkeypatch.setitem(
+        check.__globals__,
+        "runpy",
+        SimpleNamespace(run_path=lambda path: {"certificate": lambda path: (path, path)}),
+    )
+    output, workspace = tmp_path / "report.json", tmp_path / "work"
+    with pytest.raises(ValueError) as caught:
+        check(ROOT, Path(sys.executable), workspace, output, cpu="unknown", disk="unknown")
+    assert caught.value is failure
+    assert not output.exists()
+    for size, original in completed.items():
+        retained = json.loads((workspace / str(size // 1024**2) / "measurement.json").read_text())
+        assert retained == original
+        assert retained["server"]["requests"][1]["size_bytes"] == size
+    first = json.loads((workspace / "16" / "measurement.json").read_text())
+    assert first["passed"] is first_passed
+    failed_size = tools["SIZES_MIB"][fail_on - 1]
+    failed = json.loads((workspace / str(failed_size) / "failure.json").read_text())
+    assert failed == {
+        "error_type": "ValueError",
+        "size_bytes": failed_size * 1024**2,
+        "diagnostics": ["client-stderr.txt"],
+    }
+    assert "private" not in json.dumps(failed)
+    assert not (workspace / str(failed_size) / "measurement.json").exists()

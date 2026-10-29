@@ -38,6 +38,12 @@ def receipt():
                         "/runtime/bin/yorunge",
                         "jobs",
                         action,
+                        "--limit" if action == "list" else "--operation-id",
+                        "50" if action == "list" else "test-operation",
+                        "--state-dir",
+                        "/fixtures/" + layout,
+                        "--output",
+                        "json",
                     ],
                     "first_process_ms": 12.0,
                     "warmups_ms": [11.0, 12.0, 10.0],
@@ -222,6 +228,30 @@ def test_modern_jobs_cannot_downgrade_to_legacy_by_removing_provenance():
         CHECKS["summarize"](report)
 
 
+@pytest.mark.parametrize(
+    "damage", ["foreign", "not_isolated", "console", "action", "help", "format", "id"]
+)
+def test_modern_jobs_command_must_match_its_installed_runtime_and_measurement(damage):
+    report = receipt()
+    command = report["runs"][0]["command"]
+    if damage == "foreign":
+        command[:] = ["/other/bin/python", "/other/bin/yorunge", "--help"]
+    elif damage == "not_isolated":
+        command[1] = "-B"
+    elif damage == "console":
+        command[2] = "/other/bin/yorunge"
+    elif damage == "action":
+        command[4] = "show"
+    elif damage == "help":
+        command.append("--help")
+    elif damage == "format":
+        command[-1] = "text"
+    else:
+        report["runs"][1]["command"][6] = "different-operation"
+    with pytest.raises(ValueError, match="jobs command"):
+        CHECKS["summarize"](report)
+
+
 def test_macos_jobs_runtime_aliases_are_portable_and_do_not_access_historical_paths(monkeypatch):
     report = receipt()
     for key in ("installed_before", "installed_after"):
@@ -232,6 +262,9 @@ def test_macos_jobs_runtime_aliases_are_portable_and_do_not_access_historical_pa
             console="/var/absent-runtime/bin/yorunge",
             platform="macOS-15.0",
         )
+    for run in report["runs"]:
+        run["command"][0] = "/var/absent-runtime/bin/python"
+        run["command"][2] = "/var/absent-runtime/bin/yorunge"
 
     def forbidden(*args, **kwargs):
         raise AssertionError("archival verification must not resolve recorded runtime paths")
