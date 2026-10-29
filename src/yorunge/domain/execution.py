@@ -278,20 +278,24 @@ class ExecutionBody(WireModel):
             raise ValueError("verified runtime required")
 
 
+_PLAN_DIGEST_FIELD = "digest"
+
+
 class ExecutionPlan(ExecutionBody):
     digest: Digest
 
     def computed_digest(self) -> str:
         return hashlib.sha256(
-            canonical(self.model_dump(mode="json", exclude={"digest"}))
+            canonical(self.model_dump(mode="json", exclude={_PLAN_DIGEST_FIELD}))
         ).hexdigest()
 
     @model_validator(mode="after")
     def integrity(self) -> ExecutionPlan:
-        if (
-            self.digest != self.computed_digest()
-            or len(canonical(self.model_dump(mode="json"))) > 65536
-        ):
+        body = canonical(self.model_dump(mode="json", exclude={_PLAN_DIGEST_FIELD}))
+        # Merging two nonempty compact objects removes two braces and adds one comma.
+        # Derive the actual digest field's size; do not reserialize the large body.
+        size = len(body) + len(canonical({_PLAN_DIGEST_FIELD: self.digest})) - 1
+        if self.digest != hashlib.sha256(body).hexdigest() or size > 65536:
             raise ValueError("plan digest or size invalid")
         return self
 

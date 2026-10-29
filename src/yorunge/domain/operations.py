@@ -217,10 +217,7 @@ class OperationAdmission(OperationModel):
         ):
             raise ValueError("admission approval mismatch")
         keys = tuple(canonical(authority.model_dump(mode="json")) for authority in self.authorities)
-        if (
-            keys != tuple(sorted(set(keys)))
-            or len(canonical(self.model_dump(mode="json"))) > MAX_ADMISSION_BYTES
-        ):
+        if keys != tuple(sorted(set(keys))) or self._integer_json_size() > MAX_ADMISSION_BYTES:
             raise ValueError("bounded canonical admission required")
         return self
 
@@ -359,7 +356,7 @@ class AttemptView(OperationModel):
             )
         ):
             raise ValueError("unsubmitted attempts cannot claim provider progress")
-        if len(canonical(self.model_dump(mode="json"))) > MAX_ATTEMPT_BYTES:
+        if self._integer_json_size() > MAX_ATTEMPT_BYTES:
             raise ValueError("bounded attempt required")
         return self
 
@@ -424,7 +421,7 @@ class OperationRecord(OperationModel):
             raise ValueError("recovery marker requires unknown")
         if self.event_count == MAX_EVENTS and s.status not in TERMINAL:
             raise ValueError("terminal slot reserved")
-        if len(canonical(self.model_dump(mode="json"))) > MAX_OPERATION_BYTES:
+        if self._integer_json_size() > MAX_OPERATION_BYTES:
             raise ValueError("bounded operation required")
         return self
 
@@ -582,5 +579,5 @@ def _validate_job_outcome(
             current.reason_code,
         ):
             raise ValueError("outcome projection mismatch")
-        if len(canonical(o.model_dump(mode="json"))) > MAX_OUTCOME_BYTES:
+        if o._integer_json_size() > MAX_OUTCOME_BYTES:
             raise ValueError("bounded outcome required")

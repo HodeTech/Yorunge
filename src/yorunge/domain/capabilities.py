@@ -113,6 +113,14 @@ class JsonWireModel(Model):
 
 
 class WireModel(JsonWireModel):
+    def _integer_json_size(self) -> int:
+        """Compact ASCII size for validated integer-only, strict-text wire schemas.
+
+        Key order changes no length. Canonical hashing still uses canonical().
+        Legacy nested Model text and arbitrary/mutated graphs are not supported here.
+        """
+        return len(self.model_dump_json(ensure_ascii=True))
+
     @field_validator("*", mode="after")
     @classmethod
     def unicode_text(cls, value: object) -> object:
@@ -240,7 +248,7 @@ class CapabilityScopeV2(WireModel):
                 raise ValueError("canonical target required")
             if self.authorization_scope is not None and self.credential_id is None:
                 raise ValueError("authorization requires credential")
-        if len(canonical(self.model_dump(mode="json"))) > 16384:
+        if self._integer_json_size() > 16384:
             raise ValueError("scope too large")
         return self
 
@@ -291,7 +299,7 @@ class Evidence(WireModel):
         checked, expires = instant(self.checked_at), instant(self.expires_at)
         if not timedelta(0) < expires - checked <= timedelta(seconds=TTL[self.support]):
             raise ValueError("evidence TTL outside policy")
-        if len(canonical(self.model_dump(mode="json"))) > MAX_RECORD_BYTES:
+        if self._integer_json_size() > MAX_RECORD_BYTES:
             raise ValueError("evidence too large")
         return self
 
@@ -334,7 +342,7 @@ class CapabilityRecord(WireModel):
                 raise ValueError("blocker cannot support execution")
         if self.support == "supported":
             self._validate_support()
-        if len(canonical(self.model_dump(mode="json"))) > MAX_RECORD_BYTES:
+        if self._integer_json_size() > MAX_RECORD_BYTES:
             raise ValueError("record too large")
         return self
 

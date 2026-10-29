@@ -1,0 +1,31 @@
+{
+  "diagnostic_only": true,
+  "acceptance": false,
+  "diagnostic_deadline_seconds": 60,
+  "wall_ms": 9237.918375,
+  "cpu_ms": 9154.13,
+  "outcome": "ok",
+  "events": [
+    {
+      "name": "full_validation",
+      "outcome": "ok",
+      "elapsed_ms": 6725.076917,
+      "progress_callbacks": 15576
+    },
+    {
+      "name": "full_validation",
+      "outcome": "ok",
+      "elapsed_ms": 1840.868542,
+      "progress_callbacks": 15105
+    },
+    {
+      "name": "commit",
+      "outcome": "ok",
+      "elapsed_ms": 29.46275,
+      "progress_callbacks": 0
+    }
+  ],
+  "statements": 20553,
+  "source_commit": "5d0b3a47f0ab3b2faec3be86bac6151c6eecfdb5",
+  "method": "cProfile and unchanged n=1000 instrumentation; test-process-only maintenance Deadline 60s for disposable preview/reset; not product budget or acceptance"
+}
