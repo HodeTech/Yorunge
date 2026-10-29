@@ -9,7 +9,8 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 - Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.
 - Trusted salt gözlem, execution/delivery ayrımı, bounded recovery ve tarihçeyi koruyan kimlik reset preview v3.
 - Yerel `jobs list/show` ve ortak Python API; store/filtre bağlı keyset cursor, bounded toplu liste sorgusu ve son yerel kayıt uyarısı.
-- Ayrı süreç/SIGKILL/yarış ve azami hacim kaynak kabulü; [adım ve review kaydı](docs/research/p01-4-implementation-validation.md). Dört adım/ikişer fresh review ve 1.700 test/iki temiz kurulum/son kaynak bütçeleriyle yerel paket kabulü tamamlandı; canlı EVREN ve public run teslimi değildir.
+- Ayrı süreç/SIGKILL/yarış ve azami hacim kaynak kabulü; [adım ve review kaydı](docs/research/p01-4-implementation-validation.md). Dört adım/ikişer fresh review ve son 182f695 ürün kaynağında 1.779 test/iki temiz kurulum/son kaynak bütçeleriyle yerel paket kabulü tamamlandı; canlı EVREN ve public run teslimi değildir.
+- Değişmeyen geçerli sağlayıcı gözlemi operation geçmiş kotasını tüketmez; yeni kanıt ve gerçek recovery geçişi kaydedilir. Son owner/credential/lease/read yetkisi kontrolleri korunur.
 
 ### Added — 2026-10-28
 

@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Dört adım ve her adımın iki bağımsız inceleme turu tamamlandı. PR #10 kullanıcı incelemesindeki aynı-gözlem/geçmiş-kotası düzeltmesinin son kaynak bütünleşik kabulü yenileniyor; tamamlanmadan birleştirmeye hazır sayılmaz. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. İlk paket kabulü 17de965; kalite/bütçe takipleri ve sonraki kullanıcı bulgusu aşağıda ayrı kaynaklarla kayıtlıdır. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/inceleme kaydı](p01-4-readiness-review.md). Önceki durum ve ölçümler kendi kaynaklarının tarihsel kanıtıdır; güncel durum bu giriş ve son bölümde belirtilir.
+**Güncellendi:** 2026-10-29. **Durum:** Dört adım ve her adımın iki bağımsız inceleme turu tamamlandı. PR #10 kullanıcı bulguları kapandı; **182f695 ürün kaynağında bütünleşik yerel kabul tamamlandı**. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. İlk paket kabulü 17de965; kalite/bütçe takipleri ve sonraki kullanıcı bulgusu aşağıda ayrı kaynaklarla kayıtlıdır. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/inceleme kaydı](p01-4-readiness-review.md). Önceki durum ve ölçümler kendi kaynaklarının tarihsel kanıtıdır; güncel durum bu giriş ve son bölümde belirtilir. PR #10 açıktır; development merge'i, Master aktarımı ve release ayrı kalır.
 
 ## Karar kapanışı
 
@@ -315,3 +315,48 @@ Düzeltme sonrası uzlaştırma takımı 71 test geçti; aynı gözleme benzer c
 Diğer P2, incelenen e638194 için geçerliydi: başarısız 27 örnek korunmuştur. Sonraki 552d3e3 ürün kaynağında [27/27 operation](p01-4-quota-operation-budget.json) ve [24/24 migration](p01-4-quota-migration-budget.json) pozitif kabul sağlandı; en yavaş karma reset **4.965,896083 ms**, marj **34,103917 ms** ile dardır. [9600416 yardımcı kaynağıyla kurulu jobs](p01-4-closing-jobs-budget.json) normal list/show **124,486/121,779**, yoğun **178,063/120,208 ms** ile geçti. Bunlar yeni aynı-gözlem düzeltmesinden önceki kaynak kanıtlarıdır; son kaynak kabulü yeniden alınacak. GitHub startup yeşili operation bütçesi yerine sunulmaz.
 
 P3 checkout dışı runtime kusuru 9600416'da başarısız-önce/geçen-sonra regresyonu ve iki bağımsız incelemeyle kapandı; tekrar kod değişikliği yapılmadı. Önceki PR Lens takeover iddiası, terminal reducer/erken dönüş nedeniyle uygulanabilir olmadığı için açık bulgu değildir.
+
+## PR #10 son kaynak kapanışı
+
+Ürün kaynağı **182f695f656c374530d9a496a59d9e7ee714932f**'dir. Yeni ham ölçümlerde checkout HEAD'i **bc0d3c9** görünür; bu aradaki commit yalnız `current.md` açıklamasını düzeltir. Bütün kaydedilmiş kaynak SHA-256'ları güncel dosyalarla eşleşir; ölçüm boyunca kaynak sabittir. Bu bölümün ve son kanıtların eklenmesi ürün/fixture/ölçüm kodunu değiştirmez. Eski 17de965/552d3e3 başarıları son kaynak kabulü yerine kullanılmadı.
+
+**Doğrulama ve inceleme:** Tam yerel takım **1.779 passed / 304,60 s**. Ruff format/lint, strict mypy 51 kaynak, 114 Markdown, 6 skill/9 kart ve diff kontrolü geçti. Aynı-gözlem düzeltmesi iki farklı fresh turda state/dayanıklılık ve sözleşme/test reviewer'larıyla incelendi (GPT-6 Astra xhigh ve GPT-6.1 Terra high). Ürün kusuru kalmadı; ikinci turdaki tarihsel ölçümün güncel kabul gibi okunabilmesi bulgusu bc0d3c9 ile düzeltildi ve reviewer tarafından kapatıldı. Son kaynak/artefakt/bütçe kanıtı ayrıca salt okunur denetlendi.
+
+Uzlaştırma regresyonları, dört nonterminal biçimde 260 ayrı gözlem/5 s sentetik adım ve explicit renew ile geçmişin değişmediğini gösterir. Her poll yeni kullanım senaryosu bütçesidir; gerçek 21 dakika beklenmez. Dolu 255 normal slotta aynı gözlem kabul edilir, gerçek yeni nonterminal kanıt kota denetimine girer, ayrılmış 256. terminal slot korunur. Provider status/exit/run bağı, recovery marker temizliği, reset consent/timestamp ve son lease/read expiry ayrı kontrol edilir. Ayrı süreç credential yarışı, semantik no-op görünse de son credential değişiminin `state_changed` vermesini doğrular. Hedefli uzlaştırma takımı 72 örnektir; tam takım bunları içerir.
+
+### Özgün bütçeyle son operation ve migration ölçümleri
+
+Ölçümler test/build/profiler ile çakıştırılmadan sıralı alındı. Ortam **Apple M5 Max / macOS 27.0.1 arm64 / SSD–APFS / Python 3.11.18 / SQLite 3.54.1**; operation/migration editable frozen `.venv`, jobs/startup ayrı frozen runtime-only wheel ortamıdır. OS/disk cache'i boşaltılmadı; farklı host/sistem I/O'su için mutlak süre garantisi verilmez.
+
+[Operation ham kaydı](p01-4-noop-operation-budget.json): normal/azami terminal/azami karma fixture × full/preview/reset × üç yeni worker, **27/27 başarılı**. Her çağrı özgün **5 s**, n=1.000 progress callback ve gerçek deadline kontrolünü korur; timeout başarı sayılmaz. En yüksek wall süreleri:
+
+| Fixture | Full (ms) | Preview (ms) | Reset (ms) |
+|---|---:|---:|---:|
+| Normal | 428,479 | 471,501 | 970,245 |
+| Azami terminal | 3.638,258 | 3.705,219 | 4.549,715 |
+| Azami karma | 3.630,003 | 3.641,685 | **4.851,708** |
+
+En dar referans marjı **148,292 ms**'dir. Azami terminal fixture 1.024 operation/16.384 attempt/262.144 event; karma fixture 512 terminal + 512 running ve 261.632 event içerir. Azami cache 33.554.432, plan 67.108.864 payload byte'tır. Plan/onay ve immutable event/outcome hash'leri korunur; reset cache/kimliği ve aktif sahipliği değiştirirken geçmişi silmez. En yüksek RSS yaklaşık **84,33 MiB**. VM quanta özgün callback×1.000 örneklemesidir, tam instruction sayısı değildir.
+
+[Migration ham kaydı](p01-4-noop-migration-budget.json): şema 2/3/4/5 × normal/azami × üç yeni store, **24/24 başarılı**. Bütün örnekler özgün 5 s içinde şema 6'ya ulaştı; en yavaş **4.456,741 ms**. Kaynak cache/plan/onay payload satırları byte olarak aynı kaldı, operation sayısı sıfır ve çağrı sonrası tam doğrulama geçti. Backup/sync/DDL/handler/validation/commit fazları ve VM sayımı ham dosyada ayrıdır; özgün deadline callback devrededir. Migration 1–5 kimlikleri ve frozen handler değişmedi.
+
+e638194/ad6cb92/5d0b3a4 kaynaklarında başarısız ara ölçümlerin **6/6/3** kontrollü ret örnekleri önceki bölümlerde ve ham dosyalarda korunur. Başarısızlıklar atılmadı; bu son kaynak kabulünde kota, güvenlik kontrolü veya deadline gevşetilmedi. 60 s cProfile tanısı ve mikro A/B ölçümleri kabul yerine kullanılmadı.
+
+### Kurulu ürün ve başlangıç
+
+[Wheel/sdist iki temiz kurulum](p01-4-noop-installations.json): 50/330 izinli üye, doğru import/konsol kökeni, v1/cache/execution ve boş olmayan jobs CLI/API/text smoke geçti. Wheel SHA-256 **54d371d61c6eb5dc4b021c1ad989ed37ce447179ad1f30c89e1880ec18b45851**; sdist **19f7640dfaab36e55e77708ba6f50c4ed817661f188e8ebdd6bcfe9c5d65c607**. Bu build son kanıt/belge kapanışından önceki ürün kaynağıdır; kendi sonradan üretilmiş kanıtlarını içerdiği iddia edilmez. PR CI tam teslim ağacından yeniden paket üretir.
+
+[Kurulu jobs ham kaydı](p01-4-noop-jobs-budget.json), aynı wheel'de dört yolun her birinde 30 yeni süreç/sıcak p95:
+
+| Fixture | List (ms) | Show (ms) | Kapı |
+|---|---:|---:|---|
+| Normal | 133,522 | 118,806 | ≤200 ms, geçti |
+| Yoğun | 175,712 | 122,114 | ≤200 ms, geçti |
+
+İlk süreç ve warmup örnekleri ayrı tutulur; sıcak p95 yerine kullanılmaz. Salt-okunur sorgu/snapshot/RSS/byte/VM tanısı ayrı kayıttır; metadata için checkout içi/dışı runtime yolu desteği performans sonucu gibi sayılmaz.
+
+[Eşli startup ham kaydı](p01-4-noop-startup.json), aynı host'ta development a9f1f2e tabanı ve aday arasında 30 AB/BA süreç çifti kullanır. Aday p95 help/version/context/cache **26,897 / 25,323 / 82,742 / 123,185 ms**; karşılık gelen taban **27,707 / 27,390 / 84,495 / 123,790 ms**. Mevcut 500/200 ms kapıları iki tarafta da geçti. Aday wheel hash'i jobs/kurulum kaydıyla aynıdır; runtime no-dev/frozen ve kaynak kökeni doğrulanır. Bir host'un sonucu sabit GitHub runner performansı veya fiziksel soğuk başlangıç kanıtı değildir.
+
+Ürün head'i 182f695 için [GitHub offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40826046460) ve [branch-policy](https://github.com/HodeTech/Yorunge/actions/runs/40826046139) başarılı; SonarCloud başarılı/0 annotation, CodeRabbit ve Sourcery bu head'de skipped. Son belge tesliminin CI'ı ayrıca izlenir; önceki head sonucu yeni head'e yazılmaz. Sonar S8705 gerekçeli false positive, S8707 kod düzeltmesiyle fixed durumundadır; genel kural/eşik değiştirilmedi.
+
+**P01-4b/4c yerel kabulü verified; PR #10 kullanıcı incelemesine açıktır.** Sıradaki paket P01-5a/5b, ardından P01-6b faz kapanışıdır. Bu çalışma P01-5 uygulamasını başlatmaz. Development merge'i, Master/release, gerçek EVREN/ForgeLM, Windows veya fiziksel güç kesintisi kabulü değildir.
