@@ -172,7 +172,9 @@ def _validate_arguments(parser, args):
 
 def cpu_label():
     if sys.platform == "darwin":
-        return subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
+        return subprocess.check_output(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+        ).strip()
     return platform.processor() or "unknown"
 
 
