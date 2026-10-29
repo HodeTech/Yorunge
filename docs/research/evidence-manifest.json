@@ -2471,6 +2471,52 @@
       }
     },
     {
+      "name": "p01-6-reference-jobs-rss-lint.json",
+      "archive": "raw/p01-6-reference-jobs-rss-lint.json.gz",
+      "original_commit": null,
+      "content_bytes": 122443,
+      "content_sha256": "6452a030de06ddc790b9f13336d70c854cf3db8672153413f2b0602701eb95fb",
+      "archive_bytes": 21413,
+      "archive_sha256": "698a82370b9a7ef278667a3f3658f1ee3c0685de363e44f6f5df0eaf79b46120",
+      "summary": {
+        "source_commit": "fbcbb32d4d6feb001656d09699ac6a86c33f8351",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 118.86104103177786,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 108.68079215288162,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 156.1163750011474,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 108.59099985100329,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
       "name": "p01-6-reference-jobs-rss-v2.json",
       "archive": "raw/p01-6-reference-jobs-rss-v2.json.gz",
       "original_commit": null,
@@ -2715,6 +2761,91 @@
             "baseline_rss_bytes": 49414144,
             "peak_rss_bytes": 50118656,
             "elapsed_seconds": 1.5931844578590244,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-rss-lint-stream-v2.json",
+      "archive": "raw/p01-6-rss-lint-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 49102,
+      "content_sha256": "de2780167081755991a361ce697941d8378d7967c0092354a3b6ab69a3f71db5",
+      "archive_bytes": 6175,
+      "archive_sha256": "2734d35ad5d9bde0be675ec35ee0fdafc1b5c1ba8a99d84590b4617a50882d00",
+      "summary": {
+        "source_commit": "fbcbb32d4d6feb001656d09699ac6a86c33f8351",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            49152,
+            114688,
+            1097728
+          ],
+          "upper_bound_bytes": [
+            49152,
+            114688,
+            1097728
+          ],
+          "span_upper_bound_bytes": 1048576,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 50184192,
+            "pretransfer_peak_rss_bytes": 50184192,
+            "peak_rss_bytes": 50233344,
+            "extra_rss_lower_bound_bytes": 49152,
+            "extra_rss_upper_bound_bytes": 49152,
+            "elapsed_seconds": 0.026803583139553666,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 49823744,
+            "pretransfer_peak_rss_bytes": 49823744,
+            "peak_rss_bytes": 49938432,
+            "extra_rss_lower_bound_bytes": 114688,
+            "extra_rss_upper_bound_bytes": 114688,
+            "elapsed_seconds": 0.401059958152473,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 49823744,
+            "pretransfer_peak_rss_bytes": 49823744,
+            "peak_rss_bytes": 50921472,
+            "extra_rss_lower_bound_bytes": 1097728,
+            "extra_rss_upper_bound_bytes": 1097728,
+            "elapsed_seconds": 1.590270249871537,
             "max_chunk_bytes": 16384,
             "chunk_count": 65536,
             "connection_count": 1,
