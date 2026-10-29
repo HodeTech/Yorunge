@@ -10,9 +10,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from yorunge.adapters.capability_cache import Stamp, StateCache
-from yorunge.adapters.state import Store, metadata, sqlite_error_code
-from yorunge.application.execution import ExecutionBudget
+from yorunge.adapters.state import metadata, sqlite_error_code
 from yorunge.domain.capabilities import canonical, instant, timestamp
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.execution import (
@@ -29,6 +27,9 @@ from yorunge.domain.execution import (
 from yorunge.domain.state import canonical_uuid
 
 if TYPE_CHECKING:
+    from yorunge.adapters.capability_cache import Stamp, StateCache
+    from yorunge.adapters.state import Store
+    from yorunge.application.execution import ExecutionBudget
     from yorunge.domain.operations import AdmissionAuthority
 
 PLAN_COLUMNS = "plan_id,digest,task,prepared_at,expires_at,status,payload"
@@ -115,6 +116,8 @@ def validate_plans(connection: sqlite3.Connection) -> None:
 
 
 def stamp(moment: ExecutionMoment) -> Stamp:
+    from yorunge.adapters.capability_cache import Stamp
+
     return Stamp(
         moment.store_id, moment.identity_epoch, moment.generation, moment.now, moment.anomaly
     )
@@ -461,7 +464,8 @@ def forget_plan(store: Store, plan_id: str, confirmation: str | None) -> Forgott
 
 
 def revoke_approval(store: Store, plan_id: str) -> ExecutionApprovalState:
-    from yorunge.application.execution import approval_state
+    from yorunge.adapters.capability_cache import StateCache
+    from yorunge.application.execution import ExecutionBudget, approval_state
     from yorunge.domain.errors import ApprovalNotEffective
 
     plan = read_plan(store.connection, plan_id)

@@ -139,10 +139,8 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
     for step_id, command in (
         (
             "jobs-budgets",
-            ".venv/bin/python scripts/benchmark-jobs.py "
-            "--python .local/startup-check/candidate/env/bin/python "
-            "--workspace .local/jobs-check --output dist/jobs.json "
-            "--wheel .local/startup-check/candidate/dist/*.whl --disk-type unknown",
+            ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
+            "p01-6-reference-jobs.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -172,7 +170,7 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         "dist/ci-environment.json",
         "dist/verification.jsonl",
         "dist/startup.json",
-        "dist/jobs.json",
+        "dist/jobs-reference.txt",
         "dist/stream.json",
         "dist/cache-startup.prof",
         ".local/stream-check/source-manifest.json",
@@ -309,7 +307,9 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     assert "cpu_count" in report and "cpu_affinity" in report
     assert report["disk_type"] == "unknown"
     assert report["startup_budget_scope"] == scope
-    assert report["jobs_budget_scope"] == scope
+    assert report["jobs_budget_scope"] == (
+        "reference_receipt_macos_m5max_py311" if budgets == "true" else "compatibility_only"
+    )
     assert report["raw_stream_budget_scope"] == scope
     assert "do-not-record-ambient-values" not in encoded
 

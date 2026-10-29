@@ -28,7 +28,7 @@ def runtime_tree(tmp_path_factory):
     packages or editable-path hooks. No installer/network or stale dist is used.
     """
     prefix = tmp_path_factory.mktemp("installed-runtime") / "env"
-    venv.EnvBuilder(with_pip=False).create(prefix)
+    venv.EnvBuilder(with_pip=False, symlinks=True).create(prefix)
     python = prefix / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     site = Path(
         subprocess.check_output(

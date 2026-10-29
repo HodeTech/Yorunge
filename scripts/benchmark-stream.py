@@ -245,35 +245,61 @@ def measure_one(
         try:
             until = time.monotonic() + 10
             while not ready.is_file():
-                if server.poll() is not None or time.monotonic() >= until:
-                    raise ValueError("synthetic TLS server did not become ready")
+                exit_code = server.poll()
+                if exit_code is not None:
+                    raise ValueError(
+                        f"synthetic TLS server exited before readiness (exit={exit_code}); "
+                        f"diagnostics retained at {work}"
+                    )
+                if time.monotonic() >= until:
+                    raise ValueError(
+                        "synthetic TLS server readiness timed out after 10 seconds "
+                        f"while process was running; diagnostics retained at {work}"
+                    )
                 time.sleep(0.02)
             address = json.loads(ready.read_text(encoding="utf-8"))
-            result = subprocess.run(
-                [
-                    str(python),
-                    "-I",
-                    str(helper),
-                    "client",
-                    "--ca",
-                    str(cert),
-                    "--port",
-                    str(address["port"]),
-                    "--size",
-                    str(size),
-                    "--manifest",
-                    str(manifest),
-                    "--prefix",
-                    str(python.parent.parent),
-                    "--total-seconds",
-                    str(TOTAL_SECONDS),
-                ],
-                cwd=work,
-                env=environment(),
-                capture_output=True,
-                text=True,
-                timeout=2 * TOTAL_SECONDS + 30,
-            )
+            try:
+                result = subprocess.run(
+                    [
+                        str(python),
+                        "-I",
+                        str(helper),
+                        "client",
+                        "--ca",
+                        str(cert),
+                        "--port",
+                        str(address["port"]),
+                        "--size",
+                        str(size),
+                        "--manifest",
+                        str(manifest),
+                        "--prefix",
+                        str(python.parent.parent),
+                        "--total-seconds",
+                        str(TOTAL_SECONDS),
+                    ],
+                    cwd=work,
+                    env=environment(),
+                    capture_output=True,
+                    text=True,
+                    timeout=2 * TOTAL_SECONDS + 30,
+                )
+            except subprocess.TimeoutExpired as error:
+                for name, partial in (
+                    ("client-stdout.txt", error.stdout),
+                    ("client-stderr.txt", error.stderr),
+                ):
+                    text = (
+                        partial.decode("utf-8", errors="replace")
+                        if isinstance(partial, bytes)
+                        else partial or ""
+                    )
+                    try:
+                        (work / name).write_text(text, encoding="utf-8")
+                    except OSError:
+                        # Retaining diagnostics must not replace the timeout.
+                        pass
+                raise
             # Preserve subprocess failures and malformed records in the fresh workspace.
             (work / "client-stdout.txt").write_text(result.stdout, encoding="utf-8")
             (work / "client-stderr.txt").write_text(result.stderr, encoding="utf-8")

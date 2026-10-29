@@ -6,6 +6,8 @@ Small fixtures prove the measurement path; none is a 1GiB performance acceptance
 import copy
 import hashlib
 import json
+import os
+import platform
 import runpy
 import subprocess
 import sys
@@ -156,23 +158,53 @@ def test_inconsistent_or_nonfinite_measurements_are_rejected(changes):
         helpers()["evaluate_run"](record, telemetry(), 65537, record["received_sha256"])
 
 
+@pytest.mark.parametrize("reverse_dns_allowed", [True, False])
 def test_small_fixture_uses_isolated_installed_client_and_separate_real_tls_process(
-    runtime_tree, tmp_path
+    runtime_tree, tmp_path, reverse_dns_allowed
 ):
     prefix, python, _ = runtime_tree
     tools = helpers()
     manifest = tmp_path / "manifest.json"
+    source = tools["source"](ROOT)
     manifest.write_text(
         json.dumps(
             {
-                "source_sha256": tools["source"](ROOT)["source_sha256"],
+                "source_sha256": source["source_sha256"],
                 "locked_runtime": tools["locked_runtime"](ROOT),
             }
         )
     )
-    result = tools["measure_one"](
-        ROOT, python, tmp_path / "run", manifest, certificate(tmp_path / "cert"), 65537
-    )
+    project = ROOT
+    if not reverse_dns_allowed:
+        project = tmp_path / "fixture-wrapper"
+        helper = project / "tests/fixtures/stream_budget.py"
+        helper.parent.mkdir(parents=True)
+        helper.write_text(
+            "import runpy, socket\n"
+            "def denied(*args): raise AssertionError('fixture must not request reverse DNS')\n"
+            "socket.getfqdn = denied\n"
+            f"runpy.run_path({str(ROOT / 'tests/fixtures/stream_budget.py')!r}, "
+            "run_name='__main__')\n"
+        )
+    work = tmp_path / "run"
+    try:
+        result = tools["measure_one"](
+            project, python, work, manifest, certificate(tmp_path / "cert"), 65537
+        )
+    except ValueError as error:
+        stderr = work / "server-stderr.txt"
+        tail = "not available"
+        if stderr.is_file():
+            with stderr.open("rb") as reader:
+                reader.seek(0, os.SEEK_END)
+                reader.seek(max(0, reader.tell() - 4096))
+                tail = reader.read(4096).decode("utf-8", errors="replace")
+        pytest.fail(
+            f"{error}; host={platform.platform()}; cpu={platform.processor() or 'unknown'}; "
+            f"python={sys.version.split()[0]}; source={source['commit']}; "
+            f"synthetic server stderr tail (max 4096 bytes)={tail!r}",
+            pytrace=False,
+        )
     assert result["passed"] is True
     assert (
         result["expected_sha256"]
@@ -480,3 +512,74 @@ def test_completed_receipts_survive_later_worker_failure(
     }
     assert "private" not in json.dumps(failed)
     assert not (workspace / str(failed_size) / "measurement.json").exists()
+
+
+def test_server_startup_exit_is_distinct_and_retains_diagnostics(tmp_path):
+    project = tmp_path / "fixture"
+    helper = project / "tests/fixtures/stream_budget.py"
+    helper.parent.mkdir(parents=True)
+    helper.write_text(
+        "import sys\nsys.stderr.write('forced synthetic startup failure\\n')\n"
+        "raise SystemExit(23)\n"
+    )
+    work = tmp_path / "run"
+    with pytest.raises(ValueError, match="server exited before readiness.*23"):
+        helpers()["measure_one"](
+            project,
+            Path(sys.executable),
+            work,
+            tmp_path / "unused-manifest",
+            (tmp_path / "unused-cert", tmp_path / "unused-key"),
+            65537,
+        )
+    assert (work / "server-stderr.txt").read_text() == "forced synthetic startup failure\n"
+    assert not (work / "ready.json").exists()
+
+
+def test_client_timeout_keeps_partial_diagnostics_and_original_exception(tmp_path, monkeypatch):
+    certs = certificate(tmp_path / "cert")
+    failure = subprocess.TimeoutExpired(
+        "synthetic-client", 270, output=b"partial stdout", stderr=b"partial stderr"
+    )
+
+    def expired(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(subprocess, "run", expired)
+    work = tmp_path / "run"
+    with pytest.raises(subprocess.TimeoutExpired) as caught:
+        helpers()["measure_one"](
+            ROOT, Path(sys.executable), work, tmp_path / "unused-manifest", certs, 65537
+        )
+    assert caught.value is failure
+    assert (work / "client-stdout.txt").read_text() == "partial stdout"
+    assert (work / "client-stderr.txt").read_text() == "partial stderr"
+    assert (work / "server-stdout.txt").is_file()
+    assert (work / "server-stderr.txt").is_file()
+
+
+def test_live_server_readiness_timeout_is_distinct_without_waiting_for_the_deadline(
+    tmp_path, monkeypatch
+):
+    tools = helpers()
+    measure = tools["measure_one"]
+    project = tmp_path / "fixture"
+    helper = project / "tests/fixtures/stream_budget.py"
+    helper.parent.mkdir(parents=True)
+    helper.write_text("import signal\nsignal.pause()\n")
+    clock = iter([0.0, 11.0])
+    monkeypatch.setitem(measure.__globals__, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+    work = tmp_path / "run"
+    with pytest.raises(
+        ValueError, match="readiness timed out after 10 seconds while process was running"
+    ):
+        measure(
+            project,
+            Path(sys.executable),
+            work,
+            tmp_path / "unused-manifest",
+            (tmp_path / "unused-cert", tmp_path / "unused-key"),
+            65537,
+        )
+    assert not (work / "ready.json").exists()
+    assert (work / "server-stderr.txt").is_file()

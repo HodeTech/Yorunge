@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import runpy
 import statistics
 import sys
 import tempfile
@@ -38,6 +39,22 @@ INSTALL_CHECKS = (
     "execution_smoke",
     "jobs_smoke",
 )
+JOBS_REFERENCE = {
+    "cpu": "Apple M5 Max",
+    "disk_type": "internal SSD/APFS",
+    "machine": "arm64",
+    "platform_prefix": "macOS-27.0.1-",
+    "python_prefix": "3.11.",
+}
+JOBS_REFERENCE_ROWS = {
+    "operations": (1, 1024),
+    "operation_attempts": (1, 16384),
+    "operation_events": (3, 262144),
+    "operation_outcomes": (0, 1024),
+    "execution_plans": (1, 1024),
+    "execution_approvals": (1, 1024),
+    "capability_cache": (1, 1024),
+}
 MANIFEST = "evidence-manifest.json"
 INDEX = "evidence.md"
 
@@ -954,6 +971,136 @@ def verify(root: Path) -> int:
     return len(entries)
 
 
+def current_jobs_inputs(root: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Read the producer's complete source scope and frozen runtime without running it."""
+    benchmark = runpy.run_path(str(root / "scripts/benchmark-jobs.py"))
+    source = benchmark["source"](root)
+    return hash_map(source["source_sha256"]), package_versions(benchmark["locked_runtime"](root))
+
+
+def jobs_reference_environment(environment: dict[str, Any]) -> None:
+    runtime = environment["runtime"]
+    declared = {key: environment.get(key) for key in ("cpu", "disk_type")}
+    expected = {key: JOBS_REFERENCE[key] for key in declared}
+    if declared != expected or runtime["machine"] != JOBS_REFERENCE["machine"]:
+        raise ValueError("jobs proof does not declare the configured M5 reference environment")
+    for key in ("platform", "python"):
+        if not runtime[key].startswith(JOBS_REFERENCE[key + "_prefix"]):
+            raise ValueError("jobs proof does not declare the configured M5 reference runtime")
+
+
+def jobs_reference_sources(root: Path, provenance: dict[str, Any]) -> None:
+    current_source, locked_packages = current_jobs_inputs(root)
+    for key in ("source_before", "source_after"):
+        if provenance[key]["source_sha256"] != current_source:
+            raise ValueError(
+                "jobs reference proof does not match the complete current source bytes"
+            )
+    for key in ("installed_before", "installed_after"):
+        if provenance[key]["packages"] != locked_packages:
+            raise ValueError("jobs reference runtime packages differ from the current frozen lock")
+
+
+def jobs_reference_rows(value: object, layout: str) -> None:
+    rows = closed(value, " ".join(JOBS_REFERENCE_ROWS), "jobs reference fixture rows")
+    for table, counts in JOBS_REFERENCE_ROWS.items():
+        row = closed(
+            rows[table],
+            "records payload_bytes largest_record_bytes",
+            "jobs reference table",
+        )
+        count = integer(row["records"])
+        total, largest = integer(row["payload_bytes"]), integer(row["largest_record_bytes"])
+        if count != counts[layout == "dense"]:
+            raise ValueError("jobs reference fixture row count differs from acceptance workload")
+        if (count == 0 and (total or largest)) or (
+            count > 0 and not 0 < largest <= total <= count * largest
+        ):
+            raise ValueError("jobs reference fixture payload counters are inconsistent")
+    if layout == "dense":
+        required = {"execution_plans": (67108864, 65536), "capability_cache": (33554432, 32768)}
+        for table, (total, largest) in required.items():
+            if (
+                rows[table]["payload_bytes"] != total
+                or rows[table]["largest_record_bytes"] != largest
+            ):
+                raise ValueError(
+                    "jobs reference dense fixture payload differs from acceptance workload"
+                )
+
+
+def jobs_reference_fixture(value: object, layout: str) -> dict[str, Any]:
+    fixture = closed(
+        value,
+        "rows database_bytes database_sha256 list_summaries has_next_cursor "
+        "show_summary show_attempts show_outcome",
+        "jobs reference fixture",
+    )
+    jobs_reference_rows(fixture["rows"], layout)
+    integer(fixture["database_bytes"], minimum=1)
+    pattern_value(fixture["database_sha256"], SHA256)
+    summaries = fixture["list_summaries"]
+    expected_rows = 50 if layout == "dense" else 1
+    if not isinstance(summaries, list) or len(summaries) != expected_rows:
+        raise ValueError("jobs reference list fixture has the wrong result count")
+    flag(fixture["has_next_cursor"], layout == "dense")
+    target = fixture["show_summary"]
+    if not isinstance(target, dict) or target != summaries[0]:
+        raise ValueError("jobs reference show fixture differs from the selected list result")
+    text_value(target.get("operation_id"))
+    pattern_value(target.get("plan_digest"), SHA256)
+    return fixture
+
+
+def jobs_reference_fixtures(report: dict[str, Any]) -> None:
+    fixtures = {
+        layout: jobs_reference_fixture(report["fixtures"][layout], layout)
+        for layout in ("normal", "dense")
+    }
+    for run in report["runs"]:
+        fixture = fixtures[run["layout"]]
+        if run["action"] == "list":
+            rows = integer(run["expected_list_rows"], minimum=1)
+            if rows != len(fixture["list_summaries"]):
+                raise ValueError("jobs reference list expectation differs from its fixture")
+        elif (
+            run["expected_operation_id"] != fixture["show_summary"]["operation_id"]
+            or run["expected_plan_digest"] != fixture["show_summary"]["plan_digest"]
+        ):
+            raise ValueError("jobs reference show expectation differs from its fixture")
+
+
+def verify_jobs_reference(root: Path, name: str) -> dict[str, Any]:
+    """Check a declared reference receipt against current code, never rerun its benchmark.
+
+    Hash equality binds retained evidence to source bytes; it is not an attestation
+    of the physical host or a performance result for the verifier's current host.
+    A docs-only Git commit may differ when the complete measured source map is equal.
+    """
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid jobs reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown jobs reference evidence name")
+    report = decode(unpack(directory, item))
+    if report.get("kind") != "jobs":
+        raise ValueError("jobs reference proof requires a modern jobs receipt")
+    summary = modern_jobs_summary(report)
+    if not summary["passed"] or report["samples_per_command"] != 30:
+        raise ValueError("jobs reference proof requires four passing 200 ms / 30-process cases")
+    jobs_reference_environment(report["environment"])
+    jobs_reference_fixtures(report)
+    jobs_reference_sources(root, report["provenance"])
+    return {
+        "name": name,
+        "source_commit": report["source_commit"],
+        "cpu": report["environment"]["cpu"],
+        "p95_ms": {key: value["p95_ms"] for key, value in summary["measurements"].items()},
+    }
+
+
 def replace_metadata(path: Path, content: bytes) -> None:
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("metadata target must be a regular file")
@@ -1009,6 +1156,8 @@ def main() -> int:
     add.add_argument("--original-commit")
     show = commands.add_parser("show")
     show.add_argument("name")
+    reference = commands.add_parser("verify-jobs-reference")
+    reference.add_argument("name")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
@@ -1021,6 +1170,12 @@ def main() -> int:
             if item is None:
                 raise ValueError("unknown evidence name")
             sys.stdout.buffer.write(unpack(directory, item))
+        elif args.action == "verify-jobs-reference":
+            verify_jobs_reference(root, args.name)
+            print(
+                f"Jobs reference proof validated: {args.name}; four 30-process cases, "
+                "each p95 <= 200 ms; current source bytes match the declared M5 reference."
+            )
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
     except (OSError, ValueError, KeyError, TypeError, EOFError) as error:

@@ -16,3 +16,5 @@
 | [Araç entegrasyonları](tool-integrations.md) | ForgeLM ve muadil sağlayıcı adaptörleri | C09/C10/C14 bağlantıları |
 
 Modüller alan sahipliğidir; hepsi ayrı paket/servis olmak zorunda değildir. Başka modülün tablosuna veya özel yardımcısına doğrudan erişim yoktur. İş akışı farklı modül sonuçlarını açık portlarla bağlar. Somut kaynak yerleşimi P01'de [proje yapısına](../project-structure.md) göre kurulur.
+
+P01-5 çalışma dalında ortak [HTTP/session](../reference/http-transport.md) ve [tipli stream/NDJSON/iptal](../reference/stream-results.md) altyapısı gerçekTLS/süreç ve kurulu artifact ile verified. Bunlar modüllerin kullanacağı ortak çekirdektir; veri/LLM/eğitim hizmet adaptörlerinin uygulanması veya canlı erişimi anlamına gelmez. [Kabul ve faz kapanışı](../research/p01-remaining-implementation-validation.md) ayrı izlenir.

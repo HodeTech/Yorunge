@@ -1,6 +1,6 @@
 # Mühendislik standartları
 
-**Güncellendi:** 2026-10-27. İlk dilimin etkin sınırları [kabul kaydında](../research/p01-core-validation.md); diğer maddeler ilgili uygulama fazını yönlendirir. CI tanımı bulunması uzakta koştuğu anlamına gelmez.
+**Güncellendi:** 2026-10-29. İlk dilimin etkin sınırları [ilk kabulde](../research/p01-core-validation.md), yeni taşıma/stream/kurulum ve kaynak kabulü [P01 kapanış kaydında](../research/p01-remaining-implementation-validation.md) tutulur. Gerçek CI ortamları ayrıca kaydedilir; tanım bulunması uzakta koştuğu anlamına gelmez.
 
 | Belge | Kapsam | Durum |
 |---|---|---|
@@ -8,8 +8,8 @@
 | [Mimari](architecture.md) | Sınırlar ve bağımlılık yönü | Benimsenmiş |
 | [Python](python.md) | Tip, kaynak yönetimi ve bağımlılıklar | Etkin — yerel şema, lint/type/import; uzak kaynaklar planlandı |
 | [Kullanım deneyimi](ux.md) | Rehberli/doğrudan/CI davranışı | Benimsenmiş |
-| [Performans](performance.md) | Bütçeler, ölçüm ve optimizasyon | Etkin — başlangıç/profil; aktarım/ağ planlandı |
-| [Test](testing.md) | Sözleşme ve dayanıklılık kanıtı | Etkin — offline/yerel state kesinti kabulü; uzak yürütme planlandı |
+| [Performans](performance.md) | Bütçeler, ölçüm ve optimizasyon | Etkin — başlangıç/profil/jobs ve raw TLS stream; hizmet/araç aktarımı ayrı |
+| [Test](testing.md) | Sözleşme ve dayanıklılık kanıtı | Etkin — yerel state, gerçek TLS/stream/process yolculuğu; canlı yürütme planlandı |
 | [Güvenlik](security.md) | Sır, dosya, ağ ve çalıştırma sınırları | Benimsenmiş |
 | [Hata ve gözlemlenebilirlik](error-handling-observability.md) | Sonuç, log, metrik ve belirsizlik | Benimsenmiş |
 | [Belgeleme](documentation.md) | Kanonik kaynak, dil ve durum | Benimsenmiş; bu belge temeline uygulanır |

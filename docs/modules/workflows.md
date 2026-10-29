@@ -13,3 +13,5 @@ Uygulanan hazırlık/onay [execution referansındadır](../reference/execution-p
 **İç çekirdek kabulü:** Aynı planın çift gönderimi, lease devri, sonuç yazma belirsizliği, bozuk durum, credential/onay yarışı ve reset ayrı süreçlerle sınandı; [kanıt](../research/p01-4-implementation-validation.md). Public jobs CLI/Python aynı yerel okuma kuralını kullanır; MCP ve uzak watch/stop sonraki fazlardadır. [Çalıştırma modeli](../architecture/execution-model.md).
 
 [Operation/jobs sözleşmesi](../reference/operations.md) durum, cursor ve finite kapasite sınırını taşır. Jobs lease süresini uzatmaz, otomatik takeover yapmaz; son yerel durum stale olabilir.
+
+P01-5 çalışma dalında coordinator owned taşıma context'ini credential/admission öncesi denetler; kalıcı arm sınırındaki iptal gönderim belirsizliği ve operation ID'yi korur. Ortak stream/renderer yerel okumayı bırakmayı uzak iptale veya yeni dispatch'e dönüştürmez. GerçekTLS/process/SQLite bütünleşik fixture bu bağı, restart ve en çok tek etkiyle doğrular; [P01 kabul kaydı](../research/p01-remaining-implementation-validation.md). Public run/watch/stop komutu bu altyapıyla kendiliğinden açılmaz.

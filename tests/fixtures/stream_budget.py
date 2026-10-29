@@ -24,6 +24,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 from typing import Any
 
 CHUNK_BYTES = 32_768
@@ -274,7 +275,15 @@ def serve(args: argparse.Namespace) -> int:
                 with lock:
                     active -= 1
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    class LoopbackServer(ThreadingHTTPServer):
+        def server_bind(self) -> None:
+            # HTTPServer otherwise performs an unnecessary reverse DNS lookup
+            # before readiness. This fixture has a fixed localhost identity.
+            TCPServer.server_bind(self)
+            self.server_name = "localhost"
+            self.server_port = int(self.server_address[1])
+
+    server = LoopbackServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(str(args.ca), str(args.key))
