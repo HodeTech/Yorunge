@@ -70,7 +70,7 @@ def decode(model: type[T], payload: object, maximum: int) -> T:
         raise YorungeError("state_invalid") from None
 
 
-def operation_row(record: OperationRecord) -> tuple[object, ...]:
+def _operation_projection(record: OperationRecord) -> tuple[object, ...]:
     s = record.summary
     return (
         s.operation_id,
@@ -85,6 +85,12 @@ def operation_row(record: OperationRecord) -> tuple[object, ...]:
         s.revision,
         record.lease.expires_at if record.lease else None,
         record.dispatch_attempt_id,
+    )
+
+
+def operation_row(record: OperationRecord) -> tuple[object, ...]:
+    return (
+        *_operation_projection(record),
         canonical(record.model_dump(mode="json")).decode("ascii"),
     )
 
@@ -93,7 +99,7 @@ def decode_operation(row: tuple[object, ...]) -> OperationRecord:
     if len(row) != 13:
         raise YorungeError("state_invalid")
     record = decode(OperationRecord, row[-1], MAX_OPERATION_BYTES)
-    if row[:-1] != operation_row(record)[:-1]:
+    if row[:-1] != _operation_projection(record):
         raise YorungeError("state_invalid")
     return record
 

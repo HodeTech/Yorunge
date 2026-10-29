@@ -62,11 +62,9 @@ def instant(value: str) -> datetime:
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("duplicate wire key")
-        result[key] = value
+    result = dict(pairs)
+    if len(result) != len(pairs):
+        raise ValueError("duplicate wire key")
     return result
 
 
@@ -114,13 +112,27 @@ class JsonWireModel(Model):
         )
 
 
+def _validate_wire_text(value: str) -> None:
+    if has_control_characters(value) or len(value.encode("utf-8", errors="strict")) > 2048:
+        raise ValueError("bounded Unicode text required")
+
+
+@lru_cache(maxsize=4096)
+def _validate_short_wire_text(value: str) -> None:
+    # Only successful syntax checks for <=128 ASCII characters are retained.
+    # This is independent of model, authority, clock and state validation.
+    _validate_wire_text(value)
+
+
 class WireModel(JsonWireModel):
     @field_validator("*", mode="after")
     @classmethod
     def unicode_text(cls, value: object) -> object:
         if isinstance(value, str):
-            if has_control_characters(value) or len(value.encode("utf-8", errors="strict")) > 2048:
-                raise ValueError("bounded Unicode text required")
+            if type(value) is str and len(value) <= 128 and value.isascii():
+                _validate_short_wire_text(value)
+            else:
+                _validate_wire_text(value)
         return value
 
 
