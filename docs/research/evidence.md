@@ -450,7 +450,7 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 
 **Tür:** `diagnostic`.
 **Özgün JSON SHA-256:** `19e4d9a29642da3a583d42fbf4abdd994484742aed8fb5463cd0b36b2c73cf3a`.
-[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/88d59c5b97a147f533ce16134c1146472c31b8ff/docs/research/p01-6-user-review-ci-initial-failure.json); yerel arşiv `raw/p01-6-user-review-ci-initial-failure.json.gz`.
+**Yerel arşiv:** `raw/p01-6-user-review-ci-initial-failure.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "failed", "source_commit": "68fe43da7b3c6098ad2e0fc00d8ac81881c16c9f"}`.
 
 ## p01-6-user-review-installation
