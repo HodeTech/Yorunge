@@ -1,0 +1,45 @@
+---
+id: P01-6b
+phase: P01
+status: draft
+size: M
+depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
+capabilities: [C01, C02, C12, C13]
+---
+# P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
+
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. Henüz uygulanmadı; eski P01-6a CI altyapısı verified, bu kapanış kabulü değildir.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–4 kabulü var; henüz olmayan taşıma/akışın bütünleşik kurulum, iptal, kaynak ve ortam kanıtı eksiktir.
+
+## Giren ve girmeyen kapsam
+
+Ürün çekirdeği ile gerçek TLS loopback/süreç/SQLite uçtan uca sentetik kabul, source-matched performans, wheel/sdist iki kurulum, CI uyumluluk matrisi ve durum/belge kapanışı girer. Gerçek EVREN/ForgeLM adaptörü, ücretli çağrı/GPU, veri seti upload/uzak artefakt teslimi, Windows state desteği, fiziksel güç kesintisi, Master/release/yayın kapısı bu kartta yoktur. Bunların sınırını kaydetmek açık P01 kabulünü ertelemek değildir.
+
+## Bağımlılıklar ve kararlar
+
+P01-2c/3b/4c development'a teslim edildi. P01-5b aynı dalda gerçek kabul/iki fresh review ile verified olmadan bu kart ready olmaz. ADR-0017/0018 onayı ve ilgili uygulama önkoşuldur. Kullanıcının kalan işler talebi tek nihai PR için yetkidir; ayrıca belge PR'ı veya test merge'ü açılmaz.
+
+## Sözleşme ve uygulama sınırı
+
+Genel test/kurulum komutlarının tek kaynağı [CONTRIBUTING](../../../CONTRIBUTING.md#doğrulama-seçimi), bütçe/yöntem [performans standardı](../../standards/performance.md), ölçüm saklama [kanıt standardı](../../standards/research-evidence.md)'dır. Bütünleşik fixture gerçek ürün port/renderer/kurulu paket kullanır; fake provider yalnız test katmanında kalır. Durum değişimi yalnız gerçek kanıta dayanır.
+
+## Kabul
+
+1. Yeni config/state→seçilmiş credential kimliği→fixture account/proof capability→immutable plan/input validation/digest approval→kalıcı operation/attempt→gerçek TLS taşıma/çok-olay stream→tipli terminal sonuç; ayrı süreç/restart sonrası CLI/Python jobs aynı kayıt/ID/digest/outcome'u okur. Beklentiler uygulama çıktısından türetilmiş oracle değildir.
+2. Wrong-target/auth/revoke/credential yarışları ve yan etki sonrası kayıp response/SIGKILL/cancel/deadline negatifleri: eski sahip yazamaz, en çok1 fixture effect, latch korunur, unknown yalnız trusted aynı-job gözlemle çözülür. Kesik stream, izlemeyi bırakma ve doğrulanmış provider cancellation ayrıdır. Prearm ret sıfır request/effect'tir.
+3. Wheel ve sdist ayrı frozen runtime ortamlarında depo dışından import/konsol/metadata ve yeni transport/stream smoke'unu geçer. Paket üye izin listeleri, özel girdi ve raw arşiv dışlama, mevcut v1/cache/execution/jobs smoke ve lazy network/secret/ML guard korunur.
+4. Son runtime kaynağında tam test/Ruff/mypy/docs/agent/evidence/diff kapıları; kurulum/CI test sonucu source SHA, OS/arch/Python/SQLite ve paket sürümüyle kaydedilir. Linux3.11/3.14 ve macOS3.11 uyumluluk işi CI'da çalıştırılır; gerekli offline-core adı korunur ve başarısız/iptal/atlanan alt iş aggregate'i yeşile çeviremez. Bunlar gerçekleşmeden ortam verified yapılmaz. Gerçek SQLite3.37 veya Windows koşusu yoksa açık not kalır; minimum hedef gerçek koşuyla karıştırılmaz.
+5. Mevcut 500/200ms paired startup ve normal/yoğun 30-process jobs kapıları son kaynakla tekrar doğrulanır; yeni HTTP import'u yerel yola girmez. State5s/coordinator30s kontrol deadline'ları ve yoğun fixture davranışı korunur; ilgili hot-path değiştiyse operation/migration bütçe probe'ları son kaynakla koşulur, eski kayda güvenilmez. Aşım skip veya tolerans artırımıyla gizlenmez.
+6. Gerçek raw stream 16/256/1.024MiB sentetik byte'ı bütününü biriktirmeden hash/sayıyla tüketir; dosya boyutuyla doğrusal bellek büyümez, 1GiB istemci ek RSS≤64MiB, en çok2 bağlantı/32KiB parça, bounded backpressure ve request sayısı kayıtlıdır. Server ayrı süreç ve RSS ölçümünden hariç; TLS/istemci baseline ve örnekleme yöntemi açıklanır. Uygulanan byte taşıma kabulü dataset endpoint desteği değildir.
+7. Kapanış raporu her kart/step/review/fix ve olumlu/negatif/performans kanıtını eşler; başarısız ara koşular saklanır. Raw arşiv/hash/özet tooling gerekirse kapalı yeni report türüyle genişletilir ve gerçek negatif testlerle denetlenir. current/faz/matris/referans/modül/README/changelog tutarlı; yalnız tamamlanan P01 alt kapsamı verified olur. PR son head CI/review kullanıcıya sunulur; merge/release yapılmaz.
+
+## Doğrulama
+
+Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, artifact install ve ölçüm helper'ları; bütünleşik son test/CI. Ortam hücreleri pass/fail/not_run olarak ayrılır; doküman veya pipeline tanımının varlığı acceptance sayılmaz. Her adım commit+iki farklı fresh review turu içerir.
+
+## Teslim kaydı
+
+Henüz P01-6b ürün kabulü/test/CI/PR kaydı yoktur. P01 bütünü tamamlanmadı. [P01-4 tarihsel merge kanıtı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) yeni taşıma/akış kaynağının kabulü değildir.

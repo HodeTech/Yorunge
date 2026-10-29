@@ -1,6 +1,6 @@
 # Test ve kabul standardı
 
-**Durum:** Etkin — ilk çevrimdışı şema/seçim/CLI sınırında; uzak ve dayanıklılık senaryoları ilgili fazlarda. **Tarih:** 2026-10-27. [Kabul kaydı](../research/p01-core-validation.md).
+**Durum:** Etkin — yerel şema/CLI/SQLite, çok süreç/lease/unknown/reset ve SIGKILL kesinti sınırlarında. **Tarih:** 2026-10-29. [İlk kabul](../research/p01-core-validation.md), [P01-4 merge kabulü](../research/p01-4-implementation-validation.md#development-merge-kapanışı). HTTP/stream ve bütünleşik faz kabulü henüz uygulanmadı; süreç öldürme fiziksel güç kesintisi değildir.
 
 Testler kullanıcı sözleşmesini ve hata sınırını doğrular. Uygulamayı satır satır tekrar eden düşük etkili test yerine maliyet, veri kaybı, yanlış başarı, seçim ve toparlanma senaryolarına öncelik verilir.
 

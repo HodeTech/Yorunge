@@ -134,3 +134,22 @@ Jobs yalnız operation_not_found ve mevcut request/state hatalarını üretir; p
 | plan_in_use | 2 | Forget'in kendi transaction'ında doğrulanan operation FK bağı; başka IntegrityError state_invalid |
 | operation_uncertain | 5 | Arm sonrası dış çağrı/sonuç commit'i belirsiz; alttaki kontrollü ErrorCode reason_code olur; retry yok |
 | state_changed | 2 | Admission/arm'ın final credential ID/revision/hedefi, plan/approval snapshot veya beklenen store clock bağları değişmiş; güncel owner token uyuşmazlığı yukarıdaki lease_lost'tur |
+
+## Önerilen P01-5 hata kataloğu
+
+Bu bölüm **taslaktır, uygulanmadı**; Proposed [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) onayına bağlıdır. Mevcut kod/exit tablosunu uygulandı diye genişletmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
+
+| Kod | Exit | Kesin tetik |
+|---|---:|---|
+| transport_timeout | 1 | Shared total veya HTTP phase/pool timeout; arm sonrası aşağıdaki unknown öncelikli |
+| transport_failed | 1 | TLS/bağlantı/protokol taşıma hatası; ham URL/exception yok |
+| remote_access_denied | 3 | HTTP 401/403; retry yok, hesabın hangi yetkisinin eksik olduğu uydurulmaz |
+| remote_rate_limited | 1 | 429 ve izinli retry/bütçe sonrası ret; sınırsız bekleme yok |
+| remote_failed | 1 | Redirect dahil kabul edilmeyen diğer HTTP status veya endpoint'in doğrulanmış mantıksal başarısızlığı |
+| invalid_response | 1 | Encoding/content/size/strict domain schema veya stream sequence/ID/terminalsonrası veri bozukluğu; 2xx başarıya yetmez |
+| stream_interrupted | 1 | Message EOF geldiğinde gerekli terminal record yok; eksik son satır/bozuk içerik invalid_response'tur |
+| request_cancelled | 6 | Yerel çağrı/izleme SIGINT ile bırakıldı; rollback veya uzak iş cancellation başarısı değildir |
+| output_closed | 6 | Stdout alıcısı kapandı; retry/ikinci write yok, stderr best-effort |
+| output_write_failed | 1 | BrokenPipe dışı stdout I/O hatası; başarılı kalıcı iş değişmez |
+
+Yeni genel hatalar mevcut envelope şekli, `retryable=false`, `operation_id=null`, `details={}` kullanır; bilinen operation hatası mevcut OperationError/ID/kapalı details sözleşmesini kullanır. Sync ağ bridge active-loop/reentry/thread/PID uygunsuzluğu mevcut invalid_request/2'dir; state/env/arm/ağ öncesinde reddedilir. Effectful coordinator start sınırında timeout/iptal/yanıt belirsizliği **operation_uncertain/5** ve ilgili reason_code olarak kalır; config yayın belirsizliğinde mevcut config_write_uncertain/5 genel iptal/çıktı hatasından önceliklidir. Async kütüphane iptali CancelledError olarak cleanup sonrası yükselir; yeni hata kodları bunu global yutma izni değildir.

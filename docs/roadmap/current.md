@@ -40,11 +40,11 @@ Son PR head'i **36ae2a4** için offline-core/branch-policy/SonarCloud ve CodeRab
 
 Ham ölçümler [manifest/indeks](../research/evidence.md) ve CI hash/özet denetimiyle kayıpsız arşivlenir; CodeRabbit yalnız raw dizinini dışlar, ajanlar hedefli kanıt incelemesi yapar. Başarısız ara ölçümler ve merge kaydı korunur. Arşivler sdist'e girmez; test vektörleri ve ölçüm kodu normal incelemede kalır. Development teslimi paket yayını değildir; Master/release aktarımı kullanıcıdadır.
 
-## Sıradaki paket: P01-5
+## Aktif hazırlık: kalan P01 kapanış paketi
 
-**Yeni dal:** `feat/p01-5-transport`, development `805f8bd` tabanından açıldı. Bu dalda yalnız P01-4 kapanış belgeleri/merge kanıtı hazırlanır; ayrı belge PR'ı açılmaz, sonraki P01-5 PR'ına dahil edilir. P01-5a/b henüz draft; ürün uygulaması başlamadı.
+**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında; P01-4 kapanış commit'i d686c8f korunur. Kullanıcının 2026-10-29 talebiyle **P01-5a + P01-5b + P01-6b tek nihai development PR'ında**, [altı adımlı planla](p01-remaining-delivery-plan.md) ele alınır. [Ön inceleme](../research/p01-remaining-readiness-review.md) ve üç kart hazırlandı; ADR-0017/0018 Proposed ve kullanıcı onayı bekliyor. Kartlar draft, ürün uygulaması başlamadı; onay sonrası adım başına commit ve iki farklı fresh review turuyla otomatik ilerlenir. Ayrı belge PR'ı/merge yapılmaz.
 
-1. **P01-5a — HTTP/SDK seçimi ve ortak taşıma portu:** B01 ve SDK sınırı B03 ön incelemesi; TLS/hedef/redirect/sır koruması, tek retry/total deadline bütçesi ve gerçek loopback kabulü. HTTP istemcisi henüz seçilmedi; seçim araştırma/karar kapısından geçer. Ücretli/canlı EVREN isteği bu yerel kabul değildir.
+1. **P01-5a — HTTP/SDK seçimi ve ortak taşıma portu:** B01 ve SDK sınırı B03 ön incelemesi; TLS/hedef/redirect/sır koruması, tek retry/total deadline bütçesi ve gerçek loopback kabulü. Async HTTPX ve SDK'yı core'a almama önerisi ADR-0017'de onay bekler; HTTP taşınması uygulanmış değildir. Ücretli/canlı EVREN isteği bu yerel kabul değildir.
 2. **P01-5b — Ortak sonuç/akış/iptal hattı:** Mevcut JSON zarfı üzerine JSON/NDJSON akışı, kesilme ve iptal ayrımı; gerçek loopback/süreç sınırında CLI/Python eşliği. Yerel izlemeyi bırakmak uzak işi durdurma sayılmaz.
 3. **Ardından P01-6b — Faz kapanışı:** Bütün kabul kanıtları, kurulum/restart/hata/performans akışı ve gerçekten doğrulanmış ortam matrisi. P01-6a CI temeli tamamlandı; **P01 bütünü henüz tamamlanmadı**.
 

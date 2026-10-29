@@ -28,10 +28,10 @@ P01-1'in eski HTTP adayı bu epikte açık iş olarak sayılmaz; ADR-0008'deki k
 | P01-3b | Offline draft'tan ayrı execution geçerliliği ve onay bağı | P01-3a | [Kabul kartı](tasks/p01-3b-execution-plan-validity.md); 1.159 test, iki temiz kurulum ve kaynak bütçesi; PR #8 ile development’a alındı | `verified` |
 | P01-4b | Operation/attempt, lease/fencing ve unknown uzlaştırma temeli | P01-4a, P01-3b | [Tamamlanan kart](tasks/p01-4b-operation-coordination.md); PR #10 ile development'a teslim; 27+24 bütçe kabulü ve 1.816 test/merge CI | `verified` |
 | P01-4c | Yerel jobs list/show ve kalıcı plan/sonuç sorgusu | P01-4b, P01-3b | [Tamamlanan kart](tasks/p01-4c-local-jobs.md); PR #10 ile development'a teslim; iki kurulum ve normal/yoğun kurulu jobs/startup kabulü; uzak watch/stop P03'tedir | `verified` |
-| P01-5a | HTTP/SDK seçimi ve ortak taşıma portu | P01-2a; B01/B03 incelemesi | Loopback: TLS/hedef/redirect/sır, tek retry/total deadline bütçesi; ücretli istek yok | `draft` |
-| P01-5b | JSON/NDJSON, iptal ve tipli kullanım senaryosu hattı | P01-5a, P01-4b | Gerçek loopback/süreç sınırı, kesilen akış ve iptal ayrımı; fake yalnız fixture | `draft` |
+| P01-5a | HTTP/SDK seçimi ve ortak taşıma portu | P01-2a, P01-4b; B01/B03 incelemesi | [Kart](tasks/p01-5a-http-transport.md); ADR-0017 Proposed, loopback/TLS/tek deadline ve retry; ürün kodu başlamadı | `draft` |
+| P01-5b | JSON/NDJSON, iptal ve tipli kullanım senaryosu hattı | P01-5a, P01-4b | [Kart](tasks/p01-5b-stream-results.md); ADR-0018 Proposed; gerçek loopback/süreç ve terminal/iptal ayrımı | `draft` |
 | P01-6a | İlk offline geliştirici ve CI kurulumu | P01-1 | [Canlı CI/koruma kanıtı](../research/branch-workflow-validation.md) | `verified` |
-| P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | Her kabulün kanıtı, kurulum/restart/hata/performans; paket yayını değil | `draft` |
+| P01-6b | P01 kapanış akışı ve desteklenen ortam kaydı | P01-2c, P01-3b, P01-4c, P01-5b | [Kart](tasks/p01-6b-phase-acceptance.md); bütünleşik TLS/process/state, iki kurulum, kaynak/ortam kanıtı; paket yayını değil | `draft` |
 
 P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4), P01-2 paketi [PR #6](https://github.com/HodeTech/Yorunge/pull/6) ile development'a alındı. B02/B13 kararları Accepted; P01-2a → P01-4a → P01-2b → P01-2c teslim sırası tamamlandı. [Kabul ve merge kaydı](../research/p01-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. P01-3, [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ile development'a alındı; P01-3a/b ve epik verified. [Merge/kabul kaydı](../research/p01-3-implementation-validation.md#development-merge-kapanışı) kanoniktir. PR #9 ile global expiry/V2 migration takibi de development’a alındı; [tarihsel merge sonrası cache CI takibi](../research/p01-4-implementation-validation.md#development-merge-kapanışı) PR #10 teslimi ve merge CI ile kapandı. P01-4 paketi P01-4b → P01-4c sırasıyla P01-4 paketinde tamamlandı; [plan/kart hazırlığı](p01-4-delivery-plan.md) tamamlandı, ADR-0016 Accepted, P01-4b/4c ve paket kabulü verified; PR #10 development'a merge edildi, merge CI geçti. Yerel doctor ve cache/plan/onay teslim edildi; HTTP ve uzak hesap keşfi sonraki işlerdir.
 
@@ -40,8 +40,7 @@ P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4), P01-2 paketi [PR #6]
 | P01-2 PR'ı | P01-2a, P01-4a, P01-2b, P01-2c |
 | P01-3 PR'ı | P01-3a, P01-3b |
 | P01-4 PR'ı | P01-4b, P01-4c; P01-4a önceki pakette tamamlanmış olmalı |
-| P01-5 PR'ı | P01-5a, P01-5b |
-| P01-6 PR'ı | P01-6b; P01-6a ilk altyapısı zaten tamam |
+| Kalan P01 kapanış PR'ı | P01-5a, P01-5b, P01-6b; kullanıcının 2026-10-29 talebiyle [altı adımlı tek paket](p01-remaining-delivery-plan.md); P01-6a ilk altyapısı zaten tamam |
 
 Alt iş ayrı PR zorunluluğu değildir; [epik PR sözleşmesi](README.md#epik-başına-pr) geçerlidir. Teknik olarak bağımsız P01-5a deneyi yapılabilse de kullanıcının mevcut teslim tercihi bu paket sırasıdır.
 

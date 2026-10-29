@@ -14,4 +14,7 @@
 | [Yerel state](local-state.md) | Store/migration/backup, açık reset/restore/recover ve koruma sınırı |
 | [Operation/jobs](operations.md) | ADR-0016 çekirdeği ve yerel list/show verified; PR #10 ile development'a teslim edildi; [merge/CI kanıtı](../research/p01-4-implementation-validation.md#development-merge-kapanışı) |
 
+| [HTTP taşıma](http-transport.md) | Taslak — Proposed ADR-0017; hedef/sır/deadline/retry ve owned async session |
+| [Akış sonucu](stream-results.md) | Taslak — Proposed ADR-0018; kapalı event, terminal/EOF, NDJSON ve yerel iptal |
+
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).

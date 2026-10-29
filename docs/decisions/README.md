@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-10-28. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-10-29. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -20,5 +20,8 @@
 | [0014](0014-execution-plan-validity-and-approval.md) | Ayrı execution v2, geçerlilik/onay ve P01-3 bakım uyumluluğu | Accepted — 2026-10-27 kullanıcı onayı; PR #8 teslimi verified; PR #9 takibi development’a alındı |
 | [0015](0015-checksummed-data-migrations.md) | ADR-0011'in yalnız yeni V2 adımlarındaki checksum tanımına kısmi değişiklik; V1 1–4 korunur | Accepted — 2026-10-28 kullanıcı onayı; PR #9 uygulama/review/bütçe doğrulandı; development’a merge edildi |
 | [0016](0016-operation-admission-and-ownership.md) | P01-4 tek operation/gönderim bağı, lease/fencing, unknown, bounded geçmiş ve yerel jobs | Accepted — 2026-10-29 kullanıcı yetkisi; review revizyonları ve iki fresh tur tamamlandı; dört adımın ürün kabulü verified; PR #10 development merge/CI tamamlandı; canlı EVREN ayrı |
+
+| [0017](0017-bounded-http-transport.md) | Async HTTPX, tek deadline/retry ve SDK sınırı | Proposed — kullanıcı onayı bekliyor; ürün kodu yok |
+| [0018](0018-stream-results-and-cancellation.md) | Result v1 korunarak ayrı stream/NDJSON ve yerel iptal | Proposed — kullanıcı onayı bekliyor; ürün kodu yok |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.
