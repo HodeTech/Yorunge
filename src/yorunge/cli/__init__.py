@@ -475,14 +475,18 @@ def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...
     return common
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args_list = list(sys.argv[1:] if argv is None else argv)
-    # Error format is known even when parsing fails before reaching --output.
-    machine_output = any(
+def _machine_output(args_list: list[str]) -> bool:
+    return any(
         arg in ("--output=json", "--output=ndjson")
         or (arg == "--output" and args_list[i + 1 : i + 2] in (["json"], ["ndjson"]))
         for i, arg in enumerate(args_list)
     )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args_list = list(sys.argv[1:] if argv is None else argv)
+    # Error format is known even when parsing fails before reaching --output.
+    machine_output = _machine_output(args_list)
     renderer = OutputRenderer("json" if machine_output else "text")
     try:
         args = parser().parse_args(args_list)
