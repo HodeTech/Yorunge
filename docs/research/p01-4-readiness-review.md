@@ -2,7 +2,7 @@
 
 **Tarih:** 2026-10-28. **Kaynak:** `feat/p01-4-operations`, başlangıç head `fc867fc`; development `a9f1f2e`. **Durum:** Belge/kod incelemesi ve karar hazırlığı; operation ürünü uygulanmadı. [Paket planı](../roadmap/p01-4-delivery-plan.md).
 
-**Güncel 2026-10-29:** Kullanıcı aşağıdaki bulguların kapanışından sonra ADR'yi Accepted yapıp implementasyona geçilmesini yetkilendirdi. 28 Ekim'deki onay-bekleyen cümleler tarihsel hazırlıktır; yeni bir onay sorusu yoktur. Aşağıdaki kullanıcı review disposition'ı güncel revizyonu açıklar.
+**Güncel 2026-10-29:** Kullanıcı aşağıdaki bulguların kapanışından sonra ADR'yi Accepted yapıp implementasyona geçilmesini yetkilendirdi. 28 Ekim'deki Proposed/onay-bekleyen, kabulün henüz yapılmadığı ve kontrollerin çalıştırılmadığı cümleler tarihsel hazırlıktır; yeni bir onay sorusu yoktur. Aşağıdaki kullanıcı review disposition'ı tasarım revizyonunu açıklar. Dört adımın uygulama/review ve son kaynak yerel paket kabulü daha sonra tamamlandı; [güncel kapanış](p01-4-implementation-validation.md#son-kaynakla-bütünleşik-yerel-kabul).
 
 ## Kapsam ve yöntem
 

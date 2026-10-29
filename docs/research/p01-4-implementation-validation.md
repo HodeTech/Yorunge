@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Adım 1 ve 2 ikişer review turuyla kapandı; adım 3 uygulanıyor ve doğrulanıyor. Paket ve P01-4b/4c kabulü tamamlanmadı. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md).
+**Güncellendi:** 2026-10-29. **Durum:** Dört adım, her adımda iki fresh review turu ve son kaynak yerel kabulü tamamlandı; P01-4b/4c bu dalda verified. Development aktarımı için PR incelemesi gerekir; merge/yayın kabulü değildir. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e; son ürün kaynağı 17de965. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md). Aşağıdaki adım günlüklerindeki Proposed/onay-bekleyen, kabulün henüz yapılmadığı veya kontrollerin çalıştırılmadığı ifadeler kendi aşamalarının tarihsel kaydıdır; güncel kapanış bu giriş ve son bölümde belirtilir.
 
 ## Karar kapanışı
 
@@ -205,6 +205,47 @@ Root dört first-intent varyantı (revision/epoch/generation/status), üç termi
 
 Düzeltme sonrası geniş jobs/store/warm-full/reconciliation takımı **155 passed / 52,34 s**; Ruff ve strict mypy 51 kaynakta geçti. İki fresh tur tamamlandı; son ürün kaynağında bütünleşik full/build/kurulu jobs/startup ve yoğun operation kabulü yapılmadan kart/paket verified değildir. İlk kaynak dosyaları tarihsel kanıt olarak korunur.
 
+## Son kaynakla bütünleşik yerel kabul
+
+Son ürün head'i **17de965** üzerinde iki turdaki bütün doğrulanmış bulgular kapandı. Ek bağımsız GPT-6.1 Sol high statik fix kontrolü yeni kusur bulmadı; strict intent authority, revision, success/exit ve memo key bağlarını doğruladı. Bu son kontrol yeni bir full test koşusu diye sayılmaz.
+
+Kapanış belge/kanıt audit'inde GPT-6 Astra high son metrikleri ve kaynak haritalarını bağımsız karşılaştırdı. Yerel state referansında kalan bir P3 eski “adım 3 sürüyor/jobs henüz yok” paragrafı doğrulandı; yinelenen durum metni kaldırılıp son kabul kaydına bağlandı. Diğer sayı/hash/durum uyuşmazlığı bulunmadı; belge/ajan/diff denetimleri tekrar geçti.
+
+**Tam takım 1.700 passed / 279,59 s.** Ruff format 106 dosya, lint, strict mypy 51 src/script kaynağı, 114 Markdown, 6 skill/9 kart ve diff kontrolü geçti. Golden migration 1–5/handler ve şema 6 checksum'u korundu. Ürün/seed/probe kaynakları bütün son ölçümler boyunca sabitti; Git tabanı ve dosya SHA-256 haritaları her ham kayıtta tutulur. İlk başarısız tanılar ve daha önceki kaynak kabul dosyaları ezilmedi.
+
+### Son operation ve migration kabulü
+
+[Son 27 operation işlemi](p01-4-final-operation-budget.json), normal/terminal yoğun/karma yoğun fixture başına üç yeni store ve fresh worker ile **27/27** geçti. Özgün 5 s deadline, n=1.000 progress quantum ve her callback'in asıl deadline'a delegasyonu korundu; timeout kabul sayılmadı, örnek atılmadı. Üç örneğin maksimumları:
+
+| Fixture | Full ms | Preview ms | Reset ms | Tepe worker RSS MiB |
+|---|---:|---:|---:|---:|
+| Normal | 487,54 | 551,92 | 1.158,85 | 58,36 |
+| Terminal yoğun | 3.690,50 | 3.745,32 | 4.647,56 | 73,72 |
+| Karma yoğun | 3.748,36 | 3.765,06 | 4.931,33 | 83,77 |
+
+Azami 1.024 operation/16.384 attempt/262.144 normal event, karma fixture'da 512 terminal + 512 adet 255 normal geçişli iş ve maksimum eski cache/plan payload hacmi korundu. Reset immutable history/plan/onay/outcome'u koruyup current owner/cache'i invalid etti; ham kayıt logical row/hash/hacim ve reset etkisini ayrı doğrular. **En yavaş karma reset 4.931,328083 ms; marj 68,671917 ms'dir.** Bu dar marj yalnız kayıtlı M5 Max/macOS/SSD/APFS referans kabulüdür; farklı host veya engellenemeyen sistem I/O'su için mutlak süre garantisi değildir. Eşik/kapasite/validation gevşetilmedi.
+
+[Son 24 migration](p01-4-final-migration-budget.json), şema 2/3/4/5 normal ve yoğun kaynakları üçer yeni store/worker'da şema 6'ya yükseltti: **24/24** pozitif, kaynak payload/satırları aynı, yeni operation tabloları boş, son full validation başarılı. Normal maksimumları 1.087,95 / 1.375,90 / 1.412,69 / 954,26 ms; yoğun maksimumları 2.455,23 / 4.316,42 / 4.241,66 / 3.151,94 ms. Kaynak/ortam, VM ve faz kayıtları ham dosyadadır.
+
+### Son kurulu jobs, startup ve artefakt kabulü
+
+[Son jobs ölçümü](p01-4-final-jobs-budget.json), iki review fix'i dahil aynı 17de965 Python kaynak baytlarını içeren ayrı frozen runtime-only wheel kurulumundadır. İlk süreç ayrı, üç warmup ve her yol için **30 ayrı süreç**, nearest-rank p95 ve bütün örnekler korunur. Normal/yoğun hacimler ve yöntemin sınırları ilk ölçümde açıklandığı gibidir; gerçek byte/row değerleri bu son ham dosyada da vardır.
+
+| Yol | p95 ms | Sınır ms | Ayrı tanısal worker tepe RSS MiB |
+|---|---:|---:|---:|
+| Normal list | 120,621 | 200 | 46,03 |
+| Normal show | 105,248 | 200 | 45,23 |
+| Yoğun list | 166,939 | 200 | 53,86 |
+| Yoğun show | 104,432 | 200 | 45,84 |
+
+Diagnostic list/show toplam 44/46 SQLite statement; yoğun örneklenmiş VM quanta 203.000/2.000, bütün callback'ler delege edildi. Normal callback sıfır olması gerçek VM adımı sıfır demek değildir. Ayrı diagnostic RSS, timed CLI süreçlerinin bireysel RSS'i diye gösterilmez. Bu snapshot'ın mutable payload hash kapsamı sınırlıdır; source/read-only sözleşmesi ve gerçek snapshot/bozuk projection testleri ayrı kanıttır.
+
+[Son eşli startup](p01-4-final-startup.json), a9f1f2e baseline ile aynı host'ta AB/BA, eşit 1.024 kayıtlı cache ve 30 çift kullanır. Aday p95 help **23,374**, version **21,446**, context **90,236**, cache **114,536 ms** ile mevcut 500/200 ms kapılarını geçti. Kaynak ölçüm boyunca değişmedi; aynı interpreter ve frozen runtime paketleriyle yapılan yerel ölçümdür. Linux PR/merge çıktısı yerine kullanılmaz.
+
+[İki son ürün temiz kurulumu](p01-4-final-installations.json), wheel 50/sdist 314 izinli üye; konsol/import kökeni, eski v1/cache/execution ve yeni boş olmayan jobs CLI/API/text smoke geçti. Performans ölçümleri test/build/profiler ile çakıştırılmadı; performans dışındaki son test/build hazırlığı aynı anda çalıştı. Jobs, paired startup ve iki kurulumun wheel SHA-256'sı aynıdır: **d834ec89c0d415b92bb65f7916b42a9d6237d87e6bc75846671501884b6ac9ff**. Bu ürün-kaynak build kanıtı son kanıt/durum belgeleri eklenmeden alınmıştır; PR CI tam teslim tree'sinden yeniden paket üretir. Yardım source'u 5c7ad8c'den sonra değişmedi; [30 çıktı kabulü](p01-4-initial-help-parity.json) geçerlidir.
+
+**P01-4 yerel paket kabulü tamamlandı:** P01-4a önceki PR #6'da, P01-4b ve P01-4c bu dalda verified. Genel P01 devam eder; sıradaki paket P01-5a HTTP/SDK ve ortak taşıma, ardından P01-5b sonuç/akış/iptal hattıdır. PR development'a kullanıcı incelemesi için açılır; bu kayıt development merge'i, Master aktarımı, release veya canlı EVREN kabulü değildir.
+
 ## Sonraki adımlar
 
-Adım 1–4 uygulama ve ikişer fresh review turu tamamlandı; adım 4 doğrulanmış son düzeltmelerinden sonra bütünleşik son kaynak kabulü sürer. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 1–4, ikişer fresh review ve bütünleşik son kaynak kabulü tamamlandı. Development PR'ında dış CI/kalite sonuçları ayrıca izlenir; kullanıcı incelemesi ve merge'i beklenir. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. Master/release aktarımı kullanıcıdadır.

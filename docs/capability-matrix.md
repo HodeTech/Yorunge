@@ -1,6 +1,6 @@
 # Yetenek ve teslim matrisi
 
-**Güncellendi:** 2026-10-28. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
+**Güncellendi:** 2026-10-29. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
 
 İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [development’a alınan P01-2 kabulü](research/p01-2-implementation-validation.md#development-merge-kapanışı), [development’a alınan P01-3 ve PR #9 takibi](research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı), çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
 

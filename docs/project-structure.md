@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-29. **Durum:** Offline çekirdek, yerel kimlik/state/config/cache ve execution hazırlığı/onay/operation koordinasyonu ile yerel jobs sorgusu uygulandı; bütünleşik PR kabulü sürüyor.
+**Güncellendi:** 2026-10-29. **Durum:** Offline çekirdek, yerel kimlik/state/config/cache ve execution hazırlığı/onay/operation koordinasyonu ile yerel jobs sorgusu uygulandı; bütünleşik yerel kabul tamamlandı; development PR/merge ayrı süreçtir.
 
 ```text
 src/yorunge/

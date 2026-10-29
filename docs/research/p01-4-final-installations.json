@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "17de9652372f1ebd0fd4725d8616d16efa1ee169",
+  "results": [
+    {
+      "archive": "yorunge-0.1.0.dev0-py3-none-any.whl",
+      "sha256": "d834ec89c0d415b92bb65f7916b42a9d6237d87e6bc75846671501884b6ac9ff",
+      "members": 50,
+      "origin_verified": true,
+      "smoke": "passed",
+      "cache_smoke": "passed",
+      "execution_smoke": "passed",
+      "jobs_smoke": "passed"
+    },
+    {
+      "archive": "yorunge-0.1.0.dev0.tar.gz",
+      "sha256": "7f8ac5577a622a988912d27b71eb999b886024c79c05604f5d52f6be3e23651c",
+      "members": 314,
+      "origin_verified": true,
+      "smoke": "passed",
+      "cache_smoke": "passed",
+      "execution_smoke": "passed",
+      "jobs_smoke": "passed"
+    }
+  ]
+}

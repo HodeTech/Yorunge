@@ -12,6 +12,6 @@
 | [Credential binding v1](credential-binding-v1.md) | Uygulandı — ortak hedef/UNIQUE/HMAC, kalıcı gözlem ve byte vektörleri; Accepted ADR-0012 |
 | [Execution planı v2](execution-plan.md) | Uygulandı — ayrı kalıcı prepare/list/show/validate, descriptor input, güncel validity ve açık digest onayı/yönetim; P01-3 kabulü tamamlandı |
 | [Yerel state](local-state.md) | Store/migration/backup, açık reset/restore/recover ve koruma sınırı |
-| [Operation/jobs](operations.md) | ADR-0016 iç çekirdeği testli ve yerel list/show uygulandı; adım 4 review/artefakt/performans kabulü sürüyor |
+| [Operation/jobs](operations.md) | ADR-0016 çekirdeği ve yerel list/show bu dalda verified; dört adım/ikişer fresh tur ve son kaynak yerel paket kabulü tamamlandı |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).

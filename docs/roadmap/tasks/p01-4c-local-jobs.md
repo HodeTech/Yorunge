@@ -1,14 +1,14 @@
 ---
 id: P01-4c
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-4b, P01-3b]
 capabilities: [C12, C13]
 ---
 # P01-4c — Yerel jobs list/show
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b bu dalda verified; adım 4 kod/ilk test/build/kurulu jobs ve startup kabulü tamamlandı. İki fresh review turu ve paket kapanışı sıradadır.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b ve P01-4c bu dalda verified; adım 4, iki fresh review turu ve son kaynak yerel paket kabulü tamamlandı. Development aktarımı için PR incelemesi gerekir; merge/release kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,4 +41,6 @@ Contract CLI/Python/wire, integration gerçek SQLite ve ayrı süreç/restart/sn
 
 ## Teslim kaydı
 
-İlk uygulama CLI/Python/strict cursor/bounded snapshot ve kullanıcı belgelerini içerir. 1.686 full test, son hedefli 93 test, iki temiz kurulum, 30-process normal/yoğun jobs ve eşli mevcut startup kapıları geçti; [ilk kabul kaydı](../../research/p01-4-implementation-validation.md#adım-4--public-yerel-jobs-ve-ilk-bütünleşik-doğrulama). Commit sonrası iki fresh review turu ve son kaynak/bütünleşik kapanış sıradadır; PR henüz açılmadı, kart in_progress kalır.
+- PR/commit: [17de965](https://github.com/HodeTech/Yorunge/commit/17de9652372f1ebd0fd4725d8616d16efa1ee169) son ürün head'i; ilk uygulama 5c7ad8c, birinci review fix'i 4941bf3, ikinci review fix'i 17de965. [Son kaynak kabulü](../../research/p01-4-implementation-validation.md#son-kaynakla-bütünleşik-yerel-kabul) kanoniktir; development PR'ı kullanıcı incelemesine sunulur.
+- Sonuç: 1.700 full test, iki clean artifact install, normal/yoğun 30-process jobs p95 120,621/105,248 ve 166,939/104,432 ms; mevcut dört eşli startup kapısı ve son 27 operation + 24 migration kabulü geçti. CLI/Python/JSON/text/cursor/snapshot ve bozuk kayıt/IO/intent sınırları iki fresh turda doğrulandı.
+- Kalan sınır: Yerel geçmiş sorgusu provider gözlemi veya yeni execution yetkisi değildir; public run/watch/stop/reconcile, canlı EVREN/ForgeLM ve fiziksel güç kesintisi/gerçek Windows kabulü yoktur. Referans yoğun reset marjı 68,67 ms'dir; farklı host için kesin duvar saati garantisi verilmez. Dış PR/merge CI sonuçları yerel kabulden ayrı izlenir; Master/release kullanıcıdadır.

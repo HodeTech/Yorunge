@@ -6,7 +6,7 @@ Offline v1 stateless draft üretir. P01-3 ayrı kalıcı execution hazırlığı
 
 P01-3'ün ayrı execution biçimi/geçerlilik/onay ve yeni state tüketicilerinin bakım davranışı [Accepted ADR-0014](../decisions/0014-execution-plan-validity-and-approval.md) içindedir. Kullanıcı onayı 2026-10-27 tarihinde alındı; uygulama/test ve iki review turu adımları [kabul kaydındadır](../research/p01-3-implementation-validation.md). Operation/lease/trusted recovery çekirdeği P01-4 içinde testlidir; public run/EVREN adaptörü P02/P03 tasarımı olarak kalır.
 
-P01-4'ün somut operation kimliği/gönderim/ownership sınırı [Accepted ADR-0016](../decisions/0016-operation-admission-and-ownership.md) ile benimsendi; bu dalda adım 1–3 ve ikişer fresh review kabulü tamamlandı; public jobs adım 4 paket kabulü sürüyor. Aşağıdaki diyagram kavramsal uçtan uca akıştır: uygulanan immutable planın draft/prepared durumu ile ayrı operation durumu aynı DB satırının geçişleri değildir. Tam görev deadline/delivery politikası da uygulanmış plan v2'nin 300 s geçerliliği veya mevcut 30 s validation çağrı bütçesiyle eş tutulmaz.
+P01-4'ün somut operation kimliği/gönderim/ownership sınırı [Accepted ADR-0016](../decisions/0016-operation-admission-and-ownership.md) ile benimsendi; bu dalda adım 1–3 ve ikişer fresh review kabulü tamamlandı; public jobs adım 4 ve son kaynak yerel paket kabulü de tamamlandı; development merge'i ayrı süreçtir. Aşağıdaki diyagram kavramsal uçtan uca akıştır: uygulanan immutable planın draft/prepared durumu ile ayrı operation durumu aynı DB satırının geçişleri değildir. Tam görev deadline/delivery politikası da uygulanmış plan v2'nin 300 s geçerliliği veya mevcut 30 s validation çağrı bütçesiyle eş tutulmaz.
 
 ## Planın içerdiği bağlar
 
