@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b kabulü sürüyor. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b verified; bütün faz kabulü sürüyor. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
 
 ## Uygulanan alt küme
 
@@ -73,7 +73,7 @@ Onay seçeneği açık yürütme niyetini planla bağlar; kendi başına kriptog
 
 - `text`: İnsan sonucu stdout; ilerleme/diagnostic stderr. Renk ve TUI kapatılabilir.
 - `json`: Tek sonuç nesnesi stdout. Başlamadan/sonuçta başarısız komut stdout'u boş tutar, tek yapılandırılmış hata stderr'e yazar; kısmi operation kimliği hata içinde taşınır. İnsan ilerleme metni çıkmaz.
-- `ndjson`: Uygulandı; P01-5b kabul/review sürüyor. Bütün normal komutlarda opt-in (`--output ndjson`/`--output=ndjson`), tek başarılı sonuç tek result olayıdır. Çok olaylı gerçek taşıma fixture composition'ındadır; public watch/stream açılmaz. İlk publish öncesi hata stderr JSON, sonrası tek terminal error stdout; ikinci başarılı özet yoktur. Makine çıktı UTF-8 byte olarak yazılır, locale/PYTHONIOENCODING bunu değiştirmez.
+- `ndjson`: Uygulandı; P01-5b kabul/review kapandı. Bütün normal komutlarda opt-in (`--output ndjson`/`--output=ndjson`), tek başarılı sonuç tek result olayıdır. Çok olaylı gerçek taşıma fixture composition'ındadır; public watch/stream açılmaz. İlk publish öncesi hata stderr JSON, sonrası tek terminal error stdout; ikinci başarılı özet yoktur. Makine çıktı UTF-8 byte olarak yazılır, locale/PYTHONIOENCODING bunu değiştirmez.
 
 Sonuç zarfı `schema_version`, `operation_id` (yoksa null), `status`, `data`, `warnings` taşır. Hata zarfında kararlı `code`, yerelleştirilebilir `message`, `operation_id`, `retryable` ve sınırlı `details` vardır. Tekil istek JSON çıktısı ile streaming NDJSON birbirine karışmaz. `--help`/`--version` insan odaklı meta işlemlerdir, operation oluşturmaz.
 
@@ -137,7 +137,7 @@ Jobs yalnız operation_not_found ve mevcut request/state hatalarını üretir; p
 
 ## P01-5 hata kataloğu
 
-Bu bölüm **uygulanan kapalı kod/mesaj/exit kataloğudur; P01-5b review ve kabulü sürüyor**; 2026-10-29 kullanıcı yetkisiyle [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) review düzeltmeleri sonrası benimsendi. Yerel çıktı/iptal tüketicisi uygulanmıştır; public uzak komut eklenmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
+Bu bölüm **uygulanan kapalı kod/mesaj/exit kataloğudur; P01-5b review ve kabulü kapandı**; 2026-10-29 kullanıcı yetkisiyle [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) review düzeltmeleri sonrası benimsendi. Yerel çıktı/iptal tüketicisi uygulanmıştır; public uzak komut eklenmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
 
 | Kod | Exit | Kesin tetik |
 |---|---:|---|

@@ -1,18 +1,18 @@
 ---
 id: P01-6b
 phase: P01
-status: draft
+status: ready
 size: M
 depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
 capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. Henüz uygulanmadı; eski P01-6a CI altyapısı verified, bu kapanış kabulü değildir.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 uygulamasına hazır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–4 kabulü var; henüz olmayan taşıma/akışın bütünleşik kurulum, iptal, kaynak ve ortam kanıtı eksiktir.
+Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→kimlik→plan/onay→operation→tipli sonuç→restart sorgusunu ve hatada ne kaldığını açık kanıtla görmeli. P01-1–5 bileşen kabulü var; son kaynağın bütünleşik girdi/operation/taşıma/akış, kurulum, kaynak ve ortam kabulü eksiktir.
 
 ## Giren ve girmeyen kapsam
 
@@ -20,7 +20,7 @@ Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→ki
 
 ## Bağımlılıklar ve kararlar
 
-P01-2c/3b/4c development'a teslim edildi. P01-5b aynı dalda gerçek kabul/iki fresh review ile verified olmadan bu kart ready olmaz. ADR-0017/0018 Accepted; ilgili uygulama kabulü önkoşuldur. Kullanıcının kalan işler talebi tek nihai PR için yetkidir; ayrıca belge PR'ı veya test merge'ü açılmaz.
+P01-2c/3b/4c development'a teslim edildi. P01-5b aynı dalda 0bf70a4 runtime/2515533 süreç fixture’ı, iki fresh review ve iki kurulumla verified; bu kartın doğrudan bağımlılıkları kapanmıştır. ADR-0017/0018 Accepted; ilgili uygulama kabulü önkoşuldur. Kullanıcının kalan işler talebi tek nihai PR için yetkidir; ayrıca belge PR'ı veya test merge'ü açılmaz.
 
 ## Sözleşme ve uygulama sınırı
 

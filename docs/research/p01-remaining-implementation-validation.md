@@ -1,6 +1,6 @@
 # Kalan P01 uygulama ve doğrulama kaydı
 
-**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a verified; P01-5b adım3 kapandı; adım4 CLI uygulaması sürüyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
+**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a/b verified; P01-6b adım5 uygulamasına geçiliyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
 
 ## Karar ve yetki
 
@@ -134,3 +134,10 @@ Kartın kurulu gerçek entry point kabulünü bu adımda kapatmak için dağıt�
 Root kart kapanışı incelemesinde gerçekTLS reader ile CLI renderer’ın ayrı süreçte birlikte çalışmasının yalnız ayrı bileşen testlerinden çıkarılmaması gerektiğini belirledi. Bu kabul bağlantısı da test-only stream_console composition’ıyla doğrudan kuruldu: sabit localhost TLS fixture’ı → gerçek HttpxTransport/open_stream → ortak OutputRenderer → gerçek subprocess stdout/stderr. Yedi senaryo UTF-8 byte1/tamchunk success, terminal sonrası space/event’te completed olmadan tek error, ilk malformed record’da boş stdout/bağlı plainstderr JSON, provider error mesajının yerel katalogdan kurulması/kararlı exit2 ve gated progress sonrası gerçek SIGINT6/aynı admittedjob snapshot’ı/tekHTTP isteğini doğrular. Product network/demo komutu veya test hook’u eklenmedi. Child yalnız test helper için repo kökünü ekler; src yolunu ekleyip ürün importunu değiştirmez.
 
 Bu yeni yedi gerçekTLS/süreç testi warnings-as-errors ile **7passed/4,86s**; ortak reader/renderer regresyonuyla **122passed/26,46s**. Runtime ürün kaynağı0bf70a4’tür; ek iki test dosyasının odaklı iki review turu aşağıda kapanınca adım4/kart verified yapılır. Tam girdi/credential/plan/onay/operation/restart zinciri P01-6b’nin sonraki kabulüdür; bu dar stream/CLI fixture’ı bütün faz kabulü diye sunulmaz.
+
+
+### Adım4 ve P01-5b kapanışı
+
+2515533 test-only ortak süreç ekini önce aynıR1 iki uzman, ardından farklıR2 iki uzman ayrıca inceledi; yeni doğrulanmış bulgu yoktur. R1 persistence bağımsız7-Werror/4,88s, R2 çıktı bağımsız7-Werror/4,89s geçti. Diğer iki inceleme salt-okunur kod/oracle değerlendirmesidir. SIGINT süreç testi kontrollü çıkış, tek request ve işin değişmediğini kanıtlar; TLS/async cleanup sırası iddiası ayrı lifecycle testlerine dayanır. Birbiri yerine kabul kanıtı sayılmaz.
+
+**Adım4 ve P01-5b verified:** ilk ürün commit’i c151bfa, üç doğrulanmışR1 fix’i0bf70a4 ve ortak süreç fixture’ı2515533; iki farklı fresh review turu ve son test ekinin her iki uzmanlık turu kapandı. 0bf70a4 runtime için iki temiz installed NDJSON kanıtı yukarıdadır. P01-5a/b tamamlandı; P01-6b’nin bütünleşik config/girdi/credential/operation/restart, final build/kurulum, tam test, performans ve gerçek CI matrisi kabulü henüz yoktur. Paket/P01 bütünü verified değildir; adım5’e otomatik geçilir, kullanıcıdan mevcut ADR yetkisi tekrar istenmez.

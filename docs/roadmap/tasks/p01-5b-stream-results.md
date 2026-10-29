@@ -1,18 +1,18 @@
 ---
 id: P01-5b
 phase: P01
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-5a, P01-4b]
 capabilities: [C12, C13]
 ---
 # P01-5b — Tipli akış, NDJSON ve yerel iptal
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3 tipli model/codec iki fresh review turuyla tamamlandı; CLI adım4 uygulandı, review ve kart kabulü sürüyor.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3–4 ikişer farklı fresh review turu, gerçek TLS/süreç ve iki temiz artifact NDJSON kabulüyle tamamlandı/verified.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı mevcut sonuçları satır tabanlı otomasyonda alabilmeli; akış kesilmesi veya yerel iptal yanlış completed/uzak cancelled olmamalı. CLI yalnız text/json üretir; ortak StreamEvent decoder/renderer, NDJSON ve kontrollü pipe/iptal hattı yoktur. Result v1 ve kalıcı operation anlamı korunmalıdır.
+Kartın başlangıcında CLI yalnız text/json üretiyordu; ortak stream/NDJSON ve kontrollü pipe/iptal hattı eksikti. Bu kartla kullanıcı mevcut sonuçları satır tabanlı otomasyonda alır; kesilme/yerel iptal completed veya uzak cancelled sayılmaz. Result v1 ve kalıcı operation anlamı korunmuştur.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,4 +42,6 @@ Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/
 
 ## Teslim kaydı
 
-Adım3 iki fresh review turuyla tamamlandı; CLI adım4 uygulandı, review sürüyor; gerçek ürün/review kanıtı [uygulama kaydında](../../research/p01-remaining-implementation-validation.md) tutulur. [Hazırlık raporu](../../research/p01-remaining-readiness-review.md) ürün kabulü sayılmaz. CLI adım4 ve kartın bütün kabulü henüz kapanmadı.
+- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) son runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. Nihai development PR’ı paket sonunda açılır.
+- Sonuç: İki adım, ikişer farklı fresh review turu ve son fixture review’leri kapandı. Strict tipli olay/codec, normal komutlarda NDJSON/UTF-8, cancel/output ve belirsizlik öncelikleri gerçek TLS/süreç/state testleriyle doğrulandı; iki ayrı artifact’ta gerçek konsol NDJSON ve v1 eşliği geçti. [Kanıt](../../research/p01-remaining-implementation-validation.md#adım4-ve-p01-5b-kapanışı).
+- Kalan sınır: Bütünleşik faz/son kaynak kurulumu, performans ve gerçek CI matrisi P01-6b’de sürer; public uzak watch/run/SSE veya canlı EVREN/ForgeLM adaptörü teslim edilmez. Eski Result/plan wire korunur.
