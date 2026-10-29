@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import gzip
 import hashlib
 import io
@@ -21,6 +23,7 @@ from typing import Any
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
 MAX_ENTRIES = 256
+MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -1085,7 +1088,56 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     if kind == "startup_ci_diagnostic_v1" and version == 1:
         startup_ci = runpy.run_path(str(Path(__file__).with_name("startup_diagnostic.py")))
         return startup_ci["receipt_summary"](report)  # type: ignore[no-any-return]
+    if kind == "rejected_startup_evidence_v1" and version == 1:
+        return rejected_startup_summary(report)
     raise ValueError("unsupported typed report kind or schema version")
+
+
+def rejected_startup_summary(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit run_url original_name original_sha256 "
+        "original_bytes rejection_reason content_base64",
+        "rejected startup attachment",
+    )
+    pattern_value(report["source_commit"], COMMIT)
+    pattern_value(report["original_name"], NAME)
+    pattern_value(report["original_sha256"], SHA256)
+    if report["rejection_reason"] not in {
+        "invalid_evidence",
+        "interrupted_measurement",
+        "unverified_measurement",
+    }:
+        raise ValueError("unknown rejected startup reason")
+    pattern_value(
+        report["run_url"],
+        re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9][0-9]*"),
+    )
+    size = integer(report["original_bytes"])
+    encoded = report["content_base64"]
+    if not isinstance(encoded, str):
+        raise ValueError("rejected startup content must be base64 text")
+    if size > MAX_REJECTED_STARTUP_BYTES or len(encoded) > 4 * (
+        (MAX_REJECTED_STARTUP_BYTES + 2) // 3
+    ):
+        raise ValueError("rejected startup attachment exceeds its byte limit")
+    try:
+        original = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error):
+        raise ValueError("invalid rejected startup base64") from None
+    if len(original) != size or hashlib.sha256(original).hexdigest() != report["original_sha256"]:
+        raise ValueError("rejected startup attachment bytes/hash mismatch")
+    return {
+        "kind": "rejected_startup_evidence",
+        "source_commit": report["source_commit"],
+        "run_url": report["run_url"],
+        "original_name": report["original_name"],
+        "original_sha256": report["original_sha256"],
+        "original_bytes": size,
+        "rejection_reason": report["rejection_reason"],
+        "diagnostic_only": True,
+        "accepted": False,
+    }
 
 
 def summarize(report: dict[str, Any]) -> dict[str, Any]:
@@ -1489,6 +1541,31 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
     replace_metadata(directory / INDEX, index_text(entries).encode())
 
 
+def archive_rejected_startup(
+    root: Path, source: Path, name: str, source_commit: str, run_url: str, reason: str
+) -> None:
+    source = report_source(root, source)
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid rejected startup archive name")
+    content = read_bounded(source, MAX_REJECTED_STARTUP_BYTES)
+    report = {
+        "schema_version": 1,
+        "report_kind": "rejected_startup_evidence_v1",
+        "source_commit": source_commit,
+        "run_url": run_url,
+        "original_name": source.name,
+        "original_sha256": hashlib.sha256(content).hexdigest(),
+        "original_bytes": len(content),
+        "rejection_reason": reason,
+        "content_base64": base64.b64encode(content).decode("ascii"),
+    }
+    rejected_startup_summary(report)
+    destination = root / "dist" / name
+    with destination.open("xb") as stream:
+        stream.write(encode(report))
+    archive_report(root, destination, None)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
@@ -1502,10 +1579,25 @@ def main() -> int:
     reference.add_argument("name")
     startup_reference = commands.add_parser("verify-startup-reference")
     startup_reference.add_argument("name")
+    rejected = commands.add_parser("archive-rejected-startup")
+    rejected.add_argument("source", type=Path)
+    rejected.add_argument("--name", required=True)
+    rejected.add_argument("--source-commit", required=True)
+    rejected.add_argument("--run-url", required=True)
+    rejected.add_argument(
+        "--reason",
+        required=True,
+        choices=("invalid_evidence", "interrupted_measurement", "unverified_measurement"),
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
-        if args.action == "archive":
+        if args.action == "archive-rejected-startup":
+            archive_rejected_startup(
+                root, args.source, args.name, args.source_commit, args.run_url, args.reason
+            )
+            print("Archived rejected startup bytes as a diagnostic attachment; not acceptance.")
+        elif args.action == "archive":
             archive_report(root, args.source, args.original_commit)
             print("Archived original bytes; the input file was preserved.")
         elif args.action == "show":

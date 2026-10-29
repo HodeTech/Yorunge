@@ -53,6 +53,14 @@ Güncel bellek kabulü `raw_stream_budget_v2` / schema 2 kapalı kaydıyla yapı
 
 CI upload öncesi guard, tamamlanmış receipt'in ham rapor byte hash'i, tam kaynak/pinned taban, outcome ve p95 ile eşliğini tekrar doğrular. Receipt'in tek başına arşiv bütünlüğünü geçmesi raw ölçüm kabulü değildir. İndirilen özgün raw ve receipt farklı yeni arşiv adlarına kopyalanır, bayt/hash eşliği korunur ve **ikisi** kalıcı Git arşivine alınır; kabul raporu run URL ve hash ilişkisini bağlar. Eksik/iptal koşunun olmayan örnekleri oluşturulmaz; açık saklama takibi kapatılmadan sonraki kabul/merge önerisi verilmez. Artifact upload için `if-no-files-found=error` ve 90 gün retention kullanılır ([resmî action girdileri](https://github.com/actions/upload-artifact/tree/v4#usage)); artifact tek kalıcı kanıt değildir.
 
+Final rapor oluşmadan after snapshot/iptal hatası çıkarsa `source-manifest.json` (ölçüm öncesi snapshot; kabul değil), `measurement.json` ve `stdout-checks.json` da `always()` artifact kapsamındadır. Var olan ara dosyalar korunur; bir dosyanın oluşmaması tamamlanmış ölçüm diye gösterilmez. Strict validator'ın reddettiği özgün rapor ve doğrulanmamış ara/audit dosyaları için kabul yolunu gevşetmek yerine kayıpsız diagnostic ek kullanılır:
+
+```sh
+.venv/bin/python scripts/research_evidence.py archive-rejected-startup dist/failed-startup.json --name p01-6-rejected-startup-NEXT.json --source-commit SOURCE_SHA --run-url https://github.com/HodeTech/Yorunge/actions/runs/RUN_ID --reason invalid_evidence
+```
+
+`SOURCE_SHA/RUN_ID/NEXT` gerçek kayıttan doldurulur. Girdi doğrudan `dist/` altında regular canonical dosya olmalıdır; özgün baytlar değiştirilmez veya silinmez. `rejected_startup_evidence_v1` kapalı schema 1 alanları `schema_version/report_kind/source_commit/run_url/original_name/original_sha256/original_bytes/rejection_reason/content_base64`'tür. Base64 strict çözülür; boyut/hash yeniden doğrulanır. En çok **2 MiB** özgün sentetik startup dosyası; `invalid_evidence|interrupted_measurement|unverified_measurement` nedenleri ve sabit `accepted=false/diagnostic_only=true` özeti vardır. UTF-8/JSON bozukluğu da bayt kaybı olmadan saklanabilir; içerik çalıştırılmaz, bu ek reference kapısını geçemez. Limit veya arşiv hatası girdi/artifact'ı korur ve açık takip bırakır; başarı diye yutulmaz. Gzip/manifest/indeks normal doğrulamadan geçer; bu yol generic ürün verisi/secret arşivleme aracı değildir.
+
 Önce ürün kodu/testler, ölçüm betikleri, kabul raporu ve manifest özeti incelenir. Varsayılan tam `git diff` çıktısı veya gzip açılımı model bağlamına dökülmez. Örneğin mevcut taban commit'i seçildikten sonra:
 
 ```sh

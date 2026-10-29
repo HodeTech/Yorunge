@@ -1,7 +1,9 @@
 """Only a valid Linux budget overrun may keep the remaining mandatory gates running."""
 
 import argparse
+import base64
 import copy
+import gzip
 import hashlib
 import json
 import runpy
@@ -204,3 +206,104 @@ def test_producer_failures_remain_blocking_and_have_explicit_failure_receipt(
 def test_reference_receipt_cannot_hide_missing_startup_archive(tmp_path):
     with pytest.raises(ValueError):
         HELPERS["STARTUP"]["CHECKS"]["verify_startup_reference"](ROOT, "missing-startup.json")
+
+
+@pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt])
+def test_after_snapshot_failure_or_interruption_keeps_completed_inner_reports(
+    tmp_path, monkeypatch, failure
+):
+    import subprocess
+    from types import SimpleNamespace
+
+    producer = runpy.run_path(str(ROOT / "scripts/check-startup-evidence.py"))
+    report = receipt()
+    before = report["snapshots"]["before"]
+    monkeypatch.setitem(
+        producer["EVIDENCE"], "source", lambda root: copy.deepcopy(before["candidate"]["source"])
+    )
+    monkeypatch.setitem(
+        producer["PREPARE"],
+        "prepare",
+        lambda project, work, uv: SimpleNamespace(
+            project=project, python=work / "env/bin/python", console=work / "env/bin/yorunge"
+        ),
+    )
+    monkeypatch.setitem(producer["PREPARE"], "seed", lambda *args: None)
+    calls = iter([before["candidate"], before["baseline"]])
+
+    def snapshot(*args):
+        try:
+            return next(calls)
+        except StopIteration:
+            raise failure("after-snapshot interruption") from None
+
+    monkeypatch.setitem(producer["check"].__globals__, "snapshot", snapshot)
+    workspace = tmp_path / "workspace"
+
+    def measure(args, **kwargs):
+        (workspace / "measurement.json").write_text(json.dumps(report["measurement"]))
+        (workspace / "stdout-checks.json").write_text(json.dumps(report["output_checks"]))
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", measure)
+    final = tmp_path / "final.json"
+    with pytest.raises(failure):
+        producer["check"](ROOT, ROOT, workspace, final, Path("unused"), cpu=None, disk="unknown")
+    assert not final.exists()
+    for name in ("measurement.json", "stdout-checks.json", "source-manifest.json"):
+        assert (workspace / name).is_file()
+
+
+@pytest.mark.parametrize(
+    "original", [b"", b"not JSON\xff", b'{"duplicate":1,"duplicate":2}', b'{"x":NaN}']
+)
+def test_rejected_raw_bytes_are_preserved_without_granting_performance_acceptance(original):
+    checks = HELPERS["CHECKS"]
+    report = {
+        "schema_version": 1,
+        "report_kind": "rejected_startup_evidence_v1",
+        "source_commit": "a" * 40,
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/123",
+        "original_name": "startup.json",
+        "original_sha256": hashlib.sha256(original).hexdigest(),
+        "original_bytes": len(original),
+        "rejection_reason": "invalid_evidence",
+        "content_base64": base64.b64encode(original).decode("ascii"),
+    }
+    summary = checks["summarize"](report)
+    assert summary["accepted"] is False
+    assert summary["diagnostic_only"] is True
+    assert summary["original_sha256"] == hashlib.sha256(original).hexdigest()
+    with pytest.raises(ValueError):
+        HELPERS["STARTUP"]["reference"](ROOT, report)
+    report["original_bytes"] += 1
+    with pytest.raises(ValueError, match="bytes/hash mismatch"):
+        checks["summarize"](report)
+
+
+def test_rejected_provenance_report_is_attached_exactly_instead_of_weakening_validation(tmp_path):
+    checks = HELPERS["CHECKS"]
+    invalid = receipt()
+    invalid["snapshots"]["after"]["candidate"]["fixture"]["cache_sha256"] = "9" * 64
+    original = json.dumps(invalid).encode()
+    with pytest.raises(ValueError, match="changed during measurement"):
+        checks["summarize"](invalid)
+    root = tmp_path / "repository"
+    (root / "dist").mkdir(parents=True)
+    (root / "docs/research/raw").mkdir(parents=True)
+    original_path = root / "dist/startup-invalid.json"
+    original_path.write_bytes(original)
+    checks["archive_rejected_startup"](
+        root,
+        original_path,
+        "startup-rejected.json",
+        "a" * 40,
+        "https://github.com/HodeTech/Yorunge/actions/runs/123",
+        "invalid_evidence",
+    )
+    assert checks["verify"](root) == 1
+    packed = root / "docs/research/raw/startup-rejected.json.gz"
+    envelope = checks["decode"](gzip.decompress(packed.read_bytes()))
+    assert base64.b64decode(envelope["content_base64"]) == original
+    assert original_path.read_bytes() == original
+    assert checks["summarize"](envelope)["accepted"] is False

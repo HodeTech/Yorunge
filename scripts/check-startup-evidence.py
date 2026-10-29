@@ -78,6 +78,15 @@ def check(
     }
     if any(before[side]["source"] != source_before[side] for side in before):
         raise ValueError("startup source changed during preparation")
+    manifest = {
+        "schema_version": 1,
+        "diagnostic_only": True,
+        "source_commit": before["candidate"]["source"]["commit"],
+        "outcome": "pre_measurement_provenance_only",
+        "snapshots_before": before,
+    }
+    with (workspace / "source-manifest.json").open("x", encoding="utf-8") as destination:
+        destination.write(json.dumps(manifest, indent=2, allow_nan=False) + "\n")
     raw, audit = workspace / "measurement.json", workspace / "stdout-checks.json"
     args = [
         str(prepared["candidate"].python),

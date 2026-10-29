@@ -188,6 +188,9 @@ jobs:
             dist/jobs-reference.txt
             dist/stream.json
             dist/cache-startup.prof
+            .local/startup-check/source-manifest.json
+            .local/startup-check/measurement.json
+            .local/startup-check/stdout-checks.json
             .local/stream-check/source-manifest.json
             .local/stream-check/*/measurement.json
             .local/stream-check/*/failure.json
