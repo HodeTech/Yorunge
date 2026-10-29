@@ -135,6 +135,19 @@ def _integer(value: object, *, minimum: int = 0) -> int:
     return value
 
 
+def check_native_rss(measured: dict[str, Any], unit: str) -> None:
+    for name in ("baseline", "pretransfer_peak", "peak"):
+        native = measured[name + "_rss_native"]
+        if (
+            type(native) not in (int, float)
+            or not math.isfinite(native)
+            or native <= 0
+            or native != int(native)
+            or native * (1024 if unit == "KiB" else 1) != measured[name + "_rss_bytes"]
+        ):
+            raise ValueError("native RSS and byte measurements differ")
+
+
 def rss_interval(measured: dict[str, Any]) -> int:
     """Check the native RSS evidence and return its conservative extra-RSS upper bound."""
     baseline = _integer(measured["baseline_rss_bytes"], minimum=1)
@@ -160,16 +173,7 @@ def rss_interval(measured: dict[str, Any]) -> int:
         raise ValueError("unsupported native RSS platform")
     if unit != expected_unit or measured["baseline_rss_method"] != method:
         raise ValueError("native RSS unit or baseline method does not match the runtime OS")
-    for name in ("baseline", "pretransfer_peak", "peak"):
-        native = measured[name + "_rss_native"]
-        if (
-            type(native) not in (int, float)
-            or not math.isfinite(native)
-            or native <= 0
-            or native != int(native)
-            or native * (1024 if unit == "KiB" else 1) != measured[name + "_rss_bytes"]
-        ):
-            raise ValueError("native RSS and byte measurements differ")
+    check_native_rss(measured, unit)
     return upper
 
 
