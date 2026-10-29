@@ -3,10 +3,21 @@
 import json
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
+from urllib.parse import unquote
 from uuid import UUID
 
 import pytest
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    PlainSerializer,
+    WrapSerializer,
+    computed_field,
+    create_model,
+    field_serializer,
+    model_serializer,
+)
 
 from yorunge.application.response_json import (
     JSON_LIMIT,
@@ -114,12 +125,22 @@ def test_nesting_and_node_boundaries_have_independent_known_counts():
 
 
 @pytest.mark.parametrize("version", [True, 1.0, "1", None, 2])
-def test_schema_version_is_strict_before_model_validation(version):
+def test_yorunge_model_schema_version_remains_strict(version):
     payload = provider().model_dump(mode="json")
     payload["schema_version"] = version
     with pytest.raises(YorungeError) as failure:
         decode_response(json.dumps(payload).encode(), ProviderResponse)
     assert failure.value.code == "invalid_response"
+
+
+def test_generic_json_does_not_impose_yorunge_version_semantics_on_provider_metadata():
+    class ExternalResponse(Model):
+        metadata: dict[str, str]
+
+    data = b'{"metadata":{"schema_version":"1.0"}}'
+    assert parse_json(data) == {"metadata": {"schema_version": "1.0"}}
+    assert decode_response(data, ExternalResponse).metadata == {"schema_version": "1.0"}
+    assert parse_json(b'{"schema_version":true}') == {"schema_version": True}
 
 
 @pytest.mark.parametrize(
@@ -240,3 +261,151 @@ def test_nullable_fixed_container_preserves_its_unambiguous_literal_exemption():
         b'{"records":["fixed"]}', FixedResponse, secrets=(SecretValue("fixed"),)
     )
     assert value.records == ["fixed"]
+
+
+def custom_codec(kind):
+    if kind == "field_string":
+
+        class FieldString(Model):
+            value: str
+
+            @field_serializer("value")
+            def emit(self, value: str) -> str:
+                return unquote(value)
+
+        return FieldString
+    if kind == "field_integer":
+
+        class FieldInteger(Model):
+            value: int
+
+            @field_serializer("value")
+            def emit(self, value: int) -> str:
+                return chr(value)
+
+        return FieldInteger
+    if kind == "whole_model":
+
+        class WholeModel(Model):
+            value: str
+
+            @model_serializer
+            def emit(self) -> dict[str, str]:
+                return {"value": unquote(self.value)}
+
+        return WholeModel
+    if kind == "computed":
+
+        class Computed(Model):
+            value: str
+
+            @computed_field
+            @property
+            def emitted(self) -> str:
+                return unquote(self.value)
+
+        return Computed
+    if kind == "annotated_plain":
+
+        class AnnotatedPlain(Model):
+            value: Annotated[str, PlainSerializer(unquote, return_type=str)]
+
+        return AnnotatedPlain
+    if kind == "annotated_wrap":
+
+        class AnnotatedWrap(Model):
+            value: Annotated[str, WrapSerializer(lambda value, next_: unquote(next_(value)))]
+
+        return AnnotatedWrap
+    if kind == "extra_allow":
+
+        class ExtraAllow(Model):
+            model_config = ConfigDict(extra="allow")
+            value: str
+
+        return ExtraAllow
+    if kind == "extra_ignore":
+
+        class ExtraIgnore(BaseModel):
+            value: str
+
+        return ExtraIgnore
+    raise AssertionError("unknown codec fixture")
+
+
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "field_string",
+        "field_integer",
+        "whole_model",
+        "computed",
+        "annotated_plain",
+        "annotated_wrap",
+        "extra_allow",
+        "extra_ignore",
+    ],
+)
+def test_custom_output_codecs_computed_fields_and_open_models_fail_closed(kind, nested):
+    secret = "a" if kind == "field_integer" else "synthetic-serializer-canary"
+    inner = custom_codec(kind)
+    payload = {"value": 97 if kind == "field_integer" else secret.replace("-", "%2D")}
+    if kind in ("extra_allow", "extra_ignore"):
+        payload = {"value": "ordinary", "unexpected": secret}
+    expected_model, expected_payload = inner, payload
+    if nested:
+        expected_model = create_model(
+            "NestedSerializationResponse", __base__=Model, child=(inner, ...)
+        )
+        expected_payload = {"child": payload}
+    raw = json.dumps(expected_payload).encode()
+    unguarded = expected_model.model_validate_json(raw)
+    if kind != "extra_ignore":
+        # Prove these actual model inputs serialize the synthetic secret, not just a marker flag.
+        assert secret in unguarded.model_dump_json()
+    with pytest.raises(YorungeError) as failure:
+        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+    assert failure.value.code == "invalid_response"
+    assert failure.value.__context__ is None
+
+
+def test_custom_dump_override_is_not_an_unchecked_output_codec():
+    class CustomDump(Model):
+        value: str
+
+        def model_dump_json(self, **kwargs):
+            return json.dumps({"value": unquote(self.value)})
+
+    with pytest.raises(YorungeError) as failure:
+        decode_response(
+            b'{"value":"synthetic%2Dserializer%2Dcanary"}',
+            CustomDump,
+            secrets=(SecretValue("synthetic-serializer-canary"),),
+        )
+    assert failure.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_literal_schema_word_field_names_do_not_look_like_custom_serializers(nested):
+    class NamedFields(Model):
+        serialization: str
+        type: str
+
+    data = {"serialization": "ordinary", "type": "ordinary"}
+    model = NamedFields
+    if nested:
+        model = create_model("NestedNamedFields", __base__=Model, child=(NamedFields, ...))
+        data = {"child": data}
+    value = decode_response(
+        json.dumps(data).encode(), model, secrets=(SecretValue("unrelated-canary"),)
+    )
+    assert value.model_dump(mode="json") == data
+
+
+def test_ordinary_default_json_data_is_not_core_schema_serialization_metadata():
+    class WithDefault(Model):
+        metadata: dict[str, str] = {"type": "ordinary", "serialization": "ordinary"}
+
+    value = decode_response(b"{}", WithDefault, secrets=(SecretValue("unrelated-canary"),))
+    assert value.metadata == {"type": "ordinary", "serialization": "ordinary"}

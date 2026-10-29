@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -27,7 +27,7 @@ from yorunge.application.http_transport import (
     HttpRequest,
     HttpStatusFailure,
 )
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import ErrorCode, YorungeError
 
 _PRIVATE_HTTP: ContextVar[bool] = ContextVar("yorunge_private_http", default=False)
 _TRANSIENT = frozenset({408, 429, 502, 503, 504})
@@ -69,7 +69,12 @@ class _NoCookies(DefaultCookiePolicy):
 
 
 def _remaining(deadline: float) -> float:
-    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+    valid = type(deadline) in (int, float)
+    try:
+        valid = valid and math.isfinite(deadline)
+    except OverflowError:
+        valid = False
+    if not valid:
         raise YorungeError("invalid_request")
     remaining = deadline - time.monotonic()
     if remaining <= 0:
@@ -113,16 +118,77 @@ class _Response:
         self._task = asyncio.current_task()
         self._closed, self._used = False, False
 
-    async def chunks(self) -> AsyncIterator[bytes]:
-        if self._closed or self._used or asyncio.current_task() is not self._task:
+    def _owner(self) -> None:
+        if self._closed or asyncio.current_task() is not self._task:
+            raise YorungeError("invalid_request")
+
+    def chunks(self) -> AsyncIterator[bytes]:
+        self._owner()
+        if self._used:
             raise YorungeError("invalid_request")
         self._used = True
-        size = 0
-        async for chunk in self._response.aiter_raw(chunk_size=CHUNK_SIZE):
-            size += len(chunk)
-            if size > self._request.max_bytes:
-                raise YorungeError("invalid_response")
-            yield chunk
+        return _Chunks(self)
+
+
+class _Chunks(AsyncIterator[bytes]):
+    def __init__(self, response: _Response) -> None:
+        self._response = response
+        self._raw = response._response.aiter_raw(chunk_size=CHUNK_SIZE)
+        self._size = 0
+
+    async def __anext__(self) -> bytes:
+        self._response._owner()
+        chunk: bytes | None = None
+        failure: ErrorCode | None = None
+        try:
+            chunk = await anext(self._raw)
+        except (TimeoutError, httpx.TimeoutException):
+            failure = "transport_timeout"
+        except (httpx.HTTPError, OSError):
+            failure = "transport_failed"
+        if failure is not None:
+            raise YorungeError(failure)
+        assert chunk is not None
+        self._response._owner()
+        self._size += len(chunk)
+        if self._size > self._response._request.max_bytes:
+            raise YorungeError("invalid_response")
+        return chunk
+
+
+class _ResponseContext(AbstractAsyncContextManager[_Response]):
+    def __init__(self, context: AbstractAsyncContextManager[_Response]) -> None:
+        self._context = context
+        self._task: asyncio.Task[object] | None = None
+        self._entered, self._closed = False, False
+
+    async def __aenter__(self) -> _Response:
+        if self._entered or self._closed:
+            raise YorungeError("invalid_request")
+        self._task, self._entered = asyncio.current_task(), True
+        try:
+            return await self._context.__aenter__()
+        except BaseException:
+            self._closed = True
+            raise
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        # Check BEFORE resuming the generator or changing its timeout/ContextVar.
+        if self._closed or not self._entered or asyncio.current_task() is not self._task:
+            raise YorungeError("invalid_request")
+        self._closed = True
+        try:
+            return await self._context.__aexit__(exc_type, exc, traceback)
+        except YorungeError as error:
+            # contextlib may attach the exception injected at yield to a mapped
+            # failure; the public failure must not retain that private chain.
+            error.__context__, error.__cause__ = None, None
+            raise
 
 
 class HttpxTransport:
@@ -159,7 +225,8 @@ class HttpxTransport:
             await self._client.__aenter__()
         except (OSError, httpx.HTTPError):
             self._closed = True
-            raise YorungeError("transport_failed") from None
+        if self._closed:
+            raise YorungeError("transport_failed")
         return self
 
     def _owner(self) -> None:
@@ -243,8 +310,47 @@ class HttpxTransport:
             return response
         raise AssertionError("bounded attempts exhausted")
 
+    def open(self, request: HttpRequest, *, deadline: float) -> _ResponseContext:
+        return _ResponseContext(self._open(request, deadline=deadline))
+
+    async def _release(
+        self, response: httpx.Response | None, view: _Response | None, acquired: bool
+    ) -> bool:
+        failed = False
+        if view is not None:
+            view._closed = True
+        try:
+            if response is not None:
+                try:
+                    await response.aclose()
+                except (OSError, httpx.HTTPError):
+                    failed = True
+                finally:
+                    self._responses.discard(response)
+        finally:
+            assert self._client is not None
+            self._client.cookies.clear()
+            if acquired:
+                self._slots.release()
+        return failed
+
+    @staticmethod
+    def _view(response: httpx.Response, request: HttpRequest) -> _Response:
+        if not 200 <= response.status_code < 300:
+            raise HttpStatusFailure(response.status_code)
+        if (
+            len(response.headers) > 64
+            or sum(len(k) + len(v) for k, v in response.headers.raw) > 65536
+            or any(len(k) > 128 or len(v) > 16384 for k, v in response.headers.raw)
+        ):
+            raise YorungeError("invalid_response")
+        encoding = response.headers.get("content-encoding", "identity")
+        if encoding.lower().strip() != "identity":
+            raise YorungeError("invalid_response")
+        return _Response(response, request)
+
     @asynccontextmanager
-    async def open(self, request: HttpRequest, *, deadline: float) -> AsyncIterator[_Response]:
+    async def _open(self, request: HttpRequest, *, deadline: float) -> AsyncIterator[_Response]:
         self._owner()
         if self._closed or self._client is None or not isinstance(request, HttpRequest):
             raise YorungeError("invalid_request")
@@ -254,6 +360,7 @@ class HttpxTransport:
         response: httpx.Response | None = None
         view: _Response | None = None
         acquired = False
+        failure: ErrorCode | None = None
         with _private_logs():
             try:
                 async with asyncio.timeout_at(end):
@@ -262,40 +369,18 @@ class HttpxTransport:
                     acquired = True
                     response = await self._send(request, deadline)
                     self._responses.add(response)
-                    if not 200 <= response.status_code < 300:
-                        raise HttpStatusFailure(response.status_code)
-                    if (
-                        len(response.headers) > 64
-                        or sum(len(k) + len(v) for k, v in response.headers.raw) > 65536
-                        or any(len(k) > 128 or len(v) > 16384 for k, v in response.headers.raw)
-                    ):
-                        raise YorungeError("invalid_response")
-                    encoding = response.headers.get("content-encoding", "identity")
-                    if encoding.lower().strip() != "identity":
-                        raise YorungeError("invalid_response")
-                    view = _Response(response, request)
+                    view = self._view(response, request)
                     yield view
                     _remaining(deadline)
             except (TimeoutError, httpx.TimeoutException):
-                raise YorungeError("transport_timeout") from None
-            except httpx.HTTPError:
-                raise YorungeError("transport_failed") from None
+                failure = "transport_timeout"
+            except (httpx.HTTPError, OSError):
+                failure = "transport_failed"
             finally:
                 pending_error = sys.exc_info()[0] is not None
-                close_failed = False
-                if view is not None:
-                    view._closed = True
-                try:
-                    if response is not None:
-                        try:
-                            await response.aclose()
-                        except (OSError, httpx.HTTPError):
-                            close_failed = True
-                        finally:
-                            self._responses.discard(response)
-                finally:
-                    self._client.cookies.clear()
-                    if acquired:
-                        self._slots.release()
-                if close_failed and not pending_error:
-                    raise YorungeError("transport_failed") from None
+                close_failed = await self._release(response, view, acquired)
+                if close_failed and not pending_error and failure is None:
+                    failure = "transport_failed"
+        # Raising outside except/finally removes private HTTPX request/context chains.
+        if failure is not None:
+            raise YorungeError(failure)

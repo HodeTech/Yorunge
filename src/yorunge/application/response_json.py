@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Collection
 from enum import Enum
 from types import UnionType
 from typing import Annotated, Literal, TypeVar, Union, get_args, get_origin
@@ -32,6 +33,25 @@ def _reject_constant(value: str) -> object:
     raise ValueError("nonfinite JSON constant")
 
 
+def _structure_children(item: object, depth: int) -> list[tuple[object, int]]:
+    if isinstance(item, str):
+        item.encode("utf-8", errors="strict")
+    elif isinstance(item, float) and not math.isfinite(item):
+        raise ValueError("finite JSON number required")
+    elif isinstance(item, (dict, list)):
+        depth += 1
+        if depth > JSON_DEPTH:
+            raise ValueError("JSON nesting limit")
+        if isinstance(item, dict):
+            children = []
+            for key, child in item.items():
+                children.append((key, depth))
+                children.append((child, depth))
+            return children
+        return [(child, depth) for child in item]
+    return []
+
+
 def _structure(value: object) -> None:
     count, pending = 0, [(value, 0)]
     while pending:
@@ -39,22 +59,7 @@ def _structure(value: object) -> None:
         count += 1
         if count > JSON_NODES:
             raise ValueError("JSON node limit")
-        if isinstance(item, str):
-            item.encode("utf-8", errors="strict")
-        elif isinstance(item, float) and not math.isfinite(item):
-            raise ValueError("finite JSON number required")
-        elif isinstance(item, (dict, list)):
-            depth += 1
-            if depth > JSON_DEPTH:
-                raise ValueError("JSON nesting limit")
-            if isinstance(item, dict):
-                for key, child in item.items():
-                    if key == "schema_version" and type(child) is not int:
-                        raise ValueError("integer schema version required")
-                    pending.append((key, depth))
-                    pending.append((child, depth))
-            else:
-                pending.extend((child, depth) for child in item)
+        pending.extend(_structure_children(item, depth))
 
 
 def parse_json(data: bytes) -> object:
@@ -105,6 +110,105 @@ def literal_secret_match(value: str, secret: str) -> bool:
     return value == secret or (len(secret.encode("utf-8")) >= 8 and secret in value)
 
 
+def _schema_children(item: object) -> list[object]:
+    if isinstance(item, dict):
+        # Only schema nodes, not the model's field-name mapping or default JSON data.
+        if isinstance(item.get("type"), str) and "serialization" in item:
+            raise YorungeError("invalid_response")
+        return [value for key, value in item.items() if key not in {"metadata", "default"}]
+    if isinstance(item, (list, tuple)):
+        return list(item)
+    return []
+
+
+def _closed_codec(model: BaseModel) -> None:
+    """Fail closed when typed fields do not describe the complete emitted JSON shape."""
+    kind = type(model)
+    decorators = kind.__pydantic_decorators__
+    if (
+        kind.model_config.get("extra") != "forbid"
+        or model.model_extra is not None
+        or kind.model_computed_fields
+        or decorators.field_serializers
+        or decorators.model_serializers
+        or kind.model_config.get("json_encoders")
+        or kind.model_dump is not BaseModel.model_dump
+        or kind.model_dump_json is not BaseModel.model_dump_json
+    ):
+        raise YorungeError("invalid_response")
+    schema = kind.__pydantic_core_schema__
+    if not isinstance(schema, dict):
+        raise YorungeError("invalid_response")
+    pending: list[object] = [schema]
+    seen: set[int] = set()
+    while pending:
+        item = pending.pop()
+        if id(item) in seen:
+            continue
+        seen.add(id(item))
+        pending.extend(_schema_children(item))
+
+
+def _model_children(
+    model: BaseModel, checked_types: set[type[BaseModel]]
+) -> list[tuple[object, object]]:
+    if type(model) not in checked_types:
+        _closed_codec(model)
+        checked_types.add(type(model))
+    return [
+        (getattr(model, name), field.annotation) for name, field in type(model).model_fields.items()
+    ]
+
+
+def _mapping_children(
+    item: dict[object, object], annotation: object
+) -> list[tuple[object, object]]:
+    args = get_args(_container_annotation(annotation))
+    key_annotation, value_annotation = args if len(args) == 2 else (None, None)
+    children = []
+    for key, value in item.items():
+        children.append((key, key_annotation))
+        children.append((value, value_annotation))
+    return children
+
+
+def _sequence_children(item: Collection[object], annotation: object) -> list[tuple[object, object]]:
+    args = get_args(_container_annotation(annotation))
+    children = []
+    for index, child in enumerate(item):
+        child_annotation = args[0] if args else None
+        if isinstance(item, tuple) and len(args) > 1 and args[-1] is not Ellipsis:
+            child_annotation = args[index] if index < len(args) else None
+        children.append((child, child_annotation))
+    return children
+
+
+def _response_children(
+    item: object,
+    annotation: object,
+    captured: tuple[str, ...],
+    checked_types: set[type[BaseModel]],
+) -> list[tuple[object, object]]:
+    if _fixed_annotation(annotation) or isinstance(item, Enum):
+        return []
+    if isinstance(item, BaseModel):
+        return _model_children(item, checked_types)
+    if isinstance(item, str):
+        if any(literal_secret_match(item, secret) for secret in captured):
+            raise YorungeError("invalid_response")
+        return []
+    if isinstance(item, dict):
+        return _mapping_children(item, annotation)
+    if isinstance(item, (tuple, list, set, frozenset)):
+        return _sequence_children(item, annotation)
+    if isinstance(item, float) and not math.isfinite(item):
+        raise YorungeError("invalid_response")
+    if item is not None and type(item) not in (bool, int, float):
+        # Unknown typed scalars/serializers must not silently skip reflection checks.
+        raise YorungeError("invalid_response")
+    return []
+
+
 def check_response_secrets(model: BaseModel, secrets: tuple[SecretValue, ...]) -> None:
     """Check dynamic provider strings only; fixed fields/Literals/enums are not provenance."""
     if (
@@ -116,35 +220,11 @@ def check_response_secrets(model: BaseModel, secrets: tuple[SecretValue, ...]) -
     captured = tuple(secret.reveal() for secret in secrets)
     if not captured:
         return
+    checked_types: set[type[BaseModel]] = set()
     pending: list[tuple[object, object]] = [(model, None)]
     while pending:
         item, annotation = pending.pop()
-        if _fixed_annotation(annotation) or isinstance(item, Enum):
-            continue
-        if isinstance(item, BaseModel):
-            for name, field in type(item).model_fields.items():
-                pending.append((getattr(item, name), field.annotation))
-        elif isinstance(item, str):
-            if any(literal_secret_match(item, secret) for secret in captured):
-                raise YorungeError("invalid_response")
-        elif isinstance(item, dict):
-            args = get_args(_container_annotation(annotation))
-            key_annotation, value_annotation = args if len(args) == 2 else (None, None)
-            for key, value in item.items():
-                pending.append((key, key_annotation))
-                pending.append((value, value_annotation))
-        elif isinstance(item, (tuple, list, set, frozenset)):
-            args = get_args(_container_annotation(annotation))
-            for index, child in enumerate(item):
-                child_annotation = args[0] if args else None
-                if isinstance(item, tuple) and len(args) > 1 and args[-1] is not Ellipsis:
-                    child_annotation = args[index] if index < len(args) else None
-                pending.append((child, child_annotation))
-        elif isinstance(item, float) and not math.isfinite(item):
-            raise YorungeError("invalid_response")
-        elif item is not None and type(item) not in (bool, int, float):
-            # Unknown typed scalars/serializers must not silently skip reflection checks.
-            raise YorungeError("invalid_response")
+        pending.extend(_response_children(item, annotation, captured, checked_types))
 
 
 def decode_response(data: bytes, model: type[T], *, secrets: tuple[SecretValue, ...] = ()) -> T:
