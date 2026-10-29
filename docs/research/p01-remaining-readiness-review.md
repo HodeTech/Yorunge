@@ -32,7 +32,7 @@ SDK'nın [sabit yayımlama commit'i](https://github.com/speker/evren-sdk/tree/f4
 
 ## Sonuç ve iptal uyumu
 
-Result v1'i execution durumlarıyla genişletmek yerine ayrı kapalı StreamEvent önerildi. Mevcut normal komutun NDJSON'u tek terminal result; çok olaylı hat gerçek ürün codec/renderer ile fixture composition'ındadır. Akış EOF'u başarı kanıtı, task cancellation uzak stop başarısı sayılmaz. Output kırılması başarılı terminal store kaydını değiştirmez. Arm sonrası start kaybında mevcut operation_uncertain/5/latch korunur. Akış terminal adayının trailing veri/EOF doğrulaması tamamlanmadan publish edilmemesi, sonradan hatalı completed çıktısı üretmeyi önler.
+Result v1'i execution durumlarıyla genişletmek yerine ayrı kapalı StreamEvent önerildi. Mevcut normal komutun NDJSON'u tek terminal result; çok olaylı hat gerçek ürün codec/renderer ile fixture composition'ındadır. Akış EOF'u başarı kanıtı, task cancellation uzak stop başarısı sayılmaz. Output kırılması başarılı terminal store kaydını değiştirmez. Arm sonrası start kaybında mevcut operation_uncertain/5/latch korunur. Bugünkü coordinator BaseException'da unknown kaydını deneyip KeyboardInterrupt/CancelledError'ı yeniden yükseltir; yeni sınır bu bağlamı kaybetmeden CLI/fixture sonucunda ID ve exit5 önceliğini ayrıca uygulamalıdır. Akış terminal adayının trailing veri/EOF doğrulaması tamamlanmadan publish edilmemesi, sonradan hatalı completed çıktısı üretmeyi önler.
 
 Yeni public seçenek, hata kataloğu, istemci ve kaynak ömrü kararları [ADR-0017](../decisions/0017-bounded-http-transport.md) / [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) olarak **Proposed** bırakıldı. İlgili [HTTP](../reference/http-transport.md) ve [stream](../reference/stream-results.md) taslakları onay için somut sözleşmedir. Kullanıcı yeni ADR'leri uygulamadan önce onaylama talep ettiği için bağımlı ürün kodu başlamaz.
 
@@ -52,4 +52,8 @@ Kapanış CI planı Linux'ta 3.11 ve 3.14, macOS'ta 3.11 uyumluluk işlerini iç
 
 ## Bağımsız belge review kaydı
 
-Üç ön inceleme tamamlandı. Hazırlanan ADR/ref/kart/plan kümesi ayrıca iki fresh belge review turundan geçirilecektir; henüz tamamlanmış tur veya ürün kabulü iddiası yoktur. Sonuçlar bu bölümde gerçek bulgu disposition'larıyla kaydedilir.
+Üç ön inceleme tamamlandı; ilk taslak **6863582** ile commit edildi. Belge review'ü ürün kabulü değildir.
+
+**R1:** İki fresh ajan, taşıma/güvenlik/dayanıklılık için gpt-6.1-terra/high ve stream/sözleşme/faz kabulü için gpt-6.1-sol/high, d686c8f..6863582 kümesini salt-okunur inceledi. Tek doğrulanmış P2: HTTP tek JSON için zorunlu depth/node sınırının sayısal eşik ve sayım kuralı eksikti. HTTP referansına JSON/NDJSON/request/response için ortak depth32/node65.536, root/scalar/key/container sayımı ve sınır/üstü bağımsız fixture kabulü eklendi; stream referansı tek kurala bağlandı. Ana inceleme monotonic→loop clock epoch dönüşümünü ayrıca netleştirdi. Coordinator'ın BaseException iptalini bugün ham yükselttiği uygulama riski kabul kartında zaten vardı; araştırma mevcut davranışı ve yeni ID/exit5 gereğini açık ayırdı. Sözleşme reviewer'ı ek önemli bulgu doğrulamadı; tercihe dayalı yeni bulgu üretilmedi.
+
+**R2:** Farklı iki fresh ajanla revize belge kümesi incelenecek; henüz tamamlanmış tur iddiası yoktur. Bu hazırlıkta runtime testi veya yeni CI koşusu çalıştırılmadı.

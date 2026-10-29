@@ -21,6 +21,7 @@ Redirect kapalıdır, hiçbir 3xx takip edilmez. `trust_env=False`, transport re
 | Sınır | İlk uygulama |
 |---|---|
 | JSON request / tek JSON response | Her biri en çok 1 MiB UTF-8 |
+| Her decoded JSON/NDJSON record | Container nesting en çok 32, JSON düğümü en çok 65.536; aşağıdaki tek sayım kuralı |
 | Akış okuma parçası | En çok 32 KiB; dosyanın bütünü biriktirilmez |
 | NDJSON frame | En çok 512 KiB UTF-8; LF hariç, CRLF kabulünde CR hariç |
 | Raw stream toplamı | İstek için açık byte tavanı; en çok 1 GiB |
@@ -28,7 +29,9 @@ Redirect kapalıdır, hiçbir 3xx takip edilmez. `trust_env=False`, transport re
 | İstek phase timeout | Connect/read/write en çok 5 s, pool en çok 1 s; kalan total'dan büyük olamaz |
 | Total | Çağıranın mutlak monotonic deadline'ı; default yeni yerel fixture çağrısında 30 s, operation'da mevcut daha dar port deadline'ı |
 
-Sınırlar bool/float ile gevşetilmez; süreler sonlu/pozitif olmalı. Geçmiş deadline sıfır ağ çağrısıdır. Dış timeout tüm acquire/header/body/consumer/backoff'u kapsar; her faz/deneme yeni 30 s başlatmaz. `Accept-Encoding: identity`; ilk P01 decoder sıkıştırılmış content-encoding'i reddeder, otomatik açılmış sınırsız içerik yoktur. Başka content codec'i ihtiyaç duyulan endpoint'in ayrı P02 kabulüdür.
+Sınırlar bool/float ile gevşetilmez; süreler sonlu/pozitif olmalı. Geçmiş deadline sıfır ağ çağrısıdır. Dış timeout tüm acquire/header/body/consumer/backoff'u kapsar; her faz/deneme yeni 30 s başlatmaz. Deadline clock'u `time.monotonic()`'tir; asyncio loop clock'una geçerken `loop.time() + max(0, deadline - time.monotonic())` ile kalan süre aktarılır ve dönüşte özgün deadline tekrar denetlenir. Farklı clock epoch'larının eşit olduğu varsayılmaz. `Accept-Encoding: identity`; ilk P01 decoder sıkıştırılmış content-encoding'i reddeder, otomatik açılmış sınırsız içerik yoktur. Başka content codec'i ihtiyaç duyulan endpoint'in ayrı P02 kabulüdür.
+
+JSON/NDJSON için tek yapısal sayım: scalar depth=0, object/array depth=1+en derin child container depth; dolayısıyla root container depth=1'dir. Düğüm sayısı scalar için1, array için1+elemanların düğüm toplamı, object için1+her key başına1+her value'nun düğüm toplamıdır. Key string ayrıca sayılır, container value iki kez sayılmaz. Tam sınır kabul, bir üstü ret; küçük/azami/aşan fixture'lar aynı parser'dan hesaplanmış beklentiye dayanmaz. Request JSON ve endpoint response JSON'a da aynı sınırlar uygulanır; P01 yalnız NDJSON decoder'ında koruma uygulamış sayılmaz.
 
 Raw byte portu yalnız trusted bounded consumer'a gider; public Result veya terminale doğrudan chunk basmaz. JSON strict UTF-8/duplicate/nonfinite/depth/node/size ve endpoint modeli doğrulanır; şema seviyesinde 2xx mantıksal hata da başarısızdır. NDJSON'da buffer/sıra/terminal kuralları [ayrı referanstadır](stream-results.md). Decoder bilinen secret'ı taşıyan alanı public publish'ten önce reddeder; kontrol decoded string/key ve record sınırında yapılır, raw chunk sınırı güven sınırı değildir. Gövdedeki sır/hassaslık kontrolünü generic transport'un uzak anlamı doğruladığı iddiasıyla karıştırma.
 
