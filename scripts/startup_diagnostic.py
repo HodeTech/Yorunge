@@ -142,7 +142,7 @@ def publish(value: dict[str, Any], selection: dict[str, Any] | None = None) -> N
         ]
         if selection["mode"] == BASELINE["INITIAL_CONTROL"]:
             lines.insert(
-                8,
+                7,
                 "Initial-runtime control uses two fresh installations of the same "
                 "source; it does not measure improvement over a previous runtime.",
             )
@@ -155,7 +155,8 @@ def publish(value: dict[str, Any], selection: dict[str, Any] | None = None) -> N
     lines += [
         "",
         "Diagnostic only; M5 source-bound startup/jobs and Linux raw gates remain required.",
-        "Maintainer: archive original report and receipt before acceptance; final docs/merge "
+        "Maintainer: archive original report, receipt and startup-baseline-selection.json "
+        "with their original bytes/hashes before acceptance; final docs/merge "
         "runs remain explicit retention follow-ups under ADR-0019.",
         "",
     ]
