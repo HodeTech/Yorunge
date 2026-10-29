@@ -4,6 +4,7 @@ import asyncio
 import errno
 import io
 import json
+import sys
 import threading
 from uuid import uuid4
 
@@ -457,6 +458,40 @@ def test_second_sigint_during_error_reporting_keeps_known_uncertainty(code, expe
         rendered.stdout = Interrupted()
     assert rendered.error(YorungeError(code)) == expected
     assert rendered.error(YorungeError("output_write_failed")) == expected
+
+
+@pytest.mark.parametrize("code,expected", [("operation_conflict", 2), ("remote_failed", 1)])
+@pytest.mark.parametrize("published", [False, True])
+def test_second_sigint_preserves_known_operation_failure(code, expected, published):
+    class Interrupted(io.StringIO):
+        calls = 0
+
+        def write(self, data):
+            self.calls += 1
+            raise KeyboardInterrupt
+
+    interrupted = Interrupted()
+    output = io.StringIO()
+    rendered = OutputRenderer(
+        "ndjson", stdout=output, stderr=interrupted, stream_id=STREAM, operation_id=OPERATION
+    )
+    if published:
+        rendered.event(progress(operation_id=OPERATION))
+        rendered.stdout = interrupted
+    assert rendered.error(OperationError(code, OPERATION)) == expected
+    assert rendered.error(YorungeError("request_cancelled")) == expected
+    assert interrupted.calls == 1
+
+
+@pytest.mark.parametrize("arguments", [["--help"], ["--version"]])
+def test_metadata_closed_python_stdout_is_controlled(monkeypatch, arguments):
+    closed = io.TextIOWrapper(io.BytesIO())
+    closed.close()
+    errors = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", closed)
+    monkeypatch.setattr(sys, "stderr", errors)
+    assert cli.main([*arguments, "--output=json"]) == 1
+    assert json.loads(errors.getvalue())["code"] == "output_write_failed"
 
 
 def test_sigint_after_partial_record_disables_stdout_before_cancellation_reporting():

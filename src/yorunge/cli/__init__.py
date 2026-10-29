@@ -95,7 +95,9 @@ class Parser(argparse.ArgumentParser):
         if message:
             from typing import TextIO, cast
 
-            write_utf8(message, cast(TextIO, file or sys.stderr))
+            # argparse supplies the intended stream explicitly. A missing
+            # stdout is a delivery failure, not a reason to print help to stderr.
+            write_utf8(message, cast(TextIO, file))
 
 
 def common(parser: argparse.ArgumentParser, *, context: bool = True) -> None:
@@ -494,7 +496,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from yorunge.domain.errors import YorungeError
 
         return renderer.error(YorungeError("request_cancelled"))
-    except (OSError, UnicodeError) as error:
+    except (OSError, UnicodeError, ValueError) as error:
         return renderer.error(renderer.output_failure(error))
 
     from yorunge.domain.errors import YorungeError

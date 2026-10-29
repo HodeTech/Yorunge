@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from uuid import UUID
 
 GITHUB_DIRECTORY = ".github"
 SDIST_SUFFIX = ".tar.gz"
@@ -392,6 +393,46 @@ def verify_installed_jobs(
     return "passed"
 
 
+def installed_ndjson_payload(output: str) -> object:
+    if output.count("\n") != 1 or not output.endswith("\n"):
+        raise ValueError("installed NDJSON must contain one complete event")
+    event = json.loads(output)
+    if not isinstance(event, dict) or set(event) != {
+        "schema_version",
+        "stream_id",
+        "sequence",
+        "event",
+        "operation_id",
+        "payload",
+    }:
+        raise ValueError("installed NDJSON event shape failed")
+    if (
+        type(event["schema_version"]) is not int
+        or event["schema_version"] != 1
+        or type(event["sequence"]) is not int
+        or event["sequence"] != 1
+        or event["event"] != "result"
+        or event["operation_id"] is not None
+    ):
+        raise ValueError("installed NDJSON event contract failed")
+    identifier = UUID(event["stream_id"])
+    if identifier.version != 4 or str(identifier) != event["stream_id"]:
+        raise ValueError("installed NDJSON stream identity failed")
+    return event["payload"]
+
+
+def verify_installed_ndjson(
+    console: Path, root: Path, scratch: Path, environment: dict[str, str]
+) -> str:
+    command = [str(console), "context", "show", "--config", str(root / EXAMPLE_PROFILE)]
+    expected = json.loads(run([*command, "--output=json"], cwd=scratch, environment=environment))
+    for option in (["--output", "ndjson"], ["--output=ndjson"]):
+        encoded = run([*command, *option], cwd=scratch, environment=environment)
+        if installed_ndjson_payload(encoded) != expected:
+            raise ValueError("installed NDJSON changed Result v1")
+    return "passed"
+
+
 def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
@@ -465,6 +506,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
         plan = json.loads(output)
         if plan["data"]["executable"] or plan["data"]["selection"]["tool"] != "forgelm":
             raise ValueError("installed plan contract failed")
+        ndjson_smoke = verify_installed_ndjson(console, root, scratch, environment)
         cache_smoke = "not_run_unsupported_platform"
         execution_smoke = "not_run_unsupported_platform"
         jobs_smoke = "not_run_unsupported_platform"
@@ -481,6 +523,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
                     "members": len(members),
                     "origin_verified": True,
                     "smoke": "passed",
+                    "ndjson_smoke": ndjson_smoke,
                     "cache_smoke": cache_smoke,
                     "execution_smoke": execution_smoke,
                     "jobs_smoke": jobs_smoke,

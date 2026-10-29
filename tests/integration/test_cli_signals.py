@@ -30,12 +30,27 @@ def receive_line(control):
     return bytes(value)
 
 
+def with_closed_descriptor(command, descriptor):
+    # Close before a fresh interpreter starts so sys.stdout/stderr really is
+    # None, rather than a TextIOWrapper left around an invalid file descriptor.
+    return [
+        sys.executable,
+        "-c",
+        "import os,sys; os.close(int(sys.argv[1])); os.execv(sys.argv[2], sys.argv[2:])",
+        str(descriptor),
+        *command,
+    ]
+
+
 @contextmanager
-def gated_cli(target, phase, *arguments):
+def gated_cli(target, phase, *arguments, closed_descriptor=None):
     parent, child = socket.socketpair()
     parent.settimeout(10)
+    command = [sys.executable, str(FIXTURE), str(child.fileno()), phase, str(target), *arguments]
+    if closed_descriptor is not None:
+        command = with_closed_descriptor(command, closed_descriptor)
     process = subprocess.Popen(
-        [sys.executable, str(FIXTURE), str(child.fileno()), phase, str(target), *arguments],
+        command,
         pass_fds=(child.fileno(),),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -309,5 +324,45 @@ def test_config_uncertainty_exit_survives_closed_error_pipe(tmp_path):
         assert process.returncode == 5
         assert stdout == b""
         assert stderr is None
+        assert receive_line(control) == b"publication=1\n"
+    assert load_config(target).active_profile == "default"
+
+
+@pytest.mark.parametrize(
+    "descriptor,arguments,expected",
+    [
+        (1, ["context", "show", "--output=json"], 1),
+        (1, ["--help", "--output=json"], 1),
+        (1, ["--version", "--output=json"], 1),
+        (2, ["--unknown", "--output=ndjson"], 2),
+    ],
+)
+def test_stdio_absent_at_python_startup_remains_controlled(descriptor, arguments, expected):
+    command = with_closed_descriptor([sys.executable, "-m", "yorunge", *arguments], descriptor)
+    result = subprocess.run(command, capture_output=True, timeout=10)
+    assert result.returncode == expected
+    assert result.stdout == b""
+    if descriptor == 1:
+        assert json.loads(result.stderr)["code"] == "output_write_failed"
+    else:
+        assert result.stderr == b""
+
+
+def test_missing_stderr_at_startup_preserves_actual_config_publish_uncertainty(tmp_path):
+    target = tmp_path / "new.toml"
+    with gated_cli(
+        target,
+        "link-after",
+        "init",
+        "--config",
+        str(target),
+        "--output=ndjson",
+        closed_descriptor=2,
+    ) as (process, control):
+        process.send_signal(signal.SIGINT)
+        stdout, stderr = process.communicate(timeout=10)
+        assert process.returncode == 5
+        assert stdout == b""
+        assert stderr == b""
         assert receive_line(control) == b"publication=1\n"
     assert load_config(target).active_profile == "default"

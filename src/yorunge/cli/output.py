@@ -27,6 +27,8 @@ def write_utf8(message: str | bytes, stream: TextIO) -> None:
     StringIO and other text-only in-process sinks retain their normal interface.
     A short/zero write is never mistaken for successful delivery.
     """
+    if stream is None:
+        raise OSError("output stream is unavailable")
     binary = getattr(stream, "buffer", None)
     if binary is not None:
         pending = memoryview(
@@ -248,13 +250,21 @@ class OutputRenderer:
             _silence_failed_descriptor(self.stderr)
 
     def error(self, error: YorungeError) -> int:
+        from yorunge.domain.errors import OperationError
+
         try:
             return self._report_error(error)
         except KeyboardInterrupt:
             # A second SIGINT during best-effort reporting must not hide an
-            # already known uncertain write or initiate another output attempt.
+            # already known operation failure or uncertain write. The cached
+            # exit also preserves a rejected/mismatched operation identity.
             self._reported = True
-            self._exit_code = 5 if error.exit_code == 5 else 6
+            known = (
+                error.exit_code == 5
+                or isinstance(error, OperationError)
+                or self.operation_id is not None
+            )
+            self._exit_code = (self._exit_code or error.exit_code) if known else 6
             return self._exit_code
 
     def _report_error(self, error: YorungeError) -> int:
