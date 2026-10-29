@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Dört adım, her adımda iki fresh review turu ve son kaynak yerel kabulü tamamlandı; P01-4b/4c bu dalda verified. Development aktarımı için PR incelemesi gerekir; merge/yayın kabulü değildir. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e; son ürün kaynağı 17de965. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/review disposition](p01-4-readiness-review.md). Aşağıdaki adım günlüklerindeki Proposed/onay-bekleyen, kabulün henüz yapılmadığı veya kontrollerin çalıştırılmadığı ifadeler kendi aşamalarının tarihsel kaydıdır; güncel kapanış bu giriş ve son bölümde belirtilir.
+**Güncellendi:** 2026-10-29. **Durum:** Dört adım ve her adımın iki bağımsız inceleme turu tamamlandı. PR #10 kullanıcı incelemesindeki aynı-gözlem/geçmiş-kotası düzeltmesinin son kaynak bütünleşik kabulü yenileniyor; tamamlanmadan birleştirmeye hazır sayılmaz. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. İlk paket kabulü 17de965; kalite/bütçe takipleri ve sonraki kullanıcı bulgusu aşağıda ayrı kaynaklarla kayıtlıdır. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/inceleme kaydı](p01-4-readiness-review.md). Önceki durum ve ölçümler kendi kaynaklarının tarihsel kanıtıdır; güncel durum bu giriş ve son bölümde belirtilir.
 
 ## Karar kapanışı
 
@@ -303,3 +303,15 @@ Hedefli takım 201 test, ek sınır takımı ayrıca geçti; Ruff ve strict mypy
 ### Ölçüm aracı dış runtime yolu
 
 PR yorumundaki checkout dışı runtime yolu kusuru yeniden üretildi: kaynak/kurulum guard'ları geçen kontrollü fixture, rapor `prefix_relative` alanını oluştururken `Path.relative_to` hatası veriyordu. Regresyon önce bu noktada başarısız oldu. Artık prefix çözümlenmiş mutlak yola normalize edilir; checkout içindeyse `prefix_relative`, dışındaysa `prefix_absolute` doldurulur, diğeri null'dır. Kurulum/kaynak hash ve geliştirme paketi ret kontrolleri değişmez. Bu test yol metadata'sı içindir; kurulu süreç performansı diye sayılmaz. Dil/açıklama ve örnek boyutu yorumları da gerçek kayıtla hizalandı.
+
+## Kullanıcı PR incelemesi — aynı gözlemin geçmiş kotası
+
+Kullanıcının e638194 üzerinde bildirdiği iki P2 ve bir P3 bulgusu güncel kodla karşılaştırıldı. Aynı başarılı sağlayıcı gözleminin her reconcile'da normal event üretmesi güncel kaynakta doğrulandı. Dört nonterminal örnek, 255 dolu geçmiş ve reset onayı/zaman kararlılığı için altı negatif mevcut kodda **6/6 başarısız** oldu. Mevcut ADR-0016 normal **business geçişini** kotaya bağladığından yeni ADR/karar değişikliği gerekmedi; aynı gözlem bir iş değişikliği değildir. Timestamp referansı son kalıcı değişikliği anlatacak biçimde netleştirildi.
+
+Düzeltme bütün correlation/hedef/yetki, run ID ve reducer kontrollerinden sonra, kapasite kontrolünden önce uygulanır. Recovery marker yoksa ve tüm kalıcı durum/sağlayıcı alanları aynıysa mevcut JobView döner; yeni event/revision/updated_at/lease üretmez. Ortak clock transaction'ı ve son owner/credential/lease/ReadAccess kapıları atlanmaz. Yeni provider status/exit ve marker temizleyen gerçek recovery hâlâ anlamlı değişikliktir. Geçmiş doluyken yeni nonterminal kanıtın capacity_exceeded davranışı ve 256. terminal slotu korunur.
+
+Düzeltme sonrası uzlaştırma takımı 71 test geçti; aynı gözleme benzer credential yarışına ilişkin ek örnek ayrıca sınandı. Uzun sorgulama testi her çağrıya ayrı kullanım senaryosu bütçesi verir; 260 adet 5 s UTC adımı ve explicit renew ile 21 dakikadan uzun sentetik süreyi sınar, gerçek süre beklemez. Salt gözlemin kalıcı iş payload'ını değiştirmemesi, yeni kanıtın yazılması, aynı unknown eksenlerinde recovery marker temizliği, yanlış correlation/account/run/gerileme reddi ve son lease/read yetkisi expiry'si ayrı örneklerdir.
+
+Diğer P2, incelenen e638194 için geçerliydi: başarısız 27 örnek korunmuştur. Sonraki 552d3e3 ürün kaynağında [27/27 operation](p01-4-quota-operation-budget.json) ve [24/24 migration](p01-4-quota-migration-budget.json) pozitif kabul sağlandı; en yavaş karma reset **4.965,896083 ms**, marj **34,103917 ms** ile dardır. [9600416 yardımcı kaynağıyla kurulu jobs](p01-4-closing-jobs-budget.json) normal list/show **124,486/121,779**, yoğun **178,063/120,208 ms** ile geçti. Bunlar yeni aynı-gözlem düzeltmesinden önceki kaynak kanıtlarıdır; son kaynak kabulü yeniden alınacak. GitHub startup yeşili operation bütçesi yerine sunulmaz.
+
+P3 checkout dışı runtime kusuru 9600416'da başarısız-önce/geçen-sonra regresyonu ve iki bağımsız incelemeyle kapandı; tekrar kod değişikliği yapılmadı. Önceki PR Lens takeover iddiası, terminal reducer/erken dönüş nedeniyle uygulanabilir olmadığı için açık bulgu değildir.

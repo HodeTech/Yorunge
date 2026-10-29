@@ -909,9 +909,27 @@ class StateOperations:
             status = observed_status(record, observation)
         except ValueError:
             return self._recover(record, job, stamp, "evidence_mismatch")
+        reason = observed_reason(status, observation.execution_status)
+        if record.recovery_reason is None and (
+            record.summary.status,
+            record.summary.execution_status,
+            record.summary.delivery_status,
+            current.provider_run_id,
+            current.provider_status,
+            current.provider_exit_code,
+            current.reason_code,
+        ) == (
+            status,
+            observation.execution_status,
+            observation.delivery_status,
+            observation.provider_run_id,
+            observation.provider_status,
+            observation.provider_exit_code,
+            reason,
+        ):
+            return job
         if record.event_count >= MAX_EVENTS - 1 and status not in TERMINAL:
             return self._recover(record, job, stamp, "capacity_exceeded")
-        reason = observed_reason(status, observation.execution_status)
         now = self.cache.now()
         changed = self._progress(
             record,
