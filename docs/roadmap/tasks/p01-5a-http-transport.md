@@ -42,6 +42,6 @@ Unit/contract ve gerçek TLS/socket/SQLite/alt süreç integration; fault/timeou
 
 ## Teslim kaydı
 
-- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım 1 3c68e22/a2250db/2dee624 ve adım 2 61fe655/ec2d202 aynı paket dalındadır, henüz PR/merge yoktur.
+- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım 1 3c68e22/a2250db/2dee624 ve adım 2 61fe655/ec2d202 aynı paket dalındadır. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development hedefiyle açıktır; merge kullanıcı incelemesini bekler.
 - Sonuç: İki adımın ikişer fresh review turu/fix'leri ve source-matched hedefli HTTP/JSON/TLS/session/SQLite/cancel/race/restart kontrolleri [uygulama kaydındadır](../../research/p01-remaining-implementation-validation.md). Son runtime kaynağında wheel/sdist iki temiz kurulum, import kökeni ve mevcut smoke'lar geçti; Ruff/strict mypy/belge/kart/diff temiz.
 - Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b ve bütünleşik final kurulum/ortam/performans P01-6b’nin güncel kaynak ve bellek kabul takibinde izlenir; bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.

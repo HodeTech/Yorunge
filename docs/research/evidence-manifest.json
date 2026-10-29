@@ -2487,6 +2487,21 @@
       }
     },
     {
+      "name": "p01-6-user-review-ci-initial-failure.json",
+      "archive": "raw/p01-6-user-review-ci-initial-failure.json.gz",
+      "original_commit": "88d59c5b97a147f533ce16134c1146472c31b8ff",
+      "content_bytes": 8452,
+      "content_sha256": "19e4d9a29642da3a583d42fbf4abdd994484742aed8fb5463cd0b36b2c73cf3a",
+      "archive_bytes": 1849,
+      "archive_sha256": "19b9f55415dbdf610702a6582aba0ca81313ad8615a6601dccc7146a31350376",
+      "summary": {
+        "source_commit": "68fe43da7b3c6098ad2e0fc00d8ac81881c16c9f",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "failed"
+      }
+    },
+    {
       "name": "p01-6-user-review-installation.json",
       "archive": "raw/p01-6-user-review-installation.json.gz",
       "original_commit": null,

@@ -513,7 +513,7 @@ def stream_outcome(
 
 def stream_v2_baseline_source(os_name: str) -> str:
     if stream_native_unit(os_name) == "KiB":
-        return "linux.proc_self_smaps_rollup.Rss"
+        return "linux.proc_self_status.VmRSS"
     return "darwin.MACH_TASK_BASIC_INFO.resident_size"
 
 
@@ -529,7 +529,9 @@ def stream_v2_method(value: object, os_name: str) -> dict[str, Any]:
         "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
         "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
         "rss_baseline_source": stream_v2_baseline_source(os_name),
-        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_peak_source": "linux.proc_self_status.VmHWM"
+        if stream_native_unit(os_name) == "KiB"
+        else "resource.getrusage(RUSAGE_SELF).ru_maxrss",
         "rss_interval": "new_high_water_exact_else_zero_to_upper",
         "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
         "backpressure": "consumer awaits each next chunk; no producer task or body queue",
@@ -539,7 +541,7 @@ def stream_v2_method(value: object, os_name: str) -> dict[str, Any]:
         raise ValueError("unsupported stream v2 RSS method")
     # Reuse only the frozen v1 validator's common concurrency/transport checks.
     common_values = {key: item for key, item in method.items() if key not in additions}
-    common_values["rss_method"] = required["rss_peak_source"]
+    common_values["rss_method"] = "resource.getrusage(RUSAGE_SELF).ru_maxrss"
     stream_method(common_values, os_name)
     return method
 

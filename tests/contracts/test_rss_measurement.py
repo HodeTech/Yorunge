@@ -11,44 +11,58 @@ from tests.fixtures import stream_budget
 MIB = 1_048_576
 
 
-def test_linux_rollup_selects_rss_not_pss_or_anonymous_memory():
-    rollup = "00000000-ffffffff ---p 00000000 00:00 0 [rollup]\n"
-    rollup += "Rss:               32768 kB\nPss: 123 kB\nAnonymous: 456 kB\n"
-    assert stream_budget.parse_smaps_rollup_rss(rollup) == 32768
+def test_linux_status_selects_coherent_current_and_peak_not_other_memory_fields():
+    status = "Name: python\nVmRSS: 32768 kB\nVmHWM: 65536 kB\n"
+    status += "VmSize: 99999 kB\nRssAnon: 123 kB\nRssFile: 456 kB\n"
+    assert stream_budget.parse_linux_rss(status) == (32768, 65536)
     assert stream_budget.rss_bytes(32768, "Linux") == 33_554_432
 
 
 @pytest.mark.parametrize(
-    "rollup",
+    "status",
     [
         "",
-        "Pss: 123 kB\n",
-        "Rss: 12 kB\nRss: 13 kB\n",
-        "Rss: 12 kB\nRss: broken\n",
-        "Rss: 12 MB\n",
-        "Rss: -1 kB\n",
-        "Rss: 0 kB\n",
-        "Rss: 1.5 kB\n",
-        "Rss: １２ kB\n",
-        "Rss: 12 kB trailing\n",
-        "Rss: 12\n",
-        b"Rss: 12 kB\n",
+        "Rss: 123 kB\n",
+        "VmRSS: 12 kB\n",
+        "VmHWM: 12 kB\n",
+        "VmRSS: 12 kB\nVmRSS: 13 kB\nVmHWM: 14 kB\n",
+        "VmRSS: 12 kB\nVmHWM: 13 kB\nVmHWM: broken\n",
+        "VmRSS: 12 MB\nVmHWM: 13 kB\n",
+        "VmRSS: -1 kB\nVmHWM: 13 kB\n",
+        "VmRSS: 0 kB\nVmHWM: 13 kB\n",
+        "VmRSS: 1.5 kB\nVmHWM: 13 kB\n",
+        "VmRSS: １２ kB\nVmHWM: 13 kB\n",
+        "VmRSS: 12 kB trailing\nVmHWM: 13 kB\n",
+        "VmRSS: 12\nVmHWM: 13 kB\n",
+        "VmRSS: 12 kB\nVmHWM: 11 kB\n",
+        b"VmRSS: 12 kB\nVmHWM: 13 kB\n",
         None,
     ],
 )
-def test_linux_rollup_rejects_missing_duplicate_or_invalid_rss(rollup):
+def test_linux_status_rejects_missing_duplicate_or_invalid_rss(status):
     with pytest.raises(ValueError):
-        stream_budget.parse_smaps_rollup_rss(rollup)
+        stream_budget.parse_linux_rss(status)
 
 
-def test_linux_probe_reads_only_self_rollup(monkeypatch):
+def test_linux_probe_reads_both_counters_from_one_self_status_read(monkeypatch):
+    reads = []
+
     def opened(path, **kwargs):
-        assert str(path) == "/proc/self/smaps_rollup"
+        reads.append(str(path))
+        assert str(path) == "/proc/self/status"
         assert kwargs == {"encoding": "ascii"}
-        return io.StringIO("Rss: 1234 kB\n")
+        return io.StringIO("VmRSS: 1234 kB\nVmHWM: 2345 kB\n")
 
     monkeypatch.setattr(stream_budget.Path, "open", opened)
+    assert stream_budget.linux_rss_snapshot() == (1234, 2345)
+    assert reads == ["/proc/self/status"]
+
+
+def test_linux_peak_uses_same_status_family_as_baseline_not_getrusage(monkeypatch):
+    monkeypatch.setattr(stream_budget.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(stream_budget, "linux_rss_snapshot", lambda: (1234, 2345))
     assert stream_budget.linux_current_rss() == 1234
+    assert stream_budget.self_peak_rss() == (2345, 2_401_280)
 
 
 @pytest.mark.parametrize("error", [FileNotFoundError, PermissionError, UnicodeError])
@@ -61,7 +75,7 @@ def test_linux_native_read_errors_are_not_silenced(monkeypatch, error):
         stream_budget.linux_current_rss()
 
 
-def test_linux_rollup_read_has_a_fixed_size_bound(monkeypatch):
+def test_linux_status_read_has_a_fixed_size_bound(monkeypatch):
     monkeypatch.setattr(
         stream_budget.Path, "open", lambda *args, **kwargs: io.StringIO("x" * 65_536)
     )
@@ -147,7 +161,7 @@ def test_mach_library_loading_failure_is_not_silenced(monkeypatch):
 @pytest.mark.parametrize(
     "system,method",
     [
-        ("Linux", "linux.proc_self_smaps_rollup.Rss"),
+        ("Linux", "linux.proc_self_status.VmRSS"),
         ("Darwin", "darwin.MACH_TASK_BASIC_INFO.resident_size"),
     ],
 )

@@ -6,8 +6,6 @@ Small fixtures prove the measurement path; none is a 1GiB performance acceptance
 import copy
 import hashlib
 import json
-import os
-import platform
 import runpy
 import subprocess
 import sys
@@ -196,7 +194,7 @@ def test_rss_native_counts_must_be_integral_even_when_byte_conversion_is_consist
     record.update(
         baseline_rss_native=native,
         baseline_rss_bytes=baseline,
-        baseline_rss_method="linux.proc_self_smaps_rollup.Rss",
+        baseline_rss_method="linux.proc_self_status.VmRSS",
         pretransfer_peak_rss_native=45056.0,
         pretransfer_peak_rss_bytes=46137344,
         peak_rss_native=49152.0,
@@ -308,25 +306,40 @@ def test_small_fixture_uses_isolated_installed_client_and_separate_real_tls_proc
             "run_name='__main__')\n"
         )
     work = tmp_path / "run"
-    try:
-        result = tools["measure_one"](
-            project, python, work, manifest, certificate(tmp_path / "cert"), 65537
-        )
-    except ValueError as error:
-        stderr = work / "server-stderr.txt"
-        tail = "not available"
-        if stderr.is_file():
-            with stderr.open("rb") as reader:
-                reader.seek(0, os.SEEK_END)
-                reader.seek(max(0, reader.tell() - 4096))
-                tail = reader.read(4096).decode("utf-8", errors="replace")
-        pytest.fail(
-            f"{error}; host={platform.platform()}; cpu={platform.processor() or 'unknown'}; "
-            f"python={sys.version.split()[0]}; source={source['commit']}; "
-            f"synthetic server stderr tail (max 4096 bytes)={tail!r}",
-            pytrace=False,
-        )
-    assert result["passed"] is True
+    cert, key = certificate(tmp_path / "cert")
+    # Linux retains pre-exec RSS in ru_maxrss. Model a busy test runner, but run
+    # the real controller in its own fresh process, as benchmark-stream.py does.
+    # Its client must inherit the controller's current RSS, not pytest's heap.
+    noisy_parent = bytearray(128 * 1024 * 1024)
+    driver = """
+import json, runpy, sys
+from pathlib import Path
+script, project, python, work, manifest, cert, key = map(Path, sys.argv[1:])
+measure = runpy.run_path(str(script))["measure_one"]
+result = measure(project, python, work, manifest, (cert, key), 65537)
+print(json.dumps(result, allow_nan=False))
+"""
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            driver,
+            *map(str, (SCRIPT, project, python, work, manifest, cert, key)),
+        ],
+        env=tools["environment"](),
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert len(noisy_parent) == 128 * 1024 * 1024
+    assert child.returncode == 0, child.stderr[-4096:]
+    assert not child.stderr
+    result = json.loads(child.stdout)
+    assert result["passed"] is True, {
+        name: value for name, value in result.items() if name not in {"runtime", "server"}
+    }
     assert (
         result["expected_sha256"]
         == "2deb0bd2129a9d3aed91e3cff58b3993752be549642890a3e853ec1065f9b617"
