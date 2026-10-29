@@ -133,11 +133,17 @@ class _Response:
 class _Chunks(AsyncIterator[bytes]):
     def __init__(self, response: _Response) -> None:
         self._response = response
-        self._raw = response._response.aiter_raw(chunk_size=CHUNK_SIZE)
+        # HTTPX's fixed-size chunker aggregates small reads until CHUNK_SIZE or
+        # EOF. Preserve their latency, splitting only already available bytes.
+        self._raw = response._response.aiter_raw()
+        self._pending = b""
         self._size = 0
 
     async def __anext__(self) -> bytes:
         self._response._owner()
+        if self._pending:
+            available, self._pending = self._pending[:CHUNK_SIZE], self._pending[CHUNK_SIZE:]
+            return available
         chunk: bytes | None = None
         failure: ErrorCode | None = None
         try:
@@ -153,6 +159,7 @@ class _Chunks(AsyncIterator[bytes]):
         self._size += len(chunk)
         if self._size > self._response._request.max_bytes:
             raise YorungeError("invalid_response")
+        chunk, self._pending = chunk[:CHUNK_SIZE], chunk[CHUNK_SIZE:]
         return chunk
 
 

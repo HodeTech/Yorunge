@@ -39,6 +39,7 @@ class Reply:
     chunk_size: int = 32_768
     chunk_delay: float = 0.0
     truncate_at: int | None = None
+    after_first_chunk: Callable[[], None] | None = None
 
 
 Route = Reply | Callable[[RequestRecord, int], Reply]
@@ -192,6 +193,8 @@ class TlsServer:
                         for offset in range(0, len(sent), reply.chunk_size):
                             self.wfile.write(sent[offset : offset + reply.chunk_size])
                             self.wfile.flush()
+                            if offset == 0 and reply.after_first_chunk is not None:
+                                reply.after_first_chunk()
                             if reply.chunk_delay:
                                 time.sleep(reply.chunk_delay)
                     if reply.truncate_at is not None:

@@ -1,6 +1,6 @@
 # Kalan P01 uygulama ve doğrulama kaydı
 
-**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a adım1 geliştirme/review; paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
+**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a verified; P01-5b adım3 geliştirme/review sürüyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
 
 ## Karar ve yetki
 
@@ -67,3 +67,20 @@ P2: renew diğer girişlerden farklı olarak owned-session preflight'ını atlay
 Ec2d202 runtime kaynağında yeni build ve iki ayrı temiz artifact install tekrar geçti. Wheel54üye SHA-256 `5f56e62a899a5c51c5dbcf547e38273b46e790c7a6ade7292afbba6993694d0b`; sdist331üye `70d5496aac7966fd9a5c06ecf80ea5c8b66be0cdffed1469996719f92030bb84`. Her ikisinde origin/basic/cache/execution/jobs smoke geçti. Bu kayıt sonradan eklenen doküman kapanışını veya sonraki stream/CLI kaynağını aynı artifact sanmaz. P01-6b final kaynak tam takım/transport+stream artifact smoke/performans/matris kabulü ayrıca kalır.
 
 P01-5b adım3'e otomatik geçilir. Bütün paket/P01 henüz tamamlanmadı, PR açılmadı.
+
+
+## Adım3 — Tipli olaylar ve bounded akış
+
+Kapalı StreamEvent v1, tipli ResultEvent fabrikası ve yerel katalogdan yeniden kurulan güvenli ErrorEnvelope eklendi. Eski Result v1’in generic specialization’ı ve serialization kapsamı korunur; alt sınıfın yalnız kendi ek alanını taşımak için veri tipini yeniden tahmin etme yoktur. Sürüm/sıra/sayaçlar strict integer, kimlikler canonical UUIDv4, event ve details katalogları kapalıdır. Error ID/kapalı metadata korunur; provider mesajı yeniden yayımlanmaz. Ortak JSON/frame byte, depth ve node sınırlarının tek kaynağı domain wire_limits’tir; genel JSON parser’ın varsayılan 1MiB tavanı değişmedi.
+
+Akış kabulü için yapılan kaynak incelemesinde HTTPX’in sabit chunk_size okuyucusunun küçük parçaları 32KiB/EOF’a kadar biriktirdiği doğrulandı. Raw yol convenience decode kullanmadan aiter_raw() okur, hazır büyük parçayı en çok32KiB’a böler ve küçük parçayı hemen teslim eder. Gerçek TLS fixture sunucusu ilk parçayı gönderip kalan gövdeyi consumer sinyali gelene kadar tutar; okuyucu ilk parçayı EOF beklemeden alıp sinyali verir. Önceden tanımlanan bounded parça/totalbyte/deadline ve owner kapıları korunur. HTTP referansı bu okuma davranışıyla hizalandı; bu bir codec veya hedef güven sınırı değişikliği değildir.
+
+İlk model kontrolleri **191passed/0,25s**; ortak JSON/sınır kontrolleri **104passed**. Root birleşik model+JSON+sınır koşusu **295passed/0,38s**; gerçekTLS/lifecycle **51passed/21,88s**. Bu sonuçlar ortak testleri toplam benzersiz sayı olarak toplamaz. Codec/reader ve iki fresh review turu aşağıda gerçek son kaynakla ayrıca kaydedilecektir; adım3/kart/paket henüz tamamlanmadı. CLI adım4 henüz uygulanmadı.
+
+
+Strict codec tam frame’i UTF-8/JSON/kapalı model/sıra/ID ve secret provenance ile doğrular; Result payload’ının gelen gerçek encoded span’ı ayrıca1MiB sınırındadır. Her consumer resume/close/exit aynı task/loop/thread/PID sınırını korur. Progress hemen döner; terminal aday yalnız HTTP message EOF sonrası döner. Trailing/partial line, empty/CR/BOM, reset/truncation ve timeout önceliği referanstaki gibidir; bound operation ID bütün bu hatalarda korunur. Erken normal close iptal/terminal uydurmaz; gerçek cancellation kaynakları kapatıp CancelledError yayar. Yavaş consumer da aynı total deadline içindedir. Bütün akış bir listede biriktirilmez.
+
+Bağımsız contract hazırlığında constructed model’in Pydantic serializer uyarısının ham input repr yazabildiği doğrulandı; iki encode dump’ı warnings=error ile safe failure sınırına alındı, canary warning regresyonu geçti. Root son parse’den önce success flag’i atamama ve foreign PID/thread kapısı/iterator açılış cleanup sınırlarını ayrıca kapattı. Yavaş consumer testi timeout cleanup’ında ambient CancelledError context’i kaldığını yakaladı; dış context sınırında safe hatanın zinciri temizlendi. Bunlar geliştirme sırasında doğrulanmış düzeltmelerdir; fresh ürün review turları yerine sayılmaz.
+
+
+Son birleşik odaklı koşu warnings-as-errors altında **444passed/38,43s**:191model+66codec+8limits+96JSON+14HTTP lifecycle+32streamTLS+37HTTP TLS. En son aclose hata zinciri sınırı için close/cancel/backpressure testleri ayrıca çalıştırıldı. Format/lint, strict mypy59sourcefile,126publicMarkdown,6skill/12kart ve diff kontrolleri geçti. İlk adım3 ürün commit’i sonrası iki fresh review turu bu kayda eklenecek; P01-5b bütününün CLI kabulü henüz yoktur.

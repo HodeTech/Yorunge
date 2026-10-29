@@ -13,10 +13,11 @@ from pydantic import BaseModel
 
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.wire_limits import FRAME_LIMIT
+from yorunge.domain.wire_limits import JSON_DEPTH as JSON_DEPTH
+from yorunge.domain.wire_limits import JSON_LIMIT as JSON_LIMIT
+from yorunge.domain.wire_limits import JSON_NODES as JSON_NODES
 
-JSON_LIMIT = 1_048_576
-JSON_DEPTH = 32
-JSON_NODES = 65_536
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -62,9 +63,15 @@ def _structure(value: object) -> None:
         pending.extend(_structure_children(item, depth))
 
 
-def parse_json(data: bytes) -> object:
+def parse_json(data: bytes, *, max_bytes: int = JSON_LIMIT) -> object:
     """Parse one strict JSON value under the shared byte/depth/node budget."""
-    if type(data) is not bytes or not data or len(data) > JSON_LIMIT:
+    if (
+        type(max_bytes) is not int
+        or not 1 <= max_bytes <= FRAME_LIMIT
+        or type(data) is not bytes
+        or not data
+        or len(data) > max_bytes
+    ):
         raise YorungeError("invalid_response")
     valid, result = False, None
     try:

@@ -1,6 +1,6 @@
 # Akış sonucu sözleşmesi
 
-**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) sözleşmesi; NDJSON/iptal ürün uygulaması ve kabulü henüz yok. **Tarih:** 2026-10-29.
+**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) sözleşmesi; tipli model/codec ve owned HTTP reader uygulanıyor. CLI NDJSON/iptal adım4 ve kart kabulü henüz tamamlanmadı. **Tarih:** 2026-10-29.
 
 ## Kapalı StreamEvent v1
 

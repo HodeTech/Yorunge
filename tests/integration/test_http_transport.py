@@ -6,6 +6,7 @@ import hashlib
 import logging
 import socket
 import ssl
+import threading
 import time
 
 import httpx
@@ -91,6 +92,38 @@ def test_real_tls_request_response_and_explicit_auth_snapshot(certificates):
         assert received.header("Authorization") == "Bearer " + SECRET
         assert received.header("Accept-Encoding") == "identity"
         assert received.body == b'{"question":"test"}'
+
+
+def test_small_raw_chunk_is_delivered_while_response_remainder_is_gated(certificates):
+    release = threading.Event()
+    released_before_remainder: list[bool] = []
+
+    def wait_for_consumer():
+        released_before_remainder.append(release.wait(timeout=2))
+
+    first = b'{"progress":1}\n'
+    reply = Reply(
+        body=first + b'{"result":2}\n',
+        chunk_size=len(first),
+        after_first_chunk=wait_for_consumer,
+    )
+    with TlsServer(certificates, {"/v1/data": reply}) as server:
+
+        async def run():
+            async with HttpxTransport(transport=server.transport()) as client:
+                async with client.open(request(), deadline=time.monotonic() + 4) as response:
+                    chunks = response.chunks()
+                    received = await anext(chunks)
+                    release.set()
+                    assert received == first
+                    remainder = b"".join([chunk async for chunk in chunks])
+                    assert received + remainder == reply.body
+
+        try:
+            asyncio.run(run())
+        finally:
+            release.set()
+    assert released_before_remainder == [True]
 
 
 @pytest.mark.parametrize("failure", ["ca", "hostname"])
