@@ -1774,6 +1774,167 @@
       }
     },
     {
+      "name": "p01-6-pr-review-installation.json",
+      "archive": "raw/p01-6-pr-review-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1433,
+      "content_sha256": "c6c5b9812417f04661f37ab934e9fb13ca2ccc9aa8ac47c8d75ffe8dac7cd1cc",
+      "archive_bytes": 647,
+      "archive_sha256": "a5c19ff892fe5e68c45711f545875edfd8202985864dd3840ba7675a152b5c0c",
+      "summary": {
+        "source_commit": "fca5b1403606343eac865572140ed45869e33a45",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-pr-review-startup.json",
+      "archive": "raw/p01-6-pr-review-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 42380,
+      "content_sha256": "722236ea272a795c01d0e7900f64a48603591c3c49d7807c3ff200af4e82e4f9",
+      "archive_bytes": 11682,
+      "archive_sha256": "81b2fbef63dd320d51562264dcbe07b46777e6765001e09ee5e81488477482c2",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 33.82795793004334,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 24.007749976590276,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 92.78499986976385,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 122.68837494775653,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 28.015749994665384,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 23.584333946928382,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 98.1603330001235,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 113.49099990911782,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-pr-review-stream.json",
+      "archive": "raw/p01-6-pr-review-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 47680,
+      "content_sha256": "12caa14cfdd76e9c9f82f74ac54a1c0288b886a5b0120b8c01f4001a02ec361d",
+      "archive_bytes": 5922,
+      "archive_sha256": "04279497659f9e30115f9b2b7319b0232c1ae4ba9a745dd03df3dcfe10375a56",
+      "summary": {
+        "source_commit": "fca5b1403606343eac865572140ed45869e33a45",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v1",
+        "passed": true,
+        "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_baseline": "fresh client process high-water maxRSS after imports, source verification and fixed 32KiB TLS warmup; not instantaneous RSS",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "extra_rss_bytes": 0,
+            "baseline_rss_bytes": 57245696,
+            "peak_rss_bytes": 57245696,
+            "elapsed_seconds": 0.025732541922479868,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "extra_rss_bytes": 0,
+            "baseline_rss_bytes": 49823744,
+            "peak_rss_bytes": 49823744,
+            "elapsed_seconds": 0.4007510831579566,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "extra_rss_bytes": 0,
+            "baseline_rss_bytes": 49528832,
+            "peak_rss_bytes": 49528832,
+            "elapsed_seconds": 1.574452041182667,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-reference-jobs-idle.json",
       "archive": "raw/p01-6-reference-jobs-idle.json.gz",
       "original_commit": null,
@@ -1807,6 +1968,52 @@
           "dense/show": {
             "samples": 30,
             "p95_ms": 111.04537500068545,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p01-6-reference-jobs-pr-review.json",
+      "archive": "raw/p01-6-reference-jobs-pr-review.json.gz",
+      "original_commit": null,
+      "content_bytes": 121807,
+      "content_sha256": "7e556e3e46a8da375b9097ab1d60809a9b4b1388f318e1a05777d512a7843b64",
+      "archive_bytes": 21269,
+      "archive_sha256": "8fc4c82c4800dcb957f57bf08cba70ba54d1854a33f60955348853c9a6da2dfa",
+      "summary": {
+        "source_commit": "fca5b1403606343eac865572140ed45869e33a45",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 105.30758299864829,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 98.27445819973946,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 143.84491695091128,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 104.91274995729327,
             "budget_ms": 200.0,
             "passed": true
           }
