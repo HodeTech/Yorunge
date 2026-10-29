@@ -1079,6 +1079,9 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
         return stream_summary_v2(report)
     if kind == "installation_v2" and version == 2:
         return installation_summary(report)
+    if kind == "startup_evidence_v1" and version == 1:
+        startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
+        return startup["validate"](report)  # type: ignore[no-any-return]
     raise ValueError("unsupported typed report kind or schema version")
 
 
@@ -1424,6 +1427,19 @@ def verify_jobs_reference(root: Path, name: str) -> dict[str, Any]:
     }
 
 
+def verify_startup_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid startup reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown startup reference evidence name")
+    report = decode(unpack(directory, item))
+    startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
+    return startup["reference"](root, report)  # type: ignore[no-any-return]
+
+
 def replace_metadata(path: Path, content: bytes) -> None:
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("metadata target must be a regular file")
@@ -1481,6 +1497,8 @@ def main() -> int:
     show.add_argument("name")
     reference = commands.add_parser("verify-jobs-reference")
     reference.add_argument("name")
+    startup_reference = commands.add_parser("verify-startup-reference")
+    startup_reference.add_argument("name")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
@@ -1499,6 +1517,9 @@ def main() -> int:
                 f"Jobs reference proof validated: {args.name}; four 30-process cases, "
                 "each p95 <= 200 ms; current source bytes match the declared M5 reference."
             )
+        elif args.action == "verify-startup-reference":
+            summary = verify_startup_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
     except (OSError, ValueError, KeyError, TypeError, EOFError) as error:

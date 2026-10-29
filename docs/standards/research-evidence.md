@@ -35,6 +35,18 @@ Güncel bellek kabulü `raw_stream_budget_v2` / schema 2 kapalı kaydıyla yapı
 
 ## İnceleme sırası
 
+### Startup evidence v1
+
+[ADR-0019](../decisions/0019-reference-startup-performance.md) Accepted; yeni `startup_evidence_v1` / `schema_version=1` eski startup v2 arşivlerinin yerine geçirilmez. `check-startup-evidence.py` yeni iki wheel/venv ve ayrı 1.024 kayıtlı fixture hazırlar; aynı-host AB/BA ölçümü sıfırdan çalıştırır. Üst düzey kapalı alanlar `schema_version`, `report_kind`, `source_commit`, `measurement`, `snapshots`, `output_checks`, `measurement_exit`, `passed`'dir.
+
+`measurement`, startup v2'nin tam kapalı ham alan kümesini taşır: ortam (`python/platform/machine/cpu/cpu_affinity/runner_image/disk_type`), `cache_dataset`, profil byte/hash'i, `samples_per_command`, `installation/cold_method/cpu_method`, dört `measurements` ve aynı-host `comparison`. Her ölçüm ilk süreç, tam 30+ sıcak örnek, median/p95, üç CPU tanı dizisi, 500/200 ms hedefi, `passed` ve cache-hit bayrağını içerir. `comparison` taban dataset/ölçümlerini, tam eşli oranları ve sabit yöntem/kabul metnini taşır. Sürüm ve sayaçlar gerçek `int`'tir; bool/float sayaç, eksik/fazla anahtar, nonfinite, p95/median/oran/exit uyuşmazlığı reddedilir.
+
+`snapshots.before/after` her iki tarafta `candidate/baseline` içerir. Her tarafın tam alanları `source`, `installed`, `runtime_data_sha256`, `fixture`, `wheel_path`, `wheel_sha256`'dir. Source, commit ve tam public Python/test/script + pyproject/lock/profil/workflow haritasıdır; ayrıca `py.typed` bağlanır. Installed, mevcut jobs runtime'ının kapalı Python/SQLite/paket, import/console kökeni ve Python/konsol hash alanlarını kullanır; `runtime_data_sha256` kurulu `py.typed` eşliğini sağlar. Fixture tam alanları `state/profile`, profil hash/byte, `records/payload_bytes/largest_record_bytes`, bütün cache satırlarının ve expiry satırlarının kanonik `cache_sha256/expiries_sha256` özetidir. Mutasyona açık cache clock gözlem metadata'sı fixture içerik özeti değildir. Her iki tam snapshot birebir aynı olmalıdır; kurulu Python/data kaynakla eşleşir, farklı venv/state zorunludur.
+
+`output_checks.candidate/baseline` dört komut için tam `typed_stdout_verified/verified_processes/stdout_sha256/wall_ms` alanlarını taşır. Her ilk süreç, üç ısınma ve bütün sıcak örnek için bounded strict UTF-8/JSON, kurulu Result tipi ve sabit profile/cache beklentisi süre dışında doğrulanır; help/version da içerik oracle'ından geçer. Byte hash ve ölçülen wall süresi bütün süreçler için korunur; sıcak dizi ve ilk süreç ham ölçümle eşleşir. Exit 0 tek başına kanıt değildir.
+
+`verify-startup-reference NAME` arşiv bütünlüğünü, dört başarılı mutlak hedefi, ilan edilmiş M5/SSD/Python 3.11 ortamını, güncel **tam** kaynak haritasını ve frozen runtime paketlerini zorunlu denetler. Wheel SHA yalnız tarihsel artifact kimliğidir; yeni checkout wheel arşivinin hash'iyle karşılaştırılmaz. README metadata açıklaması değişebilir; ölçüm içi kurulum/konsol/wheel değişimi veya sonradan runtime/entry point/lock/workflow/test değişimi geçemez. Hash fiziksel donanım attestasyonu değildir. Linux görünürlük/kalıcı arşiv sorumluluğu ve iptal kuralları [karardadır](../decisions/0019-reference-startup-performance.md#linux-tanısının-görünürlüğü-ve-kalıcı-saklanması); CI entegrasyonu tamamlanana kadar bu formatın varlığı yeni kabul sayılmaz.
+
 Önce ürün kodu/testler, ölçüm betikleri, kabul raporu ve manifest özeti incelenir. Varsayılan tam `git diff` çıktısı veya gzip açılımı model bağlamına dökülmez. Örneğin mevcut taban commit'i seçildikten sonra:
 
 ```sh
