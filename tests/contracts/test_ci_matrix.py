@@ -117,12 +117,15 @@ def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(w
     budgets = steps["startup-budgets"]
     assert budgets["if"] == "${{ env.RUN_BUDGETS == 'true' }}"
     assert budgets["run"].strip() == (
-        ".venv/bin/python scripts/check-startup.py --uv .ci-tools/bin/uv "
+        ".venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv "
         "--baseline-project .local/startup-baseline --workspace .local/startup-check "
-        "--output dist/startup.json"
+        "--report dist/startup.json --receipt dist/startup-diagnostic.json"
     )
     diagnostics = steps["startup-diagnostics"]
-    assert diagnostics["if"] == "${{ failure() && env.RUN_BUDGETS == 'true' }}"
+    assert diagnostics["if"] == (
+        "${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') "
+        "&& env.RUN_BUDGETS == 'true' }}"
+    )
     assert "scripts/check-startup.py" not in diagnostics["run"]
 
 
@@ -138,9 +141,14 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
     previous = "startup-budgets"
     for step_id, command in (
         (
+            "startup-reference",
+            ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
+            "p01-6-reference-startup-adr19.json > dist/startup-reference.txt",
+        ),
+        (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p01-6-reference-jobs-rss-lint.json > dist/jobs-reference.txt",
+            "p01-6-reference-jobs-adr19.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -164,12 +172,15 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
     assert upload["if"] == "${{ always() }}"
     assert upload["uses"] == "actions/upload-artifact@v4"
     assert upload["with"]["name"] == "compatibility-${{ github.job }}"
-    assert upload["with"]["if-no-files-found"] == "warn"
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert upload["with"]["retention-days"] == "90"
     assert upload["with"]["include-hidden-files"] == "true"
     assert set(upload["with"]["path"].splitlines()) == {
         "dist/ci-environment.json",
         "dist/verification.jsonl",
         "dist/startup.json",
+        "dist/startup-diagnostic.json",
+        "dist/startup-reference.txt",
         "dist/jobs-reference.txt",
         "dist/stream.json",
         "dist/cache-startup.prof",
@@ -197,7 +208,9 @@ def invoke_gate(workflow, tmp_path, content):
 
 
 def successful_needs():
-    return {cell: {"result": "success", "outputs": {}} for cell in CELLS}
+    needs = {cell: {"result": "success", "outputs": {}} for cell in CELLS}
+    needs["linux311"]["outputs"]["startup_diagnostic"] = "passed"
+    return needs
 
 
 def test_actual_gate_accepts_all_success_without_a_checkout(workflow, tmp_path):
@@ -308,7 +321,9 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     assert "cpu_count" in report
     assert "cpu_affinity" in report
     assert report["disk_type"] == "unknown"
-    assert report["startup_budget_scope"] == scope
+    assert report["startup_budget_scope"] == (
+        "source_bound_m5_and_linux_diagnostic" if budgets == "true" else "compatibility_only"
+    )
     assert report["jobs_budget_scope"] == (
         "reference_receipt_macos_m5max_py311" if budgets == "true" else "compatibility_only"
     )
@@ -323,3 +338,35 @@ def test_actual_environment_report_rejects_the_wrong_python(workflow, tmp_path, 
     with pytest.raises(SystemExit, match="does not match the required version"):
         exec(code, {})
     assert not (tmp_path / "dist/ci-environment.json").exists()
+
+
+@pytest.mark.parametrize("outcome", [None, "", "error", "unknown", True])
+def test_aggregate_rejects_missing_or_unverified_startup_diagnostics(workflow, tmp_path, outcome):
+    needs = successful_needs()
+    needs["linux311"]["outputs"]["startup_diagnostic"] = outcome
+    assert invoke_gate(workflow, tmp_path, json.dumps(needs)).returncode != 0
+
+
+def test_aggregate_allows_verified_budget_overrun_and_shows_it_without_performance_claim(
+    workflow, tmp_path, monkeypatch
+):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    needs = successful_needs()
+    needs["linux311"]["outputs"]["startup_diagnostic"] = "diagnostic_budget_exceeded"
+    assert invoke_gate(workflow, tmp_path, json.dumps(needs)).returncode == 0
+    text = summary.read_text()
+    assert "diagnostic_budget_exceeded" in text
+    assert "M5 startup/jobs and Linux raw gates remain required" in text
+
+
+def test_completed_measurement_is_guarded_before_artifact_upload(workflow):
+    job = workflow["jobs"]["linux311"]
+    assert job["outputs"] == {"startup_diagnostic": "${{ steps.startup-budgets.outputs.outcome }}"}
+    steps = steps_by_id(job)
+    guard = steps["startup-evidence-guard"]
+    assert guard["if"] == (
+        "${{ always() && env.RUN_BUDGETS == 'true' && steps.startup-budgets.outcome == 'success' }}"
+    )
+    assert "--verify-receipt" in guard["run"]
+    assert list(steps).index("startup-evidence-guard") < list(steps).index("upload-evidence")

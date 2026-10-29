@@ -1082,6 +1082,9 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     if kind == "startup_evidence_v1" and version == 1:
         startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
         return startup["validate"](report)  # type: ignore[no-any-return]
+    if kind == "startup_ci_diagnostic_v1" and version == 1:
+        startup_ci = runpy.run_path(str(Path(__file__).with_name("startup_diagnostic.py")))
+        return startup_ci["receipt_summary"](report)  # type: ignore[no-any-return]
     raise ValueError("unsupported typed report kind or schema version")
 
 

@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-29. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON altyapısı uygulandı; bf652f6 bütünleşik/kurulum/gerçek CI ve kaynak kabulü tarihseldir; P01-6b son-head startup CI takibi ve ADR-0019 onayı açıktır. Development PR/merge ve yayın ayrı süreçtir.
+**Güncellendi:** 2026-10-29. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON altyapısı uygulandı; bf652f6 bütünleşik/kurulum/gerçek CI ve kaynak kabulü tarihseldir; P01-6b son-head startup CI takibi ve Accepted ADR-0019 uygulaması açıktır. Development PR/merge ve yayın ayrı süreçtir.
 
 ```text
 src/yorunge/

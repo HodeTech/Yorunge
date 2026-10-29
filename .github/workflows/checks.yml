@@ -20,6 +20,8 @@ jobs:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "true"
       RUNNER_LABEL: ubuntu-24.04
+    outputs:
+      startup_diagnostic: ${{ steps.startup-budgets.outputs.outcome }}
     steps: &compatibility-steps
       - uses: actions/checkout@v4
         with:
@@ -104,7 +106,7 @@ jobs:
               "cpu_affinity": sorted(os.sched_getaffinity(0))
               if hasattr(os, "sched_getaffinity") else None,
               "disk_type": "unknown",
-              "startup_budget_scope": "reference_linux311"
+              "startup_budget_scope": "source_bound_m5_and_linux_diagnostic"
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
               "jobs_budget_scope": "reference_receipt_macos_m5max_py311"
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
@@ -134,16 +136,21 @@ jobs:
           .ci-tools/bin/uv build
           .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
           cat dist/verification.jsonl
-      - name: Enforce startup budgets
+      - name: Record and verify Linux startup diagnostics
         id: startup-budgets
         if: ${{ env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/check-startup.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --output dist/startup.json
+          .venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --report dist/startup.json --receipt dist/startup-diagnostic.json
+      - name: Verify source-bound reference startup budgets
+        id: startup-reference
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-adr19.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-rss-lint.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-adr19.json > dist/jobs-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -151,25 +158,33 @@ jobs:
           .venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
       - name: Diagnose a failed startup budget
         id: startup-diagnostics
-        if: ${{ failure() && env.RUN_BUDGETS == 'true' }}
+        if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' }}
         run: |
           if test -f dist/startup.json && test -x .local/startup-check/candidate/env/bin/python; then
             PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -X importtime .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
             PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -m cProfile -o dist/cache-startup.prof .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
             .venv/bin/python -c 'import pstats; pstats.Stats("dist/cache-startup.prof").strip_dirs().sort_stats("cumulative").print_stats(35)'
           fi
+      - name: Require every completed startup report and receipt to match
+        id: startup-evidence-guard
+        if: ${{ always() && env.RUN_BUDGETS == 'true' && steps.startup-budgets.outcome == 'success' }}
+        run: |
+          .venv/bin/python scripts/startup_diagnostic.py --verify-receipt --baseline-project .local/startup-baseline --report dist/startup.json --receipt dist/startup-diagnostic.json
       - name: Preserve compatibility evidence
         id: upload-evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: compatibility-${{ github.job }}
-          if-no-files-found: warn
+          if-no-files-found: error
+          retention-days: 90
           include-hidden-files: true
           path: |
             dist/ci-environment.json
             dist/verification.jsonl
             dist/startup.json
+            dist/startup-diagnostic.json
+            dist/startup-reference.txt
             dist/jobs-reference.txt
             dist/stream.json
             dist/cache-startup.prof
@@ -213,6 +228,7 @@ jobs:
         run: |
           import json
           import os
+          from pathlib import Path
 
           required = {"linux311", "linux314", "macos311"}
           needs = json.loads(os.environ["NEEDS"])
@@ -225,3 +241,12 @@ jobs:
           print(json.dumps(results, sort_keys=True))
           if any(result != "success" for result in results.values()):
               raise SystemExit("every required compatibility cell must succeed")
+          startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
+          if startup not in {"passed", "diagnostic_budget_exceeded"}:
+              raise SystemExit("a verified Linux startup diagnostic outcome is required")
+          if path := os.environ.get("GITHUB_STEP_SUMMARY"):
+              with Path(path).open("a", encoding="utf-8") as summary:
+                  summary.write(f"Linux startup: **{startup}** (diagnostic only). "
+                                "See Linux job summary/artifact for all candidate/base p95 values. "
+                                "M5 startup/jobs and Linux raw gates remain required. "
+                                "Permanent archival/human review follows ADR-0019.\n")

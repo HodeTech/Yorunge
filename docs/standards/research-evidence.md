@@ -47,6 +47,12 @@ Güncel bellek kabulü `raw_stream_budget_v2` / schema 2 kapalı kaydıyla yapı
 
 `verify-startup-reference NAME` arşiv bütünlüğünü, dört başarılı mutlak hedefi, ilan edilmiş M5/SSD/Python 3.11 ortamını, güncel **tam** kaynak haritasını ve frozen runtime paketlerini zorunlu denetler. Wheel SHA yalnız tarihsel artifact kimliğidir; yeni checkout wheel arşivinin hash'iyle karşılaştırılmaz. README metadata açıklaması değişebilir; ölçüm içi kurulum/konsol/wheel değişimi veya sonradan runtime/entry point/lock/workflow/test değişimi geçemez. Hash fiziksel donanım attestasyonu değildir. Linux görünürlük/kalıcı arşiv sorumluluğu ve iptal kuralları [karardadır](../decisions/0019-reference-startup-performance.md#linux-tanısının-görünürlüğü-ve-kalıcı-saklanması); CI entegrasyonu tamamlanana kadar bu formatın varlığı yeni kabul sayılmaz.
 
+### Linux startup tanı receipt'i
+
+`startup_ci_diagnostic_v1` / schema 1 tam alanları `schema_version/report_kind/source_commit/run_url/report_name/report_sha256/producer_exit/outcome/reason/p95_ms`'dir. Tamamlanmış geçerli ölçümde `outcome=passed|diagnostic_budget_exceeded`, `reason=validated`, sekiz aday/taban p95 ve özgün raw dosyasının SHA-256'sı zorunludur. `producer_exit` yeniden hesaplanan mutlak aday kararına uyar; 2 saniyelik aşım tanı olarak saklanabilir, performans `passed` olmaz. Error receipt'i `outcome=error`, boş p95 ve kapalı `measurement_failed|invalid_evidence|missing_evidence` nedeni taşır; genel CI kapısını geçemez. Bool sayaç, nonfinite, eksik/fazla anahtar ve sahte outcome reddedilir.
+
+CI upload öncesi guard, tamamlanmış receipt'in ham rapor byte hash'i, tam kaynak/pinned taban, outcome ve p95 ile eşliğini tekrar doğrular. Receipt'in tek başına arşiv bütünlüğünü geçmesi raw ölçüm kabulü değildir. İndirilen özgün raw ve receipt farklı yeni arşiv adlarına kopyalanır, bayt/hash eşliği korunur ve **ikisi** kalıcı Git arşivine alınır; kabul raporu run URL ve hash ilişkisini bağlar. Eksik/iptal koşunun olmayan örnekleri oluşturulmaz; açık saklama takibi kapatılmadan sonraki kabul/merge önerisi verilmez. Artifact upload için `if-no-files-found=error` ve 90 gün retention kullanılır ([resmî action girdileri](https://github.com/actions/upload-artifact/tree/v4#usage)); artifact tek kalıcı kanıt değildir.
+
 Önce ürün kodu/testler, ölçüm betikleri, kabul raporu ve manifest özeti incelenir. Varsayılan tam `git diff` çıktısı veya gzip açılımı model bağlamına dökülmez. Örneğin mevcut taban commit'i seçildikten sonra:
 
 ```sh

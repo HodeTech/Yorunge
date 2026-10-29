@@ -449,3 +449,9 @@ ADR-0019 ikinci farklı fresh turu gpt-6-astra/high politika ve gpt-6.1-terra/hi
 ## ADR-0019 kullanıcı review ve uygulama — 2026-10-30
 
 İki P2 mevcut belgede doğrulandı: tarihsel wheel hash'i/güncel runtime eşliği ayrımı ve Linux tanısının kalıcı saklama/görünürlük yolu. ADR bunları netleştirir; README metadata repack ile runtime/entry-point/lock değişimleri ayrı test vektörleridir. Linux 200 ms→2 s regresyonunun M5 yeşilken aggregate'i geçebilmesi ve insan incelemesi beklentisi açık kabul sınırıdır. Kullanıcı düzeltmeler sonrası Accepted geçişini ve uygulamayı yetkilendirdi. Birinci fresh belge review Terra/high; ikinci farklı fresh review Astra/high: doğrulanmış açık bulgu yok. Ürün/CI kodu henüz değiştirilmedi; uygulama planı üç adım ve her adımda iki fresh review turudur. Yeni performans kabulü henüz yoktur.
+
+### ADR-0019 uygulama adım 1 — kapalı kanıt ve çıktı oracle
+
+832707e ile fresh paired producer, kapalı startup evidence v1, before/after tam kaynak/kurulu Python+py.typed/konsol/wheel/fixture snapshot'ları ve typed bağımsız çıktı doğrulaması eklendi. R1 Astra/high provenance ve Terra/high oracle incelemesi; tabanın kendi sürüm/modeli, ortak aday profilinin doğru kaynak bağı, strict taban sayaçları ve tam cache scope/iç evidence semantiği bulguları doğrulanıp 1366968 ile düzeltildi. R2 farklı fresh Terra/high provenance ve Astra/high yöntem incelemesi; bütün workflow baytlarının kapsanması ve dosyaya yönlendirilmiş process wait'in polling ek yükü doğrulandı. Workflow tam haritası ve selector tabanlı bounded pipe/EOF ile b62f775'te düzeltildi; her iki R2 reviewer kapanışı ayrıca doğruladı.
+
+124 odaklı test, Ruff, strict mypy ve belge denetimi geçti. Üç ısınmanın ve bütün süreçlerin wall/çıktı hash'leri korunur; oracle ve kendi runtime'ında typed kontrol süre dışında kalır. Eski v2/83 arşiv değiştirilmedi. Bu adım yeni performans kabulü veya değiştirilmiş CI yetkisi değildir; adım 2'ye geçilir.

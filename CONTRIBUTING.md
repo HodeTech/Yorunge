@@ -1,6 +1,6 @@
 # Katkı rehberi
 
-Yörünge'nin P01 hafif çekirdeği ve kullanıcı review ürün düzeltmeleri çalışma dalında testli; P01-6b son-head startup CI takibi/ADR-0019 onayı açık. bf652f6 gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
+Yörünge'nin P01 hafif çekirdeği ve kullanıcı review ürün düzeltmeleri çalışma dalında testli; P01-6b son-head startup CI takibi/Accepted ADR-0019 uygulaması açık. bf652f6 gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
 
 ## Çalışma akışı
 
@@ -83,6 +83,22 @@ Kaynak bağlı jobs kapısı test-only ve workflow değişikliklerini de kapsar;
 ```
 
 Bu etiketler yalnız gerçek referans ortamı **Apple M5 Max/arm64, macOS 27.0.1, Python 3.11, internal SSD/APFS** ise kullanılır. Hazırlık ve ölçümleri seri çalıştırın; ardından [kanıt standardındaki](docs/standards/research-evidence.md) arşivleme ve `verify-jobs-reference p01-6-reference-jobs-NEXT.json` doğrulamasını tamamlayın. Hazırlık ve ölçüm için ayrıca zaman ayırın; toplam süre host/I/O yüküne bağlıdır. Kaynak kapsamını daraltmak bu zorunluluğun yerine geçmez; yalnız belge değişikliği mevcut kaynak baytlarını koruyorsa yeniden ölçüm gerektirmez.
+
+## Sabit startup referansını yenileme
+
+[ADR-0019](docs/decisions/0019-reference-startup-performance.md) Accepted; startup 500/200 ms hedefinin kabul ortamı jobs ile aynı **Apple M5 Max/arm64, macOS 27.0.1, Python 3.11, internal SSD/APFS**'dir. Önce workflow ve testte yeni startup/jobs kayıt adları seçilir; tam kaynaklar sabitlenir. Aşağıdaki `NEXT` ve taban checkout yolu gerçek yeni ad/yolla değiştirilir; taban runtime içeren ayrı, sabit Git checkout'u olmalıdır:
+
+```sh
+.venv/bin/python scripts/check-startup-evidence.py --uv .local/tooling/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-reference-NEXT --output dist/p01-6-reference-startup-NEXT.json --cpu-label "Apple M5 Max" --disk-type "internal SSD/APFS"
+.venv/bin/python scripts/research_evidence.py archive dist/p01-6-reference-startup-NEXT.json
+.venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-NEXT.json
+```
+
+Helper fresh wheel/venv ve ayrı iki cache fixture hazırlar; üç ısınma ve her komutta 30+ süreç, typed/sabit çıktı oracle'ı ve before/after kaynak/kurulum/fixture eşliği zorunludur. Her taraf kendi sürümünü ve kendi kurulu Python wire modelini doğrular; ortak aday profil baytları kullanılır. Aynı yeni aday runtime ile jobs referansı ve raw ölçümü **seri** alınır. Bu sırada test/build/profiler çalıştırılmaz. Eski `benchmark-startup.py` / `check-startup.py` v2 çıktıları bu yeni kapıyı geçmez. Yalnız README metadata açıklaması değişiminde tarihsel wheel hash'inin yeni wheel'e eşit olması aranmaz; runtime/entry point/lock/ölçüm kodu/workflow değişikliği eski referansı geçersiz kılar.
+
+Linux CI aynı-host AB/BA startup'ı ölçmeyi sürdürür. Yalnız tam doğrulanmış mutlak aşım `diagnostic_budget_exceeded` ile görünür nonblocking tanıdır; setup/timeout/bozuk rapor/yanlış çıktı/stale kaynak engelleyicidir. M5 kabulü Linux'a özgü regresyonu önlemez: 200 ms tabana karşı 2 s aday diğer kapılar geçtiğinde yeşil olabilir ve insan incelemesi gerektirir. Step/aggregate summary, warning, özgün raw ve hash bağlı receipt bu farkı gösterir; M5 startup/jobs ve gerçek Linux raw kapıları zorunlu kalır.
+
+İşi teslim eden ajan/maintainer, son incelenen kaynak kapsamının CI raw ve receipt'ini 90 günlük artifact'tan indirip özgün byte/hash'leriyle kalıcı gzip/manifest/indekse alır ve kabul raporuna bağlar. Arşiv hatasında kabul açık kalır. Son belge commit'i veya kullanıcı merge'ünün aynı kaynakla ürettiği ek koşu için açık takip kaydedilir; mevcut veya sonraki yetkili dalda sonraki kabul/merge önerisinden önce ve artifact süresi dolmadan arşivlenir. İptal tamamlanmış ölçüm sayılmaz; var olan dosya korunur, yoksa run/adım ve eksik kanıt açık yazılır. [Kanonik saklama kuralı](docs/decisions/0019-reference-startup-performance.md#linux-tanısının-görünürlüğü-ve-kalıcı-saklanması) geçerlidir. Yeşil aggregate insan saklama sorumluluğunu tamamlamaz.
 
 ## Doğrulama seçimi
 
