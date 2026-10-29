@@ -498,3 +498,24 @@ On iki madde güncel kodda tek tek incelendi. Dokuz bakım/test maddesi düzelti
 Ürün Python kodu değişmez. Ölçüm/test/workflow kaynağı değiştiği için 47af273 referansı yeni head'e etiketlenmez; workflow/testte yeni `p01-6-reference-startup-adr19-sonar.json` ve `p01-6-reference-jobs-adr19-sonar.json` adları ölçümden önce seçildi. Önceki tam takım/M5/CI kayıtları kaynaklarıyla korunur; yeni kaynak için odaklı doğrulama, iki fresh review ve fresh seri referans/gerçek CI takibi sürer.
 
 Sonar bakımının birleşik odaklı doğrulaması `-W error` ile **320 passed / 33,55 s**; Ruff format/lint, strict mypy, 127 belge ve diff kontrolü geçti. Bu sayı önceki 316/49 örtüşen koşuların toplamı değildir. Yeni dört BaseException regresyonu birleşik koşuya dahildir. İki fresh bakım review turuna geçilir; yeni referans/CI sonuçları henüz verilmez.
+
+Bakım R1 fresh Terra/high kod ve Astra/high lifecycle; farklı R2 Sol/high kod ve Terra/high lifecycle turları temizdir. Helper çıkarımları, regex ASCII kapsamı, dar shutdown assertion'ı ve üç yakalamanın korunması bağımsız doğrulandı. **Yeni kaynak:** dabf6e4eb1ade4227292f01cf52b6d5c74529ade. Bu source'ta 320 odaklı test ve aşağıdaki fresh kurulum/ölçümler geçmiştir; 47af273 tam takımı ve onun CI'ı bu yeni kaynakta çalıştırılmış gibi gösterilmez. Yeni gerçek CI tam matrisi ayrıca beklenir.
+
+Sonar kaynağında fresh wheel/sdist iki temiz frozen ortamda bütün sekiz smoke'u geçti; gerçek build `.local/pr11-adr19-sonar-dist/`, özgün çıktı `.local/pr11-adr19-sonar-verification.jsonl`. Wheel 58 üye ve aynı `35df…` hash'i; sdist 371 üye/SHA `d2d7e9cd9b3095b63682b03285e9703aae28aa199655e8007419e5a12f4e3a7d`. Ürün Python baytları değişmedi; sdist'in geliştirme/test girdileri değişti. Ardından test/build olmadan aynı M5/SSD ortamında yeni paired startup, jobs ve raw **seri** alındı:
+
+| Yol | Yeni aday p95 ms | Yeni taban p95 ms | Hedef ms |
+|---|---:|---:|---:|
+| help | 24,889084 | 23,339209 | 500 |
+| version | 22,559500 | 21,775875 | 500 |
+| context | 74,212333 | 73,057667 | 200 |
+| cache | 120,169000 | 118,647000 | 200 |
+
+Jobs normal list/show **111,533000 / 104,474792 ms**, yoğun list/show **169,380375 / 103,709250 ms** p95; dört 200 ms kapısı geçti. Raw 16/256/1024 MiB ek RSS alt/üst sınırları **16.384/16.384**, **49.152/49.152**, **147.456/147.456 byte**; çapraz fark üst sınırı **131.072 byte**, üç 64 MiB ve 8 MiB aralık kapısı geçti. Yeni adlarla `p01-6-reference-startup-adr19-sonar.json`, `p01-6-reference-jobs-adr19-sonar.json`, `p01-6-adr19-sonar-stream-v2.json`, `p01-6-adr19-sonar-installation.json` arşivlendi. İki reference verifier güncel tam kaynakla geçti; eski ölçümlere yeni hash eklenmedi veya en iyi tekrar seçilmedi.
+
+### ADR-0019 ilk gerçek CI kabulü — Sonar bakımı öncesi kaynak
+
+[40967036681](https://github.com/HodeTech/Yorunge/actions/runs/40967036681), head 3df05b7/synthetic checkout **e59d5b31e0a702c0a054836fdfc5635dd4908f90** için tamamlandı/başarılı. Linux 3.11/3.14 **3.410'ar passed / 531,43 ve 552,93 s**; macOS 3.11 **3.409 passed, bir Linux skip / 553,24 s**. Altı temiz kurulumun sekiz smoke'u, iki kaynak bağlı M5 kapısı, gerçek Linux raw v2, aggregate, branch-policy ve Sonar geçti. CodeRabbit otomatik pause nedeniyle; Sourcery diff API sınırı nedeniyle skipped; bunlar ürün review başarısı diye sayılmaz. Bu, yeni dabf6e4 Sonar kaynağının CI kabulü değildir.
+
+AMD EPYC 7763/Ubuntu 24.04/Linux 7.0.0-1017-azure, Python 3.11.17/SQLite 3.45.1, disk unknown. Linux startup help/version/context/cache **42,593234 / 40,073810 / 184,943029 / 229,375560 ms**; taban cache **230,355652 ms**. Sonuç **diagnostic_budget_exceeded**; mutlak ret ham kayıtta false kalır, warning/step ve aggregate summary'de görünür. Sonraki iki M5 reference ve Linux raw adımları gerçekten çalıştı/geçti. CI yeşili Linux 200 ms kabulü değildir.
+
+Özgün startup wrapper/receipt byte SHA ve bütün p95/source eşlikleri yeniden kontrol edildi; üç ara manifest/measurement/stdout dosyası wrapper'la eşleşti. `p01-6-adr19-ci-{checkpoint,linux311-installation,linux314-installation,macos311-installation,startup,startup-diagnostic,stream-v2}.json` gzip/manifest/indeks ile kalıcı saklandı. PR açıklaması düzenleme event'inin önceki 675dfe4 head'inde başlattığı [40967025862](https://github.com/HodeTech/Yorunge/actions/runs/40967025862), yeni source push'uyla mevcut concurrency politikası gereği ölçümden önce iptal oldu; üç artifact yalnız environment içeriyor, olmayan startup örneği üretilmedi. `p01-6-adr19-cancelled-checkpoint.json` bunu kaydeder; manuel rerun/cancel yapılmadı. **102 arşiv** bütünlüğü ve iki yeni Sonar source reference kapısı geçti. Yeni head için CI, son belge kapanışı ve geç kalan artifact saklama takibi açıktır.
