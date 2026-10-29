@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** Uygulama yetkili; ADR-0017/0018 Accepted, P01-5a verified, P01-5b verified, P01-6b in_progress. İlk iki adım ikişer fresh review/kurulum kabulüyle, adım3–4 tipli codec/CLI iki fresh review turu, gerçek TLS/süreç ve iki artifact NDJSON kabulüyle kapandı; adım5’e geçilir. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** Uygulama yetkili; ADR-0017/0018 Accepted, P01-5a verified, P01-5b verified, P01-6b in_progress. İlk iki adım ikişer fresh review/kurulum kabulüyle, adım3–4 tipli codec/CLI iki fresh review turu, gerçek TLS/süreç ve iki artifact NDJSON kabulüyle kapandı; adım5 bütünleşik yolculuk/iki kurulum ve iki fresh review ile kapandı; adım6 CI/performans kapanışına geçilir. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 

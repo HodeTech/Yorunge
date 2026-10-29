@@ -1,6 +1,6 @@
 # Kalan P01 uygulama ve doğrulama kaydı
 
-**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a/b verified; P01-6b adım5 bütünleşik kabul/review sürüyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
+**Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development805f8bd; P01-4 kapanışı d686c8f korunur. **Durum:** P01-5a/b verified; P01-6b adım5 kapandı; adım6 CI/performans ve faz kapanışı sürüyor, paket ve faz kabulü tamamlanmadı. [Altı adımlı plan](../roadmap/p01-remaining-delivery-plan.md), [hazırlık/kullanıcı review disposition'ı](p01-remaining-readiness-review.md#kullanıcı-reviewi-ve-karar-kabulü--2026-10-29).
 
 ## Karar ve yetki
 
@@ -170,3 +170,12 @@ Ayrı runtime-only kurulum worker’ı actual typed HTTP JSON, tipçe bozuk2xx J
 Installed reviewer hata mesajı null/yanlış veya duplicateevent/code/detailkey içeren çıktının mevcut oracle’dan geçebildiğini probe ile doğruladı. Bağımsız iki yerel katalog mesajı tam denetlenir; parser strictUTF-8, bütün derinliklerde duplicatekey, nonfinite ve rootobject sınırını uygular. Geçerli artifact’ın kendi katalog değeri oracle olarak tekrar import edilmez. On üç bozuk message/duplicate regresyonu önce red, sonra green; UTF16autodetect negatifleri de eklendi. Son helper+archive+NDJSON **105passed/2,25s**.
 
 Root son değişen journey/installed/NDJSON/archive kontrolleri warnings-as-errors **120passed/25,48s**. Ruff format/lint142file, strict mypy60sourcefile ve diff temiz. İki R2 reviewer fix commit’inde kendi bulgusunun kapanışını yeniden kontrol edecek; güçlendirilmiş oracle ile gerçek build/iki artifact kurulumu da aşağıda tekrar alınır. Önceki8462d03 artifact kanıtı korunur, yeni fixture/helper kodunun aynı artifact’ta bulunduğu iddia edilmez.
+
+
+### Adım5 kapanışı
+
+İki R2 reviewer **eadc7b1** düzeltmelerini mevcut kaynakta yeniden inceledi: oracle’nın bağımsız yerel mesaj/strictUTF-8/duplicate/nonfinite retleri ve worker’ın sakladığı stream exit’i doğrulandı; ek bulgu yoktur. Journey reviewer iki yeni kabulü bağımsız warnings-as-errors ile **2passed/2,54s** geçirdi. Installed reviewer takipte kaynak/negatif testleri inceledi, testleri yeniden çalıştırmadı.
+
+Güçlendirilmiş oracle ile eadc7b1 üzerinde build ve iki gerçek temiz kurulum tekrar geçti. Wheel58üye SHA-256 `3c149ede25baa4997d33e9ebc1773c13f460bfdaece2f8e0da69afdda17b58fa`; sdist351üye SHA-256 `6e0b43ecde68c0cf9f289fc6d1c888476835a2338685db41f7eaef73cb312de7`. Her ikisinde origin/basic/NDJSON/HTTP/stream/cache/execution/jobs passed. Önceki d7bff254 sdist’in kanıtı tarihsel olarak korunur; yeni fixture düzeltmelerinin o eski artifact’ta bulunduğu söylenmez.
+
+**Adım5 iki fresh review turu ve doğrulanmış ikiP2 fix’iyle kapandı.** P01-6b in_progress kalır: adım6’daki tam son kaynak takımı, gerçek Linux3.11/3.14/macOS3.11 CI matrisi, source-matched startup/jobs/raw stream bütçeleri, kalıcı kanıt ve nihai development PR henüz tamamlanmadı. Son adıma otomatik geçilir; P01 bütünü henüz verified değildir.

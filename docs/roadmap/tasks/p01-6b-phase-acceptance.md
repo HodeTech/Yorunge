@@ -8,7 +8,7 @@ capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 bütünleşik kabul uygulaması başladı; kartın final kabulü henüz yoktur. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 iki fresh review ve gerçek TLS/process/SQLite/iki kurulum kabulüyle kapandı; adım6 CI/performans sürüyor. Kartın final kabulü henüz yoktur. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -42,4 +42,4 @@ Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, ar
 
 ## Teslim kaydı
 
-Henüz P01-6b ürün kabulü/test/CI/PR kaydı yoktur. P01 bütünü tamamlanmadı. [P01-4 tarihsel merge kanıtı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) yeni taşıma/akış kaynağının kabulü değildir.
+Adım5 bütünleşik test ve iki kurulum kabulü, iki fresh review turu ve ikiP2 fixture fix’iyle [kapandı](../../research/p01-remaining-implementation-validation.md#adım5-kapanışı). Son kaynak tam takım, CI/performans ve PR kabulü henüz yoktur. P01 bütünü tamamlanmadı. [P01-4 tarihsel merge kanıtı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) yeni taşıma/akış kaynağının kabulü değildir.
