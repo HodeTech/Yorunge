@@ -188,8 +188,6 @@ def _event_progress(
             < record.admission.approval.expires_at
         ):
             raise ValueError("dispatch must retain admission authority")
-        if item.attempt_id != record.dispatch_attempt_id:
-            raise ValueError("dispatch history cannot be rebound or cleared")
     elif armed:
         raise ValueError("dispatched history cannot return to admission")
     if previous is None:
@@ -339,6 +337,20 @@ class HistoryProof:
     clock_regressed: bool
 
 
+def _event_candidate(
+    record: OperationRecord, item: OperationEvent, number: int, created_at: str
+) -> None:
+    if item.fence < number:
+        raise ValueError("event fence predates its candidate claims")
+    if (item.identity_epoch, item.clock_generation) == (
+        record.admission.admission_identity_epoch,
+        record.admission.admission_clock_generation,
+    ) and item.observed_at < created_at:
+        raise ValueError("event predates its candidate")
+    if item.execution_status != "not_started" and item.attempt_id != record.dispatch_attempt_id:
+        raise ValueError("dispatch history cannot be rebound or cleared")
+
+
 def _history_proof(
     record: OperationRecord, attempts: tuple[AttemptView, ...], rows: list[tuple[object, ...]]
 ) -> HistoryProof:
@@ -371,13 +383,7 @@ def _history_proof(
                 or attempt_id not in numbers
             ):
                 raise YorungeError("state_invalid")
-            if item.fence < numbers[item.attempt_id]:
-                raise ValueError("event fence predates its candidate claims")
-            if (item.identity_epoch, item.clock_generation) == (
-                record.admission.admission_identity_epoch,
-                record.admission.admission_clock_generation,
-            ) and item.observed_at < created[item.attempt_id]:
-                raise ValueError("event predates its candidate")
+            _event_candidate(record, item, numbers[item.attempt_id], created[item.attempt_id])
             armed = _event_progress(record, item, previous, numbers, armed)
             regressed = _event_observation(record, item, previous) or regressed
             previous = item
@@ -506,6 +512,10 @@ def validate_job_facts(
         and record.dispatch_attempt_id != attempts[-1].attempt_id
     ):
         raise ValueError("dispatch must bind final attempt")
+    if record.dispatch_attempt_id is None and record.event_count != (
+        1 if s.status == "admitted" else 2
+    ):
+        raise ValueError("predispatch controls cannot create extra normal events")
     if record.recovery_reason is not None and attempts[-1].reason_code != record.recovery_reason:
         raise ValueError("recovery reason projection mismatch")
     if s.updated_at < s.created_at and (
@@ -550,6 +560,8 @@ def validate_history_projection(
         raise ValueError("history projection mismatch")
     if count == 1:
         _event_progress(record, last, None, {a.attempt_id: a.number for a in attempts}, False)
+    candidate = next(a for a in attempts if a.attempt_id == last.attempt_id)
+    _event_candidate(record, last, candidate.number, candidate.created_at)
     _event_observation(record, last, None)
     _history_end(record, last, attempts)
 

@@ -57,6 +57,8 @@ Owner/fence ve permit jobs çıktısına girmez. Show geçmiş planı gösterir,
 
 Numaralar kesintisiz 1…N≤16; güncel attempt en büyük numaralı attempt'tir, diğerleri yalnız abandoned ve değişmezdir. Dispatch bağı varsa aynı operation'ın **bu en büyük** attempt'ine gitmelidir; bağlı attempt claimed/abandoned olamaz ve sonradan attempt eklenemez. Latch null iken yalnız admitted veya kesin gönderim öncesi failed/cancelled vardır. Farklı enum eksenleri literal eşitlenmez; toplam status tek saf reducer'dan gelir.
 
+Son event dahil her normal event'in fence'i bağlı attempt numarasından küçük olamaz; admission ile aynı clock alanındaysa attempt oluşturulmasından önce gözlenemez. Dispatched event aynı kalıcı dispatch attempt'ine bağlıdır; recovery marker bu bağı kaldırmaz. Gönderim öncesi ownership kontrolleri normal event üretmediğinden latch null/admitted iş tam bir, latch null/yerel terminal iş tam iki normal event taşır. Liste bunları zaten batch okuduğu verilerle denetler.
+
 | Toplam operation | Güncel attempt | Execution/delivery ve outcome koşulu |
 |---|---|---|
 | admitted | claimed | execution not_started; outcome null |

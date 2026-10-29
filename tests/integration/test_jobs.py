@@ -290,3 +290,83 @@ def test_state_failures_never_become_empty_or_unknown_jobs(
     assert "private-path-marker" not in str(error.value)
     if failure == "intent":
         assert (state / "restore-intent.json").read_bytes() == b"incomplete"
+
+
+@pytest.mark.parametrize("damage", ["fence", "timestamp", "attempt"])
+def test_list_rejects_latest_event_with_broken_candidate_binding(
+    operation_setup, execution_clock, damage
+):
+    from yorunge.domain.capabilities import canonical
+
+    state, plan, backend = operation_setup
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        original = coordinator.admit(plan.plan_id)
+    execution_clock.value += timedelta(seconds=31)
+    with api._operation_session(plan.plan_id, backend, state_dir=state) as coordinator:
+        identifier = original.job.operation.operation_id
+        taken = coordinator.takeover(identifier)
+        coordinator.dispatch(identifier, taken.ownership)
+        if damage == "attempt":
+            execution_clock.value += timedelta(seconds=31)
+            coordinator.takeover(identifier)
+    with sqlite3.connect(state / DB_NAME) as connection:
+        sequence, payload = connection.execute(
+            "SELECT sequence,payload FROM operation_events ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        raw = json.loads(payload)
+        if damage == "fence":
+            raw["fence"] = 1
+        elif damage == "timestamp":
+            raw["observed_at"] = original.job.operation.created_at
+        else:
+            raw["attempt_id"] = original.job.attempts[0].attempt_id
+        connection.execute(
+            "UPDATE operation_events SET attempt_id=?,payload=? WHERE sequence=?",
+            (raw["attempt_id"], canonical(raw).decode(), sequence),
+        )
+    for invoke in (lambda **kw: api.show_job(identifier, **kw), api.list_jobs):
+        with pytest.raises(YorungeError) as error:
+            invoke(state_dir=state)
+        assert error.value.code == "state_invalid"
+    assert len(backend.effects()) == 1
+
+
+@pytest.mark.parametrize("terminal", [False, True])
+def test_list_rejects_impossible_extra_predispatch_normal_event(admitted_operation, terminal):
+    from tests.integration.test_operation_store import raw_record
+    from yorunge.domain.capabilities import canonical
+
+    state, _, record, _, _ = admitted_operation
+    identifier = record.summary.operation_id
+    if terminal:
+        preview = api.preview_identity_reset(state_dir=state).data
+        api.reset_identity(preview.digest, state_dir=state)
+    with open_store(state) as store:
+        record = operation_store.read_operation(store.connection, identifier)
+        sequence, payload = store.connection.execute(
+            "SELECT sequence,payload FROM operation_events ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        raw = json.loads(payload)
+        raw["sequence"] = sequence + 1
+        raw["revision"] = record.summary.revision + 1
+        store.connection.execute("BEGIN IMMEDIATE")
+        raw_record(
+            store.connection,
+            record.model_copy(
+                update={
+                    "event_count": record.event_count + 1,
+                    "summary": record.summary.model_copy(
+                        update={"revision": record.summary.revision + 1}
+                    ),
+                }
+            ),
+        )
+        store.connection.execute(
+            "INSERT INTO operation_events VALUES(?,?,?,?)",
+            (identifier, sequence + 1, raw["attempt_id"], canonical(raw).decode()),
+        )
+        store.connection.execute("COMMIT")
+    for invoke in (lambda **kw: api.show_job(identifier, **kw), api.list_jobs):
+        with pytest.raises(YorungeError) as error:
+            invoke(state_dir=state)
+        assert error.value.code == "state_invalid"
