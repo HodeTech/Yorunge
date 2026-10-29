@@ -461,3 +461,24 @@ ADR-0019 ikinci farklı fresh turu gpt-6-astra/high politika ve gpt-6.1-terra/hi
 0c98018 ile strict Linux diagnostic sınıflandırması, step/aggregate summary, warning/receipt, upload guard/90 günlük artifact ve zorunlu M5 startup/jobs + Linux raw sırası eklendi. R1 Terra/high CI incelemesi temiz; Astra/high kanıt incelemesi iki P2 buldu: final snapshot hatasında ara raw/audit kaybı ve strict reddedilen raw'ın kalıcı arşiv yolu. a27a5d7, ölçüm öncesi manifest/ara raporları `always()` kapsamına ve reddedilen özgün baytları 2 MiB sınırlı hash/base64 diagnostic eke aldı. OSError/KeyboardInterrupt penceresi, bozuk/duplicate/nonfinite/empty baytlar ve gerçek gzip/manifest/indeks roundtrip testleri geçti; bulgu sahibi kapanışı doğruladı.
 
 R2 farklı fresh Astra/high CI ve Terra/high kanıt incelemeleri temizdir. Yeni audit/scheduling bloklarının küçük helper'lara taşınması da iki reviewer tarafından semantik olarak kontrol edildi; timer, yöntem, kapalı alanlar ve ret politikası korunur. Birleşik 302 odaklı test, Ruff/strict mypy, 127 belge/6 skill/12 kart ve 83 eski arşiv geçti. Workflow/testte `p01-6-reference-startup-adr19.json` ve `p01-6-reference-jobs-adr19.json` adları fresh ölçümden önce seçildi. Adım 3: son kaynakta tam takım, kurulumlar ve seri yeni referanslar; gerçek CI/kalıcı saklama henüz bekleniyor.
+
+### ADR-0019 uygulama adım 3 — sabit kaynakta yeni referans kabulü
+
+**Kaynak:** 47af27362f8f7f40bde72fb5d27ab6a0c05d93c6; development tabanı 805f8bd yeniden fetch ile doğrulandı. Bu bölüm yerel kabulü kaydeder; güncel gerçek üç ortam CI ve nihai PR head takibi henüz tamamlanmadı. P01-6b in_progress kalır.
+
+Tam takım `pytest -W error`: **3.409 passed, 1 skipped / 520,15 s**; skip yalnız Linux native sayaç regresyonudur. Ruff format/lint, strict mypy, 127 Markdown, 6 skill/12 kart ve arşiv/diff denetimleri geçti. Wheel ve sdist ayrı temiz frozen ortamlarda bütün sekiz smoke'u geçti: wheel 58 üye/SHA `35df5a680a2d49dbc057d29030e65e00c50b8aa5fb9849b62a79ae84cd9f4d69`, sdist 371 üye/SHA `4ed33554b884a1344c4d78b86e703ed46f85ea463b74dfa100f8ec9fc936aa90`. Üye değişimi yeni helper/testlerdir; raw gzip paketlere alınmadı.
+
+Test/build bitince ve başka ağır süreç olmadığı kontrol edilince ölçümler **seri** alındı. Ortam Apple M5 Max/arm64, macOS 27.0.1, Python 3.11.18, SQLite 3.54.1; disk araçlarında APFS, SolidState=true/Internal=true doğrulandı. Fresh startup helper iki ayrı yeni wheel/venv ve cache fixture kullandı; aday wheel hash'i temiz kurulum kaydıyla aynıydı. Üç ısınma, her yol/taraf için 30 sıcak süreç, bütün ilk/ısınma/sıcak wall ve stdout hash'leri, kendi kurulu wire modeli ve bağımsız profile/cache oracle'ı korundu. Önce/sonra tam kaynak, kurulu Python/data/konsol/wheel ve fixture eşliği geçti.
+
+| Yol | Aday p95 ms | Taban p95 ms | Mutlak hedef ms |
+|---|---:|---:|---:|
+| help | 25,154208 | 23,612750 | 500 |
+| version | 22,495709 | 22,233833 | 500 |
+| context | 74,436625 | 83,178959 | 200 |
+| cache | 149,966333 | 197,404334 | 200 |
+
+Startup referansı `p01-6-reference-startup-adr19.json`; jobs aynı frozen aday wheel/runtime ile `p01-6-reference-jobs-adr19.json`'dır. Jobs normal list/show **101,670375 / 100,342792 ms**, yoğun list/show **153,687000 / 105,606583 ms** p95; dört 200 ms/30 süreç kapısı geçti. `verify-startup-reference` ve `verify-jobs-reference` güncel kaynakla bağımsız doğrulandı. Bu M5 başarısı Linux başlangıç/jobs performans iddiası değildir; yeni ADR ürün Python kodunu hızlandırmış diye anlatılmaz.
+
+Raw v2, aynı kurulu aday ve ayrı TLS istemci/sunucusunda 16/256/1024 MiB'ı tamamladı. Ek RSS alt/üst sınırları sırasıyla **0/0**, **442.368/442.368**, **360.448/360.448 byte**; çapraz boyut üst farkı **442.368 byte**, bütün 64/8 MiB kapıları geçti. `p01-6-adr19-stream-v2.json`, `p01-6-adr19-installation.json` ve `p01-6-adr19-local-acceptance.json` kayıpsız arşivlendi. Bu yeni ölçüm öncesi koşuldan en iyi örnek seçimi yapılmadı; bütün örnekler korunur.
+
+Onay öncesi son 675dfe4 koşusu [40953465786](https://github.com/HodeTech/Yorunge/actions/runs/40953465786) de saklandı: AMD EPYC 7763 Linux cache aday/taban **241,751726 / 246,643521 ms**; Linux 3.11/3.14'te 3.312'şer, macOS'ta 3.311 passed/bir skip ve altı kurulum geçmişti. Startup ret nedeniyle jobs/raw çalışmadı. `p01-6-pre-adr19-ci-failed-checkpoint.json` ve özgün `p01-6-pre-adr19-startup-failed.json` bu başarısızlığı korur; yeni politika eski koşuyu başarıya çevirmez. c2d8029 reddi ve bütün önceki kayıtlar da korunur.
