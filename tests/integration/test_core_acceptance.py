@@ -372,6 +372,64 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
         ]
 
 
+@pytest.mark.parametrize("reconcile", [False, True])
+def test_dispatch_preserves_terminal_stream_error_exit_when_job_can_be_reconciled(
+    journey, certificates, cli, reconcile
+):
+    remote = endpoint(journey)
+    safe_message = "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok."
+
+    def terminal_error(body):
+        identifier = read(journey, "claim.json")["operation_id"]
+        payload = {
+            "schema_version": 1,
+            "code": "transport_timeout",
+            "message": safe_message,
+            "operation_id": identifier,
+            "retryable": False,
+            "details": {"reason_code": "transport_timeout", "capacity_kind": None},
+        }
+        return Reply(body=event_bytes("error", 1, identifier, payload), chunk_size=7)
+
+    with TlsServer(certificates, routes(remote, journey, stream_reply=terminal_error)) as server:
+        options = ("--stream", "--reconcile") if reconcile else ("--stream",)
+        result = invoke(journey, "dispatch", server, *options)
+        identifier = read(journey, "claim.json")["operation_id"]
+        assert records(result.stdout) == [
+            {
+                "schema_version": 1,
+                "stream_id": STREAM_ID,
+                "sequence": 1,
+                "event": "error",
+                "operation_id": identifier,
+                "payload": {
+                    "schema_version": 1,
+                    "code": "transport_timeout",
+                    "message": safe_message,
+                    "operation_id": identifier,
+                    "retryable": False,
+                    "details": {"reason_code": "transport_timeout", "capacity_kind": None},
+                },
+            }
+        ]
+        assert result.stderr == b"" and b'"status":"completed"' not in result.stdout
+        assert result.returncode == 1
+        # A failed local read and trusted remote terminal success are independent.
+        # Only an explicitly requested reconcile can persist the latter here.
+        job = assert_history(journey, "succeeded" if reconcile else "submitted", cli)
+        if reconcile:
+            assert job == read(journey, "finished.json")
+            assert job["outcome"]["execution_status"] == "succeeded"
+            assert job["outcome"]["delivery_status"] == "complete"
+        else:
+            assert job["outcome"] is None and not (journey / "finished.json").exists()
+        assert remote.effects == [saved(journey).dispatch_attempt_id]
+        expected = ["/v1/fixture/start", "/v1/fixture/events"]
+        if reconcile:
+            expected += ["/v1/fixture/access", "/v1/fixture/observe"]
+        assert paths(server) == expected
+
+
 @pytest.mark.parametrize("failure", ["lost_receipt", "deadline", "cancel"])
 def test_after_arm_lost_receipt_deadline_and_cancel_recover_same_job_without_dispatch(
     journey, certificates, cli, failure

@@ -235,11 +235,11 @@ def network(args, renderer: OutputRenderer) -> int:
                     backend.cancel_after_headers = True
                 submitted = coordinator.dispatch(identifier, owner)
                 save(root, "submitted.json", submitted.model_dump(mode="json"))
-                if args.stream:
-                    watch(root, coordinator, http, renderer)
+                stream_exit = watch(root, coordinator, http, renderer) if args.stream else 0
                 if args.reconcile:
                     final = coordinator.reconcile(identifier, owner)
                     save(root, "finished.json", final.model_dump(mode="json"))
+                return stream_exit
             else:
                 original = load(root, "claim.json")
                 identifier = original["operation_id"]

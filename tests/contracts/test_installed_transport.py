@@ -210,3 +210,76 @@ def test_acceptance_rejects_raw_untyped_incomplete_or_fake_completed_output(
 ):
     with pytest.raises(ValueError):
         acceptance.verify_output(case, code, stdout, stderr)
+
+
+def error_output(case):
+    """Independent expected catalog values, never read from the product/helper."""
+    bound = case != "http-invalid"
+    code = "stream_interrupted" if case == "stream-truncated" else "invalid_response"
+    envelope = {
+        "schema_version": 1,
+        "code": code,
+        "message": (
+            "Yanıt akışı doğrulanmış terminal sonuç olmadan kesildi."
+            if code == "stream_interrupted"
+            else "Yanıt beklenen biçim, içerik veya boyut koşullarını karşılamıyor."
+        ),
+        "operation_id": acceptance.OPERATION if bound else None,
+        "retryable": False,
+        "details": {"reason_code": code, "capacity_kind": None} if bound else {},
+    }
+    return acceptance.event(2, "error", envelope) if bound else envelope
+
+
+@pytest.mark.parametrize("case", ["http-invalid", "stream-trailing", "stream-truncated"])
+@pytest.mark.parametrize("message", [None, "wrong catalog message"])
+def test_error_acceptance_rejects_null_or_wrong_message(case, message):
+    output = error_output(case)
+    payload = output if case == "http-invalid" else output["payload"]
+    payload["message"] = message
+    encoded = acceptance.wire(output)
+    stdout = b"" if case == "http-invalid" else acceptance.wire(acceptance.progress()) + encoded
+    stderr = encoded if case == "http-invalid" else b""
+    with pytest.raises(ValueError):
+        acceptance.verify_output(case, 1, stdout, stderr)
+
+
+@pytest.mark.parametrize(
+    "case,original,replacement",
+    [
+        (case, b'"event":"error"', b'"event":"result","event":"error"')
+        for case in ("stream-trailing", "stream-truncated")
+    ]
+    + [
+        (case, b'"code":', b'"code":"wrong-code","code":')
+        for case in ("http-invalid", "stream-trailing", "stream-truncated")
+    ]
+    + [
+        (case, b'"reason_code":', b'"reason_code":"wrong-code","reason_code":')
+        for case in ("stream-trailing", "stream-truncated")
+    ],
+)
+def test_error_acceptance_rejects_duplicate_keys_at_every_depth(case, original, replacement):
+    encoded = acceptance.wire(error_output(case))
+    assert encoded.count(original) == 1
+    encoded = encoded.replace(original, replacement)
+    stdout = b"" if case == "http-invalid" else acceptance.wire(acceptance.progress()) + encoded
+    stderr = encoded if case == "http-invalid" else b""
+    with pytest.raises(ValueError):
+        acceptance.verify_output(case, 1, stdout, stderr)
+
+
+def test_http_error_acceptance_allows_json_whitespace_with_correct_catalog_message():
+    encoded = (json.dumps(error_output("http-invalid"), ensure_ascii=False) + "\n").encode("utf-8")
+    acceptance.verify_output("http-invalid", 1, b"", encoded)
+
+
+@pytest.mark.parametrize("case", ["http-invalid", "stream-trailing", "stream-truncated"])
+def test_error_acceptance_rejects_json_encoding_autodetection(case):
+    # UTF-16BE ends with the same LF byte and can pass json.loads(bytes)'s
+    # implicit encoding detection. Product wire is strictly UTF-8.
+    encoded = (json.dumps(error_output(case)) + "\n").encode("utf-16-be")
+    stdout = b"" if case == "http-invalid" else acceptance.wire(acceptance.progress()) + encoded
+    stderr = encoded if case == "http-invalid" else b""
+    with pytest.raises(ValueError):
+        acceptance.verify_output(case, 1, stdout, stderr)

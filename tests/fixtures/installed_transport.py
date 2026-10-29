@@ -33,6 +33,10 @@ from tests.fixtures.http_server import (  # noqa: E402
 STREAM = "1923801e-38d9-4790-9001-7139be4d9d1d"
 OPERATION = "74c1fc7b-65fb-42ef-8768-3d09a1b44aeb"
 TEXT = "Kurulu Türkçe 🛰\nikinci satır"
+ERROR_MESSAGES = {
+    "invalid_response": "Yanıt beklenen biçim, içerik veya boyut koşullarını karşılamıyor.",
+    "stream_interrupted": "Yanıt akışı doğrulanmış terminal sonuç olmadan kesildi.",
+}
 CASES = ("http", "http-invalid", "stream", "stream-trailing", "stream-truncated")
 REQUIRED_MODULES = {
     "yorunge",
@@ -171,6 +175,30 @@ def worker(args: argparse.Namespace) -> int:
     return code
 
 
+def _unique_output_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate installed output key")
+        result[name] = value
+    return result
+
+
+def _nonfinite_output(value: str) -> object:
+    raise ValueError("nonfinite installed output value")
+
+
+def _output_object(data: bytes) -> dict[str, object]:
+    value = json.loads(
+        data.decode("utf-8", errors="strict"),
+        object_pairs_hook=_unique_output_keys,
+        parse_constant=_nonfinite_output,
+    )
+    if type(value) is not dict:
+        raise ValueError("installed output must be a JSON object")
+    return value
+
+
 def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
     """Prove typed failure and never publish a fake completed stream terminal."""
     if case == "http":
@@ -180,13 +208,14 @@ def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
     if case == "http-invalid":
         if code != 1 or stdout or not stderr.endswith(b"\n") or stderr.count(b"\n") != 1:
             raise ValueError("installed malformed JSON output boundary failed")
-        envelope = json.loads(stderr)
+        envelope = _output_object(stderr)
         if (
             set(envelope)
             != {"schema_version", "code", "message", "operation_id", "retryable", "details"}
             or type(envelope["schema_version"]) is not int
             or envelope["schema_version"] != 1
             or envelope["code"] != "invalid_response"
+            or envelope["message"] != ERROR_MESSAGES["invalid_response"]
             or envelope["operation_id"] is not None
             or envelope["retryable"] is not False
             or envelope["details"] != {}
@@ -195,7 +224,7 @@ def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
         return
     if stderr or not stdout.endswith(b"\n") or stdout.count(b"\n") != 2:
         raise ValueError("installed stream output boundary failed")
-    records = [json.loads(line) for line in stdout.splitlines()]
+    records = [_output_object(line) for line in stdout.splitlines()]
     if stdout.splitlines(keepends=True)[0] != wire(progress()):
         raise ValueError("installed stream progress changed")
     if case == "stream":
@@ -210,11 +239,13 @@ def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
         or terminal != event(2, "error", payload)
         or type(terminal["schema_version"]) is not int
         or type(terminal["sequence"]) is not int
+        or type(payload) is not dict
         or set(payload)
         != {"schema_version", "code", "message", "operation_id", "retryable", "details"}
         or type(payload["schema_version"]) is not int
         or payload["schema_version"] != 1
         or payload["code"] != expected
+        or payload["message"] != ERROR_MESSAGES[expected]
         or payload["operation_id"] != OPERATION
         or payload["retryable"] is not False
         or payload["details"] != {"reason_code": expected, "capacity_kind": None}
