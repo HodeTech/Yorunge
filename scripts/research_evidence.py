@@ -126,7 +126,12 @@ def check_counts(rows: list[dict[str, Any]], fields: tuple[str, ...]) -> dict[st
 
 def startup_summary(report: dict[str, Any]) -> dict[str, Any]:
     groups = {"candidate": report["measurements"]}
-    baseline = report.get("comparison", {}).get("baseline_measurements")
+    comparison = report.get("comparison")
+    if comparison is None:
+        comparison = {}
+    if not isinstance(comparison, dict):
+        raise ValueError("startup comparison must be an object or null")
+    baseline = comparison.get("baseline_measurements")
     if baseline is not None:
         groups["baseline"] = baseline
     return {

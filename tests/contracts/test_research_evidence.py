@@ -221,3 +221,26 @@ def test_full_catalog_rejects_next_archive_before_mutating_any_file(tmp_path):
     } == before
     assert new_source.read_bytes() == original
     assert verify(root) == 256
+
+
+def test_archive_accepts_the_producers_standalone_startup_comparison_null(tmp_path):
+    report = {
+        "schema_version": 2,
+        "comparison": None,
+        "measurements": {
+            "help": {
+                "warm_samples_ms": [10] * 30,
+                "warm_p95_ms": 10,
+                "target_ms": 500,
+                "passed": True,
+            }
+        },
+    }
+    root, _, original = setup_archive(tmp_path, report)
+    assert verify(root) == 1
+    manifest = json.loads((root / "docs/research/evidence-manifest.json").read_bytes())
+    metrics = manifest["entries"][0]["summary"]["measurements"]
+    assert list(metrics) == ["candidate/help"]
+    assert metrics["candidate/help"]["passed"] is True
+    packed = root / "docs/research/raw/operation-budget.json.gz"
+    assert gzip.decompress(packed.read_bytes()) == original
