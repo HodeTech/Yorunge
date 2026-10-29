@@ -667,6 +667,46 @@ def test_corrupt_payload_is_controlled_not_empty_success(tmp_path, bad):
         decode_record(bad)
 
 
+@pytest.mark.parametrize("entry", ["decode", "full", "warm"])
+@pytest.mark.parametrize(
+    "version", ["missing", True, 2.0, "2", None, 3, "duplicate", "escaped_duplicate"]
+)
+def test_otherwise_valid_cache_record_requires_an_explicit_integer_root_version(
+    tmp_path, entry, version
+):
+    from functools import partial
+
+    root = tmp_path / "state"
+    api.query_capabilities(task="llm.train", state_dir=root, refresh=True)
+    with sqlite3.connect(root / "state.sqlite3") as connection:
+        key, payload = connection.execute(
+            "SELECT cache_key,payload FROM capability_cache LIMIT 1"
+        ).fetchone()
+        assert decode_record(payload).schema_version == 2
+        body = json.loads(payload)
+        if version in ("duplicate", "escaped_duplicate"):
+            name = "schema_version" if version == "duplicate" else "schema_\\u0076ersion"
+            encoded = '{"' + name + '":2,' + payload[1:]
+        else:
+            if version == "missing":
+                del body["schema_version"]
+            else:
+                body["schema_version"] = version
+            encoded = json.dumps(body)
+        connection.execute(
+            "UPDATE capability_cache SET payload=? WHERE cache_key=?", (encoded, key)
+        )
+    if entry == "decode":
+        invoke = partial(decode_record, encoded)
+    elif entry == "full":
+        invoke = partial(api.initialize_state, state_dir=root)
+    else:
+        invoke = partial(api.query_capabilities, task="llm.train", state_dir=root)
+    with pytest.raises(YorungeError) as failure:
+        invoke()
+    assert failure.value.code == "state_invalid"
+
+
 def test_two_processes_merge_same_producer_conflicts_without_last_writer_win(tmp_path):
     import subprocess
     import sys

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import json
+import hashlib
 import sqlite3
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from pydantic import ValidationError
 
@@ -21,7 +21,6 @@ from yorunge.adapters.expiry_fences import (
     next_expiry,
     save_expiries,
 )
-from yorunge.adapters.files import reject_constant, unique_object
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.state import Store, metadata
 from yorunge.application.capabilities import Producer, combine
@@ -127,10 +126,10 @@ def decode_record(payload: object) -> CapabilityRecord:
     try:
         if not isinstance(payload, str) or len(payload.encode("utf-8")) > MAX_RECORD_BYTES:
             raise ValueError("bounded record required")
-        raw = json.loads(payload, object_pairs_hook=unique_object, parse_constant=reject_constant)
-        if not isinstance(raw, dict) or type(raw.get("schema_version")) is not int:
+        record = CapabilityRecord.model_validate_json(payload)
+        if "schema_version" not in record.model_fields_set:
             raise ValueError("explicit record version required")
-        return CapabilityRecord.model_validate_json(payload)
+        return record
     except (ValueError, ValidationError, RecursionError, YorungeError):
         raise YorungeError("state_invalid") from None
 
@@ -138,11 +137,12 @@ def decode_record(payload: object) -> CapabilityRecord:
 def decode_entry(row: tuple[object, ...]) -> tuple[CapabilityRecord, int]:
     digest, encoded, projection, group, payload, revision, checked, pinned = row
     record = decode_record(payload)
+    key_bytes = record.key.encoded()
     if (
         (digest, encoded, projection, group, checked, pinned)
         != (
-            record.key.digest(),
-            record.key.encoded().decode("ascii"),
+            hashlib.sha256(key_bytes).hexdigest(),
+            key_bytes.decode("ascii"),
             record.key.projection(),
             group_key(record.key),
             record.checked_at,
@@ -172,7 +172,7 @@ def cache_validation(row: tuple[object, ...]) -> CacheValidation:
         record, version = decode_entry(row)
         scope = record.key.scope
         return CacheValidation(
-            record.key.digest(),
+            cast(str, row[0]),  # decode_entry just matched this same row against the key digest.
             scope.store_id,
             scope.identity_epoch,
             scope.clock_generation,
