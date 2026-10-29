@@ -127,7 +127,8 @@ def journey(tmp_path):
     (root / "clock.txt").write_text("2026-10-29T00:00:00.000000Z", encoding="ascii")
     result = invoke(root, "bootstrap")
     assert result.returncode == 0, result.stderr.decode()
-    assert result.stdout == b"" and result.stderr == b""
+    assert result.stdout == b""
+    assert result.stderr == b""
     return root
 
 
@@ -276,7 +277,8 @@ def recover(root, server, *, seconds=31, fence=2):
     )
     result = invoke(root, "recover", server)
     assert result.returncode == 0, result.stderr
-    assert result.stdout == b"" and result.stderr == b""
+    assert result.stdout == b""
+    assert result.stderr == b""
     report = read(root, "recovered.json")
     assert report["errors"] == {
         "stale_owner": "operation_lease_lost",
@@ -299,7 +301,8 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
     assert initial["state"]["data"]["store_schema_version"] == 6
     assert initial["context"]["data"]["profile"] == "work"
     assert initial["context"]["data"]["account_id"] == "fixture-account"
-    assert plan["status"] == "prepared" and plan["executable"] is False
+    assert plan["status"] == "prepared"
+    assert plan["executable"] is False
     assert plan["selection"] == {
         "task": "llm.train",
         "tool": "forgelm",
@@ -335,11 +338,15 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
     assert scope["credential_id"] == identity["credential_id"]
     assert scope["credential_revision"] == 1 == identity["credential_revision"]
     assert scope["service_id"] == "evren-platform"
-    assert scope["service_origin"] == "https://localhost" and scope["api_base_path"] == "/v1"
-    assert scope["account_id"] == "fixture-account" and scope["project_id"] == "fixture-project"
+    assert scope["service_origin"] == "https://localhost"
+    assert scope["api_base_path"] == "/v1"
+    assert scope["account_id"] == "fixture-account"
+    assert scope["project_id"] == "fixture-project"
     proof = plan["assessment"]["capabilities"][0]["evidence"][0]
-    assert proof["kind"] == "live_account" and proof["support"] == "supported"
-    assert proof["producer_id"] == "fixture-execution" and proof["provenance"] == "fixture-only"
+    assert proof["kind"] == "live_account"
+    assert proof["support"] == "supported"
+    assert proof["producer_id"] == "fixture-execution"
+    assert proof["provenance"] == "fixture-only"
     assert initial["public"]["plan"]["status"] == "draft"
     assert initial["public"]["validity"]["valid"] is False
     assert "execution_adapter_unavailable" in initial["public"]["plan"]["assessment"]["blockers"]
@@ -354,7 +361,8 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
         identifier = read(journey, "claim.json")["operation_id"]
         assert all(e["operation_id"] == identifier and e["stream_id"] == STREAM_ID for e in events)
         assert events[-1]["payload"]["data"] == RECEIPT
-        assert result.stderr == b"" and SELECTED_SECRET.encode() not in result.stdout
+        assert result.stderr == b""
+        assert SELECTED_SECRET.encode() not in result.stdout
         before = len(server.requests)
         job = assert_history(journey, "succeeded", cli)
         assert job == read(journey, "finished.json")
@@ -363,7 +371,8 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
         assert job["attempts"][0]["provider_run_id"] == PROVIDER_RUN_ID
         record = saved(journey)
         assert record.dispatch_attempt_id == remote.effects[0]
-        assert len(server.requests) == before and len(remote.effects) == 1
+        assert len(server.requests) == before
+        assert len(remote.effects) == 1
         assert paths(server) == [
             "/v1/fixture/start",
             "/v1/fixture/events",
@@ -412,7 +421,8 @@ def test_dispatch_preserves_terminal_stream_error_exit_when_job_can_be_reconcile
                 },
             }
         ]
-        assert result.stderr == b"" and b'"status":"completed"' not in result.stdout
+        assert result.stderr == b""
+        assert b'"status":"completed"' not in result.stdout
         assert result.returncode == 1
         # A failed local read and trusted remote terminal success are independent.
         # Only an explicitly requested reconcile can persist the latter here.
@@ -422,7 +432,8 @@ def test_dispatch_preserves_terminal_stream_error_exit_when_job_can_be_reconcile
             assert job["outcome"]["execution_status"] == "succeeded"
             assert job["outcome"]["delivery_status"] == "complete"
         else:
-            assert job["outcome"] is None and not (journey / "finished.json").exists()
+            assert job["outcome"] is None
+            assert not (journey / "finished.json").exists()
         assert remote.effects == [saved(journey).dispatch_attempt_id]
         expected = ["/v1/fixture/start", "/v1/fixture/events"]
         if reconcile:
@@ -444,7 +455,8 @@ def test_after_arm_lost_receipt_deadline_and_cancel_recover_same_job_without_dis
         result = invoke(journey, "dispatch", server, *extra)
         assert result.returncode == 5, result.stderr
         error = json.loads(result.stderr)
-        assert error["code"] == "operation_uncertain" and result.stdout == b""
+        assert error["code"] == "operation_uncertain"
+        assert result.stdout == b""
         assert (
             error["details"]["reason_code"]
             == {
@@ -454,7 +466,8 @@ def test_after_arm_lost_receipt_deadline_and_cancel_recover_same_job_without_dis
             }[failure]
         )
         before = saved(journey)
-        assert before.summary.status == "unknown" and before.dispatch_attempt_id is not None
+        assert before.summary.status == "unknown"
+        assert before.dispatch_attempt_id is not None
         job = assert_history(journey, "unknown", cli)
         assert job["outcome"] is None
         report = recover(journey, server)
@@ -523,7 +536,8 @@ def test_actual_sigkill_after_remote_effect_preserves_latch_and_unknown_takeover
                 process.send_signal(signal.SIGKILL)
                 stdout, stderr = process.communicate(timeout=8)
                 assert process.returncode == -signal.SIGKILL
-                assert stdout == b"" and stderr == b""
+                assert stdout == b""
+                assert stderr == b""
             before = saved(journey)
             assert before.dispatch_attempt_id == remote.effects[0]
             assert before.summary.status == "submitted"
@@ -546,7 +560,8 @@ def test_prearm_context_credential_approval_and_descriptor_changes_have_zero_htt
     original = read(journey, "prepared.json")["prepared"]["plan"]
     with TlsServer(certificates, routes(remote, journey)) as server:
         result = invoke(journey, "dispatch", server, "--mutation", change)
-        assert result.returncode != 0 and result.stdout == b"", result.stderr
+        assert result.returncode != 0, result.stderr
+        assert result.stdout == b"", result.stderr
         error = json.loads(result.stderr)
         assert (
             error["code"]
@@ -557,10 +572,12 @@ def test_prearm_context_credential_approval_and_descriptor_changes_have_zero_htt
                 "input": "plan_not_valid",
             }[change]
         )
-        assert server.requests == [] and remote.effects == []
+        assert server.requests == []
+        assert remote.effects == []
         if change != "target":
             record = saved(journey)
-            assert record.dispatch_attempt_id is None and record.summary.status == "admitted"
+            assert record.dispatch_attempt_id is None
+            assert record.summary.status == "admitted"
         else:
             assert api.list_jobs(state_dir=journey / "state").data.jobs == ()
     assert (
@@ -615,7 +632,8 @@ def test_readonly_watch_interruption_preserves_submitted_job_and_never_resubscri
                 "request_cancelled" if interruption == "sigint" else "stream_interrupted"
             )
             assert events[-1]["payload"]["operation_id"] == before["operation"]["operation_id"]
-            assert stderr == b"" and b'"status":"completed"' not in stdout
+            assert stderr == b""
+            assert b'"status":"completed"' not in stdout
             assert assert_history(journey, "submitted", cli) == before
             assert len(remote.effects) == 1
             assert paths(server) == ["/v1/fixture/start", "/v1/fixture/events"]

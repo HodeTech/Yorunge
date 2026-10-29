@@ -527,15 +527,20 @@ def test_callback_failure_closes_gate_before_next_consumer_and_keeps_logs_privat
         invoked.append(True)
         return consume(transport)
 
-    with caplog.at_level(logging.DEBUG), pytest.raises(YorungeError) as close_error, session:
-        with pytest.raises(YorungeError) as call_error:
-            session.call(start)
-        assert call_error.value.code == "transport_failed"
-        assert call_error.value.__context__ is None
-        for action in (session.preflight, lambda: session.call(consumer)):
-            with pytest.raises(YorungeError) as caught:
-                action()
-            assert caught.value.code == "transport_failed"
+    with caplog.at_level(logging.DEBUG):
+        session.__enter__()
+        try:
+            with pytest.raises(YorungeError) as call_error:
+                session.call(start)
+            assert call_error.value.code == "transport_failed"
+            assert call_error.value.__context__ is None
+            for action in (session.preflight, lambda: session.call(consumer)):
+                with pytest.raises(YorungeError) as caught:
+                    action()
+                assert caught.value.code == "transport_failed"
+        finally:
+            with pytest.raises(YorungeError) as close_error:
+                session.__exit__(None, None, None)
     assert close_error.value.code == "transport_failed"
     assert invoked == []
     assert requests == []
@@ -616,12 +621,15 @@ def test_unreferenced_pending_task_survives_gc_for_private_shutdown(
         gc.collect()
         assert cleanup == []
 
+    body_completed = False
     with caplog.at_level(logging.DEBUG), pytest.raises(YorungeError) as caught, session:
         session.call(start)
         gc.collect()
         assert cleanup == []
+        body_completed = True
         if primary_uncertainty:
             raise failure
+    assert body_completed
     assert caught.value.code == (
         "operation_uncertain" if primary_uncertainty else "transport_failed"
     )

@@ -122,8 +122,9 @@ def test_nesting_and_node_boundaries_have_independent_known_counts():
         parse_json(at_limit[:-1] + b",0]")
     assert failure.value.code == "invalid_response"
     # Each object entry contributes one key and one scalar value.
+    raw = json.dumps({str(i): 0 for i in range(32_768)}).encode()
     with pytest.raises(YorungeError) as failure:
-        parse_json(json.dumps({str(i): 0 for i in range(32_768)}).encode())
+        parse_json(raw)
     assert failure.value.code == "invalid_response"
 
 
@@ -131,8 +132,9 @@ def test_nesting_and_node_boundaries_have_independent_known_counts():
 def test_yorunge_model_schema_version_remains_strict(version):
     payload = provider().model_dump(mode="json")
     payload["schema_version"] = version
+    raw = json.dumps(payload).encode()
     with pytest.raises(YorungeError) as failure:
-        decode_response(json.dumps(payload).encode(), ProviderResponse)
+        decode_response(raw, ProviderResponse)
     assert failure.value.code == "invalid_response"
 
 
@@ -172,10 +174,10 @@ def test_fixed_schema_codes_literals_and_enums_do_not_imply_short_secret_leak(se
 )
 def test_dynamic_exact_or_long_substring_reflection_is_rejected(secret, changes):
     value = provider(**changes)
+    raw = value.model_dump_json().encode()
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(
-            value.model_dump_json().encode(), ProviderResponse, secrets=(SecretValue(secret),)
-        )
+        decode_response(raw, ProviderResponse, secrets=secrets)
     assert failure.value.code == "invalid_response"
     assert failure.value.__context__ is None
 
@@ -192,8 +194,9 @@ def test_short_embedded_character_match_is_not_a_global_substring_prohibition():
 
 def test_local_error_catalog_can_coincidentally_contain_the_short_secret():
     # The guarantee concerns private provenance, not the alphabet in fixed public messages.
+    secrets = (SecretValue("a"),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(b'{"text":"a"}', TextResponse, secrets=(SecretValue("a"),))
+        decode_response(b'{"text":"a"}', TextResponse, secrets=secrets)
     assert failure.value.code == "invalid_response"
     assert "a" in failure.value.code
     assert failure.value.envelope()["details"] == {}
@@ -204,10 +207,10 @@ def test_unknown_rich_scalar_is_not_a_silent_reflection_bypass():
         value: UUID
 
     secret = "56f2851a-a276-4bd3-b07b-0472e888db42"
+    raw = json.dumps({"value": secret}).encode()
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(
-            json.dumps({"value": secret}).encode(), RichResponse, secrets=(SecretValue(secret),)
-        )
+        decode_response(raw, RichResponse, secrets=secrets)
     assert failure.value.code == "invalid_response"
 
 
@@ -219,10 +222,10 @@ def test_bare_datetime_and_bytes_cannot_skip_dynamic_secret_validation():
         value: bytes
 
     for model, secret in ((DateResponse, "2026-10-29T12:00:00Z"), (BytesResponse, "bytes-canary")):
+        raw = json.dumps({"value": secret}).encode()
+        secrets = (SecretValue(secret),)
         with pytest.raises(YorungeError) as failure:
-            decode_response(
-                json.dumps({"value": secret}).encode(), model, secrets=(SecretValue(secret),)
-            )
+            decode_response(raw, model, secrets=secrets)
         assert failure.value.code == "invalid_response"
 
 
@@ -251,8 +254,9 @@ def test_ambiguous_union_container_does_not_inherit_a_nonselected_literal_exempt
     raw = json.dumps({"records": records}).encode()
     # These are valid model inputs through the free branch, not malformed payload tests.
     assert model.model_validate_json(raw).records == records
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(raw, model, secrets=(SecretValue(secret),))
+        decode_response(raw, model, secrets=secrets)
     assert failure.value.code == "invalid_response"
 
 
@@ -367,8 +371,9 @@ def test_custom_output_codecs_computed_fields_and_open_models_fail_closed(kind, 
     if kind != "extra_ignore":
         # Prove these actual model inputs serialize the synthetic secret, not just a marker flag.
         assert secret in unguarded.model_dump_json()
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+        decode_response(raw, expected_model, secrets=secrets)
     assert failure.value.code == "invalid_response"
     assert failure.value.__context__ is None
 
@@ -380,11 +385,12 @@ def test_custom_dump_override_is_not_an_unchecked_output_codec():
         def model_dump_json(self, **kwargs):
             return json.dumps({"value": unquote(self.value)})
 
+    secrets = (SecretValue("synthetic-serializer-canary"),)
     with pytest.raises(YorungeError) as failure:
         decode_response(
             b'{"value":"synthetic%2Dserializer%2Dcanary"}',
             CustomDump,
-            secrets=(SecretValue("synthetic-serializer-canary"),),
+            secrets=secrets,
         )
     assert failure.value.code == "invalid_response"
 
@@ -463,8 +469,9 @@ def test_literal_exemption_checks_the_actual_post_validator_value(mode, secret, 
     raw = json.dumps(expected_payload).encode()
     unguarded = expected_model.model_validate_json(raw)
     assert (unguarded.child if nested else unguarded).state == secret
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+        decode_response(raw, expected_model, secrets=secrets)
     assert failure.value.code == "invalid_response"
 
 
@@ -502,8 +509,9 @@ def test_enum_exemption_requires_the_declared_canonical_member(kind, secret):
     raw = b'{"state":"ok"}'
     unguarded = expected_model.model_validate_json(raw).state
     assert getattr(unguarded, "value", unguarded) == secret
+    secrets = (SecretValue(secret),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(raw, expected_model, secrets=(SecretValue(secret),))
+        decode_response(raw, expected_model, secrets=secrets)
     assert failure.value.code == "invalid_response"
 
 
@@ -516,10 +524,9 @@ def test_literal_numeric_membership_does_not_treat_true_as_integer_one():
         def changed(cls, value):
             return True
 
+    secrets = (SecretValue("unrelated-canary"),)
     with pytest.raises(YorungeError) as failure:
-        decode_response(
-            b'{"schema_version":1}', DriftedVersion, secrets=(SecretValue("unrelated-canary"),)
-        )
+        decode_response(b'{"schema_version":1}', DriftedVersion, secrets=secrets)
     assert failure.value.code == "invalid_response"
 
 
@@ -572,8 +579,9 @@ def raising_model(mode, error_type):
 def test_ordinary_validator_exceptions_are_sanitized_outside_the_active_exception(mode, error_type):
     secret = "synthetic-validator-exception-canary"
     expected_model = raising_model(mode, error_type)
+    raw = json.dumps({"value": secret}).encode()
     with pytest.raises(YorungeError) as failure:
-        decode_response(json.dumps({"value": secret}).encode(), expected_model)
+        decode_response(raw, expected_model)
     assert failure.value.code == "invalid_response"
     assert failure.value.__context__ is None
     assert failure.value.__cause__ is None

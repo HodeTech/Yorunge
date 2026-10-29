@@ -118,10 +118,9 @@ def test_request_and_auth_require_the_exact_canonical_binding(target):
     with pytest.raises(YorungeError) as failure:
         request(target=target, service_id="evren-platform")
     assert failure.value.code == "invalid_service_target"
+    secret = SecretValue(CANARY)
     with pytest.raises(YorungeError) as failure:
-        HttpCredential(
-            "Authorization", SecretValue(CANARY), target=target, service_id="evren-platform"
-        )
+        HttpCredential("Authorization", secret, target=target, service_id="evren-platform")
     assert failure.value.code == "invalid_service_target"
 
 
@@ -168,8 +167,9 @@ def test_service_identity_is_required_and_strict_on_both_request_and_auth(servic
     ],
 )
 def test_auth_is_not_allowed_in_plain_or_encoded_dynamic_request_url_parts(changes):
+    auth = credential()
     with pytest.raises(YorungeError) as failure:
-        request(credential=credential(), **changes)
+        request(credential=auth, **changes)
     assert failure.value.code == "invalid_request"
     assert failure.value.__context__ is None
 
@@ -193,8 +193,9 @@ def test_untransportable_auth_is_not_trimmed_encoded_or_sent(secret):
 
 @pytest.mark.parametrize("header", ["Host", "Cookie", "Content-Length", "Connection", "Proxy-Auth"])
 def test_auth_header_cannot_be_a_different_transport_or_implicit_auth_control(header):
+    secret = SecretValue(CANARY)
     with pytest.raises(YorungeError) as failure:
-        HttpCredential(header, SecretValue(CANARY), target=TARGET, service_id="evren-platform")
+        HttpCredential(header, secret, target=TARGET, service_id="evren-platform")
     assert failure.value.code == "invalid_credential"
 
 
@@ -281,8 +282,9 @@ def test_url_wire_byte_limit_accepts_the_boundary_without_relaxing_metadata_limi
 
 
 def test_url_wire_byte_limit_rejects_the_next_byte_before_network_preparation():
+    query = query_at_wire_size(65_537)
     with pytest.raises(YorungeError) as failure:
-        request(query=query_at_wire_size(65_537))
+        request(query=query)
     assert failure.value.code == "invalid_request"
     assert failure.value.__context__ is None
 

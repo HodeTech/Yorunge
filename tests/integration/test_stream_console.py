@@ -122,7 +122,8 @@ def test_tls_progress_and_typed_result_use_the_same_renderer_in_a_subprocess(
         events = output_records(stdout)
         assert_events(events, ["progress", "result"])
         assert events[-1]["payload"] == result().payload.model_dump(mode="json")
-        assert len(stdout.splitlines()) == 2 and stderr == b""
+        assert len(stdout.splitlines()) == 2
+        assert stderr == b""
         assert len(server.requests) == 1
         assert server.requests[0].path == "/v1/events"
 
@@ -139,7 +140,8 @@ def test_tls_terminal_followed_by_data_emits_one_error_without_completed_summary
         events = output_records(stdout)
         assert_events(events, ["progress", "error"])
         assert events[-1]["payload"] == OperationError("invalid_response", OPERATION).envelope()
-        assert stderr == b"" and b'"status":"completed"' not in stdout
+        assert stderr == b""
+        assert b'"status":"completed"' not in stdout
         assert len(server.requests) == 1
 
 
@@ -149,9 +151,11 @@ def test_malformed_first_tls_record_has_empty_stdout_and_bound_plain_json_stderr
         with console(server) as process:
             stdout, stderr = process.communicate(timeout=10)
             assert process.returncode == 1, stderr
-        assert stdout == b"" and stderr.count(b"\n") == 1
+        assert stdout == b""
+        assert stderr.count(b"\n") == 1
         assert json.loads(stderr) == OperationError("invalid_response", OPERATION).envelope()
-        assert b"private-upstream" not in stderr and b"Traceback" not in stderr
+        assert b"private-upstream" not in stderr
+        assert b"Traceback" not in stderr
         assert len(server.requests) == 1
 
 
@@ -175,7 +179,8 @@ def test_provider_terminal_error_rebuilds_local_message_and_finish_returns_its_e
         events = output_records(stdout)
         assert_events(events, ["progress", "error"])
         assert events[-1]["payload"] == local.envelope()
-        assert b"private provider" not in stdout and stderr == b""
+        assert b"private provider" not in stdout
+        assert stderr == b""
         assert len(server.requests) == 1
 
 
@@ -217,7 +222,8 @@ def test_actual_sigint_after_progress_closes_tls_without_job_mutation_or_resubsc
                 events[-1]["payload"]
                 == OperationError("request_cancelled", operation_id).envelope()
             )
-            assert stderr == b"" and b"Traceback" not in stdout
+            assert stderr == b""
+            assert b"Traceback" not in stdout
             assert len(server.requests) == 1
             assert api.show_job(operation_id, state_dir=state).model_dump(mode="json") == before
         finally:

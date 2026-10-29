@@ -25,6 +25,8 @@ SIZES_MIB = (16, 256, 1024)
 CHUNK_BYTES = 32_768
 RSS_LIMIT_BYTES = 67_108_864
 TOTAL_SECONDS = 120.0
+CLIENT_STDOUT = "client-stdout.txt"
+CLIENT_STDERR = "client-stderr.txt"
 
 
 def environment() -> dict[str, str]:
@@ -127,7 +129,7 @@ def expected_sha256(size: int) -> str:
 
 
 def _integer(value: object, *, minimum: int = 0) -> int:
-    if type(value) is not int or value < minimum:
+    if not isinstance(value, int) or type(value) is not int or value < minimum:
         raise ValueError("invalid integer in stream measurement")
     return value
 
@@ -209,6 +211,52 @@ def evaluate_run(
     }
 
 
+def wait_for_server(server: subprocess.Popen[str], ready: Path, work: Path) -> None:
+    until = time.monotonic() + 10
+    while not ready.is_file():
+        exit_code = server.poll()
+        if exit_code is not None:
+            raise ValueError(
+                f"synthetic TLS server exited before readiness (exit={exit_code}); "
+                f"diagnostics retained at {work}"
+            )
+        if time.monotonic() >= until:
+            raise ValueError(
+                "synthetic TLS server readiness timed out after 10 seconds "
+                f"while process was running; diagnostics retained at {work}"
+            )
+        time.sleep(0.02)
+
+
+def retain_client_timeout(work: Path, error: subprocess.TimeoutExpired) -> None:
+    for name, partial in ((CLIENT_STDOUT, error.stdout), (CLIENT_STDERR, error.stderr)):
+        text = (
+            partial.decode("utf-8", errors="replace")
+            if isinstance(partial, bytes)
+            else partial or ""
+        )
+        try:
+            (work / name).write_text(text, encoding="utf-8")
+        except OSError:
+            # Retaining diagnostics must not replace the timeout.
+            pass
+
+
+def stop_server(server: subprocess.Popen[str], work: Path) -> tuple[str, str]:
+    try:
+        server.terminate()
+    finally:
+        # Reap even if terminate itself reports an ordinary OS error.
+        try:
+            stdout, stderr = server.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.kill()
+            stdout, stderr = server.communicate(timeout=10)
+        (work / "server-stdout.txt").write_text(stdout, encoding="utf-8")
+        (work / "server-stderr.txt").write_text(stderr, encoding="utf-8")
+    return stdout, stderr
+
+
 def measure_one(
     project: Path,
     python: Path,
@@ -244,20 +292,7 @@ def measure_one(
     ) as server:
         measurement_failed = False
         try:
-            until = time.monotonic() + 10
-            while not ready.is_file():
-                exit_code = server.poll()
-                if exit_code is not None:
-                    raise ValueError(
-                        f"synthetic TLS server exited before readiness (exit={exit_code}); "
-                        f"diagnostics retained at {work}"
-                    )
-                if time.monotonic() >= until:
-                    raise ValueError(
-                        "synthetic TLS server readiness timed out after 10 seconds "
-                        f"while process was running; diagnostics retained at {work}"
-                    )
-                time.sleep(0.02)
+            wait_for_server(server, ready, work)
             address = json.loads(ready.read_text(encoding="utf-8"))
             try:
                 result = subprocess.run(
@@ -286,24 +321,11 @@ def measure_one(
                     timeout=2 * TOTAL_SECONDS + 30,
                 )
             except subprocess.TimeoutExpired as error:
-                for name, partial in (
-                    ("client-stdout.txt", error.stdout),
-                    ("client-stderr.txt", error.stderr),
-                ):
-                    text = (
-                        partial.decode("utf-8", errors="replace")
-                        if isinstance(partial, bytes)
-                        else partial or ""
-                    )
-                    try:
-                        (work / name).write_text(text, encoding="utf-8")
-                    except OSError:
-                        # Retaining diagnostics must not replace the timeout.
-                        pass
+                retain_client_timeout(work, error)
                 raise
             # Preserve subprocess failures and malformed records in the fresh workspace.
-            (work / "client-stdout.txt").write_text(result.stdout, encoding="utf-8")
-            (work / "client-stderr.txt").write_text(result.stderr, encoding="utf-8")
+            (work / CLIENT_STDOUT).write_text(result.stdout, encoding="utf-8")
+            (work / CLIENT_STDERR).write_text(result.stderr, encoding="utf-8")
             if result.returncode != 0 or result.stderr:
                 raise ValueError(
                     "installed stream worker failed; retained workspace has diagnostics"
@@ -316,23 +338,38 @@ def measure_one(
             raise
         finally:
             try:
-                try:
-                    server.terminate()
-                finally:
-                    # Reap even if terminate itself reports an ordinary OS error.
-                    try:
-                        stdout, stderr = server.communicate(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        server.kill()
-                        stdout, stderr = server.communicate(timeout=10)
-                    (work / "server-stdout.txt").write_text(stdout, encoding="utf-8")
-                    (work / "server-stderr.txt").write_text(stderr, encoding="utf-8")
+                stdout, stderr = stop_server(server, work)
             except (OSError, subprocess.TimeoutExpired):
                 if not measurement_failed:
                     raise
         if server.returncode != 0 or stderr:
             raise ValueError("synthetic TLS server failed; retained workspace has diagnostics")
     return evaluate_run(measured, json.loads(stdout), size, expected_sha256(size))
+
+
+def retain_failure(work: Path, size: int, error: Exception) -> None:
+    if not work.is_dir() or work.is_symlink():
+        return
+    diagnostics = [
+        name
+        for name in (CLIENT_STDOUT, CLIENT_STDERR, "server-stdout.txt", "server-stderr.txt")
+        if (work / name).is_file() and not (work / name).is_symlink()
+    ]
+    try:
+        with (work / "failure.json").open("x", encoding="utf-8") as target:
+            json.dump(
+                {
+                    "error_type": type(error).__name__,
+                    "size_bytes": size,
+                    "diagnostics": diagnostics,
+                },
+                target,
+            )
+            target.write("\n")
+    except OSError:
+        # A diagnostic-write failure must not mask the original measurement
+        # failure or overwrite another writer's file.
+        pass
 
 
 def check(
@@ -375,32 +412,7 @@ def check(
                 json.dump(measured, target, ensure_ascii=False, allow_nan=False, indent=2)
                 target.write("\n")
         except Exception as error:
-            if run_work.is_dir() and not run_work.is_symlink():
-                diagnostics = [
-                    name
-                    for name in (
-                        "client-stdout.txt",
-                        "client-stderr.txt",
-                        "server-stdout.txt",
-                        "server-stderr.txt",
-                    )
-                    if (run_work / name).is_file() and not (run_work / name).is_symlink()
-                ]
-                try:
-                    with (run_work / "failure.json").open("x", encoding="utf-8") as target:
-                        json.dump(
-                            {
-                                "error_type": type(error).__name__,
-                                "size_bytes": size,
-                                "diagnostics": diagnostics,
-                            },
-                            target,
-                        )
-                        target.write("\n")
-                except OSError:
-                    # A diagnostic-write failure must not mask the original
-                    # measurement failure or overwrite another writer's file.
-                    pass
+            retain_failure(run_work, size, error)
             raise
         runs.append(measured)
         stable = source(project) == before and stable

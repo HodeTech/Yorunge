@@ -140,7 +140,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p01-6-reference-jobs-idle.json > dist/jobs-reference.txt",
+            "p01-6-reference-jobs-pr-review.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -297,14 +297,16 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     assert report["python_executable"] == sys.executable
     assert report["python_implementation"] == "CPython"
     for key in ("os", "os_release", "platform", "architecture", "sqlite", "cpu"):
-        assert isinstance(report[key], str) and report[key]
+        assert isinstance(report[key], str)
+        assert report[key]
     assert report["packages"]["pytest"]
     assert report["uv"] == "uv 0.11.2"
     assert report["runner_label"] == "ubuntu-24.04"
     assert report["runner_os"] == "Linux"
     assert report["runner_architecture"] == "X64"
     assert report["runner_image"] == {"ImageOS": "ubuntu24", "ImageVersion": "20261029.1.0"}
-    assert "cpu_count" in report and "cpu_affinity" in report
+    assert "cpu_count" in report
+    assert "cpu_affinity" in report
     assert report["disk_type"] == "unknown"
     assert report["startup_budget_scope"] == scope
     assert report["jobs_budget_scope"] == (

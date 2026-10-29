@@ -114,7 +114,7 @@ class _Response:
     def __init__(self, response: httpx.Response, request: HttpRequest) -> None:
         self.status_code = response.status_code
         self.headers = tuple(response.headers.multi_items())
-        self._response, self._request = response, request
+        self._raw_response, self._request = response, request
         self._task = asyncio.current_task()
         self._closed, self._used = False, False
 
@@ -135,7 +135,7 @@ class _Chunks(AsyncIterator[bytes]):
         self._response = response
         # HTTPX's fixed-size chunker aggregates small reads until CHUNK_SIZE or
         # EOF. Preserve their latency, splitting only already available bytes.
-        self._raw = response._response.aiter_raw()
+        self._raw = response._raw_response.aiter_raw()
         self._pending = b""
         self._size = 0
 
@@ -194,7 +194,8 @@ class _ResponseContext(AbstractAsyncContextManager[_Response]):
         except YorungeError as error:
             # contextlib may attach the exception injected at yield to a mapped
             # failure; the public failure must not retain that private chain.
-            error.__context__, error.__cause__ = None, None
+            error.__context__ = None
+            error.__cause__ = None
             raise
 
 
@@ -285,24 +286,29 @@ class HttpxTransport:
             pass
         raise YorungeError("transport_failed")
 
+    @staticmethod
+    def _wire_request(request: HttpRequest, deadline: float) -> httpx.Request:
+        remaining = _remaining(deadline)
+        timeout = httpx.Timeout(
+            min(5.0, remaining), connect=min(5.0, remaining), pool=min(1.0, remaining)
+        )
+        wire = httpx.Request(
+            request.method,
+            request.url,
+            headers=request.wire_headers(),
+            content=request.content,
+            extensions={"timeout": timeout.as_dict()},
+        )
+        if str(wire.url) != request.url:
+            raise YorungeError("invalid_service_target")
+        return wire
+
     async def _attempts(self, request: HttpRequest, deadline: float) -> httpx.Response:
         client = self._client
         assert client is not None
         attempts = 2 if request.read_only else 1
         for attempt in range(attempts):
-            remaining = _remaining(deadline)
-            timeout = httpx.Timeout(
-                min(5.0, remaining), connect=min(5.0, remaining), pool=min(1.0, remaining)
-            )
-            wire = httpx.Request(
-                request.method,
-                request.url,
-                headers=request.wire_headers(),
-                content=request.content,
-                extensions={"timeout": timeout.as_dict()},
-            )
-            if str(wire.url) != request.url:
-                raise YorungeError("invalid_service_target")
+            wire = self._wire_request(request, deadline)
             try:
                 response = await client.send(wire, stream=True, auth=None, follow_redirects=False)
             except (httpx.ConnectError, httpx.ConnectTimeout) as error:

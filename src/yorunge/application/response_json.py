@@ -79,7 +79,7 @@ def parse_json(data: bytes, *, max_bytes: int = JSON_LIMIT) -> object:
         result = json.loads(text, object_pairs_hook=_unique, parse_constant=_reject_constant)
         _structure(result)
         valid = True
-    except (UnicodeError, ValueError, RecursionError, OverflowError):
+    except (ValueError, RecursionError, OverflowError):
         pass
     if not valid:
         raise YorungeError("invalid_response")

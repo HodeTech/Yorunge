@@ -407,16 +407,7 @@ def cpu_label() -> str:
     return platform.processor() or "unknown"
 
 
-def check(
-    python: Path,
-    workspace: Path,
-    output: Path,
-    *,
-    samples: int,
-    wheel: Path | None,
-    cpu: str,
-    disk: str,
-) -> int:
+def validate_inputs(workspace: Path, output: Path, samples: int, wheel: Path | None) -> None:
     if samples < 30:
         raise ValueError("at least 30 samples are required")
     if (
@@ -432,6 +423,19 @@ def check(
         raise ValueError("workspace parent must not contain symlinks")
     if wheel is not None and (wheel.is_symlink() or not wheel.is_file()):
         raise ValueError("wheel must be an existing regular artifact")
+
+
+def check(
+    python: Path,
+    workspace: Path,
+    output: Path,
+    *,
+    samples: int,
+    wheel: Path | None,
+    cpu: str,
+    disk: str,
+) -> int:
+    validate_inputs(workspace, output, samples, wheel)
     workspace.mkdir(mode=0o700)
     before = source(ROOT)
     installed_before = runtime(python, ROOT, workspace)

@@ -62,7 +62,8 @@ def test_installed_normal_command_emits_exactly_one_typed_result(config, args, p
     expected = python(config).model_dump(mode="json")
     completed = invoke(*args, "--config", str(config), *option)
     assert completed.returncode == 0, completed.stderr
-    assert completed.stderr == b"" and completed.stdout.count(b"\n") == 1
+    assert completed.stderr == b""
+    assert completed.stdout.count(b"\n") == 1
     event = json.loads(completed.stdout)
     assert set(event) == {
         "schema_version",
@@ -72,13 +73,17 @@ def test_installed_normal_command_emits_exactly_one_typed_result(config, args, p
         "operation_id",
         "payload",
     }
-    assert event["schema_version"] == 1 and event["sequence"] == 1
-    assert event["event"] == "result" and event["operation_id"] is None
+    assert event["schema_version"] == 1
+    assert event["sequence"] == 1
+    assert event["event"] == "result"
+    assert event["operation_id"] is None
     identity = UUID(event["stream_id"])
-    assert identity.version == 4 and str(identity) == event["stream_id"]
+    assert identity.version == 4
+    assert str(identity) == event["stream_id"]
     assert event["payload"] == expected
     old_json = invoke(*args, "--config", str(config), "--output=json")
-    assert old_json.returncode == 0 and json.loads(old_json.stdout) == expected
+    assert old_json.returncode == 0
+    assert json.loads(old_json.stdout) == expected
 
 
 def test_each_invocation_has_a_fresh_stream_id():
@@ -100,7 +105,8 @@ def test_each_invocation_has_a_fresh_stream_id():
 )
 def test_ndjson_parser_errors_are_plain_json_even_before_flag_is_parsed(args):
     completed = invoke(*args)
-    assert completed.returncode == 2 and completed.stdout == b""
+    assert completed.returncode == 2
+    assert completed.stdout == b""
     error = json.loads(completed.stderr)
     assert set(error) == {
         "schema_version",
@@ -110,10 +116,13 @@ def test_ndjson_parser_errors_are_plain_json_even_before_flag_is_parsed(args):
         "retryable",
         "details",
     }
-    assert error["code"] == "invalid_request" and error["operation_id"] is None
-    assert error["details"] == {} and error["retryable"] is False
+    assert error["code"] == "invalid_request"
+    assert error["operation_id"] is None
+    assert error["details"] == {}
+    assert error["retryable"] is False
     assert completed.stderr.count(b"\n") == 1
-    assert CANARY.encode() not in completed.stderr and b"Traceback" not in completed.stderr
+    assert CANARY.encode() not in completed.stderr
+    assert b"Traceback" not in completed.stderr
 
 
 @pytest.mark.parametrize("output", ["text", "json", "ndjson"])
@@ -121,15 +130,18 @@ def test_real_cli_non_ascii_success_and_error_are_utf8_despite_ascii_stdio(outpu
     completed = invoke(
         "train", "plan", "--config", str(config), "--output", output, ascii_locale=True
     )
-    assert completed.returncode == 0 and completed.stderr == b""
+    assert completed.returncode == 0
+    assert completed.stderr == b""
     text = completed.stdout.decode("utf-8", "strict")
     assert any(ord(character) > 127 for character in text)
     if output != "text":
         assert json.loads(text)["payload" if output == "ndjson" else "data"]
     failed = invoke("--invalid", "--output", output, ascii_locale=True)
-    assert failed.returncode == 2 and failed.stdout == b""
+    assert failed.returncode == 2
+    assert failed.stdout == b""
     error = failed.stderr.decode("utf-8", "strict")
-    assert "İstek geçersiz" in error and "Traceback" not in error
+    assert "İstek geçersiz" in error
+    assert "Traceback" not in error
     if output != "text":
         assert json.loads(error)["code"] == "invalid_request"
 
@@ -159,13 +171,16 @@ def test_metadata_remains_human_lazy_and_utf8_even_with_ndjson_selected(args):
         ),
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stderr == b"" and completed.stdout
+    assert completed.stderr == b""
+    assert completed.stdout
     text = completed.stdout.decode("utf-8", "strict")
     if args == ("--version",):
         assert text == f"yorunge {__version__}\n"
     else:
-        assert "usage:" in text and "{text,json,ndjson}" in text
-    assert not text.startswith("{") and "Traceback" not in text
+        assert "usage:" in text
+        assert "{text,json,ndjson}" in text
+    assert not text.startswith("{")
+    assert "Traceback" not in text
 
 
 @pytest.mark.parametrize("output", ["text", "json"])
@@ -178,4 +193,5 @@ def test_existing_local_output_does_not_load_stream_codec(output):
         blocked=("yorunge.domain.streams", "yorunge.application.stream_results"),
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout and completed.stderr == b""
+    assert completed.stdout
+    assert completed.stderr == b""

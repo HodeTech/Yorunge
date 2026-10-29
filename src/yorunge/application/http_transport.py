@@ -100,6 +100,28 @@ class HttpCredential:
         return self.header_name, self.prefix + self.secret.reveal()
 
 
+def _pair_size(name: str, text: str) -> int:
+    if type(name) is not str or type(text) is not str:
+        raise YorungeError("invalid_request")
+    valid_utf8 = False
+    name_size, value_size = 0, 0
+    try:
+        name_size, value_size = len(name.encode("utf-8")), len(text.encode("utf-8"))
+        valid_utf8 = True
+    except UnicodeError:
+        pass
+    if not valid_utf8:
+        raise YorungeError("invalid_request")
+    if (
+        not 1 <= name_size <= NAME_LIMIT
+        or value_size > VALUE_LIMIT
+        or has_control_characters(name)
+        or has_control_characters(text)
+    ):
+        raise YorungeError("invalid_request")
+    return name_size + value_size
+
+
 def _pairs(value: tuple[tuple[str, str], ...], *, headers: bool) -> int:
     if type(value) is not tuple or len(value) > PAIR_LIMIT:
         raise YorungeError("invalid_request")
@@ -108,24 +130,7 @@ def _pairs(value: tuple[tuple[str, str], ...], *, headers: bool) -> int:
         if type(pair) is not tuple or len(pair) != 2:
             raise YorungeError("invalid_request")
         name, text = pair
-        if type(name) is not str or type(text) is not str:
-            raise YorungeError("invalid_request")
-        valid_utf8 = False
-        name_size, value_size = 0, 0
-        try:
-            name_size, value_size = len(name.encode("utf-8")), len(text.encode("utf-8"))
-            valid_utf8 = True
-        except UnicodeError:
-            pass
-        if not valid_utf8:
-            raise YorungeError("invalid_request")
-        if (
-            not 1 <= name_size <= NAME_LIMIT
-            or value_size > VALUE_LIMIT
-            or has_control_characters(name)
-            or has_control_characters(text)
-        ):
-            raise YorungeError("invalid_request")
+        pair_size = _pair_size(name, text)
         if headers:
             lowered = name.lower()
             if (
@@ -136,7 +141,7 @@ def _pairs(value: tuple[tuple[str, str], ...], *, headers: bool) -> int:
             ):
                 raise YorungeError("invalid_request")
             seen.add(lowered)
-        size += name_size + value_size
+        size += pair_size
     return size
 
 
@@ -210,25 +215,9 @@ class HttpRequest:
             raise YorungeError("invalid_request")
         size = _pairs(self.query, headers=False) + _pairs(self.headers, headers=True)
         count = len(self.query) + len(self.headers)
-        if self.credential is not None:
-            if (
-                self.credential.target != self.target
-                or self.credential.service_id != self.service_id
-            ):
-                raise YorungeError("invalid_service_target")
-            secret = self.credential.secret.reveal()
-            dynamic_url_values = (
-                self.endpoint,
-                unquote_to_bytes(self.endpoint).decode("utf-8", errors="strict"),
-                *(part for pair in self.query for part in pair),
-            )
-            if any(literal_secret_match(value, secret) for value in dynamic_url_values):
-                raise YorungeError("invalid_request")
-            auth_name, auth_value = self.credential.wire_header()
-            if any(name.lower() == auth_name.lower() for name, _ in self.headers):
-                raise YorungeError("invalid_request")
-            size += len(auth_name) + len(auth_value)
-            count += 1
+        credential_size, credential_count = self._credential_metadata()
+        size += credential_size
+        count += credential_count
         if size > METADATA_LIMIT or count > PAIR_LIMIT:
             raise YorungeError("invalid_request")
         content_type = next(
@@ -253,6 +242,24 @@ class HttpRequest:
         if len(wire_url.encode("ascii")) > URL_LIMIT:
             raise YorungeError("invalid_request")
         object.__setattr__(self, "_url", wire_url)
+
+    def _credential_metadata(self) -> tuple[int, int]:
+        if self.credential is None:
+            return 0, 0
+        if self.credential.target != self.target or self.credential.service_id != self.service_id:
+            raise YorungeError("invalid_service_target")
+        secret = self.credential.secret.reveal()
+        dynamic_url_values = (
+            self.endpoint,
+            unquote_to_bytes(self.endpoint).decode("utf-8", errors="strict"),
+            *(part for pair in self.query for part in pair),
+        )
+        if any(literal_secret_match(value, secret) for value in dynamic_url_values):
+            raise YorungeError("invalid_request")
+        auth_name, auth_value = self.credential.wire_header()
+        if any(name.lower() == auth_name.lower() for name, _ in self.headers):
+            raise YorungeError("invalid_request")
+        return len(auth_name) + len(auth_value), 1
 
     def __repr__(self) -> str:
         return "<HttpRequest private>"

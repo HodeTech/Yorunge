@@ -57,6 +57,8 @@ JOBS_REFERENCE_ROWS = {
 }
 MANIFEST = "evidence-manifest.json"
 INDEX = "evidence.md"
+FINITE_MEASUREMENT = "expected a finite measurement"
+PRODUCT_SOURCE_PREFIX = "src/yorunge/"
 
 
 def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -113,13 +115,13 @@ def research_directory(root: Path) -> Path:
 
 def number(value: object) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("expected a finite measurement")
+        raise ValueError(FINITE_MEASUREMENT)
     try:
         result = float(value)
     except OverflowError as error:
-        raise ValueError("expected a finite measurement") from error
+        raise ValueError(FINITE_MEASUREMENT) from error
     if not math.isfinite(result):
-        raise ValueError("expected a finite measurement")
+        raise ValueError(FINITE_MEASUREMENT)
     return result
 
 
@@ -130,7 +132,7 @@ def closed(value: object, fields: str, label: str) -> dict[str, Any]:
 
 
 def integer(value: object, *, minimum: int = 0) -> int:
-    if type(value) is not int or value < minimum:
+    if not isinstance(value, int) or type(value) is not int or value < minimum:
         raise ValueError("expected an integer measurement in range")
     return value
 
@@ -173,16 +175,16 @@ def source_snapshot(value: object) -> dict[str, Any]:
     source = closed(value, "commit source_sha256", "source snapshot")
     pattern_value(source["commit"], COMMIT)
     hashes = hash_map(source["source_sha256"])
-    if not any(name.startswith("src/yorunge/") and name.endswith(".py") for name in hashes):
+    if not any(name.startswith(PRODUCT_SOURCE_PREFIX) and name.endswith(".py") for name in hashes):
         raise ValueError("source snapshot has no product Python files")
     return source
 
 
 def python_hashes(source: dict[str, Any], *, package_prefix: bool = False) -> dict[str, str]:
     return {
-        name.removeprefix("src/" if package_prefix else "src/yorunge/"): digest
+        name.removeprefix("src/" if package_prefix else PRODUCT_SOURCE_PREFIX): digest
         for name, digest in source["source_sha256"].items()
-        if name.startswith("src/yorunge/") and name.endswith(".py")
+        if name.startswith(PRODUCT_SOURCE_PREFIX) and name.endswith(".py")
     }
 
 
@@ -542,8 +544,11 @@ def installation_row(value: object) -> str:
     archive = text_value(row["archive"])
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*", archive) is None or ".." in archive:
         raise ValueError("invalid installation artifact filename")
-    kind = "wheel" if archive.endswith(".whl") else "sdist" if archive.endswith(".tar.gz") else None
-    if kind is None:
+    if archive.endswith(".whl"):
+        kind = "wheel"
+    elif archive.endswith(".tar.gz"):
+        kind = "sdist"
+    else:
         raise ValueError("unknown installation artifact type")
     pattern_value(row["sha256"], SHA256)
     integer(row["members"], minimum=1)
@@ -769,11 +774,14 @@ def modern_jobs_summary(report: dict[str, Any]) -> dict[str, Any]:
     if set(summary["measurements"]) != {"normal/list", "normal/show", "dense/list", "dense/show"}:
         raise ValueError("jobs measurement groups differ from acceptance cases")
     provenance = jobs_provenance(report)
-    checked = [jobs_run_checks(run, samples, provenance["installed_before"]) for run in runs]
+    checked = True
+    # Validate every group even when an earlier group truthfully failed its gate.
+    for run in runs:
+        checked = jobs_run_checks(run, samples, provenance["installed_before"]) and checked
     passed = (
         provenance["unchanged"]
         and provenance["isolated_python"]
-        and all(checked)
+        and checked
         and all(run["passed"] for run in runs)
     )
     flag(report["passed"], passed)
@@ -1018,15 +1026,16 @@ def jobs_reference_rows(value: object, layout: str) -> None:
         ):
             raise ValueError("jobs reference fixture payload counters are inconsistent")
     if layout == "dense":
-        required = {"execution_plans": (67108864, 65536), "capability_cache": (33554432, 32768)}
-        for table, (total, largest) in required.items():
-            if (
-                rows[table]["payload_bytes"] != total
-                or rows[table]["largest_record_bytes"] != largest
-            ):
-                raise ValueError(
-                    "jobs reference dense fixture payload differs from acceptance workload"
-                )
+        jobs_reference_dense_rows(rows)
+
+
+def jobs_reference_dense_rows(rows: dict[str, Any]) -> None:
+    required = {"execution_plans": (67108864, 65536), "capability_cache": (33554432, 32768)}
+    for table, (total, largest) in required.items():
+        if rows[table]["payload_bytes"] != total or rows[table]["largest_record_bytes"] != largest:
+            raise ValueError(
+                "jobs reference dense fixture payload differs from acceptance workload"
+            )
 
 
 def jobs_reference_fixture(value: object, layout: str) -> dict[str, Any]:

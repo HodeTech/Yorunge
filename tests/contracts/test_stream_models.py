@@ -79,14 +79,16 @@ def test_metadata_has_a_closed_required_wire(event: str) -> None:
 
 @pytest.mark.parametrize("value", [True, False, 1.0, "1", None, 0, 2])
 def test_metadata_schema_version_is_exact_integer_one(value: object) -> None:
+    payload = {**metadata(), "schema_version": value}
     with pytest.raises(ValidationError):
-        EventMeta.model_validate({**metadata(), "schema_version": value})
+        EventMeta.model_validate(payload)
 
 
 @pytest.mark.parametrize("value", [True, False, 1.0, "1", None, 0, -1, 2**63])
 def test_sequence_is_a_bounded_strict_positive_integer(value: object) -> None:
+    payload = {**metadata(), "sequence": value}
     with pytest.raises(ValidationError):
-        EventMeta.model_validate({**metadata(), "sequence": value})
+        EventMeta.model_validate(payload)
 
 
 def test_sequence_accepts_both_closed_boundaries() -> None:
@@ -109,22 +111,25 @@ def test_sequence_accepts_both_closed_boundaries() -> None:
     ],
 )
 def test_metadata_requires_canonical_uuid_v4(field: str, value: object) -> None:
+    payload = {**metadata(), field: value}
     with pytest.raises(ValidationError):
-        EventMeta.model_validate({**metadata(), field: value})
+        EventMeta.model_validate(payload)
 
 
 def test_operation_id_is_nullable_but_stream_id_is_not() -> None:
     assert EventMeta.model_validate(metadata()).operation_id is None
     parsed = EventMeta.model_validate(metadata(operation_id=OPERATION_ID))
     assert parsed.operation_id == OPERATION_ID
+    payload = {**metadata(), "stream_id": None}
     with pytest.raises(ValidationError):
-        EventMeta.model_validate({**metadata(), "stream_id": None})
+        EventMeta.model_validate(payload)
 
 
 @pytest.mark.parametrize("value", ["message", "completed", "", 1, None])
 def test_event_kind_is_closed(value: object) -> None:
+    payload = {**metadata(), "event": value}
     with pytest.raises(ValidationError):
-        EventMeta.model_validate({**metadata(), "event": value})
+        EventMeta.model_validate(payload)
 
 
 @pytest.mark.parametrize("stage", ["connecting", "receiving", "validating"])
@@ -231,12 +236,15 @@ def test_unparameterized_result_cannot_silently_erase_data_fields() -> None:
     from pydantic import BaseModel
 
     original = Result[Item](data=Item(value="must survive"))
+    payload = {**metadata("result"), "payload": original}
     with pytest.raises(ValidationError, match="concrete result data model required"):
-        ResultEvent.model_validate({**metadata("result"), "payload": original})
+        ResultEvent.model_validate(payload)
+    payload = {**metadata("result"), "payload": original}
     with pytest.raises(ValidationError, match="concrete result data model required"):
-        ResultEvent[BaseModel].model_validate({**metadata("result"), "payload": original})
+        ResultEvent[BaseModel].model_validate(payload)
+    untyped_result = Result(data=original.data)
     with pytest.raises(ValueError, match="concrete result data model required"):
-        result_event(Result(data=original.data), stream_id=STREAM_ID)
+        result_event(untyped_result, stream_id=STREAM_ID)
 
 
 @pytest.mark.parametrize("alternative", [None, dict])
@@ -279,8 +287,9 @@ def test_result_event_requires_existing_typed_result(key: str, value: object) ->
     data = result()
     payload = cast(dict[str, object], data["payload"])
     data["payload"] = {**payload, key: value}
+    raw = json.dumps(data)
     with pytest.raises(ValidationError):
-        ResultEvent[Item].model_validate_json(json.dumps(data))
+        ResultEvent[Item].model_validate_json(raw)
 
 
 @pytest.mark.parametrize(
@@ -293,8 +302,9 @@ def test_result_event_requires_existing_typed_result(key: str, value: object) ->
     ],
 )
 def test_tags_cannot_relabel_other_payloads(model: type[Model], data: dict[str, object]) -> None:
+    raw = json.dumps(data)
     with pytest.raises(ValidationError):
-        model.model_validate_json(json.dumps(data))
+        model.model_validate_json(raw)
 
 
 def test_union_selects_only_the_expected_event_variant() -> None:
@@ -412,8 +422,9 @@ def test_decoded_error_message_is_rebuilt_locally(kind: str) -> None:
     ],
 )
 def test_error_envelope_rejects_untrusted_shape_or_types(key: str, value: object) -> None:
+    payload = {**envelope(), key: value}
     with pytest.raises(ValidationError):
-        ErrorEnvelope.model_validate({**envelope(), key: value})
+        ErrorEnvelope.model_validate(payload)
 
 
 @pytest.mark.parametrize("key", list(envelope()))
@@ -440,8 +451,9 @@ def test_error_wire_has_no_optional_omitted_fields(key: str) -> None:
 def test_error_details_are_closed_and_reason_codes_are_not_operation_reasons(
     details: object,
 ) -> None:
+    payload = {**envelope(), "details": details}
     with pytest.raises(ValidationError):
-        ErrorEnvelope.model_validate({**envelope(), "details": details})
+        ErrorEnvelope.model_validate(payload)
 
 
 def test_capacity_context_requires_a_specific_kind() -> None:
@@ -491,8 +503,9 @@ def test_error_event_cannot_change_or_drop_operation_context(
 ) -> None:
     error = OperationError("invalid_response", inner_id)
     data = {**metadata("error", outer_id), "payload": error.envelope()}
+    raw = json.dumps(data)
     with pytest.raises(ValidationError):
-        ErrorEvent.model_validate_json(json.dumps(data))
+        ErrorEvent.model_validate_json(raw)
 
 
 @pytest.mark.parametrize("operation_id", [None, OPERATION_ID])

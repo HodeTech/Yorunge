@@ -555,13 +555,14 @@ def test_same_task_checks_every_resume_aclose_and_exit_before_http_context(certi
                     assert isinstance(await anext(stream), ProgressEvent)
 
                     async def foreign(action):
+                        if action == "next":
+                            pending = anext(stream)
+                        elif action == "close":
+                            pending = stream.aclose()
+                        else:
+                            pending = context.__aexit__(None, None, None)
                         with pytest.raises(YorungeError) as caught:
-                            if action == "next":
-                                await anext(stream)
-                            elif action == "close":
-                                await stream.aclose()
-                            else:
-                                await context.__aexit__(None, None, None)
+                            await pending
                         assert caught.value.code == "invalid_request"
 
                     for action in ("next", "close", "exit"):
@@ -577,10 +578,10 @@ def test_invalid_composition_is_rejected_before_http(certificates):
 
         async def run():
             async with HttpxTransport(transport=server.transport()) as transport:
+                payload = request()
+                deadline = time.monotonic() + 3
                 with pytest.raises(YorungeError) as caught:
-                    open_stream(
-                        transport, request(), Value, deadline=time.monotonic() + 3, stream_id="bad"
-                    )
+                    open_stream(transport, payload, Value, deadline=deadline, stream_id="bad")
                 assert caught.value.code == "invalid_request"
 
         asyncio.run(run())
@@ -608,8 +609,9 @@ def test_consumer_backpressure_remains_inside_total_deadline(certificates):
                     await asyncio.sleep(1)
                     pytest.fail("slow consumer escaped the shared total deadline")
 
+        coroutine = run()
         with pytest.raises(OperationError) as caught:
-            asyncio.run(run())
+            asyncio.run(coroutine)
         assert caught.value.code == "transport_timeout"
         assert caught.value.operation_id == OPERATION
         assert [item.event for item in published] == ["progress"]
@@ -639,8 +641,9 @@ def test_response_context_is_closed_if_chunk_iterator_cannot_be_opened():
         ):
             pytest.fail("broken chunk iterator entered the consumer context")
 
+    coroutine = run()
     with pytest.raises(YorungeError) as caught:
-        asyncio.run(run())
+        asyncio.run(coroutine)
     assert caught.value.code == "invalid_response"
     assert caught.value.__context__ is None
     assert closed == [True]

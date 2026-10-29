@@ -82,11 +82,12 @@ def test_every_response_is_checked_against_the_fixture_and_installed_result_mode
     assert json.loads(result.stdout) == {"validated": 1}
     wrong = json.loads(outputs[action])
     wrong["data"]["unexpected_wire_field"] = True
+    content = json.dumps({"action": action, "outputs": [json.dumps(wrong)]})
     with pytest.raises(subprocess.CalledProcessError):
         helpers["run"](
             [sys.executable, "-I", "-c", helpers["VALIDATE"]],
             cwd=tmp_path,
-            content=json.dumps({"action": action, "outputs": [json.dumps(wrong)]}),
+            content=content,
         )
 
 
@@ -124,8 +125,9 @@ def test_zero_exit_cannot_make_a_false_job_or_empty_list_a_success(normal, helpe
         data["attempts"] = []
     else:
         data["outcome"] = {"execution_status": "succeeded"}
+    payload = json.dumps(value)
     with pytest.raises(ValueError, match="incorrect|cursor"):
-        helpers["validate_output"](json.dumps(value), action, expected)
+        helpers["validate_output"](payload, action, expected)
 
 
 def test_duplicate_json_keys_are_rejected_before_typed_validation(normal, helpers):

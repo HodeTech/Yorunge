@@ -496,7 +496,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from yorunge.domain.errors import YorungeError
 
         return renderer.error(YorungeError("request_cancelled"))
-    except (OSError, UnicodeError, ValueError) as error:
+    except (OSError, ValueError) as error:
         return renderer.error(renderer.output_failure(error))
 
     from yorunge.domain.errors import YorungeError

@@ -316,7 +316,8 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
             await self._finish(exc_type, exc, traceback)
         except YorungeError as error:
             # A timeout can replace the cancellation injected by the HTTP context.
-            error.__context__, error.__cause__ = None, None
+            error.__context__ = None
+            error.__cause__ = None
             raise
 
     async def aclose(self) -> None:
@@ -325,7 +326,8 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
         try:
             await self._finish(None, None, None)
         except YorungeError as error:
-            error.__context__, error.__cause__ = None, None
+            error.__context__ = None
+            error.__cause__ = None
             raise
 
     def __aiter__(self) -> OwnedStream[T]:
@@ -426,7 +428,8 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
             try:
                 await self._finish(type(error), error, error.__traceback__)
             except YorungeError as mapped:
-                mapped.__context__, mapped.__cause__ = None, None
+                mapped.__context__ = None
+                mapped.__cause__ = None
                 raise
             raise
         assert failure is not None

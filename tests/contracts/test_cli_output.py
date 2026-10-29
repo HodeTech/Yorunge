@@ -103,7 +103,8 @@ def test_result_specialization_is_preserved_and_uses_the_same_codec(monkeypatch)
     rendered, output, errors = renderer()
     rendered.result(result())
     assert output.getvalue().encode() == expected
-    assert len(calls) == 1 and type(calls[0].payload) is Result[Data]
+    assert len(calls) == 1
+    assert type(calls[0].payload) is Result[Data]
     assert rendered.finish() == 0
     assert errors.getvalue() == ""
 
@@ -167,10 +168,12 @@ def test_failure_before_or_after_progress_uses_exactly_one_safe_channel(
 )
 def test_renderer_revalidates_stream_binding_before_any_write(changes):
     rendered, output, errors = renderer()
+    event = progress().model_copy(update=changes)
     with pytest.raises(YorungeError) as failure:
-        rendered.event(progress().model_copy(update=changes))
+        rendered.event(event)
     assert failure.value.code == "invalid_response"
-    assert output.getvalue() == "" and errors.getvalue() == ""
+    assert output.getvalue() == ""
+    assert errors.getvalue() == ""
     assert rendered.error(failure.value) == 1
     assert json.loads(errors.getvalue())["code"] == "invalid_response"
 
@@ -178,8 +181,9 @@ def test_renderer_revalidates_stream_binding_before_any_write(changes):
 def test_trailing_local_event_is_rejected_without_a_second_terminal_or_stderr():
     rendered, output, errors = renderer()
     rendered.result(result())
+    event = progress(2)
     with pytest.raises(YorungeError) as failure:
-        rendered.event(progress(2))
+        rendered.event(event)
     assert failure.value.code == "invalid_response"
     assert rendered.error(failure.value) == 1
     assert [event["event"] for event in records(output)] == ["result"]
@@ -254,8 +258,9 @@ def test_existing_formats_have_no_new_stream_frame_limit(output):
 
 def test_ndjson_oversize_is_rejected_before_first_publish():
     rendered, output, errors = renderer()
+    outcome = result("x" * (1024 * 1024))
     with pytest.raises(YorungeError) as failure:
-        rendered.result(result("x" * (1024 * 1024)))
+        rendered.result(outcome)
     assert failure.value.code == "output_write_failed"
     assert rendered.error(failure.value) == 1
     assert output.getvalue() == ""
@@ -289,8 +294,9 @@ def test_invalid_write_counts_fail_without_busy_loop(bad_count):
 
     binary = Incomplete()
     rendered, _, errors = renderer(stdout=TextWrapper(binary))
+    outcome = result()
     with pytest.raises(YorungeError) as failure:
-        rendered.result(result())
+        rendered.result(outcome)
     assert failure.value.code == "output_write_failed"
     assert rendered.error(failure.value) == 1
     assert binary.writes == 1
@@ -315,16 +321,20 @@ def test_partial_or_flush_failure_never_retries_stdout(published, flush, io_erro
         binary.flush_failure = io_error
     else:
         binary.failure, binary.fail_at = io_error, binary.writes + 2
+    outcome = result()
     with pytest.raises(OperationError) as failure:
-        rendered.result(result())
+        rendered.result(outcome)
     writes = binary.writes
-    assert failure.value.code == code and failure.value.operation_id == OPERATION
-    assert failure.value.__context__ is None and failure.value.__cause__ is None
+    assert failure.value.code == code
+    assert failure.value.operation_id == OPERATION
+    assert failure.value.__context__ is None
+    assert failure.value.__cause__ is None
     assert rendered.error(failure.value) == exit_code
     assert rendered.error(failure.value) == exit_code
     assert binary.writes == writes
     error = json.loads(errors.getvalue())
-    assert error["code"] == code and error["operation_id"] == OPERATION
+    assert error["code"] == code
+    assert error["operation_id"] == OPERATION
     assert error["details"] == {"reason_code": code, "capacity_kind": None}
     assert "private" not in errors.getvalue()
 
@@ -348,7 +358,8 @@ def test_closed_stderr_does_not_replace_primary_exit_or_retry_any_output():
     rendered = OutputRenderer("json", stdout=TextWrapper(output), stderr=TextWrapper(errors))
     assert rendered.error(YorungeError("config_write_uncertain")) == 5
     assert rendered.error(YorungeError("config_write_uncertain")) == 5
-    assert output.writes == 0 and errors.writes == 1
+    assert output.writes == 0
+    assert errors.writes == 1
 
 
 def test_slow_sink_applies_backpressure_without_background_queue():
@@ -372,11 +383,13 @@ def test_slow_sink_applies_backpressure_without_background_queue():
     try:
         assert entered.wait(5)
         assert not finished.is_set()
-        assert binary.writes == 1 and binary.flushes == 0
+        assert binary.writes == 1
+        assert binary.flushes == 0
     finally:
         release.set()
         worker.join(timeout=5)
-    assert finished.is_set() and binary.flushes == 1
+    assert finished.is_set()
+    assert binary.flushes == 1
 
 
 def test_text_only_sink_handles_short_character_writes():
@@ -435,12 +448,15 @@ def test_result_serialization_failure_is_safe_and_keeps_stdout_empty(monkeypatch
         monkeypatch.setattr(Result[Unsupported], "model_dump_json", rejected)
     stdout, stderr = io.StringIO(), io.StringIO()
     rendered = OutputRenderer(output, stdout=stdout, stderr=stderr)
+    outcome = Result[Unsupported](data=Unsupported(data="value"))
     with pytest.raises(YorungeError) as error:
-        rendered.result(Result[Unsupported](data=Unsupported(data="value")))
+        rendered.result(outcome)
     assert error.value.code == "output_write_failed"
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None
     assert rendered.error(error.value) == 1
-    assert stdout.getvalue() == "" and "private" not in stderr.getvalue()
+    assert stdout.getvalue() == ""
+    assert "private" not in stderr.getvalue()
     assert json.loads(stderr.getvalue())["code"] == "output_write_failed"
 
 
@@ -500,13 +516,17 @@ def test_sigint_after_partial_record_disables_stdout_before_cancellation_reporti
     rendered.event(progress(operation_id=OPERATION))
     complete = bytes(binary.data)
     binary.failure, binary.fail_at = KeyboardInterrupt(), binary.writes + 2
+    outcome = result()
     with pytest.raises(KeyboardInterrupt):
-        rendered.result(result())
+        rendered.result(outcome)
     partial = bytes(binary.data)
-    assert partial.startswith(complete) and len(partial) == len(complete) + 7
+    assert partial.startswith(complete)
+    assert len(partial) == len(complete) + 7
     writes = binary.writes
     assert rendered.error(YorungeError("request_cancelled")) == 6
-    assert binary.writes == writes and bytes(binary.data) == partial
+    assert binary.writes == writes
+    assert bytes(binary.data) == partial
     error = json.loads(errors.getvalue())
-    assert error["code"] == "request_cancelled" and error["operation_id"] == OPERATION
+    assert error["code"] == "request_cancelled"
+    assert error["operation_id"] == OPERATION
     assert error["details"] == {"reason_code": "request_cancelled", "capacity_kind": None}

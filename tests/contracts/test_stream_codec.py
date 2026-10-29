@@ -157,8 +157,9 @@ def test_result_limit_counts_raw_payload_whitespace_and_utf8_bytes() -> None:
     assert_safe_failure(caught, "invalid_response")
     unicode_result = text_result("ğ" * (JSON_LIMIT // 2))
     assert len(unicode_result.data.text) < JSON_LIMIT
+    event = result_event(unicode_result, stream_id=STREAM_ID)
     with pytest.raises(YorungeError) as caught:
-        encode_event(result_event(unicode_result, stream_id=STREAM_ID))
+        encode_event(event)
     assert_safe_failure(caught, "output_write_failed")
 
 
@@ -291,16 +292,19 @@ def test_exact_short_or_contained_long_dynamic_secret_is_never_published(value: 
     with pytest.raises(YorungeError) as caught:
         decode(data, secrets=secrets)
     assert_safe_failure(caught, "invalid_response")
+    event = result_event(result, stream_id=STREAM_ID)
     with pytest.raises(YorungeError) as caught:
-        encode_event(result_event(result, stream_id=STREAM_ID), secrets=secrets)
+        encode_event(event, secrets=secrets)
     assert_safe_failure(caught, "output_write_failed")
 
 
 def test_escaped_unicode_secret_is_checked_after_json_decoding() -> None:
     data = json.dumps(json.loads(wire(text_result(CANARY).model_dump(mode="json"))))
     assert "\\u011f" in data
+    raw = data.encode()
+    secrets = (SecretValue(CANARY),)
     with pytest.raises(YorungeError) as caught:
-        decode(data.encode(), secrets=(SecretValue(CANARY),))
+        decode(raw, secrets=secrets)
     assert_safe_failure(caught, "invalid_response")
 
 
@@ -310,8 +314,9 @@ def test_dynamic_mapping_keys_cannot_use_a_known_secret() -> None:
 
     result = Result[Mapping](data=Mapping(values={"a": "ordinary"}))
     data = wire(result.model_dump(mode="json"))
+    secrets = (SecretValue("a"),)
     with pytest.raises(YorungeError) as caught:
-        decode_event(data, Mapping, stream_id=STREAM_ID, sequence=1, secrets=(SecretValue("a"),))
+        decode_event(data, Mapping, stream_id=STREAM_ID, sequence=1, secrets=secrets)
     assert_safe_failure(caught, "invalid_response")
 
 
@@ -321,8 +326,10 @@ def test_error_provider_message_is_discarded_but_approval_ids_still_have_provena
     assert decoded.payload.message == MESSAGES["invalid_response"]
     assert CANARY not in encode_event(decoded, secrets=(SecretValue(CANARY),)).decode()
     approval = ApprovalNotEffective(OPERATION_ID, OTHER_ID)
+    raw = wire(approval.envelope(), event="error")
+    secrets = (SecretValue(OPERATION_ID),)
     with pytest.raises(YorungeError) as caught:
-        decode(wire(approval.envelope(), event="error"), secrets=(SecretValue(OPERATION_ID),))
+        decode(raw, secrets=secrets)
     assert_safe_failure(caught, "invalid_response")
 
 
@@ -374,8 +381,9 @@ def test_constructed_field_cannot_leak_input_through_pydantic_serializer_warning
     )
     with warnings.catch_warnings(record=True) as emitted:
         warnings.simplefilter("always")
+        secrets = (SecretValue(CANARY),)
         with pytest.raises(YorungeError) as caught:
-            encode_event(event, secrets=(SecretValue(CANARY),))
+            encode_event(event, secrets=secrets)
     assert_safe_failure(caught, "output_write_failed")
     assert all(CANARY not in str(item.message) for item in emitted)
 
@@ -390,13 +398,15 @@ def test_custom_validator_output_is_secret_checked_after_validation() -> None:
             return CANARY if value == "trigger" else value
 
     payload = text_result("trigger").model_dump(mode="json")
+    raw = wire(payload)
+    secrets = (SecretValue(CANARY),)
     with pytest.raises(YorungeError) as caught:
         decode_event(
-            wire(payload),
+            raw,
             Rewritten,
             stream_id=STREAM_ID,
             sequence=1,
-            secrets=(SecretValue(CANARY),),
+            secrets=secrets,
         )
     assert_safe_failure(caught, "invalid_response")
 
@@ -410,8 +420,10 @@ def test_custom_serializer_cannot_bypass_known_secret_provenance() -> None:
             return CANARY
 
     result = Result[Serialized](data=Serialized(text="ordinary"))
+    event = result_event(result, stream_id=STREAM_ID)
+    secrets = (SecretValue(CANARY),)
     with pytest.raises(YorungeError) as caught:
-        encode_event(result_event(result, stream_id=STREAM_ID), secrets=(SecretValue(CANARY),))
+        encode_event(event, secrets=secrets)
     assert_safe_failure(caught, "output_write_failed")
 
 
@@ -425,8 +437,10 @@ def test_computed_field_cannot_publish_outside_the_closed_model() -> None:
             return CANARY
 
     result = Result[Computed](data=Computed(text="ordinary"))
+    event = result_event(result, stream_id=STREAM_ID)
+    secrets = (SecretValue(CANARY),)
     with pytest.raises(YorungeError) as caught:
-        encode_event(result_event(result, stream_id=STREAM_ID), secrets=(SecretValue(CANARY),))
+        encode_event(event, secrets=secrets)
     assert_safe_failure(caught, "output_write_failed")
 
 
@@ -445,6 +459,7 @@ def test_closed_progress_literal_is_not_a_dynamic_secret_echo() -> None:
 
 def test_bound_error_envelope_must_keep_inner_and_outer_operation_ids() -> None:
     payload = OperationError("stream_interrupted", OTHER_ID).envelope()
+    raw = wire(payload, event="error", operation_id=OPERATION_ID)
     with pytest.raises(YorungeError) as caught:
-        decode(wire(payload, event="error", operation_id=OPERATION_ID), operation_id=OPERATION_ID)
+        decode(raw, operation_id=OPERATION_ID)
     assert_safe_failure(caught, "invalid_response", OPERATION_ID)

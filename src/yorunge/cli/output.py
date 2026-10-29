@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import TYPE_CHECKING, TextIO, TypeVar
+from typing import TYPE_CHECKING, BinaryIO, TextIO, TypeVar
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -31,24 +31,29 @@ def write_utf8(message: str | bytes, stream: TextIO) -> None:
         raise OSError("output stream is unavailable")
     binary = getattr(stream, "buffer", None)
     if binary is not None:
-        pending = memoryview(
-            message.encode("utf-8", "strict") if isinstance(message, str) else message
-        )
-        while pending:
-            written = binary.write(pending)
-            if type(written) is not int or written <= 0 or written > len(pending):
-                raise OSError("incomplete output write")
-            pending = pending[written:]
-        binary.flush()
+        _write_binary(message, binary)
     else:
-        if isinstance(message, bytes):
-            message = message.decode("utf-8", "strict")
-        while message:
-            written = stream.write(message)
-            if type(written) is not int or written <= 0 or written > len(message):
-                raise OSError("incomplete output write")
-            message = message[written:]
-        stream.flush()
+        _write_text(message, stream)
+
+
+def _write_binary(message: str | bytes, stream: BinaryIO) -> None:
+    pending = memoryview(message.encode("utf-8", "strict") if isinstance(message, str) else message)
+    while pending:
+        written = stream.write(pending)
+        if type(written) is not int or written <= 0 or written > len(pending):
+            raise OSError("incomplete output write")
+        pending = pending[written:]
+    stream.flush()
+
+
+def _write_text(message: str | bytes, stream: TextIO) -> None:
+    text = message.decode("utf-8", "strict") if isinstance(message, bytes) else message
+    while text:
+        written = stream.write(text)
+        if type(written) is not int or written <= 0 or written > len(text):
+            raise OSError("incomplete output write")
+        text = text[written:]
+    stream.flush()
 
 
 def _silence_failed_descriptor(stream: TextIO) -> None:
@@ -141,7 +146,7 @@ class OutputRenderer:
         failure: YorungeError | None = None
         try:
             write_utf8(message, self.stdout)
-        except (OSError, UnicodeError, ValueError) as error:
+        except (OSError, ValueError) as error:
             failure = self.output_failure(error)
         except KeyboardInterrupt:
             # An interrupted write may already have delivered a partial record.
@@ -246,7 +251,7 @@ class OutputRenderer:
         )
         try:
             write_utf8(message + "\n", self.stderr)
-        except (OSError, UnicodeError, ValueError):
+        except (OSError, ValueError):
             _silence_failed_descriptor(self.stderr)
 
     def error(self, error: YorungeError) -> int:
@@ -267,6 +272,31 @@ class OutputRenderer:
             self._exit_code = (self._exit_code or error.exit_code) if known else 6
             return self._exit_code
 
+    def _publish_error(self, error: YorungeError) -> YorungeError | None:
+        from yorunge.domain.streams import ErrorEvent, error_payload
+
+        failure: YorungeError | None = None
+        try:
+            self.event(
+                ErrorEvent(
+                    schema_version=1,
+                    stream_id=self.stream_id,
+                    sequence=self._sequence,
+                    event="error",
+                    operation_id=self.operation_id,
+                    payload=error_payload(error, operation_id=self.operation_id),
+                )
+            )
+        except Exception as secondary:
+            from yorunge.domain.errors import YorungeError
+
+            failure = (
+                secondary
+                if isinstance(secondary, YorungeError)
+                else self._failure("output_write_failed")
+            )
+        return failure
+
     def _report_error(self, error: YorungeError) -> int:
         error = self._bound_error(error)
         if self._reported:
@@ -275,28 +305,7 @@ class OutputRenderer:
         self._exit_code = error.exit_code
         if self.output == "ndjson" and self._published and not self._output_failed:
             if not self._terminal:
-                from yorunge.domain.streams import ErrorEvent, error_payload
-
-                failure: YorungeError | None = None
-                try:
-                    self.event(
-                        ErrorEvent(
-                            schema_version=1,
-                            stream_id=self.stream_id,
-                            sequence=self._sequence,
-                            event="error",
-                            operation_id=self.operation_id,
-                            payload=error_payload(error, operation_id=self.operation_id),
-                        )
-                    )
-                except Exception as secondary:
-                    from yorunge.domain.errors import YorungeError
-
-                    failure = (
-                        secondary
-                        if isinstance(secondary, YorungeError)
-                        else self._failure("output_write_failed")
-                    )
+                failure = self._publish_error(error)
                 if failure is not None:
                     if error.exit_code != 5:
                         error = failure

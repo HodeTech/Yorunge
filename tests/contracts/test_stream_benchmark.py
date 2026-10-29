@@ -42,8 +42,9 @@ def test_expected_digest_has_independent_fixed_vectors(size, expected):
 
 @pytest.mark.parametrize("size", [True, 0, -1, 1.5, 1024 * 1024 * 1024 + 1])
 def test_expected_digest_rejects_unbounded_or_noninteger_size(size):
+    expected_sha256 = helpers()["expected_sha256"]
     with pytest.raises(ValueError, match="expected size"):
-        helpers()["expected_sha256"](size)
+        expected_sha256(size)
 
 
 @pytest.mark.parametrize(
@@ -154,8 +155,10 @@ def test_server_counts_limit_actual_requests_and_connections(field, value):
 def test_inconsistent_or_nonfinite_measurements_are_rejected(changes):
     record = measurement()
     record.update(changes)
+    evaluate_run = helpers()["evaluate_run"]
+    payload = telemetry()
     with pytest.raises(ValueError):
-        helpers()["evaluate_run"](record, telemetry(), 65537, record["received_sha256"])
+        evaluate_run(record, payload, 65537, record["received_sha256"])
 
 
 @pytest.mark.parametrize("reverse_dns_allowed", [True, False])
@@ -274,8 +277,9 @@ def test_output_is_explicit_new_path_and_never_overwrites_existing_evidence(tmp_
         report = tmp_path / "alias" / "report.json"
     else:
         report = tmp_path / "missing" / "report.json"
+    new_path = helpers()["new_path"]
     with pytest.raises(ValueError, match="new path"):
-        helpers()["new_path"](report)
+        new_path(report)
     if kind == "file":
         assert report.read_text() == "original"
     if kind == "symlink":
@@ -523,10 +527,12 @@ def test_server_startup_exit_is_distinct_and_retains_diagnostics(tmp_path):
         "raise SystemExit(23)\n"
     )
     work = tmp_path / "run"
+    measure_one = helpers()["measure_one"]
+    python = Path(sys.executable)
     with pytest.raises(ValueError, match="server exited before readiness.*23"):
-        helpers()["measure_one"](
+        measure_one(
             project,
-            Path(sys.executable),
+            python,
             work,
             tmp_path / "unused-manifest",
             (tmp_path / "unused-cert", tmp_path / "unused-key"),
@@ -547,10 +553,10 @@ def test_client_timeout_keeps_partial_diagnostics_and_original_exception(tmp_pat
 
     monkeypatch.setattr(subprocess, "run", expired)
     work = tmp_path / "run"
+    measure_one = helpers()["measure_one"]
+    python = Path(sys.executable)
     with pytest.raises(subprocess.TimeoutExpired) as caught:
-        helpers()["measure_one"](
-            ROOT, Path(sys.executable), work, tmp_path / "unused-manifest", certs, 65537
-        )
+        measure_one(ROOT, python, work, tmp_path / "unused-manifest", certs, 65537)
     assert caught.value is failure
     assert (work / "client-stdout.txt").read_text() == "partial stdout"
     assert (work / "client-stderr.txt").read_text() == "partial stderr"
@@ -607,10 +613,10 @@ def test_server_log_write_error_preserves_original_worker_exception(
 
     monkeypatch.setattr(Path, "write_text", denied)
     monkeypatch.setattr(subprocess, "run", failed)
+    measure_one = helpers()["measure_one"]
+    python = Path(sys.executable)
     with pytest.raises(type(failure)) as caught:
-        helpers()["measure_one"](
-            ROOT, Path(sys.executable), tmp_path / "run", tmp_path / "unused", certs, 65537
-        )
+        measure_one(ROOT, python, tmp_path / "run", tmp_path / "unused", certs, 65537)
     assert caught.value is failure
     assert (tmp_path / "run/server-stdout.txt").is_file()
 
@@ -634,9 +640,9 @@ def test_server_log_write_error_still_fails_without_measurement_error(tmp_path, 
     try:
         raise ValueError("outer caller exception")
     except ValueError:
+        measure_one = helpers()["measure_one"]
+        python = Path(sys.executable)
         with pytest.raises(PermissionError) as caught:
-            helpers()["measure_one"](
-                ROOT, Path(sys.executable), tmp_path / "run", tmp_path / "unused", certs, 65537
-            )
+            measure_one(ROOT, python, tmp_path / "run", tmp_path / "unused", certs, 65537)
     assert caught.value is failure
     assert (tmp_path / "run/server-stdout.txt").is_file()

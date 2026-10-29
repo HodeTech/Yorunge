@@ -181,11 +181,11 @@ def test_python_cancellation_outside_critical_publication_propagates(
         raise cancellation
 
     monkeypatch.setattr(configuration, name, cancelled)
+    action = api.initialize_config if initial else api.set_project
+    arguments = () if initial else ("changed",)
+    options = {"config": target, "profile": "created"} if initial else {"config": target}
     with pytest.raises(interruption) as caught:
-        if initial:
-            api.initialize_config(config=target, profile="created")
-        else:
-            api.set_project("changed", config=target)
+        action(*arguments, **options)
     assert caught.value is cancellation
     assert calls == [1]
     if boundary == "confirmed":
