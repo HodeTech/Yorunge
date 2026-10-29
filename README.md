@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 28 Ekim 2026:** Çevrimdışı CLI/Python ve yerel cache/execution hazırlığı/onay yönetimi çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
+**Durum — 29 Ekim 2026:** Çevrimdışı CLI/Python ve yerel cache/execution hazırlığı/onay yönetimi ve jobs geçmişi sorgusu çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
 
 ## Çalışan başlangıç
 
@@ -78,6 +78,19 @@ Kalıcı execution hazırlığı:
 ```
 
 Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kaydıdır; gerçek araç/uzak auth/tam girdi kapanışı eksik olduğundan public plan draft ve onaylanamazdır. Yerel manifest bağlamak için recipe ve açık input-root gerekir; yalnız manifest dosyasının hash'i veri kümesinin tamamını doğrulamaz. Güncel validate, tam digest approve ve seçili revoke/forget [execution referansında](docs/reference/execution-plan.md); eski offline v1 komutları stateless kalır. [Test, review ve performans kanıtı](docs/research/p01-3-implementation-validation.md).
+
+## Yerel iş geçmişi
+
+```sh
+.venv/bin/yorunge jobs list --state-dir ./private-state --output json
+.venv/bin/yorunge jobs list --status unknown --limit 20 --state-dir ./private-state
+```
+
+Listeden alınan kimlik `jobs show --operation-id UUID --state-dir ./private-state` ile okunur. Python karşılıkları `api.list_jobs(...)` ve `api.show_job(operation_id, ...)` çağrılarıdır. Filtre/cursor ve tam wire [jobs referansındadır](docs/reference/operations.md). Boş store boş liste verir; plan hazırlamak/onaylamak job oluşturmaz. Public run ve EVREN adaptörü henüz yoktur.
+
+Bu sorgular yalnız son yerel kaydı gösterir; `running` güncel uzak çalışma kanıtı değildir. Config/env/girdi/sağlayıcı okunmaz, uzlaştırma veya yeniden gönderim yapılmaz. Unknown/failed işin başarıyla okunması exit 0 ve dış Result completed demektir; gerçek iş durumu data içindedir. Açık state erişimi store kurulumunu/migration veya SQLite kurtarmasını çalıştırabilir.
+
+İç koordinasyon plan başına tek operation ve kalıcı gönderim niyetiyle ikinci gönderimi önler. Kimlik reset'i gönderim öncesi işi cancelled, gönderim niyeti olan işi unknown yapar; daha önce arm edilmiş dış etkiyi kesin durdurmaz. Tarihçe otomatik silinmez; 1.024 lifetime operation bütün plan slotlarını bağladıysa yeni plan üretimi kontrollü reddedilir. Yeni state dizini eski unknown işi yeniden gönderme çözümü değildir.
 
 ## Ürün yaklaşımı
 

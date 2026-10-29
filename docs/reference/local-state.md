@@ -59,7 +59,7 @@ P01-3 adım 2 migration2→3 ile execution_plans ekler; [exact plan/bakım sözl
 
 ## P01-4 bakım preview v3
 
-**P01-4 çalışma dalında uygulanıyor; kabul/review sürüyor:** [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kararıyla preview v3 ve operation reset tüketicisi eklendi. Development teslimi ve paket kabulü henüz yoktur. Şema 6 runtime'ında başarılı bakım yalnız reset'tir; restore/recover runtime kapısında I/O öncesi reddedilir ve v2/v3 preview üretmez. Tarihsel şema 5 runtime'ının paylaşılan preview v2 davranışı yukarıda korunur. Yeni runtime'da MaintenancePreview tek kapalı v3 tipidir; action'a göre farklı sürüm seçilmez, action enum'u reset/restore/recover olarak korunur.
+**P01-4 çalışma dalında adım 1–3 uygulandı ve verified; jobs/paket kabulü sürüyor:** [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kararıyla preview v3 ve operation reset tüketicisi eklendi. Development teslimi ve paket kabulü henüz yoktur. Şema 6 runtime'ında başarılı bakım yalnız reset'tir; restore/recover runtime kapısında I/O öncesi reddedilir ve v2/v3 preview üretmez. Tarihsel şema 5 runtime'ının paylaşılan preview v2 davranışı yukarıda korunur. Yeni runtime'da MaintenancePreview tek kapalı v3 tipidir; action'a göre farklı sürüm seçilmez, action enum'u reset/restore/recover olarak korunur.
 
 **P01-4 dalı:** Adım 1 şema/repository ve adım 2 admission/lease/tek gönderim ikişer review turuyla kapandı. Adım 3 preview v3, geçmişi koruyan reset ve trusted uzlaştırmayı ekliyor; adım 3 review/kabulü devam eder. Public jobs adım 4'tedir ve henüz uygulanmış sayılmaz. [Kabul ve kalan adımlar](../research/p01-4-implementation-validation.md).
 

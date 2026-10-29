@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-28. **Durum:** Offline çekirdek, yerel kimlik/state/config/cache ve execution hazırlığı/onay yönetimi uygulandı; bütünleşik PR kabulü sürüyor.
+**Güncellendi:** 2026-10-29. **Durum:** Offline çekirdek, yerel kimlik/state/config/cache ve execution hazırlığı/onay/operation koordinasyonu ile yerel jobs sorgusu uygulandı; bütünleşik PR kabulü sürüyor.
 
 ```text
 src/yorunge/
@@ -14,6 +14,9 @@ src/yorunge/
   adapters/capability_cache.py # İşlemsel cache/clock ve son bağ/süre kapısı
   adapters/input_files.py # Descriptor no-follow yürüyüşü ve bounded hash
   adapters/execution_store.py # Değişmez plan/onay, kota ve atomik yönetim
+  adapters/operation*.py  # Admission/lease/dispatch/recovery, strict tarihçe ve reset tüketicisi
+  adapters/jobs.py        # Snapshot içinde bounded toplu yerel sorgu
+  domain/jobs.py          # Strict filtre/limit ve store/filtre bağlı keyset cursor
   adapters/maintenance.py # Açık reset/restore/recover
   adapters/local_files.py # Private dosya/kilit/deadline ve platform sınırı
   adapters/configuration.py # Atomik config yazımı/backup; diagnostics ayrı adaptörde

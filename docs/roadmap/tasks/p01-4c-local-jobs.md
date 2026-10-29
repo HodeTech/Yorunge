@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4c — Yerel jobs list/show
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b bu dalda verified; bağımlılık kabulü sonrası adım 4 başlıyor. Public jobs henüz teslim edilmedi.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b bu dalda verified; adım 4 kod/ilk test/build/kurulu jobs ve startup kabulü tamamlandı. İki fresh review turu ve paket kapanışı sıradadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,4 +41,4 @@ Contract CLI/Python/wire, integration gerçek SQLite ve ayrı süreç/restart/sn
 
 ## Teslim kaydı
 
-Uygulanmadı; ürün commit/review/test/ölçüm veya PR kanıtı yok. P01-4b sonrası paket adım 4'te iki fresh review turuyla tamamlanacak; bütünleşik kapanış aynı P01-4 PR'ındadır.
+İlk uygulama CLI/Python/strict cursor/bounded snapshot ve kullanıcı belgelerini içerir. 1.686 full test, son hedefli 93 test, iki temiz kurulum, 30-process normal/yoğun jobs ve eşli mevcut startup kapıları geçti; [ilk kabul kaydı](../../research/p01-4-implementation-validation.md#adım-4--public-yerel-jobs-ve-ilk-bütünleşik-doğrulama). Commit sonrası iki fresh review turu ve son kaynak/bütünleşik kapanış sıradadır; PR henüz açılmadı, kart in_progress kalır.

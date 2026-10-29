@@ -154,6 +154,39 @@ Ardından aynı sabit 0092d40 runtime kaynağıyla [24 yeni migration örneği](
 
 **P01-4b bu dalda verified:** adım 1–3 uygulama, her adımda iki fresh review turu ve doğrulanmış fix'ler, 1.594 test, 27 operation + 24 migration pozitif kaynak kabulü tamamlandı. Public jobs/kurulu artefakt/200 ms kabulü adım 4'te tamamlanacak; paket PR'ı henüz açılmadı.
 
+## Adım 4 — Public yerel jobs ve ilk bütünleşik doğrulama
+
+`api.list_jobs/show_job` ve `jobs list/show` Accepted exact sözleşmeyle eklendi. Query Result v1 completed/null + local_history_only döner; iş durumu data'dadır. CLI text execution/delivery'yi ayrı gösterir ve kaydın stale olabileceğini söyler. Public run/backend/reconcile/watch/stop açılmadı; normal prepare job yaratmaz. Stateful query state'i açıkça açar; config/env/girdi/provider çözümü yapmaz.
+
+Liste sayfada en çok 101 operation/plan satırı, 1.601 attempt satırı, sayfa başına bounded outcome/son event alır. Beş SELECT ve BEGIN/ROLLBACK ile sayfa başına yedi statement; 1 ve 7 kayıtta aynı query sayısı gerçek SQLite trace ile doğrulandı. History count/min/max indeks üzerinden, yalnız son payload toplu join'le okunur; bütün geçmiş payload zinciri show/full doğrulamadadır. Strict ortak plan/approval/attempt/outcome/clock/projection kuralları saf yardımcıya ayrıldı; current clock snapshot'ı listede bir kez okunur, execution/full consumer'ları canlı ilişkileri ve bütün history zincirini doğrulamayı sürdürür. Immutable migration 1–5/handler/şema 6 manifesti değiştirilmedi.
+
+Kapalı cursor store/filtre ve artan immutable created_at/ID anahtarına bağlıdır; bool/float/duplicate/non-finite/UTF-8/extra/padding/oversize ve yanlış store/filtre reddedilir. İki sayfa arasında durum değişirse ilan edilen yeni snapshot sınırı korunur. Gerçek ikinci SQLite bağlantısında atomik sahiplik/attempt değişimi hazırken açık reader snapshot'ı commit'i bekletir; list/show eski tutarlı kaydı, sonraki sorgu yeni kaydı görür. İlk test düzeni coordinator'ın daha erken clock transaction'ında bloklandığından, doğrudan geçerli ownership transaction'ıyla interleaving sınırı düzeltildi; ürün kusuru sayılmadı.
+
+İlk ürün kaynağında **1.686 passed / 274,40 s**, Ruff ve strict mypy (51 src/script kaynağı), 114 Markdown ve 6 skill/9 kart kontrolleri geçti. Sonrasında kayıp ID'nin CLI hata eşliği ve liste metninin cursor/boş durum kabulü ayrıca genişletildi; son hedefli jobs/fixture/probe takımı **93 passed / 21,14 s** verdi; bunlar yeni full koşu diye sunulmaz. Ölçüm helper'ındaki göreli executable yolu ön kontrolde hata verdi ve hiç örnek üretmedi; venv symlink'i korunarak mutlak yol kullanımı düzeltildi, altı helper testi yeniden geçti. İlk ham ölçümler aşağıdadır; iki fresh review turu henüz tamamlanmadı.
+
+### Kurulu jobs performansı ve veri hacmi
+
+[İlk jobs ham kaydı](p01-4-step-4-initial-jobs-budget.json), M5 Max/macOS 27.0.1/CPython 3.11.18/SSD/APFS üzerinde, geliştirme araçları içermeyen ayrı frozen runtime venv'e kurulu wheel'i kullanır. Her modda ilk süreç ayrı, üç warmup ve **30 yeni süreç**; nearest-rank p95, tüm örnekler ve tam kaynak hash haritası korunur. Kaynak ölçüm boyunca değişmedi, kurulu tüm Python kaynak baytları checkout adayıyla eşleşti. Setup/hash/ek tanısal worker süreleri komut ölçümüne katılmadı; OS cache'i boşaltılmadı ve fiziksel soğuk başlangıç iddiası yoktur. Yeni jobs için önceki sürüm karşılaştırması uydurulmadı; mutlak 200 ms hedefidir.
+
+| Yol | p95 ms | Sınır ms | Ayrı tanısal worker tepe RSS MiB |
+|---|---:|---:|---:|
+| Normal list | 111,119 | 200 | 46,11 |
+| Normal show | 104,767 | 200 | 45,25 |
+| Yoğun list | 165,678 | 200 | 53,61 |
+| Yoğun show | 104,372 | 200 | 45,98 |
+
+Normal fixture bir operation/plan/onay/cache, bir attempt ve üç event; yoğun fixture 1.024 operation/plan/onay/cache, **16.384 attempt / 262.144 event / 1.024 outcome** taşır. Yoğun plan payload'ı **67.108.864 byte**, cache 33.554.432 byte, attempt 4.854.784 byte, event 85.798.912 byte, outcome 169.984 byte'dır. Her plan 65.536 byte; current provider ID/status 256/128 karakter sınırındadır. Kapalı historical attempt/outcome nesneleri serbest padding alanı taşımadığından teorik bütün byte kotalarının aynı anda doldurulduğu iddia edilmez; gerçek maksimum payload'lar ham kayıttadır. Yoğun show dış Result 71.063 byte'dır; JobView'un 256 KiB sınırı ayrıca decoder'da korunur.
+
+Ek tanısal worker bütün interpreter/import yaşamının RSS tepesini ölçer; timed CLI süreçlerinin tek tek RSS'i diye sunulmaz. Açılış dahil list/show 44/46 SQLite statement üretir; saf sayfa sorgusunun yedisi bunun alt kümesidir. Özgün n=1.000 deadline callback'i korunur; yoğun list/show örneklenmiş VM quanta 203.000/2.000'dir ve bütün callback'ler orijinale delege edilir. Normal örnekte callback sıfır olması gerçek VM adımının sıfır olduğu anlamına gelmez. Bütün jobs sorgularından sonra kaydedilen logical hacimler, immutable history/plan/outcome hash'leri, epoch, lease sayısı ve durum sayıları aynı kaldı. Bu snapshot bütün mutable payload baytlarının hash'ini kaydetmez.
+
+### Artefakt, yardım ve mevcut başlangıç kapıları
+
+[İlk iki temiz kurulum](p01-4-step-4-initial-installations.json): wheel **50**, sdist **310** izinli üye. İkisinde de konsol/import kökeni ve eski v1/cache/execution + yeni boş olmayan jobs CLI/API/text smoke geçti. Kurulu ölçüm wheel SHA-256'sı ve temiz kurulum wheel'i aynıdır: `03829c63cd3e0b2c0206ddcb92a8456489c7c5a4711566be000201ac200398b3`. Fixture kaynak geliştirme ortamında hazırlanır; temiz runtime'a pytest veya fixture backend kurulmaz. Bu ilk build kanıtıdır, yayın veya son review head artefaktı değildir.
+
+[30 yardım çıktısı](p01-4-initial-help-parity.json) adım 3 sonuyla karşılaştırıldı: 29'u bayt düzeyinde aynı, kökte yalnız beklenen jobs seçeneği/açıklaması değişti. Yeni jobs/aile/fiil yardımının metadata guard'ı da geçti.
+
+[İlk eşli startup kabulü](p01-4-step-4-initial-startup.json), development a9f1f2e detached checkout'u ile bu adayın ayrı frozen wheel/runtime ortamlarını aynı host'ta AB/BA sırasıyla ölçer. Üç warmup + 30 çift, eşit 1.024 cache/1.212.625 payload byte ve bütün örnekler korunur; kaynak sabittir. Aday p95 help **24,766**, version **23,005**, context **72,323**, cache **112,890 ms** ile mevcut 500/200 ms kapılarını geçti. Bu yerel kabul Linux PR/merge çıktısı değildir; kullanıcının açık tercihiyle o dış takip paket PR'ında değerlendirilecektir.
+
 ## Sonraki adımlar
 
-Adım 1–3 commit ve ikişer fresh review turuyla kapandı; public jobs ve bütünleşik kabul (adım 4) otomatik ilerler. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.
+Adım 1–3 commit ve ikişer fresh review turuyla kapandı; adım 4 ilk uygulama/kabulü sonrası commit ve iki fresh review turu sıradadır. Son runtime kaynağı değişen operation decoder yolu için yoğun kabul paket kapanışında tekrar değerlendirilecek. Fiziksel güç kesintisi, gerçek EVREN/ForgeLM, Windows veya yayımlanmış paket kanıtı yoktur. PR ancak bütün paket tamamlandıktan sonra development'a açılır ve kullanıcı incelemesine bırakılır.

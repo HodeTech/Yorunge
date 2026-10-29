@@ -17,8 +17,8 @@
 | C09 | Seçilebilir LLM eğitim aracı | ForgeLM veya muadille aynı görevi yapmak | ForgeLM kodu; muadil adaptörleri araştırılacak | Planlandı | P03 |
 | C10 | LLM veri hazırlama/denetim/üretim, fit, değerlendirme, merge/export | Eğitim çevrimini tamamlamak | ForgeLM ilgili yetenekleri; göreve özel uyum gerekli | Planlandı | P03 aşamalı |
 | C11 | GPU, kuyruk, rezervasyon, kota | Kaynak ve tüketimi görmek | Kamu altyapısı ve istemci/kota şeması | Planlandı | P02/P03 |
-| C12 | İş kaydı, izleme, uzlaştırma, artefakt | Kesintiden toparlanmak | Yörünge'nin çekirdek gereksinimi | Uygulanıyor — offline draft ve kalıcı execution hazırlığı/validity/digest onayı testli; operation/lease/teslim yok | P01–P03 |
-| C13 | Tekrarlanabilir reçete ve JSON API | Otomasyon kurmak | Yeni Yörünge sözleşmesi | Uygulanıyor — dar YAML/JSON, ortak Python API ve ayrı stateful cache/plan/onay testli | P01–P03 |
+| C12 | İş kaydı, izleme, uzlaştırma, artefakt | Kesintiden toparlanmak | Yörünge'nin çekirdek gereksinimi | Uygulanıyor — offline draft ve kalıcı execution hazırlığı/validity/digest onayı testli; operation/lease/recovery/reset testli, yerel jobs sorgusu uygulandı; uzak run/teslim yok | P01–P03 |
+| C13 | Tekrarlanabilir reçete ve JSON API | Otomasyon kurmak | Yeni Yörünge sözleşmesi | Uygulanıyor — dar YAML/JSON, ortak Python API, stateful cache/plan/onay ve yerel jobs sorgusu testli | P01–P03 |
 | C14 | MCP ve gelişmiş terminal/köprü | Ajanlardan aynı işi yürütmek | Yörünge adaptörü ve protokol/host doğrulaması gerekli | Planlandı | P04 |
 | C15 | OCR/ses ve ileri servisler | Metin dışı girdi/çıktı işlemek | Gateway şemasında servis yüzeyi var | Planlandı | P04 |
 | C16 | EVREN runtime'da haricî araç | EVREN GPU'sunda LLM eğitmek | İstemci gözlemi; genel kullanıcı erişimi doğrulanmadı | Erişim kapılı plan | P03 keşif / P04 uygulama |

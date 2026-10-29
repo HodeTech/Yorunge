@@ -19,7 +19,7 @@
 - [PR #9 development merge kapanışı](p01-3-implementation-validation.md#pr-9-development-merge-kapanışı): kullanıcı merge’i, şema 5/V2 teslimi ve 1.304 test/iki temiz kurulum; [merge head ham başlangıç ölçümü](p01-3-followup-merged-startup.json) cache p95 218,223 ms ile başarısızdır. CI performans takibi açık kalır.
 - [Başlangıç CI güvenilirliği ve CLI bakım kabulü](startup-ci-reliability.md): izole frozen wheel ortamları, aynı-host AB/BA ölçümü, gerçek A/B ve A/A kontrolü; yerel kabul tamamlandı, Linux CI çıktıları P01-4 PR/merge akışında incelenecek.
 - [P01-4 uygulama öncesi inceleme](p01-4-readiness-review.md): üç bağımsız preflight, mevcut kod/Accepted sınırlar, operation/ownership ve jobs karar boşlukları; Proposed ADR-0016 ve ölçülebilir kart/plan hazırlığı, ürün kabulü değildir.
-- [P01-4 uygulama/kabul kaydı](p01-4-implementation-validation.md): kullanıcı review kapanışı ve Accepted ADR-0016; adım 1–3 ikişer fresh review turuyla kapandı; 1.594 test, son kaynakta 27/27 operation + 24/24 migration kabulü; P01-4b bu dalda verified, adım 4/paket kabulü sürüyor.
+- [P01-4 uygulama/kabul kaydı](p01-4-implementation-validation.md): kullanıcı review kapanışı ve Accepted ADR-0016; adım 1–3 ikişer fresh review turuyla kapandı; 1.594 test, son kaynakta 27/27 operation + 24/24 migration kabulü; P01-4b bu dalda verified, adım 4 ilk uygulama/test/kurulum/jobs-startup ölçümleri geçti; iki fresh review turu ve paket kapanışı sürüyor.
 - [P01-4 operation bütçe probe'u](p01-4-operation-budget-probe.py): yeni sentetik normal/azami terminal/karma store'larda fresh süreç, özgün 5 s deadline/callback, wall/RSS ve örneklenmiş VM callback quanta kaydı; [ilk ham 27 işlem](p01-4-step-3-operation-budget.json), [iki review sonrası 27 işlem](p01-4-step-3-reviewed-operation-budget.json) ve [son kaynak 24 migration](p01-4-step-3-reviewed-migration-budget.json); ürün/review kabulü uygulama kaydındadır.
 - [P01-2 adım 2 başlangıç ham ölçümü](p01-2-step-2-startup.json): store/migration adımının son ürün head'inde ayrı süreçlerle ölçüm; kapsam uygulama kabul kaydındadır.
 
@@ -41,3 +41,5 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 - [P01-3 kullanıcı review sonrası başarılı Linux ölçümü](p01-3-review-linux-startup-passed.json): 27f6f27/AMD EPYC 9V45, dört bütçe geçti; önceki farklı-CPU başarısızlığı korunur.
 
 - [P01-3 merge head başlangıç ölçümü](p01-3-merged-startup.json): e32cb42 development push CI'ı, 1.024 kayıt/30 süreç; ortam ve kabul sınırı merge kapanışındadır.
+
+- [P01-4 kurulu jobs bütçe probe'u](p01-4-jobs-budget-probe.py): [ilk ham normal/yoğun ölçüm](p01-4-step-4-initial-jobs-budget.json), [iki temiz kurulum](p01-4-step-4-initial-installations.json), [eşli startup](p01-4-step-4-initial-startup.json) ve [30 yardım çıktısı eşliği](p01-4-initial-help-parity.json). Adım 4 review/paket kabulü uygulama kaydındadır.

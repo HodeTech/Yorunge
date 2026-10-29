@@ -1,6 +1,6 @@
 # P01-4 — Kalıcı koordinasyon ve yerel iş geçmişi
 
-**Durum:** ADR-0016 Accepted; adım 1–3 ikişer fresh review ve son kaynak kabulüyle kapandı, P01-4b bu dalda verified; adım 4 başlıyor, paket kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
+**Durum:** ADR-0016 Accepted; adım 1–3 ikişer fresh review ve son kaynak kabulüyle kapandı, P01-4b bu dalda verified; adım 4 kod/ilk kabulü tamamlandı, iki fresh review turu sırada; paket kabulü henüz yok. **Tarih:** 2026-10-29. **Dal:** `feat/p01-4-operations`; taban development `a9f1f2e`. **Güncel onay:** Kullanıcı review düzeltmeleri ve iki fresh revizyon turu tamamlandı; verilen yetkiyle Accepted geçişi yapıldı. Önceki onay-bekleyen kayıtlar 2026-10-28 tarihsel hazırlığıdır.
 
 ## Paket ve korunacak teslim
 
@@ -41,4 +41,4 @@ Ardından current/faz/matris/modül/reference/README/changelog yalnız kanıtlı
 
 - Ön inceleme: [P01-4 hazırlık raporu](../research/p01-4-readiness-review.md).
 - Karar: 2026-10-29 kullanıcı yanıtı, doğrulanan düzeltmeler ve iki fresh tur sonrası ADR-0016 Accepted.
-- Uygulama: adım 1 şema/repository commit'i a73608a, birinci review fix'i 1049ab2; ikinci fresh tur ve doğrulanmış son fix'ler tamamlandı. [Kabul kaydı](../research/p01-4-implementation-validation.md#adım-1--ikinci-review-ve-kapanış). Adım 2 admission/lease/dispatch 7d75322, review fix'leri 2ba731e/ee7f7a3 ile iki fresh turda kapandı; 1.469 test geçti. Adım 3 83f55bc/0092d40 ile iki fresh turda kapandı; 1.594 test, son kaynakta 27/27 operation + 24/24 migration kabulü geçti. P01-4b bu dalda verified; adım 4 jobs/artefakt/kaynak ve paket PR kabulü sıradadır, PR açılmadı.
+- Uygulama: adım 1 şema/repository commit'i a73608a, birinci review fix'i 1049ab2; ikinci fresh tur ve doğrulanmış son fix'ler tamamlandı. [Kabul kaydı](../research/p01-4-implementation-validation.md#adım-1--ikinci-review-ve-kapanış). Adım 2 admission/lease/dispatch 7d75322, review fix'leri 2ba731e/ee7f7a3 ile iki fresh turda kapandı; 1.469 test geçti. Adım 3 83f55bc/0092d40 ile iki fresh turda kapandı; 1.594 test, son kaynakta 27/27 operation + 24/24 migration kabulü geçti. P01-4b bu dalda verified; adım 4 jobs/artefakt/ilk kaynak kabulü tamamlandı (1.686 full test, iki kurulum ve 30-process bütçeleri); iki fresh review turu ve paket PR kapanışı sıradadır, PR açılmadı.

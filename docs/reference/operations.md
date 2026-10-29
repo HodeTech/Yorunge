@@ -1,19 +1,19 @@
 # Operation ve yerel jobs sözleşmesi
 
-**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; iç çekirdek adım 1–3 bu dalda verified; public jobs adım 4 başlıyor, henüz teslim edilmedi. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
+**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; iç çekirdek adım 1–3 bu dalda verified; public jobs CLI/Python yolu uygulandı, adım 4 review/artefakt/performans kabulü sürüyor. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
 
 ## Sınır ve kaynak
 
-Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; tasarım kullanıcı tarafından uygulamadan önce onaylandı. Aşağıdaki public jobs yüzeyi adım 4 teslimine kadar planlanandır.
+Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; tasarım kullanıcı tarafından uygulamadan önce onaylandı. Public jobs sorgusu uygulandı; paket kabulü ve development PR teslimi sürüyor.
 
-Önerilen CLI:
+Uygulanan CLI:
 
 ```text
 yorunge jobs list [--status STATUS] [--plan-id UUID] [--limit N] [--cursor CURSOR] [--state-dir PATH]
 yorunge jobs show --operation-id UUID [--state-dir PATH]
 ```
 
-Önerilen Python:
+Uygulanan Python:
 
 ```text
 api.list_jobs(*, status: str | None = None, plan_id: str | None = None,
@@ -110,13 +110,14 @@ Bu kalıcı nedenler exception kodu değildir. İç hata zarfının `details.rea
 - Artan `(created_at, operation_id)` keyset sırası; immutable created_at kullanılır, offset/sort override yoktur. SQL `limit+1` ile next_cursor kararını verir; attempt_count indeksli aggregate/summary ile alınır, N+1 query yapılmaz ve tüm payload geçmişi belleğe yüklenmez.
 - Cursor en çok 1.024 ASCII byte canonical padded base64url'dür. Çözülen canonical JSON tam `{version:1, store_id, status, plan_id, created_at, operation_id}` anahtarlarını taşır; status/plan_id filtre yoksa null. Version strict int; JSON kodlaması mevcut canonical utility'dir, yeniden encode eşitliği gerekir. UTF-8/duplicate/non-finite/extra/oversize cursor reddedilir.
 - Cursor store ve filtreleri çağrıyla aynen eşleşir; caller filtreyi sonraki sayfada tekrar verir. Uyuşmazlık `invalid_request`; cursor imza/yetki değildir. Sentetik seek anahtarı oluşturmak gizli execution hakkı vermez.
+- Liste, seçilen sayfanın plan/approval snapshot bağını, bütün aday/sonuç projeksiyonlarını ve indeksli history count/min/max + son event'i toplu sorgularla denetler. Bütün history payload zinciri full store validation ve show'da doğrulanır; list bunu taramaz. Bozuk seçili summary/ilişki boş sonuca dönüşmez.
 - Her sayfa ayrı read snapshot'tır; bütün liste için donmuş snapshot garantisi yoktur. Yeni kayıtlar veya durum değişimi özellikle status filtresinde sonraki sayfalarda atlanan/görülen kaydı etkileyebilir. Aynı immutable anahtar sayfa içinde yinelenmez; cursor'un arkasındaki yeni kayıt tekrar gösterilmez.
 
 ## Metin ve hata
 
 Text list her kayıtta operation ID, task, toplam durum ve execution/delivery durumlarını ayrı gösterir; boş listede kayıt olmadığını söyler. Show plan ID/digest, attempt sırası, son kayıtlı durum/sonuç ve bunun yerel tarihsel okuma olduğu bilgisini verir. Ham JSON/sağlayıcı mesajı metne dökülmez. JSON stdout yalnız tek Result; hata stdout boş ve stderr tek mevcut hata zarfıdır. Aynı seçimde text ve JSON aynı tipli okuma sonucundan üretilir.
 
-`operation_not_found` canonical ID bulunamadığında exit 2; malformed istek/cursor/filtre `invalid_request`; bozuk kayıt `state_invalid`. State platform/kilit/I/O/bütçe/repair kodları mevcut davranıştadır. `retryable=false`; path/SQL/secret/traceback yoktur. Operation'a bağlı plan forget `plan_in_use` exit 2 verir. İç coordination hataları/operation_uncertain jobs sonucuyla karıştırılmaz. Kanonik public kod/exit tablosu uygulama adımında [CLI referansına](cli-contract.md) bağlanacaktır.
+`operation_not_found` canonical ID bulunamadığında exit 2; malformed istek/cursor/filtre `invalid_request`; bozuk kayıt `state_invalid`. State platform/kilit/I/O/bütçe/repair kodları mevcut davranıştadır. `retryable=false`; path/SQL/secret/traceback yoktur. Operation'a bağlı plan forget `plan_in_use` exit 2 verir. İç coordination hataları/operation_uncertain jobs sonucuyla karıştırılmaz. Kanonik kod/exit/tetik tablosu [CLI referansındadır](cli-contract.md#operation-hata-kataloğu).
 
 ## İç uzlaştırma sınırı
 
@@ -136,15 +137,6 @@ Terminal sonucu yazarken I/O/bütçe veya commit dönüşü belirsizse bellektek
 
 Yeni OperationError mevcut YorungeError alt sınıfıdır; tam zarf `schema_version=1, code, message, operation_id, retryable=false, details` olur. Operation ID biliniyorsa canonical UUID, bilinmiyorsa null. Details tam `{reason_code: ErrorCode, capacity_kind: store|attempt|transition|null}`; capacity_kind yalnız kapasite hatasında non-null'dır. reason_code exception kataloğundandır; kalıcı OperationReason ayrı tiptir. Eski hataların details={} davranışı değiştirilmez.
 
-| Kod | Exit | Kesin tetik |
-|---|---:|---|
-| operation_not_found | 2 | Canonical ID ile istenen operation yok |
-| operation_conflict | 2 | Dispatch latch doluyken yeniden arm, yanlış lifecycle mutasyonu veya değişmez terminal sonucu değiştirme girişimi; repeated admission değildir |
-| operation_lease_lost | 2 | Business/renew/result çağrısındaki owner/fence/ownership epoch/generation uyuşmuyor, lease null/expired veya clock anomaly var |
-| operation_fence_exhausted | 2 | Yeni acquire signed-64 fence taşır; reset buna bağlı değildir |
-| operation_capacity_exceeded | 2 | Yeni admission/attempt/normal business event kotası dolu; capacity_kind ilgili sınırdır; recovery/terminal reserve istisnası korunur |
-| plan_in_use | 2 | Forget'in kendi transaction'ında doğrulanan operation FK bağı; başka IntegrityError state_invalid |
-| operation_uncertain | 5 | Arm sonrası dış çağrı/sonuç commit'i belirsiz; alttaki kontrollü ErrorCode reason_code olur; retry yok |
-| state_changed | 2 | Admission/arm'ın final credential ID/revision/hedefi, plan/approval snapshot veya beklenen store clock bağları değişmiş; güncel owner token uyuşmazlığı yukarıdaki lease_lost'tur |
+Kod/exit/tetik tablosunun kanonik yeri [CLI hata kataloğudur](cli-contract.md#operation-hata-kataloğu).
 
 Her yeni kodun gerçek tetik/zarf/ID/exit testi gerekir; modelde kod bulunması tek başına teslim değildir.

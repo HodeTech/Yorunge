@@ -4,6 +4,13 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-10-29
+
+- Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.
+- Trusted salt gözlem, execution/delivery ayrımı, bounded recovery ve tarihçeyi koruyan kimlik reset preview v3.
+- Yerel `jobs list/show` ve ortak Python API; store/filtre bağlı keyset cursor, bounded toplu liste sorgusu ve son yerel kayıt uyarısı.
+- Ayrı süreç/SIGKILL/yarış ve azami hacim kaynak kabulü; [adım ve review kaydı](docs/research/p01-4-implementation-validation.md). Paket jobs/artefakt/performans review kabulü sürüyor; canlı EVREN ve public run teslimi değildir.
+
 ### Added — 2026-10-28
 
 - Ayrı ScopeV2/kanıt, tam credential/hedef kapsamı, kalıcı cache/clock generation, bounded TTL/kota ve açık cached/refresh CLI/Python sorgusu.
@@ -48,7 +55,7 @@ Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetk
 - Strict TOML/dar YAML, yerel context, capability durumları ve sabit seçim/digest içeren yürütülemez offline plan.
 - Offline sözleşme/CLI testleri, format/lint/type, build/temiz kurulum, belge ve başlangıç kontrolleri; CI tanımı.
 
-Yayımlanmış paket yoktur. HTTP/EVREN, gerçek araç adaptörü, eğitim, SQLite operasyon kaydı ve artefakt teslimi henüz uygulanmadı. [İlk dilim kabulü](docs/research/p01-core-validation.md).
+27 Ekim ilk diliminde yayımlanmış paket, HTTP/EVREN, gerçek araç adaptörü, eğitim, SQLite operasyon kaydı ve artefakt teslimi yoktu. [İlk dilim kabulü](docs/research/p01-core-validation.md).
 
 ### Changed — 2026-10-27
 

@@ -1,0 +1,336 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "3925118",
+  "before_source_sha256": "b24a461f9841ccb57d8fbd810cfa7f1bbf1ae6d4d350e87f8ab74a650538b182",
+  "after_source_sha256": "45ad1d432e8ce4406ee1352f4a9aa29e0e80fb3da6ab129364871f2b987c23b4",
+  "cases": [
+    {
+      "argv": [
+        "--help"
+      ],
+      "before_sha256": "f236b643bac6ffd0e7416469a1a2aab1324e801e87b09f233f86eda5693ca734",
+      "after_sha256": "5f3a6aafb77bfebf091872be414051d39612fb092ac7bc6840e6bc1d20bd57ac",
+      "equal": false,
+      "root_expected_jobs_addition": true
+    },
+    {
+      "argv": [
+        "init",
+        "--help"
+      ],
+      "before_sha256": "f9eefa979f11a1115396ea415943d737ff0cc333ca3f3fa529958088806d405b",
+      "after_sha256": "f9eefa979f11a1115396ea415943d737ff0cc333ca3f3fa529958088806d405b",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "doctor",
+        "--help"
+      ],
+      "before_sha256": "c8dff9600f17a3a8e4ee66654adab7c17e5c20f88039565558c9e0f61d332c8a",
+      "after_sha256": "c8dff9600f17a3a8e4ee66654adab7c17e5c20f88039565558c9e0f61d332c8a",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "--help"
+      ],
+      "before_sha256": "7eb2602f8314f36814d4b26d8b68eb4f6c91e972b44c88ebcaa23a132f9c1141",
+      "after_sha256": "7eb2602f8314f36814d4b26d8b68eb4f6c91e972b44c88ebcaa23a132f9c1141",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "show",
+        "--help"
+      ],
+      "before_sha256": "e2a9e9e2a76dd7b1ab34aedd48a6bf35f33c9d3eb674c529f47d33900018f241",
+      "after_sha256": "e2a9e9e2a76dd7b1ab34aedd48a6bf35f33c9d3eb674c529f47d33900018f241",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "profiles",
+        "--help"
+      ],
+      "before_sha256": "f39e5524914f9b859f95fe6f073b557534481b8199b491877ae29f6a1b76741f",
+      "after_sha256": "f39e5524914f9b859f95fe6f073b557534481b8199b491877ae29f6a1b76741f",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "use-profile",
+        "--help"
+      ],
+      "before_sha256": "b8775fec539e556186043c1daa2d8f4d40cd7175ff28be8fd3ec1f2fa45571aa",
+      "after_sha256": "b8775fec539e556186043c1daa2d8f4d40cd7175ff28be8fd3ec1f2fa45571aa",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "set-project",
+        "--help"
+      ],
+      "before_sha256": "69f0d8d62acd3769ca7f9806ece815470bd649a30b97362550e7214aefbbf8f2",
+      "after_sha256": "69f0d8d62acd3769ca7f9806ece815470bd649a30b97362550e7214aefbbf8f2",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "clear-project",
+        "--help"
+      ],
+      "before_sha256": "71ac3d38f175023dd1444ce6954f2d1bfec127866ba9194e7869a8d4e990040c",
+      "after_sha256": "71ac3d38f175023dd1444ce6954f2d1bfec127866ba9194e7869a8d4e990040c",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "credential",
+        "--help"
+      ],
+      "before_sha256": "3c95d2f6029b6942de2f7b58cf347255781c2183b73ba45c12d4ef5da73b8ecd",
+      "after_sha256": "3c95d2f6029b6942de2f7b58cf347255781c2183b73ba45c12d4ef5da73b8ecd",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "context",
+        "identity",
+        "--help"
+      ],
+      "before_sha256": "221f485c4920ac1c450cd2ae8b18a4e7280de1fd2cd76f430b666ec832f11a17",
+      "after_sha256": "221f485c4920ac1c450cd2ae8b18a4e7280de1fd2cd76f430b666ec832f11a17",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "state",
+        "--help"
+      ],
+      "before_sha256": "3063de0a5ccce2dcb7eb983f07e01bf759cbdea70321bee5fba2a3957afb1de0",
+      "after_sha256": "3063de0a5ccce2dcb7eb983f07e01bf759cbdea70321bee5fba2a3957afb1de0",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "state",
+        "init",
+        "--help"
+      ],
+      "before_sha256": "67f032a593ca6c761899f0114381b66e9ca48ad26b9088173413ea49116c93c4",
+      "after_sha256": "67f032a593ca6c761899f0114381b66e9ca48ad26b9088173413ea49116c93c4",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "state",
+        "reset",
+        "--help"
+      ],
+      "before_sha256": "1083cdb3c1cfb52ebff1c1b38f3d7c7a0ccfee45e29724a5165a78107f8f9d2e",
+      "after_sha256": "1083cdb3c1cfb52ebff1c1b38f3d7c7a0ccfee45e29724a5165a78107f8f9d2e",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "state",
+        "restore",
+        "--help"
+      ],
+      "before_sha256": "a5c4edeb5d6a9d0accf9c331d1e9aefd96be2a970a63cdd61201289dd1bf7dd4",
+      "after_sha256": "a5c4edeb5d6a9d0accf9c331d1e9aefd96be2a970a63cdd61201289dd1bf7dd4",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "state",
+        "recover",
+        "--help"
+      ],
+      "before_sha256": "139ea8a18cfadbccf5f5420def113b0a3f7750ccac40a6824e2f410d414afad8",
+      "after_sha256": "139ea8a18cfadbccf5f5420def113b0a3f7750ccac40a6824e2f410d414afad8",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "capabilities",
+        "--help"
+      ],
+      "before_sha256": "97bed97d11ff2d1c7f11ad3de8d82bfa7c24a7bbd65c6afb8074397a911714c9",
+      "after_sha256": "97bed97d11ff2d1c7f11ad3de8d82bfa7c24a7bbd65c6afb8074397a911714c9",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "--help"
+      ],
+      "before_sha256": "488dbe0a6c33822eafc26fb6af86e032824e504d83ef3f6fe727437030c029c7",
+      "after_sha256": "488dbe0a6c33822eafc26fb6af86e032824e504d83ef3f6fe727437030c029c7",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "prepare",
+        "--help"
+      ],
+      "before_sha256": "400300b459396012f999372988041bfabd30c07097aee7e5b35dc2e9a9a3b587",
+      "after_sha256": "400300b459396012f999372988041bfabd30c07097aee7e5b35dc2e9a9a3b587",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "show",
+        "--help"
+      ],
+      "before_sha256": "29769418f20dc4e1b18f0c4c7ae1a5331fd51122405867555b888566381dc9f4",
+      "after_sha256": "29769418f20dc4e1b18f0c4c7ae1a5331fd51122405867555b888566381dc9f4",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "--help"
+      ],
+      "before_sha256": "f2619d4a5235324144efaacddb1cf2011600f60aef9041007fbeb3dcbd51c949",
+      "after_sha256": "f2619d4a5235324144efaacddb1cf2011600f60aef9041007fbeb3dcbd51c949",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "prepare",
+        "--help"
+      ],
+      "before_sha256": "a6092cc5814e6a4168b4e1fdbf0c75e9505c66e170e7b1839821abd4bb0ac857",
+      "after_sha256": "a6092cc5814e6a4168b4e1fdbf0c75e9505c66e170e7b1839821abd4bb0ac857",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "list",
+        "--help"
+      ],
+      "before_sha256": "2f8a724b60f7fd9c0122cb2a8e1777f1bdeaf4652c9abb3a4d460ec6fc561e7e",
+      "after_sha256": "2f8a724b60f7fd9c0122cb2a8e1777f1bdeaf4652c9abb3a4d460ec6fc561e7e",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "show",
+        "--help"
+      ],
+      "before_sha256": "7e945375fffbfa4662e6e1a9d578e1ed94979699489fd158eadd14b94b2bb84f",
+      "after_sha256": "7e945375fffbfa4662e6e1a9d578e1ed94979699489fd158eadd14b94b2bb84f",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "validate",
+        "--help"
+      ],
+      "before_sha256": "4ad038cc9882a6171f4cbff9a9a3ace432b3a2fd369ca594cac5b478285475e7",
+      "after_sha256": "4ad038cc9882a6171f4cbff9a9a3ace432b3a2fd369ca594cac5b478285475e7",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "approve",
+        "--help"
+      ],
+      "before_sha256": "625e6e2877d51d8629de20ff29c3cb398c1e62c92eb2f4b47a4fdbdfa03b621d",
+      "after_sha256": "625e6e2877d51d8629de20ff29c3cb398c1e62c92eb2f4b47a4fdbdfa03b621d",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "revoke",
+        "--help"
+      ],
+      "before_sha256": "24fea85e4b98c8a23c6961e5728789b2fc386b5be8e3d99803c99151d7efaa51",
+      "after_sha256": "24fea85e4b98c8a23c6961e5728789b2fc386b5be8e3d99803c99151d7efaa51",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "plan",
+        "execution",
+        "forget",
+        "--help"
+      ],
+      "before_sha256": "df18459c30d3226c4681333ad40c8e8956d3203c94e87678b253bb73f2bb6ae7",
+      "after_sha256": "df18459c30d3226c4681333ad40c8e8956d3203c94e87678b253bb73f2bb6ae7",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "train",
+        "--help"
+      ],
+      "before_sha256": "e39da5a1edff44690e220f5e2c7ef8cf4962a36b7342a3ba5f6660dd051aa969",
+      "after_sha256": "e39da5a1edff44690e220f5e2c7ef8cf4962a36b7342a3ba5f6660dd051aa969",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    },
+    {
+      "argv": [
+        "train",
+        "plan",
+        "--help"
+      ],
+      "before_sha256": "d5d782a3adda1b6777d5be636c36499d30fcafaa8bfe78cc1963c48f69375d46",
+      "after_sha256": "d5d782a3adda1b6777d5be636c36499d30fcafaa8bfe78cc1963c48f69375d46",
+      "equal": true,
+      "root_expected_jobs_addition": false
+    }
+  ]
+}

@@ -117,13 +117,16 @@ class AttemptSet:
 
 
 def read_attempts(connection: sqlite3.Connection, operation_id: str) -> tuple[AttemptView, ...]:
-    from yorunge.adapters.validation_memo import validated
-
     rows = connection.execute(
         f"SELECT {ATTEMPT_COLUMNS} FROM operation_attempts WHERE operation_id=? "
         "ORDER BY number LIMIT ?",
         (operation_id, MAX_ATTEMPTS + 1),
     ).fetchall()
+    return decode_attempts(operation_id, rows)
+
+
+def decode_attempts(operation_id: str, rows: list[tuple[object, ...]]) -> tuple[AttemptView, ...]:
+    from yorunge.adapters.validation_memo import validated
 
     def build() -> AttemptSet:
         result = []
@@ -422,9 +425,14 @@ def read_snapshot(connection: sqlite3.Connection) -> Iterator[None]:
             connection.execute("ROLLBACK")
 
 
-def _validate_clock(
-    connection: sqlite3.Connection, record: OperationRecord, plan: PlanValidation
-) -> None:
+@dataclass(frozen=True)
+class OperationClock:
+    store_id: str
+    identity_epoch: str
+    generation: int
+
+
+def operation_clock(connection: sqlite3.Connection) -> OperationClock:
     value = metadata(connection)
     clock = connection.execute(
         "SELECT identity_epoch,clock_generation FROM cache_clock WHERE singleton=1"
@@ -436,7 +444,13 @@ def _validate_clock(
         or not 1 <= clock[1] <= 2**63 - 1
     ):
         raise ValueError("invalid operation clock")
-    if record.admission.store_id != value.store_id or plan.store_id != value.store_id:
+    return OperationClock(value.store_id, value.identity_epoch, clock[1])
+
+
+def validate_operation_clock(
+    record: OperationRecord, plan: PlanValidation, clock: OperationClock
+) -> None:
+    if record.admission.store_id != clock.store_id or plan.store_id != clock.store_id:
         raise ValueError("operation store mismatch")
     scopes = [
         (plan.identity_epoch, plan.clock_generation),
@@ -446,7 +460,10 @@ def _validate_clock(
         scopes.append(
             (record.lease.ownership_identity_epoch, record.lease.ownership_clock_generation)
         )
-    if any(epoch == value.identity_epoch and generation > clock[1] for epoch, generation in scopes):
+    if any(
+        epoch == clock.identity_epoch and generation > clock.generation
+        for epoch, generation in scopes
+    ):
         raise ValueError("future operation clock generation")
 
 
@@ -457,8 +474,18 @@ def _validate_view(
     attempts: tuple[AttemptView, ...],
     outcome: OperationOutcome | None,
 ) -> None:
+    validate_operation_clock(record, plan, operation_clock(connection))
+    validate_job_facts(record, plan, attempts, outcome)
+    validate_events(connection, record, attempts)
+
+
+def validate_job_facts(
+    record: OperationRecord,
+    plan: PlanValidation,
+    attempts: tuple[AttemptView, ...],
+    outcome: OperationOutcome | None,
+) -> None:
     a, s = record.admission, record.summary
-    _validate_clock(connection, record, plan)
     if (s.plan_id, s.plan_digest, s.task, s.tool, s.execution) != (
         plan.plan_id,
         plan.digest,
@@ -499,7 +526,32 @@ def _validate_view(
     ):
         raise ValueError("admission lifetime mismatch")
     validate_job_relationships(s, attempts, outcome)
-    validate_events(connection, record, attempts)
+
+
+def validate_history_projection(
+    record: OperationRecord,
+    attempts: tuple[AttemptView, ...],
+    count: object,
+    first: object,
+    row: tuple[object, ...],
+) -> None:
+    """List checks count/latest projection, without reading the whole history payload."""
+    owner, sequence, attempt_id, payload = row
+    last = decode(OperationEvent, payload, MAX_EVENT_BYTES)
+    if (
+        (count, first, sequence) != (record.event_count, 1, record.event_count)
+        or (owner, sequence, attempt_id)
+        != (record.summary.operation_id, last.sequence, last.attempt_id)
+        or last.attempt_id not in {a.attempt_id for a in attempts}
+        or last.fence > record.fence
+        or last.revision > record.summary.revision
+        or (last.execution_status != "not_started") != (record.dispatch_attempt_id is not None)
+    ):
+        raise ValueError("history projection mismatch")
+    if count == 1:
+        _event_progress(record, last, None, {a.attempt_id: a.number for a in attempts}, False)
+    _event_observation(record, last, None)
+    _history_end(record, last, attempts)
 
 
 def read_job(

@@ -1,6 +1,6 @@
 # Referans sözleşmeler
 
-**Durum:** CLI/config/capability yerel alt kümeleri uygulandı; tam yürütme/araç portları tasarım. **Tarih:** 2026-10-27.
+**Durum:** CLI/config/capability yerel alt kümeleri uygulandı; tam yürütme/araç portları tasarım. **Tarih:** 2026-10-29.
 
 | Belge | Kanonik tanım |
 |---|---|
@@ -12,6 +12,6 @@
 | [Credential binding v1](credential-binding-v1.md) | Uygulandı — ortak hedef/UNIQUE/HMAC, kalıcı gözlem ve byte vektörleri; Accepted ADR-0012 |
 | [Execution planı v2](execution-plan.md) | Uygulandı — ayrı kalıcı prepare/list/show/validate, descriptor input, güncel validity ve açık digest onayı/yönetim; P01-3 kabulü tamamlandı |
 | [Yerel state](local-state.md) | Store/migration/backup, açık reset/restore/recover ve koruma sınırı |
-| [Operation/jobs](operations.md) | Accepted tasarım — ADR-0016'ya bağlı P01-4 lifecycle ve yerel list/show wire; henüz uygulanmadı |
+| [Operation/jobs](operations.md) | ADR-0016 iç çekirdeği testli ve yerel list/show uygulandı; adım 4 review/artefakt/performans kabulü sürüyor |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).

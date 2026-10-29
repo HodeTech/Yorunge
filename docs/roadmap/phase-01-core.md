@@ -62,7 +62,7 @@ flowchart LR
 
 ## Kapanışta beklenen akış
 
-Mevcut teslim: stateless offline v1 context/capability/plan ve ayrıca açık stateful cache → kalıcı execution v2 hazırlığı → güncel bağ/girdi validation → digest onayı/revoke/forget. Yerel manifest dosyası descriptor üzerinden hash ile bağlanır; bu, tam veri/model kapanışı değildir. Public producer draft/blocked kalır; run/dispatch, operation/lease ve artefakt teslimi yoktur.
+Mevcut teslim: stateless offline v1 context/capability/plan ve ayrıca açık stateful cache → kalıcı execution v2 hazırlığı → güncel bağ/girdi validation → digest onayı/revoke/forget. Yerel manifest dosyası descriptor üzerinden hash ile bağlanır; bu, tam veri/model kapanışı değildir. Public producer draft/blocked kalır; public run/dispatch ve artefakt teslimi yoktur. Bu dalda operation/lease/recovery/reset adım 1–3 verified; yerel jobs adım 4 uygulaması ve paket kabulü sürüyor.
 
 Faz sonunda: sentetik görev → sabit context/yetki bağları → capability/plan → kalıcı operation/attempt → yalnız fixture içinde gerçek loopback veya alt süreç → doğrulanmış tipli sonuç ve restart/unknown deneyi. Test double kullanıcıya açık eğitim başarısı olmaz. Gerçek EVREN ve ForgeLM/muadil adaptörleri P02/P03'tedir.
 

@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         ForgottenExecutionPlan,
     )
     from yorunge.domain.maintenance import Preview as MaintenancePreview
+    from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.state import StateInfo
 
 
@@ -853,6 +854,62 @@ def list_execution_plans(
 
     with open_store(state_dir) as store:
         return Result[ExecutionPlans](data=list_plans(store.connection, limit, cursor))
+
+
+def list_jobs(
+    *,
+    status: str | None = None,
+    plan_id: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[JobsPage]:
+    """Page through last local records without config, credentials or provider access."""
+    from yorunge.domain.jobs import JobsCursor, JobsQuery
+
+    query = validate(
+        JobsQuery,
+        dict(status=status, plan_id=plan_id, limit=limit, cursor=cursor),
+        "invalid_request",
+    )
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    if query.cursor is not None:
+        JobsCursor.decode(query.cursor)
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.jobs import list_jobs as read_jobs
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.operations import JobsPage
+
+    with open_store(state_dir) as store:
+        return Result[JobsPage](
+            data=read_jobs(store.connection, query), warnings=("local_history_only",)
+        )
+
+
+def show_job(operation_id: str, *, state_dir: Path | None = None) -> Result[JobView]:
+    """Read one complete historical job in one snapshot; never reconciles it."""
+    from yorunge.domain.state import canonical_uuid
+
+    try:
+        canonical_uuid(operation_id)
+    except (ValueError, TypeError, AttributeError):
+        raise YorungeError("invalid_request") from None
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.operation_store import read_job
+    from yorunge.adapters.state import open_store
+    from yorunge.domain.operations import JobView
+
+    with open_store(state_dir) as store:
+        return Result[JobView](
+            data=read_job(store.connection, operation_id), warnings=("local_history_only",)
+        )
 
 
 def show_execution_plan(

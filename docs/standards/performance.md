@@ -10,7 +10,7 @@ Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota 
 |---|---|---|
 | `--help`, `--version` | Referans ortamda sıcak p95 ≤ 500 ms | En az 30 ayrı süreç; ağ/DB/sır/GPU import yok |
 | Yerel profil/önbellek okuma | Sıcak p95 ≤ 200 ms | Veri boyutu ve disk türü kayıtlı; uzak istek hariç |
-| P01-4 yerel jobs list/show | Yeni kabul hedefi: sıcak p95 ≤ 200 ms | Normal/yoğun fixture, kurulu wheel, 30 ayrı süreç; history payload taramayan bounded sorgu; uygulama ölçümü henüz yok |
+| P01-4 yerel jobs list/show | Yeni kabul hedefi: sıcak p95 ≤ 200 ms | Normal/yoğun fixture, kurulu wheel, 30 ayrı süreç; history payload taramayan bounded sorgu; [ilk kurulu ölçüm](../research/p01-4-implementation-validation.md#kurulu-jobs-performansı-ve-veri-hacmi) geçti, review/paket kapanışı sürüyor |
 | Büyük dosya aktarımı | 1 GiB dosyada istemci ek RSS ≤ 64 MiB | Eğitim süreçleri ayrı ölçülür; worker/chunk/buffer sınırı kayıtlı |
 | Aktarım belleği | Dosya boyutuyla doğrusal büyümeme | 16 MiB, 256 MiB, 1 GiB fixture karşılaştırması |
 | Kuyruk ve eşzamanlılık | Sınırlı worker + byte bütçesi | Başlangıç varsayılanı aktarımda 2 worker; hizmet limitinden düşük tutulur |

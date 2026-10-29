@@ -320,6 +320,76 @@ def verify_installed_cache(
             raise ValueError("installed cache contract failed")
 
 
+def verify_installed_jobs(
+    console: Path, python: Path, root: Path, scratch: Path, environment: dict[str, str]
+) -> str:
+    fixture = scratch / "jobs-state"
+    source = (
+        "import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); "
+        "from tests.fixtures.seed_jobs import seed; print(seed(Path(sys.argv[2]),dense=False))"
+    )
+    identifier = run(
+        [sys.executable, "-c", source, str(root), str(fixture)],
+        cwd=root,
+        environment=environment,
+    ).strip()
+    from_source = [str(console), "jobs"]
+    listed = json.loads(
+        run(
+            [*from_source, "list", "--state-dir", str(fixture), "--output", "json"],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    shown = json.loads(
+        run(
+            [
+                *from_source,
+                "show",
+                "--operation-id",
+                identifier,
+                "--state-dir",
+                str(fixture),
+                "--output",
+                "json",
+            ],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    api_source = (
+        "import sys; from pathlib import Path; from yorunge import api; "
+        "print(api.show_job(sys.argv[2],state_dir=Path(sys.argv[1])).model_dump_json())"
+    )
+    api_result = json.loads(
+        run(
+            [str(python), "-I", "-c", api_source, str(fixture), identifier],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    if (
+        shown != api_result
+        or listed["data"]["jobs"] != [shown["data"]["operation"]]
+        or shown["operation_id"] is not None
+        or shown["status"] != "completed"
+        or shown["warnings"] != ["local_history_only"]
+        or shown["data"]["operation"]["operation_id"] != identifier
+        or shown["data"]["operation"]["status"] != "running"
+        or len(shown["data"]["attempts"]) != 1
+        or shown["data"]["outcome"] is not None
+    ):
+        raise ValueError("installed jobs CLI/API contract failed")
+    text = run(
+        [*from_source, "show", "--operation-id", identifier, "--state-dir", str(fixture)],
+        cwd=scratch,
+        environment=environment,
+    )
+    if identifier not in text or "güncel uzak durumu yansıtmayabilir" not in text:
+        raise ValueError("installed jobs text contract failed")
+    return "passed"
+
+
 def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
@@ -395,10 +465,12 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
             raise ValueError("installed plan contract failed")
         cache_smoke = "not_run_unsupported_platform"
         execution_smoke = "not_run_unsupported_platform"
+        jobs_smoke = "not_run_unsupported_platform"
         if sys.platform in ("darwin", "linux"):
             verify_installed_cache(console, root, scratch, environment)
             cache_smoke = "passed"
             execution_smoke = verify_installed_execution(console, root, scratch, environment)
+            jobs_smoke = verify_installed_jobs(console, python, root, scratch, environment)
         print(
             json.dumps(
                 {
@@ -409,6 +481,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
                     "smoke": "passed",
                     "cache_smoke": cache_smoke,
                     "execution_smoke": execution_smoke,
+                    "jobs_smoke": jobs_smoke,
                 }
             )
         )
