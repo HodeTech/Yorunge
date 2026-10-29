@@ -1,6 +1,6 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-27. **Durum:** İlk çevrimdışı dilimin seçimleri kuruldu ve yerelde ölçüldü; [ADR-0008](decisions/0008-offline-core-stack.md).
+**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 çekirdeği development'a teslim edildi; HTTP/SDK taşıma seçimi P01-5'te açık. İlk offline seçim [ADR-0008](decisions/0008-offline-core-stack.md), güncel teslim [P01-4 kapanışındadır](research/p01-4-implementation-validation.md#development-merge-kapanışı).
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
@@ -12,8 +12,8 @@
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |
-| Durum | SQLite planlandı | Bu dilimde DB açılmaz; operation/migration/lease P01-4. |
-| Sırlar | Env referansı doğrulaması | Sır değerleri okunmaz. Gerçek secret erişimi/keychain sonraki iş. |
+| Durum | SQLite, şema 6 | Store/migration, identity/cache/plan/onay ve operation/lease/sonuç/reset uygulandı; explicit state kullanımında açılır. |
+| Sırlar | Hizmete bağlı açık env çözümleme | Gereken hizmet sırrı açık kullanımda bir kez çözülür; kalıcı opak kimlik/nesil vardır, ham sır DB/çıktıya yazılmaz. Keychain uygulanmadı. |
 | Eğitim | Ayrı ortamda araç adaptörleri | ForgeLM varsayılan; muadiller seçilebilir; torch/TRL çekirdek bağımlılığı olmaz. |
 | Test/lint | pytest 9.1.1, Ruff 0.15.22, mypy 1.20.2 | `uv.lock` ile sabit; gerçek offline testler ve CI tanımı. |
 

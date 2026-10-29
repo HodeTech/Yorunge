@@ -538,6 +538,70 @@
       }
     },
     {
+      "name": "p01-4-merge-805f8bd-startup.json",
+      "archive": "raw/p01-4-merge-805f8bd-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 39919,
+      "content_sha256": "91288f45ba0f62fd0f577ceea4ad1c73f55a34229acd5452abe56114092308dc",
+      "archive_bytes": 10907,
+      "archive_sha256": "fa59101ce763391b3b195bbb79b6e66403bddf98e459a47204517116eb91274c",
+      "summary": {
+        "source_commit": null,
+        "diagnostic_only": false,
+        "kind": "startup",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 35.09405400001242,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 33.15877099998943,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 153.25847500002965,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 191.56937200000357,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 39.69161699995993,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 38.465445000042564,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 153.7080840000158,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 193.8822750000213,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-4-noop-installations.json",
       "archive": "raw/p01-4-noop-installations.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",

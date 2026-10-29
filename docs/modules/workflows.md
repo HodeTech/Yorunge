@@ -1,6 +1,6 @@
 # İş akışları ve işlem durumu modülü
 
-**Durum:** Uygulanıyor — offline v1 ve kalıcı execution v2 hazırlığı/validity/onay/yönetim testli; operation/lease/recovery/reset çekirdeği testli; public jobs list/show ve yerel paket kabulü tamamlandı (P01-4b/4c bu dalda verified). Public run planlandı. **Kapsam:** C12/C13; gelecekte C14 yüzeyi. **Faz:** P01–P04.
+**Durum:** Uygulanıyor — offline v1 ve kalıcı execution v2 hazırlığı/validity/onay/yönetim testli; operation/lease/recovery/reset çekirdeği testli; public jobs list/show ve yerel paket kabulü tamamlandı (P01-4b/4c verified, PR #10 ile development'a teslim edildi). Public run planlandı. **Kapsam:** C12/C13; gelecekte C14 yüzeyi. **Faz:** P01–P04.
 
 Plan oluşturma, context/tool/execution çözümleme, onay, operation/attempt koordinasyonu ve restart sonrası uzlaştırmayı sahiplenir. İlk sürüm sınırlı, bilinen görev bileşimleri kullanır; genel amaçlı kod çalıştıran workflow dili oluşturmaz.
 

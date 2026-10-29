@@ -103,6 +103,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 [İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/f186d27ac9b7313d5640877e574e9337fbd6b4ff/docs/research/p01-4-initial-help-parity.json); yerel arşiv `raw/p01-4-initial-help-parity.json.gz`.
 **Özet:** `{"cases": 30, "checks": {"equal": {"false": 1, "true": 29}, "matches_initial_p014": {"not_recorded": 30}, "root_expected_jobs_addition": {"false": 29, "true": 1}}, "diagnostic_only": false, "kind": "help-parity", "source_commit": null}`.
 
+## p01-4-merge-805f8bd-startup
+
+**Tür:** `startup`.
+**Özgün JSON SHA-256:** `91288f45ba0f62fd0f577ceea4ad1c73f55a34229acd5452abe56114092308dc`.
+**Yerel arşiv:** `raw/p01-4-merge-805f8bd-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 193.8822750000213, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 153.7080840000158, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 39.69161699995993, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 38.465445000042564, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 191.56937200000357, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 153.25847500002965, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 35.09405400001242, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 33.15877099998943, "passed": true, "samples": 30}}, "source_commit": null}`.
+
 ## p01-4-noop-installations
 
 **Tür:** `installation`.

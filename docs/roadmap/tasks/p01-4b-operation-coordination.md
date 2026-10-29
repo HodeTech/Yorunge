@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4b — Kalıcı operation ve güvenli sahiplik
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). ADR-0016 Accepted; bu dalda adım 1–3 uygulama ve ikişer fresh review turu tamamlandı. P01-4c public jobs ve paket/PR kabulü ayrı adım 4'tedir.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Tamamlandı/verified; [PR #10](https://github.com/HodeTech/Yorunge/pull/10) kullanıcı tarafından [805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e) ile development'a alındı. Dört adım ve ikişer fresh review/PR düzeltmeleri kapandı; [merge/CI kaydı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) kanoniktir. Aşağıdaki başlangıç eksikleri tarihsel bağlamdır; yayımlanmış paket/canlı EVREN kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -43,6 +43,6 @@ Unit durum/strict model/oracle; contract trusted port ve mevcut execution/CLI za
 
 ## Teslim kaydı
 
-- PR/commit: [PR #10](https://github.com/HodeTech/Yorunge/pull/10), son ürün kaynağı [182f695](https://github.com/HodeTech/Yorunge/commit/182f695f656c374530d9a496a59d9e7ee714932f). Adım 3 ürün kaynağı 0092d40; ilk paket kabulü 17de965 tarihsel kayıttır. Adım 1 a73608a/1049ab2/de109f5, adım 2 7d75322/2ba731e/ee7f7a3, adım 3 83f55bc/0092d40 ve her adımın iki fresh turu [kayıttadır](../../research/p01-4-implementation-validation.md).
-- Sonuç: PR düzeltmeleri sonrası 182f695 ürün kaynağında **1.779 full test**, statik/belge/ajan, **27/27 operation + 24/24 migration** kabulü geçti. Değişmeyen gözlem geçmiş tüketmez; yeni kanıt/recovery ve son credential/lease/read kapıları korunur. İki yeni bağımsız review turu tamamlandı. [Son kaynak kapanışı](../../research/p01-4-implementation-validation.md#pr-10-son-kaynak-kapanışı) kanoniktir.
-- Kalan sınır: P01-4c public jobs/kurulu artefakt/200 ms ve yerel paket kabulü de tamamlandı; dış PR/merge CI ve kullanıcı incelemesi ayrı izlenir; canlı EVREN, fiziksel güç kesintisi veya gerçek Windows kanıtı yoktur. Karma reset marjı referans ortamında **148,29 ms** ile dardır; farklı host için kesin süre garantisi verilmez.
+- PR/commit: [PR #10](https://github.com/HodeTech/Yorunge/pull/10), [merge 805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e); son PR head'i 36ae2a4, ürün kaynağı 182f695. Adım ve review commit'leri [kanonik kayıttadır](../../research/p01-4-implementation-validation.md); development teslimi tamamlandı.
+- Sonuç: PR düzeltmeleri sonrası 182f695 ürün kaynağında **1.779 yerel ürün testi**, statik/belge/ajan, **27/27 operation + 24/24 migration** kabulü geçti. Değişmeyen gözlem geçmiş tüketmez; yeni kanıt/recovery ve son credential/lease/read kapıları korunur. İki yeni bağımsız review turu tamamlandı. [Merge kapanışı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) kanoniktir. Son PR/merge CI'da **1.816 test**, iki temiz kurulum ve başlangıç kapıları geçti; CodeRabbit/SonarCloud son PR head'inde başarılı.
+- Kalan sınır: P01-4c public jobs/kurulu artefakt/200 ms ve yerel paket kabulü de tamamlandı; development merge/CI tamamlandı; canlı EVREN, fiziksel güç kesintisi veya gerçek Windows kanıtı yoktur. Karma reset marjı referans ortamında **148,29 ms** ile dardır; farklı host için kesin süre garantisi verilmez.

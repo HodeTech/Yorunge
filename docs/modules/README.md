@@ -1,6 +1,6 @@
 # Modül haritası
 
-**Durum:** Kimlik/context, capability ve iş akışı yerel alt kümeleri uygulanıyor; diğer modüller planlandı. **Tarih:** 2026-10-27.
+**Durum:** Kimlik/context, capability ve iş akışı yerel alt kümeleri development'a teslim edildi; uzak/diğer modüller planlandı. **Tarih:** 2026-10-29. [P01-4 merge/CI kanıtı](../research/p01-4-implementation-validation.md#development-merge-kapanışı).
 
 | Modül | Sahip olduğu alan | Yetenekler |
 |---|---|---|

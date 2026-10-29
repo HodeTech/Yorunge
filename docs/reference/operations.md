@@ -1,10 +1,10 @@
 # Operation ve yerel jobs sözleşmesi
 
-**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md) kullanıcı review'u ve iki fresh tur sonrası benimsendi; iç çekirdek ve public jobs CLI/Python dört adım/ikişer fresh review ile bu dalda verified; yerel paket kabulü tamamlandı. Development merge'i ayrı süreçtir. **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
+**Durum:** Accepted tasarım — [ADR-0016](../decisions/0016-operation-admission-and-ownership.md); iç çekirdek ve public jobs CLI/Python dört adım/ikişer fresh review ve PR düzeltmeleriyle verified, [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile development'a teslim edildi. [Merge/CI kapanışı](../research/p01-4-implementation-validation.md#development-merge-kapanışı). **Tarih:** 2026-10-29. [Mevcut public alt küme](cli-contract.md#uygulanan-alt-küme).
 
 ## Sınır ve kaynak
 
-Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; tasarım kullanıcı tarafından uygulamadan önce onaylandı. Public jobs sorgusu ve yerel paket kabulü tamamlandı; [son kaynak kanıtı](../research/p01-4-implementation-validation.md#son-kaynakla-bütünleşik-yerel-kabul). Development aktarımı PR üzerinden kullanıcı incelemesine tabidir.
+Operation, immutable execution planından ayrı kalıcı bir iştir. Planı hazırlamak/onaylamak operation oluşturmaz. P01-4'te public yürütme veya fixture backend yoktur; jobs yalnız gerçek store kayıtlarını okur. Lifecycle, admission/approval snapshot, dispatch latch, lease/fencing, kotalar ve bakım kurallarının tek normatif karar kaynağı ADR-0016'dır. Burada CLI/Python ve wire ayrıntıları tanımlanır; tasarım kullanıcı tarafından uygulamadan önce onaylandı. Public jobs sorgusu ve yerel paket kabulü tamamlandı; [merge ve kaynak kanıtı](../research/p01-4-implementation-validation.md#development-merge-kapanışı). Development aktarımı PR #10 ile tamamlandı; paket yayını ve canlı EVREN desteği değildir.
 
 Uygulanan CLI:
 

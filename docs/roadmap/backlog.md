@@ -5,8 +5,8 @@
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
 | B01 | CLI/şema/YAML seçildi; HTTP açık | [ADR-0008](../decisions/0008-offline-core-stack.md); taşıma/deadline deneyi kaldı | P01-5 |
-| B02 | Ortak state DDL/migration/lease | [Araştırma](../research/p01-2-state-identity-decision-review.md), [ADR-0011](../decisions/0011-state-foundation-and-migrations.md) Accepted; store/migration karar kapısı kapandı. P01-2 PR'ında P01-4a uygulaması, somut operation/lease kabulü P01-4b'de kaldı | P01-4a/P01-4b |
-| B03 | SDK'yı kullanma sınırı | Güncel kod/endpoint/retry sözleşme denetimi | P02 |
+| B02 | Ortak state DDL/migration/lease | [Araştırma](../research/p01-2-state-identity-decision-review.md), [ADR-0011](../decisions/0011-state-foundation-and-migrations.md) Accepted; store/migration karar kapısı kapandı. P01-4a PR #6 ile, operation/lease/jobs ve ADR-0016 [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile tamamlanıp development'a alındı; B02 karar/uygulama kapısı kapandı | P01-4a/P01-4b |
+| B03 | SDK'yı kullanma sınırı | P01-5a'da taşıma/SDK sınırı ön incelemesi; gerçek hizmet adaptöründe güncel kod/endpoint/retry sözleşme denetimi | P01-5 inceleme / P02 adaptör |
 | B04 | Aktarım limitleri ve native eğitim durumları | Güncel resmî sözleşme + yetkili küçük pilot | P02/P03 |
 | B05 | İlk muadil araç ve sürüm aralığı | Aynı SFT task/result deneyi; Axolotl ilk aday | P03-4 |
 | B06 | Workspace genel kullanıcı erişimi | Sağlayıcı sözleşmesi ve erişim sonucu | P03-6/P04-3 |
