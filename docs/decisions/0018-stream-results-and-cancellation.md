@@ -1,12 +1,12 @@
 # ADR-0018: Sürümlü akış sonucu ve yerel iptal
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; ürün kodu uygulanmadı. **Tarih:** 2026-10-29. **İş:** P01-5b.
+**Durum:** Accepted — 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası benimsendi; ürün uygulaması bu karardan sonra başlar. **Tarih:** 2026-10-29. **İş:** P01-5b.
 
 ## Bağlam
 
 Genel `Result[T]` v1 yalnız `completed`/null operation ID taşır. İşin kendi durumu jobs data içindedir. CLI text/JSON uygular; NDJSON, ortak akış doğrulayıcı ve düzenli output kesintisi davranışı yoktur. `OperationCoordinator` arm sonrası belirsizliği zaten korur. Result enum'unu execution/stream durumlarıyla genişletmek eski tüketiciyi bozabilir. Gerçek uzak run/watch/stop P01'e dahil değildir.
 
-## Karar önerisi
+## Karar
 
 ### Ayrı event, korunan sonuç
 
@@ -20,7 +20,7 @@ Upstream codec hizmet adaptörüne aittir. Ortak event wire'ı sağlayıcının 
 
 ### Kaynak ömrü ve iptal
 
-Async stream context'i response, deadline ve sahip task'ı birlikte taşır. `Task.cancel()`/context exit/`aclose` okumayı ve yerel beklemeyi bitirir; finally cleanup'tan sonra `CancelledError` kütüphane sınırında yeniden yükseltilir. Herhangi bir event'i önceden yutma, yeni stream/retry, background worker veya uzak stop çağrısı yoktur. Mevcut public senkron API imzalarına kullanılmayan cancellation token eklenmez; gerçek async taşıma tüketicisi [ADR-0017](0017-bounded-http-transport.md)'nin owned composition'ıdır.
+Async stream context'i response, deadline ve sahip task'ı birlikte taşır. Gerçek `Task.cancel()` sırasında yakalanan `CancelledError`, finally cleanup sonrası kütüphane sınırında yeniden yükseltilir. Normal erken `aclose` veya context çıkışı kaynakları kapatır, kendi başına CancelledError veya terminal event üretmez; iki yol ayrı test edilir. Herhangi bir event'i önceden yutma, yeni stream/retry, background worker veya uzak stop çağrısı yoktur. Mevcut public senkron API imzalarına kullanılmayan cancellation token eklenmez; gerçek async taşıma tüketicisi [ADR-0017](0017-bounded-http-transport.md)'nin owned composition'ıdır.
 
 CLI sınırında SIGINT kontrollü `request_cancelled`/6, kapalı stdout `output_closed`/6 olur: anlamı **yerel çağrı/izlemenin bırakılmasıdır**; kayıtlı işin veya yerel yazının geri alındığını, uzak işin `cancelled` olduğunu söylemez. Kritik yayın/commit belirsizliği ve bilinen operation hatası genel iptal tarafından ezilmez. Arm sonrası start çağrısındaki timeout/iptal/bozuk cevap mevcut `operation_uncertain`/5 ve operation ID'yi korur; latch silinmez, ikinci start yoktur. Read-only izlemeyi bırakmak tek başına job durumunu değiştirmez. Kesin uzak `cancelled` yalnız mevcut trusted observation kanıtıyla kaydedilir.
 

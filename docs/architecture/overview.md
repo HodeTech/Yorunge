@@ -32,6 +32,6 @@ EVREN Platform, gateway ve haricî araçlar ayrı adaptörlerdir. Uygun SDK kull
 
 ## Basitlik ve performans
 
-Tek komut için hafif başlangıç, lazy import ve gerekene kadar bağlantı açmama esastır. Süreç bazında ortak HTTP havuzu ve sınırlı worker kullanılır. CPU/disk işleri gerektiğinde sınırlı işçiye taşınır; tüm dosyaları aynı anda hash'lemek optimizasyon varsayılmaz. Yerel durum tek işlem otoritesidir; uzak hizmetin gerçek iş durumu ayrıca uzlaştırılır.
+Tek komut için hafif başlangıç, lazy import ve gerekene kadar bağlantı açmama esastır. Açık sahipli session içinde sınırlı HTTP havuzu kullanılır; süreç genelinde auth/cookie taşıyan global client yoktur. [ADR-0017](../decisions/0017-bounded-http-transport.md) async kaynak/deadline sınırını belirler; sınırlı worker yalnız gerçek ihtiyaçta kullanılır. CPU/disk işleri gerektiğinde sınırlı işçiye taşınır; tüm dosyaları aynı anda hash'lemek optimizasyon varsayılmaz. Yerel durum tek işlem otoritesidir; uzak hizmetin gerçek iş durumu ayrıca uzlaştırılır.
 
 Fiziksel kaynak yerleşimi [proje yapısında](../project-structure.md), kabul bütçeleri [performans standardında](../standards/performance.md) tanımlıdır.

@@ -1,6 +1,6 @@
 # Kalan P01 işleri: belge, taşıma ve faz kabulü incelemesi
 
-**Tarih:** 2026-10-29. **Dal/taban:** feat/p01-5-transport / development 805f8bd; önceki kapanış commit'i d686c8f. **Durum:** Hazırlık/karar önerisi; P01-5/P01-6 ürün uygulaması veya kabulü değil. Kullanıcı kalan işleri adım/commit/iki fresh review turuyla tek nihai PR'da tamamlama talebinde bulundu.
+**Tarih:** 2026-10-29. **Dal/taban:** feat/p01-5-transport / development 805f8bd; önceki kapanış commit'i d686c8f. **Durum:** Hazırlık ve kullanıcı review düzeltmeleri tamamlandı; ADR-0017/0018 Accepted, P01-5/P01-6 ürün kabulü henüz yok. Kullanıcı kalan işleri adım/commit/iki fresh review turuyla tek nihai PR'da tamamlama talebinde bulundu.
 
 ## İnceleme kapsamı ve gerçek eksik
 
@@ -59,3 +59,28 @@ Kapanış CI planı Linux'ta 3.11 ve 3.14, macOS'ta 3.11 uyumluluk işlerini iç
 **R2:** Farklı iki fresh ajan, güvenlik/dayanıklılık için gpt-6.1-sol/high ve sözleşme/teslim için gpt-6.1-terra/high, d686c8f..cdef7c6 revizyonunu salt-okunur inceledi. Tek doğrulanmış P2: bağlı operation ID taşıyan stream'in EOF/trailing genel hatasında stream referansı aynı ID'yi, CLI genel katalog ise null ID'yi gerektiriyordu. CLI/stream referansları OperationError(code, bound_operation_id), kapalı reason_code/capacity_kind=null ve aynı genel code/exit kuralına hizalandı; operation bağlamı olmayan genel hatanın null zarfı korundu. P01-5b'ye bağlı ID'li EOF/trailing negatif kabulü eklendi; ID taşımak job mutasyonu/unknown anlamına gelmez. Bulguyu bildiren reviewer güncel üç dosyada fix kapanışını yeniden doğruladı; bu bulgu kapsamında açık çelişki kalmadı. Güvenlik reviewer'ı yeni bulgu doğrulamadı.
 
 **Hazırlık doğrulaması:** check-docs 125 Markdown/0 sorun, check-agent-guides 6 skill/12 kart/0 sorun, diff whitespace temiz. Bu hazırlık yalnız belge değiştirir; runtime testi, build/kurulum, yeni performans veya CI koşusu çalıştırılmadı. İki ADR Proposed ve kartlar draft; kullanıcı onayı sonrası altı ürün adımına geçilebilir. Yeni runtime kabulü geçmiş P01-4 test sayısıyla doldurulmaz.
+
+## Kullanıcı reviewi ve karar kabulü — 2026-10-29
+
+Kullanıcı, e01bf21 üzerindeki bulguların dikkatle doğrulanıp düzeltilmesini, ardından ADR'lerin Accepted yapılıp uygulamaya başlanmasını açıkça yetkilendirdi. Yeni onay döngüsü açılmadı. HTTPX0.28.1 birincil _client/_models kaynakları yeniden okundu; aşağıdakiler mevcut ürün kusuru değil uygulama öncesi tasarım/acceptance disposition'larıdır. Önceki Proposed/kabul bekleyen paragraflar tarihsel hazırlıktır; güncel karar Accepted, ürün kabulü ayrı kalır.
+
+| Bulgu | Doğrulama / aksiyon |
+|---|---|
+| Kısa credential ve mutlak alt dize iddiası | Geçerli. Mevcut1byte kabul korunur; yalnız provider kaynaklı dinamik string/map key kontrolü, tüm boylarda eşitlik ve ≥8byte'da ayrıca literal substring. Sabit schema/Literal/yerel code-message ve tesadüfî kısa karakter eşliği dışarıda; kısa gömülü parçayı bulma garantisi yok. Exact-match kısa değer fail-closed; birbyte/sabitcode/sabitfield çakışma fixture'ları zorunlu. |
+| 1 cookie | Geçerli tasarım boşluğu. trust_env cookie'yi kapatmaz; deny CookiePolicy + response/finally clear + explicit Request/no default merge. Aynı-origin farklıpath/hizmet/retry negatifleri eklendi. |
+| 2 HTTPX kolaylık API'leri | Geçerli uygulama riski, raw-only yol somutlaştırıldı: Content-Encoding body öncesi ret, 32KiB aiter_raw, strictUTF8/JSON; aread/text/json/iterlines otomatik doğrulayıcı değildir. Gzip/bomb/NaN/duplicate/oversize fixture'ları eklendi. |
+| 3 hata kataloğu | Mevcut kodda yeni taslak kodların olmaması doğru; henüz uygulanmış ürün bug'ı değil. Adım1'e ErrorCode/MESSAGES/exit/OperationError reason_code için açık tablo testli genişletme eklendi. |
+| 4 ReadPort | Adaptör eşlemesinin eksikliği geçerli. 404→not_found,401/403→unauthorized/authorize PermissionError,network/5xx→unavailable,malformed→evidence_mismatch; state/current-authority hataları kendi kodunu korur. 2xx tek başına cancellation kanıtı değildir. Public jobs zaten ağ yapmadığı için jobs exit0 kuralının mevcut kodda bozulduğu iddiası uygulanmaz; iç reconcile kabulü ayrı eklendi. |
+| 5 NDJSON boyutu | Geçerli hazırlık boşluğu. Encoded Result payload≤1MiB, tek event≤1MiB+1KiB; aşım publish öncesi output_write_failed/1, tamamlanmış iş değişmez. JSON/text eski davranışı değişmez; sınır−1/sınır/sınır+1 kabulü eklendi. |
+| 6 INFO log URL | Geçerli. INFO/DEBUG owned çağrı context-local filtre; unrelated caller/globallevel etkilenmez, rootINFO/DEBUG path/query canary kabulü gerekir. |
+| 7 exit1/6 tanımı | Geçerli belge eksikliği. output_write_failed1 korundu; exit1 sonuç çıktısının teslim edilememesini,6 yalnız yerel çağrı/izleme/pipe kapanışını da açık kapsar. Kalıcı başarı değişmez;5 önceliklidir. |
+| 8 ve ayrı P3 close/cancel | Geçerli. Normal aclose/context exit istisnasız cleanup, Task.cancel yakalanan CancelledError'ı finally sonrası yayar; iki ayrı kabul. |
+| 9 stream hata önceliği | Geçerli. Partial line/strict/terminalsonrası invalid_response; record sonrası reset/truncation stream_interrupted; ilkrecordöncesi transportfailure transport_failed; cleanEOF terminal yoksa stream_interrupted; timeout transport_timeout. Terminal EOF doğrulanana kadar bekler. |
+| 10 CLI NDJSON | Geçerli hedef-kapsam ifadesi. Normal komutta opt-in single-result, çok olay fixture-only olarak ana Çıktı bölümüne Accepted/henüzuygulanmadı notuyla işlendi. |
+| 11 UTF8 çıktı | Geçerli uygulama/kabul boşluğu. Locale'den bağımsız UTF8 byte renderer, LC_ALL=C/PYTHONIOENCODING=ascii ve nonASCII success/error kabulü eklendi. |
+| 12 havuz sahibi | Geçerli belge çelişkisi. Overview session-owned havuza hizalandı; süreçgeneli auth/cookie client yok. |
+| 13 indeks tablosu | Geçerli biçim kusuru. Üç indeksin tabloyu bölen boş satırları kaldırıldı; sırf bu düzeltme için helper/test kapsamı büyütülmedi. |
+| 14 defaultdeadline | Geçerli. Production caller mutlak deadline vermek zorunda; default yok. Fixture explicit30s, operation mevcut dar portdeadline verir. |
+| 15 jitter | Geçerli ifade belirsizliği. ADR ve referans uniform0..0,25s, Retry-After ile max kuralında hizalı. |
+
+Ürün uygulaması bu Accepted belge commit'inden sonra başlar; son kaynak test/review sonuçları ayrı uygulama kaydına yazılacaktır. Bu reviewde canlı EVREN veya yeni ürün runtime kabulü yapılmadı.

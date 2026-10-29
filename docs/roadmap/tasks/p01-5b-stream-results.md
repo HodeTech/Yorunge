@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-5b — Tipli akış, NDJSON ve yerel iptal
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. Ürün uygulaması başlamadı; ADR-0018 ve P01-5a kabulü bekleniyor.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; ürün uygulaması başlamadı, P01-5a kabulü bekleniyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Kapalı StreamEvent v1, bounded strict NDJSON codec, ortak tipli sonuç/hata/ren
 
 ## Bağımlılıklar ve kararlar
 
-P01-4b verified; P01-5a aynı pakette gerçek kod/test/review kabulüyle verified olmadan bu kart ready olmaz. [ADR-0018](../../decisions/0018-stream-results-and-cancellation.md) Proposed; [ADR-0017](../../decisions/0017-bounded-http-transport.md) kaynak/deadline temelidir. Kullanıcı onayı ve iki fresh belge review gereklidir; ayrı merge gerekmez.
+P01-4b verified; P01-5a aynı pakette gerçek kod/test/review kabulüyle verified olmadan bu kart ready olmaz. [ADR-0018](../../decisions/0018-stream-results-and-cancellation.md) Accepted; [ADR-0017](../../decisions/0017-bounded-http-transport.md) kaynak/deadline temelidir. 2026-10-29 kullanıcı yetkisi ve belge review düzeltmeleri tamamlandı; ayrı merge gerekmez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -29,10 +29,10 @@ Exact event/sequence/ID/payload/terminal/EOF/byte limitleri [stream referansınd
 ## Kabul
 
 1. Bütün mevcut normal komutlar text/JSON anlamını korur; NDJSON başarı tek sequence1/result, payload Python/JSON Result v1 ile eşleşir. Help/version insan metadata'sı; erken parser hatası --output=ndjson dahil stdout boş/stderr JSON; seçenek yerleşimi/tekrar ve non-TTY saflığı sınanır.
-2. Gerçek loopback byte stream'inde UTF-8/JSON chunk bölünmesi, CRLF, 512KiB sınırı, nesting/node, duplicate/nonfinite/unknownfield/version/booleans/order/streamID/operationID bozukluğu sınanır. Terminal adayı messageEOF/trailing doğrulanmadan completed publish etmez; eksik terminal stream_interrupted, terminalsonrası veri invalid_response olur. Aynı negatifler bağlanmış operation ID ile de çalışır; üretilen tek error ID'yi ve aynı code/exit'i korur, job durumunu değiştirmez.
+2. Gerçek loopback byte stream'inde UTF-8/JSON chunk bölünmesi, CRLF, 1MiB Result/1MiB+1KiB event sınır−1/sınır/sınır+1, nesting/node, duplicate/nonfinite/unknownfield/version/booleans/order/streamID/operationID bozukluğu sınanır. Terminal adayı messageEOF/trailing doğrulanmadan completed publish etmez; cleanEOF/reset/chunkedtruncation/partialline/terminalsonrası veri ve timeout için referanstaki kesin hata önceliği doğrulanır. Aynı negatifler bağlanmış operation ID ile de çalışır; üretilen tek error ID'yi ve aynı code/exit'i korur, job durumunu değiştirmez.
 3. Açık çok-olay consumer'da sıralı progress + tam1 terminal; first-publish öncesi hata stderr, sonrası tek error stdout. Sahte başarı/ikinci hata/terminal sonrası emit yoktur. Sonuç beklenen kapalı domain modeliyle doğrulanır; provider mantıksal hata 2xx'le success olmaz.
-4. Known secret farklı chunk/UTF-8/satır parçalarında yansırsa public stdout/stderr/exception/log sızdırmaz. Buffer/queue sınırlı, tüketici yavaşken backpressure ve tek total deadline işler. Erken close/task cancel kaynakları kapatır; retry/resubscribe yoktur.
-5. Gerçek subprocess SIGINT, BrokenPipe ve diğer output I/O kontrollü exit/hata üretir; ikinci stdout write/atexit traceback yoktur. Critical local config/DB commit çevresi iptalinde kesin rollback, kesin publish ve belirsiz publish ayrımı korunur. Store'daki terminal başarı render hatasıyla unknown olmaz.
+4. HTTP provenance kuralındaki uzun canary farklı chunk/UTF-8 parçalarında yansırsa publish edilmez; kısa sır/sabit field-code çakışması testleri mutlak alt dize yasağı koymaz. Buffer/queue sınırlı, tüketici yavaşken backpressure ve tek total deadline işler. Normal erken close/context exit kaynak kapatıp istisnasız biter; Task.cancel cleanup sonrası CancelledError yayar. İkisi ayrı testtir; retry/resubscribe yoktur.
+5. LC_ALL=C/PYTHONIOENCODING=ascii altında nonASCII result/error geçerli UTF-8 byte olarak çıkar; traceback yoktur. Gerçek subprocess SIGINT, BrokenPipe ve diğer output I/O kontrollü exit/hata üretir; ikinci stdout write/atexit traceback yoktur. Critical local config/DB commit çevresi iptalinde kesin rollback, kesin publish ve belirsiz publish ayrımı korunur. Store'daki terminal başarı render hatasıyla unknown olmaz.
 6. StartPort arm sonrası iptal/timeout/bozuk receipt operation_uncertain/5 ve ID/latch'i korur; salt izleme iptali request_cancelled/6 ve provider cancelled değildir. Aynı işi tekrar başlatma veya yeni approval ile latch'i açma yoktur. Async CancelledError cleanup sonrası yükselir; global BaseException yutulmaz.
 7. Yeni output seçeneğinin beklenen help farkları dışında lazy komut/argument ve v1 wire/digest regresyonu yoktur. Ortak renderer'ın kurulu wheel ve sdist CLI smoke'u gerçek entry point'ten yürür; ayrı fixture formatter başarı sayılmaz.
 

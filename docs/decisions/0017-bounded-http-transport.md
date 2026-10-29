@@ -1,6 +1,6 @@
 # ADR-0017: Ortak HTTP taşıması ve SDK sınırı
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; ürün kodu uygulanmadı. **Tarih:** 2026-10-29. **İş:** P01-5a / B01 ve B03 ön incelemesi.
+**Durum:** Accepted — 2026-10-29 kullanıcı yetkisiyle review düzeltmeleri sonrası benimsendi; ürün uygulaması bu karardan sonra başlar. **Tarih:** 2026-10-29. **İş:** P01-5a / B01 ve B03 ön incelemesi.
 
 ## Bağlam
 
@@ -8,7 +8,7 @@ P01-1–4 yerel çekirdeği teslim etti. Gerçek HTTP taşıması yok; güncel `
 
 HTTPX'in connect/read/write/pool timeout'ları toplam istek deadline'ı değildir. Header veya gövdenin yavaş damlatılması, yalnız senkron socket timeout'u ve chunk arası kontrolle güvenilir biçimde sınırlandırılamaz. Bir thread'i terk etmek de devam eden isteği durdurduğunu kanıtlamaz. SDK'nın kendi retry ve ortamdan credential seçimi dış katman politikasıyla çarpışabilir.
 
-## Karar önerisi
+## Karar
 
 ### İstemci ve composition
 
@@ -22,11 +22,11 @@ Mevcut senkron operation portları değiştirilmez. Ağ kullanan senkron composi
 
 Üretim taşıması yalnız [binding v1](../reference/credential-binding-v1.md)'in normalize ettiği HTTPS/443 origin ve API kökünü kabul eder. Endpoint adaptörü açık göreli yol/parametre verir; tam URL, authority değişimi, dot segment, kök kaçışı ve belirsiz encoding ağdan önce reddedilir. İstek hazırlanırken HTTPX'in son URL'si de seçilen hedef/kök ile karşılaştırılır. Otomatik redirect **kapalıdır**; aynı-origin dahil 3xx takip edilmez.
 
-TLS doğrulaması açık kalır. `trust_env=False`; env proxy/CA/netrc ile gizli hedef/auth değişimi, implicit cookie/auth ve kullanıcı `Host`/`Authorization` override'ı yoktur. Yalnız hizmet adaptörünün belirlediği auth header'a seçilmiş credential snapshot'ı eklenir; Platform/LLM header biçimi ortak taşıma tarafından uydurulmaz. Yeni host, DNS/IP allowlist veya genel SSRF engeli iddiası yoktur: hedef kullanıcının açık config'idir, HTTPS doğru hedef politikasının tek başına kanıtı değildir. İmzalı depolama URL'si ve credential'sız farklı-origin aktarım ayrı P02 endpoint sözleşmesidir.
+TLS doğrulaması açık kalır. `trust_env=False` env proxy/CA/netrc davranışını kapatır; cookie izolasyonunu tek başına sağlamaz. Client, kabul/gönderim yapmayan CookiePolicy ve her response/finally sonunda cookie temizliği kullanır; request explicit kurulur, client cookie/header/auth merge API'si kullanılmaz. Aynı origin'de farklı path/hizmet ve retry dahil ikinci istekte Cookie yoktur. Kullanıcı `Host`/`Authorization` override'ı yoktur. Yalnız hizmet adaptörünün belirlediği auth header'a seçilmiş credential snapshot'ı eklenir; Platform/LLM header biçimi ortak taşıma tarafından uydurulmaz. Yeni host, DNS/IP allowlist veya genel SSRF engeli iddiası yoktur: hedef kullanıcının açık config'idir, HTTPS doğru hedef politikasının tek başına kanıtı değildir. İmzalı depolama URL'si ve credential'sız farklı-origin aktarım ayrı P02 endpoint sözleşmesidir.
 
 Gerçek TLS loopback fixture'ı test CA'sına güvenen, yalnız test composition'ının verdiği explicit hedef kullanır. Ephemeral loopback portu için istisna yalnız fixture'dadır; production hedef doğrulamasını gevşeten flag/env/config/public URL seçeneği eklenmez. Başarılı TLS, yanlış CA/host, 3xx ve iki ayrı sunucuda header sızıntısı birlikte sınanır.
 
-Sır yalnız özel request taşıyıcısındadır; repr/exception/log/Result/event'e ham HTTPX request/response/URL/body/header girmez. Endpoint decoder bounded yanıtı doğrular, bilinen credential'ı taşıyan metin/kimlik/anahtarları public sonuca vermeden reddeder. Akışta satır/chunk bölünmesi sızıntı kontrolünü atlatamaz. HTTP kütüphanesi debug kayıtlarının sır veya imzalı query taşıması kabul edilmez. Bu, bütün PII'yi otomatik bulma garantisi değildir.
+Sır yalnız private request/auth taşıyıcısındadır; ham request/response/header/body/URL veya exception public çıktıya kopyalanmaz. Bilinen sır kontrolü provider kaynaklı dinamik serbest string değer ve dinamik map anahtarlarında bütün uzunluklarda tam eşitlik, en az 8 UTF-8 byte sırda ayrıca literal alt dize eşleşmesidir; strict modelin sabit alan adları/Literal enum'ları ve yerel hata kodu/mesajları taranmaz. Kısa sırın başka bir metindeki tesadüfî karakter eşliği sızıntı kanıtı sayılmaz; kısa sırın gömülü parçalarını bulma garantisi yoktur. Tam eşit dinamik değer kısa olsa da fail-closed reddedilir; ham credential kabulü 1–16.384 byte kalır. Çakışma hatası yalnız yerel güvenli katalogdan kurulur; örneğin credential a iken sabit message/code içindeki a yasaklanmaz. Chunk bölünmesi aynı record üzerinde kontrolü atlatamaz. HTTPX/httpcore INFO ve DEBUG kayıtları owned çağrı bağlamında context-local filtreyle bastırılır; global logging seviyesi/diğer çağrılar değiştirilmez. Ayrıntılı provenance ve canary kabulü HTTP referansındadır; bütün PII veya bütün çıktı alanlarında mutlak alt dize yokluğu iddiası değildir.
 
 ### Tek deadline ve tek retry sahibi
 
@@ -34,7 +34,7 @@ Her çağrı mutlak monotonic deadline alır; havuz bekleme, DNS/connect/TLS, he
 
 Retry sahibi yalnız ortak uygulama politikasıdır; HTTPX transport retry **0**. Varsayılan **1 deneme**; trusted endpoint adaptörünün açık `read_only` işaretlediği yalnız GET/HEAD için en çok **2 deneme**. Method tek başına güven kanıtı değildir. Effectful/POST/dispatch, `ConnectError` dahil hiçbir otomatik tekrar yapmaz; provider idempotency desteği varsayılmaz. 401/403, redirect, TLS/şema/encoding/oversize ve başladıktan sonra kesilen body/stream retry edilmez. Read-only retry, response verisi tüketiciye verilmeden önce bağlantı/geçici 408/429/502/503/504 hatasıyla sınırlıdır.
 
-İlk backoff 0,25 s tabanlı bounded jitter'dır; `Retry-After` geçerli delta veya HTTP-date ise gereken beklemenin altına inilmez. Geçersiz değer normal backoff'a düşer, deadline'a sığmayan bekleme/ikinci deneme yapılmaz. Sınırsız `Retry-After`, her katmanda yeni bütçe veya parçadan sonra akışı yeniden başlatma yoktur. Kesin tip/limit/hata sözleşmesi [taşıma referansındadır](../reference/http-transport.md).
+İlk backoff uniform `[0, 0,25]` s jitter'dır; `Retry-After` geçerli delta veya HTTP-date ise gereken beklemenin altına inilmez. Geçersiz değer normal backoff'a düşer, deadline'a sığmayan bekleme/ikinci deneme yapılmaz. Sınırsız `Retry-After`, her katmanda yeni bütçe veya parçadan sonra akışı yeniden başlatma yoktur. Kesin tip/limit/hata sözleşmesi [taşıma referansındadır](../reference/http-transport.md).
 
 ### SDK sınırı
 

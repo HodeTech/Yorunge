@@ -13,12 +13,11 @@
 | [P01-3b](p01-3b-execution-plan-validity.md) | Ayrı execution hazırlığı, güncel geçerlilik ve onay bağı |
 | [P01-4b](p01-4b-operation-coordination.md) | Kalıcı operation kabulü, tek gönderim, lease/fencing ve unknown |
 | [P01-4c](p01-4c-local-jobs.md) | Gerçek yerel iş geçmişinden CLI/Python list/show |
-
 | [P01-5a](p01-5a-http-transport.md) | Ortak HTTP/TLS/deadline/retry, SDK sınırı ve operation composition |
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
 
-[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı son kullanıcı talebiyle tek nihai PR’da toplar; ürün adımları öncesi ADR-0017/0018 onayı bekler.
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı son kullanıcı talebiyle tek nihai PR’da toplar; ADR-0017/0018 review düzeltmeleri sonrası Accepted, ilk ürün adımına geçilir.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 

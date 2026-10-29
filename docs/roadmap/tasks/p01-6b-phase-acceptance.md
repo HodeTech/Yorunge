@@ -20,7 +20,7 @@ Kullanıcı/sonraki adaptör geliştirmesi, kurulu hafif çekirdeğin girdi→ki
 
 ## Bağımlılıklar ve kararlar
 
-P01-2c/3b/4c development'a teslim edildi. P01-5b aynı dalda gerçek kabul/iki fresh review ile verified olmadan bu kart ready olmaz. ADR-0017/0018 onayı ve ilgili uygulama önkoşuldur. Kullanıcının kalan işler talebi tek nihai PR için yetkidir; ayrıca belge PR'ı veya test merge'ü açılmaz.
+P01-2c/3b/4c development'a teslim edildi. P01-5b aynı dalda gerçek kabul/iki fresh review ile verified olmadan bu kart ready olmaz. ADR-0017/0018 Accepted; ilgili uygulama kabulü önkoşuldur. Kullanıcının kalan işler talebi tek nihai PR için yetkidir; ayrıca belge PR'ı veya test merge'ü açılmaz.
 
 ## Sözleşme ve uygulama sınırı
 

@@ -73,7 +73,7 @@ Onay seçeneği açık yürütme niyetini planla bağlar; kendi başına kriptog
 
 - `text`: İnsan sonucu stdout; ilerleme/diagnostic stderr. Renk ve TUI kapatılabilir.
 - `json`: Tek sonuç nesnesi stdout. Başlamadan/sonuçta başarısız komut stdout'u boş tutar, tek yapılandırılmış hata stderr'e yazar; kısmi operation kimliği hata içinde taşınır. İnsan ilerleme metni çıkmaz.
-- `ndjson`: Destekleyen watch/stream komutunda her satır sürümlü olaydır. Başlatma öncesi hata stderr JSON'dur; başlamış akışın terminal başarısızlığı olayda yer alır. Akış sonunda başarılıymış gibi ek özet üretilmez.
+- `ndjson`: Accepted P01-5 tasarımı; henüz uygulanmadı. Bütün normal komutlarda opt-in (`--output ndjson`/`--output=ndjson`), tek başarılı sonuç tek result olayıdır. Çok olaylı gerçek taşıma fixture composition'ındadır; public watch/stream açılmaz. İlk publish öncesi hata stderr JSON, sonrası tek terminal error stdout; ikinci başarılı özet yoktur. Makine çıktı UTF-8 byte olarak yazılır, locale/PYTHONIOENCODING bunu değiştirmez.
 
 Sonuç zarfı `schema_version`, `operation_id` (yoksa null), `status`, `data`, `warnings` taşır. Hata zarfında kararlı `code`, yerelleştirilebilir `message`, `operation_id`, `retryable` ve sınırlı `details` vardır. Tekil istek JSON çıktısı ile streaming NDJSON birbirine karışmaz. `--help`/`--version` insan odaklı meta işlemlerdir, operation oluşturmaz.
 
@@ -82,12 +82,12 @@ Sonuç zarfı `schema_version`, `operation_id` (yoksa null), `status`, `data`, `
 | Kod | Anlam |
 |---:|---|
 | 0 | İstenen iş/okuma tamamlandı |
-| 1 | Kesin operasyon/uzak servis başarısızlığı |
+| 1 | Kesin operasyon/uzak servis başarısızlığı veya sonuç çıktısı teslim edilemedi; kalıcı iş başarısı çıktı hatasıyla değişmez |
 | 2 | Kullanım, config/şema veya yerel önkoşul hatası |
 | 3 | Kimlik/erişim eksik veya reddedilmiş |
 | 4 | Gerekli onay sağlanmadı |
 | 5 | Yan etkili işlemin sonucu belirsiz; uzlaştırma gerekli |
-| 6 | İşlem iptal edildi |
+| 6 | Yerel çağrı/izleme bırakıldı veya stdout alıcısı kapandı; uzak işin iptali kanıtı değildir |
 | 7 | İçerik/artefakt bütünlüğü uyuşmazlığı |
 
 Salt okunur capability sorgusu başarıyla bilinmiyor sonucu döndürürse kod 0 olabilir; belirsiz **yan etki** kod 5'tir. Haricî aracın ham kodu `provider_exit_code` olarak ayrıca saklanır. Örneğin ForgeLM'in kod 6'sı Yörünge'de otomatik iptal sayılmaz; adaptör anlamını eşler.
@@ -135,9 +135,9 @@ Jobs yalnız operation_not_found ve mevcut request/state hatalarını üretir; p
 | operation_uncertain | 5 | Arm sonrası dış çağrı/sonuç commit'i belirsiz; alttaki kontrollü ErrorCode reason_code olur; retry yok |
 | state_changed | 2 | Admission/arm'ın final credential ID/revision/hedefi, plan/approval snapshot veya beklenen store clock bağları değişmiş; güncel owner token uyuşmazlığı yukarıdaki lease_lost'tur |
 
-## Önerilen P01-5 hata kataloğu
+## P01-5 hata kataloğu
 
-Bu bölüm **taslaktır, uygulanmadı**; Proposed [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) onayına bağlıdır. Mevcut kod/exit tablosunu uygulandı diye genişletmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
+Bu bölüm **Accepted tasarım, henüz uygulanmadı**; 2026-10-29 kullanıcı yetkisiyle [ADR-0017](../decisions/0017-bounded-http-transport.md) ve [ADR-0018](../decisions/0018-stream-results-and-cancellation.md) review düzeltmeleri sonrası benimsendi. Mevcut kod/exit tablosunu uygulandı diye genişletmez. Yeni normal CLI output seçeneği ve wire [stream referansında](stream-results.md), taşıma politikası [HTTP referansında](http-transport.md) tanımlıdır. Eski Result v1 ve text/JSON anlamı korunur.
 
 | Kod | Exit | Kesin tetik |
 |---|---:|---|
@@ -147,7 +147,7 @@ Bu bölüm **taslaktır, uygulanmadı**; Proposed [ADR-0017](../decisions/0017-b
 | remote_rate_limited | 1 | 429 ve izinli retry/bütçe sonrası ret; sınırsız bekleme yok |
 | remote_failed | 1 | Redirect dahil kabul edilmeyen diğer HTTP status veya endpoint'in doğrulanmış mantıksal başarısızlığı |
 | invalid_response | 1 | Encoding/content/size/strict domain schema veya stream sequence/ID/terminalsonrası veri bozukluğu; 2xx başarıya yetmez |
-| stream_interrupted | 1 | Message EOF geldiğinde gerekli terminal record yok; eksik son satır/bozuk içerik invalid_response'tur |
+| stream_interrupted | 1 | Terminal yokken clean EOF veya kabul edilmiş record/terminal adayı sonrası reset/truncated body; yarım line invalid_response, timeout transport_timeout; exact öncelik stream referansında |
 | request_cancelled | 6 | Yerel çağrı/izleme SIGINT ile bırakıldı; rollback veya uzak iş cancellation başarısı değildir |
 | output_closed | 6 | Stdout alıcısı kapandı; retry/ikinci write yok, stderr best-effort |
 | output_write_failed | 1 | BrokenPipe dışı stdout I/O hatası; başarılı kalıcı iş değişmez |
