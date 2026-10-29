@@ -25,6 +25,8 @@ Bu ayrım PR #10'un eklediği 33 ham ölçüme uygulandı. Önceki fazların kö
 
 Bu araç ölçümü tekrar çalıştırmaz, donanım/komut iddiasını bağımsız kanıtlamaz ve tarihsel kaynak hash'lerini güncel checkout'la eşitlemez. Kaynak kimliği ve hangi sonucun hangi kabulü kapattığı reviewer tarafından değerlendirilir. Hash imza değildir; arşiv ve manifest birlikte değiştirilirse yeni içerik normal review gerektirir.
 
+Eski startup v1 örnekleri ve p95'i üç ondalığa yuvarlar; karar ise yuvarlanmadan önce verilmiştir. Eşiğe yarım mikro-saniye kadar yakın kayıtta özgün pass/fail korunur ve özet bu belirsizliği işaretler. v2/jobs için bu tolerans uygulanmaz. Kurulum özeti bütün origin/cache/execution/jobs smoke sonuçlarını, yardım özeti de beklenen root farkını ve gerçek eşlik sonuçlarını ayrı sayar; eksik alan `not_recorded` kalır. Katalog en çok 256 kayıttır; kapasite doluysa yeni yazı başlamadan ret verilir.
+
 ## İnceleme sırası
 
 Önce ürün kodu/testler, ölçüm betikleri, kabul raporu ve manifest özeti incelenir. Varsayılan tam `git diff` çıktısı veya gzip açılımı model bağlamına dökülmez. Örneğin mevcut taban commit'i seçildikten sonra:

@@ -18,6 +18,7 @@ from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
+MAX_ENTRIES = 256
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 MANIFEST = "evidence-manifest.json"
@@ -97,13 +98,108 @@ def measurement(value: dict[str, Any], *, startup: bool, rounded: bool = False) 
         raise ValueError("reported p95 does not match all samples")
     budget = number(value["target_ms" if startup else "budget_ms"])
     passed = value["passed"]
-    if budget <= 0 or type(passed) is not bool or passed != (reported <= budget):
+    ambiguous = rounded and abs(reported - budget) <= 0.000501
+    if (
+        budget <= 0
+        or type(passed) is not bool
+        or (not ambiguous and passed != (reported <= budget))
+    ):
         raise ValueError("reported budget outcome does not match p95")
-    return {"samples": len(samples), "p95_ms": reported, "budget_ms": budget, "passed": passed}
+    result = {"samples": len(samples), "p95_ms": reported, "budget_ms": budget, "passed": passed}
+    if rounded:
+        result["budget_decision_ambiguous_after_rounding"] = ambiguous
+    return result
+
+
+def check_counts(rows: list[dict[str, Any]], fields: tuple[str, ...]) -> dict[str, Any]:
+    return {
+        field: dict(
+            sorted(
+                Counter(
+                    str(row[field]).lower() if field in row else "not_recorded" for row in rows
+                ).items()
+            )
+        )
+        for field in fields
+    }
+
+
+def startup_summary(report: dict[str, Any]) -> dict[str, Any]:
+    groups = {"candidate": report["measurements"]}
+    baseline = report.get("comparison", {}).get("baseline_measurements")
+    if baseline is not None:
+        groups["baseline"] = baseline
+    return {
+        "kind": "startup",
+        "measurements": {
+            f"{group}/{key}": measurement(
+                value, startup=True, rounded=report.get("schema_version") == 1
+            )
+            for group, entries in groups.items()
+            for key, value in entries.items()
+        },
+    }
+
+
+def jobs_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    metrics = {f"{r['layout']}/{r['action']}": measurement(r, startup=False) for r in runs}
+    if len(metrics) != len(runs):
+        raise ValueError("duplicate measurement group")
+    return {"kind": "jobs", "measurements": metrics}
+
+
+def run_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "kind": "migration" if "source_version" in runs[0] else "operation",
+        "cases": len(runs),
+        "outcomes": dict(sorted(Counter(r["outcome"] for r in runs).items())),
+    }
+    elapsed = [number(r["elapsed_ms"]) for r in runs if "elapsed_ms" in r]
+    if elapsed:
+        result["max_elapsed_ms"] = max(elapsed)
+    return result
+
+
+def payload_summary(report: dict[str, Any]) -> dict[str, Any]:
+    runs = report.get("runs", [])
+    if "measurements" in report:
+        return startup_summary(report)
+    if isinstance(runs, list) and runs and "samples_ms" in runs[0]:
+        return jobs_summary(runs)
+    if "sources" in report and "unchanged" in report:
+        return {
+            "kind": "comparison",
+            "cases": len(runs),
+            "diagnostic_only": True,
+            "outcomes": dict(sorted(Counter(r["outcome"] for r in runs).items())),
+        }
+    if isinstance(runs, list) and runs and "outcome" in runs[0]:
+        return run_summary(runs)
+    if "results" in report:
+        return {
+            "kind": "installation",
+            "cases": len(report["results"]),
+            "checks": check_counts(
+                report["results"],
+                ("origin_verified", "smoke", "cache_smoke", "execution_smoke", "jobs_smoke"),
+            ),
+        }
+    if "cases" in report:
+        return {
+            "kind": "help-parity",
+            "cases": len(report["cases"]),
+            "checks": check_counts(
+                report["cases"], ("equal", "root_expected_jobs_addition", "matches_initial_p014")
+            ),
+        }
+    if "outcome" in report:
+        return {"kind": "diagnostic", "outcome": report["outcome"], "diagnostic_only": True}
+    if report.get("diagnostic_only") is True:
+        return {"kind": "diagnostic", "cases": len(runs), "diagnostic_only": True}
+    raise ValueError("unsupported measurement report; test vectors are not raw receipts")
 
 
 def summarize(report: dict[str, Any]) -> dict[str, Any]:
-    runs = report.get("runs", [])
     summary: dict[str, Any] = {
         "source_commit": next(
             (
@@ -115,47 +211,7 @@ def summarize(report: dict[str, Any]) -> dict[str, Any]:
         ),
         "diagnostic_only": report.get("diagnostic_only", False),
     }
-    if "measurements" in report:
-        summary["kind"] = "startup"
-        groups = {"candidate": report["measurements"]}
-        baseline = report.get("comparison", {}).get("baseline_measurements")
-        if baseline is not None:
-            groups["baseline"] = baseline
-        summary["measurements"] = {
-            f"{group}/{key}": measurement(
-                value, startup=True, rounded=report.get("schema_version") == 1
-            )
-            for group, entries in groups.items()
-            for key, value in entries.items()
-        }
-    elif isinstance(runs, list) and runs and "samples_ms" in runs[0]:
-        summary["kind"] = "jobs"
-        metrics = {f"{r['layout']}/{r['action']}": measurement(r, startup=False) for r in runs}
-        if len(metrics) != len(runs):
-            raise ValueError("duplicate measurement group")
-        summary["measurements"] = metrics
-    elif "sources" in report and "unchanged" in report:
-        summary.update(kind="comparison", cases=len(runs), diagnostic_only=True)
-        summary["outcomes"] = dict(sorted(Counter(r["outcome"] for r in runs).items()))
-    elif isinstance(runs, list) and runs and "outcome" in runs[0]:
-        summary["kind"] = "migration" if "source_version" in runs[0] else "operation"
-        summary["cases"] = len(runs)
-        summary["outcomes"] = dict(sorted(Counter(r["outcome"] for r in runs).items()))
-        elapsed = [number(r["elapsed_ms"]) for r in runs if "elapsed_ms" in r]
-        if elapsed:
-            summary["max_elapsed_ms"] = max(elapsed)
-    elif "results" in report:
-        summary.update(kind="installation", cases=len(report["results"]))
-        summary["smoke"] = dict(Counter(r["smoke"] for r in report["results"]))
-    elif "cases" in report:
-        summary.update(kind="help-parity", cases=len(report["cases"]))
-    elif "outcome" in report:
-        summary.update(kind="diagnostic", outcome=report["outcome"])
-        summary["diagnostic_only"] = True
-    elif report.get("diagnostic_only") is True:
-        summary.update(kind="diagnostic", cases=len(runs), diagnostic_only=True)
-    else:
-        raise ValueError("unsupported measurement report; test vectors are not raw receipts")
+    summary.update(payload_summary(report))
     return summary
 
 
@@ -181,7 +237,11 @@ def catalog(directory: Path) -> list[dict[str, Any]]:
     if set(data) != {"schema_version", "entries"} or type(data["schema_version"]) is not int:
         raise ValueError("invalid evidence manifest")
     entries = data["entries"]
-    if data["schema_version"] != 1 or not isinstance(entries, list) or not 1 <= len(entries) <= 256:
+    if (
+        data["schema_version"] != 1
+        or not isinstance(entries, list)
+        or not 1 <= len(entries) <= MAX_ENTRIES
+    ):
         raise ValueError("invalid evidence manifest entries")
     if any(
         not isinstance(item, dict)
@@ -277,6 +337,8 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
     entries = catalog(directory) if (directory / MANIFEST).exists() else []
     if any(existing["name"] == source.name for existing in entries):
         raise ValueError("evidence already registered; existing bytes are preserved")
+    if len(entries) >= MAX_ENTRIES:
+        raise ValueError("evidence catalog capacity exceeded; existing bytes are preserved")
     entries = sorted([*entries, item], key=lambda value: value["name"])
     (directory / "raw").mkdir(exist_ok=True)
     with (directory / "raw" / f"{source.name}.gz").open("xb") as stream:

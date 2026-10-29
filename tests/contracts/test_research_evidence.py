@@ -158,3 +158,66 @@ def test_current_p95_cannot_borrow_the_legacy_rounding_tolerance():
     }
     with pytest.raises(ValueError, match="all samples"):
         CHECKS["measurement"](data, startup=False)
+
+
+@pytest.mark.parametrize("passed", [True, False])
+def test_legacy_rounded_boundary_preserves_original_uncertain_budget_decision(passed):
+    data = {
+        "warm_samples_ms": [200] * 30,
+        "warm_p95_ms": 200,
+        "target_ms": 200,
+        "passed": passed,
+    }
+    result = CHECKS["measurement"](data, startup=True, rounded=True)
+    assert result["passed"] is passed
+    assert result["budget_decision_ambiguous_after_rounding"] is True
+    data["warm_samples_ms"] = [201] * 30
+    data["warm_p95_ms"] = 201
+    data["passed"] = True
+    with pytest.raises(ValueError, match="budget outcome"):
+        CHECKS["measurement"](data, startup=True, rounded=True)
+
+
+def test_manifest_summary_exposes_all_smoke_and_help_results():
+    installation = CHECKS["summarize"](
+        {"results": [{"smoke": "passed", "jobs_smoke": "failed", "origin_verified": False}]}
+    )
+    assert installation["checks"]["smoke"] == {"passed": 1}
+    assert installation["checks"]["jobs_smoke"] == {"failed": 1}
+    assert installation["checks"]["origin_verified"] == {"false": 1}
+    assert installation["checks"]["cache_smoke"] == {"not_recorded": 1}
+    help_result = CHECKS["summarize"](
+        {"cases": [{"equal": False, "root_expected_jobs_addition": True}, {"equal": True}]}
+    )
+    assert help_result["checks"]["equal"] == {"false": 1, "true": 1}
+    assert help_result["checks"]["root_expected_jobs_addition"] == {
+        "true": 1,
+        "not_recorded": 1,
+    }
+    later_help = CHECKS["summarize"]({"cases": [{"matches_initial_p014": False}]})
+    assert later_help["checks"]["matches_initial_p014"] == {"false": 1}
+
+
+def test_full_catalog_rejects_next_archive_before_mutating_any_file(tmp_path):
+    root, source, original = setup_archive(tmp_path)
+    directory = root / "docs/research"
+    packed = (directory / "raw/operation-budget.json.gz").read_bytes()
+    data = json.loads((directory / "evidence-manifest.json").read_bytes())
+    for index in range(1, 256):
+        name = f"sample-{index:03}.json"
+        (directory / "raw" / (name + ".gz")).write_bytes(packed)
+        data["entries"].append(CHECKS["entry"](name, original, packed, None))
+    data["entries"].sort(key=lambda item: item["name"])
+    (directory / "evidence-manifest.json").write_bytes(CHECKS["encode"](data))
+    (directory / "evidence.md").write_text(CHECKS["index_text"](data["entries"]))
+    assert verify(root) == 256
+    before = {p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    with pytest.raises(ValueError, match="capacity"):
+        archive_report(root, new_source, None)
+    assert {
+        p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()
+    } == before
+    assert new_source.read_bytes() == original
+    assert verify(root) == 256

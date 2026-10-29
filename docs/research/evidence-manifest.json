@@ -18,25 +18,29 @@
             "samples": 30,
             "p95_ms": 45.871,
             "budget_ms": 500.0,
-            "passed": true
+            "passed": true,
+            "budget_decision_ambiguous_after_rounding": false
           },
           "candidate/version": {
             "samples": 30,
             "p95_ms": 44.031,
             "budget_ms": 500.0,
-            "passed": true
+            "passed": true,
+            "budget_decision_ambiguous_after_rounding": false
           },
           "candidate/context": {
             "samples": 30,
             "p95_ms": 174.407,
             "budget_ms": 200.0,
-            "passed": true
+            "passed": true,
+            "budget_decision_ambiguous_after_rounding": false
           },
           "candidate/cache": {
             "samples": 30,
             "p95_ms": 218.223,
             "budget_ms": 200.0,
-            "passed": false
+            "passed": false,
+            "budget_decision_ambiguous_after_rounding": false
           }
         }
       }
@@ -242,8 +246,22 @@
         "diagnostic_only": false,
         "kind": "installation",
         "cases": 2,
-        "smoke": {
-          "passed": 2
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
         }
       }
     },
@@ -439,7 +457,20 @@
         "source_commit": null,
         "diagnostic_only": false,
         "kind": "help-parity",
-        "cases": 30
+        "cases": 30,
+        "checks": {
+          "equal": {
+            "false": 1,
+            "true": 29
+          },
+          "root_expected_jobs_addition": {
+            "false": 29,
+            "true": 1
+          },
+          "matches_initial_p014": {
+            "not_recorded": 30
+          }
+        }
       }
     },
     {
@@ -455,8 +486,22 @@
         "diagnostic_only": false,
         "kind": "installation",
         "cases": 2,
-        "smoke": {
-          "passed": 2
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
         }
       }
     },
@@ -614,7 +659,18 @@
         "source_commit": "e638194a37fecd273574cd84e415a1085479c943",
         "diagnostic_only": false,
         "kind": "help-parity",
-        "cases": 30
+        "cases": 30,
+        "checks": {
+          "equal": {
+            "not_recorded": 30
+          },
+          "root_expected_jobs_addition": {
+            "not_recorded": 30
+          },
+          "matches_initial_p014": {
+            "true": 30
+          }
+        }
       }
     },
     {
@@ -779,8 +835,22 @@
         "diagnostic_only": false,
         "kind": "installation",
         "cases": 2,
-        "smoke": {
-          "passed": 2
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
         }
       }
     },
