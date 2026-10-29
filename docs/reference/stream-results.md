@@ -1,6 +1,6 @@
 # Akış sonucu sözleşmesi
 
-**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md); tipli model/codec/owned reader ve CLI NDJSON/iptal iki fresh review turuyla verified. [P01-6b gerçek CI/kurulum/kaynak kabulü](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) önceki kaynak için kayıtlıdır; güncel P01-6b bellek kabulü kullanıcı review takibindedir. Development PR/merge ayrıdır. **Tarih:** 2026-10-29.
+**Durum:** Accepted [ADR-0018](../decisions/0018-stream-results-and-cancellation.md); tipli model/codec/owned reader ve CLI NDJSON/iptal iki fresh review turuyla verified. [P01-6b kullanıcı review sonrası gerçek CI/kurulum/bellek kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) çalışma dalında verified. Development PR/merge ayrıdır. **Tarih:** 2026-10-29.
 
 ## Kapalı StreamEvent v1
 

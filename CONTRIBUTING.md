@@ -1,6 +1,6 @@
 # Katkı rehberi
 
-Yörünge'nin P01 hafif çekirdeği çalışma dalındadır; güncel faz kabulü PR #11 kullanıcı review takibinde izlenir. Önceki gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
+Yörünge'nin P01 hafif çekirdeği ve kullanıcı review sonrası faz kabulü çalışma dalında verified. Güncel gerçek CI/kurulum/performans kanıtı [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
 
 ## Çalışma akışı
 

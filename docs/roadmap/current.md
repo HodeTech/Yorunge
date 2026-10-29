@@ -1,8 +1,8 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-29. **P01-6b kabulü yeniden açık (`in_progress`).** PR #11 kullanıcı incelemesindeki bellek kanıtı ve operation düzeltmeleri aynı dalda ele alınıyor. P01-1–4 development’a alındı; önceki P01-5a/b ve CI kabulleri tarihsel kayıtta korunur. Yeni kaynak/bellek kabulü tamamlanmadan P01 bütünü verified sayılmaz; merge kullanıcıdadır.
+**Güncellendi:** 2026-10-29. **P01 çalışma dalında verified.** PR #11 kullanıcı review düzeltmeleri, raw v2 bellek kabulü ve üç gerçek CI hücresi tamamlandı. P01-1–4 development’a teslim edildi; kalan P01-5a/b ve P01-6b, [PR #11](https://github.com/HodeTech/Yorunge/pull/11) üzerinde kullanıcı review/merge bekler. Master/release kullanıcıdadır.
 
-PR #11 kullanıcı incelemesi kısa secret denetimindeki yanlış pozitifliği ve iki bellek kanıtı açığını doğruladı. Önceki CI/ölçümler tarihsel olarak korunur; eski peak-minus-peak RSS yöntemi güncel bellek kabulü sayılmaz. [Düzeltme ve yeniden kabul planı](p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi) tamamlanmadan P01 bütünü kapanmış sayılmaz.
+PR #11 kullanıcı incelemesi kısa secret denetimindeki yanlış pozitifliği ve iki bellek kanıtı açığını doğruladı. Önceki CI/ölçümler tarihsel olarak korunur; eski peak-minus-peak RSS yöntemi güncel bellek kabulü sayılmaz. [Düzeltme planı](p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi) ve [yeni kaynak/native Linux kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. Eski başarısız koşular ve v1 bellek kayıtları tarihsel kalır.
 
 ## Tamamlanan ilk çekirdek
 
@@ -44,11 +44,11 @@ Ham ölçümler [manifest/indeks](../research/evidence.md) ve CI hash/özet dene
 
 ## Çalışma dalında doğrulanan P01 kapanışı
 
-**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ikişer adım ve fresh review turlarıyla; P01-6b için aşağıdaki önceki kaynak/ortam kabulü tarihsel kayıttır; güncel bellek ve son kaynak CI kabulü kullanıcı review takibinde yeniden açıktır. [Kabul ve CI kaydı](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). ADR-0017/0018 Accepted; önceki adım artifact'ları son kaynak artifact'ı sayılmaz.
+**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ikişer adım ve fresh review turlarıyla; P01-6b için aşağıdaki önceki kaynak/ortam kabulü tarihsel kayıttır; güncel raw v2 ve son kaynak CI kabulü [kullanıcı review kapanışında](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) verified olarak kaydedildi. [Kabul ve CI kaydı](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). ADR-0017/0018 Accepted; önceki adım artifact'ları son kaynak artifact'ı sayılmaz.
 
 [3d4f341 kaynaklı CI](https://github.com/HodeTech/Yorunge/actions/runs/40906015073) Linux 3.11/3.14 ve macOS 3.11 hücrelerinde 3.134'er test, statik kontroller, build ve iki temiz kurulumu; zorunlu aggregate'i geçti. Kaynağa bağlı M5 jobs referansı dört 200 ms kapısını geçti; bu, ilk Linux jobs aşımını başarıya çevirmez veya Linux jobs performans kabulü değildir. Başarısız ölçümler korunur.
 
-Kalan P01 paketi tek development PR üzerinden incelemeye sunulur; son head CI/review izlenir ve kullanıcı inceleme/merge yapar. Master/release kullanıcıdadır. Sonraki P02-0a araştırma/SDK pilot planı taslaktır ve başlamadı; P02-0b hesap keşfi ayrı iştir.
+Son kaynak bf652f6 için [40945597506 CI](https://github.com/HodeTech/Yorunge/actions/runs/40945597506) üç ortam, native Linux raw v2, startup, kaynak bağlı jobs ve aggregate kapısını geçti. Linux 3.11/3.14 hücreleri 3.312’şer; macOS 3.11 hücresi 3.311 test ve bir Linux native skip ile başarılıdır. Kalan P01 paketi tek açık PR #11 üzerindedir; belge head’inin kontrolleri ayrıca izlenir ve kullanıcı inceleme/merge yapar. Master/release kullanıcıdadır. Sonraki P02-0a araştırma/SDK pilot planı taslaktır ve başlamadı; P02-0b hesap keşfi ayrı iştir.
 
 [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Gerçek hesap keşfi/veri/çıkarım P02; ForgeLM/muadil araç adaptörleri ve uzak yürütme P03 kapsamındadır. Plan seçimi adaptör desteği değildir. Canlı EVREN, gerçek Windows veya fiziksel güç kesintisi kabulü iddia edilmez.
 

@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 29 Ekim 2026:** P01 hafif çekirdek uygulaması çalışma dalındadır; son kaynak ve bellek kabulü PR #11 kullanıcı review takibinde izlenir (`0.1.0.dev0`, yayımlanmadı; development PR incelemesi/merge ayrı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON altyapısı testlidir. Üç gerçek CI ortamı, iki temiz kurulum ve kaynak bütçeleri [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Gerçek EVREN uç adaptörü, eğitim, veri aktarımı ve artefakt teslimi sonraki fazlardadır.
+**Durum — 29 Ekim 2026:** P01 hafif çekirdek uygulaması ve kullanıcı review sonrası kaynak/bellek kabulü çalışma dalında verified (`0.1.0.dev0`, yayımlanmadı; development PR incelemesi/merge ayrı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON altyapısı testlidir. Üç gerçek CI ortamı, iki temiz kurulum ve kaynak bütçeleri [kapanış kaydındadır](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Gerçek EVREN uç adaptörü, eğitim, veri aktarımı ve artefakt teslimi sonraki fazlardadır.
 
 ## Çalışan başlangıç
 
@@ -103,7 +103,7 @@ Mevcut normal komutlarda `--output ndjson` veya `--output=ndjson`, tek başarıl
 
 Help/version insan çıktısı kalır. İlk sonuçtan önceki hata stdout’u boş bırakıp stderr’e tek JSON yazar. Ctrl-C ve kapalı pipe yerel çağrıyı bırakır (exit 6); kayıtlı işi geri almaz veya uzakta durdurmaz. Config yayınında veya operation gönderiminde belirsizlik varsa exit 5 ve ilgili kimlik korunur; otomatik tekrar yapılmaz. Kesin wire ve çıktı boyutu sınırları [akış sözleşmesindedir](docs/reference/stream-results.md).
 
-Ortak HTTP/stream altyapısı gerçek TLS loopback, ayrı süreç ve kurulu wheel/sdist ile doğrulandı. EVREN endpoint adaptörü ve kullanıcıya açık uzak watch/run sonraki fazlardadır. [P01 kabulü](docs/research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) çalışma dalında tamamlandı.
+Ortak HTTP/stream altyapısı gerçek TLS loopback, ayrı süreç ve kurulu wheel/sdist ile doğrulandı. EVREN endpoint adaptörü ve kullanıcıya açık uzak watch/run sonraki fazlardadır. [P01 kabulü](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) çalışma dalında tamamlandı.
 
 ## Ürün yaklaşımı
 

@@ -10,11 +10,17 @@ P01-4, [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile development’a
 
 - PR #10'un büyük ölçüm çıktıları özgün baytları korunarak gzip arşivine ayrıldı; küçük manifest/indeks ve CI bütünlük kontrolü eklendi. CodeRabbit yalnız raw arşivleri dışlar, ajan rehberi hedefli kanıt incelemesini tanımlar. Arşivler sdist'e girmez; sabit test vektörleri ve ölçüm kodu normal incelemede kalır.
 
+### Fixed — 2026-10-29
+
+- Provider run ID/status, HTTP ile aynı kısa-secret tam eşitlik ve ≥8 UTF-8 byte alt dize kuralını kullanır; meşru kısa-secret yanıtları gereksiz unknown olmaz.
+- Arm commit’i sonrası bütçe dolduğunda kalıcı dispatch niyeti/operation ID belirsizlik zarfında korunur; ikinci gönderim açılmaz.
+- Raw stream kabulü anlık RSS baseline, aynı Linux kernel sayaç ailesi ve bağımsız 64/8 MiB kapılarıyla doğrulanır; tarihsel HWM büyüme/ek bellek kullanımını maskeleyemez.
+
 ### Added — 2026-10-29
 
 - Session-owned async HTTPX taşıması ve sync Runner; canonical hedef/credential, bounded deadline/retry, TLS/cookie/log/yanıt doğrulama sınırları. Doğrudan SDK bağımlılığı veya EVREN endpoint adaptörü eklenmedi.
 - Tipli StreamEvent v1, bounded NDJSON codec, HTTP message EOF’a kadar tutulan terminal ve mevcut normal CLI komutlarında tek-result NDJSON. Eski Result/JSON v1, plan digest’i ve yerel komutların lazy import sınırı korunur.
-- UTF-8 byte çıktı, kontrollü SIGINT/pipe/I/O ve kritik config yayınında korunmuş uncertainty 5. Altı adım ve ikişer fresh review ile P01 altyapısı uygulandı; güncel bellek ve son kaynak kabulü PR #11 kullanıcı review takibindedir; [kapanış kaydı](docs/research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrıdır.
+- UTF-8 byte çıktı, kontrollü SIGINT/pipe/I/O ve kritik config yayınında korunmuş uncertainty 5. Altı adım ve ikişer fresh review ile P01 altyapısı uygulandı; kullanıcı review sonrası raw v2 ve üç ortamlı son kaynak kabulü verified; [kapanış kaydı](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı). Development PR review/merge ve yayın ayrıdır.
 - Linux/Python 3.11/3.14 ve macOS/Python 3.11 tam uyumluluk, build ve iki temiz kurulum; son kaynakla startup, zorunlu kaynak-bağlı 200 ms jobs referansı, raw stream RSS ve yoğun 5 s state/migration kapıları. Başarısız ortam ölçümleri ve referansın donanım sınırı açıkça saklanır.
 - Jobs okumasında gereksiz composition import maliyeti ve eşdeğer ASCII kontrol taraması azaltıldı; SQL/digest/tam validation/FK kuralları korundu. Python 3.14 platform taklidi ve izole fixture interpreter/TLS tanılama sorunları düzeltildi.
 - Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.

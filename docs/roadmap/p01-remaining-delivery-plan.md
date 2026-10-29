@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** ADR-0017/0018 Accepted; P01-5a/b önceki kabulü kayıtlı; P01-6b bellek kanıtı için yeniden in_progress. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** ADR-0017/0018 Accepted; P01-5a/b ve P01-6b çalışma dalında verified; kullanıcı review düzeltmeleri ve [yeni native kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
 
 ## Paket sınırı
 
