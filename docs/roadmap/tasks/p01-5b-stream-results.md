@@ -1,14 +1,14 @@
 ---
 id: P01-5b
 phase: P01
-status: draft
+status: ready
 size: M
 depends_on: [P01-5a, P01-4b]
 capabilities: [C12, C13]
 ---
 # P01-5b — Tipli akış, NDJSON ve yerel iptal
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; ürün uygulaması başlamadı, P01-5a kabulü bekleniyor.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım3–4. ADR-0018 Accepted; P01-5a iki adım/ikişer fresh review ve final artifact kabulüyle verified; adım3 uygulamasına hazır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Kapalı StreamEvent v1, bounded strict NDJSON codec, ortak tipli sonuç/hata/ren
 
 ## Bağımlılıklar ve kararlar
 
-P01-4b verified; P01-5a aynı pakette gerçek kod/test/review kabulüyle verified olmadan bu kart ready olmaz. [ADR-0018](../../decisions/0018-stream-results-and-cancellation.md) Accepted; [ADR-0017](../../decisions/0017-bounded-http-transport.md) kaynak/deadline temelidir. 2026-10-29 kullanıcı yetkisi ve belge review düzeltmeleri tamamlandı; ayrı merge gerekmez.
+P01-4b verified; P01-5a aynı pakette ec2d202 runtime kaynağı ve iki review/kurulum kabulüyle verified; doğrudan bağımlılık kanıtı uygulama kaydındadır. [ADR-0018](../../decisions/0018-stream-results-and-cancellation.md) Accepted; [ADR-0017](../../decisions/0017-bounded-http-transport.md) kaynak/deadline temelidir. 2026-10-29 kullanıcı yetkisi ve belge review düzeltmeleri tamamlandı; ayrı merge gerekmez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -42,4 +42,4 @@ Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/
 
 ## Teslim kaydı
 
-Henüz ürün commit/test/kabul/PR kaydı yoktur. [Hazırlık raporu](../../research/p01-remaining-readiness-review.md) ürün kabulü sayılmaz; kart draft kalır.
+Henüz ürün commit/test/kabul/PR kaydı yoktur. [Hazırlık raporu](../../research/p01-remaining-readiness-review.md) ürün kabulü sayılmaz; kart ready durumundadır, henüz ürün kabulü yoktur.
