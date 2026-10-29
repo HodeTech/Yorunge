@@ -433,6 +433,33 @@ def verify_installed_ndjson(
     return "passed"
 
 
+def verify_installed_transport(
+    python: Path, venv: Path, root: Path, scratch: Path, environment: dict[str, str]
+) -> dict[str, str]:
+    # The parent owns the test TLS server; the worker uses only the installed
+    # runtime and asserts every product module/metadata origin in isolated Python.
+    result = json.loads(
+        run(
+            [
+                sys.executable,
+                "-I",
+                str(root / "tests/fixtures/installed_transport.py"),
+                "--python",
+                str(python),
+                "--venv",
+                str(venv),
+                "--scratch",
+                str(scratch),
+            ],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    if result != {"http_smoke": "passed", "stream_smoke": "passed"}:
+        raise ValueError("installed transport acceptance failed")
+    return {"http_smoke": "passed", "stream_smoke": "passed"}
+
+
 def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
@@ -507,6 +534,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
         if plan["data"]["executable"] or plan["data"]["selection"]["tool"] != "forgelm":
             raise ValueError("installed plan contract failed")
         ndjson_smoke = verify_installed_ndjson(console, root, scratch, environment)
+        transport_smoke = verify_installed_transport(python, venv, root, scratch, environment)
         cache_smoke = "not_run_unsupported_platform"
         execution_smoke = "not_run_unsupported_platform"
         jobs_smoke = "not_run_unsupported_platform"
@@ -524,6 +552,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
                     "origin_verified": True,
                     "smoke": "passed",
                     "ndjson_smoke": ndjson_smoke,
+                    **transport_smoke,
                     "cache_smoke": cache_smoke,
                     "execution_smoke": execution_smoke,
                     "jobs_smoke": jobs_smoke,

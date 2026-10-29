@@ -1,14 +1,14 @@
 ---
 id: P01-6b
 phase: P01
-status: ready
+status: in_progress
 size: M
 depends_on: [P01-2c, P01-3b, P01-4c, P01-5b]
 capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 uygulamasına hazır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım5–6. P01-5a/b aynı dalda gerçek kabul ve ikişer fresh review ile verified; adım5 bütünleşik kabul uygulaması başladı; kartın final kabulü henüz yoktur. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
