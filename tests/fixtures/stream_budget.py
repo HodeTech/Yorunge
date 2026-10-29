@@ -62,43 +62,41 @@ def rss_bytes(native: int | float, system: str) -> int:
 
 
 def self_peak_rss() -> tuple[int | float, int]:
-    if platform.system() == "Linux":
-        native = linux_rss_snapshot()[1]
-    else:
-        import resource
+    import resource
 
-        native = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    native = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return native, rss_bytes(native, platform.system())
 
 
-def parse_linux_rss(value: str) -> tuple[int, int]:
-    """Read a coherent current/peak pair from one Linux status snapshot, in KiB."""
+def parse_linux_stat_rss(value: str) -> int:
+    """Read field 24 (resident pages), allowing spaces and parentheses in comm."""
     if not isinstance(value, str):
-        raise ValueError("process status must be text")
-    values = []
-    for name in ("VmRSS", "VmHWM"):
-        fields = [line for line in value.splitlines() if line.startswith(name + ":")]
-        if len(fields) != 1:
-            raise ValueError("process status must contain exactly one field per RSS counter")
-        match = re.fullmatch(name + r":[ \t]+(\d+)[ \t]+kB", fields[0], flags=re.ASCII)
-        if match is None or int(match[1]) <= 0:
-            raise ValueError("invalid process status RSS counter")
-        values.append(int(match[1]))
-    if values[0] > values[1]:
-        raise ValueError("process status RSS counters are inconsistent")
-    return values[0], values[1]
+        raise ValueError("process stat must be text")
+    end = value.rfind(")")
+    if re.match(r"[1-9]\d* \(", value, flags=re.ASCII) is None or end < 3:
+        raise ValueError("invalid process stat identity")
+    fields = value[end + 1 :].split()
+    if len(fields) < 22 or len(fields[0]) != 1:
+        raise ValueError("process stat is missing RSS fields")
+    if re.fullmatch(r"[0-9]+", fields[21], flags=re.ASCII) is None or int(fields[21]) <= 0:
+        raise ValueError("invalid process stat resident pages")
+    return int(fields[21])
 
 
-def linux_rss_snapshot() -> tuple[int, int]:
-    with Path("/proc/self/status").open(encoding="ascii") as source:
+def linux_rss_baseline() -> tuple[int, int, int]:
+    with Path("/proc/self/stat").open(encoding="ascii") as source:
         value = source.read(65_536)
     if len(value) == 65_536:
-        raise ValueError("process status exceeded the bounded probe input")
-    return parse_linux_rss(value)
+        raise ValueError("process stat exceeded the bounded probe input")
+    pages = parse_linux_stat_rss(value)
+    page_bytes = os.sysconf("SC_PAGE_SIZE")
+    if type(page_bytes) is not int or page_bytes < 1024 or page_bytes & (page_bytes - 1):
+        raise ValueError("unsupported native RSS page size")
+    return pages * (page_bytes // 1024), pages, page_bytes
 
 
 def linux_current_rss() -> int:
-    return linux_rss_snapshot()[0]
+    return linux_rss_baseline()[0]
 
 
 class MachTimeValue(ctypes.Structure):
@@ -153,7 +151,7 @@ class DarwinRssProbe:
 def prepare_current_rss() -> tuple[str, Callable[[], int]]:
     system = platform.system()
     if system == "Linux":
-        method, probe = "linux.proc_self_status.VmRSS", linux_current_rss
+        method, probe = "linux.proc_self_stat.rss_pages", linux_current_rss
     elif system == "Darwin":
         method, probe = "darwin.MACH_TASK_BASIC_INFO.resident_size", DarwinRssProbe()
     else:
@@ -296,14 +294,15 @@ async def consume(port: int, ca: Path, size: int, total_seconds: float) -> dict[
             "e11360251d1173650cdcd20f111d8f1ca2e412f572e8b36a4dc067121c1799b8",
         ):
             raise ValueError("TLS warmup bytes did not match the independent fixed oracle")
+        baseline_details = {}
         if platform.system() == "Linux":
-            baseline_native, pretransfer_peak_native = linux_rss_snapshot()
-            pretransfer_peak = rss_bytes(pretransfer_peak_native, "Linux")
+            baseline_native, pages, page_bytes = linux_rss_baseline()
+            baseline_details = {"baseline_rss_pages": pages, "rss_page_bytes": page_bytes}
         else:
             baseline_native = current_rss()
-            pretransfer_peak_native, pretransfer_peak = self_peak_rss()
         baseline = rss_bytes(baseline_native, platform.system())
         started = time.perf_counter()
+        pretransfer_peak_native, pretransfer_peak = self_peak_rss()
         received, digest, largest, chunks = await receive(transport, size)
         elapsed = time.perf_counter() - started
         peak_native, peak = self_peak_rss()
@@ -314,6 +313,7 @@ async def consume(port: int, ca: Path, size: int, total_seconds: float) -> dict[
         "received_bytes": received,
         "received_sha256": digest,
         "baseline_rss_native": baseline_native,
+        **baseline_details,
         "baseline_rss_method": baseline_method,
         "pretransfer_peak_rss_native": pretransfer_peak_native,
         "pretransfer_peak_rss_bytes": pretransfer_peak,

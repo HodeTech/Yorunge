@@ -149,7 +149,11 @@ def rss_interval(measured: dict[str, Any]) -> int:
     if not isinstance(os_name, str):
         raise ValueError("invalid native RSS platform")
     if os_name.startswith("Linux"):
-        expected_unit, method = "KiB", "linux.proc_self_status.VmRSS"
+        expected_unit, method = "KiB", "linux.proc_self_stat.rss_pages"
+        pages = _integer(measured["baseline_rss_pages"], minimum=1)
+        page_bytes = _integer(measured["rss_page_bytes"], minimum=1024)
+        if page_bytes & (page_bytes - 1) or pages * page_bytes != baseline:
+            raise ValueError("native RSS pages and byte measurements differ")
     elif os_name.startswith(("Darwin", "macOS")):
         expected_unit, method = "bytes", "darwin.MACH_TASK_BASIC_INFO.resident_size"
     else:
@@ -482,9 +486,7 @@ def check(
             "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
             "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
             "rss_baseline_source": runs[0]["baseline_rss_method"],
-            "rss_peak_source": "linux.proc_self_status.VmHWM"
-            if runs[0]["rss_native_unit"] == "KiB"
-            else "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+            "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
             "rss_interval": "new_high_water_exact_else_zero_to_upper",
             "rss_window": "after_pretransfer_peak_until_posttransfer_peak_"
             "including_instrumentation",

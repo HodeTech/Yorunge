@@ -193,8 +193,10 @@ def test_rss_native_counts_must_be_integral_even_when_byte_conversion_is_consist
     record = measurement()
     record.update(
         baseline_rss_native=native,
+        baseline_rss_pages=10240,
+        rss_page_bytes=4096,
         baseline_rss_bytes=baseline,
-        baseline_rss_method="linux.proc_self_status.VmRSS",
+        baseline_rss_method="linux.proc_self_stat.rss_pages",
         pretransfer_peak_rss_native=45056.0,
         pretransfer_peak_rss_bytes=46137344,
         peak_rss_native=49152.0,
@@ -363,6 +365,55 @@ print(json.dumps(result, allow_nan=False))
     assert result["chunk_count"] >= 3
     assert result["request_count"] == 2
     assert result["connection_count"] <= 2
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native counter regression")
+def test_linux_native_peak_retains_a_released_over_budget_allocation():
+    worker = """
+import json, runpy, sys
+probe = runpy.run_path(sys.argv[1])
+probe["prepare_current_rss"]()
+baseline = probe["rss_bytes"](probe["linux_current_rss"](), "Linux")
+before = probe["self_peak_rss"]()[1]
+allocation = bytearray(80 * 1024 * 1024)
+during_rss = probe["rss_bytes"](probe["linux_current_rss"](), "Linux")
+during_peak = probe["self_peak_rss"]()[1]
+del allocation
+after = probe["self_peak_rss"]()[1]
+lower, upper = probe["rss_bounds"](baseline, before, after)
+print(json.dumps(dict(baseline=baseline, before=before, during_rss=during_rss,
+    during_peak=during_peak, after=after, lower=lower, upper=upper)))
+"""
+    controller = """
+import subprocess, sys
+child = subprocess.run([sys.executable, "-I", "-c", sys.argv[1], sys.argv[2]],
+    capture_output=True, text=True, timeout=60, check=True)
+sys.stdout.write(child.stdout)
+sys.stderr.write(child.stderr)
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            controller,
+            worker,
+            str(ROOT / "tests/fixtures/stream_budget.py"),
+        ],
+        env=helpers()["environment"](),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr[-4096:]
+    assert not result.stderr
+    report = json.loads(result.stdout)
+    assert report["after"] >= report["during_rss"], report
+    assert report["after"] >= report["during_peak"], report
+    assert report["upper"] >= report["during_rss"] - report["baseline"], report
+    assert report["lower"] == report["upper"]
+    assert report["upper"] > 67_108_864, report
 
 
 def test_isolated_source_manifest_mismatch_fails_before_any_tls_connection(runtime_tree, tmp_path):

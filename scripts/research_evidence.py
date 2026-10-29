@@ -513,7 +513,7 @@ def stream_outcome(
 
 def stream_v2_baseline_source(os_name: str) -> str:
     if stream_native_unit(os_name) == "KiB":
-        return "linux.proc_self_status.VmRSS"
+        return "linux.proc_self_stat.rss_pages"
     return "darwin.MACH_TASK_BASIC_INFO.resident_size"
 
 
@@ -529,9 +529,7 @@ def stream_v2_method(value: object, os_name: str) -> dict[str, Any]:
         "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
         "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
         "rss_baseline_source": stream_v2_baseline_source(os_name),
-        "rss_peak_source": "linux.proc_self_status.VmHWM"
-        if stream_native_unit(os_name) == "KiB"
-        else "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
         "rss_interval": "new_high_water_exact_else_zero_to_upper",
         "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
         "backpressure": "consumer awaits each next chunk; no producer task or body queue",
@@ -558,6 +556,11 @@ def stream_v2_rss(run: dict[str, Any], native_unit: str) -> None:
     if run["baseline_rss_method"] != expected_method:
         raise ValueError("stream baseline method differs from runtime OS")
     factor = 1024 if native_unit == "KiB" else 1
+    if native_unit == "KiB":
+        pages = integer(run["baseline_rss_pages"], minimum=1)
+        page_bytes = integer(run["rss_page_bytes"], minimum=1024)
+        if page_bytes & (page_bytes - 1) or pages * page_bytes != baseline:
+            raise ValueError("native RSS pages do not match byte measurement")
     for name in ("baseline", "pretransfer_peak", "peak"):
         native = number(run[name + "_rss_native"])
         if native <= 0 or native != int(native) or native * factor != run[name + "_rss_bytes"]:
@@ -565,6 +568,7 @@ def stream_v2_rss(run: dict[str, Any], native_unit: str) -> None:
 
 
 def stream_v2_run(value: object, expected: dict[str, str], native_unit: str) -> dict[str, Any]:
+    native_fields = " baseline_rss_pages rss_page_bytes" if native_unit == "KiB" else ""
     run = closed(
         value,
         "size_bytes stream_count received_bytes received_sha256 baseline_rss_native "
@@ -573,7 +577,7 @@ def stream_v2_run(value: object, expected: dict[str, str], native_unit: str) -> 
         "extra_rss_lower_bound_bytes extra_rss_upper_bound_bytes elapsed_seconds "
         "max_chunk_bytes chunk_count warmup_requests measurement_requests runtime size_mib "
         "expected_bytes expected_sha256 request_count connection_count peak_active_requests "
-        "server passed",
+        "server passed" + native_fields,
         "stream v2 run",
     )
     additions = {
@@ -583,6 +587,7 @@ def stream_v2_run(value: object, expected: dict[str, str], native_unit: str) -> 
         "extra_rss_lower_bound_bytes",
         "extra_rss_upper_bound_bytes",
     }
+    additions.update(native_fields.split())
     # Common byte/hash/server/runtime checks still apply. The private projection's
     # 'extra' is the v2 upper bound, never the historical peak-minus-peak metric.
     common = {key: item for key, item in run.items() if key not in additions}

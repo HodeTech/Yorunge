@@ -20,7 +20,7 @@ def receipt(bounds=((2 * MIB, 2 * MIB),) * 3, *, span=0, growth=True, passed=Tru
     report.update(schema_version=2, report_kind="raw_stream_budget_v2", passed=passed)
     del report["size_growth_diagnostic"]
     baseline_method = (
-        "linux.proc_self_status.VmRSS"
+        "linux.proc_self_stat.rss_pages"
         if unit == "KiB"
         else "darwin.MACH_TASK_BASIC_INFO.resident_size"
     )
@@ -39,6 +39,11 @@ def receipt(bounds=((2 * MIB, 2 * MIB),) * 3, *, span=0, growth=True, passed=Tru
             pretransfer_peak_rss_bytes=before,
             peak_rss_native=peak // factor,
             peak_rss_bytes=peak,
+            **(
+                {"baseline_rss_pages": baseline // 4096, "rss_page_bytes": 4096}
+                if unit == "KiB"
+                else {}
+            ),
             extra_rss_lower_bound_bytes=lower,
             extra_rss_upper_bound_bytes=upper,
         )
@@ -46,9 +51,7 @@ def receipt(bounds=((2 * MIB, 2 * MIB),) * 3, *, span=0, growth=True, passed=Tru
         rss_method="instantaneous_baseline_and_lifetime_peak_interval_v2",
         rss_baseline="native_current_rss_after_imports_and_fixed_tls_warmup",
         rss_baseline_source=baseline_method,
-        rss_peak_source="linux.proc_self_status.VmHWM"
-        if unit == "KiB"
-        else "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        rss_peak_source="resource.getrusage(RUSAGE_SELF).ru_maxrss",
         rss_interval="new_high_water_exact_else_zero_to_upper",
         rss_window="after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
         backpressure="consumer awaits each next chunk; no producer task or body queue",
@@ -143,6 +146,7 @@ def test_previous_100MiB_peak_cannot_mask_65MiB_above_current_baseline():
     for run in report["runs"]:
         run.update(
             baseline_rss_native=40 * 1024,
+            baseline_rss_pages=10240,
             baseline_rss_bytes=40 * MIB,
             pretransfer_peak_rss_native=100 * 1024,
             pretransfer_peak_rss_bytes=100 * MIB,
@@ -185,6 +189,11 @@ def test_truthful_growth_failure_roundtrips_without_becoming_acceptance(tmp_path
         ("run", "pretransfer_peak_rss_bytes", True),
         ("run", "peak_rss_bytes", float("inf")),
         ("run", "baseline_rss_native", True),
+        ("run", "baseline_rss_pages", True),
+        ("run", "baseline_rss_pages", 8193),
+        ("run", "rss_page_bytes", True),
+        ("run", "rss_page_bytes", 6144),
+        ("run", "rss_page_bytes", 512),
         ("run", "pretransfer_peak_rss_native", True),
         ("run", "pretransfer_peak_rss_native", 32_768.5),
         ("run", "peak_rss_native", float("nan")),
@@ -199,7 +208,7 @@ def test_truthful_growth_failure_roundtrips_without_becoming_acceptance(tmp_path
         ("method", "rss_baseline", "fresh high-water after TLS warmup"),
         ("method", "rss_baseline_source", "linux.proc_self_smaps_rollup.Rss"),
         ("method", "rss_peak_source", "instantaneous RSS"),
-        ("method", "rss_peak_source", "resource.getrusage(RUSAGE_SELF).ru_maxrss"),
+        ("method", "rss_peak_source", "linux.proc_self_status.VmHWM"),
         ("method", "rss_interval", "clamp_negative_to_zero"),
         ("method", "rss_window", "transfer_only"),
         ("method", "backpressure", "one awaited next chunk"),

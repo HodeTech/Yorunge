@@ -11,58 +11,73 @@ from tests.fixtures import stream_budget
 MIB = 1_048_576
 
 
-def test_linux_status_selects_coherent_current_and_peak_not_other_memory_fields():
-    status = "Name: python\nVmRSS: 32768 kB\nVmHWM: 65536 kB\n"
-    status += "VmSize: 99999 kB\nRssAnon: 123 kB\nRssFile: 456 kB\n"
-    assert stream_budget.parse_linux_rss(status) == (32768, 65536)
-    assert stream_budget.rss_bytes(32768, "Linux") == 33_554_432
+def stat_fixture(pages="8192", comm="python"):
+    # State is field 3; twenty fields precede resident pages at field 24.
+    return f"123 ({comm}) R " + "0 " * 20 + pages + " 0 0\n"
+
+
+@pytest.mark.parametrize("comm", ["python", "a b", "a ) b ( c", "())", "a\nb"])
+def test_linux_stat_selects_field_24_after_complete_comm(comm):
+    assert stream_budget.parse_linux_stat_rss(stat_fixture(comm=comm)) == 8192
 
 
 @pytest.mark.parametrize(
-    "status",
+    "value",
     [
         "",
-        "Rss: 123 kB\n",
-        "VmRSS: 12 kB\n",
-        "VmHWM: 12 kB\n",
-        "VmRSS: 12 kB\nVmRSS: 13 kB\nVmHWM: 14 kB\n",
-        "VmRSS: 12 kB\nVmHWM: 13 kB\nVmHWM: broken\n",
-        "VmRSS: 12 MB\nVmHWM: 13 kB\n",
-        "VmRSS: -1 kB\nVmHWM: 13 kB\n",
-        "VmRSS: 0 kB\nVmHWM: 13 kB\n",
-        "VmRSS: 1.5 kB\nVmHWM: 13 kB\n",
-        "VmRSS: １２ kB\nVmHWM: 13 kB\n",
-        "VmRSS: 12 kB trailing\nVmHWM: 13 kB\n",
-        "VmRSS: 12\nVmHWM: 13 kB\n",
-        "VmRSS: 12 kB\nVmHWM: 11 kB\n",
-        b"VmRSS: 12 kB\nVmHWM: 13 kB\n",
+        "VmRSS: 123 kB\n",
+        "123 python R " + "0 " * 20 + "8192",
+        "123 (python) R 0 0",
+        "0 (python) R " + "0 " * 20 + "8192",
+        stat_fixture("-1"),
+        stat_fixture("0"),
+        stat_fixture("1.5"),
+        stat_fixture("１２"),
+        stat_fixture("12kB"),
+        stat_fixture("+12"),
+        b"123 (python) R 0",
         None,
     ],
 )
-def test_linux_status_rejects_missing_duplicate_or_invalid_rss(status):
+def test_linux_stat_rejects_missing_or_invalid_resident_pages(value):
     with pytest.raises(ValueError):
-        stream_budget.parse_linux_rss(status)
+        stream_budget.parse_linux_stat_rss(value)
 
 
-def test_linux_probe_reads_both_counters_from_one_self_status_read(monkeypatch):
+@pytest.mark.parametrize(
+    "page_bytes,expected_kib", [(4096, 32768), (16384, 131072), (65536, 524288)]
+)
+def test_linux_baseline_keeps_raw_pages_and_actual_page_size(monkeypatch, page_bytes, expected_kib):
     reads = []
 
     def opened(path, **kwargs):
         reads.append(str(path))
-        assert str(path) == "/proc/self/status"
+        assert str(path) == "/proc/self/stat"
         assert kwargs == {"encoding": "ascii"}
-        return io.StringIO("VmRSS: 1234 kB\nVmHWM: 2345 kB\n")
+        return io.StringIO(stat_fixture())
+
+    def sysconf(name):
+        assert name == "SC_PAGE_SIZE"
+        return page_bytes
 
     monkeypatch.setattr(stream_budget.Path, "open", opened)
-    assert stream_budget.linux_rss_snapshot() == (1234, 2345)
-    assert reads == ["/proc/self/status"]
+    monkeypatch.setattr(stream_budget.os, "sysconf", sysconf)
+    assert stream_budget.linux_rss_baseline() == (expected_kib, 8192, page_bytes)
+    assert reads == ["/proc/self/stat"]
 
 
-def test_linux_peak_uses_same_status_family_as_baseline_not_getrusage(monkeypatch):
-    monkeypatch.setattr(stream_budget.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(stream_budget, "linux_rss_snapshot", lambda: (1234, 2345))
-    assert stream_budget.linux_current_rss() == 1234
-    assert stream_budget.self_peak_rss() == (2345, 2_401_280)
+@pytest.mark.parametrize("page_bytes", [True, 0, -1, 512, 1025, 4096.0, "4096"])
+def test_linux_baseline_rejects_invalid_page_sizes_without_fallback(monkeypatch, page_bytes):
+    monkeypatch.setattr(stream_budget.Path, "open", lambda *a, **k: io.StringIO(stat_fixture()))
+    monkeypatch.setattr(stream_budget.os, "sysconf", lambda name: page_bytes)
+    with pytest.raises(ValueError, match="page size"):
+        stream_budget.linux_rss_baseline()
+
+
+def test_linux_current_normalizes_pages_to_peak_counter_kib(monkeypatch):
+    monkeypatch.setattr(stream_budget, "linux_rss_baseline", lambda: (32768, 8192, 4096))
+    assert stream_budget.linux_current_rss() == 32768
+    assert stream_budget.rss_bytes(32768, "Linux") == 33_554_432
 
 
 @pytest.mark.parametrize("error", [FileNotFoundError, PermissionError, UnicodeError])
@@ -75,7 +90,7 @@ def test_linux_native_read_errors_are_not_silenced(monkeypatch, error):
         stream_budget.linux_current_rss()
 
 
-def test_linux_status_read_has_a_fixed_size_bound(monkeypatch):
+def test_linux_stat_read_has_a_fixed_size_bound(monkeypatch):
     monkeypatch.setattr(
         stream_budget.Path, "open", lambda *args, **kwargs: io.StringIO("x" * 65_536)
     )
@@ -161,7 +176,7 @@ def test_mach_library_loading_failure_is_not_silenced(monkeypatch):
 @pytest.mark.parametrize(
     "system,method",
     [
-        ("Linux", "linux.proc_self_status.VmRSS"),
+        ("Linux", "linux.proc_self_stat.rss_pages"),
         ("Darwin", "darwin.MACH_TASK_BASIC_INFO.resident_size"),
     ],
 )
