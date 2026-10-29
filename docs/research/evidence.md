@@ -306,6 +306,55 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p01-6-adr19-local-acceptance.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "local_reference_passed_ci_pending", "source_commit": "47af27362f8f7f40bde72fb5d27ab6a0c05d93c6"}`.
 
+## p01-6-adr19-sonar-ci-checkpoint
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `360f79a21a59ab55610723bc3f356349a1f2b50b616da2c57ed36730acca8c5d`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-checkpoint.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "source_acceptance_passed", "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-linux311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `926ea303f711ac52cda0d2aa69eba9fc0be7cfdc42d29d57b18f310708f8611b`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-linux311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-linux314-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `f654515ce68f67411360b4aabd58b259a772ea84afe280e845dd373bd169374b`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-linux314-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-macos311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `59660c6e0896240672a625022b0e4f2a0b8961d39e335879f0bd5f99c193880a`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-macos311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-startup-diagnostic
+
+**Tür:** `startup_ci_diagnostic`.
+**Özgün JSON SHA-256:** `343ae079d80cae2731b517204104522026263e943dc6f4a42aa8a7ad44055dd8`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-startup-diagnostic.json.gz`.
+**Özet:** `{"ci_classification_accepted": true, "diagnostic_only": true, "kind": "startup_ci_diagnostic", "outcome": "diagnostic_budget_exceeded", "p95_ms": {"baseline/cache": 239.16193900004146, "baseline/context": 140.0379949999433, "baseline/help": 33.914048000042385, "baseline/version": 31.626694999999927, "candidate/cache": 242.96074299991233, "candidate/context": 141.38604400000077, "candidate/help": 35.32905400004438, "candidate/version": 33.742546999974365}, "passed": false, "reason": "validated", "report_sha256": "2626a14fc1fb750a76308995b60b64375864895c1f0398cf150f47ec9da75f3f", "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/40969743467", "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `2626a14fc1fb750a76308995b60b64375864895c1f0398cf150f47ec9da75f3f`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 239.16193900004146, "passed": false, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 140.0379949999433, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 33.914048000042385, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 31.626694999999927, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 242.96074299991233, "passed": false, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 141.38604400000077, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 35.32905400004438, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 33.742546999974365, "passed": true, "samples": 30}}, "outcome": "diagnostic_budget_exceeded", "passed": false, "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f"}`.
+
+## p01-6-adr19-sonar-ci-stream-v2
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `f3877d3721c5472afaa76879b73500af5a66578273eb90c8d9fa4fca00707782`.
+**Yerel arşiv:** `raw/p01-6-adr19-sonar-ci-stream-v2.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 46043136, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 2.9985388270000612, "extra_rss_lower_bound_bytes": 655360, "extra_rss_upper_bound_bytes": 655360, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46698496, "pretransfer_peak_rss_bytes": 46043136, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 52019200, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.048768659999950614, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 106496, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 52125696, "pretransfer_peak_rss_bytes": 52125696, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 46034944, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.7599819440000601, "extra_rss_lower_bound_bytes": 655360, "extra_rss_upper_bound_bytes": 655360, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46690304, "pretransfer_peak_rss_bytes": 46034944, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "linux.proc_self_stat.rss_pages", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "KiB", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 655360, 655360], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 655360, "upper_bound_bytes": [106496, 655360, 655360]}, "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f", "source_unchanged_during_measurement": true}`.
+
 ## p01-6-adr19-sonar-installation
 
 **Tür:** `installation_v2`.

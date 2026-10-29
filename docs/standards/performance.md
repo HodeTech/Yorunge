@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** [ADR-0019](../decisions/0019-reference-startup-performance.md) 2026-10-30 kullanıcı yetkisiyle Accepted; kaynak bağlı startup referansı ve Linux tanısı çalışma dalında uygulanıyor. Yeni kaynak/ortam kabulü tamamlanmadan teslim iddiası verilmez. bf652f6 raw v2/kaynak kabulü ve c2d8029 reddi tarihseldir; [gerçek ortam/yöntem ve sınırlar](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) kayıtlıdır. **Tarih:** 2026-10-30. [İlk ölçüm](../research/p01-core-validation.md), [P01-2 yerel/Linux](../research/p01-2-implementation-validation.md), [P01-3 cache/input](../research/p01-3-implementation-validation.md) tarihsel kalır. Hash/raw stream kabulü EVREN veri aktarım desteği veya bütün host'larda kesin süre garantisi değildir.
+**Durum:** ADR-0019 Accepted; kaynak bağlı M5 startup/jobs, strict Linux tanısı, kalıcı saklama ve gerçek CI [son kaynak kapanışında](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-30. Önceki başarısız ve farklı kaynak kabulleri tarihsel olarak korunur. M5 başarısı Linux 200 ms veya bütün host’larda fiziksel duvar saati garantisi değildir; raw/hash kabulü EVREN uç aktarımı değildir.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

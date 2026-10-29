@@ -1,10 +1,10 @@
 # ADR-0019: Başlangıç performansının sabit referans ortamda kabulü
 
-**Durum:** Accepted — 2026-10-30 kullanıcı yetkisiyle iki P2 review düzeltmesi ve iki fresh belge incelemesi kapatıldı; uygulama başlatılıyor, CI teslimi henüz tamamlanmadı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b son-head CI takibi.
+**Durum:** Accepted — 2026-10-30 kullanıcı yetkisi; iki P2 belge düzeltmesi, üç uygulama adımı, Sonar bakımı, fresh referanslar ve gerçek CI kabulü [kapanış kaydında](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b.
 
 ## Bağlam
 
-[Performans standardı](../standards/performance.md) help/version için 500 ms, context/cache için 200 ms sıcak p95 hedefler; en az 30 ayrı süreç ve üç ısınma kullanır. Jobs kabulü zaten açık M5/SSD referansına ve CI'da güncel kaynakla eşleşen ölçüm kaydına bağlıdır. Startup ise her GitHub Linux 3.11 host'unda mutlak kapıdır; ubuntu etiketi fiziksel CPU/VM yükünü sabitlemez.
+[Performans standardı](../standards/performance.md) help/version için 500 ms, context/cache için 200 ms sıcak p95 hedefler; en az 30 ayrı süreç ve üç ısınma kullanır. Jobs kabulü zaten açık M5/SSD referansına ve CI'da güncel kaynakla eşleşen ölçüm kaydına bağlıdır. Karar öncesinde startup her GitHub Linux 3.11 host'unda mutlak kapıydı; ubuntu etiketi fiziksel CPU/VM yükünü sabitlemez.
 
 PR #11'in bf652f6 kaynağı [40945597506](https://github.com/HodeTech/Yorunge/actions/runs/40945597506) koşusunda AMD EPYC 9V74 üzerinde cache p95 **168,271 ms**, aynı-host taban **168,318 ms** verdi. Sonraki yalnız belge/kanıt head'i c2d8029, [40948271997](https://github.com/HodeTech/Yorunge/actions/runs/40948271997) koşusunda AMD EPYC 7763 üzerinde **232,641 / 218,998 ms** ile reddedildi. Ürün Python/test/script/lock/workflow baytları aynı; iki koşunun paket/runtime ve komut verileri arşivlidir. README/kanıt değişikliği wheel metadata ve sdist hash’lerini değiştirebilir; bütün dağıtım arşivlerinin byte-identical olduğu iddia edilmez. CPU modeli, anlık paylaşımlı host yükü ve disk etkileri ayrı ayrı nedensel olarak kanıtlanmış değildir. Başarısız örnek ve tüm ölçümleri [son-head kaydında](../research/p01-remaining-implementation-validation.md#son-head-başlangıç-ci-takibi) korunur.
 

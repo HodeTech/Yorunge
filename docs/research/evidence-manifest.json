@@ -1496,6 +1496,328 @@
       }
     },
     {
+      "name": "p01-6-adr19-sonar-ci-checkpoint.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 12671,
+      "content_sha256": "360f79a21a59ab55610723bc3f356349a1f2b50b616da2c57ed36730acca8c5d",
+      "archive_bytes": 2442,
+      "archive_sha256": "d913b2ab04994110c65429c4d2ff0395686a01e49421f378d61b0f5e47dc95b7",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "source_acceptance_passed"
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-linux311-installation.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2844,
+      "content_sha256": "926ea303f711ac52cda0d2aa69eba9fc0be7cfdc42d29d57b18f310708f8611b",
+      "archive_bytes": 1108,
+      "archive_sha256": "3153b513b7deb239d71a40f52f46eaf6a778dfaca48113c6db7cbdd5c780b759",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-linux314-installation.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2808,
+      "content_sha256": "f654515ce68f67411360b4aabd58b259a772ea84afe280e845dd373bd169374b",
+      "archive_bytes": 1072,
+      "archive_sha256": "3a0e303cb31adf718aff80315fd66a2278766946130e4035a61948127ede3ec7",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-macos311-installation.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2784,
+      "content_sha256": "59660c6e0896240672a625022b0e4f2a0b8961d39e335879f0bd5f99c193880a",
+      "archive_bytes": 1081,
+      "archive_sha256": "0b0571206958cd66dd4a05675c68c23faefe4cfc6a798c88e144ff7c00554580",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-startup-diagnostic.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-startup-diagnostic.json.gz",
+      "original_commit": null,
+      "content_bytes": 783,
+      "content_sha256": "343ae079d80cae2731b517204104522026263e943dc6f4a42aa8a7ad44055dd8",
+      "archive_bytes": 437,
+      "archive_sha256": "b236c01409ffc55d372a8ffb384608099dddb86525eb7a12393b39c1102b35d2",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/40969743467",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 35.32905400004438,
+          "candidate/version": 33.742546999974365,
+          "candidate/context": 141.38604400000077,
+          "candidate/cache": 242.96074299991233,
+          "baseline/help": 33.914048000042385,
+          "baseline/version": 31.626694999999927,
+          "baseline/context": 140.0379949999433,
+          "baseline/cache": 239.16193900004146
+        },
+        "report_sha256": "2626a14fc1fb750a76308995b60b64375864895c1f0398cf150f47ec9da75f3f"
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-startup.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 159902,
+      "content_sha256": "2626a14fc1fb750a76308995b60b64375864895c1f0398cf150f47ec9da75f3f",
+      "archive_bytes": 28085,
+      "archive_sha256": "ac687aaf6c00dce2e6b753c98288c2e7e2de408c65683857784d8371c1736aef",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 35.32905400004438,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 33.742546999974365,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 141.38604400000077,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 242.96074299991233,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 33.914048000042385,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 31.626694999999927,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 140.0379949999433,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 239.16193900004146,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-sonar-ci-stream-v2.json",
+      "archive": "raw/p01-6-adr19-sonar-ci-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 48676,
+      "content_sha256": "f3877d3721c5472afaa76879b73500af5a66578273eb90c8d9fa4fca00707782",
+      "archive_bytes": 6295,
+      "archive_sha256": "3c2393c721ccd3dde54c76078ef40e767921b9aa8acecda528b35f17007d7531",
+      "summary": {
+        "source_commit": "fef2bb2d947e9671ee5b44d07d22e0384b84e35f",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            106496,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 52019200,
+            "pretransfer_peak_rss_bytes": 52125696,
+            "peak_rss_bytes": 52125696,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 106496,
+            "elapsed_seconds": 0.048768659999950614,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 46034944,
+            "pretransfer_peak_rss_bytes": 46034944,
+            "peak_rss_bytes": 46690304,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 0.7599819440000601,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 46043136,
+            "pretransfer_peak_rss_bytes": 46043136,
+            "peak_rss_bytes": 46698496,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 2.9985388270000612,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-adr19-sonar-installation.json",
       "archive": "raw/p01-6-adr19-sonar-installation.json.gz",
       "original_commit": null,

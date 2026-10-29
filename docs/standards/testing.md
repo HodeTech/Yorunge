@@ -1,6 +1,6 @@
 # Test ve kabul standardı
 
-**Durum:** Etkin — yerel şema/CLI/SQLite, çok süreç/lease/unknown/reset, gerçek TLS/stream ve SIGKILL kesinti sınırlarında. **Tarih:** 2026-10-29. [İlk kabul](../research/p01-core-validation.md), [P01-4 merge kabulü](../research/p01-4-implementation-validation.md#development-merge-kapanışı), [bf652f6 tarihsel kaynak/CI kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı), [açık son-head startup CI takibi](../research/p01-remaining-implementation-validation.md#son-head-başlangıç-ci-takibi). Süreç öldürme fiziksel güç kesintisi değildir; gerçek EVREN ve minimum SQLite/Windows kabulü bu matrisin dışında kalır.
+**Durum:** Etkin — yerel CLI/SQLite, çok süreç/lease/unknown/reset, gerçek TLS/stream ve SIGKILL sınırları; [güncel üç ortam kaynak/kurulum kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). **Tarih:** 2026-10-30. Önceki kaynak kabulleri tarihsel kalır. Süreç öldürme fiziksel güç kesintisi değildir; canlı EVREN, minimum SQLite 3.37 ve gerçek Windows koşusu bu kabulde yoktur.
 
 Testler kullanıcı sözleşmesini ve hata sınırını doğrular. Uygulamayı satır satır tekrar eden düşük etkili test yerine maliyet, veri kaybı, yanlış başarı, seçim ve toparlanma senaryolarına öncelik verilir.
 

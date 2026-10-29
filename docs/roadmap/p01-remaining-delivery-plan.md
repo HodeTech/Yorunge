@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** ADR-0017/0018 Accepted; P01-5a/b verified; kullanıcı review ürün/secret/RSS düzeltmeleri ve [bf652f6 kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. P01-6b c2d8029 startup CI reddi nedeniyle yeniden in_progress; [ADR-0019](../decisions/0019-reference-startup-performance.md) Accepted; uygulama sürüyor. Altı adımın review ve kabulü, gerçek üç hücreli CI ve kaynak bağlı performans kapısı [kapanış kaydında](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. **Tarih:** 2026-10-29. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; mevcut d686c8f P01-4 kapanış belgeleri korunur.
+**Durum:** ADR-0017/0018/0019 Accepted; P01-5a/b ve P01-6b çalışma dalında verified. İlk altı adım, kullanıcı review düzeltmeleri, ADR-0019 üç adımı ve Sonar bakımı commit/iki fresh review döngüleriyle tamamlandı; [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). Tek PR #11 kullanıcı review/merge bekler. Son belge/merge artifact saklama takibi kalır. **Tarih:** 2026-10-30. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; P01-4 kapanışı korunur.
 
 ## Paket sınırı
 
