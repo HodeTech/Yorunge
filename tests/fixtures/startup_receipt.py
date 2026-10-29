@@ -68,6 +68,8 @@ def receipt():
         }
         checks[name] = {
             "typed_stdout_verified": True,
+            "expected_version": "0.1.0.dev0",
+            "expected_python": "/candidate/env/bin/python",
             "verified_processes": 34,
             "stdout_sha256": ["2" * 64] * 34,
             "wall_ms": [20.0, 11.0, 12.0, 13.0] + [10.0] * 30,
@@ -104,6 +106,9 @@ def receipt():
             "baseline and paired ratios are diagnostic",
         },
     }
+    baseline_checks = copy.deepcopy(checks)
+    for item in baseline_checks.values():
+        item["expected_python"] = "/baseline/env/bin/python"
     before = {"candidate": candidate, "baseline": baseline}
     return {
         "schema_version": 1,
@@ -111,7 +116,7 @@ def receipt():
         "source_commit": "a" * 40,
         "measurement": raw,
         "snapshots": {"before": before, "after": copy.deepcopy(before)},
-        "output_checks": {"candidate": checks, "baseline": copy.deepcopy(checks)},
+        "output_checks": {"candidate": checks, "baseline": baseline_checks},
         "measurement_exit": 0,
         "passed": True,
     }

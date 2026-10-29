@@ -7,6 +7,7 @@ import math
 import runpy
 import sqlite3
 import statistics
+import subprocess
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,14 @@ CPU_METHOD = (
     "includes parent overhead and wait; does not identify I/O or scheduler cause"
 )
 INSTALLATION = "isolated runtime-only wheel; frozen uv.lock; fixed hash seed"
+TYPED_OUTPUT_PROBE = """
+import sys
+from yorunge.domain.models import Context, Result
+from yorunge.domain.capabilities import CachedCapabilityView
+model = Result[Context] if sys.argv[1] == 'context' else Result[CachedCapabilityView]
+model.model_validate_json(sys.stdin.buffer.read(1048577))
+print('validated')
+"""
 
 
 def closed(value: object, fields: str) -> dict[str, Any]:
@@ -80,7 +89,9 @@ def fixture(state: Path, profile: Path) -> dict[str, Any]:
     }
 
 
-def validate_output(command: list[str], content: bytes) -> None:
+def validate_output(
+    command: list[str], content: bytes, *, version: str | None = None, python: str | None = None
+) -> None:
     """Independent fixed-fixture semantics plus installed wire types; outside timing."""
     if not content or len(content) > 1024 * 1024:
         raise ValueError("startup stdout must be nonempty and bounded")
@@ -94,7 +105,7 @@ def validate_output(command: list[str], content: bytes) -> None:
     if command[-1] == "--version":
         from yorunge import __version__
 
-        if text != f"yorunge {__version__}\n":
+        if text != f"yorunge {version if version is not None else __version__}\n":
             raise ValueError("startup version output mismatch")
         return
     from yorunge.domain.capabilities import CachedCapabilityView
@@ -102,15 +113,31 @@ def validate_output(command: list[str], content: bytes) -> None:
 
     value = CHECKS["decode"](content)
     if command[1:3] == ["context", "show"]:
-        Result[Context].model_validate_json(content)
+        validate_typed_output(content, python, "context", Result[Context])
         validate_context(value["data"])
     elif command[1] == "capabilities":
-        Result[CachedCapabilityView].model_validate_json(content)
-        validate_cache(value["data"]["records"])
+        validate_typed_output(content, python, "cache", Result[CachedCapabilityView])
+        state = Path(command[command.index("--state-dir") + 1])
+        validate_cache(value["data"]["records"], state)
     else:
         raise ValueError("unknown startup command")
     if value["warnings"] != [] or value["operation_id"] is not None:
         raise ValueError("startup must return the unbound warning-free Result")
+
+
+def validate_typed_output(content: bytes, python: str | None, kind: str, model: Any) -> None:
+    if python is None:
+        model.model_validate_json(content)
+        return
+    result = subprocess.run(
+        [python, "-I", "-c", TYPED_OUTPUT_PROBE, kind],
+        input=content,
+        capture_output=True,
+        check=True,
+        timeout=10,
+    )
+    if result.stdout != b"validated\n" or result.stderr:
+        raise ValueError("startup installed wire validation failed")
 
 
 def validate_context(value: object) -> None:
@@ -126,20 +153,53 @@ def validate_context(value: object) -> None:
         raise ValueError("startup context differs from the fixed profile oracle")
 
 
-def validate_cache(records: list[dict[str, Any]]) -> None:
+def validate_cache(records: list[dict[str, Any]], state: Path) -> None:
     expected = {
         "planning.offline": ("supported", "offline_planner_implemented"),
         "tool.adapter": ("unsupported", "adapter_not_implemented"),
     }
     if len(records) != 2 or {r["key"]["capability_id"] for r in records} != set(expected):
         raise ValueError("startup cache must return the two expected capabilities")
+    with closing(
+        sqlite3.connect((state / "state.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)
+    ) as db:
+        store_id, epoch = db.execute(
+            "SELECT store_id,identity_epoch FROM state_meta WHERE singleton=1"
+        ).fetchone()
+    scope = {
+        "schema_version": 2,
+        "store_id": store_id,
+        "identity_epoch": epoch,
+        "clock_generation": 1,
+        "service_id": "local",
+        "service_origin": None,
+        "api_base_path": None,
+        "account_id": None,
+        "project_id": "synthetic-project",
+        "credential_id": None,
+        "credential_revision": None,
+        "authorization_scope": None,
+        "model": None,
+        "tool": {
+            "id": "forgelm",
+            "version": None,
+            "executable_digest": None,
+            "environment_digest": None,
+        },
+        "execution": {
+            "backend": "local",
+            "runtime_id": None,
+            "runtime_revision": None,
+            "environment_digest": None,
+        },
+    }
     for record in records:
         key = record["key"]
         valid = (
             record["hit"] is True
             and record["freshness"] == "fresh"
             and key["task"] == "llm.train"
-            and key["scope"]["project_id"] == "synthetic-project"
+            and key["scope"] == scope
             and (record["effective_support"], record["reason_code"])
             == expected[key["capability_id"]]
             and record["record"] is not None
@@ -147,6 +207,28 @@ def validate_cache(records: list[dict[str, Any]]) -> None:
         )
         if not valid:
             raise ValueError("startup cached output differs from fixture expectations")
+        inner = record["record"]
+        if (inner["support"], inner["reason_code"]) != expected[key["capability_id"]]:
+            raise ValueError("startup stored capability differs from fixture expectations")
+        validate_evidence(inner, expected[key["capability_id"]])
+
+
+def validate_evidence(inner: dict[str, Any], expected: tuple[str, str]) -> None:
+    if len(inner["evidence"]) != 1 or inner["conflict_until"] is not None:
+        raise ValueError("startup requires the single local policy proof")
+    proof = inner["evidence"][0]
+    fixed = {key: value for key, value in proof.items() if key not in ("checked_at", "expires_at")}
+    if fixed != {
+        "kind": "local_policy",
+        "producer_id": "yorunge-local-policy",
+        "producer_version": "1",
+        "policy_version": 1,
+        "provenance": "offline-selection-policy",
+        "support": expected[0],
+        "reason_code": expected[1],
+        "constraints": [],
+    }:
+        raise ValueError("startup proof differs from the independent policy oracle")
 
 
 def numbers(value: object, length: int, *, nullable: bool = False) -> list[Any]:
@@ -270,6 +352,11 @@ def paired_comparison(raw: dict[str, Any], rows: dict[str, Any]) -> dict[str, An
     )
     if comparison["method"] != PAIR_METHOD or comparison["acceptance"] != ACCEPTANCE:
         raise ValueError("startup requires same-host alternating AB/BA comparison")
+    baseline_dataset = closed(
+        comparison["baseline_cache_dataset"], "records payload_bytes largest_record_bytes"
+    )
+    for item in baseline_dataset.values():
+        CHECKS["integer"](item, minimum=1)
     baseline_rows = measurements(comparison["baseline_measurements"], samples)
     pairs = closed(comparison["paired_comparisons"], " ".join(BUDGETS))
     for name in BUDGETS:
@@ -306,6 +393,10 @@ def validate_snapshots(report: dict[str, Any], raw: dict[str, Any]) -> None:
     head, base = (snapshots["before"][side] for side in ("candidate", "baseline"))
     if report["source_commit"] != head["source"]["commit"]:
         raise ValueError("startup source identity mismatch")
+    if head["fixture"]["profile_sha256"] != head["source"]["source_sha256"].get(
+        "examples/profile.toml"
+    ):
+        raise ValueError("startup common profile must match the candidate source snapshot")
     for side in (head, base):
         validate_snapshot_equivalence(side, raw)
     if head["fixture"]["state"] == base["fixture"]["state"]:
@@ -323,13 +414,22 @@ def validate_snapshot_equivalence(side: dict[str, Any], raw: dict[str, Any]) -> 
         raise ValueError("startup dataset equivalence mismatch")
     if raw["profile_sha256"] != fx["profile_sha256"] or raw["profile_bytes"] != fx["profile_bytes"]:
         raise ValueError("startup profile equivalence mismatch")
-    if fx["profile_sha256"] != side["source"]["source_sha256"].get("examples/profile.toml"):
-        raise ValueError("startup profile must match the measured source snapshot")
 
 
-def output_checks(value: object, rows: dict[str, Any], samples: int) -> None:
+def output_checks(
+    value: object, rows: dict[str, Any], samples: int, runtime: dict[str, Any]
+) -> None:
     for name, row in closed(value, " ".join(BUDGETS)).items():
-        row = closed(row, "typed_stdout_verified verified_processes stdout_sha256 wall_ms")
+        row = closed(
+            row,
+            "typed_stdout_verified verified_processes stdout_sha256 wall_ms "
+            "expected_version expected_python",
+        )
+        if (
+            row["expected_version"] != runtime["product_version"]
+            or row["expected_python"] != runtime["executable"]
+        ):
+            raise ValueError("startup output oracle version differs from its installed product")
         CHECKS["flag"](row["typed_stdout_verified"], True)
         if CHECKS["integer"](row["verified_processes"]) != samples + 4:
             raise ValueError("startup typed output process count mismatch")
@@ -361,8 +461,9 @@ def validate(report: dict[str, Any]) -> dict[str, Any]:
     baseline_rows = paired_comparison(raw, rows)
     validate_snapshots(report, raw)
     outputs = closed(report["output_checks"], "candidate baseline")
-    output_checks(outputs["candidate"], rows, samples)
-    output_checks(outputs["baseline"], baseline_rows, samples)
+    for side, side_rows in (("candidate", rows), ("baseline", baseline_rows)):
+        runtime = report["snapshots"]["before"][side]["installed"]
+        output_checks(outputs[side], side_rows, samples, runtime)
     passed = all(row["passed"] for row in rows.values())
     if type(report["measurement_exit"]) is not int or report["measurement_exit"] != int(not passed):
         raise ValueError("startup exit contradicts recomputed absolute budget outcome")

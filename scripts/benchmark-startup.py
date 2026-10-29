@@ -255,6 +255,10 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=30)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--audit-output", type=Path)
+    parser.add_argument("--audit-candidate-version")
+    parser.add_argument("--audit-baseline-version")
+    parser.add_argument("--audit-candidate-python")
+    parser.add_argument("--audit-baseline-python")
     parser.add_argument(
         "--cache-state", type=Path, required=True, help="Prepared synthetic cache dataset"
     )
@@ -269,9 +273,30 @@ def main() -> int:
         if args.audit_output.exists() or args.audit_output.is_symlink():
             parser.error("audit output must be a new file")
         AUDIT = {}
-        VALIDATE_OUTPUT = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))[
+        validator = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))[
             "validate_output"
         ]
+        if not all(
+            (args.baseline_command, args.audit_candidate_version, args.audit_baseline_version)
+        ):
+            parser.error("audited startup requires both installed product versions")
+        versions = {
+            str(args.command.resolve()): args.audit_candidate_version,
+            str(args.baseline_command.resolve()): args.audit_baseline_version,
+        }
+        pythons = {
+            str(args.command.resolve()): args.audit_candidate_python,
+            str(args.baseline_command.resolve()): args.audit_baseline_python,
+        }
+        if not all(pythons.values()):
+            parser.error("audited startup requires both isolated Python executables")
+        if len(versions) != 2:
+            parser.error("audited startup requires separate installed consoles")
+
+        def validate_installed(command: list[str], content: bytes) -> None:
+            validator(command, content, version=versions[command[0]], python=pythons[command[0]])
+
+        VALIDATE_OUTPUT = validate_installed
     if args.samples < 30:
         parser.error("at least 30 samples are required")
     baseline_args = (args.baseline_command, args.baseline_profile, args.baseline_cache_state)
@@ -352,6 +377,8 @@ def main() -> int:
                     "verified_processes": len(AUDIT["\0".join(command)]["stdout_sha256"]),
                     "stdout_sha256": AUDIT["\0".join(command)]["stdout_sha256"],
                     "wall_ms": AUDIT["\0".join(command)]["wall_ms"],
+                    "expected_version": versions[command[0]],
+                    "expected_python": pythons[command[0]],
                 }
                 for name, (command, _) in entries.items()
             }

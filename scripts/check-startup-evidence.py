@@ -92,6 +92,14 @@ def check(
         str(raw),
         "--audit-output",
         str(audit),
+        "--audit-candidate-version",
+        before["candidate"]["installed"]["product_version"],
+        "--audit-baseline-version",
+        before["baseline"]["installed"]["product_version"],
+        "--audit-candidate-python",
+        before["candidate"]["installed"]["executable"],
+        "--audit-baseline-python",
+        before["baseline"]["installed"]["executable"],
         "--installation-label",
         EVIDENCE["INSTALLATION"],
         "--disk-type",
@@ -105,7 +113,16 @@ def check(
     ]
     if cpu is not None:
         args.extend(("--cpu-label", cpu))
-    result: subprocess.CompletedProcess[str] = PREPARE["run"](args, cwd=workspace, accepted=(0, 1))
+    result = subprocess.run(
+        args,
+        cwd=workspace,
+        env=PREPARE["environment"](),
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
+    if result.returncode not in (0, 1):
+        raise subprocess.CalledProcessError(result.returncode, args, result.stdout, result.stderr)
     after = {
         side: snapshot(install, workspace / (side + "-state"), profile, workspace)
         for side, install in prepared.items()

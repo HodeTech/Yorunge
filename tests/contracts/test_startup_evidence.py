@@ -37,6 +37,8 @@ def test_handwritten_vector_recomputes_all_eight_metrics_and_preserves_v2_histor
         (("measurement", "samples_per_command"), True),
         (("measurement", "samples_per_command"), 29),
         (("measurement", "profile_bytes"), True),
+        (("measurement", "comparison", "baseline_cache_dataset", "records"), 1024.0),
+        (("output_checks", "baseline", "version", "expected_version"), "wrong"),
         (("measurement", "cache_dataset", "records"), True),
         (("measurement", "cold_method"), "physical cold boot"),
         (("measurement", "comparison", "method"), "best of 30"),
@@ -239,22 +241,35 @@ def test_real_seeded_stdout_is_typed_and_has_independent_semantics(tmp_path):
     )
     for command, value in (
         (["yorunge", "context", "show"], context),
-        (["yorunge", "capabilities"], cache),
+        (["yorunge", "capabilities", "--state-dir", str(state)], cache),
     ):
         HELPERS["validate_output"](command, json.dumps(value).encode())
     context["data"]["project_id"] = "wrong-but-valid-id"
     with pytest.raises(ValueError, match="fixed profile oracle"):
         HELPERS["validate_output"](["yorunge", "context", "show"], json.dumps(context).encode())
-    for change in ("hit", "missing", "support"):
+    for change in ("hit", "missing", "support", "tool", "inner_reason", "store", "evidence"):
         wrong = copy.deepcopy(cache)
         if change == "hit":
             wrong["data"]["records"][0]["hit"] = False
         elif change == "missing":
             wrong["data"]["records"].pop()
-        else:
+        elif change == "support":
             wrong["data"]["records"][0]["effective_support"] = "unknown"
+        elif change == "inner_reason":
+            wrong["data"]["records"][0]["record"]["reason_code"] = "wrong"
+        elif change == "evidence":
+            wrong["data"]["records"][0]["record"]["evidence"][0]["producer_id"] = "wrong"
+        else:
+            outer = wrong["data"]["records"][0]
+            for key in (outer["key"], outer["record"]["key"]):
+                if change == "tool":
+                    key["scope"]["tool"]["id"] = "wrongtool"
+                else:
+                    key["scope"]["store_id"] = "11111111-1111-4111-8111-111111111111"
         with pytest.raises(ValueError):
-            HELPERS["validate_output"](["yorunge", "capabilities"], json.dumps(wrong).encode())
+            HELPERS["validate_output"](
+                ["yorunge", "capabilities", "--state-dir", str(state)], json.dumps(wrong).encode()
+            )
 
 
 @pytest.mark.parametrize("content", [b"", b"{}", b"\xff", b"x" * (1024 * 1024 + 1)])
@@ -308,3 +323,22 @@ def test_non_python_runtime_inputs_require_explicit_scope(tmp_path):
     (tmp_path / "src/yorunge/runtime-data.json").write_text("{}")
     with pytest.raises(ValueError, match="explicit non-Python"):
         HELPERS["source"](tmp_path)
+
+
+def test_baseline_version_oracle_uses_its_own_installed_release():
+    HELPERS["validate_output"](
+        ["/baseline/env/bin/yorunge", "--version"], b"yorunge 0.0.9\n", version="0.0.9"
+    )
+    with pytest.raises(ValueError, match="version output mismatch"):
+        HELPERS["validate_output"](
+            ["/baseline/env/bin/yorunge", "--version"], b"yorunge 0.1.0.dev0\n", version="0.0.9"
+        )
+
+
+def test_common_candidate_profile_allows_historical_baseline_comment_difference():
+    report = receipt()
+    for point in ("before", "after"):
+        report["snapshots"][point]["baseline"]["source"]["source_sha256"][
+            "examples/profile.toml"
+        ] = "9" * 64
+    assert HELPERS["validate"](report)["passed"] is True
