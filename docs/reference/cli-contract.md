@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b faz kabulü çalışma dalında verified; development PR review/merge ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b çalışma dalında testli; P01-6b güncel kaynak/bellek kabulü kullanıcı review takibinde izlenir; development PR review/merge ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-29.
 
 ## Uygulanan alt küme
 

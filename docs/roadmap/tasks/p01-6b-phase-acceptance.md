@@ -45,5 +45,5 @@ Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, ar
 ## Teslim kaydı
 
 - PR/commit: [3d4f341 kaynak](https://github.com/HodeTech/Yorunge/commit/3d4f341569af72176b0bb0625e22b12bed1633bd), [gerçek CI](https://github.com/HodeTech/Yorunge/actions/runs/40906015073). Tek development PR'ın son-head CI/review ve kullanıcı merge kararı ayrıca izlenir.
-- Sonuç: Adım 5 bütünleşik kabulü ve adım 6 review, kurulum, kaynak bağlı performans ve üç gerçek CI hücresi [kapanış kaydında](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) doğrulandı. P01 çalışma dalında verified.
+- Sonuç: Adım 5 bütünleşik kabulü ve adım 6 review, kurulum, kaynak bağlı performans ve üç gerçek CI hücresi [kapanış kaydında](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci) önceki kaynak için doğrulandı; bu tarihsel kabul güncel bellek yenilemesinin yerine geçmez. Güncel durum yukarıdaki kullanıcı review takibindedir.
 - Kalan sınır: M5 jobs referansı Linux jobs performansı değildir; önceki Linux ve M5 aşım kayıtları korunur. Canlı EVREN, Windows state, fiziksel güç kesintisi ve yayın bu kabul değildir.

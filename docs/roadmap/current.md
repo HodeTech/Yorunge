@@ -44,7 +44,7 @@ Ham ölçümler [manifest/indeks](../research/evidence.md) ve CI hash/özet dene
 
 ## Çalışma dalında doğrulanan P01 kapanışı
 
-**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ikişer adım ve fresh review turlarıyla; P01-6b bütünleşik TLS/process/SQLite, iki kurulum, performans ve gerçek ortam matrisiyle çalışma dalında verified. [Kabul ve CI kaydı](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). ADR-0017/0018 Accepted; önceki adım artifact'ları son kaynak artifact'ı sayılmaz.
+**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ikişer adım ve fresh review turlarıyla; P01-6b için aşağıdaki önceki kaynak/ortam kabulü tarihsel kayıttır; güncel bellek ve son kaynak CI kabulü kullanıcı review takibinde yeniden açıktır. [Kabul ve CI kaydı](../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). ADR-0017/0018 Accepted; önceki adım artifact'ları son kaynak artifact'ı sayılmaz.
 
 [3d4f341 kaynaklı CI](https://github.com/HodeTech/Yorunge/actions/runs/40906015073) Linux 3.11/3.14 ve macOS 3.11 hücrelerinde 3.134'er test, statik kontroller, build ve iki temiz kurulumu; zorunlu aggregate'i geçti. Kaynağa bağlı M5 jobs referansı dört 200 ms kapısını geçti; bu, ilk Linux jobs aşımını başarıya çevirmez veya Linux jobs performans kabulü değildir. Başarısız ölçümler korunur.
 

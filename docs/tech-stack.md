@@ -1,6 +1,6 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 development'a teslim edildi; ADR-0017/0018 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; gerçek üçlü CI/kurulum/kaynak kabulü [kapanıştadır](research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrı kalır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve [önceki development teslimi](research/p01-4-implementation-validation.md#development-merge-kapanışı) korunur.
+**Güncellendi:** 2026-10-29. **Durum:** P01-1–4 development'a teslim edildi; ADR-0017/0018 Accepted. P01-5a/b çalışma dalında testli; P01-6b güncel kabulü kullanıcı review takibindedir. Önceki gerçek üçlü CI/kurulum/kaynak kabulü [kapanıştadır](research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Development PR review/merge ve yayın ayrı kalır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve [önceki development teslimi](research/p01-4-implementation-validation.md#development-merge-kapanışı) korunur.
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|

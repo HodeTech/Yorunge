@@ -411,6 +411,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p01-6-reference-jobs-pr-review.json.gz`.
 **Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 143.84491695091128, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 104.91274995729327, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 105.30758299864829, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 98.27445819973946, "passed": true, "samples": 30}}, "passed": true, "source_commit": "fca5b1403606343eac865572140ed45869e33a45", "source_unchanged_during_measurement": true, "unchanged": true}`.
 
+## p01-6-reference-jobs-rss-v2
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `0d93ee2b7ce424bbe3b74e8f4607cd8b503fd46b1a2f1635422ed679e3bfca35`.
+**Yerel arşiv:** `raw/p01-6-reference-jobs-rss-v2.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 144.06812516972423, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 121.24808295629919, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 105.61716719530523, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 98.26329117640853, "passed": true, "samples": 30}}, "passed": true, "source_commit": "14d6a9bf26debdd8eee22a3984b51505c874ba6a", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
 ## p01-6-reference-jobs
 
 **Tür:** `jobs`.
@@ -438,6 +445,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `cddea31167bbeb8d31c02f74a714f7b72044161f85ba0442a6f20d49a52b8903`.
 **Yerel arşiv:** `raw/p01-6-reviewed-stream.json.gz`.
 **Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v1", "measurements": {"1024MiB": {"baseline_rss_bytes": 49414144, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 1.5931844578590244, "extra_rss_bytes": 704512, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 50118656, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 57294848, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.025762417120859027, "extra_rss_bytes": 0, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 57294848, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 49643520, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.39515329198911786, "extra_rss_bytes": 0, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 49643520, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "fresh client process high-water maxRSS after imports, source verification and fixed 32KiB TLS warmup; not instantaneous RSS", "rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_native_unit": "bytes", "source_commit": "c3d43ea970127fb52781fe79d06fc352bbe2a774", "source_unchanged_during_measurement": true}`.
+
+## p01-6-user-review-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `382abe33272c54e083f4b41d654bcc0f22d42c6743f2f7adf434c95cd1e564fc`.
+**Yerel arşiv:** `raw/p01-6-user-review-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "14d6a9bf26debdd8eee22a3984b51505c874ba6a"}`.
+
+## p01-6-user-review-startup
+
+**Tür:** `startup`.
+**Özgün JSON SHA-256:** `b0e45e157d9f93a66f317a545a4376924ddd2bd9bf4a9d93d1d0140c2d60a584`.
+**Yerel arşiv:** `raw/p01-6-user-review-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 112.20937501639128, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 75.10383310727775, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 25.940624997019768, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 22.535833064466715, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 111.8834160733968, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 81.0802080668509, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 28.231041971594095, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 23.05729198269546, "passed": true, "samples": 30}}, "source_commit": null}`.
+
+## p01-6-user-review-stream-v2
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `7b73f505eb4e81ca08a00c299cc2be869b06ef1feb076254c5a665208e2ca9af`.
+**Yerel arşiv:** `raw/p01-6-user-review-stream-v2.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 49790976, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 1.6364617920480669, "extra_rss_lower_bound_bytes": 1261568, "extra_rss_upper_bound_bytes": 1261568, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 51052544, "pretransfer_peak_rss_bytes": 49790976, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 57360384, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.02599691692739725, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 0, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 57360384, "pretransfer_peak_rss_bytes": 57360384, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 49790976, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.39485416701063514, "extra_rss_lower_bound_bytes": 180224, "extra_rss_upper_bound_bytes": 180224, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 49971200, "pretransfer_peak_rss_bytes": 49790976, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "bytes", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 180224, 1261568], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 1261568, "upper_bound_bytes": [0, 180224, 1261568]}, "source_commit": "14d6a9bf26debdd8eee22a3984b51505c874ba6a", "source_unchanged_during_measurement": true}`.
 
 ## startup-ci-control
 

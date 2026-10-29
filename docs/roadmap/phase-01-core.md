@@ -69,4 +69,4 @@ Faz sonunda: sentetik görev → sabit context/yetki bağları → capability/pl
 
 Yardım/sürüm ağ, DB, keychain, model/araç keşfi ve ML import yapmaz. Uzak kimlik bağları doğrulanmadan execution yetkisi verilmez; kritik state yazılamıyorsa yan etki başlamaz. Config/recipe önceliği, native görev bağımsızlığı ve fallback yasağı korunur. CLI/Python sonuçları, desteklenen hata/çıkış kodu ve JSON/NDJSON saflığı contract testiyle kanıtlıdır. [Performans](../standards/performance.md) ve [test](../standards/testing.md) kapıları geçer.
 
-Asgari Python hedefi ile gerçekten koşulan OS/Python matrisi ayrı kaydedilir. Genel plugin yükleyici, GUI, gerçek eğitim ve kullanıcı LLM serving bu faza girmez. P01-6b çalışma dalında verified; development teslimi için son PR ve kullanıcı merge kararı ayrıca gerekir.
+Asgari Python hedefi ile gerçekten koşulan OS/Python matrisi ayrı kaydedilir. Genel plugin yükleyici, GUI, gerçek eğitim ve kullanıcı LLM serving bu faza girmez. P01-6b’nin güncel kaynak/bellek kabulü ilgili kartta ve kullanıcı review takibinde izlenir; development teslimi için son PR ve kullanıcı merge kararı ayrıca gerekir.
