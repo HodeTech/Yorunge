@@ -342,3 +342,64 @@ def test_common_candidate_profile_allows_historical_baseline_comment_difference(
             "examples/profile.toml"
         ] = "9" * 64
     assert HELPERS["validate"](report)["passed"] is True
+
+
+def test_workflow_changes_and_additions_are_included_in_current_source_scope(tmp_path):
+    for name in ("src/yorunge", "scripts", "tests", "examples", ".github/workflows"):
+        (tmp_path / name).mkdir(parents=True)
+    for name in (
+        "pyproject.toml",
+        "uv.lock",
+        "examples/profile.toml",
+        ".github/workflows/checks.yml",
+        "src/yorunge/__init__.py",
+    ):
+        (tmp_path / name).write_text("fixed")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.test",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "x",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    before = HELPERS["source"](tmp_path)["source_sha256"]
+    policy = tmp_path / ".github/workflows/pr-policy.yml"
+    policy.write_text("new workflow")
+    after = HELPERS["source"](tmp_path)["source_sha256"]
+    assert after != before
+    assert (
+        after[".github/workflows/pr-policy.yml"] == hashlib.sha256(policy.read_bytes()).hexdigest()
+    )
+    policy.write_text("changed workflow")
+    assert HELPERS["source"](tmp_path)["source_sha256"] != after
+
+
+@pytest.mark.parametrize("kind", ["stdout", "stderr", "exit", "oversize"])
+def test_selector_capture_rejects_output_and_process_failures(kind):
+    capture = runpy.run_path(str(ROOT / "scripts/benchmark-startup.py"))["bounded_capture"]
+    scripts = {
+        "stdout": "print('ok')",
+        "stderr": "import sys; print('bad', file=sys.stderr)",
+        "exit": "raise SystemExit(7)",
+        "oversize": "print('x' * (1048576 + 1))",
+    }
+    if kind == "stdout":
+        assert capture([sys.executable, "-c", scripts[kind]]) == b"ok\n"
+    elif kind == "exit":
+        with pytest.raises(subprocess.CalledProcessError) as error:
+            capture([sys.executable, "-c", scripts[kind]])
+        assert error.value.returncode == 7
+    else:
+        with pytest.raises(ValueError):
+            capture([sys.executable, "-c", scripts[kind]])

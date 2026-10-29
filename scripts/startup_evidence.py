@@ -55,6 +55,14 @@ def source(project: Path) -> dict[str, Any]:
         ):
             raise ValueError("startup source scope requires explicit non-Python runtime inputs")
     result: dict[str, Any] = JOBS["source"](project)
+    workflows = project / ".github/workflows"
+    if (project / ".github").is_symlink() or workflows.is_symlink():
+        raise ValueError("startup workflows must not be symlinks")
+    for path in sorted(workflows.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("startup workflows must not be symlinks")
+        if path.is_file():
+            result["source_sha256"][str(path.relative_to(project))] = digest(path)
     marker = project / "src/yorunge/py.typed"
     if marker.is_file():
         result["source_sha256"]["src/yorunge/py.typed"] = digest(marker)

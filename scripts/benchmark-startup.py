@@ -9,11 +9,11 @@ import math
 import os
 import platform
 import runpy
+import selectors
 import sqlite3
 import statistics
 import subprocess
 import sys
-import tempfile
 import time
 from contextlib import closing
 from dataclasses import dataclass
@@ -77,18 +77,11 @@ def measure(command: list[str], *, cache_hit: bool = False) -> Sample:
 
 
 def audited_measure(command: list[str]) -> Sample:
-    # Files bound parent memory; validation and hashing happen after the wall/CPU window.
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-        before = child_cpu()
-        started = time.perf_counter()
-        subprocess.run(command, check=True, stdout=stdout, stderr=stderr, timeout=10)
-        duration = (time.perf_counter() - started) * 1000
-        after = child_cpu()
-        stdout.seek(0)
-        content = stdout.read(1024 * 1024 + 1)
-        stderr.seek(0)
-        if stderr.read(1):
-            raise ValueError("successful startup sample must not emit stderr")
+    before = child_cpu()
+    started = time.perf_counter()
+    content = bounded_capture(command)
+    duration = (time.perf_counter() - started) * 1000
+    after = child_cpu()
     VALIDATE_OUTPUT(command, content)
     assert AUDIT is not None
     row = AUDIT.setdefault(
@@ -101,6 +94,55 @@ def audited_measure(command: list[str]) -> Sample:
         after[0] - before[0] if after is not None and before is not None else None,
         after[1] - before[1] if after is not None and before is not None else None,
     )
+
+
+def bounded_capture(command: list[str]) -> bytes:
+    # Keep selector-driven EOF notification, rather than wait(timeout)'s polling/backoff.
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    deadline = time.monotonic() + 10
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    assert process.stdout is not None and process.stderr is not None
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+            selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+            collect_output(selector, buffers, deadline, command)
+        code = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        if code:
+            raise subprocess.CalledProcessError(
+                code, command, bytes(buffers["stdout"]), bytes(buffers["stderr"])
+            )
+        if buffers["stderr"]:
+            raise ValueError("successful startup sample must not emit stderr")
+        return bytes(buffers["stdout"])
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        process.stdout.close()
+        process.stderr.close()
+
+
+def collect_output(
+    selector: selectors.BaseSelector,
+    buffers: dict[str, bytearray],
+    deadline: float,
+    command: list[str],
+) -> None:
+    while selector.get_map():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, 10)
+        for key, _ in selector.select(remaining):
+            chunk = os.read(key.fd, 32768)
+            if not chunk:
+                selector.unregister(key.fileobj)
+                continue
+            destination = buffers[key.data]
+            destination.extend(chunk)
+            limit = 1024 * 1024 if key.data == "stdout" else 65536
+            if len(destination) > limit:
+                raise ValueError("startup process output exceeds its bounded capture limit")
 
 
 def cpu_label() -> str:
