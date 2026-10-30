@@ -1,6 +1,6 @@
 # Mevcut durum ve sıradaki iş
 
-**Güncellendi:** 2026-10-30. **P01-5a/b ve P01-6b çalışma dalında verified.** ADR-0019 kullanıcı onayı, üç uygulama adımı, Sonar bakımındaki dokuz düzeltme, iki fresh review turları ve güncel kaynak CI/kayıtları tamamlandı; [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı). P01-1–4 development’a teslim edildi; kalan paket [PR #11](https://github.com/HodeTech/Yorunge/pull/11) üzerinde kullanıcı review/merge bekler. Master/release kullanıcıdadır.
+**Güncellendi:** 2026-10-30. **P01 tamamlandı ve development’a teslim edildi.** Kullanıcı [PR #11](https://github.com/HodeTech/Yorunge/pull/11)’i **2026-10-30 07:57:27 Europe/Istanbul** tarihinde [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) ile birleştirdi. P01-1–6 ve bütün alt kartlar verified; ADR-0017/0018/0019 Accepted. [Merge ve kanıt kapanışı](../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki iş P02-0a sözleşme/SDK/pilot planı hazırlığıdır; P02 uygulaması başlamadı. Master/release kullanıcıdadır.
 
 PR #11 kullanıcı incelemesi kısa secret denetimindeki yanlış pozitifliği ve iki bellek kanıtı açığını doğruladı. Önceki CI/ölçümler tarihsel olarak korunur; eski peak-minus-peak RSS yöntemi güncel bellek kabulü sayılmaz. [Düzeltme planı](p01-remaining-delivery-plan.md#pr-11-kullanıcı-incelemesi-takibi) ve [yeni kaynak/native Linux kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tamamlandı. Eski başarısız koşular ve v1 bellek kayıtları tarihsel kalır.
 
@@ -42,15 +42,23 @@ Son PR head'i **36ae2a4** için offline-core/branch-policy/SonarCloud ve CodeRab
 
 Ham ölçümler [manifest/indeks](../research/evidence.md) ve CI hash/özet denetimiyle kayıpsız arşivlenir; CodeRabbit yalnız raw dizinini dışlar, ajanlar hedefli kanıt incelemesi yapar. Başarısız ara ölçümler ve merge kaydı korunur. Arşivler sdist'e girmez; test vektörleri ve ölçüm kodu normal incelemede kalır. Development teslimi paket yayını değildir; Master/release aktarımı kullanıcıdadır.
 
-## Çalışma dalında doğrulanan P01 kapanışı
+## Tamamlanan P01-5 ve P01 kapanışı
 
-**Dal:** `feat/p01-5-transport`, development `805f8bd` tabanında. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ile P01-6b kabulü tamamlandı. Accepted ADR-0017/0018/0019, altı ilk adım, kullanıcı review düzeltmeleri ve her uygulama adımının iki farklı fresh review turu [güncel kapanış kaydındadır](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı).
+**Teslim edilen dal:** `feat/p01-5-transport`, development `805f8bd` tabanından PR #11 ile `bc9532c` development merge’üne alındı. P01-5a HTTP/session ve P01-5b stream/NDJSON/yerel iptal ile P01-6b kabulü tamamlandı. Accepted ADR-0017/0018/0019, altı ilk adım, kullanıcı review düzeltmeleri ve her uygulama adımının iki farklı fresh review turu [güncel kapanış kaydındadır](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı).
 
-Son kaynak e5846ce ve de312dc CI head’i [CI 40975685731](https://github.com/HodeTech/Yorunge/actions/runs/40975685731) üzerinde üç ortam tam takım/altı temiz kurulum, güncel M5 startup/jobs, gerçek Linux raw, üçlü raw/receipt/baseline witness guard ve aggregate kapılarını geçti. İlk runtime release belge tabanı açık aynı-kaynak A/A kontrolüyle desteklenir; önceki runtime’a karşı kazanç iddia edilmez. Dokuz Sonar maddesi giderildi; üç BaseException yakalaması cleanup/uncertainty sözleşmesi ve regresyon kanıtıyla korundu. M5 başarısı Linux performans garantisi değildir; Linux aşımı görünür tanı/human review ve kalıcı saklama kuralına tabidir. Son belge ve kullanıcının merge koşusu aynı kaynak için ayrıca saklama takibi taşır.
+Son kaynak e5846ce ve de312dc CI head’i [CI 40975685731](https://github.com/HodeTech/Yorunge/actions/runs/40975685731) üzerinde üç ortam tam takım/altı temiz kurulum, güncel M5 startup/jobs, gerçek Linux raw, üçlü raw/receipt/baseline witness guard ve aggregate kapılarını geçti. İlk runtime release belge tabanı açık aynı-kaynak A/A kontrolüyle desteklenir; önceki runtime’a karşı kazanç iddia edilmez. Dokuz Sonar maddesi giderildi; üç BaseException yakalaması cleanup/uncertainty sözleşmesi ve regresyon kanıtıyla korundu. M5 başarısı Linux performans garantisi değildir; Linux aşımı görünür tanı/human review ve kalıcı saklama kuralına tabidir. Merge CI [41005731985](https://github.com/HodeTech/Yorunge/actions/runs/41005731985) üç ortam/altı kurulum, iki M5 verifier, gerçek raw ve aggregate ile başarılıdır. Son PR/iptal/merge kanıtları kalıcı arşive alındı; toplam 149 kayıt doğrulandı. Ayrıntılı ortam/süre ve özgün Linux tanı sonucu kanonik merge kaydındadır.
 
-Önceki bf652f6 kabulü ve c2d8029/675dfe4 startup retleri kaynaklarıyla korunur; yeni politika eski koşuyu başarıya çevirmez. P01’in bu hafif çekirdek kapsamı verified; development merge’ü ve Master/release kullanıcıdadır. Sonraki P02-0a araştırma/SDK pilot kartı taslaktır ve başlamadı; P02-0b hesap keşfi ayrı iştir.
+Önceki bf652f6 kabulü ve c2d8029/675dfe4 startup retleri kaynaklarıyla korunur; yeni politika eski koşuyu başarıya çevirmez. P01’in bu hafif çekirdek kapsamı verified ve development’a teslim edildi; Master/release kullanıcıdadır. P02-0a faz satırı draft’tır; ayrıntılı hazır iş kartı henüz yoktur. P02-0b hesap keşfi ayrı iştir.
 
 [Kesin sıra](phase-01-core.md), [ajan rehberi](../../.agents/README.md). Gerçek hesap keşfi/veri/çıkarım P02; ForgeLM/muadil araç adaptörleri ve uzak yürütme P03 kapsamındadır. Plan seçimi adaptör desteği değildir. Canlı EVREN, gerçek Windows veya fiziksel güç kesintisi kabulü iddia edilmez.
+
+## Sıradaki iş ve kalan kapsam
+
+**Sonraki paket P02-0a:** güncel resmî Platform/LLM sözleşmelerini doğrulamak, endpoint bazında SDK kullanım sınırını belirlemek ve küçük pilotun yetki/kapsam/maliyet planını hazırlamak. [P02 fazı](phase-02-data-and-inference.md) ve B03/B04 önkoşulları ayrıntılı iş kartına dönüştürülmeden kod işine hazır sayılmaz. P01’deki SDK core bağımlılığı yasağı endpoint adaptörü kararının tamamlandığı anlamına gelmez.
+
+Bu belge/kanıt kapanışı güncel `origin/development@bc9532c` üzerinden açılan `feat/p02-0a-sdk-pilot` dalındadır; ayrı PR açılmaz, sonraki P02-0a işiyle review edilir. P02 araştırması, yeni ADR, canlı hesap isteği veya ürün implementasyonu bu kapanış kapsamında başlatılmadı.
+
+P02-0a’dan sonra P02-0b salt okunur hesap/organizasyon/proje keşfi gelir. P02-1 yerel dosya denetimi ve manifest bağımsız ilerleyebilir; veri yükleme/indirme, katalog, native çıkarım ve GPU/kota okuma diğer P02 işleridir. Yönetilen eğitim/ForgeLM ve muadiller P03; ileri otomasyon ve yayın kapıları P04’tür. Master aktarımı/paket yayını development teslimi değildir.
 
 ## Çözülmemiş dış sorular
 

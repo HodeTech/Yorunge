@@ -4,7 +4,7 @@
 
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
-| B01 | CLI/şema/YAML ve HTTP taşıma seçimi | [ADR-0017](../decisions/0017-bounded-http-transport.md) Accepted; ortak taşıma ve gerçek TLS loopback kabulü P01-5a çalışma dalında verified. Gerçek endpoint adaptörü P02 kapsamındadır | P01-5a / P02 |
+| B01 | CLI/şema/YAML ve HTTP taşıma seçimi | [ADR-0017](../decisions/0017-bounded-http-transport.md) Accepted; ortak taşıma ve gerçek TLS loopback kabulü P01-5a verified ve PR #11 ile development’a teslim edildi. Gerçek endpoint adaptörü P02 kapsamındadır | P01-5a / P02 |
 | B02 | Ortak state DDL/migration/lease | [Araştırma](../research/p01-2-state-identity-decision-review.md), [ADR-0011](../decisions/0011-state-foundation-and-migrations.md) Accepted; store/migration karar kapısı kapandı. P01-4a PR #6 ile, operation/lease/jobs ve ADR-0016 [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile tamamlanıp development'a alındı; B02 karar/uygulama kapısı kapandı | P01-4a/P01-4b |
 | B03 | SDK'yı kullanma sınırı | [0.11.0 kaynak incelemesi](../research/p01-remaining-readiness-review.md) tamamlandı; ortak taşıma/SDK core bağımlılığı sınırı ADR-0017 Accepted. P02 gerçek endpoint adaptöründe sabit sürüm/retry/timeout/stream contract kabulü ayrıca gerekir | P01-5a karar / P02 adaptör |
 | B04 | Aktarım limitleri ve native eğitim durumları | Güncel resmî sözleşme + yetkili küçük pilot | P02/P03 |

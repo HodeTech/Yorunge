@@ -1,6 +1,6 @@
 # Katkı rehberi
 
-Yörünge'nin P01 hafif çekirdeği, kullanıcı review ve ADR-0019/Sonar takibi çalışma dalında verified; [son kaynak kabulü](docs/research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) gerçek üç ortam CI, altı kurulum ve kaynak bağlı referansları taşır. Development PR review/merge ve yayın ayrı süreçtir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
+Yörünge'nin P01 hafif çekirdeği, kullanıcı review ve ADR-0019/Sonar takibi verified; PR #11 kullanıcı tarafından development’a bc9532c ile birleştirildi. [Merge ve kaynak kabulü](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı) gerçek üç ortam CI, altı kurulum ve kaynak bağlı referansları taşır. Master/release ayrı kullanıcı sürecidir. Ürün kapsamını [product-scope.md](docs/product-scope.md), sıradaki işi [current.md](docs/roadmap/current.md) tanımlar.
 
 ## Çalışma akışı
 

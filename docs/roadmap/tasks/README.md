@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-10-29. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-10-30. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -17,7 +17,9 @@
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
 
-[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 kullanıcı review/merge bekler; güncel durum kart metadata’sındadır.
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b verified ve PR #11 ile development’a teslim edildi; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 bc9532c merge’ünde development’a alındı; güncel durum kart metadata’sındadır.
+
+Sonraki P02-0a sözleşme/SDK/pilot planı faz satırı draft’tır; ayrıntılı hazır kart henüz yoktur. Bu kapanışta P02 araştırması veya ürün kodlaması başlatılmaz; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 

@@ -1,11 +1,11 @@
 # Yol haritası
 
-**Güncellendi:** 2026-10-29. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
+**Güncellendi:** 2026-10-30. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
 
 | Faz | Kullanıcı sonucu | Bugünkü durum | Fazın sınırı |
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
-| [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Çalışma dalında verified; development PR bekleniyor | Gerçek EVREN veya eğitim adaptörü değil |
+| [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
 | [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | Planlandı; dış sözleşme kapılı | Eğitim bağımlılığı yok |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
@@ -37,7 +37,7 @@ Mevcut ID'ler korunur; bölünme `P01-2a` gibi alt ID üretir. Faz özeti işi v
 
 Kullanıcının 2026-10-27 tercihiyle P01-2 → P01-3 → P01-4 → P01-5 → P01-6 epik başına tek development PR'ında ilerler. Alt kartlar kabul/test/commit/review birimleridir; her biri için ayrı PR açılmaz. Paket koordinasyon planı kapsamı, iç sırayı ve bütünleşik kapanışı taşır; ayrıntılı alt kabul kartlarda kalır. [P01-2 teslim edildi](p01-2-delivery-plan.md); [P01-3 teslim edildi](p01-3-delivery-plan.md); [P01-4 plan/kartları](p01-4-delivery-plan.md) ADR-0016 Accepted sonrası uygulandı; dört adımın kabulü verified ve [PR #10 merge/CI kapanışı](../research/p01-4-implementation-validation.md#development-merge-kapanışı) ile development'a teslim edildi.
 
-**2026-10-29 kapanış istisnası:** Kullanıcının kalan bütün P01 işleri talebiyle P01-5a/5b ve P01-6b [tek son pakette](p01-remaining-delivery-plan.md), mevcut feat/p01-5-transport dalından tek development PR'ına alınır. Ayrı kart/step/commit ve iki fresh review döngüleri korunur; önceki epiklerin geçmiş PR sınırları değişmez.
+**2026-10-29 kapanış istisnası:** Kullanıcının kalan bütün P01 işleri talebiyle P01-5a/5b ve P01-6b [tek son pakette](p01-remaining-delivery-plan.md), mevcut feat/p01-5-transport dalından tek development PR'ında tamamlandı; PR #11 kullanıcı tarafından development’a birleştirildi. Ayrı kart/step/commit ve iki fresh review döngüleri korunur; önceki epiklerin geçmiş PR sınırları değişmez.
 
 Aynı PR'daki sonraki alt iş, öncekinin gerçek kod/test/review kanıtı oluşunca başlayabilir; bağımlılığın ayrı PR'da merge edilmesi gerekmez. Yerel `verified` alt iş kaydı gerçek commit'e dayanır ve paket/PR durumunu olduğundan ileride göstermez. Epik, bütün alt işler ve bütünleşik kabul tamamlanmadan kapanmaz. Karar bekleyen alt iş taslak kalır; paket büyüklüğü hazır olma kontrolünü veya kullanıcı ADR onayını kaldırmaz.
 

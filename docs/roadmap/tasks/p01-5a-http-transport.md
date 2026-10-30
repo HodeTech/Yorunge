@@ -8,7 +8,7 @@ capabilities: [C01, C02, C12, C13]
 ---
 # P01-5a — HTTP taşıma ve SDK sınırı
 
-**Tarih:** 2026-10-30. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 1–2. ADR-0017/0018 Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle verified. P01-6b/Accepted ADR-0019 ve Sonar [son kaynak kabulü](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) tamamlandı; PR #11 kullanıcı review/merge bekler. Önceki bf652f6 kabulü kendi kaynağının tarihsel kaydıdır.
+**Tarih:** 2026-10-30. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 1–2. ADR-0017/0018 Accepted; iki ürün adımı, ikişer fresh review turu ve artifact kontrolleriyle verified. P01-6b/Accepted ADR-0019 ve Sonar [son kaynak kabulü](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) tamamlandı; PR #11 ile development’a bc9532c merge’ünde teslim edildi. Önceki bf652f6 kabulü kendi kaynağının tarihsel kaydıdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -42,6 +42,8 @@ Unit/contract ve gerçek TLS/socket/SQLite/alt süreç integration; fault/timeou
 
 ## Teslim kaydı
 
-- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım 1 3c68e22/a2250db/2dee624 ve adım 2 61fe655/ec2d202 aynı paket dalındadır. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development hedefiyle açıktır; merge kullanıcı incelemesini bekler.
+**Development teslimi:** [PR #11](https://github.com/HodeTech/Yorunge/pull/11), [merge bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027), 2026-10-30 07:57:27 Europe/Istanbul; [merge/kayıt kapanışı](../../research/p01-remaining-implementation-validation.md#development-merge-kapanışı).
+
+- PR/commit: [ec2d202](https://github.com/HodeTech/Yorunge/commit/ec2d202) bu kartın adım kaynağıdır; adım 1 3c68e22/a2250db/2dee624 ve adım 2 61fe655/ec2d202 aynı paket dalındadır. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development’a bc9532c merge’ünde alındı.
 - Sonuç: İki adımın ikişer fresh review turu/fix'leri ve source-matched hedefli HTTP/JSON/TLS/session/SQLite/cancel/race/restart kontrolleri [uygulama kaydındadır](../../research/p01-remaining-implementation-validation.md). Son runtime kaynağında wheel/sdist iki temiz kurulum, import kökeni ve mevcut smoke'lar geçti; Ruff/strict mypy/belge/kart/diff temiz.
 - Kalan sınır: Public HTTP/debug/run veya EVREN/SDK adaptörü yoktur. Stream/CLI P01-5b ve bütünleşik final kurulum/ortam/performans P01-6b [son kaynak kapanışında](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified; eski bf652f6 kabulü tarihseldir. Bu kart canlı hesap veya fiziksel güç kesintisi kanıtı değildir. Deadline cooperative kontrol ve ölçülebilir kabul hedefidir.

@@ -2202,6 +2202,362 @@
       }
     },
     {
+      "name": "p01-6-adr19-initial-runtime-final-body-cancel-checkpoint.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-body-cancel-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 13687,
+      "content_sha256": "b826cdcd1e47275f76d63ca5d1d6d8b34ad28c26e65cc400befa7e1dd8e0cbc3",
+      "archive_bytes": 1997,
+      "archive_sha256": "44bfca6d1148fe15680e0cd6bbc859f6d12ea853b0236715370f70649310544b",
+      "summary": {
+        "source_commit": "de312dcb95688a685089da8809e54478e6e99e68",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "cancelled_before_startup"
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-checkpoint.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 13157,
+      "content_sha256": "f9171e4308eb7d5a50e9cb8e9bc13a14efa74c6d05afd3693bcf10cb7e3755be",
+      "archive_bytes": 2570,
+      "archive_sha256": "1a8b97cf0a82c1639e04155488c3105c747e7a3eaafe5fb031857a03cde72c23",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "source_acceptance_passed"
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-linux311-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2858,
+      "content_sha256": "b5d00d7c3f54831c640bd9fb9c61a3be2b032592032c4d1b64550d5ca0941572",
+      "archive_bytes": 1114,
+      "archive_sha256": "1dbc5a3ba28fe12972dba1e2c474224ea8c458ae72f8eb742a87d1bdcd5c3a27",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-linux314-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2808,
+      "content_sha256": "472412573df37af8e5990e3ea249213fec220058b1b5d164f32e8eeae0213252",
+      "archive_bytes": 1069,
+      "archive_sha256": "0301eb7ad32a5436fe2e15d9fd3350c0084026d801780c20a143787db6c59a38",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-macos311-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2784,
+      "content_sha256": "2d49737dc8fb1f6db53ff94a2430539f1e2908daec38404718ee7ad335b991b5",
+      "archive_bytes": 1080,
+      "archive_sha256": "0c8035f253423b1dd4c38b949dc6bfaec5c9599691c25035465d4f3295f643b5",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-startup-baseline-selection.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-startup-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "4379d82161a762f33dfe463e1168ce0fbeecc01ee82f9ec47914f129e3160eef",
+      "archive_bytes": 246,
+      "archive_sha256": "8a14bf24589790b41ca3993e5370f6740011cf6e8aa6b498181108dd1a3502b5",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "effective_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "report_sha256": "2a8bb35dc9ad49ccca06464cbc6a121e62eb8d1c70f9cf29bf1be2604b931e24",
+        "complete": true
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-startup-diagnostic.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-startup-diagnostic.json.gz",
+      "original_commit": null,
+      "content_bytes": 782,
+      "content_sha256": "e5dc04c6d3ec9f01a71bf5d73785b51533eac6b7f678bae22eee3f7b8d5c8b81",
+      "archive_bytes": 439,
+      "archive_sha256": "6b2e9efd40ffd7325d86994a3ed8bef9718fd15d97e8fcd70b6d94bda2cceee0",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/40977307994",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 37.155496999957904,
+          "candidate/version": 36.14659299989853,
+          "candidate/context": 174.7218770000245,
+          "candidate/cache": 225.04251499992733,
+          "baseline/help": 35.662575000060315,
+          "baseline/version": 35.00746199995319,
+          "baseline/context": 172.57594800003062,
+          "baseline/cache": 218.42766500003563
+        },
+        "report_sha256": "2a8bb35dc9ad49ccca06464cbc6a121e62eb8d1c70f9cf29bf1be2604b931e24"
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-startup.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 160321,
+      "content_sha256": "2a8bb35dc9ad49ccca06464cbc6a121e62eb8d1c70f9cf29bf1be2604b931e24",
+      "archive_bytes": 28180,
+      "archive_sha256": "ce45a56d5c4b5144c77ccde6ccdf03920d474a2a125edc6cdbb8569bc8d667cd",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 37.155496999957904,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 36.14659299989853,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 174.7218770000245,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 225.04251499992733,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 35.662575000060315,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 35.00746199995319,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 172.57594800003062,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 218.42766500003563,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-final-doc-ci-stream-v2.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-final-doc-ci-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 48887,
+      "content_sha256": "8f93410abffb8b47bc8604df409c9c707bf78e0c55c7e017ceffed79d2f13a24",
+      "archive_bytes": 6345,
+      "archive_sha256": "4058b1628f6204dc26cb84623d47a3d3aa194885d4e203f36118a9640baa41b9",
+      "summary": {
+        "source_commit": "cf0016e7301fbfd3462e5f8ec9238d101c736e59",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            20480,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 51957760,
+            "pretransfer_peak_rss_bytes": 51978240,
+            "peak_rss_bytes": 51978240,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 20480,
+            "elapsed_seconds": 0.07211211100002402,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 46194688,
+            "pretransfer_peak_rss_bytes": 46194688,
+            "peak_rss_bytes": 46850048,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 1.1352508200000102,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 46342144,
+            "pretransfer_peak_rss_bytes": 46342144,
+            "peak_rss_bytes": 46997504,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 4.4300471560000005,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-adr19-initial-runtime-installation.json",
       "archive": "raw/p01-6-adr19-initial-runtime-installation.json.gz",
       "original_commit": null,
@@ -3643,6 +3999,347 @@
             "baseline_rss_bytes": 45318144,
             "peak_rss_bytes": 46497792,
             "elapsed_seconds": 2.2258955419999893,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-checkpoint.json",
+      "archive": "raw/p01-6-development-merge-ci-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 13172,
+      "content_sha256": "0e53654e411e8ba9b7558225a9db43c11c394b791a91ad0b71d0a836fd1469ca",
+      "archive_bytes": 2529,
+      "archive_sha256": "7ef3dc1e9e7fa5f69a54d68694da133c6d3f03da8c9c30bb1a76c7ca86ed4434",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "development_merge_acceptance_passed"
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-linux311-installation.json",
+      "archive": "raw/p01-6-development-merge-ci-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2844,
+      "content_sha256": "c4f09778948c9831632e913349da8f69580e9b0e8ea96baa897bf0326924f8f1",
+      "archive_bytes": 1106,
+      "archive_sha256": "61e996138c4fce591e3904bdc7fc908cc4b6a72cce75d934b836245ad6f8e63c",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-linux314-installation.json",
+      "archive": "raw/p01-6-development-merge-ci-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2808,
+      "content_sha256": "8dff7888a0cda16a31b173b291de76ee5e0f1e80dc5e4f4cda70b5e347efb2c6",
+      "archive_bytes": 1072,
+      "archive_sha256": "9909edb345f251e99488a32b82c2f72a5f6f0a43ec7ea4c9e2e323f334c42243",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-macos311-installation.json",
+      "archive": "raw/p01-6-development-merge-ci-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2784,
+      "content_sha256": "bd816d88f3ea9ebdd8cb19f472ccc285159330f68d3f35686fdfef4b011dde6d",
+      "archive_bytes": 1080,
+      "archive_sha256": "89768eda172dfb093942eadff3539a9a74dca5bf3cffc87b3a2a5529e1ec4828",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-startup-baseline-selection.json",
+      "archive": "raw/p01-6-development-merge-ci-startup-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "453c4673c30cb080cd931ed1d9ad47fffddc1ada42cf7ffe7cf1033dd1c878c8",
+      "archive_bytes": 246,
+      "archive_sha256": "90187454959f6e963d14544495ee1804e8872bd1628ac4648efadbe5ce5883e5",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "effective_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "report_sha256": "5871ca34ae6a8f3d28ef46e5b2f5e984c7a2664ba02bb5ffa216133f7a4f82ec",
+        "complete": true
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-startup-diagnostic.json",
+      "archive": "raw/p01-6-development-merge-ci-startup-diagnostic.json.gz",
+      "original_commit": null,
+      "content_bytes": 780,
+      "content_sha256": "b4c869daad9f691ea5836703d7686ad19f5ae3951eff7096d4f2948197cdab64",
+      "archive_bytes": 439,
+      "archive_sha256": "7c22b71770ea40bcea95fe0503614506b415ea42f8130f4107f8d1eea364268d",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41005731985",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 40.41636700003437,
+          "candidate/version": 39.62697199995091,
+          "candidate/context": 179.7994959999869,
+          "candidate/cache": 218.16122200004884,
+          "baseline/help": 39.07224200008841,
+          "baseline/version": 38.39724199997363,
+          "baseline/context": 180.22763599992686,
+          "baseline/cache": 217.92387300001792
+        },
+        "report_sha256": "5871ca34ae6a8f3d28ef46e5b2f5e984c7a2664ba02bb5ffa216133f7a4f82ec"
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-startup.json",
+      "archive": "raw/p01-6-development-merge-ci-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 160293,
+      "content_sha256": "5871ca34ae6a8f3d28ef46e5b2f5e984c7a2664ba02bb5ffa216133f7a4f82ec",
+      "archive_bytes": 28189,
+      "archive_sha256": "9331acff0c7f707dad0357b9cb468a351811cfa58666ba6feceffaba3266cf61",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 40.41636700003437,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 39.62697199995091,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 179.7994959999869,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 218.16122200004884,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 39.07224200008841,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 38.39724199997363,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 180.22763599992686,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 217.92387300001792,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-development-merge-ci-stream-v2.json",
+      "archive": "raw/p01-6-development-merge-ci-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 48888,
+      "content_sha256": "51d4ba5b863d5d6745b42809d8b0ce24861b045a04d1973cea6d42d29fd899b9",
+      "archive_bytes": 6346,
+      "archive_sha256": "770b57c42a201abde038cddb875c2ed3209d62fd7c61b3a8ad768eda0e703b74",
+      "summary": {
+        "source_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            401408,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 51175424,
+            "pretransfer_peak_rss_bytes": 51576832,
+            "peak_rss_bytes": 51576832,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 401408,
+            "elapsed_seconds": 0.08543226799997683,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 45490176,
+            "pretransfer_peak_rss_bytes": 45490176,
+            "peak_rss_bytes": 46145536,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 1.2807533870000043,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 45522944,
+            "pretransfer_peak_rss_bytes": 45522944,
+            "peak_rss_bytes": 46178304,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 5.209033621999993,
             "max_chunk_bytes": 16384,
             "chunk_count": 65536,
             "connection_count": 1,

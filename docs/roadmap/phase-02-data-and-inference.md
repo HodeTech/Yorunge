@@ -1,6 +1,6 @@
 # P02 — Veri, katalog ve çıkarım
 
-**Durum:** Planlandı; satırlar uygulama kartı değildir. **Bağımlılık:** P01 kimlik/taşıma/state kabulü. **Yetenekler:** C03–C07, C11 okuma, C12 aktarım/teslim. Araştırma bağımsız ilerleyebilir; canlı yürütüm kapılıdır.
+**Durum:** Planlandı; araştırma ve ürün uygulaması başlamadı. P01 PR #11 ile development’a teslim edildi. Sıradaki P02-0a satırı draft’tır; ayrıntılı ready iş kartı henüz yoktur. **Bağımlılık:** P01 kimlik/taşıma/state kabulü. **Yetenekler:** C03–C07, C11 okuma, C12 aktarım/teslim. Araştırma bağımsız ilerleyebilir; canlı yürütüm kapılıdır.
 
 ## Hatlar ve sınırlar
 
@@ -16,7 +16,7 @@
 | P02-5 | Native LLM ve temel çıkarım | P02-4, P01-5b | Önce tek nonstream metin görevi; stream, embedding/rerank ve görsel ayrı alt paketler | `draft` |
 | P02-6 | GPU/kuyruk/rezervasyon bilgisi ve kota okuma | P02-0, P01-3a, P01-5a | Gün/tarih/kapsam, paylaşılan kota ve yetki ayrımı; kaynak yazma yok | `draft` |
 
-P02-1 yerel iş olarak P01'in kalan state/HTTP işlerinden bağımsız geliştirilebilir; bu, uzak upload'ı erkene alma izni değildir. P02-4/P02-6 okuma hattı upload/vision eğitimini beklemez. P02-0a araştırması yetkili canlı pilot olmadan tamamlanırsa yalnız belge/fixture uyumu kaydedilir; P02-0b'nin hesap kabulü tamamlandı sayılmaz. Organizasyon/proje alanı sağlayıcıda doğrulanmıyorsa uydurulmaz; mevcut dar context şemasının genişlemesi ayrıca sözleşme/migration farkıyla ele alınır.
+P02-1 yerel iş olarak P02-0’ın uzak sözleşme/hesap keşfinden bağımsız geliştirilebilir; bu, uzak upload'ı erkene alma izni değildir. P02-4/P02-6 okuma hattı upload/vision eğitimini beklemez. P02-0a araştırması yetkili canlı pilot olmadan tamamlanırsa yalnız belge/fixture uyumu kaydedilir; P02-0b'nin hesap kabulü tamamlandı sayılmaz. Organizasyon/proje alanı sağlayıcıda doğrulanmıyorsa uydurulmaz; mevcut dar context şemasının genişlemesi ayrıca sözleşme/migration farkıyla ele alınır.
 
 ## İşe başlamadan bölünecek paketler
 
