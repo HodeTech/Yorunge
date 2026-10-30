@@ -114,7 +114,9 @@ SDK’da account/org/project, private dataset create, dataset version/download/f
 
 Bu listede sonraki epiklerin tasarımı benimsenmedi; gereksiz geniş ADR paketiyle P02-0b bekletilmiyor. Araştırmada unknown kalan alanın sahibi/açılma koşulu vardır; entegrasyon veya tüm B04 kapanmış sayılmaz.
 
-## Küçük pilot planı — icra edilmedi
+## Küçük pilot planı — araştırma anında icra edilmedi
+
+31 Ekim’deki ilk sınırlı LLM/Platform icrası ve açık kapılar [uygulama kabul kaydındadır](p02-0-implementation-validation.md#adım-5--platform-raw-kapısı-ve-ilk-yetkili-canlı-gözlem); aşağıdaki kapsam araştırma planının tarihsel kaydıdır.
 
 **Ortak kapı:** Pilot sahibi kullanıcı veya açıkça atadığı hesap sahibi; hesap/proje ve key **env adları** henüz bildirilmedi. Token değeri sohbet/rapor/komuta yazılmaz. Gerçek yetki ve tutar bilinmeden effectful pilot başlamaz. Aşağıdaki sayılar sağlayıcı limiti değil önerilen Yörünge pilot tavanıdır. Her satır ayrı yetkilendirilir; P02-0b yalnız ilk iki salt okuma satırının adayıdır.
 

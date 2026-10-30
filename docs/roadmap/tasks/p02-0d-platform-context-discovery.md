@@ -22,7 +22,7 @@ Browser JWT fallback, key oluşturma, terms accept, model/kota/dataset taraması
 
 ## Bağımlılıklar ve kararlar
 
-P01/P02-0a bağımlılıkları verified; [Accepted ADR-0020](../../decisions/0020-service-bound-context-discovery.md) yönü kullanıcıca yetkilendirildi. Ready için provider sözleşmesi veya yetkili bounded raw read pilotu her kullanılan endpoint/parametre/hedef kapsamındaki key-auth, raw minimum alanları, account/principal/org anlamını, envelope ve paging’i kapatmalı. Account API semantiği bilinmiyorsa caller tercihi doğrulanamaz. Kullanıcı key/env/scope hazırlığını henüz yapmadı; [hazırlık](../../p02-account-setup.md) sağlanınca salt okuma kanıtı toplanabilir.
+P01/P02-0a bağımlılıkları verified; [Accepted ADR-0020](../../decisions/0020-service-bound-context-discovery.md) yönü kullanıcıca yetkilendirildi. Ready için provider sözleşmesi veya yetkili bounded raw read pilotu her kullanılan endpoint/parametre/hedef kapsamındaki key-auth, raw minimum alanları, account/principal/org anlamını, envelope ve paging’i kapatmalı. Account API semantiği bilinmiyorsa caller tercihi doğrulanamaz. Kullanıcı key/env hazırlığını yaptı; account/project ID bilinmiyor. İlk yetkili /auth/me HTTP200 raw-shape gözlemi auth/principal/envelope/paging kapısını kapatmadı; [hazırlık](../../p02-account-setup.md) sağlanınca salt okuma kanıtı toplanabilir.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -42,4 +42,4 @@ Raw contract kapandıktan sonra meaningful unit/contract, gerçek TLS, CLI/subpr
 
 ## Teslim kaydı
 
-Ürün uygulaması ve live kabul yapılmadı. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
+Ürün uygulaması ve tam live kabul yapılmadı. İlk sınırlı /auth/me salt okuma gözlemi paket kaydında; bilinmeyen schema’da diğer uçlar çağrılmadan duruldu. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.

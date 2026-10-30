@@ -82,6 +82,65 @@ def test_runtime_only_isolated_child_uses_actual_tls_and_all_new_product_paths(
         assert acceptance.REQUIRED_MODULES.issubset(report["modules"])
         assert all(Path(value).is_relative_to(prefix) for value in report["modules"].values())
         assert Path(report["metadata"]).is_relative_to(prefix)
+        if case == "discovery":
+            assert acceptance.DISCOVERY_MODULES.issubset(report["modules"])
+
+
+@pytest.mark.parametrize("mutation", ["terms-type", "selected", "auth", "warning", "data-type"])
+def test_installed_discovery_oracle_rejects_identity_claims_and_coercion(mutation):
+    # Independent critical-field vector; actual full wire is exercised above
+    # using the isolated installation and the real TLS endpoint.
+    data = {
+        "schema_version": 1,
+        "service_id": "evren-llm",
+        "profile": "installed",
+        "terms": {"accepted": False, "current_version": 7, "is_material": True},
+        "profile_preference": {
+            "account_id": "platform-account",
+            "project_id": "platform-project",
+            "service_scope": "unknown",
+        },
+        "selected": {"account_id": None, "project_id": None},
+        "provider": {
+            "principal_id": None,
+            "account_id": None,
+            "organization_id": None,
+            "project_id": None,
+            "identity_status": "not_exposed",
+        },
+        "authorization_scope": None,
+        "validation": "unverified",
+        "consistency": "not_guaranteed",
+        "observations": [{"authentication": "unknown"}],
+        "reasons": [
+            "authorization_not_verified",
+            "identity_not_exposed",
+            "profile_scope_unknown",
+            "remote_snapshot_not_guaranteed",
+            "terms_not_accepted",
+        ],
+    }
+    envelope = {
+        "schema_version": 1,
+        "operation_id": None,
+        "status": "completed",
+        "data": data,
+        "warnings": ["context_not_verified"],
+    }
+    acceptance.verify_output("discovery", 0, acceptance.wire(envelope), b"")
+    if mutation == "terms-type":
+        data["terms"]["accepted"] = 0
+    elif mutation == "selected":
+        data["selected"]["project_id"] = "platform-project"
+    elif mutation == "auth":
+        data["observations"][0]["authentication"] = "verified"
+    elif mutation == "warning":
+        envelope["warnings"] = []
+    else:
+        envelope["data"] = []
+    encoded = acceptance.wire(envelope)
+    with pytest.raises(ValueError):
+        acceptance.verify_output("discovery", 0, encoded, b"")
 
 
 @pytest.mark.parametrize("kind", ["prefix", "product", "metadata", "lazy-module", "runtime-only"])

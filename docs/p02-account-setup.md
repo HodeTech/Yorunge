@@ -6,7 +6,7 @@
 
 Kendi yetkin olan EVREN hesabının **LLM anahtarı** ilk bağımsız kol için yeterlidir. Platform kimlik/org/proje kabulünü ayrıca sınamak için **Platform API anahtarı** gerekir; browser JWT’si veya oturum cookie’si gerekmez. Platform API key’in bu endpoint’lere erişebildiği henüz doğrulanmadı; bunu başarılı kabul gibi göstermeyeceğiz. Şart kabulü gerekiyorsa kullanıcı EVREN arayüzünde kendisi yapar; pilot POST accept çağırmaz.
 
-Platform için bildiğin hesap/proje ID’lerini aşağıdaki scope dosyasına girebilirsin. Account ID’nin user mı organizasyon mu olduğu belli değilse boş bırak; isim veya model owner’dan türetme. İlk proje otomatik seçilmez. LLM hesabını Platform ID’siyle eşleştirmek için bu bilgiler kullanılmaz.
+Account/project ID’lerini bilmiyorsan boş bırakabilirsin; ilk LLM keşfi bunları gerektirmez. Platform’da otomatik yeni hesap/proje oluşturulmaz. Platform için bildiğin hesap/proje ID’lerini aşağıdaki scope dosyasına girebilirsin. Account ID’nin user mı organizasyon mu olduğu belli değilse boş bırak; isim veya model owner’dan türetme. İlk proje otomatik seçilmez. LLM hesabını Platform ID’siyle eşleştirmek için bu bilgiler kullanılmaz.
 
 ## Dosyaları güvenle hazırla
 

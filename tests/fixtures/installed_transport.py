@@ -37,7 +37,15 @@ ERROR_MESSAGES = {
     "invalid_response": "Yanıt beklenen biçim, içerik veya boyut koşullarını karşılamıyor.",
     "stream_interrupted": "Yanıt akışı doğrulanmış terminal sonuç olmadan kesildi.",
 }
-CASES = ("http", "http-invalid", "stream", "stream-trailing", "stream-truncated")
+CASES = ("http", "http-invalid", "stream", "stream-trailing", "stream-truncated", "discovery")
+DISCOVERY_SECRET = "installed-only-synthetic-llm-key-768214"
+DISCOVERY_MODULES = {
+    "yorunge.api",
+    "yorunge.adapters.context_state",
+    "yorunge.adapters.llm_context",
+    "yorunge.application.context_discovery",
+    "yorunge.domain.discovery",
+}
 REQUIRED_MODULES = {
     "yorunge",
     "yorunge.adapters.http_transport",
@@ -149,6 +157,30 @@ async def consume(case: str, ca: Path, port: int, renderer: object) -> int:
     return renderer.finish()
 
 
+def consume_discovery(args: argparse.Namespace, renderer: object) -> int:
+    from yorunge import api
+    from yorunge.adapters import llm_context
+    from yorunge.adapters.http_session import HttpSession
+    from yorunge.adapters.http_transport import HttpxTransport
+
+    config = args.origins.parent / "discovery.toml"
+    config.write_text(
+        'schema_version=1\nactive_profile="installed"\n[profiles.installed]\n'
+        'llm_url="https://localhost/v1"\nllm_key_env="INSTALLED_LLM_KEY"\n'
+        'account_id="platform-account"\nproject_id="platform-project"\n',
+        encoding="utf-8",
+    )
+    state = args.origins.parent / "discovery-state"
+    api.initialize_state(state_dir=state)
+    os.environ["INSTALLED_LLM_KEY"] = DISCOVERY_SECRET
+    context = ssl.create_default_context(cafile=str(args.ca))
+    llm_context.HttpSession = lambda: HttpSession(
+        transport_factory=lambda: HttpxTransport(transport=LoopbackTransport(args.port, context))
+    )
+    renderer.result(api.discover_context("evren-llm", config=config, state_dir=state))
+    return 0
+
+
 def worker(args: argparse.Namespace) -> int:
     if not sys.flags.isolated:
         raise ValueError("installed smoke requires isolated Python")
@@ -168,7 +200,11 @@ def worker(args: argparse.Namespace) -> int:
     )
     try:
         with loopback_sockets(socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo):
-            code = asyncio.run(consume(args.case, args.ca, args.port, renderer))
+            code = (
+                consume_discovery(args, renderer)
+                if args.case == "discovery"
+                else asyncio.run(consume(args.case, args.ca, args.port, renderer))
+            )
     except YorungeError as error:
         code = renderer.error(error)
     args.origins.write_text(json.dumps(installed_origins(args.venv)), encoding="utf-8")
@@ -201,6 +237,9 @@ def _output_object(data: bytes) -> dict[str, object]:
 
 def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
     """Prove typed failure and never publish a fake completed stream terminal."""
+    if case == "discovery":
+        verify_discovery_output(code, stdout, stderr)
+        return
     if case == "http":
         if code != 0 or stderr or stdout != wire(result_payload()):
             raise ValueError("installed typed HTTP result failed")
@@ -254,6 +293,67 @@ def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
         raise ValueError("installed corrupt stream published a false result")
 
 
+def verify_discovery_output(code: int, stdout: bytes, stderr: bytes) -> None:
+    if code != 0 or stderr or stdout.count(b"\n") != 1 or not stdout.endswith(b"\n"):
+        raise ValueError("installed discovery output boundary failed")
+    envelope = _output_object(stdout)
+    data = envelope.get("data", {})
+    if type(data) is not dict:
+        raise ValueError("installed discovery data is not an object")
+    terms = data.get("terms")
+    observations = data.get("observations")
+    if (
+        set(envelope) != {"schema_version", "operation_id", "status", "data", "warnings"}
+        or type(envelope["schema_version"]) is not int
+        or envelope["schema_version"] != 1
+        or envelope["operation_id"] is not None
+        or envelope["status"] != "completed"
+        or envelope["warnings"] != ["context_not_verified"]
+        or data.get("service_id") != "evren-llm"
+        or data.get("profile") != "installed"
+        or type(data.get("schema_version")) is not int
+        or data.get("schema_version") != 1
+        or type(terms) is not dict
+        or terms != {"accepted": False, "current_version": 7, "is_material": True}
+        or type(terms.get("accepted")) is not bool
+        or type(terms.get("current_version")) is not int
+        or type(terms.get("is_material")) is not bool
+        or data.get("profile_preference")
+        != {
+            "account_id": "platform-account",
+            "project_id": "platform-project",
+            "service_scope": "unknown",
+        }
+        or data.get("selected") != {"account_id": None, "project_id": None}
+        or data.get("provider")
+        != {
+            "principal_id": None,
+            "account_id": None,
+            "organization_id": None,
+            "project_id": None,
+            "identity_status": "not_exposed",
+        }
+        or data.get("validation") != "unverified"
+        or data.get("authorization_scope") is not None
+        or data.get("consistency") != "not_guaranteed"
+        or type(observations) is not list
+        or len(observations) != 1
+        or type(observations[0]) is not dict
+        or observations[0].get("authentication") != "unknown"
+        or data.get("reasons")
+        != [
+            "authorization_not_verified",
+            "identity_not_exposed",
+            "profile_scope_unknown",
+            "remote_snapshot_not_guaranteed",
+            "terms_not_accepted",
+        ]
+        or DISCOVERY_SECRET.encode() in stdout
+        or b"private-terms-path" in stdout
+    ):
+        raise ValueError("installed discovery wire or secret boundary failed")
+
+
 def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
     body = wire(progress()) + wire(event(2, "result", result_payload()))
     routes = {
@@ -263,6 +363,16 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
         "/v1/stream-trailing": Reply(body=body + b" ", chunk_size=7),
         # A complete terminal frame in an incomplete HTTP message is not success.
         "/v1/stream-truncated": Reply(body=body + b" ", truncate_at=len(body), chunk_size=7),
+        "/v1/terms/status": Reply(
+            body=wire(
+                {
+                    "accepted": False,
+                    "current_version": 7,
+                    "is_material": True,
+                    "doc_path": "private-terms-path",
+                }
+            )
+        ),
     }
     environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
@@ -302,10 +412,17 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
                 or not report["version"]
             ):
                 raise ValueError("installed transport origin report failed")
-        if [record.path for record in server.requests] != ["/v1/" + case for case in CASES]:
+            if case == "discovery" and not DISCOVERY_MODULES.issubset(modules):
+                raise ValueError("installed discovery modules were not exercised")
+        expected_paths = [
+            "/v1/terms/status" if case == "discovery" else "/v1/" + case for case in CASES
+        ]
+        if [record.path for record in server.requests] != expected_paths:
             raise ValueError("installed transport repeated or missed a request")
         if any(record.header("Host") != "localhost" for record in server.requests):
             raise ValueError("installed TLS mapping changed canonical request authority")
+        if server.requests[-1].header("Authorization") != "Bearer " + DISCOVERY_SECRET:
+            raise ValueError("installed discovery used the wrong credential")
     return {"http_smoke": "passed", "stream_smoke": "passed"}
 
 
