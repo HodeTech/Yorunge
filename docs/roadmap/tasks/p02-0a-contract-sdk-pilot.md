@@ -1,14 +1,14 @@
 ---
 id: P02-0a
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C03, C05, C06, C07, C11]
 ---
 # P02-0a — Güncel sözleşme, SDK sınırı ve pilot planı
 
-**Tarih:** 2026-10-31. **Durum:** Araştırma raporu/karar hazırlığı tamamlandı, commit sonrası iki fresh review ve belge kabulü yürütülüyor; endpoint uygulaması ve canlı hesap pilotu yapılmadı. [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
+**Tarih:** 2026-10-31. **Durum:** Araştırma kabulü ve iki fresh review turu tamamlandı; verified yalnız bu araştırma kartına aittir. ADR-0020 Proposed; endpoint uygulaması ve canlı hesap pilotu yapılmadı. [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -48,4 +48,6 @@ Kimlik modülü hesap/context, dataset modülü aktarım, katalog modülü sabit
 
 ## Teslim kaydı
 
-Araştırma raporu, Proposed ADR-0020 ve P02-0b taslak kartı yazıldı; iki fresh review ve son kontrol kapanmadan verified ilan edilmez. Gerçek commit/review sonuçları uygulama kaydına eklenecektir. Hazırlık değişiklikleri mevcut `feat/p02-0a-sdk-pilot` dalında, önceki P01 kapanış belgeleriyle birlikte sonraki işin PR’ına dahildir; ayrı hazırlık PR’ı açılmaz.
+- PR/commit: [Araştırma/karar hazırlığı 5d63a2c](https://github.com/HodeTech/Yorunge/commit/5d63a2ce0701897ec341b27fb023779d509134ff), [R1 düzeltmeleri 195c40a](https://github.com/HodeTech/Yorunge/commit/195c40a6c976423f76cd8f8ffb3a231ec3099f02), [R2 TLS kanıtı 360d957](https://github.com/HodeTech/Yorunge/commit/360d957f07039687eb2d158667f5e2d7ae2d562b). Nihai PR bütün P02-0 sonunda açılacak; ayrı belge PR’ı yoktur.
+- Sonuç: [Araştırma raporu](../../research/p02-contract-sdk-pilot.md) yedi kabul maddesinin kaynak/endpoint/SDK/unknown/pilot planı çıktılarını karşılar; [iki fresh review ve doğrulanan iki P2/iki P3 düzeltmesi](../../research/p02-0-implementation-validation.md) tamamlandı. 134 public Markdown, 6 skill/14 kart ve diff kontrolü geçti; 12 public kaynak/wheel boyut/hash, 25 tekil P02 ID ve tablo yapısı doğrulandı.
+- Kalan sınır: ADR-0020 Proposed; [P02-0b](p02-0b-context-discovery.md) raw/API-key sözleşme ve canlı hesap kabulü draft. Araştırma unknown’ları ve sonraki transfer/SSE/limit kararları sahipleriyle raporda açıktır; ürün, pilot, SDK kurulumu veya faz kapanışı iddia edilmez. Mevcut dal önceki P01 kapanış ve P02 hazırlığını da nihai PR’a taşır.

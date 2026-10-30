@@ -1,6 +1,6 @@
 # P02-0a — Sözleşme, SDK ve pilot araştırması
 
-**Tarih:** 2026-10-31 Europe/Istanbul. **Taban:** `9c4db010d60fef39f5e5971a617535e8f6a56b6c`, development `bc9532c`; dal `feat/p02-0a-sdk-pilot`. **Durum:** Araştırma çıktısı; ürün uygulaması ve canlı hesap kabulü değildir. [Paket planı](../roadmap/p02-0-delivery-plan.md), [araştırma kartı](../roadmap/tasks/p02-0a-contract-sdk-pilot.md) ve [Proposed ADR-0020](../decisions/0020-service-bound-context-discovery.md) birlikte okunur.
+**Tarih:** 2026-10-31 Europe/Istanbul. **Taban:** `9c4db010d60fef39f5e5971a617535e8f6a56b6c`, development `bc9532c`; dal `feat/p02-0a-sdk-pilot`. **Durum:** P02-0a araştırma kabulü iki fresh review ve düzeltmelerle verified; ürün uygulaması ve canlı hesap kabulü değildir. [Paket planı](../roadmap/p02-0-delivery-plan.md), [araştırma kartı](../roadmap/tasks/p02-0a-contract-sdk-pilot.md) ve [Proposed ADR-0020](../decisions/0020-service-bound-context-discovery.md) birlikte okunur.
 
 ## Yöntem ve kaynak sınırı
 

@@ -1,6 +1,6 @@
 # P02-0 — Sözleşme ve gerçek hesap bağlamı teslim planı
 
-**Tarih:** 2026-10-31. **Durum:** Adım 1 araştırma/karar hazırlığı yürütülüyor; ADR-0020 Proposed, ürün kodu başlamadı. **Dal/taban:** `feat/p02-0a-sdk-pilot` / `origin/development@bc9532c`. Kullanıcı P02-0a ve P02-0b’yi birlikte yetkilendirdi; nihai teslim **tek development PR** olacaktır. Mevcut P01 kapanış ve P02 hazırlık commit’leri korunur; ayrı belge PR’ı açılmaz.
+**Tarih:** 2026-10-31. **Durum:** Adım 1 araştırma/kabul ve iki fresh review turu tamamlandı; P02-0a verified, P02-0 partial; ADR-0020 Proposed, ürün kodu başlamadı. **Dal/taban:** `feat/p02-0a-sdk-pilot` / `origin/development@bc9532c`. Kullanıcı P02-0a ve P02-0b’yi birlikte yetkilendirdi; nihai teslim **tek development PR** olacaktır. Mevcut P01 kapanış ve P02 hazırlık commit’leri korunur; ayrı belge PR’ı açılmaz.
 
 ## Ön inceleme ve bağımlılıklar
 
