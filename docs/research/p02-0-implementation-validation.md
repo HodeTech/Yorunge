@@ -116,6 +116,10 @@ Platform raw kapısı açıkken LLM kartının bağımsız kabulü tamamlanır; 
 
 Head38ea022 üstünde p02_llm_final_r1_evidence / p02_llm_final_r1_contract yeni kurulum/oracle/CI/kanıt sınırlarını inceledi. P2 doğrulandı: discovery smoke’u koşulsuz state açtığından state desteklenmeyen platformda genel HTTP/stream kabulü de reddediliyordu. Worker seçimi mevcut verifier’ın Linux/macOS state sınırına hizalandı; HTTP/stream diğer platformlarda korunur. Parent-only platform facade ile gerçek isolated TLS worker koşuları state discovery’yi dışlayınca da başarılı olur; gerçek Windows koşusu iddia edilmez. P3: reference/card/current’ın bazı adım4 review ifadeleri kapanışla hizalandı. Ajanlar94 test/3,71–3,89 s ve statik/belge/ajan/diff geçti; Fix kaynakta95 test/5,22 s geçti; strict mypy70 kaynak,138 belge/6 skill/16 kart/diff temiz. Fix sonrası farklı fresh R2 yapılır.
 
+### Adım 6 — İkinci fresh review ve kaynak kapanışı
+
+Fix head29e4396 üstünde farklı yeni ajanlar p02_llm_final_r2_evidence / p02_llm_final_r2_contract R1 düzeltmelerini ve kurulum/oracle/kanıt/sözleşme sınırlarını inceledi. Yeni doğrulanmış bulgu yok.95 test/4,98–4,93 s; Ruff format/lint, strict mypy70 kaynak,138 belge/6 skill/16 kart/diff geçti. Ürün/test/ölçüm/workflow kaynak hazırlığı kapandı; şimdi tam takım, gerçek iki clean install ve seri kaynak bağlı M5 kabulü yapılır. İkinci tur Platform raw kapısını kaldırmaz ve planlanan ölçümü geçmiş saymaz.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. Platform raw/key şeması ve hizmet başına live kabul dış koşulları açık; LLM kodlamasını durdurmaz. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai PR tüm paket kabulü tamamlanınca development hedefiyle açılır.
