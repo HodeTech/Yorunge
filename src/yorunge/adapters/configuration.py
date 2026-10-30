@@ -149,6 +149,10 @@ def stage(path: Path, content: bytes) -> Path:
 
 
 def publish(path: Path, temporary: Path, *, initial: bool) -> None:
+    # Configuration entry points reject unsupported platforms before importing
+    # asyncio's platform-specific event-loop implementation or attempting I/O.
+    from asyncio import CancelledError
+
     try:
         if initial:
             os.link(temporary, path, follow_symlinks=False)
@@ -158,9 +162,15 @@ def publish(path: Path, temporary: Path, *, initial: bool) -> None:
         sync_directory(path.parent)
         sync_private(path)
     except FileExistsError:
-        raise YorungeError("config_exists") from None
-    except (OSError, YorungeError):
-        raise YorungeError("config_write_uncertain") from None
+        error = YorungeError("config_exists")
+    except (OSError, YorungeError, KeyboardInterrupt, CancelledError):
+        # Publication may already have changed the target. Cancellation cannot
+        # prove rollback and must not invite a second publication attempt.
+        error = YorungeError("config_write_uncertain")
+    else:
+        return
+    # Do not retain filesystem or cancellation payloads in the public chain.
+    raise error from None
 
 
 def initialize(path: Path | None, name: str, project: str | None) -> ConfigUpdate:

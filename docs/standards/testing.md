@@ -1,6 +1,6 @@
 # Test ve kabul standardı
 
-**Durum:** Etkin — ilk çevrimdışı şema/seçim/CLI sınırında; uzak ve dayanıklılık senaryoları ilgili fazlarda. **Tarih:** 2026-10-27. [Kabul kaydı](../research/p01-core-validation.md).
+**Durum:** Etkin — yerel CLI/SQLite, çok süreç/lease/unknown/reset, gerçek TLS/stream ve SIGKILL sınırları; [güncel üç ortam kaynak/kurulum kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). **Tarih:** 2026-10-30. Önceki kaynak kabulleri tarihsel kalır. Süreç öldürme fiziksel güç kesintisi değildir; canlı EVREN, minimum SQLite 3.37 ve gerçek Windows koşusu bu kabulde yoktur.
 
 Testler kullanıcı sözleşmesini ve hata sınırını doğrular. Uygulamayı satır satır tekrar eden düşük etkili test yerine maliyet, veri kaybı, yanlış başarı, seçim ve toparlanma senaryolarına öncelik verilir.
 

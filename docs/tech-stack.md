@@ -1,19 +1,19 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-27. **Durum:** İlk çevrimdışı dilimin seçimleri kuruldu ve yerelde ölçüldü; [ADR-0008](decisions/0008-offline-core-stack.md).
+**Güncellendi:** 2026-10-30. **Durum:** P01-1–4 development’a teslim edildi; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; [gerçek üç ortam, altı kurulum ve kaynak bağlı performans kabulü](research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). Development PR review/merge ve yayın ayrı kalır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve [önceki development teslimi](research/p01-4-implementation-validation.md#development-merge-kapanışı) korunur.
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
-| Dil | Python 3.11+ | EVREN ve eğitim ekosistemiyle uyum; `tomllib`, task/deadline araçları. Asgari hedef; test edilmiş platform iddiası değil. |
+| Dil | Python 3.11+ | `tomllib`, task/deadline araçları. Linux 3.11/3.14 ve macOS 3.11 gerçek CI ile testli; minimum hedef bütün platform/Python sürümlerinin doğrulandığı anlamına gelmez. |
 | Paket yapısı | Tek dağıtım, `src/yorunge`, Hatchling 1.30.1 | Wheel/sdist ve gerçek konsol girişi kuruldu. |
 | Kullanıcı yüzeyi | CLI + Python API | Hızlı ve otomasyona uygun başlangıç; rehberli katman aynı çekirdeği kullanır. |
-| CLI görünümü | Standart `argparse`, düz metin/JSON | Küçük komut ağacı için yeterli; Click/Typer import deneyinde daha yüksek başlangıç maliyeti. Rich eklenmedi. |
-| HTTP | Henüz seçilmedi; HTTPX/SDK aday | Bu dilim ağ yapmıyor; gereksiz bağımlılık eklenmedi. P01-5'te taşıma deneyi gerekli. |
+| CLI görünümü | Standart `argparse`, düz metin/JSON/NDJSON | Ortak UTF-8 renderer ve yerel iptal/çıktı hata sözleşmesi testli; help/version lazy kalır. Rich eklenmedi. |
+| HTTP | HTTPX 0.28.1 AsyncClient/HTTP1.1 | Tipli owned session/tek deadline/bounded retry gerçek yerel TLS ile testli; EVREN adaptörü değildir. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |
-| Durum | SQLite planlandı | Bu dilimde DB açılmaz; operation/migration/lease P01-4. |
-| Sırlar | Env referansı doğrulaması | Sır değerleri okunmaz. Gerçek secret erişimi/keychain sonraki iş. |
+| Durum | SQLite, şema 6 | Store/migration, identity/cache/plan/onay ve operation/lease/sonuç/reset uygulandı; explicit state kullanımında açılır. |
+| Sırlar | Hizmete bağlı açık env çözümleme | Gereken hizmet sırrı açık kullanımda bir kez çözülür; kalıcı opak kimlik/nesil vardır, ham sır DB/çıktıya yazılmaz. Keychain uygulanmadı. |
 | Eğitim | Ayrı ortamda araç adaptörleri | ForgeLM varsayılan; muadiller seçilebilir; torch/TRL çekirdek bağımlılığı olmaz. |
 | Test/lint | pytest 9.1.1, Ruff 0.15.22, mypy 1.20.2 | `uv.lock` ile sabit; gerçek offline testler ve CI tanımı. |
 

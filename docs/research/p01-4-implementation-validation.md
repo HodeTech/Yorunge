@@ -1,6 +1,6 @@
 # P01-4 uygulama ve kabul kaydı
 
-**Güncellendi:** 2026-10-29. **Durum:** Dört adım ve her adımın iki bağımsız inceleme turu tamamlandı. PR #10 kullanıcı bulguları kapandı; **182f695 ürün kaynağında bütünleşik yerel kabul tamamlandı**. **Dal:** feat/p01-4-operations, development tabanı a9f1f2e. İlk paket kabulü 17de965; kalite/bütçe takipleri ve sonraki kullanıcı bulgusu aşağıda ayrı kaynaklarla kayıtlıdır. [Teslim planı](../roadmap/p01-4-delivery-plan.md), [karar/inceleme kaydı](p01-4-readiness-review.md). Önceki durum ve ölçümler kendi kaynaklarının tarihsel kanıtıdır; güncel durum bu giriş ve son bölümde belirtilir. PR #10 açıktır; development merge'i, Master aktarımı ve release ayrı kalır.
+**Güncellendi:** 2026-10-29. **Durum:** P01-4 tamamlandı/verified; kullanıcı [PR #10](https://github.com/HodeTech/Yorunge/pull/10)'u **2026-10-29 10:58:15 Europe/Istanbul** tarihinde [merge 805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e) ile development'a aldı. Son PR head'i 36ae2a4; ürün kaynağı 182f695, ilk paket kabulü 17de965'tir. [Development merge kapanışı](#development-merge-kapanışı) güncel teslim/CI kanıtıdır. Aşağıdaki Proposed, kabul/check/PR/merge bekleyen ifadeler ilgili aşamanın tarihsel kaydıdır. Master/release ve canlı EVREN kabulü ayrı kalır.
 
 ## Karar kapanışı
 
@@ -378,3 +378,32 @@ Kullanıcı review yükünü azaltma önerisini uygulamaya yetkilendirdi. f186d2
 a24c71f üzerinde Sonar S8707, geliştirici aracının CLI girdi okumasını işaretledi. Parent sentetik deneyde repo içindeki ilgisiz `.local` konumundan rapor biçimli JSON'un kabul edilebildiğini doğruladı. Girdi yalnız doğrudan `dist/` altındaki canonical adla yeniden kurulur; diğer konumlar, alt dizin, `..` ve dosya/dizin symlink'i okumadan önce reddedilir. Tarihsel raporların ilk göçü bayt eşliğiyle zaten tamamlanmıştır; yeni arşivleme akışı kaynak kopyasını korur. İki reviewer dar sınırı inceledi; research girdisini kabul edip sonraki verify'da reddeden ara akış kaldırılarak yalnız belgelenen dist akışı bırakıldı. **35 helper / 111 hedefli test**, 34 arşiv denetimi, statik/belge/ajan kontrolleri geçti; kaynak ürün/vektör baytları değişmedi. Sonar issue sonucunun kapanışı sonraki gerçek taramada ayrıca değerlendirilir; kural veya kapı kapatılmadı.
 
 [a24c71f Linux koşusu](https://github.com/HodeTech/Yorunge/actions/runs/40835374772) **1.808 testi**, build/iki temiz kurulumu geçti; startup cache kapısı başarısız oldu. AMD EPYC 7763, disk unknown ortamında aday/taban p95 **222,375 / 225,495 ms**; ikisi de 200 ms üstündedir. Ham JSON stdout'u CI logundan ayıklanıp yeniden serileştirilmeden [ayrı arşiv kaydına](evidence.md#p01-4-evidence-ci-startup-a24c71f) alındı. Bu kayıt ilk 33'ten sonra eklenen 34. kanıttır. Ürün wheel baytları önceki kabul ile aynıdır; bu gözlem tek başına kaynak değişikliğini veya yalnız CPU'yu neden olarak kanıtlamaz. Başarısız örnek korunur; eşik değiştirilmedi ve aynı head'i yeşil göstermek için manuel rerun başlatılmadı. Girdi kapsamı düzeltmesini içeren yeni head'in CI'ı ayrıca izlenir.
+
+## Development merge kapanışı
+
+Kullanıcı [PR #10](https://github.com/HodeTech/Yorunge/pull/10)'u **2026-10-29 10:58:15 Europe/Istanbul** tarihinde [merge 805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e) ile development'a aldı. İki parent uzak Git kaydıyla doğrulandı: önceki development **a9f1f2e**, son PR head'i **36ae2a4**. Merge ağacı son PR head'iyle birebir aynıdır; squash/rebase yapılmadı. Yerel development yalnız fast-forward ile güncellendi.
+
+**P01-4 tamamlandı/verified.** P01-4a PR #6'daki temeldir; operation/attempt/lease/fencing/dispatch latch/trusted recovery/reset v3 ve public yerel jobs sorgusu P01-4b/4c olarak bu paketle teslim edildi. Dört adımın ikişer fresh review turu ve sonraki PR/performance/kanıt düzeltmeleri kapandı. ADR-0016 Accepted; güncel development store şeması **6**'dır. Public producer hâlâ draft/blocked; gerçek run veya EVREN/ForgeLM desteği, Windows/güç kesintisi kabulü ya da paket yayını değildir.
+
+Son PR head'i 36ae2a4 için [offline-core](https://github.com/HodeTech/Yorunge/actions/runs/40836584647), sonraki aynı-head koşusu, branch-policy, SonarCloud ve CodeRabbit başarılı olarak geri okundu. İlk Sonar S8707 bulgusu girdi yalnız dist dizinine sınırlandıktan sonra yeni taramada kalktı; kural/quality gate değiştirilmedi. CodeRabbit 34 raw arşivi path filter nedeniyle dışladığını kendi çalışma kaydında doğruladı. Normal kod, manifest/indeks, rapor ve sabit vektörler review kapsamında kaldı. Review hacmi 226.702'den **14.560** metin eklemesine indi; geçmiş Git blob'ları korunur.
+
+### Merge sonrası gerçek CI
+
+[Development push koşusu 40838856922](https://github.com/HodeTech/Yorunge/actions/runs/40838856922), merge 805f8bd üzerinde **başarılı**: **1.816 passed / 204,52 s**, Ruff/strict mypy, 116 Markdown, 6 skill/9 kart ve 34 arşiv denetimi; wheel/sdist build ve ayrı temiz kurulumlar; bütün başlangıç kapıları geçti. PR check sonucu merge check yerine kullanılmadı; yeni manuel rerun başlatılmadı.
+
+[Ham merge startup kaydı](evidence.md#p01-4-merge-805f8bd-startup), CI logundaki tam JSON stdout'u yeniden serileştirilmeden saklar. Aday 805f8bd, taban a9f1f2e; ayrı frozen runtime-only wheel/venv, aynı host/interpreter, üç warmup ve her yol için 30 AB/BA süreç çifti. CPU **AMD EPYC 7763**, Linux 7.0.0-1017-azure/glibc 2.39; disk **unknown**.
+
+| Yol | Aday p95 (ms) | Taban p95 (ms) | Kapı |
+|---|---:|---:|---|
+| Help | 35,094 | 39,692 | ≤500 ms, geçti |
+| Version | 33,159 | 38,465 | ≤500 ms, geçti |
+| Context | 153,258 | 153,708 | ≤200 ms, geçti |
+| Cache | **191,569** | 193,882 | ≤200 ms, geçti |
+
+Merge cache marjı yaklaşık **8,431 ms** ile dardır. Aynı CPU model etiketindeki önceki a24c71f reddi dahil bütün başarısız kayıtlar korunur; CPU adı aynı fiziksel host/yükü kanıtlamaz. Bu başarı tüm GitHub host'ları, sistem I/O'su veya gelecekteki koşular için kesin süre garantisi değildir. Yeni CI ölçüm yolu ve hedefli CLI bakımı development'a teslim edildi; PR #9'dan kalan teslim/merge-CI takibi bu kayıtla kapandı. Ölçüm değişkenliği bilinen sınır olarak kalır.
+
+Wheel **50**, sdist **307** izinli üye; import/konsol kökeni, v1/cache/execution/jobs smoke başarılı. Wheel SHA-256 **54d371d61c6eb5dc4b021c1ad989ed37ce447179ad1f30c89e1880ec18b45851**, sdist **0d0faa6dabfccbfa0bbb8cf1565d816a64880890e4229b2e62b028d27b4dbb6b**; son PR head'inin CI artefaktlarıyla aynıdır. Raw arşivler pakete girmez, bağımsız test vektörleri sdist'te kalır. Bu kapanışta merge ölçümü 35. arşiv olarak eklendi; 34/35 farkı ürün kodu veya yeni yerel performans koşusu değildir.
+
+### Sonraki işe devir
+
+Kapanış belgeleri ve merge kanıtı kullanıcının isteğiyle **feat/p01-5-transport** dalına, development **805f8bd** tabanında kaydedilir; ayrı belge PR'ı açılmaz. Sonraki P01-5 PR'ı bunları taşır. **P01-5a/b draft, ürün implementasyonu başlamadı.** Önce HTTP/SDK/transport ve B01/B03 sınırı araştırılıp iş paketi/ölçülebilir kabul hazırlanır; yeni ADR gerekirse uygulama öncesi kullanıcı onayına sunulur. Sonra P01-5a → P01-5b; ardından P01-6b faz kabulü ve desteklenen ortam kaydı gelir. P01 bütünü henüz tamamlanmadı; Master/release kullanıcıdadır.

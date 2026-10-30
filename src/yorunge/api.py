@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from pydantic import ConfigDict, ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
-from yorunge.application.planning import build_plan, capability_records, resolve_selection
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
     CapabilityView,
@@ -51,6 +50,8 @@ if TYPE_CHECKING:
 
 
 class Request(Model):
+    model_config = ConfigDict(defer_build=True)
+
     profile: Identifier | None = None
     project: Identifier | None = None
     task: Task | None = None
@@ -482,6 +483,8 @@ def inspect_capabilities(
     tool: str | None = None,
     execution: str | None = None,
 ) -> Result[CapabilityView]:
+    from yorunge.application.planning import capability_records, resolve_selection
+
     context, selected_profile, request, spec = _resolve(
         config=config,
         recipe=recipe,
@@ -513,6 +516,8 @@ def prepare_plan(
     tool: str | None = None,
     execution: str | None = None,
 ) -> Result[Plan]:
+    from yorunge.application.planning import build_plan, resolve_selection
+
     context, selected_profile, request, spec = _resolve(
         config=config,
         recipe=recipe,
@@ -531,6 +536,8 @@ def prepare_plan(
 
 def load_plan(path: Path) -> Result[Plan]:
     """Validate a saved Plan JSON object without consulting the current profile."""
+    from yorunge.application.planning import build_plan
+
     if not isinstance(path, Path):
         raise YorungeError("invalid_request")
     plan = load_saved_plan(path)
@@ -574,6 +581,7 @@ def query_capabilities(
         policy_keys,
     )
     from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.application.planning import capability_records, resolve_selection
     from yorunge.domain.capabilities import CachedCapabilityView
 
     context, selected_profile, request, spec = _resolve(
@@ -647,6 +655,7 @@ def _execution_credentials(
     from yorunge.adapters.identity import StateCredentialRegistry
     from yorunge.adapters.secrets import EnvSecretReader
     from yorunge.application.credentials import bind_credential, resolve_credential
+    from yorunge.application.planning import capability_records
 
     remote = next(
         (
@@ -752,12 +761,15 @@ def _operation_session(
     """Trusted composition only; no public run, backend registration or caller evidence."""
     import os
 
+    from yorunge.application.operations import OperationCoordinator, preflight_port
+
+    preflight_port(backend)
+    preflight_port(observer)
     budget = _execution_budget()
     from yorunge.adapters.input_files import DescriptorInputs
     from yorunge.adapters.operation_repository import StateOperations
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
-    from yorunge.application.operations import OperationCoordinator
 
     request = validate(Request, {"profile": profile, "project": project}, "invalid_request")
     with open_store(state_dir, timeout=min(5.0, budget.remaining())) as store:
@@ -823,6 +835,7 @@ def prepare_execution_plan(
         input_root = anchor_input_root(input_root)
     from yorunge.adapters.state import open_store
     from yorunge.application.execution import ExecutionUseCases
+    from yorunge.application.planning import resolve_selection
     from yorunge.domain.execution import ExecutionPlanView
 
     context, selected, request, spec = _resolve(

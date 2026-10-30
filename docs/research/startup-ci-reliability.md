@@ -1,6 +1,6 @@
 # Başlangıç ölçümü güvenilirliği ve CLI bakım kabulü
 
-**Tarih:** 2026-10-28. **Durum:** Uygulandı ve yerelde doğrulandı; yeni workflow'un GitHub çıktısı sonraki P01-4 PR/merge akışında incelenecek. **Dal:** feat/p01-4-operations. **Kaynak:** runtime cabb36b, ölçüm/CI 7462103; taban development@a9f1f2e. P01-4 ürün implementasyonu bu çalışmanın kapsamında değildir.
+**Tarih:** 2026-10-28; **kapanış:** 2026-10-29. **Durum:** Uygulandı; PR #10 ile development'a alındı, [merge/CI kapanışı](p01-4-implementation-validation.md#development-merge-kapanışı) tamamlandı. İlk kaynak runtime cabb36b, ölçüm/CI 7462103; ilk taban development@a9f1f2e. Aşağıdaki draft/gelecek PR/merge CI ifadeleri ilk bakım aşamasının tarihsel kaydıdır. P01-4 ürün implementasyonu bu ilk bakımın kapsamı değildir.
 
 ## Sorun ve sınır
 

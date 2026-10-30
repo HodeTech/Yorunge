@@ -80,7 +80,10 @@ def test_unsupported_local_operations_return_safe_error_before_io(
 def test_metadata_still_works_without_local_platform_support(option):
     # The metadata guard already denies importing api/Pydantic/YAML; fcntl must stay lazy too.
     source = """
-import builtins, sys
+# Initialize host stdlib before spoofing the product's platform. Python 3.14
+# argparse lazily imports shutil, whose own platform-specific imports must use
+# the real host; the metadata guard below still rejects product I/O imports.
+import builtins, shutil, sys
 from yorunge.cli import main
 original = builtins.__import__
 def importing(name, *args, **kwargs):

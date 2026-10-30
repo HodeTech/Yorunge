@@ -12,6 +12,8 @@
 | [Credential binding v1](credential-binding-v1.md) | Uygulandı — ortak hedef/UNIQUE/HMAC, kalıcı gözlem ve byte vektörleri; Accepted ADR-0012 |
 | [Execution planı v2](execution-plan.md) | Uygulandı — ayrı kalıcı prepare/list/show/validate, descriptor input, güncel validity ve açık digest onayı/yönetim; P01-3 kabulü tamamlandı |
 | [Yerel state](local-state.md) | Store/migration/backup, açık reset/restore/recover ve koruma sınırı |
-| [Operation/jobs](operations.md) | ADR-0016 çekirdeği ve yerel list/show bu dalda verified; dört adım/ikişer fresh tur ve son kaynak yerel paket kabulü tamamlandı |
+| [Operation/jobs](operations.md) | ADR-0016 çekirdeği ve yerel list/show verified; PR #10 ile development'a teslim edildi; [merge/CI kanıtı](../research/p01-4-implementation-validation.md#development-merge-kapanışı) |
+| [HTTP taşıma](http-transport.md) | Çalışma dalında verified — ADR-0017; hedef/sır/deadline/retry ve owned async session; gerçek TLS/kurulu artifact kabulü |
+| [Akış sonucu](stream-results.md) | Çalışma dalında verified — ADR-0018; kapalı event, terminal/EOF, NDJSON ve yerel iptal; CLI/Python ve gerçek süreç kabulü |
 
-Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), kabul kanıtı [P01 kaydındadır](../research/p01-core-validation.md).
+Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [bf652f6 tarihsel kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) ile [ADR-0019/Sonar son kaynak kapanışı](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) ayrı kayıtlardır.

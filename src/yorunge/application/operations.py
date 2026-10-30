@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from asyncio import CancelledError
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import NoReturn, Protocol
+from typing import NoReturn, Protocol, runtime_checkable
 
 from yorunge.application.execution import ExecutionBudget
 from yorunge.application.operation_observations import (
@@ -17,9 +18,10 @@ from yorunge.application.operation_observations import (
     ReadPort,
     ReadRequest,
 )
+from yorunge.application.response_json import literal_secret_match
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.execution import ExecutionPlan, ExecutionValidity
 from yorunge.domain.operations import (
     TERMINAL,
@@ -69,6 +71,18 @@ class StartPort(Protocol):
     def start(self, request: DispatchRequest, *, deadline: float) -> Submission:
         """Use only the captured target/credential; honor the monotonic deadline."""
         ...
+
+
+@runtime_checkable
+class PreflightPort(Protocol):
+    def preflight(self) -> None:
+        """Validate owned transport context before credential/state/admission access."""
+        ...
+
+
+def preflight_port(port: object) -> None:
+    if isinstance(port, PreflightPort):
+        port.preflight()
 
 
 class OperationRepository(Protocol):
@@ -163,6 +177,10 @@ class OperationCoordinator:
         if self.process_id() != self._issuer:
             raise OperationError("operation_conflict", operation_id)
 
+    def _preflight(self) -> None:
+        preflight_port(self.backend)
+        preflight_port(self.observer)
+
     @contextmanager
     def _identified(self, operation_id: str) -> Iterator[None]:
         try:
@@ -184,6 +202,7 @@ class OperationCoordinator:
             raise OperationError(error.code, operation_id) from None
 
     def admit(self, plan_id: str) -> OperationClaim:
+        self._preflight()
         self._same_process()
         self.budget.check()
         existing = self.repository.existing(plan_id)
@@ -196,6 +215,7 @@ class OperationCoordinator:
 
     def renew(self, operation_id: str, owner: OperationLease) -> OperationLease:
         with self._identified(operation_id):
+            self._preflight()
             self._same_process(operation_id)
             self.budget.check()
             return self.repository.renew(operation_id, owner)
@@ -205,6 +225,7 @@ class OperationCoordinator:
             return self._takeover(operation_id)
 
     def _takeover(self, operation_id: str) -> OperationClaim:
+        self._preflight()
         self._same_process(operation_id)
         self.budget.check()
         claim = self.repository.takeover(operation_id, None)
@@ -223,6 +244,7 @@ class OperationCoordinator:
             return self._dispatch(operation_id, owner)
 
     def _dispatch(self, operation_id: str, owner: OperationLease) -> JobView:
+        self._preflight()
         self._same_process(operation_id)
         permit = DispatchPermit(self.process_id)
         before = self.repository.operation(operation_id)
@@ -231,10 +253,12 @@ class OperationCoordinator:
         plan = self.repository.plan(before.admission.plan_id)
         validity = self.validate(plan)
         self.budget.check()
-        armed = self.repository.arm(operation_id, owner, validity)
-        self._same_process(operation_id)
+        armed: OperationRecord | None = None
         port_called = False
+        failure: OperationError | None = None
         try:
+            armed = self.repository.arm(operation_id, owner, validity)
+            self._same_process(operation_id)
             window = self.repository.dispatch_window(operation_id, owner)
             request = DispatchRequest(
                 plan, armed.admission, str(armed.dispatch_attempt_id), self.credentials
@@ -247,7 +271,7 @@ class OperationCoordinator:
             receipt = Submission.model_validate_json(canonical(receipt.model_dump(mode="json")))
             provider_fields = (receipt.provider_run_id, receipt.provider_status or "")
             if any(
-                bound.credential.secret.reveal() in value
+                literal_secret_match(value, bound.credential.secret.reveal())
                 for bound in self.credentials
                 for value in provider_fields
             ):
@@ -258,23 +282,65 @@ class OperationCoordinator:
                 raise YorungeError("state_changed")
             return self.repository.submitted(operation_id, owner, receipt)
         except BaseException as error:
-            self._same_process(operation_id)
-            try:
-                self.repository.uncertain(operation_id, owner)
-            except (YorungeError, OSError):
-                # The durable submitted latch remains even if uncertainty cannot be saved.
-                pass
-            if not isinstance(error, Exception):
-                raise
-            if not port_called and isinstance(error, YorungeError):
-                raise OperationError(error.code, operation_id) from None
-            reason: ErrorCode = (
-                error.code if isinstance(error, YorungeError) else "operation_uncertain"
+            failure = self._dispatch_problem(
+                operation_id, owner, error, armed is not None, port_called
             )
-            raise OperationError("operation_uncertain", operation_id, reason_code=reason) from None
+        # Do not retain a private port exception (or its request) as public context.
+        assert failure is not None
+        raise failure
+
+    def _intent_possible(self, operation_id: str) -> bool:
+        try:
+            return self.repository.operation(operation_id).dispatch_attempt_id is not None
+        except (YorungeError, OSError, KeyboardInterrupt, CancelledError):
+            # An unreadable post-arm boundary cannot prove that the commit rolled back.
+            return True
+
+    def _save_uncertain(self, operation_id: str, owner: OperationLease) -> None:
+        try:
+            self._same_process(operation_id)
+        except (KeyboardInterrupt, CancelledError):
+            return
+        try:
+            self.repository.uncertain(operation_id, owner)
+        except (YorungeError, OSError, KeyboardInterrupt, CancelledError):
+            # The latch survives even if the local unknown marker cannot be saved.
+            pass
+
+    def _dispatch_problem(
+        self,
+        operation_id: str,
+        owner: OperationLease,
+        error: BaseException,
+        armed: bool,
+        port_called: bool,
+    ) -> OperationError:
+        cancelled = isinstance(error, (KeyboardInterrupt, CancelledError))
+        if not armed and not self._intent_possible(operation_id):
+            raise error
+        self._save_uncertain(operation_id, owner)
+        if cancelled:
+            return OperationError(
+                "operation_uncertain", operation_id, reason_code="request_cancelled"
+            )
+        if not isinstance(error, Exception):
+            raise error
+        if armed and not port_called and isinstance(error, YorungeError):
+            return OperationError(
+                error.code,
+                operation_id,
+                reason_code=error.reason_code if isinstance(error, OperationError) else error.code,
+                capacity_kind=error.capacity_kind if isinstance(error, OperationError) else None,
+            )
+        return OperationError(
+            "operation_uncertain",
+            operation_id,
+            reason_code=error.code if isinstance(error, YorungeError) else "operation_uncertain",
+        )
 
     def reconcile(self, operation_id: str, owner: OperationLease) -> JobView:
         with self._identified(operation_id):
+            self._preflight()
             self._same_process(operation_id)
             self.budget.check()
             record = self.repository.operation(operation_id)
@@ -322,7 +388,7 @@ class OperationCoordinator:
                 canonical(observation.model_dump(mode="json"))
             )
             if any(
-                bound.credential.secret.reveal() in value
+                literal_secret_match(value, bound.credential.secret.reveal())
                 for bound in request.credentials
                 for value in (observation.provider_run_id or "", observation.provider_status or "")
             ):

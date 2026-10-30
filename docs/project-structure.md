@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-29. **Durum:** Offline çekirdek, yerel kimlik/state/config/cache ve execution hazırlığı/onay/operation koordinasyonu ile yerel jobs sorgusu uygulandı; bütünleşik yerel kabul tamamlandı; development PR/merge ayrı süreçtir.
+**Güncellendi:** 2026-10-30. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON uygulandı; P01-6b/ADR-0019/Sonar [son kaynak kabulü](research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) çalışma dalında verified. Development PR/merge ve yayın ayrıdır.
 
 ```text
 src/yorunge/
@@ -20,7 +20,12 @@ src/yorunge/
   adapters/maintenance.py # Açık reset/restore/recover
   adapters/local_files.py # Private dosya/kilit/deadline ve platform sınırı
   adapters/configuration.py # Atomik config yazımı/backup; diagnostics ayrı adaptörde
-  cli/                    # Argparse; metin/JSON render ve çıkış kodu
+  adapters/http_session.py # Owned async session ve sync Runner köprüsü
+  adapters/http_transport.py # Bounded HTTPX/TLS, raw okuma ve retry/deadline
+  application/response_json.py # Strict sınırlı JSON ve sır provenance kontrolü
+  domain/streams.py        # Result v1 üzerine ayrı tipli event zarfı
+  application/stream*.py   # Kaynak sahipliği, terminal/EOF ve bounded codec
+  cli/                    # Argparse; ortak UTF-8 metin/JSON/NDJSON renderer
 tests/
   unit/                   # Öncelik, seçim, plan bağları
   contracts/              # Şema, hatalı girdi, sır ve dosya sınırları
@@ -34,7 +39,7 @@ examples/                 # Küçük sentetik profil ve reçete
 docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kartları
 ```
 
-`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. Henüz uygulanmayan HTTP, run/execution backend ve araç adaptörleri için boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
+`pyproject.toml` paket metadata'sını, `uv.lock` geliştirme/runtime çözümünü tutar. `domain` CLI, dosya adaptörü veya haricî araç import etmez. SQLite/identity/config adaptörleri P01-2'de, açık capability cache/clock P01-3a'da gerçek tüketicileriyle uygulanır. HTTP/session/stream ve CLI renderer gerçek TLS/süreç ve kurulu artifact ile testlidir; [bf652f6 CI/performans kabulü](research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) tarihsel olarak tamamlandı; [ADR-0019/Sonar son kaynak kabulü](research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) tamamlandı. Public run/execution backend ve araç adaptörleri sonraki fazlardadır; boş iskelet oluşturulmaz. Mantıksal sahiplik [modül haritasında](modules/README.md), bağımlılık yönü [mimaride](architecture/overview.md) tanımlıdır.
 
 [Ajan kataloğu](../.agents/README.md) repo geliştirme girdisidir; runtime bağımlılığı değildir. Canonical `.agents` materyali sdist'e seçilir; wheel ve Claude alias symlink'leriyle karıştırılmaz. İstemci/global ayar veya otomatik izin hook'u eklenmez.
 

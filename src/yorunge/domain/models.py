@@ -48,6 +48,10 @@ CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def has_control_characters(value: str) -> bool:
+    # For ASCII, Python's printable set is exactly the complement of C0/DEL.
+    # Call the builtins directly: a str subclass must not override this check.
+    if str.isascii(value):
+        return not str.isprintable(value)
     return CONTROL_CHARACTERS.search(value) is not None
 
 

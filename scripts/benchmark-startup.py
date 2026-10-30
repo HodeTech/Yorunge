@@ -8,6 +8,8 @@ import json
 import math
 import os
 import platform
+import runpy
+import selectors
 import sqlite3
 import statistics
 import subprocess
@@ -17,6 +19,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 resource_module: ModuleType | None
 try:
@@ -34,6 +37,10 @@ class Sample:
     system_ms: float | None
 
 
+AUDIT: dict[str, dict[str, Any]] | None = None
+VALIDATE_OUTPUT: Any = None
+
+
 def child_cpu() -> tuple[float, float] | None:
     if resource_module is None:
         return None
@@ -45,6 +52,8 @@ def child_cpu() -> tuple[float, float] | None:
 
 
 def measure(command: list[str], *, cache_hit: bool = False) -> Sample:
+    if AUDIT is not None:
+        return audited_measure(command)
     before = child_cpu()
     started = time.perf_counter()
     completed = subprocess.run(
@@ -65,6 +74,75 @@ def measure(command: list[str], *, cache_hit: bool = False) -> Sample:
         after[0] - before[0] if after is not None and before is not None else None,
         after[1] - before[1] if after is not None and before is not None else None,
     )
+
+
+def audited_measure(command: list[str]) -> Sample:
+    before = child_cpu()
+    started = time.perf_counter()
+    content = bounded_capture(command)
+    duration = (time.perf_counter() - started) * 1000
+    after = child_cpu()
+    VALIDATE_OUTPUT(command, content)
+    assert AUDIT is not None
+    row = AUDIT.setdefault(
+        "\0".join(command), {"command": command, "stdout_sha256": [], "wall_ms": []}
+    )
+    row["stdout_sha256"].append(hashlib.sha256(content).hexdigest())
+    row["wall_ms"].append(duration)
+    return Sample(
+        duration,
+        after[0] - before[0] if after is not None and before is not None else None,
+        after[1] - before[1] if after is not None and before is not None else None,
+    )
+
+
+def bounded_capture(command: list[str]) -> bytes:
+    # Keep selector-driven EOF notification, rather than wait(timeout)'s polling/backoff.
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    deadline = time.monotonic() + 10
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    assert process.stdout is not None and process.stderr is not None
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+            selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+            collect_output(selector, buffers, deadline, command)
+        code = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        if code:
+            raise subprocess.CalledProcessError(
+                code, command, bytes(buffers["stdout"]), bytes(buffers["stderr"])
+            )
+        if buffers["stderr"]:
+            raise ValueError("successful startup sample must not emit stderr")
+        return bytes(buffers["stdout"])
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        process.stdout.close()
+        process.stderr.close()
+
+
+def collect_output(
+    selector: selectors.BaseSelector,
+    buffers: dict[str, bytearray],
+    deadline: float,
+    command: list[str],
+) -> None:
+    while selector.get_map():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, 10)
+        for key, _ in selector.select(remaining):
+            chunk = os.read(key.fd, 32768)
+            if not chunk:
+                selector.unregister(key.fileobj)
+                continue
+            destination = buffers[key.data]
+            destination.extend(chunk)
+            limit = 1024 * 1024 if key.data == "stdout" else 65536
+            if len(destination) > limit:
+                raise ValueError("startup process output exceeds its bounded capture limit")
 
 
 def cpu_label() -> str:
@@ -211,12 +289,82 @@ def measure_cases(
     return measurements, baseline_measurements, comparisons, passed
 
 
+def configure_audit(
+    args: argparse.Namespace, parser: argparse.ArgumentParser
+) -> tuple[dict[str, str], dict[str, str]]:
+    global AUDIT, VALIDATE_OUTPUT
+    AUDIT = None
+    if args.audit_output is None:
+        return {}, {}
+    if args.audit_output.exists() or args.audit_output.is_symlink():
+        parser.error("audit output must be a new file")
+    AUDIT = {}
+    validator = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))[
+        "validate_output"
+    ]
+    if not all((args.baseline_command, args.audit_candidate_version, args.audit_baseline_version)):
+        parser.error("audited startup requires both installed product versions")
+    versions = {
+        str(args.command.resolve()): args.audit_candidate_version,
+        str(args.baseline_command.resolve()): args.audit_baseline_version,
+    }
+    pythons = {
+        str(args.command.resolve()): args.audit_candidate_python,
+        str(args.baseline_command.resolve()): args.audit_baseline_python,
+    }
+    if not all(pythons.values()):
+        parser.error("audited startup requires both isolated Python executables")
+    if len(versions) != 2:
+        parser.error("audited startup requires separate installed consoles")
+
+    def validate_installed(command: list[str], content: bytes) -> None:
+        validator(command, content, version=versions[command[0]], python=pythons[command[0]])
+
+    VALIDATE_OUTPUT = validate_installed
+    return versions, pythons
+
+
+def write_audit(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+    current_cases: dict[str, tuple[list[str], int]],
+    baseline_cases: dict[str, tuple[list[str], int]] | None,
+    versions: dict[str, str],
+    pythons: dict[str, str],
+) -> None:
+    if args.audit_output is None:
+        return
+    audit = {}
+    for side, entries in (("candidate", current_cases), ("baseline", baseline_cases)):
+        if entries is None:
+            parser.error("audited startup requires a paired baseline")
+        assert AUDIT is not None
+        audit[side] = {
+            name: {
+                "typed_stdout_verified": True,
+                "verified_processes": len(AUDIT["\0".join(command)]["stdout_sha256"]),
+                "stdout_sha256": AUDIT["\0".join(command)]["stdout_sha256"],
+                "wall_ms": AUDIT["\0".join(command)]["wall_ms"],
+                "expected_version": versions[command[0]],
+                "expected_python": pythons[command[0]],
+            }
+            for name, (command, _) in entries.items()
+        }
+    with args.audit_output.open("x", encoding="utf-8") as destination:
+        destination.write(json.dumps(audit, indent=2, allow_nan=False) + "\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--command", type=Path, required=True)
     parser.add_argument("--profile", type=Path, default=Path("examples/profile.toml"))
     parser.add_argument("--samples", type=int, default=30)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--audit-output", type=Path)
+    parser.add_argument("--audit-candidate-version")
+    parser.add_argument("--audit-baseline-version")
+    parser.add_argument("--audit-candidate-python")
+    parser.add_argument("--audit-baseline-python")
     parser.add_argument(
         "--cache-state", type=Path, required=True, help="Prepared synthetic cache dataset"
     )
@@ -227,6 +375,7 @@ def main() -> int:
     parser.add_argument("--cpu-label", default=cpu_label())
     parser.add_argument("--installation-label", default="unknown; specify measured environment")
     args = parser.parse_args()
+    versions, pythons = configure_audit(args, parser)
     if args.samples < 30:
         parser.error("at least 30 samples are required")
     baseline_args = (args.baseline_command, args.baseline_profile, args.baseline_cache_state)
@@ -295,6 +444,7 @@ def main() -> int:
     except FileExistsError:
         parser.error("output must be a new file in an existing directory")
     print(encoded)
+    write_audit(args, parser, current_cases, baseline_cases, versions, pythons)
     return 0 if passed else 1
 
 

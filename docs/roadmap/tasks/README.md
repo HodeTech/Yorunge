@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-10-28. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-10-29. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -13,7 +13,12 @@
 | [P01-3b](p01-3b-execution-plan-validity.md) | Ayrı execution hazırlığı, güncel geçerlilik ve onay bağı |
 | [P01-4b](p01-4b-operation-coordination.md) | Kalıcı operation kabulü, tek gönderim, lease/fencing ve unknown |
 | [P01-4c](p01-4c-local-jobs.md) | Gerçek yerel iş geçmişinden CLI/Python list/show |
+| [P01-5a](p01-5a-http-transport.md) | Ortak HTTP/TLS/deadline/retry, SDK sınırı ve operation composition |
+| [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
+| [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
+
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 kullanıcı review/merge bekler; güncel durum kart metadata’sındadır.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 
-P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. P01-3a/b [tek PR planı](../p01-3-delivery-plan.md) ve [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ile development'a alındı; [merge/CI kapanışı](../../research/p01-3-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Takip PR #9 ile şema 5 de development’a alındı; [merge ve açık CI performans takibi](../../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) kayıtlıdır. P01-4b/4c için [tek PR planı](../p01-4-delivery-plan.md), [koordinasyon](p01-4b-operation-coordination.md) ve [yerel jobs](p01-4c-local-jobs.md) kartları ADR-0016 Accepted kararına bağlıdır; güncel durum kart metadata’sındadır. Bu indeks uygulama/kabul kanıtı saymaz.
+P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. P01-3a/b [tek PR planı](../p01-3-delivery-plan.md) ve [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ile development'a alındı; [merge/CI kapanışı](../../research/p01-3-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Takip PR #9 ile şema 5 de development’a alındı; [merge ve o tarihteki açık CI performans takibi](../../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) tarihsel kayıttır. Bu takip [ölçüm güvenilirliği/CLI bakımı](../../research/startup-ci-reliability.md) ve PR #10 ile kapandı. P01-4b/4c için [tek PR planı](../p01-4-delivery-plan.md), [koordinasyon](p01-4b-operation-coordination.md) ve [yerel jobs](p01-4c-local-jobs.md) kartları ADR-0016 Accepted kararına bağlıdır; PR #10 ile development'a alındı; [merge/CI kapanışı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Güncel durum kart metadata’sındadır; bu indeks uygulama/kabul kanıtı saymaz.

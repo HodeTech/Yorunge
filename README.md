@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 29 Ekim 2026:** Çevrimdışı CLI/Python ve yerel cache/execution hazırlığı/onay yönetimi ve jobs geçmişi sorgusu çalışıyor (`0.1.0.dev0`, yayımlanmadı). Yerel context, sınırlı capability sorgusu ve araç seçimi sabitlenmiş plan taslağı üretilebilir. EVREN bağlantısı, eğitim, aktarım ve artefakt teslimi henüz uygulanmadı. P01 devam ediyor.
+**Durum — 30 Ekim 2026:** P01 hafif çekirdek ve kullanıcı review düzeltmeleri çalışma dalında `verified`; ADR-0019/Sonar takibi, güncel kaynak bağlı M5 başlangıç/jobs ve gerçek üç ortam CI kabulü tamamlandı (`0.1.0.dev0`, yayımlanmadı). [son kaynak kabulü](docs/research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON testlidir. PR #11 kullanıcı review/merge bekler; development teslimi ve yayın ayrı süreçtir. Gerçek EVREN/ForgeLM uç adaptörü, eğitim ve uzak veri/artefakt teslimi sonraki fazlardadır.
 
 ## Çalışan başlangıç
 
@@ -91,6 +91,19 @@ Listeden alınan kimlik `jobs show --operation-id UUID --state-dir ./private-sta
 Bu sorgular yalnız son yerel kaydı gösterir; `running` güncel uzak çalışma kanıtı değildir. Config/env/girdi/sağlayıcı okunmaz, uzlaştırma veya yeniden gönderim yapılmaz. Unknown/failed işin başarıyla okunması exit 0 ve dış Result completed demektir; gerçek iş durumu data içindedir. Açık state erişimi store kurulumunu/migration veya SQLite kurtarmasını çalıştırabilir.
 
 İç koordinasyon plan başına tek operation ve kalıcı gönderim niyetiyle ikinci gönderimi önler. Kimlik reset'i gönderim öncesi işi cancelled, gönderim niyeti olan işi unknown yapar; daha önce arm edilmiş dış etkiyi kesin durdurmaz. Tarihçe otomatik silinmez; 1.024 lifetime operation bütün plan slotlarını bağladıysa yeni plan üretimi kontrollü reddedilir. Yeni state dizini eski unknown işi yeniden gönderme çözümü değildir.
+
+## Otomasyonda çıktı ve yerel iptal
+
+Mevcut normal komutlarda `--output ndjson` veya `--output=ndjson`, tek başarılı sonucu tek UTF-8 `result` olayıyla verir. Olayın `payload` alanı mevcut JSON Result v1 ile aynıdır; text/JSON varsayımları değişmez. Örneğin:
+
+```sh
+.venv/bin/yorunge context show --config examples/profile.toml --output ndjson
+.venv/bin/yorunge jobs list --state-dir ./private-state --output=ndjson
+```
+
+Help/version insan çıktısı kalır. İlk sonuçtan önceki hata stdout’u boş bırakıp stderr’e tek JSON yazar. Ctrl-C ve kapalı pipe yerel çağrıyı bırakır (exit 6); kayıtlı işi geri almaz veya uzakta durdurmaz. Config yayınında veya operation gönderiminde belirsizlik varsa exit 5 ve ilgili kimlik korunur; otomatik tekrar yapılmaz. Kesin wire ve çıktı boyutu sınırları [akış sözleşmesindedir](docs/reference/stream-results.md).
+
+Ortak HTTP/stream altyapısı gerçek TLS loopback, ayrı süreç ve kurulu wheel/sdist ile doğrulandı. EVREN endpoint adaptörü ve kullanıcıya açık uzak watch/run sonraki fazlardadır. [P01 kabulü](docs/research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) çalışma dalında tamamlandı.
 
 ## Ürün yaklaşımı
 

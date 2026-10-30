@@ -8,7 +8,7 @@ capabilities: [C12, C13]
 ---
 # P01-4c — Yerel jobs list/show
 
-**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). P01-4b ve P01-4c bu dalda verified; adım 4, iki fresh review turu ve son kaynak yerel paket kabulü tamamlandı. Development aktarımı için PR incelemesi gerekir; merge/release kabulü değildir.
+**Güncellendi:** 2026-10-29. **Paket:** [P01-4](../p01-4-delivery-plan.md). Tamamlandı/verified; [PR #10](https://github.com/HodeTech/Yorunge/pull/10) kullanıcı tarafından [805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e) ile development'a alındı. Dört adım ve ikişer fresh review/PR düzeltmeleri kapandı; [merge/CI kaydı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) kanoniktir. Aşağıdaki başlangıç eksikleri tarihsel bağlamdır; yayımlanmış paket/canlı EVREN kabulü değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,6 +41,6 @@ Contract CLI/Python/wire, integration gerçek SQLite ve ayrı süreç/restart/sn
 
 ## Teslim kaydı
 
-- PR/commit: [PR #10](https://github.com/HodeTech/Yorunge/pull/10), son ürün kaynağı [182f695](https://github.com/HodeTech/Yorunge/commit/182f695f656c374530d9a496a59d9e7ee714932f); ilk uygulama 5c7ad8c ve adım review fix'leri 4941bf3/17de965 tarihsel kayıttır. [Son kaynak kapanışı](../../research/p01-4-implementation-validation.md#pr-10-son-kaynak-kapanışı) kanoniktir; development PR'ı kullanıcı incelemesine sunulur.
-- Sonuç: **1.779 full test**, iki clean artifact install, normal/yoğun 30-process jobs p95 **133,522/118,806** ve **175,712/122,114 ms**; mevcut dört eşli startup kapısı ve son **27 operation + 24 migration** kabulü geçti. CLI/Python/JSON/text/cursor/snapshot ve bozuk kayıt/IO/intent sınırları iki fresh turda doğrulandı. Ölçüm aracının checkout dışı runtime yolu regresyonu da kapandı.
-- Kalan sınır: Yerel geçmiş sorgusu provider gözlemi veya yeni execution yetkisi değildir; public run/watch/stop/reconcile, canlı EVREN/ForgeLM ve fiziksel güç kesintisi/gerçek Windows kabulü yoktur. Referans yoğun reset marjı **148,29 ms** ile dardır; farklı host için kesin duvar saati garantisi verilmez. Dış PR/merge CI sonuçları yerel kabulden ayrı izlenir; Master/release kullanıcıdadır.
+- PR/commit: [PR #10](https://github.com/HodeTech/Yorunge/pull/10), [merge 805f8bd](https://github.com/HodeTech/Yorunge/commit/805f8bd418847da6463408404a85675bdcb4173e); son PR head'i 36ae2a4, ürün kaynağı 182f695. Adım ve review commit'leri [kanonik kayıttadır](../../research/p01-4-implementation-validation.md); development teslimi tamamlandı.
+- Sonuç: **1.779 yerel ürün testi**, iki clean artifact install, normal/yoğun 30-process jobs p95 **133,522/118,806** ve **175,712/122,114 ms**; mevcut dört eşli startup kapısı ve son **27 operation + 24 migration** kabulü geçti. CLI/Python/JSON/text/cursor/snapshot ve bozuk kayıt/IO/intent sınırları iki fresh turda doğrulandı. Ölçüm aracının checkout dışı runtime yolu regresyonu da kapandı. Son PR/merge CI'da **1.816 test**, iki temiz kurulum ve başlangıç kapıları geçti; CodeRabbit/SonarCloud son PR head'inde başarılı.
+- Kalan sınır: Yerel geçmiş sorgusu provider gözlemi veya yeni execution yetkisi değildir; public run/watch/stop/reconcile, canlı EVREN/ForgeLM ve fiziksel güç kesintisi/gerçek Windows kabulü yoktur. Referans yoğun reset marjı **148,29 ms** ile dardır; farklı host için kesin duvar saati garantisi verilmez. PR/merge CI sonuçları yerel kabulden ayrı kayıtlıdır; Master/release kullanıcıdadır.

@@ -12,24 +12,115 @@ concurrency:
   group: core-checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  offline-core:
-    name: offline-core
+  linux311:
+    name: Linux / Python 3.11
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
+    timeout-minutes: 25
+    env:
+      PYTHON_VERSION: "3.11"
+      RUN_BUDGETS: "true"
+      RUNNER_LABEL: ubuntu-24.04
+    outputs:
+      startup_diagnostic: ${{ steps.startup-budgets.outputs.outcome }}
+      startup_baseline_mode: ${{ steps.startup-budgets.outputs.baseline_mode }}
+    steps: &compatibility-steps
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Check out pinned startup comparison source
+        id: startup-baseline
+        if: ${{ env.RUN_BUDGETS == 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
           path: .local/startup-baseline
           persist-credentials: false
+      - name: Select compatibility Python
+        id: python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install locked development environment
+        id: environment-setup
         run: |
-          python3 -m venv .ci-tools
+          python -m venv .ci-tools
           .ci-tools/bin/pip install uv==0.11.2
-          .ci-tools/bin/uv sync --frozen --python 3.11
+          .ci-tools/bin/uv sync --frozen --python "$PYTHON_VERSION"
+      - name: Record compatibility environment
+        id: environment-report
+        env:
+          CI_JOB: ${{ github.job }}
+        run: |
+          .venv/bin/python - <<'PY'
+          import importlib.metadata
+          import json
+          import os
+          import platform
+          import sqlite3
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          expected = tuple(map(int, os.environ["PYTHON_VERSION"].split(".")))
+          if sys.version_info[:2] != expected:
+              raise SystemExit("compatibility interpreter does not match the required version")
+          cpu = platform.processor() or "unknown"
+          if sys.platform == "linux":
+              for line in Path("/proc/cpuinfo").read_text().splitlines():
+                  if line.startswith("model name"):
+                      cpu = line.partition(":")[2].strip()
+                      break
+          elif sys.platform == "darwin":
+              cpu = subprocess.check_output(
+                  ["sysctl", "-n", "machdep.cpu.brand_string"], text=True, timeout=5
+              ).strip() or cpu
+          report = {
+              "schema_version": 1,
+              "source_sha": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True, timeout=5
+              ).strip(),
+              "github_sha": os.environ["GITHUB_SHA"],
+              "job": os.environ["CI_JOB"],
+              "os": platform.system(),
+              "os_release": platform.release(),
+              "platform": platform.platform(),
+              "architecture": platform.machine(),
+              "python": sys.version,
+              "python_executable": sys.executable,
+              "python_implementation": platform.python_implementation(),
+              "sqlite": sqlite3.sqlite_version,
+              "packages": dict(sorted(
+                  (dist.metadata["Name"], dist.version)
+                  for dist in importlib.metadata.distributions()
+              )),
+              "uv": subprocess.check_output(
+                  [".ci-tools/bin/uv", "--version"], text=True, timeout=5
+              ).strip(),
+              "runner_label": os.environ["RUNNER_LABEL"],
+              "runner_os": os.environ["RUNNER_OS"],
+              "runner_architecture": os.environ["RUNNER_ARCH"],
+              "runner_image": {
+                  key: os.environ.get(key) for key in ("ImageOS", "ImageVersion")
+              },
+              "cpu": cpu,
+              "cpu_count": os.cpu_count(),
+              "cpu_affinity": sorted(os.sched_getaffinity(0))
+              if hasattr(os, "sched_getaffinity") else None,
+              "disk_type": "unknown",
+              "startup_budget_scope": "source_bound_m5_and_linux_diagnostic"
+              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "jobs_budget_scope": "reference_receipt_macos_m5max_py311"
+              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "raw_stream_budget_scope": "reference_linux311"
+              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+          }
+          Path("dist").mkdir(exist_ok=True)
+          encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
+          Path("dist/ci-environment.json").write_text(encoded, encoding="utf-8")
+          print(encoded, end="")
+          PY
       - name: Check format, lint, types and public documentation
+        id: static-checks
         run: |
           .venv/bin/ruff format --check src tests scripts
           .venv/bin/ruff check src tests scripts
@@ -38,20 +129,133 @@ jobs:
           .venv/bin/python scripts/check-agent-guides.py
           .venv/bin/python scripts/research_evidence.py verify
       - name: Test offline contracts and real console entry
+        id: tests
         run: .venv/bin/pytest
       - name: Build and verify both distributions in clean environments
+        id: build
         run: |
           .ci-tools/bin/uv build
           .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
           cat dist/verification.jsonl
-      - name: Enforce startup budgets
+      - name: Record and verify Linux startup diagnostics
+        id: startup-budgets
+        if: ${{ env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/check-startup.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --output dist/startup.json
+          .venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --report dist/startup.json --receipt dist/startup-diagnostic.json
+      - name: Verify source-bound reference startup budgets
+        id: startup-reference
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-adr19-initial-runtime.json > dist/startup-reference.txt
+      - name: Verify source-bound reference jobs budgets
+        id: jobs-budgets
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-adr19-initial-runtime.json > dist/jobs-reference.txt
+      - name: Enforce installed raw stream budgets
+        id: raw-stream-budgets
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
       - name: Diagnose a failed startup budget
-        if: ${{ failure() }}
+        id: startup-diagnostics
+        if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' }}
         run: |
           if test -f dist/startup.json && test -x .local/startup-check/candidate/env/bin/python; then
             PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -X importtime .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
             PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -m cProfile -o dist/cache-startup.prof .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
             .venv/bin/python -c 'import pstats; pstats.Stats("dist/cache-startup.prof").strip_dirs().sort_stats("cumulative").print_stats(35)'
           fi
+      - name: Require every completed startup report and receipt to match
+        id: startup-evidence-guard
+        if: ${{ always() && env.RUN_BUDGETS == 'true' && steps.startup-budgets.outcome == 'success' }}
+        run: |
+          .venv/bin/python scripts/startup_diagnostic.py --verify-receipt --baseline-project .local/startup-baseline --report dist/startup.json --receipt dist/startup-diagnostic.json
+      - name: Preserve compatibility evidence
+        id: upload-evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-${{ github.job }}
+          if-no-files-found: error
+          retention-days: 90
+          include-hidden-files: true
+          path: |
+            dist/ci-environment.json
+            dist/verification.jsonl
+            dist/startup.json
+            dist/startup-diagnostic.json
+            dist/startup-baseline-selection.json
+            dist/startup-reference.txt
+            dist/jobs-reference.txt
+            dist/stream.json
+            dist/cache-startup.prof
+            .local/startup-check/source-manifest.json
+            .local/startup-check/measurement.json
+            .local/startup-check/stdout-checks.json
+            .local/stream-check/source-manifest.json
+            .local/stream-check/*/measurement.json
+            .local/stream-check/*/failure.json
+            .local/stream-check/*/client-stdout.txt
+            .local/stream-check/*/client-stderr.txt
+            .local/stream-check/*/server-stdout.txt
+            .local/stream-check/*/server-stderr.txt
+  linux314:
+    name: Linux / Python 3.14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHON_VERSION: "3.14"
+      RUN_BUDGETS: "false"
+      RUNNER_LABEL: ubuntu-24.04
+    steps: *compatibility-steps
+  macos311:
+    name: macOS / Python 3.11
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      PYTHON_VERSION: "3.11"
+      RUN_BUDGETS: "false"
+      RUNNER_LABEL: macos-15
+    steps: *compatibility-steps
+  offline-core:
+    name: offline-core
+    needs: [linux311, linux314, macos311]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every compatibility cell to succeed
+        id: compatibility-gate
+        shell: python
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          required = {"linux311", "linux314", "macos311"}
+          needs = json.loads(os.environ["NEEDS"])
+          if not isinstance(needs, dict) or set(needs) != required:
+              raise SystemExit("required compatibility cells are missing or unexpected")
+          results = {
+              name: item.get("result") if isinstance(item, dict) else None
+              for name, item in needs.items()
+          }
+          print(json.dumps(results, sort_keys=True))
+          if any(result != "success" for result in results.values()):
+              raise SystemExit("every required compatibility cell must succeed")
+          startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
+          if startup not in {"passed", "diagnostic_budget_exceeded"}:
+              raise SystemExit("a verified Linux startup diagnostic outcome is required")
+          mode = needs["linux311"].get("outputs", {}).get("startup_baseline_mode")
+          if mode not in {"pinned_runtime", "initial_runtime_same_source_control"}:
+              raise SystemExit("an explicit verified startup baseline mode is required")
+          if path := os.environ.get("GITHUB_STEP_SUMMARY"):
+              with Path(path).open("a", encoding="utf-8") as summary:
+                  summary.write(f"Linux startup: **{startup}** (diagnostic only). "
+                                f"Baseline mode: **{mode}**. "
+                                "See Linux job summary/artifact for all candidate/base p95 values. "
+                                "M5 startup/jobs and Linux raw gates remain required. "
+                                "Permanent archival/human review follows ADR-0019.\n")

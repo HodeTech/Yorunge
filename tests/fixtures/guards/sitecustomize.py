@@ -8,7 +8,18 @@ META = os.environ.get("YORUNGE_TEST_METADATA") == "1"
 CREDENTIAL = os.environ.get("YORUNGE_TEST_CREDENTIAL") == "1"
 STATE = os.environ.get("YORUNGE_TEST_STATE") == "1"
 YAML = os.environ.get("YORUNGE_TEST_YAML") != "0"
-FORBIDDEN = ("torch", "transformers", "trl", "keyring", "forgelm", "axolotl")
+FORBIDDEN = (
+    "torch",
+    "transformers",
+    "trl",
+    "keyring",
+    "forgelm",
+    "axolotl",
+    "httpx",
+    "httpcore",
+    "anyio",
+    "certifi",
+)
 
 original_getitem = type(os.environ).__getitem__
 SECRET_NAMES = frozenset(
