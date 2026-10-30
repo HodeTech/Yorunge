@@ -21,7 +21,7 @@ Her alan zorunludur; nullable alan eksik bırakılamaz. Tüm nesneler extra=forb
 | profile | Identifier |
 | target | Tam service_origin/api_base_path; normalize edilmiş binding v1 hedefi |
 | binding | Tam store_id:UUIDv4, identity_epoch:UUIDv4, clock_generation:positive-int64, credential_id:UUIDv4, credential_revision:positive-int64 |
-| profile_preference | Tam account_id:Identifier|null, project_id:Identifier|null, service_scope:unknown\|not_applicable; alanlardan biri doluysa unknown, ikisi null ise not_applicable |
+| profile_preference | Tam account_id:Identifier veya null, project_id:Identifier veya null, service_scope:unknown veya not_applicable; alanlardan biri doluysa unknown, ikisi null ise not_applicable |
 | selected | Tam account_id:null, project_id:null; Platform tercihleri LLM seçimi olmaz |
 | provider | Tam principal_id:null, account_id:null, organization_id:null, project_id:null, identity_status:not_exposed |
 | authorization_scope | Yalnız null; bu keşif yazma/çıkarım izni üretmez |
@@ -29,7 +29,7 @@ Her alan zorunludur; nullable alan eksik bırakılamaz. Tüm nesneler extra=forb
 | list_completeness | Literal not_exposed |
 | terms | Tam accepted:strict bool, current_version:strict int 0…2^63−1, is_material:strict bool |
 | observed_from, observed_until, validated_at | Kanonik UTC; invocation başlangıcı ≤ endpoint aralığı ≤ observed_until ≤ yerel validated_at |
-| observations | Tam bir TermsEndpointObservation; aşağıdaki kapalı alanlar |
+| observations | JSON array, tam1 TermsEndpointObservation öğesi; Python’da tek öğeli tuple; aşağıdaki kapalı alanlar |
 | consistency | Literal not_guaranteed; atomik uzak snapshot veya üyelik garantisi yok |
 | validation | Literal unverified; Result completed keşif tamamlanmasıdır, context verified değildir |
 | reasons | Sıralı/tekrarsız kapalı neden dizisi; aşağıdaki deterministik kural |
