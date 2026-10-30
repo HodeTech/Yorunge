@@ -96,6 +96,10 @@ Gerçek TLS/private test composition ve gerçek CLI child process ile API eşli�
 
 Head `3555fbb`; yeni ajanlar p02_step4_r1_surface / p02_step4_r1_safety public sözleşme/uyumluluk ve güvenlik/kaynak/hata yüzeyini bağımsız inceledi. Ürün kodunda doğrulanmış kusur yok. Tek P3: C02 capability matrisinin “uzak keşif yok” ifadesi gerçek LLM terms alt kümesini geriden izliyordu; çalışma dalı/review/kabul ve açık auth/kimlik/Platform sınırıyla hizalandı. C01 uzak kimlik yok ifadesi doğru kaldı. İki ajan sırasıyla77 test/18,72 s ve53 test/16,23 s geçirdi; seçenek konumu deneyleri ve statik/belge/ajan/diff geçti. Canlı çağrı/secret erişimi yapılmadı. Fix commit’i sonrası farklı fresh R2 yapılır.
 
+### Adım 4 — İkinci fresh review ve kapanış
+
+Head a148c78; farklı yeni ajanlar p02_step4_r2_contract / p02_step4_r2_safety sözleşme/uyumluluk ve güvenlik/kaynak/hata sınırlarını yeniden inceledi. Yeni doğrulanmış bulgu yok.77 test/19,51 s ve104 test/16,08 s; Ruff format/lint, strict mypy56,138 belge/6 skill/16 kart/diff geçti. Adım4 kod/review kapandı. Kullanıcı hazırlığı üzerinden sıradaki bağımsız iş bounded salt okunur live kabul ve Platform raw contract kontrolüdür; nihai kaynak/kurulum/performans kapısı açık kalır.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. Platform raw/key şeması ve hizmet başına live kabul dış koşulları açık; LLM kodlamasını durdurmaz. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai PR tüm paket kabulü tamamlanınca development hedefiyle açılır.
