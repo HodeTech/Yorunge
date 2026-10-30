@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 30 Ekim 2026:** P01 hafif çekirdek ve kullanıcı review düzeltmeleri tamamlandı; [PR #11](https://github.com/HodeTech/Yorunge/pull/11) kullanıcı tarafından [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) ile development’a alındı (`0.1.0.dev0`, yayımlanmadı). [Merge ve kabul kaydı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON testlidir. P02 çalışma dalında sözleşme/SDK araştırması tamamlandı ve LLM terms keşfi eklendi; review/nihai kaynak/canlı kabul sürüyor. Platform/ForgeLM adaptörü, eğitim ve uzak veri/artefakt teslimi sonraki fazlardadır; Master/release ayrı kullanıcı sürecidir.
+**Durum — 31 Ekim 2026:** P01 hafif çekirdek ve kullanıcı review düzeltmeleri tamamlandı; [PR #11](https://github.com/HodeTech/Yorunge/pull/11) kullanıcı tarafından [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) ile development’a alındı (`0.1.0.dev0`, yayımlanmadı). [Merge ve kabul kaydı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON testlidir. P02 çalışma dalında sözleşme/SDK araştırması tamamlandı ve LLM terms keşfi eklendi; review/nihai kaynak/canlı kabul sürüyor. Platform/ForgeLM adaptörü, eğitim ve uzak veri/artefakt teslimi sonraki fazlardadır; Master/release ayrı kullanıcı sürecidir.
 
 ## Çalışan başlangıç
 
@@ -94,7 +94,7 @@ Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kayd�
 .venv/bin/yorunge jobs list --status unknown --limit 20 --state-dir ./private-state
 ```
 
-Listeden alınan kimlik `jobs show --operation-id UUID --state-dir ./private-state` ile okunur. Python karşılıkları `api.list_jobs(...)` ve `api.show_job(operation_id, ...)` çağrılarıdır. Filtre/cursor ve tam wire [jobs referansındadır](docs/reference/operations.md). Boş store boş liste verir; plan hazırlamak/onaylamak job oluşturmaz. Public run ve EVREN adaptörü henüz yoktur.
+Listeden alınan kimlik `jobs show --operation-id UUID --state-dir ./private-state` ile okunur. Python karşılıkları `api.list_jobs(...)` ve `api.show_job(operation_id, ...)` çağrılarıdır. Filtre/cursor ve tam wire [jobs referansındadır](docs/reference/operations.md). Boş store boş liste verir; plan hazırlamak/onaylamak job oluşturmaz. Public run ve EVREN yürütme adaptörü henüz yoktur.
 
 Bu sorgular yalnız son yerel kaydı gösterir; `running` güncel uzak çalışma kanıtı değildir. Config/env/girdi/sağlayıcı okunmaz, uzlaştırma veya yeniden gönderim yapılmaz. Unknown/failed işin başarıyla okunması exit 0 ve dış Result completed demektir; gerçek iş durumu data içindedir. Açık state erişimi store kurulumunu/migration veya SQLite kurtarmasını çalıştırabilir.
 
