@@ -8,7 +8,7 @@ capabilities: [C01, C02, C03, C05, C06, C07, C11]
 ---
 # P02-0a — Güncel sözleşme, SDK sınırı ve pilot planı
 
-**Tarih:** 2026-10-31. **Durum:** Araştırma kabulü ve iki fresh review turu tamamlandı; verified yalnız bu araştırma kartına aittir. ADR-0020 sonraki kullanıcı review düzeltmeleriyle Accepted; endpoint uygulaması ve canlı hesap pilotu yapılmadı. [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
+**Tarih:** 2026-10-31. **Durum:** Araştırma kabulü ve iki fresh review turu tamamlandı; verified yalnız bu araştırma kartına aittir. ADR-0020 sonraki kullanıcı review düzeltmeleriyle Accepted; bu araştırma kartı endpoint uygulaması veya canlı hesap pilotu içermez. Sonraki LLM uygulaması/ilk live ve açık Platform kapısı [paket kaydındadır](../../research/p02-0-implementation-validation.md). [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
