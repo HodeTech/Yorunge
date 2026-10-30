@@ -86,6 +86,12 @@ Kullanıcı daha sonra API key’leri yerel hazırlığa girdiğini, account/pro
 
 Head `e4a97b96982fb813e39c55f539dc89ef439ef8d2`; farklı yeni ajanlar `p02_step3_r2_state` ve `p02_step3_r2_contract` R1 düzeltmelerini state/clock/dayanıklılık ve wire/HTTP/kaynak/test boyutlarında inceledi. **Yeni doğrulanmış bulgu yok.** İki ajan bağımsız98 test koşusunu29,46/30,00 s ile geçirdi; Ruff/strict mypy56 kaynak,138 belge/6 skill/16 kart/diff geçti. No-init, mode=rw, hedef/credential/epoch/generation, kilit bırakma ve hata/iptal rezervi tutarlı bulundu. Kod adım 3 kapandı; adım 4 public CLI/Python aynı core’a bağlanır. Canlı kabul ve nihai kaynak/kurulum/performans/PR ayrı kalır.
 
+## Adım 4 — Public LLM CLI/Python yüzeyi
+
+`api.discover_context` ve `context discover --service evren-llm` aynı çekirdeği kullanır; public fixture/CA/backend seçeneği yoktur. Request/service/path/project ve owned session kapıları I/O öncesindedir. Platform raw kapısı açıkken unsupported_combination verir. Text terms/auth/kimlik sınırını açıklar; JSON/NDJSON Result v1 ve context_not_verified uyarısını korur. Ortak seçeneklerin önce/sonra biçimi ve discovery singleton tekrarı denetlenir; eski offline/local komutlar discovery modelini import etmez.
+
+Gerçek TLS/private test composition ve gerçek CLI child process ile API eşliği, yalnız LLM credential’ı, varsayılan/açık/eksik store, yanlış hizmet/proje/tekrar, ASCII locale’de UTF-8, safe401/403/404, env’nin ağ başladıktan sonra tekrar okunmaması, SIGINT ve kapalı pipe doğrulandı. Store önceden açık state init ile hazırlandı; keşif bootstrap yapmaz. **292 test / 20,47 s** public discovery + mevcut CLI/NDJSON/lazy/core-boundary kümesinde geçti. Ruff format/lint, strict mypy56 kaynak,138 belge/6 skill/16 kart ve diff geçti. README/CLI/reference/module/changelog/current çalışma dalındaki gerçek alt kümeye hizalandı; canlı/nihai kaynak kabulü henüz yok. Commit sonrası iki fresh kod review turu yapılacak.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. Platform raw/key şeması ve hizmet başına live kabul dış koşulları açık; LLM kodlamasını durdurmaz. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai PR tüm paket kabulü tamamlanınca development hedefiyle açılır.

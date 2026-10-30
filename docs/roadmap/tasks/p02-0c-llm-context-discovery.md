@@ -8,11 +8,11 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0c — Bağımsız LLM context ve terms keşfi
 
-**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; Platform erişimini beklemeden bağımsız LLM uygulaması başladı. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
+**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi review/kabulünde. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; bu gerçek endpoint/adaptör ve CLI/API henüz yoktur.
+Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; bu çalışma dalında gerçek endpoint/adaptör ve CLI/API eklendi. Nihai kaynak ve canlı kabul henüz kapanmadı.
 
 ## Giren ve girmeyen kapsam
 
@@ -22,7 +22,7 @@ Platform identity/org/project, browser JWT, model/kota taraması, terms accept, 
 
 ## Bağımlılıklar ve kararlar
 
-P01 bağımlılıkları development’da ve P02-0a araştırması [9e16291](https://github.com/HodeTech/Yorunge/commit/9e16291c6468d1d1f4fe47fbe891eb943107067b) üzerinde verified. Kullanıcı 31 Ekim’de review düzeltmeleri sonrası ADR-0020 kabulünü ve implementasyonu yetkilendirdi. [Accepted karar](../../decisions/0020-service-bound-context-discovery.md), [kapalı referans](../../reference/context-discovery.md) ve iki fresh belge review turu kod başlamadan kapanır. Live credential henüz hazırlanmadı; bu kabul dış koşulu offline uygulamanın önkoşulu değildir.
+P01 bağımlılıkları development’da ve P02-0a araştırması [9e16291](https://github.com/HodeTech/Yorunge/commit/9e16291c6468d1d1f4fe47fbe891eb943107067b) üzerinde verified. Kullanıcı 31 Ekim’de review düzeltmeleri sonrası ADR-0020 kabulünü ve implementasyonu yetkilendirdi. [Accepted karar](../../decisions/0020-service-bound-context-discovery.md), [kapalı referans](../../reference/context-discovery.md) ve iki fresh belge review turu kod başlamadan kapanır. Kullanıcı live credential hazırlığını yaptı; account/project ID’leri LLM için gerekli değil. bu kabul dış koşulu offline uygulamanın önkoşulu değildir.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -44,4 +44,4 @@ Domain kapalı model ve değişmezler; application tek kullanım senaryosu ve ty
 
 ## Teslim kaydı
 
-Henüz ürün teslimi yok. Kullanıcı review düzeltmeleri, kapalı belge review’si, LLM uygulama/test/review ve live kabul sonuçları paket kaydında işlenecek. Yeni alt ID mevcut P02-0b kapsamını bölüyor; kapsam azaltmıyor.
+Çalışma dalında çekirdek ve public yüzey var; nihai kaynak/kurulum/performans ve canlı kabul tamamlanmadığından kart verified değil. Kullanıcı review düzeltmeleri, kapalı belge review’si, LLM uygulama/test/review ve live kabul sonuçları paket kaydında işlenecek. Yeni alt ID mevcut P02-0b kapsamını bölüyor; kapsam azaltmıyor.

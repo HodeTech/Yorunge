@@ -4,7 +4,7 @@
 
 Yörünge; hesap ve proje bağlamını, veri setlerini, modelleri, LLM ve çıkarım servislerini, eğitim işlerini, GPU/kota görünürlüğünü ve çalışma sonuçlarını tutarlı iş akışlarında bir araya getirmek için tasarlanıyor. Kullanıcı, bir işi tamamlamak için ayrı istemcilerin ayarlarını ve ilerleme kayıtlarını birleştirmek zorunda kalmamalı.
 
-**Durum — 30 Ekim 2026:** P01 hafif çekirdek ve kullanıcı review düzeltmeleri tamamlandı; [PR #11](https://github.com/HodeTech/Yorunge/pull/11) kullanıcı tarafından [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) ile development’a alındı (`0.1.0.dev0`, yayımlanmadı). [Merge ve kabul kaydı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON testlidir. Sonraki iş P02-0a sözleşme/SDK/pilot planı hazırlığıdır. Gerçek EVREN/ForgeLM uç adaptörü, eğitim ve uzak veri/artefakt teslimi sonraki fazlardadır; Master/release ayrı kullanıcı sürecidir.
+**Durum — 30 Ekim 2026:** P01 hafif çekirdek ve kullanıcı review düzeltmeleri tamamlandı; [PR #11](https://github.com/HodeTech/Yorunge/pull/11) kullanıcı tarafından [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) ile development’a alındı (`0.1.0.dev0`, yayımlanmadı). [Merge ve kabul kaydı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Çevrimdışı CLI/Python, yerel kimlik/cache/execution hazırlığı/onay/jobs ve ortak HTTP/stream/UTF-8 NDJSON testlidir. P02 çalışma dalında sözleşme/SDK araştırması tamamlandı ve LLM terms keşfi eklendi; review/nihai kaynak/canlı kabul sürüyor. Platform/ForgeLM adaptörü, eğitim ve uzak veri/artefakt teslimi sonraki fazlardadır; Master/release ayrı kullanıcı sürecidir.
 
 ## Çalışan başlangıç
 
@@ -48,6 +48,14 @@ Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarın
 ```
 
 Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi seçili env'yi açık istekle okur; varsayılan offline komutlar okumaz.
+
+P02 çalışma dalında LLM şart durumu açıkça sorgulanabilir. Önce [yerel hesap hazırlığını](docs/p02-account-setup.md) tamamla ve LLM env değerini çağıran sürece aktar; anahtarı komut satırına yazma. Mevcut private store gereklidir:
+
+```sh
+.venv/bin/yorunge context discover --service evren-llm --config .local/p02-pilot/config.toml --state-dir .local/p02-pilot/state --output json
+```
+
+Python karşılığı `api.discover_context("evren-llm", config=Path(".local/p02-pilot/config.toml"), state_dir=Path(".local/p02-pilot/state"))` çağrısıdır. Bu komut gerçek ağ erişimi ve yerel registry/clock gözlemi yapar; store oluşturmaz, şart kabul etmez. Terms cevabı auth/hesap/proje/izin kanıtı değildir. LLM için account/project ID gerekmez; Platform profili LLM seçimine kopyalanmaz. Platform keşfi raw sözleşme kapısında kontrollü reddedilir. [Kesin discovery sınırı ve kabul durumu](docs/reference/context-discovery.md).
 
 Açık yerel capability cache sorgusu:
 
@@ -103,7 +111,7 @@ Mevcut normal komutlarda `--output ndjson` veya `--output=ndjson`, tek başarıl
 
 Help/version insan çıktısı kalır. İlk sonuçtan önceki hata stdout’u boş bırakıp stderr’e tek JSON yazar. Ctrl-C ve kapalı pipe yerel çağrıyı bırakır (exit 6); kayıtlı işi geri almaz veya uzakta durdurmaz. Config yayınında veya operation gönderiminde belirsizlik varsa exit 5 ve ilgili kimlik korunur; otomatik tekrar yapılmaz. Kesin wire ve çıktı boyutu sınırları [akış sözleşmesindedir](docs/reference/stream-results.md).
 
-Ortak HTTP/stream altyapısı gerçek TLS loopback, ayrı süreç ve kurulu wheel/sdist ile doğrulandı. EVREN endpoint adaptörü ve kullanıcıya açık uzak watch/run sonraki fazlardadır. [P01 kabulü ve development teslimi](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı) PR #11 ile tamamlandı.
+Ortak HTTP/stream altyapısı gerçek TLS loopback, ayrı süreç ve kurulu wheel/sdist ile doğrulandı. P02 LLM terms adaptörünün kabulü sürüyor; kullanıcıya açık uzak watch/run sonraki fazlardadır. [P01 kabulü ve development teslimi](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı) PR #11 ile tamamlandı.
 
 ## Ürün yaklaşımı
 

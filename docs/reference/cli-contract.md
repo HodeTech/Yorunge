@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. Public run/watch ve EVREN adaptörü planlandı. **Tarih:** 2026-10-30.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02 çalışma dalında LLM terms keşfi eklendi ve review/kabulü sürüyor; Platform keşfi ve public run/watch planlandı. **Tarih:** 2026-10-31.
 
 ## Uygulanan alt küme
 
@@ -12,6 +12,7 @@
 | `yorunge init`, `context profiles/use-profile/set-project/clear-project` | Güvenli yerel config oluşturma/güncelleme; [seçenekler](configuration.md#yerel-config-yazma-ve-tanılama) |
 | `yorunge doctor [--state-dir PATH]` | Yerel config/referans/store/key metadata tanısı; env/K içeriği ve ağ yok |
 | `yorunge context identity --service SERVICE [--state-dir PATH]` | Tek seçili env snapshot'ının kalıcı yerel kimlik/nesil gözlemi |
+| `yorunge context discover --service evren-llm [--state-dir PATH]` | Mevcut store ile açık salt okunur terms gözlemi; auth/kimlik/izin doğrulanmaz; [sözleşme](context-discovery.md) |
 | `yorunge state reset/restore/recover` | Varsayılan etki önizlemesi; açık `--confirm DIGEST` ile bakım |
 | `yorunge state init [--state-dir PATH]` | Açık yerel store/key oluşturma veya mevcut store'u doğrulama; env/ağ yok |
 | `yorunge capabilities --task TASK` | Yerel seçim politikası ve doğrulanmamış/eksik yürütme durumları |
@@ -32,7 +33,9 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**,
 
 Çalışan örnekler [README](../../README.md#çalışan-başlangıç); Python API `yorunge.api.show_context`, `inspect_capabilities`, `prepare_plan`, `load_plan` ve `check_credential(service_id, *, config=None, profile=None, project=None)` aynı tipli zarfı döndürür. Secret taşıyıcısı public sonuca girmez. Kamuya açık kontrollü hata `yorunge.domain.errors.YorungeError`'dır.
 
-`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity`, cache sorgusu, execution planı ve jobs ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+`api.initialize_state(*, state_dir: Path | None = None)` / `state init`, [yerel state sözleşmesini](local-state.md) uygular. `--state-dir` state ailesinde, `doctor`, açık `context identity/discover`, cache sorgusu, execution planı ve jobs ailesinde desteklenir; config/profil/proje seçenekleri bu komutta reddedilir. `state_invalid`, `state_busy`, `state_repair_required`, `state_write_failed`, `state_unsupported` kontrollü çıkış 2'dir; dosya/SQL/key ayrıntısı hata zarfına girmez. Reset/restore/recover önizleme ve açık uygulama akışları aşağıda tanımlıdır.
+
+`api.discover_context("evren-llm", *, config=None, profile=None, project=None, state_dir=None)` aynı typed Result v1’i, `context_not_verified` uyarısını ve ContextDiscovery v1’i döndürür. JSON/NDJSON/text desteklenir. Explicit LLM project invalid_request; Platform raw sözleşmesi açıkken evren-platform unsupported_combination ile I/O öncesi reddedilir. Tekil discovery seçeneklerinin tekrarları reddedilir. Store yok/uyumsuzsa env/ağ/örtük init yok, state_invalid/2 döner; mevcut registry/clock gözlemi yerel yazı yapabilir. 401/403 remote_access_denied/3, terms endpoint 404 invalid_response/1; diğer taşıma ve çıktı/iptal kodları aşağıdaki kapalı kataloğu kullanır. Başarılı terms gözlemi exit0’dır; accepted=false, auth unknown ve provider identity not_exposed veri/neden alanlarında ayrı kalır. [Alanlar ve final state kapısı](context-discovery.md).
 
 ## Komut alanları
 

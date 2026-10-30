@@ -6,6 +6,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeTech/Yorunge/pull/11) ile development’a [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) merge’ünde alındı. [Merge/CI kanıtı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Bu kayıt paket yayını veya Master/release aktarımı değildir.
 
+### Added — 2026-10-31
+
+- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform raw sözleşme kapısı açık kalır. Nihai kaynak ve canlı kabul sürüyor, development teslimi değildir.
+
 ### Changed — 2026-10-29
 
 - PR #10'un büyük ölçüm çıktıları özgün baytları korunarak gzip arşivine ayrıldı; küçük manifest/indeks ve CI bütünlük kontrolü eklendi. CodeRabbit yalnız raw arşivleri dışlar, ajan rehberi hedefli kanıt incelemesini tanımlar. Arşivler sdist'e girmez; sabit test vektörleri ve ölçüm kodu normal incelemede kalır.

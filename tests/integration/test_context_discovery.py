@@ -396,7 +396,7 @@ def test_missing_database_cannot_be_created_through_existing_only_sqlite_open(tm
     (root / DB_NAME).unlink()
     with pytest.raises(YorungeError) as failure:
         with open_existing_store(root):
-            pytest.fail("missing database must not open")
+            pass
     assert failure.value.code == "state_invalid"
     assert not (root / DB_NAME).exists()
 
@@ -599,7 +599,7 @@ def test_existing_store_budget_includes_root_resolution_and_metadata(tmp_path, m
         monkeypatch.setattr(Path, "lstat", delayed_stat)
     with pytest.raises(YorungeError) as failure:
         with open_existing_store(root, timeout=0.03):
-            pytest.fail("expired root lookup must not open a successful store")
+            pass
     assert failure.value.code == "state_busy"
 
 
