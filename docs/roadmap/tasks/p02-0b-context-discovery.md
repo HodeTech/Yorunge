@@ -47,4 +47,4 @@ Domain/application tipli keşif ve doğrulama sonucunu sahiplenir; somut endpoin
 
 ## Teslim kaydı
 
-Henüz uygulanmadı veya teslim edilmedi. ADR Accepted; bağımsız hizmet kartlarının kapalı raw/reference ve canlı kabul koşulları ayrı; P02-0a araştırması P02-0b’nin bitmesi değildir. Gerçek commit/PR/test ve kalan sınır uygulama sırasında eklenecektir.
+Üst teslim tamamlanmadı. ADR Accepted; [P02-0c LLM](p02-0c-llm-context-discovery.md), [0e0d2b7](https://github.com/HodeTech/Yorunge/commit/0e0d2b747d23976c46f196b02266a3ba1f6d6d8a) kaynak/iki fresh kod review/ilk live/yerel test-kurulum-M5 kanıtıyla yerel verified. [Kabul kaydı](../../research/p02-0-implementation-validation.md#bağımsız-llm-yerel-kabul-kapanışı) tam takım ve değişen kabul aracının ayrı doğrulamasını açıklar. P02-0d Platform raw/auth/principal/envelope/paging ve kendi live kabulü açık; aggregate P02-0b/P02-0, PR/CI/merge teslimi henüz tamamlanmadı. Araştırma veya yalnız LLM kapanışı üst teslimi verified yapmaz.

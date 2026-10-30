@@ -134,6 +134,10 @@ Pinned uv0.11.2 wheel’i sdist’ten üretti. İki ayrı temiz runtime kurulumu
 
 Head a884d98 üstünde p02_llm_closure_r1_evidence / p02_llm_closure_r1_status 152 arşivi, kaynak/kurulum/baseline/wheel eşliğini, gerçek p95’leri ve durum iddialarını inceledi. Ürün/kanıt doğruluğu kusuru yok. Bir P3 durum grubu doğrulandı: üst P02-0b kartında LLM yüzeyinin hâlâ yalnız tasarım olduğu ve son durum paragrafında LLM kodlamasının sürdüğü ifadeler kaldı. LLM yerel verified ile Platform/üst paket eksikleri ayrılarak düzeltildi; araştırma kartının eski “pilot yapılmadı” ifadesi araştırma kapsamına daraltıldı. İki verifier,152 arşiv,138 belge/6 skill/16 kart, Ruff171/strict mypy70 ve diff geçti. Fix sonrası farklı fresh kanıt R2 yapılır.
 
+### Yerel kapanış — İkinci fresh kanıt review’si
+
+Fix head b1cab29 üstünde farklı yeni ajanlar p02_llm_closure_r2_evidence / p02_llm_closure_r2_status kaynak/kurulum/baseline/örnek/p95/152 arşiv ve current/kart/ref sınırlarını inceledi. Ürün veya ölçüm doğruluğu bulgusu yok. Son P3: P02-0b üst kartının teslim kaydı dip paragrafında eski genel “henüz uygulanmadı” ifadesi kalmıştı; gerçek LLM commit/kabul bağı ve açık Platform/üst paket/PR/CI sınırıyla düzeltildi. Güncel P02-0 kart/plan/ref için benzer şimdiki zaman iddiaları hedefli tarandı.152 arşiv, iki güncel reference verifier,138 belge/6 skill/16 kart ve diff geçti. İki fresh kanıt turu kapandı; runtime/test/ölçüm/workflow kaynağı değişmedi, yeni ölçüm gerektiren kaynak farkı yoktur.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. LLM yerel verified; Platform raw/key/principal/envelope/paging ve kendi live kabulü dış koşulları açık. Kullanıcının sağladığı dataset kılavuzu bu kimlik/proje sözleşmesini kapatmadı; hazır destek talebi verildi. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai development PR bütün kod/adım review/yerel kabul kapıları tamamlanınca açılır; PR’ın üç ortam CI ve bütünleşik kabulü ardından kapanır.
