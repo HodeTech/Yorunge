@@ -1,12 +1,12 @@
 # Yol haritası
 
-**Güncellendi:** 2026-10-30. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
+**Güncellendi:** 2026-10-31. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
 
 | Faz | Kullanıcı sonucu | Bugünkü durum | Fazın sınırı |
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
 | [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
-| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | Başlangıç hazır; P02-0a araştırma kartı ready, ürün kodu yok | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
+| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0 araştırma/karar hazırlığı aktif; P02-0b ADR/raw sözleşme kapılı, ürün kodu yok | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
 
@@ -45,7 +45,7 @@ Gerekli ortak temel, ihtiyaç duyan ilk epik PR'ında teslim edilir ve özgün I
 
 ## P02 paket akışı
 
-P02-0a sözleşme/SDK/pilot **planı** ilk araştırma teslimidir; P02-0b gerçek hesap/context keşfi ayrı uygulama ve hesap kabulüdür. P02-0 üst satırı ikisini toplar; araştırma onayı canlı pilot yetkisi yerine geçmez. Mevcut `feat/p02-0a-sdk-pilot` dalı P01 kapanış belgelerini ve P02 hazırlığını sonraki P02-0a işiyle taşır; yalnız belge kapanışı için ayrı PR açılmaz.
+P02-0a sözleşme/SDK/pilot **planı** ilk araştırma teslimidir; P02-0b gerçek hesap/context keşfi ayrı uygulama ve hesap kabulüdür. P02-0 üst satırı ikisini toplar; araştırma onayı canlı pilot yetkisi yerine geçmez. Kullanıcının 31 Ekim 2026 talebiyle P02-0a ve P02-0b, [P02-0 teslim planında](p02-0-delivery-plan.md) mevcut `feat/p02-0a-sdk-pilot` dalından **tek nihai development PR** içinde ele alınır. P01 kapanış belgeleri ve P02 hazırlığı da bu PR’a dahildir; yalnız belge kapanışı için ayrı PR açılmaz. Adım başına commit ve iki fresh review turu korunur.
 
 Sonrasında varsayılan PR birimi P02-1, P02-2, P02-3, P02-4, P02-5, P02-6 ve P02-7 epikleridir. Alt kartlar aynı dalda adım/commit/kabul/review birimleridir; büyük epik tek kod adımı yapılmaz. Araştırma/ADR onayı veya ölçülen review büyüklüğü bölünmeyi gerektirirse PR sınırı paket planında **iş başlamadan** ilan edilir; kapsam küçültülmez. Önceki P01 PR sınırları tarihsel kalır. Kullanıcının uygulama talebindeki commit ve review döngüsü ilgili paket planına bağlanır; bu belge kendiliğinden ajan veya pilot başlatma yetkisi vermez.
 

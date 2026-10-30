@@ -1,14 +1,14 @@
 ---
 id: P02-0a
 phase: P02
-status: ready
+status: in_progress
 size: M
 depends_on: [P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C03, C05, C06, C07, C11]
 ---
 # P02-0a — Güncel sözleşme, SDK sınırı ve pilot planı
 
-**Tarih:** 2026-10-30. **Durum:** Araştırmaya hazır; araştırma teslimi, endpoint uygulaması ve canlı hesap pilotu henüz yapılmadı. [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
+**Tarih:** 2026-10-31. **Durum:** Araştırma raporu/karar hazırlığı tamamlandı, commit sonrası iki fresh review ve belge kabulü yürütülüyor; endpoint uygulaması ve canlı hesap pilotu yapılmadı. [P02](../phase-02-data-and-inference.md) başlangıç kartıdır. [Hazırlık review’sindeki](../../research/p02-readiness-review.md) sınırlı kaynak kontrolü bu kartın tamamlanması değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -28,7 +28,7 @@ P01-2b kimlik [PR #6](https://github.com/HodeTech/Yorunge/pull/6), P01-3a scope/
 
 ## Sözleşme ve uygulama sınırı
 
-Kanonik araştırma sonucu `docs/research/p02-contract-sdk-pilot.md` içinde oluşturulacak; bu dosya henüz mevcut değildir. Kaynak URL/tarih/sürüm/hash ve kapsam [evidence register](../../research/evidence-register.md) üzerinden keşfedilir. Faz/current kabul matrisini kopyalamaz. Kabul edilen yeni wire/CLI/API biçimleri uygulamadan önce kendi `reference` belgesine bağlanır; araştırma bir public şema ilanı değildir.
+Kanonik araştırma sonucu [P02-0a raporudur](../../research/p02-contract-sdk-pilot.md); commit sonrası review/kabul [P02-0 kaydında](../../research/p02-0-implementation-validation.md) tutulur. Kaynak URL/tarih/sürüm/hash ve kapsam [evidence register](../../research/evidence-register.md) üzerinden keşfedilir. Faz/current kabul matrisini kopyalamaz. Kabul edilen yeni wire/CLI/API biçimleri uygulamadan önce kendi `reference` belgesine bağlanır; araştırma bir public şema ilanı değildir.
 
 Kimlik modülü hesap/context, dataset modülü aktarım, katalog modülü sabit model kimliği, inference modülü görev yanıtı, compute modülü kota kaynağını sahiplenir. Somut HTTPX/SDK tipi domain veya public Python API’ye taşınmaz. Yeni state tüketicisi V2 migration/backup/reset/kapasite değerlendirmesiyle gelir; bu kart DDL uygulamaz.
 
@@ -48,4 +48,4 @@ Kimlik modülü hesap/context, dataset modülü aktarım, katalog modülü sabit
 
 ## Teslim kaydı
 
-Henüz teslim edilmedi; PR/uygulama commit’i ve P02-0a sonuç raporu yoktur. Bu kartın hazırlanması araştırma kabulü değildir. Hazırlık değişiklikleri mevcut `feat/p02-0a-sdk-pilot` dalında, önceki P01 kapanış belgeleriyle birlikte sonraki işin PR’ına dahildir; ayrı hazırlık PR’ı açılmaz.
+Araştırma raporu, Proposed ADR-0020 ve P02-0b taslak kartı yazıldı; iki fresh review ve son kontrol kapanmadan verified ilan edilmez. Gerçek commit/review sonuçları uygulama kaydına eklenecektir. Hazırlık değişiklikleri mevcut `feat/p02-0a-sdk-pilot` dalında, önceki P01 kapanış belgeleriyle birlikte sonraki işin PR’ına dahildir; ayrı hazırlık PR’ı açılmaz.

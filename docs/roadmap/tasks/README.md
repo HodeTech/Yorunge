@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-10-30. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-10-31. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -17,10 +17,11 @@
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
 | [P02-0a](p02-0a-contract-sdk-pilot.md) | Güncel resmî sözleşme, endpoint SDK değerlendirmesi ve yetkili pilot planı; ürün/pilot icrası değil |
+| [P02-0b](p02-0b-context-discovery.md) | Gerçek hizmet/anahtar bağında kimlik ve seçilmiş context keşfi; ADR/raw sözleşme/live kabul kapılı |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b verified ve PR #11 ile development’a teslim edildi; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 bc9532c merge’ünde development’a alındı; güncel durum kart metadata’sındadır.
 
-Sonraki [P02-0a](p02-0a-contract-sdk-pilot.md) araştırma kartının bağımlılıkları ve kabulü hazırdır. [P02 hazırlık review’si](../../research/p02-readiness-review.md) ürün/hesap kabulü değildir; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 uygulama kartları karar/endpoint kanıtları geldikçe hazırlanır.
+Aktif [P02-0a](p02-0a-contract-sdk-pilot.md) araştırması ile [P02-0b](p02-0b-context-discovery.md) keşfi kullanıcı yetkisiyle [tek P02-0 paketindedir](../p02-0-delivery-plan.md). P02-0b yeni ADR/raw sözleşme kapısı kapanmadan ready olmaz. [P02 hazırlık review’si](../../research/p02-readiness-review.md) ürün/hesap kabulü değildir; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 uygulama kartları karar/endpoint kanıtları geldikçe hazırlanır.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 
