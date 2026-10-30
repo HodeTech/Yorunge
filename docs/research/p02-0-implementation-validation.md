@@ -80,7 +80,11 @@ Head `acda47beb904949cdcbdcf7da20932f340acb088`; yeni ajanlar `p02_step3_r1_stat
 
 Fix kaynakta **98 hedefli test / 28,89 s** geçti; yeni HTTP404/bozuk schema/timeout ile rollback, cleanup failure, gerçek task.cancel, prior operation_uncertain/ID önceliği, yavaş root/stat ve final budget regresyonları vardır. Ruff format/lint/strict mypy ve belge/ajan/diff yeniden kontrol edildi; R2 farklı fresh ajanlarla fix commit’i üstünde yapılacak. Current başlığındaki eski “kod başlamadı” ifadesi aynı turda hizalandı; henüz CLI/API çalışıyor iddiası yoktur.
 
-Kullanıcı daha sonra API key’leri yerel hazırlığa girdiğini, account/project ID’lerini bulamadığını bildirdi. Bu ID’ler LLM için gerekli değil; Platform salt okunur keşfinde bulunabilirse açık seçim yapılacak. Yeni hesap/proje yaratımı istenmedi/yapılmadı. Kullanıcı secret değeri sohbet/rapora alınmadı; gerçek live çağrı henüz yoktur.
+Kullanıcı daha sonra API key’leri yerel hazırlığa girdiğini, account/project ID’lerini bulamadığını bildirdi. Bu ID’ler LLM için gerekli değil; Platform salt okunur keşfinde bulunabilirse açık seçim yapılacak. Yeni hesap/proje yaratımı istenmedi/yapılmadı. Hazırlık config/credential/scope dosyalarının yalnız varlık/0600/sahip metadata’sı kontrol edildi; izole state henüz yoktu. Kullanıcı secret değeri sohbet/rapora alınmadı; gerçek live çağrı henüz yoktur.
+
+### Adım 3 — İkinci fresh kod review turu ve kapanış
+
+Head `e4a97b96982fb813e39c55f539dc89ef439ef8d2`; farklı yeni ajanlar `p02_step3_r2_state` ve `p02_step3_r2_contract` R1 düzeltmelerini state/clock/dayanıklılık ve wire/HTTP/kaynak/test boyutlarında inceledi. **Yeni doğrulanmış bulgu yok.** İki ajan bağımsız98 test koşusunu29,46/30,00 s ile geçirdi; Ruff/strict mypy56 kaynak,138 belge/6 skill/16 kart/diff geçti. No-init, mode=rw, hedef/credential/epoch/generation, kilit bırakma ve hata/iptal rezervi tutarlı bulundu. Kod adım 3 kapandı; adım 4 public CLI/Python aynı core’a bağlanır. Canlı kabul ve nihai kaynak/kurulum/performans/PR ayrı kalır.
 
 ## Açık kapı ve sonraki adım
 
