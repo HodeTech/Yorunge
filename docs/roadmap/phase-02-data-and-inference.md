@@ -1,6 +1,6 @@
 # P02 — Veri, katalog ve çıkarım
 
-**Güncellendi:** 2026-10-31. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) kullanıcı yetkisiyle aktif; [P02-0a araştırması](../research/p02-contract-sdk-pilot.md) verified, iki fresh review tamamlandı; ADR-0020 Accepted; P02-0b, P02-0c LLM/P02-0d Platform alt teslimlerine ayrıldı. Bağımsız LLM sözleşme review’si yürütülüyor; ürün ve hesap kabulü henüz yok. P01 [PR #11 / bc9532c](../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) ile development’a teslim edildi. **Yetenekler:** C01/C02 uzak alt küme, C03–C07, C11 okuma, C12/C13 entegrasyon. [Hazırlık review’si](../research/p02-readiness-review.md) kapsam ve kod karşılaştırmasını kaydeder.
+**Güncellendi:** 2026-10-31. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) kullanıcı yetkisiyle aktif; [P02-0a araştırması](../research/p02-contract-sdk-pilot.md) verified, iki fresh review tamamlandı; ADR-0020 Accepted; P02-0b, P02-0c LLM/P02-0d Platform alt teslimlerine ayrıldı. Bağımsız LLM sözleşme review’si kapandı; P02-0c uygulaması başladı, ürün/canlı kabul henüz tamam değil. P01 [PR #11 / bc9532c](../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) ile development’a teslim edildi. **Yetenekler:** C01/C02 uzak alt küme, C03–C07, C11 okuma, C12/C13 entegrasyon. [Hazırlık review’si](../research/p02-readiness-review.md) kapsam ve kod karşılaştırmasını kaydeder.
 
 ## Kullanıcı sonucu ve kapsam
 
@@ -15,7 +15,7 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-0 | Sözleşme ve gerçek hesap bağlamı giriş hattı | P02-0a, P02-0b | Araştırma verified; P02-0b ADR/raw sözleşme/live kabul kapılı | `partial` |
 | P02-0a | Güncel Platform/LLM sözleşmesi, endpoint SDK değerlendirmesi ve pilot planı | P01-2b, P01-3a, P01-5a, P01-5b | [Hazır araştırma kartı](tasks/p02-0a-contract-sdk-pilot.md); B03/B04 çözümü bu araştırmanın çıktısıdır | `verified` |
 | P02-0b | Hesap/organizasyon/proje salt okunur keşfi ve context doğrulama üst teslimi | P02-0c, P02-0d | [Üst kart](tasks/p02-0b-context-discovery.md); hizmet kabulleri bağımsız, bütünü iki kolu gerektirir | `draft` |
-| P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); Accepted ADR/kapalı referans review’si, sonra bağımsız kod; live kabul ayrı | `draft` |
+| P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); iki fresh referans review turu tamam, bağımsız uygulama; live kabul ayrı | `in_progress` |
 | P02-0d | Platform principal/organizasyon/proje keşfi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); key/raw/envelope/pagination açılma kapısı | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b | Güncel içerik/kimlik, güvenli kök, sınırlı tarama ve atomik rapor | `draft` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | P02-2a–c; create/presign/PUT/confirm ve ilk kesinti güvenliği | `draft` |

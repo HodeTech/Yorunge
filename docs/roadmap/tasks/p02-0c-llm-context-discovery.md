@@ -1,14 +1,14 @@
 ---
 id: P02-0c
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
 # P02-0c — Bağımsız LLM context ve terms keşfi
 
-**Tarih:** 2026-10-31. **Durum:** Kapalı sözleşme review’sinde; ardından Platform erişimini beklemeden uygulamaya hazır hale gelir. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
+**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; Platform erişimini beklemeden bağımsız LLM uygulaması başladı. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

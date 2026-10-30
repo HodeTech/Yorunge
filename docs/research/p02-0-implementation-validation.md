@@ -56,6 +56,12 @@ Hazırlık commit’i `497a4b5f7571a474ae5e707f9a2150e7d406ad8f`, taban9e16291. 
 
 Doğrulama: 138 Markdown,6 skill/16 kart,diff geçti; dağıtım contract62 test geçti, değişen verifier Ruff format/lint ve strict mypy geçti. UV wheel’i **sdist’ten** yeniden build etti; iki gerçek arşiv allowlist incelemesini geçti, setup belgesi sdist’te, .local/credentials.json paketlerde yok. Setup örneği syntax + sentetik ağsız dosya hazırlığında0700/0600/no-overwrite ile sınandı; gerçek anahtar okunmadı. Tam ürün takımı/iki temiz runtime kurulumu ve source-bound performans kabulü son ürün kaynağında yapılacak; bu turda yapılmış gösterilmez. Paket/script/test metadata değişikliği eski kaynak bağlı referansları yeni head için geçerli yapmaz; finalde yenilenir. Fix commit’inden sonra farklı fresh ajanlarla R2 yapılır.
 
+### Adım 2 — İkinci fresh review ve kapanış
+
+Fix commit’i `a57b7e9c6ce2809d2b3f4b9a9d6b19ff1b92bdd4` üstünde farklı yeni ajanlar `p02_step2_r2_contract` / `p02_step2_r2_safety` R1 düzeltmelerini, kullanıcı review disposition’larını ve kalan kapıları inceledi; **yeni doğrulanmış bulgu yok**. 138 belge/6 skill/16 kart/diff ve62 dağıtım testi geçti; gerçek arşivler58 wheel/384 sdist üyeyle allowlist incelemesini geçti, setup belgesi kaynakla byte eşleşti. Wheel `6751428d39d9857412f4e3c952cddc9dcc927bb5aaf5056d1f723036511329a1`, sdist `2619032d9b50044606e1f02ff16d5ec39f0fd3f03ce3b096c4d3f52187b9f8de`. İki fresh runtime kurulumunda import kökeni/basic/NDJSON/HTTP/stream/cache/execution/jobs smoke’ları geçti; bu henüz yazılmamış discovery özelliğinin kabulü değildir. Source-bound performans referansları yeni final ürün kaynağında yenilenecek.
+
+Adım2 kapandı; Accepted ADR ve kapalı LLM referansıyla P02-0c uygulamaya başlar. P02-0d Platform ve iki live kabul dış koşulu açık kalır. Ürün kodu öncesi belge/kart/karar kapıları tamamlandı; yeni kullanıcı onayı gerekmez.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. Platform raw/key şeması ve hizmet başına live kabul dış koşulları açık; LLM kodlamasını durdurmaz. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai PR tüm paket kabulü tamamlanınca development hedefiyle açılır.
