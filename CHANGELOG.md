@@ -8,7 +8,7 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-10-31
 
-- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform raw sözleşme kapısı açık kalır. Nihai kaynak ve canlı kabul sürüyor, development teslimi değildir.
+- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform raw sözleşme kapısı açık kalır. LLM ilk canlı terms ve yerel kaynak/iki temiz kurulum/M5 kabulü tamamlandı; Platform ve bütünleşik PR/CI açık, development teslimi değildir.
 
 ### Changed — 2026-10-29
 

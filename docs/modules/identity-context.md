@@ -1,6 +1,6 @@
 # Kimlik ve bağlam modülü
 
-**Durum:** Uygulanıyor — TOML/context, açık env ve kalıcı kimlik/nesil/reset/restore testli; yerel yönetim/doctor testli; P02 çalışma dalında salt okunur LLM terms keşfi CLI/Python yüzeyi review’de; auth/kimlik doğrulaması ve Platform kolu açık. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap keşfi.
+**Durum:** Uygulanıyor — TOML/context, açık env ve kalıcı kimlik/nesil/reset/restore testli; yerel yönetim/doctor testli; P02 çalışma dalında salt okunur LLM terms keşfi CLI/Python yüzeyi yerel verified; auth/kimlik doğrulaması ve Platform kolu açık. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap keşfi.
 
 Profil, hizmet adresi, secret referansı, hesap/organizasyon/proje tercihleri ve bunların doğrulanmasını sahiplenir. Hesap oluşturma, şart kabulü veya uzakta anahtar üretme ilk kapsam değildir.
 

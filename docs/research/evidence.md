@@ -1034,6 +1034,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p01-6-user-review-stream-v2.json.gz`.
 **Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 49790976, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 1.6364617920480669, "extra_rss_lower_bound_bytes": 1261568, "extra_rss_upper_bound_bytes": 1261568, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 51052544, "pretransfer_peak_rss_bytes": 49790976, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 57360384, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.02599691692739725, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 0, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 57360384, "pretransfer_peak_rss_bytes": 57360384, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 49790976, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.39485416701063514, "extra_rss_lower_bound_bytes": 180224, "extra_rss_upper_bound_bytes": 180224, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 49971200, "pretransfer_peak_rss_bytes": 49790976, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "bytes", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 180224, 1261568], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 1261568, "upper_bound_bytes": [0, 180224, 1261568]}, "source_commit": "14d6a9bf26debdd8eee22a3984b51505c874ba6a", "source_unchanged_during_measurement": true}`.
 
+## p02-0-llm-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `94acb18ebc58e63019c0c2fa75c55add9fc8458a44a670b7d0ada484ff43d83a`.
+**Yerel arşiv:** `raw/p02-0-llm-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a"}`.
+
+## p02-0-llm-reference-jobs
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `60a70e0cddf6b7544a66eac95b84eec2068c050742b5424003810c3e7a11cc6f`.
+**Yerel arşiv:** `raw/p02-0-llm-reference-jobs.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 172.38770797848701, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 137.5950421206653, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 116.63170903921127, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 140.4238329268992, "passed": true, "samples": 30}}, "passed": true, "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-0-llm-reference-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `f24239c217eb510444538843fe0e49e9d0678286a0e595d87685577441af0353`.
+**Yerel arşiv:** `raw/p02-0-llm-reference-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 117.95975011773407, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 84.73012503236532, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 34.15016597136855, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 27.91529195383191, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 119.36179199256003, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 87.10941718891263, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 30.81095893867314, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 27.6138330809772, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.

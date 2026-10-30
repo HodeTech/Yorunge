@@ -1,18 +1,18 @@
 ---
 id: P02-0c
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
 # P02-0c — Bağımsız LLM context ve terms keşfi
 
-**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi de iki fresh review turuyla kapandı. İlk yetkili live terms gözlemi geçerli; nihai kaynak/kurulum/performans kabulü sürüyor. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
+**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi de iki fresh review turuyla kapandı. İlk yetkili live terms ve kaynak/iki temiz kurulum/M5 referans kabulü tamamlandı; çalışma dalında yerel verified, development/CI teslimi değil. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; bu çalışma dalında gerçek endpoint/adaptör ve CLI/API eklendi. Nihai kaynak ve canlı kabul henüz kapanmadı.
+Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; bu çalışma dalında gerçek endpoint/adaptör ve CLI/API eklendi. İlk live ve yerel nihai kabul kapandı; üst paket/PR/CI açık.
 
 ## Giren ve girmeyen kapsam
 
@@ -30,7 +30,7 @@ Domain kapalı model ve değişmezler; application tek kullanım senaryosu ve ty
 
 ## Kabul
 
-1. Default/açık state kökü ve eksik/uyumsuz store senaryosu: eksikte state_invalid/2, sıfır env/ağ/yeni dosya; aktif loop/thread/PID/reentrancy ve açık LLM project I/O öncesi invalid_request.
+1. Default/açık state kökü ve eksik/uyumsuz store senaryosu: eksikte state_invalid/2, sıfır env/ağ/yeni dosya; aktif loop veya owned session’da thread/PID/reentrancy ihlali ve açık LLM project I/O öncesi invalid_request.
 2. Gerçek TLS üzerinden tek mantıksal GET, tek service/env snapshot ve Bearer header; timeout/read-only retry≤2, response/total≤1 MiB/30 s; 404→invalid_response,401/403/429 ve yanlış schema/2xx logical failure/duplicate/nonfinite/secret kontrollü hata. Session/body kaynakları kapanır.
 3. terms true/false, strict bool/int64/doc_path sınırları; alan/extra/wrongtype oracle’ları; kısa secret yanlış pozitifliği yok, reflected uzun canary veya tam eşleşen dinamik değer reddedilir.
 4. LLM selected iki alanı null; profile_preference doluysa scope unknown, boşsa not_applicable; provider not_exposed/auth unknown/izin null; terms_not_accepted, auth unknown ve kimlik nedeni ayrı. Farklı host/kök/parametrede kanıtsız verified üretilemez.
@@ -44,4 +44,6 @@ Domain kapalı model ve değişmezler; application tek kullanım senaryosu ve ty
 
 ## Teslim kaydı
 
-Çalışma dalında çekirdek ve public yüzey var; nihai kaynak/kurulum/performans ve canlı kabul tamamlanmadığından kart verified değil. Kullanıcı review düzeltmeleri, kapalı belge review’si, LLM uygulama/test/review ve live kabul sonuçları paket kaydında işlenecek. Yeni alt ID mevcut P02-0b kapsamını bölüyor; kapsam azaltmıyor.
+- PR/commit: [Kaynak kabulü 0e0d2b7](https://github.com/HodeTech/Yorunge/commit/0e0d2b747d23976c46f196b02266a3ba1f6d6d8a). Nihai PR bütün P02-0 sonunda; ayrı alt iş PR’ı yoktur.
+- Sonuç: Çekirdek/public yüzey ve her kod adımının iki fresh review turu tamamlandı. İlk yetkili live terms=false/version1/material=true; auth unknown/provider identity not_exposed/selected null sınırı korundu. Tam ürün takımının 3.567 başarılı/1 platform skip sonucu, değişen kurulum aracının 95 testi, iki temiz kurulum ve kaynak bağlı M5 startup/jobs kapıları [yerel kapanışta](../../research/p02-0-implementation-validation.md#bağımsız-llm-yerel-kabul-kapanışı) kayıtlı.
+- Kalan sınır: Yerel verified alt iş henüz olmayan development PR/CI/merge kabulü değildir. Platform raw/auth/principal/envelope/paging kapısı ve bütünleşik P02-0b/P02-0 kabulü açık; auth/kimlik/izin doğrulaması yoktur. Yeni alt ID mevcut kapsamı bölüyor, azaltmıyor.

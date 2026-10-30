@@ -6375,6 +6375,160 @@
       }
     },
     {
+      "name": "p02-0-llm-installation.json",
+      "archive": "raw/p02-0-llm-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1178,
+      "content_sha256": "94acb18ebc58e63019c0c2fa75c55add9fc8458a44a670b7d0ada484ff43d83a",
+      "archive_bytes": 495,
+      "archive_sha256": "a26f58b4b129ad2fa6c13960eb2adec6cdc348e115f96eaf7ca7c76345e0a133",
+      "summary": {
+        "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-llm-reference-jobs.json",
+      "archive": "raw/p02-0-llm-reference-jobs.json.gz",
+      "original_commit": null,
+      "content_bytes": 127442,
+      "content_sha256": "60a70e0cddf6b7544a66eac95b84eec2068c050742b5424003810c3e7a11cc6f",
+      "archive_bytes": 22445,
+      "archive_sha256": "b91dfb79404858f152420287d80a7774a57a78ccd15a45846b53176566bd85a1",
+      "summary": {
+        "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 116.63170903921127,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 140.4238329268992,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 172.38770797848701,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 137.5950421206653,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p02-0-llm-reference-startup.json",
+      "archive": "raw/p02-0-llm-reference-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 179295,
+      "content_sha256": "f24239c217eb510444538843fe0e49e9d0678286a0e595d87685577441af0353",
+      "archive_bytes": 26630,
+      "archive_sha256": "c4a4e9c81d2c2de6010bed3b08084ad8ac7792e45ec798849771286e97679a81",
+      "summary": {
+        "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 30.81095893867314,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 27.6138330809772,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 87.10941718891263,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 119.36179199256003,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 34.15016597136855,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 27.91529195383191,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 84.73012503236532,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 117.95975011773407,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "startup-ci-control.json",
       "archive": "raw/startup-ci-control.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
