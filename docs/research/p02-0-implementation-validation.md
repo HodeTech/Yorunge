@@ -1,6 +1,6 @@
 # P02-0 uygulama ve review kaydı
 
-**Tarih:** 2026-10-31. **Durum:** P02-0a araştırma kabulü ve iki fresh review turu tamamlandı; P02-0 partial. Adım 2 kullanıcı review/kapalı referans hazırlığı yürütülüyor; ADR-0020 Accepted. Ürün kodu, canlı kabul ve nihai PR yok. Adım 1 içindeki Proposed/onay-bekleme ifadeleri o tarihteki tarihsel durumu anlatır. **Dal/taban:** `feat/p02-0a-sdk-pilot` / development `bc9532c`. [Teslim planı](../roadmap/p02-0-delivery-plan.md) adım/commit ve iki fresh review döngüsünün sahibidir.
+**Tarih:** 2026-10-31. **Durum:** P02-0a araştırma kabulü ve adım 2 kapalı sözleşme review’si tamamlandı; ADR-0020 Accepted, P02-0 partial. LLM çekirdeği adım 3 kod review’sinde; public yüzey/canlı kabul/nihai PR henüz yok. Adım 1 içindeki Proposed/onay-bekleme ifadeleri o tarihteki tarihsel durumu anlatır. **Dal/taban:** `feat/p02-0a-sdk-pilot` / development `bc9532c`. [Teslim planı](../roadmap/p02-0-delivery-plan.md) adım/commit ve iki fresh review döngüsünün sahibidir.
 
 ## Adım 1 — P02-0a araştırma ve karar hazırlığı
 
@@ -69,6 +69,18 @@ Kapalı domain modelleri, typed application state/reader portları ve gerçek GE
 Yeni existing-store-only açma root/lock/DB/key yaratmaz ve migration yapmaz; SQLite URI mode=rw eksik DB’nin yeniden yaratılmasını da engeller. Eski open_store/connect varsayılanı ve test injection imzası korunur. İlk kısa store işleminde tek env snapshot/registry/clock bağı alınır; store kapanır. Gerçek ağ/response/client/Runner cleanup sonrası yeni kısa store işleminde hedef/credential/store/epoch/clock karşılaştırılır; mevcut global expiry frontier ve final zaman kapısı kullanılır. Çağrı içindeki gözlenen UTC gerilemesi iyileşse bile latch’lenip kalıcı generation geçersizleştirmesine girer.
 
 İlk kaynak doğrulaması: **89 test / 24,79 s** yeni domain/gerçek TLS/SQLite kümesinde geçti. Eksik/boş/eski store’da sıfır env/ağ/init; explicit/default kök; literal Unicode/?/# URI yolları; strict bozuk/extra/oversize/secret cevap;401/403/404/429 ve retry; yavaş header/deadline; cleanup-before-final; farklı süreç credential/reset/generation yarışı; UTC rollback/recovery; wrong-service snapshot sıfır HTTP kabulü vardır. Mevcut state/identity/maintenance/cache/session regresyon kümesi **352 test / 106,62 s** geçti. Ruff format/lint, strict mypy56 kaynak,138 belge/6 skill/16 kart ve diff kontrolü geçti. Tam takım/build/kurulum ve source-bound ölçümler yeni public yüzey/final kaynakta yapılacak; canlı hesap hâlâ hazırlanmadı. Commit sonrası iki fresh review turu aşağıya kaydedilecek; adım 3 henüz review kapanmış sayılmaz.
+
+### Adım 3 — Birinci fresh kod review turu
+
+Head `acda47beb904949cdcbdcf7da20932f340acb088`; yeni ajanlar `p02_step3_r1_state` ve `p02_step3_r1_contract` state/dayanıklılık ve wire/HTTP/test boyutlarını inceledi. İki P2/bir P3 doğrulandı ve düzeltildi:
+
+- Hata/iptal/cleanup yolunda snapshot’ın son clock/frontier denetimi atlanıyordu. Aynı toplam deadline içinde final reserve eklendi; reader kapandıktan sonra başarısız yol da final denetimi yapar. Beklenen invalidation state_changed’i primary read/control/exit5 belirsizliğini ezmez; yeni env/request yoktur.
+- Mevcut-store-only deadline kök çözümlemesi/lstat sonrasında başlıyordu. Başlangıç kök/metadata denetiminden önceye alındı; kontrol geri döndüğünde ve secret/DB aşamaları öncesinde checkpoint eklendi.
+- Ortak cache’in final5 s bütçe kodu capability_expired discovery’ye sızıyordu; state_busy’ye eşlendi. Clock nesli/anomaly state_changed kalır.
+
+Fix kaynakta **98 hedefli test / 28,89 s** geçti; yeni HTTP404/bozuk schema/timeout ile rollback, cleanup failure, gerçek task.cancel, prior operation_uncertain/ID önceliği, yavaş root/stat ve final budget regresyonları vardır. Ruff format/lint/strict mypy ve belge/ajan/diff yeniden kontrol edildi; R2 farklı fresh ajanlarla fix commit’i üstünde yapılacak. Current başlığındaki eski “kod başlamadı” ifadesi aynı turda hizalandı; henüz CLI/API çalışıyor iddiası yoktur.
+
+Kullanıcı daha sonra API key’leri yerel hazırlığa girdiğini, account/project ID’lerini bulamadığını bildirdi. Bu ID’ler LLM için gerekli değil; Platform salt okunur keşfinde bulunabilirse açık seçim yapılacak. Yeni hesap/proje yaratımı istenmedi/yapılmadı. Kullanıcı secret değeri sohbet/rapora alınmadı; gerçek live çağrı henüz yoktur.
 
 ## Açık kapı ve sonraki adım
 

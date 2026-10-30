@@ -36,7 +36,9 @@ class StateDiscovery:
         with open_existing_store(self.state_dir, timeout=seconds) as store:
             # Validate the existing store before resolving any secret reference.
             context, profile = self.context_loader()
+            store.deadline.remaining()
             credential = resolve_credential(profile, "evren-llm", self.secret_reader)
+            store.deadline.remaining()
             remaining(deadline, self.clock)
             identity = bind_credential(context, credential, StateCredentialRegistry(store)).identity
             cache = StateCache(store, self.clock, bindings=(identity,), budget_seconds=seconds)
@@ -66,6 +68,14 @@ class StateDiscovery:
             )
 
     def finish(self, snapshot: DiscoverySnapshot, *, deadline: float) -> str:
+        try:
+            return self._finish(snapshot, deadline=deadline)
+        except YorungeError as error:
+            if error.code == "capability_expired":
+                raise YorungeError("state_busy") from None
+            raise
+
+    def _finish(self, snapshot: DiscoverySnapshot, *, deadline: float) -> str:
         seconds = min(5.0, remaining(deadline, self.clock))
         with open_existing_store(self.state_dir, timeout=seconds) as store:
             binding = snapshot.binding

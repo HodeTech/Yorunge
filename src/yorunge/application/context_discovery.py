@@ -91,18 +91,47 @@ def remaining(deadline: float, clock: DiscoveryClock) -> float:
     return value
 
 
+def _finish_failure(
+    state: DiscoveryState,
+    snapshot: DiscoverySnapshot,
+    deadline: float,
+    primary: BaseException,
+) -> None:
+    try:
+        state.finish(snapshot, deadline=deadline)
+    except YorungeError as error:
+        # A changed binding is expected after persisting a witnessed clock rollback.
+        # Preserve cancellation/control flow and any pre-existing operation uncertainty.
+        if (
+            error.code == "state_changed"
+            or not isinstance(primary, Exception)
+            or (isinstance(primary, YorungeError) and primary.exit_code == 5)
+        ):
+            return
+        # A failed local durability/budget gate outranks an ordinary read failure.
+        raise
+
+
 def discover_context(
     state: DiscoveryState, reader: TermsReader, clock: DiscoveryClock, *, deadline: float
 ) -> ContextDiscovery:
     """No caller evidence or permission input; an observation never enables execution."""
-    remaining(deadline, clock)
+    available = remaining(deadline, clock)
+    # Reserve final-store/clock cleanup within the same total, including failure paths.
+    network_deadline = deadline - min(5.0, available / 3)
     started = timestamp(clock.now())
     # Entering the owner rejects event-loop/thread/PID misuse before capture reads env/state.
-    with reader:
-        remaining(deadline, clock)
-        snapshot = state.capture(deadline=deadline)
-        reply = reader.observe(snapshot, deadline=deadline)
-        remaining(deadline, clock)
+    snapshot: DiscoverySnapshot | None = None
+    try:
+        with reader:
+            remaining(deadline, clock)
+            snapshot = state.capture(deadline=deadline)
+            reply = reader.observe(snapshot, deadline=network_deadline)
+            remaining(network_deadline, clock)
+    except BaseException as primary:
+        if snapshot is not None:
+            _finish_failure(state, snapshot, deadline, primary)
+        raise
     # Close the response/client/Runner before the final store/credential/clock check.
     observed_until = timestamp(clock.now())
     validated_at = state.finish(snapshot, deadline=deadline)

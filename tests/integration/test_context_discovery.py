@@ -8,12 +8,13 @@ import sys
 import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
 from tests.fixtures.http_server import Reply, TlsServer, certificate, loopback_sockets
 from yorunge import api
-from yorunge.adapters.capability_cache import SystemClock
+from yorunge.adapters.capability_cache import StateCache, SystemClock
 from yorunge.adapters.context_state import StateDiscovery
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
@@ -21,7 +22,7 @@ from yorunge.adapters.llm_context import LlmTermsReader
 from yorunge.adapters.state import DB_NAME, open_existing_store, open_store
 from yorunge.application.context_discovery import ObservationClock, discover_context
 from yorunge.domain.credentials import EnvReference, ResolvedCredential, SecretValue
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Context, Profile
 
 CONNECT = socket.socket.connect
@@ -436,3 +437,193 @@ def test_wrong_service_snapshot_is_rejected_before_any_http_request(tmp_path, ce
                 reader.observe(wrong, deadline=time.monotonic() + 3)
     assert failure.value.code == "invalid_service_target"
     assert server.requests == []
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        (Reply(status=404), "invalid_response"),
+        (Reply(body=b"{}"), "invalid_response"),
+        (Reply(body=GOOD, header_delay=1.2), "transport_timeout"),
+    ],
+)
+def test_failure_path_keeps_observed_rollback_durable_and_preserves_read_error(
+    tmp_path, certificates, reply, expected
+):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+
+    class Clock(SystemClock):
+        offset = timedelta()
+
+        def now(self):
+            return datetime.now(UTC) + self.offset
+
+    source = Clock()
+    clock = ObservationClock(source)
+    inner = state(root, clock)
+
+    class RollbackAfterCapture:
+        def capture(self, *, deadline):
+            snapshot = inner.capture(deadline=deadline)
+            source.offset = -timedelta(hours=1)
+            return snapshot
+
+        def finish(self, snapshot, *, deadline):
+            return inner.finish(snapshot, deadline=deadline)
+
+    secrets_before = []
+    with TlsServer(certificates, {"/v1/terms/status": reply}) as server:
+        session = HttpSession(
+            transport_factory=lambda: HttpxTransport(transport=server.transport())
+        )
+        with pytest.raises(YorungeError) as failure:
+            discover_context(
+                RollbackAfterCapture(),
+                LlmTermsReader(clock, session=session),
+                clock,
+                deadline=time.monotonic() + 1.5,
+            )
+        secrets_before.append(inner.secret_reader.calls)
+    assert failure.value.code == expected
+    assert len(server.requests) == 1
+    assert secrets_before == [1]
+    with sqlite3.connect(root / DB_NAME) as connection:
+        assert connection.execute(
+            "SELECT clock_generation,anomaly_active FROM cache_clock"
+        ).fetchone() == (2, 1)
+
+
+def test_reader_cleanup_failure_also_settles_observed_clock(tmp_path, certificates):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    clock = ObservationClock(SystemClock())
+
+    class ClosingReader(LlmTermsReader):
+        def __exit__(self, *args):
+            super().__exit__(*args)
+            clock.highest = clock.now() + timedelta(hours=1)
+            clock.now()
+            raise YorungeError("transport_failed")
+
+    with TlsServer(certificates, {"/v1/terms/status": Reply(body=GOOD)}) as server:
+        session = HttpSession(
+            transport_factory=lambda: HttpxTransport(transport=server.transport())
+        )
+        with pytest.raises(YorungeError) as failure:
+            discover_context(
+                state(root, clock),
+                ClosingReader(clock, session=session),
+                clock,
+                deadline=time.monotonic() + 3,
+            )
+    assert failure.value.code == "transport_failed"
+    assert session._runner is None
+    assert len(server.requests) == 1
+    with sqlite3.connect(root / DB_NAME) as connection:
+        assert connection.execute("SELECT clock_generation FROM cache_clock").fetchone() == (2,)
+
+
+def test_task_cancellation_is_reraised_after_clock_finalization(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    clock = ObservationClock(SystemClock())
+
+    async def cancel(transport, snapshot, deadline):
+        clock.highest = clock.now() + timedelta(hours=1)
+        clock.now()
+        asyncio.current_task().cancel()
+        await asyncio.sleep(0)
+
+    monkeypatch.setattr(LlmTermsReader, "_read", staticmethod(cancel))
+    reader = LlmTermsReader(clock)
+    with pytest.raises(asyncio.CancelledError):
+        discover_context(state(root, clock), reader, clock, deadline=time.monotonic() + 3)
+    assert reader.session._runner is None
+    with sqlite3.connect(root / DB_NAME) as connection:
+        assert connection.execute("SELECT clock_generation FROM cache_clock").fetchone() == (2,)
+
+
+def test_prior_operation_uncertainty_survives_a_secondary_final_gate_error(tmp_path):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    clock = ObservationClock(SystemClock())
+    inner = state(root, clock)
+    identifier = "44444444-4444-4444-8444-444444444444"
+    original = OperationError("operation_uncertain", identifier)
+
+    class FailingFinalGate:
+        def capture(self, *, deadline):
+            return inner.capture(deadline=deadline)
+
+        def finish(self, snapshot, *, deadline):
+            raise YorungeError("state_write_failed")
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def observe(self, snapshot, *, deadline):
+            raise original
+
+    with pytest.raises(OperationError) as failure:
+        discover_context(FailingFinalGate(), Reader(), clock, deadline=time.monotonic() + 3)
+    assert failure.value is original
+    assert failure.value.operation_id == identifier
+
+
+@pytest.mark.parametrize("part", ["root", "stat"])
+def test_existing_store_budget_includes_root_resolution_and_metadata(tmp_path, monkeypatch, part):
+    from yorunge.adapters import state as storage
+
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    original_root, original_stat = storage.state_directory, Path.lstat
+
+    def delayed_root(path):
+        time.sleep(0.08)
+        return original_root(path)
+
+    def delayed_stat(path, *args, **kwargs):
+        if path == root:
+            time.sleep(0.08)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(
+        storage, "state_directory", delayed_root if part == "root" else original_root
+    )
+    if part == "stat":
+        monkeypatch.setattr(Path, "lstat", delayed_stat)
+    with pytest.raises(YorungeError) as failure:
+        with open_existing_store(root, timeout=0.03):
+            pytest.fail("expired root lookup must not open a successful store")
+    assert failure.value.code == "state_busy"
+
+
+def test_final_cache_budget_maps_to_discovery_state_busy(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+
+    class Clock(SystemClock):
+        shift = 0
+
+        def monotonic(self):
+            return time.monotonic() + self.shift
+
+    source = Clock()
+    clock = ObservationClock(source)
+    registry = state(root, clock)
+    snapshot = registry.capture(deadline=clock.monotonic() + 20)
+    original = StateCache._same
+
+    def exhaust(cache, *args):
+        source.shift = 6
+        return original(cache, *args)
+
+    monkeypatch.setattr(StateCache, "_same", exhaust)
+    with pytest.raises(YorungeError) as failure:
+        registry.finish(snapshot, deadline=clock.monotonic() + 20)
+    assert failure.value.code == "state_busy"

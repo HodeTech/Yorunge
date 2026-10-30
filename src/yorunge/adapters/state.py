@@ -597,16 +597,18 @@ def verified_connection(
 @contextmanager
 def open_existing_store(path: Path | None = None, *, timeout: float = 5.0) -> Iterator[Store]:
     """Discovery never creates a root/lock/database/key or upgrades an older store."""
+    deadline = Deadline(min(5.0, timeout))
     root = state_directory(path)
+    deadline.remaining()
     try:
         info = root.lstat()
+        deadline.remaining()
         if (
             not stat.S_ISDIR(info.st_mode)
             or info.st_uid != os.getuid()
             or stat.S_IMODE(info.st_mode) != 0o700
         ):
             raise YorungeError("state_invalid")
-        deadline = Deadline(min(5.0, timeout))
         with file_lock(root / LOCK_NAME, deadline, exclusive=False, create=False):
             require_no_intent(root)
             with verified_connection(
@@ -614,6 +616,7 @@ def open_existing_store(path: Path | None = None, *, timeout: float = 5.0) -> It
             ) as (connection, version):
                 if version != len(schema.MIGRATIONS):
                     raise YorungeError("state_invalid")
+                deadline.remaining()
                 yield Store(root, connection, deadline, schema.MIGRATIONS)
     except FileNotFoundError:
         raise YorungeError("state_invalid") from None
