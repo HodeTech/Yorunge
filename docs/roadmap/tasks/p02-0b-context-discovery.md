@@ -32,7 +32,7 @@ Domain/application tipli keşif ve doğrulama sonucunu sahiplenir; somut endpoin
 
 ## Kabul
 
-1. Her hizmetin raw minimum schema/header/envelope ve liste tamlığı kanıta bağlıdır. Platform principal/account/org anlamı belirsizken seçili account doğrulanmış gösterilmez. LLM exposed olmayan kimliği null/not_exposed, seçili tercihi unverified gösterir; model owner veya key hash’i hesap olmaz.
+1. Her hizmetin raw minimum schema/header/envelope ve liste tamlığı kanıta bağlıdır. API-key auth sözleşmesi yoksa aynı endpoint/parametrelerde strict pozitif cevap + yetkili ayrı invalid-key kontrolünde401/403 zorunludur; pozitif2xx tek başına auth bağı kurmaz. Platform principal/account/org anlamı belirsizken seçili account doğrulanmış gösterilmez. LLM exposed olmayan kimliği null/not_exposed, seçili tercihi unverified gösterir; model owner veya key hash’i hesap olmaz.
 2. Explicit CLI/Python aynı kullanım senaryosunda seçilen hedef+credential ID/revision ve seçili scope’u korur. Local help/context/doctor ağ/sır/DB açmaz. Env bir kez okunur; wrong-service/fallback/browser token yoktur.
 3. Gerçek TLS fixture’da 401/403/429, malformed/duplicate/nonfinite/2xx logical error, redirect/cookie/proxy/reflected secret ve geç/oversize yanıtlar kontrollü sonuç verir; API/raw provider exception/PII sızmaz. Kısa secret ve sabit mesaj çakışması P01 kuralıyla sınanır.
 4. Çok/boş proje, explicit seçim, wrong-parent/absent ID, duplicate/page-loop/incomplete/128 satır/boyut sınırı bağımsız fixture ile sınanır. İlk UUID seçilmez; incomplete listede not_found/unsupported uydurulmaz. Salt görünürlük yazma izni üretmez.

@@ -25,7 +25,7 @@ Yeni kapalı referans, uygulamadan önce şu alan gruplarını kesin tür/sını
 
 | İddia | Gerekli kanıt | Kanıt yoksa |
 |---|---|---|
-| Endpoint erişimi | Bu hizmet/key bağında auth isteyen endpoint’in strict geçerli cevabı ve doğrulanmış auth sözleşmesi | 2xx tek başına `verified` değil; endpoint/auth bağı `unknown` |
+| Endpoint erişimi | Bu hizmet/key bağında auth isteyen endpoint’in strict geçerli cevabı ve doğrulanmış auth sözleşmesi; sözleşme yoksa aşağıdaki zorunlu pilot kontrolü | 2xx tek başına `verified` değil; endpoint/auth bağı `unknown` |
 | Provider principal/account | O endpoint’in tanımlı principal/account alanı ve anlamı | null + `not_exposed` veya `unverified`; model owner veya seçilen ID kopyalanmaz |
 | Organizasyon/proje listesi | Kapalı endpoint şeması ve açık pagination/tamlık | Eksik/overflow listeyi tam gösterme yok; ilk öğe varsayılan değil |
 | Seçili proje eşliği | Açık çağrı → profil tercihi; aynı hizmette tam liste veya doğrudan detail ile ID/parent eşliği | `selection_required`, `unverified` veya `mismatch`; yanlış hedefe sessiz geçiş yok |
@@ -41,6 +41,8 @@ LLM’de provider account/project introspection yokken bu alanlar null/`not_expo
 - LLM ilk aday GET’i `terms/status`; tek header `Authorization: Bearer <seçilen LLM key>`. Bu biçim resmî istemci örneği/S kaynağıyla desteklidir; `accepted=false` otomatik şart kabulü üretmez. doc_path, URL veya terms text başka hedeften otomatik takip edilmez.
 - GET model/kota keşfi P02-4a/P02-6b’nin işidir; yalnız kimlik doğruluyor görünmek için toplu endpoint taraması yapılmaz. Inference, export hazırlama, upload, terms accept, key üretme, silme veya kaynak rezervasyonu whitelist’e girmez.
 - Hedef binding v1, HTTPS/443, TLS, redirectsiz istek, cookie/env/log/secret izolasyonu aynen kalır. P02 storage/signed URL sınırı bu kararla açılmaz. Endpoint ID’leri alan sözdizimiyle doğrulanır; path/authority/query parçası olarak key veya ham provider URL’si kullanılmaz.
+
+Auth sözleşmesi yokken pozitif canlı cevap tek başına kapıyı kapatmaz. Önceden yetkilendirilmiş, ayrı bounded contract pilotu aynı endpoint/parametrelerde geçerli key ile strict geçerli yanıt ve tek **invalid-key** kontrolünde401/403 reddi arar; ikisi de2xx ise public/default sonuç ihtimali giderilmemiştir, auth unknown kalır. Teyit edilen raw minimum schema/principal anlamı ayrıca kaydedilir; negatif kontrol principal ID veya yazma izni üretmez. Negatif kontrol yalnız pilotta, ayrı istek/bütçe izniyle, retry0 ve registry’ye dummy key yazmadan yapılır; normal discovery’ye otomatik negatif istek eklenmez. Bu kontrol yetkili endpoint sözleşmesi varsa zorunlu değildir; yalnız auth kapısını kanıtsız pozitif gözleme bağlamayı önler. Pilotun toplam5 GET/9 attempt sınırı normal discovery’nin4 GET/8 attempt sınırını değiştirmez.
 
 ### Deadline, kaynak ve yarışlar
 
