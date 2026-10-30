@@ -1,6 +1,6 @@
 # ADR-0019: Başlangıç performansının sabit referans ortamda kabulü
 
-**Durum:** Accepted — 2026-10-30 kullanıcı yetkisi; iki P2 belge düzeltmesi, üç uygulama adımı, Sonar bakımı, fresh referanslar ve gerçek CI kabulü [kapanış kaydında](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b.
+**Durum:** Accepted — 2026-10-30 kullanıcı yetkisi; iki P2 belge düzeltmesi, üç uygulama adımı, Sonar bakımı, fresh referanslar ve gerçek CI kabulü [kapanış kaydında](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b.
 
 ## Bağlam
 

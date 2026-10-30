@@ -1,6 +1,6 @@
 # Performans ve optimizasyon standardı
 
-**Durum:** ADR-0019 Accepted; kaynak bağlı M5 startup/jobs, strict Linux tanısı, kalıcı saklama ve gerçek CI [son kaynak kapanışında](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-30. Önceki başarısız ve farklı kaynak kabulleri tarihsel olarak korunur. M5 başarısı Linux 200 ms veya bütün host’larda fiziksel duvar saati garantisi değildir; raw/hash kabulü EVREN uç aktarımı değildir.
+**Durum:** ADR-0019 Accepted; kaynak bağlı M5 startup/jobs, strict Linux tanısı, kalıcı saklama ve gerçek CI [son kaynak kapanışında](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-30. Önceki başarısız ve farklı kaynak kabulleri tarihsel olarak korunur. M5 başarısı Linux 200 ms veya bütün host’larda fiziksel duvar saati garantisi değildir; raw/hash kabulü EVREN uç aktarımı değildir.
 
 Performans; kullanıcı bekleme süresi, tepe bellek, ağ/disk işi ve API/kota tüketimiyle ölçülür. Daha az satır kod veya daha çok paralel iş tek başına iyileşme sayılmaz.
 

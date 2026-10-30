@@ -1,6 +1,6 @@
 # P01 kalan işler — Taşıma, akış ve faz kapanışı
 
-**Durum:** ADR-0017/0018/0019 Accepted; P01-5a/b ve P01-6b çalışma dalında verified. İlk altı adım, kullanıcı review düzeltmeleri, ADR-0019 üç adımı ve Sonar bakımı commit/iki fresh review döngüleriyle tamamlandı; [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). Tek PR #11 kullanıcı review/merge bekler. Son belge/merge artifact saklama takibi kalır. **Tarih:** 2026-10-30. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; P01-4 kapanışı korunur.
+**Durum:** ADR-0017/0018/0019 Accepted; P01-5a/b ve P01-6b çalışma dalında verified. İlk altı adım, kullanıcı review düzeltmeleri, ADR-0019 üç adımı ve Sonar bakımı commit/iki fresh review döngüleriyle tamamlandı; [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı). Tek PR #11 kullanıcı review/merge bekler. Son belge/merge artifact saklama takibi kalır. **Tarih:** 2026-10-30. **Dal:** feat/p01-5-transport. **Taban:** development 805f8bd; P01-4 kapanışı korunur.
 
 ## Paket sınırı
 

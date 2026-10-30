@@ -1861,6 +1861,347 @@
       }
     },
     {
+      "name": "p01-6-adr19-initial-runtime-ci-checkpoint.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-checkpoint.json.gz",
+      "original_commit": null,
+      "content_bytes": 13158,
+      "content_sha256": "9cbeca0c711a3d729e5174f9e86f91f99c4bf6ff544285f42f2ec95d0a44658f",
+      "archive_bytes": 2568,
+      "archive_sha256": "96140bc0f87688e021d1f543fdaeb8035d8ce3697ec32cd0ec10cdd70e36625c",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "source_acceptance_passed"
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-linux311-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2858,
+      "content_sha256": "e1d559aeba8b69e2dd49ae1dd870d9439ea59843d0b4f10c745ce1f790110c32",
+      "archive_bytes": 1114,
+      "archive_sha256": "d1bde8144c9c643b69186b60807f735aec3cb19063f3053d30951961e2607991",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-linux314-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2808,
+      "content_sha256": "611b8ca0852a9722e3cb79fc7f00af9f3c911b83b7145dcebca8384ced756269",
+      "archive_bytes": 1071,
+      "archive_sha256": "5721075ccc92e59d1f36348bbf3810f8a9d63847f56c2b0b2d3aa0cc086fb352",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-macos311-installation.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 2784,
+      "content_sha256": "7fff3c1d3ee12b285c0bd2915bd56973c79c63f3341aad36b05b7ed5cc3890b7",
+      "archive_bytes": 1080,
+      "archive_sha256": "cd96b344a26a13530d6a714b0b0ac6f00197857bfaa48986dac51bd8182565da",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-startup-baseline-selection.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-startup-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "c68a3fdb349e65ea9e98d1703fcc50063b3ed01ced6f3d6771f3dc362b2f9204",
+      "archive_bytes": 246,
+      "archive_sha256": "3984d0a292b1375cc99b6d573ca89a5a52d9b0bfadd28cf2d5572e0872af44e2",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "effective_baseline_commit": "805f8bd418847da6463408404a85675bdcb4173e",
+        "report_sha256": "e50b55257be5167539d7399502ebbb1d68058730bdb58f66989858a1cbec9239",
+        "complete": true
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-startup-diagnostic.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-startup-diagnostic.json.gz",
+      "original_commit": null,
+      "content_bytes": 782,
+      "content_sha256": "0d0646f041304862348977eb9b5921d6a85b7cd082963ebd66a1f35b00f47ad7",
+      "archive_bytes": 436,
+      "archive_sha256": "f3bbedddb096912ef3ffac438713cf1830cc035cbe222f397d35958fd06134eb",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/40975685731",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 36.463140000023486,
+          "candidate/version": 36.67756599998029,
+          "candidate/context": 163.57260899997073,
+          "candidate/cache": 205.28789400009373,
+          "baseline/help": 34.95000999998865,
+          "baseline/version": 33.943129000022054,
+          "baseline/context": 163.3830980000539,
+          "baseline/cache": 207.47257100003935
+        },
+        "report_sha256": "e50b55257be5167539d7399502ebbb1d68058730bdb58f66989858a1cbec9239"
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-startup.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 160313,
+      "content_sha256": "e50b55257be5167539d7399502ebbb1d68058730bdb58f66989858a1cbec9239",
+      "archive_bytes": 28072,
+      "archive_sha256": "72e3c2ab1d4abbf9a127da1af26a657181a5870146d0d99a0a1d535ad26e4e4e",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 36.463140000023486,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 36.67756599998029,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 163.57260899997073,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 205.28789400009373,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 34.95000999998865,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 33.943129000022054,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 163.3830980000539,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 207.47257100003935,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p01-6-adr19-initial-runtime-ci-stream-v2.json",
+      "archive": "raw/p01-6-adr19-initial-runtime-ci-stream-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 48886,
+      "content_sha256": "b4944dad592419fb14caa386ca7efe208a7e67a76ed093dd4137ac627407d9d0",
+      "archive_bytes": 6345,
+      "archive_sha256": "2cd08a86f36402833fe58ce1433622585e016bf264512c2dff65fc63a0d9fc21",
+      "summary": {
+        "source_commit": "a7560ef72cf340027e8a7ccc943b9bede3025ec2",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            81920,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 52080640,
+            "pretransfer_peak_rss_bytes": 52162560,
+            "peak_rss_bytes": 52162560,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 81920,
+            "elapsed_seconds": 0.07354297200004112,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 46256128,
+            "pretransfer_peak_rss_bytes": 46256128,
+            "peak_rss_bytes": 46911488,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 1.093589824999981,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 46125056,
+            "pretransfer_peak_rss_bytes": 46125056,
+            "peak_rss_bytes": 46780416,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 4.3838391880000245,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p01-6-adr19-initial-runtime-installation.json",
       "archive": "raw/p01-6-adr19-initial-runtime-installation.json.gz",
       "original_commit": null,
