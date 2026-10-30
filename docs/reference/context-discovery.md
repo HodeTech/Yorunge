@@ -1,6 +1,6 @@
 # ContextDiscovery v1 sözleşmesi
 
-**Tarih:** 2026-10-31. **Durum:** [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) uygulama öncesi kapalı referansı. LLM terms kolunun wire’ı aşağıda kesinleştirildi; ürün uygulaması henüz başlamadı. Platform raw kimlik/envelope/pagination/key kabulü açık; bu belgede tanımlanmamış Platform yanıtı generic dict ile dışarı verilmez. [Paket ve hizmet kartları](../roadmap/p02-0-delivery-plan.md) uygulama/canlı kabul durumunun sahibidir.
+**Tarih:** 2026-10-31. **Durum:** [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) kapalı referansı. LLM terms domain/application/HTTP/SQLite çekirdeği uygulanıp hedefli test edildi; adım 3 bağımsız review’sinde, public CLI/Python yüzeyi henüz eklenmedi. Platform raw kimlik/envelope/pagination/key kabulü açık; bu belgede tanımlanmamış Platform yanıtı generic dict ile dışarı verilmez. [Paket ve hizmet kartları](../roadmap/p02-0-delivery-plan.md) uygulama/canlı kabul durumunun sahibidir.
 
 ## Giriş ve state
 

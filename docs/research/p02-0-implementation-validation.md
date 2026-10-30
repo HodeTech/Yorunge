@@ -62,6 +62,14 @@ Fix commit’i `a57b7e9c6ce2809d2b3f4b9a9d6b19ff1b92bdd4` üstünde farklı yeni
 
 Adım2 kapandı; Accepted ADR ve kapalı LLM referansıyla P02-0c uygulamaya başlar. P02-0d Platform ve iki live kabul dış koşulu açık kalır. Ürün kodu öncesi belge/kart/karar kapıları tamamlandı; yeni kullanıcı onayı gerekmez.
 
+## Adım 3 — LLM çekirdeği ve gerçek kaynak sınırları
+
+Kapalı domain modelleri, typed application state/reader portları ve gerçek GET terms/status adaptörü ortak HttpSession/HTTPX taşımasını kullanır. Raw dört alanlı strict/secret denetimli yanıt public terms üç alanına dönüştürülür; doc_path atılır, seçilmiş LLM account/project null ve auth/kimlik/izin unverified kalır. Yeni public backend/fixture seçeneği yoktur. CLI/Python public composition sonraki adımda gelir.
+
+Yeni existing-store-only açma root/lock/DB/key yaratmaz ve migration yapmaz; SQLite URI mode=rw eksik DB’nin yeniden yaratılmasını da engeller. Eski open_store/connect varsayılanı ve test injection imzası korunur. İlk kısa store işleminde tek env snapshot/registry/clock bağı alınır; store kapanır. Gerçek ağ/response/client/Runner cleanup sonrası yeni kısa store işleminde hedef/credential/store/epoch/clock karşılaştırılır; mevcut global expiry frontier ve final zaman kapısı kullanılır. Çağrı içindeki gözlenen UTC gerilemesi iyileşse bile latch’lenip kalıcı generation geçersizleştirmesine girer.
+
+İlk kaynak doğrulaması: **89 test / 24,79 s** yeni domain/gerçek TLS/SQLite kümesinde geçti. Eksik/boş/eski store’da sıfır env/ağ/init; explicit/default kök; literal Unicode/?/# URI yolları; strict bozuk/extra/oversize/secret cevap;401/403/404/429 ve retry; yavaş header/deadline; cleanup-before-final; farklı süreç credential/reset/generation yarışı; UTC rollback/recovery; wrong-service snapshot sıfır HTTP kabulü vardır. Mevcut state/identity/maintenance/cache/session regresyon kümesi **352 test / 106,62 s** geçti. Ruff format/lint, strict mypy56 kaynak,138 belge/6 skill/16 kart ve diff kontrolü geçti. Tam takım/build/kurulum ve source-bound ölçümler yeni public yüzey/final kaynakta yapılacak; canlı hesap hâlâ hazırlanmadı. Commit sonrası iki fresh review turu aşağıya kaydedilecek; adım 3 henüz review kapanmış sayılmaz.
+
 ## Açık kapı ve sonraki adım
 
 [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) onay kapısı kapandı; [LLM referansı](../reference/context-discovery.md) bağımsız uygulamayı tarif eder. Platform raw/key şeması ve hizmet başına live kabul dış koşulları açık; LLM kodlamasını durdurmaz. P02-0a araştırması P02-0b veya P02-0 bütününü tamamlanmış yapmaz. Ayrı belge PR’ı açılmaz; nihai PR tüm paket kabulü tamamlanınca development hedefiyle açılır.

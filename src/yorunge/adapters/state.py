@@ -122,8 +122,13 @@ def _state_directory(path: Path | None) -> Path:
     return Path(os.path.normpath(chosen))
 
 
-def connect(path: Path, deadline: Deadline) -> sqlite3.Connection:
-    connection = sqlite3.connect(path, isolation_level=None, timeout=min(1.0, deadline.remaining()))
+def connect(path: Path, deadline: Deadline, *, existing_only: bool = False) -> sqlite3.Connection:
+    connection = sqlite3.connect(
+        path.as_uri() + "?mode=rw" if existing_only else path,
+        uri=existing_only,
+        isolation_level=None,
+        timeout=min(1.0, deadline.remaining()),
+    )
     connection.set_progress_handler(lambda: int(time.monotonic() >= deadline.end), 1000)
     try:
         if connection.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
@@ -572,9 +577,14 @@ def verified_connection(
     migrations: tuple[schema.Migration, ...],
     *,
     check_key: bool,
+    existing_only: bool = False,
 ) -> Iterator[tuple[sqlite3.Connection, int]]:
     check_header(root / DB_NAME)
-    connection = connect(root / DB_NAME, deadline)
+    connection = (
+        connect(root / DB_NAME, deadline, existing_only=True)
+        if existing_only
+        else connect(root / DB_NAME, deadline)
+    )
     try:
         version, value = validate(connection, migrations, full=False)
         if check_key:
@@ -582,6 +592,35 @@ def verified_connection(
         yield connection, version
     finally:
         connection.close()
+
+
+@contextmanager
+def open_existing_store(path: Path | None = None, *, timeout: float = 5.0) -> Iterator[Store]:
+    """Discovery never creates a root/lock/database/key or upgrades an older store."""
+    root = state_directory(path)
+    try:
+        info = root.lstat()
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o700
+        ):
+            raise YorungeError("state_invalid")
+        deadline = Deadline(min(5.0, timeout))
+        with file_lock(root / LOCK_NAME, deadline, exclusive=False, create=False):
+            require_no_intent(root)
+            with verified_connection(
+                root, deadline, schema.MIGRATIONS, check_key=True, existing_only=True
+            ) as (connection, version):
+                if version != len(schema.MIGRATIONS):
+                    raise YorungeError("state_invalid")
+                yield Store(root, connection, deadline, schema.MIGRATIONS)
+    except FileNotFoundError:
+        raise YorungeError("state_invalid") from None
+    except OSError:
+        raise YorungeError("state_write_failed") from None
+    except sqlite3.Error as error:
+        raise YorungeError(sqlite_error_code(error)) from None
 
 
 @contextmanager
