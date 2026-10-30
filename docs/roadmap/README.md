@@ -6,13 +6,13 @@
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
 | [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
-| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | Planlandı; dış sözleşme kapılı | Eğitim bağımlılığı yok |
+| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | Başlangıç hazır; P02-0a araştırma kartı ready, ürün kodu yok | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
 
 ## Hazır iş paketi
 
-Faz satırı bir epiktir; tek seferde bütün faz uygulanmaz. Anlamlı yeni uygulama için tek gözden geçirilebilir kullanıcı sonucunu [iş kartı şablonuyla](task-template.md) daralt. Aktif/yakın kartlar [tasks indeksinde](tasks/README.md) tutulur. Rutin yazım/bağlantı düzeltmesi yeni kart veya ADR gerektirmez. Henüz ayrıntılandırılmamış gelecek işler için boş dosyalar oluşturulmaz.
+Faz tablosundaki iş satırı bir epik veya alt teslimdir; bütün faz tek uygulama birimi değildir. Anlamlı yeni uygulama için tek gözden geçirilebilir kullanıcı sonucunu [iş kartı şablonuyla](task-template.md) daralt. Aktif/yakın kartlar [tasks indeksinde](tasks/README.md) tutulur. Rutin yazım/bağlantı düzeltmesi yeni kart veya ADR gerektirmez. Henüz ayrıntılandırılmamış gelecek işler için boş dosyalar oluşturulmaz.
 
 | İş durumu | Anlamı |
 |---|---|
@@ -25,7 +25,7 @@ Faz satırı bir epiktir; tek seferde bütün faz uygulanmaz. Anlamlı yeni uygu
 | `deferred` | Bilinçli ertelendi; ilk teslimin gizli önkoşulu değil |
 | `partial` | Yalnız epik/üst işte: bazı alt işler tamam, bütünü değil |
 
-Bu durumlar ürün matrisindeki teslim durumlarından ve runtime capability enum'larından ayrıdır. `ready` için: kullanıcı sonucu + giren/girmeyen kapsam + tamamlanmış bağımlılık kanıtı + olumlu/negatif kabul + uygun test/ölçüm + gerekli dış yetki/karar bulunmalı. Bu koşullar `in_progress`, `in_review` ve `verified` durumlarında da korunur. Kritik karar eksikse uygulama değil, ayrı karar/araştırma paketi hazırlanır. Hazırlık mevcut kullanıcı yetkisini iptal eden genel bir onay kapısı değildir.
+Bu durumlar ürün matrisindeki teslim durumlarından ve runtime capability enum'larından ayrıdır. `ready` için: kullanıcı sonucu + giren/girmeyen kapsam + tamamlanmış bağımlılık kanıtı + olumlu/negatif kabul + uygun test/ölçüm + gerekli dış yetki/karar bulunmalı. Bu koşullar `in_progress`, `in_review` ve `verified` durumlarında da korunur. Kritik karar eksikse uygulama değil, ayrı karar/araştırma paketi hazırlanır. Araştırma kartının `ready` olması, çıktısı olacak kararı önceden onaylanmış veya pilotu yetkili yapmaz; yalnız kendi kanıt toplama kapsamı başlayabilir. Hazırlık mevcut kullanıcı yetkisini iptal eden genel bir onay kapısı değildir.
 
 ## Ne kadar iş alınır?
 
@@ -43,6 +43,14 @@ Aynı PR'daki sonraki alt iş, öncekinin gerçek kod/test/review kanıtı oluş
 
 Gerekli ortak temel, ihtiyaç duyan ilk epik PR'ında teslim edilir ve özgün ID'sinde işaretlenir: P01-4a P01-2 PR'ına dahildir; operation/lease/jobs P01-4'te kalır. Yerel doctor P01-2, HTTP tanılaması P01-5, gerçek hesap/proje keşfi P02-0b kapsamıdır. Epik numarası bütün altyapının ilk kez o PR'da yazılacağı anlamına gelmez.
 
+## P02 paket akışı
+
+P02-0a sözleşme/SDK/pilot **planı** ilk araştırma teslimidir; P02-0b gerçek hesap/context keşfi ayrı uygulama ve hesap kabulüdür. P02-0 üst satırı ikisini toplar; araştırma onayı canlı pilot yetkisi yerine geçmez. Mevcut `feat/p02-0a-sdk-pilot` dalı P01 kapanış belgelerini ve P02 hazırlığını sonraki P02-0a işiyle taşır; yalnız belge kapanışı için ayrı PR açılmaz.
+
+Sonrasında varsayılan PR birimi P02-1, P02-2, P02-3, P02-4, P02-5, P02-6 ve P02-7 epikleridir. Alt kartlar aynı dalda adım/commit/kabul/review birimleridir; büyük epik tek kod adımı yapılmaz. Araştırma/ADR onayı veya ölçülen review büyüklüğü bölünmeyi gerektirirse PR sınırı paket planında **iş başlamadan** ilan edilir; kapsam küçültülmez. Önceki P01 PR sınırları tarihsel kalır. Kullanıcının uygulama talebindeki commit ve review döngüsü ilgili paket planına bağlanır; bu belge kendiliğinden ajan veya pilot başlatma yetkisi vermez.
+
+Tek PR tercihi ayrı bir sonucu hazır olmadığı halde implementasyona alma gerekçesi değildir. Kullanılan ortak temel ilk gerçek tüketicinin PR’ında özgün ID/kabulüyle teslim edilebilir. [P02 alt bağımlılıkları](phase-02-data-and-inference.md#uygulama-birimleri-ve-sıra) belirleyicidir; bütün P02’nin bitmesi P03’ün bağımsız yerel araç hattının önkoşulu olmaz.
+
 ## Bağımlılık ve dış kapılar
 
 P01 içindeki kesin sıra kendi belgesindedir. P02 sözleşme araştırması P01 ile ilerleyebilir; uzak yürütüm sağlam kimlik/taşıma/durum kapıları olmadan başlamaz. P03 native eğitim ve yerel araç hatları birbirini gereksiz yere bekletmez. EVREN workspace erişimi kapanırsa yerel araç, veri ve çıkarım işleri durmaz; workspace `unknown` kalır.
@@ -55,4 +63,4 @@ Bir faz kapanırken kullanıcı akışı, kontrollü hata/toparlanma, kaynak bü
 
 P01 offline kabulü, P02/P03 entegrasyon kabulü ve paket yayını ayrı kararlardır. [Ürün kapsamındaki ilk kullanılabilir hedefler](../product-scope.md#ilk-kullanılabilir-sürüm) korunur. Release adayı hangi görev/sürüm/ortamın gerçekten teslim edildiğini listeler; kapalı bir hedef kapsamdan sessizce çıkarılmaz, kullanıcıyla sürüm kapsamı kararı kaydedilir. P04'ün yayın hattı bu kararı, güvenlik/kurulum/recovery ve belge kapılarını toplar. Master aktarımı ve yayın kullanıcıdadır.
 
-[Mevcut durum](current.md), [açık kararlar](backlog.md), [son review](../research/roadmap-readiness-review.md), [ajan çalışma rehberi](../../.agents/README.md).
+[Mevcut durum](current.md), [açık kararlar](backlog.md), [P02 hazırlık review’si](../research/p02-readiness-review.md), [ilk roadmap review’si](../research/roadmap-readiness-review.md), [ajan çalışma rehberi](../../.agents/README.md).

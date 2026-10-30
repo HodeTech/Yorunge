@@ -12,7 +12,7 @@
 | C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |
 | C05 | Model/veri kataloğu | Uygun modeli bulmak | Platform kataloğu ve LLM model şeması | Planlandı | P02 |
 | C06 | LLM metin, akış, embedding, rerank | Uygulama çıktısı üretmek | Resmî gateway OpenAPI | Planlandı | P02 |
-| C07 | Görsel çıkarım | Görsel modele istek ve sonuç | Kılavuz ve referans verilen SDK | Planlandı | P02/P03 |
+| C07 | Görsel çıkarım | Görsel modele istek ve sonuç | Kılavuz ve referans verilen SDK | Planlandı | P02-5e predict; eğitim P03/C08 |
 | C08 | Yönetilen EVREN eğitimi | Görsel eğitim ve ağırlık sonucu | Resmî eğitim kılavuzu; hesap sözleşmesi doğrulanacak | Planlandı | P03 |
 | C09 | Seçilebilir LLM eğitim aracı | ForgeLM veya muadille aynı görevi yapmak | ForgeLM kodu; muadil adaptörleri araştırılacak | Planlandı | P03 |
 | C10 | LLM veri hazırlama/denetim/üretim, fit, değerlendirme, merge/export | Eğitim çevrimini tamamlamak | ForgeLM ilgili yetenekleri; göreve özel uyum gerekli | Planlandı | P03 aşamalı |

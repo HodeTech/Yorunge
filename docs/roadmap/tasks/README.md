@@ -16,10 +16,11 @@
 | [P01-5a](p01-5a-http-transport.md) | Ortak HTTP/TLS/deadline/retry, SDK sınırı ve operation composition |
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
+| [P02-0a](p02-0a-contract-sdk-pilot.md) | Güncel resmî sözleşme, endpoint SDK değerlendirmesi ve yetkili pilot planı; ürün/pilot icrası değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b verified ve PR #11 ile development’a teslim edildi; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 bc9532c merge’ünde development’a alındı; güncel durum kart metadata’sındadır.
 
-Sonraki P02-0a sözleşme/SDK/pilot planı faz satırı draft’tır; ayrıntılı hazır kart henüz yoktur. Bu kapanışta P02 araştırması veya ürün kodlaması başlatılmaz; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir.
+Sonraki [P02-0a](p02-0a-contract-sdk-pilot.md) araştırma kartının bağımlılıkları ve kabulü hazırdır. [P02 hazırlık review’si](../../research/p02-readiness-review.md) ürün/hesap kabulü değildir; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 uygulama kartları karar/endpoint kanıtları geldikçe hazırlanır.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 

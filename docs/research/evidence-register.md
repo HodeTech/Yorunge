@@ -1,6 +1,6 @@
 # Kanıt ve referans kaydı
 
-**Güncellendi:** 2026-10-27. **Kapsam:** Başlangıç tasarımı için kaynaklar; güncel canlı hesap sertifikası değildir.
+**Güncellendi:** 2026-10-30. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
 
 ## Kanıt türleri
 
@@ -18,6 +18,18 @@ Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline
 | [evren-sdk](https://pypi.org/project/evren-sdk/) | Kılavuzda referans verilen mevcut SDK; 26 Ekim metadata'sında 0.11.0 | Bütün kodu bu çalışmada denetlenmedi; uygun bölümler adaptör adayı |
 
 Başlangıç LLM şeması SHA-256: `200e493ec31662bbb8f20c72f7d934ca10c4c623c1c03cd71b72f0ec50f6602d`, OpenAPI 3.1.0. Fine-tuning/adapter oluşturma yolu o şemada görülmedi; bu bütün özel/gelecek Platform yeteneklerinin yokluğunu kanıtlamaz. Platform API için denenen `/docs`, `/api/v1/docs`, `/api/v1/openapi.json` adresleri 404 verdi; başka bir doküman adresi bulunamayacağı sonucu çıkarılmadı.
+
+## P02 hazırlığında dar güncellik kontrolü — 30 Ekim 2026
+
+[P02 hazırlık incelemesinde](p02-readiness-review.md#dış-kaynak-kontrolü) yalnız kamuya açık belgelere credentialsız GET yapıldı. Bu kontrol P02-0a’nın tam endpoint/SDK araştırması değildir; 26 Ekim kaydı tarihsel olarak korunur.
+
+| Kaynak | Bu turda gözlenen | Sınır |
+|---|---|---|
+| [LLM OpenAPI](https://evren-llmapi.ssyz.org.tr/openapi.json) | HTTP 200; 52.240 byte; OpenAPI 3.1.0, info.version 0.1.0, 33 path; SHA-256 `5ba9b1b79f0f4ff7cf288ee0e9e7d7ce10eb860bfaf0fbbef9b33680cf6ac8d5` | Başlangıçtaki 30 path/hash değişmiştir; bütün farkların ve auth/limitlerin kabulü henüz yapılmadı |
+| [Kılavuz](https://evren.ssyz.org.tr/guide) | HTTP 200; 10.407 byte HTML; SHA-256 `24c6e8cd52acb9236862d9e54f917bd42b92cc326ccf6dafe3b9d5d90c8117c8` | İstemci script’i yükleyen HTML kabuğu; tam kılavuz/API sözleşmesi olarak doğrulanmadı |
+| [SDK dağıtım metadata’sı](https://pypi.org/pypi/evren-sdk/json) | 0.11.0; wheel SHA-256 `a3f0e191819c27c9df2047fdeeceb15d86140066c3f59e1efb6cb8c150416d92`; sdist SHA-256 `af1332a5d9a2067a8c39f9b82b5128ab6af1cff62e1d6475708abdef8e94aa8e` | Bu turda paket indirilmedi/kurulmadı veya kaynak denetimi yapılmadı; sürüm numarasının aynı kalması endpoint uyumu kanıtı değildir |
+
+Hash’ler bu GET gövdelerine/metadata’da bildirilen dağıtımlara aittir; sağlayıcı attestasyonu veya canlı hesap kanıtı değildir. Büyük kaynak kopyaları repoya alınmadı. Ayrıntılı tüketici endpoint’i ve sürüm/hash sabitlemesi P02-0a’da tekrarlanır; tarihsel bu kontrol onun yerine geçmez.
 
 ## ForgeLM snapshot'ı
 

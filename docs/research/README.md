@@ -7,6 +7,7 @@
 - [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 development’a birleştirildi; [merge/kanıt kapanışı](p01-remaining-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Önceki retler korunur; son PR/iptal/merge kanıtlarıyla 149 arşiv ve gerçek merge CI doğrulandı.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
+- [P02 başlangıç hazırlık review’si](p02-readiness-review.md): faz/PR/bağımlılık/kabul ve mevcut P01 kod sınırları; P02-0a araştırmaya hazır, endpoint uygulaması ve hesap pilotu yok.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
 - [P01 ilk dilim ve kapanış kabulü](p01-core-validation.md): yerel test/build/temiz kurulum ve performans kanıtı; [ilk ham başlangıç ölçümü](p01-startup.json), [P01-1a ham ölçümü](p01-1a-startup.json).
 - [Dal/PR/koruma kabulü](branch-workflow-validation.md): development kurulumu, gerçek GitHub CI ve koruma geri okuma kanıtı.

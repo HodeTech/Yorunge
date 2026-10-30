@@ -1,10 +1,10 @@
 # P03 — Eğitim, değerlendirme ve seçilebilir araçlar
 
-**Durum:** Planlandı; işe başlamadan dar kart gerekir. **Bağımlılık:** İlgili P01/P02 alt kapıları. **Yetenekler:** C08–C10, C11 maliyet görünümü, C12/C13 sonuç. Native eğitim ve haricî LLM araçları iki ayrı hattır.
+**Güncellendi:** 2026-10-30. **Durum:** Planlandı; işe başlamadan dar kart gerekir. **Bağımlılık:** İlgili P01/P02 alt kapıları. **Yetenekler:** C08–C10, C11 maliyet görünümü, C12/C13 sonuç. Native eğitim ve haricî LLM araçları iki ayrı hattır.
 
 | ID | İlk teslim sınırı | Önkoşul | Kabul kanıtı | Durum |
 |---|---|---|---|---|
-| P03-1 | Yönetilen görsel eğitim sözleşmesi ve planı | P02-0, P02-3 veri sürümü, P01-3b | Proje/veri/mimari, tahmin kaynağı ve onay bağı; native motor ForgeLM'e çevrilmez | `draft` |
+| P03-1 | Yönetilen görsel eğitim sözleşmesi ve planı | P02-0b Platform kabulü, P02-3c veri sürümü, P01-3b; B04 eğitim kısmı | Proje/veri/mimari, tahmin kaynağı ve onay bağı; native motor ForgeLM'e çevrilmez | `draft` |
 | P03-2 | Yönetilen işi başlat/izle/durdur ve sonucu topla | P03-1, P01-4b, P01-5b | Belirsiz POST, ham durum/uzak kimlik, doğrulanmış iptal ve eksik artefakt | `draft` |
 | P03-3 | Tool port + ForgeLM yerel adaptörü; ilk görev SFT | P01-3b, P01-4b, P01-5b; ForgeLM sürüm/public yüzey incelemesi | Ayrı ortam, public giriş, parametre/veri/sonuç eşlemesi ve gerçek süreç sınırı | `draft` |
 | P03-4 | Bir muadilde aynı dar SFT görevini tamamlamak | P03-3 ortak sözleşmesi; aday deneyi | ForgeLM + muadil aynı veri/model sınıfı ve çıktı rolü; kayıplı seçenek reddi | `draft` |
