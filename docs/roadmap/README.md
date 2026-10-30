@@ -6,7 +6,7 @@
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
 | [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
-| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0a araştırması verified; P02-0 partial, P02-0b ADR/raw sözleşme kapılı, ürün kodu yok | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
+| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0a araştırması verified; P02-0 partial, P02-0b hizmetlere ayrıldı; Platform raw sözleşme kapılı, ürün kodu yok | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
 

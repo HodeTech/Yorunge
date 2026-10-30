@@ -1,6 +1,6 @@
 # P02 — Veri, katalog ve çıkarım
 
-**Güncellendi:** 2026-10-31. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) kullanıcı yetkisiyle aktif; [P02-0a araştırması](../research/p02-contract-sdk-pilot.md) verified, iki fresh review tamamlandı; ADR-0020 Proposed; P02-0b ürün uygulaması ve hesap pilotu başlamadı. P01 [PR #11 / bc9532c](../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) ile development’a teslim edildi. **Yetenekler:** C01/C02 uzak alt küme, C03–C07, C11 okuma, C12/C13 entegrasyon. [Hazırlık review’si](../research/p02-readiness-review.md) kapsam ve kod karşılaştırmasını kaydeder.
+**Güncellendi:** 2026-10-31. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) kullanıcı yetkisiyle aktif; [P02-0a araştırması](../research/p02-contract-sdk-pilot.md) verified, iki fresh review tamamlandı; ADR-0020 Accepted; P02-0b, P02-0c LLM/P02-0d Platform alt teslimlerine ayrıldı. Bağımsız LLM sözleşme review’si yürütülüyor; ürün ve hesap kabulü henüz yok. P01 [PR #11 / bc9532c](../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) ile development’a teslim edildi. **Yetenekler:** C01/C02 uzak alt küme, C03–C07, C11 okuma, C12/C13 entegrasyon. [Hazırlık review’si](../research/p02-readiness-review.md) kapsam ve kod karşılaştırmasını kaydeder.
 
 ## Kullanıcı sonucu ve kapsam
 
@@ -14,7 +14,9 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 |---|---|---|---|---|
 | P02-0 | Sözleşme ve gerçek hesap bağlamı giriş hattı | P02-0a, P02-0b | Araştırma verified; P02-0b ADR/raw sözleşme/live kabul kapılı | `partial` |
 | P02-0a | Güncel Platform/LLM sözleşmesi, endpoint SDK değerlendirmesi ve pilot planı | P01-2b, P01-3a, P01-5a, P01-5b | [Hazır araştırma kartı](tasks/p02-0a-contract-sdk-pilot.md); B03/B04 çözümü bu araştırmanın çıktısıdır | `verified` |
-| P02-0b | Hesap/organizasyon/proje salt okunur keşfi ve context doğrulama | P02-0a; P01-2b/P01-3a/P01-5a | [Taslak kart](tasks/p02-0b-context-discovery.md); ADR-0020, key/raw sözleşme ve canlı kabul kapılı | `draft` |
+| P02-0b | Hesap/organizasyon/proje salt okunur keşfi ve context doğrulama üst teslimi | P02-0c, P02-0d | [Üst kart](tasks/p02-0b-context-discovery.md); hizmet kabulleri bağımsız, bütünü iki kolu gerektirir | `draft` |
+| P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); Accepted ADR/kapalı referans review’si, sonra bağımsız kod; live kabul ayrı | `draft` |
+| P02-0d | Platform principal/organizasyon/proje keşfi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); key/raw/envelope/pagination açılma kapısı | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b | Güncel içerik/kimlik, güvenli kök, sınırlı tarama ve atomik rapor | `draft` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | P02-2a–c; create/presign/PUT/confirm ve ilk kesinti güvenliği | `draft` |
 | P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | Alt işe göre P02-2 veya P02-0b | P02-3a–c; ortak güvenli indirme bağımsız hazırlanabilir | `draft` |
@@ -23,7 +25,7 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-6 | GPU/kuyruk/rezervasyon bilgisi ve kota okuma | P02-0a; hesap verisi için ilgili P02-0b kabulü | P02-6a/b; yalnız okuma, tahsis/fatura garantisi yok | `draft` |
 | P02-7 | Bütünleşik kullanıcı akışı ve faz kapanışı | Kapanışa alınan bütün P02 alt işleri | [Faz kabulü](#faz-kabulü); eksik hedef açıkça kalır | `draft` |
 
-`P02-0b ilgili kabulü`, tüm Platform ve LLM keşfinin birbirini beklemesi anlamına gelmez. Kart, kullandığı hizmetin tamamlanmış alt kanıtını isimlendirir; yalnız epik kısmen geçti diye bağımlılık `verified` gösterilmez. Hizmet bazında bölünme gerekiyorsa alt ID’ler faza ve gerçek kartlara eklenir; downstream `depends_on` yalnız tamamlanmış somut ID’yi kullanır. Sağlayıcıda organizasyon/proje alanı yoksa uydurulmaz; null/erişim semantiği ve mevcut config/capability/plan bağına etkisi önce sözleşmede kapatılır.
+`P02-0b ilgili kabulü`, artık somut LLM P02-0c veya Platform P02-0d kabulünü gösterir. Downstream kart depends_on alanında yalnız ihtiyaç duyduğu tamamlanmış hizmet ID’sini kullanır; üst işin bütününü gereksiz yere beklemez. Hesap/org/proje alanı sunulmuyorsa uydurulmaz; LLM selected=null ve profile_preference scope ayrımı [referansa](../reference/context-discovery.md) bağlıdır. Ortak profil tercihi provider/service kimliği kanıtı değildir.
 
 B03’ün P01’de kapanan kısmı SDK’nın core bağımlılığı olmaması ve ortak taşıma politikasını atlamamasıdır; endpoint seçimi açık kalır. B04’ün P02 kısmı veri/çıkarım limitleridir; yönetilen eğitim durumları P03’te kalır. P02-0a bu kayıtları araştırır; kayıtların önceden çözülmesini bekleyen bir döngü yoktur.
 

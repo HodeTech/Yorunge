@@ -10,6 +10,7 @@ Belgeler okuyucunun sorusuna göre ayrılır. Bir kararın benimsenmesi, ilgili 
 | [Ürün kapsamı](product-scope.md) | Hangi problemler, özellikler ve öncelikler var? |
 | [Yetenek matrisi](capability-matrix.md) | Hangi yetenek hangi aşamada; hangi dış erişime bağlı? |
 | [Kullanıcı yolculukları](user-journeys.md) | İş nasıl daha az adımla tamamlanacak? |
+| [P02 hesap hazırlığı](p02-account-setup.md) | Anahtarları paylaşmadan yerel config/env pilot hazırlığı |
 | [Teknoloji](tech-stack.md) | Seçimler ve henüz açık adaylar neler? |
 | [Proje yapısı](project-structure.md) | Kaynak, test ve belge yerleşimi nasıl? |
 | [Terimler](glossary.md) | Görev, araç, ortam ve durumlar ne demek? |

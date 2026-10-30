@@ -6,6 +6,7 @@
 |---|---|
 | [CLI](cli-contract.md) | Komut aileleri, çıktı ve çıkış kodları |
 | [Yapılandırma](configuration.md) | Profil/reçete, öncelik ve doğrulama |
+| [Context keşfi](context-discovery.md) | Accepted ADR-0020: ayrı hizmet bağlı discovery wire/target/auth/snapshot ve state sınırı; LLM uygulama öncesi, Platform raw kapılı |
 | [Araç sağlayıcısı](tool-provider-contract.md) | Görev, plan, execution ve sonuç sınırı |
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
 | [CapabilityScopeV2](capability-scope-v2.md) | Uygulandı — ADR-0013'e bağlı kapalı wire, nullability, sıralama ve kanonik anahtar; P01-3 kabulü tamamlandı |
