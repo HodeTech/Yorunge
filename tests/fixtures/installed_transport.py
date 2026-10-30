@@ -60,6 +60,14 @@ REQUIRED_MODULES = {
 }
 
 
+def verification_cases() -> tuple[str, ...]:
+    # Match verify-distributions' existing state-platform boundary. The plain
+    # HTTP/stream acceptance remains usable where local state is unsupported.
+    if sys.platform in ("darwin", "linux"):
+        return CASES
+    return tuple(case for case in CASES if case != "discovery")
+
+
 def installed_origins(venv: Path) -> dict[str, object]:
     """Reject editable/source or foreign-prefix imports, including lazy modules."""
     expected = venv.resolve()
@@ -355,6 +363,7 @@ def verify_discovery_output(code: int, stdout: bytes, stderr: bytes) -> None:
 
 
 def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
+    cases = verification_cases()
     body = wire(progress()) + wire(event(2, "result", result_payload()))
     routes = {
         "/v1/http": Reply(body=wire({"text": TEXT}), chunk_size=3),
@@ -378,7 +387,7 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
     with TlsServer(certificate(scratch / "installed-tls"), routes) as server:
-        for case in CASES:
+        for case in cases:
             origins = scratch / (case + "-origins.json")
             child = subprocess.run(
                 [
@@ -415,13 +424,16 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
             if case == "discovery" and not DISCOVERY_MODULES.issubset(modules):
                 raise ValueError("installed discovery modules were not exercised")
         expected_paths = [
-            "/v1/terms/status" if case == "discovery" else "/v1/" + case for case in CASES
+            "/v1/terms/status" if case == "discovery" else "/v1/" + case for case in cases
         ]
         if [record.path for record in server.requests] != expected_paths:
             raise ValueError("installed transport repeated or missed a request")
         if any(record.header("Host") != "localhost" for record in server.requests):
             raise ValueError("installed TLS mapping changed canonical request authority")
-        if server.requests[-1].header("Authorization") != "Bearer " + DISCOVERY_SECRET:
+        if (
+            "discovery" in cases
+            and server.requests[-1].header("Authorization") != "Bearer " + DISCOVERY_SECRET
+        ):
             raise ValueError("installed discovery used the wrong credential")
     return {"http_smoke": "passed", "stream_smoke": "passed"}
 

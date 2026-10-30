@@ -8,6 +8,7 @@ import socket
 import subprocess
 import venv
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -68,22 +69,30 @@ def runtime_tree(tmp_path_factory):
     return prefix, python, site
 
 
+@pytest.mark.parametrize("state_supported", [True, False])
 def test_runtime_only_isolated_child_uses_actual_tls_and_all_new_product_paths(
-    runtime_tree, tmp_path
+    runtime_tree, tmp_path, monkeypatch, state_supported
 ):
     prefix, python, _ = runtime_tree
+    if not state_supported:
+        # Only the parent selection sees this facade; child interpreters and
+        # Python's standard library retain their actual native platform.
+        monkeypatch.setattr(acceptance, "sys", SimpleNamespace(platform="win32"))
     with loopback_sockets(CONNECT, CONNECT_EX, GETADDRINFO):
         assert acceptance.verify(python, prefix, tmp_path) == {
             "http_smoke": "passed",
             "stream_smoke": "passed",
         }
-    for case in acceptance.CASES:
+    for case in acceptance.verification_cases():
         report = json.loads((tmp_path / (case + "-origins.json")).read_text())
         assert acceptance.REQUIRED_MODULES.issubset(report["modules"])
         assert all(Path(value).is_relative_to(prefix) for value in report["modules"].values())
         assert Path(report["metadata"]).is_relative_to(prefix)
         if case == "discovery":
             assert acceptance.DISCOVERY_MODULES.issubset(report["modules"])
+    if not state_supported:
+        assert not (tmp_path / "discovery-origins.json").exists()
+        assert not (tmp_path / "discovery-state").exists()
 
 
 @pytest.mark.parametrize("mutation", ["terms-type", "selected", "auth", "warning", "data-type"])

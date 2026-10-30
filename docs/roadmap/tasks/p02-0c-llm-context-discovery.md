@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0c — Bağımsız LLM context ve terms keşfi
 
-**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi review/kabulünde. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
+**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi de iki fresh review turuyla kapandı. İlk yetkili live terms gözlemi geçerli; nihai kaynak/kurulum/performans kabulü sürüyor. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
