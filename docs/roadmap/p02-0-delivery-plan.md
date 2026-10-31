@@ -34,3 +34,9 @@ Her adım: uygulama/uygun doğrulama/commit → birinci fresh review ajanları �
 P02-0a araştırma kabulünü kapatmak, P02-0b veya P02-0 üst satırını verified yapmaz. Platform/LLM alt kanıtları ayrı kaydedilir; eksik principal veya erişim gizlenmez. Kaynaklar değişirse yalnız tarih güncellemek yerine ilgili matrix/oracle tekrar incelenir. Referans ölçümler ürün kaynakları değişmeden yenilenmez; ürün kaynakları değiştiğinde eski P01 referansları yeni ürün kabulü sayılmaz.
 
 [Uygulama/review kaydı](../research/p02-0-implementation-validation.md) commit/kapsam/kontrol/bulgu ve kalan kapıyı taşır. [Kanıt standardı](../standards/research-evidence.md) yeni büyük ölçümleri kayıpsız arşivler; kamu bundle’ı veya gerçek kullanıcı yanıtı repoya doldurulmaz. Son source-bound kabulden sonra PR development hedeflidir; agent merge/release yapmaz. Master/release kullanıcıdadır.
+
+## Platform için önerilen sonraki kod adımları
+
+31 Ekim devam talebi sonrası [raw-schema survey](../research/p02-platform-discovery-observations.md) üç endpoint’i metadata olarak gözledi. [ADR-0021](../decisions/0021-platform-discovery-observations.md) **Proposed**; mevcut Accepted ADR-0020 başlangıç kapısını kısmen değiştirdiği için kullanıcı onayı gerekir. Ürün kodu başlamadı. Verified/paket kabul kapısı kaldırılmıyor.
+
+Onay sonrası aynı dalda adım5 iki kod dilimine ayrılır: (5.1) kapalı Platform model/projeksiyon, gerçek HTTP/shared-state final kapısı ve anlamlı TLS/race testleri; (5.2) ortak public CLI/Python, text/JSON/NDJSON/iptal/lazy uyumu ve kullanıcı belgesi. Her dilim commit → iki farklı fresh review turu → doğrulanmış fix/commit döngüsünü korur. Sonra yalnız değişen kaynak için tam test/iki clean install ve yeni M5 referansları alınır. Kod yerel olarak tamamlansa da gerçek auth/principal/pagination ve dolu/seçili proje kabulü açıkken kart verified ve paket tamamlandı sayılmaz.

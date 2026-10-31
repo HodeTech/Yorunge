@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 2026-10-31 kullanıcı, review bulguları doğrulanıp kapatıldıktan sonra kabulü ve uygulamayı yetkilendirdi. Bağlı referans uygulama öncesi kapatılır; ürün/canlı kabulü ayrıca kaydedilir. **Tarih:** 2026-10-31. **İş:** P02-0a çıktısı / P02-0b ve hizmet alt teslimleri. [Araştırma](../research/p02-contract-sdk-pilot.md), [kart](../roadmap/tasks/p02-0b-context-discovery.md), [paket planı](../roadmap/p02-0-delivery-plan.md).
 
+[ADR-0021](0021-platform-discovery-observations.md), Platform’ın kod başlangıcı ve tüketilmeyen metadata politikasına dar bir değişiklik önerir. **Proposed olduğu için bu Accepted kararın kapıları halen aynen yürürlüktedir**; verified koşulları öneride de kaldırılmaz.
+
 ## Bağlam
 
 P01 yerel context/credential kimliğini ve güvenli taşıma sınırını uyguladı. Mevcut `Context` v1 `remote_verified=false` taşır; account_id/project_id seçilmiş tercihtir. Platform ve LLM aynı profil içinde olsa da aynı uzak principal/izin alanı oldukları kanıtlanmış değildir. Mevcut capability cache’in kendi kaydı güncel izin kaynağı olamaz; [ADR-0013](0013-scoped-capability-cache.md) tam kapsam/bağımsız otorite kuralı korunur.

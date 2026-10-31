@@ -83,3 +83,53 @@ Her response≤1 MiB, chunk≤32 KiB; listede≤128 kayıt, çıktı≤256 KiB; 
 Auth kanıtı normalize service/origin/API kökü, method/endpoint ve ilgili query/path parametre kapsamıyla karşılaştırılır. Farklı custom host/API kökü/endpoint/proje parametresine aynı kanıt taşınmaz; çok hedefli provider sözleşmesi ancak açık kapsam kanıtıyla geçerlidir. Kanıt türü/tarihi ve raw parser sürümü aynı kayıtta yer alır. Kaynak/pilot sonucu yalnız kontrol edilen davranışı kanıtlar; genel sunucu otoritesi veya permission değildir.
 
 Yetkili auth sözleşmesi yokken, her kullanılan endpoint/parametre için iyi biçimli kontrol gerekir. Teyitli syntax/length/prefix yoksa kontrol üretilmez ve auth unknown kalır. Kontrol değeri fresh kriptografik random, sağlayıcıdan alınmamış, gerçek key’den farklıdır; gerçek key’in yalnız bir karakterini değiştirme kullanılmaz. Tercih401; 403 ancak kaynakla anlamı kapanmış invalid-key reason ise kabul, terms/permission/unknown403 veya iki2xx auth kapısını kapatmaz. Malformed-key reddi yeterli değildir. Kontrol yalnız önceden yetkili ayrı pilotta yapılır, registry’ye yazılmaz ve normal discover içine eklenmez. Scope/biçim/iki status/neden/no-registry outcome maskeli kayda girer; key değeri/full body/PII girmez. [Hazırlık yönergesi](../p02-account-setup.md) ürün env politikasına alternatif secret backend değildir.
+
+## Önerilen Platform gözlem varyantı
+
+**Proposed; uygulanmadı.** Bu bölüm yalnız [ADR-0021](../decisions/0021-platform-discovery-observations.md) kullanıcı onayı sonrasında ürün sözleşmesine dönüşebilir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı iki kapalı varyantın union’ıdır.
+
+### Tam public alan kümesi ve tipler
+
+Platform varyantının bütün alanları zorunludur; nullable alan eksik bırakılamaz. Tam alan kümesi: schema_version,service_id,profile,target,binding,profile_preference,selected,provider,reported_identity,authorization_scope,organizations,projects,list_completeness,terms,observed_from,observed_until,validated_at,observations,consistency,validation,reasons. Tüm public nesneler strict/frozen/extra=forbid; mevcut Identifier, DiscoveryBinding ve canonical UTC kuralları aynen geçerlidir. JSON dizileri Python’da tuple’dır; output≤256 KiB.
+
+| Alan | Platform önerisi |
+|---|---|
+| schema_version / service_id | Strict int literal1 / Literal evren-platform |
+| profile,target,binding | Mevcut ortak türler; target canonical, binding store/epoch/clock/credential public kimliklerini taşır |
+| profile_preference | Değiştirilmemiş profil account_id/project_id ve mevcut unknown/not_applicable scope kuralı; explicit project buraya kopyalanmaz |
+| selected | Tam account_id:Identifier veya null,project_id:Identifier veya null; account yalnız profilden, project açık override varsa ondan, yoksa profilden; tercih kanıt değildir |
+| provider | Tam principal_id/account_id/organization_id/project_id:null; identity_status:unverified |
+| reported_identity | Tam me_id:Identifier,organization_id:Identifier veya null,personal_organization_id:Identifier veya null,organization_id_state/personal_organization_id_state:reported_id veya reported_null veya not_exposed |
+| authorization_scope / terms | Yalnız null / yalnız null |
+| organizations | Tam items:OrganizationRef dizisi,reported_total:strict nonnegative-int64 |
+| projects | Tam items:ProjectRef dizisi,selection:ProjectSelection |
+| list_completeness | Tam organizations:unknown veya incomplete,projects:unknown; complete yok |
+| observations | Sıralı3 veya4 EndpointObservation; aşağıdaki kapalı sıra |
+| observed_from / observed_until / validated_at | Mevcut canonical UTC; local final gate zamanı provider zamanı yerine geçmez |
+| consistency / validation | Yalnız not_guaranteed / yalnız unverified |
+| reasons | Aşağıdaki kapalı kuralla üretilen tekil/sıralı reason dizisi |
+
+OrganizationRef tam id:Identifier taşır. ProjectRef tam id:Identifier,organization_id:Identifier veya null,organization_id_state:reported_id veya reported_null veya not_exposed taşır. Aynı listedeki duplicate ID invalid_response; en çok128 item, sessiz sıralama/dedup/kırpma yoktur. OrganizationRef.owner_id, ad/slug/role/PII yayımlanmaz.
+
+ProjectSelection tam state:not_selected veya observed veya not_found,project:ProjectRef veya null taşır. selected.project_id=null ise not_selected/null; detail404 ise not_found/null; detail200’de observed/ProjectRef ve dönen id=seçilen id olmalıdır. Bu observed yalnız ID eşitliği ve alınan alanları anlatır; kimlik, membership, parent veya execution izni doğrulanmış olmaz. Listeye seçili kayıt otomatik eklenmez. Tek proje/organizasyon da otomatik seçilmez.
+
+Reported_identity.me_id yalnız auth/me.data.id’nin opak bildirimidir. Diğer iki ID yalnız aynı nesnenin organization_id/personal_org_id alanından gelir. Kaynak alan yoksa not_exposed/null, açık null ise reported_null/null, Identifier ise reported_id/değer; başka tip invalid_response. Bu alanlar provider principal/account alanlarına veya capability scope’a kopyalanmaz. Raw profil ve explicit tercih aynı config snapshot’ından ayrılır; config/env tekrar okunmaz.
+
+EndpointObservation tam endpoint_id,resource_id,started_at,completed_at,authentication,outcome taşır. İlk üç endpoint_id sırası platform_me/platform_organizations/platform_projects, resource_id=null, outcome=observed; yalnız açık project seçilmişse dördüncü platform_project_detail,resource_id=seçilen ID,outcome=observed veya not_found olur. Authentication her zaman unknown. Aralıklar seri sırada ve observed_from≤ilk başlangıç≤bitiş≤sonraki başlangıç≤son bitiş≤observed_until≤validated_at olmalıdır. Clock rollback’in mevcut kalıcı generation/final kapısı atlanmaz.
+
+Reasons her zaman account_semantics_unknown,authorization_not_verified,identity_not_verified,list_completeness_unknown,remote_snapshot_not_guaranteed içerir. Profile_preference scope unknown ise profile_scope_unknown; project seçilmemişse project_selection_required; detail404 ise selected_project_not_found; organizations completeness incomplete ise provider_listing_incomplete eklenir. Başka keyfi reason veya ErrorCode yoktur. Text görünümü gözlem/tercih ve doğrulanmamış auth/kimlik/tamlık sınırını açıklar; ham provider açıklaması/metadata basmaz. Result completed ve context_not_verified uyarısı korunur.
+
+### Raw projeksiyonun tam tüketim sınırı
+
+Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam schema garantisi değildir. Tüketilen alanlar strict doğrulanır. Diğer metadata, **tam raw-tree JSON/sır taramasından sonra** atılır; ortak decode_response/closed-codec gevşetilmez. Raw verinin hiçbir generic dict’i public sonuca girmez. Metadata’daki bilinen secret veya malformed JSON da invalid_response olur.
+
+| Endpoint | Kabul edilecek tüketilen yapı |
+|---|---|
+| auth/me | Root object; success strict bool=true ve data object zorunlu; data.id zorunlu Identifier,organization_id/personal_org_id isteğe bağlı Identifier/null. logical false veya yanlış/eksik id invalid_response |
+| organizations | Root object; items object dizisi ve total strict nonnegative-int64 zorunlu; her item.id zorunlu Identifier. total<len(items) invalid_response; total>len(items) incomplete; eşitlik unknown |
+| projects | Root object değil JSON dizisi; her item.id zorunlu Identifier,org_id isteğe bağlı Identifier/null. Public parent state missing/null/id ayrımını korur; owner_id veya ad/slug yorumlanmaz |
+| projects/{selected_id} | HTTP200’de bare project object veya success=true/data project object. success anahtarı varsa strict bool ve data object zorunlu; yanlış tip/false/eksik data ret. Project tüketimi listeyle aynı, id=selected_id olmalı.404 not_found; diğer hatalar mevcut kurala göre hata |
+
+Arrays129+, wrong ID/type/total veya output sınırı ret; overflow incomplete adıyla gizlenmez. Boş projects dizisi geçerli gözlemdir; hiç proje olmadığı/izin bulunmadığı veya seçimin geçerli olduğu sonucu değildir. Pagination parametresi/cursor/Link tahmin edilmez ve takip edilmez; diğer metadata’nın bilinmemesi zaten unknown tamlıkla gösterilir.
+
+No-init/tek credential/state final kapısı, normal≤4 GET/8 attempt/30 s/4 MiB, response≤1 MiB,3-or4 endpoint sırası ve mevcut HTTP/hata/iptal/UTF-8 kuralları ADR-0020 ile aynıdır. Bu proposal, Platform’ın auth/principal/pagination veya dolu/seçilmiş proje live kabulünü geçmiş saymaz; P02-0d/P02-0b/P02-0 verified kapısı değişmez.

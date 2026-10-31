@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform kimlik, organizasyon ve proje keşfi
 
-**Tarih:** 2026-10-31. **Durum:** Taslak; API key ile raw identity/envelope/pagination/auth teyidi açık. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
+**Tarih:** 2026-10-31. **Durum:** Taslak; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 Proposed, kod başlamadı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -23,6 +23,8 @@ Browser JWT fallback, key oluşturma, terms accept, model/kota/dataset taraması
 ## Bağımlılıklar ve kararlar
 
 P01/P02-0a bağımlılıkları verified; [Accepted ADR-0020](../../decisions/0020-service-bound-context-discovery.md) yönü kullanıcıca yetkilendirildi. Ready için provider sözleşmesi veya yetkili bounded raw read pilotu her kullanılan endpoint/parametre/hedef kapsamındaki key-auth, raw minimum alanları, account/principal/org anlamını, envelope ve paging’i kapatmalı. Account API semantiği bilinmiyorsa caller tercihi doğrulanamaz. Kullanıcı key/env hazırlığını yaptı; account/project ID bilinmiyor. İlk yetkili /auth/me HTTP200 raw-shape gözlemi auth/principal/envelope/paging kapısını kapatmadı; [hazırlık](../../p02-account-setup.md) sağlanınca salt okuma kanıtı toplanabilir.
+
+[Yeni metadata gözlemleri](../../research/p02-platform-discovery-observations.md) me success=true, organizations items/total ve boş projects cevabını kaydeder; schema observation auth/identity kanıtı değildir. [ADR-0021](../../decisions/0021-platform-discovery-observations.md) yalnız unverified projeksiyon kodlamasını açmayı önerir; kullanıcı onayı olmadan bu kartın başlangıç kapısı değişmez. P02-0d/P02-0b/P02-0 verified koşulları korunur.
 
 ## Sözleşme ve uygulama sınırı
 
