@@ -2,7 +2,7 @@
 
 **Durum:** Accepted — 2026-10-31 kullanıcı, review bulguları doğrulanıp kapatıldıktan sonra kabulü ve uygulamayı yetkilendirdi. Bağlı referans uygulama öncesi kapatılır; ürün/canlı kabulü ayrıca kaydedilir. **Tarih:** 2026-10-31. **İş:** P02-0a çıktısı / P02-0b ve hizmet alt teslimleri. [Araştırma](../research/p02-contract-sdk-pilot.md), [kart](../roadmap/tasks/p02-0b-context-discovery.md), [paket planı](../roadmap/p02-0-delivery-plan.md).
 
-[ADR-0021](0021-platform-discovery-observations.md), Platform’ın kod başlangıcı ve tüketilmeyen metadata politikasına dar bir değişiklik önerir. **Proposed olduğu için bu Accepted kararın kapıları halen aynen yürürlüktedir**; verified koşulları öneride de kaldırılmaz.
+[ADR-0021](0021-platform-discovery-observations.md), Platform’ın ara kod başlangıcı, ara tüketilmeyen metadata politikası ve kesin seçim/error wire eşlemesine dar değişiklik önerir. Nihai verified için katı raw decoder ve diğer gerçek hizmet kabul koşulları ayrıca korunur. **Proposed olduğu için bu Accepted kararın kapıları halen aynen yürürlüktedir**; verified koşulları öneride de kaldırılmaz.
 
 ## Bağlam
 
@@ -32,6 +32,8 @@ Bu karar, gözlenebilen veriyi dürüstçe sunan **ayrı bir discovery sonucu** 
 | Organizasyon/proje listesi | Kapalı endpoint şeması ve açık pagination/tamlık | Eksik/overflow listeyi tam gösterme yok; ilk öğe varsayılan değil |
 | Seçili proje eşliği | Açık çağrı → profil tercihi; aynı hizmette tam liste veya doğrudan detail ile ID/parent eşliği | `selection_required`, `unverified` veya `mismatch`; yanlış hedefe sessiz geçiş yok |
 | Yazma/çıkarım izni | Göreve özgü güncel permission/endpoint kabulü | Bu keşif izin üretmez; authorization_scope=null |
+
+Tablodaki selection_required/unverified/mismatch ve aşağıdaki selection_unverified genel kavramlardır; henüz uygulanmış Platform enum’u tanımlamazlar. ADR-0021’in [önerilen kesin eşlemesi](../reference/context-discovery.md#seçim-kavramları-ve-kapalı-wire-eşlemesi) kullanıcı onayı sonrası bu consumer için bunların JSON/error karşılığını belirler. Bugün mevcut başlangıç kapısı değişmemiştir.
 
 Platform’da account_id’nin user ID mi organization ID mi olduğu varsayılmaz. Raw sözleşme anlamı ayrı principal/account/organization alanına kayıpsız eşlenmeden seçilmiş account_id doğrulanamaz. Herhangi bir dönen org seçilmiş hesabın yerine otomatik geçirilmez. Çok/boş proje açık durumdur; yalnız bir proje olsa bile otomatik seçilmez. Seçili ID bulunamazsa, sayfalama tamam değilken “erişim yok/silinmiş” denmez. Geçerli seçim ID’si config’e kendiliğinden yazılmaz.
 

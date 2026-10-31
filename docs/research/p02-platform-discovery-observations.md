@@ -26,7 +26,7 @@ Birleşik survey 31 Ekim 23:27:23 Europe/Istanbul’da üç mantıksal GET’i *
 
 Provider tarafından tanımlı key syntax/length/prefix bütünü henüz yok; tahmini negatif key üretilmedi. Üç pozitif2xx auth doğrulaması değildir, authentication unknown kalır. Me id’sinin account veya organization yerine kullanılacağı varsayılmaz. Kamu kılavuzundaki dataset cursor kuralı bu listelere aktarılmaz.
 
-[ADR-0021](../decisions/0021-platform-discovery-observations.md), kapalı public wire ve tüm raw ağaçta sır/JSON sınırlarıyla **unverified projeksiyon** kodlamasını önerir. Bu, mevcut hard raw/key başlangıç kapısını kısmen değiştirir ve kullanıcı onayı ister; kabul/verified kapısını değiştirmez. Onaysız ürün kodu veya yeni Platform success yüzeyi eklenmedi. [Hazır provider bilgi talebi](../p02-account-setup.md#platform-sözleşme-kapısını-açmak) hâlâ geçerlidir.
+[ADR-0021](../decisions/0021-platform-discovery-observations.md), kapalı public wire ve tüm raw ağaçta sır/JSON sınırlarıyla **unverified projeksiyon** kodlamasını önerir. Bu, mevcut raw/key başlangıç kapısını ve yalnız ara aşamanın metadata kabulünü kısmen değiştirir; kullanıcı onayı ister. Nihai verified için üretimde katı decoder’a ek kod geçişi ve diğer gerçek hizmet kapıları zorunlu kalır. Onaysız ürün kodu veya yeni Platform success yüzeyi eklenmedi. [Hazır provider bilgi talebi](../p02-account-setup.md#platform-sözleşme-kapısını-açmak) hâlâ geçerlidir.
 
 ## Platform chatbot cevabının kontrolü
 
@@ -51,3 +51,9 @@ Yeni [kamu kaynak kimlikleri](evidence-register.md#31-ekim-platform-chatbot-söz
 Sentetik probe kontrolleri sadece özetleyicinin değer yayımlamama ve limit davranışını denetler; ürün regresyon takımı değildir. Kaydedilen metadata bir davranış gözlemidir, doğrulanmış provider OpenAPI veya tam nonempty-project oracle’ı değildir. Ürün kodu/test/ölçüm/workflow kaynakları değişmedi; yeni performans ölçümü yapılması gerekmiyor. Önceki LLM yerel kapanışı bu Platform araştırmasıyla yeniden etiketlenmez.
 
 Küçük [metadata receipt’i](p02-platform-discovery-observations.json) özgün baytlarıyla sürümlendi; SHA256 `bdb18c7aabc66ca3a5c8ae3b2e14f7a38a05ae71d34788980dfd68589d1aae1b`. Yalnız descriptor/request metadata’sı içerir; ham hesap cevabı değildir. Hash içerik eşliğidir, bağımsız ağ veya kimlik doğrulama kanıtı değildir. Performans/gzip arşiv kataloğundaki 152 kayıt bu dosyayı kapsamaz.
+
+## 1 Kasım review’si — şekil kanıtı ve parser uyumu
+
+Mevcut metadata receipt’i değiştirilmedi; yeni hesap çağrısı yapılmadı. organizations.items[].id yalnız string türüyle kayıtlıdır; Identifier uzunluk/karakter predikatı gösterilmez. total’ın integer türü kaydedilmiş olsa da nonnegative-int64 aralığı, total≥len(items) ve gerçek sayısal total kanıtlanmaz. Boş proje dizisi nonempty project/detail decoder’ını sınamaz. Dolayısıyla bu kayıttan “önerilen parser canlı örneği kabul ediyor” sonucu çıkmaz.
+
+İleride uygun kapsam/bütçeyle acceptance çalıştırılırsa gerçek değerler saklanmadan id_identifier_valid,total_nonnegative_int64,total_gte_item_count ve gerçek decoder’ın kontrollü pass/fail sonuçları kaydedilebilir. Bunlar henüz ölçülmedi; bu boole değerleri eski receipt’e sonradan eklenmez. Tüketilmeyen profil alanlarının atılması, açıkça yayımlanması önerilen me/organization/project ID’lerinin kişiye bağlanabilirliğini ortadan kaldırmaz. Sınırlı raw projeksiyonun parser kabulü ile nihai üretim katı decoder kabulü ADR-0021 revizyonunda ayrı tutulur.

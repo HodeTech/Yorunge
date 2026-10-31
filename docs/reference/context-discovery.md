@@ -4,7 +4,7 @@
 
 ## Giriş ve state
 
-CLI `context discover --service evren-platform|evren-llm [--config PATH] [--profile NAME] [--project ID] [--state-dir PATH] [--output text|json|ndjson]`. Python `api.discover_context(service_id: ServiceId, *, config: Path|None=None, profile: str|None=None, project: str|None=None, state_dir: Path|None=None) -> Result[ContextDiscovery]`. ServiceId mevcut iki değerdir; bilinmeyen/bool/tür hatası invalid_request. Ortak CLI seçenekleri önce/sonra geçerlidir; tekil discovery seçeneklerinin yinelenmesi reddedilir. Yeni --account yok; account tercihi yalnız profilden gelir.
+CLI `context discover --service evren-platform|evren-llm [--config PATH] [--profile NAME] [--project ID] [--state-dir PATH] [--output text|json|ndjson]`. Bugünkü Python uygulaması `api.discover_context(service_id: ServiceId, *, config: Path|None=None, profile: str|None=None, project: str|None=None, state_dir: Path|None=None) -> Result[ContextDiscovery]`; yalnız LLM döner, Platform çağrısı unsupported_combination verir. Önerilen iki-varyant overload sözleşmesi [ayrı bölümde](#önerilen-python-api-ve-renderer-tip-sözleşmesi) tanımlıdır ve henüz uygulanmadı. ServiceId mevcut iki değerdir; bilinmeyen/bool/tür hatası invalid_request. Ortak CLI seçenekleri önce/sonra geçerlidir; tekil discovery seçeneklerinin yinelenmesi reddedilir. Yeni --account yok; account tercihi yalnız profilden gelir.
 
 LLM’de açık project/--project `invalid_request` ile I/O öncesi reddedilir. Ortak profilin account_id/project_id alanları çağrıyı engellemez ancak LLM selected alanına kopyalanmaz. Platform alt kartı raw sözleşmesi kapanmadığı sürece public çağrı I/O öncesi `unsupported_combination` verir; sahte observation veya adapter yoktur. LLM’nin uygulanması Platform’ın verified olduğu anlamına gelmez.
 
@@ -49,7 +49,7 @@ Yalnız seçili LLM hedefindeki **GET terms/status** kullanılır; query/body bo
 | HTTP / sınır | Discovery sonucu |
 |---|---|
 | terms/status, auth/me, organizations veya projects list404 | Adaptör HttpStatusFailure.status_code üzerinden invalid_response üretir; generic remote_failed olarak kaçmaz |
-| projects/{id}404 | Platform varyantında selection_unverified + selected_project_not_found observation; “silinmiş/erişim yok” kesin hükmü yok |
+| projects/{id}404 | ADR-0020’de kavramsal selection_unverified + selected_project_not_found; [önerilen wire eşlemesi](#seçim-kavramları-ve-kapalı-wire-eşlemesi); “silinmiş/erişim yok” kesin hükmü yok |
 | 401/403 | remote_access_denied / exit3; auth/principal doğrulaması veya global unsupported değil |
 | 429 | remote_rate_limited / exit1; mevcut bounded read retry politikası geçerli |
 | Diğer non2xx | Mevcut HttpStatusFailure kodu; body/path/headers public’e kopyalanmaz |
@@ -86,7 +86,7 @@ Yetkili auth sözleşmesi yokken, her kullanılan endpoint/parametre için iyi b
 
 ## Önerilen Platform gözlem varyantı
 
-**Proposed; uygulanmadı.** Bu bölüm yalnız [ADR-0021](../decisions/0021-platform-discovery-observations.md) kullanıcı onayı sonrasında ürün sözleşmesine dönüşebilir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı iki kapalı varyantın union’ıdır.
+**Proposed; uygulanmadı.** Bu bölüm yalnız [ADR-0021](../decisions/0021-platform-discovery-observations.md) kullanıcı onayı sonrasında ürün sözleşmesine dönüşebilir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
 
 ### Tam public alan kümesi ve tipler
 
@@ -107,29 +107,195 @@ Platform varyantının bütün alanları zorunludur; nullable alan eksik bırak�
 | observations | Sıralı3 veya4 EndpointObservation; aşağıdaki kapalı sıra |
 | observed_from / observed_until / validated_at | Mevcut canonical UTC; local final gate zamanı provider zamanı yerine geçmez |
 | consistency / validation | Yalnız not_guaranteed / yalnız unverified |
-| reasons | Aşağıdaki kapalı kuralla üretilen tekil/sıralı reason dizisi |
+| reasons | Aşağıdaki kapalı kuralla üretilen tekil, ASCII sözlük sırasında reason dizisi |
 
-OrganizationRef tam id:Identifier taşır. ProjectRef tam id:Identifier,organization_id:Identifier veya null,organization_id_state:reported_id veya reported_null veya not_exposed taşır. Aynı listedeki duplicate ID invalid_response; en çok128 item, sessiz sıralama/dedup/kırpma yoktur. OrganizationRef.owner_id, ad/slug/role/PII yayımlanmaz.
+OrganizationRef tam id:Identifier taşır. ProjectRef tam id:Identifier,organization_id:Identifier veya null,organization_id_state:reported_id veya reported_null veya not_exposed taşır. Aynı listedeki duplicate ID invalid_response; en çok128 item, sessiz sıralama/dedup/kırpma yoktur. OrganizationRef.owner_id ve tüketilmeyen ad/slug/ham role/profil alanları yayımlanmaz. Yayımlanan me/organizasyon/proje ID’leri kişiye bağlanabilir; bu sözleşme tüm kişisel veriyi ayıkladığını iddia etmez. Public wire, kullanıcının CLI/Python çıktısıdır; ortak log/PR/artefakta aktarmadan önce bu tanımlayıcılar gerektiğinde maskelenir veya çıkarılır. Identifier yalnız sözdizimini doğrular, kişisel veri sınıflandırmaz.
+
+Çözümlenen selected.project_id açık CLI/Python override’ı veya profil tercihinden gelebilir; **ikisi de detail GET’ini tetikler**. profile_preference değiştirilmemiş profili korur, selected açık override varsa onu kullanır. project=None override değildir; boş string invalid_request olur. Seçili project yoksa 3 GET/3 observation, varsa4 GET/4 observation vardır.
 
 ProjectSelection tam state:not_selected veya observed veya not_found,project:ProjectRef veya null taşır. selected.project_id=null ise not_selected/null; detail404 ise not_found/null; detail200’de observed/ProjectRef ve dönen id=seçilen id olmalıdır. Bu observed yalnız ID eşitliği ve alınan alanları anlatır; kimlik, membership, parent veya execution izni doğrulanmış olmaz. Listeye seçili kayıt otomatik eklenmez. Tek proje/organizasyon da otomatik seçilmez.
 
 Reported_identity.me_id yalnız auth/me.data.id’nin opak bildirimidir. Diğer iki ID yalnız aynı nesnenin organization_id/personal_org_id alanından gelir. Kaynak alan yoksa not_exposed/null, açık null ise reported_null/null, Identifier ise reported_id/değer; başka tip invalid_response. Bu alanlar provider principal/account alanlarına veya capability scope’a kopyalanmaz. Raw profil ve explicit tercih aynı config snapshot’ından ayrılır; config/env tekrar okunmaz.
 
-EndpointObservation tam endpoint_id,resource_id,started_at,completed_at,authentication,outcome taşır. İlk üç endpoint_id sırası platform_me/platform_organizations/platform_projects, resource_id=null, outcome=observed; yalnız açık project seçilmişse dördüncü platform_project_detail,resource_id=seçilen ID,outcome=observed veya not_found olur. Authentication her zaman unknown. Aralıklar seri sırada ve observed_from≤ilk başlangıç≤bitiş≤sonraki başlangıç≤son bitiş≤observed_until≤validated_at olmalıdır. Clock rollback’in mevcut kalıcı generation/final kapısı atlanmaz.
+EndpointObservation tam endpoint_id,resource_id,started_at,completed_at,authentication,outcome taşır. İlk üç endpoint_id sırası platform_me/platform_organizations/platform_projects, resource_id=null, outcome=observed; selected.project_id açık override veya profil kaynaklı doluysa dördüncü platform_project_detail,resource_id=seçilen ID,outcome=observed veya not_found olur. Authentication her zaman unknown. Aralıklar seri sırada ve observed_from≤ilk başlangıç≤bitiş≤sonraki başlangıç≤son bitiş≤observed_until≤validated_at olmalıdır. Clock rollback’in mevcut kalıcı generation/final kapısı atlanmaz.
 
-Reasons her zaman account_semantics_unknown,authorization_not_verified,identity_not_verified,list_completeness_unknown,remote_snapshot_not_guaranteed içerir. Profile_preference scope unknown ise profile_scope_unknown; project seçilmemişse project_selection_required; detail404 ise selected_project_not_found; organizations completeness incomplete ise provider_listing_incomplete eklenir. Başka keyfi reason veya ErrorCode yoktur. Text görünümü gözlem/tercih ve doğrulanmamış auth/kimlik/tamlık sınırını açıklar; ham provider açıklaması/metadata basmaz. Result completed ve context_not_verified uyarısı korunur.
+Reasons tekil ve ASCII sözlük sırasındadır; verilen reason dizisi tam hesaplanan kümeyle bu sırada eşleşmelidir. Reasons her zaman account_semantics_unknown,authorization_not_verified,identity_not_verified,list_completeness_unknown,remote_snapshot_not_guaranteed içerir. Profile_preference scope unknown ise profile_scope_unknown; project seçilmemişse project_selection_required; detail404 ise selected_project_not_found; organizations completeness incomplete ise provider_listing_incomplete eklenir. Başka keyfi reason veya ErrorCode yoktur. Text görünümü gözlem/tercih ve doğrulanmamış auth/kimlik/tamlık sınırını açıklar; ham provider açıklaması/metadata basmaz. Result completed ve context_not_verified uyarısı korunur.
 
 ### Raw projeksiyonun tam tüketim sınırı
 
-Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam schema garantisi değildir. Tüketilen alanlar strict doğrulanır. Her endpoint’in root object’inde success anahtarı varsa **tüketilen kontrol metadata’sıdır**: strict bool ve true zorunludur; false/non-bool, geçerli items/total/id yanında olsa da projeksiyondan önce invalid_response olur. Root success asla atılacak metadata değildir. Endpoint’in root tür kuralı ayrıca korunur; bu denetim projects dizisi yerine keyfi zarf kabulü açmaz. Diğer metadata, **tam raw-tree JSON/sır taramasından sonra** atılır; ortak decode_response/closed-codec gevşetilmez. Raw verinin hiçbir generic dict’i public sonuca girmez. Metadata’daki bilinen secret veya malformed JSON da invalid_response olur.
+Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam schema garantisi değildir. Tüketilen alanlar strict doğrulanır. Auth/me’de success ve data zorunludur; ortak “varsa” kuralı bu zorunluluğu kaldırmaz. Organizations root success’i opsiyoneldir; detail’de bare object veya zorunlu success/data zarfı ayrılır. Her endpoint’in root object’inde success anahtarı varsa **tüketilen kontrol metadata’sıdır**: strict bool ve true zorunludur; false/non-bool, geçerli items/total/id yanında olsa da projeksiyondan önce invalid_response olur. Root success asla atılacak metadata değildir. Endpoint’in root tür kuralı ayrıca korunur; bu denetim projects dizisi yerine keyfi zarf kabulü açmaz. Diğer metadata, **tam raw-tree JSON/sır taramasından sonra** atılır; ortak decode_response/closed-codec gevşetilmez. Raw verinin hiçbir generic dict’i public sonuca girmez. Metadata’daki bilinen secret veya malformed JSON da invalid_response olur.
 
 | Endpoint | Kabul edilecek tüketilen yapı |
 |---|---|
-| auth/me | Root object; success strict bool=true ve data object zorunlu; data.id zorunlu Identifier,organization_id/personal_org_id isteğe bağlı Identifier/null. logical false veya yanlış/eksik id invalid_response |
+| auth/me | Root object; success anahtarının varlığı, strict bool=true ve data object zorunlu; data.id zorunlu Identifier,organization_id/personal_org_id isteğe bağlı Identifier/null. logical false veya yanlış/eksik id invalid_response |
 | organizations | Root object; success varsa strict bool=true ön denetimi, items object dizisi ve total strict nonnegative-int64 zorunlu; her item.id zorunlu Identifier. total<len(items) invalid_response; total>len(items) incomplete; eşitlik unknown |
 | projects | Root object değil JSON dizisi; her item.id zorunlu Identifier,org_id isteğe bağlı Identifier/null. Public parent state missing/null/id ayrımını korur; owner_id veya ad/slug yorumlanmaz |
 | projects/{selected_id} | HTTP200’de bare project object veya success=true/data project object. success anahtarı varsa strict bool ve data object zorunlu; yanlış tip/false/eksik data ret. Project tüketimi listeyle aynı, id=selected_id olmalı.404 not_found; diğer hatalar mevcut kurala göre hata |
 
 Arrays129+, wrong ID/type/total veya output sınırı ret; overflow incomplete adıyla gizlenmez. Boş projects dizisi geçerli gözlemdir; hiç proje olmadığı/izin bulunmadığı veya seçimin geçerli olduğu sonucu değildir. Pagination parametresi/cursor/Link tahmin edilmez ve takip edilmez; diğer metadata’nın bilinmemesi zaten unknown tamlıkla gösterilir.
 
-No-init/tek credential/state final kapısı, normal≤4 GET/8 attempt/30 s/4 MiB, response≤1 MiB,3-or4 endpoint sırası ve mevcut HTTP/hata/iptal/UTF-8 kuralları ADR-0020 ile aynıdır. Bu proposal, Platform’ın auth/principal/pagination veya dolu/seçilmiş proje live kabulünü geçmiş saymaz; P02-0d/P02-0b/P02-0 verified kapısı değişmez.
+No-init/tek credential/state final kapısı, normal≤4 GET/8 attempt/30 s/4 MiB, response≤1 MiB,3-or4 endpoint sırası ve mevcut HTTP/hata/iptal/UTF-8 kuralları ADR-0020 ile aynıdır. Bu proposal, Platform’ın auth/principal/pagination veya dolu/seçilmiş proje live kabulünü geçmiş saymaz. Ara projeksiyonun metadata kabulü nihai verified parser kabulünden farklıdır: final verified öncesi üretim CLI/Python yolunda sağlayıcı sözleşmesine bağlı katı decoder’a geçiş **ek kod adımıdır**; raw unknown ret kuralı o aşamada uygulanır, projeksiyona fallback yoktur. Diğer nihai verified/live/paket koşulları korunur. Mevcut receipt yalnız alan türlerini tutar; Identifier/total aralık/eşitsizlik predicate’lerini veya bu parser’ın canlı uyumunu kanıtlamaz.
+
+### Seçim kavramları ve kapalı wire eşlemesi
+
+ADR-0020’deki genel seçim terimleri henüz uygulanmış Platform enum’ları değildir. ADR-0021 onaylanırsa aşağıdaki eşleme geçerlidir; selection_required,selection_unverified,mismatch yeni wire’da ek alan, state veya reason değildir. Bu öneri Platform için ilk kesin wire/error eşlemesini sahiplenir; ADR-0020’ye gizli bir state eklemez.
+
+| Genel kavram / durum | Önerilen kesin sonuç |
+|---|---|
+| selection_required; çözümlenen project yok | projects.selection.state=not_selected,project=null; reason project_selection_required; validation=unverified;3 GET |
+| selection_unverified; detail404 | projects.selection.state=not_found,project=null; reason selected_project_not_found; validation=unverified;4 GET |
+| unverified; detail200/ID eşit | projects.selection.state=observed ve ProjectRef; validation=unverified, authorization_not_verified/account_semantics_unknown korunur;4 GET |
+| mismatch; detail ID istenen ID’den farklı | invalid_response / exit1; Result veya discovery payload yayımlanmaz |
+| Profil account-parent veya list/detail parent farkı | Normal unverified gözlem; doğrulanmış parent anlamı yok. Listedeki org_id ile detail org_id farklıysa iki kaynak ayrı korunur; consistency=not_guaranteed ve account_semantics_unknown/remote_snapshot_not_guaranteed korunur. Bunlar invalid_response veya membership hükmü değildir |
+
+Profil-only project için de selected.project_id doludur; son satır dışındaki4 GET kuralı explicit override ile aynıdır. Profil-only/dördüncü GET/selected/profile_preference/state tek fixture’da birlikte sınanır. Örneğin profilde A ve override B varsa profile_preference A,selected B kalır ve yalnız B detail’i istenir. Tüketilen parent yanlış tipse normalizer invalid_response verir; eksik/null/ID veya endpoint’ler arasında değişmesi farklı durumlardır.
+
+### Önerilen Python API ve renderer tip sözleşmesi
+
+**Proposed; henüz ürün imzası değil.** Onay ve kod adımı sonrası overload’lar aşağıdaki gibi olur. Generic çağrının dönüşü `Result[ContextDiscovery] | Result[PlatformContextDiscovery]`’dir. `Result[ContextDiscovery | PlatformContextDiscovery]` dar literal overload’larla aynı şey değildir: mevcut invariant Result ile izole strict-mypy deneyi implementation-return uyumsuzluğunu doğruladı. Result’ın variance’ı veya Result v1 wire’ı bu iş için değiştirilmez.
+
+```python
+@overload
+def discover_context(
+    service_id: Literal["evren-llm"], *, config: Path | None = None,
+    profile: str | None = None, project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ContextDiscovery]: ...
+
+@overload
+def discover_context(
+    service_id: Literal["evren-platform"], *, config: Path | None = None,
+    profile: str | None = None, project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[PlatformContextDiscovery]: ...
+
+@overload
+def discover_context(
+    service_id: ServiceId, *, config: Path | None = None,
+    profile: str | None = None, project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ContextDiscovery] | Result[PlatformContextDiscovery]: ...
+```
+
+Python literal-service caller dar Result tipini alır; generic caller result.data.service_id ile data varyantını daraltır. JSON’da discriminator data.service_id, NDJSON result event’inde payload.data.service_id’dir; tek başına schema_version=1 varyant seçmez. Her DTO’nun service_id literal’ı sabittir; yanlış model/service eşleşmesi kabul edilmez. Mevcut LLM sınıf adı ve wire’ı korunur.
+
+CLI discovery_text_result iki doğrulanmış DTO sınıfına dispatch eder; yalnız eski ContextDiscovery isinstance kontrolüyle Platform’u TypeError’a düşürmez. Platform text gözlem/tercih/unknown auth-kimlik-tamlık sınırını, LLM text mevcut terms sınırını gösterir. Provider dict veya metadata renderer’a girmez; JSON/NDJSON seçilen DTO’yu aynı Result zarfında serileştirir. Testler iki literal ve generic dönüş/narrowing, iki text varyantı, JSON ve NDJSON eşliğini kapsar. Onay öncesi mevcut Platform unsupported davranışı korunur; onay tek başına implementasyon sayılmaz, kod adımında bu beklenen davranış tipli varyanta dönüşür.
+
+### Detail404 için tam sentetik Result örneği
+
+Aşağıdaki bütün ID/zaman/değerler sentetiktir; canlı kanıt veya gerçek hesap bilgisi değildir. Profil-only seçilen project detail404 verdiğinde 4 observation ve tam JSON aşağıdaki şekildedir. selection_unverified ek bir alan/değer değildir; üst validation=unverified ile not_found + selected_project_not_found bu kavramı ifade eder. NDJSON result event’inin payload alanı bu aynı Result’tur.
+
+```json
+{
+  "schema_version": 1,
+  "operation_id": null,
+  "status": "completed",
+  "data": {
+    "schema_version": 1,
+    "service_id": "evren-platform",
+    "profile": "synthetic",
+    "target": {
+      "service_origin": "https://api.ssyz.org.tr",
+      "api_base_path": "/api/v1"
+    },
+    "binding": {
+      "store_id": "11111111-1111-4111-8111-111111111111",
+      "identity_epoch": "22222222-2222-4222-8222-222222222222",
+      "clock_generation": 1,
+      "credential_id": "44444444-4444-4444-8444-444444444444",
+      "credential_revision": 1
+    },
+    "profile_preference": {
+      "account_id": null,
+      "project_id": "33333333-3333-4333-8333-333333333333",
+      "service_scope": "unknown"
+    },
+    "selected": {
+      "account_id": null,
+      "project_id": "33333333-3333-4333-8333-333333333333"
+    },
+    "provider": {
+      "principal_id": null,
+      "account_id": null,
+      "organization_id": null,
+      "project_id": null,
+      "identity_status": "unverified"
+    },
+    "reported_identity": {
+      "me_id": "synthetic-me-id",
+      "organization_id": null,
+      "personal_organization_id": null,
+      "organization_id_state": "not_exposed",
+      "personal_organization_id_state": "not_exposed"
+    },
+    "authorization_scope": null,
+    "organizations": {
+      "items": [],
+      "reported_total": 0
+    },
+    "projects": {
+      "items": [],
+      "selection": {
+        "state": "not_found",
+        "project": null
+      }
+    },
+    "list_completeness": {
+      "organizations": "unknown",
+      "projects": "unknown"
+    },
+    "terms": null,
+    "observed_from": "2026-11-01T12:00:00.000000Z",
+    "observed_until": "2026-11-01T12:00:00.850000Z",
+    "validated_at": "2026-11-01T12:00:00.900000Z",
+    "observations": [
+      {
+        "endpoint_id": "platform_me",
+        "resource_id": null,
+        "started_at": "2026-11-01T12:00:00.100000Z",
+        "completed_at": "2026-11-01T12:00:00.200000Z",
+        "authentication": "unknown",
+        "outcome": "observed"
+      },
+      {
+        "endpoint_id": "platform_organizations",
+        "resource_id": null,
+        "started_at": "2026-11-01T12:00:00.300000Z",
+        "completed_at": "2026-11-01T12:00:00.400000Z",
+        "authentication": "unknown",
+        "outcome": "observed"
+      },
+      {
+        "endpoint_id": "platform_projects",
+        "resource_id": null,
+        "started_at": "2026-11-01T12:00:00.500000Z",
+        "completed_at": "2026-11-01T12:00:00.600000Z",
+        "authentication": "unknown",
+        "outcome": "observed"
+      },
+      {
+        "endpoint_id": "platform_project_detail",
+        "resource_id": "33333333-3333-4333-8333-333333333333",
+        "started_at": "2026-11-01T12:00:00.700000Z",
+        "completed_at": "2026-11-01T12:00:00.800000Z",
+        "authentication": "unknown",
+        "outcome": "not_found"
+      }
+    ],
+    "consistency": "not_guaranteed",
+    "validation": "unverified",
+    "reasons": [
+      "account_semantics_unknown",
+      "authorization_not_verified",
+      "identity_not_verified",
+      "list_completeness_unknown",
+      "profile_scope_unknown",
+      "remote_snapshot_not_guaranteed",
+      "selected_project_not_found"
+    ]
+  },
+  "warnings": [
+    "context_not_verified"
+  ]
+}
+```
