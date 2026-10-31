@@ -255,3 +255,24 @@ def test_platform_dto_cannot_upgrade_observation_or_expand_wire(field, value):
     wire[field] = value
     with pytest.raises(ValidationError):
         PlatformContextDiscovery.model_validate_json(json.dumps(wire))
+
+
+@pytest.mark.parametrize(
+    "raw,secret",
+    [
+        ({"success": True, "data": {"id": "p"}, "id": "discarded"}, "id"),
+        ({"success": True, "data": {"id": "p"}, "org_id": "discarded"}, "org_id"),
+        ({"id": "p", "data": {"ignored": "discarded"}}, "data"),
+        ({"id": "p", "data": {"id": "discarded"}}, "id"),
+    ],
+)
+def test_detail_shape_never_exempts_discarded_metadata_keys(raw, secret):
+    with pytest.raises(YorungeError) as failure:
+        parse(raw, "detail", SecretValue(secret))
+    assert failure.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("raw", [{"id": "p"}, {"success": True, "data": {"id": "p"}}])
+def test_detail_selected_shape_keeps_consumed_protocol_keys_exempt(raw):
+    parsed = parse(raw, "detail", SecretValue("id"))
+    assert projection.detail(parsed, "p").id == "p"

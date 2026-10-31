@@ -43,19 +43,27 @@ def _keys(endpoint: str, path: tuple[str, ...]) -> frozenset[str]:
             return frozenset({"success", "data"})
         if endpoint == "organizations":
             return frozenset({"success", "items", "total"})
+        if endpoint == "detail-envelope":
+            return frozenset({"success", "data"})
         if endpoint == "detail":
-            return frozenset({"success", "data", "id", "org_id"})
+            return frozenset({"id", "org_id"})
     if endpoint == "me" and path == ("data",):
         return frozenset({"id", "organization_id", "personal_org_id"})
     if endpoint == "organizations" and path == ("items", "[]"):
         return frozenset({"id"})
-    if (endpoint == "projects" and path == ("[]",)) or (endpoint == "detail" and path == ("data",)):
+    if (endpoint == "projects" and path == ("[]",)) or (
+        endpoint == "detail-envelope" and path == ("data",)
+    ):
         return frozenset({"id", "org_id"})
     return frozenset()
 
 
 def safe_raw(data: bytes, endpoint: str, secret: SecretValue) -> object:
     value = parse_json(data)
+    # Only the selected raw shape defines fixed protocol keys. A wrapper root
+    # id/org_id or a bare object data subtree is discarded, untrusted metadata.
+    if endpoint == "detail" and isinstance(value, dict) and "success" in value:
+        endpoint = "detail-envelope"
     captured = secret.reveal()
     pending: list[tuple[object, tuple[str, ...]]] = [(value, ())]
     while pending:
