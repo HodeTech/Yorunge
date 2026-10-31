@@ -176,3 +176,9 @@ Kullanıcı yanıtı onay değil, belge/sözleşme review’sidir. ADR-0021 Prop
 Düzeltme commit’i sonrası iki farklı fresh belge/kanıt review turu yapılır. Kullanıcı onayı gelmeden Accepted veya ürün implementasyonu yoktur. Runtime/test/ölçüm/workflow kaynakları değişmedi; bu belge turu için tam ürün/performance takımı tekrar çalıştırılmaz.
 
 Düzeltme ön doğrulaması:140 public Markdown,6 skill/16 kart ve diff geçti. Tam sentetik404 Result örneği JSON olarak parse edildi;21 data alanı, tam reason kümesi/ASCII sırası, profile-only seçili ID,4 endpoint/resource/outcome, canonical zaman sırası, UUIDv4 binding ve output sınırı bağımsız kontrol edildi. Python imza fence’leri syntax kontrolünden geçti. İki izole mypy alternatifinden invariant-wrapper union beklenen2 hatayı verirken union-of-results geçti; bu bir ürün testi değildir. Özgün receipt3031 byte/SHA değişmedi.152 arşiv ve iki güncel LLM kaynak referansı doğrulandı. Commit sonrası fresh R1/R2 henüz bu revizyonun yeni kapanışını oluşturacak.
+
+### 1 Kasım revizyonu — Birinci fresh belge/kanıt review turu
+
+Head7353637 üstünde adr21_revision_r1_contract / adr21_revision_r1_safety kullanıcının yeni bulgularının düzeltmelerini bağımsız inceledi. Yeni doğrulanmış bulgu yok. Ara metadata/nihai üretim katı decoder ayrımı, profilden veya override’dan detail4GET, tek seçim/reason sözlüğü, parent farkı ve ID-route hatası, me başarı alanı zorunluluğu, linkable-ID gizlilik tanımı ve gerçek şekil kanıtı sınırı tutarlı bulundu. Union-of-results API tasarımı ve tam sentetik404 Result alan/zaman/reason eşliği doğrulandı.
+
+140 belge/6 skill/16 kart/diff,152 arşiv, iki güncel LLM kaynak referansı ve özgün receipt3031 byte/SHA eşliği geçti. Ürün testi/benchmark veya canlı hesap çağrısı yapılmadı; runtime/test/ölçüm/workflow değişmedi. ADR-0021 halen Proposed; bu revizyon için farklı fresh ajanlarla ikinci tur yapılır.
