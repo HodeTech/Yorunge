@@ -1055,6 +1055,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-llm-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 117.95975011773407, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 84.73012503236532, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 34.15016597136855, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 27.91529195383191, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 119.36179199256003, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 87.10941718891263, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 30.81095893867314, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 27.6138330809772, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "0e0d2b747d23976c46f196b02266a3ba1f6d6d8a"}`.
 
+## p02-0-platform-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `c7a2b29f4de3a49d240ab15f8a5383fdfe45fa7ed78dcaa3c2f46924211fafae`.
+**Yerel arşiv:** `raw/p02-0-platform-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005"}`.
+
+## p02-0-platform-reference-jobs
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `2dfd34b6140fbdca249139aa41087a772a357747cb50f583755434680699638f`.
+**Yerel arşiv:** `raw/p02-0-platform-reference-jobs.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 155.28249996714294, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 124.9817090574652, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 117.4791248049587, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 113.09454101137817, "passed": true, "samples": 30}}, "passed": true, "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-0-platform-reference-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `c22174a6a9658b10e54ebfe5cfd9c1668d3b5187c3c2e49153de1533176f1329`.
+**Yerel arşiv:** `raw/p02-0-platform-reference-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 126.5594158321619, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 92.97679201699793, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 26.29283396527171, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 31.814791029319167, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 127.98366602510214, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 89.2820421140641, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 27.385124936699867, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 29.39833397977054, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.

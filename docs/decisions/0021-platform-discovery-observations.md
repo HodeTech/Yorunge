@@ -92,3 +92,8 @@ Kullanıcının 2026-11-01 tarihli açık onayıyla bu geçişler ürün kodunda
 - Bu öneriyle P02-0 kabulünü de daraltıp paketi verified saymak: seçilmedi; ayrı kullanıcı kararı olmadan kabul kapısı değişmez.
 
 Öneri güven iddiasını büyütmeden bir ara gözlem diliminin kodlanmasını açmayı amaçlar; uygulanabilirlik, parser’ın canlı örneği kabulü veya çalışan ürün henüz kanıtlanmış değildir. Karşılığı, tam provider schema yerine tüketilen alan projeksiyonunun açıkça sahiplenilmesi ve eksik dış kabullerin ve nihai üretim katı decoder işinin görünür tutulmasıdır. Bu karar Accepted’dır; onay tek başına uygulanmış özellik veya nihai kabul sayılmaz.
+
+
+## Uygulama durum notu — 2026-11-01
+
+Onay commit’i9fae321’den sonra iki ara kod adımı, her birinde commit ve iki farklı fresh review turuyla uygulandı. [Ara yerel kabul](../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tam test/iki temiz kurulum ve yeni kaynak bağlı M5 kanıtını taşır. Bu, karar anındaki uygulanmadı ifadelerinin sonraki durumudur. Parser’ın gerçek canlı örneğe uyumu, nihai üretim katı decoder ve auth/principal/pagination/dolu-seçili proje canlı kabulü henüz kanıtlanmış değildir; P02-0d/P02-0b/P02-0 verified ilan edilmez.

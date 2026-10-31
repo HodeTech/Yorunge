@@ -1,14 +1,14 @@
 ---
 id: P02-0d
 phase: P02
-status: in_progress
+status: blocked
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform kimlik, organizasyon ve proje keşfi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama in_progress; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım5.1 çekirdeği iki fresh review turuyla kapandı; adım5.2 public API/CLI ve kurulu paket testi sürüyor. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama ve yerel kabul tamamlandı; nihai5.3 sağlayıcı sözleşmesi/canlı kabul beklediği için blocked; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım5.1 çekirdeği iki fresh review turuyla kapandı; adım5.2 public API/CLI iki fresh review turuyla ve tam kaynak/iki temiz kurulum/M5 yerel kabulüyle kapandı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -50,4 +50,4 @@ Ara kodlamada ADR-0021 onayı sonrası meaningful unit/contract, gerçek TLS, CL
 
 ## Teslim kaydı
 
-Ara unverified çekirdek ve public CLI/Python uygulandı; nihai üretim katı decoder ve tam live kabul yapılmadı. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
+Ara unverified çekirdek ve public CLI/Python iki fresh review turu/adım ile uygulandı; [yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tamamlandı. Nihai üretim katı decoder ve tam live kabul yapılmadı; bu5.3 dış kapısı kartı blocked tutar. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.

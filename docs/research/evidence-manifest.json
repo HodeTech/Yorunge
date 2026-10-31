@@ -6529,6 +6529,160 @@
       }
     },
     {
+      "name": "p02-0-platform-installation.json",
+      "archive": "raw/p02-0-platform-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1178,
+      "content_sha256": "c7a2b29f4de3a49d240ab15f8a5383fdfe45fa7ed78dcaa3c2f46924211fafae",
+      "archive_bytes": 496,
+      "archive_sha256": "4dec6227c2d173ee5a9b4b914602061817975608e5b7e2058525034baef7f3cd",
+      "summary": {
+        "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-platform-reference-jobs.json",
+      "archive": "raw/p02-0-platform-reference-jobs.json.gz",
+      "original_commit": null,
+      "content_bytes": 130732,
+      "content_sha256": "2dfd34b6140fbdca249139aa41087a772a357747cb50f583755434680699638f",
+      "archive_bytes": 22936,
+      "archive_sha256": "8ee767b83e330f4a6bbbdef713dc4d63a73fdb5bca360af4b3a4365bda9cbe92",
+      "summary": {
+        "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 117.4791248049587,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 113.09454101137817,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 155.28249996714294,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 124.9817090574652,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p02-0-platform-reference-startup.json",
+      "archive": "raw/p02-0-platform-reference-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 182235,
+      "content_sha256": "c22174a6a9658b10e54ebfe5cfd9c1668d3b5187c3c2e49153de1533176f1329",
+      "archive_bytes": 27473,
+      "archive_sha256": "6bb4571572e09145945a78e796081b8ba3faebea8ad85e17303d065502ffc7ab",
+      "summary": {
+        "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 27.385124936699867,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 29.39833397977054,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 89.2820421140641,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 127.98366602510214,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 26.29283396527171,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 31.814791029319167,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 92.97679201699793,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 126.5594158321619,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "startup-ci-control.json",
       "archive": "raw/startup-ci-control.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
