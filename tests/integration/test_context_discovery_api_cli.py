@@ -166,13 +166,6 @@ def test_api_default_state_is_explicit_and_does_not_fall_back_from_another_root(
     assert len(server.requests) == 2
 
 
-def test_cli_platform_gate_is_explicit_without_env_state_or_remote_access(cli):
-    result = cli("context", "discover", "--service", "evren-platform", "--output=json")
-    assert result.returncode == 2
-    assert result.stdout == ""
-    assert json.loads(result.stderr)["code"] == "unsupported_combination"
-
-
 @pytest.mark.parametrize("option", ["--config", "--service", "--output"])
 def test_cli_repeated_singleton_forms_are_rejected_before_dispatch(
     context_files, certificates, option
@@ -192,7 +185,6 @@ def test_cli_repeated_singleton_forms_are_rejected_before_dispatch(
     [
         ({"service_id": "unknown"}, "invalid_request"),
         ({"service_id": True}, "invalid_request"),
-        ({"service_id": "evren-platform"}, "unsupported_combination"),
         ({"project": "explicit-platform-project"}, "invalid_request"),
         ({"config": "string-not-Path"}, "invalid_request"),
         ({"state_dir": "string-not-Path"}, "invalid_request"),

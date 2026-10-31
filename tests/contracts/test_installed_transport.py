@@ -90,9 +90,13 @@ def test_runtime_only_isolated_child_uses_actual_tls_and_all_new_product_paths(
         assert Path(report["metadata"]).is_relative_to(prefix)
         if case == "discovery":
             assert acceptance.DISCOVERY_MODULES.issubset(report["modules"])
+        if case == "platform-discovery":
+            assert acceptance.PLATFORM_MODULES.issubset(report["modules"])
     if not state_supported:
         assert not (tmp_path / "discovery-origins.json").exists()
         assert not (tmp_path / "discovery-state").exists()
+        assert not (tmp_path / "platform-discovery-origins.json").exists()
+        assert not (tmp_path / "platform-discovery-state").exists()
 
 
 @pytest.mark.parametrize("mutation", ["terms-type", "selected", "auth", "warning", "data-type"])

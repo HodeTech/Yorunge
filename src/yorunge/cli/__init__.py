@@ -354,7 +354,27 @@ def jobs_text_result(data: Model) -> str:
 
 def discovery_text_result(data: Model) -> str:
     from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.platform_discovery import PlatformContextDiscovery
 
+    if isinstance(data, PlatformContextDiscovery):
+        selection = data.projects.selection
+        lines = [
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}",
+            f"Bildirilen kullanıcı ID: {data.reported_identity.me_id}",
+            f"Tercih edilen hesap: {data.selected.account_id or '-'}",
+            f"Seçilen proje: {data.selected.project_id or '-'} ({selection.state})",
+            f"Gözlenen organizasyon: {len(data.organizations.items)}; "
+            f"bildirilen toplam: {data.organizations.reported_total}",
+            f"Gözlenen proje: {len(data.projects.items)}",
+            "Kimlik doğrulaması ve yetki: doğrulanmadı. ID bildirimi kimlik kanıtı değildir.",
+            "Liste tamlığı: "
+            + ("eksik" if data.list_completeness.organizations == "incomplete" else "bilinmiyor"),
+            "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir.",
+            "ID’ler kişiye bağlanabilir; çıktıyı paylaşırken koruyun.",
+        ]
+        lines.extend(f"Organizasyon ID: {item.id}" for item in data.organizations.items)
+        lines.extend(f"Proje ID: {item.id}" for item in data.projects.items)
+        return "\n".join(lines)
     if not isinstance(data, ContextDiscovery):
         raise TypeError("unsupported discovery result")
     terms = "kabul edilmiş" if data.terms.accepted else "kabul edilmemiş"

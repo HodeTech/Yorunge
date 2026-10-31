@@ -4,9 +4,9 @@
 
 ## Giriş ve state
 
-CLI `context discover --service evren-platform|evren-llm [--config PATH] [--profile NAME] [--project ID] [--state-dir PATH] [--output text|json|ndjson]`. Bugünkü Python uygulaması `api.discover_context(service_id: ServiceId, *, config: Path|None=None, profile: str|None=None, project: str|None=None, state_dir: Path|None=None) -> Result[ContextDiscovery]`; yalnız LLM döner, Platform çağrısı unsupported_combination verir. Önerilen iki-varyant overload sözleşmesi [ayrı bölümde](#önerilen-python-api-ve-renderer-tip-sözleşmesi) tanımlıdır ve henüz uygulanmadı. ServiceId mevcut iki değerdir; bilinmeyen/bool/tür hatası invalid_request. Ortak CLI seçenekleri önce/sonra geçerlidir; tekil discovery seçeneklerinin yinelenmesi reddedilir. Yeni --account yok; account tercihi yalnız profilden gelir.
+CLI `context discover --service evren-platform|evren-llm [--config PATH] [--profile NAME] [--project ID] [--state-dir PATH] [--output text|json|ndjson]`. Bugünkü Python uygulaması `api.discover_context(service_id: ServiceId, *, config: Path|None=None, profile: str|None=None, project: str|None=None, state_dir: Path|None=None) -> Result[ContextDiscovery] | Result[PlatformContextDiscovery]`; literal hizmet çağrıları dar DTO dönüşünü korur. İki-varyant overload ve renderer sözleşmesi [ayrı bölümde](#önerilen-python-api-ve-renderer-tip-sözleşmesi) tanımlıdır ve çalışma dalında uygulanmıştır. ServiceId mevcut iki değerdir; bilinmeyen/bool/tür hatası invalid_request. Ortak CLI seçenekleri önce/sonra geçerlidir; tekil discovery seçeneklerinin yinelenmesi reddedilir. Yeni --account yok; account tercihi yalnız profilden gelir.
 
-LLM’de açık project/--project `invalid_request` ile I/O öncesi reddedilir. Ortak profilin account_id/project_id alanları çağrıyı engellemez ancak LLM selected alanına kopyalanmaz. Platform alt kartı raw sözleşmesi kapanmadığı sürece public çağrı I/O öncesi `unsupported_combination` verir; sahte observation veya adapter yoktur. LLM’nin uygulanması Platform’ın verified olduğu anlamına gelmez.
+LLM’de açık project/--project `invalid_request` ile I/O öncesi reddedilir. Ortak profilin account_id/project_id alanları çağrıyı engellemez ancak LLM selected alanına kopyalanmaz. Platform ara unverified gözlem yolu Accepted ADR-0021 ile çalışma dalında uygulanmıştır; nihai üretim katı decoder/auth/live kapısı açıktır. LLM’nin uygulanması Platform’ın verified olduğu anlamına gelmez.
 
 Discovery yalnız önceden **açık state init** ile oluşturulmuş güncel store’u açar. Varsayılan mevcut state kökü veya açık CLI/Python state-dir aynı davranır; yok/bozuk/uyumsuz şemada `state_invalid` / exit2, sıfır env/ağ ve yeni dizin/DB/key yoktur. İzin/intent/key/lock/SQLite/platform hataları mevcut kontrollü state sözleşmesini korur. Örtük bootstrap/migration ve default store’a fallback yoktur. Registry/clock gözlemi mevcut store’da yerel yazı yapabilir. Eski context identity/open_store auto-init davranışı bu yeni çağrı tarafından değiştirilmez.
 
@@ -86,7 +86,7 @@ Yetkili auth sözleşmesi yokken, her kullanılan endpoint/parametre için iyi b
 
 ## Önerilen Platform gözlem varyantı
 
-**Accepted tasarım; bu onay commit’inde uygulanmadı.** [ADR-0021](../decisions/0021-platform-discovery-observations.md) 2026-11-01 kullanıcı onayıyla bu ara uygulamanın sözleşmesidir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
+**Accepted tasarım; ara unverified çekirdek ve CLI/Python yüzeyi çalışma dalında uygulandı, nihai kabul açık.** [ADR-0021](../decisions/0021-platform-discovery-observations.md) 2026-11-01 kullanıcı onayıyla bu ara uygulamanın sözleşmesidir. Platform discover artık bu tipli gözlem varyantına bağlanır. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
 
 ### Tam public alan kümesi ve tipler
 
@@ -138,7 +138,7 @@ No-init/tek credential/state final kapısı, normal≤4 GET/8 attempt/30 s/4 MiB
 
 ### Seçim kavramları ve kapalı wire eşlemesi
 
-ADR-0020’deki genel seçim terimleri henüz uygulanmış Platform enum’ları değildir. ADR-0021 onaylanırsa aşağıdaki eşleme geçerlidir; selection_required,selection_unverified,mismatch yeni wire’da ek alan, state veya reason değildir. Bu öneri Platform için ilk kesin wire/error eşlemesini sahiplenir; ADR-0020’ye gizli bir state eklemez.
+ADR-0020’deki genel seçim terimleri henüz uygulanmış Platform enum’ları değildir. Accepted ADR-0021 ile aşağıdaki eşleme geçerlidir; selection_required,selection_unverified,mismatch yeni wire’da ek alan, state veya reason değildir. Bu öneri Platform için ilk kesin wire/error eşlemesini sahiplenir; ADR-0020’ye gizli bir state eklemez.
 
 | Genel kavram / durum | Önerilen kesin sonuç |
 |---|---|
@@ -179,7 +179,7 @@ def discover_context(
 
 Python literal-service caller dar Result tipini alır; generic caller result.data.service_id ile data varyantını daraltır. JSON’da discriminator data.service_id, NDJSON result event’inde payload.data.service_id’dir; tek başına schema_version=1 varyant seçmez. Her DTO’nun service_id literal’ı sabittir; yanlış model/service eşleşmesi kabul edilmez. Mevcut LLM sınıf adı ve wire’ı korunur.
 
-CLI discovery_text_result iki doğrulanmış DTO sınıfına dispatch eder; yalnız eski ContextDiscovery isinstance kontrolüyle Platform’u TypeError’a düşürmez. Platform text gözlem/tercih/unknown auth-kimlik-tamlık sınırını, LLM text mevcut terms sınırını gösterir. Provider dict veya metadata renderer’a girmez; JSON/NDJSON seçilen DTO’yu aynı Result zarfında serileştirir. Testler iki literal ve generic dönüş/narrowing, iki text varyantı, JSON ve NDJSON eşliğini kapsar. Onay öncesi mevcut Platform unsupported davranışı korunur; onay tek başına implementasyon sayılmaz, kod adımında bu beklenen davranış tipli varyanta dönüşür.
+CLI discovery_text_result iki doğrulanmış DTO sınıfına dispatch eder; yalnız eski ContextDiscovery isinstance kontrolüyle Platform’u TypeError’a düşürmez. Platform text gözlem/tercih/unknown auth-kimlik-tamlık sınırını, LLM text mevcut terms sınırını gösterir. Provider dict veya metadata renderer’a girmez; JSON/NDJSON seçilen DTO’yu aynı Result zarfında serileştirir. Testler iki literal ve generic dönüş/narrowing, iki text varyantı, JSON ve NDJSON eşliğini kapsar. Public kod adımı önceki Platform unsupported davranışını bu tipli varyanta çevirdi; onay tek başına implementasyon sayılmadı.
 
 ### Detail404 için tam sentetik Result örneği
 

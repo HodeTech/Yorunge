@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform kimlik, organizasyon ve proje keşfi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama in_progress; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım 5.1 çekirdek uygulaması başladı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama in_progress; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım5.1 çekirdeği iki fresh review turuyla kapandı; adım5.2 public API/CLI ve kurulu paket testi sürüyor. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

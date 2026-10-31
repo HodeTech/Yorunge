@@ -42,7 +42,9 @@ from yorunge import api
 from yorunge.cli import text_result
 result = api.show_context()
 assert text_result(result.data)
-for name in ('configuration', 'credentials', 'maintenance', 'state', 'discovery'):
+for name in (
+    'configuration', 'credentials', 'maintenance', 'state', 'discovery', 'platform_discovery'
+):
     assert 'yorunge.domain.' + name not in sys.modules
 """
     result = subprocess.run(

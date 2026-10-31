@@ -37,8 +37,23 @@ ERROR_MESSAGES = {
     "invalid_response": "Yanıt beklenen biçim, içerik veya boyut koşullarını karşılamıyor.",
     "stream_interrupted": "Yanıt akışı doğrulanmış terminal sonuç olmadan kesildi.",
 }
-CASES = ("http", "http-invalid", "stream", "stream-trailing", "stream-truncated", "discovery")
+CASES = (
+    "http",
+    "http-invalid",
+    "stream",
+    "stream-trailing",
+    "stream-truncated",
+    "discovery",
+    "platform-discovery",
+)
 DISCOVERY_SECRET = "installed-only-synthetic-llm-key-768214"
+PLATFORM_SECRET = "installed-only-synthetic-platform-key-492846"
+PLATFORM_MODULES = {
+    "yorunge.adapters.platform_context",
+    "yorunge.application.platform_discovery",
+    "yorunge.application.platform_projection",
+    "yorunge.domain.platform_discovery",
+}
 DISCOVERY_MODULES = {
     "yorunge.api",
     "yorunge.adapters.context_state",
@@ -65,7 +80,7 @@ def verification_cases() -> tuple[str, ...]:
     # HTTP/stream acceptance remains usable where local state is unsupported.
     if sys.platform in ("darwin", "linux"):
         return CASES
-    return tuple(case for case in CASES if case != "discovery")
+    return tuple(case for case in CASES if case not in {"discovery", "platform-discovery"})
 
 
 def installed_origins(venv: Path) -> dict[str, object]:
@@ -189,6 +204,30 @@ def consume_discovery(args: argparse.Namespace, renderer: object) -> int:
     return 0
 
 
+def consume_platform(args: argparse.Namespace, renderer: object) -> int:
+    from yorunge import api
+    from yorunge.adapters import platform_context
+    from yorunge.adapters.http_session import HttpSession
+    from yorunge.adapters.http_transport import HttpxTransport
+
+    config = args.origins.parent / "platform-discovery.toml"
+    config.write_text(
+        'schema_version=1\nactive_profile="installed"\n[profiles.installed]\n'
+        'platform_url="https://localhost/api/v1"\nplatform_key_env="INSTALLED_PLATFORM_KEY"\n'
+        'account_id="preferred"\nproject_id="selected"\n',
+        encoding="utf-8",
+    )
+    state = args.origins.parent / "platform-discovery-state"
+    api.initialize_state(state_dir=state)
+    os.environ["INSTALLED_PLATFORM_KEY"] = PLATFORM_SECRET
+    context = ssl.create_default_context(cafile=str(args.ca))
+    platform_context.HttpSession = lambda: HttpSession(
+        transport_factory=lambda: HttpxTransport(transport=LoopbackTransport(args.port, context))
+    )
+    renderer.result(api.discover_context("evren-platform", config=config, state_dir=state))
+    return 0
+
+
 def worker(args: argparse.Namespace) -> int:
     if not sys.flags.isolated:
         raise ValueError("installed smoke requires isolated Python")
@@ -209,7 +248,9 @@ def worker(args: argparse.Namespace) -> int:
     try:
         with loopback_sockets(socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo):
             code = (
-                consume_discovery(args, renderer)
+                consume_platform(args, renderer)
+                if args.case == "platform-discovery"
+                else consume_discovery(args, renderer)
                 if args.case == "discovery"
                 else asyncio.run(consume(args.case, args.ca, args.port, renderer))
             )
@@ -245,6 +286,9 @@ def _output_object(data: bytes) -> dict[str, object]:
 
 def verify_output(case: str, code: int, stdout: bytes, stderr: bytes) -> None:
     """Prove typed failure and never publish a fake completed stream terminal."""
+    if case == "platform-discovery":
+        verify_platform_output(code, stdout, stderr)
+        return
     if case == "discovery":
         verify_discovery_output(code, stdout, stderr)
         return
@@ -362,6 +406,90 @@ def verify_discovery_output(code: int, stdout: bytes, stderr: bytes) -> None:
         raise ValueError("installed discovery wire or secret boundary failed")
 
 
+def verify_platform_output(code: int, stdout: bytes, stderr: bytes) -> None:
+    if code != 0 or stderr or stdout.count(b"\n") != 1 or not stdout.endswith(b"\n"):
+        raise ValueError("installed Platform output boundary failed")
+    envelope = _output_object(stdout)
+    data = envelope.get("data")
+    if type(data) is not dict:
+        raise ValueError("installed Platform data is not an object")
+    expected = {
+        "schema_version": 1,
+        "service_id": "evren-platform",
+        "profile": "installed",
+        "profile_preference": {
+            "account_id": "preferred",
+            "project_id": "selected",
+            "service_scope": "unknown",
+        },
+        "selected": {"account_id": "preferred", "project_id": "selected"},
+        "provider": {
+            "principal_id": None,
+            "account_id": None,
+            "organization_id": None,
+            "project_id": None,
+            "identity_status": "unverified",
+        },
+        "reported_identity": {
+            "me_id": "me",
+            "organization_id": None,
+            "organization_id_state": "not_exposed",
+            "personal_organization_id": None,
+            "personal_organization_id_state": "not_exposed",
+        },
+        "organizations": {"items": [{"id": "org"}], "reported_total": 2},
+        "projects": {
+            "items": [],
+            "selection": {
+                "state": "observed",
+                "project": {
+                    "id": "selected",
+                    "organization_id": None,
+                    "organization_id_state": "reported_null",
+                },
+            },
+        },
+        "list_completeness": {"organizations": "incomplete", "projects": "unknown"},
+        "terms": None,
+        "authorization_scope": None,
+        "consistency": "not_guaranteed",
+        "validation": "unverified",
+        "reasons": [
+            "account_semantics_unknown",
+            "authorization_not_verified",
+            "identity_not_verified",
+            "list_completeness_unknown",
+            "profile_scope_unknown",
+            "provider_listing_incomplete",
+            "remote_snapshot_not_guaranteed",
+        ],
+    }
+    observations = data.get("observations")
+    if (
+        set(envelope) != {"schema_version", "operation_id", "status", "data", "warnings"}
+        or type(envelope["schema_version"]) is not int
+        or envelope["schema_version"] != 1
+        or envelope["status"] != "completed"
+        or envelope["operation_id"] is not None
+        or envelope["warnings"] != ["context_not_verified"]
+        or any(data.get(k) != v for k, v in expected.items())
+        or type(data.get("schema_version")) is not int
+        or type(data.get("organizations", {}).get("reported_total")) is not int
+        or type(observations) is not list
+        or len(observations) != 4
+        or [v.get("endpoint_id") for v in observations]
+        != ["platform_me", "platform_organizations", "platform_projects", "platform_project_detail"]
+        or any(
+            v.get("authentication") != "unknown" or v.get("outcome") != "observed"
+            for v in observations
+        )
+        or [v.get("resource_id") for v in observations] != [None, None, None, "selected"]
+        or PLATFORM_SECRET.encode() in stdout
+        or b"private@example.test" in stdout
+    ):
+        raise ValueError("installed Platform wire or secret boundary failed")
+
+
 def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
     cases = verification_cases()
     body = wire(progress()) + wire(event(2, "result", result_payload()))
@@ -383,6 +511,16 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
             )
         ),
     }
+    routes.update(
+        {
+            "/api/v1/auth/me": Reply(
+                body=wire({"success": True, "data": {"id": "me", "email": "private@example.test"}})
+            ),
+            "/api/v1/organizations": Reply(body=wire({"items": [{"id": "org"}], "total": 2})),
+            "/api/v1/projects": Reply(body=b"[]"),
+            "/api/v1/projects/selected": Reply(body=wire({"id": "selected", "org_id": None})),
+        }
+    )
     environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
@@ -423,18 +561,39 @@ def verify(python: Path, venv: Path, scratch: Path) -> dict[str, str]:
                 raise ValueError("installed transport origin report failed")
             if case == "discovery" and not DISCOVERY_MODULES.issubset(modules):
                 raise ValueError("installed discovery modules were not exercised")
-        expected_paths = [
-            "/v1/terms/status" if case == "discovery" else "/v1/" + case for case in cases
-        ]
+            if case == "platform-discovery" and not PLATFORM_MODULES.issubset(modules):
+                raise ValueError("installed Platform modules were not exercised")
+        expected_paths = []
+        for case in cases:
+            if case == "platform-discovery":
+                expected_paths.extend(
+                    [
+                        "/api/v1/auth/me",
+                        "/api/v1/organizations",
+                        "/api/v1/projects",
+                        "/api/v1/projects/selected",
+                    ]
+                )
+            else:
+                expected_paths.append("/v1/terms/status" if case == "discovery" else "/v1/" + case)
         if [record.path for record in server.requests] != expected_paths:
             raise ValueError("installed transport repeated or missed a request")
         if any(record.header("Host") != "localhost" for record in server.requests):
             raise ValueError("installed TLS mapping changed canonical request authority")
         if (
             "discovery" in cases
-            and server.requests[-1].header("Authorization") != "Bearer " + DISCOVERY_SECRET
+            and next(r for r in server.requests if r.path == "/v1/terms/status").header(
+                "Authorization"
+            )
+            != "Bearer " + DISCOVERY_SECRET
         ):
             raise ValueError("installed discovery used the wrong credential")
+        for record in server.requests:
+            if record.path.startswith("/api/v1/") and (
+                record.header("X-API-Key") != PLATFORM_SECRET
+                or record.header("Authorization") is not None
+            ):
+                raise ValueError("installed Platform used the wrong credential")
     return {"http_smoke": "passed", "stream_smoke": "passed"}
 
 

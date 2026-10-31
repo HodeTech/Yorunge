@@ -55,7 +55,7 @@ P02 çalışma dalında LLM şart durumu açıkça sorgulanabilir. Önce [yerel 
 .venv/bin/yorunge context discover --service evren-llm --config .local/p02-pilot/config.toml --state-dir .local/p02-pilot/state --output json
 ```
 
-Python karşılığı `api.discover_context("evren-llm", config=Path(".local/p02-pilot/config.toml"), state_dir=Path(".local/p02-pilot/state"))` çağrısıdır. Bu komut gerçek ağ erişimi ve yerel registry/clock gözlemi yapar; store oluşturmaz, şart kabul etmez. Terms cevabı auth/hesap/proje/izin kanıtı değildir. LLM için account/project ID gerekmez; Platform profili LLM seçimine kopyalanmaz. Platform keşfi raw sözleşme kapısında kontrollü reddedilir. [Kesin discovery sınırı ve kabul durumu](docs/reference/context-discovery.md).
+Python karşılığı `api.discover_context("evren-llm", config=Path(".local/p02-pilot/config.toml"), state_dir=Path(".local/p02-pilot/state"))` çağrısıdır. Bu komut gerçek ağ erişimi ve yerel registry/clock gözlemi yapar; store oluşturmaz, şart kabul etmez. Terms cevabı auth/hesap/proje/izin kanıtı değildir. LLM için account/project ID gerekmez; Platform profili LLM seçimine kopyalanmaz. Platform için `--service evren-platform` aynı komutta üç salt okuma yapar; profilde veya `--project ID` ile proje seçiliyse dördüncü detail okuması eklenir. Sonuç yalnız doğrulanmamış ID bildirimi, liste ve seçim gözlemidir; auth/hesap/izin veya liste tamlığı kanıtı değildir. Bildirilen ID’ler kişiye bağlanabilir; çıktıyı paylaşırken koru. Platform ara gözlem uygulaması nihai katı parser ve canlı kabulü tamamlamaz. [Kesin discovery sınırı ve kabul durumu](docs/reference/context-discovery.md).
 
 Açık yerel capability cache sorgusu:
 

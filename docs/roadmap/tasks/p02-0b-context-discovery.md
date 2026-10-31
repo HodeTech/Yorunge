@@ -28,7 +28,7 @@ Canlı çağrı yetkisi/sınırı [araştırma pilot planına](../../research/p0
 
 ## Sözleşme ve uygulama sınırı
 
-Domain/application tipli keşif ve doğrulama sonucunu sahiplenir; somut endpoint/HTTP adaptörü dış katmandadır. Kesin LLM alan/tür/null/validation/error/byte ve pilot kapsamı [ContextDiscovery v1 referansındadır](../../reference/context-discovery.md); ürün uygulanmışlığı ayrıca gösterilir. Platform’ın ara projeksiyon varyantı Accepted ADR-0021’de tanımlıdır; ara kod başlangıcı yetkilidir, raw/key/identity/pagination kapanışı ve üretimde katı decoder değişikliği nihai verified için gerekir. Eski config/Context/Plan/Result/capability kayıtları değiştirilmez. LLM CLI/API yüzeyi uygulandı ve README’de çalışma dalına ait gerçek örnekle gösterilir; Platform seçimi raw kapı açıkken unsupported_combination verir. Tasarlanan Platform varyantı çalışan ürün gibi sunulmaz.
+Domain/application tipli keşif ve doğrulama sonucunu sahiplenir; somut endpoint/HTTP adaptörü dış katmandadır. Kesin LLM alan/tür/null/validation/error/byte ve pilot kapsamı [ContextDiscovery v1 referansındadır](../../reference/context-discovery.md); ürün uygulanmışlığı ayrıca gösterilir. Platform’ın ara projeksiyon varyantı Accepted ADR-0021’de tanımlıdır; ara kod başlangıcı yetkilidir, raw/key/identity/pagination kapanışı ve üretimde katı decoder değişikliği nihai verified için gerekir. Eski config/Context/Plan/Result/capability kayıtları değiştirilmez. LLM CLI/API yüzeyi uygulandı ve README’de çalışma dalına ait gerçek örnekle gösterilir; Platform ara gözlem seçimi ayrı kapalı DTO’ya bağlandı; nihai katı decoder/kimlik/auth/live kabulü açık kalır. Ara gözlem uygulaması üst teslim kabulü sayılmaz.
 
 ## Kabul
 

@@ -6,6 +6,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeTech/Yorunge/pull/11) ile development’a [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) merge’ünde alındı. [Merge/CI kanıtı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Bu kayıt paket yayını veya Master/release aktarımı değildir.
 
+### Added — 2026-11-01
+
+- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. Ara sonuç daima unverified; auth/principal/pagination, üretim katı decoder ve canlı kabul kapısı açık kalır. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
+
 ### Added — 2026-10-31
 
 - P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform raw sözleşme kapısı açık kalır. LLM ilk canlı terms ve yerel kaynak/iki temiz kurulum/M5 kabulü tamamlandı; Platform ve bütünleşik PR/CI açık, development teslimi değildir.
