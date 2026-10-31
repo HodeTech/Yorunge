@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import TracebackType
-from typing import Protocol, Self
+from typing import Protocol, Self, TypeVar
 
 from pydantic import ValidationError
 
@@ -56,6 +56,7 @@ class DiscoverySnapshot:
     credential: ResolvedCredential = field(repr=False)
     identity: CredentialIdentity
     captured_at: datetime
+    preference: ProfilePreference | None = None
 
     def __repr__(self) -> str:
         return "<DiscoverySnapshot private>"
@@ -73,7 +74,10 @@ class DiscoveryState(Protocol):
     def finish(self, snapshot: DiscoverySnapshot, *, deadline: float) -> str: ...
 
 
-class TermsReader(Protocol):
+ReplyT = TypeVar("ReplyT", covariant=True)
+
+
+class DiscoveryReader(Protocol[ReplyT]):
     def __enter__(self) -> Self: ...
     def __exit__(
         self,
@@ -81,7 +85,7 @@ class TermsReader(Protocol):
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None: ...
-    def observe(self, snapshot: DiscoverySnapshot, *, deadline: float) -> TermsReply: ...
+    def observe(self, snapshot: DiscoverySnapshot, *, deadline: float) -> ReplyT: ...
 
 
 def remaining(deadline: float, clock: DiscoveryClock) -> float:
@@ -112,9 +116,13 @@ def _finish_failure(
         raise
 
 
-def discover_context(
-    state: DiscoveryState, reader: TermsReader, clock: DiscoveryClock, *, deadline: float
-) -> ContextDiscovery:
+def exchange(
+    state: DiscoveryState,
+    reader: DiscoveryReader[ReplyT],
+    clock: DiscoveryClock,
+    *,
+    deadline: float,
+) -> tuple[DiscoverySnapshot, ReplyT, str, str, str]:
     """No caller evidence or permission input; an observation never enables execution."""
     available = remaining(deadline, clock)
     # Reserve final-store/clock cleanup within the same total, including failure paths.
@@ -136,6 +144,19 @@ def discover_context(
     observed_until = timestamp(clock.now())
     validated_at = state.finish(snapshot, deadline=deadline)
     remaining(deadline, clock)
+    return snapshot, reply, started, observed_until, validated_at
+
+
+def discover_context(
+    state: DiscoveryState,
+    reader: DiscoveryReader[TermsReply],
+    clock: DiscoveryClock,
+    *,
+    deadline: float,
+) -> ContextDiscovery:
+    snapshot, reply, started, observed_until, validated_at = exchange(
+        state, reader, clock, deadline=deadline
+    )
     context = snapshot.context
     preference = ProfilePreference(
         account_id=context.account_id,

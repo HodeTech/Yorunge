@@ -188,3 +188,17 @@ Head7353637 üstünde adr21_revision_r1_contract / adr21_revision_r1_safety kull
 Head d8b5528 üstünde farklı yeni ajanlar adr21_revision_r2_contract / adr21_revision_r2_safety tüm revizyonu bağımsız inceledi. Yeni doğrulanmış bulgu yok. Ara projeksiyon ile zorunlu nihai üretim katı decoder/fallback yasağı, profil veya explicit seçimde4 GET, tek404/reason/error sözlüğü ve parent farkında unverified sonucu, me/org/detail success varlık kuralları, linkable-ID gizlilik sınırı ve onay geçiş listesi tutarlı bulundu. Invariant Result için union-of-results, varyant renderer/discriminator ve tam sentetik404 JSON21 alan/reason/zaman/UUID eşliği doğrulandı.
 
 140 Markdown/6 skill/16 kart/diff,152 arşiv ve iki güncel M5 kaynak referansı geçti; metadata receipt3031 byte ve SHA değişmedi. Ürün testi/benchmark veya account çağrısı yapılmadı; runtime/test/ölçüm/workflow kaynakları aynı kaldı. Revize ADR-0021 tekrar kullanıcı onayına hazırdır; kullanıcı review yanıtı onay sayılmadı, Proposed statüsü ve P02-0d draft/Platform unsupported davranışı korunur. Gerçek onay alınırsa belirtilen belge geçişleri koddan önce tek commit’te uygulanır.
+
+## ADR-0021 onayı ve Platform ara uygulaması
+
+Kullanıcı revize ADR-0021’i 2026-11-01 tarihinde açıkça onayladı ve uygulamayı yetkilendirdi. 9fae321 onay commit’i ürün kodundan önce karar/referans/indeks/plan/kart/faz/current geçişlerini yaptı; doküman ve kart denetimleri geçti. ADR-0020 yalnız ara başlangıç/metadata ve Platform wire eşlemesinde kısmen değişti; nihai üretim katı decoder ve gerçek auth/principal/pagination/dolu-seçili proje kabulü açık kalır. P02-0d ara uygulama in_progress, aggregate P02-0b draft; yeni PR veya canlı hesap çağrısı yoktur.
+
+### Adım 5.1 — Kapalı Platform çekirdeği ve gerçek HTTP/state sınırı
+
+Kapalı Platform DTO’ları ID bildirimi/tercih/kimlik/yetkiyi ayırır. Bütün raw-tree strict JSON/sır taraması, tüketilmeyen metadata atımından önce yapılır; ortak closed codec gevşetilmez. Tek owned session, X-API-Key, üç GET ve profil/override seçimi varsa dördüncü detail GET uygulanır. 404 gözlem, parent farkı, missing/null parent ve tam sıralı reason sözlüğü korunur. Yeni DB/cache/schema yoktur.
+
+Mevcut capture/network/cleanup/final gate genel tipli exchange olarak paylaşılır; StateDiscovery hizmet parametresi ve aynı config snapshot’ından orijinal profil tercihlerini taşır. LLM anlamı korunur. Public API/CLI bağlantısı adım 5.2’dir; bu commit o yüzeyi henüz açmaz.
+
+Ön doğrulama: 87 bağımsız Platform sözleşme/projeksiyon testi; 24 gerçek TLS/SQLite entegrasyon testi geçti. Entegrasyonlar üç/dört GET, profil/override ayrımı, 401/403/404/429, secret metadata, oversize/logical/shape/route-ID retleri, shared deadline/cleanup/cookie sınırı, no-init ve iki ayrı endpoint’te ayrı süreç credential/reset/clock-generation yarışını kapsar. Önceki LLM sözleşme/çekirdek ve mimari regresyonları 313 testle geçti (32,92 s). Ruff format/lint, strict mypy (60 kaynak), 140 belge/6 skill/16 kart ve diff geçti.
+
+İlk yeni test koşusunda registry’nin meşru env referans adı kaydı yanlışlıkla raw secret ile aynı yasak gibi assert edildi; test oracle’ı düzeltildi. 429’un mevcut read-only iki denemesi de doğru çağrı sayısıyla assert edildi. Bu ilk başarısız koşu başarı olarak sunulmaz; ürün kuralı bu nedenle değiştirilmedi. Tam takım/iki kurulum/yeni M5 kaynak referansı henüz koşulmadı; eski LLM referansları yeni kaynak kabulü değildir. Commit sonrası iki farklı fresh kod review turu sıradadır.

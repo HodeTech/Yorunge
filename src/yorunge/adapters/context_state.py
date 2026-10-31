@@ -15,9 +15,9 @@ from yorunge.application.context_discovery import (
 )
 from yorunge.application.credentials import SecretReader, bind_credential, resolve_credential
 from yorunge.domain.capabilities import timestamp
-from yorunge.domain.discovery import DiscoveryBinding
+from yorunge.domain.discovery import DiscoveryBinding, ProfilePreference
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import Context, Profile
+from yorunge.domain.models import Context, Profile, ServiceId
 
 
 class StateDiscovery:
@@ -27,9 +27,12 @@ class StateDiscovery:
         context_loader: Callable[[], tuple[Context, Profile]],
         secret_reader: SecretReader,
         clock: ObservationClock,
+        *,
+        service_id: ServiceId = "evren-llm",
     ) -> None:
         self.state_dir, self.context_loader = state_dir, context_loader
         self.secret_reader, self.clock = secret_reader, clock
+        self.service_id = service_id
 
     def capture(self, *, deadline: float) -> DiscoverySnapshot:
         seconds = min(5.0, remaining(deadline, self.clock))
@@ -37,7 +40,7 @@ class StateDiscovery:
             # Validate the existing store before resolving any secret reference.
             context, profile = self.context_loader()
             store.deadline.remaining()
-            credential = resolve_credential(profile, "evren-llm", self.secret_reader)
+            credential = resolve_credential(profile, self.service_id, self.secret_reader)
             store.deadline.remaining()
             remaining(deadline, self.clock)
             identity = bind_credential(context, credential, StateCredentialRegistry(store)).identity
@@ -65,6 +68,13 @@ class StateDiscovery:
                     credential_revision=identity.credential_revision,
                 ),
                 captured_at=captured.now,
+                preference=ProfilePreference(
+                    account_id=profile.account_id,
+                    project_id=profile.project_id,
+                    service_scope="unknown"
+                    if profile.account_id is not None or profile.project_id is not None
+                    else "not_applicable",
+                ),
             )
 
     def finish(self, snapshot: DiscoverySnapshot, *, deadline: float) -> str:
@@ -98,7 +108,7 @@ class StateDiscovery:
                     binding.credential_id,
                     binding.identity_epoch,
                     binding.credential_revision,
-                    service="evren-llm",
+                    service=snapshot.credential.reference.service_id,
                     origin=target.service_origin,
                     base=target.api_base_path,
                 ):
