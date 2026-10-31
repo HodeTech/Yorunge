@@ -1,6 +1,6 @@
 # ADR-0021: Platform için doğrulanmamış, tipli keşif gözlemi
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; bağımlı ürün kodu uygulanmadı. **Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **İş:** P02-0d / P02-0b. Bu öneri [ADR-0020](0020-service-bound-context-discovery.md)’nin Platform adaptörünün ara gözlem aşamasına başlama kapısını ve o aşamanın tüketilmeyen raw metadata politikasını kısmen değiştirir; Platform seçim kavramlarının kapalı wire/error eşlemesini de açıkça belirler. ADR-0020 halen Accepted ve yürürlüktedir. [Gözlem kaydı](../research/p02-platform-discovery-observations.md), [önerilen public sözleşme](../reference/context-discovery.md#önerilen-platform-gözlem-varyantı), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md).
+**Durum:** Accepted — kullanıcı revize kararı 2026-11-01 tarihinde onayladı ve uygulamayı yetkilendirdi; bu onay commit’inde bağımlı ürün kodu henüz uygulanmadı. **Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **İş:** P02-0d / P02-0b. Bu öneri [ADR-0020](0020-service-bound-context-discovery.md)’nin Platform adaptörünün ara gözlem aşamasına başlama kapısını ve o aşamanın tüketilmeyen raw metadata politikasını kısmen değiştirir; Platform seçim kavramlarının kapalı wire/error eşlemesini de açıkça belirler. ADR-0020 halen Accepted ve yürürlüktedir. [Gözlem kaydı](../research/p02-platform-discovery-observations.md), [önerilen public sözleşme](../reference/context-discovery.md#önerilen-platform-gözlem-varyantı), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md).
 
 ## Bağlam ve gerçek dış kapı
 
@@ -12,7 +12,7 @@ Receipt yalnız şekil/tür gözlemidir: organization id’nin Identifier koşul
 
 Me cevabı kullanıcı sunum ve kişisel veri alanları da taşıyor. Bunları public modele almak veya her metadata alanını kimlik kararının parçası yapmak gerekmiyor. Bilinmeyen wire’ı generic dict olarak dışarı vermek de uygun değil. Bugünkü tam-provider-schema kapısı, belirsizliği açıkça koruyan dar bir okuma sonucunu dahi engelliyor.
 
-## Karar önerisi
+## Karar
 
 ### 1. Uygulamaya başlama ve kapanış ayrı kapılardır
 
@@ -72,7 +72,7 @@ Aynı araştırmanın HTTP sonrası analiz/parse hatası da çağrı slotunu tü
 
 ## Onay commit’inde belge geçişi
 
-Bu liste yalnız gerçek kullanıcı onayı geldiğinde, ürün kodundan **önce aynı commit’te** uygulanır. Şimdi ADR-0021 Proposed, ADR-0020 bağlayıcı ve P02-0d draft kalır.
+Kullanıcının 2026-11-01 tarihli açık onayıyla bu geçişler ürün kodundan **önce aynı commit’te** uygulandı. ADR-0021 Accepted; ADR-0020 yalnız belirtilen ara başlangıç/metadata/wire sınırlarında kısmen değiştirilmiştir. P02-0d ara uygulamaya ready, üst teslim draft kalır.
 
 | Belge | Onay sonrası değişiklik |
 |---|---|
@@ -91,4 +91,4 @@ Bu liste yalnız gerçek kullanıcı onayı geldiğinde, ürün kodundan **önce
 - 2xx/tek organizasyon/boş proje ile kimliği ve listeyi verified yapmak: seçilmedi.
 - Bu öneriyle P02-0 kabulünü de daraltıp paketi verified saymak: seçilmedi; ayrı kullanıcı kararı olmadan kabul kapısı değişmez.
 
-Öneri güven iddiasını büyütmeden bir ara gözlem diliminin kodlanmasını açmayı amaçlar; uygulanabilirlik, parser’ın canlı örneği kabulü veya çalışan ürün henüz kanıtlanmış değildir. Karşılığı, tam provider schema yerine tüketilen alan projeksiyonunun açıkça sahiplenilmesi ve eksik dış kabullerin ve nihai üretim katı decoder işinin görünür tutulmasıdır. Bu karar henüz Accepted değildir ve uygulanmış özellik sayılmaz.
+Öneri güven iddiasını büyütmeden bir ara gözlem diliminin kodlanmasını açmayı amaçlar; uygulanabilirlik, parser’ın canlı örneği kabulü veya çalışan ürün henüz kanıtlanmış değildir. Karşılığı, tam provider schema yerine tüketilen alan projeksiyonunun açıkça sahiplenilmesi ve eksik dış kabullerin ve nihai üretim katı decoder işinin görünür tutulmasıdır. Bu karar Accepted’dır; onay tek başına uygulanmış özellik veya nihai kabul sayılmaz.

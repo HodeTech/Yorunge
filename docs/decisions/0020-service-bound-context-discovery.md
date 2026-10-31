@@ -2,7 +2,7 @@
 
 **Durum:** Accepted — 2026-10-31 kullanıcı, review bulguları doğrulanıp kapatıldıktan sonra kabulü ve uygulamayı yetkilendirdi. Bağlı referans uygulama öncesi kapatılır; ürün/canlı kabulü ayrıca kaydedilir. **Tarih:** 2026-10-31. **İş:** P02-0a çıktısı / P02-0b ve hizmet alt teslimleri. [Araştırma](../research/p02-contract-sdk-pilot.md), [kart](../roadmap/tasks/p02-0b-context-discovery.md), [paket planı](../roadmap/p02-0-delivery-plan.md).
 
-[ADR-0021](0021-platform-discovery-observations.md), Platform’ın ara kod başlangıcı, ara tüketilmeyen metadata politikası ve kesin seçim/error wire eşlemesine dar değişiklik önerir. Nihai verified için katı raw decoder ve diğer gerçek hizmet kabul koşulları ayrıca korunur. **Proposed olduğu için bu Accepted kararın kapıları halen aynen yürürlüktedir**; verified koşulları öneride de kaldırılmaz.
+[ADR-0021](0021-platform-discovery-observations.md), Platform’ın ara kod başlangıcı, ara tüketilmeyen metadata politikası ve kesin seçim/error wire eşlemesine 2026-11-01 kullanıcı onayıyla dar değişiklik getirir. Nihai verified için katı raw decoder ve diğer gerçek hizmet kabul koşulları ayrıca korunur. **ADR-0021 Accepted’dır:** ara unverified kod başlangıcı açılmıştır; bu belgedeki eski draft/başlangıç ifadeleri o dar kapsamda değişmiştir. Nihai verified koşulları ve katı raw decoder zorunluluğu korunur.
 
 ## Bağlam
 

@@ -86,7 +86,7 @@ Yetkili auth sözleşmesi yokken, her kullanılan endpoint/parametre için iyi b
 
 ## Önerilen Platform gözlem varyantı
 
-**Proposed; uygulanmadı.** Bu bölüm yalnız [ADR-0021](../decisions/0021-platform-discovery-observations.md) kullanıcı onayı sonrasında ürün sözleşmesine dönüşebilir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
+**Accepted tasarım; bu onay commit’inde uygulanmadı.** [ADR-0021](../decisions/0021-platform-discovery-observations.md) 2026-11-01 kullanıcı onayıyla bu ara uygulamanın sözleşmesidir. Bugünkü Platform discover hâlâ unsupported_combination verir. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
 
 ### Tam public alan kümesi ve tipler
 
