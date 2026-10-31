@@ -152,7 +152,7 @@ Profil-only project için de selected.project_id doludur; son satır dışındak
 
 ### Önerilen Python API ve renderer tip sözleşmesi
 
-**Proposed; henüz ürün imzası değil.** Onay ve kod adımı sonrası overload’lar aşağıdaki gibi olur. Generic çağrının dönüşü `Result[ContextDiscovery] | Result[PlatformContextDiscovery]`’dir. `Result[ContextDiscovery | PlatformContextDiscovery]` dar literal overload’larla aynı şey değildir: mevcut invariant Result ile izole strict-mypy deneyi implementation-return uyumsuzluğunu doğruladı. Result’ın variance’ı veya Result v1 wire’ı bu iş için değiştirilmez.
+**Accepted ve çalışma dalında uygulanmış sözleşme.** Overload’lar aşağıdaki gibidir. Generic çağrının dönüşü `Result[ContextDiscovery] | Result[PlatformContextDiscovery]`’dir. `Result[ContextDiscovery | PlatformContextDiscovery]` dar literal overload’larla aynı şey değildir: mevcut invariant Result ile izole strict-mypy deneyi implementation-return uyumsuzluğunu doğruladı. Result’ın variance’ı veya Result v1 wire’ı bu iş için değiştirilmez.
 
 ```python
 @overload

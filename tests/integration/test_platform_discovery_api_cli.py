@@ -176,7 +176,7 @@ def test_platform_text_is_utf8_and_explains_preferences_and_unverified_ids(files
         result = child(server, certificates, config, state)
     assert result.returncode == 0, result.stderr
     text = result.stdout.decode("utf-8", "strict")
-    assert "Bildirilen kullanıcı ID: me" in text
+    assert "Bildirilen auth/me ID: me" in text
     assert "Seçilen proje: profile-project (observed)" in text
     assert "Liste tamlığı: eksik" in text
     assert "doğrulanmadı" in text

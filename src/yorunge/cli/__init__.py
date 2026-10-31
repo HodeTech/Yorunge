@@ -25,8 +25,9 @@ if TYPE_CHECKING:
     )
     from yorunge.domain.maintenance import Preview as MaintenancePreview
     from yorunge.domain.maintenance import Snapshot as IdentitySnapshot
-    from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
+    from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result, ServiceId
     from yorunge.domain.operations import JobsPage, JobView
+    from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
 
     CliResult: TypeAlias = (
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
         | Result[CredentialCheck]
         | Result[CredentialObservation]
         | Result[ContextDiscovery]
+        | Result[PlatformContextDiscovery]
         | Result[StateInfo]
         | Result[MaintenancePreview]
         | Result[ConfigUpdate]
@@ -244,7 +246,7 @@ def _context_options(context: Parser) -> None:
     identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
     identity.add_argument("--state-dir", type=Path)
     discover = context_actions.add_parser(
-        "discover", help="Açık LLM terms keşfi; Platform sözleşmesi henüz kapalı"
+        "discover", help="Açık Platform gözlemi veya LLM şart durumu; kimlik ve yetki doğrulanmaz"
     )
     common(discover)
     discover.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
@@ -360,7 +362,7 @@ def discovery_text_result(data: Model) -> str:
         selection = data.projects.selection
         lines = [
             f"Hizmet: {data.service_id}\nProfil: {data.profile}",
-            f"Bildirilen kullanıcı ID: {data.reported_identity.me_id}",
+            f"Bildirilen auth/me ID: {data.reported_identity.me_id}",
             f"Tercih edilen hesap: {data.selected.account_id or '-'}",
             f"Seçilen proje: {data.selected.project_id or '-'} ({selection.state})",
             f"Gözlenen organizasyon: {len(data.organizations.items)}; "
@@ -660,7 +662,9 @@ def context_result(args: argparse.Namespace) -> CliResult:
     if args.action == "identity":
         return api.observe_credential(args.service, state_dir=args.state_dir, **context_options)
     if args.action == "discover":
-        return api.discover_context(args.service, state_dir=args.state_dir, **context_options)
+        return api.discover_context(
+            cast("ServiceId", args.service), state_dir=args.state_dir, **context_options
+        )
     if args.action == "credential":
         return api.check_credential(args.service, **context_options)
     return api.show_context(**context_options)

@@ -50,4 +50,4 @@ Ara kodlamada ADR-0021 onayı sonrası meaningful unit/contract, gerçek TLS, CL
 
 ## Teslim kaydı
 
-Ürün uygulaması ve tam live kabul yapılmadı. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası öneri revize edildi, ADR-0021 halen Proposed. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
+Ara unverified çekirdek ve public CLI/Python uygulandı; nihai üretim katı decoder ve tam live kabul yapılmadı. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
