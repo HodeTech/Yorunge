@@ -51,3 +51,8 @@ Ara kodlamada ADR-0021 onayı sonrası meaningful unit/contract, gerçek TLS, CL
 ## Teslim kaydı
 
 Ara unverified çekirdek ve public CLI/Python iki fresh review turu/adım ile uygulandı; [yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tamamlandı. Nihai üretim katı decoder ve tam live kabul yapılmadı; bu5.3 dış kapısı kartı blocked tutar. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
+
+
+## Yeni davranış kanıtı — 2026-11-01
+
+Kullanıcının ek reverse-engineering yetkisiyle [tek sınırlı koşu](../../research/p02-platform-reverse-engineering.md) mevcut ürün decoder’ının üç gerçek yanıtı ve Identifier/total predikatlarını kabul ettiğini gösterdi. Key’le200/no-key401 yalnız tarihli endpoint davranışıdır; auth/key/principal/pagination garantisi değildir. Proje listesi boş; seçili/dolu canlı dalı açık. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) nihai raw/kapanış kapısı için Proposed alternatif sunar; onay gelmeden bu kart blocked ve mevcut Accepted kapılar bağlayıcı kalır.

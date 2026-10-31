@@ -1,6 +1,6 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-10-31. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-11-01. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
@@ -8,7 +8,7 @@
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
 - [P02-0a sözleşme/SDK/pilot araştırması](p02-contract-sdk-pilot.md): sabit resmî kaynaklar, endpoint/etki/limit/SDK matrisi, açık kimlik boşlukları ve yetkili pilot planı; iki fresh review ile araştırma kabulü verified, gerçek hesap deneyi değil.
-- [P02-0 uygulama/review kaydı](p02-0-implementation-validation.md): tek paket planı, iki fresh review turu ve ADR-0020 onay/uygulama kapısı; henüz ürün kabulü yok.
+- [P02-0 uygulama/review kaydı](p02-0-implementation-validation.md): tek paket planı; LLM yerel verified, Platform ara uygulama/yerel test-kurulum-M5 kabulü kapandı; nihai P02-0/PR/CI ve5.3 kapısı açık.
 - [P02 başlangıç hazırlık review’si](p02-readiness-review.md): faz/PR/bağımlılık/kabul ve mevcut P01 kod sınırları; P02-0a araştırmaya hazır, endpoint uygulaması ve hesap pilotu yok.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
 - [P01 ilk dilim ve kapanış kabulü](p01-core-validation.md): yerel test/build/temiz kurulum ve performans kanıtı; [ilk ham başlangıç ölçümü](p01-startup.json), [P01-1a ham ölçümü](p01-1a-startup.json).
@@ -55,3 +55,6 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 - [PR #10 son kaynak kapanışı — ürün 182f695](p01-4-implementation-validation.md#pr-10-son-kaynak-kapanışı): [27 operation](evidence.md#p01-4-noop-operation-budget), [24 migration](evidence.md#p01-4-noop-migration-budget), [kurulu jobs](evidence.md#p01-4-noop-jobs-budget), [eşli startup](evidence.md#p01-4-noop-startup), [iki temiz kurulum](evidence.md#p01-4-noop-installations). Önceki başarısız kaynak ölçümleri kabul kaydında korunur; canlı EVREN, merge veya release kanıtı değildir.
 
 - [Platform raw-schema gözlemleri](p02-platform-discovery-observations.md): yetkili üç GET’in metadata-only sonucu, boş proje gözlemi ve açık auth/principal/pagination kapısı; ADR-0021 Proposed, ürün veya hizmet kabulü değil.
+
+
+[1 Kasım Platform tersine mühendislik raporu](p02-platform-reverse-engineering.md), mevcut public API’nin gerçek üç yanıtı ayrıştırdığını ve aynı uçlarda key200/no-key401 davranışını kaydeder.6 GET/6 attempt koşusu raw/ID/key değeri saklamaz; mevcut auth/principal/pagination ve seçili proje kabulünü verified yapmaz. [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) nihai sınırlı consumer sınırını önerir; Proposed, kullanıcı onayı bekler.

@@ -1,0 +1,297 @@
+{
+  "claim_boundary": "observed_behavior_only_not_provider_schema_auth_or_principal_guarantee",
+  "completed_file_mtime_utc": "2026-10-31T23:18:04.286030+00:00",
+  "observation": {
+    "api_base_path": "/api/v1",
+    "attempts": 6,
+    "authentication": "unknown",
+    "body_bytes": 1397,
+    "body_bytes_semantics": "consumed_raw_body_chunks_not_network_packet_total",
+    "calls": [
+      {
+        "attempts": 1,
+        "credential_mode": "selected_key",
+        "endpoint": "platform_me",
+        "pagination_headers_present": [],
+        "predicates": {
+          "me_identifier_valid": true,
+          "projection_passed": true
+        },
+        "schema_observation": {
+          "fields": {
+            "data": {
+              "fields": {
+                "admin_permissions": {
+                  "count": 0,
+                  "observed_item_shapes": [],
+                  "type": "array"
+                },
+                "affiliation": {
+                  "type": "string"
+                },
+                "annotation_count": {
+                  "type": "integer"
+                },
+                "avatar_url": {
+                  "type": "null"
+                },
+                "badges": {
+                  "count": 0,
+                  "observed_item_shapes": [],
+                  "type": "array"
+                },
+                "bio": {
+                  "type": "null"
+                },
+                "birth_date": {
+                  "type": "null"
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "email_verified_at": {
+                  "type": "string"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "followers_count": {
+                  "type": "integer"
+                },
+                "following_count": {
+                  "type": "integer"
+                },
+                "full_name": {
+                  "type": "string"
+                },
+                "github_url": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "is_data_inspector": {
+                  "type": "boolean"
+                },
+                "is_verified": {
+                  "type": "boolean"
+                },
+                "keycloak_id": {
+                  "type": "string"
+                },
+                "last_login_at": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "organization_id": {
+                  "type": "string"
+                },
+                "organization_name": {
+                  "type": "string"
+                },
+                "personal_org_id": {
+                  "type": "string"
+                },
+                "phone_number": {
+                  "type": "string"
+                },
+                "phone_verified_at": {
+                  "type": "null"
+                },
+                "pinned_items": {
+                  "count": 0,
+                  "observed_item_shapes": [],
+                  "type": "array"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "tckn": {
+                  "type": "string"
+                },
+                "tier": {
+                  "type": "string"
+                },
+                "tier_points": {
+                  "type": "integer"
+                },
+                "twitter_handle": {
+                  "type": "null"
+                },
+                "updated_at": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "website_url": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "unpublished_field_count": 0
+            },
+            "message": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "null"
+            },
+            "success": {
+              "type": "boolean"
+            }
+          },
+          "type": "object",
+          "unpublished_field_count": 0
+        },
+        "status": 200
+      },
+      {
+        "attempts": 1,
+        "credential_mode": "selected_key",
+        "endpoint": "platform_organizations",
+        "pagination_headers_present": [],
+        "predicates": {
+          "all_identifiers_valid": true,
+          "projection_passed": true,
+          "total_equals_item_count": true,
+          "total_gte_item_count": true,
+          "total_nonnegative_int64": true
+        },
+        "schema_observation": {
+          "fields": {
+            "items": {
+              "count": 1,
+              "observed_item_shapes": [
+                {
+                  "fields": {
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "credit_balance": {
+                      "type": "number"
+                    },
+                    "description": {
+                      "type": "null"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "is_verified": {
+                      "type": "boolean"
+                    },
+                    "member_count": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "owner_id": {
+                      "type": "string"
+                    },
+                    "plan_type": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object",
+                  "unpublished_field_count": 0
+                }
+              ],
+              "type": "array"
+            },
+            "total": {
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "unpublished_field_count": 0
+        },
+        "status": 200
+      },
+      {
+        "attempts": 1,
+        "credential_mode": "selected_key",
+        "endpoint": "platform_projects",
+        "pagination_headers_present": [],
+        "predicates": {
+          "all_identifiers_valid": true,
+          "projection_passed": true
+        },
+        "schema_observation": {
+          "count": 0,
+          "observed_item_shapes": [],
+          "type": "array"
+        },
+        "status": 200
+      },
+      {
+        "attempts": 1,
+        "credential_mode": "no_key",
+        "endpoint": "platform_me",
+        "missing_key_rejected": true,
+        "pagination_headers_present": [],
+        "status": 401
+      },
+      {
+        "attempts": 1,
+        "credential_mode": "no_key",
+        "endpoint": "platform_organizations",
+        "missing_key_rejected": true,
+        "pagination_headers_present": [],
+        "status": 401
+      },
+      {
+        "attempts": 1,
+        "credential_mode": "no_key",
+        "endpoint": "platform_projects",
+        "missing_key_rejected": true,
+        "pagination_headers_present": [],
+        "status": 401
+      }
+    ],
+    "elapsed_seconds": 0.616151,
+    "key_format_control": "not_run_unverified_grammar",
+    "limits": {
+      "attempts": 8,
+      "body_bytes": 4194304,
+      "logical_gets": 8,
+      "seconds": 30
+    },
+    "origin": "https://api.ssyz.org.tr",
+    "outcome": "behavior_research_complete",
+    "product_discovery": {
+      "endpoint_count": 3,
+      "organization_count": 1,
+      "project_count": 0,
+      "reasons": [
+        "account_semantics_unknown",
+        "authorization_not_verified",
+        "identity_not_verified",
+        "list_completeness_unknown",
+        "project_selection_required",
+        "remote_snapshot_not_guaranteed"
+      ],
+      "returned_typed_result": true,
+      "selected_project_present": false,
+      "service_id": "evren-platform",
+      "validation": "unverified"
+    },
+    "purpose": "behavior_research_not_auth_acceptance",
+    "retry": "disabled_for_research",
+    "schema_version": 1,
+    "service": "evren-platform"
+  },
+  "original_receipt_sha256": "20362b146f4f6e17b22b3984acf821dd41eeb0f323883a3f272bec2bb63b7d44",
+  "probe_sha256": "a4e91a029e6e280896403fe8e5918b308415a86c02f3258896b4630b5b517a4c",
+  "report_kind": "platform_behavior_observation",
+  "schema_version": 1,
+  "source_commit": "2384a5c40155a9ac48ff1eb7430c938628741811"
+}

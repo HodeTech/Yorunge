@@ -97,3 +97,8 @@ Kullanıcının 2026-11-01 tarihli açık onayıyla bu geçişler ürün kodunda
 ## Uygulama durum notu — 2026-11-01
 
 Onay commit’i9fae321’den sonra iki ara kod adımı, her birinde commit ve iki farklı fresh review turuyla uygulandı. [Ara yerel kabul](../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tam test/iki temiz kurulum ve yeni kaynak bağlı M5 kanıtını taşır. Bu, karar anındaki uygulanmadı ifadelerinin sonraki durumudur. Parser’ın gerçek canlı örneğe uyumu, nihai üretim katı decoder ve auth/principal/pagination/dolu-seçili proje canlı kabulü henüz kanıtlanmış değildir; P02-0d/P02-0b/P02-0 verified ilan edilmez.
+
+
+## Sonraki araştırma notu — 2026-11-01
+
+Kullanıcının ayrı salt okuma yetkisiyle [yeni davranış koşusu](../research/p02-platform-reverse-engineering.md) mevcut üç endpoint cevabının gerçek ürün parser’ı ve Identifier/total predikatlarını geçtiğini gösterdi; yukarıdaki daha önceki kanıt eksikliği bu dar kapsamda giderildi. Seçili/dolu proje ve auth/principal/pagination garantileri halen açık. [ADR-0022](0022-observed-platform-consumer-contract.md) read-only consumer için nihai raw/kapanış kapısına kısmi değişiklik önerir; Proposed olduğu için bu Accepted kararın hükümlerini henüz değiştirmez.

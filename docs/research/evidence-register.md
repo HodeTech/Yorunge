@@ -1,10 +1,10 @@
 # Kanıt ve referans kaydı
 
-**Güncellendi:** 2026-10-31. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
+**Güncellendi:** 2026-11-01. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
 
 ## Kanıt türleri
 
-Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline deney ve gerçek hesap deneyi farklı seviyelerdir. Bu çalışma yeni hesap/GPU deneyi yapmadı. Kaynak okuma tarihi ile kaynakta yazan geçmiş ölçüm tarihi karıştırılmaz.
+Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline deney ve gerçek hesap deneyi farklı seviyelerdir. Başlangıç kaynak araştırması hesap/GPU deneyi yapmadı; sonraki yetkili hesap gözlemleri aşağıdaki tarihli bölümlerde ve bağlı raporlarda ayrı kaydedilir. Kaynak okuma tarihi ile kaynakta yazan geçmiş ölçüm tarihi karıştırılmaz.
 
 ## EVREN başlangıç kanıtları — 26 Ekim 2026
 
@@ -89,3 +89,25 @@ Kullanıcının sağladığı chatbot açıklaması, metadata-only canlı gözle
 | [API key arayüzü](https://evren.ssyz.org.tr/assets/ApiKeysPage-BG9q2x-L.js) | 14339 | `d3f1ab5843ba12c24ad289929c9eb0e9d0f1ac454b7d233c8ccd6a88891d9b84` |
 
 Project asset’inin list/detail doğrulayıcıları id UUID ve nullable/optional org_id kullanır; bu consumer şeması auth yetkisi veya bütün server wire’ı değildir. Guide asset’inde OpenAPI/Swagger bağlantısı doğrulanamadı; bundan başka bir yerde doküman olmadığı sonucu çıkmaz. Chatbot’taki VIEW/limit-offset/key-grammar/hata sınıfları için yetkili kapalı sözleşme hâlâ açık.
+
+
+## 1 Kasım Platform tersine mühendislik kaynakları
+
+Kullanıcı mevcut Platform key’iyle sınırlı salt okuma araştırmasını yetkilendirdi. Kamu kaynakları credentialsız HTTPS GET ile yeniden alındı; JavaScript yalnız metin olarak incelendi.10 GET/978.276 byte;12 GET/4 MiB/30 s tavanı. Bundles repo/pakete kopyalanmadı. Web okuyucusu bu hedefleri açamadı; doğrudan HTTPS kullanıldı. Hash kaynak kimliğidir, server/auth attestasyonu değildir. [Karşılaştırma ve davranış receipt’i](p02-platform-reverse-engineering.md).
+
+| Kamu kaynağı | Byte | SHA-256 |
+|---|---:|---|
+| [guide.html](https://evren.ssyz.org.tr/guide) | 10407 | `9f5e943e8e45b8272b943926b8aacee0cecf8888a1e0952b71a3970973e62d3b` |
+| [main.js](https://evren.ssyz.org.tr/assets/index-ClMMVcec.js) | 729034 | `7d8a6d5676cc2706e940eeb95162a9ffcc0e4c55e70dbd2bfca4b8bc3a54c498` |
+| [ApiKeysPage-BG9q2x-L.js](https://evren.ssyz.org.tr/assets/ApiKeysPage-BG9q2x-L.js) | 14339 | `d3f1ab5843ba12c24ad289929c9eb0e9d0f1ac454b7d233c8ccd6a88891d9b84` |
+| [OrgDetailPage-DvpMAymt.js](https://evren.ssyz.org.tr/assets/OrgDetailPage-DvpMAymt.js) | 27942 | `8259138f08b85cd1dce64b495e86f7a1d385e3d37791eaff80a12710465a8024` |
+| [OrgPage-CjGrH6pA.js](https://evren.ssyz.org.tr/assets/OrgPage-CjGrH6pA.js) | 8239 | `441b7f6b42d10edf155fe8f6f5d04be3b8f9c9e87896c9d793ec09892183c574` |
+| [ProjectDetailPage-Creyc1rV.js](https://evren.ssyz.org.tr/assets/ProjectDetailPage-Creyc1rV.js) | 26698 | `e54949223eb4ebf1fd37d5866249037019ef8bf5b940c06bf50c8a77b308a969` |
+| [ProjectListPage-B4xyKzvK.js](https://evren.ssyz.org.tr/assets/ProjectListPage-B4xyKzvK.js) | 8461 | `f17748f2c1dcc0c5d21a6c10f9dfe7749a151b3e2738aff439fe2a970dc88327` |
+| [UserGuidePage-56UufITC.js](https://evren.ssyz.org.tr/assets/UserGuidePage-56UufITC.js) | 96221 | `2d94c0f3b0fefdf21197bb8185dca1b4b6154c19583eb504ea152acb1d7f0fc2` |
+| [useProject-BGdQjM3D.js](https://evren.ssyz.org.tr/assets/useProject-BGdQjM3D.js) | 2460 | `4223c37940e1011f973f2e5fb77ffdfa33c11236c1df01d74630a6c3fc9c7b7f` |
+| [validation-DUUZp46a.js](https://evren.ssyz.org.tr/assets/validation-DUUZp46a.js) | 54475 | `ac2fff8e6962696718bda20f356f36ba7eca098dcdb941926fbe0179ea0d1cb1` |
+
+Proje listesi search parametresini kullanır; useProject list/detail Zod şemaları id UUID ve nullable/optional org_id tüketir. API key UI kind=platform/llm_inference/model_inference ayrımı ve credit_org_id alanını gösterir; scope/key-grammar normatif şeması değildir. Ana web client Bearer browser token’ı taşır, GET wrapper success/data’yı açabilir. Bu davranış Yörünge için browser token fallback veya gevşek decoder yetkisi vermez. Org UI listede array/items kabul eder; pagination/tamlık ve principal anlamı açık kalır.
+
+Postman api-discovery/Orbit public aramasında dönen5 kaynak EVREN’le eşleşmedi; hiçbiri entegrasyon girdisi seçilmedi. Bu sonuç başka yerde sağlayıcı sözleşmesi olmadığı kanıtı değildir. Canlı hesap çağrıları bu kamu kaynağı tablosundan ayrı, tek6 GET/6 attempt/1.397 tüketilen raw byte/0,616151 s davranış koşusu olarak kaydedildi.
