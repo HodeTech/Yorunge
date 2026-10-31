@@ -246,3 +246,9 @@ Test/build süreçleri bittikten sonra ölçümler seri alındı: **Apple M5 Max
 Üç yeni özgün JSON kayıpsız gzip/manifest/indeks ile saklandı; **155 arşiv** doğrulandı. Önceki LLM ve başarısız kaynak kayıtları tarihsel korunur; yeniden etiketlenmedi. Özgün Platform metadata receipt’i değiştirilmedi. Bu uygulama sırasında yeni canlı hesap çağrısı veya key/negatif kontrol üretilmedi; TLS fixture başarısı gerçek sağlayıcı kabulü değildir.
 
 **Açık5.3:** Sağlayıcının sürüm/hedef/endpoint kapsamlı raw/key-auth/principal/pagination sözleşmesi olmadan üretim katı decoder, endpoint başına yetkili iyi biçimli negatif kontrol ve dolu/seçili proje live kabulü tamamlanamaz. Ara projeksiyona fallback yasağı korunur. Bu nedenle P02-0d blocked; P02-0b draft, P02-0 partial kalır. LLM verified alt teslimi geri alınmaz. Bir sonraki kod/kabul işi bu somut dış sözleşmeyi tüketen5.3’tür; P02-1 veya başka faz işi başlatılmadı. Tek nihai P02-0 development PR bütün kabul kapanınca açılacak; şu an PR/CI/merge/release iddiası yoktur. Kapanış kanıtı için fresh salt-okuma review turları sıradadır.
+
+### Platform yerel kabulü — Birinci fresh kapanış review turu
+
+af0f856 için farklı yeni ajanlar platform_acceptance_r1_proof / platform_acceptance_r1_docs kaynak/kurulum/ölçüm kanıtını ve aktif teslim belgelerini bağımsız inceledi. P3 üst P02-0b kartının eski Platform discovery yok/ready ifadeleri doğrulandı; ara uygulama/yerel kabul tamamlandı, nihai5.3 blocked ve aggregate draft olarak hizalandı. Ürün veya kabul kaynağı değişmedi.
+
+155 arşiv, iki yeni kaynak bağlı M5 verifier,140 belge/6 skill/16 kart ve diff geçti. Proof ajanı iki özgün kurulum JSONL kaydını artifact hash/üye sayılarıyla, sdist’ten wheel build logunu ve tam takımın özgün3.695/1skip/570,87 s logunu karşılaştırdı; sayı/ortam/kaynak/kritik installed consumer iddiaları uyumlu. Test/build/benchmark veya canlı çağrı tekrarlanmadı. Farklı fresh ajanlarla ikinci kapanış turu bu belge fix commit’inden sonra yapılır.
