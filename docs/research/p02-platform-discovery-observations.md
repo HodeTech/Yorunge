@@ -28,6 +28,24 @@ Provider tarafından tanımlı key syntax/length/prefix bütünü henüz yok; ta
 
 [ADR-0021](../decisions/0021-platform-discovery-observations.md), kapalı public wire ve tüm raw ağaçta sır/JSON sınırlarıyla **unverified projeksiyon** kodlamasını önerir. Bu, mevcut hard raw/key başlangıç kapısını kısmen değiştirir ve kullanıcı onayı ister; kabul/verified kapısını değiştirmez. Onaysız ürün kodu veya yeni Platform success yüzeyi eklenmedi. [Hazır provider bilgi talebi](../p02-account-setup.md#platform-sözleşme-kapısını-açmak) hâlâ geçerlidir.
 
+## Platform chatbot cevabının kontrolü
+
+Kullanıcı, Platform chatbot’unun sözleşme açıklamasını paylaştı. Bu metin bir arama ipucudur; sürüm/hash veya doğrudan OpenAPI dosyası olmadan normatif provider sözleşmesi sayılmaz. Yeni account çağrısı yapılmadan mevcut metadata receipt’i ve güncel resmî yayımlanmış istemci/kılavuz karşılaştırıldı.
+
+| Chatbot iddiası | Doğrulama | Kullanım kararı |
+|---|---|---|
+| Base URL ve X-API-Key | Kamu kılavuzu ve yapılan sorguyla uyumlu | Genel hedef/header bilgisi olarak yararlı; endpoint/key-auth garantisi değil |
+| auth/me minimum user_id | Receipt data.id gösteriyor, user_id yok | user_id’ye göre parser yazılamaz; id’nin principal/account anlamı ayrıca açık |
+| organizations org_id/display_name/role | Gözlenen item alanları id/name; belirtilen üç alan yok | Gözlenen items/total şekli esas alınır; role veya membership uydurulmaz |
+| projects ve detail minimum project_id | Güncel resmî web istemcisinin list/detail şemaları id UUID bekliyor | project_id ile uyuşmuyor; dolu/seçili proje live kabulü hâlâ yapılmadı |
+| organizations limit/offset, genellikle10 veya20 | Teyitli endpoint parametre/tamlık tanımı bulunamadı | Parametre veya varsayılan sayfa boyutu tahmin edilmez |
+| Guide’da tam Swagger/OpenAPI | Erişilebilen güncel Guide asset’inde OpenAPI/Swagger ifadesi veya doğrudan şema bağlantısı bulunamadı | Başka/oturumlu doküman olmadığı iddia edilmez; gerçek dosya URL’si gerekir |
+| evren_plt_ + alfa-numerik biçim; VIEW scope;401/403 ayrımı | Metin kesin uzunluk/karakter grameri veya yetkili endpoint scope/hata şeması vermiyor | Negatif kontrol key’i veya permission/auth çıkarımı için yeterli değil |
+
+Önceki kullanıcı özetinde geçen total=1 değeri receipt’te kayıtlı değildir. Kanıtlanan şey **1 gözlenen item ve total’ın integer türü**dür; total’ın sayısal değeri bu kayıtla doğrulanamaz. Tablo veya kabul fixture’ı bu değeri canlı gözlem diye sabitlemez. Ayrıca total=len(items) gözlense bile tamlık kanıtı sayılmaz.
+
+Yeni [kamu kaynak kimlikleri](evidence-register.md#31-ekim-platform-chatbot-sözleşme-kontrolü) kod/hesap kanıtından ayrıdır. Kılavuz normal dataset kullanımını açıklar; provider contract veya chatbot’tan aktarılan açıklama birbirine dönüştürülmez. Doğrudan çalışan OpenAPI JSON/YAML URL’si ve endpoint response schema referansı gelirse Accepted ADR-0020’nin mevcut kanıt yolu yeniden değerlendirilir.
+
 ## Doğrulamanın sınırı
 
 Sentetik probe kontrolleri sadece özetleyicinin değer yayımlamama ve limit davranışını denetler; ürün regresyon takımı değildir. Kaydedilen metadata bir davranış gözlemidir, doğrulanmış provider OpenAPI veya tam nonempty-project oracle’ı değildir. Ürün kodu/test/ölçüm/workflow kaynakları değişmedi; yeni performans ölçümü yapılması gerekmiyor. Önceki LLM yerel kapanışı bu Platform araştırmasıyla yeniden etiketlenmez.

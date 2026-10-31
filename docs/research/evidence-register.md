@@ -74,3 +74,18 @@ ForgeLM'i özel yardımcı fonksiyonlara bağlamak kalıcı adaptör API'si say�
 | [Leakwatch — 5755635](https://github.com/HodeTech/Leakwatch/tree/575563502227368bff93adf714a887113a15eae6) | CLI sonuç doğruluğu; sağlayıcı sözleşmesi ve dürüst feature statüsü; düzenli root belgeleri |
 
 Bu referansların dilleri, teknoloji yığınları, lisansları, branch veya canlı CI kuralları Yörünge'ye devralınmadı. Kaynak yapısı ve ilkeler incelendi; bağımsız Yörünge metinleri yazıldı.
+
+## 31 Ekim Platform chatbot sözleşme kontrolü
+
+Kullanıcının sağladığı chatbot açıklaması, metadata-only canlı gözlem ve güncel kamu istemcisiyle karşılaştırıldı. Aşağıdaki dosyalar credentialsız HTTPS GET ile alınıp metin olarak incelendi; JavaScript çalıştırılmadı, hiçbir account endpoint’i bu takipte çağrılmadı. Bundles repo/pakete kopyalanmadı. Hash’ler kaynak kimliği, auth veya server garanti kanıtı değildir. [Karşılaştırma](p02-platform-discovery-observations.md#platform-chatbot-cevabının-kontrolü).
+
+| Kamu kaynağı | Byte | SHA-256 |
+|---|---|---|
+| [Guide HTML](https://evren.ssyz.org.tr/guide) | 10407 | `9f5e943e8e45b8272b943926b8aacee0cecf8888a1e0952b71a3970973e62d3b` |
+| [Main istemci](https://evren.ssyz.org.tr/assets/index-ClMMVcec.js) | 729034 | `7d8a6d5676cc2706e940eeb95162a9ffcc0e4c55e70dbd2bfca4b8bc3a54c498` |
+| [Guide içeriği](https://evren.ssyz.org.tr/assets/UserGuidePage-56UufITC.js) | 96221 | `2d94c0f3b0fefdf21197bb8185dca1b4b6154c19583eb504ea152acb1d7f0fc2` |
+| [Project istemcisi](https://evren.ssyz.org.tr/assets/useProject-BGdQjM3D.js) | 2460 | `4223c37940e1011f973f2e5fb77ffdfa33c11236c1df01d74630a6c3fc9c7b7f` |
+| [Organization istemcisi](https://evren.ssyz.org.tr/assets/OrgPage-CjGrH6pA.js) | 8239 | `441b7f6b42d10edf155fe8f6f5d04be3b8f9c9e87896c9d793ec09892183c574` |
+| [API key arayüzü](https://evren.ssyz.org.tr/assets/ApiKeysPage-BG9q2x-L.js) | 14339 | `d3f1ab5843ba12c24ad289929c9eb0e9d0f1ac454b7d233c8ccd6a88891d9b84` |
+
+Project asset’inin list/detail doğrulayıcıları id UUID ve nullable/optional org_id kullanır; bu consumer şeması auth yetkisi veya bütün server wire’ı değildir. Guide asset’inde OpenAPI/Swagger bağlantısı doğrulanamadı; bundan başka bir yerde doküman olmadığı sonucu çıkmaz. Chatbot’taki VIEW/limit-offset/key-grammar/hata sınıfları için yetkili kapalı sözleşme hâlâ açık.

@@ -22,6 +22,7 @@ Platform normalizer’ı yalnız [referanstaki](../reference/context-discovery.m
 
 - Ortak HTTP, deadline, byte/header/chunk, strict UTF-8/JSON, duplicate/nonfinite ve depth/node sınırları aynen uygulanır.
 - Önce **tüm parse edilmiş raw ağacın** dinamik string değerleri ve tüketilmeyen metadata anahtarları mevcut literal-secret kuralıyla denetlenir. Tüketilmeyen alanlar bu taramadan kaçamaz. Sabit, açıkça tanımlı protokol anahtarları anahtarın kaynağı sayılmaz; serbest metadata anahtarları muaf değildir.
+- Her endpoint’in root object’inde success varsa tüketilen kontrol alanıdır; strict bool=true zorunludur. False/non-bool, geçerli id veya items/total yanında da projeksiyondan önce invalid_response olur; bu bayrak metadata diye atılmaz. Endpoint root tür kuralı ayrıca korunur.
 - Sonra yalnız tüketilen alanlar seçilir, strict ve extra=forbid iç/public modellere doğrulanır. Tüketilen alandaki yanlış tip, eksik zorunlu alan veya tutarsız ID controlled invalid_response olur. Bilinmeyen metadata çıktı, hata, log, cache veya diske aktarılmadan atılır.
 - Bu dar adaptör sınırı, ortak decode_response veya diğer hizmet modellerini extra=ignore yapmaz. Diğer consumer’ların closed-codec davranışı korunur. Tüm PII/role/admin_permissions değerleri public sonuç dışında kalır.
 
@@ -53,7 +54,7 @@ Aynı araştırmanın HTTP sonrası analiz/parse hatası da çağrı slotunu tü
 
 1. Kullanıcı bu ADR’yi onaylar; Platform referansının Proposed bölümü karar ve kartla birlikte uygulama sözleşmesine dönüşür. Onay öncesi ürün kodu yoktur.
 2. Kapalı Platform public model, salt projeksiyon normalizer’ı, mevcut state/final kapısıyla ortak core; sonra CLI/API/text/JSON/NDJSON aynı kullanıma bağlanır. Büyük iş iki kod adımına ayrılır; her adım commit ve iki farklı fresh review turu içerir.
-3. Bağımsız fixture’lar: me PII/role/serbest metadata atımı; yok/yanlış/duplicate/nonfinite/oversize tüketilen alan; **atılacak metadata içindeki secret**; kısa secret/protokol sabiti ayrımı; bool/int ve nullable/missing parent farkı.
+3. Bağımsız fixture’lar: me PII/role/serbest metadata atımı; yok/yanlış/duplicate/nonfinite/oversize tüketilen alan; **atılacak metadata içindeki secret**; kısa secret/protokol sabiti ayrımı; bool/int ve nullable/missing parent farkı. Geçerli organizations items/total yanında success=false,success=0 ve success="true" ayrı invalid_response fixture’larıdır.
 4. Boş/tek/çok/duplicate128/129 liste, total<len/=/>, profile tercih/explicit project/detail404/yanlış detail ID; eksik parent, yeni metadata ve değişen sayfa/üyelikte unverified/tamlık sınırı korunur. Mevcut canlı boş proje örneği, dolu/selected-project canlı kabulü diye gösterilmez.
 5. TLS gerçek request sınırı, tek env/hedef, no-init, iki süreç credential/reset/clock yarışı, timeout/retry/cleanup/SIGINT/pipe ve UTF-8/NDJSON; eski LLM ve offline v1 regresyonları.
 6. Kaynak değiştiğinde tam test/statik/iki clean install ve yeni kaynak bağlı M5 startup/jobs yapılır; önceki LLM referansı güncel ürün kabulü yerine kullanılmaz. P02-0d’nin eksik auth/principal/pagination ve dolu/seçili proje live kabulü ayrı açık kalır. Yeni kullanım senaryoları bu gözlemden izin üretmez.

@@ -121,12 +121,12 @@ Reasons her zaman account_semantics_unknown,authorization_not_verified,identity_
 
 ### Raw projeksiyonun tam tüketim sınırı
 
-Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam schema garantisi değildir. Tüketilen alanlar strict doğrulanır. Diğer metadata, **tam raw-tree JSON/sır taramasından sonra** atılır; ortak decode_response/closed-codec gevşetilmez. Raw verinin hiçbir generic dict’i public sonuca girmez. Metadata’daki bilinen secret veya malformed JSON da invalid_response olur.
+Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam schema garantisi değildir. Tüketilen alanlar strict doğrulanır. Her endpoint’in root object’inde success anahtarı varsa **tüketilen kontrol metadata’sıdır**: strict bool ve true zorunludur; false/non-bool, geçerli items/total/id yanında olsa da projeksiyondan önce invalid_response olur. Root success asla atılacak metadata değildir. Endpoint’in root tür kuralı ayrıca korunur; bu denetim projects dizisi yerine keyfi zarf kabulü açmaz. Diğer metadata, **tam raw-tree JSON/sır taramasından sonra** atılır; ortak decode_response/closed-codec gevşetilmez. Raw verinin hiçbir generic dict’i public sonuca girmez. Metadata’daki bilinen secret veya malformed JSON da invalid_response olur.
 
 | Endpoint | Kabul edilecek tüketilen yapı |
 |---|---|
 | auth/me | Root object; success strict bool=true ve data object zorunlu; data.id zorunlu Identifier,organization_id/personal_org_id isteğe bağlı Identifier/null. logical false veya yanlış/eksik id invalid_response |
-| organizations | Root object; items object dizisi ve total strict nonnegative-int64 zorunlu; her item.id zorunlu Identifier. total<len(items) invalid_response; total>len(items) incomplete; eşitlik unknown |
+| organizations | Root object; success varsa strict bool=true ön denetimi, items object dizisi ve total strict nonnegative-int64 zorunlu; her item.id zorunlu Identifier. total<len(items) invalid_response; total>len(items) incomplete; eşitlik unknown |
 | projects | Root object değil JSON dizisi; her item.id zorunlu Identifier,org_id isteğe bağlı Identifier/null. Public parent state missing/null/id ayrımını korur; owner_id veya ad/slug yorumlanmaz |
 | projects/{selected_id} | HTTP200’de bare project object veya success=true/data project object. success anahtarı varsa strict bool ve data object zorunlu; yanlış tip/false/eksik data ret. Project tüketimi listeyle aynı, id=selected_id olmalı.404 not_found; diğer hatalar mevcut kurala göre hata |
 
