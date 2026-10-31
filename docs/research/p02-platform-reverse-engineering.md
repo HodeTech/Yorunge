@@ -51,3 +51,9 @@ Orbit kamu API keşfi de denendi; dönen5 adayın hiçbiri EVREN endpoint’i de
 Tersine mühendislik bu dar, doğrulanmamış tüketici için somut bilgi ve gerçek çalışma kanıtı sağladı. Bütün sağlayıcı şemasını veya key/principal/pagination semantiğini evrensel olarak kanıtlamaz. Mevcut Accepted ADR-0021’in nihai whole-raw unknown-ret ve güçlü dış kabul kapısı bu gözlemle kendiliğinden kapanmaz.
 
 [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md), bu dört read-only endpoint için **kanıta dayalı sınırlı tüketici sözleşmesini** nihai ürün sınırı yapmayı önerir: tüketilen alanlar/control’lar strict; tam raw-tree JSON/sır/byte sınırı; tüketilmeyen metadata atımı; public auth/identity/tamlık belirsizliği korunur. Bu, mevcut kapanış koşulunun açık kapsam değişikliğidir, geriye dönük başarılı kabul etiketi değildir. Yeni ADR onayı gelmeden bağımlı ürün/kart kapanışı yapılmaz. Seçili/dolu proje canlı kabulü öneride de ayrı açık tutulur.
+
+## Birinci fresh belge ve kanıt review turu
+
+bcb3ede için iki yeni ajan adr22_r1_contract / adr22_r1_evidence karar/tüketici sınırını ve kanıt/gizlilik zincirini bağımsız inceledi; yeni doğrulanmış bulgu yok. Proposed/onay kapısı, dar kabul kapsamı değişikliği, no-authority wire, key/no-key kanıtının sınırı ve dolu/seçili proje canlı kapısı tutarlı. Receipt yalnız35 bilinen profil alanının tipleri ve diğer güvenli metadata/predikatları taşır; gerçek ID/key/PII değeri yoktur. Probe hash’i,10 kamu dosyası URL/byte/SHA eşliği ve978.276byte toplamı karşılaştırıldı.
+
+142 belge/6 skill/16 kart,155 arşiv ve iki mevcut current-source M5 verifier geçti; runtime/test/script/workflow kaynakları değişmedi. Özgün private receipt hash/mtime veya ağ olayının bağımsız attestasyonu iddia edilmedi. Review sırasında credentials/scope/state/key okunmadı, probe/ağ veya yeni performans çalıştırılmadı. İkinci tur farklı fresh ajanlarla bu kayıt commit’inden sonra yapılır.
