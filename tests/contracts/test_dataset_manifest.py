@@ -317,3 +317,9 @@ def test_shared_input_messages_work_for_dataset_and_execution_callers(code):
     assert error.envelope()["message"] == error.message
     assert error.envelope()["details"] == {}
     assert "dosya" in error.message.casefold()
+
+
+@pytest.mark.parametrize("value", [None, True, 10**9, [65], memoryview(b"{}")])
+def test_raw_manifest_input_type_is_checked_before_bytes_coercion(value):
+    with pytest.raises(ValueError):
+        DatasetManifest.model_validate_json(value)

@@ -250,6 +250,10 @@ class DatasetManifest(Model):
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> Self:
+        if type(json_data) not in (str, bytes, bytearray):
+            raise ValueError("JSON text or bytes required")
+        if len(json_data) > MAX_MANIFEST_BYTES:
+            raise ValueError("manifest byte limit exceeded")
         content = json_data.encode("utf-8") if isinstance(json_data, str) else bytes(json_data)
         value = decode_manifest_json(content)
         # Defaults are useful to the producer; the persisted wire has no optional fields.
