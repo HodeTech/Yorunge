@@ -1720,6 +1720,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-sonar-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 142.0817500911653, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 93.19154196418822, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 36.93770803511143, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 28.341832803562284, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 133.862208109349, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 99.15220807306468, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 37.79600001871586, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 27.967125177383423, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c"}`.
 
+## p02-1-functional-journey-v1
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `d08345ee98671e80f6f8e1e3c1cbd1ec0480ac46f3cf7bd7918f07f98787518c`.
+**Yerel arşiv:** `raw/p02-1-functional-journey-v1.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "readme_functional_journey_passed", "source_commit": "2729ea3c0cfba74390dcd6b71ad664d2fea3e459"}`.
+
 ## p02-1-installation-v1
 
 **Tür:** `installation_v2`.
@@ -1740,6 +1747,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `4a062b03d9900fd765b61064d98d0463b63d8ddfeabb455ae5f5d71b742ade1d`.
 **Yerel arşiv:** `raw/p02-1-local-suite-v1.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "pytest_passed_4174_linux_native_skip_1", "source_commit": "e05eacb5ddb2a767ea9b2ad78afa7333b313d694"}`.
+
+## p02-1-local-suite-v2
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `dd8082863d5f8ae33bf8e5e86948bb46240291bc2476563f503b93d5db307db6`.
+**Yerel arşiv:** `raw/p02-1-local-suite-v2.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "pytest_passed_4202_linux_native_skip_1", "source_commit": "2729ea3c0cfba74390dcd6b71ad664d2fea3e459"}`.
 
 ## p02-1-startup-concurrent-v1
 

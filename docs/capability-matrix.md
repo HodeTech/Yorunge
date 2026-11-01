@@ -1,6 +1,6 @@
 # Yetenek ve teslim matrisi
 
-**Güncellendi:** 2026-11-01. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
+**Güncellendi:** 2026-11-02. **Durum:** Kanonik kapsam ve uygulama durum kaydı.
 
 İlk çevrimdışı context/capability/planlama alt kümesi yerelde test edilmiştir; tam yetenek satırları tamamlanmış sayılmaz. Dış platform kanıtı ile bizim uygulama durumumuz farklı sütunlardır. `P01`–`P04` geliştirme fazlarıdır; teslim tarihi taahhüdü değildir. Kanıt: [ilk P01 dilimi](research/p01-core-validation.md), [development’a alınan P01-2 kabulü](research/p01-2-implementation-validation.md#development-merge-kapanışı), [development’a alınan P01-3 ve PR #9 takibi](research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı), [development’a alınan P01-4](research/p01-4-implementation-validation.md#development-merge-kapanışı), [tamamlanan P01/PR #11](research/p01-remaining-implementation-validation.md#development-merge-kapanışı); çalışma sürümü `0.1.0.dev0` (yayımlanmadı).
 
@@ -8,8 +8,8 @@
 |---|---|---|---|---|---|
 | C01 | Profil, servis kimliği ve proje | Doğru hedefle başlamak | Platform/LLM kimlik yüzeyleri incelendi | Uygulanıyor — yerel profil/proje yönetimi, env ve kalıcı kimlik/nesil/bakım testli; PR #12 ile development’a teslim edilen hizmete bağlı unknown/unverified gözlem var; doğrulanmış uzak kimlik/bağ [P02-R1](roadmap/tasks/p02-r1-verified-context-binding.md) açık | P01 yerel / P02-0b uzak |
 | C02 | Doctor ve yetenek keşfi | Ne yapabileceğini öğrenmek | Şema/kılavuz + hesapla doğrulama gereği | Uygulanıyor — offline görünüm, yerel doctor ve açık cache/global expiry clock testli; P01-3a ve PR #9 takibi development’a alındı; P02-0 kapsamında development’ta LLM terms ve Platform nihai unverified ID/liste/seçim consumer’ı ADR-0022 sınırında verified; gerçek consumer/live, kaynak/review/M5 ve PR #12 source CI kabulü tamam; PR #12 development teslimi tamam, doğrulanmış kimlik/otorite üretilmez | P01 yerel / P02 hesap kanıtı |
-| C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Planlandı | P02 |
-| C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Planlandı | P02/P03 |
+| C03 | Veri denetim/yükleme/indirme/doğrulama | Veriyi kayıpsız taşımak | Resmî veri seti/yükleme kılavuzu; hesapla doğrulanacak | Uygulanıyor — P02-1 çalışma dalında yerel inspect/verify ve no-clobber manifest kodu, kod review’ları ve temiz kurulumlar tamam; son performans/kanıt/PR kabulü açık. Upload/download henüz uygulanmadı | P02 |
+| C04 | Sürüm, bölme ve veri bağları | Aynı girdiyi tekrar kullanmak | Platform kılavuzu; endpoint uyumu doğrulanacak | Uygulanıyor — çalışma dalında yerel Manifest v1 ad/byte/digest kimliği kodlandı; son P02-1 kabulü açık. Uzak veri sürümü, split ve execution bağı planlandı kalır | P02/P03 |
 | C05 | Model/veri kataloğu | Uygun modeli bulmak | Platform kataloğu ve LLM model şeması | Planlandı | P02 |
 | C06 | LLM metin, akış, embedding, rerank | Uygulama çıktısı üretmek | Resmî gateway OpenAPI | Planlandı | P02 |
 | C07 | Görsel çıkarım | Görsel modele istek ve sonuç | Kılavuz ve referans verilen SDK | Planlandı | P02-5e predict; eğitim P03/C08 |

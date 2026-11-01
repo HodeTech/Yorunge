@@ -11039,6 +11039,21 @@
       }
     },
     {
+      "name": "p02-1-functional-journey-v1.json",
+      "archive": "raw/p02-1-functional-journey-v1.json.gz",
+      "original_commit": null,
+      "content_bytes": 3902,
+      "content_sha256": "d08345ee98671e80f6f8e1e3c1cbd1ec0480ac46f3cf7bd7918f07f98787518c",
+      "archive_bytes": 1295,
+      "archive_sha256": "14296c1ac5943035f8d7f1aed50f56b08184c5351dcac2fd710c6ce89abd9838",
+      "summary": {
+        "source_commit": "2729ea3c0cfba74390dcd6b71ad664d2fea3e459",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "readme_functional_journey_passed"
+      }
+    },
+    {
       "name": "p02-1-installation-v1.json",
       "archive": "raw/p02-1-installation-v1.json.gz",
       "original_commit": null,
@@ -11135,6 +11150,21 @@
         "diagnostic_only": true,
         "kind": "diagnostic",
         "outcome": "pytest_passed_4174_linux_native_skip_1"
+      }
+    },
+    {
+      "name": "p02-1-local-suite-v2.json",
+      "archive": "raw/p02-1-local-suite-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 5392,
+      "content_sha256": "dd8082863d5f8ae33bf8e5e86948bb46240291bc2476563f503b93d5db307db6",
+      "archive_bytes": 605,
+      "archive_sha256": "18a83340321d0b8283f6b96e6d9690d733a7931a80eb6e2e3585ed21e0e83865",
+      "summary": {
+        "source_commit": "2729ea3c0cfba74390dcd6b71ad664d2fea3e459",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "pytest_passed_4202_linux_native_skip_1"
       }
     },
     {

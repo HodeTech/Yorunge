@@ -89,7 +89,7 @@ Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kayd�
 
 ## Yerel dosya manifesti
 
-P02-1 çalışma dalında `datasets inspect/verify` uygulanmıştır; review, kurulu paket ve performans kabulü sürüyor. Henüz development teslimi veya sürüm yayını değildir. macOS/Linux yerel diskte, anahtar/config/state/ağ gerektirmeyen sentetik örnek:
+P02-1 çalışma dalında `datasets inspect/verify` uygulanmıştır; iki fresh kod review turu ve iki temiz wheel/sdist kurulum turu tamamlandı. Kaynak bağlı performans, son kanıt review’si ve PR/CI kabulü sürüyor. Henüz development teslimi veya sürüm yayını değildir. macOS/Linux yerel diskte, anahtar/config/state/ağ gerektirmeyen sentetik örnek:
 
 ```sh
 demo_dir=$(python3 -c 'import tempfile; from pathlib import Path; print(Path(tempfile.mkdtemp(prefix="yorunge-demo-")).resolve())')

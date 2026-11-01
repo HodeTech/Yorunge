@@ -8,11 +8,11 @@ capabilities: [C03, C04, C13]
 ---
 # P02-1d — Atomik yerel manifest ve CLI/Python yolculuğu
 
-**Tarih:** 2026-11-01. [Paket/adım 4 ve final kabul](../p02-1-delivery-plan.md). Bu kartın tamamı bütünleşik kabulü de gerektirir; arayüzü yazmak verified değildir.
+**Güncellendi:** 2026-11-02. [Paket/adım 4 ve final kabul](../p02-1-delivery-plan.md). Bu kartın tamamı bütünleşik kabulü de gerektirir; arayüzü yazmak verified değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; review ve bütünleşik kabul sürüyor.
+Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; iki fresh kod review turu ve iki temiz kurulum turu tamamlandı. Kartın performans, son kanıt review’si ve PR/CI kabulleri açık kalır.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,4 +42,4 @@ Adım 4 commit ve iki fresh review; ardından final kabul/adım 5 commit ve iki 
 
 ## Teslim kaydı
 
-ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI uygulaması başladı. Nihai development PR’ı açılmadı.
+ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI, ölçüm araçları ve iki fresh kod review turu tamamlandı. İki temiz wheel/sdist kurulum turu geçti. Güncel tam takım ve belge kapanışı ölçümden bağımsız sürdürülebilir; referans ölçümleri diğer yoğun test işi bitince alınacak. Son performans/kanıt ve development PR/CI koşulları açık olduğundan bu kart in_progress’tir. Madde bazlı [kabul eşlemesi](../../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) kanoniktir.

@@ -1,6 +1,6 @@
 # Yerel veri manifesti ve doğrulama
 
-**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın çalışma dalında uygulandı, review ve bütünleşik kabul sürüyor. **Tarih:** 2026-11-01. Bu belge implementasyonun kanonik sözleşmesidir; henüz development teslimi veya yayın kaydı değildir.
+**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın çalışma dalında uygulandı; kod review’ları ve iki temiz kurulum turu tamam, performans/kanıt ve PR/CI kabulü sürüyor. **Güncellendi:** 2026-11-02. Bu belge implementasyonun kanonik sözleşmesidir; henüz development teslimi veya yayın kaydı değildir.
 
 ## Public yüzey
 

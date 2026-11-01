@@ -1,12 +1,12 @@
 # Yol haritası
 
-**Güncellendi:** 2026-11-01. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
+**Güncellendi:** 2026-11-02. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
 
 | Faz | Kullanıcı sonucu | Bugünkü durum | Fazın sınırı |
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
 | [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
-| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0 ve bütün alt kartlar verified; PR #12 / 9f30fd2 ile development’a teslim edildi. P02-1 paket hazırlığı başladı; yeni ürün sözleşmesi ADR-0023 onaylı, P02-1b uygulaması sürer; P02-1–7 ürünleri henüz uygulanmadı | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
+| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0 ve bütün alt kartlar verified; PR #12 / 9f30fd2 ile development’a teslim edildi. P02-1a/b/c yerelde verified; Accepted ADR-0023 kapsamında manifest/scan/inspect/verify kodu ve iki fresh kod review turu tamam, P02-1d performans/PR kabulü sürüyor. P02-2–7 henüz uygulanmadı | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
 

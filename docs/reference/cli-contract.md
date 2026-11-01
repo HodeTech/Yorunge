@@ -39,7 +39,7 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**,
 
 ## Yerel dataset yüzeyi
 
-Çalışma dalında `datasets inspect ROOT --manifest-out FILE` ve `datasets verify ROOT --manifest FILE`, aynı `api.inspect_dataset` / `api.verify_dataset` kullanım senaryosuna bağlıdır; review ve bütünleşik kabul sürüyor. Config/profile/project/state/recipe/task/tool/execution/refresh kabul edilmez. Root ve manifest zorunludur; hedef parent mevcut ve kaynak kökün dışında olmalıdır. Mevcut hedef ezilmez. Text/JSON/NDJSON küçük Result v1 özeti verir, tam dosya listesi artifact’tadır. Uyuşmazlık exit 7, yayın belirsizliği exit 5’tir; kesin DTO, limit, hata/exit ve iptal davranışı tek kanonik [manifest sözleşmesindedir](dataset-manifest.md#dosya-yayını-ve-hata-önceliği). Bu tablonun kopyası tutulmaz. Upload/download/versions henüz uygulanmadı.
+Çalışma dalında `datasets inspect ROOT --manifest-out FILE` ve `datasets verify ROOT --manifest FILE`, aynı `api.inspect_dataset` / `api.verify_dataset` kullanım senaryosuna bağlıdır; kod review’ları ve iki temiz kurulum turu tamam, kaynak bağlı performans/kanıt ve PR/CI kabulü sürüyor. Config/profile/project/state/recipe/task/tool/execution/refresh kabul edilmez. Root ve manifest zorunludur; hedef parent mevcut ve kaynak kökün dışında olmalıdır. Mevcut hedef ezilmez. Text/JSON/NDJSON küçük Result v1 özeti verir, tam dosya listesi artifact’tadır. Uyuşmazlık exit 7, yayın belirsizliği exit 5’tir; kesin DTO, limit, hata/exit ve iptal davranışı tek kanonik [manifest sözleşmesindedir](dataset-manifest.md#dosya-yayını-ve-hata-önceliği). Bu tablonun kopyası tutulmaz. Upload/download/versions henüz uygulanmadı.
 
 ## Komut alanları
 
