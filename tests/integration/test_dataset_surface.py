@@ -273,7 +273,7 @@ def test_option_looking_paths_after_terminator_cannot_select_usage_error_format(
     assert command.stdout == ""
     assert not target.exists()
     if requested is None:
-        assert command.stderr.startswith("invalid_request:")
+        assert command.stderr == MESSAGES["invalid_request"] + "\n"
     else:
         assert json.loads(command.stderr)["code"] == "invalid_request"
 
