@@ -33,15 +33,22 @@ from yorunge.domain.errors import ErrorCode, YorungeError
 Chain = tuple[tuple[int, int], ...]
 
 
-def close_descriptor(descriptor: int, primary: BaseException | None = None) -> None:
+def close_descriptor(
+    descriptor: int,
+    primary: BaseException | None = None,
+    *,
+    code: ErrorCode = "file_unreadable",
+) -> None:
     try:
         close_input_descriptor(descriptor, primary)
     except OSError:
-        raise YorungeError("file_unreadable") from None
+        raise YorungeError(code) from None
 
 
 @contextmanager
-def owned_descriptor(descriptor: int) -> Iterator[int]:
+def owned_descriptor(
+    descriptor: int, *, close_code: ErrorCode = "file_unreadable"
+) -> Iterator[int]:
     primary: BaseException | None = None
     try:
         yield descriptor
@@ -49,7 +56,7 @@ def owned_descriptor(descriptor: int) -> Iterator[int]:
         primary = error
         raise
     finally:
-        close_descriptor(descriptor, primary)
+        close_descriptor(descriptor, primary, code=close_code)
 
 
 def require_dataset_files() -> None:
@@ -79,6 +86,21 @@ def anchor_dataset_path(path: Path) -> Path:
         raise YorungeError("dataset_limit_exceeded") from None
     except (OSError, ValueError):
         raise YorungeError("input_invalid") from None
+
+
+def anchor_dataset_paths(root: Path, artifact: Path) -> tuple[Path, Path]:
+    """Bind both arguments to one cwd observation, after the primitive gate."""
+    if not isinstance(root, Path) or not isinstance(artifact, Path):
+        raise YorungeError("invalid_request")
+    require_dataset_files()
+    try:
+        cwd = Path.cwd() if not root.is_absolute() or not artifact.is_absolute() else None
+    except OSError:
+        raise YorungeError("input_invalid") from None
+    paths = tuple(
+        path if path.is_absolute() or cwd is None else cwd / path for path in (root, artifact)
+    )
+    return anchor_dataset_path(paths[0]), anchor_dataset_path(paths[1])
 
 
 def _initial_io(error: OSError) -> YorungeError:

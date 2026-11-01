@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
@@ -38,6 +39,8 @@ if TYPE_CHECKING:
         | Result[CredentialObservation]
         | Result[ContextDiscovery]
         | Result[PlatformContextDiscovery]
+        | Result[DatasetInspection]
+        | Result[DatasetVerification]
         | Result[StateInfo]
         | Result[MaintenancePreview]
         | Result[ConfigUpdate]
@@ -136,7 +139,7 @@ def planning_options(parser: argparse.ArgumentParser, *, task: bool = True) -> N
 
 
 def parser() -> Parser:
-    root = Parser(prog="yorunge", description="Yörünge — çevrimdışı bağlam ve plan hazırlığı")
+    root = Parser(prog="yorunge", description="Yörünge — yerel veri, bağlam ve plan hazırlığı")
     root.add_argument("--version", action="version", version=f"yorunge {__version__}")
     common(root)
     commands = root.add_subparsers(dest="command", required=True)
@@ -153,7 +156,27 @@ def parser() -> Parser:
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
     add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
     add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
+    add("datasets", "Yerel dosyaları manifestle kaydet ve yeniden doğrula", _datasets_options)
     return root
+
+
+def _datasets_options(datasets: Parser) -> None:
+    common(datasets, context=False)
+    actions = datasets.add_subparsers(dest="action", required=True)
+    for name, option in (("inspect", "--manifest-out"), ("verify", "--manifest")):
+        command = actions.add_parser(name)
+        common(command, context=False)
+        command.add_argument(
+            "root", type=Path, help="Yerel kaynak dizin; bütün alt dosyalar taranır"
+        )
+        command.add_argument(
+            option, type=Path, required=True, help="Kök dışındaki manifest dosyası"
+        )
+        command.epilog = (
+            "Symlink/özel dosya ve Unicode/case ad çakışmaları reddedilir. "
+            "Unicode sürümü yeni ad çakışmalarını reddedebilir. "
+            "Manifest kök dışında olmalıdır; gizli dosyalar dahil edilir, otomatik ignore yoktur."
+        )
 
 
 def _doctor_options(doctor: Parser) -> None:
@@ -222,6 +245,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         _jobs_singletons(arguments)
     elif args.command == "context" and args.action == "discover":
         _discovery_singletons(arguments)
+    elif args.command == "datasets":
+        _reject_duplicates(
+            arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
+        )
 
 
 def _context_options(context: Parser) -> None:
@@ -392,11 +419,42 @@ def discovery_text_result(data: Model) -> str:
 
 
 def _result_text(args: argparse.Namespace, data: Model) -> str:
+    if args.command == "datasets":
+        return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
     if args.command == "context" and args.action == "discover":
         return discovery_text_result(data)
     return text_result(data)
+
+
+def dataset_text_result(args: argparse.Namespace, data: Model) -> str:
+    import shlex
+
+    from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
+
+    if isinstance(data, DatasetInspection):
+        followup = shlex.join(
+            (
+                "yorunge",
+                "datasets",
+                "verify",
+                str(args.root.absolute()),
+                "--manifest",
+                data.manifest_path,
+            )
+        )
+        return (
+            f"Manifest kaydedildi: {data.manifest_path}\n"
+            f"Dosya: {data.file_count}; byte: {data.total_bytes}\nDigest: {data.manifest_digest}\n"
+            f"Yeniden doğrula: {followup}\nYalnız yerel dosyalar; veri formatı değerlendirilmedi."
+        )
+    if isinstance(data, DatasetVerification):
+        return (
+            f"Dosyalar manifestle eşleşiyor.\nDosya: {data.file_count}; byte: {data.total_bytes}\n"
+            f"Digest: {data.manifest_digest}\nYalnız yerel dosyalar doğrulandı."
+        )
+    raise TypeError("unsupported dataset result type")
 
 
 def text_result(data: Model) -> str:
@@ -674,6 +732,15 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
     options = vars(args)
+    if args.command == "datasets":
+        reject_context(args, ("config", "profile", "project"))
+        from yorunge.adapters.dataset_files import anchor_dataset_paths
+
+        artifact = args.manifest_out if args.action == "inspect" else args.manifest
+        args.root, artifact = anchor_dataset_paths(args.root, artifact)
+        if args.action == "inspect":
+            return api.inspect_dataset(args.root, manifest_out=artifact)
+        return api.verify_dataset(args.root, manifest=artifact)
     if args.command == "state":
         return state_result(args)
     if args.command == "jobs":

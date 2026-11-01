@@ -87,6 +87,23 @@ Kalıcı execution hazırlığı:
 
 Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kaydıdır; gerçek araç/uzak auth/tam girdi kapanışı eksik olduğundan public plan draft ve onaylanamazdır. Yerel manifest bağlamak için recipe ve açık input-root gerekir; yalnız manifest dosyasının hash'i veri kümesinin tamamını doğrulamaz. Güncel validate, tam digest approve ve seçili revoke/forget [execution referansında](docs/reference/execution-plan.md); eski offline v1 komutları stateless kalır. [Test, review ve performans kanıtı](docs/research/p01-3-implementation-validation.md).
 
+## Yerel dosya manifesti
+
+P02-1 çalışma dalında `datasets inspect/verify` uygulanmıştır; review, kurulu paket ve performans kabulü sürüyor. Henüz development teslimi veya sürüm yayını değildir. macOS/Linux yerel diskte, anahtar/config/state/ağ gerektirmeyen sentetik örnek:
+
+```sh
+demo_dir=$(python3 -c 'import tempfile; from pathlib import Path; print(Path(tempfile.mkdtemp(prefix="yorunge-demo-")).resolve())')
+mkdir "$demo_dir/source"
+printf 'abc' > "$demo_dir/source/a.txt"
+.venv/bin/yorunge datasets inspect "$demo_dir/source" --manifest-out "$demo_dir/manifest.json"
+.venv/bin/yorunge datasets verify "$demo_dir/source" --manifest "$demo_dir/manifest.json" --output json
+printf 'xyz' > "$demo_dir/source/a.txt"
+.venv/bin/yorunge datasets verify "$demo_dir/source" --manifest "$demo_dir/manifest.json" --output json
+# Son komut exit 7: aynı boyutlu içerik değişimi, stdout boş, hata stderr.
+```
+
+Python karşılıkları `api.inspect_dataset(Path(root), manifest_out=Path(target))` ve `api.verify_dataset(Path(root), manifest=Path(target))` çağrılarıdır. Inspect normal dosyaların ad/byte/hash envanterini root dışındaki yeni, 0600 manifest dosyasına kaydeder; mevcut hedefi ezmez. Parent mevcut olmalıdır. İki işlem text/JSON/NDJSON küçük özeti verir; bütün dosya listesi yalnız artifact’tadır. Gizli dosyalar dahil edilir; symlink/özel dosya, Unicode/case ad çakışması ve desteklenmeyen adlar reddedilir. Python Unicode sürümü sonuçta görünür; yeni sürüm yeni çakışmaları reddedebilir. Verify bütün içerikleri yeniden hash’ler; boş dizin farkı içerik uyuşmazlığı değildir. Sonuç veri formatı, ML uygunluğu, atomik snapshot veya upload/yürütme izni değildir. Manifest adlar/hash’ler içerebilir; paylaşırken koru. [Sınırlar, iptal ve hata/exit sözleşmesi](docs/reference/dataset-manifest.md).
+
 ## Yerel iş geçmişi
 
 ```sh

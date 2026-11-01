@@ -12,7 +12,7 @@ capabilities: [C03, C04, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Bugün public datasets inspect/verify ve no-clobber manifest artifact’ı yoktur.
+Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; review ve bütünleşik kabul sürüyor.
 
 ## Giren ve girmeyen kapsam
 

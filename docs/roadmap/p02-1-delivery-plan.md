@@ -4,7 +4,7 @@
 
 ## Amaç ve inceleme sonucu
 
-Kullanıcı normal dosya klasörünün ad/byte kümesini yerelde envanterler, sürümlü manifesti ezmeden kaydeder ve daha sonra yeniden hash’leyerek doğrular. [ADR-0023](../decisions/0023-local-dataset-manifests.md) public biçim, güvenli tarama, limitler ve artifact yayınını belirler. [Manifest referansı](../reference/dataset-manifest.md) tek wire kaynağıdır. P02-1b domain/parser implementasyonu başladı; hazır kart veya Accepted ADR ürün kabulü değildir.
+Kullanıcı normal dosya klasörünün ad/byte kümesini yerelde envanterler, sürümlü manifesti ezmeden kaydeder ve daha sonra yeniden hash’leyerek doğrular. [ADR-0023](../decisions/0023-local-dataset-manifests.md) public biçim, güvenli tarama, limitler ve artifact yayınını belirler. [Manifest referansı](../reference/dataset-manifest.md) tek wire kaynağıdır. P02-1a/b/c yerelde verified; P02-1d public yüzey ve yayın kodu review aşamasında; hazır kart veya Accepted ADR ürün kabulü değildir.
 
 İncelenen mevcut belgeler: P02 fazı/roadmap, dataset modülü, data/state ve mimari genel bakış, güvenlik/Python/test/UX/hata/performance/kanıt/Git standartları, CLI/stream/execution referansları, ADR-0014/0018/0019 ve P02 hazırlık review’si. Kodda input_files, local_files, domain modelleri/hataları, API/CLI sınırı ve araştırma kanıtı aracı/tüketicileri karşılaştırıldı. İki bağımsız hazırlık analizi dosya güvenliği ile B15’i ayrı inceledi. Mevcut P01 dosya bağlayıcısında bu hazırlık kapsamında doğrulanmış yeni kusur bulunmadı; eksik recursive envanter/parser/yayın bu yeni işin kapsamıdır.
 
@@ -42,4 +42,4 @@ Hazırlık belgeleri de iki fresh turdan geçirilir; tur/commit/sonuçlar [hazı
 
 ## Mevcut teslim sınırı
 
-P02-0 kapanış commit’i korunur. P02-1 ürün kodu/komutu, yeni ürün hash benchmark’ı ve nihai PR henüz yoktur. ADR-0023 Accepted; P02-1b başladı, P02-1c/d doğrudan önceki kartın kabulünü bekler. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.
+P02-0 kapanış commit’i korunur. P02-1a/b/c yerelde verified; P02-1d public CLI/Python ve yayın kodu uygulandı, iki fresh review ve bütünleşik kabul sürüyor. Yeni ürün hash benchmark’ı, son kaynak bağlı ölçümler ve nihai PR henüz yoktur. ADR-0023 Accepted; P02-1 epic partial kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.

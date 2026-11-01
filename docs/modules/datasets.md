@@ -2,7 +2,7 @@
 
 **Durum:** Planlandı. **Kapsam:** C03/C04. **Faz:** P02/P03.
 
-Yakın yerel teslim [P02-1 planında](../roadmap/p02-1-delivery-plan.md) hazırlanıyor. [ADR-0023](../decisions/0023-local-dataset-manifests.md) ve [Manifest v1](../reference/dataset-manifest.md) Accepted; inspect/verify uygulaması sürüyor. İlk dilim normal dosya ad/byte envanteridir; aşağıdaki upload/ZIP/sürüm ve içerik-formatı hedefleri uygulanmış değildir.
+Yakın yerel teslim [P02-1 planında](../roadmap/p02-1-delivery-plan.md) ilerliyor. [ADR-0023](../decisions/0023-local-dataset-manifests.md) ve [Manifest v1](../reference/dataset-manifest.md) Accepted; inspect/verify CLI/Python ve no-clobber yayın çalışma dalında uygulandı, review ve bütünleşik kabul sürüyor. İlk dilim normal dosya ad/byte envanteridir; aşağıdaki upload/ZIP/sürüm ve içerik-formatı hedefleri uygulanmış değildir.
 
 Yerel dosya denetimi, manifest, private veri seti oluşturma, dosya/ZIP aktarımı, indirme, resume/reconcile ve sürüm/bölme bilgisi bu modüldedir. Etiketleme editörü kurmaz; mevcut veri/etiket yapısını kontrol eder ve uygun import yolunu seçer.
 

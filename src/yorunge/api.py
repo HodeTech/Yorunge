@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
+    from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
@@ -65,6 +66,46 @@ class CredentialRequest(Request):
     model_config = ConfigDict(defer_build=True)
 
     service_id: ServiceId
+
+
+def inspect_dataset(root: Path, *, manifest_out: Path) -> Result[DatasetInspection]:
+    """Hash a local tree and publish a new external manifest; never overwrite."""
+    import time
+
+    started = time.monotonic()
+    from yorunge.adapters.dataset_files import anchor_dataset_paths, open_dataset
+    from yorunge.adapters.dataset_reports import DatasetManifestWriter, PublicationState
+    from yorunge.application.datasets import DatasetBudget, inspect_dataset_tree
+
+    budget = DatasetBudget(started=started)
+    root, target = anchor_dataset_paths(root, manifest_out)
+    state = PublicationState()
+    try:
+        with open_dataset(root, budget) as source:
+            with source.location(target) as location:
+                writer = DatasetManifestWriter(location, state, source.recheck)
+                result = inspect_dataset_tree(source, writer, str(target), budget)
+        budget.check()
+        return result
+    except BaseException as error:
+        state.reraise(error)
+
+
+def verify_dataset(root: Path, *, manifest: Path) -> Result[DatasetVerification]:
+    """Validate a manifest, then freshly hash the entire local tree for equality."""
+    import time
+
+    started = time.monotonic()
+    from yorunge.adapters.dataset_files import anchor_dataset_paths, open_dataset
+    from yorunge.application.datasets import DatasetBudget, decode_manifest, verify_dataset_tree
+
+    budget = DatasetBudget(started=started)
+    root, artifact = anchor_dataset_paths(root, manifest)
+    with open_dataset(root, budget) as source:
+        expected = decode_manifest(source.read_manifest(artifact), budget)
+        result = verify_dataset_tree(source, expected, budget)
+    budget.check()
+    return result
 
 
 def initialize_state(*, state_dir: Path | None = None) -> Result[StateInfo]:
