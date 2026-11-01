@@ -4,7 +4,7 @@
 
 **1 Kasım onay sonrası güncel not:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) revize haliyle kullanıcı tarafından onaylandı; Accepted. Platform’un nihai dar tüketici/kabul hükmünü kısmen değiştirir: eski whole-raw decoder/formal auth-principal-pagination kapısı bu gözlem teslimi için kaldırıldı. Aşağıdaki araştırma, önceki Proposed/onay-bekleme ve o sırada açık kalan kabul ifadeleri kendi tarihsel aşamasını anlatır; geçmiş kanıtlar yeniden etiketlenmez. Güncel son kaynak/PR/CI durumu [paket kaydındadır](p02-0-implementation-validation.md).
 
-**Son durum:** Kullanıcının kendi hazırladığı private test projesi için [ayrı seçili-proje kabulü](#seçili-proje-canlı-kabulü--ayrı-koşu) geçti: 4 ürün GET’i 200, yeni detail anahtarsız kontrolü 401; 5 GET/5 attempt/2.090 byte/0,488645 s. ADR-0022 halen Proposed; mevcut Accepted nihai sözleşme kapıları ve son PR/CI kabulü bu başarıyla kendiliğinden değişmez.
+**Son durum:** Kullanıcının kendi hazırladığı private test projesi için [ayrı seçili-proje kabulü](#seçili-proje-canlı-kabulü--ayrı-koşu) geçti: 4 ürün GET’i 200, yeni detail anahtarsız kontrolü 401; 5 GET/5 attempt/2.090 byte/0,488645 s. ADR-0022 sonradan açık kullanıcı onayıyla Accepted oldu; dar nihai consumer kapsamı benimsendi. Bu canlı başarı veya karar onayı son kaynak/review/PR/CI kabulünün yerine geçmez.
 
 ## Kapsam ve güven sınırı
 
