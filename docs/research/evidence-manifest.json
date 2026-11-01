@@ -11039,6 +11039,105 @@
       }
     },
     {
+      "name": "p02-1-installation-v1.json",
+      "archive": "raw/p02-1-installation-v1.json.gz",
+      "original_commit": null,
+      "content_bytes": 2160,
+      "content_sha256": "823c942fc3f7222d9a27e8e0329219ed3c3040c40bdb49b569438e339445b12b",
+      "archive_bytes": 737,
+      "archive_sha256": "e0db23ad58c09833d0f960c9794db2fce36cbc35cde3bbda4a03ee32f1b7f428",
+      "summary": {
+        "source_commit": "e05eacb5ddb2a767ea9b2ad78afa7333b313d694",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-installation-v2.json",
+      "archive": "raw/p02-1-installation-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 2160,
+      "content_sha256": "ef4cd73f5ad61d072887b7cb9b8c28e6cd633ac94b5f950cc45d7af2d9ce68fe",
+      "archive_bytes": 737,
+      "archive_sha256": "06c7c5e437655f55905d0c454d282fba8891a0f23826a9e77ac33141d394c870",
+      "summary": {
+        "source_commit": "833a803d1802ae7d511a0fd16ef9ade15c6686b1",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-local-suite-v1.json",
+      "archive": "raw/p02-1-local-suite-v1.json.gz",
+      "original_commit": null,
+      "content_bytes": 5311,
+      "content_sha256": "4a062b03d9900fd765b61064d98d0463b63d8ddfeabb455ae5f5d71b742ade1d",
+      "archive_bytes": 602,
+      "archive_sha256": "494b6029d0354e200fceddee5b77d22321998d3010df476cb503b4dd05d0832b",
+      "summary": {
+        "source_commit": "e05eacb5ddb2a767ea9b2ad78afa7333b313d694",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "pytest_passed_4174_linux_native_skip_1"
+      }
+    },
+    {
       "name": "p02-1a-evidence-catalog-profile.json",
       "archive": "raw/p02-1a-evidence-catalog-profile.json.gz",
       "original_commit": null,
