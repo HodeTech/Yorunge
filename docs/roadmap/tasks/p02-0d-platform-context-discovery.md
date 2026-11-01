@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform kimlik, organizasyon ve proje keşfi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama ve yerel kabul tamamlandı; nihai 5.3 sağlayıcı sözleşmesi/canlı kabul beklediği için blocked; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination ve dolu/seçili proje teyidi açık. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım 5.1 çekirdeği iki fresh review turuyla kapandı; adım 5.2 public API/CLI iki fresh review turuyla ve tam kaynak/iki temiz kurulum/M5 yerel kabulüyle kapandı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama ve yerel kabul tamamlandı; nihai 5.3 sağlayıcı sözleşmesi kapısı nedeniyle blocked; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination nihai kapısı açık; aşağıdaki ayrı seçili-proje consumer kabulü sonradan geçti. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım 5.1 çekirdeği iki fresh review turuyla kapandı; adım 5.2 public API/CLI iki fresh review turuyla ve tam kaynak/iki temiz kurulum/M5 yerel kabulüyle kapandı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -50,9 +50,15 @@ Ara kodlamada ADR-0021 onayı sonrası meaningful unit/contract, gerçek TLS, CL
 
 ## Teslim kaydı
 
-Ara unverified çekirdek ve public CLI/Python iki fresh review turu/adım ile uygulandı; [yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tamamlandı. Nihai üretim katı decoder ve tam live kabul yapılmadı; bu5.3 dış kapısı kartı blocked tutar. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
+Ara unverified çekirdek ve public CLI/Python iki fresh review turu/adım ile uygulandı; [yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tamamlandı. Mevcut ara consumer’ın seçili-proje canlı dalı aşağıdaki ayrı kabulde geçti. Nihai üretim katı decoder ve formal raw/auth/principal/pagination kabulü yapılmadı; bu 5.3 dış kapısı kartı blocked tutar. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
 
 
-## Yeni davranış kanıtı — 2026-11-01
+## İlk davranış kanıtı — 2026-11-01
 
-Kullanıcının ek reverse-engineering yetkisiyle [tek sınırlı koşu](../../research/p02-platform-reverse-engineering.md) mevcut ürün decoder’ının üç gerçek yanıtı ve Identifier/total predikatlarını kabul ettiğini gösterdi. Key’le200/no-key 401 yalnız tarihli endpoint davranışıdır; auth/key/principal/pagination garantisi değildir. Proje listesi boş; seçili/dolu canlı dalı açık. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) nihai raw/kapanış kapısı için Proposed alternatif sunar; onay gelmeden bu kart blocked ve mevcut Accepted kapılar bağlayıcı kalır.
+Kullanıcının ek reverse-engineering yetkisiyle [tek sınırlı koşu](../../research/p02-platform-reverse-engineering.md) mevcut ürün decoder’ının üç gerçek yanıtı ve Identifier/total predikatlarını kabul ettiğini gösterdi. Key’le 200/no-key 401 yalnız tarihli endpoint davranışıdır; auth/key/principal/pagination garantisi değildir. O ilk koşuda proje listesi boştu; seçili/dolu dalı sonradan aşağıdaki ayrı koşuda sınandı. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) nihai raw/kapanış kapısı için Proposed alternatif sunar; onay gelmeden bu kart blocked ve mevcut Accepted kapılar bağlayıcı kalır.
+
+## Sonraki seçili-proje kabulü — 2026-11-01
+
+Kullanıcının kendisinin hazırladığı private projeyle [ayrı mevcut-consumer kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) iki fresh ön review sonrasında geçti. Gerçek public API 4 GET/200 ile nonempty liste, seçili ID ve detail eşliğini doğruladı; yalnız yeni detail için key yokken 401 gözlendi. Ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Raw değer/ID/secret yayımlanmadı. Önceki boş-liste kaydı tarihsel kalır.
+
+Bu mevcut ara consumer’ın gerçek canlı dalını kapatır; auth/key/principal/pagination kanıtı veya ADR-0022 onayı değildir. Accepted ADR-0020/0021’in nihai sözleşme kapısı ve son PR/CI teslimi açık kaldığından status blocked korunur. [ADR-0022 revizyonu](../../decisions/0022-observed-platform-consumer-contract.md) iki fresh review sonrası Proposed; aktif kabul eşlemesi yalnız gerçek onayda uygulanır.

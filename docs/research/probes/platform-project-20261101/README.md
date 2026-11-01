@@ -33,3 +33,7 @@ Kaynak ve ön kontroller gözden geçirilmeden çalıştırılmaz. Repo kökü, 
 ```
 
 Bu komut gerçek GET ve yerel registry gözlemi yapar. Çıktı `.local/p02-pilot/platform-selected-project-20261101.json` olarak bir defa rezerve edilir; var olan receipt üzerine yeni koşu başlatılmaz. Başarısız/yarım kayıt silinmez. Kullanıcının proje URL’sini vermesi bu dar salt okuma kabulünün girdisidir; ADR-0022 onayı, key yaratma veya uzak resource mutasyonu değildir.
+
+## Tamamlanan tek koşu
+
+f66a897 kaynağında açık kullanıcı girdisiyle bir kez çalıştı; [değer taşımayan receipt](../../p02-platform-selected-project-observations.json), [sonuç ve sınırlar](../../p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu). 5 GET/5 attempt, 2.090 tüketilen raw-body byte, 0,488645 s; dört ürün 200, detail missing-key 401; bütün 13 ürün predikatı doğru. Bu dosya sonraki tekrar izni değildir; özel receipt ve eski sayaçlar korunur.

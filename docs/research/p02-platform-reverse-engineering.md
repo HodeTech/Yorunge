@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-11-01. **Durum:** Kullanıcı mevcut Platform anahtarıyla salt okunur tersine mühendisliği yetkilendirdi. Bu rapor yeni davranış kanıtını kaydeder; sağlayıcı garantisi, key grammar/auth doğrulaması veya P02-0 kapanışı değildir. Ürün kaynağı 2384a5c; [ADR-0020](../decisions/0020-service-bound-context-discovery.md)/[ADR-0021](../decisions/0021-platform-discovery-observations.md) Accepted kapıları halen bağlayıcıdır. [ADR-0022 önerisi](../decisions/0022-observed-platform-consumer-contract.md) bu raporun sınırlı tüketici sözleşmesi seçeneğini ayrı onaya sunar.
 
+**Son durum:** Kullanıcının kendi hazırladığı private test projesi için [ayrı seçili-proje kabulü](#seçili-proje-canlı-kabulü--ayrı-koşu) geçti: 4 ürün GET’i 200, yeni detail anahtarsız kontrolü 401; 5 GET/5 attempt/2.090 byte/0,488645 s. ADR-0022 halen Proposed; mevcut Accepted nihai sözleşme kapıları ve son PR/CI kabulü bu başarıyla kendiliğinden değişmez.
+
 ## Kapsam ve güven sınırı
 
 Yalnız resmî yayımlanmış kamu istemcisi metin olarak incelendi ve kullanıcının önceden hazırladığı Platform key’iyle üç mevcut GET çağrısı yapıldı. JavaScript yürütülmedi; browser oturumu, JWT/cookie, özel hesap JSON’u veya başka hesabın kaynağı kullanılmadı. Yeni proje/anahtar oluşturma, anahtar rotasyonu, POST/PATCH/PUT/DELETE, upload/inference/şart kabulü yoktur. Discovery’nin normal yerel registry/clock gözlemi kendi mevcut store’unda çalıştı; yeni store veya migration oluşturulmadı. Kullanıcıdan secret değerini yeniden göndermesi istenmedi.
@@ -29,7 +31,9 @@ Web okuyucusu hedefleri açamadığından dosyalar doğrudan credentialsız HTTP
 
 Orbit kamu API keşfi de denendi; dönen 5 adayın hiçbiri EVREN endpoint’i değildi. Başka sağlayıcının benzer adlı projects endpoint’i kullanılmadı. Bu arama sonucu resmî sözleşmenin başka yerde bulunmadığı iddiası değildir.
 
-## Tek sınırlı hesap koşusu
+## İlk sınırlı hesap koşusu
+
+Bu bölüm önceki 6 GET koşusunun tarihsel durumudur; aşağıdaki ayrı seçili-proje koşusu sonradan eklenmiştir.
 
 İlk pozitifler gerçek **api.discover_context evren-platform** yolunu; owned session/state capture/final gate ve üretim projeksiyon decoder’ını çalıştırdı. Araştırma kompozisyonu yalnız retry’ı daha dar tek denemeye düşürdü ve sayaç/descriptor topladı. Sonra aynı endpoint’lere hiç auth header’ı olmadan birer kontrol GET’i yapıldı. Biçimi tahmin edilmiş veya rastgele key üretilmedi. Bütün istekler aynı sayaç ve başlangıçtan 30 s deadline’a bağlıydı; helper veya session değişimi bütçeyi sıfırlamadı.
 
@@ -44,7 +48,7 @@ Orbit kamu API keşfi de denendi; dönen 5 adayın hiçbiri EVREN endpoint’i d
 
 [Değer taşımayan receipt](p02-platform-reverse-observations.json) field-name/type descriptor, sayaç, status ve bool predicate içerir; raw yanıt, gerçek ID, email/telefon/ad/TC kimlik değeri, key/env adı/tag/K, Cookie/Authorization veya imzalı URL içermez. Kaydedilen bilinen alan adları daha önceki descriptor ve yayımlanmış consumer kaynaklarıyla sınırlıdır; yeni serbest metadata anahtarları yayımlanmaz. Source/probe hash’i ve tamamlanan dosyanın UTC mtime’ı kaydedilir; mtime bağımsız ağ/zaman attestasyonu değildir.
 
-## Kapanan belirsizlikler ve sınırlar
+## İlk koşuda kapanan belirsizlikler ve sınırlar
 
 - Üç uç için **mevcut ürün parser’ının gerçek cevapları kabul ettiği** artık kanıtlandı. Önceki metadata receipt’inde eksik olan Identifier/total predikatları bu yeni koşuda gerçek decoder’dan geçti. Eski 31 Ekim receipt’ine sonuç eklenmedi veya geçmiş başarısız/sınırı aşan araştırma kabul koşusuna çevrilmedi.
 - Aynı hedef/endpoint/default parametrelerde seçili key’le 200 ve header yokken 401 gözlendi. Böylece tamamen anahtarsız aynı başarının elde edildiği ihtimali bu koşuda görülmedi. **Bu, key değerinin doğru doğrulandığını kanıtlamaz:** yalnız header varlığını kontrol eden bir sunucu da aynı farkı üretebilir. İyi biçimli invalid-key kontrolü yapılmadı; auth unknown kalır.
@@ -73,7 +77,7 @@ bcb3ede için iki yeni ajan adr22_r1_contract / adr22_r1_evidence karar/tüketic
 
 ## Proje hazırlığına ilişkin sonraki kullanıcı yanıtı
 
-Kullanıcı mevcut projesi olmadığını bildirdi; ardından boş private test projesinin sayfa URL’sini paylaştı. Gerçek ID burada yayımlanmaz. Bu yeni test kaynağı ayrı amaç/sayaç/deadline ile hazırlanacak seçili-proje salt okuma kabulünde kullanılabilir; önceki 6 GET koşusuna çağrı eklemek veya onun tavanını/deadline’ını yeniden başlatmak değildir. Bu not proje endpoint’inin kabulü veya ADR-0022 onayı sayılmaz; henüz bu proje için yeni çağrı yapılmadı.
+Kullanıcı mevcut projesi olmadığını bildirdi; ardından boş private test projesinin sayfa URL’sini paylaştı. Gerçek ID burada yayımlanmaz. Bu yeni test kaynağı ayrı amaç/sayaç/deadline ile hazırlanacak seçili-proje salt okuma kabulünde kullanılabilir; önceki 6 GET koşusuna çağrı eklemek veya onun tavanını/deadline’ını yeniden başlatmak değildir. Bu hazırlık notu yazıldığında proje çağrılmamıştı. Sonraki ayrı koşunun sonucu aşağıda kayıtlıdır; proje girdisi ADR-0022 onayı sayılmaz.
 
 ## Kullanıcı ADR-0022 review bulgularının revizyonu
 
@@ -90,3 +94,29 @@ Aktif P02-0b/d kabul kapıları onay gelmeden değiştirilmedi. Bu, review bulgu
 155 arşiv ve iki güncel kaynak bağlı M5 verifier geçti; bunlar yeni performans koşusu değildir. 70e60f8 paket build’i wheel **66**, sdist **412** izinli üyeyle geçti; altı probe/README kaynağı sdist’te, özel hazırlık/bytecode/raw arşivleri dışarıdadır. Ek üyelik kontrolünün ilk iki yardımcı denemesi build dizinindeki arşiv olmayan dosyayı seçme ve inspect_archive’ın zaten kökü ayıran dönüş tipini yanlış yorumlama nedeniyle reddedildi; artifact allowlist kontrolleri ve düzeltilmiş üyelik kontrolü geçti. İki nested README ayrıca H1/fence/local-link kontrolünden geçti; ana docs checker’ın flat kapsamına dahil oldukları iddia edilmez. Yeni runtime/full-suite/temiz kurulum veya benchmark bu belge/research değişikliğinde tekrarlanmadı; mevcut runtime kanıtı aynı kaynak baytlarına bağlıdır.
 
 Canlı proje çağrısı henüz yapılmadı. İkinci fresh tur farklı ajanlarla bu kapanış ve deadline düzeltmesi commit edildikten sonra yapılır. ADR-0022 Proposed ve aktif Accepted kabul kapıları değişmedi.
+
+## Kullanıcı review revizyonu — ikinci fresh tur
+
+f66a897 üzerinde farklı yeni ajanlar adr22_revision_r2_contract ve adr22_revision_r2_probe cumulative karar/kanıt/yürütücü revizyonunu salt okunur inceledi; yeni doğrulanmış bulgu yok. Sözleşme ajanı 103, probe ajanı 29 sentetik vaka çalıştırdı; ana birleşik kapsam **122 passed / 2,43 s**. 143 public Markdown, ayrıca iki nested README, 6 skill/17 kart ve diff kontrolleri geçti. Her iki turda özel hesap girdileri okunmadı ve canlı probe çalıştırılmadı. Bu turdan sonra aşağıdaki bir kez canlı kabul yapıldı.
+
+## Seçili-proje canlı kabulü — ayrı koşu
+
+Kullanıcı private/boş test projesini kendisi oluşturdu ve URL’sini verdi. Gerçek kimlik yalnız Git dışındaki owner/0600 dosyada tutuldu; burada veya public receipt’te yoktur. İki fresh ön incelemesi tamamlanan [yürütücü](probes/platform-project-20261101/README.md) **f66a897** kaynağında bir kez çalıştı. Mevcut gerçek api.discover_context açık project override, üretim decoder’ı, owned HTTP cleanup ve son credential/epoch/generation state kapısıyla sonuç döndürdü. Bu, Accepted ADR-0021’in mevcut gözlem yolunun kabulüdür; ADR-0022 henüz onaylanmadı.
+
+| Çağrı | Sonuç | Gerçek DTO/oracle |
+|---|---|---|
+| auth/me, organizations, projects | Üçü de 200 | Typed sonuç; proje listesi bir kayıt içeriyor ve seçilen ID listede |
+| projects/{selected} | 200 | Selection observed; detail ID istekle ve verilen kullanıcı girdisiyle eşleşiyor |
+| projects/{selected}, key yok | 401 | Yalnız bu yeni endpoint’in missing-key davranışı; key değeri/principal/permission doğrulaması değil |
+
+**Ayrı koşu toplamı:** 5 logical GET, 5 wire attempt, 0 retry, **2.090 tüketilmiş raw-body byte**, **0,488645 s**; baştan ilan edilmiş 5/5/4 MiB/30 s tavanı içinde. 13 product_acceptance predikatının tamamı doğru: nonempty liste/seçili ID/detail eşliği ve public auth unknown, provider unverified/null, authorization null, consistency not_guaranteed dahil. Uzak resource mutasyonu/config-proje seçimi veya yeni key yok; normal yerel registry gözlemi mevcut davranıştır.
+
+[Değer taşımayan yeni receipt](p02-platform-selected-project-observations.json) çağrı/status/sayaç/predikat/şekil ve kaynak kimliğini taşır. Özgün özel dosya SHA-256’sı public wrapper’da, yürütücü SHA-256’sı **9ffc1787901f02ad9a823f6950953f994dedd0615c956169846ead2e6449e27b**, değişmez helper hash’i önceki receipt ile eşittir. Kaynaklar ve bütün ürün predikatları bağımsız incelenebilir; hash/yerel zaman ağ olayının dış attestasyonu değildir. Raw değer/ID/PII/secret/headervalue yayımlanmaz; body byte sayısı TCP/TLS veya tüketilmeyen hata gövdesinin tamamı değildir.
+
+Önceki 6 GET ile bu 5 GET **iki ayrı amaç ve kullanıcı girdisiyle yapılan iki ayrı koşudur**; toplam 11 hesap GET’i gerçekleşti. Tek bir 8-GET contract pilotu diye sunulmaz, eski sayaç/deadline/receipt değiştirilmedi. İlk koşudaki boş liste sonraki kullanıcı kaynak hazırlığıyla değişti; geçmiş gözlem hatalı diye silinmedi.
+
+Dolu/seçili proje canlı dalının mevcut consumer kabulü artık kanıtlıdır. Formal key/principal/pagination veya whole-raw strict decoder kapısı Accepted ADR-0020/0021 altında halen açıktır; bunları kaldırma önerisi ADR-0022 kullanıcı onayını bekler. Son kaynak/tek PR/üç ortam CI ayrıca tamamlanmadan P02-0d/P02-0b/P02-0 verified değildir.
+
+## Canlı sonuç sonrası kanıt ve belge kontrolü
+
+Ön incelemedeki R2 ajanları sonuçtan sonra public receipt/yöntem hash’leri/sayaç ve belgeleri ayrıca salt okunur karşılaştırdı; bu takip yeni bir fresh tur diye sayılmaz. Proof kontrolünde yeni bulgu yok. Belge kontrolündeki tek P3, current.md’nin üç eski ifadede seçili-proje dalını hâlâ açık veya hiç seçilmemiş gibi anlatmasıydı. İlk gözlemler/yerel kabul tarihsel olarak ayrıldı; son koşunun explicit override’ı, config’e yazılmaması ve consumer canlı başarısı güncel hale getirildi. Yeniden kontrolde P3 kapandı. Formal nihai kapı/ADR-0022 onayı ve son PR/CI açık kaldı; receipt/probe tekrar çalıştırılmadı.

@@ -4,7 +4,7 @@
 
 ## Bağlam
 
-Kullanıcı ulaşabildiği mevcut dokümanlarla sınırlı olduğunu belirtti ve önceden sağladığı Platform key’iyle salt okunur tersine mühendisliği açıkça yetkilendirdi. Resmî yayımlanmış web consumer’ı ve 6 istekli yeni koşu yararlı bilgi üretti: auth/me, organizations ve projects key’le 200, anahtar yokken 401; gerçek public API/üretim decoder’ı mevcut üç yanıtı kabul etti, Identifier/total predikatları geçti. Bir organizasyon ve boş proje listesi görüldü. Dolu/seçili proje/detail canlı kabulü yapılmadı.
+Kullanıcı ulaşabildiği mevcut dokümanlarla sınırlı olduğunu belirtti ve önceden sağladığı Platform key’iyle salt okunur tersine mühendisliği açıkça yetkilendirdi. Resmî yayımlanmış web consumer’ı ve 6 istekli yeni koşu yararlı bilgi üretti: auth/me, organizations ve projects key’le 200, anahtar yokken 401; gerçek public API/üretim decoder’ı mevcut üç yanıtı kabul etti, Identifier/total predikatları geçti. Bir organizasyon ve boş proje listesi görüldü. İlk koşuda dolu/seçili proje/detail yoktu. Sonra kullanıcı kendi private test projesini hazırladı; [ayrı 5 GET seçili-proje kabulü](../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) mevcut Accepted gözlem yolunda geçti. İki koşu tek contract pilotu diye birleştirilmez.
 
 Buna karşılık bütün provider alanlarının kararlılığı, iyi biçimli invalid-key grameri, principal/account semantiği ve pagination/tamlık garantisi çıkarılamadı. Web istemcisinin bildiği alanlar sunucunun bütün sözleşmesi değildir. Header yokken 401, key değerinin gerçekten doğrulandığını tek başına göstermez. Mevcut product wire bu belirsizlikleri zaten unknown/unverified/null/not_guaranteed olarak sunar; discovery hiçbir yetki üretmez.
 
@@ -54,7 +54,7 @@ Provider read başarısı, hesap/proje seçimi, role, toplam veya gözlenen bir 
 
 Bu öneri **dolu proje ve seçili detail gerçek kabulünü kaldırmaz**. Yeni koşudaki boş dizi nonempty/detail consumer’ını kanıtlamaz; sentetik testler de canlı kabul yerine geçmez. Mevcut uygun projeden kullanıcının belirlediği bir örneğin aynı key’le görünmesi ve doğru ID’nin detail yolunda dönmesi gerekir. İlk proje kullanıcı seçimi diye otomatik alınmaz, config yazılmaz. Key’le liste boşken nedenin proje yokluğu/yetki/filtre olduğu varsayılmaz.
 
-Kullanıcıda uygun proje yoksa yaratma bu ADR ile yetkilendirilmez; önce ayrı somut test kaynak/etki/varsa maliyet planı ve kullanıcının açık yetkisi gerekir. Yalnız bu koşul açık kaldığında kartın eksik live dalı açık kalır; resmi şema talebiyle aynı belirsiz dış beklemeye birleştirilmez. Bu karar onaylansa bile proje kabulü kapanmadan P02-0d/P02-0b/P02-0 verified yapılmaz.
+Kullanıcıda uygun proje yoksa yaratma bu ADR ile yetkilendirilmez; önce ayrı somut test kaynak/etki/varsa maliyet planı ve kullanıcının açık yetkisi gerekir. Yalnız bu koşul açık kaldığında kartın eksik live dalı açık kalır; resmi şema talebiyle aynı belirsiz dış beklemeye birleştirilmez. Bu karar onaylansa bile proje kabulü kapanmadan P02-0d/P02-0b/P02-0 verified yapılmaz. **1 Kasım son kanıtı:** kullanıcı kaynağıyla mevcut consumer’ın seçili-proje dalı ayrı 5/5 koşusunda geçti; [receipt](../research/p02-platform-selected-project-observations.json). Bu canlı gereklilik kaldırılmadı, gerçek mevcut uygulama üzerinde sınandı; formal auth/principal/pagination veya yeni nihai kapsam onayı bundan çıkarılmaz.
 
 ## Kabul ve uygulama sırası
 
@@ -72,7 +72,7 @@ Bu tablo onay sonrası değişikliği **madde bazında** tanımlar. ADR halen Pr
 | Kanonik yer | İşlem | Onay sonrası kesin sınır |
 |---|---|---|
 | P02-0d kullanıcı sonucu / giren kapsam | Yeniden yazılır | Provider principal/account/org anlamını doğrulama yerine selected tercih + reported ID/liste/detail gözlemi; auth/kimlik/tamlık unknown/unverified. Doğrulanmış bağ P02-R1’de takip edilir |
-| P02-0d bağımlılıklar / sözleşme / doğrulama / teslim kaydı | Yeniden yazılır | Nihai whole-raw decoder ve resmî auth/principal/pagination bilgisi bu dar teslimin kapısı değildir; eski tarihsel kanıtlara forward notu. Eksik canlı proje ve gerçek kaynak/PR/CI kabulü açık kalır |
+| P02-0d bağımlılıklar / sözleşme / doğrulama / teslim kaydı | Yeniden yazılır | Nihai whole-raw decoder ve resmî auth/principal/pagination bilgisi bu dar teslimin kapısı değildir; eski tarihsel kanıtlara forward notu. Gerçek seçili-proje kanıtı ile son kaynak/PR/CI kabulü korunur; tamamlanan dal tamamlandı, eksik dal açık diye kaydedilir |
 | P02-0d kabul 1 | Eski decoder zorunluluğu kaldırılır; sıkılık korunur | Tüketilen alan/control strict; tüm raw JSON/yapısal/byte sınırları ve seçili credential literal denetimi; tüketilmeyen metadata atımı; public extra=forbid |
 | P02-0d kabul 2 | Verified önkoşulu olmaktan çıkar | İyi biçimli invalid-key kontrolü normal consumer’a eklenmez. Mevcut 8 GET/12 attempt/4 MiB/30 s contract pilotu yalnız ayrıca yetkili, grameri kapanmış opsiyonel araştırmadır; yeni 6 GET/6 attempt koşusunun yerine geçirilmez |
 | P02-0d kabul 3 | Korunur | No-init/snapshot/final credential-epoch-generation/cleanup/CLI-API/TLS kapıları |
@@ -121,4 +121,4 @@ Onay commit’i kontrolü `katı decoder`, `katı parser`, `negatif kontrol`, `p
 
 Bu değişiklik resmî OpenAPI eksikliğini read-only gözlem tüketicisinin tüm kapanışına bağlamayı bırakır. Karşılığı, ürünün hiçbir zaman doğrulanmış principal/izin veya tam uzak envanter iddia etmemesi ve consumer alan değişiminde kontrollü ret vermesidir. Bilinmeyen metadata atımı yalnız tam raw güvenlik taramasından sonra olur. İleride provider sözleşmesi gelmesi faydalıdır; bu öneri onun doğruluğunu önceden ilan etmez.
 
-ADR halen Proposed’dır. Kullanıcının tersine mühendislik yetkisi araştırmayı açtı; bu yeni kabul/kapsam değişikliğinin onayı yerine kullanılmaz. Ürün/kart kapanışı bu belgeyle yapılmadı. Kullanıcı boş/private test projesinin URL’sini verdi; gerçek kimlik yalnız Git dışındaki güvenli girdide tutulur. Mevcut Accepted uygulamanın seçili-proje kabulü ayrı 5 GET/5 attempt/4 MiB/30 s planıyla hazırlanır; bu, karar onayı veya tamamlanmış canlı kabul değildir.
+ADR halen Proposed’dır. Kullanıcının tersine mühendislik yetkisi araştırmayı açtı; bu yeni kabul/kapsam değişikliğinin onayı yerine kullanılmaz. Ürün/kart kapanışı bu belgeyle yapılmadı. Kullanıcı boş/private test projesinin URL’sini verdi; gerçek kimlik yalnız Git dışındaki güvenli girdide tutulur. Mevcut Accepted uygulamanın seçili-proje kabulü ayrı 5 GET/5 attempt/4 MiB/30 s planıyla tamamlandı; bu, karar onayı veya bütün P02-0 kabulü değildir.
