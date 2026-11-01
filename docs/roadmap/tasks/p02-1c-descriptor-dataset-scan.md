@@ -1,14 +1,14 @@
 ---
 id: P02-1c
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-3b, P02-1b]
 capabilities: [C03, C04]
 ---
 # P02-1c — Descriptor envanteri ve güncel byte doğrulaması
 
-**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). ADR Accepted; önceki kartın gerçek kabulü bekleniyor.
+**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). P02-1b yerelde verified; ADR Accepted, descriptor scan/verify uygulaması başladı.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,4 +41,4 @@ Contract ve gerçek filesystem integration/process/race testleri, anlamlı byte/
 
 ## Teslim kaydı
 
-Henüz uygulanmadı; Önceki kartın kabulü bekleniyor; ADR onaylıdır.
+Henüz uygulanmadı; Uygulama başladı; commit/test ve iki fresh review turu tamamlanmadan verified değildir.

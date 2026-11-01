@@ -37,8 +37,8 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | ID | Tek gözden geçirilebilir sonuç | Doğrudan P02 bağımlılığı | Durum |
 |---|---|---|---|
 | P02-1a | B15 bounded araştırma kanıtı kapasitesi ve preflight | P02-0; [kart](tasks/p02-1a-evidence-capacity.md) | `verified` |
-| P02-1b | Strict yerel Manifest v1 ve sabit byte/digest oracle’ı | P01-1a; ADR-0023 Accepted; [kart](tasks/p02-1b-manifest-contract.md) | `in_progress` |
-| P02-1c | Descriptor recursive scan ve güncel byte kümesi verify | P01-3b, P02-1b; [kart](tasks/p02-1c-descriptor-dataset-scan.md) | `draft` |
+| P02-1b | Strict yerel Manifest v1 ve sabit byte/digest oracle’ı | P01-1a; ADR-0023 Accepted; [kart](tasks/p02-1b-manifest-contract.md) | `verified` |
+| P02-1c | Descriptor recursive scan ve güncel byte kümesi verify | P01-3b, P02-1b; [kart](tasks/p02-1c-descriptor-dataset-scan.md) | `in_progress` |
 | P02-1d | Atomik artifact, API/CLI ve kurulu/final kaynak kabulü | P02-1a, P02-1c; [kart](tasks/p02-1d-dataset-inspection-cli.md) | `draft` |
 | P02-2a | Private oluşturma planı, güncel onay ve kalıcı create/korelasyon kaydı | P02-0a, P02-0b Platform alt kabulü, P02-1 | `draft` |
 | P02-2b | Yetkili depolama hedefinde bounded byte upload ve doğrulanmış confirm | P02-2a; aşağıdaki aktarım kararları | `draft` |
