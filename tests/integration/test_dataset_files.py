@@ -636,3 +636,81 @@ def test_dataset_error_catalog_has_fixed_messages_exits_and_safe_general_envelop
 def test_mismatch_never_accepts_unbounded_or_coerced_details(count):
     with pytest.raises(ValueError):
         ManifestMismatch("a" * 64, "b" * 64, count, 0, 0)
+
+
+@pytest.mark.parametrize("point", ["initial-chain", "final-relative"])
+def test_shared_walk_cleanup_preserves_active_cancelled_error(tmp_path, monkeypatch, point):
+    (tmp_path / "data").write_bytes(b"abc")
+    live, peak = track_descriptors(monkeypatch)
+    original_stat, original_close = os.fstat, os.close
+    original_recheck = module.DatasetTree._recheck_file
+    cancellation = asyncio.CancelledError()
+    enabled = point == "initial-chain"
+    raised = False
+
+    def stating(fd):
+        nonlocal raised
+        if enabled and not raised:
+            raised = True
+            raise cancellation
+        return original_stat(fd)
+
+    def closing(fd):
+        original_close(fd)
+        if raised:
+            raise OSError(errno.EIO, "not public")
+
+    def rechecking(tree, item):
+        nonlocal enabled
+        enabled = True
+        original_recheck(tree, item)
+
+    monkeypatch.setattr(os, "fstat", stating)
+    monkeypatch.setattr(os, "close", closing)
+    monkeypatch.setattr(module.DatasetTree, "_recheck_file", rechecking)
+    with pytest.raises(asyncio.CancelledError) as failure:
+        scan(tmp_path)
+    assert failure.value is cancellation
+    assert raised
+    assert all(note == MESSAGES["file_unreadable"] for note in cancellation.__notes__)
+    assert live == set()
+    assert peak[0] <= 64
+
+
+@pytest.mark.parametrize("point", ["initial-chain", "relative-directory", "relative-leaf"])
+def test_shared_walk_parent_close_failure_cannot_orphan_child_or_leaf(tmp_path, monkeypatch, point):
+    root = tmp_path / "source"
+    root.mkdir()
+    nested = root / "nested"
+    nested.mkdir()
+    (nested / "data").write_bytes(b"abc")
+    live, peak = track_descriptors(monkeypatch)
+    original_close = os.close
+    original_recheck = module.DatasetTree._recheck_file
+    enabled = point == "initial-chain"
+    injected = False
+    close_calls = 0
+
+    def closing(fd):
+        nonlocal injected, close_calls
+        original_close(fd)
+        if enabled:
+            close_calls += 1
+            trigger = 2 if point == "relative-leaf" else 1
+            if close_calls == trigger and not injected:
+                injected = True
+                raise OSError(errno.EIO, "not public")
+
+    def rechecking(tree, item):
+        nonlocal enabled
+        enabled = True
+        original_recheck(tree, item)
+
+    monkeypatch.setattr(os, "close", closing)
+    monkeypatch.setattr(module.DatasetTree, "_recheck_file", rechecking)
+    with pytest.raises(YorungeError) as failure:
+        scan(root)
+    assert failure.value.code == "file_unreadable"
+    assert injected
+    assert live == set()
+    assert peak[0] <= 64
