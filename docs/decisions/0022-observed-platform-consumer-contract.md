@@ -1,6 +1,6 @@
 # ADR-0022: Platform keşfinde gözleme dayalı sınırlı tüketici sözleşmesi
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; bu karara bağlı ürün veya kabul değişikliği uygulanmadı. **Tarih:** 2026-11-01. **İş:** P02-0d / P02-0b / P02-0 adım 5.3. [Araştırma ve yeni canlı kanıt](../research/p02-platform-reverse-engineering.md), [kapalı public referans](../reference/context-discovery.md), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md). Bu öneri ADR-0020/0021’in yalnız Platform read-only discovery nihai ürün sözleşmesi ve raw/auth/principal/pagination kabul kapsamını kısmen değiştirir; iki karar halen Accepted ve bu öneri onaylanana kadar bağlayıcıdır.
+**Durum:** Accepted — kullanıcı revize kararı 2026-11-01 tarihinde açıkça onayladı; aşağıdaki kapsam/kabul eşlemesi aynı onay commit’inde uygulandı. **Tarih:** 2026-11-01. **İş:** P02-0d / P02-0b / P02-0 adım 5.3. [Araştırma ve yeni canlı kanıt](../research/p02-platform-reverse-engineering.md), [kapalı public referans](../reference/context-discovery.md), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md). Bu öneri ADR-0020/0021’in yalnız Platform read-only discovery nihai ürün sözleşmesi ve raw/auth/principal/pagination kabul kapsamını kısmen değiştirir; iki karar Accepted kalır; yalnız burada belirtilen Platform nihai tüketici/kabul kuralı bu kararla kısmen değişir.
 
 ## Bağlam
 
@@ -10,7 +10,7 @@ Buna karşılık bütün provider alanlarının kararlılığı, iyi biçimli in
 
 ADR-0021 ara projeksiyonu uygulamaya açarken nihai whole-raw katı decoder ve güçlü dış sözleşme/kabul kapılarını korudu. Böylece ihtiyaç duyulmayan PII/metadata alanlarının bütün varyasyonları dahi bu dar read-only gözlem işinin kapanışını bekletebilir. Tüketilen alanların sıkılığı ile sağlayıcının kullanılmayan tüm alanlarını doğrulama gereğini ayrı değerlendirmek gerekir.
 
-## Karar önerisi
+## Karar
 
 ### 1. Nihai ürün sınırı tüketici sözleşmesidir
 
@@ -67,7 +67,7 @@ Kullanıcıda uygun proje yoksa yaratma bu ADR ile yetkilendirilmez; önce ayrı
 
 ## Kabul kapsamı eşlemesi — yalnız onay commit’inde
 
-Bu tablo onay sonrası değişikliği **madde bazında** tanımlar. ADR halen Proposed olduğu için aktif kartların bugünkü Accepted ADR-0020/0021 koşulları burada erkenden değiştirilmez. Gerçek kullanıcı onayı geldiğinde aynı commit’te aşağıdaki eşleme uygulanır; sonra gelişen kod/kabul işi başlar. Kaldırılan şeyler geçilmiş test veya verified kanıt olarak yazılmaz.
+Bu tablo kullanıcı onayıyla aynı commit’te uygulanan değişikliği **madde bazında** tanımlar. Önceki Accepted ADR-0020/0021’in yalnız bu Platform hükümleri değiştirildi. Kaldırılan koşullar geçilmiş test veya verified kanıt olarak yazılmaz; korunmuş son kaynak/PR/CI kabulü ayrıca tamamlanır.
 
 | Kanonik yer | İşlem | Onay sonrası kesin sınır |
 |---|---|---|
@@ -111,14 +111,14 @@ Onay commit’i kontrolü `katı decoder`, `katı parser`, `negatif kontrol`, `p
 
 ## Alternatifler
 
-- **ADR-0020/0021’in mevcut nihai kapısını korumak:** Geçerli seçenek; onay gelmezse bu uygulanır. Daha fazla client araştırması sağlayıcının tüm principal/key/pagination sözleşmesini evrensel kanıtlamayabilir; dış kapı açık kalır.
+- **ADR-0020/0021’in önceki nihai kapısını korumak:** Seçilmedi. Daha fazla client araştırması sağlayıcının tüm principal/key/pagination sözleşmesini evrensel kanıtlamayabilir; dış kapı açık kalır.
 - **Frontend davranışını aynen kopyalamak:** Seçilmedi. Web wrapper’ının esnek envelope/success/metadata davranışı Yörünge’nin strict tüketilen alan/control ve sır sınırını belirlemez.
 - **Header yokken 401’i key/principal verified saymak veya tahmini invalid-key üretmek:** Seçilmedi. Bu kanıt, header varlığına bağlı davranışı gösterir; anahtar değerinin doğrulanmasını veya kimlik otoritesini göstermez.
 - **Dolu/seçili canlı dalı silerek paketi bitirmek:** Seçilmedi. Bağımsız gerçek consumer kabulü korunur.
-- **Kısıtlı ve açık unknown tüketici sınırı:** Önerilen seçimdir. Kullanıcıya bugün elde edilebilen faydayı verir; güven iddiasını büyütmez, gereken yetkiyi gelecekteki yan etkiye taşımaz.
+- **Kısıtlı ve açık unknown tüketici sınırı:** Kabul edilen seçimdir. Kullanıcıya bugün elde edilebilen faydayı verir; güven iddiasını büyütmez, gereken yetkiyi gelecekteki yan etkiye taşımaz.
 
 ## Sonuçlar ve sınırlar
 
 Bu değişiklik resmî OpenAPI eksikliğini read-only gözlem tüketicisinin tüm kapanışına bağlamayı bırakır. Karşılığı, ürünün hiçbir zaman doğrulanmış principal/izin veya tam uzak envanter iddia etmemesi ve consumer alan değişiminde kontrollü ret vermesidir. Bilinmeyen metadata atımı yalnız tam raw güvenlik taramasından sonra olur. İleride provider sözleşmesi gelmesi faydalıdır; bu öneri onun doğruluğunu önceden ilan etmez.
 
-ADR halen Proposed’dır. Kullanıcının tersine mühendislik yetkisi araştırmayı açtı; bu yeni kabul/kapsam değişikliğinin onayı yerine kullanılmaz. Ürün/kart kapanışı bu belgeyle yapılmadı. Kullanıcı boş/private test projesinin URL’sini verdi; gerçek kimlik yalnız Git dışındaki güvenli girdide tutulur. Mevcut Accepted uygulamanın seçili-proje kabulü ayrı 5 GET/5 attempt/4 MiB/30 s planıyla tamamlandı; bu, karar onayı veya bütün P02-0 kabulü değildir.
+Kullanıcı revize ADR-0022’yi 2026-11-01 tarihinde açıkça onayladı. Nihai sınırlı gözlem sözleşmesi ve kabul eşlemesi bu yetkiyle uygulanır; özgün doğrulanmış kimlik/bağ ihtiyacı P02-R1’de draft takipte kalır. Seçili-proje canlı kabulü ayrı 5 GET/5 attempt/4 MiB/30 s planında tamamlandı; bu sonuç veya karar onayı tek başına bütün P02-0 kaynak/PR/CI kabulü değildir. Gerçek kimlik yalnız Git dışındaki güvenli girdide tutulur.

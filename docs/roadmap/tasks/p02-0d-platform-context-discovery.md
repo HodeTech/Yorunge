@@ -1,64 +1,47 @@
 ---
 id: P02-0d
 phase: P02
-status: blocked
+status: in_progress
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
-# P02-0d — Platform kimlik, organizasyon ve proje keşfi
+# P02-0d — Platform salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Ara unverified uygulama ve yerel kabul tamamlandı; nihai 5.3 sağlayıcı sözleşmesi kapısı nedeniyle blocked; üç endpoint için yeni metadata gözlemi var, auth/principal/pagination nihai kapısı açık; aşağıdaki ayrı seçili-proje consumer kabulü sonradan geçti. ADR-0021 2026-11-01 kullanıcı onayıyla Accepted; onay commit’inden sonra adım 5.1 çekirdeği iki fresh review turuyla kapandı; adım 5.2 public API/CLI iki fresh review turuyla ve tam kaynak/iki temiz kurulum/M5 yerel kabulüyle kapandı. P02-0b üst işinin Platform koludur; [P02-0c LLM](p02-0c-llm-context-discovery.md) bu dış kapıyı beklemez. Aynı nihai PR’dadır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi. Çekirdek/public yüzey ikişer fresh review ve önceki yerel kaynak kabulünü geçti; gerçek üç uç ve ayrı seçili-proje consumer kabulü tamamlandı. Onay sonrası son kaynak/test/kurulum/M5/review ve tek development PR/CI kabulü sürüyor; verified değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı seçili Platform API key/hedef için provider principal/account/org anlamını ve açık proje seçiminin doğruluk düzeyini görür. Tarayıcı Bearer çağrıları API key kabulü veya principal alanı kanıtı değildir; görünür proje write izni değildir. Gerçek key/raw sözleşme bilinmeden adapter/verified kimlik uydurulmaz.
+Kullanıcı seçtiği Platform hedefi/yerel credential snapshot’ıyla bildirilen ID’leri, organizasyon/proje listelerini ve profil veya açık override’daki proje detayının gözlem durumunu görür. Reported ID principal/account/üyelik veya yazma izni değildir. Auth unknown, provider identity unverified/null, authorization_scope null, validation unverified ve consistency not_guaranteed kalır. Özgün doğrulanmış hizmet kimliği/bağ ihtiyacı [P02-R1](p02-r1-verified-context-binding.md) sahibinde açık takiptedir.
 
 ## Giren ve girmeyen kapsam
 
-GET auth/me/organizations/projects/seçili projects/{id}; raw kapalı envelope/principal/paging ve anlam teyidi; explicit selection/provider ilişkisi; ayrı discovery variantı ve ortak CLI/API girer. Eksik sayfalama/snapshot garantisi incomplete/unverified, yanlış/boş/çok proje açık kalır. Account profil-only; otomatik seçim/config yazımı yoktur.
+GET auth/me/organizations/projects/seçili projects/{id}; strict tüketilen alan/control, bütün raw yapısal/byte ve seçili credential literal denetimi sonrası tüketilmeyen metadata atımı; kapalı PlatformContextDiscovery v1 ve ortak CLI/Python girer. Listeler en çok 128 kayıttır; unknown/incomplete tamlık ve endpoint gözlem aralığı açık gösterilir. Profil-only veya override projesi detail GET’ini tetikler; otomatik ilk öğe seçimi/config yazımı yoktur.
 
-Browser JWT fallback, key oluşturma, terms accept, model/kota/dataset taraması, upload/inference, permission uydurma, yeni state/cache ve yeni PR yoktur. Şema kanıtı olmadan fixture’dan sahte production backend yapılmaz.
+Browser JWT fallback, key/resource oluşturma, şart kabulü, model/kota/dataset taraması, upload/inference, permission uydurma, yeni state/cache veya yeni alt PR girmez. Ayrı whole-raw unknown-ret decoder ve formal auth/principal/pagination bilgisi bu dar gözlem tesliminin önkoşulu değildir; sonraki yan etkili tüketicinin güncel otorite/endpoint kapısı korunur.
 
 ## Bağımlılıklar ve kararlar
 
-P01/P02-0a bağımlılıkları verified. **Bugün** [ADR-0020](../../decisions/0020-service-bound-context-discovery.md) Accepted ve bağlayıcıdır; nihai verified için provider sözleşmesi veya yetkili tam contract pilotuyla raw/key/identity/envelope/pagination kapısı korunur; ara uygulama başlangıcını Accepted ADR-0021 açar. Kullanıcı key/env hazırlığını yaptı; başlangıç liste okumaları için account/project ID gerekmedi. Mevcut tür receipt’i parser uyumunu veya auth’u kanıtlamaz.
-
-**ADR-0021 Accepted:** [kapalı ara projeksiyon](../../reference/context-discovery.md#önerilen-platform-gözlem-varyantı) ve aynı commit’teki belge geçişleriyle bu kart yalnız unverified gözlem kodlamasına ready oldu. Bu, aşağıdaki nihai verified/live kapısını kaldırmaz. Kart ve P02-0b/P02-0, ara kod/test başarılı diye verified olmaz. Tam provider sözleşmesi kapanınca üretimdeki raw parser’ın katı decoder’a geçirilmesi ek zorunlu kod adımıdır; katı ret sonrası projeksiyona fallback yoktur.
-
-[Yeni metadata gözlemleri](../../research/p02-platform-discovery-observations.md) me success=true, organizations items/total türü ve boş projects cevabını kaydeder. Birikimli 5 GET sapması contract kabulü değildir. [ADR-0021](../../decisions/0021-platform-discovery-observations.md) **Accepted**; kullanıcı revizyonu açıkça onayladı. Yalnız ara başlangıç kapısı değişti.
+P01/P02-0a bağımlılıkları verified. [ADR-0020](../../decisions/0020-service-bound-context-discovery.md) hizmet/state/credential sınırını, [ADR-0021](../../decisions/0021-platform-discovery-observations.md) wire ve ilk projeksiyon başlangıcını tanımlar. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) 2026-11-01 açık kullanıcı onayıyla yalnız nihai Platform tüketici/kabul hükmünü değiştirir. Eski katı decoder/key-semantik koşulları kaldırıldı; geçirilmiş test sayılmaz. Gerçek consumer canlı kabulü, son kaynak/review/kurulum/ölçüm ve PR/CI korunur.
 
 ## Sözleşme ve uygulama sınırı
 
-[ContextDiscovery](../../reference/context-discovery.md) Platform bölümü Accepted tasarımdır; ara consumer ve nihai katı parser sınırı aynı belgede tutulur. LLM varyantı değişmez. Detail404 için ADR-0020’nin kavramsal selection_unverified ifadesinin [önerilen kesin wire eşlemesi](../../reference/context-discovery.md#seçim-kavramları-ve-kapalı-wire-eşlemesi) validation=unverified + projects.selection.state=not_found + selected_project_not_found’dur; selection_unverified adında ayrı wire alanı/değeri yoktur. Me/list404 invalid_response; yanlış detail ID de invalid_response. Parent/hesap farkları doğrulanmış membership veya izin olarak yorumlanmaz.
+[Platform v1 referansı](../../reference/context-discovery.md#platform-gözlem-varyantı) tek kanonik wire/raw tüketici sözleşmesidir. Domain/application kuralı, somut HTTP adaptörü ve ortak CLI/Python kullanımı ayrıdır. LLM DTO’su ve eski Context/config/Plan/Result/state şema 6 değişmez. Detail404 → validation=unverified, selection.state=not_found ve reason selected_project_not_found; me/list404 ve yanlış detail ID → invalid_response. Parent farkı normal unverified gözlemdir; membership veya account mismatch uydurulmaz.
 
-Tüketilmeyen ad/email/telefon/diğer profil alanları, ham role/admin_permissions ve raw body yayımlanmaz. Yayımlanan opak ID’ler kişiye bağlanabilir; “tüm kişisel veri ayıklandı” vaadi yoktur. İstekler transaction dışında, aynı tek credential/config snapshot ve final gate ile yürür. Profilden veya açık override’dan gelen selected.project_id detail GET’i tetikler; profile_preference orijinal profili korur. API overload ve iki-varyant CLI renderer sözleşmesi koddan önce referansta kapalıdır.
+İstekler DB transaction dışında tek credential/config snapshot’ıyla yürür; final store/epoch/clock-generation/credential ID/revision/deadline tekrar karşılaştırılır. Tüketilmeyen profil/ad/email/telefon/ham role/admin_permissions yayımlanmaz. Reported ID kişiye bağlanabilir. Literal tarama yalnız seçili credential için kısa UTF-8 değerde tam eşitlik, en az 8 byte’ta alt dize; sabit protokol anahtarı muafiyetleri seçilmiş şekille sınırlıdır. Genel sır/PII sınıflandırma iddiası yoktur.
 
 ## Kabul
 
-Bu iki aşamalı ayrım 2026-11-01 ADR-0021 onayıyla etkindir; nihai verified kapısı korunur.
-
-1. **Ara gözlem uygulaması:** tüketilen raw alan/control eksik veya yanlışsa invalid_response; tüketilmeyen metadata tam raw-tree JSON/sır taraması sonrası atılır, ret beklenmez. Public wire extra=forbid/strict kalır. **Nihai verified:** provider-version/endpoint schema/header/envelope/pagination/principal anlamı ve source/target tarihi kapanır; üretimde projeksiyon-only parser katı decoder ile değiştirilir ve raw unknown alan ret olur. Bu ek ürün değişikliği ve regresyonları olmadan verified olmaz; yalnız bir kabul helper’ını sıkılaştırmak yetmez.403 global unsupported veya kesin invalid-key değildir.
-2. Provider explicit auth sözleşmesi yoksa endpoint başına iyi biçimli random negatif kontrol, retry0; 401 veya anlamı kapanmış invalid-key 403 gerekir. Malformed reddi, başka endpoint/host/proje kontrolü veya iki2xx auth doğrulaması olmaz. Pilot en çok 8 GET/12 attempt/4 MiB/30 s; kontrol key’i registry’ye girmez.
-3. Açık/default state kökü no-init; env tek snapshot, final credential/epoch/clock-generation yarışları; TLS/redirect/reflection/deadline/resource cleanup ve CLI/API eşliği gerçek sınırda sınanır.
-4. Çok/boş/duplicate/eksik ID; profile-only project için 4, project yoksa 3 GET; explicit override’da profile_preference/selected ayrı; detail404 eşleme ve tam ASCII-sıralı reason dizisi. Profil account-parent farkı veya aynı ID’nin list/detail parent farkı normal unverified sonuçtur; iki kaynak ayrı korunur, membership/mismatch uydurulmaz. Yanlış detail ID invalid_response’dur. List404, değişen üyelik/sayfa/cursor; completeness ile atomic consistency ayrımı sınanır. İlk UUID seçilmez; sonuç observation aralığı + endpoint zamanlarını taşır.
-5. Mevcut31 Ekim review’sindeki bütün ortak kabul ve bütçe/UX/uyumluluk maddeleri P02-0b kartıyla birlikte kapanır. Her adım commit+iki fresh review; gerçek Platform canlı kabulü ve final kaynak test/kurulum/ölçümleri olmadan verified olmaz.
+1. Tüketilen raw alan/control eksik/yanlış tür/duplicate/unknown şekil/limit/logical-success hatasında invalid_response. Bütün raw strict UTF-8/JSON/depth/node/header/byte denetimi ve seçili literal taraması korunur; tüketilmeyen metadata atılır. Public DTO extra=forbid/strict/frozen. Ayrı whole-raw unknown-ret decoder gerekmez.
+2. Normal discovery’ye no-key veya random invalid-key çağrısı eklenmez; auth unknown kalır. Key 200/no-key 401 veya malformed reddi doğrulanmış key/principal değildir. İyi biçimli endpoint-bound negatif kontrol yalnız ayrıca yetkili, grameri kapanmış opsiyonel araştırmadır (önceki contract pilotu ≤8 GET/12 attempt/4 MiB/30 s); bu kartın verified önkoşulu değildir.
+3. No-init açık/default state, tek env snapshot, final credential/epoch/clock-generation yarışları; gerçek TLS/redirect/reflection/deadline/cleanup ve CLI/API eşliği sınanır. Normal en çok 4 GET, proje yoksa 3; en çok 8 attempt/4 MiB/30 s, response 1 MiB/output 256 KiB; store 5 s/lock 1 s cooperative bütçeleri korunur.
+4. Boş/tek/çok/duplicate/128–129 liste, eksik/yanlış ID, total/bool/null/success, profil veya override seçimi, parent farkı/detail404/route-ID ve ASCII-sıralı reason fixture’ları bağımsız oracle ile sınanır. İlk UUID seçilmez; liste tamlığı unknown/incomplete ve uzak snapshot not_guaranteed kalır.
+5. Gerçek me/org/empty ve kullanıcı seçili nonempty proje/detail consumer kabulü; son kaynak test/statik/belge/ajan, iki temiz wheel/sdist kurulumu ve kaynak bağlı M5 startup/jobs; adım başına commit+iki farklı fresh review ve tek development PR/CI tamamlanır. Canlı veri veya kaynak eksikliği yeşil fixture ile kapatılmaz.
 
 ## Doğrulama
 
-Ara kodlamada ADR-0021 onayı sonrası meaningful unit/contract, gerçek TLS, CLI/subprocess/SQLite iki süreç; statik/tam takım/build/iki kurulum ve kaynak bağlı ölçümler [matrise](../../../CONTRIBUTING.md#doğrulama-seçimi) göre seçilir. Nihai strict decoder ve gerçek hizmet kabulü raw/key/identity/pagination kaynağını ayrıca gerektirir. Offline fixture ve canlı kaynak ayrı kanıt; başarısız/unknown sonuç saklanır, gerçek profil alanları/key/ham response repoya konmaz. Public çıktıda amaçlanan sentetik/gerçek ID referanslarının kişiye bağlanabilirliği ayrı anlatılır.
+[Doğrulama matrisi](../../../CONTRIBUTING.md#doğrulama-seçimi); sentetik anlamlı test, gerçek yerel TLS/subprocess ve iki süreçli SQLite yarışları. Canlı hesap koşuları ayrı kullanıcı yetkisi ve sayaç/deadline ile yapılır; CI anahtarsızdır. Key/raw/gerçek ID/PII değerleri repoya girmez. Son kaynak değişirse referans yeniden üretilir.
 
 ## Teslim kaydı
 
-Ara unverified çekirdek ve public CLI/Python iki fresh review turu/adım ile uygulandı; [yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı) tamamlandı. Mevcut ara consumer’ın seçili-proje canlı dalı aşağıdaki ayrı kabulde geçti. Nihai üretim katı decoder ve formal raw/auth/principal/pagination kabulü yapılmadı; bu 5.3 dış kapısı kartı blocked tutar. İlk sınırlı /auth/me gözlemini takip eden üç-endpoint metadata survey paket kaydında; bunlar parser veya auth kabulü değildir. 1 Kasım kullanıcı review’si sonrası revize ADR-0021 kullanıcı tarafından onaylandı; Accepted. API key/raw sözleşme/erişim kapısı açık; bunun kapanmaması LLM kolunu durdurmaz. Bu alt teslim bitmeden P02-0b/P02-0 tamamlanmış sayılmaz.
-
-
-## İlk davranış kanıtı — 2026-11-01
-
-Kullanıcının ek reverse-engineering yetkisiyle [tek sınırlı koşu](../../research/p02-platform-reverse-engineering.md) mevcut ürün decoder’ının üç gerçek yanıtı ve Identifier/total predikatlarını kabul ettiğini gösterdi. Key’le 200/no-key 401 yalnız tarihli endpoint davranışıdır; auth/key/principal/pagination garantisi değildir. O ilk koşuda proje listesi boştu; seçili/dolu dalı sonradan aşağıdaki ayrı koşuda sınandı. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) nihai raw/kapanış kapısı için Proposed alternatif sunar; onay gelmeden bu kart blocked ve mevcut Accepted kapılar bağlayıcı kalır.
-
-## Sonraki seçili-proje kabulü — 2026-11-01
-
-Kullanıcının kendisinin hazırladığı private projeyle [ayrı mevcut-consumer kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) iki fresh ön review sonrasında geçti. Gerçek public API 4 GET/200 ile nonempty liste, seçili ID ve detail eşliğini doğruladı; yalnız yeni detail için key yokken 401 gözlendi. Ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Raw değer/ID/secret yayımlanmadı. Önceki boş-liste kaydı tarihsel kalır.
-
-Bu mevcut ara consumer’ın gerçek canlı dalını kapatır; auth/key/principal/pagination kanıtı veya ADR-0022 onayı değildir. Accepted ADR-0020/0021’in nihai sözleşme kapısı ve son PR/CI teslimi açık kaldığından status blocked korunur. [ADR-0022 revizyonu](../../decisions/0022-observed-platform-consumer-contract.md) iki fresh review sonrası Proposed; aktif kabul eşlemesi yalnız gerçek onayda uygulanır.
+[Çekirdek/public yüzey ve önceki yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı), [ilk gerçek tüketici gözlemi](../../research/p02-platform-reverse-engineering.md) ve [ayrı seçili-proje kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) kayıtlıdır. Seçili-proje koşusu 4 ürün GET/200 ve yeni detail no-key 401; ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Önceki boş-liste/başarısız/sınır dışı araştırmalar tarihsel korunur. ADR-0022 onayıyla dış sözleşme engeli kaldırıldı; kalan son kaynak/review/PR/CI kabulü sürüyor. Kullanıcı review/merge ve Master/release ayrı süreçtir.

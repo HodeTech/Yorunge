@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-R1 — Doğrulanmış hizmet kimliği ve seçili context bağı
 
-**Tarih:** 2026-11-01. **Durum:** Draft araştırma/tasarım takip işi; uygulama yetkisi veya ready iddiası değildir. **Sahip:** P02 / identity-context modülü. Bu kart özgün doğrulanmış kimlik/proje bağı ihtiyacının kanonik sahibidir; [B14](../backlog.md) yalnız bu karta işaret eder. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) onaylanırsa P02-0b/d’nin dar gözlem tesliminden ayrılan ihtiyaç burada takip edilir. Onay gelmeden mevcut P02-0b/d kabulü değişmez.
+**Tarih:** 2026-11-01. **Durum:** Draft araştırma/tasarım takip işi; uygulama yetkisi veya ready iddiası değildir. **Sahip:** P02 / identity-context modülü. Bu kart özgün doğrulanmış kimlik/proje bağı ihtiyacının kanonik sahibidir; [B14](../backlog.md) yalnız bu karta işaret eder. [ADR-0022](../../decisions/0022-observed-platform-consumer-contract.md) 2026-11-01 kullanıcı onayıyla P02-0b/d’nin dar gözlem tesliminden ayrılan ihtiyaç burada takip edilir. Mevcut gözlem teslimi bu doğrulanmış kimlik ihtiyacını tamamlamaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -18,7 +18,7 @@ Kullanıcı seçtiği hizmet hedefi/credential ile hangi provider principal’ı
 
 Hizmet/hedef/endpoint/parametre kapsamlı auth/principal/account/project ilişki kanıtı araştırması; public doğrulama sonucunun compatibility tasarımı; bağımsız otorite portunun gerçek tüketicide nasıl kullanılacağının belirlenmesi girer. Gerekli permission çözümlemesi yalnız ilgili görev/endpoint kapsamıyla ele alınır. Araştırma/tasarım, kod ve kabul alt işleri ready öncesi dar kartlara bölünür; bu L kart tek uygulama adımı değildir.
 
-Gözlem verisini yetkiye çevirmek, browser JWT fallback, hesap/key yaratmak, inference/upload/ücretli işlem veya bütün P02 tüketicilerini bu karta otomatik bağlamak girmez. Yan etkili her tüketici kendi güncel otorite/onay/credential kapısını ayrıca kapatır. P02-R1, ADR-0022 onaylanırsa mevcut tek P02-0 PR’ının verified önkoşulu değildir; özgün ihtiyacın açık takip sahibidir.
+Gözlem verisini yetkiye çevirmek, browser JWT fallback, hesap/key yaratmak, inference/upload/ücretli işlem veya bütün P02 tüketicilerini bu karta otomatik bağlamak girmez. Yan etkili her tüketici kendi güncel otorite/onay/credential kapısını ayrıca kapatır. P02-R1, Accepted ADR-0022 kapsamında mevcut tek P02-0 PR’ının verified önkoşulu değildir; özgün ihtiyacın açık takip sahibidir.
 
 ## Bağımlılıklar ve kararlar
 
@@ -45,4 +45,4 @@ Ready öncesi kaynak/iddia/otorite matrisi ve dar alt kartlar hazırlanır. Çal
 
 ## Teslim kaydı
 
-Uygulama veya kabul yapılmadı. Bu kart P02-0b’nin özgün doğrulanmış kimlik/bağ ihtiyacını görünür ve sahipli tutar. Dış kanıt/ayrı tasarım kapısı açık; ready değildir. ADR-0022 halen Proposed, bu kart mevcut kabul kapsamını tek başına daraltmaz.
+Uygulama veya kabul yapılmadı. Bu kart P02-0b’nin özgün doğrulanmış kimlik/bağ ihtiyacını görünür ve sahipli tutar. Dış kanıt/ayrı tasarım kapısı açık; ready değildir. ADR-0022 Accepted; dar gözlem kabulünün tamamlanması bu kartı kapatmaz.

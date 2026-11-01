@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02 çalışma dalında LLM terms keşfi yerel verified; üst paket/PR/CI açık; Platform ara unverified gözlem yüzeyi çalışma dalında uygulandı; nihai katı parser/live kabul ve public run/watch açık. **Tarih:** 2026-10-31.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02 çalışma dalında LLM terms keşfi yerel verified; üst paket/PR/CI açık; Platform nihai dar unverified gözlemi ADR-0022 ile kabul edildi; gerçek seçili-proje consumer kabulü kayıtlı, son kaynak/PR/CI sürüyor. Public run/watch açık değildir. **Güncellendi:** 2026-11-01.
 
 ## Uygulanan alt küme
 

@@ -1,12 +1,12 @@
 # ContextDiscovery v1 sözleşmesi
 
-**Tarih:** 2026-10-31. **Durum:** [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) kapalı referansı. LLM terms domain/application/HTTP/SQLite çekirdeği uygulanıp hedefli test edildi; adım 3 iki fresh review turuyla kapandı. Public LLM CLI/Python yüzeyi eklendi; adım 4 iki fresh review turuyla kapandı. İlk yetkili LLM terms ve yerel kaynak/iki temiz kurulum/M5 referans kabulüyle P02-0c yerel verified; üst paket/PR/CI ve Platform açık. Platform raw kimlik/envelope/pagination/key kabulü açık; bu belgede tanımlanmamış Platform yanıtı generic dict ile dışarı verilmez. [Paket ve hizmet kartları](../roadmap/p02-0-delivery-plan.md) uygulama/canlı kabul durumunun sahibidir.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** Accepted ADR-0020/0021 ve [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) kapalı referansı. LLM terms ve Platform’un sınırlı unverified gözlem yolu çalışma dalında uygulanmıştır; iki hizmetin ayrı canlı consumer kabulleri kayıtlıdır. Platform için aşağıdaki strict tüketilen alan/metadata atımı nihai read-only sözleşmedir; ayrı whole-raw katı decoder veya formal auth/principal/pagination kapısı yoktur. Doğrulanmış kimlik/bağ ihtiyacı [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) kapsamındadır. Son kaynak/PR/CI durumu [paket ve hizmet kartlarında](../roadmap/p02-0-delivery-plan.md) tutulur.
 
 ## Giriş ve state
 
 CLI `context discover --service evren-platform|evren-llm [--config PATH] [--profile NAME] [--project ID] [--state-dir PATH] [--output text|json|ndjson]`. Bugünkü Python uygulaması `api.discover_context(service_id: ServiceId, *, config: Path|None=None, profile: str|None=None, project: str|None=None, state_dir: Path|None=None) -> Result[ContextDiscovery] | Result[PlatformContextDiscovery]`; literal hizmet çağrıları dar DTO dönüşünü korur. İki-varyant overload ve renderer sözleşmesi [ayrı bölümde](#önerilen-python-api-ve-renderer-tip-sözleşmesi) tanımlıdır ve çalışma dalında uygulanmıştır. ServiceId mevcut iki değerdir; bilinmeyen/bool/tür hatası invalid_request. Ortak CLI seçenekleri önce/sonra geçerlidir; tekil discovery seçeneklerinin yinelenmesi reddedilir. Yeni --account yok; account tercihi yalnız profilden gelir.
 
-LLM’de açık project/--project `invalid_request` ile I/O öncesi reddedilir. Ortak profilin account_id/project_id alanları çağrıyı engellemez ancak LLM selected alanına kopyalanmaz. Platform ara unverified gözlem yolu Accepted ADR-0021 ile çalışma dalında uygulanmıştır; nihai üretim katı decoder/auth/live kapısı açıktır. LLM’nin uygulanması Platform’ın verified olduğu anlamına gelmez.
+LLM’de açık project/--project `invalid_request` ile I/O öncesi reddedilir. Ortak profilin account_id/project_id alanları çağrıyı engellemez ancak LLM selected alanına kopyalanmaz. Platform unverified gözlem yolu ADR-0022 ile nihai dar tüketici sözleşmesidir; gerçek liste/seçili-detail kabulü geçti, son kaynak/PR/CI kabulü ayrıca izlenir. LLM’nin uygulanması Platform’ın verified olduğu anlamına gelmez.
 
 Discovery yalnız önceden **açık state init** ile oluşturulmuş güncel store’u açar. Varsayılan mevcut state kökü veya açık CLI/Python state-dir aynı davranır; yok/bozuk/uyumsuz şemada `state_invalid` / exit2, sıfır env/ağ ve yeni dizin/DB/key yoktur. İzin/intent/key/lock/SQLite/platform hataları mevcut kontrollü state sözleşmesini korur. Örtük bootstrap/migration ve default store’a fallback yoktur. Registry/clock gözlemi mevcut store’da yerel yazı yapabilir. Eski context identity/open_store auto-init davranışı bu yeni çağrı tarafından değiştirilmez.
 
@@ -38,7 +38,7 @@ TermsEndpointObservation tam `endpoint_id:llm_terms_status`, `started_at:UTC`, `
 
 Neden kümesi her zaman `authorization_not_verified`, `identity_not_exposed`, `remote_snapshot_not_guaranteed` içerir; profile_preference.service_scope=unknown ise `profile_scope_unknown`, terms.accepted=false ise ayrıca **`terms_not_accepted`** eklenir. ASCII sözlük sırasıyla verilir. Böylece terms reddi, auth unknown ve identity not_exposed ayrı gözlenir; accepted=true diğer nedenleri silmez. raw doc_path public sonuçta yer almaz.
 
-Platform varyantı bu LLM alanlarına provider ID uydurarak oluşturulmaz. İlgili kart hazır olmadan principal/account/org anlamı, liste/detay/envelope/pagination ve seçilmiş account/project eşliği kendi kapalı varyantında tanımlanır. Mevcut v1 Context/config/Plan/Result/capability scope değiştirilmez.
+Platform varyantı LLM alanlarına provider ID uydurmaz; aşağıdaki ayrı kapalı varyantta selected tercih, reported ID ve unknown provider anlamı tanımlıdır. Doğrulanmış principal/bağ ihtiyacı P02-R1’de ayrıca takip edilir. Mevcut v1 Context/config/Plan/Result/capability scope değiştirilmez.
 
 ## Raw terms adaptörü ve hata
 
@@ -71,6 +71,8 @@ UTC geriye dönüşü ve global expiry frontier mevcut StateCache zaman kapısı
 
 ## Bütçe ve pilot kapsamı
 
+Normal discovery ve ayrı auth araştırması farklıdır. Aşağıdaki contract pilotları yalnız ayrıca yetkili ve grameri kapatılmış opsiyonel araştırmadır; Accepted ADR-0022 kapsamında dar Platform gözlem tesliminin verified önkoşulu değildir. Normal discover negatif kontrol üretmez, public authentication unknown kalır.
+
 | Sınır | Normal Platform | Normal LLM | Ayrı Platform contract pilotu | Ayrı LLM contract pilotu |
 |---|---:|---:|---:|---:|
 | Mantıksal GET tavanı | 4 | 1 | 4 pozitif +4 negatif =8 | 1 pozitif +1 negatif =2 |
@@ -82,17 +84,17 @@ Her response≤1 MiB, chunk≤32 KiB; listede≤128 kayıt, çıktı≤256 KiB; 
 
 Auth kanıtı normalize service/origin/API kökü, method/endpoint ve ilgili query/path parametre kapsamıyla karşılaştırılır. Farklı custom host/API kökü/endpoint/proje parametresine aynı kanıt taşınmaz; çok hedefli provider sözleşmesi ancak açık kapsam kanıtıyla geçerlidir. Kanıt türü/tarihi ve raw parser sürümü aynı kayıtta yer alır. Kaynak/pilot sonucu yalnız kontrol edilen davranışı kanıtlar; genel sunucu otoritesi veya permission değildir.
 
-Yetkili auth sözleşmesi yokken, her kullanılan endpoint/parametre için iyi biçimli kontrol gerekir. Teyitli syntax/length/prefix yoksa kontrol üretilmez ve auth unknown kalır. Kontrol değeri fresh kriptografik random, sağlayıcıdan alınmamış, gerçek key’den farklıdır; gerçek key’in yalnız bir karakterini değiştirme kullanılmaz. Tercih401; 403 ancak kaynakla anlamı kapanmış invalid-key reason ise kabul, terms/permission/unknown403 veya iki2xx auth kapısını kapatmaz. Malformed-key reddi yeterli değildir. Kontrol yalnız önceden yetkili ayrı pilotta yapılır, registry’ye yazılmaz ve normal discover içine eklenmez. Scope/biçim/iki status/neden/no-registry outcome maskeli kayda girer; key değeri/full body/PII girmez. [Hazırlık yönergesi](../p02-account-setup.md) ürün env politikasına alternatif secret backend değildir.
+Ayrı bir auth davranışı iddiası araştırılacaksa yetkili sözleşme yokken her endpoint/parametre için iyi biçimli kontrol gerekir; bu normal gözlem consumer’ının kabul önkoşulu değildir. Teyitli syntax/length/prefix yoksa kontrol üretilmez ve auth unknown kalır. Kontrol değeri fresh kriptografik random, sağlayıcıdan alınmamış, gerçek key’den farklıdır; gerçek key’in yalnız bir karakterini değiştirme kullanılmaz. Tercih401; 403 ancak kaynakla anlamı kapanmış invalid-key reason ise kabul, terms/permission/unknown403 veya iki2xx auth kapısını kapatmaz. Malformed-key reddi yeterli değildir. Kontrol yalnız önceden yetkili ayrı pilotta yapılır, registry’ye yazılmaz ve normal discover içine eklenmez. Scope/biçim/iki status/neden/no-registry outcome maskeli kayda girer; key değeri/full body/PII girmez. [Hazırlık yönergesi](../p02-account-setup.md) ürün env politikasına alternatif secret backend değildir.
 
-## Önerilen Platform gözlem varyantı
+## Platform gözlem varyantı
 
-**Accepted tasarım; ara unverified çekirdek ve CLI/Python yüzeyi çalışma dalında uygulandı, nihai kabul açık.** [ADR-0021](../decisions/0021-platform-discovery-observations.md) 2026-11-01 kullanıcı onayıyla bu ara uygulamanın sözleşmesidir. Platform discover artık bu tipli gözlem varyantına bağlanır. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
+**Accepted nihai dar gözlem sözleşmesi.** [ADR-0021](../decisions/0021-platform-discovery-observations.md) wire/başlangıcı, [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) nihai tüketici ve kabul sınırını tanımlar. Platform discover artık bu tipli gözlem varyantına bağlanır. LLM ContextDiscovery sınıfı/wire’ı aynı kalır; yeni PlatformContextDiscovery kardeş modeli aynı service-bound API’nin Platform sonucudur. Eski LLM çağrısının dönüş tipi ve mevcut sınıf adı korunur; generic ServiceId çağrısı **iki Result örneği tipinin union’ıdır**; Result’ın invariant tür parametresi değiştirilmez. schema_version iki varyantta da1; wire discriminator data.service_id alanıdır.
 
 ### Tam public alan kümesi ve tipler
 
 Platform varyantının bütün alanları zorunludur; nullable alan eksik bırakılamaz. Tam alan kümesi: schema_version,service_id,profile,target,binding,profile_preference,selected,provider,reported_identity,authorization_scope,organizations,projects,list_completeness,terms,observed_from,observed_until,validated_at,observations,consistency,validation,reasons. Tüm public nesneler strict/frozen/extra=forbid; mevcut Identifier, DiscoveryBinding ve canonical UTC kuralları aynen geçerlidir. JSON dizileri Python’da tuple’dır; output≤256 KiB.
 
-| Alan | Platform önerisi |
+| Alan | Platform v1 |
 |---|---|
 | schema_version / service_id | Strict int literal1 / Literal evren-platform |
 | profile,target,binding | Mevcut ortak türler; target canonical, binding store/epoch/clock/credential public kimliklerini taşır |
@@ -134,7 +136,7 @@ Bu tablo Yörünge’nin kabul edeceği tüketim şeklidir; provider’ın tam s
 
 Arrays 129+, wrong ID/type/total veya output sınırı ret; overflow incomplete adıyla gizlenmez. Boş projects dizisi geçerli gözlemdir; hiç proje olmadığı/izin bulunmadığı veya seçimin geçerli olduğu sonucu değildir. Pagination parametresi/cursor/Link tahmin edilmez ve takip edilmez; diğer metadata’nın bilinmemesi zaten unknown tamlıkla gösterilir.
 
-No-init/tek credential/state final kapısı, normal≤4 GET/8 attempt/30 s/4 MiB, response≤1 MiB,3-or4 endpoint sırası ve mevcut HTTP/hata/iptal/UTF-8 kuralları ADR-0020 ile aynıdır. Bu proposal, Platform’ın auth/principal/pagination veya dolu/seçilmiş proje live kabulünü geçmiş saymaz. Ara projeksiyonun metadata kabulü nihai verified parser kabulünden farklıdır: final verified öncesi üretim CLI/Python yolunda sağlayıcı sözleşmesine bağlı katı decoder’a geçiş **ek kod adımıdır**; raw unknown ret kuralı o aşamada uygulanır, projeksiyona fallback yoktur. Diğer nihai verified/live/paket koşulları korunur. Mevcut receipt yalnız alan türlerini tutar; Identifier/total aralık/eşitsizlik predicate’lerini veya bu parser’ın canlı uyumunu kanıtlamaz.
+No-init/tek credential/state final kapısı, normal en çok 4 GET (proje yoksa 3)/8 attempt/30 s/4 MiB, response ≤1 MiB ve mevcut HTTP/hata/iptal/UTF-8 kuralları korunur. ADR-0022 ile bu sınırlı tüketici politikası nihai sözleşmedir: consumed alan/control strict, tüm raw yapısal/byte ve aşağıdaki seçili literal denetimi sonrası kullanılmayan metadata atılır. Ayrı bütün-raw unknown-ret decoder adımı yoktur. Public unknown/unverified, null authority ve not_guaranteed sabitleri auth/principal/pagination doğrulaması sayılmaz. [Gerçek üç uç](../research/p02-platform-reverse-engineering.md) ve [ayrı seçili-proje consumer kabulü](../research/p02-platform-selected-project-observations.json) Identifier/total/ID-route predikatlarıyla kayıtlıdır; ilk yalnız tür receipt’i bu sonraki kanıtla geriye dönük değiştirilmez. Son kaynak/review/PR/CI kabulü korunur.
 
 ### Mevcut literal-secret denetiminin sınırı
 
@@ -144,9 +146,9 @@ Mevcut fixture bağı: [Platform contract testleri](../../tests/contracts/test_p
 
 ### Seçim kavramları ve kapalı wire eşlemesi
 
-ADR-0020’deki genel seçim terimleri henüz uygulanmış Platform enum’ları değildir. Accepted ADR-0021 ile aşağıdaki eşleme geçerlidir; selection_required,selection_unverified,mismatch yeni wire’da ek alan, state veya reason değildir. Bu öneri Platform için ilk kesin wire/error eşlemesini sahiplenir; ADR-0020’ye gizli bir state eklemez.
+ADR-0020’deki genel seçim terimleri henüz uygulanmış Platform enum’ları değildir. Accepted ADR-0021 ile aşağıdaki eşleme geçerlidir; selection_required,selection_unverified,mismatch yeni wire’da ek alan, state veya reason değildir. Bu sözleşme Platform için kesin wire/error eşlemesini sahiplenir; ADR-0020’ye gizli bir state eklemez.
 
-| Genel kavram / durum | Önerilen kesin sonuç |
+| Genel kavram / durum | Kesin sonuç |
 |---|---|
 | selection_required; çözümlenen project yok | projects.selection.state=not_selected,project=null; reason project_selection_required; validation=unverified;3 GET |
 | selection_unverified; detail404 | projects.selection.state=not_found,project=null; reason selected_project_not_found; validation=unverified;4 GET |

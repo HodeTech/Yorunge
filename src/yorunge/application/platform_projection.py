@@ -1,4 +1,4 @@
-"""Interim raw-tree safety checks and narrow, closed Platform projections."""
+"""Strict consumed-field checks and closed projections for the limited Platform observer."""
 
 from __future__ import annotations
 

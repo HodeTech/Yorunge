@@ -1,6 +1,8 @@
 # ADR-0021: Platform için doğrulanmamış, tipli keşif gözlemi
 
-**Durum:** Accepted — kullanıcı revize kararı 2026-11-01 tarihinde onayladı ve uygulamayı yetkilendirdi; bu onay commit’inde bağımlı ürün kodu henüz uygulanmadı. **Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **İş:** P02-0d / P02-0b. Bu öneri [ADR-0020](0020-service-bound-context-discovery.md)’nin Platform adaptörünün ara gözlem aşamasına başlama kapısını ve o aşamanın tüketilmeyen raw metadata politikasını kısmen değiştirir; Platform seçim kavramlarının kapalı wire/error eşlemesini de açıkça belirler. ADR-0020 halen Accepted ve yürürlüktedir. [Gözlem kaydı](../research/p02-platform-discovery-observations.md), [önerilen public sözleşme](../reference/context-discovery.md#önerilen-platform-gözlem-varyantı), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md).
+**Durum:** Accepted — kullanıcı revize kararı 2026-11-01 tarihinde onayladı ve uygulamayı yetkilendirdi; bu onay commit’inde bağımlı ürün kodu henüz uygulanmadı. **Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **İş:** P02-0d / P02-0b. Bu öneri [ADR-0020](0020-service-bound-context-discovery.md)’nin Platform adaptörünün ara gözlem aşamasına başlama kapısını ve o aşamanın tüketilmeyen raw metadata politikasını kısmen değiştirir; Platform seçim kavramlarının kapalı wire/error eşlemesini de açıkça belirler. ADR-0020 halen Accepted ve yürürlüktedir. [Gözlem kaydı](../research/p02-platform-discovery-observations.md), [önerilen public sözleşme](../reference/context-discovery.md#platform-gözlem-varyantı), [iş kartı](../roadmap/tasks/p02-0d-platform-context-discovery.md).
+
+**2026-11-01 ileri karar notu:** [Accepted ADR-0022](0022-observed-platform-consumer-contract.md), yalnız Platform read-only keşfinin nihai tüketici sözleşmesi ve kabul kapsamını kısmen değiştirir. Tüketilen alanlar strict, seçili credential literal denetimi ve yapısal/boyut sınırları korunur; tüketilmeyen metadata atılır. Ayrı whole-raw unknown-ret decoder ve resmî auth/principal/pagination bilgisi bu dar gözlem tesliminin önkoşulu değildir. Public sonuç unverified/unknown kalır, yetki üretmez; doğrulanmış kimlik/bağ ihtiyacı P02-R1’de takip edilir. Aşağıdaki önceki karar metni tarihsel kapsamıyla korunur; bu maddelerde güncel kural ADR-0022’dir.
 
 ## Bağlam ve gerçek dış kapı
 
@@ -27,7 +29,7 @@ Sonraki katı decoder işi bu P02-0d paketinin açık kapanış adımıdır, bit
 
 ### 2. Raw veriden açıkça sınırlı projeksiyon
 
-Platform normalizer’ı yalnız [referanstaki](../reference/context-discovery.md#önerilen-platform-gözlem-varyantı) alanları tüketir. Bu **Yörünge’nin kabul ettiği projeksiyon** sözleşmesidir; sağlayıcının eksiksiz OpenAPI’si veya bütün alanlarının kararlılık garantisi değildir.
+Platform normalizer’ı yalnız [referanstaki](../reference/context-discovery.md#platform-gözlem-varyantı) alanları tüketir. Bu **Yörünge’nin kabul ettiği projeksiyon** sözleşmesidir; sağlayıcının eksiksiz OpenAPI’si veya bütün alanlarının kararlılık garantisi değildir.
 
 - Ortak HTTP, deadline, byte/header/chunk, strict UTF-8/JSON, duplicate/nonfinite ve depth/node sınırları aynen uygulanır.
 - Önce **tüm parse edilmiş raw ağacın** dinamik string değerleri ve tüketilmeyen metadata anahtarları mevcut literal-secret kuralıyla denetlenir. Tüketilmeyen alanlar bu taramadan kaçamaz. Sabit, açıkça tanımlı protokol anahtarları anahtarın kaynağı sayılmaz; serbest metadata anahtarları muaf değildir.

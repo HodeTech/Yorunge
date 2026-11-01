@@ -4,7 +4,7 @@
 
 ## Gerekenler
 
-Kendi yetkin olan EVREN hesabının **LLM anahtarı** ilk bağımsız kol için yeterlidir. Platform kimlik/org/proje kabulünü ayrıca sınamak için **Platform API anahtarı** gerekir; browser JWT’si veya oturum cookie’si gerekmez. Platform API key’in bu endpoint’lere erişebildiği henüz doğrulanmadı; bunu başarılı kabul gibi göstermeyeceğiz. Şart kabulü gerekiyorsa kullanıcı EVREN arayüzünde kendisi yapar; pilot POST accept çağırmaz.
+Kendi yetkin olan EVREN hesabının **LLM anahtarı** ilk bağımsız kol için yeterlidir. Platform kimlik/org/proje kabulünü ayrıca sınamak için **Platform API anahtarı** gerekir; browser JWT’si veya oturum cookie’si gerekmez. Mevcut kullanıcı hesabında üç uç ve ayrı seçili-proje consumer kabulü kayıtlıdır; bu gelecekteki her key/hedef için erişim veya auth/principal garantisi değildir. Şart kabulü gerekiyorsa kullanıcı EVREN arayüzünde kendisi yapar; pilot POST accept çağırmaz.
 
 Account/project ID’lerini bilmiyorsan boş bırakabilirsin; ilk LLM keşfi bunları gerektirmez. Platform’da otomatik yeni hesap/proje oluşturulmaz. Platform için bildiğin hesap/proje ID’lerini aşağıdaki scope dosyasına girebilirsin. Account ID’nin user mı organizasyon mu olduğu belli değilse boş bırak; isim veya model owner’dan türetme. İlk proje otomatik seçilmez. LLM hesabını Platform ID’siyle eşleştirmek için bu bilgiler kullanılmaz.
 
@@ -78,6 +78,8 @@ Upload, inference, export hazırlama, key üretme, şart kabulü, kaynak rezerva
 
 ## Platform sözleşme kapısını açmak
 
+**1 Kasım güncel kapsam:** Aşağıdaki destek talebi özgün doğrulanmış kimlik/bağ ihtiyacı P02-R1 için yararlıdır. Accepted ADR-0022 ile bu bilgi dar unverified gözlem tesliminin önkoşulu olmaktan çıkarıldı. Bu bölüm önceki dış kapının hazırlığını korur; yeni kullanıcı bu belgeyle key/resource yaratmaya veya yetkisiz pilot yapmaya yönlendirilmez.
+
 Account/project ID’si bulmak bu kapıyı kapatmaz. Kullanıcının paylaştığı “Platform API ile Veri Seti Entegrasyonu” kılavuzu kökü, X-API-Key başlığını, evren_ önekini ve dataset işlemlerini anlatır. “Çoğu yanıt” ifadesi endpoint başına kapalı şema değildir; dataset items next_cursor kuralı organizations/projects listelerine aktarılamaz. Tek HTTP200 de principal/izin veya anahtar doğrulaması kanıtı değildir.
 
 Kılavuzda veya sağlayıcının dokümanlarında **OpenAPI**, **Swagger**, **API referansı** aramasıyla bulunan resmî JSON/YAML bağlantısı yeterlidir. Erişilebilir böyle bir dosya yoksa sağlayıcı desteğine şu talep iletilebilir; Yörünge bu mesajı kullanıcı adına göndermez:
@@ -89,4 +91,4 @@ Destek yanıtı veya resmî bağlantı paylaşılır; anahtar değeri, gerçek h
 
 ## Sonraki davranış araştırması — 2026-11-01
 
-Kullanıcı mevcut Platform anahtarıyla bounded salt okunur tersine mühendisliği ayrıca yetkilendirdi. [Yeni koşu](research/p02-platform-reverse-engineering.md) üç gerçek ürün yanıtının parser/Identifier/total kabulünü ve key200/no-key401 karşılaştırmasını6 GET/6 attempt ile kaydeder. Bu, invalid-key grameri/principal/tamlık garantisi değildir. Proje listesi boş; kullanıcıya arayüzde mevcut proje bulunup bulunmadığı soruldu. [ADR-0022](decisions/0022-observed-platform-consumer-contract.md) nihai consumer sınırı için Proposed alternatiftir; onay gelmeden yukarıdaki Accepted kapıları değiştirmez. Yeni key veya test projesi otomatik oluşturulmaz; secret değeri sohbetle paylaşılmaz.
+Kullanıcı anahtarıyla [ilk üç uç ve ayrı seçili-proje consumer kabulü](research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) tamamlandı. Ayrı koşular key 200/no-key 401 davranışı ve gerçek decoder predikatlarını gösterir; invalid-key/principal/permission/tamlık garantisi değildir. [ADR-0022](decisions/0022-observed-platform-consumer-contract.md) 2026-11-01 kullanıcı onayıyla Accepted; strict tüketilen alanlar ve mevcut literal/yapısal/byte kontrolleri nihai dar gözlem sözleşmesidir. Kullanıcının kendi private test projesi yalnız Git dışındaki girdiden kullanıldı; gerçek ID/key/raw/PII yayımlanmadı. Secret sohbetle paylaşılmaz, yeni key/proje ajan tarafından oluşturulmaz. Son kaynak/PR/CI kabulü paket kaydında izlenir.

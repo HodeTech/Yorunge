@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-11-01. **Durum:** Kullanıcı mevcut Platform anahtarıyla salt okunur tersine mühendisliği yetkilendirdi. Bu rapor yeni davranış kanıtını kaydeder; sağlayıcı garantisi, key grammar/auth doğrulaması veya P02-0 kapanışı değildir. Ürün kaynağı 2384a5c; [ADR-0020](../decisions/0020-service-bound-context-discovery.md)/[ADR-0021](../decisions/0021-platform-discovery-observations.md) Accepted kapıları halen bağlayıcıdır. [ADR-0022 önerisi](../decisions/0022-observed-platform-consumer-contract.md) bu raporun sınırlı tüketici sözleşmesi seçeneğini ayrı onaya sunar.
 
+**1 Kasım onay sonrası güncel not:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) revize haliyle kullanıcı tarafından onaylandı; Accepted. Platform’un nihai dar tüketici/kabul hükmünü kısmen değiştirir: eski whole-raw decoder/formal auth-principal-pagination kapısı bu gözlem teslimi için kaldırıldı. Aşağıdaki araştırma, önceki Proposed/onay-bekleme ve o sırada açık kalan kabul ifadeleri kendi tarihsel aşamasını anlatır; geçmiş kanıtlar yeniden etiketlenmez. Güncel son kaynak/PR/CI durumu [paket kaydındadır](p02-0-implementation-validation.md).
+
 **Son durum:** Kullanıcının kendi hazırladığı private test projesi için [ayrı seçili-proje kabulü](#seçili-proje-canlı-kabulü--ayrı-koşu) geçti: 4 ürün GET’i 200, yeni detail anahtarsız kontrolü 401; 5 GET/5 attempt/2.090 byte/0,488645 s. ADR-0022 halen Proposed; mevcut Accepted nihai sözleşme kapıları ve son PR/CI kabulü bu başarıyla kendiliğinden değişmez.
 
 ## Kapsam ve güven sınırı

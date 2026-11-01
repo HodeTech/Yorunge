@@ -8,11 +8,11 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-11-01
 
-- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. Ara sonuç daima unverified; auth/principal/pagination, üretim katı decoder ve canlı kabul kapısı açık kalır. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
+- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/PR/CI sürüyor, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
 
 ### Added — 2026-10-31
 
-- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform raw sözleşme kapısı açık kalır. LLM ilk canlı terms ve yerel kaynak/iki temiz kurulum/M5 kabulü tamamlandı; Platform ve bütünleşik PR/CI açık, development teslimi değildir.
+- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform’un nihai dar gözlem sınırı 1 Kasım ADR-0022 ile ayrıca benimsendi. LLM ilk canlı terms ve yerel kaynak/iki temiz kurulum/M5 kabulü tamamlandı; Platform ve bütünleşik PR/CI açık, development teslimi değildir.
 
 ### Changed — 2026-10-29
 

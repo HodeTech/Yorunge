@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-10-31 Europe/Istanbul. **Taban:** `9c4db010d60fef39f5e5971a617535e8f6a56b6c`, development `bc9532c`; dal `feat/p02-0a-sdk-pilot`. **Durum:** P02-0a araştırma kabulü iki fresh review ve düzeltmelerle verified; ürün uygulaması ve canlı hesap kabulü değildir. [Paket planı](../roadmap/p02-0-delivery-plan.md), [araştırma kartı](../roadmap/tasks/p02-0a-contract-sdk-pilot.md) ve [Accepted ADR-0020](../decisions/0020-service-bound-context-discovery.md) birlikte okunur.
 
+**1 Kasım onay sonrası güncel not:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) revize haliyle kullanıcı tarafından onaylandı; Accepted. Platform’un nihai dar tüketici/kabul hükmünü kısmen değiştirir: eski whole-raw decoder/formal auth-principal-pagination kapısı bu gözlem teslimi için kaldırıldı. Aşağıdaki araştırma, önceki Proposed/onay-bekleme ve o sırada açık kalan kabul ifadeleri kendi tarihsel aşamasını anlatır; geçmiş kanıtlar yeniden etiketlenmez. Güncel son kaynak/PR/CI durumu [paket kaydındadır](p02-0-implementation-validation.md).
+
 ## Yöntem ve kaynak sınırı
 
 Ana inceleme mevcut domain/application/HTTP/session/credential/cache/CLI yüzeyini ve bağlı belgeleri karşılaştırdı. İki bağımsız araştırma ajanı sırasıyla sabit SDK kaynağını ve resmî Platform/LLM yayınlarını inceledi; sonuçlar ana incelemede kaynakla tekrar karşılaştırıldı. Bunlar commit sonrası iki fresh review turunun yerine geçmez; o turlar [teslim kaydına](p02-0-implementation-validation.md) yazılır.

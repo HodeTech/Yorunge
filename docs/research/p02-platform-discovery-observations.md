@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-10-31. **Durum:** Yetkili raw-schema araştırması; ürün, auth veya P02-0d kabulü değildir. [ADR-0020](../decisions/0020-service-bound-context-discovery.md) yürürlükte; [ADR-0021](../decisions/0021-platform-discovery-observations.md) Proposed. Sağlayıcının tam sözleşmesi veya yeni bir permission kaynağı oluşturulmadı.
 
+**1 Kasım onay sonrası güncel not:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) revize haliyle kullanıcı tarafından onaylandı; Accepted. Platform’un nihai dar tüketici/kabul hükmünü kısmen değiştirir: eski whole-raw decoder/formal auth-principal-pagination kapısı bu gözlem teslimi için kaldırıldı. Aşağıdaki araştırma, önceki Proposed/onay-bekleme ve o sırada açık kalan kabul ifadeleri kendi tarihsel aşamasını anlatır; geçmiş kanıtlar yeniden etiketlenmez. Güncel son kaynak/PR/CI durumu [paket kaydındadır](p02-0-implementation-validation.md).
+
 ## Kapsam ve yöntem
 
 Kullanıcının daha önce hazırladığı seçili Platform key’i yalnız yerel çocuk süreçte okundu. Hedef sabit https://api.ssyz.org.tr/api/v1; yalnız GET auth/me, organizations, projects. Ortak P01 owned HttpSession/HTTPX, doğrulanmış HTTPS, redirect/cookie/proxy/log sınırı ve strict JSON kullanıldı. Hiçbir uzak kaynak oluşturulmadı, şart kabul edilmedi; browser oturumu kullanılmadı. Araştırma registry’ye yeni credential veya negatif key yazmadı.
