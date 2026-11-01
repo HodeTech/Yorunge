@@ -172,12 +172,17 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-0-final-reference-v2-startup.json > dist/startup-reference.txt",
+            "p02-1-final-reference-v1-startup.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-0-final-reference-v2-jobs.json > dist/jobs-reference.txt",
+            "p02-1-final-reference-v1-jobs.json > dist/jobs-reference.txt",
+        ),
+        (
+            "dataset-budgets",
+            ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
+            "p02-1-final-reference-v1-datasets.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -212,6 +217,7 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         "dist/startup-baseline-selection.json",
         "dist/startup-reference.txt",
         "dist/jobs-reference.txt",
+        "dist/dataset-reference.txt",
         "dist/stream.json",
         "dist/cache-startup.prof",
         ".local/startup-check/source-manifest.json",

@@ -78,3 +78,8 @@ Son komut yalnız ihtiyaç duyulan raporun doğrulanmış özgün baytlarını s
 Ham gzip arşivleri Git'te korunur; sdist/wheel'e dahil edilmez. Paket denetimi raw dizinini ve üyelerini ayrıca reddeder. Manifest/indeks, yöntem, rapor ve gerekli test vektörleri sdist geliştirme girdisidir. İndeksteki ilk kayıt bağlantıları değişmez Git commit'lerine gider; arşivin kendi yerel yolu paket içinde varmış gibi linklenmez. Arşiv tam denetimi Git checkout'u gerektirir.
 
 CI log/artifact saklama süresi tek kalıcı kanıt kaynağı olarak kullanılmaz. İleride ayrı arşiv deposuna geçilirse kalıcı erişim, içerik hash'i ve saklama politikası ayrıca korunur; başarısız kayıtlar yalnız PR'ı küçültmek için atılmaz.
+
+
+## Dataset hash evidence v1
+
+`dataset_hash_budget_v1`, schema_version=1 ile kurulu yerel hash kabulünün kapalı ham raporudur. Üretici ve bağımsız yeniden hesaplayıcı `scripts/benchmark-datasets.py`, worker `tests/fixtures/dataset_budget.py`’dır. Tam alanlar bu sürümlü validator’da; yöntem ve sabit limitler [performans standardındadır](performance.md#kurulu-yerel-dataset-hash-ölçümü). Rapor tam kaynak before/after map’i, frozen paket/wheel hash’i, CPU/disk bildirimi, dört fixture’ın sayıları/digest’i, 24 ayrı süreçte native B/H0/H1/L/U/süre ve kurulu kökeni, eylem başına büyüme üst sınırı ve yeniden hesaplanabilir passed taşır. Marker hash’i Python kaynaklarından ayrıca bağlanır. Ham arşiv hash/byte bütünlüğü normal kanıt v1 kataloğunda korunur; yeni bir katalog formatı değildir. Başarısız ama yapısal olarak geçerli bütçe kaydı da passed=false ile saklanır. Eksik/bozuk worker çıktıları workspace’te özgün stdout/stderr olarak tutulur ve başarısız tanı eki olarak ayrıca arşivlenir; kabul kaydı yapılamaz.

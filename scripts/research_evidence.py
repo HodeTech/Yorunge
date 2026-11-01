@@ -1088,6 +1088,9 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     version = report.get("schema_version")
     if type(version) is not int:
         raise ValueError("invalid typed report schema version")
+    if kind == "dataset_hash_budget_v1" and version == 1:
+        dataset = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
+        return dataset["summarize_report"](report)  # type: ignore[no-any-return]
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
     if kind == "raw_stream_budget_v2" and version == 2:
@@ -1532,6 +1535,36 @@ def verify_jobs_reference(root: Path, name: str) -> dict[str, Any]:
     }
 
 
+def verify_dataset_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid dataset reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown dataset reference evidence name")
+    report = decode(unpack(directory, item))
+    helper = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
+    summary: dict[str, Any] = helper["summarize_report"](report)
+    if not summary["passed"]:
+        raise ValueError("dataset reference requires all 24 successful process measurements")
+    environment, runtime = report["environment"], report["runs"][0]["runtime"]
+    if (
+        environment != {name: JOBS_REFERENCE[name] for name in ("cpu", "disk_type")}
+        or runtime["machine"] != JOBS_REFERENCE["machine"]
+        or not runtime["os"].startswith(JOBS_REFERENCE["platform_prefix"])
+        or not runtime["python"].startswith(JOBS_REFERENCE["python_prefix"])
+    ):
+        raise ValueError("dataset proof does not declare the configured M5 reference runtime")
+    current = helper["SOURCES"]["source"](root)["source_sha256"]
+    for field in ("source_before", "source_after"):
+        if report["provenance"][field]["source_sha256"] != current:
+            raise ValueError("dataset reference differs from complete current source bytes")
+    if report["provenance"]["locked_runtime"] != helper["STREAM"]["locked_runtime"](root):
+        raise ValueError("dataset reference runtime differs from the current frozen lock")
+    return {"name": name, "source_commit": report["source_commit"], **summary}
+
+
 def verify_startup_reference(root: Path, name: str) -> dict[str, Any]:
     if NAME.fullmatch(name) is None:
         raise ValueError("invalid startup reference evidence name")
@@ -1638,6 +1671,8 @@ def main() -> int:
     reference.add_argument("name")
     startup_reference = commands.add_parser("verify-startup-reference")
     startup_reference.add_argument("name")
+    dataset_reference = commands.add_parser("verify-dataset-reference")
+    dataset_reference.add_argument("name")
     rejected = commands.add_parser("archive-rejected-startup")
     rejected.add_argument("source", type=Path)
     rejected.add_argument("--name", required=True)
@@ -1673,6 +1708,9 @@ def main() -> int:
             )
         elif args.action == "verify-startup-reference":
             summary = verify_startup_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
+        elif args.action == "verify-dataset-reference":
+            summary = verify_dataset_reference(root, args.name)
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
