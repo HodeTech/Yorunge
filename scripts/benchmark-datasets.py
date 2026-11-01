@@ -11,6 +11,7 @@ import hashlib
 import json
 import runpy
 import subprocess
+import zipfile
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,8 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 STREAM = runpy.run_path(str(ROOT / "scripts/benchmark-stream.py"))
 SOURCES = runpy.run_path(str(ROOT / "scripts/startup_evidence.py"))
 CHECKS = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
+WHEEL = runpy.run_path(str(ROOT / "scripts/dataset_wheel.py"))
 SIZES = (16, 256, 1024)
-LABELS = ("16", "256", "1024", "capacity")
+CAPACITY_LABEL = "capacity"
+LABELS = (*map(str, SIZES), CAPACITY_LABEL)
+ACTIONS = ("inspect", "verify")
 RSS_LIMIT = 67_108_864
 GROWTH_LIMIT = 8_388_608
 SECONDS_LIMIT = 30
@@ -29,7 +33,7 @@ MEASUREMENT_FIELDS = (
     "baseline_rss_native baseline_rss_bytes baseline_rss_method "
     "pretransfer_peak_rss_native pretransfer_peak_rss_bytes peak_rss_native peak_rss_bytes "
     "rss_native_unit extra_rss_lower_bound_bytes extra_rss_upper_bound_bytes runtime "
-    "runtime_data_sha256"
+    "runtime_data_sha256 distribution_metadata_sha256"
 )
 
 
@@ -39,7 +43,7 @@ def closed(value: object, fields: str) -> dict[str, Any]:
 
 def expected_manifest(label: str) -> dict[str, Any]:
     files: list[dict[str, Any]]
-    if label == "capacity":
+    if label == CAPACITY_LABEL:
         names = [f"d{index:04}/data.bin" for index in range(4095)] + ["root.bin"]
         digest = hashlib.sha256(b"x").hexdigest()
         files = [{"path": name, "size": 1, "sha256": digest} for name in names]
@@ -63,13 +67,13 @@ def expected_manifest(label: str) -> dict[str, Any]:
 
 def fixture_summary(expected: dict[str, Any], label: str) -> dict[str, Any]:
     return {name: expected[name] for name in ("file_count", "total_bytes", "digest")} | {
-        "directory_count": 4096 if label == "capacity" else 1
+        "directory_count": 4096 if label == CAPACITY_LABEL else 1
     }
 
 
 def prepare_fixture(root: Path, expected: dict[str, Any], label: str) -> None:
     root.mkdir()
-    if label == "capacity":
+    if label == CAPACITY_LABEL:
         for file in expected["files"]:
             target = root / file["path"]
             target.parent.mkdir(exist_ok=True)
@@ -87,6 +91,7 @@ def evaluate_run(
     expected: dict[str, Any],
     source: dict[str, Any],
     locked: dict[str, str],
+    wheel_metadata: dict[str, str],
 ) -> bool:
     runtime = CHECKS["stream_runtime"](measured["runtime"], CHECKS["python_hashes"](source))
     extra = STREAM["rss_interval"](measured)
@@ -105,6 +110,9 @@ def evaluate_run(
     actual_data = CHECKS["hash_map"](measured["runtime_data_sha256"])
     if not expected_data or actual_data != expected_data:
         raise ValueError("dataset installed runtime data differs from measured source")
+    metadata = closed(measured["distribution_metadata_sha256"], " ".join(WHEEL["METADATA_FILES"]))
+    if CHECKS["hash_map"](metadata) != wheel_metadata:
+        raise ValueError("dataset installed metadata differs from the declared wheel")
     return bool(
         measured["manifest_digest"] == expected["digest"]
         and measured["file_count"] == expected["file_count"]
@@ -153,7 +161,11 @@ def validated_fixtures(value: object) -> dict[str, Any]:
 
 
 def validated_runs(
-    value: object, expected: dict[str, Any], before: dict[str, Any], locked: dict[str, str]
+    value: object,
+    expected: dict[str, Any],
+    before: dict[str, Any],
+    locked: dict[str, str],
+    wheel_metadata: dict[str, str],
 ) -> list[dict[str, Any]]:
     runs = value
     if not isinstance(runs, list) or len(runs) != 24:
@@ -167,11 +179,11 @@ def validated_runs(
             fields += " baseline_rss_pages rss_page_bytes"
         row = closed(raw, fields)
         key = (row["action"], row["label"], row["sample"])
-        if row["action"] not in ("inspect", "verify") or row["label"] not in LABELS:
+        if row["action"] not in ACTIONS or row["label"] not in LABELS:
             raise ValueError("unknown dataset measurement case")
         if CHECKS["integer"](row["sample"], minimum=1) > SAMPLES:
             raise ValueError("dataset sample exceeds the fixed process count")
-        valid = evaluate_run(row, expected[row["label"]], before, locked)
+        valid = evaluate_run(row, expected[row["label"]], before, locked, wheel_metadata)
         if key in seen or row["runtime"]["pid"] in pids:
             raise ValueError("dataset sample or worker process repeated")
         seen.add(key)
@@ -190,6 +202,28 @@ def validate_growth(value: object, growth: dict[str, Any]) -> None:
             raise ValueError("dataset RSS growth summary differs from native intervals")
 
 
+def computed_growth(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        action: growth_acceptance(
+            [row for row in runs if row["action"] == action and row["label"] != CAPACITY_LABEL]
+        )
+        for action in ACTIONS
+    }
+
+
+def report_passed(
+    provenance: dict[str, Any], runs: list[dict[str, Any]], growth: dict[str, Any]
+) -> bool:
+    identities = [STREAM["runtime_identity"](row["runtime"]) for row in runs]
+    return bool(
+        provenance["source_before"] == provenance["source_after"]
+        and provenance["wheel_before"] == provenance["wheel_after"]
+        and all(identity == identities[0] for identity in identities)
+        and all(row["passed"] for row in runs)
+        and all(row["passed"] for row in growth.values())
+    )
+
+
 def summarize_report(value: object) -> dict[str, Any]:
     report = closed(
         value,
@@ -204,32 +238,31 @@ def summarize_report(value: object) -> dict[str, Any]:
     for item in environment.values():
         CHECKS["text_value"](item)
     provenance = closed(
-        report["provenance"], "source_before source_after locked_runtime wheel_before wheel_after"
+        report["provenance"],
+        "source_before source_after locked_runtime wheel_before wheel_after "
+        "wheel_product_sha256 wheel_metadata_sha256",
     )
     before = CHECKS["source_snapshot"](provenance["source_before"])
-    after = CHECKS["source_snapshot"](provenance["source_after"])
+    CHECKS["source_snapshot"](provenance["source_after"])
     if report["source_commit"] != before["commit"]:
         raise ValueError("dataset report source differs from its snapshot")
     locked = CHECKS["package_versions"](provenance["locked_runtime"])
     for field in ("wheel_before", "wheel_after"):
         CHECKS["pattern_value"](provenance[field], CHECKS["SHA256"])
-    expected = validated_fixtures(report["fixtures"])
-    runs = validated_runs(report["runs"], expected, before, locked)
-    growth = {
-        action: growth_acceptance(
-            [row for row in runs if row["action"] == action and row["label"] != "capacity"]
-        )
-        for action in ("inspect", "verify")
+    expected_product = {
+        name: digest
+        for name, digest in before["source_sha256"].items()
+        if name.startswith("src/yorunge/")
     }
+    if CHECKS["hash_map"](provenance["wheel_product_sha256"]) != expected_product:
+        raise ValueError("dataset wheel product differs from the measured source")
+    wheel_metadata = closed(provenance["wheel_metadata_sha256"], " ".join(WHEEL["METADATA_FILES"]))
+    CHECKS["hash_map"](wheel_metadata)
+    expected = validated_fixtures(report["fixtures"])
+    runs = validated_runs(report["runs"], expected, before, locked, wheel_metadata)
+    growth = computed_growth(runs)
     validate_growth(report["growth"], growth)
-    identities = [STREAM["runtime_identity"](row["runtime"]) for row in runs]
-    passed = (
-        before == after
-        and provenance["wheel_before"] == provenance["wheel_after"]
-        and all(identity == identities[0] for identity in identities)
-        and all(row["passed"] for row in runs)
-        and all(row["passed"] for row in growth.values())
-    )
+    passed = report_passed(provenance, runs, growth)
     CHECKS["flag"](report["passed"], passed)
     return {
         "kind": "dataset-hash",
@@ -275,21 +308,36 @@ def measure_one(
         "--action",
         action,
     ]
-    result = subprocess.run(
-        command,
-        cwd=work,
-        env=STREAM["environment"](),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=120,
-    )
-    (work / "stdout.txt").write_text(result.stdout, encoding="utf-8")
-    (work / "stderr.txt").write_text(result.stderr, encoding="utf-8")
-    if result.returncode or result.stderr:
+    try:
+        with (work / "stdout.txt").open("xb") as stdout, (work / "stderr.txt").open("xb") as stderr:
+            result = subprocess.run(
+                command,
+                cwd=work,
+                env=STREAM["environment"](),
+                stdout=stdout,
+                stderr=stderr,
+                timeout=120,
+            )
+    except subprocess.TimeoutExpired:
+        retain_timeout(work)
+        raise
+    if result.returncode or (work / "stderr.txt").stat().st_size:
         raise ValueError("dataset worker failed; original diagnostics retained in workspace")
-    measured = json.loads(result.stdout)
+    if (work / "stdout.txt").stat().st_size > 1_048_576:
+        raise ValueError("dataset worker result exceeded its bound; original bytes retained")
+    measured = json.loads((work / "stdout.txt").read_bytes().decode("utf-8", "strict"))
+    if not isinstance(measured, dict):
+        raise ValueError("dataset worker result must be an object")
     return {**measured, "label": label, "sample": sample}
+
+
+def retain_timeout(work: Path) -> None:
+    try:
+        with (work / "failure.json").open("x", encoding="utf-8") as target:
+            target.write('{"outcome":"worker_timeout"}\n')
+    except OSError:
+        # A diagnostic write must not replace the original timeout exception.
+        return
 
 
 def measure_fixture(
@@ -300,6 +348,7 @@ def measure_fixture(
     expected: dict[str, Any],
     before: dict[str, Any],
     locked: dict[str, str],
+    wheel_metadata: dict[str, str],
 ) -> list[dict[str, Any]]:
     root, expected_path = workspace / label, workspace / f"expected-{label}.json"
     prepare_fixture(root, expected, label)
@@ -308,12 +357,12 @@ def measure_fixture(
         encoding="utf-8",
     )
     runs = []
-    for action in ("inspect", "verify"):
+    for action in ACTIONS:
         for sample in range(1, SAMPLES + 1):
             measured = measure_one(
                 python, workspace, root, expected_path, receipt, action, label, sample
             )
-            measured["passed"] = evaluate_run(measured, expected, before, locked)
+            measured["passed"] = evaluate_run(measured, expected, before, locked, wheel_metadata)
             runs.append(measured)
     return runs
 
@@ -325,7 +374,7 @@ def check(python: Path, wheel: Path, workspace: Path, output: Path, cpu: str, di
         raise ValueError("dataset measurement requires installed Python and its wheel")
     before = SOURCES["source"](ROOT)
     locked = STREAM["locked_runtime"](ROOT)
-    wheel_before = hashlib.sha256(wheel.read_bytes()).hexdigest()
+    wheel_before = WHEEL["snapshot"](wheel, before["source_sha256"], locked["yorunge"])
     workspace.mkdir(mode=0o700)
     receipt = workspace / "source-manifest.json"
     receipt.write_text(
@@ -336,7 +385,18 @@ def check(python: Path, wheel: Path, workspace: Path, output: Path, cpu: str, di
     for label in LABELS:
         expected = expected_manifest(label)
         fixtures[label] = fixture_summary(expected, label)
-        runs.extend(measure_fixture(python, workspace, receipt, label, expected, before, locked))
+        runs.extend(
+            measure_fixture(
+                python,
+                workspace,
+                receipt,
+                label,
+                expected,
+                before,
+                locked,
+                wheel_before["metadata_sha256"],
+            )
+        )
     report = {
         "schema_version": 1,
         "report_kind": "dataset_hash_budget_v1",
@@ -346,29 +406,18 @@ def check(python: Path, wheel: Path, workspace: Path, output: Path, cpu: str, di
             "source_before": before,
             "source_after": SOURCES["source"](ROOT),
             "locked_runtime": locked,
-            "wheel_before": wheel_before,
-            "wheel_after": hashlib.sha256(wheel.read_bytes()).hexdigest(),
+            "wheel_before": wheel_before["sha256"],
+            "wheel_after": WHEEL["snapshot"](wheel, before["source_sha256"], locked["yorunge"])[
+                "sha256"
+            ],
+            "wheel_product_sha256": wheel_before["product_sha256"],
+            "wheel_metadata_sha256": wheel_before["metadata_sha256"],
         },
         "fixtures": fixtures,
         "runs": runs,
-        "growth": {
-            action: growth_acceptance(
-                [row for row in runs if row["action"] == action and row["label"] != "capacity"]
-            )
-            for action in ("inspect", "verify")
-        },
+        "growth": computed_growth(runs),
     }
-    report["passed"] = (
-        report["provenance"]["source_before"] == report["provenance"]["source_after"]
-        and report["provenance"]["wheel_before"] == report["provenance"]["wheel_after"]
-        and all(row["passed"] for row in runs)
-        and all(row["passed"] for row in report["growth"].values())
-        and all(
-            STREAM["runtime_identity"](row["runtime"])
-            == STREAM["runtime_identity"](runs[0]["runtime"])
-            for row in runs
-        )
-    )
+    report["passed"] = report_passed(report["provenance"], runs, report["growth"])
     summarize_report(report)
     with output.open("x", encoding="utf-8") as destination:
         json.dump(report, destination, ensure_ascii=False, allow_nan=False, indent=2)
@@ -384,9 +433,14 @@ def main() -> int:
     parser.add_argument("--cpu-label", default="unknown")
     parser.add_argument("--disk-type", default="unknown")
     args = parser.parse_args()
-    return check(
-        args.python, args.wheel, args.workspace, args.output, args.cpu_label, args.disk_type
-    )
+    try:
+        return check(
+            args.python, args.wheel, args.workspace, args.output, args.cpu_label, args.disk_type
+        )
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError, zipfile.BadZipFile):
+        parser.exit(
+            1, "Dataset benchmark failed; retained workspace contains original diagnostics.\n"
+        )
 
 
 if __name__ == "__main__":

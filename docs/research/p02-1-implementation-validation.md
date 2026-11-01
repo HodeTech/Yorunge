@@ -99,3 +99,14 @@ Son ölçümden önce üç referans adı workflow/testte seçildi: p02-1-final-r
 
 
 **2 Kasım 2026 — adım 5 tooling ön kontrolü:** 288 benchmark/CI/evidence/dağıtım testi, bütün src/scripts/tests Ruff format/lint, strict mypy 79 dosya, 151 belge/6 skill/21 kart, actionlint ve diff kontrolü geçti. Referans artifact listesine yeni dataset-reference.txt eklendi; CI testinin beklenen listesi aynı kapsamla güncellendi. Yeni tooling commit’inden sonra tam takım ve iki temiz gerçek dağıtım kurulumu koşulacak, ardından iki fresh bütünleşik review turu tamamlanacak. Henüz başarılı yeni M5/native referans veya nihai PR yoktur.
+
+
+**2 Kasım — adım 5 ilk bütünleşik tur ve düzeltmeler:** e05eacb üzerinde tam yerel takım 4.174 passed, 1 skipped / 660,25 s. Atlanan tek test Linux native sayaç regresyonudur; bu macOS koşusu Linux kabulü değildir. Gerçek wheel (70 üye) ve sdist (433 üye), iki yeni izole kurulumda genel/NDJSON/HTTP/stream/cache/execution/jobs smoke’larını geçti; genel smoke yeni dataset inspect/verify/API/aynı-boyut mismatch yolculuğunu da içerir. Bunlar ilk tooling başlığının gerçek kanıtıdır; son kaynak referansı yerine kullanılmaz.
+
+R1 ürün reviewer’ı domain/parser, scan, yayın, public API/CLI, kurulum ve belgelerde yeni kusur bulmadı; 124 parser testi geçti. Ayrı native/evidence reviewer’ı 41 contract testini çalıştırdı ve üç P2’yi doğruladı: TimeoutExpired/bozuk UTF-8 loglarının capture decode öncesi kaybı; rastgele bir dosyanın wheel hash’iyle witness sayılabilmesi; dict eşitliğinin artifact içindeki true/1.0 ile 1 farkını kaçırması. Üçü de düzeltildi:
+
+- Worker stdout/stderr, süreç başlamadan exclusive binary dosyalara bağlanır; timeout öldürülüp beklenirken yayımlanmış baytlar korunur, sonra strict/bounded decode yapılır. Timeout tanı yazısının I/O hatası asıl timeout’u maskelemez.
+- dataset_wheel.py, sınırlı/normal/allowlisted gerçek wheel’in bütün product .py ve py.typed hash’lerini tam kaynak map’iyle, Name/Version/pure Python wheel/console kaydını beklenen ürünle bağlar. Ölçülen kurulumun METADATA/WHEEL/entry_points.txt hash’leri de önce/sonra aynı wheel metadatasıyla eşleşir. Bu içerik eşliğidir; fiziksel kurulum eylemi/donanım attestasyonu iddiası değildir.
+- Artifact oracle’ı bağımsız kanonik JSON + LF’nin tam bayt karşılaştırmasıdır; bool/int, float/int, duplicate key ve noncanonical publication aynı sayılmaz. Verify fixture’ı bağımsız kanonik artifact kullanır; public parser’ın başka JSON whitespace kabulü değişmez.
+
+Timeout/invalid UTF-8/nonzero gerçek alt süreçleri, sahte/yanlış product/marker/metadata/entry point wheel’leri ve sayısal tür/kanonik artifact negatifleri dahil yeni benchmark kümesi 70 testi geçti. İlgili CI/evidence/kurulum geniş kümesi **316 passed**; tüm Ruff, strict mypy (80 dosya), belge/ajan, actionlint ve diff kontrolü geçti. Yeni dosya/benchmark, startup/jobs/raw referansı henüz ölçülmedi; final fresh tur ve ölçüm kayıtları ayrı eklenecek.

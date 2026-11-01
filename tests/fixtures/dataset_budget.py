@@ -13,10 +13,21 @@ from pathlib import Path
 from typing import Any
 
 
+def canonical_artifact(content: bytes, expected: dict[str, Any]) -> bool:
+    encoded = (
+        json.dumps(
+            expected, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+        + b"\n"
+    )
+    return content == encoded
+
+
 def measure(args: argparse.Namespace) -> dict[str, Any]:
     if not sys.flags.isolated:
         raise ValueError("dataset worker requires isolated Python")
     native = runpy.run_path(str(Path(__file__).with_name("stream_budget.py")))
+    wheel = runpy.run_path(str(Path(__file__).parents[2] / "scripts/dataset_wheel.py"))
     receipt = json.loads(args.receipt.read_text(encoding="utf-8"))
     expected = json.loads(args.expected.read_text(encoding="utf-8"))
     from yorunge import api
@@ -40,6 +51,7 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
 
     before = provenance()
     before_data = runtime_data(before)
+    before_metadata = wheel["installed_metadata"](args.prefix, receipt["locked_runtime"]["yorunge"])
     method, current_rss = native["prepare_current_rss"]()
     # One fixed maximum hash block warms both APIs before B/H0 at every size.
     warm_root = args.work / "warm-source"
@@ -65,10 +77,11 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
     elapsed = time.perf_counter() - started
     lower, upper = native["rss_bounds"](baseline, h0, h1)
     # Validate the complete artifact outside the timed/native-RSS interval.
-    artifact = json.loads(args.manifest.read_text(encoding="utf-8"))
+    with args.manifest.open("rb") as stream:
+        artifact = stream.read(8 * 1024 * 1024 + 1)
     data = result.data.model_dump(mode="json")
     valid = (
-        artifact == expected
+        canonical_artifact(artifact, expected)
         and result.operation_id is None
         and result.status == "completed"
         and result.warnings == ("local_files_only",)
@@ -79,11 +92,16 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
     )
     after = provenance()
     after_data = runtime_data(after)
+    after_metadata = wheel["installed_metadata"](args.prefix, receipt["locked_runtime"]["yorunge"])
 
     def identity(value: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in value.items() if k not in {"pid", "modules"}}
 
-    if identity(before) != identity(after) or before_data != after_data:
+    if (
+        identity(before) != identity(after)
+        or before_data != after_data
+        or before_metadata != after_metadata
+    ):
         raise ValueError("dataset runtime changed during measurement")
     return {
         "action": args.action,
@@ -105,6 +123,7 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
         "extra_rss_upper_bound_bytes": upper,
         "runtime": after,
         "runtime_data_sha256": after_data,
+        "distribution_metadata_sha256": after_metadata,
     }
 
 

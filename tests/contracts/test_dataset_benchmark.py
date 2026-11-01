@@ -1,14 +1,19 @@
 """Independent native-RSS rejection oracles and the real isolated dataset worker."""
 
 import copy
+import hashlib
 import json
 import runpy
+import subprocess
+import sys
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from tests.contracts.test_installed_transport import runtime_tree as runtime_tree  # noqa: F401
+from tests.fixtures.dataset_budget import canonical_artifact
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = runpy.run_path(str(ROOT / "scripts/benchmark-datasets.py"))
@@ -63,6 +68,9 @@ def receipt():
                         "extra_rss_upper_bound_bytes": 4 * 1024**2,
                         "runtime": {**runtime, "pid": len(runs) + 1},
                         "runtime_data_sha256": {"src/yorunge/py.typed": "3" * 64},
+                        "distribution_metadata_sha256": {
+                            name: "4" * 64 for name in CHECKS["WHEEL"]["METADATA_FILES"]
+                        },
                         "passed": True,
                     }
                 )
@@ -77,6 +85,8 @@ def receipt():
             "locked_runtime": packages,
             "wheel_before": "2" * 64,
             "wheel_after": "2" * 64,
+            "wheel_product_sha256": copy.deepcopy(source["source_sha256"]),
+            "wheel_metadata_sha256": {name: "4" * 64 for name in CHECKS["WHEEL"]["METADATA_FILES"]},
         },
         "fixtures": fixtures,
         "runs": runs,
@@ -211,7 +221,10 @@ def test_native_interval_growth_never_subtracts_old_hwm(lower, upper, passed):
 
 
 def test_real_installed_worker_hashes_and_verifies_fixed_16mib_oracle(runtime_tree, tmp_path):
-    _, python, _ = runtime_tree
+    _, python, site = runtime_tree
+    metadata = site / "yorunge-0.1.0.dev0.dist-info"
+    (metadata / "WHEEL").write_text("Wheel-Version: 1.0\n")
+    (metadata / "entry_points.txt").write_text("[console_scripts]\nyorunge = yorunge.cli:main\n")
     source = CHECKS["SOURCES"]["source"](ROOT)
     locked = CHECKS["STREAM"]["locked_runtime"](ROOT)
     receipt_path = tmp_path / "source-manifest.json"
@@ -222,7 +235,10 @@ def test_real_installed_worker_hashes_and_verifies_fixed_16mib_oracle(runtime_tr
     root = tmp_path / "source"
     CHECKS["prepare_fixture"](root, expected, "16")
     expected_path = tmp_path / "expected.json"
-    expected_path.write_text(json.dumps(expected))
+    expected_path.write_text(
+        json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
     for action in ("inspect", "verify"):
         result = CHECKS["measure_one"](
             python, tmp_path, root, expected_path, receipt_path, action, "16", 1
@@ -300,3 +316,185 @@ def test_dataset_reference_rejects_stale_source_runtime_and_failed_budgets(refer
             row["runtime"][mutation] = "unknown"
     with pytest.raises(ValueError):
         verify()
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("file_count",), True),
+        (("file_count",), 1.0),
+        (("schema_version",), True),
+        (("schema_version",), 1.0),
+        (("policy_version",), True),
+        (("policy_version",), 1.0),
+        (("files", 0, "size"), float(16 * 1024**2)),
+    ],
+)
+def test_artifact_oracle_distinguishes_json_numeric_types(path, value):
+    expected = CHECKS["expected_manifest"]("16")
+    artifact = copy.deepcopy(expected)
+    parent = artifact
+    for part in path[:-1]:
+        parent = parent[part]
+    parent[path[-1]] = value
+    assert artifact == expected  # The former dict oracle misses each of these differences.
+    encoded = (
+        json.dumps(artifact, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        + b"\n"
+    )
+    assert canonical_artifact(encoded, expected) is False
+
+
+@pytest.mark.parametrize(
+    "form", ["canonical", "no_lf", "extra_lf", "indent", "duplicate", "invalid_utf8"]
+)
+def test_artifact_oracle_requires_complete_independent_canonical_bytes(form):
+    expected = CHECKS["expected_manifest"]("16")
+    encoded = (
+        json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        + b"\n"
+    )
+    if form == "no_lf":
+        encoded = encoded[:-1]
+    elif form == "extra_lf":
+        encoded += b"\n"
+    elif form == "indent":
+        encoded = json.dumps(expected, indent=2).encode() + b"\n"
+    elif form == "duplicate":
+        encoded = encoded.replace(b'"file_count":1', b'"file_count":1,"file_count":1')
+    elif form == "invalid_utf8":
+        encoded += b"\xff"
+    assert canonical_artifact(encoded, expected) is (form == "canonical")
+
+
+@pytest.mark.parametrize("failure", ["timeout", "invalid_utf8", "nonzero"])
+def test_worker_failure_preserves_original_binary_diagnostics(tmp_path, monkeypatch, failure):
+    original_run = subprocess.run
+
+    def run_child(command, **options):
+        if failure == "timeout":
+            code = (
+                "import sys,time; print('partial measurement',flush=True); "
+                "print('worker diagnostic',file=sys.stderr,flush=True); time.sleep(30)"
+            )
+            options["timeout"] = 1
+        elif failure == "invalid_utf8":
+            code = "import os; os.write(1,b'\\xff')"
+        else:
+            code = (
+                "import os; os.write(1,b'partial'); os.write(2,b'\\xffdiagnostic'); "
+                "raise SystemExit(9)"
+            )
+        return original_run([sys.executable, "-I", "-c", code], **options)
+
+    function = CHECKS["measure_one"]
+    monkeypatch.setitem(
+        function.__globals__,
+        "subprocess",
+        SimpleNamespace(run=run_child, TimeoutExpired=subprocess.TimeoutExpired),
+    )
+    expected = subprocess.TimeoutExpired if failure == "timeout" else ValueError
+    with pytest.raises(expected):
+        function(
+            Path(sys.executable),
+            tmp_path,
+            tmp_path / "root",
+            tmp_path / "expected",
+            tmp_path / "receipt",
+            "inspect",
+            "16",
+            1,
+        )
+    work = tmp_path / "16-inspect-1"
+    stdout, stderr = (work / "stdout.txt").read_bytes(), (work / "stderr.txt").read_bytes()
+    if failure == "timeout":
+        assert stdout == b"partial measurement\n"
+        assert stderr == b"worker diagnostic\n"
+        assert json.loads((work / "failure.json").read_bytes())["outcome"] == "worker_timeout"
+    elif failure == "invalid_utf8":
+        assert stdout == b"\xff"
+        assert stderr == b""
+    else:
+        assert stdout == b"partial"
+        assert stderr == b"\xffdiagnostic"
+
+
+def wheel_fixture(tmp_path, mutation=None):
+    contents = {
+        "yorunge/__init__.py": b"__version__ = 'fixture'\n",
+        "yorunge/py.typed": b"",
+        "yorunge-0.1.0.dev0.dist-info/METADATA": (
+            b"Metadata-Version: 2.4\nName: yorunge\nVersion: 0.1.0.dev0\n"
+        ),
+        "yorunge-0.1.0.dev0.dist-info/WHEEL": (
+            b"Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+        ),
+        "yorunge-0.1.0.dev0.dist-info/entry_points.txt": (
+            b"[console_scripts]\nyorunge = yorunge.cli:main\n"
+        ),
+    }
+    expected = {
+        "src/" + name: hashlib.sha256(content).hexdigest()
+        for name, content in contents.items()
+        if name.startswith("yorunge/")
+    }
+    if mutation == "product":
+        contents["yorunge/__init__.py"] = b"different code"
+    elif mutation == "marker":
+        contents["yorunge/py.typed"] = b"different marker"
+    elif mutation == "missing":
+        contents.pop("yorunge/py.typed")
+    elif mutation == "extra":
+        contents["yorunge/extra.py"] = b"extra code"
+    elif mutation == "metadata":
+        contents["yorunge-0.1.0.dev0.dist-info/METADATA"] = b"Name: yorunge\nVersion: wrong\n"
+    elif mutation == "entry_point":
+        contents["yorunge-0.1.0.dev0.dist-info/entry_points.txt"] = (
+            b"[console_scripts]\nyorunge = other:main\n"
+        )
+    elif mutation == "wheel":
+        contents["yorunge-0.1.0.dev0.dist-info/WHEEL"] = b"Wheel-Version: 1.0\n"
+    path = tmp_path / "yorunge-0.1.0.dev0-py3-none-any.whl"
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, content in contents.items():
+            archive.writestr(name, content)
+    return path, expected
+
+
+def test_wheel_snapshot_binds_all_product_marker_metadata_and_entry_bytes(tmp_path):
+    path, expected = wheel_fixture(tmp_path)
+    result = CHECKS["WHEEL"]["snapshot"](path, expected, "0.1.0.dev0")
+    assert result["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert result["product_sha256"] == expected
+    with zipfile.ZipFile(path) as archive:
+        assert result["metadata_sha256"] == {
+            name: hashlib.sha256(archive.read("yorunge-0.1.0.dev0.dist-info/" + name)).hexdigest()
+            for name in CHECKS["WHEEL"]["METADATA_FILES"]
+        }
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["product", "marker", "missing", "extra", "metadata", "entry_point", "wheel", "not_zip"],
+)
+def test_unrelated_or_invalid_wheel_cannot_be_a_measurement_witness(tmp_path, mutation):
+    path, expected = wheel_fixture(tmp_path, mutation)
+    if mutation == "not_zip":
+        path.write_bytes(b"not a wheel")
+    with pytest.raises(ValueError):
+        CHECKS["WHEEL"]["snapshot"](path, expected, "0.1.0.dev0")
+
+
+@pytest.mark.parametrize(
+    "which", ["wheel_product_sha256", "wheel_metadata_sha256", "distribution_metadata_sha256"]
+)
+def test_report_cannot_change_wheel_or_installed_metadata_binding(which):
+    report = receipt()
+    if which == "distribution_metadata_sha256":
+        report["runs"][0][which]["METADATA"] = "0" * 64
+    elif which == "wheel_product_sha256":
+        report["provenance"][which]["src/yorunge/__init__.py"] = "0" * 64
+    else:
+        report["provenance"][which]["METADATA"] = "0" * 64
+    with pytest.raises(ValueError):
+        CHECKS["summarize_report"](report)
