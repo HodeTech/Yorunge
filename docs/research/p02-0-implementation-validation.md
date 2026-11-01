@@ -364,3 +364,24 @@ fba5c51 üzerinde farklı yeni ajanlar ci_metadata_r2_security ve ci_metadata_r2
 [Linux 3.11](evidence.md#p02-0-pr12-first-linux311-installation), [Linux 3.14](evidence.md#p02-0-pr12-first-linux314-installation) ve [macOS](evidence.md#p02-0-pr12-first-macos311-installation) installation_v2 wrapper'ları özgün ci-environment/JSONL ve ZIP hash'lerini taşır. [Linux startup özgün başarısız ölçümü](evidence.md#p02-0-pr12-first-linux-startup) ve [diagnostic receipt](evidence.md#p02-0-pr12-first-linux-receipt) baytları değişmedi: AMD EPYC 7763, disk unknown; candidate/cache p95 **221,490 ms**, baseline **216,552 ms**; ikisi de 200 ms üstünde. ADR-0019 politikasıyla ci_classification_accepted=true, diagnostic_budget_exceeded kaldı; Linux performans kabulü geçti diye yeniden etiketlenmedi. M5 bağlayıcı hedefi ayrı yeşildir; kullanıcı PR review'sinde bu Linux tanısını ayrıca görecektir, insan incelemesi ajan tarafından yapılmış sayılmaz.
 
 [Gerçek Linux raw](evidence.md#p02-0-pr12-first-linux-stream) 16/256/1.024 MiB, byte/SHA, native RSS ve çapraz boyut farkı kapılarını geçti; ek RSS aralık üst sınırı en çok 655.360 byte, çapraz boyut span aynı değerdir. Eski iki iptal ve başarısız Linux tanısı saklandı. Bu eklerle 164 arşiv doğrulandı. Son bakım head'inin yeni M5/native edited ve gerçek CI kabulü tamamlanmadan kartlar verified yapılmaz.
+
+## CI bakımının son kaynak yerel kanıtı
+
+CI/test kaynağı 250c7ba/fba5c51; belge/ilk CI kanıtı bfd43a8. Aralarındaki product runtime Python baytları aynıdır. Yeni CI davranışı 81 gate/policy regresyonu ve actionlint ile iki fresh turda geçti. Önceki tam 3.695 ürün takımı ve ilk PR'daki üç tam takım aynı runtime davranışına aittir; yeni on gate vakası bu eski sayılara eklenmiş gibi sunulmaz. Son bakım head'inde tam takımın gerçek CI tekrarını bekliyoruz; yerelde ilgisiz ürün takımını tekrar koşmak yerine değişen CI/metadata sınırı sınandı.
+
+fba5c51 build'i yeniden sdist'ten wheel üretti; iki ayrı temiz runtime-only kurulum origin/basic/NDJSON/gerçek TLS-HTTP-stream/Platform oracle/cache/execution/jobs kontrollerini geçti. Wheel **66** üye / **fb6e2486e02d02390a137bd5e59dbeb48408f32de6ec1c2166a879a077e4afb0**; sdist **413** üye / **1ad746145267467cfa10ce73e360027c38a1c207f2c85b9d87f65afd2b32f367**. Önceki wheel'den değişen üyeler yalnız README'yi taşıyan METADATA ve RECORD; tüm runtime üyeleri bayt eşittir. [İki kurulum](evidence.md#p02-0-delivery-installation) özgün kayıtla saklanır; gerçek hesap dosyası/raw/bytecode paket dışında kalır.
+
+Yeni [startup](evidence.md#p02-0-delivery-reference-startup) ve [jobs](evidence.md#p02-0-delivery-reference-jobs) bfd43a8 source snapshot'ında test/build işi bittikten sonra seri çalıştı; Apple M5 Max/arm64/macOS 27.0.1/CPython 3.11.18/internal SSD-APFS aynı referans host'tur. Startup bc9532c ile gerçek AB/BA; aday wheel yeni iki kurulumdaki hash ile eşittir. Kaynak/kurulum/fixture önce/sonra değişmedi. OS cache boşaltma/ideal idle/katı fiziksel süre veya yeni runtime optimizasyonu iddia edilmez.
+
+| Her biri 30 süreç p95 | Aday ms | Taban ms | Bütçe ms |
+|---|---:|---:|---:|
+| help | 23,530 | 22,874 | 500 |
+| version | 22,623 | 23,233 | 500 |
+| context | 75,352 | 74,191 | 200 |
+| cache | 117,598 | 115,407 | 200 |
+| jobs normal/list | 122,620 | — | 200 |
+| jobs normal/show | 100,907 | — | 200 |
+| jobs dense/list | 142,193 | — | 200 |
+| jobs dense/show | 107,671 | — | 200 |
+
+167 arşiv/manifest/indeks ve yeni current-source startup/jobs verifier geçti. Eski 15aa8a1 M5 kabulü korunur; yeni workflow/test hash'leri onunla geçirilmedi. Bu kayıt commit'i ve kanıt review sonrası aynı PR'a aktarılacak; native edited-event/check-name ve son source CI henüz bekliyor. Public source kontrolü veya required check metadata audit'iyle yeşile çevrilmeyecek.
