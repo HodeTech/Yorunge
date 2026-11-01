@@ -352,3 +352,10 @@ def test_strict_zero_size_rejects_values_that_would_coerce_to_valid_golden_diges
     content = encoded(value)
     with pytest.raises(ValueError):
         DatasetManifest.model_validate_json(content, strict=False)
+
+
+@pytest.mark.parametrize("fragment", [b'"schema_version":1', b'"path":"a.txt"'])
+def test_same_value_duplicate_keys_are_rejected_in_otherwise_valid_golden_wire(fragment):
+    content = GOLDEN.read_bytes().replace(fragment, fragment + b"," + fragment, 1)
+    with pytest.raises(ValueError, match="duplicate"):
+        DatasetManifest.model_validate_json(content)
