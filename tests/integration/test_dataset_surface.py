@@ -777,3 +777,64 @@ def test_real_closed_stdout_pipe_after_durable_publish_keeps_artifact(tree):
     assert json.loads(stderr)["code"] == "output_closed"
     assert b"Traceback" not in stderr
     assert api.verify_dataset(root, manifest=target).data.matches is True
+
+
+@pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt, asyncio.CancelledError])
+def test_first_stage_identity_failure_preserves_unknown_name_without_unsafe_unlink(
+    tree, monkeypatch, failure
+):
+    root, target = tree
+    original_open, original_fstat = os.open, os.fstat
+    stage_descriptors = set()
+    error = failure()
+
+    def opening(path, *a, **k):
+        descriptor = original_open(path, *a, **k)
+        if isinstance(path, str) and path.startswith(".yorunge-manifest-"):
+            stage_descriptors.add(descriptor)
+        return descriptor
+
+    def failed_identity(descriptor):
+        if descriptor in stage_descriptors:
+            raise error
+        return original_fstat(descriptor)
+
+    monkeypatch.setattr(os, "open", opening)
+    monkeypatch.setattr(os, "supports_dir_fd", {*os.supports_dir_fd, opening})
+    monkeypatch.setattr(os, "fstat", failed_identity)
+    if failure is OSError:
+        assert_error(
+            lambda: api.inspect_dataset(root, manifest_out=target), "manifest_write_failed"
+        )
+    else:
+        with pytest.raises(failure) as caught:
+            api.inspect_dataset(root, manifest_out=target)
+        assert caught.value is error
+        assert MESSAGES["manifest_write_uncertain"] not in getattr(error, "__notes__", ())
+    assert not target.exists()
+    remnants = list(target.parent.glob(".yorunge-manifest-*.tmp"))
+    assert len(remnants) == 1
+    assert remnants[0].read_bytes() == b""
+    assert stat.S_IMODE(remnants[0].stat().st_mode) == 0o600
+
+
+def test_shell_quote_growth_cannot_expand_text_summary_over_limit(tree, capsys):
+    root, target = tree
+    descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for number in range(18):
+            name = str(number) + "'" * 188
+            os.mkdir(name, dir_fd=descriptor)
+            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+            root /= name
+    finally:
+        os.close(descriptor)
+    assert main(["datasets", "inspect", str(root), "--manifest-out", str(target)]) == 0
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert len(captured.out.encode("utf-8")) <= policy.MAX_SUMMARY_BYTES
+    assert "yorunge datasets verify ROOT --manifest FILE" in captured.out
+    assert str(target) in captured.out
+    assert api.verify_dataset(root, manifest=target).data.matches is True

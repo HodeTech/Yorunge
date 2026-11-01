@@ -431,7 +431,11 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
 def dataset_text_result(args: argparse.Namespace, data: Model) -> str:
     import shlex
 
-    from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
+    from yorunge.domain.dataset_manifest import (
+        MAX_SUMMARY_BYTES,
+        DatasetInspection,
+        DatasetVerification,
+    )
 
     if isinstance(data, DatasetInspection):
         followup = shlex.join(
@@ -444,11 +448,18 @@ def dataset_text_result(args: argparse.Namespace, data: Model) -> str:
                 data.manifest_path,
             )
         )
-        return (
+        summary = (
             f"Manifest kaydedildi: {data.manifest_path}\n"
             f"Dosya: {data.file_count}; byte: {data.total_bytes}\nDigest: {data.manifest_digest}\n"
-            f"Yeniden doğrula: {followup}\nYalnız yerel dosyalar; veri formatı değerlendirilmedi."
         )
+        next_step = f"Yeniden doğrula: {followup}\n"
+        footer = "Yalnız yerel dosyalar; veri formatı değerlendirilmedi."
+        if len((summary + next_step + footer).encode("utf-8")) > MAX_SUMMARY_BYTES:
+            next_step = (
+                "Yeniden doğrula: yorunge datasets verify ROOT --manifest FILE\n"
+                "ROOT: aynı kaynak dizini; FILE: yukarıdaki manifest yolu.\n"
+            )
+        return summary + next_step + footer
     if isinstance(data, DatasetVerification):
         return (
             f"Dosyalar manifestle eşleşiyor.\nDosya: {data.file_count}; byte: {data.total_bytes}\n"
