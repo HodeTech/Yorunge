@@ -67,12 +67,14 @@ Başka terminalde `export` yapmak, çalışan ajanın ortamına aktarılmaz. Bu 
 
 ## Salt okunur kabulün kapsamı
 
-| Hizmet | Pozitif çağrı tavanı | Auth sözleşmesi eksikse endpoint başına kontrol | Pilot toplam tavanı |
-|---|---|---|---|
-| Platform | me/orgs/projects/seçili project için ≤4 GET, her biri en çok2 attempt | Her kullanılan endpoint + ilgili parametre kapsamı için1 iyi biçimli, rastgele invalid-key GET; retry yok | ≤8 GET/12 attempt/4 MiB; toplam30 s |
-| LLM | terms/status için1 GET, en çok2 attempt | Aynı endpoint’te1 iyi biçimli invalid-key GET; retry yok | ≤2 GET/3 attempt/1 MiB; toplam30 s |
+Normal discovery negatif kontrol yapmaz. Aşağıdaki invalid-key deneyi yalnız ayrıca yetkili opsiyonel auth araştırmasıdır; dar gözlem tesliminin kapanış önkoşulu değildir.
 
-Tavanlar hedef çağrı sayısı değildir; gerekmedikçe istek yapılmaz. Kontrol anahtarı sağlayıcının doğrulanmış sözdizimi/önek/uzunluğunu taşır, yerelde rastgele üretilir ve sağlayıcı tarafından verilmiş değildir. Biçim bilinmiyorsa malformed tahminle auth kanıtı üretilmez. 401 veya açıkça invalid-key anlamı doğrulanmış403 aranır; terms/permission403’ü yeterli değildir. Kontrol anahtarı registry’ye yazılmaz. Auth kanıtı başka endpoint/parametre/hedefe aktarılmaz.
+| Hizmet | Pozitif çağrı tavanı | Auth sözleşmesi eksikse, yalnız ayrı yetkili opsiyonel araştırmada endpoint başına kontrol | Pilot toplam tavanı |
+|---|---|---|---|
+| Platform | me/orgs/projects/seçili project için ≤4 GET, her biri en çok 2 attempt | Her kullanılan endpoint + ilgili parametre kapsamı için 1 iyi biçimli, rastgele invalid-key GET; retry yok | ≤8 GET/12 attempt/4 MiB; toplam 30 s |
+| LLM | terms/status için 1 GET, en çok 2 attempt | Aynı endpoint’te 1 iyi biçimli invalid-key GET; retry yok | ≤2 GET/3 attempt/1 MiB; toplam 30 s |
+
+Tavanlar hedef çağrı sayısı değildir; gerekmedikçe istek yapılmaz. Kontrol anahtarı sağlayıcının doğrulanmış sözdizimi/önek/uzunluğunu taşır, yerelde rastgele üretilir ve sağlayıcı tarafından verilmiş değildir. Biçim bilinmiyorsa malformed tahminle auth kanıtı üretilmez. 401 veya açıkça invalid-key anlamı doğrulanmış 403 aranır; terms/permission 403’ü yeterli değildir. Kontrol anahtarı registry’ye yazılmaz. Auth kanıtı başka endpoint/parametre/hedefe aktarılmaz.
 
 Upload, inference, export hazırlama, key üretme, şart kabulü, kaynak rezervasyonu ve uzak silme yoktur. Salt okuma uçlarının fiyatı veya erişimi bilinmiyorsa sıfır maliyet varsayılmaz; ücretli olduğu saptanan çağrı yapılmaz. 401/403/429, yanlış endpoint, schema/target farkı veya deadline/boyut sınırında durulur; beklenen negatif kontrol reddi ayrı oracle’dır. Ham kullanıcı cevabı/header/key/signed URL repoya girmez. Hizmet başına gözlenen alanlar, auth belirsizliği ve kontrol sonucu maskeli kanıtta ayrı kaydedilir.
 
