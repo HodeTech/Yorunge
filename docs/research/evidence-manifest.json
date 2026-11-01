@@ -6683,6 +6683,160 @@
       }
     },
     {
+      "name": "p02-0-final-reference-v2-jobs.json",
+      "archive": "raw/p02-0-final-reference-v2-jobs.json.gz",
+      "original_commit": null,
+      "content_bytes": 130917,
+      "content_sha256": "3b6e8da93bad4e84fbad8150c8946bc5902fb91e4970f598714162f64e7c0a70",
+      "archive_bytes": 23012,
+      "archive_sha256": "6fb24bab71f810e4a0682432e81d945962be12909a35ffbd53eec4989bbb7718",
+      "summary": {
+        "source_commit": "abc862e6be34080346209ebb35da78cf897b50b1",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 132.65449996106327,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 151.06858289800584,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 169.24879211001098,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 116.97975010611117,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p02-0-final-reference-v2-startup.json",
+      "archive": "raw/p02-0-final-reference-v2-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 182409,
+      "content_sha256": "214297667c0ef68ddb5dc50ad160d5cd41da6b912b4ce901ec9344376fa1d804",
+      "archive_bytes": 27435,
+      "archive_sha256": "e337c2337dabcff99fe66cc0998920ec245cd6d3409ed0a33012da48d942c071",
+      "summary": {
+        "source_commit": "abc862e6be34080346209ebb35da78cf897b50b1",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 28.778791893273592,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 30.467333970591426,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 90.64137493260205,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 160.78479192219675,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 28.628707863390446,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 29.118250124156475,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 94.47837504558265,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 128.03649995476007,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-final-v2-installation.json",
+      "archive": "raw/p02-0-final-v2-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1176,
+      "content_sha256": "50c4a204e5e4361daeb5ee6e3fc6b3e0812d00d5f5c2fc586f4b6b08ee3056b5",
+      "archive_bytes": 493,
+      "archive_sha256": "38ee0cd899383a5945044960b3494f8971e9f16b6233bfd8322c667da386668a",
+      "summary": {
+        "source_commit": "0d0f0d8759d8863a2963124b33b4843e948b79b4",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-0-llm-installation.json",
       "archive": "raw/p02-0-llm-installation.json.gz",
       "original_commit": null,
@@ -6991,6 +7145,25 @@
       }
     },
     {
+      "name": "p02-0-pr12-closure-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-closure-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "525ed63329100c6992c511726758bcb44da800e420cc27d380254fbc9af62622",
+      "archive_bytes": 246,
+      "archive_sha256": "48af9041e2c7b1a07fa09a1164b97282a54173b54d863d883390c9065445ac7a",
+      "summary": {
+        "source_commit": "5e09657d9cf152258dc2fb085a97ea444f3b983e",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "04e41d9e96e4f70b0f34b5dd16c2cb7e9cb9be9c458fb7928aa158c5d33dfd0d",
+        "complete": true
+      }
+    },
+    {
       "name": "p02-0-pr12-closure-linux-receipt.json",
       "archive": "raw/p02-0-pr12-closure-linux-receipt.json.gz",
       "original_commit": null,
@@ -7295,6 +7468,25 @@
             "passed": 2
           }
         }
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-delivery-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "a5528200e443acc8fe62c9c5afa9c47d3a03130488924fb4ee2b998ae412c7cc",
+      "archive_bytes": 244,
+      "archive_sha256": "09ba21a4ad234ba65221dd4b0686e7ca483b609e509720f4e6fc4217a320cca2",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "0c0cffe776a5d009763a236fcda38ed4cbd549ecdcaa3b1bcb05f51ebdfeefe8",
+        "complete": true
       }
     },
     {
@@ -7912,6 +8104,44 @@
       }
     },
     {
+      "name": "p02-0-pr12-source-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-source-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "6363445754e77e515bbf2ef372cae97bfbcf3ef37012b012b83d0d00c4441aee",
+      "archive_bytes": 246,
+      "archive_sha256": "f0f460ad15d2e043d5fb7e881341a2d9a95c9d8f64f9a490b3997a0c920aaf51",
+      "summary": {
+        "source_commit": "29ec2562b985815184e1f15638178ef474a7710d",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "7ceb1d22c9e32847247048222cf3d3bc256dfc878753afec4ac93f6327757447",
+        "complete": true
+      }
+    },
+    {
+      "name": "p02-0-pr12-static-edit-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-static-edit-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "34ae4f8d5b43d632afb5b42e2583c93dc0e512603c00d3e97262e8c2ac8bf816",
+      "archive_bytes": 246,
+      "archive_sha256": "a16b18599cc196fcd1ed732c7bce271b8a383c0c1790888d039d61f8edc9bc01",
+      "summary": {
+        "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "be52fe3324f6d9ca81a5adc0071c17a6d6400aee095be4e65e18769d83f79f57",
+        "complete": true
+      }
+    },
+    {
       "name": "p02-0-pr12-static-edit-linux-receipt.json",
       "archive": "raw/p02-0-pr12-static-edit-linux-receipt.json.gz",
       "original_commit": null,
@@ -8219,6 +8449,25 @@
       }
     },
     {
+      "name": "p02-0-pr12-static-source-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-static-source-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "11d8d70e459cd70527d83d2d1dd109793d0ee4083334c7aa917950c80ed6a13b",
+      "archive_bytes": 246,
+      "archive_sha256": "48c6443b84d5474b27c6be6e8c1568e3b34a59e052e654c795327e0dd08a8c1e",
+      "summary": {
+        "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "6eb31de70b2b4668477aa8787737fa3f0f8c43aec31676954e0e0aeca1a0741f",
+        "complete": true
+      }
+    },
+    {
       "name": "p02-0-pr12-static-source-linux-receipt.json",
       "archive": "raw/p02-0-pr12-static-source-linux-receipt.json.gz",
       "original_commit": null,
@@ -8523,6 +8772,25 @@
             "passed": 2
           }
         }
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-linux-baseline-selection.json",
+      "archive": "raw/p02-0-pr12-user-review-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "21afd4c11a113f6e255e6260a89a151284b7c44e4427b08324e415d527be5ffa",
+      "archive_bytes": 246,
+      "archive_sha256": "176f1e3ad880d525aa11f6ac08ffabd47b73bfc4674c339a6cab2552d50ea817",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027",
+        "report_sha256": "daddf499e234207517409559127ba2a5c20c5a043f235603d4294844f343c0f0",
+        "complete": true
       }
     },
     {

@@ -1076,6 +1076,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-final-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 115.93499989248812, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 83.21850001811981, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 24.114625062793493, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 23.978165816515684, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 118.84095915593207, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 80.85383381694555, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 23.976624943315983, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 23.87583302333951, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "15aa8a1635ef9475deedd3fac6cdfad6f8f29010"}`.
 
+## p02-0-final-reference-v2-jobs
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `3b6e8da93bad4e84fbad8150c8946bc5902fb91e4970f598714162f64e7c0a70`.
+**Yerel arşiv:** `raw/p02-0-final-reference-v2-jobs.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 169.24879211001098, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 116.97975010611117, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 132.65449996106327, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 151.06858289800584, "passed": true, "samples": 30}}, "passed": true, "source_commit": "abc862e6be34080346209ebb35da78cf897b50b1", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-0-final-reference-v2-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `214297667c0ef68ddb5dc50ad160d5cd41da6b912b4ce901ec9344376fa1d804`.
+**Yerel arşiv:** `raw/p02-0-final-reference-v2-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 128.03649995476007, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 94.47837504558265, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 28.628707863390446, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 29.118250124156475, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 160.78479192219675, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 90.64137493260205, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 28.778791893273592, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 30.467333970591426, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "abc862e6be34080346209ebb35da78cf897b50b1"}`.
+
+## p02-0-final-v2-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `50c4a204e5e4361daeb5ee6e3fc6b3e0812d00d5f5c2fc586f4b6b08ee3056b5`.
+**Yerel arşiv:** `raw/p02-0-final-v2-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "0d0f0d8759d8863a2963124b33b4843e948b79b4"}`.
+
 ## p02-0-llm-installation
 
 **Tür:** `installation_v2`.
@@ -1118,6 +1139,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-platform-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 126.5594158321619, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 92.97679201699793, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 26.29283396527171, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 31.814791029319167, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 127.98366602510214, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 89.2820421140641, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 27.385124936699867, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 29.39833397977054, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "0b05a64178fcae03a846fff5a9f68a36fa032005"}`.
 
+## p02-0-pr12-closure-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `525ed63329100c6992c511726758bcb44da800e420cc27d380254fbc9af62622`.
+**Yerel arşiv:** `raw/p02-0-pr12-closure-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "04e41d9e96e4f70b0f34b5dd16c2cb7e9cb9be9c458fb7928aa158c5d33dfd0d", "source_commit": "5e09657d9cf152258dc2fb085a97ea444f3b983e"}`.
+
 ## p02-0-pr12-closure-linux-receipt
 
 **Tür:** `startup_ci_diagnostic`.
@@ -1159,6 +1187,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `d54a72c13451b5c58f4a2afef18117163fb066401bd2b0f1c587ef43d1e94797`.
 **Yerel arşiv:** `raw/p02-0-pr12-closure-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "5e09657d9cf152258dc2fb085a97ea444f3b983e"}`.
+
+## p02-0-pr12-delivery-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `a5528200e443acc8fe62c9c5afa9c47d3a03130488924fb4ee2b998ae412c7cc`.
+**Yerel arşiv:** `raw/p02-0-pr12-delivery-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "0c0cffe776a5d009763a236fcda38ed4cbd549ecdcaa3b1bcb05f51ebdfeefe8", "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012"}`.
 
 ## p02-0-pr12-delivery-linux-receipt
 
@@ -1244,6 +1279,20 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-pr12-first-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "29ec2562b985815184e1f15638178ef474a7710d"}`.
 
+## p02-0-pr12-source-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `6363445754e77e515bbf2ef372cae97bfbcf3ef37012b012b83d0d00c4441aee`.
+**Yerel arşiv:** `raw/p02-0-pr12-source-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "7ceb1d22c9e32847247048222cf3d3bc256dfc878753afec4ac93f6327757447", "source_commit": "29ec2562b985815184e1f15638178ef474a7710d"}`.
+
+## p02-0-pr12-static-edit-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `34ae4f8d5b43d632afb5b42e2583c93dc0e512603c00d3e97262e8c2ac8bf816`.
+**Yerel arşiv:** `raw/p02-0-pr12-static-edit-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "be52fe3324f6d9ca81a5adc0071c17a6d6400aee095be4e65e18769d83f79f57", "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3"}`.
+
 ## p02-0-pr12-static-edit-linux-receipt
 
 **Tür:** `startup_ci_diagnostic`.
@@ -1286,6 +1335,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-pr12-static-edit-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3"}`.
 
+## p02-0-pr12-static-source-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `11d8d70e459cd70527d83d2d1dd109793d0ee4083334c7aa917950c80ed6a13b`.
+**Yerel arşiv:** `raw/p02-0-pr12-static-source-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "6eb31de70b2b4668477aa8787737fa3f0f8c43aec31676954e0e0aeca1a0741f", "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3"}`.
+
 ## p02-0-pr12-static-source-linux-receipt
 
 **Tür:** `startup_ci_diagnostic`.
@@ -1327,6 +1383,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `6d37bbe47c030ed1acc34298aaf305088b0bc2b98cc65cbf6a256055c5638d9a`.
 **Yerel arşiv:** `raw/p02-0-pr12-static-source-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "8bd5e45d33d1355050b0393f697c8ecd73015db3"}`.
+
+## p02-0-pr12-user-review-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `21afd4c11a113f6e255e6260a89a151284b7c44e4427b08324e415d527be5ffa`.
+**Yerel arşiv:** `raw/p02-0-pr12-user-review-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "bc9532cd66c76dc4126162fabd4307c2fdaf4027", "report_sha256": "daddf499e234207517409559127ba2a5c20c5a043f235603d4294844f343c0f0", "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c"}`.
 
 ## p02-0-pr12-user-review-linux-receipt
 
