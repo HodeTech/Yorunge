@@ -6,7 +6,7 @@
 
 Kendi yetkin olan EVREN hesabının **LLM anahtarı** ilk bağımsız kol için yeterlidir. Platform kimlik/org/proje kabulünü ayrıca sınamak için **Platform API anahtarı** gerekir; browser JWT’si veya oturum cookie’si gerekmez. Mevcut kullanıcı hesabında üç uç ve ayrı seçili-proje consumer kabulü kayıtlıdır; bu gelecekteki her key/hedef için erişim veya auth/principal garantisi değildir. Şart kabulü gerekiyorsa kullanıcı EVREN arayüzünde kendisi yapar; pilot POST accept çağırmaz.
 
-Account/project ID’lerini bilmiyorsan boş bırakabilirsin; ilk LLM keşfi bunları gerektirmez. Platform’da otomatik yeni hesap/proje oluşturulmaz. Platform için bildiğin hesap/proje ID’lerini aşağıdaki scope dosyasına girebilirsin. Account ID’nin user mı organizasyon mu olduğu belli değilse boş bırak; isim veya model owner’dan türetme. İlk proje otomatik seçilmez. LLM hesabını Platform ID’siyle eşleştirmek için bu bilgiler kullanılmaz.
+Account/project ID’lerini bilmiyorsan boş bırakabilirsin; ilk LLM keşfi bunları gerektirmez. Platform’da otomatik yeni hesap/proje oluşturulmaz. Platform için bildiğin hesap/proje ID’lerini aşağıda girebilirsin; normal discovery’nin okuduğu config profiline ve araştırma için scope dosyasına yazılır. Account ID’nin user mı organizasyon mu olduğu belli değilse boş bırak; isim veya model owner’dan türetme. İlk proje otomatik seçilmez. LLM hesabını Platform ID’siyle eşleştirmek için bu bilgiler kullanılmaz.
 
 ## Dosyaları güvenle hazırla
 
@@ -50,6 +50,9 @@ llm_url = "https://evren-llmapi.ssyz.org.tr/v1"
 platform_key_env = "PILOT_PLATFORM_KEY"
 llm_key_env = "PILOT_LLM_KEY"
 '''
+for key, value in scope.items():
+    if value is not None:
+        config += f'{key} = {json.dumps(value, ensure_ascii=False)}\n'
 for path, content in zip(files, (config, json.dumps(values), json.dumps(scope))):
     with path.open('x', encoding='utf-8') as target:
         target.write(content + '\n')
@@ -63,7 +66,53 @@ Ardından ayrı yerel store’u açıkça oluştur:
 .venv/bin/yorunge state init --state-dir .local/p02-pilot/state
 ```
 
-Başka terminalde `export` yapmak, çalışan ajanın ortamına aktarılmaz. Bu nedenle `credentials.json` yalnız pilotu başlatan yerel kompozisyon tarafından okunup ilgili **çocuk sürecin env’sine** aktarılacaktır. Ürün config’i veya discovery doğrudan bu dosyayı okumaz; ürünün tek env snapshot kuralı korunur. Dosya içeriklerini `cat`, ekran görüntüsü veya sohbetle paylaşma; yalnız dosyaların hazır olduğunu ve varsa özel konumunu bildir. Bu hazırlık sırasında ağ çağrısı yapılmaz.
+## Hazırlıktan normal discovery’ye
+
+`scope.json` araştırma pilotunun girdisidir; normal CLI/Python bu dosyayı okumaz. Yukarıdaki yeni hazırlık bloğu dolu account/project tercihlerini `config.toml` içindeki `profiles.pilot` tablosuna da yazar. Önceki hazırlıkla dosya oluşturduysan mevcut `[profiles.pilot]` tablosuna bildiğin değerleri TOML string olarak ekle; ikinci bir tablo başlığı oluşturma, bilmediğin alanı ekleme:
+
+```toml
+account_id = "known-platform-account-id"
+project_id = "selected-platform-project-id"
+```
+
+Proje tercihini mevcut CLI ile de kaydedebilirsin: `.venv/bin/yorunge context set-project --project PROJECT_ID --config .local/p02-pilot/config.toml`. Tek çağrıda değiştirmek için `context discover` komutuna `--project PROJECT_ID` eklenir; LLM açık project override kabul etmez. Yerel hesap tercihi yalnız config profilindedir; bildirilen kullanıcı/org ID’sinden türetilmez. Tercih doğrulanmış kimlik veya izin sayılmaz.
+
+Anahtarı `credentials.json` dosyasından **yalnız seçili hizmetin çocuk sürecine** aktarıp aşağıdaki bloğu çalıştır. Platform için yalnız `service = "evren-platform"` yap; profil projesi varsa detail GET’i de yapılır. Anahtarı shell argümanına/export komutuna yazma. Bu adım gerçek salt okunur ağ çağrısı yapar; önceki hazırlık ve state init adımları yapmaz:
+
+```sh
+.venv/bin/python - <<'PY'
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+service = "evren-llm"
+reference = {"evren-llm": "PILOT_LLM_KEY", "evren-platform": "PILOT_PLATFORM_KEY"}[service]
+root = Path('.local/p02-pilot')
+try:
+    credentials = json.loads((root / 'credentials.json').read_text(encoding='utf-8'))
+except (OSError, ValueError):
+    raise SystemExit('Credential hazırlığı okunamadı; içerik gösterilmedi.') from None
+value = credentials.get(reference) if type(credentials) is dict else None
+if type(value) is not str or not value:
+    raise SystemExit('Seçili hizmet anahtarı hazırlanmamış; ağ çağrısı yapılmadı.')
+env = dict(os.environ)
+for name in ('PILOT_LLM_KEY', 'PILOT_PLATFORM_KEY'):
+    env.pop(name, None)
+env[reference] = value
+result = subprocess.run(
+    [sys.executable, '-m', 'yorunge', 'context', 'discover', '--service', service,
+     '--config', str(root / 'config.toml'), '--state-dir', str(root / 'state'),
+     '--output', 'json'],
+    env=env,
+    check=False,
+)
+raise SystemExit(result.returncode)
+PY
+```
+
+Çağıran terminalin ortamı değişmez; komut ve hata kodu çocuktan gelir. Ürün config’i/discovery credential dosyasını doğrudan okumaz; tek env snapshot kuralı korunur. Dosya içeriklerini `cat`, ekran görüntüsü veya sohbetle paylaşma. Ürünü başka terminalden doğrudan çalıştırmak için ilgili env’yi o terminalde ayrıca güvenli gizli girişle hazırlamak gerekir; başka terminalde `export` yapmak mevcut sürecin ortamını değiştirmez.
 
 ## Salt okunur kabulün kapsamı
 

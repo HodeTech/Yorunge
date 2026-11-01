@@ -14,6 +14,7 @@ from yorunge.application.context_discovery import (
     exchange,
     remaining,
 )
+from yorunge.application.response_json import check_response_secrets
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_discovery import (
     OrganizationListing,
@@ -118,5 +119,6 @@ def discover_platform(
         )
     except ValidationError:
         raise YorungeError("state_changed") from None
+    check_response_secrets(result, (snapshot.credential.secret,))
     remaining(deadline, clock)
     return result

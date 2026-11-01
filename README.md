@@ -49,7 +49,7 @@ Profilde belirtilen env değeri hazırsa, yalnız seçilen hizmetin sır ayarın
 
 Python karşılığı `yorunge.api.check_credential("evren-platform", config=Path("examples/profile.toml"))` çağrısıdır. Sır değeri çıktıya girmez; bu kontrol ağ/DB açmaz ve uzak kimlik/yetki doğrulaması yapmaz. Kalıcı `context identity` gözlemi seçili env'yi açık istekle okur; varsayılan offline komutlar okumaz.
 
-P02 çalışma dalında LLM şart durumu açıkça sorgulanabilir. Önce [yerel hesap hazırlığını](docs/p02-account-setup.md) tamamla ve LLM env değerini çağıran sürece aktar; anahtarı komut satırına yazma. Mevcut private store gereklidir:
+P02 çalışma dalında LLM şart durumu açıkça sorgulanabilir. Önce [yerel hesap hazırlığını](docs/p02-account-setup.md) tamamla. Yönergedeki **Hazırlıktan normal discovery’ye** bloğu anahtarı yalnız seçili hizmetin çocuk sürecine aktarır ve aşağıdaki çağrıyı çalıştırır; anahtarı komut satırına yazma. Aşağıdaki doğrudan komut, ilgili env zaten çağıran süreçte hazırsa kullanılır. Mevcut private store gereklidir:
 
 ```sh
 .venv/bin/yorunge context discover --service evren-llm --config .local/p02-pilot/config.toml --state-dir .local/p02-pilot/state --output json

@@ -17,6 +17,7 @@ from yorunge.adapters import platform_context
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
 from yorunge.adapters.secrets import EnvSecretReader
+from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_discovery import PlatformContextDiscovery
 
 CONNECT, CONNECT_EX, GETADDRINFO = (
@@ -105,6 +106,64 @@ def child(server, certificates, config, state, *options):
         capture_output=True,
         timeout=8,
     )
+
+
+@pytest.mark.parametrize("secret", ["abc123", "12345678", "synthetic-local-canary-25431"])
+@pytest.mark.parametrize("field", ["account", "project", "override", "hidden_project", "profile"])
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+def test_local_secret_never_reaches_detail_url_or_public_output(
+    files, certificates, monkeypatch, secret, field, output
+):
+    config, state = files
+    value = secret if len(secret) < 8 else "prefix-" + secret + "-suffix"
+    text = config.read_text()
+    if field == "account":
+        text = text.replace('account_id="preferred"', f'account_id="{value}"')
+    elif field in {"project", "hidden_project"}:
+        text = text.replace('project_id="profile-project"', f'project_id="{value}"')
+    elif field == "profile":
+        text = text.replace('"work"', f'"{value}"').replace("profiles.work", f"profiles.{value}")
+    config.write_text(text)
+    project = value if field == "override" else "explicit" if field == "hidden_project" else None
+    monkeypatch.setenv("EVREN_PLATFORM_API_KEY", secret)
+    replies = routes()
+    replies["/api/v1/projects/" + value] = Reply(status=404)
+    with TlsServer(certificates, replies) as server:
+        bind(monkeypatch, server)
+        with pytest.raises(YorungeError) as failure:
+            api.discover_context("evren-platform", config=config, state_dir=state, project=project)
+        result = child(
+            server,
+            certificates,
+            config,
+            state,
+            "--output",
+            output,
+            *(["--project", project] if project else []),
+        )
+    assert failure.value.code == "invalid_request"
+    assert secret not in str(failure.value)
+    assert result.returncode == 2
+    assert result.stdout == b""
+    assert secret.encode() not in result.stderr
+    if output == "text":
+        assert result.stderr.decode().strip() == failure.value.message
+    else:
+        assert json.loads(result.stderr)["code"] == "invalid_request"
+    assert server.requests == []
+
+
+@pytest.mark.parametrize("secret", ["a", "abc"])
+def test_short_secret_substrings_in_normal_local_preferences_remain_valid(
+    files, certificates, monkeypatch, secret
+):
+    config, state = files
+    monkeypatch.setenv("EVREN_PLATFORM_API_KEY", secret)
+    with TlsServer(certificates, routes()) as server:
+        bind(monkeypatch, server)
+        result = api.discover_context("evren-platform", config=config, state_dir=state)
+    assert result.data.selected.project_id == "profile-project"
+    assert len(server.requests) == 4
 
 
 @pytest.mark.parametrize("output", ["json", "ndjson"])

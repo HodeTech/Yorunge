@@ -4,6 +4,11 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Fixed — 2026-11-01
+
+- Discovery, credential ile karıştırılan yerel profil/hesap/proje tercihlerini ilk ağ isteğinden önce kontrollü reddeder; kısa sır proje URL’sine eklenmeden karşılaştırılır. LLM/Platform nihai dinamik sonuç alanları da seçili literal denetiminden geçer.
+- Hesap hazırlığında dolu Platform tercihleri normal config profiline aktarılır; yalnız seçili anahtarı çocuk sürece veren çalıştırılabilir discovery örneği ve önceki hazırlıklar için geçiş yolu eklendi.
+
 P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeTech/Yorunge/pull/11) ile development’a [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) merge’ünde alındı. [Merge/CI kanıtı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Bu kayıt paket yayını veya Master/release aktarımı değildir.
 
 ### Added — 2026-11-01

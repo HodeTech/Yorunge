@@ -96,6 +96,40 @@ def bind_fixture(monkeypatch, server):
     )
 
 
+@pytest.mark.parametrize("secret", ["abc123", "12345678", "synthetic-local-canary-319502"])
+@pytest.mark.parametrize("field", ["account", "project", "profile"])
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+def test_local_llm_preferences_cannot_reflect_selected_credential(
+    context_files, certificates, monkeypatch, secret, field, output
+):
+    config, state = context_files
+    value = secret if len(secret) < 8 else "prefix-" + secret + "-suffix"
+    text = config.read_text()
+    if field == "account":
+        text = text.replace('account_id="platform-account"', f'account_id="{value}"')
+    elif field == "project":
+        text = text.replace('project_id="platform-project"', f'project_id="{value}"')
+    else:
+        text = text.replace('"work"', f'"{value}"').replace("profiles.work", f"profiles.{value}")
+    config.write_text(text)
+    monkeypatch.setenv("EVREN_LLM_API_KEY", secret)
+    with TlsServer(certificates, {"/v1/terms/status": Reply(body=BODY)}) as server:
+        bind_fixture(monkeypatch, server)
+        with pytest.raises(YorungeError) as failure:
+            api.discover_context("evren-llm", config=config, state_dir=state)
+        result = child(server, certificates, config, state, "--output", output)
+    assert failure.value.code == "invalid_request"
+    assert secret not in str(failure.value)
+    assert result.returncode == 2
+    assert result.stdout == b""
+    assert secret.encode() not in result.stderr
+    if output == "text":
+        assert result.stderr.decode().strip() == failure.value.message
+    else:
+        assert json.loads(result.stderr)["code"] == "invalid_request"
+    assert server.requests == []
+
+
 @pytest.mark.parametrize("output", ["json", "ndjson"])
 def test_public_api_and_real_cli_use_the_same_typed_core_and_only_the_llm_key(
     context_files, certificates, monkeypatch, output

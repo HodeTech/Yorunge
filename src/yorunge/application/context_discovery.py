@@ -9,6 +9,7 @@ from typing import Protocol, Self, TypeVar
 
 from pydantic import ValidationError
 
+from yorunge.application.response_json import check_response_secrets, literal_secret_match
 from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import CredentialIdentity, ResolvedCredential
 from yorunge.domain.discovery import (
@@ -95,6 +96,24 @@ def remaining(deadline: float, clock: DiscoveryClock) -> float:
     return value
 
 
+def _check_local_fields(snapshot: DiscoverySnapshot) -> None:
+    """Reject credential/ID confusion before any local value can enter a URL or result."""
+    context, preference = snapshot.context, snapshot.preference
+    target = snapshot.credential.target
+    values = (
+        context.profile,
+        context.account_id,
+        context.project_id,
+        target.service_origin,
+        target.api_base_path,
+        preference.account_id if preference is not None else None,
+        preference.project_id if preference is not None else None,
+    )
+    secret = snapshot.credential.secret.reveal()
+    if any(value is not None and literal_secret_match(value, secret) for value in values):
+        raise YorungeError("invalid_request")
+
+
 def _finish_failure(
     state: DiscoveryState,
     snapshot: DiscoverySnapshot,
@@ -134,6 +153,7 @@ def exchange(
         with reader:
             remaining(deadline, clock)
             snapshot = state.capture(deadline=deadline)
+            _check_local_fields(snapshot)
             reply = reader.observe(snapshot, deadline=network_deadline)
             remaining(network_deadline, clock)
     except BaseException as primary:
@@ -203,5 +223,6 @@ def discover_context(
         )
     except ValidationError:
         raise YorungeError("state_changed") from None
+    check_response_secrets(result, (snapshot.credential.secret,))
     remaining(deadline, clock)
     return result
