@@ -11527,6 +11527,21 @@
       }
     },
     {
+      "name": "p02-1-jobs-profile-diagnostic-v2.json",
+      "archive": "raw/p02-1-jobs-profile-diagnostic-v2.json.gz",
+      "original_commit": null,
+      "content_bytes": 450337,
+      "content_sha256": "0c3748130fd3b0025c589cf6a6d423eaca27d7fdbd70881a15201e7ad086e835",
+      "archive_bytes": 150160,
+      "archive_sha256": "494c1e269b817141eb567fa701090a920fe1f9cfd8e0928af16ae9702c2c8c3a",
+      "summary": {
+        "source_commit": "3c20216683dc506d55ae02381fcd72a65b383441",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "jobs_single_profile_not_acceptance"
+      }
+    },
+    {
       "name": "p02-1-jobs-two-cohort-protocol-v2-report.json",
       "archive": "raw/p02-1-jobs-two-cohort-protocol-v2-report.json.gz",
       "original_commit": null,
@@ -11569,6 +11584,718 @@
         "diagnostic_only": true,
         "kind": "diagnostic",
         "outcome": "pytest_passed_4202_linux_native_skip_1"
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-cancelled-a-cancelled.json",
+      "archive": "raw/p02-1-pr13-metadata-cancelled-a-cancelled.json.gz",
+      "original_commit": null,
+      "content_bytes": 47198,
+      "content_sha256": "3aef45ddaf90d35ef9bd84629e44a869defb06abff493345b98071ff2615c8bc",
+      "archive_bytes": 5129,
+      "archive_sha256": "c64709eea5b77403c494819c670e5425aedf2d76b67b59b1a1417658568df43f",
+      "summary": {
+        "source_commit": "d4f4e82f7a8bcc8302f959b681d531c99a9e2611",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "ci_cancelled_before_native_measurement"
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-cancelled-b-cancelled.json",
+      "archive": "raw/p02-1-pr13-metadata-cancelled-b-cancelled.json.gz",
+      "original_commit": null,
+      "content_bytes": 15312,
+      "content_sha256": "7e1affc3a26e662e05158ccb21dbeba5b52980d7cebb62b87f528a29496880c3",
+      "archive_bytes": 2193,
+      "archive_sha256": "0fe1284f6fbb43b334f5d3ec2d5de0cdb7240468453412b8d010cf038c5039df",
+      "summary": {
+        "source_commit": "d4f4e82f7a8bcc8302f959b681d531c99a9e2611",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "ci_cancelled_before_native_measurement"
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-ci-summary.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-ci-summary.json.gz",
+      "original_commit": null,
+      "content_bytes": 336976,
+      "content_sha256": "78bf9fd3bfa5e19f5e21bfef18d1a71b40ae2c005fb029430f07de2cdce8aa11",
+      "archive_bytes": 48805,
+      "archive_sha256": "1c8f6de00b61b55c4d229c5ffca2da2e259e2ed629037b5d5d26911b40e5a783",
+      "summary": {
+        "source_commit": "d4f4e82f7a8bcc8302f959b681d531c99a9e2611",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "three_environment_metadata_ci_passed"
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux-baseline-selection.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "34ddce171a4ef24838f1600fb72be8e6785957a8f472f25a29e3da79c1ed277c",
+      "archive_bytes": 245,
+      "archive_sha256": "b26077862690c8db38a2bbe79225ba4c01abf8944bc5383bd79f15bf2fc466f5",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07",
+        "effective_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07",
+        "report_sha256": "403daaebf5755d0f45f29c30312abe5eacb6a62793b9aac3dde343f2a323360f",
+        "complete": true
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux-receipt.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux-receipt.json.gz",
+      "original_commit": null,
+      "content_bytes": 781,
+      "content_sha256": "d25b194e45b256e16c07b5be7e6328c34e3d83f2e3f9b767504b745f0e3e3c9d",
+      "archive_bytes": 434,
+      "archive_sha256": "5b87a1ba91e730afe209c487431f9b20799e80069ada7250b5925c0a345c89c8",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41358876501",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 40.91216599999825,
+          "candidate/version": 40.709708000008504,
+          "candidate/context": 184.3269199999895,
+          "candidate/cache": 239.67205700000704,
+          "baseline/help": 40.42499499996666,
+          "baseline/version": 39.60524000001442,
+          "baseline/context": 183.70350600002894,
+          "baseline/cache": 236.06825600006687
+        },
+        "report_sha256": "403daaebf5755d0f45f29c30312abe5eacb6a62793b9aac3dde343f2a323360f"
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux-startup.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 191273,
+      "content_sha256": "403daaebf5755d0f45f29c30312abe5eacb6a62793b9aac3dde343f2a323360f",
+      "archive_bytes": 34819,
+      "archive_sha256": "2b9651b8b6396d929b43d61df03fb77e339f7d79ec80f74486b82571721636e8",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 40.91216599999825,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 40.709708000008504,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 184.3269199999895,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 239.67205700000704,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 40.42499499996666,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 39.60524000001442,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 183.70350600002894,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 236.06825600006687,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux-stream.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 56089,
+      "content_sha256": "564190e0dd38db35fa7dee42c8166110507c9a16829a92198b5c1c583c511b89",
+      "archive_bytes": 7160,
+      "archive_sha256": "5b6a72b79e5825ea051553487ab1c385d8a624981d1adedaf5bc572c529b2db3",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            524288,
+            655360
+          ],
+          "upper_bound_bytes": [
+            438272,
+            524288,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 51007488,
+            "pretransfer_peak_rss_bytes": 51445760,
+            "peak_rss_bytes": 51445760,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 438272,
+            "elapsed_seconds": 0.09043408100001216,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 45494272,
+            "pretransfer_peak_rss_bytes": 45494272,
+            "peak_rss_bytes": 46018560,
+            "extra_rss_lower_bound_bytes": 524288,
+            "extra_rss_upper_bound_bytes": 524288,
+            "elapsed_seconds": 1.3847442729999102,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 45506560,
+            "pretransfer_peak_rss_bytes": 45506560,
+            "peak_rss_bytes": 46161920,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 5.523858888999939,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux311-installation.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 4049,
+      "content_sha256": "23ef09b341125538683d09637edc086c4a70550d8c6dcd64f8864ed9a9bd456e",
+      "archive_bytes": 1383,
+      "archive_sha256": "cb541ceadbcf7e5b26bd39e8ffa82017e897d385b72b042c3a58b2d67270cd8c",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-linux314-installation.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 4013,
+      "content_sha256": "60bd8df6b66122a7224c023edf0e124715325eb61a4ed8a3ba4d0de84956bbe6",
+      "archive_bytes": 1344,
+      "archive_sha256": "1cb68ff8171485c2c7e86cca559d616ec8bcda6d8f1f06ea6c2591f29d064da5",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-metadata-completed-macos311-installation.json",
+      "archive": "raw/p02-1-pr13-metadata-completed-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3979,
+      "content_sha256": "14eec57a52b1f169899830c90e745645182dbe182b4df217a09ca29a1e07e43d",
+      "archive_bytes": 1354,
+      "archive_sha256": "34d58ffaf4301e007482abb0cddba1dc86e9c14b93b2c9b5181abd8e5fb41eb8",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-ci-summary.json",
+      "archive": "raw/p02-1-pr13-opened-ci-summary.json.gz",
+      "original_commit": null,
+      "content_bytes": 336725,
+      "content_sha256": "e7df1e16458de587654edd9658997ad81d06beef10a596a55748744ec3523811",
+      "archive_bytes": 48394,
+      "archive_sha256": "a7324cb19db52a838119df2da578cdf7f8a421feb0fbf0c5b6779aea3009f81c",
+      "summary": {
+        "source_commit": "d4f4e82f7a8bcc8302f959b681d531c99a9e2611",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "three_environment_source_ci_passed"
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux-baseline-selection.json",
+      "archive": "raw/p02-1-pr13-opened-linux-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "d77338b8f984cabce1111ddb66c552644a0bc7da287fdf9a5108c41a680c81ff",
+      "archive_bytes": 245,
+      "archive_sha256": "94a85a52f07702b2446bcd504e344f60343b519f489ce5fed195a8d35ad45521",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07",
+        "effective_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07",
+        "report_sha256": "3512dfebe3a44530a8c4ff8036a47131f065435b4c461a9e22cca9fbbd68f2eb",
+        "complete": true
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux-receipt.json",
+      "archive": "raw/p02-1-pr13-opened-linux-receipt.json.gz",
+      "original_commit": null,
+      "content_bytes": 781,
+      "content_sha256": "97cf19f81c2fa35cf328deb4e856759a52b2bf2fd19ea91c0e1d20514c773277",
+      "archive_bytes": 436,
+      "archive_sha256": "34c75c49ff5006c380e3d1be59b8c9bda134daf5a2aa7d0feca92789c7e55f0c",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41358541265",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 31.87316399998963,
+          "candidate/version": 30.75104000004103,
+          "candidate/context": 130.4210250000324,
+          "candidate/cache": 365.9347520000438,
+          "baseline/help": 31.080272999929548,
+          "baseline/version": 30.647519000012835,
+          "baseline/context": 131.04454899996654,
+          "baseline/cache": 341.91757100006726
+        },
+        "report_sha256": "3512dfebe3a44530a8c4ff8036a47131f065435b4c461a9e22cca9fbbd68f2eb"
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux-startup.json",
+      "archive": "raw/p02-1-pr13-opened-linux-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 191432,
+      "content_sha256": "3512dfebe3a44530a8c4ff8036a47131f065435b4c461a9e22cca9fbbd68f2eb",
+      "archive_bytes": 34634,
+      "archive_sha256": "fdd2631fc1ab52f7e5e2c4f1ca6c4ed0254c8eb7f26a1629556308c872839b79",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 31.87316399998963,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 30.75104000004103,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 130.4210250000324,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 365.9347520000438,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 31.080272999929548,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 30.647519000012835,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 131.04454899996654,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 341.91757100006726,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux-stream.json",
+      "archive": "raw/p02-1-pr13-opened-linux-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 56090,
+      "content_sha256": "9c5ce9a14fe77f4bb16dbe39d23030eb68009950d01ba29edd0f394766091915",
+      "archive_bytes": 7158,
+      "archive_sha256": "32f457b4579aecae729e6adf6216afa510e8368e1c78b043f164f9532d065108",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            524288,
+            655360
+          ],
+          "upper_bound_bytes": [
+            167936,
+            524288,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 52228096,
+            "pretransfer_peak_rss_bytes": 52396032,
+            "peak_rss_bytes": 52396032,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 167936,
+            "elapsed_seconds": 0.04983876500000406,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 46305280,
+            "pretransfer_peak_rss_bytes": 46305280,
+            "peak_rss_bytes": 46829568,
+            "extra_rss_lower_bound_bytes": 524288,
+            "extra_rss_upper_bound_bytes": 524288,
+            "elapsed_seconds": 0.7486634460000232,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 46338048,
+            "pretransfer_peak_rss_bytes": 46338048,
+            "peak_rss_bytes": 46993408,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 3.0300421470000174,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux311-installation.json",
+      "archive": "raw/p02-1-pr13-opened-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 4049,
+      "content_sha256": "204ea1ee2e6ff93852c5dc36f010a12877b5c1681c3096edda39c029547d37c3",
+      "archive_bytes": 1383,
+      "archive_sha256": "744b40132b014171cc5c385f32c75ef895c6077e9661e31a19f9e8f4308231e2",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-linux314-installation.json",
+      "archive": "raw/p02-1-pr13-opened-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 4013,
+      "content_sha256": "ff77c5a7e67d08559a13f0089e42408bfdff2d1736148b38f543de855c00ec5b",
+      "archive_bytes": 1346,
+      "archive_sha256": "e3b98688fce0088e7462a7e920a0ac537a1a202659846ab05a87bc5dcee19fbc",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-1-pr13-opened-macos311-installation.json",
+      "archive": "raw/p02-1-pr13-opened-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3979,
+      "content_sha256": "23d6011b874a0af7f96ec833fb4142888b7d878c6979338b989ad05510d2b43d",
+      "archive_bytes": 1352,
+      "archive_sha256": "31b201225d3e58e3394f6db5ab991d8fc5a696ce2a541af32c73ecfd50f115ca",
+      "summary": {
+        "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
       }
     },
     {

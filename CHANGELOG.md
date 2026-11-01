@@ -19,7 +19,7 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-11-01
 
-- P02-1 çalışma dalında yerel `datasets inspect/verify` ve ortak Python API: taşınabilir Manifest v1, descriptor ile yeniden hash, root dışında 0600/no-clobber yayın, küçük text/JSON/NDJSON özeti ve uyuşmazlık exit 7. Kod review’ları, üç temiz kurulum turu ve kaynak bağlı native/gerçek kanıt kabulü tamamlandı; nihai PR/CI kabulü sürüyor; development teslimi veya yayın değildir. Upload ve veri formatı değerlendirmesi eklenmedi.
+- P02-1 çalışma dalında yerel `datasets inspect/verify` ve ortak Python API: taşınabilir Manifest v1, descriptor ile yeniden hash, root dışında 0600/no-clobber yayın, küçük text/JSON/NDJSON özeti ve uyuşmazlık exit 7. Kod review’ları, üç temiz kurulum turu ve kaynak bağlı native/gerçek kanıt kabulü tamamlandı; üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti, PR #13 kullanıcı incelemesindedir; development teslimi veya yayın değildir. Upload ve veri formatı değerlendirmesi eklenmedi.
 
 - `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam; PR #12 development teslimi tamam, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
 

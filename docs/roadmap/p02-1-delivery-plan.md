@@ -1,6 +1,6 @@
 # P02-1 teslim planı
 
-**Durum:** P02-1a/b/c yerelde verified; ürün kodu ve kod review’ları tamam, P02-1d son kabulü in_progress, epik partial. **Güncellendi:** 2026-11-02. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
+**Durum:** P02-1a/b/c/d ve epik çalışma dalında verified; native, iki review turu/adım, üç ortam source/metadata CI ve kalıcı kanıt kapanışı tamam. PR #13 kullanıcı review/merge’ünü bekler. **Güncellendi:** 2026-11-02. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
 
 ## Amaç ve inceleme sonucu
 
@@ -24,7 +24,7 @@ B15, mevcut araştırma kanıtı v1 biçimini/isimlerini/saklama anlamını değ
 | 2 | [P02-1b](tasks/p02-1b-manifest-contract.md): strict Manifest v1, canonical digest, path/collision parser ve sabit oracle | Tamam: ADR-0023 Accepted; domain/parser, bağımsız golden/negatif oracle ve iki fresh tur; 67ea66f–fc16ca1 |
 | 3 | [P02-1c](tasks/p02-1c-descriptor-dataset-scan.md): bounded descriptor envanter/hash/son tarama ve verify çekirdeği | Tamam: gerçek filesystem/race/byte/deadline ve ortak descriptor cleanup düzeltmeleri, iki fresh tur; 5695c62–a20c01f |
 | 4 | [P02-1d](tasks/p02-1d-dataset-inspection-cli.md): no-clobber yayın, public API/CLI, örnekler ve tüm hata yüzeyi | Tamam: atomik yayın/kill, API/CLI ve küçük çıktı; iki fresh tur ve düzeltme teyidi; 119e255–de2bf23. Kartın final kabulü adım 5’te sürer |
-| 5 | P02-1d bütünleşik kapanışı: kurulu paket, kaynak ölçümü, tam takım, belge/PR/CI | Kod/araçlar, iki fresh kod review turu, üç temiz kurulum, kaynak bağlı native ve iki gerçek kanıt incelemesi tamam. 2729ea3 tam takım 4.202 passed/1 skip; sonraki CLI düzeltmesi 425 ilgili testle doğrulandı; nihai PR/CI ve Linux saklama açık. [Kabul eşlemesi](../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) |
+| 5 | P02-1d bütünleşik kapanışı: kurulu paket, kaynak ölçümü, tam takım, belge/PR/CI | Kod/araçlar, iki fresh kod review turu, üç temiz kurulum, kaynak bağlı native ve iki gerçek kanıt incelemesi tamam. 2729ea3 tam takım 4.202 passed/1 skip; sonraki CLI düzeltmesi 425 ilgili testle doğrulandı; üç ortam source/metadata CI ve Linux kalıcı saklama da geçti; PR #13 kullanıcı review/merge’ünde. [Kabul eşlemesi](../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) |
 
 Her adımda önce uygulama + anlamlı test + commit yapılır. Sonra birbiriyle taze bağlamda iki review turu yürür; her turda işin riskine göre bağımsız ajanlar dosya/güvenlik, sözleşme/UX ve test/kanıt boyutlarını inceler. Her bulgu mevcut kodla doğrulanır; geçersiz olan kısa nedenle kapatılır. Doğrulanmış bulgular düzeltilip test/commit edilir; ikinci tur yeni reviewer’larla yapılır. Ek doğrulanmış düzeltme kontrolü gerekiyorsa gerekçesi kayda geçer. Önceki adım iki turla bitince bir sonrakine otomatik geçilir; yeni karar veya somut engel dışında akış durmaz.
 
@@ -40,10 +40,10 @@ Hazırlık belgeleri de iki fresh turdan geçirilir; tur/commit/sonuçlar [hazı
 6. Başarısız denemeler dahil özgün ölçüm baytları kanıt kataloğuna alınır; manifest/indeks/hashes, önceki 247 arşiv uyumu, izin listesi ve kaynağa bağlı referanslar denetlenir. Büyük JSON açılımları genel review’e dökülmez. B15 bu yeni kayıtlar öncesinde bitmiş olmalıdır.
 7. Sonuçlar README/CLI/reference/modül/matris/current/faz/kartlara gerçek durumuyla yazılır. P02-1 tüm kabulden önce verified olmaz. PR tek kez development hedefiyle açılır, son kaynak üç ortam/aggregate/branch-policy ve Linux tanısı izlenir; raw/receipt/witness kalıcı saklama takibi yapılır. User merge/release ajan tarafından başlatılmaz.
 
-## Ölçümü beklemeden tamamlanan kapanış
+## Ölçüm öncesi kapanış — tarihsel
 
 Ürün kodu ve iki fresh kod review turu tamamlandı; açık ürün geliştirme bulgusu yoktur. Son kaynak tam takım, paket/kurulum, belge durumları, [madde bazlı kabul eşlemesi](../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) ve PR hazırlığı referans ölçümünü beklemez. Ölçüm standardı yalnız gerçek performans koşularını yoğun test/build ile eşzamanlı çalıştırmayı dışlar. Başka işler sürerken bu bağımsız kapanışlar yapılır; startup/jobs/dataset/raw ve ilk görev süre kabulü makine boşalınca seri alınır. Epik/P02-1d tüm açık kabuller bitmeden verified olmaz.
 
 ## Mevcut teslim sınırı
 
-P02-0 kapanış commit’i korunur. P02-1a/b/c yerelde verified; P02-1d public CLI/Python/yayın ve hash benchmark’ı uygulandı, iki fresh kod review turu ve iki temiz kurulum turu tamamlandı. Son kaynak bağlı ölçümler ve iki gerçek kanıt incelemesi tamamlandı; nihai PR/CI ve Linux saklama kabulü açık kalır. ADR-0023 Accepted; P02-1 epic partial kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.
+P02-0 kapanış commit’i korunur. P02-1a/b/c yerelde verified; P02-1d public CLI/Python/yayın ve hash benchmark’ı uygulandı, iki fresh kod review turu ve üç yerel temiz kurulum turu tamamlandı. Son kaynak bağlı ölçümler, iki gerçek kanıt incelemesi ve üç ortam source/metadata CI/kalıcı saklama kabulü tamamlandı. ADR-0023 Accepted; P02-1 ve bütün alt kartları çalışma dalında verified, PR #13 kullanıcı review/merge’ünü bekler. Son belge commit’inin ek CI ve kullanıcı merge koşusunun arşivi ADR-0019’a göre açık takipte kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.

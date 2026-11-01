@@ -40,6 +40,6 @@ Domain/parser contract, golden byte/digest vektörleri, lazy-import/core boundar
 
 ## Teslim kaydı
 
-- PR/commit: [67ea66f](https://github.com/HodeTech/Yorunge/commit/67ea66f), [de366c2](https://github.com/HodeTech/Yorunge/commit/de366c2), [787fc7c](https://github.com/HodeTech/Yorunge/commit/787fc7c), [fc16ca1](https://github.com/HodeTech/Yorunge/commit/fc16ca1); aynı nihai P02-1 PR’ında yerel teslim.
+- PR/commit: [67ea66f](https://github.com/HodeTech/Yorunge/commit/67ea66f), [de366c2](https://github.com/HodeTech/Yorunge/commit/de366c2), [787fc7c](https://github.com/HodeTech/Yorunge/commit/787fc7c), [fc16ca1](https://github.com/HodeTech/Yorunge/commit/fc16ca1); [PR #13](https://github.com/HodeTech/Yorunge/pull/13) içindeki yerel teslim; kullanıcı review/merge’ünü bekler.
 - Sonuç: [Adım 2 kabulü](../../research/p02-1-implementation-validation.md#p02-1b--manifest-modeli-ve-parser-kapanışı), 124 manifest + 216 core boundary = 340 test, Ruff format/lint ve 75 kaynak dosyasında strict mypy geçti. İki fresh turdaki iki test oracle açığı kapatıldı; ürün kusuru doğrulanmadı. Golden bayt/digest bağımsız shasum ile sabit; koruma çıkarma deneyi iki yeni duplicate negatifinin duyarlılığını gösterdi.
-- Kalan sınır: Gerçek filesystem envanteri/verify P02-1c; atomik artifact/API/CLI, paket ve nihai performans/CI P02-1d. Model bütünlüğü güncel dosya veya execution yetkisi kanıtı değildir.
+- Kalan sınır: Gerçek filesystem envanteri/verify P02-1c; atomik artifact/API/CLI, paket ve nihai performans/CI P02-1d kapsamında ayrıca tamamlandı. Model bütünlüğü güncel dosya veya execution yetkisi kanıtı değildir.

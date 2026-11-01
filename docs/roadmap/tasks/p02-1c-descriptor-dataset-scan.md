@@ -41,6 +41,6 @@ Contract ve gerçek filesystem integration/process/race testleri, anlamlı byte/
 
 ## Teslim kaydı
 
-- PR/commit: [5695c62](https://github.com/HodeTech/Yorunge/commit/5695c62), [b489516](https://github.com/HodeTech/Yorunge/commit/b489516), [06223b9](https://github.com/HodeTech/Yorunge/commit/06223b9); aynı nihai P02-1 PR’ına girecek yerel teslim.
+- PR/commit: [5695c62](https://github.com/HodeTech/Yorunge/commit/5695c62), [b489516](https://github.com/HodeTech/Yorunge/commit/b489516), [06223b9](https://github.com/HodeTech/Yorunge/commit/06223b9); [PR #13](https://github.com/HodeTech/Yorunge/pull/13) içindeki yerel teslim; kullanıcı review/merge’ünü bekler.
 - Sonuç: [Adım 3 kapanışı](../../research/p02-1-implementation-validation.md#p02-1c--descriptor-envanteri-ve-verify-çekirdeği), iki fresh tur ve iki ek hedefli teyit tamamlandı. 901 geniş komşu test + ek yerel config/env/state bağımsızlık guard’ı geçti; 77 kaynakta strict mypy ve Ruff format/lint geçti. Gerçek FD takibi, 4.096 dosya/root dahil 4.096 dizin sınırları ve cancel/close/race retleri kanıtlıdır.
-- Kalan sınır: Public API/CLI, no-clobber artifact yayını, kurulu paket ve nihai performans/CI P02-1d’dedir. Tarama atomik snapshot veya gelecekteki execution/upload izni değildir.
+- Kalan sınır: Public API/CLI, no-clobber artifact yayını, kurulu paket ve nihai performans/CI aynı pakette P02-1d kabulüyle ayrıca tamamlandı. Tarama atomik snapshot veya gelecekteki execution/upload izni değildir.

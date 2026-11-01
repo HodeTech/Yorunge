@@ -41,6 +41,6 @@ Araç contract testleri, format/lint, belge/ajan ve gerçek arşiv eşliği; de�
 
 ## Teslim kaydı
 
-- PR/commit: [694a7b7](https://github.com/HodeTech/Yorunge/commit/694a7b7), [b301682](https://github.com/HodeTech/Yorunge/commit/b301682), [ec40164](https://github.com/HodeTech/Yorunge/commit/ec40164); tek nihai P02-1 PR’ına girecek yerel teslim, PR/merge henüz yok.
+- PR/commit: [694a7b7](https://github.com/HodeTech/Yorunge/commit/694a7b7), [b301682](https://github.com/HodeTech/Yorunge/commit/b301682), [ec40164](https://github.com/HodeTech/Yorunge/commit/ec40164); [PR #13](https://github.com/HodeTech/Yorunge/pull/13) içindeki yerel teslim; kullanıcı review/merge’ünü bekler.
 - Sonuç: [İki fresh kod turu, iki ek fresh teyit ve kapanış kanıtı](../../research/p02-1-implementation-validation.md#p02-1a-kapanışı--yerel-ve-bağımsız-bakım). 425 ilgili test, format/lint/mypy, 247 eski entry/arşiv byte eşliği ve 248 güncel arşiv verifier kabulü geçti. 256→257 ve gerçek 4.096 kayıt kapasitesi üç fresh süreçli yoğun profilde doğrulandı; raw/decoded read-ahead P2’leri gerçek sayaç regresyonlarıyla kapatıldı.
-- Kalan sınır: Bu yalnız B15 bakım kabulüdür. Yeni ürün manifest/scan/CLI, tam paket/CI ve fresh kaynak bağlı startup/jobs P02-1d’nin kendi kapanışıdır; eski kaynak referansları bilinçli reddedilir. Üç dosyanın I/O kesintisinde birlikte transaction olduğu iddia edilmez.
+- Kalan sınır: Bu yalnız B15 bakım kabulüdür. Ürün manifest/scan/CLI, tam paket/CI ve fresh kaynak bağlı startup/jobs, aynı pakette P02-1d kabulüyle ayrıca tamamlandı; eski kaynak referansları bilinçli reddedilir. Üç dosyanın I/O kesintisinde birlikte transaction olduğu iddia edilmez.

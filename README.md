@@ -89,7 +89,7 @@ Bu açık komutlar private state oluşturabilir. Execution planı ayrı v2 kayd�
 
 ## Yerel dosya manifesti
 
-P02-1 çalışma dalında `datasets inspect/verify` uygulanmıştır; iki fresh kod review turu, üç temiz wheel/sdist kurulum turu ve kaynak bağlı M5/native kabulü tamamlandı. Nihai development PR/CI kabulü sürüyor. Henüz development teslimi veya sürüm yayını değildir. macOS/Linux yerel diskte, anahtar/config/state/ağ gerektirmeyen sentetik örnek:
+P02-1 çalışma dalında `datasets inspect/verify` uygulanmıştır; iki fresh kod review turu, üç temiz wheel/sdist kurulum turu ve kaynak bağlı M5/native kabulü tamamlandı. Üç ortam source/metadata CI ve Linux kanıt saklama kabulü de geçti; P02-1 çalışma dalında verified ve [PR #13](https://github.com/HodeTech/Yorunge/pull/13) kullanıcı incelemesindedir. Henüz development teslimi veya sürüm yayını değildir. macOS/Linux yerel diskte, anahtar/config/state/ağ gerektirmeyen sentetik örnek:
 
 ```sh
 demo_dir=$(python3 -c 'import tempfile; from pathlib import Path; print(Path(tempfile.mkdtemp(prefix="yorunge-demo-")).resolve())')

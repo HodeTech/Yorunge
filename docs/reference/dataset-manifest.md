@@ -1,6 +1,6 @@
 # Yerel veri manifesti ve doğrulama
 
-**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın çalışma dalında uygulandı; kod review’ları, üç temiz kurulum turu ve kaynak bağlı native kabulü tamam, PR/CI kabulü sürüyor. **Güncellendi:** 2026-11-02. Bu belge implementasyonun kanonik sözleşmesidir; henüz development teslimi veya yayın kaydı değildir.
+**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın çalışma dalında uygulandı; kod review’ları, üç temiz kurulum turu ve kaynak bağlı native kabulü tamam, üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti; [PR #13](https://github.com/HodeTech/Yorunge/pull/13) kullanıcı incelemesindedir. **Güncellendi:** 2026-11-02. Bu belge implementasyonun kanonik sözleşmesidir; henüz development teslimi veya yayın kaydı değildir.
 
 ## Public yüzey
 

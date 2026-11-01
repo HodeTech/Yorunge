@@ -1,7 +1,7 @@
 ---
 id: P02-1d
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-1a, P02-1c]
 capabilities: [C03, C04, C13]
@@ -12,7 +12,7 @@ capabilities: [C03, C04, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; iki fresh kod review turu, üç temiz kurulum turu ve kaynak bağlı native kabulü tamamlandı. Kartın nihai PR/CI ve Linux saklama kabulü açık kalır.
+Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; iki fresh kod review turu, üç temiz kurulum turu ve kaynak bağlı native kabulü tamamlandı. Üç ortam source/metadata CI ve Linux kalıcı kanıt kabulü geçti; [PR #13](https://github.com/HodeTech/Yorunge/pull/13) kullanıcı review/merge’ünü bekler.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,4 +42,6 @@ Adım 4 commit ve iki fresh review; ardından final kabul/adım 5 commit ve iki 
 
 ## Teslim kaydı
 
-ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI, ölçüm araçları ve iki fresh kod review turu tamamlandı. Üç temiz wheel/sdist kurulum turu, ilk görev ve kaynak bağlı startup/jobs/dataset/raw kabulü geçti. Tam takım 2729ea3’te 4.202 passed/1 Linux-native skip; sonraki CLI düzeltmesi 425 ilgili testle doğrulandı. İki bağımsız gerçek kanıt incelemesinde yeni bulgu yok. Son development PR/CI ve Linux saklama koşulları açık olduğundan bu kart in_progress’tir. Madde bazlı [kabul eşlemesi](../../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) kanoniktir.
+- PR/commit: [PR #13](https://github.com/HodeTech/Yorunge/pull/13), uygulama 119e255–a70fad2, native/kanıt d4f4e82; tek development PR’ı, kullanıcı review/merge’ünü bekler.
+- Sonuç: İki fresh kod turu ve gerçek kanıt teyitleri; üç yerel wheel/sdist kurulum turu; 24 native dataset süreci, ilk görev 0,275 s, kaynak bağlı startup/jobs ve raw kabulü geçti. Source ve metadata CI’ın her birinde Linux 3.11/3.14 4.212 passed, macOS 4.211 passed/1 Linux-native skip, altı temiz kurulum ve aggregate başarılı. [Nihai kabul kaydı](../../research/p02-1-implementation-validation.md#nihai-pr-ve-ci-kapanışı) yedi maddeyi ve 283 kayıpsız arşivi bağlar; kart çalışma dalında verified.
+- Kalan sınır: Son belge/kanıt commit’inin ek CI ve kullanıcı merge koşusu arşivi ADR-0019 açık takip kuralıyla sonraki yetkili dalda tamamlanacak. Linux startup aşımları başarısız tanıdır; M5 başarısı bütün host garantisi değildir. Upload/ML veri biçimi/execution, atomik snapshot/same-UID sandbox veya fiziksel güç kesintisi kabulü yoktur. Development merge’ü ve release kullanıcıdadır.
