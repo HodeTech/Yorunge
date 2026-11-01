@@ -552,3 +552,7 @@ DTO hedef yorumunda gerçek hata yeniden üretildi: hem PlatformContextDiscovery
 ### Son DTO/indeks fix’i — birinci fresh review
 
 0d0f0d8 üstünde pr12_target_final_r1 bağımsız inceledi; yeni doğrulanmış bulgu yok. İki DTO’da yalnız normalize_target kaynaklı kontrollü hata ValueError’a çevriliyor; canonical eşitlik ve diğer invariants korunuyor. Sekiz negatif root-validation oracle’ı ve geçerli wire roundtrip, preparation/target-call ayrımı doğru. Current artık kabul metriklerini kopyalamıyor, kanonik kayıt ve sıradaki P02-1’e yöneliyor. 212 contract/gate testi ve iki temiz runtime kurulum geçti; farklı fresh ikinci review ve yeni son kaynak referansı sonraki adımdır.
+
+### Son DTO/indeks fix’i — ikinci fresh review
+
+d648c60 üstünde farklı fresh pr12_target_final_r2 bağımsız inceledi; yeni doğrulanmış bulgu yok. İki DTO’nun sabit root-validation hatası, canonical eşitlik ve raises hazırlığı doğru; sekiz odaklı regresyon geçti. Ayrı pr12_sonar_r2_ci fact-check’i 203 arşivi, altı ZIP digest’ini ve 12 özgün ZIP/dist/gzip kaydını eşleştirdi; source/edit kurulum, cache tanısı ve RSS sayıları doğru. Yeni DTO kaynağı eski M5 kaydıyla kabul edilmedi. İki ajan salt okudu; ağ, build, tam suite veya benchmark çalıştırmadı.
