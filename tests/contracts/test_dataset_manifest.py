@@ -323,3 +323,32 @@ def test_shared_input_messages_work_for_dataset_and_execution_callers(code):
 def test_raw_manifest_input_type_is_checked_before_bytes_coercion(value):
     with pytest.raises(ValueError):
         DatasetManifest.model_validate_json(value)
+
+
+@pytest.mark.parametrize("attack", ["file-count", "total", "unsorted", "duplicate-path"])
+def test_independent_valid_digest_cannot_hide_invalid_aggregates_or_path_order(attack):
+    value = json.loads(GOLDEN.read_bytes())
+    if attack == "file-count":
+        value["file_count"] = 2
+    elif attack == "total":
+        value["total_bytes"] = 9
+    elif attack == "unsorted":
+        value["files"].reverse()
+    else:
+        value["files"][1]["path"] = "a.txt"
+    del value["digest"]
+    # Independent wire signing: do not call the producer/model's digest helpers.
+    body = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    value["digest"] = hashlib.sha256(body).hexdigest()
+    content = encoded(value)
+    with pytest.raises(ValueError):
+        DatasetManifest.model_validate_json(content)
+
+
+@pytest.mark.parametrize("scalar", [False, 0.0])
+def test_strict_zero_size_rejects_values_that_would_coerce_to_valid_golden_digest(scalar):
+    value = json.loads(GOLDEN.read_bytes())
+    value["files"][1]["size"] = scalar
+    content = encoded(value)
+    with pytest.raises(ValueError):
+        DatasetManifest.model_validate_json(content, strict=False)
