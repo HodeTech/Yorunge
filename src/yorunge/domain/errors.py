@@ -85,7 +85,9 @@ MESSAGES: dict[ErrorCode, str] = {
         "Bu ortam güvenli yerel dosya erişimini desteklemiyor. "
         "Desteklenen macOS/Linux yerel disk ortamını kullanın."
     ),
-    "input_invalid": "Girdi yolu veya dosya geçersiz. Kökü ve normal dosya koşullarını kontrol edin.",
+    "input_invalid": (
+        "Girdi yolu veya dosya geçersiz. Kökü ve normal dosya koşullarını kontrol edin."
+    ),
     "input_changed": (
         "Dosya veya kök değişti. Etkin yazıcıları durdurun; güncel girdileri yeniden denetleyin."
     ),
