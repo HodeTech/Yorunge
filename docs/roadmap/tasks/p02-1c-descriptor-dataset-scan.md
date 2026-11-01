@@ -1,14 +1,14 @@
 ---
 id: P02-1c
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P01-3b, P02-1b]
 capabilities: [C03, C04]
 ---
 # P02-1c — Descriptor envanteri ve güncel byte doğrulaması
 
-**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). P02-1b yerelde verified; ADR Accepted, descriptor scan/verify uygulaması başladı.
+**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). Descriptor scan/verify yerelde ve iki fresh review turuyla tamamlandı; public API/CLI/yayın sonraki karttadır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,4 +41,6 @@ Contract ve gerçek filesystem integration/process/race testleri, anlamlı byte/
 
 ## Teslim kaydı
 
-Henüz uygulanmadı; Uygulama başladı; commit/test ve iki fresh review turu tamamlanmadan verified değildir.
+- PR/commit: [5695c62](https://github.com/HodeTech/Yorunge/commit/5695c62), [b489516](https://github.com/HodeTech/Yorunge/commit/b489516), [06223b9](https://github.com/HodeTech/Yorunge/commit/06223b9); aynı nihai P02-1 PR’ına girecek yerel teslim.
+- Sonuç: [Adım 3 kapanışı](../../research/p02-1-implementation-validation.md#p02-1c--descriptor-envanteri-ve-verify-çekirdeği), iki fresh tur ve iki ek hedefli teyit tamamlandı. 901 geniş komşu test + ek yerel config/env/state bağımsızlık guard’ı geçti; 77 kaynakta strict mypy ve Ruff format/lint geçti. Gerçek FD takibi, 4.096 dosya/root dahil 4.096 dizin sınırları ve cancel/close/race retleri kanıtlıdır.
+- Kalan sınır: Public API/CLI, no-clobber artifact yayını, kurulu paket ve nihai performans/CI P02-1d’dedir. Tarama atomik snapshot veya gelecekteki execution/upload izni değildir.

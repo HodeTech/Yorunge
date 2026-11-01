@@ -1,7 +1,7 @@
 ---
 id: P02-1d
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-1a, P02-1c]
 capabilities: [C03, C04, C13]
@@ -42,4 +42,4 @@ Adım 4 commit ve iki fresh review; ardından final kabul/adım 5 commit ve iki 
 
 ## Teslim kaydı
 
-Henüz uygulanmadı; ADR-0023 onaylı; önceki kartların kabulü bekleniyor. Nihai development PR’ı açılmadı.
+ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI uygulaması başladı. Nihai development PR’ı açılmadı.

@@ -5,6 +5,7 @@ import errno
 import hashlib
 import os
 import socket
+import sqlite3
 import stat
 import unicodedata
 from pathlib import Path
@@ -758,3 +759,27 @@ def test_unrelated_caller_exception_cannot_hide_normal_close_failure(tmp_path, m
     assert injected
     assert live == set()
     assert peak[0] <= 64
+
+
+def test_local_scan_and_compare_never_require_config_secret_or_state(tmp_path, monkeypatch):
+    from yorunge.adapters import files
+
+    (tmp_path / "data").write_bytes(b"abc")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("local dataset scan consulted unrelated config/credential/state")
+
+    original_getitem = type(os.environ).__getitem__
+
+    def secret_getitem(environment, key):
+        if key in ("EVREN_PLATFORM_API_KEY", "EVREN_LLM_API_KEY"):
+            forbidden()
+        return original_getitem(environment, key)
+
+    monkeypatch.setattr(type(os.environ), "__getitem__", secret_getitem)
+    monkeypatch.setattr(sqlite3, "connect", forbidden)
+    monkeypatch.setattr(files, "load_config", forbidden)
+    monkeypatch.setattr(Path, "home", forbidden)
+    before = scan(tmp_path)
+    result = compare_manifests(before, scan(tmp_path), DatasetBudget())
+    assert result.matches is True
