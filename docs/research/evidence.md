@@ -1741,6 +1741,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-1-local-suite-v1.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "pytest_passed_4174_linux_native_skip_1", "source_commit": "e05eacb5ddb2a767ea9b2ad78afa7333b313d694"}`.
 
+## p02-1-startup-concurrent-v1
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `7d2a9d9010389f499b5ea411f4400916e85fde13918a12b8f1dc3273abb5455a`.
+**Yerel arşiv:** `raw/p02-1-startup-concurrent-v1.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "startup_reference_ineligible_concurrent_external_test", "source_commit": "44d98de93b6bc3174c250696190a32444ba8b67d"}`.
+
 ## p02-1a-evidence-catalog-profile
 
 **Tür:** `operation`.
