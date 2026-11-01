@@ -8373,6 +8373,160 @@
       }
     },
     {
+      "name": "p02-0-sonar-installation.json",
+      "archive": "raw/p02-0-sonar-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1176,
+      "content_sha256": "2a93faeae0bbeac837a41ae4964d0902e8fbc011d37d1fb03ea9d56b9e179a5e",
+      "archive_bytes": 492,
+      "archive_sha256": "afed51b23df9cc722875913d3eb473c9694ed82fbddddfc5b889a7bd6552eae3",
+      "summary": {
+        "source_commit": "08c846bd798369e01e8f2c5fb7c2b294ff0aa2a8",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-sonar-reference-jobs.json",
+      "archive": "raw/p02-0-sonar-reference-jobs.json.gz",
+      "original_commit": null,
+      "content_bytes": 130838,
+      "content_sha256": "c5dce9b066ef7cccbccfaffe8774effa55e2e60817be28dca212137e6dec3b97",
+      "archive_bytes": 23007,
+      "archive_sha256": "4e458e184da0ad444c921cc90e376870bd6789f9208f393abf5458ff702548ae",
+      "summary": {
+        "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 133.23725014925003,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 118.50324994884431,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 185.9057501424104,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 129.94191702455282,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p02-0-sonar-reference-startup.json",
+      "archive": "raw/p02-0-sonar-reference-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 182259,
+      "content_sha256": "16b97f22b29c154730f52e2232ca87804fc8b1930cec695d34247ac205ac3c13",
+      "archive_bytes": 27494,
+      "archive_sha256": "4acd88d2b83529153edea0109316fb887b9248ef087079f731c03fda4be4bac3",
+      "summary": {
+        "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 37.79600001871586,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 27.967125177383423,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 99.15220807306468,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 133.862208109349,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 36.93770803511143,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 28.341832803562284,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 93.19154196418822,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 142.0817500911653,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "startup-ci-control.json",
       "archive": "raw/startup-ci-control.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",

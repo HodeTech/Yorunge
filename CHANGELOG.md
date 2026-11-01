@@ -6,6 +6,8 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Fixed — 2026-11-01
 
+- PR metadata edit’inde required check’in native merge kutusunda Expected kalmasına karşı sabit `offline-core` ve her olayda gerçek üç ortam doğrulaması; source/metadata concurrency ayrımı korunur. Platform raw/DTO doğrulaması küçük eşdeğer yordamlarla sadeleştirildi; raises hazırlıkları hedef assertion dışına taşındı.
+
 - Discovery, credential ile karıştırılan yerel profil/hesap/proje tercihlerini ilk ağ isteğinden önce kontrollü reddeder; kısa sır proje URL’sine eklenmeden karşılaştırılır. LLM/Platform nihai dinamik sonuç alanları da seçili literal denetiminden geçer.
 - Hesap hazırlığında dolu Platform tercihleri normal config profiline aktarılır; yalnız seçili anahtarı çocuk sürece veren çalıştırılabilir discovery örneği ve önceki hazırlıklar için geçiş yolu eklendi.
 

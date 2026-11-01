@@ -508,3 +508,22 @@ Hash’ler account **a4e91a029e6e280896403fe8e5918b308415a86c02f3258896b4630b5b5
 ### Sonar ve CI — ikinci fresh review
 
 4145f92 üstünde farklı fresh pr12_sonar_r2_code ve pr12_sonar_r2_ci bağımsız inceledi; yeni doğrulanmış bulgu yok. Raw/DTO/secret ve negative-test eşdeğerliği, sabit full aggregate/concurrency/retarget kapısı, dar Sonar disposition ve R1 RSS fix’i doğru bulundu. İki contract modülündeki 144 vaka ayrıca geçti. Ana doğrulamada 195 hedefli + ayrı 230 genişletilmiş TLS/API/response testi ve 60 gerçek gate vakası başarılıdır; örtüşen ajan testleri yeni toplam diye eklenmez. Son kaynak 08c846b build’i wheel/sdist’i iki temiz runtime’a kurdu; bütün smoke’lar geçti. Native merge kutusu ve yeni M5 henüz bu sonraki adımın kanıtı değildir.
+
+### Sonar/CI son kaynak yerel kabulü
+
+Ürün/test/workflow kaynağı **08c846b**, yalnız belge farkı olan M5 snapshot’ı **c7895d5**. İki fresh review turu temiz; 195 ilgili + ayrı 230 genişletilmiş TLS/API/response testi ve 60 actual gate vakası geçti. Önceki 3.785 tam yerel takım c0c9673 öncesi kullanıcı fix’i kaynağına aittir; bu Sonar refaktöründe yeni tam yerel takım sayısı gibi sunulmaz. Son head’in gerçek üç ortam tam CI’ı ayrıca zorunludur.
+
+[İki temiz kurulum](evidence.md#p02-0-sonar-installation) bütün smoke’ları geçti: wheel **66 / 8ac4c83f061e534c602f6526d182ad5cac5546a8b1bd17f6b92624c98928d438**, sdist **414 / 68aac6605eac94027fd8205fc1a3cb365d2311831b88205b8cc294c64db4e598**. Yeni [startup](evidence.md#p02-0-sonar-reference-startup) ve [jobs](evidence.md#p02-0-sonar-reference-jobs) test/build bittikten sonra seri ölçüldü; aynı Apple M5 Max/arm64/macOS 27.0.1/CPython 3.11.18/internal SSD-APFS ve ayrı gerçek bc9532c tabanıdır. Aday wheel kurulumla aynı hash’tedir; before/after kaynak/kurulum/fixture değişmedi. İdeal idle/cache-empty veya başka host için kesin süre iddiası yoktur.
+
+| 30 süreç p95 | Aday ms | Taban ms | Bütçe ms |
+|---|---:|---:|---:|
+| help | 37,796 | 36,938 | 500 |
+| version | 27,967 | 28,342 | 500 |
+| context | 99,152 | 93,192 | 200 |
+| cache | 133,862 | 142,082 | 200 |
+| jobs normal/list | 133,237 | — | 200 |
+| jobs normal/show | 118,503 | — | 200 |
+| jobs dense/list | 185,906 | — | 200 |
+| jobs dense/show | 129,942 | — | 200 |
+
+**191 arşiv**, iki current-source M5 verifier, 179 dosya Ruff format/lint, 74 kaynak strict mypy, actionlint, 143 belge/6 skill/17 kart ve diff geçti. Kapanış fact-check’inde pr12_sonar_r2_ci üç dist/gzip/kurulum/61 runtime dosyasını, source/installed/fixture eşliğini ve gerçek tabanı bağımsız doğruladı; yeni provenance bulgusu yok. Bu önceki iki fresh turun yeniden sayılması değildir. Yeni source ve gerçek body-edit CI’ları tamamlanmadan **native merge engeli çözüldü** denmeyecek; gerçek merge kutusundaki required check ve düğme ayrıca gözlenecek. Probe kaynakları ve canlı receipt’ler değişmedi, yeni EVREN çağrısı yoktur.

@@ -1307,6 +1307,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-review-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 113.828832982108, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 72.70095800049603, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 23.530249949544668, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 21.815250162035227, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 119.78812492452562, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 74.72675014287233, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 23.412249982357025, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 22.404999937862158, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "042652c543e0a00b2128cc4e555fff44474dc3e4"}`.
 
+## p02-0-sonar-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `2a93faeae0bbeac837a41ae4964d0902e8fbc011d37d1fb03ea9d56b9e179a5e`.
+**Yerel arşiv:** `raw/p02-0-sonar-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "08c846bd798369e01e8f2c5fb7c2b294ff0aa2a8"}`.
+
+## p02-0-sonar-reference-jobs
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `c5dce9b066ef7cccbccfaffe8774effa55e2e60817be28dca212137e6dec3b97`.
+**Yerel arşiv:** `raw/p02-0-sonar-reference-jobs.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 185.9057501424104, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 129.94191702455282, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 133.23725014925003, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 118.50324994884431, "passed": true, "samples": 30}}, "passed": true, "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-0-sonar-reference-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `16b97f22b29c154730f52e2232ca87804fc8b1930cec695d34247ac205ac3c13`.
+**Yerel arşiv:** `raw/p02-0-sonar-reference-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 142.0817500911653, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 93.19154196418822, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 36.93770803511143, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 28.341832803562284, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 133.862208109349, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 99.15220807306468, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 37.79600001871586, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 27.967125177383423, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.
