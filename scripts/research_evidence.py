@@ -16,6 +16,7 @@ import statistics
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -103,14 +104,21 @@ def encode(value: object) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
 
 
+def read_stream_bounded(reader: Callable[[int], bytes], limit: int, message: str) -> bytes:
+    content = bytearray()
+    while len(content) <= limit:
+        block = reader(min(64 * 1024, limit + 1 - len(content)))
+        if not block:
+            return bytes(content)
+        content.extend(block)
+    raise ValueError(message)
+
+
 def read_bounded(path: Path, limit: int) -> bytes:
     if path.is_symlink() or not path.is_file():
         raise ValueError("expected a regular evidence file")
-    with path.open("rb") as stream:
-        content = stream.read(limit + 1)
-    if len(content) > limit:
-        raise ValueError("evidence size limit exceeded")
-    return content
+    with path.open("rb", buffering=0) as stream:
+        return read_stream_bounded(stream.read, limit, "evidence size limit exceeded")
 
 
 def research_directory(root: Path) -> Path:
@@ -1258,16 +1266,10 @@ def unpack(
     )
     archive = read_bounded(directory / "raw" / f"{item['name']}.gz", archive_limit)
     with gzip.GzipFile(fileobj=io.BytesIO(archive)) as stream:
-        decoded = bytearray()
-        while len(decoded) <= report_limit:
-            # read() may prefetch 8 KiB of decoded bytes beyond the requested limit.
-            block = stream.read1(min(64 * 1024, report_limit + 1 - len(decoded)))
-            if not block:
-                break
-            decoded.extend(block)
-        if len(decoded) > report_limit:
-            raise ValueError("decompressed evidence size limit exceeded")
-        content = bytes(decoded)
+        # read() may prefetch 8 KiB of decoded bytes beyond the requested limit.
+        content = read_stream_bounded(
+            stream.read1, report_limit, "decompressed evidence size limit exceeded"
+        )
     expected = entry(item["name"], content, archive, item.get("original_commit"))
     if json.dumps(expected, sort_keys=True) != json.dumps(item, sort_keys=True):
         raise ValueError(f"evidence hash or summary mismatch: {item['name']}")

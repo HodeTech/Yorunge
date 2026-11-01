@@ -1,6 +1,7 @@
 """Verify archived bytes and failure evidence without executing old measurements."""
 
 import gzip
+import io
 import json
 import runpy
 from pathlib import Path
@@ -399,6 +400,55 @@ def test_unpack_bounds_actual_gzip_decoding_to_remaining_budget_plus_one(
     with pytest.raises(ValueError, match="decompressed evidence size limit"):
         CHECKS["unpack"](directory, item, report_budget=remaining)
     assert produced == remaining + 1
+
+
+@pytest.mark.parametrize("remaining", [0, 1, 17, 4096, 8192])
+def test_unpack_bounds_actual_file_reads_to_remaining_gzip_budget_plus_one(
+    tmp_path, monkeypatch, remaining
+):
+    root, _, _ = setup_archive(tmp_path)
+    directory = root / "docs/research"
+    item = CHECKS["catalog"](directory)[0]
+    packed = directory / "raw/operation-budget.json.gz"
+    packed.write_bytes(bytes(range(256)) * 128)
+    original_open = Path.open
+    consumed = 0
+
+    class MeasuredFile(io.FileIO):
+        def read(self, size=-1):
+            nonlocal consumed
+            block = super().read(size)
+            consumed += len(block)
+            return block
+
+    def measured_open(path, mode="r", *args, **kwargs):
+        if path == packed and mode == "rb":
+            raw = MeasuredFile(path, "rb")
+            return raw if kwargs.get("buffering") == 0 else io.BufferedReader(raw)
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", measured_open)
+    with pytest.raises(ValueError, match="evidence size limit"):
+        CHECKS["unpack"](directory, item, archive_budget=remaining)
+    assert consumed == remaining + 1
+
+
+def test_bounded_file_reader_completes_valid_short_reads(tmp_path, monkeypatch):
+    content = b'{"runs":[{"outcome":"ok"}]}'
+    source = tmp_path / "report.json"
+    source.write_bytes(content)
+
+    class ShortFile(io.FileIO):
+        def read(self, size=-1):
+            return super().read(min(size, 3))
+
+    def short_open(path, mode="r", *args, **kwargs):
+        assert mode == "rb"
+        assert kwargs == {"buffering": 0}
+        return ShortFile(path, mode)
+
+    monkeypatch.setattr(Path, "open", short_open)
+    assert CHECKS["read_bounded"](source, len(content)) == content
 
 
 def test_archive_gzip_write_failure_preserves_source_and_is_not_success(tmp_path, monkeypatch):
