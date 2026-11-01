@@ -449,3 +449,26 @@ Bu ayrı koşuda Linux cache p95 aday/taban **144,363 / 142,878 ms** ile geçti.
 3aa5903 üstünde farklı fresh ajanlar pr12_fix_r2_security ve pr12_fix_r2_ux_evidence bağımsız inceledi; yeni doğrulanmış bulgu yok. Security dört hedef/DB ve kısa-sır pozitif vakasını, UX dört rehber/gerçek prose komut yolculuğunu çalıştırdı. Registry öncesi ve alternatif-port exchange denetimi, nihai DTO literal sınırı, final credential/clock/deadline ve cleanup korundu. 143 belge, 6 skill/17 kart, 179 arşiv/diff geçti. Son kaynak 3aa5903 build’i 66 üyeli wheel ve 414 üyeli sdist’i iki ayrı temiz runtime’a kurup bütün smoke kontrollerini geçti; tam takım ve seri M5 bu kaydın ardından tamamlanır.
 
 Review’deki BLOCKED/onay yorumu ayrı doğrulandı: 5583ca0 için required approving review count=0, code-owner/last-push onayı kapalı, açık konuşma yok ve required check’ler başarılıydı; reviewDecision boştu. Bu nedenle yalnız review/approval eksikliği nedenini bu API verileriyle doğrulayamadık. Koruma, izin veya review ayarı değiştirilmedi; son PR head’i ve kapıları ayrıca izlenir.
+
+## Kullanıcı review düzeltmelerinin son kaynak kabulü
+
+Ürün/test/workflow kaynağı **3aa5903**, yalnız review kaydı ekleyen snapshot **042652c**; runtime/test/workflow baytları aynıdır. Kullanıcının dört bulgusu ve R1’in iki ilişkili bulgusu giderildi, farklı fresh R2 ajanlarında yeni bulgu yok. Tam yerel takım **3.785 passed, 1 Linux native-counter skip / 661,13 s**; Ruff format/lint (179 dosya), strict mypy (74 kaynak), actionlint, 143 belge/6 skill/17 kart ve diff geçti. Önceki kaynak CI başarıları bu yeni ürün kodunun testi sayılmadı.
+
+[İki ayrı temiz kurulum](evidence.md#p02-0-review-installation) sdist’ten wheel build’i ve gerçek runtime-only origin/basic/NDJSON/TLS-HTTP/stream/Platform kritik oracle/cache/execution/jobs kontrollerini geçti. Wheel **66 üye / 3f843c8500d59536dce132f6a40fd026c92447c3f468909d5e85f65fcb41b230**; sdist **414 üye / 8cab13a1f5fa2acc315f0f9f69a531ea4928cbbfbc0182d127c6e689633202d7**. Eklenen üye rehberin gerçek yolculuk testidir; özel hazırlık ve raw arşivler paket dışında kalır.
+
+Yeni [startup](evidence.md#p02-0-review-reference-startup) ve [jobs](evidence.md#p02-0-review-reference-jobs) referansları 042652c source snapshot’ında, test/build bittikten sonra seri üretildi: Apple M5 Max/arm64/macOS 27.0.1/CPython 3.11.18/internal SSD-APFS. Gerçek ayrı bc9532c runtime tabanıyla AB/BA; aday wheel yukarıdaki temiz kurulum hash’iyle eşit. Kaynak/kurulum/fixture before-after değişmedi. Bu fiziksel idle/cache-empty veya Linux için süre garantisi değildir.
+
+| 30 süreç p95 | Aday ms | Taban ms | Bütçe ms |
+|---|---:|---:|---:|
+| help | 23,412 | 23,530 | 500 |
+| version | 22,405 | 21,815 | 500 |
+| context | 74,727 | 72,701 | 200 |
+| cache | 119,788 | 113,829 | 200 |
+| jobs normal/list | 103,356 | — | 200 |
+| jobs normal/show | 100,805 | — | 200 |
+| jobs dense/list | 150,534 | — | 200 |
+| jobs dense/show | 101,926 | — | 200 |
+
+**182 arşiv**, iki güncel source-bound M5 verifier ve indeks/manifest geçti. Önceki başarısız Linux kaydı korunur; 5583ca0 ek CI saklama takibi yukarıdaki altı kayıtla kapandı. Yeni gerçek hesap çağrısı yapılmadı; mevcut canlı kabul hedef/decoder davranışının önceki kaydıdır, son fix canlıda tekrar denenmiş sayılmaz. Yeni kod için gerçek TLS/SQLite/subprocess ve installed Platform oracle’ı kullanıldı. Bu yerel kabul, son PR head’inin üç ortam CI’ından ayrıdır; PR #12 güncel head kontrolleri izlenir. Kullanıcı merge, Master/release ve P02-1 kapsamı değişmedi.
+
+Kapanış fact-check’inde pr12_fix_r2_ux_evidence üç yeni dist/gzip kaydının bayt eşliğini, iki temiz kurulum/hash/61 runtime dosyasını, gerçek bc9532c tabanını ve 042652c before/after kaynak/kurulum/fixture bağını bağımsız doğruladı; yeni provenance bulgusu yok. Bu kontrol önceki iki fresh turun yeniden sayılması değildir.

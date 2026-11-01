@@ -1244,6 +1244,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-pr12-first-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "29ec2562b985815184e1f15638178ef474a7710d"}`.
 
+## p02-0-review-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `987243e2d363c55062bdabfe226ab93063ae3a1822c53bb4dbc08ccc1393dbf5`.
+**Yerel arşiv:** `raw/p02-0-review-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "3aa5903dee6328154b6a2e4fd070771588c7ab86"}`.
+
+## p02-0-review-reference-jobs
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `aa86cf78d09fa00d98f08606b2af336b4f725f543db0ca401a701559ed872c4a`.
+**Yerel arşiv:** `raw/p02-0-review-reference-jobs.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 150.53445799276233, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 101.9256659783423, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 103.35629200562835, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 100.80533311702311, "passed": true, "samples": 30}}, "passed": true, "source_commit": "042652c543e0a00b2128cc4e555fff44474dc3e4", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-0-review-reference-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `a01ea4315da040372e1cd763dd34a92d20564923dbe58ce6f005436082952680`.
+**Yerel arşiv:** `raw/p02-0-review-reference-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 113.828832982108, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 72.70095800049603, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 23.530249949544668, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 21.815250162035227, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 119.78812492452562, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 74.72675014287233, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 23.412249982357025, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 22.404999937862158, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "042652c543e0a00b2128cc4e555fff44474dc3e4"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.
