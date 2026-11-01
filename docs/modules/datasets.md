@@ -2,7 +2,7 @@
 
 **Durum:** Uygulanıyor; yerel alt küme çalışma dalında kodlandı, son kabul sürüyor. **Kapsam:** C03/C04. **Faz:** P02/P03.
 
-Yakın yerel teslim [P02-1 planında](../roadmap/p02-1-delivery-plan.md) ilerliyor. [ADR-0023](../decisions/0023-local-dataset-manifests.md) ve [Manifest v1](../reference/dataset-manifest.md) Accepted; inspect/verify CLI/Python ve no-clobber yayın çalışma dalında uygulandı; kod review’ları ve iki temiz kurulum turu tamamlandı. Kaynak bağlı performans, son kanıt incelemesi ve PR/CI kabulü açık kalır. İlk dilim normal dosya ad/byte envanteridir; aşağıdaki upload/ZIP/sürüm ve içerik-formatı hedefleri uygulanmış değildir.
+Yakın yerel teslim [P02-1 planında](../roadmap/p02-1-delivery-plan.md) ilerliyor. [ADR-0023](../decisions/0023-local-dataset-manifests.md) ve [Manifest v1](../reference/dataset-manifest.md) Accepted; inspect/verify CLI/Python ve no-clobber yayın çalışma dalında uygulandı; kod review’ları, üç temiz kurulum turu ve kaynak bağlı native kabulü tamamlandı. Nihai PR/CI kabulü açık kalır. İlk dilim normal dosya ad/byte envanteridir; aşağıdaki upload/ZIP/sürüm ve içerik-formatı hedefleri uygulanmış değildir.
 
 ## Planlanan uzak veri iş akışları
 

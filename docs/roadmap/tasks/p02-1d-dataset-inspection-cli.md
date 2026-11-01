@@ -12,7 +12,7 @@ capabilities: [C03, C04, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; iki fresh kod review turu ve iki temiz kurulum turu tamamlandı. Kartın performans, son kanıt review’si ve PR/CI kabulleri açık kalır.
+Kullanıcı tek yerel komutla manifestini güvenli hedefe kaydeder, sonraki komutla aynı byte kümesini doğrular ve değişimde doğru hata/sonraki adımı alır. Public datasets inspect/verify ve no-clobber manifest artifact’ı çalışma dalında uygulandı; iki fresh kod review turu, üç temiz kurulum turu ve kaynak bağlı native kabulü tamamlandı. Kartın nihai PR/CI ve Linux saklama kabulü açık kalır.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,4 +42,4 @@ Adım 4 commit ve iki fresh review; ardından final kabul/adım 5 commit ve iki 
 
 ## Teslim kaydı
 
-ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI, ölçüm araçları ve iki fresh kod review turu tamamlandı. İki temiz wheel/sdist kurulum turu geçti. Güncel tam takım ve belge kapanışı ölçümden bağımsız sürdürülebilir; referans ölçümleri diğer yoğun test işi bitince alınacak. Son performans/kanıt ve development PR/CI koşulları açık olduğundan bu kart in_progress’tir. Madde bazlı [kabul eşlemesi](../../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) kanoniktir.
+ADR-0023 onaylı, P02-1a/b/c verified; atomik yayın/API/CLI, ölçüm araçları ve iki fresh kod review turu tamamlandı. Üç temiz wheel/sdist kurulum turu, ilk görev ve kaynak bağlı startup/jobs/dataset/raw kabulü geçti. Tam takım 2729ea3’te 4.202 passed/1 Linux-native skip; sonraki CLI düzeltmesi 425 ilgili testle doğrulandı. İki bağımsız gerçek kanıt incelemesinde yeni bulgu yok. Son development PR/CI ve Linux saklama koşulları açık olduğundan bu kart in_progress’tir. Madde bazlı [kabul eşlemesi](../../research/p02-1-implementation-validation.md#p02-1d-kabul-eşlemesi-ve-ölçümden-bağımsız-kapanış) kanoniktir.
