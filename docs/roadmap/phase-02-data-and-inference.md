@@ -18,7 +18,7 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); kod/review/live ve kaynak bağlı referans, PR #12 source CI tamam; development’a teslim edildi | `verified` |
 | P02-0d | Platform reported ID/organizasyon/proje gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); ADR-0022 nihai consumer/live/review/kurulum/M5 ve üç ortam CI tamam; PR #12 ile development’a teslim edildi | `verified` |
 | P02-R1 | Doğrulanmış hizmet kimliği ve seçili context bağı için açık takip | P02-0a, P02-0d; yetkili auth/principal/ilişki kaynağı | [Takip kartı](tasks/p02-r1-verified-context-binding.md); identity-context sahibi, ready öncesi alt işlere bölünür; mevcut P02-0 paketinin yeni önkoşulu değildir | `draft` |
-| P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b | Güncel içerik/kimlik, güvenli kök, sınırlı tarama ve atomik rapor | `draft` |
+| P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a B15 bağımsız, ürün dilimleri ADR-0023 onayı bekler | `draft` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | P02-2a–c; create/presign/PUT/confirm ve ilk kesinti güvenliği | `draft` |
 | P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | Alt işe göre P02-2 veya P02-0b | P02-3a–c; ortak güvenli indirme bağımsız hazırlanabilir | `draft` |
 | P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b; indirme ayrıca P02-3b | `draft` |
@@ -36,6 +36,10 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 
 | ID | Tek gözden geçirilebilir sonuç | Doğrudan P02 bağımlılığı | Durum |
 |---|---|---|---|
+| P02-1a | B15 bounded araştırma kanıtı kapasitesi ve preflight | P02-0; [kart](tasks/p02-1a-evidence-capacity.md) | `ready` |
+| P02-1b | Strict yerel Manifest v1 ve sabit byte/digest oracle’ı | P01-1a; ADR-0023 onayı; [kart](tasks/p02-1b-manifest-contract.md) | `draft` |
+| P02-1c | Descriptor recursive scan ve güncel byte kümesi verify | P01-3b, P02-1b; [kart](tasks/p02-1c-descriptor-dataset-scan.md) | `draft` |
+| P02-1d | Atomik artifact, API/CLI ve kurulu/final kaynak kabulü | P02-1a, P02-1c; [kart](tasks/p02-1d-dataset-inspection-cli.md) | `draft` |
 | P02-2a | Private oluşturma planı, güncel onay ve kalıcı create/korelasyon kaydı | P02-0a, P02-0b Platform alt kabulü, P02-1 | `draft` |
 | P02-2b | Yetkili depolama hedefinde bounded byte upload ve doğrulanmış confirm | P02-2a; aşağıdaki aktarım kararları | `draft` |
 | P02-2c | İlk upload’ın kill/restart/kayıp cevap ve teslim kapanışı | P02-2b; belirsizlikte yeni create/PUT yok | `draft` |

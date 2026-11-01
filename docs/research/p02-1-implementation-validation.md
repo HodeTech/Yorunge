@@ -1,0 +1,21 @@
+# P02-1 hazırlık ve uygulama kaydı
+
+**Durum:** Hazırlık; ürün kabulü yapılmadı. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, taban `9f30fd2`. P02-0 merge kapanışı önceki `139ab91` commit’inde korunur. [Teslim planı](../roadmap/p02-1-delivery-plan.md), [ADR-0023](../decisions/0023-local-dataset-manifests.md), [manifest referansı](../reference/dataset-manifest.md).
+
+## Belge ve mevcut kod incelemesi
+
+Roadmap/faz/modül ve ilgili mimari/standart/referanslar planın inceleme listesiyle karşılaştırıldı. `DescriptorInputs` en çok 128 explicit execution referansını hash’ler; recursive envanter/manifest parser/atomik dataset artifact’ı yoktur. Yeni tasarım mevcut execution biçimini veya gerçek yetki kapısını genişletmez. CLI’daki planlanan `datasets` ailesi seçildi; P03 LLM içerik araçlarını sahiplenen `data` ailesi kullanılmaz.
+
+Bağımsız hazırlık incelemeleri dosya güvenliği ve kanıt kapasitesini ayrı değerlendirdi. Dosya kolu; final üyelik/dosya imza kontrolü, aynı hash farklı ad, Unicode/case directory çakışması, root dışı çıktı, timestamp/root’u içerik digest’inden ayırma ve açık kaynak tavanları önerdi. Bunlar ADR-0023/ref/kartlara aktarıldı. Mevcut P01 binder’ında bu inceleme kapsamında doğrulanmış yeni kusur saptanmadı; yeni özellik eksikleri mevcut destekmiş gibi sunulmadı.
+
+2026-11-01 B15 salt okunur sayımı: **247/256 kayıt**, manifest **369.514 byte**, indeks **235.437 byte**, toplam gzip **2.106.036 byte**, açılmış özgün içerik **16.303.574 byte**. En büyük gzip **50.467 byte**, en büyük özgün rapor **872.182 byte**. Mevcut verifier 247 arşivi geçti; bu yeni performans veya ürün kabulü değildir. Aynı v1 biçimiyle bounded büyüme, bölümleme/migration’a göre daha dar değişikliktir. Seçilen tavanlar/kabul P02-1a’da; eski başarısız ölçümler ve kaynak referansları korunur.
+
+Resmî Python os/Unicode ve Linux link/fsync belgeleri ADR’nin teknik dayanak bölümüne tarih/sınırla bağlandı. Enumeration atomikliği, bütün platformlarda aynı Unicode kabulü veya fiziksel sync garantisi uydurulmadı. Canlı EVREN veya kullanıcı anahtarı okunmadı; bu yerel iş bunlara ihtiyaç duymaz.
+
+## Hazırlık review ve onay kapısı
+
+ADR-0023 ve bağlı taslaklar kullanıcı onayı bekler. İlk fresh belge turunda iki bağımsız reviewer üç P2 ve bir P3 doğruladı: kritik link çağrısı içindeki iptal belirsizliği, dayanıklı API başarısı sonrası renderer exit önceliği, native bellek L/U/G kabulü ve güncel NDJSON tavanı. Bulgular mevcut config/stream/performance sözleşmesiyle doğrulanıp ADR/ref/plan/kartlarda kapatıldı. İkinci fresh tur henüz tamamlanmadı. Hazırlık kontrolleri runtime testinin yerine geçmez. Yeni ürün kodu ve manifest/scan/CLI uygulaması henüz başlamadı.
+
+## Uygulama ve nihai kabul
+
+Henüz yok. Her adımın uygulama commit’i, iki fresh review turu, doğrulanmış bulgu/fix commit’i ve gerçek kontrol kanıtı burada tutulacak. Nihai startup/jobs/dosya ölçümleri, paket ve PR/CI yapılmadan başarı veya verified durumu yazılmaz.
