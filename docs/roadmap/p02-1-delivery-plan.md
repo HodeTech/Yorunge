@@ -1,18 +1,18 @@
 # P02-1 teslim planı
 
-**Durum:** P02-1a/B15 yerelde verified; epik partial, ürün adımları ADR-0023 onayını bekler. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
+**Durum:** P02-1a/B15 yerelde verified; epik partial, ürün adımları Accepted ADR-0023 ile başladı. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
 
 ## Amaç ve inceleme sonucu
 
-Kullanıcı normal dosya klasörünün ad/byte kümesini yerelde envanterler, sürümlü manifesti ezmeden kaydeder ve daha sonra yeniden hash’leyerek doğrular. [ADR-0023](../decisions/0023-local-dataset-manifests.md) public biçim, güvenli tarama, limitler ve artifact yayınını önerir. [Manifest referansı](../reference/dataset-manifest.md) tek wire kaynağıdır. Ürün kodu yoktur; hazır kart yazılması teslim veya ADR onayı değildir.
+Kullanıcı normal dosya klasörünün ad/byte kümesini yerelde envanterler, sürümlü manifesti ezmeden kaydeder ve daha sonra yeniden hash’leyerek doğrular. [ADR-0023](../decisions/0023-local-dataset-manifests.md) public biçim, güvenli tarama, limitler ve artifact yayınını belirler. [Manifest referansı](../reference/dataset-manifest.md) tek wire kaynağıdır. P02-1b domain/parser implementasyonu başladı; hazır kart veya Accepted ADR ürün kabulü değildir.
 
 İncelenen mevcut belgeler: P02 fazı/roadmap, dataset modülü, data/state ve mimari genel bakış, güvenlik/Python/test/UX/hata/performance/kanıt/Git standartları, CLI/stream/execution referansları, ADR-0014/0018/0019 ve P02 hazırlık review’si. Kodda input_files, local_files, domain modelleri/hataları, API/CLI sınırı ve araştırma kanıtı aracı/tüketicileri karşılaştırıldı. İki bağımsız hazırlık analizi dosya güvenliği ile B15’i ayrı inceledi. Mevcut P01 dosya bağlayıcısında bu hazırlık kapsamında doğrulanmış yeni kusur bulunmadı; eksik recursive envanter/parser/yayın bu yeni işin kapsamıdır.
 
-Başlıca kapatılan tasarım boşlukları: yol kimliği/hash dedup ayrımı; root/makine/zamanı içerik digest’inden ayırma; dosya ve dizin kapasitesi; Unicode/case çakışması; son üyelik/imza kontrolü; tek gözlem aralığı sınırı; root dışı no-clobber çıktı; mevcut NDJSON tavanına uyan küçük özet; bozuk manifest ile byte mismatch ayrımı. Bunlar Proposed kararlardır, kullanıcı onayını temsil etmez.
+Başlıca kapatılan tasarım boşlukları: yol kimliği/hash dedup ayrımı; root/makine/zamanı içerik digest’inden ayırma; dosya ve dizin kapasitesi; Unicode/case çakışması; son üyelik/imza kontrolü; tek gözlem aralığı sınırı; root dışı no-clobber çıktı; mevcut NDJSON tavanına uyan küçük özet; bozuk manifest ile byte mismatch ayrımı. ADR-0023 kullanıcı tarafından review düzeltmeleri sonrası onaylandı; uygulama/kabul kaydı ayrıdır.
 
 ## Karar ve bağımsız hazırlık
 
-Yeni ürün sözleşmesi ADR-0023 onayına bağlıdır. Onayda dört seçim birlikte görünür: (1) ayrı taşınabilir Manifest v1 ve inspect/verify yüzeyi, (2) symlink/özel dosya/taşınabilir isim çakışmalarında ret, hardlink adlarını koruma, (3) 4.096 dosya/4.096 dizin/1 GiB/30 s tavanı, (4) zorunlu root dışı no-clobber artifact ve stdout’ta küçük özet. Yeni bir dış hesap/ücret/scope veya canlı EVREN kabulü gerekmez. Yeni temel karar ortaya çıkarsa bağımlı koddan önce belge/onay alınır; rutin implementasyon tercihi yeniden onay döngüsü yaratmaz.
+Kullanıcı ADR-0023 uygulamasını review düzeltmeleri sonrası yetkilendirdi. Onaylı dört seçim: (1) ayrı taşınabilir Manifest v1 ve inspect/verify yüzeyi, (2) symlink/özel dosya/taşınabilir isim çakışmalarında ret, hardlink adlarını koruma, (3) 4.096 dosya/4.096 dizin/1 GiB/30 s tavanı, (4) zorunlu root dışı no-clobber artifact ve stdout’ta küçük özet. Yeni bir dış hesap/ücret/scope veya canlı EVREN kabulü gerekmez. Yeni temel karar ortaya çıkarsa bağımlı koddan önce belge/onay alınır; rutin implementasyon tercihi yeniden onay döngüsü yaratmaz.
 
 B15, mevcut araştırma kanıtı v1 biçimini/isimlerini/saklama anlamını değiştirmeden **4.096 kayıt, toplam 128 MiB gzip/512 MiB açılmış byte** tavanına taşınır; mevcut tek rapor 16 MiB, tek gzip 4 MiB ve manifest/indeks 16 MiB kalır. Yeni kota yanında toplam bütçe korumaları, yazı öncesi preflight ve kesinti testleri uygulanır. Bütçe büyümesi şema/migration veya ADR-0019 kabul değişikliği değildir; bölümleme/yeni arşiv deposu gerekmez. Bu bağımsız bakım ürün ADR’sini beklemeden adım 1’de tamamlanabilir. Ayrıntılı kabul [P02-1a](tasks/p02-1a-evidence-capacity.md)’dadır.
 
@@ -42,4 +42,4 @@ Hazırlık belgeleri de iki fresh turdan geçirilir; tur/commit/sonuçlar [hazı
 
 ## Mevcut teslim sınırı
 
-P02-0 kapanış commit’i korunur. P02-1 ürün kodu/komutu, yeni ürün hash benchmark’ı ve nihai PR henüz yoktur. ADR-0023 Proposed olduğundan bağımlı ürün dilimleri draft kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.
+P02-0 kapanış commit’i korunur. P02-1 ürün kodu/komutu, yeni ürün hash benchmark’ı ve nihai PR henüz yoktur. ADR-0023 Accepted; P02-1b başladı, P02-1c/d doğrudan önceki kartın kabulünü bekler. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.

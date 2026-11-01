@@ -1,14 +1,14 @@
 ---
 id: P02-1b
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P01-1a]
 capabilities: [C03, C04, C13]
 ---
 # P02-1b — Yerel manifest biçimi ve bağımsız bütünlük oracle’ı
 
-**Tarih:** 2026-11-01. [Paket/adım 2](../p02-1-delivery-plan.md). ADR onayına bağlı taslak; ürün kodu yoktur.
+**Tarih:** 2026-11-01. [Paket/adım 2](../p02-1-delivery-plan.md). ADR Accepted; domain/parser uygulaması başladı, public scan/CLI yoktur.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Strict/frozen Manifest v1 domain modeli, bounded strict JSON parser/encoder, can
 
 ## Bağımlılıklar ve kararlar
 
-P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile verified. [ADR-0023](../../decisions/0023-local-dataset-manifests.md) Proposed ve kullanıcı onayı zorunludur; Accepted olmadan ready/kod geçişi yapılmaz. Kapanmış P01 wire/digest biçimleri değişmez.
+P01-1a [PR #4](https://github.com/HodeTech/Yorunge/pull/4) ile verified. [ADR-0023](../../decisions/0023-local-dataset-manifests.md) Accepted — kullanıcı review düzeltmeleri sonrası 2026-11-01 uygulamayı yetkilendirdi. Kapanmış P01 wire/digest biçimleri değişmez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -40,4 +40,4 @@ Domain/parser contract, golden byte/digest vektörleri, lazy-import/core boundar
 
 ## Teslim kaydı
 
-Henüz uygulanmadı veya doğrulanmadı. ADR-0023 onayı bekleniyor.
+Henüz uygulanmadı veya doğrulanmadı. ADR-0023 onaylı; uygulama/test ve iki fresh review turu sürüyor.

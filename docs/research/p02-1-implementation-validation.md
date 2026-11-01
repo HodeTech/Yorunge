@@ -1,6 +1,6 @@
 # P02-1 hazırlık ve uygulama kaydı
 
-**Durum:** Hazırlık; ürün kabulü yapılmadı. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, taban `9f30fd2`. P02-0 merge kapanışı önceki `139ab91` commit’inde korunur. [Teslim planı](../roadmap/p02-1-delivery-plan.md), [ADR-0023](../decisions/0023-local-dataset-manifests.md), [manifest referansı](../reference/dataset-manifest.md).
+**Durum:** P02-1a verified; ADR-0023 Accepted, P02-1b implementasyonu başladı; ürün epik kabulü yapılmadı. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, taban `9f30fd2`. P02-0 merge kapanışı önceki `139ab91` commit’inde korunur. [Teslim planı](../roadmap/p02-1-delivery-plan.md), [ADR-0023](../decisions/0023-local-dataset-manifests.md), [manifest referansı](../reference/dataset-manifest.md).
 
 ## Belge ve mevcut kod incelemesi
 
@@ -39,3 +39,16 @@ Her adımın uygulama commit’i, iki fresh review turu, doğrulanmış bulgu/fi
 | Gerçek 4.096 kayıt ve sonraki yazıda no-mutation ret | 1.123,990 / 1.156,655 / 1.142,848 | 107.642.880 |
 
 B15 kapanışı aynı evidence v1 biçiminde kapasite ve bounded tüketim bakımını tamamlar; ürünün 64 MiB ek RSS veya startup/jobs hedefinin geçtiği anlamına gelmez. P02-1 ürün manifest/scan/CLI kodu henüz yoktur; ADR-0023 Proposed ve açık kullanıcı onayı bekler. Epik partial’dır, verified değildir.
+
+## Kullanıcı ADR review’si ve Accepted geçişi
+
+Kullanıcı 2026-11-01 tarihinde aşağıdaki bulguların giderilmesinden sonra ADR’yi Accepted yapmayı ve uygulamayı açıkça yetkilendirdi. Önceki Proposed/onay bekleme cümleleri tarihsel hazırlık aşamasıdır.
+
+- Gerçek CancelledError yayılımı geçerli P2: public dataset API senkron; async entry/Task.cancel ile thread durdurma vaadi yok. Alt çağrıdan gelen CancelledError cleanup sonrası aynen yayılır; kritik publication başlamışsa yalnız sabit uncertainty exception note’u eklenir. CLI KeyboardInterrupt/exit normalizasyonu ayrı kalır; ADR-0018 değişmez.
+- Ortak input mesajları geçerli P2: kod/exit’i koruyup hem execution hem dataset için doğru yerel dosya/kök sonraki adımı söyleyecek biçimde güncellenir; text/JSON/NDJSON mesaj regression’ı final CLI kabulündedir.
+- Belirsiz “kontrol dizinleri”, hardlink cümlesi, tam encoded Result/DTO/NDJSON payload boyutu ve B15 çapraz referansı netleştirildi. Mismatch sayaçları kod başlamadan missing_file_count/unexpected_file_count/changed_file_count olarak adlandırıldı.
+- Son geçiş ikinci içerik hash’i değildir; device/inode/mode/size/mtime_ns/ctime_ns metadata, dizin üyeliği ve root zinciri yeniden denetlenir. Primitive destek kapısı manifest okuması ve tarama dahil filesystem I/O öncesindedir. unicode_version kaynağı unicodedata.unidata_version’dır.
+- Verify sonucuna opsiyonel manifest_path eklenmedi: caller manifest yolunu zaten açık verir, taşınabilir manifest_digest kesin içerik kimliğidir; yeni gereksiz alan kapalı wire’a eklenmez. CLI hata tablosunu kopyalamadan kanonik manifest referansına bağlar.
+- Başlık değişikliği tercih notu olarak uygulanmadı; “sınırlı” sayısal bounded kaynak politikasını ifade eder. L/U/G negatifleri ve boş dizin farkı kabulde korunur. Root içindeki manifest örneğinin mismatch olduğu yorumu geçerli değil: mevcut sözleşme otomatik ignore etmez ve root içi artifact’ı taramadan önce input_invalid ile reddeder. UCD sürümü aynı dosyada saklanmadığı için uydurma “version mismatch” teşhisi eklenmez; gerçek runtime sürümü sonuçta ve Unicode çakışma sınırı yardımda açık kalır.
+
+Yeni ADR veya yeniden kullanıcı seçimi gerektiren temel kapsam değişikliği yapılmadı. Bütünlük/hash/dosya politikası ve limitler onaylı biçimde korunur. Bundan sonraki adımlar önceki planın commit ve iki fresh review döngüsüyle sürer.

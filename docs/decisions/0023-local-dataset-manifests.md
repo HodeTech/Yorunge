@@ -1,18 +1,18 @@
 # ADR-0023: Sınırlı yerel veri envanteri ve taşınabilir manifest
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; bağımlı ürün kodu başlamadı. **Tarih:** 2026-11-01. **İş:** P02-1. [Teslim planı](../roadmap/p02-1-delivery-plan.md), [önerilen sözleşme](../reference/dataset-manifest.md).
+**Durum:** Accepted — 2026-11-01 kullanıcı, review bulgularının giderilmesi sonrası uygulamayı açıkça yetkilendirdi; ürün kabulü ayrıca kanıtlanır. **Tarih:** 2026-11-01. **İş:** P02-1. [Teslim planı](../roadmap/p02-1-delivery-plan.md), [kanonik sözleşme](../reference/dataset-manifest.md).
 
 ## Bağlam
 
 P02-1 klasördeki normal dosyaların adını, boyutunu ve güncel SHA-256 değerini koruyan yerel bir envanter ister. P01-3’ün descriptor bağlayıcısı yalnız en çok 128 açık execution referansını okur; recursive envanter, veri manifesti parser’ı veya rapor yayını değildir. Mevcut `data.manifest` yalnız manifest dosyasının baytlarını bağlar. Bu karar o bağı bütün veri dosyalarının execution doğrulaması olarak genişletmez; [ADR-0014](0014-execution-plan-validity-and-approval.md) limitleri ve trusted-local sınırı korunur.
 
-Yeni public dosya biçimi, recursive dosya erişimi ve no-clobber çıktı politikası kullanıcı onayı gerektirir. B15 kanıt kataloğu kapasitesi aynı pakette bağımsız hazırlıktır; ürün manifesti ile araştırma kanıtı manifesti farklı biçimlerdir.
+Yeni public dosya biçimi, recursive dosya erişimi ve no-clobber çıktı politikası kullanıcı onayı gerektirir. B15 (araştırma kanıtı kataloğu kapasitesi; [P02-1a](../roadmap/tasks/p02-1a-evidence-capacity.md)) aynı pakette bağımsız ve yerelde tamamlanmış hazırlıktır; ürün manifesti ile araştırma kanıtı manifesti farklı biçimlerdir.
 
 ## Karar
 
 ### Kullanıcı işi ve kapsam
 
-`datasets inspect ROOT --manifest-out FILE` bütün normal dosyaları tarar, sürümlü manifesti açık hedefe yazar ve küçük bir özet döndürür. `datasets verify ROOT --manifest FILE` manifesti sıkı biçimde okur, ağacı yeniden hash’ler ve aynı göreli dosya/byte kümesini karşılaştırır. Python karşılıkları aynı kullanım senaryolarıdır. Her iki işlem config, profil, credential, SQLite, ağ, EVREN veya eğitim aracı olmadan çalışır; bu seçenekler sessizce yok sayılmaz, CLI’da reddedilir.
+`datasets inspect ROOT --manifest-out FILE` bütün normal dosyaları tarar, sürümlü manifesti açık hedefe yazar ve küçük bir özet döndürür. `datasets verify ROOT --manifest FILE` manifesti sıkı biçimde okur, ağacı yeniden hash’ler ve aynı göreli dosya/byte kümesini karşılaştırır. Python karşılıkları aynı senkron kullanım senaryolarıdır. Async dataset API/stream sunulmaz; Task.cancel senkron çalışan işi durdurma mekanizması değildir. Senkron API event loop içinde bloklayıcıdır; asyncio.to_thread kullanılırsa await iptali arka plan thread’ini durdurmaz ve tamamlanma sonucu ayrıca gözlenmelidir. Enjekte edilen gerçek CancelledError cleanup sonrası aynen yayılır; kritik yayın çağrısı başlamışsa sabit manifest_write_uncertain mesajı exception note olarak eklenir, iptal hata zarfına dönüştürülmez. CLI KeyboardInterrupt/SIGINT normalizasyonu bunun dışındadır: yayın öncesi exit 6, belirsiz kritik yayın penceresinde exit 5, dayanıklı API başarısı sonrası exit 6. ADR-0018 iptal yayılımı değişmez. Her iki işlem config, profil, credential, SQLite, ağ, EVREN veya eğitim aracı olmadan çalışır; bu seçenekler sessizce yok sayılmaz, CLI’da reddedilir.
 
 Bu teslim dosya envanteri ve byte bütünlüğüdür. Görsel/etiket/JSONL içerik semantiği, arşiv açma, ignore/include/exclude deseni, upload, staging snapshot’ı ve execution producer desteği eklenmez. Kapsam ileride ayrı tüketiciyle genişler. Gizli dosyalar dahil bütün girdiler denetlenir; okunamayan veya desteklenmeyen dosya sessizce atlanmaz.
 
@@ -22,15 +22,15 @@ Bu teslim dosya envanteri ve byte bütünlüğüdür. Görsel/etiket/JSONL içer
 
 Mutlak root, device/inode, timestamp ve makine bilgisi manifest gövdesine girmez. Aynı kabul edilen göreli ad/byte kümesi farklı kökte aynı digest’i üretir. SHA-256 kimlik imzası, kaynağın güvenilirliği, uzak teslim veya gelecekteki güncellik kanıtı değildir.
 
-Orijinal UTF-8 ad korunur; yeniden adlandırma/normalizasyon yapılmaz. Her kardeş bileşende NFC → casefold → NFC karşılaştırmasıyla çakışma reddedilir; kontrol dizinleri ve dosya/dizin çakışmalarını da kapsar. Kullanılan Python Unicode verisi sürümü işlem özetinde bildirilir. Yeni Unicode sürümü yeni bir çakışmayı kontrollü reddedebilir; kabul edilen aynı adlar için içerik kodlaması/digest değişmez. Bu bir bütün dosya sistemleri/Windows ad uyumluluğu garantisi değildir. Taşınabilir adların kesin yasakları referansta kapalı tanımlıdır; surrogate/bozuk UTF-8 reddedilir.
+Orijinal UTF-8 ad korunur; yeniden adlandırma/normalizasyon yapılmaz. Her kardeş bileşende NFC → casefold → NFC karşılaştırmasıyla çakışma reddedilir; dosya/dizin ayrımı olmaksızın aynı collision anahtarına sahip farklı kardeş bileşenler reddedilir (ör. `A/x` ile `a/y`). Kullanılan Python Unicode verisi sürümü işlem özetinde bildirilir. Yeni Unicode sürümü yeni bir çakışmayı kontrollü reddedebilir; kabul edilen aynı adlar için içerik kodlaması/digest değişmez. Bu bir bütün dosya sistemleri/Windows ad uyumluluğu garantisi değildir. Taşınabilir adların kesin yasakları referansta kapalı tanımlıdır; surrogate/bozuk UTF-8 reddedilir.
 
 ### Descriptor üzerinden tarama ve güncellik
 
 Destek macOS/Linux yerel disktir. Gerekli `dir_fd`, descriptor `scandir`, `O_NOFOLLOW`, `O_DIRECTORY`, `O_NONBLOCK` ve güvenli yayın primitive’i yoksa içerik okunmadan kontrollü ret verilir. `/` descriptor’ından root’un her bileşeni no-follow açılır; root dahil hiçbir symlink takip edilmez. Göreli root başlangıç CWD’sine bir kez bağlanır; `..` kabul edilmez.
 
-Tarama descriptor’a göre yapılır. Dizin girdileri sınırı aşmadan toplanır ve orijinal UTF-8 baytlarına göre sıralanır; `DirEntry` önbelleği otorite değildir. Taze stat ve açılan descriptor’ın `fstat` bilgisi karşılaştırılır. Yalnız normal dosya ve dizin kabul edilir; FIFO/socket/device/symlink ve root’tan farklı `st_dev` reddedilir. Aynı device mount/aynı UID saldırısını bütünüyle engelleyen sandbox iddiası yoktur. Root dışına da bağlı hardlink’in root içindeki adı geçerlidir; root dışındaki diğer linkler keşfedilmez.
+Tarama descriptor’a göre yapılır. Dizin girdileri sınırı aşmadan toplanır ve orijinal UTF-8 baytlarına göre sıralanır; `DirEntry` önbelleği otorite değildir. Taze stat ve açılan descriptor’ın `fstat` bilgisi karşılaştırılır. Yalnız normal dosya ve dizin kabul edilir; FIFO/socket/device/symlink ve root’tan farklı `st_dev` reddedilir. Aynı device mount/aynı UID saldırısını bütünüyle engelleyen sandbox iddiası yoktur. Root içindeki bir ad, root dışındaki bir dosyanın hardlink’i olsa bile geçerlidir; root dışındaki diğer adlar keşfedilmez.
 
-Dosya ilk gözlenen boyutu kadar en çok 1 MiB bloklarla hash’lenir; önce/sonra device/inode, mode, size, mtime_ns, ctime_ns ve okunan byte sayısı denetlenir. Son tarama geçişinde bütün dosya imzaları, her dizinin üyelik kümesi/imzası, ara bileşen kimlikleri ve mutlak root zinciri yeniden denetlenir. Gözlenen değişim tüm işlemi reddeder; eski hash cache’i veya otomatik tekrar kullanılmaz. Atime hash/üyelik kontrolüne dahil edilmez. Bütün descriptor’lar başarı, hata ve iptalde kapanır.
+Dosya ilk gözlenen boyutu kadar en çok 1 MiB bloklarla hash’lenir; önce/sonra device/inode, mode, size, mtime_ns, ctime_ns ve okunan byte sayısı denetlenir. Son tarama geçişinde içerik ikinci kez hash’lenmez; bütün dosyaların ilk hash öncesi/sonrası ile aynı device/inode/mode/size/mtime_ns/ctime_ns metadata imzaları, her dizinin üyelik kümesi/imzası, ara bileşen kimlikleri ve mutlak root zinciri yeniden denetlenir. Gözlenen değişim tüm işlemi reddeder; eski hash cache’i veya otomatik tekrar kullanılmaz. Atime hash/üyelik kontrolüne dahil edilmez. Bütün descriptor’lar başarı, hata ve iptalde kapanır.
 
 Bu seri bir gözlem aralığıdır; bütün ağacın atomik snapshot’ı veya son kontrol sonrası değişmezlik iddia edilmez. İşbirliği yapmayan aynı UID/root yazıcısı, inode yeniden kullanımı, mount/rename ve gözlenmeyen değişim sınırı ADR-0014 ile aynıdır. Gelecekte upload/çalıştırma kendi güncel içerik ve etki kapısını uygulamalıdır.
 
@@ -53,7 +53,7 @@ Manifest okuma ve metadata tarama kendi byte/adet sınırlarını ayrıca uygula
 
 ### Atomik dosya yayını ve sonuç
 
-Inspect hedefi zorunludur ve kaynak root dışında olmalıdır. Manifest girdi dosyası da verify root dışında kalır; kendisini taramaya katacak örtük exclusion yoktur. Root/artifact ankrajları strict UTF-8 ve kontrol/bidi karakteri içermeyen ≤4.096 byte yollardır; artifact leaf taşınabilir bileşen politikasına da uyar. Tam sonuç özetinin encoded boyutu publication öncesi ≤16 KiB denetlenir. Parent önceden mevcut olmalıdır; işlem dizin yaratmaz. Parent zinciri no-follow descriptor ile açılır, root kimliğiyle karşılaştırılarak root/alt dizini hedefi reddedilir; yalnız metin prefix’i yetkilendirme değildir.
+Inspect hedefi zorunludur ve kaynak root dışında olmalıdır. Manifest girdi dosyası da verify root dışında kalır; kendisini taramaya katacak örtük exclusion yoktur. Root/artifact ankrajları strict UTF-8 ve kontrol/bidi karakteri içermeyen ≤4.096 byte yollardır; artifact leaf taşınabilir bileşen politikasına da uyar. Tam DTO/Result JSON ve NDJSON result payload’ının UTF-8 encoded boyutu publication öncesi ayrı ayrı ≤16 KiB denetlenir; manifestin files listesi bu özete dahil değildir. Parent önceden mevcut olmalıdır; işlem dizin yaratmaz. Parent zinciri no-follow descriptor ile açılır, root kimliğiyle karşılaştırılarak root/alt dizini hedefi reddedilir; yalnız metin prefix’i yetkilendirme değildir.
 
 Tam doğrulanmış manifest aynı parent içinde rastgele, `O_EXCL`, 0600 stage’e yazılır; byte sayısı, file sync ve parent/root zinciri son kontrolü tamamlanır. Hedef yalnız exclusive hardlink publication ile oluşturulur; mevcut dosya/dizin/dangling symlink ezilmez. `rename` ile overwrite fallback’i yoktur. Stage kaldırılır, parent sync tamamlanır; macOS’ta mevcut full-sync ilkesi kullanılır. Sonuç ancak yayın ve dayanıklılık kontrollerinden sonra başarılıdır. Caller kendi artifact’ının ad/konumunu açık seçer; artifact dosya adları/hash’ler içeren özel veri sayılabilir.
 
@@ -75,7 +75,7 @@ Verify tam eşitlikte küçük `Result[DatasetVerification]` döndürür. İçer
 
 Kartlar olumlu/negatif bağımsız digest vektörlerini, dosya yarışlarını, bütün sayısal retleri, CLI/Python eşliğini, disk-full/yayın/kill davranışını ve kurulu paketi kapsar. 16/256/1.024 MiB hash yolunda ek RSS ≤64 MiB ve mevcut native B/H0/H1 ölçümünden türeyen L/U ve G=max(0,U_i−L_j; i≠j) ≤8 MiB; yoğun dosya/dizin metadata kabulü ve 30 s referans hedefi ölçülür. Bunlar ölçüm öncesi hedeflerdir, geçmiş sonuç değildir. Kaynak bağlı startup/jobs referansları bütün script/test/runtime değişiklikleri bittikten sonra yenilenir.
 
-Onay ürün manifesti, dosya/çıktı politikası ve sayısal korumaları açar; gerçek EVREN isteği, upload veya yan etkili plan yürütme yetkisi üretmez. Onaydan önce [P02-1b/c/d kartları](../roadmap/p02-1-delivery-plan.md) draft kalır. B15 aynı araştırma kanıtı v1 biçimiyle bağımsız tamamlanabilir.
+Onay ürün manifesti, dosya/çıktı politikası ve sayısal korumaları açar; gerçek EVREN isteği, upload veya yan etkili plan yürütme yetkisi üretmez. Onay sonrası [P02-1b/c/d kartları](../roadmap/p02-1-delivery-plan.md) kendi doğrudan bağımlılık/kabul sırasıyla ilerler. B15 aynı araştırma kanıtı v1 biçiminde yerelde tamamlanmıştır.
 
 ## Teknik dayanak ve sınır
 

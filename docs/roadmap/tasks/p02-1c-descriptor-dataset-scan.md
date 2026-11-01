@@ -8,7 +8,7 @@ capabilities: [C03, C04]
 ---
 # P02-1c — Descriptor envanteri ve güncel byte doğrulaması
 
-**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). Önceki kartın gerçek kabulü ve ADR onayı bekleniyor.
+**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). ADR Accepted; önceki kartın gerçek kabulü bekleniyor.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -33,7 +33,7 @@ P01-3b [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ve [PR #9](https://gi
 3. Root/ancestor/leaf/dangling symlink, FIFO/socket/device, farklı device ve izin/okuma hatası kontrollü rettir; içerik öncesi platform/flag kapısı, no unsafe fallback ve FD kapanışı gerçek descriptor testleriyle doğrulanır.
 4. Root/ancestor swap, directory ekleme/silme/rename, file replace/truncate/grow ve aynı boyutta değişim hash sırasında ve başka dosya okunurken enjekte edilir; son dosya/membership/root denetimi gözlenen değişimi reddeder. Eşzamanlı bütün değişimleri engelleyen snapshot/sandbox iddiası yoktur.
 5. Dosya/dizin ayrı adet, depth/path byte, 1 GiB ve 30 s tavanları gerçek sınırlı iş/okuma ile denetlenir. Sınırda EOF aramak için bütçe dışı byte okunmaz. Kaynak `st_dev` ve hardlink sayımı politikası sınanır. Açık scanner FD ≤64 ve worker 1’dir; çok boş dizin sınırsız metadata işi üretemez.
-6. Başarı/hata/task iptali/erken close bütün FD’leri kapatır; iptal başarılı manifest veya otomatik tekrar üretmez. Env/config/state/ağ/ML guard’ları bağımsız yerel yolu doğrular.
+6. Başarı/hata/KeyboardInterrupt ve enjekte edilen CancelledError bütün FD’leri kapatır; CancelledError cleanup sonrası aynen yayılır; iptal başarılı manifest veya otomatik tekrar üretmez. Env/config/state/ağ/ML guard’ları bağımsız yerel yolu doğrular.
 
 ## Doğrulama
 
@@ -41,4 +41,4 @@ Contract ve gerçek filesystem integration/process/race testleri, anlamlı byte/
 
 ## Teslim kaydı
 
-Henüz uygulanmadı; ADR ve önceki kartın kabulü bekleniyor.
+Henüz uygulanmadı; Önceki kartın kabulü bekleniyor; ADR onaylıdır.
