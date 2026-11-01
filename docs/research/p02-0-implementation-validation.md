@@ -389,3 +389,9 @@ Yeni [startup](evidence.md#p02-0-delivery-reference-startup) ve [jobs](evidence.
 ### Bakım kanıtı — birinci fresh review turu
 
 6a74d36 üstünde yeni ajanlar delivery_proof_r1 ve delivery_docs_r1 yeni üç yerel kayıtla ilk CI'ın altı kaydını, kaynak/hash/p95 ve aktif üst özetleri bağımsız inceledi. Proof kontrolünde yeni bulgu yok; dokuz özgün JSON arşivle bayt eşit, 167/current-source verifier ve iki kurulum/runtime/AB-BA eşliği doğru. Tek P3: bazı üst özetler önceki aynı-runtime 3.695 tam takımı yeni CI guard kaynağının tam takımı gibi anlatıyor ve current eski kabul bölümüne bağlanıyordu. Bunlar önceki 3.695 + yeni 81 guard/iki kurulum/M5 ile native/current CI bekleme ayrımına çekildi; bağlantı güncel bakım kanıtına yönlendirildi. Belge/ajan/diff geçti; full-suite/benchmark/canlı hesap tekrarlanmadı. İkinci tur farklı fresh ajanlarla bu fix/kayıt commit'inden sonra yapılır.
+
+### Bakım kanıtı — ikinci fresh review turu
+
+57b924a üstünde farklı yeni ajanlar delivery_proof_r2 ve delivery_docs_r2 bakımın bütün kanıtını ve düzeltilen üst özetleri bağımsız inceledi; yeni doğrulanmış bulgu yok. Dokuz özgün kayıt/167 arşiv/iki current-source verifier, artifact SHA ve 66/413 üye, 61 runtime dosyası, METADATA-RECORD farkı ve gerçek bc9532c AB/BA tabanı bağımsız karşılaştırıldı. İlk CI wrapper/başarısız Linux tanısı/raw RSS sınırı tutarlı. 143 belge/6 skill/17 kart ve diff geçti; hesap/probe/full-suite/benchmark tekrar edilmedi.
+
+CI bakımı ve yenilenen yerel kabul iki farklı fresh turuyla kapandı. Bundan sonra mevcut PR #12 güncellenir; gerekli PR gövde düzenlemesi native metadata concurrency/check-name testi olur. Ağır source koşusunun devamı, metadata koşusunda core-metadata/üç skipped hücre ve required offline-core üretilmemesi gözlenecek. Son bakım head'inin üç ortam source CI'ı geçmeden verified kaydı yoktur.
