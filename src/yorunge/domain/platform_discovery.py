@@ -8,6 +8,7 @@ from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.credentials import ServiceTarget, normalize_target
 from yorunge.domain.discovery import DiscoveryBinding, ProfilePreference, canonical_time
+from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Identifier, Model
 
 ReportedState = Literal["reported_id", "reported_null", "not_exposed"]
@@ -217,7 +218,11 @@ class PlatformContextDiscovery(Model):
 
     @model_validator(mode="after")
     def observation(self) -> PlatformContextDiscovery:
-        if normalize_target(self.target.service_origin + self.target.api_base_path) != self.target:
+        try:
+            canonical = normalize_target(self.target.service_origin + self.target.api_base_path)
+        except YorungeError:
+            raise ValueError("canonical target required") from None
+        if canonical != self.target:
             raise ValueError("canonical target required")
         self._check_selection()
         self._check_times()

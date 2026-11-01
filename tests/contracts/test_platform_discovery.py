@@ -235,6 +235,25 @@ def test_closed_platform_wire_roundtrip():
     assert json.loads(model.model_dump_json()) == wire
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://example.test",
+        "https://example.test:444",
+        "https://example.test?query=1",
+        "HTTPS://EXAMPLE.TEST",
+    ],
+)
+def test_invalid_platform_target_is_a_model_validation_error(origin):
+    wire = platform_wire()
+    wire["target"]["service_origin"] = origin
+    encoded = json.dumps(wire)
+    with pytest.raises(ValidationError) as failure:
+        PlatformContextDiscovery.model_validate_json(encoded)
+    assert failure.value.errors()[0]["loc"] == ()
+    assert failure.value.errors()[0]["msg"] == "Value error, canonical target required"
+
+
 @pytest.mark.parametrize("field", list(platform_wire()))
 def test_every_platform_field_including_nulls_is_required(field):
     wire = platform_wire()

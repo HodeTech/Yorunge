@@ -72,6 +72,25 @@ def test_independent_exact_wire_roundtrip_and_no_service_scope_elevation():
     assert "doc_path" not in view.model_dump_json()
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://example.test",
+        "https://example.test:444",
+        "https://example.test?query=1",
+        "HTTPS://EXAMPLE.TEST",
+    ],
+)
+def test_invalid_discovery_target_is_a_model_validation_error(origin):
+    wire = copy.deepcopy(WIRE)
+    wire["target"]["service_origin"] = origin
+    encoded = json.dumps(wire)
+    with pytest.raises(ValidationError) as failure:
+        ContextDiscovery.model_validate_json(encoded)
+    assert failure.value.errors()[0]["loc"] == ()
+    assert failure.value.errors()[0]["msg"] == "Value error, canonical target required"
+
+
 @pytest.mark.parametrize("field", list(WIRE))
 def test_all_public_fields_are_required(field):
     value = copy.deepcopy(WIRE)

@@ -172,12 +172,12 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-0-sonar-reference-startup.json > dist/startup-reference.txt",
+            "p02-0-final-reference-v2-startup.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-0-sonar-reference-jobs.json > dist/jobs-reference.txt",
+            "p02-0-final-reference-v2-jobs.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",

@@ -527,3 +527,24 @@ Hash’ler account **a4e91a029e6e280896403fe8e5918b308415a86c02f3258896b4630b5b5
 | jobs dense/show | 129,942 | — | 200 |
 
 **191 arşiv**, iki current-source M5 verifier, 179 dosya Ruff format/lint, 74 kaynak strict mypy, actionlint, 143 belge/6 skill/17 kart ve diff geçti. Kapanış fact-check’inde pr12_sonar_r2_ci üç dist/gzip/kurulum/61 runtime dosyasını, source/installed/fixture eşliğini ve gerçek tabanı bağımsız doğruladı; yeni provenance bulgusu yok. Bu önceki iki fresh turun yeniden sayılması değildir. Yeni source ve gerçek body-edit CI’ları tamamlanmadan **native merge engeli çözüldü** denmeyecek; gerçek merge kutusundaki required check ve düğme ayrıca gözlenecek. Probe kaynakları ve canlı receipt’ler değişmedi, yeni EVREN çağrısı yoktur.
+
+### Sabit gate’in source ve edited kabulü — 3141cea
+
+[Source 41307921001](https://github.com/HodeTech/Yorunge/actions/runs/41307921001) ve [CodeRabbit body-edit 41308223513](https://github.com/HodeTech/Yorunge/actions/runs/41308223513) aynı 3141cea / checkout **8bd5e45d33d1355050b0393f697c8ecd73015db3** kaynağında üç gerçek hücre ve sabit offline-core ile başarılıdır. Manuel body-edit 41307975545 daha yeni CodeRabbit edit’iyle metadata grubunda iptal oldu; source etkilenmedi. İptal edilen üç hücreye aggregate failure verdi; o koşu başarı sayılmadı. Startup/raw adımları o iptalde skipped idi, tamamlanmış ölçüm yoktu. Yeni edit’in gerçek tam doğrulaması kabul için beklendi.
+
+| Koşu | Linux 3.11 | Linux 3.14 | macOS 3.11 |
+|---|---|---|---|
+| Source | 3.778 / 507,50 s | 3.778 / 720,57 s | 3.777 + 1 skip / 647,02 s |
+| Body edit | 3.778 / 637,53 s | 3.778 / 468,86 s | 3.777 + 1 skip / 631,48 s |
+
+Eski metadata-only başarı/classification dalıyla birlikte sekiz ilgili eski dal vakası kaldırıldı; yeni all-skipped ret testi ve bütün gerçek fail-closed/source senaryoları korundu. Runtime güvenlik regresyonları kaldırılmadı; test sayısı farkı üretim sınırını gevşetmez.
+
+Source [Linux 3.11](evidence.md#p02-0-pr12-static-source-linux311-installation), [Linux 3.14](evidence.md#p02-0-pr12-static-source-linux314-installation), [macOS](evidence.md#p02-0-pr12-static-source-macos311-installation), [startup](evidence.md#p02-0-pr12-static-source-linux-startup), [receipt](evidence.md#p02-0-pr12-static-source-linux-receipt), [raw](evidence.md#p02-0-pr12-static-source-linux-stream) ve edited [Linux 3.11](evidence.md#p02-0-pr12-static-edit-linux311-installation), [Linux 3.14](evidence.md#p02-0-pr12-static-edit-linux314-installation), [macOS](evidence.md#p02-0-pr12-static-edit-macos311-installation), [startup](evidence.md#p02-0-pr12-static-edit-linux-startup), [receipt](evidence.md#p02-0-pr12-static-edit-linux-receipt), [raw](evidence.md#p02-0-pr12-static-edit-linux-stream) özgün ZIP/JSONL/environment/hash bağlarıyla saklandı. On iki gerçek temiz kurulum geçti; toplam **203 arşiv** doğrulandı. Source Linux cache **161,773 / 165,761 ms** ile geçti; edited **217,401 / 216,561 ms** başarısız tanıdır ve aynı şekilde korundu. Source raw ek RSS maksimumu/span **655.360 / 655.360 byte**; edited **761.856 / 655.360 byte**. Hepsi native raw kapısında başarılıdır; Linux cache başarısızlığı raw başarısıyla karıştırılmaz.
+
+Yeni Sonar analizini public issue API’siyle ayrıca doğruladık: **25 issue FIXED, beş tarihsel issue ACCEPTED, sıfır OPEN/CONFIRMED/REOPENED**. Gerçek GitHub sayfası yenilendiğinde **“All checks have passed / 1 skipped, 7 successful”** gösterdi; required offline-core Expected artık yoktu. Tek skip dış Sourcery boyut sınırıdır, compatibility hücreleri değildir. Kalan native engel **“All comments must be resolved”** olarak açıkça değişti; review onayı/CI beklemesi diye yeniden etiketlenmedi.
+
+### Son iki CodeRabbit konuşması
+
+Current.md’deki yeni kabul sayacı/metrik tekrarları, kanonik rapora ve sıradaki P02-1’e kısa yönlendirmeyle değiştirildi. Alıntılanan “current yalnız …” kuralı talimat kaynağı sayılmadı; doküman tek-kaynak disiplini ve somut tekrar güncel dosyada doğrulandı.
+
+DTO hedef yorumunda gerçek hata yeniden üretildi: hem PlatformContextDiscovery hem ContextDiscovery model_validate_json üzerinde HTTP hedefi YorungeError/invalid_service_target sızdırıyordu. Yalnız bu iki DTO’nun normalize_target hatası sabit ValueError’a çevrilir; Pydantic ValidationError sözleşmesi korunur, başarılı normalizasyonun canonical eşitlik denetimi aynen kalır. Dört ayrı bozuk/noncanonical hedef iki DTO’da bağımsız root-validation hata oracle’larıyla sınanır. Hazırlık raises dışındadır; **212 contract/gate testi**, lint/mypy/docs/skill/diff geçti. Bu public model doğruluk fix’idir; yeni field/schema/izin veya ADR kararı değildir. Remote konuşmalar ancak ilgili fix push edildikten sonra kapanır. Yeni runtime kaynağı için son kurulum/M5 ve GitHub gate tekrar doğrulanacak; eski kayıtla geçirilmez.
