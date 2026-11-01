@@ -504,3 +504,7 @@ Hash’ler account **a4e91a029e6e280896403fe8e5918b308415a86c02f3258896b4630b5b5
 ### Sonar ve CI — birinci fresh review
 
 08c846b üstünde yeni pr12_sonar_r1_code ve pr12_sonar_r1_ci bağımsız inceledi; yeni kod/CI kusuru yok. Raw muafiyet tablosu ve DTO helper’ları önceki güvenlik/wire invariants ile eşdeğer; 144 contract ve 60 gate testi ayrıca geçti. Tek P3 c0c9673 raw raporunda ek RSS maksimumu ile çapraz boyut span’ının karıştırılmasıydı; 786.432 ve 655.360 byte ayrı yazıldı. Actionlint/docs/skill/188archive ve üç değişmez probe hash’i doğrulandı. Son native merge kutusu henüz kabul sayılmadı; farklı fresh ikinci tur, son kaynak M5 ve GitHub source/body-edit gerçek koşuları izlenecek.
+
+### Sonar ve CI — ikinci fresh review
+
+4145f92 üstünde farklı fresh pr12_sonar_r2_code ve pr12_sonar_r2_ci bağımsız inceledi; yeni doğrulanmış bulgu yok. Raw/DTO/secret ve negative-test eşdeğerliği, sabit full aggregate/concurrency/retarget kapısı, dar Sonar disposition ve R1 RSS fix’i doğru bulundu. İki contract modülündeki 144 vaka ayrıca geçti. Ana doğrulamada 195 hedefli + ayrı 230 genişletilmiş TLS/API/response testi ve 60 gerçek gate vakası başarılıdır; örtüşen ajan testleri yeni toplam diye eklenmez. Son kaynak 08c846b build’i wheel/sdist’i iki temiz runtime’a kurdu; bütün smoke’lar geçti. Native merge kutusu ve yeni M5 henüz bu sonraki adımın kanıtı değildir.
