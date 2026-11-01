@@ -65,12 +65,10 @@ def discover_platform(
     preference = snapshot.preference
     if preference is None:
         raise YorungeError("state_invalid")
-    selection = ProjectSelection(
-        state="not_selected"
-        if context.project_id is None
-        else ("not_found" if reply.selected is None else "observed"),
-        project=reply.selected,
-    )
+    selection_state: Literal["not_selected", "not_found", "observed"] = "not_selected"
+    if context.project_id is not None:
+        selection_state = "not_found" if reply.selected is None else "observed"
+    selection = ProjectSelection(state=selection_state, project=reply.selected)
     completeness = PlatformCompleteness(
         organizations="incomplete"
         if reply.organizations.reported_total > len(reply.organizations.items)

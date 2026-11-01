@@ -76,8 +76,9 @@ def test_independent_exact_wire_roundtrip_and_no_service_scope_elevation():
 def test_all_public_fields_are_required(field):
     value = copy.deepcopy(WIRE)
     del value[field]
+    encoded = json.dumps(value)
     with pytest.raises(ValidationError):
-        ContextDiscovery.model_validate_json(json.dumps(value))
+        ContextDiscovery.model_validate_json(encoded)
 
 
 @pytest.mark.parametrize(
@@ -123,5 +124,6 @@ def test_closed_wire_rejects_false_claims_wrong_types_and_cross_service_preferen
     for field in path[:-1]:
         parent = parent[field]
     parent[path[-1]] = replacement
+    encoded = json.dumps(value)
     with pytest.raises(ValidationError):
-        ContextDiscovery.model_validate_json(json.dumps(value))
+        ContextDiscovery.model_validate_json(encoded)

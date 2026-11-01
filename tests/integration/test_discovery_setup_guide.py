@@ -112,9 +112,10 @@ def test_documented_first_use_carries_only_selected_key_and_profile_preferences(
 
         monkeypatch.setattr(subprocess, "run", run)
         code = guide_blocks()[1].replace('service = "evren-llm"', f'service = "{service}"')
+        compiled = compile(code, str(GUIDE), "exec")
         with loopback_sockets(socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo):
             with pytest.raises(SystemExit) as stopped:
-                exec(compile(code, str(GUIDE), "exec"), {})
+                exec(compiled, {})
     assert stopped.value.code == 0, children[0].stderr
     assert len(children) == 1
     child = children[0]
@@ -144,8 +145,9 @@ def test_documented_launcher_missing_selected_key_stops_before_subprocess(tmp_pa
         pytest.fail("missing selected key must not launch a child")
 
     monkeypatch.setattr(subprocess, "run", forbidden)
+    compiled = compile(guide_blocks()[1], str(GUIDE), "exec")
     with pytest.raises(SystemExit) as stopped:
-        exec(compile(guide_blocks()[1], str(GUIDE), "exec"), {})
+        exec(compiled, {})
     assert "hazırlanmamış" in str(stopped.value)
     assert all(key not in str(stopped.value) for key in KEYS.values())
 

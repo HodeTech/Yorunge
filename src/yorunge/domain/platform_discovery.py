@@ -189,10 +189,7 @@ class PlatformContextDiscovery(Model):
     def times(cls, value: str) -> str:
         return canonical_time(value)
 
-    @model_validator(mode="after")
-    def observation(self) -> PlatformContextDiscovery:
-        if normalize_target(self.target.service_origin + self.target.api_base_path) != self.target:
-            raise ValueError("canonical target required")
+    def _check_selection(self) -> None:
         selected, selection = self.selected.project_id, self.projects.selection
         if (selected is None) != (selection.state == "not_selected"):
             raise ValueError("selection mismatch")
@@ -203,6 +200,13 @@ class PlatformContextDiscovery(Model):
             expected.append("platform_project_detail")
         if [v.endpoint_id for v in self.observations] != expected:
             raise ValueError("endpoint order mismatch")
+        if selected is not None:
+            detail = self.observations[-1]
+            expected_outcome = "not_found" if selection.state == "not_found" else "observed"
+            if detail.resource_id != selected or detail.outcome != expected_outcome:
+                raise ValueError("detail outcome mismatch")
+
+    def _check_times(self) -> None:
         last = self.observed_from
         for endpoint in self.observations:
             if not last <= endpoint.started_at <= endpoint.completed_at <= self.observed_until:
@@ -210,12 +214,13 @@ class PlatformContextDiscovery(Model):
             last = endpoint.completed_at
         if self.observed_until > self.validated_at:
             raise ValueError("invalid final interval")
-        if selected is not None:
-            detail = self.observations[-1]
-            if detail.resource_id != selected or detail.outcome != (
-                "not_found" if selection.state == "not_found" else "observed"
-            ):
-                raise ValueError("detail outcome mismatch")
+
+    @model_validator(mode="after")
+    def observation(self) -> PlatformContextDiscovery:
+        if normalize_target(self.target.service_origin + self.target.api_base_path) != self.target:
+            raise ValueError("canonical target required")
+        self._check_selection()
+        self._check_times()
         completeness = (
             "incomplete"
             if self.organizations.reported_total > len(self.organizations.items)
@@ -226,7 +231,7 @@ class PlatformContextDiscovery(Model):
         if self.selected.account_id != self.profile_preference.account_id:
             raise ValueError("account preference mismatch")
         if self.reasons != platform_reasons(
-            self.profile_preference, selection, self.list_completeness
+            self.profile_preference, self.projects.selection, self.list_completeness
         ):
             raise ValueError("closed discovery reasons required")
         if len(self.model_dump_json().encode("utf-8")) > 262_144:

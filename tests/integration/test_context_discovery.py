@@ -184,8 +184,10 @@ def test_existing_store_gate_never_initializes_or_reads_a_secret(tmp_path, kind)
     before = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
     secrets = Secrets()
     clock = ObservationClock(SystemClock())
+    registry = state(root, clock, secrets)
+    deadline = time.monotonic() + 2
     with pytest.raises(YorungeError) as failure:
-        state(root, clock, secrets).capture(deadline=time.monotonic() + 2)
+        registry.capture(deadline=deadline)
     assert failure.value.code == "state_invalid"
     assert secrets.calls == 0
     after = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
@@ -319,13 +321,11 @@ def test_active_loop_rejects_before_store_or_secret_capture(tmp_path):
     clock = ObservationClock(SystemClock())
 
     async def attempt():
+        registry = state(tmp_path / "absent", clock, secrets)
+        reader = LlmTermsReader(clock)
+        deadline = time.monotonic() + 2
         with pytest.raises(YorungeError) as failure:
-            discover_context(
-                state(tmp_path / "absent", clock, secrets),
-                LlmTermsReader(clock),
-                clock,
-                deadline=time.monotonic() + 2,
-            )
+            discover_context(registry, reader, clock, deadline=deadline)
         assert failure.value.code == "invalid_request"
 
     asyncio.run(attempt())
@@ -353,8 +353,9 @@ def test_observed_rollback_cannot_disappear_when_utc_recovers_before_final_gate(
     clock.now()
     source.offset = timedelta(hours=2)
     clock.now()
+    deadline = time.monotonic() + 3
     with pytest.raises(YorungeError) as failure:
-        registry.finish(snapshot, deadline=time.monotonic() + 3)
+        registry.finish(snapshot, deadline=deadline)
     assert failure.value.code == "state_changed"
     with sqlite3.connect(root / DB_NAME) as connection:
         assert connection.execute("SELECT clock_generation FROM cache_clock").fetchone() == (2,)
@@ -433,8 +434,9 @@ def test_wrong_service_snapshot_is_rejected_before_any_http_request(tmp_path, ce
             transport_factory=lambda: HttpxTransport(transport=server.transport())
         )
         with LlmTermsReader(clock, session=session) as reader:
+            deadline = time.monotonic() + 3
             with pytest.raises(YorungeError) as failure:
-                reader.observe(wrong, deadline=time.monotonic() + 3)
+                reader.observe(wrong, deadline=deadline)
     assert failure.value.code == "invalid_service_target"
     assert server.requests == []
 
@@ -477,13 +479,11 @@ def test_failure_path_keeps_observed_rollback_durable_and_preserves_read_error(
         session = HttpSession(
             transport_factory=lambda: HttpxTransport(transport=server.transport())
         )
+        registry = RollbackAfterCapture()
+        reader = LlmTermsReader(clock, session=session)
+        deadline = time.monotonic() + 1.5
         with pytest.raises(YorungeError) as failure:
-            discover_context(
-                RollbackAfterCapture(),
-                LlmTermsReader(clock, session=session),
-                clock,
-                deadline=time.monotonic() + 1.5,
-            )
+            discover_context(registry, reader, clock, deadline=deadline)
         secrets_before.append(inner.secret_reader.calls)
     assert failure.value.code == expected
     assert len(server.requests) == 1
@@ -510,13 +510,11 @@ def test_reader_cleanup_failure_also_settles_observed_clock(tmp_path, certificat
         session = HttpSession(
             transport_factory=lambda: HttpxTransport(transport=server.transport())
         )
+        registry = state(root, clock)
+        reader = ClosingReader(clock, session=session)
+        deadline = time.monotonic() + 3
         with pytest.raises(YorungeError) as failure:
-            discover_context(
-                state(root, clock),
-                ClosingReader(clock, session=session),
-                clock,
-                deadline=time.monotonic() + 3,
-            )
+            discover_context(registry, reader, clock, deadline=deadline)
     assert failure.value.code == "transport_failed"
     assert session._runner is None
     assert len(server.requests) == 1
@@ -537,8 +535,10 @@ def test_task_cancellation_is_reraised_after_clock_finalization(tmp_path, monkey
 
     monkeypatch.setattr(LlmTermsReader, "_read", staticmethod(cancel))
     reader = LlmTermsReader(clock)
+    registry = state(root, clock)
+    deadline = time.monotonic() + 3
     with pytest.raises(asyncio.CancelledError):
-        discover_context(state(root, clock), reader, clock, deadline=time.monotonic() + 3)
+        discover_context(registry, reader, clock, deadline=deadline)
     assert reader.session._runner is None
     with sqlite3.connect(root / DB_NAME) as connection:
         assert connection.execute("SELECT clock_generation FROM cache_clock").fetchone() == (2,)
@@ -569,8 +569,10 @@ def test_prior_operation_uncertainty_survives_a_secondary_final_gate_error(tmp_p
         def observe(self, snapshot, *, deadline):
             raise original
 
+    registry, reader = FailingFinalGate(), Reader()
+    deadline = time.monotonic() + 3
     with pytest.raises(OperationError) as failure:
-        discover_context(FailingFinalGate(), Reader(), clock, deadline=time.monotonic() + 3)
+        discover_context(registry, reader, clock, deadline=deadline)
     assert failure.value is original
     assert failure.value.operation_id == identifier
 
@@ -624,6 +626,7 @@ def test_final_cache_budget_maps_to_discovery_state_busy(tmp_path, monkeypatch):
         return original(cache, *args)
 
     monkeypatch.setattr(StateCache, "_same", exhaust)
+    deadline = clock.monotonic() + 20
     with pytest.raises(YorungeError) as failure:
-        registry.finish(snapshot, deadline=clock.monotonic() + 20)
+        registry.finish(snapshot, deadline=deadline)
     assert failure.value.code == "state_busy"

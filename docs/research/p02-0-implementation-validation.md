@@ -472,3 +472,31 @@ Yeni [startup](evidence.md#p02-0-review-reference-startup) ve [jobs](evidence.md
 **182 arşiv**, iki güncel source-bound M5 verifier ve indeks/manifest geçti. Önceki başarısız Linux kaydı korunur; 5583ca0 ek CI saklama takibi yukarıdaki altı kayıtla kapandı. Yeni gerçek hesap çağrısı yapılmadı; mevcut canlı kabul hedef/decoder davranışının önceki kaydıdır, son fix canlıda tekrar denenmiş sayılmaz. Yeni kod için gerçek TLS/SQLite/subprocess ve installed Platform oracle’ı kullanıldı. Bu yerel kabul, son PR head’inin üç ortam CI’ından ayrıdır; PR #12 güncel head kontrolleri izlenir. Kullanıcı merge, Master/release ve P02-1 kapsamı değişmedi.
 
 Kapanış fact-check’inde pr12_fix_r2_ux_evidence üç yeni dist/gzip kaydının bayt eşliğini, iki temiz kurulum/hash/61 runtime dosyasını, gerçek bc9532c tabanını ve 042652c before/after kaynak/kurulum/fixture bağını bağımsız doğruladı; yeni provenance bulgusu yok. Bu kontrol önceki iki fresh turun yeniden sayılması değildir.
+
+## Sonar ve native merge kapısı takibi
+
+Kullanıcı yeni Sonar listesini ve metadata suite 41305658285’in skipped hücreleriyle required offline-core Expected yüzünden merge edemediğini bildirdi. Önceki yalnız API tabanlı kabul/disposition yeterli değildi: c0c9673 source 41305352805 üç hücre/aggregate SUCCESS, doğru head/app15368/PR12 ve GraphQL isRequired=true iken, yenilenmiş gerçek GitHub merge kutusu **4 skipped / 1 expected / 4 successful**, required offline-core Expected ve disabled merge gösterdi; mergeStateStatus BLOCKED sürdü. Review onayı değil required status beklemesi görünüyordu. GitHub’ın iç seçim algoritması kesin saptanmadı; son suite’te dinamik aggregate adıyla required context’in olmaması gözlemle uyumlu açıklamadır. Önceki “API success yeterli” sonucu bu native kanıtla geçersiz kaldı; tarihsel kayıt silinmedi.
+
+Konservatif düzeltme: dinamik aggregate adı, metadata-only hücre skip’leri ve metadata audit başarı dalı kaldırıldı. `edited` dahil her uygun koşu üç gerçek hücre ve sabit offline-core üretir; tüm hücre başarısı ve mevcut startup çıktıları zorunlu kalır. Source/metadata concurrency ayrımı korunur; gövde edit’i kaynak koşusunu iptal etmez. Daha fazla CI maliyeti açıkça kabul edilen uygulama karşılığıdır; fake-green, status yazma/dispatch fallback, ek token izni veya branch-protection bypass yoktur. Yeni native kabul source ve body-edit koşularından sonra gerçek merge kutusunu da içerecek; henüz yapılmış sayılmaz.
+
+### Sonar bulgularının ayrımı
+
+Aktif ürün kodunda Platform raw anahtar muafiyetleri kapalı endpoint/path tablosuna taşındı; tam raw-tree literal dolaşımı küçük yardımcıyla ayrıldı. DTO selection/order/time doğrulaması küçük yöntemlere bölündü; public alan/state/reason/null veya güvenlik kuralı değişmedi. Nested seçim ifadesi açık yerel state adımına ayrıldı. Normal testlerde serialization, secret/reader/state nesnesi, deadline ve compile hazırlığı raises dışına taşındı; assertion yalnız hedef çağrıyı kapsar. Me success testi doğrudan identity’nin zorunluluk kontrolünü sınar; hazırlık parser’ının hatası testi geçiremez.
+
+Beş bakım uyarısı **değişmez tarihsel snapshot** üzerindedir; kaynak/receipt hash’lerini düzeltme adıyla değiştirmek kanıtı bozardı. Sonar hesabında mevcut GitHub SSO ile oturum yenilendi; yalnız aşağıdaki beş issue gerekçesi ve kaynak hash’leriyle **Accepted** yapıldı. Yanlış pozitif veya güvenlik bulgusu olarak işaretlenmedi; genel kaynak/kalite dışlaması eklenmedi. Uygulama sonrası açık liste 30’dan **25**’e indi; aktif kod/test uyarıları yeni analizde fix olarak kapanacaktır.
+
+| Sonar issue | Değişmez kaynak | Disposition |
+|---|---|---|
+| AaGVqwxf5xr-Pq-FFthq | platform-20261101/account_probe.py; auth/me sabiti | Accepted: receipt kaynak baytları korunur |
+| AaGVqwxf5xr-Pq-FFths | platform-20261101/account_probe.py; complexity 41 | Accepted: receipt kaynak baytları korunur |
+| AaGVqwxk5xr-Pq-FFthu | platform-project-20261101/project_probe.py; complexity 45 | Accepted: seçili-proje receipt kaynağı korunur |
+| AaGVqwxi5xr-Pq-FFtht | platform-20261101/test_probe.py; raises hazırlığı | Accepted: arşiv test snapshot’ı korunur |
+| AaGVqwxf5xr-Pq-FFthr | platform-20261101/account_probe.py; set comprehension | Accepted: receipt kaynak baytları korunur |
+
+Hash’ler account **a4e91a029e6e280896403fe8e5918b308415a86c02f3258896b4630b5b517a4c**, test **ab6e47a303c588931be024093c0adbec314b92aa4ddc648c14f8d0bed7a3ac13**, project **9ffc1787901f02ad9a823f6950953f994dedd0615c956169846ead2e6449e27b** olarak aynıdır. Bunlar yeniden çalıştırılmış canlı deneyi veya yeni refaktör edilmiş probe’u temsil etmez. [Sonar issue değerlendirme anlamı](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/issues/editing); kanonik snapshot gerekçeleri kendi README’lerindedir.
+
+### c0c9673 source CI kalıcı kanıtı
+
+[41305352805](https://github.com/HodeTech/Yorunge/actions/runs/41305352805), head c0c9673 / checkout **31966204415e124e53cf27aa4b23340a8aad590c**: Linux 3.11 **3.786 / 637,43 s**, Linux 3.14 **3.786 / 475,95 s**, macOS **3.785 + 1 skip / 642,26 s**; üç hücre ve offline-core başarılı. [Linux 3.11](evidence.md#p02-0-pr12-user-review-linux311-installation), [Linux 3.14](evidence.md#p02-0-pr12-user-review-linux314-installation) ve [macOS](evidence.md#p02-0-pr12-user-review-macos311-installation) altı temiz kurulum/ZIP/environment/JSONL bağını taşır. [Startup](evidence.md#p02-0-pr12-user-review-linux-startup), [receipt](evidence.md#p02-0-pr12-user-review-linux-receipt), [raw](evidence.md#p02-0-pr12-user-review-linux-stream) özgün baytları korur; **188 arşiv** doğrulandı. Linux cache aday/taban **218,737 / 217,902 ms** ile başarısız tanıdır; M5 ayrı geçti. Gerçek raw RSS/span üst sınırı **655.360 byte**. Bu source CI’ın saklama takibi kapandı; bu başarı yeni Sonar/CI refaktörünün veya native merge kutusunun kabulü değildir.
+
+İlk Sonar/CI düzeltme doğrulaması: 195 ilgili DTO/raw/LLM-state/rehber testi ve 60 gerçek gate/config testi geçti; Ruff format/lint, strict mypy, actionlint, belge/ajan/diff ve 188 arşiv temiz. İlgili normal testlerde raises gövdesinde birden çok çağrı kalmadığı AST ile ayrıca kontrol edildi. Bu kaynak için fresh review, build ve yeni source-bound M5 sonraki kabul adımlarıdır; eski ölçüm yeni refaktörü geçirmez.

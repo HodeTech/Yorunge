@@ -7912,6 +7912,313 @@
       }
     },
     {
+      "name": "p02-0-pr12-user-review-linux-receipt.json",
+      "archive": "raw/p02-0-pr12-user-review-linux-receipt.json.gz",
+      "original_commit": null,
+      "content_bytes": 782,
+      "content_sha256": "daa26a3951a22cbfba556b5a1d0467cae7309ac88907ea9b340006b5ec0f667e",
+      "archive_bytes": 435,
+      "archive_sha256": "9e97a8106728f7ec8f384080f84f909b9d790f792869a5767cd80300779ee29e",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41305352805",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 39.64956300001177,
+          "candidate/version": 38.10417900001539,
+          "candidate/context": 171.89147199997024,
+          "candidate/cache": 218.73677400003544,
+          "baseline/help": 39.143251000041346,
+          "baseline/version": 38.195760000007795,
+          "baseline/context": 173.99393799996687,
+          "baseline/cache": 217.9020019999598
+        },
+        "report_sha256": "daddf499e234207517409559127ba2a5c20c5a043f235603d4294844f343c0f0"
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-linux-startup.json",
+      "archive": "raw/p02-0-pr12-user-review-linux-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 181754,
+      "content_sha256": "daddf499e234207517409559127ba2a5c20c5a043f235603d4294844f343c0f0",
+      "archive_bytes": 26984,
+      "archive_sha256": "d495f2312d532d8aa91bba61211a51cc2cddbb935c1c8d76e57c4a4e89e42eae",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 39.64956300001177,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 38.10417900001539,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 171.89147199997024,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 218.73677400003544,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 39.143251000041346,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 38.195760000007795,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 173.99393799996687,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 217.9020019999598,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-linux-stream.json",
+      "archive": "raw/p02-0-pr12-user-review-linux-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 53438,
+      "content_sha256": "9049ef53e99938c367f79e9082851e3fb34b10980312a7391ddcab75ba5dce4d",
+      "archive_bytes": 6825,
+      "archive_sha256": "e7b9d40d0727a59c31a618b446bea1eb20100fb3a6a14a566a5c3d445aac85eb",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            786432,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 50692096,
+            "pretransfer_peak_rss_bytes": 51478528,
+            "peak_rss_bytes": 51478528,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 786432,
+            "elapsed_seconds": 0.08431373400003395,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 45600768,
+            "pretransfer_peak_rss_bytes": 45600768,
+            "peak_rss_bytes": 46256128,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 1.2701296740000316,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 45477888,
+            "pretransfer_peak_rss_bytes": 45477888,
+            "peak_rss_bytes": 46133248,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 4.975377670000057,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-linux311-installation.json",
+      "archive": "raw/p02-0-pr12-user-review-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3261,
+      "content_sha256": "a8d8f8ae53a42a4cf56c97442bd980c46f1bedcfda934eb5ef1e724c35ec4c8d",
+      "archive_bytes": 1278,
+      "archive_sha256": "03f2f1c1a2a61fdbf58b7566ad4c02165adf30271eeef6c1d887e3b3b67f59fa",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-linux314-installation.json",
+      "archive": "raw/p02-0-pr12-user-review-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3225,
+      "content_sha256": "d819fa474a5c724cc71a0765fe8d0cb27a866bed5b8c0c66575bd9b322b64250",
+      "archive_bytes": 1240,
+      "archive_sha256": "da8c6a8091fb9023b2a351d3b8312aa819ba36279ce1b4d0feb575ce6aa8adc9",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-user-review-macos311-installation.json",
+      "archive": "raw/p02-0-pr12-user-review-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3191,
+      "content_sha256": "990d77e5e4871294832883d2b8fd1ffb8f4801d072d2f3c16bc865f272a33f64",
+      "archive_bytes": 1250,
+      "archive_sha256": "9a688608485d88b589eb9dd383e065e4211b206ead00203f14bfd5b6eb3cf942",
+      "summary": {
+        "source_commit": "31966204415e124e53cf27aa4b23340a8aad590c",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-0-review-installation.json",
       "archive": "raw/p02-0-review-installation.json.gz",
       "original_commit": null,

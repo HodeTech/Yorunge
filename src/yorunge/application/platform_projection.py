@@ -37,25 +37,35 @@ def _validate(kind: type[T], value: object) -> T:
         raise YorungeError("invalid_response") from None
 
 
-def _keys(endpoint: str, path: tuple[str, ...]) -> frozenset[str]:
-    if path == ():
-        if endpoint == "me":
-            return frozenset({"success", "data"})
-        if endpoint == "organizations":
-            return frozenset({"success", "items", "total"})
-        if endpoint == "detail-envelope":
-            return frozenset({"success", "data"})
-        if endpoint == "detail":
-            return frozenset({"id", "org_id"})
-    if endpoint == "me" and path == ("data",):
-        return frozenset({"id", "organization_id", "personal_org_id"})
-    if endpoint == "organizations" and path == ("items", "[]"):
-        return frozenset({"id"})
-    if (endpoint == "projects" and path == ("[]",)) or (
-        endpoint == "detail-envelope" and path == ("data",)
-    ):
-        return frozenset({"id", "org_id"})
-    return frozenset()
+_PROJECT_KEYS = frozenset({"id", "org_id"})
+_FIXED_KEYS = {
+    ("me", ()): frozenset({"success", "data"}),
+    ("organizations", ()): frozenset({"success", "items", "total"}),
+    ("detail-envelope", ()): frozenset({"success", "data"}),
+    ("detail", ()): _PROJECT_KEYS,
+    ("me", ("data",)): frozenset({"id", "organization_id", "personal_org_id"}),
+    ("organizations", ("items", "[]")): frozenset({"id"}),
+    ("projects", ("[]",)): _PROJECT_KEYS,
+    ("detail-envelope", ("data",)): _PROJECT_KEYS,
+}
+
+
+def _raw_children(
+    item: object, path: tuple[str, ...], endpoint: str, captured: str
+) -> list[tuple[object, tuple[str, ...]]]:
+    if isinstance(item, str) and literal_secret_match(item, captured):
+        raise YorungeError("invalid_response")
+    if isinstance(item, dict):
+        fixed = _FIXED_KEYS.get((endpoint, path), frozenset())
+        children = []
+        for key, child in item.items():
+            if key not in fixed and literal_secret_match(key, captured):
+                raise YorungeError("invalid_response")
+            children.append((child, (*path, key)))
+        return children
+    if isinstance(item, list):
+        return [(child, (*path, "[]")) for child in item]
+    return []
 
 
 def safe_raw(data: bytes, endpoint: str, secret: SecretValue) -> object:
@@ -68,16 +78,7 @@ def safe_raw(data: bytes, endpoint: str, secret: SecretValue) -> object:
     pending: list[tuple[object, tuple[str, ...]]] = [(value, ())]
     while pending:
         item, path = pending.pop()
-        if isinstance(item, str) and literal_secret_match(item, captured):
-            raise YorungeError("invalid_response")
-        if isinstance(item, dict):
-            fixed = _keys(endpoint, path)
-            for key, child in item.items():
-                if key not in fixed and literal_secret_match(key, captured):
-                    raise YorungeError("invalid_response")
-                pending.append((child, (*path, key)))
-        elif isinstance(item, list):
-            pending.extend((child, (*path, "[]")) for child in item)
+        pending.extend(_raw_children(item, path, endpoint, captured))
     if isinstance(value, dict) and "success" in value and value["success"] is not True:
         raise YorungeError("invalid_response")
     return value

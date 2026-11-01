@@ -49,7 +49,7 @@ def test_me_requires_strict_true_success(value):
     if value is not None:
         raw["success"] = value
     with pytest.raises(YorungeError) as failure:
-        projection.identity(parse(raw))
+        projection.identity(raw)
     assert failure.value.code == "invalid_response"
 
 
@@ -85,8 +85,9 @@ def test_short_secret_does_not_reject_protocol_keys_or_unrelated_values(secret):
         parse({"success": True, "data": {"id": "alpha"}}, secret=SecretValue(secret))
     )
     assert result.me_id == "alpha"
+    credential = SecretValue(secret)
     with pytest.raises(YorungeError) as failure:
-        parse({"success": True, "data": {"id": secret}}, secret=SecretValue(secret))
+        parse({"success": True, "data": {"id": secret}}, secret=credential)
     assert failure.value.code == "invalid_response"
 
 
@@ -101,8 +102,9 @@ def test_parent_missing_null_and_id_are_distinct(parent, expected):
 @pytest.mark.parametrize("total", [True, -1, 2**63, 1.0, "1", 0])
 def test_invalid_organization_total_is_not_incomplete(total):
     raw = {"items": [{"id": "org-1"}], "total": total}
+    parsed = parse(raw, "organizations")
     with pytest.raises(YorungeError) as failure:
-        projection.organizations(parse(raw, "organizations"))
+        projection.organizations(parsed)
     assert failure.value.code == "invalid_response"
 
 
@@ -128,19 +130,21 @@ def test_bounded_lists_preserve_order_and_reported_total(count):
 )
 @pytest.mark.parametrize("kind", ["projects", "organizations"])
 def test_invalid_lists_never_truncate_or_deduplicate(values, kind):
+    if kind == "projects":
+        check, payload = projection.projects, values
+    else:
+        check, payload = projection.organizations, {"items": values, "total": len(values)}
     with pytest.raises(YorungeError) as failure:
-        if kind == "projects":
-            projection.projects(values)
-        else:
-            projection.organizations({"items": values, "total": len(values)})
+        check(payload)
     assert failure.value.code == "invalid_response"
 
 
 @pytest.mark.parametrize("raw", [{"id": "p"}, {"success": True, "data": {"id": "p"}}])
 def test_detail_accepts_only_matching_route_id(raw):
-    assert projection.detail(parse(raw, "detail"), "p").id == "p"
+    parsed = parse(raw, "detail")
+    assert projection.detail(parsed, "p").id == "p"
     with pytest.raises(YorungeError) as failure:
-        projection.detail(parse(raw, "detail"), "other")
+        projection.detail(parsed, "other")
     assert failure.value.code == "invalid_response"
 
 
@@ -235,8 +239,9 @@ def test_closed_platform_wire_roundtrip():
 def test_every_platform_field_including_nulls_is_required(field):
     wire = platform_wire()
     del wire[field]
+    encoded = json.dumps(wire)
     with pytest.raises(ValidationError):
-        PlatformContextDiscovery.model_validate_json(json.dumps(wire))
+        PlatformContextDiscovery.model_validate_json(encoded)
 
 
 @pytest.mark.parametrize(
@@ -253,8 +258,9 @@ def test_every_platform_field_including_nulls_is_required(field):
 def test_platform_dto_cannot_upgrade_observation_or_expand_wire(field, value):
     wire = platform_wire()
     wire[field] = value
+    encoded = json.dumps(wire)
     with pytest.raises(ValidationError):
-        PlatformContextDiscovery.model_validate_json(json.dumps(wire))
+        PlatformContextDiscovery.model_validate_json(encoded)
 
 
 @pytest.mark.parametrize(
@@ -267,8 +273,9 @@ def test_platform_dto_cannot_upgrade_observation_or_expand_wire(field, value):
     ],
 )
 def test_detail_shape_never_exempts_discarded_metadata_keys(raw, secret):
+    credential = SecretValue(secret)
     with pytest.raises(YorungeError) as failure:
-        parse(raw, "detail", SecretValue(secret))
+        parse(raw, "detail", credential)
     assert failure.value.code == "invalid_response"
 
 
