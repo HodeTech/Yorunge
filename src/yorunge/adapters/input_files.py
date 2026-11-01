@@ -39,14 +39,13 @@ def signature(info: os.stat_result) -> tuple[int, ...]:
     return (*identity(info), info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def close_input_descriptor(descriptor: int) -> None:
-    active = sys.exception()
+def close_input_descriptor(descriptor: int, primary: BaseException | None = None) -> None:
     try:
         os.close(descriptor)
     except OSError:
-        if active is None:
+        if primary is None:
             raise
-        BaseException.add_note(active, MESSAGES["file_unreadable"])
+        BaseException.add_note(primary, MESSAGES["file_unreadable"])
 
 
 def anchor_input_root(root: Path) -> Path:
@@ -73,8 +72,8 @@ def directory_chain(anchor: str) -> tuple[int, tuple[tuple[int, int], ...]]:
             close_input_descriptor(previous)
             chain.append(identity(os.fstat(descriptor)))
         return descriptor, tuple(chain)
-    except BaseException:
-        close_input_descriptor(descriptor)
+    except BaseException as error:
+        close_input_descriptor(descriptor, error)
         raise
 
 
@@ -89,24 +88,24 @@ def relative_file(root: int, path: str) -> tuple[int, tuple[tuple[int, int], ...
     descriptor = os.dup(root)
     file: int | None = None
     try:
-        try:
-            chain = [identity(os.fstat(descriptor))]
-            for part in parts[:-1]:
-                child = os.open(
-                    part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor
-                )
-                previous, descriptor = descriptor, child
-                close_input_descriptor(previous)
-                chain.append(identity(os.fstat(descriptor)))
-            file = os.open(
-                parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor
-            )
-            result = file, tuple(chain)
-        finally:
-            close_input_descriptor(descriptor)
-    except BaseException:
+        chain = [identity(os.fstat(descriptor))]
+        for part in parts[:-1]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            previous, descriptor = descriptor, child
+            close_input_descriptor(previous)
+            chain.append(identity(os.fstat(descriptor)))
+        file = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor)
+        result = file, tuple(chain)
+    except BaseException as error:
+        close_input_descriptor(descriptor, error)
         if file is not None:
-            close_input_descriptor(file)
+            close_input_descriptor(file, error)
+        raise
+    try:
+        close_input_descriptor(descriptor)
+    except BaseException as error:
+        if file is not None:
+            close_input_descriptor(file, error)
         raise
     return result
 

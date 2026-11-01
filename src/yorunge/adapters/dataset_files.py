@@ -6,13 +6,13 @@ import errno
 import hashlib
 import os
 import stat
-import sys
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
 from yorunge.adapters.input_files import (
+    close_input_descriptor,
     directory_chain,
     identity,
     relative_file,
@@ -28,20 +28,28 @@ from yorunge.domain.dataset_manifest import (
     DatasetManifest,
     PathInventory,
 )
-from yorunge.domain.errors import MESSAGES, ErrorCode, YorungeError
+from yorunge.domain.errors import ErrorCode, YorungeError
 
 Chain = tuple[tuple[int, int], ...]
 
 
-def close_descriptor(descriptor: int) -> None:
-    active = sys.exception()
+def close_descriptor(descriptor: int, primary: BaseException | None = None) -> None:
     try:
-        os.close(descriptor)
+        close_input_descriptor(descriptor, primary)
     except OSError:
-        if active is None:
-            raise YorungeError("file_unreadable") from None
-        # Preserve control flow, especially CancelledError; never retry an ambiguous close.
-        BaseException.add_note(active, MESSAGES["file_unreadable"])
+        raise YorungeError("file_unreadable") from None
+
+
+@contextmanager
+def owned_descriptor(descriptor: int) -> Iterator[int]:
+    primary: BaseException | None = None
+    try:
+        yield descriptor
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        close_descriptor(descriptor, primary)
 
 
 def require_dataset_files() -> None:
@@ -116,11 +124,9 @@ class DatasetLocation:
         self.budget.check()
         try:
             descriptor, chain = directory_chain(str(self.anchor.parent))
-            try:
+            with owned_descriptor(descriptor):
                 if self.chain != chain:
                     raise YorungeError("input_changed")
-            finally:
-                close_descriptor(descriptor)
         except OSError as error:
             raise _observed_io(error) from None
         self.budget.check()
@@ -140,11 +146,9 @@ class DatasetTree:
         self.budget.check()
         try:
             descriptor, chain = directory_chain(str(self.anchor))
-            try:
+            with owned_descriptor(descriptor):
                 if self.chain != chain:
                     raise YorungeError("input_changed")
-            finally:
-                close_descriptor(descriptor)
         except OSError as error:
             raise _observed_io(error) from None
 
@@ -161,14 +165,12 @@ class DatasetTree:
             raise YorungeError("input_invalid") from None
         except OSError as error:
             raise _initial_io(error) from None
-        try:
+        with owned_descriptor(descriptor):
             # An ancestor identity check also catches a source reached through another spelling.
             if self.root_identity in chain:
                 raise YorungeError("input_invalid")
             self.check_root()
             yield DatasetLocation(anchor, descriptor, chain, self.budget)
-        finally:
-            close_descriptor(descriptor)
 
     def scan(self) -> DatasetManifest:
         if self.scanned:
@@ -237,10 +239,8 @@ class DatasetTree:
         self, parent: int, name: str, path: str, chain: Chain, observed: os.stat_result
     ) -> list[DatasetFile]:
         descriptor = self._open_observed(parent, name, observed, directory=True)
-        try:
+        with owned_descriptor(descriptor):
             return self._walk(descriptor, path, (*chain, identity(observed)))
-        finally:
-            close_descriptor(descriptor)
 
     @staticmethod
     def _open_observed(
@@ -258,8 +258,8 @@ class DatasetTree:
         try:
             if signature(os.fstat(descriptor)) != signature(observed):
                 raise YorungeError("input_changed")
-        except BaseException:
-            close_descriptor(descriptor)
+        except BaseException as error:
+            close_descriptor(descriptor, error)
             raise
         return descriptor
 
@@ -269,7 +269,7 @@ class DatasetTree:
         if observed.st_size > policy.MAX_CONTENT_BYTES - self.total_bytes:
             raise YorungeError("input_budget_exceeded")
         descriptor = self._open_observed(parent, name, observed)
-        try:
+        with owned_descriptor(descriptor):
             if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                 raise YorungeError("input_invalid")
             digest, count = hashlib.sha256(), 0
@@ -286,8 +286,6 @@ class DatasetTree:
             self.files.append(FileObservation(path, signature(observed), chain))
             self.total_bytes += count
             return DatasetFile(path=path, size=count, sha256=digest.hexdigest())
-        finally:
-            close_descriptor(descriptor)
 
     def recheck(self) -> None:
         self.budget.check()
@@ -306,23 +304,21 @@ class DatasetTree:
     def _recheck_file(self, item: FileObservation) -> None:
         self.budget.check()
         descriptor, chain = relative_file(self.descriptor, item.path)
-        try:
+        with owned_descriptor(descriptor):
             if chain != item.chain or signature(os.fstat(descriptor)) != item.signature:
                 raise YorungeError("input_changed")
-        finally:
-            close_descriptor(descriptor)
 
     def _recheck_directory(self, item: DirectoryObservation) -> None:
         self.budget.check()
         with ExitStack() as stack:
             descriptor = os.dup(self.descriptor)
-            stack.callback(close_descriptor, descriptor)
+            stack.enter_context(owned_descriptor(descriptor))
             chain = [identity(os.fstat(descriptor))]
             for name in item.path.split("/") if item.path else ():
                 descriptor = os.open(
                     name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor
                 )
-                stack.callback(close_descriptor, descriptor)
+                stack.enter_context(owned_descriptor(descriptor))
                 chain.append(identity(os.fstat(descriptor)))
             if (
                 tuple(chain) != item.chain
@@ -341,12 +337,10 @@ class DatasetTree:
                 if before.st_size > policy.MAX_MANIFEST_BYTES:
                     raise YorungeError("manifest_invalid")
                 descriptor = self._open_observed(location.descriptor, location.name, before)
-                try:
+                with owned_descriptor(descriptor):
                     content = self._read_manifest_bytes(descriptor, before.st_size)
                     if signature(os.fstat(descriptor)) != signature(before):
                         raise YorungeError("input_changed")
-                finally:
-                    close_descriptor(descriptor)
                 location.recheck()
                 try:
                     after = os.stat(
@@ -382,11 +376,9 @@ def open_dataset(root: Path, budget: DatasetBudget) -> Iterator[DatasetTree]:
         descriptor, chain = directory_chain(str(anchor))
     except OSError as error:
         raise _initial_io(error) from None
-    try:
+    with owned_descriptor(descriptor):
         try:
             tree = DatasetTree(anchor, descriptor, chain, budget)
         except OSError as error:
             raise _initial_io(error) from None
         yield tree
-    finally:
-        close_descriptor(descriptor)

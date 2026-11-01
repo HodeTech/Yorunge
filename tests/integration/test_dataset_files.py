@@ -714,3 +714,47 @@ def test_shared_walk_parent_close_failure_cannot_orphan_child_or_leaf(tmp_path, 
     assert injected
     assert live == set()
     assert peak[0] <= 64
+
+
+@pytest.mark.parametrize("point", ["initial-chain", "file", "final-relative"])
+def test_unrelated_caller_exception_cannot_hide_normal_close_failure(tmp_path, monkeypatch, point):
+    (tmp_path / "data").write_bytes(b"abc")
+    live, peak = track_descriptors(monkeypatch)
+    original_close, original_read = os.close, os.read
+    original_recheck = module.DatasetTree._recheck_file
+    enabled = point == "initial-chain"
+    injected = False
+
+    def closing(fd):
+        nonlocal injected
+        original_close(fd)
+        if enabled and not injected:
+            injected = True
+            raise OSError(errno.EIO, "not public")
+
+    def reading(fd, size):
+        nonlocal enabled
+        result = original_read(fd, size)
+        if point == "file":
+            enabled = True
+        return result
+
+    def rechecking(tree, item):
+        nonlocal enabled
+        if point == "final-relative":
+            enabled = True
+        original_recheck(tree, item)
+
+    monkeypatch.setattr(os, "close", closing)
+    monkeypatch.setattr(os, "read", reading)
+    monkeypatch.setattr(module.DatasetTree, "_recheck_file", rechecking)
+    try:
+        raise ValueError("unrelated caller failure")
+    except ValueError as previous:
+        with pytest.raises(YorungeError) as failure:
+            scan(tmp_path)
+        assert failure.value.code == "file_unreadable"
+        assert not hasattr(previous, "__notes__")
+    assert injected
+    assert live == set()
+    assert peak[0] <= 64
