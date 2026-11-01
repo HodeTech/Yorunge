@@ -324,3 +324,9 @@ Tam test/build/kurulum işi bittikten sonra, aynı host Apple M5 Max/arm64 + mac
 ### Kalan kapanış
 
 Platform son kaynak yerel kabulü tamamlandı; P02-0d in_review, ona bağımlı aggregate P02-0b draft ve P02-0 partial kalır. Bu kanıt adımı commit ve iki farklı fresh review turuyla incelenir; sonra tek development PR/üç ortam CI. Kullanıcı PR review/merge yapacaktır; doğrulanmış kimlik/bağ P02-R1 draft ve sonraki veri/çıkarım epikleri bu paketle yapılmış sayılmaz.
+
+### Son yerel kabul — birinci fresh review turu
+
+5bd9107 üzerinde yeni ajanlar p020_final_r1_proof ve p020_final_r1_docs özgün full-suite/build/kurulum ve üç yeni ham kabul kaydını, kaynak/fixture/wheel eşliğini ve aktif ürün belgelerini bağımsız inceledi. Proof kontrolünde yeni bulgu yok; 3.695/1/595,33 s logu, 66/413 üye/SHA, gerçek kurulu TLS/API oracle'ı, bc9532c baseline ve 158 arşiv/current-source verifier sonucu raporla eşleşti. Büyük ham açılımlar genel review bağlamına taşınmadı; yalnız üç hedef kayıt araçla karşılaştırıldı.
+
+Tek P3: capability-matrix C13 hâlâ tüm canlı hizmet adaptörünü sonraki fazda anlatıyordu. Dar LLM/Platform discovery API ve gerçek consumer canlı kabulü mevcut/PR-CI bekler; gerçek execution/ForgeLM ve diğer araç adaptörleri sonraki fazdadır biçiminde düzeltildi. P01 tarihsel teslimi korundu. Belge/ajan/diff kontrolleri geçti; yeni full-suite/build/benchmark veya canlı hesap koşusu yapılmadı. Farklı fresh ajanlarla ikinci kanıt turu bu fix/kayıt commit'inden sonra yapılır.
