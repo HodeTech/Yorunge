@@ -1,6 +1,6 @@
 # P02 — Veri, katalog ve çıkarım
 
-**Güncellendi:** 2026-11-01. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) aktif; P02-0a araştırması ve bağımsız P02-0c LLM yerel verified. ADR-0022 kullanıcı onayıyla Platform’un nihai dar unverified gözlem sınırı kabul edildi; gerçek üç uç/seçili-proje consumer kabulü kayıtlı. P02-0d in_progress/P02-0b draft; paket partial, son kaynak/review/PR/CI sürüyor. Doğrulanmış kimlik/bağ ihtiyacı P02-R1’de açık kalır. P01 PR #11/bc9532c ile development’a teslim edildi; bu fazın kalan veri/çıkarım epikleri henüz uygulanmadı. **Yetenekler:** C01/C02 uzak gözlem alt kümesi, C03–C07, C11 okuma, C12/C13 entegrasyon.
+**Güncellendi:** 2026-11-01. **Durum:** [P02-0 paket planı](p02-0-delivery-plan.md) aktif; P02-0a araştırması ve bağımsız P02-0c LLM yerel verified. ADR-0022 kullanıcı onayıyla Platform’un nihai dar unverified gözlem sınırı kabul edildi; gerçek üç uç/seçili-proje consumer kabulü kayıtlı. P02-0d in_review/P02-0b draft; paket partial, son kaynak yerel kabulü tamam; kanıt review/PR/CI sürüyor. Doğrulanmış kimlik/bağ ihtiyacı P02-R1’de açık kalır. P01 PR #11/bc9532c ile development’a teslim edildi; bu fazın kalan veri/çıkarım epikleri henüz uygulanmadı. **Yetenekler:** C01/C02 uzak gözlem alt kümesi, C03–C07, C11 okuma, C12/C13 entegrasyon.
 
 ## Kullanıcı sonucu ve kapsam
 
@@ -12,11 +12,11 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 
 | ID | Teslim sınırı | Önkoşul | Kabulün sahibi | Durum |
 |---|---|---|---|---|
-| P02-0 | Sözleşme ve gerçek hesap bağlamı giriş hattı | P02-0a, P02-0b | Araştırma/LLM ve Platform consumer live kanıtı mevcut; son kaynak/review/PR/CI sürüyor | `partial` |
+| P02-0 | Sözleşme ve gerçek hesap bağlamı giriş hattı | P02-0a, P02-0b | Araştırma/LLM ve Platform consumer live kanıtı mevcut; son kaynak yerel kabulü tamam; kanıt review/PR/CI sürüyor | `partial` |
 | P02-0a | Güncel Platform/LLM sözleşmesi, endpoint SDK değerlendirmesi ve pilot planı | P01-2b, P01-3a, P01-5a, P01-5b | [Hazır araştırma kartı](tasks/p02-0a-contract-sdk-pilot.md); B03/B04 çözümü bu araştırmanın çıktısıdır | `verified` |
 | P02-0b | Hizmete bağlı salt okunur context gözlemi üst teslimi | P02-0c, P02-0d | [Üst kart](tasks/p02-0b-context-discovery.md); hizmet kabulleri bağımsız, Platform alt kabulü bekleniyor | `draft` |
 | P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); kod/review/ilk live/yerel kurulum ve kaynak bağlı referans kabulü; PR/CI/merge ayrı | `verified` |
-| P02-0d | Platform reported ID/organizasyon/proje gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); ADR-0022 Accepted ile nihai consumer, gerçek canlı kabul mevcut; son kaynak/review/PR/CI sürüyor | `in_progress` |
+| P02-0d | Platform reported ID/organizasyon/proje gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); ADR-0022 Accepted ile nihai consumer, gerçek canlı kabul mevcut; son kaynak yerel kabulü tamam; kanıt review/PR/CI sürüyor | `in_review` |
 | P02-R1 | Doğrulanmış hizmet kimliği ve seçili context bağı için açık takip | P02-0a, P02-0d; yetkili auth/principal/ilişki kaynağı | [Takip kartı](tasks/p02-r1-verified-context-binding.md); identity-context sahibi, ready öncesi alt işlere bölünür; mevcut P02-0 paketinin yeni önkoşulu değildir | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b | Güncel içerik/kimlik, güvenli kök, sınırlı tarama ve atomik rapor | `draft` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | P02-2a–c; create/presign/PUT/confirm ve ilk kesinti güvenliği | `draft` |

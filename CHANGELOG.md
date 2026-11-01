@@ -8,7 +8,7 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-11-01
 
-- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/PR/CI sürüyor, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
+- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak yerel kabulü tamam; kanıt review/PR/CI sürüyor, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
 
 ### Added — 2026-10-31
 

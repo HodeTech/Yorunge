@@ -1,6 +1,6 @@
 # P02-0 uygulama ve review kaydı
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve bağımsız LLM yerel kabulü tamamlandı; Platform kod/review ve gerçek consumer canlı kabulleri kayıtlı. Revize ADR-0022 1 Kasım açık kullanıcı onayıyla Accepted; nihai dar gözlem/kabul geçişi uygulandı. Son kaynak test/iki kurulum/M5/review ve tek development PR/CI kabulü sürüyor. P02-0 partial, P02-0d in_progress/P02-0b draft. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked ve eski katı decoder zorunluluğu ifadeleri kendi tarihsel aşamasını anlatır; güncel karar ADR-0022 ve bu kaydın son kapanış bölümüdür. **Dal/taban:** feat/p02-0a-sdk-pilot / development bc9532c. [Paket planı](../roadmap/p02-0-delivery-plan.md).
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve bağımsız LLM yerel kabulü tamamlandı; Platform kod/review ve gerçek consumer canlı kabulleri kayıtlı. Revize ADR-0022 1 Kasım açık kullanıcı onayıyla Accepted; nihai dar gözlem/kabul geçişi uygulandı. Son kaynak 3.695 test/iki temiz kurulum/yeni M5 startup-jobs yerel kabulü tamam; son kanıt review ve tek development PR/CI sürüyor. P02-0 partial, P02-0d in_review/P02-0b draft. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked ve eski katı decoder zorunluluğu ifadeleri kendi tarihsel aşamasını anlatır; güncel karar ADR-0022 ve bu kaydın son kapanış bölümüdür. **Dal/taban:** feat/p02-0a-sdk-pilot / development bc9532c. [Paket planı](../roadmap/p02-0-delivery-plan.md).
 
 ## Adım 1 — P02-0a araştırma ve karar hazırlığı
 
@@ -286,3 +286,41 @@ Kart denetimindeki aggregate bağımlılık koşulu korundu: Platform P02-0d in_
 cf1d263 üzerinde farklı yeni ajanlar adr22_accept_r2_contract ve adr22_accept_r2_proof nihai kabul geçişini bağımsız inceledi. Tek P3: current.md üst özetinde kalan eski blocked/raw-auth-live ifadesi güncel Accepted kapsamı, P02-0d in_progress/P02-0b draft ve son kaynak/PR/CI durumuna hizalandı; yeniden kontrolde kapandı. Kod/kanıt incelemesinde yeni doğrulanmış bulgu yok. 173 belge/sözleşme odaklı vaka ve ayrı 180 contract/probe/CI + 35 TLS/API/CLI kümesi geçti; örtüşen kümeler toplam diye sayılmaz. 143 belge/6 skill/17 kart ve diff geçti. Gerçek hesap koşusu tekrarlanmadı; yeni M5 ve temiz kurulum kabulü henüz bekler.
 
 Onay/kapsam geçişi iki fresh turuyla kapandı. Son runtime/workflow/test kaynak baytları 92c358a ile aynı; sonraki commit'ler yalnız belge düzeltmesidir. Ana tam takım bu baytlar üzerinde sürüyor. Referans host Apple M5 Max/arm64, macOS 27.0.1 ve internal SSD/APFS olarak yeniden kontrol edildi; benchmark tam takım ve diğer test/build işleri bittikten sonra seri yürütülecek.
+
+## P02-0 son kaynak yerel kabulü
+
+Son runtime/workflow/test kaynağı 92c358a; belge kapanışı 15aa8a1. Bu iki commit arasında src/tests/scripts/workflow/pyproject/lock farkı yoktur. Ana tam takım **3.695 passed, 1 skipped / 595,33 s** ile geçti; tek skip macOS'ta çalışmayan Linux native-counter regresyonudur. Gerçek Windows çalıştırması yapılmadı. Ruff format/lint, strict mypy 74 kaynak, 143 public Markdown/6 skill/17 kart ve diff geçti. Araştırma yürütücülerinin 29 sentetik vakası ayrıca önceki odaklı kabulde geçti; tam ürün takımına dahilmiş gibi sayılmaz.
+
+### Build ve iki temiz runtime kurulumu
+
+15aa8a1 üzerinde uv build sdist'ten wheel üretti. Dağıtım izin listesi ve her artifact için ayrı temiz runtime-only kurulum; repo dışından import origin/basic/NDJSON, gerçek yerel TLS HTTP/stream, cache/execution/jobs smoke kontrolleri geçti. Kurulu Platform senaryosu gerçek public API ve bağımsız kritik alan oracle'ını kullanır; canlı EVREN erişimi değildir.
+
+| Artifact | SHA-256 | Üye |
+|---|---|---:|
+| Wheel | 692a49fb18bd1f602f8bea4a7ded4470a84158d5daf32ca599a1effb1df890ff | 66 |
+| Sdist | ec28052f05b42c10674b1a18de4eea1e198525b107c60c4168c25463f4f15826 | 413 |
+
+[İki kurulum kaydı](evidence.md#p02-0-final-installation) kapalı installation_v2 olarak arşivlendi. Private hazırlık, raw arşiv ve bytecode paket dışındadır; sürümlü araştırma yöntem/test kaynakları sdist'tedir. Bu artifact'ların kimliği 15aa8a1 build'ine aittir; sonraki yalnız belge commit'i için yeni artifact üretildiği iddia edilmez.
+
+### Seri M5 startup ve jobs kabulü
+
+Tam test/build/kurulum işi bittikten sonra, aynı host Apple M5 Max/arm64 + macOS 27.0.1 + CPython 3.11.18 + internal SSD/APFS üzerinde seri çalıştı. Başlamadan önceki süreç görünümünde fseventsd yaklaşık bir çekirdek, GUI/OrbStack arka plan yükü görüldü; kusursuz idle veya fiziksel soğuk cache garantisi verilmez. Başka yoğun test/build işi çalıştırılmadı. Kaynak/kurulum/fixture snapshot'ları önce/sonra eşit; startup adayı ile iki temiz kurulumdaki wheel SHA-256 eşittir. Startup ayrı bc9532c runtime baseline'ıyla aynı-host AB/BA'dır; A/A değildir.
+
+| 30 ayrı süreç p95 | Aday ms | Taban ms | Bütçe ms |
+|---|---:|---:|---:|
+| help | 23,977 | 24,115 | 500 |
+| version | 23,876 | 23,978 | 500 |
+| context | 80,854 | 83,219 | 200 |
+| cache (1.024 kayıt) | 118,841 | 115,935 | 200 |
+| jobs normal/list | 107,846 | — | 200 |
+| jobs normal/show | 111,424 | — | 200 |
+| jobs dense/list | 151,332 | — | 200 |
+| jobs dense/show | 110,782 | — | 200 |
+
+[Startup](evidence.md#p02-0-final-reference-startup) ve [jobs](evidence.md#p02-0-final-reference-jobs) özgün kayıtları saklandı. İlk süreç/ısınma ve nearest-rank yöntemi kanonik standarda bağlıdır; bu tablodaki yuvarlama karar hesabının yerine geçmez. Salt docstring/kaynak geçişi üzerinden performans optimizasyonu iddia edilmez; önceki ölçümler farklı koşulun tarihsel kaydıdır. Ek özet okumasında p95 alan adı ilk denemede yanlış yorumlandı; gerçek ölçüm/validator başarısı değişmedi, warm_p95_ms üzerinden doğru özet alındı. Koşu tekrarlanmadı veya en hızlı sonuç seçilmedi.
+
+158 arşiv/manifest/indeks ve workflow'daki yeni iki current-source M5 verifier geçti. Bu M5 kabulüdür; Linux performansı veya tüm host'larda kesin süre garantisi değildir. CI'da yeni gerçek Linux raw RSS ve üç ortam/altı kurulum ayrı koşacaktır. Canlı hesap 6 GET ve 5 GET koşuları tekrarlanmadı; son kaynakta değişen tüketici satırı yalnız modül açıklamasıdır, gerçek decoder/final-state davranışı aynıdır.
+
+### Kalan kapanış
+
+Platform son kaynak yerel kabulü tamamlandı; P02-0d in_review, ona bağımlı aggregate P02-0b draft ve P02-0 partial kalır. Bu kanıt adımı commit ve iki farklı fresh review turuyla incelenir; sonra tek development PR/üç ortam CI. Kullanıcı PR review/merge yapacaktır; doğrulanmış kimlik/bağ P02-R1 draft ve sonraki veri/çıkarım epikleri bu paketle yapılmış sayılmaz.

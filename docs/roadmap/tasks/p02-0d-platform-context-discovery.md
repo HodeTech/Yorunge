@@ -1,14 +1,14 @@
 ---
 id: P02-0d
 phase: P02
-status: in_progress
+status: in_review
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi. Çekirdek/public yüzey ikişer fresh review ve önceki yerel kaynak kabulünü geçti; gerçek üç uç ve ayrı seçili-proje consumer kabulü tamamlandı. Onay sonrası son kaynak/test/kurulum/M5/review ve tek development PR/CI kabulü sürüyor; verified değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi. Çekirdek/public yüzey ikişer fresh review ve önceki yerel kaynak kabulünü geçti; gerçek üç uç ve ayrı seçili-proje consumer kabulü tamamlandı. Son kaynak 3.695 test/iki temiz kurulum/yeni M5 startup-jobs kabulü tamamlandı; son kanıt review ve tek development PR/CI sürüyor, in_review; verified değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -45,3 +45,5 @@ P01/P02-0a bağımlılıkları verified. [ADR-0020](../../decisions/0020-service
 ## Teslim kaydı
 
 [Çekirdek/public yüzey ve önceki yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı), [ilk gerçek tüketici gözlemi](../../research/p02-platform-reverse-engineering.md) ve [ayrı seçili-proje kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) kayıtlıdır. Seçili-proje koşusu 4 ürün GET/200 ve yeni detail no-key 401; ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Önceki boş-liste/başarısız/sınır dışı araştırmalar tarihsel korunur. ADR-0022 onayıyla dış sözleşme engeli kaldırıldı; kalan son kaynak/review/PR/CI kabulü sürüyor. Kullanıcı review/merge ve Master/release ayrı süreçtir.
+
+**Son yerel kabul:** [15aa8a1 kaynak kabul kaydı](../../research/p02-0-implementation-validation.md#p02-0-son-kaynak-yerel-kabulü) 3.695 passed/1 Linux-only skip, iki temiz kurulum, yeni kaynak bağlı startup ve dört jobs p95 kapısını taşır. Son kanıt review/PR/CI tamamlanmadı; status in_review.

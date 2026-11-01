@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0b — Hizmete bağlı salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0020/0021 ve kullanıcı onaylı ADR-0022 kapsamındaki üst teslim taslağı; Platform alt kabulü verified olunca kapanışa geçer. LLM ve Platform kod/review ve ayrı consumer canlı kabulleri mevcut; onay sonrası son kaynak/kurulum/M5/review ve tek PR/CI kabulü sürüyor. Alt kolların bütünü gerekir; verified değildir. [Paket planı](../p02-0-delivery-plan.md) adım/review döngüsünü taşır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0020/0021 ve kullanıcı onaylı ADR-0022 kapsamındaki üst teslim taslağı; Platform alt kabulü verified olunca kapanışa geçer. LLM ve Platform kod/review ve ayrı consumer canlı kabulleri mevcut; son kaynak tam test/iki kurulum/yeni M5 yerel kabulü tamam; son kanıt review ve tek PR/CI kabulü sürüyor. Alt kolların bütünü gerekir; verified değildir. [Paket planı](../p02-0-delivery-plan.md) adım/review döngüsünü taşır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

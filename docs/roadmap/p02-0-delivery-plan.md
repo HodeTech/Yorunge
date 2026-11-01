@@ -1,6 +1,6 @@
 # P02-0 — Sözleşme ve gerçek hesap bağlamı teslim planı
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve LLM P02-0c yerel verified; Platform kod/review ve iki ayrı consumer canlı kabulü mevcut. Kullanıcı onaylı ADR-0022 ile nihai dar gözlem kapsamı benimsendi; Platform in_progress/P02-0b draft, paket partial. Son kaynak test/iki kurulum/M5/review ve tek PR/CI kabulü sürüyor. **Dal/taban:** `feat/p02-0a-sdk-pilot` / development `bc9532c`. P01 kapanış ve P02 hazırlığı aynı tek nihai development PR’dadır; ayrı belge PR’ı açılmaz.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve LLM P02-0c yerel verified; Platform kod/review ve iki ayrı consumer canlı kabulü mevcut. Kullanıcı onaylı ADR-0022 ile nihai dar gözlem kapsamı benimsendi; Platform in_review/P02-0b draft, paket partial. Son kaynak test/iki kurulum/yeni M5 kabulü tamam; son kanıt review ve tek PR/CI kabulü sürüyor. **Dal/taban:** `feat/p02-0a-sdk-pilot` / development `bc9532c`. P01 kapanış ve P02 hazırlığı aynı tek nihai development PR’dadır; ayrı belge PR’ı açılmaz.
 
 ## Ön inceleme ve bağımlılıklar
 
