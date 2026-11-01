@@ -1258,9 +1258,16 @@ def unpack(
     )
     archive = read_bounded(directory / "raw" / f"{item['name']}.gz", archive_limit)
     with gzip.GzipFile(fileobj=io.BytesIO(archive)) as stream:
-        content = stream.read(report_limit + 1)
-    if len(content) > report_limit:
-        raise ValueError("decompressed evidence size limit exceeded")
+        decoded = bytearray()
+        while len(decoded) <= report_limit:
+            # read() may prefetch 8 KiB of decoded bytes beyond the requested limit.
+            block = stream.read1(min(64 * 1024, report_limit + 1 - len(decoded)))
+            if not block:
+                break
+            decoded.extend(block)
+        if len(decoded) > report_limit:
+            raise ValueError("decompressed evidence size limit exceeded")
+        content = bytes(decoded)
     expected = entry(item["name"], content, archive, item.get("original_commit"))
     if json.dumps(expected, sort_keys=True) != json.dumps(item, sort_keys=True):
         raise ValueError(f"evidence hash or summary mismatch: {item['name']}")

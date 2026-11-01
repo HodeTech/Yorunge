@@ -53,7 +53,7 @@ Manifest okuma ve metadata tarama kendi byte/adet sınırlarını ayrıca uygula
 
 ### Atomik dosya yayını ve sonuç
 
-Inspect hedefi zorunludur ve kaynak root dışında olmalıdır. Manifest girdi dosyası da verify root dışında kalır; kendisini taramaya katacak örtük exclusion yoktur. Parent önceden mevcut olmalıdır; işlem dizin yaratmaz. Parent zinciri no-follow descriptor ile açılır, root kimliğiyle karşılaştırılarak root/alt dizini hedefi reddedilir; yalnız metin prefix’i yetkilendirme değildir.
+Inspect hedefi zorunludur ve kaynak root dışında olmalıdır. Manifest girdi dosyası da verify root dışında kalır; kendisini taramaya katacak örtük exclusion yoktur. Root/artifact ankrajları strict UTF-8 ve kontrol/bidi karakteri içermeyen ≤4.096 byte yollardır; artifact leaf taşınabilir bileşen politikasına da uyar. Tam sonuç özetinin encoded boyutu publication öncesi ≤16 KiB denetlenir. Parent önceden mevcut olmalıdır; işlem dizin yaratmaz. Parent zinciri no-follow descriptor ile açılır, root kimliğiyle karşılaştırılarak root/alt dizini hedefi reddedilir; yalnız metin prefix’i yetkilendirme değildir.
 
 Tam doğrulanmış manifest aynı parent içinde rastgele, `O_EXCL`, 0600 stage’e yazılır; byte sayısı, file sync ve parent/root zinciri son kontrolü tamamlanır. Hedef yalnız exclusive hardlink publication ile oluşturulur; mevcut dosya/dizin/dangling symlink ezilmez. `rename` ile overwrite fallback’i yoktur. Stage kaldırılır, parent sync tamamlanır; macOS’ta mevcut full-sync ilkesi kullanılır. Sonuç ancak yayın ve dayanıklılık kontrollerinden sonra başarılıdır. Caller kendi artifact’ının ad/konumunu açık seçer; artifact dosya adları/hash’ler içeren özel veri sayılabilir.
 

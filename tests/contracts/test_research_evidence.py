@@ -376,6 +376,31 @@ def test_unpack_respects_remaining_total_budget_even_if_metadata_understates_byt
         CHECKS["unpack"](directory, item, **options)
 
 
+@pytest.mark.parametrize("remaining", [0, 1, 17, 8192, 16384])
+def test_unpack_bounds_actual_gzip_decoding_to_remaining_budget_plus_one(
+    tmp_path, monkeypatch, remaining
+):
+    root, _, _ = setup_archive(
+        tmp_path,
+        {"runs": [{"outcome": "ok", "elapsed_ms": 1}], "padding": "x" * 32768},
+    )
+    directory = root / "docs/research"
+    item = CHECKS["catalog"](directory)[0]
+    original_read = gzip._GzipReader.read
+    produced = 0
+
+    def measured_read(reader, size=-1):
+        nonlocal produced
+        block = original_read(reader, size)
+        produced += len(block)
+        return block
+
+    monkeypatch.setattr(gzip._GzipReader, "read", measured_read)
+    with pytest.raises(ValueError, match="decompressed evidence size limit"):
+        CHECKS["unpack"](directory, item, report_budget=remaining)
+    assert produced == remaining + 1
+
+
 def test_archive_gzip_write_failure_preserves_source_and_is_not_success(tmp_path, monkeypatch):
     root, source, original = setup_archive(tmp_path)
     new_source = source.with_name("next-budget.json")
