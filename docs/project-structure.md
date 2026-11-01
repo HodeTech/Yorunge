@@ -1,6 +1,6 @@
 # Proje yapısı
 
-**Güncellendi:** 2026-10-30. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON uygulandı; P01-6b/ADR-0019/Sonar [son kaynak kabulü](research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) çalışma dalında verified. Development PR/merge ve yayın ayrıdır.
+**Güncellendi:** 2026-10-30. **Durum:** Yerel çekirdek, ortak HTTP/session/stream ve UTF-8 CLI/NDJSON uygulandı; P01 tamamlandı ve PR #11 ile development’a teslim edildi. [Merge/kaynak kabulü](research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Master/release ayrı kullanıcı sürecidir.
 
 ```text
 src/yorunge/

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
+    from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlans,
@@ -24,8 +25,9 @@ if TYPE_CHECKING:
     )
     from yorunge.domain.maintenance import Preview as MaintenancePreview
     from yorunge.domain.maintenance import Snapshot as IdentitySnapshot
-    from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result
+    from yorunge.domain.models import CapabilityView, Context, Model, Plan, Result, ServiceId
     from yorunge.domain.operations import JobsPage, JobView
+    from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
 
     CliResult: TypeAlias = (
@@ -34,6 +36,8 @@ if TYPE_CHECKING:
         | Result[CapabilityView]
         | Result[CredentialCheck]
         | Result[CredentialObservation]
+        | Result[ContextDiscovery]
+        | Result[PlatformContextDiscovery]
         | Result[StateInfo]
         | Result[MaintenancePreview]
         | Result[ConfigUpdate]
@@ -143,7 +147,7 @@ def parser() -> Parser:
 
     add("init", "İlk config'i no-clobber oluştur", common)
     add("doctor", "Yerel ayar ve state tanılaması; sır okumaz", _doctor_options)
-    add("context", "Yerel profil bağlamı", _context_options)
+    add("context", "Profil bağlamı ve açık hizmet keşfi", _context_options)
     add("state", "Yerel kimlik durumunu yönet", _state_options)
     add("capabilities", "Sınırlı çevrimdışı yetenek görünümü", _capability_options)
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
@@ -175,7 +179,6 @@ def _jobs_options(jobs: Parser) -> None:
 
 
 def _jobs_singletons(arguments: Sequence[str]) -> None:
-    seen: set[str] = set()
     singleton = {
         "--output",
         "--non-interactive",
@@ -186,12 +189,39 @@ def _jobs_singletons(arguments: Sequence[str]) -> None:
         "--cursor",
         "--operation-id",
     }
+    _reject_duplicates(arguments, singleton)
+
+
+def _discovery_singletons(arguments: Sequence[str]) -> None:
+    _reject_duplicates(
+        arguments,
+        {
+            "--service",
+            "--state-dir",
+            "--config",
+            "--profile",
+            "--project",
+            "--output",
+            "--non-interactive",
+        },
+    )
+
+
+def _reject_duplicates(arguments: Sequence[str], singleton: set[str]) -> None:
+    seen: set[str] = set()
     for argument in arguments:
         option = argument.split("=", 1)[0]
         if option in singleton:
             if option in seen:
                 raise UsageError
             seen.add(option)
+
+
+def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> None:
+    if args.command == "jobs":
+        _jobs_singletons(arguments)
+    elif args.command == "context" and args.action == "discover":
+        _discovery_singletons(arguments)
 
 
 def _context_options(context: Parser) -> None:
@@ -215,6 +245,12 @@ def _context_options(context: Parser) -> None:
     common(identity)
     identity.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
     identity.add_argument("--state-dir", type=Path)
+    discover = context_actions.add_parser(
+        "discover", help="Açık Platform gözlemi veya LLM şart durumu; kimlik ve yetki doğrulanmaz"
+    )
+    common(discover)
+    discover.add_argument("--service", required=True, choices=("evren-platform", "evren-llm"))
+    discover.add_argument("--state-dir", type=Path)
 
 
 def _state_options(state: Parser) -> None:
@@ -316,6 +352,51 @@ def jobs_text_result(data: Model) -> str:
             )
         return "\n".join(lines)
     raise TypeError("unsupported jobs result type")
+
+
+def discovery_text_result(data: Model) -> str:
+    from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.platform_discovery import PlatformContextDiscovery
+
+    if isinstance(data, PlatformContextDiscovery):
+        selection = data.projects.selection
+        lines = [
+            f"Hizmet: {data.service_id}\nProfil: {data.profile}",
+            f"Bildirilen auth/me ID: {data.reported_identity.me_id}",
+            f"Tercih edilen hesap: {data.selected.account_id or '-'}",
+            f"Seçilen proje: {data.selected.project_id or '-'} ({selection.state})",
+            f"Gözlenen organizasyon: {len(data.organizations.items)}; "
+            f"bildirilen toplam: {data.organizations.reported_total}",
+            f"Gözlenen proje: {len(data.projects.items)}",
+            "Kimlik doğrulaması ve yetki: doğrulanmadı. ID bildirimi kimlik kanıtı değildir.",
+            "Liste tamlığı: "
+            + ("eksik" if data.list_completeness.organizations == "incomplete" else "bilinmiyor"),
+            "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir.",
+            "ID’ler kişiye bağlanabilir; çıktıyı paylaşırken koruyun.",
+        ]
+        lines.extend(f"Organizasyon ID: {item.id}" for item in data.organizations.items)
+        lines.extend(f"Proje ID: {item.id}" for item in data.projects.items)
+        return "\n".join(lines)
+    if not isinstance(data, ContextDiscovery):
+        raise TypeError("unsupported discovery result")
+    terms = "kabul edilmiş" if data.terms.accepted else "kabul edilmemiş"
+    lines = [
+        f"Hizmet: {data.service_id}\nProfil: {data.profile}",
+        f"Sunucunun şart durumu: {terms} (sürüm {data.terms.current_version})",
+        "Kimlik doğrulaması: doğrulanmadı. Uzak hesap/proje kimliği sunulmuyor.",
+        "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir.",
+    ]
+    if data.profile_preference.service_scope == "unknown":
+        lines.append("Profilin hesap/proje tercihinin LLM hizmet kapsamı bilinmiyor.")
+    return "\n".join(lines)
+
+
+def _result_text(args: argparse.Namespace, data: Model) -> str:
+    if args.command == "jobs":
+        return jobs_text_result(data)
+    if args.command == "context" and args.action == "discover":
+        return discovery_text_result(data)
+    return text_result(data)
 
 
 def text_result(data: Model) -> str:
@@ -490,8 +571,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     renderer = OutputRenderer("json" if machine_output else "text")
     try:
         args = parser().parse_args(args_list)
-        if args.command == "jobs":
-            _jobs_singletons(args_list)
+        _check_singletons(args, args_list)
     except UsageError:
         from yorunge.domain.errors import YorungeError
 
@@ -516,13 +596,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return renderer.error(YorungeError("file_unreadable"))
 
     try:
-        text = None
-        if renderer.output == "text":
-            text = (
-                jobs_text_result(result.data)
-                if args.command == "jobs"
-                else text_result(result.data)
-            )
+        text = _result_text(args, result.data) if renderer.output == "text" else None
         renderer.result(cast("Result[Model]", result), text=text)
         return 0
     except YorungeError as error:
@@ -587,6 +661,10 @@ def context_result(args: argparse.Namespace) -> CliResult:
         return api.clear_project(config=options.get("config"), profile=options.get("profile"))
     if args.action == "identity":
         return api.observe_credential(args.service, state_dir=args.state_dir, **context_options)
+    if args.action == "discover":
+        return api.discover_context(
+            cast("ServiceId", args.service), state_dir=args.state_dir, **context_options
+        )
     if args.action == "credential":
         return api.check_credential(args.service, **context_options)
     return api.show_context(**context_options)

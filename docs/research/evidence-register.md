@@ -1,10 +1,10 @@
 # Kanıt ve referans kaydı
 
-**Güncellendi:** 2026-10-27. **Kapsam:** Başlangıç tasarımı için kaynaklar; güncel canlı hesap sertifikası değildir.
+**Güncellendi:** 2026-11-01. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
 
 ## Kanıt türleri
 
-Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline deney ve gerçek hesap deneyi farklı seviyelerdir. Bu çalışma yeni hesap/GPU deneyi yapmadı. Kaynak okuma tarihi ile kaynakta yazan geçmiş ölçüm tarihi karıştırılmaz.
+Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline deney ve gerçek hesap deneyi farklı seviyelerdir. Başlangıç kaynak araştırması hesap/GPU deneyi yapmadı; sonraki yetkili hesap gözlemleri aşağıdaki tarihli bölümlerde ve bağlı raporlarda ayrı kaydedilir. Kaynak okuma tarihi ile kaynakta yazan geçmiş ölçüm tarihi karıştırılmaz.
 
 ## EVREN başlangıç kanıtları — 26 Ekim 2026
 
@@ -18,6 +18,42 @@ Resmî şema/kılavuz, yayımlanmış web istemcisi, araç sözleşmesi, offline
 | [evren-sdk](https://pypi.org/project/evren-sdk/) | Kılavuzda referans verilen mevcut SDK; 26 Ekim metadata'sında 0.11.0 | Bütün kodu bu çalışmada denetlenmedi; uygun bölümler adaptör adayı |
 
 Başlangıç LLM şeması SHA-256: `200e493ec31662bbb8f20c72f7d934ca10c4c623c1c03cd71b72f0ec50f6602d`, OpenAPI 3.1.0. Fine-tuning/adapter oluşturma yolu o şemada görülmedi; bu bütün özel/gelecek Platform yeteneklerinin yokluğunu kanıtlamaz. Platform API için denenen `/docs`, `/api/v1/docs`, `/api/v1/openapi.json` adresleri 404 verdi; başka bir doküman adresi bulunamayacağı sonucu çıkarılmadı.
+
+## P02 hazırlığında dar güncellik kontrolü — 30 Ekim 2026
+
+[P02 hazırlık incelemesinde](p02-readiness-review.md#dış-kaynak-kontrolü) yalnız kamuya açık belgelere credentialsız GET yapıldı. Bu kontrol P02-0a’nın tam endpoint/SDK araştırması değildir; 26 Ekim kaydı tarihsel olarak korunur.
+
+| Kaynak | Bu turda gözlenen | Sınır |
+|---|---|---|
+| [LLM OpenAPI](https://evren-llmapi.ssyz.org.tr/openapi.json) | HTTP 200; 52.240 byte; OpenAPI 3.1.0, info.version 0.1.0, 33 path; SHA-256 `5ba9b1b79f0f4ff7cf288ee0e9e7d7ce10eb860bfaf0fbbef9b33680cf6ac8d5` | Başlangıçtaki 30 path/hash değişmiştir; bütün farkların ve auth/limitlerin kabulü henüz yapılmadı |
+| [Kılavuz](https://evren.ssyz.org.tr/guide) | HTTP 200; 10.407 byte HTML; SHA-256 `24c6e8cd52acb9236862d9e54f917bd42b92cc326ccf6dafe3b9d5d90c8117c8` | İstemci script’i yükleyen HTML kabuğu; tam kılavuz/API sözleşmesi olarak doğrulanmadı |
+| [SDK dağıtım metadata’sı](https://pypi.org/pypi/evren-sdk/json) | 0.11.0; wheel SHA-256 `a3f0e191819c27c9df2047fdeeceb15d86140066c3f59e1efb6cb8c150416d92`; sdist SHA-256 `af1332a5d9a2067a8c39f9b82b5128ab6af1cff62e1d6475708abdef8e94aa8e` | Bu turda paket indirilmedi/kurulmadı veya kaynak denetimi yapılmadı; sürüm numarasının aynı kalması endpoint uyumu kanıtı değildir |
+
+Hash’ler bu GET gövdelerine/metadata’da bildirilen dağıtımlara aittir; sağlayıcı attestasyonu veya canlı hesap kanıtı değildir. Büyük kaynak kopyaları repoya alınmadı. Ayrıntılı tüketici endpoint’i ve sürüm/hash sabitlemesi P02-0a’da tekrarlanır; tarihsel bu kontrol onun yerine geçmez.
+
+## P02-0a kaynak sabitlemesi — 31 Ekim 2026
+
+[P02-0a araştırması](p02-contract-sdk-pilot.md) için kamu kaynakları credentialsız GET ile tekrar okundu. Tarihler Europe/Istanbul’dur; UTC’de 30 Ekim’in son saatlerine karşılık gelir. SDK wheel’i indirildi ama kurulmadı/import edilmedi/çalıştırılmadı; JavaScript yalnız metin olarak incelendi. Aşağıdakiler kaynak kimliğidir, kullanıcı hesabı veya sunucu davranışı attestasyonu değildir. Önceki snapshot’lar korunur; guide shell/main asset’i değişmiş, LLM OpenAPI aynı kalmıştır.
+
+| Kaynak / kanıt türü | Byte | SHA-256 |
+|---|---:|---|
+| [Guide HTML kabuğu](https://evren.ssyz.org.tr/guide) / W | 10407 | `2ca0c264de48e31149c72bc9d87b2b7dcf8bbc0ae1df6a467872b206b4d5f6b8` |
+| [Main istemci](https://evren.ssyz.org.tr/assets/index-D_27Bp0m.js) / W | 729034 | `7905d40664f126133e531abc896a1c41b89583ed77fd6831048696553765e1ea` |
+| [Guide içeriği](https://evren.ssyz.org.tr/assets/UserGuidePage-CbK-YjDp.js) / G | 96252 | `3a2115680efd8194f7d9c10615a4c33603f24cb213f59d1a42fbec7b36e1015a` |
+| [LLM OpenAPI](https://evren-llmapi.ssyz.org.tr/openapi.json) / O; 3.1.0, info 0.1.0, 33 path | 52240 | `5ba9b1b79f0f4ff7cf288ee0e9e7d7ce10eb860bfaf0fbbef9b33680cf6ac8d5` |
+| [Project istemcisi](https://evren.ssyz.org.tr/assets/useProject-C93_BqSs.js) / W | 2460 | `6e595ac57d07ceca2cd6bdee42388ede0e0199dcad021cafd98bce2cc460f4eb` |
+| [Organization istemcisi](https://evren.ssyz.org.tr/assets/OrgPage-DXC03dG9.js) / W | 8239 | `15a443f32decfaf3d5fa51b4c12445fb39959e3c18aa8e0c73f24ab65aa8ac82` |
+| [Dataset istemcisi](https://evren.ssyz.org.tr/assets/datasetApi-BcOh2J15.js) / W | 7005 | `f06fdd0f403013bbc5146c691cbceaa43111668102a248e330a125dc927e551f` |
+| [Model istemcisi](https://evren.ssyz.org.tr/assets/useModels-1Ere5UwN.js) / W | 6662 | `91ce0593514efa7c2f1c104e11e3fa6901e42dee6a49e60cda3ddcd7b2e74a82` |
+| [LLM katalog/açıklama](https://evren.ssyz.org.tr/assets/LlmModelCatalogPage-Bo9HCoSz.js) / W | 90529 | `d56013caf017f5189006ecef412f7df9fda0dd79ea0b7eb931753b66ddfaef68` |
+| [Vision istemcisi](https://evren.ssyz.org.tr/assets/InferencePage-BkRPzcSv.js) / W | 118942 | `cdf250c1b2fa84c4fbf98eb7e4c39b6215ea7d1e5c84c2f5392df54b8f21606f` |
+| [GPU istemcisi](https://evren.ssyz.org.tr/assets/useGpuStatus-DOhtiDOA.js) / W | 299 | `f40883460c65c2a2ba6ff31394fa13be01470c0ac2db7014dd5a38ea469a7218` |
+| [Reservation istemcisi](https://evren.ssyz.org.tr/assets/useReservation-BHKj8xby.js) / W | 2003 | `a1ce4d0f4470556f1744f893a4afda72121a293f848922f772a290fd63a46ef6` |
+| [SDK 0.11.0 wheel](https://files.pythonhosted.org/packages/68/a8/a2f5c8b2ea17ea9513f652c83fff52a9425eadfbb6ac95c2655ba3fcaa07/evren_sdk-0.11.0-py3-none-any.whl) / S | 55693 | `a3f0e191819c27c9df2047fdeeceb15d86140066c3f59e1efb6cb8c150416d92` |
+
+[Sürüm metadata’sı](https://pypi.org/pypi/evren-sdk/0.11.0/json) sdist için `af1332a5d9a2067a8c39f9b82b5128ab6af1cff62e1d6475708abdef8e94aa8e` bildirir; sdist indirilmedi/build edilmedi. `v0.11.0` etiketi [f4eaa4a](https://github.com/speker/evren-sdk/tree/f4eaa4a71f324e61058f24fb90c0aec7a58ae24f) commit’ine çözüldü; client, llm_client, llm_async_client, llm_retry, llm_sse, llm_errors, llm_types, llm_tasks dosyaları sabit Git kaynağı ile wheel’de byte-byte eşleşti. Metadata Apache-2.0/Python≥3.10/httpx≥0.27 ve ayrı image/edge extra’ları bildirir; LICENSE wheel içinde okundu.
+
+Türetilen endpoint/auth/envelope/limit/SDK ve eksik kimlik bulgularının kanonik yeri araştırma raporudur. W browser Bearer çağrısını API key doğrulaması diye sunmaz; O securitySchemes eksikliğini anonim erişim saymaz. Ham büyük kaynaklar repoya/pakete eklenmedi; asset URL’si kalıcı garanti olmadığı için hash/tarih tutuldu. Kaynak güncellenirse consumer sözleşmesi tekrar denetlenir.
 
 ## ForgeLM snapshot'ı
 
@@ -38,3 +74,40 @@ ForgeLM'i özel yardımcı fonksiyonlara bağlamak kalıcı adaptör API'si say�
 | [Leakwatch — 5755635](https://github.com/HodeTech/Leakwatch/tree/575563502227368bff93adf714a887113a15eae6) | CLI sonuç doğruluğu; sağlayıcı sözleşmesi ve dürüst feature statüsü; düzenli root belgeleri |
 
 Bu referansların dilleri, teknoloji yığınları, lisansları, branch veya canlı CI kuralları Yörünge'ye devralınmadı. Kaynak yapısı ve ilkeler incelendi; bağımsız Yörünge metinleri yazıldı.
+
+## 31 Ekim Platform chatbot sözleşme kontrolü
+
+Kullanıcının sağladığı chatbot açıklaması, metadata-only canlı gözlem ve güncel kamu istemcisiyle karşılaştırıldı. Aşağıdaki dosyalar credentialsız HTTPS GET ile alınıp metin olarak incelendi; JavaScript çalıştırılmadı, hiçbir account endpoint’i bu takipte çağrılmadı. Bundles repo/pakete kopyalanmadı. Hash’ler kaynak kimliği, auth veya server garanti kanıtı değildir. [Karşılaştırma](p02-platform-discovery-observations.md#platform-chatbot-cevabının-kontrolü).
+
+| Kamu kaynağı | Byte | SHA-256 |
+|---|---|---|
+| [Guide HTML](https://evren.ssyz.org.tr/guide) | 10407 | `9f5e943e8e45b8272b943926b8aacee0cecf8888a1e0952b71a3970973e62d3b` |
+| [Main istemci](https://evren.ssyz.org.tr/assets/index-ClMMVcec.js) | 729034 | `7d8a6d5676cc2706e940eeb95162a9ffcc0e4c55e70dbd2bfca4b8bc3a54c498` |
+| [Guide içeriği](https://evren.ssyz.org.tr/assets/UserGuidePage-56UufITC.js) | 96221 | `2d94c0f3b0fefdf21197bb8185dca1b4b6154c19583eb504ea152acb1d7f0fc2` |
+| [Project istemcisi](https://evren.ssyz.org.tr/assets/useProject-BGdQjM3D.js) | 2460 | `4223c37940e1011f973f2e5fb77ffdfa33c11236c1df01d74630a6c3fc9c7b7f` |
+| [Organization istemcisi](https://evren.ssyz.org.tr/assets/OrgPage-CjGrH6pA.js) | 8239 | `441b7f6b42d10edf155fe8f6f5d04be3b8f9c9e87896c9d793ec09892183c574` |
+| [API key arayüzü](https://evren.ssyz.org.tr/assets/ApiKeysPage-BG9q2x-L.js) | 14339 | `d3f1ab5843ba12c24ad289929c9eb0e9d0f1ac454b7d233c8ccd6a88891d9b84` |
+
+Project asset’inin list/detail doğrulayıcıları id UUID ve nullable/optional org_id kullanır; bu consumer şeması auth yetkisi veya bütün server wire’ı değildir. Guide asset’inde OpenAPI/Swagger bağlantısı doğrulanamadı; bundan başka bir yerde doküman olmadığı sonucu çıkmaz. Chatbot’taki VIEW/limit-offset/key-grammar/hata sınıfları için yetkili kapalı sözleşme hâlâ açık.
+
+
+## 1 Kasım Platform tersine mühendislik kaynakları
+
+Kullanıcı mevcut Platform key’iyle sınırlı salt okuma araştırmasını yetkilendirdi. Kamu kaynakları credentialsız HTTPS GET ile yeniden alındı; JavaScript yalnız metin olarak incelendi.10 GET/978.276 byte;12 GET/4 MiB/30 s tavanı. Bundles repo/pakete kopyalanmadı. Web okuyucusu bu hedefleri açamadı; doğrudan HTTPS kullanıldı. Hash kaynak kimliğidir, server/auth attestasyonu değildir. [Karşılaştırma ve davranış receipt’i](p02-platform-reverse-engineering.md).
+
+| Kamu kaynağı | Byte | SHA-256 |
+|---|---:|---|
+| [guide.html](https://evren.ssyz.org.tr/guide) | 10407 | `9f5e943e8e45b8272b943926b8aacee0cecf8888a1e0952b71a3970973e62d3b` |
+| [main.js](https://evren.ssyz.org.tr/assets/index-ClMMVcec.js) | 729034 | `7d8a6d5676cc2706e940eeb95162a9ffcc0e4c55e70dbd2bfca4b8bc3a54c498` |
+| [ApiKeysPage-BG9q2x-L.js](https://evren.ssyz.org.tr/assets/ApiKeysPage-BG9q2x-L.js) | 14339 | `d3f1ab5843ba12c24ad289929c9eb0e9d0f1ac454b7d233c8ccd6a88891d9b84` |
+| [OrgDetailPage-DvpMAymt.js](https://evren.ssyz.org.tr/assets/OrgDetailPage-DvpMAymt.js) | 27942 | `8259138f08b85cd1dce64b495e86f7a1d385e3d37791eaff80a12710465a8024` |
+| [OrgPage-CjGrH6pA.js](https://evren.ssyz.org.tr/assets/OrgPage-CjGrH6pA.js) | 8239 | `441b7f6b42d10edf155fe8f6f5d04be3b8f9c9e87896c9d793ec09892183c574` |
+| [ProjectDetailPage-Creyc1rV.js](https://evren.ssyz.org.tr/assets/ProjectDetailPage-Creyc1rV.js) | 26698 | `e54949223eb4ebf1fd37d5866249037019ef8bf5b940c06bf50c8a77b308a969` |
+| [ProjectListPage-B4xyKzvK.js](https://evren.ssyz.org.tr/assets/ProjectListPage-B4xyKzvK.js) | 8461 | `f17748f2c1dcc0c5d21a6c10f9dfe7749a151b3e2738aff439fe2a970dc88327` |
+| [UserGuidePage-56UufITC.js](https://evren.ssyz.org.tr/assets/UserGuidePage-56UufITC.js) | 96221 | `2d94c0f3b0fefdf21197bb8185dca1b4b6154c19583eb504ea152acb1d7f0fc2` |
+| [useProject-BGdQjM3D.js](https://evren.ssyz.org.tr/assets/useProject-BGdQjM3D.js) | 2460 | `4223c37940e1011f973f2e5fb77ffdfa33c11236c1df01d74630a6c3fc9c7b7f` |
+| [validation-DUUZp46a.js](https://evren.ssyz.org.tr/assets/validation-DUUZp46a.js) | 54475 | `ac2fff8e6962696718bda20f356f36ba7eca098dcdb941926fbe0179ea0d1cb1` |
+
+Proje listesi search parametresini kullanır; useProject list/detail Zod şemaları id UUID ve nullable/optional org_id tüketir. API key UI kind=platform/llm_inference/model_inference ayrımı ve credit_org_id alanını gösterir; scope/key-grammar normatif şeması değildir. Ana web client Bearer browser token’ı taşır, GET wrapper success/data’yı açabilir. Bu davranış Yörünge için browser token fallback veya gevşek decoder yetkisi vermez. Org UI listede array/items kabul eder; pagination/tamlık ve principal anlamı açık kalır.
+
+Postman api-discovery/Orbit public aramasında dönen5 kaynak EVREN’le eşleşmedi; hiçbiri entegrasyon girdisi seçilmedi. Bu sonuç başka yerde sağlayıcı sözleşmesi olmadığı kanıtı değildir. Canlı hesap çağrıları bu kamu kaynağı tablosundan ayrı, tek6 GET/6 attempt/1.397 tüketilen raw byte/0,616151 s davranış koşusu olarak kaydedildi.

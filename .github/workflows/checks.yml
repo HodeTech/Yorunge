@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: core-checks-${{ github.event.pull_request.number || github.ref }}
+  group: core-checks-${{ github.event.pull_request.number || github.ref }}${{ (github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) && '-metadata' || '' }}
   cancel-in-progress: true
 jobs:
   linux311:
@@ -146,12 +146,12 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p01-6-reference-startup-adr19-initial-runtime.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-0-final-reference-v2-startup.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p01-6-reference-jobs-adr19-initial-runtime.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-0-final-reference-v2-jobs.json > dist/jobs-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}

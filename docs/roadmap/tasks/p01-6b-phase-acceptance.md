@@ -8,9 +8,9 @@ capabilities: [C01, C02, C12, C13]
 ---
 # P01-6b — Faz kabulü ve doğrulanmış ortam matrisi
 
-**Tarih:** 2026-10-29. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-5a/b önceki kabulü, adım 5 bütünleşik testleri ve adım 6 önceki CI/performans sonuçları [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#faz-kapanışı-ve-gerçek-ci). Tek development PR üzerinden son-head kontrolü ve kullanıcı incelemesi izlenir; merge kullanıcıdadır. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
+**Tarih:** 2026-10-30. **Paket:** [Kalan P01](../p01-remaining-delivery-plan.md), adım 5–6. P01-6b kabulü tamamlandı ve PR #11 ile development’a bc9532c merge’ünde teslim edildi. [Merge/kanıt kapanışı](../../research/p01-remaining-implementation-validation.md#development-merge-kapanışı) günceldir; önceki adım/CI/performans kayıtları kaynaklarıyla korunur. Eski P01-6a CI altyapısı bu kapanış kabulü değildir.
 
-**PR #11 inceleme takibi:** RSS baseline/büyüme, kısa secret, ADR-0019 startup kabul ortamı ve Sonar bakımı tamamlandı; kart çalışma dalında `verified`. [son kaynak kabulü](../../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) gerçek üç ortam/altı kurulum ve güncel M5/Linux raw sonuçlarını taşır. Kullanıcı PR review/merge’ü ve son belge/merge artifact saklama takibi ayrı kalır.
+**PR #11 inceleme takibi:** RSS baseline/büyüme, kısa secret, ADR-0019 startup kabul ortamı ve Sonar bakımı tamamlandı; kart `verified` ve development’a teslim edildi. [son kaynak kabulü](../../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) gerçek üç ortam/altı kurulum ve güncel M5/Linux raw sonuçlarını taşır. PR #11 merge ve son belge/merge artifact saklama takibi [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#development-merge-kapanışı).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -44,6 +44,8 @@ Fixture-only gerçek loopback/TLS/process/state, bağımsız contract oracle, ar
 
 ## Teslim kaydı
 
+**Development teslimi:** [PR #11](https://github.com/HodeTech/Yorunge/pull/11), [merge bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027), 2026-10-30 07:57:27 Europe/Istanbul; [merge/kayıt kapanışı](../../research/p01-remaining-implementation-validation.md#development-merge-kapanışı).
+
 - PR/commit: [PR #11](https://github.com/HodeTech/Yorunge/pull/11), son kaynak e5846ce, gerçek CI head de312dc; [CI 40975685731](https://github.com/HodeTech/Yorunge/actions/runs/40975685731). İlk-release A/A, normal pinned runtime ve özgün witness saklama doğrulandı.
 - Sonuç: [ADR-0019/Sonar kaynak kabulü](../../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı), iki güncel M5 referansı, gerçek Linux raw v2, üç ortam tam takımı ve altı kurulum verified. Üç bilinçli S5754 dışında kullanıcı Sonar maddeleri açık listeden çıktı.
-- Kalan sınır: M5 kabulü Linux performansı veya donanım attestasyonu değildir; önceki retler korunur. Son belge/merge koşusu çıktıları ADR-0019 saklama takibiyle mevcut/sonraki yetkili dalda korunur. Development merge, Master/release kullanıcıdadır.
+- Kalan sınır: M5 kabulü Linux performansı veya donanım attestasyonu değildir; önceki retler korunur. Son PR/iptal/merge koşusu çıktıları bu kapanışta ADR-0019’a göre kalıcı arşive alındı; 149 kayıt ve gerçek merge CI doğrulandı. Development teslimi tamamlandı; Master/release kullanıcıdadır.

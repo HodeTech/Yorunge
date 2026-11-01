@@ -1,6 +1,6 @@
 # Plan ve çalıştırma modeli
 
-**Durum:** Benimsenmiş tasarım. **Güncellendi:** 2026-10-29.
+**Durum:** Benimsenmiş tasarım. **Güncellendi:** 2026-10-30.
 
 Offline v1 stateless draft üretir. P01-3 ayrı kalıcı execution hazırlığı, descriptor input bağı, güncel validation ve onay/yönetim çekirdeğini ekler. Ürün producer'ında araç/uzak auth/tam girdi kapanışı doğrulanmadığı için public plan draft ve onaylanamaz kalır; prepared/onay pozitifliği yalnız test portuyla kanıtlanır. Şema/seçim ve digest doğrulaması, aşağıdaki tam execution bağlarının yerine geçmez. [Uygulanan CLI sınırı](../reference/cli-contract.md#uygulanan-alt-küme).
 
@@ -70,4 +70,4 @@ Yerel izlemeyi durdurmak uzak eğitimi durdurmaz. Planlanan `jobs stop` etkiyi �
 
 `submitted` veya `unknown` işlem, kayıtlı uzak kimlik/korelasyon üzerinden aynı işin sağlayıcı tarafından iptal edildiği doğrulanırsa `cancelled` olur. İptal isteğinin kabulü, timeout, yerel izleyicinin kapanması veya tek başına işin bulunamaması iptal kanıtı değildir; sonuç belirsizse `unknown` korunur. Ham sağlayıcı durumu ve doğrulama kaynağı işlem kaydına eklenir.
 
-Salt okunur istek, idempotent dosya PUT'u ve kaynak oluşturan POST aynı retry politikasını kullanmaz. Deneme ve toplam deadline, kullanıcı işinin bütün süresini kapsar. [Durum saklama](data-and-state.md), [CLI sonucu](../reference/cli-contract.md).
+Salt okunur istek, dosya PUT’u ve kaynak oluşturan POST için replay güvenliği ayrı kanıt ister. Güncel [ADR-0017](../decisions/0017-bounded-http-transport.md) yalnız açık read-only GET/HEAD retry’sine izin verir; PUT’un sağlayıcıda idempotent olması bugünkü taşıma politikasını kendiliğinden değiştirmez. Çok aşamalı aktarımın aşama/replay ve iş/istek deadline modeli [P02 karar kapılarında](../roadmap/phase-02-data-and-inference.md#p01den-devralınan-sınırlar-ve-karar-kapıları) hazırlanır. [Durum saklama](data-and-state.md), [CLI sonucu](../reference/cli-contract.md).

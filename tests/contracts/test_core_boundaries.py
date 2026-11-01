@@ -42,7 +42,9 @@ from yorunge import api
 from yorunge.cli import text_result
 result = api.show_context()
 assert text_result(result.data)
-for name in ('configuration', 'credentials', 'maintenance', 'state'):
+for name in (
+    'configuration', 'credentials', 'maintenance', 'state', 'discovery', 'platform_discovery'
+):
     assert 'yorunge.domain.' + name not in sys.modules
 """
     result = subprocess.run(
@@ -168,3 +170,11 @@ def test_capability_query_and_plan_rejection_agree_with_api(cli, options, code):
         api.prepare_plan(task="llm.train", **options)
     assert failure.value.code == code
     assert json.loads(command.stderr) == failure.value.envelope()
+
+
+def test_context_help_describes_both_unverified_discovery_services_without_io(cli):
+    result = cli("context", "--help", metadata=True)
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert "Platform gözlemi veya LLM şart durumu" in result.stdout
+    assert "kimlik ve yetki doğrulanmaz" in " ".join(result.stdout.split())

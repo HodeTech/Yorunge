@@ -4,7 +4,22 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
-P01-4, [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile development’a alındı; [merge/CI kanıtı](docs/research/p01-4-implementation-validation.md#development-merge-kapanışı). Bu kayıt paket yayını veya Master/release aktarımı değildir.
+### Fixed — 2026-11-01
+
+- PR metadata edit’inde required check’in native merge kutusunda Expected kalmasına karşı sabit `offline-core` ve her olayda gerçek üç ortam doğrulaması; source/metadata concurrency ayrımı korunur. Platform raw/DTO doğrulaması küçük eşdeğer yordamlarla sadeleştirildi; raises hazırlıkları hedef assertion dışına taşındı.
+
+- Discovery, credential ile karıştırılan yerel profil/hesap/proje tercihlerini ilk ağ isteğinden önce kontrollü reddeder; kısa sır proje URL’sine eklenmeden karşılaştırılır. LLM/Platform nihai dinamik sonuç alanları da seçili literal denetiminden geçer.
+- Hesap hazırlığında dolu Platform tercihleri normal config profiline aktarılır; yalnız seçili anahtarı çocuk sürece veren çalıştırılabilir discovery örneği ve önceki hazırlıklar için geçiş yolu eklendi.
+
+P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeTech/Yorunge/pull/11) ile development’a [bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027) merge’ünde alındı. [Merge/CI kanıtı](docs/research/p01-remaining-implementation-validation.md#development-merge-kapanışı). Bu kayıt paket yayını veya Master/release aktarımı değildir.
+
+### Added — 2026-11-01
+
+- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam; kullanıcı review/merge ayrı, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
+
+### Added — 2026-10-31
+
+- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform’un nihai dar gözlem sınırı 1 Kasım ADR-0022 ile ayrıca benimsendi. LLM ilk canlı terms, Platform consumer/live ve bütünleşik kaynak/review/kurulum/M5/üç ortam PR CI kabulü tamamlandı; PR #12 kullanıcı review/merge bekler, development teslimi değildir.
 
 ### Changed — 2026-10-29
 
@@ -20,7 +35,7 @@ P01-4, [PR #10](https://github.com/HodeTech/Yorunge/pull/10) ile development’a
 
 - Session-owned async HTTPX taşıması ve sync Runner; canonical hedef/credential, bounded deadline/retry, TLS/cookie/log/yanıt doğrulama sınırları. Doğrudan SDK bağımlılığı veya EVREN endpoint adaptörü eklenmedi.
 - Tipli StreamEvent v1, bounded NDJSON codec, HTTP message EOF’a kadar tutulan terminal ve mevcut normal CLI komutlarında tek-result NDJSON. Eski Result/JSON v1, plan digest’i ve yerel komutların lazy import sınırı korunur.
-- UTF-8 byte çıktı, kontrollü SIGINT/pipe/I/O ve kritik config yayınında korunmuş uncertainty 5. Altı adım ve ikişer fresh review ile P01 altyapısı uygulandı; kullanıcı review sonrası native raw v2, Accepted ADR-0019 kaynak bağlı M5 startup/jobs ve strict Linux tanısı, Sonar/fresh referans ve gerçek üç ortam kabulü tamamlandı; [kapanış kaydı](docs/research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı). Development PR review/merge ve yayın ayrıdır.
+- UTF-8 byte çıktı, kontrollü SIGINT/pipe/I/O ve kritik config yayınında korunmuş uncertainty 5. Altı adım ve ikişer fresh review ile P01 altyapısı uygulandı; kullanıcı review sonrası native raw v2, Accepted ADR-0019 kaynak bağlı M5 startup/jobs ve strict Linux tanısı, Sonar/fresh referans ve gerçek üç ortam kabulü tamamlandı; [kapanış kaydı](docs/research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı). PR #11 development teslimi tamamlandı; Master/release ve yayın ayrıdır.
 - Linux/Python 3.11/3.14 ve macOS/Python 3.11 tam uyumluluk, build ve iki temiz kurulum; son kaynakla startup, zorunlu kaynak-bağlı 200 ms jobs referansı, raw stream RSS ve yoğun 5 s state/migration kapıları. Başarısız ortam ölçümleri ve referansın donanım sınırı açıkça saklanır.
 - Jobs okumasında gereksiz composition import maliyeti ve eşdeğer ASCII kontrol taraması azaltıldı; SQL/digest/tam validation/FK kuralları korundu. Python 3.14 platform taklidi ve izole fixture interpreter/TLS tanılama sorunları düzeltildi.
 - Şema 6 operation/attempt/terminal outcome, aynı plan tekliği ve kalıcı dispatch bağı; current credential/onay transaction kontrolü, lease/fencing ve tek kullanımlık süreç izni.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 from pydantic import ConfigDict, ValidationError
 
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
+    from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlan,
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
     )
     from yorunge.domain.maintenance import Preview as MaintenancePreview
     from yorunge.domain.operations import JobsPage, JobView
+    from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
 
 
@@ -431,6 +433,95 @@ def observe_credential(
                 identity=bound.identity,
             )
         )
+
+
+@overload
+def discover_context(
+    service_id: Literal["evren-llm"],
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ContextDiscovery]: ...
+
+
+@overload
+def discover_context(
+    service_id: Literal["evren-platform"],
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[PlatformContextDiscovery]: ...
+
+
+@overload
+def discover_context(
+    service_id: ServiceId,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ContextDiscovery] | Result[PlatformContextDiscovery]: ...
+
+
+def discover_context(
+    service_id: ServiceId,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    project: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[ContextDiscovery] | Result[PlatformContextDiscovery]:
+    """Explicit bounded remote observation; never initializes state or grants authority."""
+    import time
+
+    started = time.monotonic()
+    request = validate(
+        CredentialRequest,
+        {"service_id": service_id, "profile": profile, "project": project},
+        "invalid_request",
+    )
+    if any(path is not None and not isinstance(path, Path) for path in (config, state_dir)):
+        raise YorungeError("invalid_request")
+    if request.service_id == "evren-llm" and request.project is not None:
+        raise YorungeError("invalid_request")
+    from yorunge.adapters.local_files import require_local_files
+
+    require_local_files()
+    from yorunge.adapters.capability_cache import SystemClock
+    from yorunge.adapters.context_state import StateDiscovery
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.context_discovery import ObservationClock
+
+    clock = ObservationClock(SystemClock())
+    state = StateDiscovery(
+        state_dir,
+        lambda: _context(config, request, None),
+        EnvSecretReader(),
+        clock,
+        service_id=request.service_id,
+    )
+    if request.service_id == "evren-platform":
+        from yorunge.adapters.platform_context import PlatformReader
+        from yorunge.application.platform_discovery import discover_platform
+        from yorunge.domain.platform_discovery import PlatformContextDiscovery
+
+        return Result[PlatformContextDiscovery](
+            data=discover_platform(state, PlatformReader(clock), clock, deadline=started + 30.0),
+            warnings=("context_not_verified",),
+        )
+    from yorunge.adapters.llm_context import LlmTermsReader
+    from yorunge.application.context_discovery import discover_context as discover
+    from yorunge.domain.discovery import ContextDiscovery
+
+    return Result[ContextDiscovery](
+        data=discover(state, LlmTermsReader(clock), clock, deadline=started + 30.0),
+        warnings=("context_not_verified",),
+    )
 
 
 def _resolve(

@@ -16,6 +16,12 @@ CELLS = {
     "macos311": ("macos-15", "3.11", "false"),
 }
 
+METADATA_EVENT = (
+    "github.event_name == 'pull_request' && github.event.action == 'edited' "
+    "&& github.event.changes.base == null && "
+    "(github.event.changes.body != null || github.event.changes.title != null)"
+)
+
 
 @pytest.fixture(scope="module")
 def workflow():
@@ -52,6 +58,27 @@ def test_workflow_still_checks_prs_protected_branches_and_manual_runs(workflow):
     assert set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}
     for event in ("push", "pull_request"):
         assert workflow["on"][event]["branches"] == ["development", "Master"]
+    assert workflow["on"]["pull_request"]["types"] == [
+        "opened",
+        "synchronize",
+        "reopened",
+        "edited",
+        "ready_for_review",
+    ]
+
+
+def test_only_known_body_or_title_edits_use_an_independent_validation_group(workflow):
+    # Base changes, unknown edits, pushes and manual calls remain source events.
+    # Metadata changes still validate all three cells, without cancelling source work.
+    assert workflow["concurrency"] == {
+        "group": (
+            "core-checks-${{ github.event.pull_request.number || github.ref }}"
+            "${{ (" + METADATA_EVENT + ") && '-metadata' || '' }}"
+        ),
+        "cancel-in-progress": "true",
+    }
+    policy = yaml.load(WORKFLOW.with_name("pr-policy.yml").read_text(), Loader=yaml.BaseLoader)
+    assert "edited" in policy["on"]["pull_request_target"]["types"]
 
 
 @pytest.mark.parametrize("cell", CELLS)
@@ -66,7 +93,9 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         "RUNNER_LABEL": runner,
     }
     assert job["steps"] is workflow["jobs"]["linux311"]["steps"]
-    assert not {"if", "continue-on-error", "strategy", "needs"} & job.keys()
+    assert "if" not in job
+    assert job["name"] == ("macOS" if cell == "macos311" else "Linux") + " / Python " + python
+    assert not {"continue-on-error", "strategy", "needs"} & job.keys()
     for step in job["steps"]:
         assert "continue-on-error" not in step
     steps = steps_by_id(job)
@@ -143,12 +172,12 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p01-6-reference-startup-adr19-initial-runtime.json > dist/startup-reference.txt",
+            "p02-0-final-reference-v2-startup.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p01-6-reference-jobs-adr19-initial-runtime.json > dist/jobs-reference.txt",
+            "p02-0-final-reference-v2-jobs.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -230,6 +259,12 @@ def test_actual_gate_accepts_all_success_without_a_checkout(workflow, tmp_path):
     result = invoke_gate(workflow, tmp_path, json.dumps(successful_needs()))
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {cell: "success" for cell in CELLS}
+
+
+def test_even_all_skipped_cells_cannot_satisfy_the_required_check(workflow, tmp_path):
+    needs = {cell: {"result": "skipped"} for cell in CELLS}
+    result = invoke_gate(workflow, tmp_path, json.dumps(needs))
+    assert result.returncode != 0
 
 
 @pytest.mark.parametrize("cell", CELLS)

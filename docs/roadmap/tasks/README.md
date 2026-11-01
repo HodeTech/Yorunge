@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-10-29. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-01. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -16,8 +16,15 @@
 | [P01-5a](p01-5a-http-transport.md) | Ortak HTTP/TLS/deadline/retry, SDK sınırı ve operation composition |
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
+| [P02-0a](p02-0a-contract-sdk-pilot.md) | Güncel resmî sözleşme, endpoint SDK değerlendirmesi ve yetkili pilot planı; ürün/pilot icrası değil |
+| [P02-0b](p02-0b-context-discovery.md) | Hizmete bağlı dar context gözlemi üst teslimi verified; ADR-0022 Accepted, iki hizmet/source CI tamam; PR #12 merge ayrı |
+| [P02-0c](p02-0c-llm-context-discovery.md) | Platform’dan bağımsız LLM terms/context ve dürüst kimlik/auth sınırı |
+| [P02-0d](p02-0d-platform-context-discovery.md) | Accepted ADR-0022 ile nihai unverified consumer; gerçek üç uç/seçili proje ve son kaynak/review/kurulum/M5/CI kabulü verified; PR #12 merge ayrı |
+| [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; draft, mevcut P02-0 paketinin yeni önkoşulu değil |
 
-[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b çalışma dalında verified; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 kullanıcı review/merge bekler; güncel durum kart metadata’sındadır.
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b verified ve PR #11 ile development’a teslim edildi; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 bc9532c merge’ünde development’a alındı; güncel durum kart metadata’sındadır.
+
+[P02-0a](p02-0a-contract-sdk-pilot.md) araştırması ve [P02-0b](p02-0b-context-discovery.md) keşfi kullanıcı yetkisiyle [tek P02-0 paketinde](../p02-0-delivery-plan.md) tamamlandı. Üst teslim [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabullerini topladı; çalışma dalında verified, PR #12 kullanıcı review/merge ayrıdır. Sıradaki epik P02-1’dir; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. [P02 hazırlık review’si](../../research/p02-readiness-review.md) ürün/hesap kabulü değildir. Diğer P02 uygulama kartları karar/endpoint kanıtları geldikçe hazırlanır.
 
 Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
 

@@ -57,6 +57,7 @@ ALLOWED_DOCS = {
     "tech-stack.md",
     "user-journeys.md",
     "vision.md",
+    "p02-account-setup.md",
 }
 
 

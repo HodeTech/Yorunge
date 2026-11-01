@@ -1,12 +1,15 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-10-29. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-11-01. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
-- [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 kullanıcı review/merge bekler; önceki retler korunur. Son belge/merge çıktıları ayrı saklama takibidir.
+- [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 development’a birleştirildi; [merge/kanıt kapanışı](p01-remaining-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Önceki retler korunur; son PR/iptal/merge kanıtlarıyla 149 arşiv ve gerçek merge CI doğrulandı.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
+- [P02-0a sözleşme/SDK/pilot araştırması](p02-contract-sdk-pilot.md): sabit resmî kaynaklar, endpoint/etki/limit/SDK matrisi, açık kimlik boşlukları ve yetkili pilot planı; iki fresh review ile araştırma kabulü verified, gerçek hesap deneyi değil.
+- [P02-0 uygulama/review kaydı](p02-0-implementation-validation.md): tek paket verified; ADR-0022 nihai dar gözlem, ayrı canlı consumer kabulleri ve son kaynak/review/kurulum/M5/üç ortam CI tamam; PR #12 kullanıcı review/merge ayrı.
+- [P02 başlangıç hazırlık review’si](p02-readiness-review.md): faz/PR/bağımlılık/kabul ve mevcut P01 kod sınırları; P02-0a araştırmaya hazır, endpoint uygulaması ve hesap pilotu yok.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
 - [P01 ilk dilim ve kapanış kabulü](p01-core-validation.md): yerel test/build/temiz kurulum ve performans kanıtı; [ilk ham başlangıç ölçümü](p01-startup.json), [P01-1a ham ölçümü](p01-1a-startup.json).
 - [Dal/PR/koruma kabulü](branch-workflow-validation.md): development kurulumu, gerçek GitHub CI ve koruma geri okuma kanıtı.
@@ -50,3 +53,14 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 - [P01-4 ilk paket kabulü — tarihsel 17de965](p01-4-implementation-validation.md#son-kaynakla-bütünleşik-yerel-kabul): [operation 27 işlem](evidence.md#p01-4-final-operation-budget), [migration 24 işlem](evidence.md#p01-4-final-migration-budget), [kurulu jobs](evidence.md#p01-4-final-jobs-budget), [eşli startup](evidence.md#p01-4-final-startup), [iki ürün temiz kurulumu](evidence.md#p01-4-final-installations). Güncel ürün kaynağı kabulünün yerine geçmez.
 - [PR #10 son kaynak kapanışı — ürün 182f695](p01-4-implementation-validation.md#pr-10-son-kaynak-kapanışı): [27 operation](evidence.md#p01-4-noop-operation-budget), [24 migration](evidence.md#p01-4-noop-migration-budget), [kurulu jobs](evidence.md#p01-4-noop-jobs-budget), [eşli startup](evidence.md#p01-4-noop-startup), [iki temiz kurulum](evidence.md#p01-4-noop-installations). Önceki başarısız kaynak ölçümleri kabul kaydında korunur; canlı EVREN, merge veya release kanıtı değildir.
+
+- [Platform raw-schema gözlemleri](p02-platform-discovery-observations.md): yetkili üç GET’in metadata-only sonucu, boş proje gözlemi ve açık auth/principal/pagination kapısı; ADR-0021 Accepted; bu tarihsel raw-schema araştırması ürün/hizmet kabulü değildir.
+
+
+[1 Kasım Platform tersine mühendislik raporu](p02-platform-reverse-engineering.md), mevcut public API’nin gerçek üç yanıtı ayrıştırdığını ve aynı uçlarda key 200/no-key 401 davranışını kaydeder.6 GET/6 attempt koşusu raw/ID/key değeri saklamaz; mevcut auth/principal/pagination ve seçili proje kabulünü verified yapmaz. [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) nihai sınırlı consumer sınırını benimser; Accepted — kullanıcı revize kararı 2026-11-01 tarihinde onayladı.
+
+[Değişmez önceki probe/test kaynakları](probes/platform-20261101/README.md) receipt hash’iyle incelemeye açıktır. [Ayrı seçili-proje kabul hazırlığı](probes/platform-project-20261101/README.md) kullanıcının özel test girdisini yayımlamadan mevcut Accepted yolu sınamak içindir; ayrı [seçili-proje canlı koşusu](p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) artık geçti. Bu, ADR-0022 onayı veya bütün P02-0 kapanışı değildir.
+
+[Seçili-proje değer taşımayan receipt](p02-platform-selected-project-observations.json): 5 GET/5 attempt, 4 ürün 200/detail key yokken 401; nonempty liste/ID-route eşliği, mevcut public unknown/no-authority ve final-state kabulü. Önceki koşudan ayrı amaç/bütçe; gerçek ID/secret içermez.
+
+**1 Kasım onay geçişi:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) kullanıcı tarafından onaylandı; Accepted. Yukarıdaki araştırma özetlerindeki Proposed/eski dış kapı ifadeleri tarihsel aşamadır; güncel nihai dar gözlem ve tamamlanan kaynak/PR CI kabulü [paket kapanışında](p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) kayıtlıdır; kullanıcı PR review/merge ayrıdır. [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) özgün doğrulanmış kimlik/bağ ihtiyacını açık tutar.

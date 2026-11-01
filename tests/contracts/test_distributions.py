@@ -69,12 +69,14 @@ def test_valid_archive_files_and_explicit_directories(tmp_path):
             (ROOT + "/.agents/skills/yorunge-example/agents/openai.yaml", tarfile.REGTYPE),
             (ROOT + "/docs/reference/", tarfile.DIRTYPE),
             (ROOT + "/docs/reference/configuration.md", tarfile.REGTYPE),
+            (ROOT + "/docs/p02-account-setup.md", tarfile.REGTYPE),
             (ROOT + "/docs/analysis/README.md", tarfile.REGTYPE),
             (ROOT + "/pyproject.toml", tarfile.REGTYPE),
         ],
     )
     assert "yorunge/__init__.py" in inspect_archive(binary)
     assert "pyproject.toml" in inspect_archive(source)
+    assert "docs/p02-account-setup.md" in inspect_archive(source)
     assert distribution_pair(tmp_path) == (binary, source)
 
 
@@ -171,6 +173,7 @@ def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
         ROOT + "/docs/analysis/not-public.md",
         ROOT + "/docs/research/raw/report.json.gz",
         ROOT + "/docs/README.md/child",
+        ROOT + "/docs/p02-account-setup.md/child",
         ROOT + "/.github/unsafe.yml",
         ROOT + "/.agents/settings.json",
         ROOT + "/src",

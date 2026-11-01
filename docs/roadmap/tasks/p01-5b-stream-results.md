@@ -42,6 +42,8 @@ Contract/API/CLI/stream model testleri, TLS loopback ve gerçek subprocess/pipe/
 
 ## Teslim kaydı
 
-- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) bu kartın adım 4 runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development hedefiyle açıktır; kullanıcı review/merge bekler.
+**Development teslimi:** [PR #11](https://github.com/HodeTech/Yorunge/pull/11), [merge bc9532c](https://github.com/HodeTech/Yorunge/commit/bc9532cd66c76dc4126162fabd4307c2fdaf4027), 2026-10-30 07:57:27 Europe/Istanbul; [merge/kayıt kapanışı](../../research/p01-remaining-implementation-validation.md#development-merge-kapanışı).
+
+- PR/commit: [0bf70a4](https://github.com/HodeTech/Yorunge/commit/0bf70a4) bu kartın adım 4 runtime/CLI düzeltmesi; [2515533](https://github.com/HodeTech/Yorunge/commit/2515533) gerçek TLS/ayrı süreç kabulü. [PR #11](https://github.com/HodeTech/Yorunge/pull/11) development’a bc9532c merge’ünde alındı.
 - Sonuç: İki adım, ikişer farklı fresh review turu ve son fixture review’leri kapandı. Strict tipli olay/codec, normal komutlarda NDJSON/UTF-8, cancel/output ve belirsizlik öncelikleri gerçek TLS/süreç/state testleriyle doğrulandı; iki ayrı artifact’ta gerçek konsol NDJSON ve v1 eşliği geçti. [Kanıt](../../research/p01-remaining-implementation-validation.md#adım4-ve-p01-5b-kapanışı).
 - Kalan sınır: Bütünleşik son kaynak kurulumu, performans ve gerçek CI matrisi P01-6b [kapanışında](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified; önceki bf652f6 kabulü tarihseldir. Public uzak watch/run/SSE veya canlı EVREN/ForgeLM adaptörü teslim edilmez. Eski Result/plan wire korunur.
