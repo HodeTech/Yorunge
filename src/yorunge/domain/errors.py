@@ -81,9 +81,14 @@ MESSAGES: dict[ErrorCode, str] = {
     ),
     "plan_in_use": "Plan bir operation geçmişine bağlı; unutulamaz ve işi iptal etmez.",
     "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
-    "input_unsupported": "Güvenli dosya bağlama bu platformda desteklenmiyor.",
-    "input_invalid": "Girdi kökü veya dosya geçersiz. Açık kök ve düzenli göreli dosya kullanın.",
-    "input_changed": "Girdi veya kök kimliği değişti. Güncel içerikle yeni plan hazırlayın.",
+    "input_unsupported": (
+        "Bu ortam güvenli yerel dosya erişimini desteklemiyor. "
+        "Desteklenen macOS/Linux yerel disk ortamını kullanın."
+    ),
+    "input_invalid": "Girdi yolu veya dosya geçersiz. Kökü ve normal dosya koşullarını kontrol edin.",
+    "input_changed": (
+        "Dosya veya kök değişti. Etkin yazıcıları durdurun; güncel girdileri yeniden denetleyin."
+    ),
     "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
     "execution_timeout": "Execution hazırlığı veya doğrulaması 30 saniyelik bütçeyi aştı.",
     "plan_not_found": "Kayıtlı plan bulunamadı. Plan listesini inceleyin.",

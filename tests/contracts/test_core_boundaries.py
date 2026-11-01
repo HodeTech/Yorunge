@@ -43,7 +43,8 @@ from yorunge.cli import text_result
 result = api.show_context()
 assert text_result(result.data)
 for name in (
-    'configuration', 'credentials', 'maintenance', 'state', 'discovery', 'platform_discovery'
+    'configuration', 'credentials', 'maintenance', 'state', 'discovery', 'platform_discovery',
+    'dataset_manifest'
 ):
     assert 'yorunge.domain.' + name not in sys.modules
 """
