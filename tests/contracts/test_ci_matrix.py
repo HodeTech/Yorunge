@@ -16,6 +16,13 @@ CELLS = {
     "macos311": ("macos-15", "3.11", "false"),
 }
 
+METADATA_EVENT = (
+    "github.event_name == 'pull_request' && github.event.action == 'edited' "
+    "&& github.event.changes.base == null && "
+    "(github.event.changes.body != null || github.event.changes.title != null)"
+)
+SOURCE_EVENT = "${{ !(" + METADATA_EVENT + ") }}"
+
 
 @pytest.fixture(scope="module")
 def workflow():
@@ -31,7 +38,7 @@ def test_required_check_waits_for_exactly_the_three_compatibility_cells(workflow
     jobs = workflow["jobs"]
     assert set(jobs) == {*CELLS, "offline-core"}
     gate = jobs["offline-core"]
-    assert gate["name"] == "offline-core"
+    assert gate["name"] == ("${{ (" + METADATA_EVENT + ") && 'core-metadata' || 'offline-core' }}")
     assert gate["needs"] == list(CELLS)
     assert gate["if"] == "${{ always() }}"
     assert gate["runs-on"] == "ubuntu-24.04"
@@ -41,7 +48,7 @@ def test_required_check_waits_for_exactly_the_three_compatibility_cells(workflow
     step = gate["steps"][0]
     assert step["id"] == "compatibility-gate"
     assert step["shell"] == "python"
-    assert step["env"] == {"NEEDS": "${{ toJSON(needs) }}"}
+    assert step["env"] == {"NEEDS": "${{ toJSON(needs) }}", "SOURCE_EVENT": SOURCE_EVENT}
     assert "uses" not in step  # A failing checkout cannot hide the aggregate result.
     assert "if" not in step
     assert "continue-on-error" not in step
@@ -52,6 +59,27 @@ def test_workflow_still_checks_prs_protected_branches_and_manual_runs(workflow):
     assert set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}
     for event in ("push", "pull_request"):
         assert workflow["on"][event]["branches"] == ["development", "Master"]
+    assert workflow["on"]["pull_request"]["types"] == [
+        "opened",
+        "synchronize",
+        "reopened",
+        "edited",
+        "ready_for_review",
+    ]
+
+
+def test_only_known_body_or_title_edits_use_an_independent_metadata_group(workflow):
+    # Base changes, unknown edits, pushes and manual calls remain source events.
+    # A metadata audit must never emit the required offline-core check name.
+    assert workflow["concurrency"] == {
+        "group": (
+            "core-checks-${{ github.event.pull_request.number || github.ref }}"
+            "${{ (" + METADATA_EVENT + ") && '-metadata' || '' }}"
+        ),
+        "cancel-in-progress": "true",
+    }
+    policy = yaml.load(WORKFLOW.with_name("pr-policy.yml").read_text(), Loader=yaml.BaseLoader)
+    assert "edited" in policy["on"]["pull_request_target"]["types"]
 
 
 @pytest.mark.parametrize("cell", CELLS)
@@ -66,7 +94,8 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         "RUNNER_LABEL": runner,
     }
     assert job["steps"] is workflow["jobs"]["linux311"]["steps"]
-    assert not {"if", "continue-on-error", "strategy", "needs"} & job.keys()
+    assert job["if"] == SOURCE_EVENT
+    assert not {"continue-on-error", "strategy", "needs"} & job.keys()
     for step in job["steps"]:
         assert "continue-on-error" not in step
     steps = steps_by_id(job)
@@ -143,12 +172,12 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-0-final-reference-startup.json > dist/startup-reference.txt",
+            "p02-0-delivery-reference-startup.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-0-final-reference-jobs.json > dist/jobs-reference.txt",
+            "p02-0-delivery-reference-jobs.json > dist/jobs-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -198,9 +227,13 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
     }
 
 
-def invoke_gate(workflow, tmp_path, content):
+def invoke_gate(workflow, tmp_path, content, source_event="true"):
     step = workflow["jobs"]["offline-core"]["steps"][0]
     environment = dict(os.environ, NEEDS=content)
+    if source_event is None:
+        environment.pop("SOURCE_EVENT", None)
+    else:
+        environment["SOURCE_EVENT"] = source_event
     return subprocess.run(
         [sys.executable, "-c", step["run"]],
         env=environment,
@@ -230,6 +263,29 @@ def test_actual_gate_accepts_all_success_without_a_checkout(workflow, tmp_path):
     result = invoke_gate(workflow, tmp_path, json.dumps(successful_needs()))
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {cell: "success" for cell in CELLS}
+
+
+def test_metadata_audit_accepts_only_three_skipped_cells(workflow, tmp_path):
+    needs = {cell: {"result": "skipped"} for cell in CELLS}
+    result = invoke_gate(workflow, tmp_path, json.dumps(needs), source_event="false")
+    assert result.returncode == 0, result.stderr
+    assert "metadata-only audit" in result.stdout
+
+
+@pytest.mark.parametrize("status", ["success", "failure", "cancelled", None])
+def test_metadata_audit_rejects_an_unexpected_heavy_run(workflow, tmp_path, status):
+    needs = {cell: {"result": "skipped"} for cell in CELLS}
+    needs["linux311"]["result"] = status
+    result = invoke_gate(workflow, tmp_path, json.dumps(needs), source_event="false")
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize("source_event", [None, "", "TRUE", "metadata"])
+def test_gate_rejects_missing_or_unknown_event_classification(workflow, tmp_path, source_event):
+    result = invoke_gate(
+        workflow, tmp_path, json.dumps(successful_needs()), source_event=source_event
+    )
+    assert result.returncode != 0
 
 
 @pytest.mark.parametrize("cell", CELLS)

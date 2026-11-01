@@ -9,11 +9,12 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: core-checks-${{ github.event.pull_request.number || github.ref }}
+  group: core-checks-${{ github.event.pull_request.number || github.ref }}${{ (github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) && '-metadata' || '' }}
   cancel-in-progress: true
 jobs:
   linux311:
     name: Linux / Python 3.11
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -146,12 +147,12 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-0-final-reference-startup.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-0-delivery-reference-startup.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-0-final-reference-jobs.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-0-delivery-reference-jobs.json > dist/jobs-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -202,6 +203,7 @@ jobs:
             .local/stream-check/*/server-stderr.txt
   linux314:
     name: Linux / Python 3.14
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -211,6 +213,7 @@ jobs:
     steps: *compatibility-steps
   macos311:
     name: macOS / Python 3.11
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) }}
     runs-on: macos-15
     timeout-minutes: 25
     env:
@@ -219,7 +222,7 @@ jobs:
       RUNNER_LABEL: macos-15
     steps: *compatibility-steps
   offline-core:
-    name: offline-core
+    name: ${{ (github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) && 'core-metadata' || 'offline-core' }}
     needs: [linux311, linux314, macos311]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
@@ -230,11 +233,15 @@ jobs:
         shell: python
         env:
           NEEDS: ${{ toJSON(needs) }}
+          SOURCE_EVENT: ${{ !(github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.body != null || github.event.changes.title != null)) }}
         run: |
           import json
           import os
           from pathlib import Path
 
+          source_event = os.environ.get("SOURCE_EVENT")
+          if source_event not in {"true", "false"}:
+              raise SystemExit("an explicit source-event classification is required")
           required = {"linux311", "linux314", "macos311"}
           needs = json.loads(os.environ["NEEDS"])
           if not isinstance(needs, dict) or set(needs) != required:
@@ -244,6 +251,11 @@ jobs:
               for name, item in needs.items()
           }
           print(json.dumps(results, sort_keys=True))
+          if source_event == "false":
+              if any(result != "skipped" for result in results.values()):
+                  raise SystemExit("metadata-only edits must not run compatibility cells")
+              print("metadata-only audit; required source validation remains independent")
+              raise SystemExit(0)
           if any(result != "success" for result in results.values()):
               raise SystemExit("every required compatibility cell must succeed")
           startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
