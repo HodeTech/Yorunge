@@ -1720,6 +1720,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-0-sonar-reference-startup.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 142.0817500911653, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 93.19154196418822, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 36.93770803511143, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 28.341832803562284, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 133.862208109349, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 99.15220807306468, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 37.79600001871586, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 27.967125177383423, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "c7895d57acac98acece58262c2dcb09b1105004c"}`.
 
+## p02-1a-evidence-catalog-profile
+
+**Tür:** `operation`.
+**Özgün JSON SHA-256:** `73f1c0c83d78f607845514a23e4ac2206e0fd6e81ad37df2bd52726a43d06009`.
+**Yerel arşiv:** `raw/p02-1a-evidence-catalog-profile.json.gz`.
+**Özet:** `{"cases": 9, "diagnostic_only": true, "kind": "operation", "max_elapsed_ms": 1156.6550000570714, "outcomes": {"ok": 9}, "source_commit": "ec401641a5135976cbfc7e0a4d53f502ecb4f59c"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.

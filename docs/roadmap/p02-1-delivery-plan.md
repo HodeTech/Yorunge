@@ -1,6 +1,6 @@
 # P02-1 teslim planı
 
-**Durum:** Hazırlık başladı; B15 bağımsız, ürün adımları ADR-0023 onayını bekler. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
+**Durum:** P02-1a/B15 yerelde verified; epik partial, ürün adımları ADR-0023 onayını bekler. **Tarih:** 2026-11-01. **Dal:** `feat/p02-1-local-manifest`, güncel development `9f30fd2` tabanı; önceki `139ab91` yalnız P02-0 kapanışıdır. **PR:** Bütün paket tek `development` PR’ı; kapanış belgesi veya alt kart için ayrı PR açılmaz. Kullanıcı nihai PR’da review yapar; merge/release kullanıcıdadır.
 
 ## Amaç ve inceleme sonucu
 
@@ -20,7 +20,7 @@ B15, mevcut araştırma kanıtı v1 biçimini/isimlerini/saklama anlamını değ
 
 | Adım | Kart / gözden geçirilebilir teslim | Geçiş kapısı |
 |---|---|---|
-| 1 | [P02-1a](tasks/p02-1a-evidence-capacity.md): B15 bounded katalog kapasitesi ve yazı öncesi doğrulama | Odaklı test/247 eski arşiv eşliği, commit, iki fresh review turu |
+| 1 | [P02-1a](tasks/p02-1a-evidence-capacity.md): B15 bounded katalog kapasitesi ve yazı öncesi doğrulama | Tamam: 425 ilgili test/247 eski arşiv eşliği, commit, iki fresh tur ve hedefli teyit; [kanıt](../research/p02-1-implementation-validation.md#p02-1a-kapanışı--yerel-ve-bağımsız-bakım) |
 | 2 | [P02-1b](tasks/p02-1b-manifest-contract.md): strict Manifest v1, canonical digest, path/collision parser ve sabit oracle | ADR-0023 Accepted, domain/parser testleri, commit ve iki fresh tur |
 | 3 | [P02-1c](tasks/p02-1c-descriptor-dataset-scan.md): bounded descriptor envanter/hash/son tarama ve verify çekirdeği | Önceki adımın kabulü, gerçek filesystem/race/byte/deadline testleri, commit ve iki fresh tur |
 | 4 | [P02-1d](tasks/p02-1d-dataset-inspection-cli.md): no-clobber yayın, public API/CLI, örnekler ve tüm hata yüzeyi | Önceki adımın kabulü, atomik yayın/kill ve CLI/Python yolculuğu, commit ve iki fresh tur |
@@ -42,4 +42,4 @@ Hazırlık belgeleri de iki fresh turdan geçirilir; tur/commit/sonuçlar [hazı
 
 ## Mevcut teslim sınırı
 
-P02-0 kapanış commit’i korunur. P02-1 ürün kodu/komutu, yeni benchmark ve nihai PR henüz yoktur. ADR-0023 Proposed olduğundan bağımlı ürün dilimleri draft kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.
+P02-0 kapanış commit’i korunur. P02-1 ürün kodu/komutu, yeni ürün hash benchmark’ı ve nihai PR henüz yoktur. ADR-0023 Proposed olduğundan bağımlı ürün dilimleri draft kalır. Bu yerel epik Platform kimlik/otorite ihtiyacını P02-R1/B14’ten çıkarmaz; upload P02-2, indirme/sürüm P02-3 kapsamıdır.
