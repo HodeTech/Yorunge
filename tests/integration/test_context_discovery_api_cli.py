@@ -5,6 +5,7 @@ import json
 import os
 import signal
 import socket
+import sqlite3
 import subprocess
 import sys
 import time
@@ -18,7 +19,7 @@ from yorunge.adapters import llm_context
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
 from yorunge.adapters.secrets import EnvSecretReader
-from yorunge.adapters.state import open_store
+from yorunge.adapters.state import DB_NAME, open_store
 from yorunge.domain.errors import YorungeError
 
 CONNECT = socket.socket.connect
@@ -128,6 +129,21 @@ def test_local_llm_preferences_cannot_reflect_selected_credential(
     else:
         assert json.loads(result.stderr)["code"] == "invalid_request"
     assert server.requests == []
+    with sqlite3.connect(state / DB_NAME) as database:
+        assert database.execute("SELECT count(*) FROM credential_bindings").fetchone()[0] == 0
+
+
+def test_llm_target_credential_literal_is_rejected_before_registry_persistence(
+    context_files,
+):
+    config, state = context_files
+    config.write_text(config.read_text().replace("/v1", "/api/" + SECRET))
+    with pytest.raises(YorungeError) as failure:
+        api.discover_context("evren-llm", config=config, state_dir=state)
+    assert failure.value.code == "invalid_request"
+    with sqlite3.connect(state / DB_NAME) as database:
+        assert database.execute("SELECT count(*) FROM credential_bindings").fetchone()[0] == 0
+    assert SECRET.encode() not in (state / DB_NAME).read_bytes()
 
 
 @pytest.mark.parametrize("output", ["json", "ndjson"])

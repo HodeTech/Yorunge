@@ -75,7 +75,7 @@ account_id = "known-platform-account-id"
 project_id = "selected-platform-project-id"
 ```
 
-Proje tercihini mevcut CLI ile de kaydedebilirsin: `.venv/bin/yorunge context set-project --project PROJECT_ID --config .local/p02-pilot/config.toml`. Tek çağrıda değiştirmek için `context discover` komutuna `--project PROJECT_ID` eklenir; LLM açık project override kabul etmez. Yerel hesap tercihi yalnız config profilindedir; bildirilen kullanıcı/org ID’sinden türetilmez. Tercih doğrulanmış kimlik veya izin sayılmaz.
+Proje tercihini mevcut CLI ile de kaydedebilirsin: `.venv/bin/yorunge context set-project PROJECT_ID --config .local/p02-pilot/config.toml`. Tek çağrıda değiştirmek için `context discover` komutuna `--project PROJECT_ID` eklenir; LLM açık project override kabul etmez. Yerel hesap tercihi yalnız config profilindedir; bildirilen kullanıcı/org ID’sinden türetilmez. Tercih doğrulanmış kimlik veya izin sayılmaz.
 
 Anahtarı `credentials.json` dosyasından **yalnız seçili hizmetin çocuk sürecine** aktarıp aşağıdaki bloğu çalıştır. Platform için yalnız `service = "evren-platform"` yap; profil projesi varsa detail GET’i de yapılır. Anahtarı shell argümanına/export komutuna yazma. Bu adım gerçek salt okunur ağ çağrısı yapar; önceki hazırlık ve state init adımları yapmaz:
 

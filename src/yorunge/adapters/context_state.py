@@ -11,6 +11,7 @@ from yorunge.adapters.state import open_existing_store
 from yorunge.application.context_discovery import (
     DiscoverySnapshot,
     ObservationClock,
+    check_local_fields,
     remaining,
 )
 from yorunge.application.credentials import SecretReader, bind_credential, resolve_credential
@@ -41,6 +42,15 @@ class StateDiscovery:
             context, profile = self.context_loader()
             store.deadline.remaining()
             credential = resolve_credential(profile, self.service_id, self.secret_reader)
+            preference = ProfilePreference(
+                account_id=profile.account_id,
+                project_id=profile.project_id,
+                service_scope="unknown"
+                if profile.account_id is not None or profile.project_id is not None
+                else "not_applicable",
+            )
+            # Target strings are persisted by bind_credential; validate before that write.
+            check_local_fields(context, credential, preference)
             store.deadline.remaining()
             remaining(deadline, self.clock)
             identity = bind_credential(context, credential, StateCredentialRegistry(store)).identity
@@ -68,13 +78,7 @@ class StateDiscovery:
                     credential_revision=identity.credential_revision,
                 ),
                 captured_at=captured.now,
-                preference=ProfilePreference(
-                    account_id=profile.account_id,
-                    project_id=profile.project_id,
-                    service_scope="unknown"
-                    if profile.account_id is not None or profile.project_id is not None
-                    else "not_applicable",
-                ),
+                preference=preference,
             )
 
     def finish(self, snapshot: DiscoverySnapshot, *, deadline: float) -> str:

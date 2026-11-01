@@ -96,10 +96,11 @@ def remaining(deadline: float, clock: DiscoveryClock) -> float:
     return value
 
 
-def _check_local_fields(snapshot: DiscoverySnapshot) -> None:
+def check_local_fields(
+    context: Context, credential: ResolvedCredential, preference: ProfilePreference | None
+) -> None:
     """Reject credential/ID confusion before any local value can enter a URL or result."""
-    context, preference = snapshot.context, snapshot.preference
-    target = snapshot.credential.target
+    target = credential.target
     values = (
         context.profile,
         context.account_id,
@@ -109,7 +110,7 @@ def _check_local_fields(snapshot: DiscoverySnapshot) -> None:
         preference.account_id if preference is not None else None,
         preference.project_id if preference is not None else None,
     )
-    secret = snapshot.credential.secret.reveal()
+    secret = credential.secret.reveal()
     if any(value is not None and literal_secret_match(value, secret) for value in values):
         raise YorungeError("invalid_request")
 
@@ -153,7 +154,7 @@ def exchange(
         with reader:
             remaining(deadline, clock)
             snapshot = state.capture(deadline=deadline)
-            _check_local_fields(snapshot)
+            check_local_fields(snapshot.context, snapshot.credential, snapshot.preference)
             reply = reader.observe(snapshot, deadline=network_deadline)
             remaining(network_deadline, clock)
     except BaseException as primary:

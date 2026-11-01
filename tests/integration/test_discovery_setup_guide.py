@@ -4,6 +4,7 @@ import getpass
 import json
 import os
 import re
+import shlex
 import socket
 import subprocess
 import sys
@@ -147,3 +148,21 @@ def test_documented_launcher_missing_selected_key_stops_before_subprocess(tmp_pa
         exec(compile(guide_blocks()[1], str(GUIDE), "exec"), {})
     assert "hazırlanmamış" in str(stopped.value)
     assert all(key not in str(stopped.value) for key in KEYS.values())
+
+
+def test_documented_existing_setup_project_migration_uses_real_cli(tmp_path, monkeypatch):
+    root = prepare(tmp_path, monkeypatch)
+    config = root / "config.toml"
+    config.write_text(config.read_text().replace('project_id = "selected-project"\n', ""))
+    command = re.search(r"`(\.venv/bin/yorunge context set-project[^`]+)`", GUIDE.read_text())
+    assert command is not None
+    args = shlex.split(command[1])
+    args[0] = str(ROOT / args[0])
+    args = ["migrated-project" if value == "PROJECT_ID" else value for value in args]
+    result = subprocess.run(args, capture_output=True, timeout=8)
+    assert result.returncode == 0, result.stderr
+    assert (
+        tomllib.loads(config.read_text())["profiles"]["pilot"]["project_id"] == "migrated-project"
+    )
+    assert json.loads((root / "scope.json").read_text())["project_id"] == "selected-project"
+    assert all(key.encode() not in result.stdout + result.stderr for key in KEYS.values())

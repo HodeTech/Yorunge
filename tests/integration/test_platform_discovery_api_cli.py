@@ -4,6 +4,7 @@ import json
 import os
 import signal
 import socket
+import sqlite3
 import subprocess
 import sys
 import time
@@ -17,6 +18,7 @@ from yorunge.adapters import platform_context
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
 from yorunge.adapters.secrets import EnvSecretReader
+from yorunge.adapters.state import DB_NAME
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_discovery import PlatformContextDiscovery
 
@@ -151,6 +153,19 @@ def test_local_secret_never_reaches_detail_url_or_public_output(
     else:
         assert json.loads(result.stderr)["code"] == "invalid_request"
     assert server.requests == []
+    with sqlite3.connect(state / DB_NAME) as database:
+        assert database.execute("SELECT count(*) FROM credential_bindings").fetchone()[0] == 0
+
+
+def test_target_credential_literal_is_rejected_before_registry_persistence(files):
+    config, state = files
+    config.write_text(config.read_text().replace("/api/v1", "/api/" + SECRET))
+    with pytest.raises(YorungeError) as failure:
+        api.discover_context("evren-platform", config=config, state_dir=state)
+    assert failure.value.code == "invalid_request"
+    with sqlite3.connect(state / DB_NAME) as database:
+        assert database.execute("SELECT count(*) FROM credential_bindings").fetchone()[0] == 0
+    assert SECRET.encode() not in (state / DB_NAME).read_bytes()
 
 
 @pytest.mark.parametrize("secret", ["a", "abc"])
