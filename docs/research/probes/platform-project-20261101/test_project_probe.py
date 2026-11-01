@@ -133,6 +133,25 @@ def test_receipt_reservation_prevents_a_second_execution(tmp_path, monkeypatch, 
     assert len(calls) == 5
 
 
+def test_late_final_cleanup_cannot_be_reported_as_acceptance(tmp_path, monkeypatch, capsys):
+    prepare(tmp_path, monkeypatch)
+    calls = wire(monkeypatch)
+    original_close = p.helper.CountedWire.aclose
+
+    async def late_close(transport):
+        await original_close(transport)
+        if transport.budget.current["credential_mode"] == "no_key":
+            transport.budget.end = p.time.monotonic() - 1
+
+    monkeypatch.setattr(p.helper.CountedWire, "aclose", late_close)
+    p.execute()
+    result = json.loads(capsys.readouterr().out)
+    assert len(calls) == 5
+    assert result["outcome"] == "stopped_controlled"
+    receipt = json.loads(p.OUTPUT.read_text())
+    assert receipt["code"] == "transport_timeout"
+
+
 def test_invalid_environment_setup_restores_all_process_patches(tmp_path, monkeypatch, capsys):
     prepare(tmp_path, monkeypatch, secret="synthetic\x00bad")
     calls = wire(monkeypatch)

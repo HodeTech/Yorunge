@@ -222,6 +222,8 @@ def execute() -> None:
 
             with owned() as session:
                 session.call(missing_key)
+            if time.monotonic() >= budget.end:
+                raise helper.YorungeError("transport_timeout")
             budget.report["outcome"] = "selected_project_observation_accepted"
         else:
             budget.report["outcome"] = "acceptance_predicate_failed"
