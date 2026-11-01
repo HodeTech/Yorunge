@@ -259,6 +259,25 @@ def test_global_context_flags_are_not_silently_ignored(tree, cli, option):
     assert not target.exists()
 
 
+@pytest.mark.parametrize(
+    "positional", [("--output=json", "extra"), ("--output=ndjson", "extra"), ("--output", "json")]
+)
+@pytest.mark.parametrize("requested", [None, "json", "ndjson"])
+def test_option_looking_paths_after_terminator_cannot_select_usage_error_format(
+    tmp_path, cli, positional, requested
+):
+    target = tmp_path / "manifest.json"
+    options = [] if requested is None else ["--output", requested]
+    command = cli("datasets", "inspect", "--manifest-out", str(target), *options, "--", *positional)
+    assert command.returncode == 2
+    assert command.stdout == ""
+    assert not target.exists()
+    if requested is None:
+        assert command.stderr.startswith("invalid_request:")
+    else:
+        assert json.loads(command.stderr)["code"] == "invalid_request"
+
+
 def test_summary_encoded_byte_preflight_happens_before_any_publication(tree, monkeypatch):
     root, target = tree
     monkeypatch.setattr(policy, "MAX_SUMMARY_BYTES", 1)

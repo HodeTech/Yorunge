@@ -628,6 +628,8 @@ def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...
 
 
 def _machine_output(args_list: list[str]) -> bool:
+    if "--" in args_list:
+        args_list = args_list[: args_list.index("--")]
     return any(
         arg in ("--output=json", "--output=ndjson")
         or (arg == "--output" and args_list[i + 1 : i + 2] in (["json"], ["ndjson"]))
