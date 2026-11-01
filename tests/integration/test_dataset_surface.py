@@ -838,3 +838,52 @@ def test_shell_quote_growth_cannot_expand_text_summary_over_limit(tree, capsys):
     assert "yorunge datasets verify ROOT --manifest FILE" in captured.out
     assert str(target) in captured.out
     assert api.verify_dataset(root, manifest=target).data.matches is True
+
+
+def test_text_boundary_includes_renderer_lf(capsys):
+    from argparse import Namespace
+
+    from yorunge.cli import dataset_text_result
+    from yorunge.cli.output import OutputRenderer
+    from yorunge.domain.dataset_manifest import DatasetInspection
+    from yorunge.domain.models import Result
+
+    data = DatasetInspection(
+        schema_version=1,
+        manifest_path="/tmp/manifest.json",
+        manifest_digest="0" * 64,
+        file_count=0,
+        total_bytes=0,
+        unicode_version="15.0.0",
+    )
+    root = Path("/tmp") / "/".join("'" * 200 for _ in range(16))
+    args = Namespace(root=root)
+    initial = dataset_text_result(args, data)
+    # Make the complete quoted body exactly 16KiB; LF must still fit the output budget.
+    padding = policy.MAX_SUMMARY_BYTES - len(initial.encode("utf-8"))
+    assert 1 < padding < 255
+    args.root = root / ("a" * (padding - 1))
+    text = dataset_text_result(args, data)
+    OutputRenderer("text").result(Result(data=data), text=text)
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert len(captured.out.encode("utf-8")) <= policy.MAX_SUMMARY_BYTES
+    assert "verify ROOT --manifest FILE" in captured.out
+
+
+@pytest.mark.parametrize("name", ["--manifest-out", "--output", "--non-interactive"])
+def test_option_terminator_preserves_legal_positional_directory_names(
+    tree, monkeypatch, capsys, name
+):
+    root, target = tree
+    monkeypatch.chdir(root.parent)
+    selected = root.parent / name
+    selected.mkdir()
+    assert (
+        main(["datasets", "inspect", "--manifest-out", str(target), "--output=json", "--", name])
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert json.loads(captured.out)["data"]["file_count"] == 0
+    assert api.verify_dataset(selected, manifest=target).data.matches is True

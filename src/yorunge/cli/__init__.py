@@ -233,6 +233,8 @@ def _discovery_singletons(arguments: Sequence[str]) -> None:
 def _reject_duplicates(arguments: Sequence[str], singleton: set[str]) -> None:
     seen: set[str] = set()
     for argument in arguments:
+        if argument == "--":
+            break
         option = argument.split("=", 1)[0]
         if option in singleton:
             if option in seen:
@@ -454,7 +456,7 @@ def dataset_text_result(args: argparse.Namespace, data: Model) -> str:
         )
         next_step = f"Yeniden doğrula: {followup}\n"
         footer = "Yalnız yerel dosyalar; veri formatı değerlendirilmedi."
-        if len((summary + next_step + footer).encode("utf-8")) > MAX_SUMMARY_BYTES:
+        if len((summary + next_step + footer + "\n").encode("utf-8")) > MAX_SUMMARY_BYTES:
             next_step = (
                 "Yeniden doğrula: yorunge datasets verify ROOT --manifest FILE\n"
                 "ROOT: aynı kaynak dizini; FILE: yukarıdaki manifest yolu.\n"
