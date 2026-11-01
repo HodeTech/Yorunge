@@ -37,6 +37,10 @@ RESERVED_NAMES = frozenset(
 )
 
 
+class DatasetLimit(ValueError):
+    """A finite name or inventory budget, distinct from invalid path spelling."""
+
+
 def safe_text(value: str) -> bytes:
     encoded = value.encode("utf-8", errors="strict")
     if has_control_characters(value) or any(
@@ -47,10 +51,11 @@ def safe_text(value: str) -> bytes:
 
 
 def validate_component(value: str) -> None:
+    if len(safe_text(value)) > MAX_COMPONENT_BYTES:
+        raise DatasetLimit("component byte limit exceeded")
     if (
         not value
         or value in (".", "..")
-        or len(safe_text(value)) > MAX_COMPONENT_BYTES
         or any(char in FORBIDDEN_NAME or char == "/" for char in value)
         or value.endswith((" ", "."))
         or value.split(".", 1)[0].upper() in RESERVED_NAMES
@@ -61,7 +66,7 @@ def validate_component(value: str) -> None:
 def file_parts(value: str) -> tuple[str, ...]:
     parts = tuple(value.split("/"))
     if len(safe_text(value)) > MAX_PATH_BYTES or len(parts) > MAX_PATH_DEPTH:
-        raise ValueError("relative path limit exceeded")
+        raise DatasetLimit("relative path limit exceeded")
     for part in parts:
         validate_component(part)
     return parts
@@ -103,7 +108,7 @@ class PathInventory:
         else:
             self.directory_count += 1
         if self.file_count > MAX_FILES or self.directory_count > MAX_DIRECTORIES:
-            raise ValueError("file or directory limit exceeded")
+            raise DatasetLimit("file or directory limit exceeded")
         self.kinds[current] = is_file
 
 
@@ -283,3 +288,45 @@ def build_manifest(files: tuple[DatasetFile, ...]) -> DatasetManifest:
     return DatasetManifest.model_validate(
         {**body, "files": ordered, "digest": hashlib.sha256(canonical_manifest(body)).hexdigest()}
     )
+
+
+def validate_anchor(value: str) -> str:
+    if len(safe_text(value)) > MAX_ANCHOR_BYTES:
+        raise DatasetLimit("anchor byte limit exceeded")
+    if not value.startswith("/") or (
+        value != "/" and any(part in ("", ".", "..") for part in value[1:].split("/"))
+    ):
+        raise ValueError("absolute canonical anchor required")
+    return value
+
+
+class DatasetVerification(Model):
+    schema_version: Literal[1]
+    manifest_digest: Sha256
+    file_count: FileCount
+    total_bytes: FileSize
+    matches: Literal[True]
+    unicode_version: Annotated[str, Field(min_length=1, max_length=16)]
+
+    @field_validator("matches", mode="before")
+    @classmethod
+    def true_boolean(cls, value: object) -> object:
+        if type(value) is not bool:
+            raise ValueError("boolean verification required")
+        return value
+
+
+class DatasetInspection(Model):
+    schema_version: Literal[1]
+    manifest_path: str
+    manifest_digest: Sha256
+    file_count: FileCount
+    total_bytes: FileSize
+    unicode_version: Annotated[str, Field(min_length=1, max_length=16)]
+
+    @field_validator("manifest_path")
+    @classmethod
+    def output_anchor(cls, value: str) -> str:
+        validate_anchor(value)
+        validate_component(value.rsplit("/", 1)[-1])
+        return value

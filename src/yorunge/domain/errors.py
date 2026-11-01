@@ -54,9 +54,35 @@ ErrorCode = Literal[
     "request_cancelled",
     "output_closed",
     "output_write_failed",
+    "dataset_limit_exceeded",
+    "dataset_timeout",
+    "manifest_invalid",
+    "manifest_output_exists",
+    "manifest_write_failed",
+    "manifest_write_uncertain",
+    "manifest_mismatch",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "dataset_limit_exceeded": (
+        "Yerel veri taraması veya rapor boyutu sınırı aşıldı. Daha dar bir klasör seçin."
+    ),
+    "dataset_timeout": (
+        "Yerel veri denetiminin 30 saniyelik bütçesi doldu. Daha dar bir klasör seçin."
+    ),
+    "manifest_invalid": (
+        "Manifest biçimi veya bütünlüğü geçersiz. Kaynağı denetleyip yeni bir manifest üretin."
+    ),
+    "manifest_output_exists": (
+        "Manifest hedefi zaten var. Dosya korunuyor; yeni ve kullanılmamış bir hedef seçin."
+    ),
+    "manifest_write_failed": ("Manifest yayınlanamadı. Dosya izinlerini ve diski kontrol edin."),
+    "manifest_write_uncertain": (
+        "Manifest hedefi oluşmuş olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
+    ),
+    "manifest_mismatch": (
+        "Klasörün dosya adları veya içeriği manifestle eşleşmiyor. Değişiklikleri inceleyin."
+    ),
     "transport_timeout": "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok.",
     "transport_failed": "Ağ bağlantısı veya güvenli taşıma tamamlanamadı. Hedefi kontrol edin.",
     "remote_access_denied": "Uzak hizmet erişimi reddetti. Seçili hizmet kimliğini kontrol edin.",
@@ -162,8 +188,10 @@ class YorungeError(Exception):
         self.exit_code = 2
         if code == "approval_required":
             self.exit_code = 4
-        elif code in ("config_write_uncertain", "operation_uncertain"):
+        elif code in ("config_write_uncertain", "operation_uncertain", "manifest_write_uncertain"):
             self.exit_code = 5
+        elif code == "manifest_mismatch":
+            self.exit_code = 7
         elif code in ("credential_unavailable", "invalid_credential", "remote_access_denied"):
             self.exit_code = 3
         elif code in ("request_cancelled", "output_closed"):
@@ -249,4 +277,40 @@ class ApprovalNotEffective(YorungeError):
             "recorded": True,
             "reason_code": self.reason,
         }
+        return value
+
+
+class ManifestMismatch(YorungeError):
+    """Completed local comparison with bounded counts and no dynamic file names."""
+
+    def __init__(
+        self,
+        expected_digest: str,
+        actual_digest: str,
+        missing_file_count: int,
+        unexpected_file_count: int,
+        changed_file_count: int,
+    ) -> None:
+        for digest in (expected_digest, actual_digest):
+            if (
+                type(digest) is not str
+                or len(digest) != 64
+                or any(char not in "0123456789abcdef" for char in digest)
+            ):
+                raise ValueError("canonical manifest digest required")
+        counts = (missing_file_count, unexpected_file_count, changed_file_count)
+        if any(type(count) is not int or not 0 <= count <= 4096 for count in counts):
+            raise ValueError("bounded manifest counts required")
+        super().__init__("manifest_mismatch")
+        self.details: dict[str, object] = {
+            "expected_digest": expected_digest,
+            "actual_digest": actual_digest,
+            "missing_file_count": missing_file_count,
+            "unexpected_file_count": unexpected_file_count,
+            "changed_file_count": changed_file_count,
+        }
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = dict(self.details)
         return value
