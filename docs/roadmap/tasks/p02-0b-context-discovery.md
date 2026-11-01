@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0b — Hizmete bağlı salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0020/0021 ve kullanıcı onaylı ADR-0022 kapsamında çalışma dalı kabulü verified. LLM/Platform kodu, adım başına iki fresh review, ayrı canlı consumer kabulleri, kaynak bağlı M5 ölçümü, temiz kurulumlar ve üç ortam source CI tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı incelemesine açıktır; development merge/yayın değildir. [Paket planı](../p02-0-delivery-plan.md) adım/review döngüsünü taşır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0020/0021 ve kullanıcı onaylı ADR-0022 kapsamında verified ve development’a teslim edildi. LLM/Platform kodu, adım başına iki fresh review, ayrı canlı consumer kabulleri, kaynak bağlı M5 ölçümü, temiz kurulumlar ve üç ortam source CI tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı tarafından [9f30fd2](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile birleştirildi; [merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Paket yayını değildir. [Paket planı](../p02-0-delivery-plan.md) adım/review döngüsünü taşır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -45,6 +45,6 @@ P01 ve P02-0a araştırma temeli tamamlandı. [P02-0c LLM](p02-0c-llm-context-di
 
 ## Teslim kaydı
 
-- PR/commit: [PR #12](https://github.com/HodeTech/Yorunge/pull/12), source CI e475992; son kapanış commit’i yalnız belge/arşivdir.
+- PR/commit: [PR #12](https://github.com/HodeTech/Yorunge/pull/12), son PR head’i a374047; development merge’ü 9f30fd2.
 - Sonuç: [LLM kabulü](../../research/p02-0-implementation-validation.md#bağımsız-llm-yerel-kabul-kapanışı), [Platform canlı kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) ve [son kaynak CI/paket kapanışı](../../research/p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) iki hizmetin üst teslimini karşılar. Üç tam takım, altı CI temiz kurulumu, güncel M5 startup/jobs ve native metadata kabulü geçti. ADR-0022 2026-11-01 açık kullanıcı onayıyla nihai gözlem sınırını benimsedi.
-- Kalan sınır: PR kullanıcı review/merge ve Master/release ayrı süreçtir. Public auth/kimlik/izin unknown/unverified/null kalır; doğrulanmış kimlik/bağ P02-R1’de draft’tır. Linux cache p95 aşımı korunmuş tanıdır; M5 başarısı Linux hedefinin geçtiği anlamına gelmez.
+- Kalan sınır: [Development merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) tamamdır; Master/release kullanıcıdadır. Public auth/kimlik/izin unknown/unverified/null kalır; doğrulanmış kimlik/bağ P02-R1’de draft’tır. Linux cache p95 aşımı korunmuş tanıdır; M5 başarısı Linux hedefinin geçtiği anlamına gelmez.
