@@ -1,6 +1,6 @@
 # P02-0 uygulama ve review kaydı
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve bağımsız LLM yerel kabulü tamamlandı; Platform kod/review ve gerçek consumer canlı kabulleri kayıtlı. Revize ADR-0022 1 Kasım açık kullanıcı onayıyla Accepted; nihai dar gözlem/kabul geçişi uygulandı. Son kaynak 3.695 test/iki temiz kurulum/yeni M5 startup-jobs yerel kabulü tamam; son kanıt review ve tek development PR/CI sürüyor. P02-0 partial, P02-0d in_review/P02-0b draft. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked ve eski katı decoder zorunluluğu ifadeleri kendi tarihsel aşamasını anlatır; güncel karar ADR-0022 ve bu kaydın son kapanış bölümüdür. **Dal/taban:** feat/p02-0a-sdk-pilot / development bc9532c. [Paket planı](../roadmap/p02-0-delivery-plan.md).
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0a ve bağımsız LLM yerel kabulü tamamlandı; Platform kod/review ve gerçek consumer canlı kabulleri kayıtlı. Revize ADR-0022 1 Kasım açık kullanıcı onayıyla Accepted; nihai dar gözlem/kabul geçişi uygulandı. Önceki aynı runtime 3.695 yerel test ve ilk PR’da üç ortam tam takımı geçti. Yeni CI bakımı 81 guard/policy testi, iki kurulum ve yeni kaynak bağlı M5 kabulünü geçti; native edited-event ve son source CI bekliyor. Son güncel kanıt aşağıdaki CI bakımı bölümüdür. P02-0 partial, P02-0d in_review/P02-0b draft. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked ve eski katı decoder zorunluluğu ifadeleri kendi tarihsel aşamasını anlatır; güncel karar ADR-0022 ve bu kaydın son kapanış bölümüdür. **Dal/taban:** feat/p02-0a-sdk-pilot / development bc9532c. [Paket planı](../roadmap/p02-0-delivery-plan.md).
 
 ## Adım 1 — P02-0a araştırma ve karar hazırlığı
 
@@ -385,3 +385,7 @@ Yeni [startup](evidence.md#p02-0-delivery-reference-startup) ve [jobs](evidence.
 | jobs dense/show | 107,671 | — | 200 |
 
 167 arşiv/manifest/indeks ve yeni current-source startup/jobs verifier geçti. Eski 15aa8a1 M5 kabulü korunur; yeni workflow/test hash'leri onunla geçirilmedi. Bu kayıt commit'i ve kanıt review sonrası aynı PR'a aktarılacak; native edited-event/check-name ve son source CI henüz bekliyor. Public source kontrolü veya required check metadata audit'iyle yeşile çevrilmeyecek.
+
+### Bakım kanıtı — birinci fresh review turu
+
+6a74d36 üstünde yeni ajanlar delivery_proof_r1 ve delivery_docs_r1 yeni üç yerel kayıtla ilk CI'ın altı kaydını, kaynak/hash/p95 ve aktif üst özetleri bağımsız inceledi. Proof kontrolünde yeni bulgu yok; dokuz özgün JSON arşivle bayt eşit, 167/current-source verifier ve iki kurulum/runtime/AB-BA eşliği doğru. Tek P3: bazı üst özetler önceki aynı-runtime 3.695 tam takımı yeni CI guard kaynağının tam takımı gibi anlatıyor ve current eski kabul bölümüne bağlanıyordu. Bunlar önceki 3.695 + yeni 81 guard/iki kurulum/M5 ile native/current CI bekleme ayrımına çekildi; bağlantı güncel bakım kanıtına yönlendirildi. Belge/ajan/diff geçti; full-suite/benchmark/canlı hesap tekrarlanmadı. İkinci tur farklı fresh ajanlarla bu fix/kayıt commit'inden sonra yapılır.
