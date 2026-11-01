@@ -6991,6 +6991,313 @@
       }
     },
     {
+      "name": "p02-0-pr12-delivery-linux-receipt.json",
+      "archive": "raw/p02-0-pr12-delivery-linux-receipt.json.gz",
+      "original_commit": null,
+      "content_bytes": 781,
+      "content_sha256": "92a3b1ae25ada2e0226b897bca44f062a801d3a95de5e2a2289451d4383b5cc8",
+      "archive_bytes": 436,
+      "archive_sha256": "4b734458122f277dda1b60cd9758a200397516ac5b08ea5fcb0e712b443b2908",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "diagnostic_budget_exceeded",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41280791049",
+        "passed": false,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 40.712246999987656,
+          "candidate/version": 39.37228500001311,
+          "candidate/context": 182.15268900007686,
+          "candidate/cache": 225.74131600003966,
+          "baseline/help": 40.10546899996825,
+          "baseline/version": 38.947315000086746,
+          "baseline/context": 178.84075900008156,
+          "baseline/cache": 226.711851999994
+        },
+        "report_sha256": "0c0cffe776a5d009763a236fcda38ed4cbd549ecdcaa3b1bcb05f51ebdfeefe8"
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-linux-startup.json",
+      "archive": "raw/p02-0-pr12-delivery-linux-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 181487,
+      "content_sha256": "0c0cffe776a5d009763a236fcda38ed4cbd549ecdcaa3b1bcb05f51ebdfeefe8",
+      "archive_bytes": 26944,
+      "archive_sha256": "984a2bf6fabb6564f647f208a579f69bdb9f0e9d2bb38fb63321728794d555fc",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 40.712246999987656,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 39.37228500001311,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 182.15268900007686,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 225.74131600003966,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 40.10546899996825,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 38.947315000086746,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 178.84075900008156,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 226.711851999994,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-linux-stream.json",
+      "archive": "raw/p02-0-pr12-delivery-linux-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 53428,
+      "content_sha256": "a7a2f3914b5d1b07e32671b7f25a11a9b3a6d25b3da0580ea94c1fa7a8d326ed",
+      "archive_bytes": 6799,
+      "archive_sha256": "ebc06b104ca18db048dd780acb32244bc266904241ff7eed4e70843f21768308",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "upper_bound_bytes": [
+            0,
+            655360,
+            655360
+          ],
+          "span_upper_bound_bytes": 655360,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 52092928,
+            "pretransfer_peak_rss_bytes": 52092928,
+            "peak_rss_bytes": 52092928,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 0,
+            "elapsed_seconds": 0.08401612900001965,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 45506560,
+            "pretransfer_peak_rss_bytes": 45506560,
+            "peak_rss_bytes": 46161920,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 1.3009130340000183,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 45514752,
+            "pretransfer_peak_rss_bytes": 45514752,
+            "peak_rss_bytes": 46170112,
+            "extra_rss_lower_bound_bytes": 655360,
+            "extra_rss_upper_bound_bytes": 655360,
+            "elapsed_seconds": 5.133175181999945,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-linux311-installation.json",
+      "archive": "raw/p02-0-pr12-delivery-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3261,
+      "content_sha256": "1d3ac64684a3cbfb06f5477cb9a3e33a3bb754e41aea9701e4805dc02fd2ca14",
+      "archive_bytes": 1273,
+      "archive_sha256": "ee7778599af83bb908d466bb1241f7a1fd2c1d34fb652c47f7f042225068727c",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-linux314-installation.json",
+      "archive": "raw/p02-0-pr12-delivery-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3225,
+      "content_sha256": "dbb6c605a09520e791c2de2618075fb4182c6ebd260a5e759f416d23dd3f4bef",
+      "archive_bytes": 1237,
+      "archive_sha256": "f0ec9c753289dcb10bd4f3df0c03e8357330b327cbd0076a49c2d66a5b74b5fd",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-0-pr12-delivery-macos311-installation.json",
+      "archive": "raw/p02-0-pr12-delivery-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 3191,
+      "content_sha256": "61d3d032d75c0d2837af9cd91d8f682f649d2078eb0cb6ac1696f315a5e5311e",
+      "archive_bytes": 1247,
+      "archive_sha256": "0de6ff62123e58b3dbcf59f521b18f8e8364ea8acb1ddf9b39e0830e3df07cc0",
+      "summary": {
+        "source_commit": "ba45a2e8b019632d0b48a9af5034b93c9ceb1012",
+        "diagnostic_only": false,
+        "kind": "installation_v2",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-0-pr12-first-linux-receipt.json",
       "archive": "raw/p02-0-pr12-first-linux-receipt.json.gz",
       "original_commit": null,

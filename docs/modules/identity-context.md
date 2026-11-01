@@ -1,6 +1,6 @@
 # Kimlik ve bağlam modülü
 
-**Durum:** Uygulanıyor — TOML/context, açık env ve kalıcı kimlik/nesil/reset/restore testli; yerel yönetim/doctor testli; P02 çalışma dalında salt okunur LLM terms keşfi CLI/Python yüzeyi yerel verified; Platform dar unverified ID/liste/seçim gözlemi ADR-0022 ile uygulandı ve canlı consumer kabulünü geçti; PR/CI teslimi bekler. Auth/kimlik doğrulaması ve doğrulanmış bağ [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) kapsamında açık. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap keşfi.
+**Durum:** Uygulanıyor — TOML/context, açık env ve kalıcı kimlik/nesil/reset/restore testli; yerel yönetim/doctor testli. P02-0 çalışma dalında LLM terms ve Platform dar unverified ID/liste/seçim gözlemi ADR-0022 sınırında verified; canlı consumer, kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam. PR #12 kullanıcı review/merge bekler. Auth/kimlik doğrulaması ve doğrulanmış bağ [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) kapsamında açık. **Kapsam:** C01. **Faz:** P01 yerel temel / P02-0b gerçek hesap gözlemi.
 
 Profil, hizmet adresi, secret referansı, hesap/organizasyon/proje tercihleri ve bunların doğrulanmasını sahiplenir. Hesap oluşturma, şart kabulü veya uzakta anahtar üretme ilk kapsam değildir.
 

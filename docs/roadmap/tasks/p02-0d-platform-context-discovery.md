@@ -1,14 +1,14 @@
 ---
 id: P02-0d
 phase: P02
-status: in_review
+status: verified
 size: M
 depends_on: [P02-0a, P01-2b, P01-3a, P01-5a, P01-5b]
 capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi. Çekirdek/public yüzey ikişer fresh review ve önceki yerel kaynak kabulünü geçti; gerçek üç uç ve ayrı seçili-proje consumer kabulü tamamlandı. Önceki aynı runtime 3.695 test ve ilk PR’da üç ortam tam takımı geçti; yeni CI bakımı 81 test/iki kurulum/yeni M5 kabulünü geçti. Native metadata ve son source CI bekliyor; in_review, verified değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi; çalışma dalı kabulü verified. Çekirdek/public yüzey ikişer fresh review, gerçek üç uç/seçili-proje consumer kabulü, güncel kaynak/kurulum/M5 ve üç ortam CI ile tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı review/merge bekler; development’a teslim edilmiş değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -44,8 +44,6 @@ P01/P02-0a bağımlılıkları verified. [ADR-0020](../../decisions/0020-service
 
 ## Teslim kaydı
 
-[Çekirdek/public yüzey ve önceki yerel kabul](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı), [ilk gerçek tüketici gözlemi](../../research/p02-platform-reverse-engineering.md) ve [ayrı seçili-proje kabulü](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) kayıtlıdır. Seçili-proje koşusu 4 ürün GET/200 ve yeni detail no-key 401; ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Önceki boş-liste/başarısız/sınır dışı araştırmalar tarihsel korunur. ADR-0022 onayıyla dış sözleşme engeli kaldırıldı; kalan son kaynak/review/PR/CI kabulü sürüyor. Kullanıcı review/merge ve Master/release ayrı süreçtir.
-
-**Önceki kaynak kabulü:** [15aa8a1 kaynak kabul kaydı](../../research/p02-0-implementation-validation.md#p02-0-son-kaynak-yerel-kabulü) 3.695 passed/1 Linux-only skip, iki temiz kurulum, yeni kaynak bağlı startup ve dört jobs p95 kapısını taşır. Son kanıt review/PR/CI tamamlanmadı; status in_review.
-
-**Güncel CI bakımı kanıtı:** [Yeni source-bound M5 ve iki kurulum](../../research/p02-0-implementation-validation.md#ci-bakımının-son-kaynak-yerel-kanıtı), 81 guard/policy testi ile doğrulandı. Önceki 3.695 sayısı aynı runtime’ın tam takımıdır; yeni CI kaynağında tam üç ortam ve native edit kabulü beklenir.
+- PR/commit: [PR #12](https://github.com/HodeTech/Yorunge/pull/12), source CI e475992; son kapanış commit’i yalnız belge/arşivdir.
+- Sonuç: [Çekirdek/public review kaydı](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı), [ayrı canlı kabul](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) ve [son kaynak CI/paket kapanışı](../../research/p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) tamamlandı. Seçili-proje koşusu 4 ürün GET/200 ve detail no-key 401; ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Üç ortam tam takımı, altı CI temiz kurulumu ve güncel M5 startup/jobs geçti. Önceki boş-liste/başarısız/sınır dışı araştırmalar tarihsel korunur.
+- Kalan sınır: Kullanıcı PR review/merge ve Master/release ayrı süreçtir. Public auth/kimlik/izin unknown/unverified/null kalır; P02-R1 draft’tır. Linux cache p95 aşımı korunmuş tanıdır; M5 referans başarısı Linux performans kabulü değildir. Gerçek Windows veya fiziksel güç kesintisi kabulü yapılmadı.

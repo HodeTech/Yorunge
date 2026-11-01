@@ -8,7 +8,7 @@
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
 - [P02-0a sözleşme/SDK/pilot araştırması](p02-contract-sdk-pilot.md): sabit resmî kaynaklar, endpoint/etki/limit/SDK matrisi, açık kimlik boşlukları ve yetkili pilot planı; iki fresh review ile araştırma kabulü verified, gerçek hesap deneyi değil.
-- [P02-0 uygulama/review kaydı](p02-0-implementation-validation.md): tek paket planı; LLM yerel verified, Platform nihai consumer kapsamı ADR-0022 ile kabul edildi; canlı gözlem kayıtlı, son kaynak/review/PR/CI sürüyor.
+- [P02-0 uygulama/review kaydı](p02-0-implementation-validation.md): tek paket verified; ADR-0022 nihai dar gözlem, ayrı canlı consumer kabulleri ve son kaynak/review/kurulum/M5/üç ortam CI tamam; PR #12 kullanıcı review/merge ayrı.
 - [P02 başlangıç hazırlık review’si](p02-readiness-review.md): faz/PR/bağımlılık/kabul ve mevcut P01 kod sınırları; P02-0a araştırmaya hazır, endpoint uygulaması ve hesap pilotu yok.
 - [Doğrulama soruları](validation-questions.md): kullanıcı görevleri, API erişimi, muadil araç ve runtime geçiş kapıları.
 - [P01 ilk dilim ve kapanış kabulü](p01-core-validation.md): yerel test/build/temiz kurulum ve performans kanıtı; [ilk ham başlangıç ölçümü](p01-startup.json), [P01-1a ham ölçümü](p01-1a-startup.json).
@@ -63,4 +63,4 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 [Seçili-proje değer taşımayan receipt](p02-platform-selected-project-observations.json): 5 GET/5 attempt, 4 ürün 200/detail key yokken 401; nonempty liste/ID-route eşliği, mevcut public unknown/no-authority ve final-state kabulü. Önceki koşudan ayrı amaç/bütçe; gerçek ID/secret içermez.
 
-**1 Kasım onay geçişi:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) kullanıcı tarafından onaylandı; Accepted. Yukarıdaki araştırma özetlerindeki Proposed/eski dış kapı ifadeleri tarihsel aşamadır; güncel nihai dar gözlem ve kalan kaynak/PR/CI [paket kaydında](p02-0-implementation-validation.md) izlenir. [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) özgün doğrulanmış kimlik/bağ ihtiyacını açık tutar.
+**1 Kasım onay geçişi:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) kullanıcı tarafından onaylandı; Accepted. Yukarıdaki araştırma özetlerindeki Proposed/eski dış kapı ifadeleri tarihsel aşamadır; güncel nihai dar gözlem ve tamamlanan kaynak/PR CI kabulü [paket kapanışında](p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) kayıtlıdır; kullanıcı PR review/merge ayrıdır. [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) özgün doğrulanmış kimlik/bağ ihtiyacını açık tutar.
