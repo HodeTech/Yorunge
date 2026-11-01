@@ -8,6 +8,12 @@ Yalnız resmî yayımlanmış kamu istemcisi metin olarak incelendi ve kullanıc
 
 Araştırma için hazırlanan özel yürütücü; sayaç/slot kalıcılığı, atomik receipt/fsync/replace, setup/failure restorasyonu, ortak deadline/cleanup, doğru origin/path/header, kaynakta doğrulanmış HTTP/1.1 azami read boyutuyla önceden byte rezervi ve değer taşımayan descriptor açısından iki bağımsız preflight turundan geçti.19 çevrimdışı test geçti. İlk turlardaki atomik kayıt/restorasyon/cleanup/config-proje ve read-ahead bulguları **hesap çağrısından önce** düzeltildi. Bu yardımcı ürün runtime’ına veya yeni kullanıcı backend seçeneğine eklenmedi.
 
+## Denetlenebilir yürütücü ve test kaynağı
+
+[Sürümlü kaynak arşivi](probes/platform-20261101/README.md), [özgün account_probe.py](probes/platform-20261101/account_probe.py) ve [özgün 19 vakalı test dosyasını](probes/platform-20261101/test_probe.py) içerir. Yürütücü receipt.probe_sha256 ile **bayt bayt aynı**dır; özgün receipt ve kaynak değiştirilmedi. Arşivdeki testler yeniden ağsız çalıştırıldı: **19 passed / 0,44 s**. Bu yeni yerel tekrar, önceki canlı koşunun veya tarihsel test koşusunun yeniden yapılmış olduğu iddiası değildir. Kaynakları burada sürümlemek sonraki reviewer’ın gerçek API çağrısını, sayaç/deadline’ı ve sanitization yöntemini okuyabilmesini sağlar; ağ olayına bağımsız attestasyon sağlamaz. Arşiv main() girişi canlı tekrar amacıyla çalıştırılmaz.
+
+Bu rapordaki “tam ham ağaçta sır taraması” yalnız **seçili credential için mevcut literal-secret kuralıdır**: kısa UTF-8 değerde tam eşitlik, en az 8 byte değerde alt dize/tam eşitlik; açık sabit protokol anahtarı muafiyetleri yalnız seçilmiş şekildedir. Tüm sır türleri/başka credential veya dönüştürülmüş değerleri bulan genel sınıflandırma değildir. Metadata atımı bundan ve yapısal/boyut denetiminden sonra yapılır.
+
 ## Kamu istemcisinden doğrulanan yapı
 
 Web okuyucusu hedefleri açamadığından dosyalar doğrudan credentialsız HTTPS ile alındı.10 GET/978.276 byte; baştan12 GET/4 MiB/30 s tavanı. Kaynak URL/byte/SHA kimlikleri [kaynak kaydında](evidence-register.md#1-kasım-platform-tersine-mühendislik-kaynakları). Kaynak, sağlayıcının kendi yayınladığı web istemcisidir; sunucunun bütün alanlarının kararlılık veya key-auth garantisi değildir.
@@ -34,14 +40,14 @@ Orbit kamu API keşfi de denendi; dönen5 adayın hiçbiri EVREN endpoint’i de
 | projects | 200 | 401 | Boş dizi; mevcut decoder kabul etti |
 | projects/{id} | Çağrılmadı | Çağrılmadı | Profil/scope’ta seçili proje ve listede kayıt yok; ID tahmin edilmedi |
 
-**Gerçek toplam:**6 mantıksal GET,6 wire attempt,0 retry,1.397 tüketilmiş raw-body byte,0,616151 s. İlan edilen tavan8 GET/8 attempt/4 MiB/30 s idi. Byte ölçümü tüketilen gövde chunk’larıdır; TCP/TLS paketleri veya tüketilmeyen hata gövdesi toplamı değildir. İleri okuma için64 KiB rezerv ve kapanış için1 s rezerv, sınırda daha erken kontrollü durmayı seçer. Bloke sistem I/O’suna fiziksel kesin süre garantisi verilmez. Probe yeniden çalıştırılmadı; özgün kayıt korunur.
+**Gerçek toplam:**6 mantıksal GET,6 wire attempt,0 retry,1.397 tüketilmiş raw-body byte,0,616151 s. İlan edilen tavan8 GET/8 attempt/4 MiB/30 s idi. Byte ölçümü tüketilen gövde chunk’larıdır; TCP/TLS paketleri veya tüketilmeyen hata gövdesi toplamı değildir. İleri okuma için 64 KiB rezerv ve kapanış için 1 s rezerv, sınırda daha erken kontrollü durmayı seçer. Bloke sistem I/O’suna fiziksel kesin süre garantisi verilmez. Probe yeniden çalıştırılmadı; özgün kayıt korunur.
 
 [Değer taşımayan receipt](p02-platform-reverse-observations.json) field-name/type descriptor, sayaç, status ve bool predicate içerir; raw yanıt, gerçek ID, email/telefon/ad/TC kimlik değeri, key/env adı/tag/K, Cookie/Authorization veya imzalı URL içermez. Kaydedilen bilinen alan adları daha önceki descriptor ve yayımlanmış consumer kaynaklarıyla sınırlıdır; yeni serbest metadata anahtarları yayımlanmaz. Source/probe hash’i ve tamamlanan dosyanın UTC mtime’ı kaydedilir; mtime bağımsız ağ/zaman attestasyonu değildir.
 
 ## Kapanan belirsizlikler ve sınırlar
 
 - Üç uç için **mevcut ürün parser’ının gerçek cevapları kabul ettiği** artık kanıtlandı. Önceki metadata receipt’inde eksik olan Identifier/total predikatları bu yeni koşuda gerçek decoder’dan geçti. Eski31 Ekim receipt’ine sonuç eklenmedi veya geçmiş başarısız/sınırı aşan araştırma kabul koşusuna çevrilmedi.
-- Aynı hedef/endpoint/default parametrelerde seçili key’le200 ve header yokken401 gözlendi. Böylece tamamen anahtarsız aynı başarının elde edildiği ihtimali bu koşuda görülmedi. **Bu, key değerinin doğru doğrulandığını kanıtlamaz:** yalnız header varlığını kontrol eden bir sunucu da aynı farkı üretebilir. İyi biçimli invalid-key kontrolü yapılmadı; auth unknown kalır.
+- Aynı hedef/endpoint/default parametrelerde seçili key’le 200 ve header yokken 401 gözlendi. Böylece tamamen anahtarsız aynı başarının elde edildiği ihtimali bu koşuda görülmedi. **Bu, key değerinin doğru doğrulandığını kanıtlamaz:** yalnız header varlığını kontrol eden bir sunucu da aynı farkı üretebilir. İyi biçimli invalid-key kontrolü yapılmadı; auth unknown kalır.
 - total=count gözlemi sağlayıcının bütün listeyi döndürdüğünü kanıtlamaz. İstemcide pagination kontrolü görmemek de pagination olmadığı anlamına gelmez. Tamlık unknown ve uzak snapshot not_guaranteed kalır.
 - Provider principal/account semantiği belirlenmedi. Reported ID’ler provider principal/account alanlarına taşınmadı; izin veya yetkili execution üretildiği iddia edilmez.
 - Proje listesi bu key’le boştur. Gerçekte hiç proje yok, key scope’u farklı veya filtreleme var çıkarımlarından biri seçilmedi. Dolu proje/detail gerçek kabulü açık kalır. Kullanıcıya arayüzde mevcut proje bulunup bulunmadığı soruldu; otomatik kaynak oluşturulmadı.
@@ -54,7 +60,7 @@ Tersine mühendislik bu dar, doğrulanmamış tüketici için somut bilgi ve ger
 
 ## Birinci fresh belge ve kanıt review turu
 
-bcb3ede için iki yeni ajan adr22_r1_contract / adr22_r1_evidence karar/tüketici sınırını ve kanıt/gizlilik zincirini bağımsız inceledi; yeni doğrulanmış bulgu yok. Proposed/onay kapısı, dar kabul kapsamı değişikliği, no-authority wire, key/no-key kanıtının sınırı ve dolu/seçili proje canlı kapısı tutarlı. Receipt yalnız35 bilinen profil alanının tipleri ve diğer güvenli metadata/predikatları taşır; gerçek ID/key/PII değeri yoktur. Probe hash’i,10 kamu dosyası URL/byte/SHA eşliği ve978.276byte toplamı karşılaştırıldı.
+bcb3ede için iki yeni ajan adr22_r1_contract / adr22_r1_evidence karar/tüketici sınırını ve kanıt/gizlilik zincirini bağımsız inceledi; yeni doğrulanmış bulgu yok. Proposed/onay kapısı, dar kabul kapsamı değişikliği, no-authority wire, key/no-key kanıtının sınırı ve dolu/seçili proje canlı kapısı tutarlı. Receipt yalnız35 bilinen profil alanının tipleri ve diğer güvenli metadata/predikatları taşır; gerçek ID/key/PII değeri yoktur. Probe hash’i,10 kamu dosyası URL/byte/SHA eşliği ve 978.276byte toplamı karşılaştırıldı.
 
 142 belge/6 skill/16 kart,155 arşiv ve iki mevcut current-source M5 verifier geçti; runtime/test/script/workflow kaynakları değişmedi. Özgün private receipt hash/mtime veya ağ olayının bağımsız attestasyonu iddia edilmedi. Review sırasında credentials/scope/state/key okunmadı, probe/ağ veya yeni performans çalıştırılmadı. İkinci tur farklı fresh ajanlarla bu kayıt commit’inden sonra yapılır.
 
@@ -62,4 +68,17 @@ bcb3ede için iki yeni ajan adr22_r1_contract / adr22_r1_evidence karar/tüketic
 
 6863041 üzerinde farklı yeni ajanlar adr22_r2_contract / adr22_r2_evidence cumulative araştırma/karar/kanıt değişikliğini bağımsız inceledi; yeni doğrulanmış bulgu yok. ADR-0022’nin hangi nihai kabul kapısını değiştirdiği ve Proposed/onay sınırı açık; strict tüketilen alan, tam raw-tree sır taraması, unknown/unverified/no-authority ve dolu/seçili canlı proje şartı tutarlı.
 
-6 GET/6 attempt/key200-no-key401/1.397byte/1 org–0 proje ve gerçek API/projeksiyon predikatları receipt ile eşleşti.10 kamu source URL/byte/SHA’sı ve978.276byte toplamı, helper SHA ve19 parametrik preflight vakasının helper kapsamı karşılaştırıldı.142 belge/155 arşiv ve mevcut iki current-source M5 referansı geçti; runtime/test/script/workflow kaynakları değişmedi. Credentials/scope/state/key veya özel hesap receipt’i okunmadı; probe/ağ/ürün testi/benchmark tekrarlanmadı. Ağ olayı veya private receipt mtime/hash’i bağımsız attestasyon sayılmadı. Karar kullanıcı onayına hazırdır; mevcut Accepted kapılar ve blocked/draft/partial statüler henüz değişmedi.
+6 GET/6 attempt/key 200-no-key 401/1.397byte/1 org–0 proje ve gerçek API/projeksiyon predikatları receipt ile eşleşti.10 kamu source URL/byte/SHA’sı ve 978.276byte toplamı, helper SHA ve 19 parametrik preflight vakasının helper kapsamı karşılaştırıldı.142 belge/155 arşiv ve mevcut iki current-source M5 referansı geçti; runtime/test/script/workflow kaynakları değişmedi. Credentials/scope/state/key veya özel hesap receipt’i okunmadı; probe/ağ/ürün testi/benchmark tekrarlanmadı. Ağ olayı veya private receipt mtime/hash’i bağımsız attestasyon sayılmadı. Karar kullanıcı onayına hazırdır; mevcut Accepted kapılar ve blocked/draft/partial statüler henüz değişmedi.
+
+
+## Proje hazırlığına ilişkin sonraki kullanıcı yanıtı
+
+Kullanıcı mevcut projesi olmadığını bildirdi; ardından boş private test projesinin sayfa URL’sini paylaştı. Gerçek ID burada yayımlanmaz. Bu yeni test kaynağı ayrı amaç/sayaç/deadline ile hazırlanacak seçili-proje salt okuma kabulünde kullanılabilir; önceki 6 GET koşusuna çağrı eklemek veya onun tavanını/deadline’ını yeniden başlatmak değildir. Bu not proje endpoint’inin kabulü veya ADR-0022 onayı sayılmaz; henüz bu proje için yeni çağrı yapılmadı.
+
+## Kullanıcı ADR-0022 review bulgularının revizyonu
+
+Özgün doğrulanmış kimlik/bağ ihtiyacı [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) ve backlog B14 altında P02 identity-context sahibine bağlandı. Nihai gözlem sözleşmesi önerisi bu ihtiyacı tamamlanmış saymaz. Özgün probe ve 19 vakalı test kaynağı receipt hash’i korunarak sürümlendi; literal-secret denetiminin seçili credential, kısa/uzun değer ve protokol anahtarı sınırı kanonik referansta açıklığa kavuştu. ADR’ye kullanıcı sonucu ve kabul madde bazlı kaldırılır/yeniden yazılır/korunur eşlemesi ile tüm onay sonrası dosya/anchor geçiş listesi eklendi. 35 toplam/3 tüketilen/32 atılan alan hesabı, kanonik ürün adı, güncel indeks tarihleri ve ADR-0021 Accepted kaydı düzeltildi.
+
+Aktif P02-0b/d kabul kapıları onay gelmeden değiştirilmedi. Bu, review bulgusunun atlanması değildir: somut değişiklik ADR’de onaylanabilir biçimde yazıldı; henüz kabul edilmemiş öneri mevcut Accepted kararı geçersiz kılamaz. Ürün davranışı, source-bound kapsam ve geçmiş receipt’ler değişmedi. Mevcut 93 tüketici ve 19 arşiv test vakası birlikte **112 passed**; docs/skill/kart kontrolleri geçti.
+
+[Seçili-proje kabul yürütücüsü ve testleri](probes/platform-project-20261101/README.md) ayrı araştırma kaynağıdır. Gerçek API/final-state yoluna sayaç ekler; özgün helper’ın doğrulanan aynı baytlarını çalıştırır. Bir kez 4 pozitif GET ve yalnız yeni detail için 1 missing-key GET, toplam en çok 5 GET/5 attempt/4 MiB/30 s; önceki koşu veya formal pilot sayacıyla birleştirilmez. Sentetik MockTransport/SQLite ile **9 test** geçti. İlk test denemesindeki buffered-response fixture hatası ve düzeltmesi kaynak açıklamasında korunur. Canlı çalıştırma öncesinde iki farklı fresh review turu yapılır; bu hazırlık canlı başarı değildir.

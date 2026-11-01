@@ -1,6 +1,6 @@
 # Yol haritası
 
-**Güncellendi:** 2026-10-31. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
+**Güncellendi:** 2026-11-01. Fazlar kapsam ve kabul kapılarıdır; takvim veya yayın taahhüdü değildir. Bugünkü uygulama [current](current.md) ve [matriste](../capability-matrix.md), geliştirmeye hazır iş ise iş kartında gösterilir.
 
 | Faz | Kullanıcı sonucu | Bugünkü durum | Fazın sınırı |
 |---|---|---|---|

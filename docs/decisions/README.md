@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-10-31. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-01. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
