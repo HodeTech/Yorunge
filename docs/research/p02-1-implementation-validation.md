@@ -18,4 +18,6 @@ ADR-0023 ve bağlı taslaklar kullanıcı onayı bekler. İlk fresh belge turund
 
 ## Uygulama ve nihai kabul
 
-Henüz yok. Her adımın uygulama commit’i, iki fresh review turu, doğrulanmış bulgu/fix commit’i ve gerçek kontrol kanıtı burada tutulacak. Nihai startup/jobs/dosya ölçümleri, paket ve PR/CI yapılmadan başarı veya verified durumu yazılmaz.
+P02-1a ilk uygulaması, aynı evidence v1 isim/byte yapısını koruyarak 4.096 kayıt ve 128/512 MiB toplam bütçeyi, yazı öncesi tam eski katalog/indeks doğrulamasını ve yeni metadata byte preflight’ını ekledi. 71 odaklı test ve gerçek 247 arşiv geçti; iki fresh kod review turu/yoğun profil henüz yoktur. Strict mypy mevcut 74 runtime kaynak dosyasında geçti; araştırma scriptinin bu mypy kapsamına dahil olduğu iddia edilmez. Kaynak map’i script/test değişikliği nedeniyle değişti; eski M5 referansı yeni kaynak kabulü değildir, final P02-1d’de fresh ölçüm zorunludur.
+
+Her adımın uygulama commit’i, iki fresh review turu, doğrulanmış bulgu/fix commit’i ve gerçek kontrol kanıtı burada tutulacak. Nihai startup/jobs/dosya ölçümleri, paket ve PR/CI yapılmadan başarı veya verified durumu yazılmaz.

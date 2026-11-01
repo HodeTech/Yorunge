@@ -1,7 +1,7 @@
 ---
 id: P02-1a
 phase: P02
-status: ready
+status: in_progress
 size: M
 depends_on: [P02-0]
 capabilities: [C13]
@@ -41,4 +41,4 @@ Araç contract testleri, format/lint, belge/ajan ve gerçek arşiv eşliği; de�
 
 ## Teslim kaydı
 
-Henüz uygulanmadı; commit/review/test kanıtı yoktur. Ready yalnız bağımsız bakımın başlamaya hazır olduğunu gösterir.
+İlk script/test uygulaması yazıldı; 71 odaklı test ve 247 mevcut arşiv doğrulaması geçti. Commit sonrası iki fresh review turu ve yoğun profil henüz tamamlanmadı; verified değildir. Nihai kaynak bağlı startup/jobs ölçümü ürün dilimleri bittikten sonra P02-1d’de yenilenecektir.

@@ -21,7 +21,9 @@ from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
-MAX_ENTRIES = 256
+MAX_ENTRIES = 4096
+MAX_TOTAL_ARCHIVE_BYTES = 128 * 1024 * 1024
+MAX_TOTAL_REPORT_BYTES = 512 * 1024 * 1024
 MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
@@ -1175,17 +1177,30 @@ def entry(name: str, content: bytes, archive: bytes, original_commit: str | None
     }
 
 
+def catalog_budget(entries: list[dict[str, Any]]) -> None:
+    if not 1 <= len(entries) <= MAX_ENTRIES:
+        raise ValueError("evidence catalog capacity exceeded")
+    archive_total = report_total = 0
+    for item in entries:
+        archive_size = integer(item.get("archive_bytes"), minimum=1)
+        report_size = integer(item.get("content_bytes"), minimum=1)
+        if archive_size > MAX_ARCHIVE_BYTES or report_size > MAX_REPORT_BYTES:
+            raise ValueError("evidence entry size limit exceeded")
+        archive_total += archive_size
+        report_total += report_size
+        if archive_total > MAX_TOTAL_ARCHIVE_BYTES or report_total > MAX_TOTAL_REPORT_BYTES:
+            raise ValueError("evidence catalog total byte limit exceeded")
+
+
 def catalog(directory: Path) -> list[dict[str, Any]]:
     data = decode(read_bounded(directory / MANIFEST, MAX_REPORT_BYTES))
     if set(data) != {"schema_version", "entries"} or type(data["schema_version"]) is not int:
         raise ValueError("invalid evidence manifest")
     entries = data["entries"]
-    if (
-        data["schema_version"] != 1
-        or not isinstance(entries, list)
-        or not 1 <= len(entries) <= MAX_ENTRIES
-    ):
+    if data["schema_version"] != 1 or not isinstance(entries, list):
         raise ValueError("invalid evidence manifest entries")
+    if not 1 <= len(entries) <= MAX_ENTRIES:
+        raise ValueError("evidence catalog capacity exceeded")
     if any(
         not isinstance(item, dict)
         or not isinstance(item.get("name"), str)
@@ -1196,6 +1211,7 @@ def catalog(directory: Path) -> list[dict[str, Any]]:
     names = [item["name"] for item in entries]
     if names != sorted(set(names)):
         raise ValueError("evidence entries must be unique and sorted")
+    catalog_budget(entries)
     return list(entries)
 
 
@@ -1226,11 +1242,24 @@ def index_text(entries: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def unpack(directory: Path, item: dict[str, Any]) -> bytes:
-    archive = read_bounded(directory / "raw" / f"{item['name']}.gz", MAX_ARCHIVE_BYTES)
+def unpack(
+    directory: Path,
+    item: dict[str, Any],
+    *,
+    archive_budget: int | None = None,
+    report_budget: int | None = None,
+) -> bytes:
+    archive_limit = min(
+        MAX_ARCHIVE_BYTES,
+        MAX_ARCHIVE_BYTES if archive_budget is None else integer(archive_budget),
+    )
+    report_limit = min(
+        MAX_REPORT_BYTES, MAX_REPORT_BYTES if report_budget is None else integer(report_budget)
+    )
+    archive = read_bounded(directory / "raw" / f"{item['name']}.gz", archive_limit)
     with gzip.GzipFile(fileobj=io.BytesIO(archive)) as stream:
-        content = stream.read(MAX_REPORT_BYTES + 1)
-    if len(content) > MAX_REPORT_BYTES:
+        content = stream.read(report_limit + 1)
+    if len(content) > report_limit:
         raise ValueError("decompressed evidence size limit exceeded")
     expected = entry(item["name"], content, archive, item.get("original_commit"))
     if json.dumps(expected, sort_keys=True) != json.dumps(item, sort_keys=True):
@@ -1244,8 +1273,18 @@ def verify(root: Path) -> int:
     expected = {f"{item['name']}.gz" for item in entries}
     if {path.name for path in (directory / "raw").iterdir()} != expected:
         raise ValueError("unregistered or missing evidence archive")
+    archive_total = report_total = 0
     for item in entries:
-        unpack(directory, item)
+        content = unpack(
+            directory,
+            item,
+            archive_budget=MAX_TOTAL_ARCHIVE_BYTES - archive_total,
+            report_budget=MAX_TOTAL_REPORT_BYTES - report_total,
+        )
+        # unpack proves that the declared compressed size equals the actual bytes.
+        archive_total += item["archive_bytes"]
+        report_total += len(content)
+        del content
         if (directory / item["name"]).exists():
             raise ValueError("archived report must not also be committed as expanded JSON")
     if read_bounded(directory / INDEX, MAX_REPORT_BYTES) != index_text(entries).encode():
@@ -1533,14 +1572,23 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
     entries = catalog(directory) if (directory / MANIFEST).exists() else []
     if any(existing["name"] == source.name for existing in entries):
         raise ValueError("evidence already registered; existing bytes are preserved")
-    if len(entries) >= MAX_ENTRIES:
-        raise ValueError("evidence catalog capacity exceeded; existing bytes are preserved")
+    if entries:
+        verify(root)
+    elif (directory / INDEX).exists() or (
+        (directory / "raw").exists() and any((directory / "raw").iterdir())
+    ):
+        raise ValueError("unregistered evidence metadata or archive")
     entries = sorted([*entries, item], key=lambda value: value["name"])
+    catalog_budget(entries)
+    manifest = encode({"schema_version": 1, "entries": entries})
+    index = index_text(entries).encode()
+    if len(manifest) > MAX_REPORT_BYTES or len(index) > MAX_REPORT_BYTES:
+        raise ValueError("evidence metadata size limit exceeded")
     (directory / "raw").mkdir(exist_ok=True)
     with (directory / "raw" / f"{source.name}.gz").open("xb") as stream:
         stream.write(archive)
-    replace_metadata(directory / MANIFEST, encode({"schema_version": 1, "entries": entries}))
-    replace_metadata(directory / INDEX, index_text(entries).encode())
+    replace_metadata(directory / MANIFEST, manifest)
+    replace_metadata(directory / INDEX, index)
 
 
 def archive_rejected_startup(
