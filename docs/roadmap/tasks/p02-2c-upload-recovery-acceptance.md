@@ -20,11 +20,11 @@ Yerel show, kayıtlı hedefte güncel read credential ile reconcile, first-uploa
 
 ## Bağımlılıklar ve kararlar
 
-P02-2a/b gerçek kabulü; ADR-0024/0025 onayı; provider read/correlation/item metadata güvenilirliği ve ayrıca scoped hesap/yazma/maliyet yetkisi gerekir. Kaynak identity/key/object/URL/PII repoya girmez. Yetkisiz live başarı veya kapanmamış kanıt saklama takibiyle verified yapılmaz.
+P02-2a/b gerçek kabulü; Accepted ADR-0024/0025/0026; provider exact read/correlation/item metadata eşliği ve ayrıca scoped hesap/yazma/maliyet yetkisi gerekir. Kaynak identity/key/object/URL/PII repoya girmez. Yetkisiz live başarı veya kapanmamış kanıt saklama takibiyle verified yapılmaz.
 
 ## Sözleşme ve uygulama sınırı
 
-Dataset transfer domain/application ve adapters; CLI/Python aynı show/reconcile kullanım senaryosu. Reconcile kaydedilmiş exact target/owner/project/dataset bağını korur; güncel profil başka kaynağa yönlendirmez. Read sonucu yeni etkili permit üretmez. Sözleşme ve metadata/byte doğrulama seviyeleri [referansta](../../reference/dataset-transfer.md) tek yerde tanımlanır.
+Dataset transfer domain/application ve adapters; CLI/Python aynı show/reconcile kullanım senaryosu. Reconcile kaydedilmiş exact target/owner/project/dataset bağını korur; güncel profil başka kaynağa yönlendirmez. Read sonucu yeni etkili permit üretmez. Metadata/byte ve v1/v2 read/ack/error seviyeleri [v2 sözleşmesinde](../../reference/dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) tanımlıdır; default gerçek read grant ile yalnız açık v2 read-attempt ayrı korunur.
 
 ## Kabul
 
@@ -32,7 +32,7 @@ Dataset transfer domain/application ve adapters; CLI/Python aynı show/reconcile
 2. Yeni owner/fence, reset, revoke/expiry, credential rotation, ileri/geri saat ve kapasite doluluğunda eski sahibin yazısı reddedilir; read/reset recovery için ayrılmış kapasite kalır. Başka plan veya state dosyasıyla otomatik bypass yoktur.
 3. Unknown create için exact correlation yoksa aday adı/id tahminiyle bağlanılmaz. Known dataset için yanlış parent/visibility/file hash/ad/adet, uzak silinme, eksik/tekrarlı/değişen sayfa ve 401/403/5xx read observation'ı kontrollüdür; yanlış terminal başarı veya retry önerisi yoktur.
 4. Gerçek subprocess yolculuğunda kullanıcı plan→digest approve→start→show/reconcile adımlarını yalnız kısa yardım/metinle tamamlar. Hedef/etki/dataset-operation ID/next step ve gerçek kaynaktan taşıma byte sayacına dayalı bounded/coalesced ilerleme bulunur; provider'ın aldığı byte veya bütünlük diye sunulmaz; non-TTY prompt yoktur. Sentetik görevin 5 dakika içinde tamamlanması, yanlış hedef seçimi 0, müdahale en çok 1 ve çıktı/ID'yi 30 s içinde bulma hedefi ölçümden önce sabittir; insan UX deneyi yapılmazsa fixture başarısı onun yerine yazılmaz.
-5. Text/JSON/NDJSON/UTF-8/BrokenPipe/SIGINT ve gerçek Task.cancel; belirsizlik exit 5/ID, sonraki readonly sorgunun exit 0 ayrımı korunur. Kalıcı başarılı işi renderer hatası yeniden göndermeye dönüştürmez.
+5. Text/JSON/NDJSON/UTF-8/BrokenPipe/SIGINT ve gerçek Task.cancel; belirsizlik exit 5/ID, yerel readonly sorgunun exit 0 ve explicit remote read hatasının güvenli source kodu/1 veya 3 ayrımı korunur. Kalıcı başarılı işi renderer hatası yeniden göndermeye dönüştürmez.
 6. Gerçek streaming upload 16/256/1024 MiB, ilk ve maksimum envanter/byte/worker/queue fixture'larında exact server byte/hash oracle, native B/H0/H1/U/L, her U≤64 MiB/G≤8 MiB ve deadline kabulünü sağlar. Controller/server belleği client'tan ayrılır; tüm başarısız örnekler saklanır. 1 GiB toplam birden çok dosyada consumer limitini korur.
 7. Son runtime/test/script/workflow değişikliği sonrası yeni kaynak bağlı M5 startup/jobs/dataset referansları, üç ortam tam test, lint/type/doc/skill/actionlint, wheel/sdist ve altı temiz kurulum, gerçek Linux ölçüm/receipt/witness ve kalıcı arşiv kabulü tamamdır. Ağır ölçümler seri ve yoğun dış build/test yokken yapılır.
 8. Ayrı yetkili küçük canlı private create/link/upload ve aynı ID read doğrulaması exact sahiplik/dosya oracle'ıyla geçer; test sırrı/ham hesap verisi olmadan request/byte/süre/fiyat/doğrulama sınırı kanıta bağlanır. İki aynı hash farklı ad ayrıca kanıtlanır. Live eksikliği sessizce kapsamdan atılmaz.
@@ -44,4 +44,4 @@ Contract/integration/gerçek TLS/süreç/SQLite testleri, gerçek kurulu API/CLI
 
 ## Teslim kaydı
 
-Uygulama, test, native veya canlı kabul yapılmadı. P02-2b ve dış kapılar açık; draft. Bu kart verified olmadan P02-2 kapanmaz.
+Yerel d–l temelleri çalışma dalında verified; public yolculuk, native/kurulum/CI ve bütünleşik canlı kabul tamamlanmadı. P02-2b ve dış kapılar açık; draft. Bu kart verified olmadan P02-2 kapanmaz.

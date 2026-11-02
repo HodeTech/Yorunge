@@ -51,7 +51,8 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2i | V1/V2 journal union ve tam graph okuması | P02-2h, P02-2e; [kart](tasks/p02-2i-versioned-journal.md) | `verified` |
 | P02-2j | V2 admission/arm ve v1 weak-cost write kapanışı | P02-2i, P02-2f; [kart](tasks/p02-2j-write-gates-v2.md) | `verified` |
 | P02-2k | V2 explicit read/metadata/reset uyumu | P02-2j; [kart](tasks/p02-2k-read-recovery-v2.md) | `verified` |
-| P02-2l | Platform context/create/link strict codec'leri | P02-2k; [kart](tasks/p02-2l-platform-control-codecs.md) | `in_progress` |
+| P02-2l | Platform context/create/link strict codec'leri | P02-2k; [kart](tasks/p02-2l-platform-control-codecs.md) | `verified` |
+| P02-2m | Platform proxy upload/confirm/items codec'leri | P02-2l, P02-2f; [kart](tasks/p02-2m-platform-upload-codecs.md) | `in_progress` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı | P02-3a, P02-3b; gerekirse açık sürüm oluşturma/freeze kararı | `draft` |

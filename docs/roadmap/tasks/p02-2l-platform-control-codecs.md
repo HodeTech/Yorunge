@@ -1,7 +1,7 @@
 ---
 id: P02-2l
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2k]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ Contract negatifleri, Ruff, strict mypy, belge/rehber/diff; commit ve fresh R1/f
 
 ## Teslim kaydı
 
-K iki fresh tur ve doğrulanmış düzeltme teyitleriyle verified; codec uygulaması başladı. In_progress, henüz kod/review kabulü yok.
+- PR/commit: [480cf04](https://github.com/HodeTech/Yorunge/commit/480cf04).
+- Sonuç: Context/create/link/detail/my-role codec ve iki fresh review turu tamamlandı; local UUID hata sınıfı ile serialization öncesi private/scalar revalidation düzeltmeleri bağımsız teyit edildi. Son 122 codec testi geçti; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2l--platform-control-codecleri).
+- Kalan sınır: Pure codec kabulüdür; HTTP, producer, public CLI/Python, upload/native/build/CI/live bu kartın teslimi değildir.

@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–k verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–l verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -59,9 +59,11 @@ Ardından gerçek current tüketici codec'leri ve private create/proje bağı, b
 
 ## V2 dar kartları
 
-P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G/h/i/j/k çalışma dalında verified; her biri iki fresh kod review turu ve doğrulanmış düzeltmeleriyle kapandı. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
+P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G/h/i/j/k/l çalışma dalında verified; her biri iki fresh kod review turu ve doğrulanmış düzeltmeleriyle kapandı. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
 
 
 ## Gerçek tüketiciye geçiş
 
 [P02-2l](tasks/p02-2l-platform-control-codecs.md), a üst kartının context/create/link strict codec dilimidir; [kanonik tüketici referansı](../reference/platform-upload-consumer.md) ürün kodundan önce yazıldı. Ardından upload codec/storage descriptor, gerçek HTTP read/attempt/body bütçe sayacı, ortak koordinatör ve CLI/Python yüzeyi ayrı S/M commit/review dilimleri olarak somutlaştırılır. Bu teknik ayırma epik kapsamını daraltmaz; her dilim iki fresh turla kapanır, üst a/b/c ancak kendi bütünleşik ve live kabulüyle verified olur. Profil grant/fiyat uydurmaz; yeni canlı write, exact planı ve kapsamı hazırlanıp incelendikten sonra ayrı yetki ister.
+
+P02-2l control codec kabulü tamamlandı; sıradaki [P02-2m](tasks/p02-2m-platform-upload-codecs.md) proxy descriptor/presign/confirm/items codec birimidir. Gerçek direct provider wire henüz yoktur; generic port kabulü onu açmaz. M öncesi kaynak/handle sınırı hazırlanır; onaylanmış politika değiştirilmeden seçilen authenticated proxy consumer daraltılır.
