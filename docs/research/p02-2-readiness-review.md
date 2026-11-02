@@ -1,6 +1,6 @@
 # P02-2 uygulama öncesi belge, kod ve kaynak incelemesi
 
-**Tarih:** 2026-11-02 Europe/Istanbul. **Dal/taban:** `feat/p02-2-private-upload`, development `50d68b1`; kapanış commit'i `973cec5`. **Durum:** Hazırlık; ADR-0024/0025 Proposed. Ürün kodu/testi, canlı hesap çağrısı veya upload kabulü değildir.
+**Tarih:** 2026-11-02 Europe/Istanbul. **Dal/taban:** `feat/p02-2-private-upload`, development `50d68b1`; kapanış commit'i `973cec5`. **Durum:** ADR-0024/0025 Accepted; bağımsız yerel uygulama ve dış wire/otorite araştırması başlıyor. Tarihsel Proposed/onay-bekleme ifadeleri aşağıdaki ilk review aşamasına aittir; güncel durum bu satır ve son kayıtlarla okunur. Henüz ürün/live upload kabulü değildir.
 
 ## Yöntem ve mevcut belge incelemesi
 
@@ -83,3 +83,6 @@ Create/link/normal upload/storage/read için fiyat veya ücretsiz garantisi ve d
 Kullanıcı review düzeltmeleri **e760d2e** ile commit edildi. Fresh R1, temel ADR güvenlik modelinde yeni doğrulanmış engel bulmadı; planın eski 8 GET/16 attempt/8 MiB ve bilinmeyen bütçe satırları ile batch istisnasını doğruladı. Plan, kullanıcının **5/10/5 MiB/30 s ve 200 CR** yetki sınırına/per-file karara hizalandı. ADR'ler kullanıcının açık koşullu onayıyla Accepted'a çekildi; dış otorite/wire/fiyat kapıları korunur.
 
 Yeni [beş GET yürütücüsü](probes/platform-upload-preflight-20261102/README.md) ayrı kaynak/test olarak hazırlandı; gerçek anahtarı/ağı kullanmayan **19 offline güvenlik testi** ve Ruff format/lint geçti. İlk mock koşusu response'un önceden tüketilmiş oluşunu ortaya çıkardı; fixture gerçek incremental AsyncByteStream'e çevrildi, gerçek kaynak sınırları gevşetilmedi. Yürütücü explicit execute, exact method/target/path/query/auth, toplam/tek-call attempt, daha dar 512 KiB response, aggregate byte/deadline ve raw-value yayınlamama guard'ı içerir. Kaynak/test review tamamlanmadan canlı çağrı yapılmaz; eski probe snapshot'ları değiştirilmedi.
+
+
+Fresh kullanıcı-düzeltme R2 (7eae1ea, yeni GPT-6.1 Sol/high) güncel istek/bütçe/per-file ve güvenlik hükümlerini doğruladı; yeni güvenlik/sözleşme bulgusu yok. Üç eski durum ifadesi P3 olarak doğrulandı: araştırma başlığı ile P02-2a/b üst/teslim metni Accepted ADR'leri açık kapı gibi gösteriyordu. Güncel başlıklar Accepted, kalan kapılar yalnız endpoint/otorite/kabul olarak düzeltildi; tarihsel review kayıtları korunur.

@@ -41,4 +41,4 @@ Contract/loopback TLS/descriptor/process testleri ve byte sayan bağımsız serv
 
 ## Teslim kaydı
 
-Uygulama/kabul yapılmadı. P02-2a, ADR ve provider wire kapıları açık; draft.
+Uygulama/kabul yapılmadı. ADR-0024/0025 Accepted; P02-2a ve provider wire/kabul kapıları açık, draft.

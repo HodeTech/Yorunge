@@ -8,7 +8,7 @@ capabilities: [C03, C12, C13]
 ---
 # P02-2a — Private oluşturma planı ve kalıcı işlem
 
-**Tarih:** 2026-11-02. L kapsam [paket planındaki](../p02-2-delivery-plan.md#adımlar-ve-review-döngüsü) 1–3 S/M review adımlarına bölünmüştür; tek kod adımı değildir. ADR ve dış endpoint/otorite kapısı açıkken draft kalır.
+**Tarih:** 2026-11-02. L kapsam [paket planındaki](../p02-2-delivery-plan.md#adımlar-ve-review-döngüsü) 1–3 S/M review adımlarına bölünmüştür; tek kod adımı değildir. ADR-0024/0025 Accepted; dış endpoint/otorite ve bütünleşik kart kabulü açıkken draft kalır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
