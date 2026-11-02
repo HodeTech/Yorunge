@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Literal, TypeVar
 
 from pydantic import BaseModel
@@ -281,6 +282,29 @@ def _rows(value: object) -> list[dict[str, object]]:
     return result
 
 
+@dataclass(frozen=True, slots=True)
+class OwnedPage:
+    ids: tuple[str, ...]
+    selected: LocatedDataset | None
+
+
+def owned_page(
+    data: bytes,
+    dataset_id: str,
+    scope: UploadScope,
+    parameters: UploadParameters,
+    secret: SecretValue,
+) -> OwnedPage:
+    rows = _rows(raw(data, "owned", secret, selected_id=dataset_id))
+    ids = tuple(_identifier(row["id"]) for row in rows)
+    selected = next((row for row in rows if row["id"] == dataset_id), None)
+    if selected is None:
+        return OwnedPage(ids, None)
+    result = _validate(LocatedDataset, _projection(selected, _LOCATED))
+    _owner(result, scope, parameters)
+    return OwnedPage(ids, result)
+
+
 def owned_match(
     data: bytes,
     dataset_id: str,
@@ -288,13 +312,7 @@ def owned_match(
     parameters: UploadParameters,
     secret: SecretValue,
 ) -> LocatedDataset | None:
-    rows = _rows(raw(data, "owned", secret, selected_id=dataset_id))
-    selected = next((row for row in rows if row["id"] == dataset_id), None)
-    if selected is None:
-        return None
-    result = _validate(LocatedDataset, _projection(selected, _LOCATED))
-    _owner(result, scope, parameters)
-    return result
+    return owned_page(data, dataset_id, scope, parameters, secret).selected
 
 
 def membership(data: bytes, dataset_id: str, secret: SecretValue) -> bool:

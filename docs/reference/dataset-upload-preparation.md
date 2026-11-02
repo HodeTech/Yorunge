@@ -1,6 +1,6 @@
 # Upload input ve current hazırlık sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation iki fresh turla yerel olarak kapandı; o.2/o.3 henüz uygulama öncesi dar hedeftir. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation iki fresh turla yerel olarak kapandı; o.2 readonly producer kodlandı, iki fresh tur bekliyor; o.3 henüz uygulama öncesi dar hedeftir. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
 
 ## Yerel güncel içerik
 
@@ -16,6 +16,25 @@ Frozen/model_copy/model_construct kanıt değildir. Private request codec'i önc
 
 ## Provider ve kompozisyon dilimleri
 
-O.2 zorunlu GET'leri aynı budget/session/credential üzerinden provider codec'ine bağlar; geçerli bildirilen context not_exposed üretir, grant/cost üretmez. Dataset bilindiğinde my-role upload etiketi zorunludur; read/metadata yetki kanıtı değildir. Exact hata/proof/freshness tablosu v2 referansında kalır.
+O.2 zorunlu GET'leri aynı budget/session/credential üzerinden provider codec'ine bağlar; geçerli bildirilen context not_exposed üretir, grant/cost üretmez. Upload action'ında dataset bilindiğinde my-role upload etiketi zorunludur; read için upload izni varsayılmaz; read/metadata yetki kanıtı değildir. Exact hata/proof/freshness tablosu v2 referansında kalır.
 
 O.3 private prepare/approve/revoke kullanım senaryolarını bu input/current gözlemlerine bağlar. Açık state init gerekir; captured scope/store/epoch/clock/credential son kısa transaction'da yeniden karşılaştırılır. Ağ veya tam hash boyunca SQLite store/deadline tutulmaz. Bu son iki dilimin tam internal imzaları kod başlamadan kendi reference maddeleriyle somutlaştırılır; burada henüz uygulanmış yüzey iddia edilmez.
+
+## O.2 private current reader
+
+ObservedUploadReader, exact scoped HttpCredential ve original UploadBudget'e bağlıdır; aynı UploadHttpxTransport üstünde yalnız GET yapar. Callback/fake grant veya cost kaynağı yoktur. Constructor scope/selected literal/official target'ı denetler. Her probe tek 30 s monotonic deadline alır (original total end daha erkense o); Pozitif/not_exposed checked_at ilk mandatory GET öncesindeki UTC'dir, HTTP sonunda yeniden yazılmaz. Yeni HTTP/schema negatifinin checked_at'ı o hatanın gözlendiği UTC'dir; eski pozitif kanıt yenilenmez. Böylece 30 s probe sonunda oluşan gerçek transport_timeout, eski pozitif snapshot tazeliğiyle upload_plan_not_valid'a maskelenmez; negatifin final transaction'daki 30 s kuralı ayrıca uygulanır. Return'de 30 s freshness ve yerel input metadata tekrar kontrol edilir. Final repository credential/epoch/clock/time transaction kapısı ayrıca kalır.
+
+Private girişler: preparation(client)→AuthorizationCheck(create_private_dataset); current(client, plan, inputs, action, expected_dataset=None)→UploadCurrentCheck (create/link/upload write kapıları); read_authorization(client, expected_dataset, parameters)→AuthorizationCheck(read_created_dataset). Known dataset parametresi ancak gerçek strict create DTO'sundan veya onaylı durable baseline'dan gelir; güncel owned cevabı tarihsel expected yerine konmaz. Yeni receipt baseline formatı ADR-0027 Proposed/onay kapısındadır; bu reader onu yazmaz veya kendiliğinden üretmez.
+
+| Action | Mandatory okumalar | Sonuç |
+|---|---|---|
+| preparation/create | auth/me + seçili project | exact bildirilen context; not_exposed |
+| link | context + known ID owned lookup + exact username/slug detail | tam expected create DTO eşliği; not_exposed |
+| upload | link okumaları + project membership + exact my-role | ilişki + has_upload gözlemi; not_exposed ve ayrı UploadObservation |
+| read | context + known ID owned lookup + detail + membership | current exact metadata; not_exposed, upload grant/etiketi gerektirmez |
+
+Owned lookup page=1..128/page_size=128/scope=owned; her sayfanın canonical ID'leri ve gözlenen sayfalar arasında duplicate ID reddedilir. ID bulununca yalnız o detail rotası kullanılır; kısa/boş sayfada veya tavan sonunda bulunamama invalid_response. Bu lookup liste tamlığı/snapshot kanıtı değildir. Bütün read/physical retry/response byte'ları aynı n bütçesinde sayılır.
+
+Mandatory HTTP/schema/typed negative, v2 tablosundaki denied/unavailable/invalid Check'e eşlenir; yalnız bütün mandatory kapılar geçtiyse not_exposed. Local input, deadline veya quota hatası authority yokluğu gibi yutulmaz. Parametre/plan/current scope uyuşmazlığı HTTP öncesi kontrollü ret verir. Bu profil planın mevcut gerçek grant/cost baseline'ını yenileyemez; böyle bir saved plan için upload_plan_not_valid, sıfır HTTP.
+
+CurrentCheck earliest checked_at'ı korur; controller aynı exact action/dataset/scope/input bağındaki ≤30 s gözlemi yeniden kullanabilir, her arm'da yeni local metadata recheck ve repository final freshness/CAS gerekir. Bu okuma cache'i grant üretmez ve tarihi yeni zamana kaydırmaz. Known negative görüldüğünde controller workflow'u durdurur; yeni call eski negative'i unavailable/not_exposed'a dönüştüremez.
