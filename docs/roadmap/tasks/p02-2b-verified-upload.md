@@ -28,12 +28,12 @@ Domain hedef/byte/receipt tipleri, application transfer state machine, somut HTT
 
 ## Kabul
 
-1. İki ayrı TLS origin ile API key yalnız bound Platform proxy'ye gider; direct signed storage'da platform/LLM key, auth/cookie/proxy veya client default yoktur. Redirect, wrong port/path/host, hedef değişimi, expiry ve prepared URL uyuşmazlığı sıfır yeni etkilidir.
+1. İki ayrı TLS origin ile API key yalnız bound Platform proxy'ye gider; direct signed storage'da platform/LLM key, auth/cookie/proxy veya client default yoktur. Private/loopback/link-local/mixed DNS, DNS rebinding ve peer uyuşmazlığı; redirect, wrong port/path/host, hedef değişimi, expiry ve prepared URL uyuşmazlığı sıfır yeni etkilidir.
 2. Kısa/uzun secret, signed query/header canary; raw metadata, stdout/stderr/JSON/NDJSON/log/repr/exception/DB/receipt ve cancel yollarında kapsamlı literal denetim geçer. Muaf sabit protocol alanları genel secret detector iddiası üretmez.
 3. Bounded descriptor streaming byte/hash ve Content-Length, kısa okuma, aynı boyutlu değişim, root/ancestor değişimi ve byte/worker/queue sınırları gerçek HTTP yolunda doğrulanır. Gönderilen hash uyuşmazlığında confirm yoktur; geçici nesne kalabilir.
 4. Presign ve confirm bijeksiyonu her dosya adı/size/hash/index'ini korur; duplicate/eksik/fazla/yanlış key veya dataset, mantıksal hata 2xx, metadata ETag/nullable hash ve aynı hash farklı adlarda yanlış success yoktur. Desteklenmeyen adı flatten/skip yapmak yasaktır.
 5. Her etkili aşamada durable intent + tek permit + tek HTTP denemesi vardır. Timeout/connection-refused/429/5xx otomatik PUT/presign/confirm üretmez; işlem ve kalan durum korunur. İki worker'dan biri durduğunda yeni arm/confirm açılmaz; diğerinin önceden arm edilmiş/in-flight intent'i kendi receipt/unknown kaydıyla gözlenir, rollback varsayılmaz.
-6. Strict response/total/phase sınırı, cleanup ve Task.cancel yayılımı gerçek async/TLS testte geçer. Yerel iptal uzak iptal veya onaylı ikinci gönderim değildir.
+6. Tek session/client/pool için toplam iki connection/keepalive ve iki slot; query `%2F/%2B/%3D` exact wire kabulü/path escape reddi, missing direct origin, identity encoding ve 16 KiB URL/64 KiB PUT response aşımı, yetki taşıyan object key saklanmaması; strict response/total/phase sınırı, yavaş disk/throttle ve cleanup ve Task.cancel yayılımı gerçek async/TLS testte geçer. Yerel iptal uzak iptal veya onaylı ikinci gönderim değildir.
 
 ## Doğrulama
 
