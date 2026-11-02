@@ -8,7 +8,7 @@ capabilities: [C03, C04, C13]
 ---
 # P02-1b — Yerel manifest biçimi ve bağımsız bütünlük oracle’ı
 
-**Tarih:** 2026-11-01. [Paket/adım 2](../p02-1-delivery-plan.md). Domain/parser uygulaması ve iki fresh review turu yerelde tamamlandı; public scan/CLI sonraki adımlardadır.
+**Tarih:** 2026-11-01. [Paket/adım 2](../p02-1-delivery-plan.md). Domain/parser ve iki fresh review turu tamamlandı; public scan/CLI de aynı paketin P02-1c/d adımlarında tamamlanıp PR #13 ile development’a teslim edildi.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -40,6 +40,6 @@ Domain/parser contract, golden byte/digest vektörleri, lazy-import/core boundar
 
 ## Teslim kaydı
 
-- PR/commit: [67ea66f](https://github.com/HodeTech/Yorunge/commit/67ea66f), [de366c2](https://github.com/HodeTech/Yorunge/commit/de366c2), [787fc7c](https://github.com/HodeTech/Yorunge/commit/787fc7c), [fc16ca1](https://github.com/HodeTech/Yorunge/commit/fc16ca1); [PR #13](https://github.com/HodeTech/Yorunge/pull/13) içindeki yerel teslim; kullanıcı review/merge’ünü bekler.
+- PR/commit: [67ea66f](https://github.com/HodeTech/Yorunge/commit/67ea66f), [de366c2](https://github.com/HodeTech/Yorunge/commit/de366c2), [787fc7c](https://github.com/HodeTech/Yorunge/commit/787fc7c), [fc16ca1](https://github.com/HodeTech/Yorunge/commit/fc16ca1); [PR #13](https://github.com/HodeTech/Yorunge/pull/13), **2026-11-02 12:33:51 Europe/Istanbul** tarihinde [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi; [merge/CI kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı).
 - Sonuç: [Adım 2 kabulü](../../research/p02-1-implementation-validation.md#p02-1b--manifest-modeli-ve-parser-kapanışı), 124 manifest + 216 core boundary = 340 test, Ruff format/lint ve 75 kaynak dosyasında strict mypy geçti. İki fresh turdaki iki test oracle açığı kapatıldı; ürün kusuru doğrulanmadı. Golden bayt/digest bağımsız shasum ile sabit; koruma çıkarma deneyi iki yeni duplicate negatifinin duyarlılığını gösterdi.
 - Kalan sınır: Gerçek filesystem envanteri/verify P02-1c; atomik artifact/API/CLI, paket ve nihai performans/CI P02-1d kapsamında ayrıca tamamlandı. Model bütünlüğü güncel dosya veya execution yetkisi kanıtı değildir.

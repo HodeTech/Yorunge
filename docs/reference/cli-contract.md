@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02-0 verified ve development’a teslim edildi: LLM terms ve Platform nihai dar unverified gözlemi ADR-0022 sınırında uygulandı; canlı consumer, kaynak/review/kurulum/M5 ve üç ortam PR CI tamam. PR #12 / 9f30fd2 ile development teslimi tamamlandı; [merge/CI kaydı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kanoniktir. Public run/watch açık değildir. **Güncellendi:** 2026-11-01.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02-0 verified ve development’a teslim edildi: LLM terms ve Platform nihai dar unverified gözlemi ADR-0022 sınırında uygulandı; canlı consumer, kaynak/review/kurulum/M5 ve üç ortam PR CI tamam. PR #12 / 9f30fd2 ile development teslimi tamamlandı; [merge/CI kaydı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-1 yerel datasets inspect/verify de PR #13 / 50d68b1 ile development’a teslim edildi; [merge/CI kaydı](../research/p02-1-implementation-validation.md#development-merge-kapanışı). Public run/watch açık değildir. **Güncellendi:** 2026-11-02.
 
 ## Uygulanan alt küme
 
@@ -20,6 +20,7 @@
 | `yorunge plan prepare --task TASK` | Şema/seçim doğrulanmış offline draft; görev reçeteden de gelebilir |
 | `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
 | `yorunge jobs list/show` | Son yerel summary/plan/attempt/terminal outcome; current validation veya provider sorgusu yok; [exact sözleşme](operations.md) |
+| `yorunge datasets inspect/verify` | Yerel normal dosya envanteri, root dışı no-clobber manifest ve yeniden hash ile doğrulama; [kesin sözleşme](dataset-manifest.md) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 

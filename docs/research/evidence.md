@@ -2028,6 +2028,62 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-1-pr13-closing-doc-source-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "cba539e44f96b16c14a2876e1f13e21a5412e063"}`.
 
+## p02-1-pr13-development-merge-ci-summary
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `37d5695399143a6a4593fb946a0984c24ecdb9c073d5e1f2134ca8ad4c2e48d7`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-ci-summary.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "merge_ci_and_source_bindings_retained", "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `04d9661ba10be52b1ebd1c4f553e8b3e41a6f8eb23375aca6fb902554be762bc`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "report_sha256": "ea5790a17a86d7781e23e109028397513d0fc42cf86076633abd30282f5967d7", "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-linux-receipt
+
+**Tür:** `startup_ci_diagnostic`.
+**Özgün JSON SHA-256:** `49e0211339889f0eb9263f405e3aac65006365bccea2f7c67c6035e40c8aa970`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux-receipt.json.gz`.
+**Özet:** `{"ci_classification_accepted": true, "diagnostic_only": true, "kind": "startup_ci_diagnostic", "outcome": "passed", "p95_ms": {"baseline/cache": 139.35366600003363, "baseline/context": 111.47840299997824, "baseline/help": 28.002960999970128, "baseline/version": 27.51091900006486, "candidate/cache": 146.37343499998678, "candidate/context": 112.16361900005722, "candidate/help": 28.160005000017918, "candidate/version": 26.593791999971472}, "passed": true, "reason": "validated", "report_sha256": "ea5790a17a86d7781e23e109028397513d0fc42cf86076633abd30282f5967d7", "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41421700834", "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-linux-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `ea5790a17a86d7781e23e109028397513d0fc42cf86076633abd30282f5967d7`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 139.35366600003363, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 111.47840299997824, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 28.002960999970128, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 27.51091900006486, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 146.37343499998678, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 112.16361900005722, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 28.160005000017918, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 26.593791999971472, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-linux-stream
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `e9b1b270b60f20d45b0207e5d8a6302fb7de84f14f3a889147192fa8f1292f68`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux-stream.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 45789184, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 2.2756296500000417, "extra_rss_lower_bound_bytes": 524288, "extra_rss_upper_bound_bytes": 524288, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46313472, "pretransfer_peak_rss_bytes": 45789184, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 51552256, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.05609997499993824, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 294912, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 51847168, "pretransfer_peak_rss_bytes": 51847168, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 45731840, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.5576960699999063, "extra_rss_lower_bound_bytes": 786432, "extra_rss_upper_bound_bytes": 786432, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46518272, "pretransfer_peak_rss_bytes": 45731840, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "linux.proc_self_stat.rss_pages", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "KiB", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 786432, 524288], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 786432, "upper_bound_bytes": [294912, 786432, 524288]}, "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759", "source_unchanged_during_measurement": true}`.
+
+## p02-1-pr13-development-merge-linux311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `4d6d9dfc7fca20bcd14d827f1092252115073a215cc9088df6d12bc547980f37`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-linux314-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `57c4aa74fd181f40fe3e2a08a2892085fbb8784bb9659357c921bbac21c846aa`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-linux314-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
+## p02-1-pr13-development-merge-macos311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `0f5b296599f75a2856dc7fef4b602474a7e5ed06bff0756f9b02e1fa6a3518e8`.
+**Yerel arşiv:** `raw/p02-1-pr13-development-merge-macos311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "50d68b1deab80d6fe14749d556efde1f103b5759"}`.
+
 ## p02-1-pr13-metadata-cancelled-a-cancelled
 
 **Tür:** `diagnostic`.
@@ -2153,6 +2209,104 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `23d6011b874a0af7f96ec833fb4142888b7d878c6979338b989ad05510d2b43d`.
 **Yerel arşiv:** `raw/p02-1-pr13-opened-macos311-installation.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "e79eff2bae77b895eda9c98143ce11922b535c4f"}`.
+
+## p02-1-pr13-readme-closing-a-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `1adc0cf3d6133ebe1ec4f1d67723d98edaa5c716a44f287039dc7c0c63ad9c1a`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "report_sha256": "b0e636d588d924c96c3a341c57efc8f993294d54d17887682782ad737287ef3b", "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-a-linux-receipt
+
+**Tür:** `startup_ci_diagnostic`.
+**Özgün JSON SHA-256:** `b91bebb57d45354ce78d5bffea4c84b011cb24f7dbddd7ac483612f41d1f90d4`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux-receipt.json.gz`.
+**Özet:** `{"ci_classification_accepted": true, "diagnostic_only": true, "kind": "startup_ci_diagnostic", "outcome": "passed", "p95_ms": {"baseline/cache": 124.43429400002515, "baseline/context": 99.51187699999764, "baseline/help": 23.100647999967805, "baseline/version": 23.421283999994102, "candidate/cache": 120.57150100008585, "candidate/context": 96.31136199999446, "candidate/help": 23.289928999986387, "candidate/version": 23.081579999995938}, "passed": true, "reason": "validated", "report_sha256": "b0e636d588d924c96c3a341c57efc8f993294d54d17887682782ad737287ef3b", "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41415406202", "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-a-linux-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `b0e636d588d924c96c3a341c57efc8f993294d54d17887682782ad737287ef3b`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 124.43429400002515, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 99.51187699999764, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 23.100647999967805, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 23.421283999994102, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 120.57150100008585, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 96.31136199999446, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 23.289928999986387, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 23.081579999995938, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-a-linux-stream
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `b19cc40aefaa3c0a86f6b1ff403013f10d43a6a048e97d6167aa91bcb7dc5059`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux-stream.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 46043136, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 2.1618272040000193, "extra_rss_lower_bound_bytes": 524288, "extra_rss_upper_bound_bytes": 524288, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46567424, "pretransfer_peak_rss_bytes": 46043136, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 51666944, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.03454391900004339, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 147456, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 51814400, "pretransfer_peak_rss_bytes": 51814400, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 46166016, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.5416449800000009, "extra_rss_lower_bound_bytes": 655360, "extra_rss_upper_bound_bytes": 655360, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46821376, "pretransfer_peak_rss_bytes": 46166016, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "linux.proc_self_stat.rss_pages", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "KiB", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 655360, 524288], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 655360, "upper_bound_bytes": [147456, 655360, 524288]}, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8", "source_unchanged_during_measurement": true}`.
+
+## p02-1-pr13-readme-closing-a-linux311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `f86890416ee52de27161d6d77e9abd7f7466d1c79192f92a3c901c20df37aea1`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-a-linux314-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `1b67a48c4d299054c7f174bfbcb89254f192d6254ae6c9f6fc37469fbe8438d5`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-linux314-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-a-macos311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `df8307c3c5bc807f4c7e25dafd0edb44064f6bd2c2a978c0d4ddca29ae1431e5`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-a-macos311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-linux-baseline-selection
+
+**Tür:** `startup_baseline_selection`.
+**Özgün JSON SHA-256:** `38a33f6d0a03f83e824639012c2af8de283bdf0143552f52ae49c760e36da085`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux-baseline-selection.json.gz`.
+**Özet:** `{"complete": true, "diagnostic_only": true, "effective_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "kind": "startup_baseline_selection", "mode": "pinned_runtime", "pinned_baseline_commit": "9f30fd2bad7c3495120b127fefd588b4458d0f07", "report_sha256": "dbe7ae7a54f093c42b9f64235b0ffa839329f522dfc9e71ed95c5336add9bb2c", "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-linux-receipt
+
+**Tür:** `startup_ci_diagnostic`.
+**Özgün JSON SHA-256:** `c2b808a09b516dd20bd47ae5086edb0b7a3a7a9ac6f6d88e95eebeb0c4896777`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux-receipt.json.gz`.
+**Özet:** `{"ci_classification_accepted": true, "diagnostic_only": true, "kind": "startup_ci_diagnostic", "outcome": "passed", "p95_ms": {"baseline/cache": 202.4726949999831, "baseline/context": 157.654277000006, "baseline/help": 35.98029700003735, "baseline/version": 34.960554000008415, "candidate/cache": 198.92366700003095, "candidate/context": 157.91478699998152, "candidate/help": 36.19920200003435, "candidate/version": 36.078164999935325}, "passed": true, "reason": "validated", "report_sha256": "dbe7ae7a54f093c42b9f64235b0ffa839329f522dfc9e71ed95c5336add9bb2c", "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/41415407204", "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-linux-startup
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `dbe7ae7a54f093c42b9f64235b0ffa839329f522dfc9e71ed95c5336add9bb2c`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux-startup.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 202.4726949999831, "passed": false, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 157.654277000006, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 35.98029700003735, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 34.960554000008415, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 198.92366700003095, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 157.91478699998152, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 36.19920200003435, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 36.078164999935325, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-linux-stream
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `a9172f0e38fb991be103bd2b3b443510d54541ea0c09c6c966d4f84e5e552b95`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux-stream.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 46010368, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 3.7744065580000097, "extra_rss_lower_bound_bytes": 524288, "extra_rss_upper_bound_bytes": 524288, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46534656, "pretransfer_peak_rss_bytes": 46010368, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 51621888, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.06206540900006985, "extra_rss_lower_bound_bytes": 0, "extra_rss_upper_bound_bytes": 32768, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 51654656, "pretransfer_peak_rss_bytes": 51654656, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 45666304, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.958893503000013, "extra_rss_lower_bound_bytes": 393216, "extra_rss_upper_bound_bytes": 393216, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 46059520, "pretransfer_peak_rss_bytes": 45666304, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "linux.proc_self_stat.rss_pages", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "KiB", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [0, 393216, 524288], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 524288, "upper_bound_bytes": [32768, 393216, 524288]}, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8", "source_unchanged_during_measurement": true}`.
+
+## p02-1-pr13-readme-closing-b-linux311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `c8adb0bef81f8d7b0a8946b4323e9f0bcb5940723b04ae2b8f6b15f538838aa7`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-linux314-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `be5c7770305c395882b5d7a4c528bd9bb6d7976374f5c9c81ca2ab54aa8b66e5`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-linux314-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
+
+## p02-1-pr13-readme-closing-b-macos311-installation
+
+**Tür:** `installation_v2`.
+**Özgün JSON SHA-256:** `148d0e9e373621b89743191f12fe91d2164efb9fbb921d4ef012f1bbc70fb30b`.
+**Yerel arşiv:** `raw/p02-1-pr13-readme-closing-b-macos311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v2", "passed": true, "source_commit": "c4bcf762af46f5cc4bb3b802cc4937c2ca05b1f8"}`.
 
 ## p02-1-pr13-review-followup-linux-baseline-selection
 

@@ -30,7 +30,7 @@
 
 [P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.
 
-[P02-1 teslim planı](../p02-1-delivery-plan.md), B15 kapasite bakımı, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş commit/review adımında tek nihai development PR’ına bağlar. [Kabul kaydı](../../research/p02-1-implementation-validation.md) özgün test/ölçüm/inceleme kanıtını taşır.
+[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki P02-2a–c henüz hazır uygulama kartları değildir; [current](../current.md#sıradaki-iş-ve-kalan-kapsam) başlangıç kapılarını gösterir.
 
 Durum kart metadata’sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Aktif/sonraki iş için [current](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 kartları karar/endpoint kanıtları geldikçe hazırlanır; uzak fazlar için boş kart yığını üretilmez. Kart, kanıtıyla birlikte korunur.
 
