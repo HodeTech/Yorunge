@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-11-01. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-02. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -29,5 +29,6 @@
 | [0023](0023-local-dataset-manifests.md) | Yerel normal dosya envanteri, taşınabilir Manifest v1 ve root dışı no-clobber artifact | Accepted — P02-1, 2026-11-01 kullanıcı review düzeltmeleri sonrası uygulamayı yetkilendirdi |
 | [0024](0024-durable-dataset-transfers.md) | P02-2 ayrı private transfer planı, aşama intent/receipt, proje bağı ve ilk recovery sınırı | Accepted — 2026-11-02 kullanıcı review düzeltmeleri sonrası uygulama yetkisi; dış otorite/wire kapıları korunur |
 | [0025](0025-isolated-storage-streaming.md) | Ayrı storage hedef/auth politikası ve bounded descriptor request streaming | Accepted — 2026-11-02 kullanıcı review düzeltmeleri sonrası uygulama yetkisi; provider hedef/expiry/wire kapısı korunur |
+| [0026](0026-explicit-unverified-transfer-attempts.md) | Verified varsayılanını koruyan açık unverified/unpriced transfer deneme politikası; v2 plan/onay | Proposed — kullanıcı onayı bekleniyor; ADR-0024 henüz değişmedi |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.
