@@ -65,6 +65,15 @@ def test_literal_create_and_separate_link_request_never_embed_project_or_grant()
     assert "grant" not in body and "owner_id" not in body
 
 
+@pytest.mark.parametrize(
+    "value", ["bad-id", True, 123, None, "ABCDEF00-0000-4000-8000-000000000009"]
+)
+def test_invalid_local_link_id_is_request_error_not_provider_error(value):
+    with pytest.raises(YorungeError) as error:
+        codec.link_content(value, SECRET)
+    assert error.value.code == "invalid_request" and error.value.exit_code == 2
+
+
 @pytest.mark.parametrize("wrapped", [False, True])
 def test_reported_context_create_and_exact_detail_preserve_private_owner(wrapped):
     envelope = (lambda value: {"success": True, "data": value}) if wrapped else (lambda x: x)

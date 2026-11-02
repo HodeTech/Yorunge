@@ -48,13 +48,15 @@ def _validate(kind: type[T], value: object) -> T:
         raise YorungeError("invalid_response") from None
 
 
-def _identifier(value: object) -> str:
+def _identifier(
+    value: object, *, error: Literal["invalid_response", "invalid_request"] = "invalid_response"
+) -> str:
     if type(value) is not str:
-        raise YorungeError("invalid_response")
+        raise YorungeError(error)
     try:
         return provider_uuid(value)
     except ValueError:
-        raise YorungeError("invalid_response") from None
+        raise YorungeError(error) from None
 
 
 def _children(
@@ -247,7 +249,7 @@ def create_content(scope: UploadScope, parameters: UploadParameters, secret: Sec
 
 
 def link_content(dataset_id: str, secret: SecretValue) -> bytes:
-    return _request({"dataset_id": _identifier(dataset_id)}, secret)
+    return _request({"dataset_id": _identifier(dataset_id, error="invalid_request")}, secret)
 
 
 def segment(value: str, secret: SecretValue) -> str:
