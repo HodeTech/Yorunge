@@ -1,8 +1,13 @@
 """Offline read-only allowlist/identity/secret/byte regressions; no private input access."""
 
 import asyncio
+import hashlib
 import importlib.util
+import os
+import py_compile
+import sys
 from pathlib import Path
+from types import ModuleType
 
 import httpx
 import pytest
@@ -194,3 +199,45 @@ def test_oversized_owned_response_is_never_published():
         run(key, budget, observer)
     assert budget.attempts == len(calls) == 1
     assert "shape" not in observer.rows[0]
+
+
+def test_helper_runs_the_hashed_bytes_despite_valid_stale_bytecode_and_loaded_module(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "helper.py"
+    path.write_bytes(b'VALUE = "old"\n')
+    before = path.stat()
+    py_compile.compile(str(path), doraise=True)
+    path.write_bytes(b'VALUE = "new"\n')
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    old = ModuleType("frozen_upload_helpers")
+    old.VALUE = "cached"
+    monkeypatch.setitem(sys.modules, "frozen_upload_helpers", old)
+    checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+    result = probe.checked_helper(path, checksum)
+    assert result.VALUE == "new" and result is not old
+    assert result.__file__ == str(path)
+
+
+def test_wrong_helper_hash_never_executes_source(tmp_path):
+    marker, path = tmp_path / "marker", tmp_path / "helper.py"
+    path.write_text(f"from pathlib import Path\nPath({str(marker)!r}).touch()\n")
+    with pytest.raises(RuntimeError):
+        probe.checked_helper(path, "0" * 64)
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("missing", ["owned", "detail", "both"])
+def test_absent_org_is_not_evidence_of_explicit_personal_null(missing):
+    def mutate(index, body, status):
+        if index == 0 and missing in {"owned", "both"}:
+            body[0].pop("org_id")
+        if index == 1 and missing in {"detail", "both"}:
+            body.pop("org_id")
+        return body, status
+
+    key, budget, observer, calls = setup(mutate)
+    with pytest.raises(YorungeError) as failure:
+        run(key, budget, observer)
+    assert failure.value.code == "invalid_response"
+    assert budget.attempts == len(calls) == (2 if missing == "detail" else 1)

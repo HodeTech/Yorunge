@@ -2,7 +2,6 @@
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -10,6 +9,7 @@ import subprocess
 import time
 import tomllib
 from pathlib import Path
+from types import ModuleType
 
 import httpx
 
@@ -26,11 +26,19 @@ PRIOR = PREP / "p02-2-write-20261102"
 OUTPUT = PREP / "p02-2-created-read-20261102"
 HELPER = Path(__file__).parent.parent / "platform-upload-pilot-20261102/pilot.py"
 HELPER_SHA = "c7a192c3ac9b5f25613fe817d4138951d18814376058705ae141f375e3e984cf"
-if hashlib.sha256(HELPER.read_bytes()).hexdigest() != HELPER_SHA:
-    raise RuntimeError("frozen helper hash mismatch")
-spec = importlib.util.spec_from_file_location("frozen_upload_helpers", HELPER)
-shared = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(shared)
+
+
+def checked_helper(path, checksum):
+    content = path.read_bytes()
+    if hashlib.sha256(content).hexdigest() != checksum:
+        raise RuntimeError("frozen helper hash mismatch")
+    module = ModuleType("frozen_upload_helpers")
+    module.__file__ = str(path)
+    exec(compile(content, str(path), "exec"), module.__dict__)
+    return module
+
+
+shared = checked_helper(HELPER, HELPER_SHA)
 TARGET = shared.TARGET
 LIMIT = 512 * 1024
 PART = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", flags=re.ASCII)
@@ -199,6 +207,7 @@ class Observer:
             row.get("id") != self.dataset
             or row.get("name") != self.name
             or row.get("visibility") != "private"
+            or "org_id" not in row
         ):
             raise YorungeError("invalid_response")
         shared.checked_id(row.get("owner_id"), self.key.secret)
