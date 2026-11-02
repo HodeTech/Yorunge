@@ -119,6 +119,41 @@ def test_dns_is_pinned_once_and_original_sni_is_preserved():
     assert stream.writes == [b"approved HTTP bytes"] and stream.closed
 
 
+@pytest.mark.parametrize("changed_at", ["connect", "tls", "reuse"])
+def test_another_public_dns_answer_cannot_replace_the_selected_peer(changed_at):
+    stream = Stream()
+    connector = Connector(stream)
+
+    async def resolver(*args):
+        return ("8.8.8.8", "1.1.1.1")
+
+    backend = GuardedBackend(resolver=resolver, backend=connector)
+
+    async def run():
+        if changed_at == "connect":
+            stream.peer = ("1.1.1.1", 443)
+        connection = await backend.connect_tcp("storage.example", 443)
+        if changed_at == "tls":
+            original = stream.start_tls
+
+            async def replaced_peer(context, server_hostname=None, timeout=None):
+                result = await original(context, server_hostname, timeout)
+                stream.peer = ("1.1.1.1", 443)
+                return result
+
+            stream.start_tls = replaced_peer
+        tls = await connection.start_tls(ssl.create_default_context(), "storage.example")
+        if changed_at == "reuse":
+            stream.peer = ("1.1.1.1", 443)
+        await tls.write(b"must never be sent")
+
+    with pytest.raises(YorungeError) as failure:
+        asyncio.run(run())
+    assert failure.value.code == "invalid_service_target"
+    assert connector.calls == [("8.8.8.8", 443)] and stream.closed
+    assert stream.writes == []
+
+
 @pytest.mark.parametrize(
     "answers",
     [

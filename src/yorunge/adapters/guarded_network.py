@@ -224,7 +224,7 @@ class GuardedBackend(httpcore.AsyncNetworkBackend):
                 if remaining <= 0:
                     raise httpcore.ConnectTimeout("connection deadline elapsed")
                 stream = await self._connect(pinned[0], port, remaining, socket_options, host)
-                guarded = GuardedStream(stream, host, frozenset(pinned), self._allowed)
+                guarded = GuardedStream(stream, host, frozenset({pinned[0]}), self._allowed)
                 if not guarded.peer_valid():
                     await guarded.reject()
                 return guarded
