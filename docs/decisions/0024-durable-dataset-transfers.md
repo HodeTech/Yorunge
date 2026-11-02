@@ -1,0 +1,63 @@
+# ADR-0024: Private veri aktarımında plan, aşama ve kalıcı gönderim sınırı
+
+**Durum:** Proposed; kullanıcı onayı bekleniyor. **Tarih:** 2026-11-02. **İş:** P02-2a–c. [Araştırma](../research/p02-2-readiness-review.md), [paket planı](../roadmap/p02-2-delivery-plan.md), [önerilen sözleşme](../reference/dataset-transfer.md). Ürün uygulaması veya canlı yazma kabulü değildir.
+
+## Bağlam
+
+P02-1 güncel yerel Manifest v1 üretir; upload yetkisi veya gönderilecek değişmez snapshot üretmez. P02-0d yalnız unknown/unverified gözlemdir. Mevcut execution v2 en çok 128 girdi/64 KiB gövde, operation ise tek dispatch latch'i ve gönderim sonrası yalnız read reconciliation taşır. Create, proje bağı, presign, PUT ve confirm'ü tek start içine gizlemek kesintide hangi isteğin yapılmış olabileceğini kaybettirir.
+
+Kamu web istemcisinde dataset create için kişisel/organizasyon sahipliği, **ayrı** `POST projects/{id}/datasets` için proje ilişkisi gözlenmiştir. Bu istemci kanıtı API-key yetkisi veya idempotency garantisi değildir. [ADR-0022](0022-observed-platform-consumer-contract.md) salt gözlem istisnası yan etkili bu işe taşınmaz.
+
+## Önerilen karar
+
+### Ayrı transfer planı, ortak güvenlik ilkeleri
+
+`DatasetUploadPlan v1` ve ona bağlı kalıcı transfer operation'ı ayrı kapalı kayıt ailesidir. Eski offline Plan v1, ExecutionPlan v2, Recipe v1, approval ve jobs v1 wire/digest'leri değişmez; manifest mevcut execution body'ye veya serbest provider_options'a sıkıştırılmaz. Yeni dataset komutları ortak application kullanım senaryolarıdır. Mevcut `jobs` execution geçmişini okumayı sürdürür; transferin aynı operation ID'si `datasets upload show/reconcile` ile bulunur. Genel jobs birleştirmesi bu paketin gizli işi değildir.
+
+State/credential/clock, SQL transaction, dosya bağlama, deadline ve permit primitive'leri yeniden kullanılır; iki farklı clock/credential politikası yazılmaz. Transferin farklı FK/kota/aşama modeli mevcut execution tablolarına sahte plan yerleştirerek uygulanmaz. [ADR-0011](0011-state-foundation-and-migrations.md)/[0015](0015-checksummed-data-migrations.md) gereğince yeni tüketici migration'ı 6→7 SQL-only V2 olur; önceki SQL/checksum'lar korunur. Şema 7 burada öneridir, development hâlâ 6'dır.
+
+Plan; exact Platform hedefi, seçilmiş owner türü/ID, zorunlu proje ID'si, private create parametreleri, manifest canonical byte/digest bağı, root descriptor kimliği, credential ID/revision, store/epoch/clock generation, storage politikası ve sabit bütçeyi bağlar. Ham credential, env adı, HMAC/tag/K, signed URL ve provider gövdesi kaydedilmez. Manifest ayrı bounded immutable kayıt olur; yalnız dosya yolunu/hash'ini bağlamak tam girdi kapanışı sayılmaz.
+
+### Doğru hedef ve gerçek otorite
+
+Owner kişisel kullanıcı veya organizasyondur; profile account alanı otomatik bu türlerden birine çevrilmez. Proje bağı create isteğine hayalî `project_id` eklemekle kurulmaz. Üretim akışının önerisi **create → project link → presign → PUT → confirm → read verification**'dır. Proje ilişkisinin API-key sözleşmesi kapanmazsa ilişkisiz dataset sessizce başarı sayılmaz veya bu adım kapsamdan çıkarılmaz.
+
+Trusted tüketici adaptörü, aynı credential snapshot'ıyla create'ın owner kapsamını ve projenin doğru sahiplik alanını, create/link yetkisini, create sonrası ise exact dataset için upload/read yetkisini güncel doğrular. Görünür proje, rol adı, no-key 401, kullanıcıdan gelen owner ID veya digest onayı izin kanıtı değildir. API-key sözleşmesi/otorite oracle'ı araştırmada açıktır: kapanana kadar remote kod kartı ready olmaz ve public plan `prepared`/yürütülebilir sayılmaz. P02-R1'in tamamı otomatik bağımlılık yapılmaz; bu dar tüketicinin otorite kabulü P02-2a'nın sorumluluğudur.
+
+Prepare, approve ve her etkili aşamanın son transaction'ında store/epoch/clock generation, plan/digest, aynı etkin approval, owner/fence/lease ve kullanılan credential'ın güncel ID/revision/hedefi tekrar karşılaştırılır. Ağ/hash transaction dışında kalır. Değişiklik yeni env çözümü veya otomatik onay üretmez; sıfır **yeni** etki ve kontrollü ret verir. Başlamış olabilecek önceki etki geri alınmış sayılmaz.
+
+### Aşama journal'ı ve belirsizlik
+
+Plan başına tek transfer operation ve ilk dış çağrıdan önce bir kez kalıcılaşan workflow latch vardır. Her create/link/presign/PUT/confirm için ayrıca `(operation_id, stage_kind, file_index)` benzersiz intent ve request digest'i commit edilir. Sonra yalnız ilk sahibin PID'ye bağlı, tek kullanımlık bellek permit'i ile **bir** HTTP denemesi yapılabilir. Intent sonrasında permit DB'den/restart'tan yeniden üretilmez. Yeni attempt, lease, approval veya yeni plan belirsiz bir intent'i temizleyemez.
+
+Plan yenileyerek ikinci create'ı otomatik açmayı engellemek için aynı store'da `(target, owner_kind, owner_id, project_id, dataset_name)` niyeti kalıcı tekil bağdır. Hazırlık yenilemesi aynı intent kimliğine bağlanır; herhangi bir create intent'i varsa yeni create hakkı doğmaz. Terminal kayıt da bu bağı otomatik bırakmaz. Başka ad/hedefle bilinçli başka iş açmak kullanıcı seçimi olabilir; uygulama bunu retry önerisi olarak üretmez. Başka store/istemci için uzak exactly-once iddiası yoktur.
+
+Intent commit'i ile HTTP çağrısı arasında süreç ölürse istek gerçekte hiç gönderilmemiş olsa da unknown kalabilir. Cevap alındığında strict receipt, intent/request ve beklenen dataset/dosya kimliğiyle eşleştirilip kalıcılaştırılmadan sonraki aşama açılmaz. Timeout, bozuk/eksik yanıt, receipt commit belirsizliği, lease kaybı veya yerel iptal sonraki etkileri durdurur. Başarılı PUT tek başına confirm veya dataset teslimi değildir.
+
+Sahip kaybında yeni owner yalnız aynı operation'ın read reconciliation'ını yapar; P02-2 restart yeni effectful aşama başlatmaz. Create ID'si kayıpsa ve exact request-correlation oracle yoksa ada göre ilk eşleşme alınmaz; unknown ve mevcut ID korunur. Bilinen dataset/proje/öğe gözlemi, kanıtladığı sınırlı durumu güncelleyebilir; yokluk ikinci create/PUT izni değildir. P02-3a yalnız bu temel üzerine ayrıca kanıtlanmış güvenli devamı ekleyebilir.
+
+### Dosyalar, kaynak ve sahiplik süresi
+
+İlk uzak yol normal dosya aktarımıdır; ZIP/import, public görünürlük, silme ve sürüm/freeze yoktur. Yerel manifestin 4.096 dosya kapasitesi değişmez. İlk upload için **1–128 dosya, dosya başına en çok 500.000.000 byte ve toplam 1 GiB** önerilir; bu istemci korumasıdır, sağlayıcı garanti limiti değildir. Daha büyük envanter effect öncesi açık ret verir; dosyalar sessizce seçilmez/bölünmez. Provider modality/format koşulları wire kapısında açıkça doğrulanır.
+
+Prepare/approve güncel dosyaları P02-1 descriptor modeliyle yeniden hash'ler; çağrı başına 30 s/1 GiB hash sınırı korunur. Transferde aynı descriptor'dan gönderilen byte/hash ayrıca sayılır ve manifestle karşılaştırılır. Gözlenen değişimde confirm yoktur; önceden gönderilmiş geçici nesne kalabilir. Bu atomik snapshot veya aynı UID saldırısına karşı sandbox değildir.
+
+Transfer planı ve onayı en çok **900 s** yaşar; mevcut execution v2'nin 300 s sınırı değişmez. Start toplam deadline'ı en çok 900 s ve plan/onayın kalanından büyük değildir. Transfer lease'i **150 s**, tek PUT en çok **120 s** olur; her aşama arm'ında hâlâ geçerli aynı owner ile yenilenir. Port deadline'ı `min(total_remaining, lease_remaining − 5 s, request_limit)` ile sınırlıdır. Bu sayede bir isteğin deadline'ı lease'e eşit olmaz; arka plan heartbeat/daemon gerekmez. Sonraki aşamada onay expiry/revoke, credential/reset/clock farkı yeniden denetlenir. Süreler kontrol noktalarıdır; bloke sistem I/O'suna fiziksel duvar saati garantisi değildir.
+
+Transfer başına 128 dosya için en çok 388 etkili intent (create/link + dosya başına presign/PUT/confirm + iki kontrol rezervi), store genelinde en çok 128 transfer planı/operation, 4.096 dosya ve **16 MiB canonical transfer payload** tutulur. Manifest kayıtları bu kotaya dahildir. Etkiden önce gereken intent/receipt/kontrol kapasitesi ayrılır; recovery/terminal slotu normal ilerleme kotasından bağımsızdır. Kapasite dolu sahipsiz iş read reconciliation/reset'ten mahrum bırakılamaz. Kalıcı geçmiş otomatik silinmez; dolu store yeni upload açamaz, mevcut okuma/kurtarma devam eder. Bu yaşam döngüsü sınırı kullanıcıya görünürdür.
+
+Reset geçmiş/intent/tombstone'ları korur, yeni epoch ile sahipliği ve sonraki yazmaları etkisizleştirir; mevcut belirsiz iş yeni kimlikle yalnız okunabilir. Gelecek timestamp credential reset'ini kilitlemez. Preview'nun transfer sayısı/semantic fingerprint kapsamı ve global expiry frontier'e transfer plan/onay/lease katkısı şema 7 ile birlikte tanımlanır; eski üç/dört-index sınırı sessizce kullanılmaz. Operation runtime restore/recover yasağı genişletilmez.
+
+## Alternatifler
+
+- Tek StartPort içine bütün HTTP zinciri: kalıcı aşama ve restart sınırı yok; seçilmedi.
+- Her aşamaya yeni genel operation/attempt: tek gönderim niyetini böler ve belirsizliği aşabilir; seçilmedi.
+- Eski execution şemasını yerinde genişletmek: eski digest/Recipe/jobs tüketicilerini etkiler; ayrı transfer ailesi seçildi.
+- Discovery'yi yazma yetkisine yükseltmek veya owner/project'i yok saymak: kanıt ve hedef sözleşmesini bozar; seçilmedi.
+- Bütün 4.096 dosyayı ilk upload'a açmak: bounded journal/API/kabul boyutunu büyütür; açık 128 dosya sınırı seçildi. Daha geniş destek bu kabulün gizli sonucu değildir.
+
+## Sonuçlar ve onay sınırı
+
+Onay; ayrı transfer ailesi, proje bağlantısının görünür yan etki olması, tekil niyet/aşama latch'leri, ilk teslimde replay yasağı ve transfer bütçelerini benimser. ADR-0014/0016'nın execution v2 davranışını değiştirmez; ilk çok aşamalı tüketici için ayrı sözleşme getirir. API-key otoritesi, exact provider wire, depolama hedefi ve canlı yazma/fiyat yetkisi **onayla kanıtlanmış olmaz**. Eksik dış kapılar [paket planında](../roadmap/p02-2-delivery-plan.md#başlangıç-kapıları) isimlidir; bağımsız yerel dilimler bunları beklemeden, bu ADR onayı sonrası ilerleyebilir.
+
+Kabul; her intent/receipt öncesi-sonrası kill, iki süreç/lease/reset/revoke/credential yarışı, aynı içerik farklı adlar, kayıp create/link/presign/PUT/confirm, bozuk mantıksal 2xx, kapasite ve aynı-ID read reconciliation oracle'larını [kartlara](../roadmap/p02-2-delivery-plan.md#adımlar-ve-review-döngüsü) bağlar. Yeni ürün kodu, sentetik test veya canlı yazma bu karar hazırlığında yapılmadı.

@@ -24,13 +24,16 @@
 | [P02-1b](p02-1b-manifest-contract.md) | ADR-0023’e bağlı strict Manifest v1 ve bağımsız byte/digest oracle’ı |
 | [P02-1c](p02-1c-descriptor-dataset-scan.md) | Bounded descriptor klasör envanteri ve yeniden hash’leyerek verify |
 | [P02-1d](p02-1d-dataset-inspection-cli.md) | Root dışı atomik artifact, ortak CLI/Python ve bütünleşik paket kabulü |
+| [P02-2a](p02-2a-private-create.md) | Private create/proje bağı, ayrı upload planı ve kalıcı aşama temeli; karar/otorite kapılı |
+| [P02-2b](p02-2b-verified-upload.md) | Ayrı hedef politikasıyla bounded presign/PUT/confirm |
+| [P02-2c](p02-2c-upload-recovery-acceptance.md) | Aynı-ID read recovery, kesinti ve bütünleşik paket kabulü |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
 [P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.
 
-[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki P02-2a–c henüz hazır uygulama kartları değildir; [current](../current.md#sıradaki-iş-ve-kalan-kapsam) başlangıç kapılarını gösterir.
+[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki P02-2a–c kartları [P02-2 planında](../p02-2-delivery-plan.md) hazırlandı; ADR-0024/0025 onayı ve ilgili provider/otorite kapıları açıkken draft kalır. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
 
 Durum kart metadata’sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Aktif/sonraki iş için [current](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 kartları karar/endpoint kanıtları geldikçe hazırlanır; uzak fazlar için boş kart yığını üretilmez. Kart, kanıtıyla birlikte korunur.
 
