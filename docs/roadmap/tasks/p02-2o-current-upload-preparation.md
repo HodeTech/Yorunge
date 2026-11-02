@@ -40,4 +40,4 @@ Dar local input/codec testleri, ilgili eski dataset regresyonları, gerçek TLS 
 
 ## Teslim kaydı
 
-Üç dilime ayrılmış hazır kapsam; o.1 başlıyor. İlk iki alt kart d–n temeli teslim değildir; gerçek public workflow ve c kabulü henüz yoktur.
+O.1 input/revalidation kodlandı, 481 ilgili test geçti; ilk commit/iki fresh tur bekliyor. O.2/o.3 ve gerçek public workflow/c kabulü henüz yoktur. D–n temeli bu bütünleşik teslimin yerine geçmez.

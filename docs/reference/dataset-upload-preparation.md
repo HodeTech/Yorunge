@@ -1,6 +1,6 @@
 # Upload input ve current hazırlık sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2o uygulama öncesi dar hedef. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation kodlandı, iki fresh tur bekliyor; o.2/o.3 henüz uygulama öncesi dar hedeftir. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
 
 ## Yerel güncel içerik
 

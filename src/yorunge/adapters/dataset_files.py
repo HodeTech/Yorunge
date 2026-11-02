@@ -131,6 +131,13 @@ class DirectoryObservation:
     names: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class TreeObservation:
+    chain: Chain
+    files: tuple[FileObservation, ...]
+    directories: tuple[DirectoryObservation, ...]
+
+
 @dataclass(frozen=True)
 class DatasetLocation:
     anchor: Path
@@ -313,10 +320,24 @@ class DatasetTree:
         self.budget.check()
         if not self.scanned:
             raise YorungeError("invalid_request")
+        self.recheck_observation(self.observation())
+
+    def observation(self) -> TreeObservation:
+        self.budget.check()
+        if not self.scanned:
+            raise YorungeError("invalid_request")
+        return TreeObservation(self.chain, tuple(self.files), tuple(self.directories))
+
+    def recheck_observation(self, observation: TreeObservation) -> None:
+        self.budget.check()
+        if type(observation) is not TreeObservation:
+            raise YorungeError("invalid_request")
+        if observation.chain != self.chain:
+            raise YorungeError("input_changed")
         try:
-            for item in self.files:
+            for item in observation.files:
                 self._recheck_file(item)
-            for directory in self.directories:
+            for directory in observation.directories:
                 self._recheck_directory(directory)
             self.check_root()
         except OSError as error:
