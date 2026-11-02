@@ -1,7 +1,7 @@
 ---
 id: P02-2d
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-1]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ Tam canonical wire, bağımsız literal digest/byte oracle, extra/duplicate/bool
 
 ## Teslim kaydı
 
-Henüz bu kartın uygulama/test/review kabulü tamamlanmadı. Gerçek commit, iki fresh tur ve kalan sınır oluşunca kayıt eklenecek; remote/live başarı iddiası yoktur.
+- PR/commit: [5d1ddcf](https://github.com/HodeTech/Yorunge/commit/5d1ddcf) yerel uygulama; [a5e5ecc](https://github.com/HodeTech/Yorunge/commit/a5e5ecc) R1 durum düzeltmesi; ayrı PR yok.
+- Sonuç: [Adım 1 kabulü](../../research/p02-2-implementation-validation.md#adım-1--p02-2d-yerel-plan-sözleşmesi), 422 hedefli test, full strict mypy/Ruff/belge/rehber; iki fresh tur ve bağımsız ret/golden kontrolleri tamam.
+- Kalan sınır: Bu yalnız yerel plan/onay sözleşmesi ve private snapshot factory kabulüdür. SQL/current producer/public CLI/remote/native/live paket kabulü P02-2e/a/b/c'dedir; development teslimi değildir.

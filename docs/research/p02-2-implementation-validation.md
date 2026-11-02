@@ -16,3 +16,6 @@ Hazırlık aşamasındaki 375 arşiv ve üç mevcut v3 referans, o sırada deği
 
 
 Adım 1 ilk kod commit'i **5d1ddcf**. Fresh R1 domain/state-contract (GPT-6 Astra/high) ve consumer/schema/evidence (GPT-6.1 Sol/high) incelemeleri kodda doğrulanmış bulgu bulmadı; her kol yeni 82 upload contract testini ayrıca geçti. İkinci kolun plan teslim metnindeki eski “ürün geliştirmesi/testi yapılmadı” P3 ifadesi doğrulandı; tarihsel hazırlık ile güncel local uygulama/beş GET ayrılarak düzeltildi. Henüz ikinci fresh tur kapanmadı.
+
+
+Fresh R2 (a5e5ecc, önceki reviewer'lardan farklı GPT-6.1 Sol/high ve GPT-6 Astra/high) yeni doğrulanmış bulgu bulmadı. İki kol da 82 upload testini geçti; biri mevcut manifest/CLI/operation/core regresyonlarında 578 test ve 57 bağımsız negatif/immutability deneyi, diğeri 157 raw-wire ret probu yürüttü. Bu örtüşen kümeler tek toplam test sayısına eklenmez. R2'nin ad hoc harness'ında yanlış reseal edilen eksik digest kontrolü reviewer tarafından düzeltildi; ürün kodu değişmedi. **P02-2d verified** (çalışma dalında); sonraki state/storage ve gerçek upload kabulleri korunur.
