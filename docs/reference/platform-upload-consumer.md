@@ -16,6 +16,8 @@ Root `success` varsa strict bool=true olmalıdır; 1, false ve string ret edilir
 
 Her dinamik request segmenti ve body değeri URL/JSON oluşturulmadan önce aynı literal kuralıyla denetlenir; bütün endpoint'e kısa sır eşitliği uygulamak yeterli değildir. Provider username/slug tek ASCII `[A-Za-z0-9_-]` segmentidir (1–128 karakter); slash, percent, dot, query, control ve boş değer ret edilir. Provider UUID canonical herhangi sürümdür; dahili UUIDv4'e çevrilmez. Yerel owner/project/name/license/tag/root alanlarının public özetlere taşınması ayrıca literal denetimden geçer.
 
+Request builder, typed scope/parametreleri de yeniden doğrular; frozen/model_copy/model_construct tek başına doğruluk kanıtı değildir. Python scalar validation JSON serialization'dan önce gelir; integer alana konmuş bool'un 0/1'e normalize edilmesi ret kapısını aşamaz. Private/false, bounded name/tag/license ve canonical scope koşulları request hazırlanırken korunur.
+
 ## Context, create ve proje bağlantısı
 
 | İşlem | Tüketilen alanlar ve kesin oracle |

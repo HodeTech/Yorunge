@@ -74,6 +74,36 @@ def test_invalid_local_link_id_is_request_error_not_provider_error(value):
     assert error.value.code == "invalid_request" and error.value.exit_code == 2
 
 
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"visibility": "public", "contributions_enabled": True},
+        {"visibility": "public"},
+        {"contributions_enabled": True},
+        {"contributions_enabled": 0},
+        {"name": "x"},
+        {"name": " trailing "},
+        {"name": "a\nb"},
+        {"modality": "OTHER"},
+        {"tags": ("duplicate", "duplicate")},
+        {"license": "x" * 129},
+    ],
+)
+def test_unvalidated_parameter_copy_never_weakens_private_request_contract(updates):
+    forged = PARAMETERS.model_copy(update=updates)
+    with pytest.raises(YorungeError) as error:
+        codec.create_content(SCOPE, forged, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize("updates", [{"project_id": "bad-id"}, {"credential_revision": True}])
+def test_unvalidated_scope_copy_is_rejected_before_create_serialization(updates):
+    forged = SCOPE.model_copy(update=updates)
+    with pytest.raises(YorungeError) as error:
+        codec.create_content(forged, PARAMETERS, SECRET)
+    assert error.value.code == "invalid_request"
+
+
 @pytest.mark.parametrize("wrapped", [False, True])
 def test_reported_context_create_and_exact_detail_preserve_private_owner(wrapped):
     envelope = (lambda value: {"success": True, "data": value}) if wrapped else (lambda x: x)

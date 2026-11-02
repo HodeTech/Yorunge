@@ -233,7 +233,23 @@ def _request(value: dict[str, object], secret: SecretValue) -> bytes:
     return canonical(value)
 
 
+def _request_input(kind: type[T], value: T) -> T:
+    # Frozen models can still be copied/constructed without validation. Never
+    # serialize such an object into an effectful provider request unchecked.
+    if type(value) is not kind:
+        raise YorungeError("invalid_request")
+    try:
+        # Validate Python scalars first: JSON serialization may normalize an
+        # unvalidated bool in an integer field to 0/1 before a JSON validator.
+        checked = kind.model_validate(value.model_dump(mode="python"), strict=True)
+        return kind.model_validate_json(canonical(checked.model_dump(mode="json")), strict=True)
+    except (ValueError, YorungeError):
+        raise YorungeError("invalid_request") from None
+
+
 def create_content(scope: UploadScope, parameters: UploadParameters, secret: SecretValue) -> bytes:
+    scope = _request_input(UploadScope, scope)
+    parameters = _request_input(UploadParameters, parameters)
     value: dict[str, object] = {
         "name": parameters.name,
         "modality": parameters.modality,
