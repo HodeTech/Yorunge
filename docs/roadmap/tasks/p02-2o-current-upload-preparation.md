@@ -32,7 +32,7 @@ Adapter no-follow filesystem observation; application typed producer/proof; comp
 
 ## Kabul
 
-Tüm dosya hash/isim/boyut/root eşliği; symlink/ancestor/metadata/üyelik değişimi; sabit mtime ile değişen içerik ilk hash'te ret; hardlink/aynı hash farklı ad korunur. Recheck yalnız metadata okur, atomik snapshot iddiası yoktur; gönderimde byte hash ayrıca doğrulanır. Warning-as-error, nested bozuk model/canary ve exception chain negatifleri. Gerçek TLS context/role/status/raw JSON ve credential/epoch/clock yarışları; prepare/approve no effect, eksik girdi/yanlış owner/private ile store/HTTP etkisi sıfır. Default draft, explicit unpriced exact acknowledgement; null grant/cost honest kalır.
+Tüm dosya hash/isim/boyut/root eşliği; symlink/ancestor/metadata/üyelik değişimi; sabit mtime ile değişen içerik ilk hash'te ret; hardlink/aynı hash farklı ad korunur. Recheck yalnız metadata okur, atomik snapshot iddiası yoktur; gönderimde byte hash ayrıca doğrulanır. Warning-as-error, nested bozuk model/canary ve exception chain negatifleri. Gerçek TLS context/role/status/raw JSON ve credential/epoch/clock yarışları; prepare/approve no effect, eksik girdi/yanlış owner/private ile plan/onay/operation mutasyonu ve HTTP yazma etkisi sıfır. Credential registry gözlemi yerel yazı olabilir; örtük store init yoktur. Default draft, explicit unpriced exact acknowledgement; null grant/cost honest kalır.
 
 ## Doğrulama
 
@@ -40,4 +40,4 @@ Dar local input/codec testleri, ilgili eski dataset regresyonları, gerçek TLS 
 
 ## Teslim kaydı
 
-O.1 input/revalidation iki fresh tur/fix teyidiyle kapandı; o.2 gerçek readonly producer kodlandı; 403 ilgili test geçti, kendi iki fresh turu bekleniyor. O.2/o.3 ve gerçek public workflow/c kabulü henüz yoktur. D–n temeli bu bütünleşik teslimin yerine geçmez.
+O.1 input/revalidation iki fresh tur/fix teyidiyle kapandı; o.2 gerçek readonly producer iki fresh tur/fix teyidiyle kapandı; o.3 private hazırlık/onay kompozisyonu sıradadır. O.2/o.3 ve gerçek public workflow/c kabulü henüz yoktur. D–n temeli bu bütünleşik teslimin yerine geçmez.
