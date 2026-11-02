@@ -6,6 +6,7 @@ import importlib.util
 import os
 import py_compile
 import sys
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -241,3 +242,22 @@ def test_absent_org_is_not_evidence_of_explicit_personal_null(missing):
         run(key, budget, observer)
     assert failure.value.code == "invalid_response"
     assert budget.attempts == len(calls) == (2 if missing == "detail" else 1)
+
+
+def test_deadline_expiring_during_final_validation_never_reports_completed(monkeypatch):
+    key, budget, observer, calls = setup()
+    original, count = probe.shared.payload, 0
+
+    def expire_last(raw, secret):
+        nonlocal count
+        value = original(raw, secret)
+        count += 1
+        if count == 3:
+            budget.end = time.monotonic() - 1
+        return value
+
+    monkeypatch.setattr(probe.shared, "payload", expire_last)
+    with pytest.raises(YorungeError) as failure:
+        run(key, budget, observer)
+    assert failure.value.code == "transport_timeout"
+    assert budget.attempts == len(calls) == 3

@@ -136,3 +136,9 @@ Kamu dataset consumer'ı detail için username/slug kullanıyor; helper'ın ID d
 ### Oluşturulmuş kaydın read-only takip review R1
 
 8e7ee3b iki yeni reviewer ile incelendi (GPT-6.1 Sol/high güvenlik, GPT-6 Astra/high consumer/kanıt); iki **P2** doğrulandı. Frozen helper kaynak SHA'sından sonra importlib loader'ın stale timestamp/size `.pyc` yürütmesi mümkündü; aynı doğrulanmış byte buffer'ı compile/exec ile yeni ModuleType namespace'inde çalıştırma seçildi. Eski bytecode ve önceden yüklenmiş modül negatif/pozitifleri eklendi; bozuk hash kaynak yürütmeden reddedilir. İkinci bulguda eksik org_id açık null gibi eşleniyordu; iki consumed kayıtta key presence zorunlu tutuldu ve owned/detail/both missing retleri eklendi. Düzeltmeler sonrası **35 offline test / 0,23 s**, Ruff geçti; import sıralama uyarısı otomatik format düzeltmesiyle kapandı. Yeni fresh R2 ve hesap çağrı yetkisi henüz kapanmadı; takip çalıştırılmadı.
+
+### Oluşturulmuş kaydın read-only takip review R2
+
+3e4a3f8 iki farklı yeni reviewer ile incelendi. Consumer/kanıt kolu (GPT-6.1 Sol/high) **35 / 0,11 s**, 27 bağımsız malformed kayıt/permission/control deneyi ve yeni bulgu yok bildirdi. Güvenlik kolu (GPT-6 Astra/high) **35 / 0,16 s** ve bir **P2** doğruladı: son JSON/secret/shape doğrulaması transport context'i dışında deadline'ı aşsa da sonuç başarılı dönebiliyordu. Sentetik 20 ms bütçe + 30 ms son payload gecikmesinde 21,37 ms aşım ve pozitif sonuç görüldü; ek ağ isteği yoktu.
+
+Düzeltmede GET öncesi, parse/shape sonrası ve nihai predicate dönüşü öncesi monotonic deadline tekrar denetlenir. Son validation'da deadline expiry regresyonu eklendi; **36 / 0,28 s**, Ruff geçti. R2 son düzeltme teyidi henüz bekleniyor; gerçek takip için yeni somut üç-GET scope'u onaylanmadı ve çağrı yapılmadı.

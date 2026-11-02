@@ -143,7 +143,12 @@ class Observer:
         self.key, self.budget, self.dataset, self.name = key, budget, dataset, name
         self.rows = []
 
+    def deadline(self):
+        if time.monotonic() >= self.budget.end:
+            raise YorungeError("transport_timeout")
+
     async def get(self, transport, label, path, query=()):
+        self.deadline()
         if len(self.rows) >= 3:
             raise YorungeError("invalid_request")
         request = HttpRequest(
@@ -165,6 +170,7 @@ class Observer:
         raw = parse_json(body, max_bytes=LIMIT)
         value = shared.payload(raw, self.key.secret)
         row.update(body_bytes=len(body), shape=shared.shape(raw))
+        self.deadline()
         return value
 
     async def run(self, transport):
@@ -194,6 +200,7 @@ class Observer:
             or not all(type(value) is str and len(value) <= 64 for value in permissions)
         ):
             raise YorungeError("invalid_response")
+        self.deadline()
         return {
             "same_private_dataset_observed": True,
             "upload_label_observed": "upload" in permissions,
