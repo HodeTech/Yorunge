@@ -4,6 +4,7 @@ ErrorCode = Literal[
     "upload_plan_not_found",
     "upload_plan_not_valid",
     "upload_capacity_exceeded",
+    "upload_limit_exceeded",
     "approval_required",
     "input_unsupported",
     "input_invalid",
@@ -73,6 +74,10 @@ MESSAGES: dict[ErrorCode, str] = {
     ),
     "upload_capacity_exceeded": (
         "Kalıcı upload kapasitesi doldu. Geçmiş korunur; yeni gönderim başlatılmadı."
+    ),
+    "upload_limit_exceeded": (
+        "Upload çağrısının istek veya byte bütçesi doldu. "
+        "Kaydı inceleyin; otomatik tekrar yapmayın."
     ),
     "dataset_limit_exceeded": (
         "Yerel veri taraması veya rapor boyutu sınırı aşıldı. Daha dar bir klasör seçin."
