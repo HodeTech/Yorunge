@@ -43,7 +43,7 @@ Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlan
 
 ## Teslim kaydı
 
-Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). Kullanıcı review düzeltmeleri sonrası ADR-0024/0025 Accepted; kod/local kabul ve dış kapılar izleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
+İlk hazırlık aşamasında ürün geliştirmesi/testi/native veya hesap çağrısı yoktu. Güncel durumda [P02-2d yerel plan uygulaması](../research/p02-2-implementation-validation.md) ve ayrıca yetkili beş GET şekil araştırması yapıldı; gerçek upload/native/live yazma kabulü yoktur. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). Kullanıcı review düzeltmeleri sonrası ADR-0024/0025 Accepted; kod/local kabul ve dış kapılar izleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
 
 ## Bağımsız yerel kart sırası
 
