@@ -1,7 +1,7 @@
 ---
 id: P02-2h
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2g]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,7 @@ Kanonik [Upload v2](../../reference/dataset-upload-v2.md) tek ayrıntı kaynağ�
 
 ## Teslim kaydı
 
-P02-2g verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
+- PR/commit: [1365285](https://github.com/HodeTech/Yorunge/commit/1365285) uygulama; [7eacc8b](https://github.com/HodeTech/Yorunge/commit/7eacc8b) R1 hata kodu düzeltmesi; ayrı PR yok.
+- Sonuç: 170 h testi ve önceki cost/v1 regresyonları; 97 kaynak strict mypy/Ruff. İki farklı fresh tur, R1 doğrulanmış P2 kapandı; [kabul](../../research/p02-2-implementation-validation.md#p02-2h--v2-plan-onay-ve-current-modeli).
+- Kalan sınır: Pure model/private snapshot factory; SQL union/new-write/read-recovery ve gerçek producer/public UX henüz uygulanmış sayılmaz. Native/build/CI/live P02-2c sahibidir.
 

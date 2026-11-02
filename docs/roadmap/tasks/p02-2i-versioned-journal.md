@@ -1,7 +1,7 @@
 ---
 id: P02-2i
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2h, P02-2e]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,5 @@ Literal v2 graph/control/proof golden/digest; mixed version/slot/digest/chronolo
 
 ## Teslim kaydı
 
-Uygulama başlamadı; draft. Gerçek commit/review/test ve kalan sınır oluşunca kaydedilir.
+P02-2h verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
 
