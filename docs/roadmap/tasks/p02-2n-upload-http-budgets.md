@@ -8,7 +8,7 @@ capabilities: [C03, C12, C13]
 ---
 # P02-2n — Gerçek upload HTTP bütçe bağlantısı
 
-**Tarih:** 2026-11-03. a/b üst kartlarının ortak HTTP bağımlılığı; iki dar kod dilimi, aynı branch ve tek nihai PR.
+**Tarih:** 2026-11-03. a/b üst kartlarının ortak HTTP bağımlılığı; üç dar kod dilimi, aynı branch ve tek nihai PR.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -16,8 +16,9 @@ Saved work'teki request/attempt/body limitleri gerçek service/storage çağrıl
 
 ## Giren ve girmeyen kapsam
 
-1. Kayıtlı service URI provenance, pre-intent quota reservation ve owner/single-use metering modeli.
-2. Aynı owned client/pool'a gerçek physical-attempt/request/response/storage byte bağlantısı, TLS/iptal/retry kabulü.
+1. Kayıtlı service URI provenance ve default HTTP uyumu.
+2. Pre-intent quota reservation ve owner/single-use metering modeli.
+3. Aynı owned client/pool'a gerçek physical-attempt/request/response/storage byte bağlantısı, TLS/iptal/retry kabulü.
 
 Her dilim geliştirme/test/commit, fresh R1/fix ve farklı fresh R2/fix ile kapanır. Producer/controller/public CLI, yeni fiyat/grant, native/live ve epik kabulü girmez.
 
@@ -35,8 +36,8 @@ Exact registered method/target/path/query ve dynamic literal; default legacy reg
 
 ## Doğrulama
 
-Contract + gerçek loopback TLS/source testleri; Ruff/strict mypy/doc/rehber/diff. Native/build/source CI yalnız son runtime/script değişikliği sonrasında c'de; burada çalışmış sayılmaz. Her iki kod dilimi ve iki fresh tur kapanmadan n verified olmaz.
+Contract + gerçek loopback TLS/source testleri; Ruff/strict mypy/doc/rehber/diff. Native/build/source CI yalnız son runtime/script değişikliği sonrasında c'de; burada çalışmış sayılmaz. Üç kod diliminin ayrı iki fresh turu kapanmadan n verified olmaz.
 
 ## Teslim kaydı
 
-M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. dilim başlıyor, ikinci dilim ve kabul/review henüz yok. In_progress.
+M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi uygulanıyor; rezervasyon modeli, wire bağlantısı ve kabul/review henüz yok. In_progress.

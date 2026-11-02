@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from urllib.parse import unquote_to_bytes, urlencode
 
+from yorunge.application.platform_upload_literals import UploadEndpoint, upload_uri_values
 from yorunge.application.response_json import JSON_LIMIT, literal_secret_match, parse_json
 from yorunge.domain.credentials import SecretValue, ServiceId, ServiceTarget, normalize_target
 from yorunge.domain.errors import ErrorCode, YorungeError
@@ -196,6 +197,7 @@ class HttpRequest:
     read_only: bool = False
     max_bytes: int = JSON_LIMIT
     service_id: ServiceId = field(kw_only=True, repr=False)
+    upload_endpoint: UploadEndpoint | None = field(default=None, kw_only=True, repr=False)
     _url: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -244,15 +246,31 @@ class HttpRequest:
         object.__setattr__(self, "_url", wire_url)
 
     def _credential_metadata(self) -> tuple[int, int]:
+        registered = None
+        if self.upload_endpoint is not None:
+            registered = upload_uri_values(
+                self.upload_endpoint,
+                service_id=self.service_id,
+                target=self.target,
+                method=self.method,
+                endpoint=self.endpoint,
+                query=self.query,
+                read_only=self.read_only,
+            )
+            self._upload_credential()
         if self.credential is None:
             return 0, 0
         if self.credential.target != self.target or self.credential.service_id != self.service_id:
             raise YorungeError("invalid_service_target")
         secret = self.credential.secret.reveal()
         dynamic_url_values = (
-            self.endpoint,
-            unquote_to_bytes(self.endpoint).decode("utf-8", errors="strict"),
-            *(part for pair in self.query for part in pair),
+            registered
+            if registered is not None
+            else (
+                self.endpoint,
+                unquote_to_bytes(self.endpoint).decode("utf-8", errors="strict"),
+                *(part for pair in self.query for part in pair),
+            )
         )
         if any(literal_secret_match(value, secret) for value in dynamic_url_values):
             raise YorungeError("invalid_request")
@@ -260,6 +278,15 @@ class HttpRequest:
         if any(name.lower() == auth_name.lower() for name, _ in self.headers):
             raise YorungeError("invalid_request")
         return len(auth_name) + len(auth_value), 1
+
+    def _upload_credential(self) -> None:
+        credential = self.credential
+        if (
+            type(credential) is not HttpCredential
+            or credential.header_name.lower() != "x-api-key"
+            or credential.prefix != ""
+        ):
+            raise YorungeError("invalid_credential")
 
     def __repr__(self) -> str:
         return "<HttpRequest private>"

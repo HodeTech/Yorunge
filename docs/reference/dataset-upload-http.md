@@ -1,6 +1,6 @@
 # Upload HTTP quota ve sayaç sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2n uygulama öncesi kanonik hedef; henüz gerçek HTTP quota kabulü değildir. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
+**Tarih:** 2026-11-03. **Durum:** P02-2n kanonik sözleşme; kayıtlı URI dilimi kodlandı, iki fresh turu bekliyor. Rezervasyon ve gerçek HTTP quota bağlantısı henüz kabul edilmedi. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
 
 ## Kayıtlı service URI provenance
 
@@ -24,6 +24,8 @@ Seçili credential'ın literal kuralı yalnız dinamik URI girdilerine uygulanı
 
 ## Rezervasyon ve tek çağrı bağı
 
+Sayaç kapsamı, tek original `start` çağrısının ilk current/context HTTP isteğinden metadata/cleanup sonuna kadardır; pre-admission okumaları da aynı instance'a dahildir. Worker, helper, retry veya session fazı sayacı sıfırlamaz. Existing operation ve kalıcı namespace kontrolleri ağdan önce yereldir; existing-admit yeni probe/budget/claim açmaz. Prepare, approve, ayrı reconcile ve admission öncesi başarısız start'ın sonradan tekrar çağrılması ayrı bounded readonly invocation kapsamıdır. Bunların birikimli maliyeti original transfer quote'u veya plan ömrü toplam CR tavanı diye sunulmaz; eski bound yeni çağrıya taşınmaz. Bu, v2'deki workflow/retained-storage kapsamını açıklığa kavuşturur, account-geneli muhasebe eklemez.
+
 Private UploadBudget yalnız strict saved UploadRequestLimits ve özgün monotonic end ile oluşur; son süre 900 s'yi aşamaz, prepared/read-only invocation daha dar olabilir. Clock/PID/thread/loop sahipliği korunur. Readonly budget hiç effect claim üretemez. Bütçe authority, approval veya DispatchPermit değildir; effectful çağrı ayrıca aynı durable intent ve tek permit ister.
 
 Her mantıksal read ve etkili çağrı için private tek kullanımlık rezervasyon vardır. Effect count, JSON control request byte'ları, PUT'un declared source byte'ları ve response kapasitesi **intent'ten önce** ayrılır. Sayfa/read sayacı da HTTP'den önce ayrılır. İki worker'ın toplam pending response rezervi ile işlenmiş byte toplamı work sınırını aşamaz. Çağrı başlamadan bırakılmış rezervasyon ancak hiç physical attempt oluşmadığı doğrulanırsa geri verilebilir; başlamış effect/attempt byte slotu replay hakkına dönmez.
@@ -40,4 +42,4 @@ Response kapanınca kullanılmayan pending kapasite serbest bırakılır; tüket
 
 Yeni `upload_limit_exceeded` / exit 2, yeni HTTP/intent öncesi work quota ayrılmadığında kullanılır; kaynak alt türü provider metni olarak yayımlanmaz. Süre için execution_timeout/2; response shape/byte ihlali invalid_response/1; transport kaynak hataları mevcut kapalı kodlardır. Aktif latched coordinator'ın belirsizliği operation_uncertain/5 + aynı ID önceliğini korur. Default store kapasite kodu upload_capacity_exceeded ile yeni HTTP quota kodu karıştırılmaz. Ayrı readonly source hata istisnası v2 read sözleşmesinde kalır.
 
-Kabul, n'nin iki diliminde ayrı kapanır: literal route/yanlış seçim/default uyumu; bool/float/nonfinite/limit boundary; pre-intent reservation rollback ve single-use; gerçek server attempt ve byte oracle; transient read iki deneme/etkili tek deneme; iki worker toplam kapasite, erken close/partial/timeout/cancel, slot/pool cleanup ve canary. Domain sayacının testi gerçek HTTP bağlandığını kanıtlamaz; n ancak ikinci dilim ve iki fresh turla verified olur.
+Kabul, n'nin dar dilimlerinde ayrı kapanır: literal route/yanlış seçim/default uyumu; bool/float/nonfinite/limit boundary; pre-intent reservation rollback ve single-use; gerçek server attempt ve byte oracle; transient read iki deneme/etkili tek deneme; iki worker toplam kapasite, erken close/partial/timeout/cancel, slot/pool cleanup ve canary. Domain sayacının testi gerçek HTTP bağlandığını kanıtlamaz; n ancak URI, rezervasyon modeli ve gerçek wire bağlantısının ayrı ikişer fresh turuyla verified olur.
