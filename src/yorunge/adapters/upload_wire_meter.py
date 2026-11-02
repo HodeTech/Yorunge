@@ -28,7 +28,23 @@ class WireCall:
     def owner(self) -> None:
         self.reservation._owner()
 
-    def accept(self, wire: httpx.Request) -> bool:
+    @staticmethod
+    async def _body(wire: httpx.Request, expected: bytes) -> bool:
+        # Request.content can remain cached after Request.stream is replaced.
+        # Inspect only the public, bounded bytes stream emitted by our builder.
+        if type(wire.stream) is not httpx.ByteStream:
+            return False
+        size = 0
+        async for chunk in wire.stream:
+            if type(chunk) is not bytes or chunk != expected[size : size + len(chunk)]:
+                return False
+            size += len(chunk)
+        if size != len(expected):
+            return False
+        wire.stream = httpx.ByteStream(expected)
+        return True
+
+    async def accept(self, wire: httpx.Request) -> bool:
         self.reservation._current()
         request = self.request
         if type(request) not in (HttpRequest, StorageRequest):
@@ -46,10 +62,7 @@ class WireCall:
             expected = httpx.Request(
                 request.method, request.url, headers=request.wire_headers(), content=request.content
             )
-            try:
-                valid_body = wire.content == request.content
-            except httpx.RequestNotRead:
-                valid_body = False
+            valid_body = await self._body(wire, request.content)
         if (
             wire.method != expected.method
             or str(wire.url) != str(expected.url)
@@ -107,7 +120,7 @@ class MeteredWireTransport(httpx.AsyncBaseTransport):
         call = CURRENT_CALL.get()
         if type(call) is not WireCall or call.reservation._budget is not self._budget:
             raise YorungeError("invalid_request")
-        storage = call.accept(request)
+        storage = await call.accept(request)
         if storage:
             if not isinstance(request.stream, httpx.AsyncByteStream):
                 raise YorungeError("invalid_request")

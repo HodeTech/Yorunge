@@ -12,7 +12,7 @@ import httpx
 from yorunge.adapters.guarded_http import GuardedHttpTransport
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import _remaining, _Response, _ResponseContext
-from yorunge.adapters.storage_transport import TransferHttpxTransport, _StorageResponse
+from yorunge.adapters.storage_transport import TransferHttpxTransport, _origins, _StorageResponse
 from yorunge.adapters.upload_wire_meter import CURRENT_CALL, MeteredWireTransport, WireCall
 from yorunge.application.http_transport import HttpCredential, HttpRequest, HttpTransport
 from yorunge.application.operations import DispatchPermit
@@ -21,6 +21,7 @@ from yorunge.application.upload_budget import CallKind, UploadBudget, UploadRese
 from yorunge.domain.errors import YorungeError
 
 T = TypeVar("T")
+_View = TypeVar("_View", bound=_Response)
 _SERVICE_EFFECTS: dict[str, CallKind] = {
     "create": "create",
     "project_link": "project_link",
@@ -36,6 +37,17 @@ def _permit(kind: CallKind, permit: DispatchPermit | None) -> None:
         raise YorungeError("invalid_request")
 
 
+class _UploadResponseContext(_ResponseContext[_View]):
+    async def __aenter__(self) -> _View:
+        try:
+            return await super().__aenter__()
+        except YorungeError as error:
+            # contextlib can reattach the old timeout while unwinding our
+            # nested generators; normalize at the final private boundary.
+            error.__context__ = error.__cause__ = None
+            raise
+
+
 class UploadHttpxTransport(TransferHttpxTransport):
     def __init__(
         self,
@@ -43,14 +55,26 @@ class UploadHttpxTransport(TransferHttpxTransport):
         budget: UploadBudget,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        storage_origins: tuple[str, ...] = (),
     ) -> None:
         if type(budget) is not UploadBudget:
             raise YorungeError("invalid_request")
         _ = budget.end
         self._budget = budget
         super().__init__(
-            credential, transport=MeteredWireTransport(transport or GuardedHttpTransport(), budget)
+            credential,
+            transport=MeteredWireTransport(transport or GuardedHttpTransport(), budget),
+            storage_origins=storage_origins,
         )
+
+    def open(self, request: HttpRequest, *, deadline: float) -> _ResponseContext[_Response]:
+        # An inherited entrypoint must never borrow an active ContextVar call.
+        raise YorungeError("invalid_request")
+
+    def open_storage(
+        self, request: StorageRequest, *, deadline: float
+    ) -> _ResponseContext[_StorageResponse]:
+        raise YorungeError("invalid_request")
 
     @asynccontextmanager
     async def _call(
@@ -87,7 +111,7 @@ class UploadHttpxTransport(TransferHttpxTransport):
         deadline: float,
         permit: DispatchPermit | None = None,
     ) -> _ResponseContext[_Response]:
-        return _ResponseContext(self._service(request, reservation, deadline, permit))
+        return _UploadResponseContext(self._service(request, reservation, deadline, permit))
 
     @asynccontextmanager
     async def _service(
@@ -108,8 +132,9 @@ class UploadHttpxTransport(TransferHttpxTransport):
                 raise YorungeError("invalid_request")
             kind = effect
         async with self._call(request, reservation, kind, permit):
-            async with super().open(request, deadline=self._deadline(deadline)) as response:
-                yield response
+            async with self._window_error(deadline) as end:
+                async with super().open(request, deadline=end) as response:
+                    yield response
 
     def open_storage_budgeted(
         self,
@@ -119,7 +144,7 @@ class UploadHttpxTransport(TransferHttpxTransport):
         deadline: float,
         permit: DispatchPermit,
     ) -> _ResponseContext[_StorageResponse]:
-        return _ResponseContext(self._storage(request, reservation, deadline, permit))
+        return _UploadResponseContext(self._storage(request, reservation, deadline, permit))
 
     @asynccontextmanager
     async def _storage(
@@ -134,11 +159,13 @@ class UploadHttpxTransport(TransferHttpxTransport):
         delegated = False
         try:
             async with self._call(request, reservation, "put", permit):
-                end = self._deadline(deadline)
-                context = super().open_storage(request, deadline=end)
-                delegated = True
-                async with context as response:
-                    yield response
+                async with self._window_error(deadline) as end:
+                    if self._closed or self._client is None:
+                        raise YorungeError("invalid_request")
+                    context = super().open_storage(request, deadline=end)
+                    delegated = True
+                    async with context as response:
+                        yield response
         finally:
             # The base facade owns source cleanup once entered. Before that,
             # close even a rejected lazy source in this same calling task.
@@ -150,6 +177,23 @@ class UploadHttpxTransport(TransferHttpxTransport):
         _remaining(deadline)
         return min(deadline, self._budget.end, time.monotonic() + 900.0)
 
+    @asynccontextmanager
+    async def _window_error(self, deadline: float) -> AsyncIterator[float]:
+        end = self._deadline(deadline)
+        try:
+            yield end
+        except YorungeError as error:
+            if (
+                error.code != "transport_timeout"
+                or end != self._budget._end
+                or time.monotonic() < end
+            ):
+                raise
+        else:
+            return
+        # Total invocation exhaustion is distinct from a shorter network timeout.
+        raise YorungeError("execution_timeout")
+
 
 class UploadSession(HttpSession):
     def __init__(
@@ -158,16 +202,26 @@ class UploadSession(HttpSession):
         budget: UploadBudget,
         *,
         transport_factory: Callable[[], UploadHttpxTransport] | None = None,
+        storage_origins: tuple[str, ...] = (),
     ) -> None:
         self._budget = budget
+        self._storage_origins = _origins(storage_origins)
         super().__init__(
             transport_factory=transport_factory
-            or (lambda: UploadHttpxTransport(credential, budget))
+            or (
+                lambda: UploadHttpxTransport(
+                    credential, budget, storage_origins=self._storage_origins
+                )
+            )
         )
 
     def exchange(self, consumer: Callable[[UploadHttpxTransport], Awaitable[T]]) -> T:
         def consume(transport: HttpTransport) -> Awaitable[T]:
-            if type(transport) is not UploadHttpxTransport or transport._budget is not self._budget:
+            if (
+                type(transport) is not UploadHttpxTransport
+                or transport._budget is not self._budget
+                or transport._storage_origins != self._storage_origins
+            ):
                 raise YorungeError("invalid_request")
             return consumer(transport)
 

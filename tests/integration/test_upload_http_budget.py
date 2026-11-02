@@ -6,6 +6,7 @@ import logging
 import os
 import socket
 import time
+from datetime import UTC, datetime, timedelta
 
 import httpcore
 import httpx
@@ -21,6 +22,7 @@ from yorunge.application.http_transport import HttpCredential, HttpRequest
 from yorunge.application.operations import DispatchPermit
 from yorunge.application.storage import StorageRequest, StorageTarget
 from yorunge.application.upload_budget import UploadBudget
+from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import SecretValue, normalize_target
 from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.dataset_upload import UploadRoot
@@ -42,7 +44,8 @@ MIB = 1_048_576
 @pytest.fixture(scope="module")
 def certificates(tmp_path_factory):
     return certificate(
-        tmp_path_factory.mktemp("upload-budget-tls"), names=("localhost", "api.ssyz.org.tr")
+        tmp_path_factory.mktemp("upload-budget-tls"),
+        names=("localhost", "api.ssyz.org.tr", "storage.localhost"),
     )
 
 
@@ -52,7 +55,7 @@ def loopback_only():
         yield
 
 
-def budget(*, readonly=False, size=1_073_741_824):
+def budget(*, readonly=False, size=1_073_741_824, seconds=60):
     values = UploadRequestLimits(
         max_create=1,
         max_project_link=1,
@@ -65,7 +68,7 @@ def budget(*, readonly=False, size=1_073_741_824):
         max_control_response_bytes=16 * MIB,
         max_upload_bytes=size,
     )
-    return UploadBudget(values, end=time.monotonic() + 60, read_only=readonly)
+    return UploadBudget(values, end=time.monotonic() + seconds, read_only=readonly)
 
 
 def credential():
@@ -94,14 +97,17 @@ def claim(value, wanted):
     )
 
 
-def session(server, key, value):
+def session(server, key, value, *, storage_server=None, origins=()):
     instances = []
+    routes = {"api.ssyz.org.tr": server}
+    if storage_server is not None:
+        routes["storage.localhost"] = storage_server
 
     class FixtureNetwork(GuardedBackend):
         # Test-only mapping: the production public-IP policy is unchanged.
         def __init__(self):
             async def resolver(host, port, timeout):
-                assert host == "api.ssyz.org.tr" and port == 443
+                assert host in routes and port == 443
                 return ("127.0.0.1",)
 
             super().__init__(resolver=resolver, allowed=lambda address: address == "127.0.0.1")
@@ -109,16 +115,16 @@ def session(server, key, value):
         async def _connect(self, pinned, port, timeout, options, original_host):
             assert pinned == "127.0.0.1" and port == 443
             return await httpcore.AnyIOBackend().connect_tcp(
-                pinned, server.port, timeout=timeout, socket_options=options
+                pinned, routes[original_host].port, timeout=timeout, socket_options=options
             )
 
     def factory():
         low = GuardedHttpTransport(backend=FixtureNetwork(), verify=server.client_context())
-        instance = UploadHttpxTransport(key, value, transport=low)
+        instance = UploadHttpxTransport(key, value, transport=low, storage_origins=origins)
         instances.append(instance)
         return instance
 
-    return UploadSession(key, value, transport_factory=factory), instances
+    return UploadSession(key, value, transport_factory=factory, storage_origins=origins), instances
 
 
 async def get(client, wanted, reserved, *, permit=None, deadline=None):
@@ -643,3 +649,174 @@ def test_lowlevel_cannot_borrow_another_budget_or_omit_effect_permit(effect):
     asyncio.run(run())
     assert delegated == []
     assert value.snapshot().effect_attempts == value.snapshot().read_attempts == 0
+
+
+def test_nested_unmetered_entrypoints_cannot_borrow_active_read_claim(certificates):
+    value, key = budget(), credential()
+    wanted = request(key)
+    with TlsServer(certificates, {"/api/v1/auth/me": Reply(body=b"{}")}) as server:
+        owned, _ = session(server, key, value)
+
+        async def run(client):
+            async with client.open_budgeted(
+                wanted, claim(value, wanted), deadline=time.monotonic() + 3
+            ) as response:
+                with pytest.raises(YorungeError) as failure:
+                    client.open(wanted, deadline=time.monotonic() + 3)
+                assert failure.value.code == "invalid_request"
+                with pytest.raises(YorungeError) as failure:
+                    client.open_storage(None, deadline=time.monotonic() + 3)
+                assert failure.value.code == "invalid_request"
+                return b"".join([part async for part in response.chunks()])
+
+        with owned:
+            assert owned.exchange(run) == b"{}"
+        assert len(server.requests) == 1
+    assert value.snapshot().read_requests == value.snapshot().read_attempts == 1
+
+
+def test_real_wire_stream_mutation_is_rejected_before_permit_and_socket(certificates, monkeypatch):
+    from yorunge.adapters.http_transport import HttpxTransport
+
+    value, key, permit = budget(), credential(), DispatchPermit(os.getpid)
+    wanted = request(key, effect=True, body=b"{}")
+    original = HttpxTransport._wire_request
+
+    def changed(wanted, deadline):
+        wire = original(wanted, deadline)
+        assert wire.content == b"{}"
+        wire.stream = httpx.ByteStream(b"XX")
+        assert wire.content == b"{}"  # Cached content is not the physical stream.
+        return wire
+
+    monkeypatch.setattr(UploadHttpxTransport, "_wire_request", staticmethod(changed))
+    with TlsServer(certificates, {}) as server:
+        owned, _ = session(server, key, value)
+        with owned, pytest.raises(YorungeError) as failure:
+            owned.exchange(lambda client: get(client, wanted, claim(value, wanted), permit=permit))
+        assert failure.value.code == "invalid_request" and server.requests == []
+    assert value.snapshot().effect_attempts == value.snapshot().create_requests == 0
+    permit.consume()  # Guard failure did not consume the effect capability.
+
+
+@pytest.mark.parametrize("entered", [False, True])
+def test_not_entered_or_closed_storage_client_still_closes_source(tmp_path, entered):
+    value, key = budget(), credential()
+    base = source(tmp_path, "before-enter.bin", b"source")
+    wanted = storage(key, base)
+    reserved = value.reserve("put", upload_bytes=base.size, response_bytes=65_536)
+
+    async def run():
+        client = UploadHttpxTransport(
+            key, value, transport=httpx.MockTransport(lambda request: httpx.Response(200))
+        )
+        if entered:
+            async with client:
+                pass
+        with pytest.raises(YorungeError) as failure:
+            await put(client, wanted, reserved, DispatchPermit(os.getpid))
+        assert failure.value.code == "invalid_request"
+
+    asyncio.run(run())
+    assert base._closed and base._file_fd is None
+    assert value.snapshot().effect_attempts == value.snapshot().put_requests == 0
+    assert value.snapshot().response_pending == 0
+
+
+@pytest.mark.parametrize("storage_call", [False, True])
+@pytest.mark.parametrize("total_first", [False, True])
+def test_total_budget_and_shorter_network_deadline_have_distinct_safe_errors(
+    tmp_path, storage_call, total_first
+):
+    key = credential()
+    base = source(tmp_path, "timeout.bin", b"source") if storage_call else None
+    value = budget(seconds=0.05 if total_first else 2)
+    wanted = storage(key, base) if storage_call else request(key)
+    reserved = (
+        value.reserve("put", upload_bytes=base.size, response_bytes=65_536)
+        if storage_call
+        else claim(value, wanted)
+    )
+
+    async def handler(wire):
+        await asyncio.sleep(0.2)
+        return httpx.Response(200, content=b"{}")
+
+    async def run():
+        async with UploadHttpxTransport(
+            key, value, transport=httpx.MockTransport(handler)
+        ) as client:
+            deadline = time.monotonic() + (1 if total_first else 0.05)
+            with pytest.raises(YorungeError) as failure:
+                if storage_call:
+                    async with client.open_storage_budgeted(
+                        wanted, reserved, deadline=deadline, permit=DispatchPermit(os.getpid)
+                    ):
+                        pytest.fail("deadline must interrupt response")
+                else:
+                    await get(client, wanted, reserved, deadline=deadline)
+            assert failure.value.code == (
+                "execution_timeout" if total_first else "transport_timeout"
+            )
+            assert failure.value.exit_code == (2 if total_first else 1)
+            assert failure.value.__context__ is None and failure.value.__cause__ is None
+
+    asyncio.run(run())
+    assert value.snapshot().response_pending == 0
+    if storage_call:
+        assert base._closed and base._file_fd is None
+        assert value.snapshot().effect_attempts == 1
+    else:
+        assert value.snapshot().read_attempts == 1
+
+
+@pytest.mark.parametrize("selected", [False, True])
+def test_direct_storage_keeps_explicit_origin_policy_and_no_credentials(
+    tmp_path, certificates, selected
+):
+    value, key = budget(), credential()
+    base = source(tmp_path, "direct.bin", b"direct-source")
+    target = StorageTarget(
+        "https://storage.localhost/bucket/object?signature=SIGNED-PRIVATE-CANARY%2Fpart",
+        mode="direct",
+        origin="https://storage.localhost",
+        prefix="/bucket/",
+        expires_at=timestamp(datetime.now(UTC) + timedelta(seconds=60)),
+        service=None,
+        dataset_id=None,
+    )
+    wanted = StorageRequest(target, base, key.secret, "application/octet-stream")
+    path = "/bucket/object?signature=SIGNED-PRIVATE-CANARY%2Fpart"
+    with (
+        TlsServer(certificates, {"/api/v1/auth/me": Reply(body=b"{}")}) as api,
+        TlsServer(certificates, {path: Reply(body=b"{}")}) as remote,
+    ):
+        origins = ("https://storage.localhost",) if selected else ()
+        owned, instances = session(api, key, value, storage_server=remote, origins=origins)
+        reserved = value.reserve("put", upload_bytes=base.size, response_bytes=65_536)
+        with owned:
+            if selected:
+                result = owned.exchange(
+                    lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
+                )
+                assert result[1] == base.size
+                control = request(key)
+                assert (
+                    owned.exchange(lambda client: get(client, control, claim(value, control)))
+                    == b"{}"
+                )
+            else:
+                with pytest.raises(YorungeError) as failure:
+                    owned.exchange(
+                        lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
+                    )
+                assert failure.value.code == "invalid_service_target"
+            assert len(instances) == 1 and instances[0]._slots._value == 2
+        assert len(remote.requests) == int(selected)
+        if selected:
+            assert remote.requests[0].body == b"direct-source"
+            assert remote.requests[0].header("X-API-Key") is None
+            assert remote.requests[0].header("Authorization") is None
+            assert remote.requests[0].header("Cookie") is None
+            assert api.requests[0].header("X-API-Key") == SECRET
+    assert base._closed and value.snapshot().response_pending == 0
