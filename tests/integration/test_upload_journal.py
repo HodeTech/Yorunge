@@ -5,6 +5,7 @@ import json
 import time
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
@@ -1539,3 +1540,161 @@ def test_legacy_existing_lookup_and_inflight_receipt_survive_but_new_arm_is_clos
         assert found.operation.schema_version == 1 and found.operation.dataset_id == DATASET
         assert len(found.receipts) == 1
         store.verify()
+
+
+@pytest.mark.parametrize("phase", ["approve", "admit"])
+def test_current_evidence_expiry_crossing_commit_rolls_back_business(journal, monkeypatch, phase):
+    import yorunge.adapters.upload_repository as module
+
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        if phase == "admit":
+            repo.approve(journal.plan.plan_id, journal.plan.digest, journal.plan)
+        check = repo.capture(journal.plan)
+        short = journal.plan.grant.model_copy(
+            update={"expires_at": timestamp(journal.clock.value + timedelta(seconds=1))}
+        )
+        check = check.model_copy(
+            update={
+                "baseline_grant": short,
+                "authorization": check.authorization.model_copy(update={"grant": short}),
+            }
+        )
+        original = module.require_capacity
+
+        def advance(*args, **kwargs):
+            result = original(*args, **kwargs)
+            journal.clock.value += timedelta(seconds=2)
+            return result
+
+        monkeypatch.setattr(module, "require_capacity", advance)
+        if phase == "approve":
+            invoke = partial(repo.approve, journal.plan.plan_id, journal.plan.digest, check)
+        else:
+            invoke = partial(repo.admit, journal.plan.plan_id, check)
+        with pytest.raises(YorungeError) as error:
+            invoke()
+        assert error.value.code == "upload_plan_not_valid"
+        view = repo.show(plan_id=journal.plan.plan_id)
+        assert view.operation is None and repo.write_access is None
+        if phase == "approve":
+            assert view.approval is None
+        store.verify()
+
+
+@pytest.mark.parametrize("field", ["snapshot", "authorization", "observation"])
+@pytest.mark.parametrize("boundary", ["before_commit", "after_commit"])
+def test_each_current_freshness_range_is_checked_at_commit_and_permit_return(
+    journal, monkeypatch, field, boundary
+):
+    record = journal.approved()
+    if field == "observation":
+        created, _, _ = journal.arm(record)
+        record = journal.accept(record, created).operation
+        linked, _, _ = journal.arm(record, "project_link")
+        record = journal.accept(record, linked).operation
+    journal.clock.value += timedelta(seconds=40)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        kind, index = ("presign", 0) if field == "observation" else ("create", None)
+        check = repo.capture(journal.plan, kind, record.dataset_id)
+        old = timestamp(journal.clock.value - timedelta(seconds=29))
+        if field == "snapshot":
+            check = check.model_copy(update={"checked_at": old})
+        elif field == "authorization":
+            check = check.model_copy(
+                update={"authorization": check.authorization.model_copy(update={"checked_at": old})}
+            )
+        else:
+            check = check.model_copy(
+                update={
+                    "upload_observation": check.upload_observation.model_copy(
+                        update={"checked_at": old}
+                    )
+                }
+            )
+        original = repo._change if boundary == "before_commit" else repo._finish
+
+        def advance(*args, **kwargs):
+            if boundary == "after_commit":
+                journal.clock.value += timedelta(seconds=2)
+            result = original(*args, **kwargs)
+            if boundary == "before_commit":
+                journal.clock.value += timedelta(seconds=2)
+            return result
+
+        monkeypatch.setattr(repo, "_change" if boundary == "before_commit" else "_finish", advance)
+        before = repo.show(operation_id=record.operation_id).intents
+        total_end = journal.clock.monotonic() + 900
+        with pytest.raises(YorungeError) as error:
+            repo.arm(record.operation_id, record.lease, check, kind, index, total_end=total_end)
+        assert error.value.code == (
+            "upload_plan_not_valid" if boundary == "before_commit" else "operation_uncertain"
+        )
+        assert error.value.operation_id == record.operation_id
+        found = repo.show(operation_id=record.operation_id)
+        assert len(found.intents) == len(before) + (boundary == "after_commit")
+        assert found.operation.workflow_latched == (bool(before) or boundary == "after_commit")
+        store.verify()
+
+
+def test_verification_freshness_crossing_commit_does_not_persist_success(journal, monkeypatch):
+    record, proof = complete_metadata_fixture(journal)
+    journal.clock.value = instant(proof.observed_at) + timedelta(seconds=29)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        original = repo._change
+
+        def advance(*args, **kwargs):
+            result = original(*args, **kwargs)
+            journal.clock.value += timedelta(seconds=2)
+            return result
+
+        monkeypatch.setattr(repo, "_change", advance)
+        with pytest.raises(YorungeError) as error:
+            repo.verified(record.operation_id, record.lease, proof)
+        assert error.value.code == "operation_uncertain"
+        view = repo.show(operation_id=record.operation_id)
+        assert view.operation.status == "running" and view.verification is None
+        assert not any(c.kind == "terminal" for c in view.controls)
+        store.verify()
+
+
+def test_postcommit_ephemeral_expiry_is_durable_before_clock_rollback_and_reopen(
+    journal, monkeypatch
+):
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        check = repo.capture(journal.plan)
+        short = journal.plan.grant.model_copy(
+            update={"expires_at": timestamp(journal.clock.value + timedelta(seconds=1))}
+        )
+        check = check.model_copy(
+            update={
+                "baseline_grant": short,
+                "authorization": check.authorization.model_copy(update={"grant": short}),
+            }
+        )
+        original = repo._finish
+
+        def advance(*args, **kwargs):
+            journal.clock.value += timedelta(seconds=2)
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(repo, "_finish", advance)
+        with pytest.raises(YorungeError) as error:
+            repo.approve(journal.plan.plan_id, journal.plan.digest, check)
+        assert error.value.code == "upload_plan_not_valid"
+        # Approval COMMIT happened, but delivery rejected expired current evidence.
+        assert repo.show(plan_id=journal.plan.plan_id).approval is not None
+    journal.clock.value -= timedelta(seconds=1, microseconds=500_000)
+    with open_store(journal.root) as store:
+        reopened = journal.repository(store)
+        with pytest.raises(YorungeError) as error:
+            reopened.admit(journal.plan.plan_id, check)
+        assert error.value.code == "state_changed"
+        assert reopened.show(plan_id=journal.plan.plan_id).operation is None
+        stamp = reopened.cache.stamp()
+        assert stamp.anomaly and stamp.generation > journal.plan.scope.clock_generation

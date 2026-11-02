@@ -75,7 +75,7 @@ from yorunge.domain.dataset_upload import (
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_checks import UploadCurrentCheck, require_fresh
+from yorunge.domain.upload_checks import UploadCurrentCheck
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -216,8 +216,45 @@ class StateUploads:
         terms = fresh.require_current(
             plan, now=timestamp(stamp.now), action=action, dataset_id=dataset_id
         )
+        self._current_ranges(plan, fresh, gate, action=action)
         gate.require_clock(stamp, error="state_changed")
         return terms
+
+    @staticmethod
+    def _current_ranges(
+        plan: DatasetUploadPlanV2,
+        fresh: UploadCurrentCheck,
+        gate: TimeGate,
+        *,
+        action: UploadPermission,
+    ) -> None:
+        evidence = (
+            plan.grant,
+            plan.cost_bound,
+            fresh.baseline_grant,
+            fresh.baseline_cost_bound,
+            fresh.supplemental_grant,
+            fresh.supplemental_cost_bound,
+            fresh.authorization.grant,
+        )
+        for value in evidence:
+            if value is not None:
+                gate.require_range(
+                    instant(value.checked_at),
+                    instant(value.expires_at),
+                    error="upload_plan_not_valid",
+                )
+        observed = [fresh.checked_at, fresh.authorization.checked_at]
+        if action == "upload_created_dataset" and fresh.upload_observation is not None:
+            observed.append(fresh.upload_observation.checked_at)
+        for checked_at in observed:
+            # UTC wire precision is one microsecond; age exactly 30 s is permitted.
+            checked = instant(checked_at)
+            gate.require_range(
+                checked,
+                checked + timedelta(seconds=30, microseconds=1),
+                error="upload_plan_not_valid",
+            )
 
     def _approved(self, view: VersionedTransferView, gate: TimeGate) -> UploadApproval:
         approval = view.approval
@@ -231,7 +268,11 @@ class StateUploads:
         return approval
 
     def _finish(self, stamp: Stamp, gate: TimeGate, *, scope: UploadScope) -> None:
-        final, within = self.cache._finish(stamp, checkpoint=gate.checkpoint)
+        final, within = self.cache._finish(
+            stamp,
+            expires=tuple(end for _, end, _ in gate.intervals),
+            checkpoint=gate.checkpoint,
+        )
         self._credential(scope, final)
         gate.check_clock(final)
         gate.check(final.now)
@@ -658,10 +699,15 @@ class StateUploads:
                 )
                 if self.clock.monotonic() >= deadline:
                     raise YorungeError("execution_timeout")
-                gate.require_range(
-                    stamp.now,
-                    end - timedelta(seconds=COMMIT_MARGIN_SECONDS),
-                    error="execution_timeout",
+                # An elapsed dispatch deadline keeps its error precedence when
+                # current evidence also ages out during the same transaction.
+                gate.intervals.insert(
+                    0,
+                    (
+                        stamp.now,
+                        end - timedelta(seconds=COMMIT_MARGIN_SECONDS),
+                        "execution_timeout",
+                    ),
                 )
                 if kind == "create":
                     claimed = self.connection.execute(
@@ -891,8 +937,6 @@ class StateUploads:
                 owner = self._owner(record, owner, stamp, gate)
                 if proof.schema_version != record.schema_version or proof.grant is None:
                     raise YorungeError("upload_plan_not_valid")
-                if proof.schema_version == 2:
-                    require_fresh(proof.observed_at, timestamp(stamp.now))
                 self._read_grant(view, proof.grant, stamp, gate)
                 if (
                     record.dataset_id is None
@@ -900,6 +944,14 @@ class StateUploads:
                     or instant(proof.observed_at) > stamp.now
                 ):
                     raise YorungeError("operation_conflict")
+                if proof.schema_version == 2:
+                    observed = instant(proof.observed_at)
+                    gate.require_range(
+                        observed,
+                        observed + timedelta(seconds=30, microseconds=1),
+                        error="operation_uncertain",
+                    )
+                    gate.check(stamp.now)
                 # All normal write stages must be acknowledged. Recovery without
                 # this evidence remains unknown until an exact provider oracle
                 # is implemented; an ID/name match cannot manufacture success.
