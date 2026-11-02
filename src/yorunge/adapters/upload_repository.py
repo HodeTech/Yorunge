@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import os
 import sqlite3
@@ -72,6 +73,7 @@ from yorunge.domain.dataset_upload import (
     UploadScope,
     UploadWire,
     manifest_reference,
+    upload_namespace,
 )
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
@@ -280,7 +282,52 @@ class StateUploads:
         if not within:
             raise YorungeError("state_busy")
 
-    def save(self, plan: UploadPlan, manifest: DatasetManifest) -> VersionedTransferView:
+    def check_scope(self, scope: UploadScope, *, name: str | None = None) -> None:
+        """Short current-state phase; never holds a transaction across file/network I/O."""
+        with self.phase():
+            scope = decode(UploadScope, scope.encoded().decode("ascii"))
+            self._secret(scope)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="state_changed") as gate:
+                self._credential(scope, stamp)
+                gate.require_clock(stamp, error="state_changed")
+                if name is not None:
+                    digest = hashlib.sha256(upload_namespace(scope, name)).hexdigest()
+                    active = self.connection.execute(
+                        "SELECT create_operation_id FROM upload_namespaces WHERE "
+                        "intent_digest=? AND create_operation_id IS NOT NULL",
+                        (digest,),
+                    ).fetchone()
+                    if active is not None:
+                        raise OperationError("operation_conflict", active[0])
+            self._finish(stamp, gate, scope=scope)
+
+    @staticmethod
+    def _preparation_check(
+        plan: UploadPlan, check: AuthorizationCheck, stamp: Stamp, gate: TimeGate
+    ) -> None:
+        if not isinstance(plan, DatasetUploadPlanV2):
+            raise YorungeError("upload_plan_not_valid")
+        check.require_current(plan.scope, "create_private_dataset", None, timestamp(stamp.now))
+        if (
+            check.consumer_profile != "evren-platform-observed-upload-v2"
+            or check.outcome != "not_exposed"
+            or plan.grant is not None
+            or plan.cost_bound is not None
+        ):
+            raise YorungeError("upload_plan_not_valid")
+        checked = instant(check.checked_at)
+        gate.require_range(
+            checked, checked + timedelta(seconds=30, microseconds=1), error="upload_plan_not_valid"
+        )
+
+    def save(
+        self,
+        plan: UploadPlan,
+        manifest: DatasetManifest,
+        *,
+        authorization: AuthorizationCheck | None = None,
+    ) -> VersionedTransferView:
         with self.phase():
             plan = decode_versioned(
                 DatasetUploadPlan, DatasetUploadPlanV2, plan.encoded().decode("ascii")
@@ -289,9 +336,14 @@ class StateUploads:
                 raise YorungeError("input_changed")
             self._secret(plan)
             self._secret(manifest)
+            if authorization is not None:
+                authorization = decode(AuthorizationCheck, authorization.encoded().decode("ascii"))
+                self._secret(authorization)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="state_changed") as gate:
                 self._credential(plan.scope, stamp)
+                if authorization is not None:
+                    self._preparation_check(plan, authorization, stamp, gate)
                 gate.require_range(
                     instant(plan.prepared_at),
                     instant(plan.expires_at),

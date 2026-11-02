@@ -40,4 +40,4 @@ Dar local input/codec testleri, ilgili eski dataset regresyonları, gerçek TLS 
 
 ## Teslim kaydı
 
-O.1 input/revalidation iki fresh tur/fix teyidiyle kapandı; o.2 gerçek readonly producer iki fresh tur/fix teyidiyle kapandı; o.3 private hazırlık/onay kompozisyonu sıradadır. O.2/o.3 ve gerçek public workflow/c kabulü henüz yoktur. D–n temeli bu bütünleşik teslimin yerine geçmez.
+O.1 input/revalidation ve o.2 gerçek readonly producer iki fresh tur/fix teyidiyle kapandı; o.3 private hazırlık/onay kompozisyonu doğrulanıyor. O.3 iki fresh turu ve gerçek public workflow/c kabulü henüz kapanmadı. D–n temeli bu bütünleşik teslimin yerine geçmez.

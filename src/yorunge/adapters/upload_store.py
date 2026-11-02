@@ -36,6 +36,7 @@ from yorunge.domain.dataset_upload import (
     DatasetUploadPlan,
     UploadWire,
     manifest_reference,
+    upload_namespace,
 )
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
@@ -97,16 +98,7 @@ def decode_versioned(v1: type[T], v2: type[U], payload: object) -> T | U:
 
 
 def namespace(plan: UploadPlan) -> bytes:
-    scope = plan.scope
-    return canonical(
-        {
-            "service_origin": scope.service_origin,
-            "api_base_path": scope.api_base_path,
-            "owner": scope.owner.model_dump(mode="json"),
-            "project_id": scope.project_id,
-            "name": plan.parameters.name,
-        }
-    )
+    return upload_namespace(plan.scope, plan.parameters.name)
 
 
 def read_plan(connection: sqlite3.Connection, identifier: str) -> UploadPlan:

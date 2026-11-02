@@ -242,6 +242,19 @@ class UploadStoragePolicy(UploadWire):
         return self
 
 
+def upload_namespace(scope: UploadScope, name: str) -> bytes:
+    """Stable resource intent, independent of plan/evidence/credential lifetimes."""
+    return canonical(
+        {
+            "service_origin": scope.service_origin,
+            "api_base_path": scope.api_base_path,
+            "owner": scope.owner.model_dump(mode="json"),
+            "project_id": scope.project_id,
+            "name": name,
+        }
+    )
+
+
 class UploadGrant(UploadWire):
     schema_version: Literal[1]
     scope: UploadScope
@@ -348,17 +361,7 @@ class DatasetUploadPlan(UploadWire):
         ).hexdigest()
 
     def intent_digest(self) -> str:
-        return hashlib.sha256(
-            canonical(
-                {
-                    "service_origin": self.scope.service_origin,
-                    "api_base_path": self.scope.api_base_path,
-                    "owner": self.scope.owner.model_dump(mode="json"),
-                    "project_id": self.scope.project_id,
-                    "name": self.parameters.name,
-                }
-            )
-        ).hexdigest()
+        return hashlib.sha256(upload_namespace(self.scope, self.parameters.name)).hexdigest()
 
     def binding_digest(self) -> str:
         value = self.model_dump(

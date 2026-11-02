@@ -1,6 +1,6 @@
 # Upload input ve current hazırlık sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation iki fresh turla yerel olarak kapandı; o.2 readonly producer iki fresh turla yerel kapandı; o.3 henüz uygulama öncesi dar hedeftir. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation ve o.2 readonly producer iki fresh turla yerel kapandı; o.3 private prepare/approve/revoke uygulaması doğrulanıyor. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
 
 ## Yerel güncel içerik
 
@@ -18,7 +18,7 @@ Frozen/model_copy/model_construct kanıt değildir. Private request codec'i önc
 
 O.2 zorunlu GET'leri aynı budget/session/credential üzerinden provider codec'ine bağlar; geçerli bildirilen context not_exposed üretir, grant/cost üretmez. Upload action'ında dataset bilindiğinde my-role upload etiketi zorunludur; read için upload izni varsayılmaz; read/metadata yetki kanıtı değildir. Exact hata/proof/freshness tablosu v2 referansında kalır.
 
-O.3 private prepare/approve/revoke kullanım senaryolarını bu input/current gözlemlerine bağlar. Açık state init gerekir; captured scope/store/epoch/clock/credential son kısa transaction'da yeniden karşılaştırılır. Ağ veya tam hash boyunca SQLite store/deadline tutulmaz. Bu son iki dilimin tam internal imzaları kod başlamadan kendi reference maddeleriyle somutlaştırılır; burada henüz uygulanmış yüzey iddia edilmez.
+O.3 private prepare/approve/revoke kullanım senaryolarını bu input/current gözlemlerine bağlar. Açık state init ve güncel şema gerekir; mevcut open_existing_store bootstrap/migration yapmaz. Captured scope/store/epoch/clock/credential son kısa transaction'da yeniden karşılaştırılır. Ağ veya tam hash boyunca SQLite store/deadline tutulmaz. Internal imzalar aşağıda somutlaştırılır; public API/CLI teslimi bu dilim değildir.
 
 ## O.2 private current reader
 
@@ -38,3 +38,17 @@ Owned lookup page=1..128/page_size=128/scope=owned; her sayfanın canonical ID'l
 Mandatory HTTP/schema/typed negative, v2 tablosundaki denied/unavailable/invalid Check'e eşlenir; yalnız bütün mandatory kapılar geçtiyse not_exposed. Local input, deadline veya quota hatası authority yokluğu gibi yutulmaz. Parametre/plan/current scope uyuşmazlığı HTTP öncesi kontrollü ret verir. Bu profil planın mevcut gerçek grant/cost baseline'ını yenileyemez; böyle bir saved plan için upload_plan_not_valid, sıfır HTTP.
 
 CurrentCheck earliest checked_at'ı korur; controller aynı exact action/dataset/scope/input bağındaki ≤30 s gözlemi yeniden kullanabilir, her arm'da yeni local metadata recheck ve repository final freshness/CAS gerekir. Bu okuma cache'i grant üretmez ve tarihi yeni zamana kaydırmaz. Known negative görüldüğünde controller workflow'u durdurur; yeni call eski negative'i unavailable/not_exposed'a dönüştüremez.
+
+## O.3 private hazırlık kompozisyonu
+
+UploadPreparationRuntime yalnız doğrulanmış Context/Profile ve state diziniyle outer composition'da kurulur; public caller bu nesneyi veya producer/factory/clock enjekte edemez. Private test seam yalnız session factory/clock'tur; normal yol gerçek EnvSecretReader, registry, filesystem ve O.2 reader kullanır. Active async loop/PID/thread kapısı config/env/state/ağdan önce API girişinde ve runtime'da uygulanır; bu dilim public API export etmez.
+
+prepare(root, manifest, owner, parameters, storage, admission_policy, cost_policy, budget_micros) metadata/policy/direct-profile retlerini önce yapar; env bir kez çözülür ve aynı bound credential kullanılır. Registry gözlemi ve current scope kısa store fazında alınır; **registry gözlemi yerel yazı olabilir**. Örtük state init yoktur. Geçersiz girdi veya known negative ile plan/onay/operation yazılmaz; her başarısızlıkta sıfır bütün DB yazısı vaat edilmez. Tam hash/HTTP sırasında store kapalıdır. Kalıcı namespace çatışması HTTP öncesi same operation ID ile ret verir; son save transaction'ı aynı kontrolü tekrarlar.
+
+Başarılı hash sonrasında Work execution_window UTC başlangıcı seçilir; sonu başlangıç+900 s, hazırlanma zamanı source/current kontrolünden sonradır. Request limits exact manifest N/byte ile kurulur. Ayrı prepare HTTP budget readonly ve en çok 30 s'dir; bütün mandatory GET/retry/body aynı instance'dadır. Bu ayrı invocation maliyeti original start quote'u değildir. Snapshot sonrası Root metadata ve registry scope tekrar denetlenir. Gerçek producer grant/cost üretmediği için verified_only/bounded seçenekleri draft kalır; yalnız legal explicit_attempt+unpriced attempt_ready olabilir. Reducer ve ack kuralları v2 referansından çağrılır.
+
+StateUploads.save'in private optional AuthorizationCheck girdisi, gerçek prepare composition'da zorunlu kullanılır: tam create scope/action/null-dataset, kayıtlı not_exposed sonucu ve ≤30 s freshness son transaction/COMMIT/finish'te karşılaştırılır. Mevcut saf fixture/history save kullanımları değişmez; public API bu proof'u alamaz. Scope/store/epoch/clock/credential ID+revision kontrolü bütün kısa fazlarda ve son commit'te korunur; source dönemi yeni zamana kaydırılmaz. Plan local commit sonrasında final gate değişirse caller kontrollü ret alabilir; yerel list/show kalıcı planı inceleme yoludur, yeni remote etki yoktur.
+
+approve(plan_id, confirmed_digest, acknowledge_unverified_authority, acknowledge_unpriced_cost) önce ağsız exact plan/version/status/expiry/digest/ack ve mevcut approval/operation kapısını denetler. Sonra current config/context/bound scope saved scope ile eşleşir; bütün dosyalar yeniden hash'lenir ve gerçek current create check alınır. Son kısa transaction tekrar current/onay/digest/freshness/credential kapılarını uygular. Onay tek başına HTTP yazma çağrısı değildir. revoke(plan_id) yerel record/digest ile çalışır; config/env/hash/network istemez ve arm edilmiş permit'i geri çekilmiş saymaz.
+
+Her store fazı mevcut en çok 5 s kontrol noktası/timeout bütçesini kullanır; disk I/O için kesin fiziksel süre garantisi değildir. Same scope/name namespace eski accepted intent'e bağlıysa revoke/reset/yeni onay ikinci create hakkı vermez. Yeni receipt ve restart metadata success onayı ADR-0027'ye bağlı kalır; bu üç işlem o biçimi uygulamaz.

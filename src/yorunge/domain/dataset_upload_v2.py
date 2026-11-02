@@ -23,6 +23,7 @@ from yorunge.domain.dataset_upload import (
     UploadScope,
     UploadStoragePolicy,
     UploadWire,
+    upload_namespace,
 )
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.state import canonical_uuid
@@ -190,17 +191,7 @@ class DatasetUploadPlanV2(UploadWire):
         ).hexdigest()
 
     def intent_digest(self) -> str:
-        return hashlib.sha256(
-            canonical(
-                {
-                    "service_origin": self.scope.service_origin,
-                    "api_base_path": self.scope.api_base_path,
-                    "owner": self.scope.owner.model_dump(mode="json"),
-                    "project_id": self.scope.project_id,
-                    "name": self.parameters.name,
-                }
-            )
-        ).hexdigest()
+        return hashlib.sha256(upload_namespace(self.scope, self.parameters.name)).hexdigest()
 
     def binding_digest(self) -> str:
         value = self.model_dump(
