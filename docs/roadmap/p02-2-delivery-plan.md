@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-03. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–n verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-03. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–o verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -59,7 +59,7 @@ Ardından gerçek current tüketici codec'leri ve private create/proje bağı, b
 
 ## V2 dar kartları
 
-P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G/h/i/j/k/l/m/n çalışma dalında verified; her biri iki fresh kod review turu ve doğrulanmış düzeltmeleriyle kapandı. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
+P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G/h/i/j/k/l/m/n/o çalışma dalında verified; her biri iki fresh kod review turu ve doğrulanmış düzeltmeleriyle kapandı. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
 
 
 ## Gerçek tüketiciye geçiş
@@ -75,3 +75,5 @@ N üç dar dilim/ikişer fresh tur ve düzeltme teyidiyle yerel verified oldu. S
 [P02-2o](tasks/p02-2o-current-upload-preparation.md) üç ayrı commit/review dilimidir: (o.1) current local input observation ve warning üretmeyen revalidation; (o.2) gerçek current/read producer; (o.3) private prepare/approve/revoke kompozisyonu. Ardından etkili controller ve public yüzey, son olarak c bütünleşik kabulü gelir.
 
 O.2 hazırlık incelemesi, unconditional create/detail owner_id+org_id eşliği için eski receipt'te tarihsel baseline eksikliğini doğruladı. [ADR-0027](../decisions/0027-durable-created-dataset-context.md) Proposed ve bağımlı receipt/restart success kodu kullanıcı onayına bağlıdır. Pre-create current ve prepare/approve aynı karar açığını beklemeden ilerleyebilir.
+
+O.1/o.2/o.3 her dilimde iki fresh tur ve bulgu/fix teyitleriyle yerel verified oldu. Bağımsız prepare/approve/revoke kompozisyonu kapandı; sıradaki kalıcı create baseline ve restart/controller bağlantısı ADR-0027 onayına bağlıdır. Sonra ortak public yüzey ve c kabulü gelir. Bu sıralama yeni canlı write yetkisi veya epik kapanışı değildir.

@@ -1,6 +1,6 @@
 # Upload input ve current hazırlık sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation ve o.2 readonly producer iki fresh turla yerel kapandı; o.3 private prepare/approve/revoke uygulaması doğrulanıyor. [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2o.1 input/revalidation, o.2 readonly producer ve o.3 private prepare/approve/revoke, her dilimde iki fresh turla çalışma dalında yerel verified. [Kabul kaydı](../research/p02-2-implementation-validation.md#p02-2o3--gerçek-private-prepareapproverevoke-kompozisyonu). [Transfer](dataset-transfer.md#gönderilen-ve-doğrulanan-içerik), [v2 current gate](dataset-upload-v2.md), [provider](platform-upload-consumer.md) ve [HTTP bütçesi](dataset-upload-http.md) kanoniktir; public API henüz uygulanmış değildir.
 
 ## Yerel güncel içerik
 

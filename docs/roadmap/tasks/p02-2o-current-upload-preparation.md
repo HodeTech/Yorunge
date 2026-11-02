@@ -1,7 +1,7 @@
 ---
 id: P02-2o
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2n, P02-2m, P02-2k]
 capabilities: [C03, C12, C13]
@@ -40,4 +40,6 @@ Dar local input/codec testleri, ilgili eski dataset regresyonları, gerçek TLS 
 
 ## Teslim kaydı
 
-O.1 input/revalidation ve o.2 gerçek readonly producer iki fresh tur/fix teyidiyle kapandı; o.3 private hazırlık/onay kompozisyonu doğrulanıyor. O.3 iki fresh turu ve gerçek public workflow/c kabulü henüz kapanmadı. D–n temeli bu bütünleşik teslimin yerine geçmez.
+- PR/commit: [75e35d7](https://github.com/HodeTech/Yorunge/commit/75e35d7); tek nihai P02-2 PR'ı henüz açılmadı.
+- Sonuç: O.1 input/revalidation, o.2 gerçek readonly producer ve o.3 private prepare/approve/revoke, her dilimde iki fresh tur ve doğrulanmış bulgu/fix teyidiyle çalışma dalında yerel verified. O.3 son runtime/policy/golden kümesi 342 passed; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2o3--gerçek-private-prepareapproverevoke-kompozisyonu).
+- Kalan sınır: Public API/CLI ve etkili controller, ADR-0027 onayına bağlı kalıcı create baseline, native/kurulum/source CI ve ayrı canlı kabul tamamlanmadı. Üst a/b/c veya epik verified değildir; grant/fiyat kanıtı üretilmez.
