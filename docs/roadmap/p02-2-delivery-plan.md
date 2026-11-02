@@ -73,3 +73,5 @@ P02-2l control codec kabulü tamamlandı; sıradaki [P02-2m](tasks/p02-2m-platfo
 N üç dar dilim/ikişer fresh tur ve düzeltme teyidiyle yerel verified oldu. Sonraki dar kart; güncel input snapshot, gerçek current provider ve prepare/approve kompozisyonunu ayrı dilimlere böler. Start/reconcile controller, ortak public API/CLI ve c kabulü henüz tamamlanmadı.
 
 [P02-2o](tasks/p02-2o-current-upload-preparation.md) üç ayrı commit/review dilimidir: (o.1) current local input observation ve warning üretmeyen revalidation; (o.2) gerçek current/read producer; (o.3) private prepare/approve/revoke kompozisyonu. Ardından etkili controller ve public yüzey, son olarak c bütünleşik kabulü gelir.
+
+O.2 hazırlık incelemesi, unconditional create/detail owner_id+org_id eşliği için eski receipt'te tarihsel baseline eksikliğini doğruladı. [ADR-0027](../decisions/0027-durable-created-dataset-context.md) Proposed ve bağımlı receipt/restart success kodu kullanıcı onayına bağlıdır. Pre-create current ve prepare/approve aynı karar açığını beklemeden ilerleyebilir.
