@@ -264,6 +264,12 @@ def _validate_contents(connection: sqlite3.Connection) -> None:
         from yorunge.adapters.operation_store import validate_operations
 
         validate_operations(connection)
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='upload_plans'"
+    ).fetchone():
+        from yorunge.adapters.upload_store import validate_uploads
+
+        validate_uploads(connection)
 
 
 def validate_binding_row(row: tuple[Any, ...]) -> None:

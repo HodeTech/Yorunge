@@ -37,7 +37,7 @@ def test_normal_fixture_is_one_valid_nonterminal_job_and_has_no_public_seed_comm
     assert job.outcome is None
     assert len(job.attempts) == 1
     assert api.list_jobs(state_dir=state).data.jobs == (job.operation,)
-    assert api.initialize_state(state_dir=state).data.store_schema_version == 6
+    assert api.initialize_state(state_dir=state).data.store_schema_version == 7
 
 
 def test_probe_rejects_repository_import_instead_of_installed_runtime(tmp_path):

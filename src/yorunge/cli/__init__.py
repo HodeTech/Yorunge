@@ -498,7 +498,11 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import LegacyMaintenancePreview, MaintenancePreview
+    from yorunge.domain.maintenance import (
+        LegacyMaintenancePreview,
+        MaintenancePreview,
+        TransferMaintenancePreview,
+    )
     from yorunge.domain.state import StateInfo
 
     execution = execution_text_result(data)
@@ -519,7 +523,7 @@ def local_text_result(data: Model) -> str:
         return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
     if isinstance(data, DoctorReport):
         return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview)):
+    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview, TransferMaintenancePreview)):
         return maintenance_text(data)
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
@@ -597,7 +601,7 @@ def maintenance_text(data: MaintenancePreview) -> str:
     else:
         lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
     lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
-    if data.schema_version == 3:
+    if data.schema_version in (3, 4):
         lines.extend(
             (
                 "Operation, attempt ve terminal sonuç geçmişi korunur.",
@@ -605,17 +609,27 @@ def maintenance_text(data: MaintenancePreview) -> str:
                 "Önceden arm edilmiş dış çağrının durduğu garanti edilmez.",
             )
         )
+    if data.schema_version == 4:
+        lines.append("Upload planı, transfer intent/receipt ve namespace geçmişi korunur.")
     return "\n".join(lines)
 
 
 def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
     from yorunge.domain.maintenance import IdentitySnapshot as OperationSnapshot
+    from yorunge.domain.maintenance import TransferIdentitySnapshot
 
-    common = (
+    common: tuple[str, ...] = (
         f"{label} credential bağı: {snapshot.binding_count}",
         f"{label} plan: {snapshot.plan_count}",
         f"{label} onay: {snapshot.approval_count}",
     )
+    if isinstance(snapshot, TransferIdentitySnapshot):
+        common += (
+            f"{label} upload planı: {snapshot.upload_plan_count}",
+            f"{label} transfer: {snapshot.transfer_operation_count}",
+            f"{label} terminal olmayan transfer: {snapshot.nonterminal_transfer_count}",
+            f"{label} unknown transfer: {snapshot.unknown_transfer_count}",
+        )
     if isinstance(snapshot, OperationSnapshot):
         return (
             *common,

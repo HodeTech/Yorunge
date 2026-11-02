@@ -8,6 +8,7 @@ import sqlite3
 from dataclasses import dataclass
 from functools import lru_cache
 
+from yorunge.adapters.upload_schema import TRANSFER_SQL
 from yorunge.domain.errors import YorungeError
 
 APPLICATION_ID = 0x594F5255
@@ -318,6 +319,7 @@ payload TEXT NOT NULL CHECK(length(CAST(payload AS BLOB))<=4096)
             "CREATE INDEX operation_lease_expiry ON operations(lease_expires_at,operation_id)",
         ),
     ),
+    MigrationV2(6, 7, TRANSFER_SQL),
 )
 
 

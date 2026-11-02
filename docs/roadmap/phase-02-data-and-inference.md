@@ -44,7 +44,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2b | Yetkili depolama hedefinde bounded byte upload ve doğrulanmış confirm | P02-2a; [kart](tasks/p02-2b-verified-upload.md)/aşağıdaki aktarım kararları | `draft` |
 | P02-2c | İlk upload’ın kill/restart/kayıp cevap ve teslim kapanışı | P02-2b; [kart](tasks/p02-2c-upload-recovery-acceptance.md); belirsizlikte yeni create/PUT yok | `draft` |
 | P02-2d | Ayrı upload plan/manifest/onay kapalı sözleşmesi | P02-1; [yerel kart](tasks/p02-2d-upload-plan-contract.md) | `verified` |
-| P02-2e | Kalıcı transfer stage/intent ve ortak state kapıları | P02-2d; [yerel kart](tasks/p02-2e-durable-transfer-journal.md) | `draft` |
+| P02-2e | Kalıcı transfer stage/intent ve ortak state kapıları | P02-2d; [yerel kart](tasks/p02-2e-durable-transfer-journal.md) | `in_progress` |
 | P02-2f | İzole storage hedefi ve bounded stream portu | P02-2d; [yerel kart](tasks/p02-2f-bounded-storage-port.md) | `draft` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |

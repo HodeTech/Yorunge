@@ -418,7 +418,7 @@ def test_missing_database_cannot_be_created_through_existing_only_sqlite_open(tm
 def test_legacy_open_store_still_explicitly_bootstraps_new_state(tmp_path):
     root = tmp_path / "legacy-open"
     with open_store(root) as store:
-        assert store.info.store_schema_version == 6
+        assert store.info.store_schema_version == 7
 
 
 @pytest.mark.parametrize("name", ["ölçüm-東京", "literal?mode=ro#fragment"])

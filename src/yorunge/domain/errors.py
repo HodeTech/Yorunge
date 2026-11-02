@@ -1,6 +1,9 @@
 from typing import Literal
 
 ErrorCode = Literal[
+    "upload_plan_not_found",
+    "upload_plan_not_valid",
+    "upload_capacity_exceeded",
     "approval_required",
     "input_unsupported",
     "input_invalid",
@@ -64,6 +67,13 @@ ErrorCode = Literal[
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "upload_plan_not_found": "Upload planı bulunamadı. Yerel upload listesini inceleyin.",
+    "upload_plan_not_valid": (
+        "Upload planının güncel içerik, yetki, tutar veya onay bağı geçersiz. Kaydı inceleyin."
+    ),
+    "upload_capacity_exceeded": (
+        "Kalıcı upload kapasitesi doldu. Geçmiş korunur; yeni gönderim başlatılmadı."
+    ),
     "dataset_limit_exceeded": (
         "Yerel veri taraması veya rapor boyutu sınırı aşıldı. Daha dar bir klasör seçin."
     ),

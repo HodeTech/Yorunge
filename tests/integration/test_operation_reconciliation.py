@@ -383,7 +383,7 @@ def test_expired_plan_and_revoke_do_not_authorize_restart_or_block_historical_re
 def test_reset_v3_heartbeat_stable_owner_change_invalidates_and_history_survives(started_operation):
     state, plan, backend, observer, identifier, owner = started_operation
     preview = api.preview_identity_reset(state_dir=state).data
-    assert preview.schema_version == 3
+    assert preview.schema_version == 4
     assert preview.current.operation_count == 1
     assert preview.current.attempt_count == 1
     assert preview.current.nonterminal_operation_count == 1
@@ -863,7 +863,7 @@ def test_reset_v3_cli_text_and_json_share_counts(started_operation, cli):
     assert result.returncode == 0, result.stderr
     assert result.stderr == ""
     preview = json.loads(result.stdout)["data"]
-    assert preview["schema_version"] == 3
+    assert preview["schema_version"] == 4
     assert preview["current"]["operation_count"] == 1
     assert preview["current"]["attempt_count"] == 1
     text = cli("state", "reset", "--state-dir", str(state), state=True)

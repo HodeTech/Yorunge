@@ -298,7 +298,7 @@ def test_full_journey_binds_real_input_identity_approval_and_typed_stream_after_
     plan, approval = initial["prepared"]["plan"], initial["approval"]
     assert initial["initialized"]["data"]["active_profile"] == "work"
     assert initial["initialized"]["data"]["project_id"] == "fixture-project"
-    assert initial["state"]["data"]["store_schema_version"] == 6
+    assert initial["state"]["data"]["store_schema_version"] == 7
     assert initial["context"]["data"]["profile"] == "work"
     assert initial["context"]["data"]["account_id"] == "fixture-account"
     assert plan["status"] == "prepared"

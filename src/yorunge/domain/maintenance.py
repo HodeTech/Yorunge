@@ -111,5 +111,66 @@ class MaintenancePreview(WireModel):
         return self
 
 
-Snapshot = IdentitySnapshot | LegacyIdentitySnapshot
-Preview = MaintenancePreview | LegacyMaintenancePreview
+class TransferIdentitySnapshot(IdentitySnapshot):
+    upload_plan_count: Count
+    transfer_operation_count: Count
+    nonterminal_transfer_count: Count
+    unknown_transfer_count: Count
+    transfer_fingerprint: Digest
+
+    @model_validator(mode="after")
+    def transfer_counts(self) -> "TransferIdentitySnapshot":
+        if (
+            not self.unknown_transfer_count
+            <= self.nonterminal_transfer_count
+            <= self.transfer_operation_count
+            <= self.upload_plan_count
+            <= 128
+        ):
+            raise ValueError("inconsistent transfer counts")
+        return self
+
+
+class TransferMaintenancePreview(WireModel):
+    schema_version: Literal[4] = 4
+    cache_invalidated: Literal[True] = True
+    action: Literal["reset", "restore", "recover"]
+    current: TransferIdentitySnapshot | None
+    source: TransferIdentitySnapshot | None
+    history_may_be_lost: bool
+    announced_epoch: str | None = None
+    digest: Digest
+
+    @field_validator("cache_invalidated", mode="before")
+    @classmethod
+    def invalidated(cls, value: object) -> object:
+        if value is not True:
+            raise ValueError("cache invalidation is an explicit boolean")
+        return value
+
+    @field_validator("announced_epoch")
+    @classmethod
+    def announced(cls, value: str | None) -> str | None:
+        return canonical_uuid(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def reset_effect(self) -> "TransferMaintenancePreview":
+        if self.action == "reset" and (
+            self.current is None
+            or self.source is not None
+            or self.announced_epoch is not None
+            or self.history_may_be_lost
+        ):
+            raise ValueError("reset preserves local history")
+        if (
+            self.digest
+            != hashlib.sha256(
+                canonical(self.model_dump(mode="json", exclude={"digest"}))
+            ).hexdigest()
+        ):
+            raise ValueError("maintenance consent digest mismatch")
+        return self
+
+
+Snapshot = TransferIdentitySnapshot | IdentitySnapshot | LegacyIdentitySnapshot
+Preview = TransferMaintenancePreview | MaintenancePreview | LegacyMaintenancePreview
