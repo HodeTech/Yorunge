@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="304" viewBox="0 0 1200 304" role="img" aria-labelledby="title desc">
+<title id="title">Veriden sonuca. Aynı yörüngede.</title>
+<desc id="desc">Yörünge için lacivert zeminde mor ve turkuaz yörüngelerden oluşan özgün kapak.</desc>
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111d36"/><stop offset="1" stop-color="#17152f"/></linearGradient>
+ <linearGradient id="orbit" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#55e1cb"/><stop offset=".55" stop-color="#8f88ff"/><stop offset="1" stop-color="#d5b9ff"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#7770ef" stop-opacity=".26"/><stop offset="1" stop-color="#7770ef" stop-opacity="0"/></radialGradient>
+ <clipPath id="edge"><rect width="1200" height="304" rx="20"/></clipPath>
+</defs>
+<g clip-path="url(#edge)">
+ <rect width="1200" height="304" fill="url(#bg)"/>
+ <circle cx="974" cy="150" r="250" fill="url(#glow)"/>
+ <g fill="none" stroke="#a4a0da" stroke-opacity=".13">
+  <circle cx="981" cy="152" r="231"/><circle cx="981" cy="152" r="176"/>
+  <path d="M728 152h505M981-91v490"/>
+ </g>
+ <g transform="translate(977 152) rotate(-26)" fill="none">
+  <ellipse rx="174" ry="71" stroke="#6b73b0" stroke-width="1.5"/>
+  <ellipse rx="136" ry="111" stroke="#7770ef" stroke-opacity=".52" stroke-width="1.5"/>
+  <ellipse rx="174" ry="71" stroke="url(#orbit)" stroke-width="3.5" stroke-dasharray="360 450" stroke-dashoffset="-82"/>
+  <ellipse rx="136" ry="111" stroke="url(#orbit)" stroke-width="2.5" stroke-dasharray="185 600" stroke-dashoffset="12"/>
+  <circle cx="163" cy="25" r="7" fill="#68e8d2"/>
+  <circle cx="-105" cy="-69" r="5" fill="#bcb4ff"/>
+ </g>
+ <circle cx="977" cy="152" r="29" fill="#18283e" stroke="#6de0ce" stroke-width="2"/>
+ <circle cx="977" cy="152" r="10" fill="#79e5d5"/>
+ <g font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="62" font-weight="650" fill="#f4f6ff">
+  <text x="64" y="133">Veriden sonuca.</text>
+  <text x="64" y="211">Aynı yörüngede.</text>
+ </g>
+ <rect x="66" y="240" width="80" height="4" rx="2" fill="#6ee4d1"/>
+</g>
+</svg>

@@ -4,6 +4,7 @@
 
 | Belge | Kanonik tanım |
 |---|---|
+| [Yerel kullanım rehberi](local-workflows.md) | Çalışan CLI/Python örnekleri, profil, keşif, plan ve jobs akışları |
 | [CLI](cli-contract.md) | Komut aileleri, çıktı ve çıkış kodları |
 | [Yapılandırma](configuration.md) | Profil/reçete, öncelik ve doğrulama |
 | [Context keşfi](context-discovery.md) | Accepted ADR-0020/0021/0022: uygulanmış dar LLM terms/Platform ID-liste-seçim gözlemi, kapalı wire/target/snapshot ve state sınırı; unknown/unverified/no-authority, PR/CI ayrı |

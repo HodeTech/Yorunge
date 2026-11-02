@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+<title id="title">Manifest oluştur, doğrula, değişikliği yakala</title>
+<desc id="desc">Bir dosya üç byte olarak incelenir. Doğrulama başarılıdır. abc içeriği xyz olduğunda aynı boyuta rağmen uyuşmazlık ve exit 7 oluşur.</desc>
+<rect width="1120" height="560" rx="16" fill="#101a2c"/>
+<rect x="0" y="0" width="1120" height="49" rx="0" fill="#172337"/>
+<path d="M36 49H1084" stroke="#2d3b53"/>
+<circle cx="28.5" cy="24.5" r="4.5" fill="#fa897c"/>
+<circle cx="50.5" cy="24.5" r="4.5" fill="#f0cc78"/>
+<circle cx="72.5" cy="24.5" r="4.5" fill="#7ce7ce"/>
+<text x="99" y="15" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="18" fill="#a7b7ce">YÖRÜNGE  /  YEREL MANİFEST</text>
+<text x="873" y="16" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="18" fill="#a7b7ce">1 dosya · 3 byte</text>
+<rect x="36" y="75" width="36" height="30" rx="6" fill="#172337"/>
+<text x="43" y="78" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#7ce7ce">01</text>
+<text x="86" y="76" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="24" fill="#eaf0fc">Envanteri çıkar</text>
+<text x="1002" y="80" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#7ce7ce">exit 0</text>
+<text x="36" y="118" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#eaf0fc">$ yorunge datasets inspect data --manifest-out manifest.json</text>
+<text x="58" y="153" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#7ce7ce">Dosya: 1; byte: 3</text>
+<rect x="36" y="204" width="36" height="30" rx="6" fill="#172337"/>
+<text x="43" y="207" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#7ce7ce">02</text>
+<text x="86" y="205" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="24" fill="#eaf0fc">İçeriği doğrula</text>
+<text x="1002" y="209" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#7ce7ce">exit 0</text>
+<text x="36" y="247" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#eaf0fc">$ yorunge datasets verify data --manifest manifest.json</text>
+<text x="58" y="282" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#7ce7ce">Dosyalar manifestle eşleşiyor.</text>
+<rect x="36" y="333" width="36" height="30" rx="6" fill="#172337"/>
+<text x="43" y="336" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#7ce7ce">03</text>
+<text x="86" y="334" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="24" fill="#eaf0fc">Değişikliği yakala</text>
+<text x="825" y="338" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="18" fill="#ffb49d">exit 7 · uyuşmazlık</text>
+<text x="36" y="376" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#eaf0fc">$ printf &#x27;xyz&#x27; &gt; data/hello.txt</text>
+<text x="36" y="411" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#eaf0fc">$ yorunge datasets verify data --manifest manifest.json</text>
+<text x="58" y="449" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#ffb49d">Klasörün dosya adları veya içeriği manifestle eşleşmiyor.</text>
+<text x="58" y="479" dominant-baseline="text-before-edge" font-family="Menlo,Consolas,monospace" font-size="22" fill="#ffb49d">Değişiklikleri inceleyin.</text>
+<path d="M36 187H1084" stroke="#2d3b53"/>
+<path d="M36 316H1084" stroke="#2d3b53"/>
+<path d="M36 523H1084" stroke="#2d3b53"/>
+<text x="36" y="536" dominant-baseline="text-before-edge" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="18" fill="#a7b7ce">Gerçek CLI çıktısından seçilmiş satırlar · aynı boyut, farklı içerik</text>
+</svg>
