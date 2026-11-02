@@ -14,7 +14,7 @@ import tomllib
 import uuid
 import zlib
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 import httpx
 
@@ -329,7 +329,9 @@ class Pilot:
         if len(self.images) != 3 or sum(len(data) for _, data in self.images) > 1024 * 1024:
             raise YorungeError("invalid_request")
 
-    async def json(self, transport, stage, method, path, body=None, query=()):
+    async def json(
+        self, transport, stage, method, path, body=None, query=(), acknowledgement=False
+    ):
         read = method == "GET"
         if read:
             self.reads += 1
@@ -364,6 +366,8 @@ class Pilot:
         raw = parse_json(data, max_bytes=MAX_RESPONSE)
         raw_safe(raw, self.key.secret)
         row["shape"] = shape(raw)
+        if acknowledgement and (type(raw) is not dict or raw.get("success") is not True):
+            raise YorungeError("invalid_response")
         return payload(raw, self.key.secret)
 
     async def _create(self, transport):
@@ -422,6 +426,7 @@ class Pilot:
             "POST",
             f"projects/{self.project}/datasets",
             {"dataset_id": self.dataset},
+            acknowledgement=True,
         )
         linked = await self.json(transport, "linked", "GET", f"projects/{self.project}/datasets")
         if (
@@ -463,6 +468,20 @@ class Pilot:
         )
         if urlsplit(upload_url).path != route + "put":
             raise YorungeError("invalid_service_target")
+        try:
+            query = parse_qsl(
+                urlsplit(upload_url).query,
+                keep_blank_values=True,
+                strict_parsing=True,
+                encoding="utf-8",
+                errors="strict",
+            )
+        except ValueError:
+            raise YorungeError("invalid_response") from None
+        # Public proxy examples bind the object through one `key` parameter.
+        # Raw percent-case/encoding differences must never hide the same object.
+        if query != [("key", object_key)]:
+            raise YorungeError("invalid_response")
         return object_key, target
 
     async def _presign(self, transport):

@@ -433,7 +433,7 @@ def test_presign_collision_is_rejected_before_any_storage_write(tmp_path, collis
     finally:
         ledger.close()
     assert failure.value.code == "invalid_response"
-    assert budget.effect_counts["presign"] == 3
+    assert budget.effect_counts["presign"] == (3 if collision == "both" else 1)
     assert budget.effect_counts.get("put", 0) == 0 and provider.uploaded == {}
 
 
@@ -459,3 +459,63 @@ def test_dataset_name_is_durable_before_ambiguous_create(tmp_path):
     kinds = [row["event"] for row in journal]
     assert kinds.index("selected_private_name") < kinds.index("intent")
     assert budget.effect_counts["create"] == 1
+
+
+@pytest.mark.parametrize("reply", [False, [], {"unknown": True}, {"success": False}])
+def test_invalid_link_ack_never_opens_presign_or_put(tmp_path, reply):
+    def mutate(stage, raw):
+        return 200, reply if stage == "link" else raw
+
+    key, ledger, _, budget, pilot = setup(tmp_path, mutate)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert failure.value.code == "invalid_response"
+    assert budget.effect_counts == {"create": 1, "link": 1}
+    assert pilot.reads == 3
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "key=objects%2Fshared",
+        "key=objects%2fshared",
+        "key=objects/shared",
+        "key=objects%2Fshared&nonce=changed",
+        "key=objects%2Ffirst.png&key=objects%2Fshared",
+    ],
+)
+def test_proxy_query_identity_must_bind_to_the_descriptor_key_before_put(tmp_path, query):
+    def mutate(stage, raw):
+        if stage == "presign":
+            raw["presigned_urls"][0]["upload_url"] = (
+                f"/api/v1/datasets/{DATASET}/upload/put?" + query
+            )
+        return 200, raw
+
+    key, ledger, provider, budget, pilot = setup(tmp_path, mutate)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert failure.value.code == "invalid_response"
+    assert budget.effect_counts.get("put", 0) == 0 and provider.uploaded == {}
+
+
+def test_equivalent_percent_encoding_is_accepted_when_object_identity_matches(tmp_path):
+    def mutate(stage, raw):
+        if stage == "presign":
+            item = raw["presigned_urls"][0]
+            item["upload_url"] = item["upload_url"].replace("%2F", "%2f")
+        return 200, raw
+
+    key, ledger, _, budget, pilot = setup(tmp_path, mutate)
+    try:
+        result = run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert result["three_named_files_metadata_match"] is True
+    assert budget.effects == 11
