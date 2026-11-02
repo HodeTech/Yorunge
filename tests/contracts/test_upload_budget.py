@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import pickle
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
@@ -412,3 +413,30 @@ def test_private_state_cannot_be_cloned_or_serialized_and_public_error_is_closed
         "reason_code": "upload_limit_exceeded",
         "capacity_kind": None,
     }
+
+
+@pytest.mark.parametrize("field", list(UploadRequestLimits.model_fields))
+@pytest.mark.parametrize("value", ["QUOTA-REJECTED-INPUT-CANARY", object()])
+def test_revalidation_never_serializes_rejected_values_or_emits_warnings(
+    clock, capsys, field, value
+):
+    bad = limits().model_copy(update={field: value})
+    with warnings.catch_warnings(record=True) as observed:
+        warnings.simplefilter("error")
+        failure = error("invalid_request", lambda: budget(values=bad))
+    assert observed == []
+    assert capsys.readouterr() == ("", "")
+    assert failure.__context__ is None and failure.__cause__ is None
+    assert "QUOTA-REJECTED-INPUT-CANARY" not in str(failure.envelope())
+
+
+def test_constructed_missing_and_extra_fields_reject_without_dumping_input(clock, capsys):
+    incomplete = UploadRequestLimits.model_construct()
+    extra = limits().model_copy(update={"unexpected": "QUOTA-EXTRA-CANARY"})
+    for bad in (incomplete, extra):
+        with warnings.catch_warnings(record=True) as observed:
+            warnings.simplefilter("error")
+            failure = error("invalid_request", lambda bad=bad: budget(values=bad))
+        assert observed == []
+        assert failure.__context__ is None
+    assert capsys.readouterr() == ("", "")

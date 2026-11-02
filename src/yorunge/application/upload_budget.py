@@ -72,7 +72,8 @@ class UploadBudget(_PrivateQuota):
         valid_limits = None
         if type(limits) is UploadRequestLimits:
             try:
-                valid_limits = UploadRequestLimits.model_validate(limits.model_dump())
+                # Do not serialize untrusted/copied values: Pydantic warnings include input repr.
+                valid_limits = UploadRequestLimits.model_validate(limits.__dict__)
             except ValidationError:
                 pass
         if valid_limits is None or type(read_only) is not bool:
