@@ -1,7 +1,7 @@
 ---
 id: P02-2n
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2g, P02-2f, P02-2k, P02-2l]
 capabilities: [C03, C12, C13]
@@ -40,4 +40,4 @@ Contract + gerçek loopback TLS/source testleri; Ruff/strict mypy/doc/rehber/dif
 
 ## Teslim kaydı
 
-M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi iki fresh turla kapandı; n.2 rezervasyon modeli iki fresh tur/fix teyidiyle kapandı. N.3 gerçek wire bağlantısı kodlandı ve 557 ilgili test geçti; kendi iki fresh turu henüz kapanmadı. In_progress.
+M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi iki fresh turla kapandı; n.2 rezervasyon modeli iki fresh tur/fix teyidiyle kapandı. N.3 gerçek wire bağlantısı iki fresh tur/fix teyidiyle kapandı; kart çalışma dalında yerel verified. Native/provider workflow/public ve epik kabulü bunun dışındadır. In_progress.
