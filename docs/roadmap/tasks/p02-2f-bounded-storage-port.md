@@ -36,6 +36,6 @@ Gerçek iki-origin TLS, DNS mixed/rebind/peer mismatch, exact path/query/header,
 
 ## Teslim kaydı
 
-**Sonuç:** Çalışma dalında verified. 4.1 hedef/source dilimi [6ecb4aa](https://github.com/HodeTech/Yorunge/commit/6ecb4aa), R1 fix f10292c ve 10f87e1 kapanışıyla; 4.2 network/shared-client dilimi [31a6ec3](https://github.com/HodeTech/Yorunge/commit/31a6ec3), exact-pin fix 6c5e360 ve expiry-timer fix [8eb1809](https://github.com/HodeTech/Yorunge/commit/8eb1809) ile iki farklı fresh review turundan geçti. Son storage/network/source/policy **197 passed / 19,35 s**; iki R2 bulgu/teyit kaydı [uygulama raporundadır](../../research/p02-2-implementation-validation.md#adım-42-fresh-r2). R1 ve R2'deki iki ayrı P2 düzeltildi; hiçbir açık doğrulanmış bulgu kalmadı.
-
-**Kalan sınır:** Bu yerel port development'a merge edilmedi; gerçek provider codec, public CLI/API, bütünleşik native/kurulum/CI ve canlı yazma P02-2a/b/c kapsamındadır. Bu kart uzak yetki veya maliyet kanıtı üretmez.
+- PR/commit: [31a6ec3](https://github.com/HodeTech/Yorunge/commit/31a6ec3), [6c5e360](https://github.com/HodeTech/Yorunge/commit/6c5e360), [8eb1809](https://github.com/HodeTech/Yorunge/commit/8eb1809); ayrı PR açılmadı.
+- Sonuç: Çalışma dalında verified. 4.1 hedef/source dilimi 6ecb4aa, R1 fix f10292c ve 10f87e1 kapanışıyla; 4.2 network/shared-client dilimi yukarıdaki commitlerle iki farklı fresh review turundan geçti. Son storage/network/source/policy **197 passed / 19,35 s**; iki bulgu/teyit kaydı [uygulama raporundadır](../../research/p02-2-implementation-validation.md#adım-42-fresh-r2). R1 ve R2'deki iki ayrı P2 düzeltildi; hiçbir açık doğrulanmış bulgu kalmadı.
+- Kalan sınır: Bu yerel port development'a merge edilmedi; gerçek provider codec, public CLI/API, bütünleşik native/kurulum/CI ve canlı yazma P02-2a/b/c kapsamındadır. Bu kart uzak yetki veya maliyet kanıtı üretmez.
