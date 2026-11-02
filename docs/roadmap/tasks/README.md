@@ -38,6 +38,7 @@
 | [P02-2l](p02-2l-platform-control-codecs.md) | Platform context/create/link strict codec ve literal sınırları |
 | [P02-2m](p02-2m-platform-upload-codecs.md) | Proxy descriptor, tek dosya presign/confirm ve bounded item codec'leri |
 | [P02-2n](p02-2n-upload-http-budgets.md) | Kayıtlı service URI literal kuralı ve gerçek HTTP quota/counter bağlantısı |
+| [P02-2o](p02-2o-current-upload-preparation.md) | Güncel input/current provider ve prepare/approve kompozisyonu |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.

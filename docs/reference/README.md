@@ -21,6 +21,7 @@
 | [Akış sonucu](stream-results.md) | Çalışma dalında verified — ADR-0018; kapalı event, terminal/EOF, NDJSON ve yerel iptal; CLI/Python ve gerçek süreç kabulü |
 | [Upload v2](dataset-upload-v2.md) | ADR-0026 Accepted: exact-work maliyet, policy reducer ve v2 gate/uyumluluk; yerel g–k kabulü ilgili kartta, public/live ayrı |
 | [Platform upload tüketicisi](platform-upload-consumer.md) | Gerçek context/create/link codec'inin dar oracle'ı; grant/fiyat üretmez, upload wire ve bütünleşik kabul ayrı |
+| [Upload input/current hazırlığı](dataset-upload-preparation.md) | O kartının tam hash/metadata ve gerçek provider hazırlık sınırı; uygulama durumu ilgili dilimde |
 | [Upload HTTP bütçeleri](dataset-upload-http.md) | V2 work limitlerinin gerçek HTTP çağrı/deneme/gövde yoluna bağlanması ve kayıtlı service URI; uygulama/kabul ilgili kartta |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [bf652f6 tarihsel kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) ile [ADR-0019/Sonar son kaynak kapanışı](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) ayrı kayıtlardır.
