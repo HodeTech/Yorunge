@@ -651,3 +651,33 @@ def test_mutated_source_metadata_cannot_change_prepared_content_length(tmp_path,
         assert failure.value.code == "input_changed"
         assert dict(request.public_headers())["Content-Length"] == str(base.size)
         assert not network.connections and not server.requests and base.sent_bytes == 0
+
+
+def test_shortened_expiry_window_interrupts_body_instead_of_waiting_for_context_exit(
+    tmp_path, certificates
+):
+    key, consumed = credential(), []
+    ticks = iter((NOW, NOW + timedelta(seconds=54.8)))
+    path = "/bucket/object" + SIGNED_QUERY
+    with TlsServer(
+        certificates, {path: Reply(body=b"x" * 80, chunk_size=1, chunk_delay=0.01)}
+    ) as server:
+        owned, _, instances = session(
+            key, certificates, {"storage.localhost": server}, clock=lambda: next(ticks)
+        )
+        body = source(tmp_path)
+
+        async def run(transport):
+            async with transport.open_storage(
+                direct(body, key), deadline=time.monotonic() + 3
+            ) as response:
+                async for chunk in response.chunks():
+                    consumed.append(chunk)
+
+        with owned, pytest.raises(YorungeError) as failure:
+            owned.exchange(run)
+        assert failure.value.code == "transport_timeout"
+        # The old timer read all 80 bytes, then rejected only on context exit.
+        assert len(b"".join(consumed)) < 80
+        assert instances[0]._slots._value == 2 and not instances[0]._responses
+        assert body._file_fd is None and len(server.requests) == 1

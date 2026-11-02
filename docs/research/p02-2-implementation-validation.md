@@ -87,3 +87,11 @@ Fresh R2, farklı iki reviewer ile f10292c üzerinde tamamlandı. Policy/consume
 ### Adım 4.2 fresh R1
 
 31a6ec3 iki bağımsız eksende incelendi. Ağ kolu (GPT-6 Astra/high) bir **P2** doğruladı: numeric TCP adresi ilk DNS cevabıyken peer kapısı aynı cevap kümesindeki ikinci public adresi de kabul ediyordu. Private-IP bypass gösterilmedi; hata kanonik daha dar selected-IP eşliğindeydi. Consumer kolu da aynı ayrımı bağımsız gördü. Peer bağı yalnız seçilmiş IP'ye daraltıldı; ilk connect, TLS sonrası ve pool reuse için ikinci public DNS cevabının reddi üç bağımsız negatifle sabitlendi. Düzeltme sonrası network+gerçek TLS **96 passed / 18,63 s**; Ruff/strict mypy **93 dosya** geçti. İkinci fresh tur henüz tamamlanmadı.
+
+R1 consumer kolu (GPT-6.1 Sol/high) ayrıca **193 storage / 18,78 s**, geniş legacy **557 / 76,86 s** ve bağımsız erken-200/FD/response/slot ret deneyi bildirdi; aynı exact-pin bulgusu ikinci kusur diye sayılmadı. İlk legacy komutunun yanlış dosya adı nedeniyle test çalıştırmadığı, düzeltilen komutun geçtiği kaydedildi.
+
+### Adım 4.2 fresh R2
+
+Farklı iki yeni reviewer 6c5e360'ı inceledi. Ağ kolu (GPT-6.1 Sol/high) **96 / 18,52 s** ve yeni bulgu yok bildirdi. Lifecycle kolu (GPT-6 Astra/high) **135 storage / 18,59 s**, **71 legacy / 21,86 s** ve bir **P2** doğruladı: ikinci expiry kontrolü deadline'ı kısaltınca dış asyncio zamanlayıcısı eski süreyi koruyordu. Gerçek TLS repro'da yeni kalan süre 0,1 s olmasına rağmen yavaş yanıtın son byte'ı 0,709 s'de okundu; ret yalnız context çıkışındaydı. Bu bloke OS I/O sınırı değil, cooperative timer hatasıdır.
+
+Düzeltmede dış Timeout ikinci `_window` sonrasında yeni kalan süreye reschedule edilir. Gerçek TLS regresyonu yavaş 80-byte yanıtın tamamı okunmadan `transport_timeout`, kapalı source ve serbest pool doğruladı: **1 passed / 0,82 s**; Ruff/93 dosya strict mypy geçti. Bütün storage kümesi ve reviewer düzeltme teyidi henüz aşağıya eklenmedi; f in_progress.

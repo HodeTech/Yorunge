@@ -209,12 +209,13 @@ class TransferHttpxTransport(HttpxTransport):
             try:
                 deadline = self._window(request, deadline)
                 body.deadline = deadline
-                async with asyncio.timeout(_remaining(deadline)):
+                async with asyncio.timeout(_remaining(deadline)) as window:
                     async with asyncio.timeout(min(1.0, _remaining(deadline))):
                         await self._slots.acquire()
                     acquired = True
                     deadline = min(deadline, self._window(request, deadline))
                     body.deadline = deadline
+                    window.reschedule(asyncio.get_running_loop().time() + _remaining(deadline))
                     wire = self._wire_storage(request, body, deadline)
                     # Unlike service GETs, even connection refusal/429/5xx never
                     # starts another physical PUT or refreshes a signed URL.
