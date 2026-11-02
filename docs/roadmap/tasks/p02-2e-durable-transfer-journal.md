@@ -1,7 +1,7 @@
 ---
 id: P02-2e
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2d]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ Eski migration/payload eşliği ve yeni boş tablolar; plan başına tek operati
 
 ## Teslim kaydı
 
-Henüz bu kartın uygulama/test/review kabulü tamamlanmadı. Gerçek commit, iki fresh tur ve kalan sınır oluşunca kayıt eklenecek; remote/live başarı iddiası yoktur.
+- PR/commit: [e640cf8](https://github.com/HodeTech/Yorunge/commit/e640cf8) ilk uygulama; [5eaf6dd](https://github.com/HodeTech/Yorunge/commit/5eaf6dd), [37cbc6e](https://github.com/HodeTech/Yorunge/commit/37cbc6e), [b2a804d](https://github.com/HodeTech/Yorunge/commit/b2a804d) doğrulanmış review düzeltmeleri. Ayrı PR açılmadı.
+- Sonuç: Yerel state/journal kabulü çalışma dalında verified. İki farklı fresh review turu, P1/P2 fixleri ve bağımsız son deadline teyidi tamamlandı; [tam kayıt](../../research/p02-2-implementation-validation.md#adım-2--p02-2e-kalıcı-transfer-temeli). 103 birleşik hedefli test geçti; son reviewer 9 deadline kontrolünü ayrıca geçti. Eski başarısız koşular kayıtta korunur.
+- Kalan sınır: Development’a teslim, public upload/gerçek producer/adapter, storage, native/paket/CI ve canlı yazma kabulü bu kartın sonucu değildir. P02-2a/b/c ve üst epik draft kalır.
