@@ -4,6 +4,7 @@ import copy
 import hashlib
 import os
 import pickle
+import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -112,6 +113,11 @@ def test_recheck_reads_metadata_and_membership_without_rehashing_content(tmp_pat
         "leaf_symlink",
         "root",
         "ancestor",
+        "remove_root",
+        "remove_ancestor",
+        "root_file",
+        "root_symlink",
+        "ancestor_symlink",
     ],
 )
 def test_observed_tree_mutations_reject_before_next_effect(tmp_path, change):
@@ -138,10 +144,25 @@ def test_observed_tree_mutations_reject_before_next_effect(tmp_path, change):
         root.rename(root.with_name("old"))
         root.mkdir()
         path.write_bytes(b"content")
-    else:
+    elif change == "ancestor":
         root.parent.rename(tmp_path / "previous-ancestor")
         root.mkdir(parents=True)
         path.write_bytes(b"content")
+    elif change == "remove_root":
+        shutil.rmtree(root)
+    elif change == "remove_ancestor":
+        shutil.rmtree(root.parent)
+    elif change == "root_file":
+        root.rename(root.with_name("old"))
+        root.write_bytes(b"not-a-directory")
+    elif change == "root_symlink":
+        old = root.with_name("old")
+        root.rename(old)
+        root.symlink_to(old, target_is_directory=True)
+    else:
+        old = tmp_path / "previous-ancestor"
+        root.parent.rename(old)
+        root.parent.symlink_to(old, target_is_directory=True)
     rejected("input_changed", observation.recheck)
 
 
@@ -285,3 +306,16 @@ def test_unsupported_primitive_precedes_even_relative_path_cwd_io(tmp_path, monk
             Path("relative"), Path("manifest"), SECRET, end=time.monotonic() + 30
         ),
     )
+
+
+def test_observed_open_does_not_relabel_real_permission_failure(tmp_path, monkeypatch):
+    import errno
+
+    root, manifest, _ = fixture(tmp_path)
+    observation = capture(root, manifest)
+
+    def permission_denied(path):
+        raise OSError(errno.EACCES, "synthetic permission denial")
+
+    monkeypatch.setattr(dataset_files, "directory_chain", permission_denied)
+    rejected("file_unreadable", observation.recheck)

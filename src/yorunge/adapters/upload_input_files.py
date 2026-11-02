@@ -90,7 +90,7 @@ class UploadInputObservation:
             raise YorungeError("invalid_request")
         _deadline(self._end)
         budget = _InputBudget(self._end)
-        with open_dataset(Path(self.root.anchor), budget) as tree:
+        with open_dataset(Path(self.root.anchor), budget, observed=True) as tree:
             current = UploadRoot(
                 anchor=str(tree.anchor), device=tree.root_identity[0], inode=tree.root_identity[1]
             )

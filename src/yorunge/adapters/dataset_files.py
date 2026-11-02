@@ -411,17 +411,21 @@ class DatasetTree:
 
 
 @contextmanager
-def open_dataset(root: Path, budget: DatasetBudget) -> Iterator[DatasetTree]:
+def open_dataset(
+    root: Path, budget: DatasetBudget, *, observed: bool = False
+) -> Iterator[DatasetTree]:
+    if type(observed) is not bool:
+        raise YorungeError("invalid_request")
     require_dataset_files()
     anchor = anchor_dataset_path(root)
     budget.check()
     try:
         descriptor, chain = directory_chain(str(anchor))
     except OSError as error:
-        raise _initial_io(error) from None
+        raise (_observed_io(error) if observed else _initial_io(error)) from None
     with owned_descriptor(descriptor):
         try:
             tree = DatasetTree(anchor, descriptor, chain, budget)
         except OSError as error:
-            raise _initial_io(error) from None
+            raise (_observed_io(error) if observed else _initial_io(error)) from None
         yield tree
