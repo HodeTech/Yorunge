@@ -15,7 +15,8 @@ from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
-from yorunge.adapters.upload_store import capacity, read_manifest, read_view
+from yorunge.adapters.upload_store import capacity, read_manifest
+from yorunge.adapters.upload_store import read_any_view as read_view
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import (
     BoundCredential,
@@ -25,10 +26,13 @@ from yorunge.domain.credentials import (
     normalize_target,
 )
 from yorunge.domain.dataset_manifest import DatasetManifest
-from yorunge.domain.dataset_transfer import StageReceipt, TransferVerification, VerifiedFile
-from yorunge.domain.dataset_upload import DatasetUploadPlan
+from yorunge.domain.dataset_transfer import StageReceipt, VerifiedFile
+from yorunge.domain.dataset_transfer_v2 import TransferVerificationV2 as TransferVerification
+from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2 as DatasetUploadPlan
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context
+from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, UploadObservation
+from yorunge.domain.upload_costs import UploadCostWork
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 DATASET = "00000000-0000-4000-8000-000000000099"
@@ -36,10 +40,114 @@ DATASET = "00000000-0000-4000-8000-000000000099"
 
 def seal(body):
     body = {k: v for k, v in body.items() if k != "digest"}
+    count, total = body["manifest"]["file_count"], body["manifest"]["total_bytes"]
+    body["request_limits"] = {
+        **body["request_limits"],
+        "max_presign": count,
+        "max_put": count,
+        "max_confirm": count,
+        "max_upload_bytes": total,
+    }
+    body["execution_window"] = {"not_before": body["prepared_at"], "not_after": body["expires_at"]}
+    work = UploadCostWork.model_validate_json(
+        json.dumps(
+            {
+                k: body[k]
+                for k in (
+                    "scope",
+                    "root",
+                    "manifest",
+                    "parameters",
+                    "storage",
+                    "request_limits",
+                    "execution_window",
+                )
+            }
+        )
+    )
+    body["cost_bound"] = {
+        **body["cost_bound"],
+        "work_digest": work.digest(),
+        "charge_period_start": body["prepared_at"],
+        "charge_period_end": body["expires_at"],
+    }
     encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
     return DatasetUploadPlan.model_validate_json(
         json.dumps({**body, "digest": hashlib.sha256(encoded).hexdigest()})
     )
+
+
+class FixtureUploads(StateUploads):
+    """Synthetic proof capture for real repository tests; never a product producer."""
+
+    def capture(self, fresh, kind="create", dataset_id=None):
+        if not isinstance(fresh, DatasetUploadPlan):
+            return fresh
+        action = "upload_created_dataset"
+        if kind == "create":
+            action = "create_private_dataset"
+        elif kind == "project_link":
+            action = "link_project"
+        now = timestamp(self.clock.value)
+        allowed = fresh.grant is not None and action in fresh.grant.permissions
+        auth = AuthorizationCheck(
+            consumer_profile="evren-platform-observed-upload-v2",
+            policy_version=2,
+            action=action,
+            scope=fresh.scope,
+            dataset_id=dataset_id,
+            producer_id="fixture_only",
+            producer_version="2",
+            checked_at=now,
+            outcome="allowed" if allowed else "not_exposed",
+            grant=fresh.grant if allowed else None,
+            error_code=None,
+        )
+        observation = None
+        if action == "upload_created_dataset" and dataset_id is not None:
+            observation = UploadObservation(
+                consumer_profile="evren-platform-observed-upload-v2",
+                policy_version=2,
+                scope=fresh.scope,
+                dataset_id=dataset_id,
+                checked_at=now,
+                has_upload=True,
+            )
+        return UploadCurrentCheck(
+            saved_plan_id=fresh.plan_id,
+            saved_plan_digest=fresh.digest,
+            saved_binding_digest=fresh.binding_digest(),
+            work_digest=fresh.cost_work().digest(),
+            scope=fresh.scope,
+            checked_at=now,
+            baseline_grant=fresh.grant,
+            baseline_cost_bound=fresh.cost_bound,
+            supplemental_grant=None,
+            supplemental_cost_bound=None,
+            authorization=auth,
+            inputs_verified=fresh.inputs_verified,
+            upload_observation=observation,
+        )
+
+    def approve(self, plan_id, digest, fresh, **kwargs):
+        return super().approve(plan_id, digest, self.capture(fresh), **kwargs)
+
+    def admit(self, plan_id, fresh):
+        # Existing local lookup needs no new proof construction.
+        if self.show(plan_id=plan_id).operation is not None:
+            return super().admit(plan_id, fresh)
+        return super().admit(plan_id, self.capture(fresh))
+
+    def arm(self, operation_id, owner, fresh, kind, file_index, **kwargs):
+        record = self.show(operation_id=operation_id).operation
+        return super().arm(
+            operation_id,
+            owner,
+            self.capture(fresh, kind, record.dataset_id),
+            kind,
+            file_index,
+            **kwargs,
+        )
 
 
 @dataclass
@@ -52,7 +160,7 @@ class Journal:
     access: object = None
 
     def repository(self, store):
-        return StateUploads(store, self.bound, clock=self.clock, write_access=self.access)
+        return FixtureUploads(store, self.bound, clock=self.clock, write_access=self.access)
 
     def approved(self):
         with open_store(self.root) as store:
@@ -113,7 +221,7 @@ def journal(tmp_path, execution_clock):
         identity = StateCredentialRegistry(store).observe(credential)
         stamp = StateCache(store, clock).stamp()
     bound = BoundCredential(context, credential, identity)
-    body = json.loads((FIXTURES / "dataset-upload-approved-v1.json").read_bytes())["plan"]
+    body = json.loads((FIXTURES / "dataset-upload-approved-v2.json").read_bytes())["plan"]
     body["scope"].update(
         store_id=stamp.store_id,
         identity_epoch=stamp.identity_epoch,
@@ -160,7 +268,9 @@ def test_full_workflow_has_one_permit_per_stage_and_separate_read_verification(j
         record = journal.accept(record, intent).operation
     assert record.status == "running"
     proof = TransferVerification(
-        schema_version=1,
+        schema_version=2,
+        scope=journal.plan.scope,
+        authorization_policy="verified_read",
         dataset_id=DATASET,
         project_id=journal.plan.scope.project_id,
         grant=journal.plan.grant,
@@ -1035,7 +1145,9 @@ def complete_metadata_fixture(journal):
         record = journal.accept(record, intent).operation
         journal.clock.value += timedelta(seconds=1)
     proof = TransferVerification(
-        schema_version=1,
+        schema_version=2,
+        scope=journal.plan.scope,
+        authorization_policy="verified_read",
         dataset_id=DATASET,
         project_id=journal.plan.scope.project_id,
         grant=journal.plan.grant,
@@ -1131,7 +1243,7 @@ def test_fresh_recovery_verification_after_reset_does_not_compare_old_future_utc
         owner = repo.acquire_read(record.operation_id, grant)
         journal.clock.value += timedelta(seconds=1)
         proof = proof.model_copy(
-            update={"grant": grant, "observed_at": timestamp(journal.clock.value)}
+            update={"grant": grant, "scope": scope, "observed_at": timestamp(journal.clock.value)}
         )
         assert repo.verified(record.operation_id, owner, proof).operation.status == "succeeded"
         store.verify()
@@ -1154,4 +1266,276 @@ def test_nonfinite_or_wrong_deadline_never_commits_stage_or_permit(journal, dead
         assert failure.value.operation_id == record.operation_id
         view = repo.show(operation_id=record.operation_id)
         assert not view.intents and not view.operation.workflow_latched
+        store.verify()
+
+
+def explicit_unpriced_plan(plan):
+    body = plan.model_dump(mode="json", exclude={"digest"})
+    body.update(
+        admission_policy="explicit_attempt",
+        cost_policy="unpriced_accepted",
+        budget_micros=None,
+        grant=None,
+        cost_bound=None,
+        risks=["authority_unverified", "cost_unverified"],
+        blockers=[],
+        status="attempt_ready",
+    )
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    return DatasetUploadPlan.model_validate_json(
+        json.dumps({**body, "digest": hashlib.sha256(raw).hexdigest()})
+    )
+
+
+@pytest.mark.parametrize("authority,unpriced", [(False, False), (False, True), (True, False)])
+def test_unverified_unpriced_approval_needs_both_explicit_acknowledgements(
+    journal, authority, unpriced
+):
+    journal.plan = explicit_unpriced_plan(journal.plan)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        with pytest.raises(YorungeError) as error:
+            repo.approve(
+                journal.plan.plan_id,
+                journal.plan.digest,
+                journal.plan,
+                acknowledge_unverified_authority=authority,
+                acknowledge_unpriced_cost=unpriced,
+            )
+        assert error.value.code == "approval_required"
+        assert repo.show(plan_id=journal.plan.plan_id).approval is None
+        assert store.connection.execute("SELECT count(*) FROM upload_operations").fetchone() == (0,)
+
+
+def test_explicit_unknown_proofs_can_arm_once_without_fabricated_expiry(journal):
+    journal.plan = explicit_unpriced_plan(journal.plan)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        approval = repo.approve(
+            journal.plan.plan_id,
+            journal.plan.digest,
+            journal.plan,
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+        )
+        record = repo.admit(journal.plan.plan_id, journal.plan)
+        journal.access = repo.write_access
+        intent, permit, deadline = repo.arm(
+            record.operation_id,
+            record.lease,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
+        assert intent.schema_version == 1 and record.schema_version == approval.schema_version == 2
+        assert deadline > journal.clock.monotonic()
+        permit.consume()
+        with pytest.raises(YorungeError):
+            repo.arm(
+                record.operation_id,
+                record.lease,
+                journal.plan,
+                "create",
+                None,
+                total_end=journal.clock.monotonic() + 900,
+            )
+        saved = repo.show(plan_id=journal.plan.plan_id)
+        assert len(saved.intents) == 1 and saved.plan.grant is saved.plan.cost_bound is None
+        assert saved.plan.status == "attempt_ready" and saved.plan.risks == (
+            "authority_unverified",
+            "cost_unverified",
+        )
+        assert saved.plan.encoded() == journal.plan.encoded()
+        store.verify()
+
+
+@pytest.mark.parametrize(
+    "outcome,code",
+    [
+        ("denied", "remote_access_denied"),
+        ("unavailable", "remote_rate_limited"),
+        ("unavailable", "transport_timeout"),
+        ("invalid", "invalid_response"),
+    ],
+)
+def test_explicit_policy_never_bypasses_current_known_negative_or_unavailable(
+    journal, outcome, code
+):
+    journal.plan = explicit_unpriced_plan(journal.plan)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        repo.approve(
+            journal.plan.plan_id,
+            journal.plan.digest,
+            journal.plan,
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+        )
+        record = repo.admit(journal.plan.plan_id, journal.plan)
+        check = repo.capture(journal.plan)
+        failed = check.authorization.model_copy(update={"outcome": outcome, "error_code": code})
+        check = check.model_copy(update={"authorization": failed})
+        with pytest.raises(YorungeError) as error:
+            repo.arm(
+                record.operation_id,
+                record.lease,
+                check,
+                "create",
+                None,
+                total_end=journal.clock.monotonic() + 900,
+            )
+        assert error.value.code == code and error.value.operation_id == record.operation_id
+        assert repo.show(operation_id=record.operation_id).intents == ()
+        store.verify()
+
+
+def test_legacy_scope_only_price_cannot_create_new_approval_or_admission(journal):
+    from yorunge.domain.dataset_upload import DatasetUploadPlan as V1Plan
+
+    body = json.loads((FIXTURES / "dataset-upload-approved-v1.json").read_bytes())["plan"]
+    body["scope"] = journal.plan.scope.model_dump(mode="json")
+    for field in ("grant", "cost_bound"):
+        body[field]["scope"] = body["scope"]
+    body.pop("digest")
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    legacy = V1Plan.model_validate_json(
+        json.dumps({**body, "digest": hashlib.sha256(raw).hexdigest()})
+    )
+    with open_store(journal.root) as store:
+        repo = StateUploads(store, journal.bound, clock=journal.clock)
+        repo.save(legacy, journal.manifest)
+        for invoke in (
+            lambda: repo.approve(legacy.plan_id, legacy.digest, legacy),
+            lambda: repo.admit(legacy.plan_id, legacy),
+        ):
+            with pytest.raises(YorungeError) as error:
+                invoke()
+            assert error.value.code == "upload_plan_not_valid"
+        assert all(
+            store.connection.execute(f"SELECT count(*) FROM {table}").fetchone() == (0,)
+            for table in ("upload_approvals", "upload_operations", "upload_stage_intents")
+        )
+        assert repo.show(plan_id=legacy.plan_id).plan.encoded() == legacy.encoded()
+        assert repo.show(plan_id=legacy.plan_id).operation is None
+        store.verify()
+
+
+def test_legacy_existing_lookup_and_inflight_receipt_survive_but_new_arm_is_closed(journal):
+    from yorunge.adapters.upload_store import request_digest, write_record
+    from yorunge.application.transfer_access import TransferWriteAccess
+    from yorunge.domain.dataset_transfer import StageIntent, TransferRecord
+    from yorunge.domain.dataset_upload import DatasetUploadApproval as V1Approval
+    from yorunge.domain.dataset_upload import DatasetUploadPlan as V1Plan
+
+    body = json.loads((FIXTURES / "dataset-upload-approved-v1.json").read_bytes())["plan"]
+    body["scope"] = journal.plan.scope.model_dump(mode="json")
+    for field in ("grant", "cost_bound"):
+        body[field]["scope"] = body["scope"]
+    body.pop("digest")
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    legacy = V1Plan.model_validate_json(
+        json.dumps({**body, "digest": hashlib.sha256(raw).hexdigest()})
+    )
+    with open_store(journal.root) as store:
+        repo = StateUploads(store, journal.bound, clock=journal.clock)
+        repo.save(legacy, journal.manifest)
+        stamp = repo.cache.stamp()
+        lease = repo._lease(stamp, fence=1, mode="write")
+        approval = V1Approval(
+            schema_version=1,
+            approval_id=str(uuid4()),
+            plan_id=legacy.plan_id,
+            plan_digest=legacy.digest,
+            binding_digest=legacy.binding_digest(),
+            store_id=legacy.scope.store_id,
+            identity_epoch=legacy.scope.identity_epoch,
+            clock_generation=legacy.scope.clock_generation,
+            approved_at=timestamp(stamp.now),
+            expires_at=legacy.expires_at,
+            status="approved",
+            revoked_at=None,
+        )
+        operation_id = str(uuid4())
+        access = TransferWriteAccess(operation_id, lease.owner_id, journal.clock.monotonic() + 900)
+        record = TransferRecord(
+            schema_version=1,
+            operation_id=operation_id,
+            plan_id=legacy.plan_id,
+            plan_digest=legacy.digest,
+            intent_digest=legacy.intent_digest(),
+            approval=approval,
+            write_owner_id=lease.owner_id,
+            write_access_digest=access.digest,
+            created_at=timestamp(stamp.now),
+            updated_at=timestamp(stamp.now),
+            status="admitted",
+            revision=1,
+            fence=1,
+            observed_identity_epoch=legacy.scope.identity_epoch,
+            observed_clock_generation=legacy.scope.clock_generation,
+            clock_anomaly=False,
+            lease=lease,
+            workflow_latched=False,
+            dataset_id=None,
+            reason=None,
+        )
+        store.connection.execute(
+            "INSERT INTO upload_approvals VALUES(?,?,?,?)",
+            (
+                legacy.plan_id,
+                approval.approval_id,
+                approval.expires_at,
+                approval.encoded().decode(),
+            ),
+        )
+        write_record(store.connection, record, None)
+        repo.write_access = access
+        assert repo.admit(legacy.plan_id, None) == record
+        total_end = journal.clock.monotonic() + 900
+        with pytest.raises(YorungeError) as error:
+            repo.arm(operation_id, lease, legacy, "create", None, total_end=total_end)
+        assert error.value.code == "upload_plan_not_valid"
+        assert repo.show(operation_id=operation_id).intents == ()
+
+        # This is a fixture for an intent issued before upgrading the runtime.
+        intent = StageIntent(
+            schema_version=1,
+            intent_id=str(uuid4()),
+            operation_id=operation_id,
+            sequence=1,
+            kind="create",
+            file_index=None,
+            request_digest=request_digest(legacy, journal.manifest, "create", None, {}),
+            owner=lease,
+            intended_at=timestamp(stamp.now),
+            expires_at=timestamp(stamp.now + timedelta(seconds=30)),
+        )
+        store.connection.execute(
+            "INSERT INTO upload_stage_intents VALUES(?,?,?,?,?,?)",
+            (intent.intent_id, operation_id, 1, "create", -1, intent.encoded().decode()),
+        )
+        store.connection.execute(
+            "UPDATE upload_namespaces SET create_operation_id=?", (operation_id,)
+        )
+        armed = record.model_copy(
+            update={"revision": 2, "status": "running", "workflow_latched": True}
+        )
+        write_record(store.connection, armed, record.revision)
+        receipt = StageReceipt(
+            schema_version=1,
+            intent_id=intent.intent_id,
+            recorded_at=timestamp(stamp.now),
+            result="accepted",
+            dataset_id=DATASET,
+            object_key=None,
+            sent_bytes=None,
+            sent_sha256=None,
+        )
+        found = repo.receipt(operation_id, lease, receipt)
+        assert found.operation.schema_version == 1 and found.operation.dataset_id == DATASET
+        assert len(found.receipts) == 1
         store.verify()

@@ -131,3 +131,12 @@ I fresh R1: Astra/high graph ve Sol/high compatibility kolları aynı **P2**'yi 
 
 
 I fresh R2, farklı yeni Sol/high graph ve Astra/high compatibility ajanlarıyla 88218d2 üzerinde tamamlandı. İkisi de yeni doğrulanmış bulgu bulmadı; 50 yeni test sırasıyla 13,39/13,99 s geçti. Graph reviewer 47 ayrı missing receipt/intent operation-ID/sequence/request-digest ve re-bound malformed proof negatifini bağımsız doğruladı; her biri state_invalid verdi. R1 exact recovery marker düzeltmesi kapandı, terminal/running tarihsel marker ayrı korundu. P02-2i çalışma dalında verified; j sıradaki kod dilimidir. DDL/checksum ve eski v1 byte geçmişi değişmedi. Yeni writer/provider/public veya live/native/build/CI kabulü değildir.
+
+
+## P02-2j — V2 durable write kapıları
+
+Repository save/approve/revoke/admit/arm/receipt generic v1/v2 history üzerinde v2 current snapshot ve exact onay bağını uygular. Yeni v1 approve/admit/arm upload_plan_not_valid ile sıfır permit; existing admit yalnız yerel ID ve önceden arm edilmiş v1 receipt korunur. V2 nullable gerçek proof expiry'leri min'e girer; null için assert/sahte deadline yoktur. Yeni proof yazımında v2 freshness uygulanır; tarihsel full validation yaşlanmaz. V2 default verified_read ortak geçişte desteklenir; null-grant explicit read mutation k'dadır.
+
+Önceki 58 journal race/PID/fork/reset/credential/lease/quota regresyonunun fixture'ı açık test-only current producer ile v2 prepared'e taşındı; v1 literal/domain/history ayrı korunur. Yeni v1 history/no-new-write/inflight receipt ve explicit unpriced iki-ack/known-negative/tek-arm testleri eklendi. İlk geçişte 2 passed/2 failed, fixture reader hâlâ legacy guard kullandığındandı; versioned reader'a taşındı. Sonraki yeni kümede 8 passed/1 failed, SQLite total_changes rollback edilen clock yazılarını da saydığı için test oracle'ı business tablolarını denetleyecek şekilde düzeltildi. Ürün clock/mutation güvencesi gevşetilmedi.
+
+Son bütün upload policy/cost/v1/v2/domain/history/journal kümesi **529 passed / 40,53 s**; ilgili Ruff, src/scripts strict mypy **99 dosya**, diff geçti. Kalıcı stage slotu intent commit'inde ayrılır; actual HTTP body/read/response byte counter bağlantısı exact provider codec ile a/b'dedir. Public producer/CLI veya canlı yan etki bu dilimde yoktur. İlk commit sonrası iki fresh review henüz kapanmadı; j in_progress ve epik draft. Son source-bound native/build/CI/live kabulü hâlâ c sahibidir.

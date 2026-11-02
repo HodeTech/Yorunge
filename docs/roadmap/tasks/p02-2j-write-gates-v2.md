@@ -24,7 +24,7 @@ Repository save/approve/admit/arm/receipt/revoke v2, exact baseline/supplemental
 
 ## Sözleşme ve uygulama sınırı
 
-Kanonik [Upload v2](../../reference/dataset-upload-v2.md) tek ayrıntı kaynağıdır. Domain/application/adapter sınırları, eski wire ve quota korunur; fixture producer ürün backend'i yapılmaz.
+Kanonik [Upload v2](../../reference/dataset-upload-v2.md) tek ayrıntı kaynağıdır. Kalıcı etki adedi rezervi, port izninden önce commit edilen tekil stage intent slotudur. Gerçek HTTP body/read/response byte sayaçları exact producer/codec ile P02-2a/b bütünleşmesinde bağlanır; bu kart public port açmaz veya bu ölçümü yapılmış saymaz. V2 verified_read tarihçesi ortak writer geçişinin parçasıdır; null-grant explicit read/takeover ve read hata kaydı P02-2k kapsamıdır. Domain/application/adapter sınırları, eski wire ve quota korunur; fixture producer ürün backend'i yapılmaz.
 
 ## Kabul
 

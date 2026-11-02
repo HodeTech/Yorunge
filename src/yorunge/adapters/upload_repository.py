@@ -17,26 +17,29 @@ from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.adapters.upload_store import (
-    TransferView,
     VersionedTransferView,
     decode,
+    decode_versioned,
     namespace,
     predecessor,
-    read_any_record,
-    read_any_view,
     read_manifest,
     read_plan,
-    read_view,
     request_digest,
     require_capacity,
-    require_legacy_view,
     verification_after,
     write_record,
+)
+from yorunge.adapters.upload_store import (
+    read_any_record as read_record,
+)
+from yorunge.adapters.upload_store import (
+    read_any_view as read_view,
 )
 from yorunge.adapters.validation_memo import validation_session
 from yorunge.application.operations import DispatchPermit
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.transfer_access import TransferWriteAccess
+from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
@@ -51,7 +54,11 @@ from yorunge.domain.dataset_transfer import (
     TransferRecord,
     TransferVerification,
     scope_target,
-    verification_digest,
+)
+from yorunge.domain.dataset_transfer_v2 import (
+    TransferControlV2,
+    TransferRecordV2,
+    TransferVerificationV2,
 )
 from yorunge.domain.dataset_upload import (
     COMMIT_MARGIN_SECONDS,
@@ -60,12 +67,25 @@ from yorunge.domain.dataset_upload import (
     DatasetUploadApproval,
     DatasetUploadPlan,
     UploadGrant,
+    UploadPermission,
     UploadScope,
     UploadWire,
     manifest_reference,
 )
+from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_checks import UploadCurrentCheck, require_fresh
+from yorunge.domain.upload_versions import (
+    UploadApproval,
+    UploadPlan,
+    UploadRecord,
+    UploadVerification,
+    verification_scope,
+)
+from yorunge.domain.upload_versions import (
+    proof_digest as verification_digest,
+)
 
 
 @dataclass(frozen=True)
@@ -173,31 +193,33 @@ class StateUploads:
         check_response_secrets(value, (self.credential.credential.secret,))
 
     def _current(
-        self, plan: DatasetUploadPlan, fresh: DatasetUploadPlan, stamp: Stamp, gate: TimeGate
-    ) -> None:
-        self._credential(plan.scope, stamp)
-        fresh = decode(DatasetUploadPlan, fresh.encoded().decode("ascii"))
+        self,
+        plan: UploadPlan,
+        fresh: UploadCurrentCheck | UploadPlan,
+        stamp: Stamp,
+        gate: TimeGate,
+        *,
+        action: UploadPermission = "create_private_dataset",
+        dataset_id: str | None = None,
+    ) -> tuple[str, ...]:
         if (
-            plan.status != "prepared"
-            or fresh.status != "prepared"
-            or plan.binding_digest() != fresh.binding_digest()
+            not isinstance(plan, DatasetUploadPlanV2)
+            or not isinstance(fresh, UploadCurrentCheck)
+            or plan.status == "draft"
         ):
             raise YorungeError("upload_plan_not_valid")
-        for value in (plan, fresh):
-            gate.require_range(
-                instant(value.prepared_at), instant(value.expires_at), error="upload_plan_not_valid"
-            )
-            for observation in (value.grant, value.cost_bound):
-                if observation is None:
-                    raise YorungeError("upload_plan_not_valid")
-                gate.require_range(
-                    instant(observation.checked_at),
-                    instant(observation.expires_at),
-                    error="upload_plan_not_valid",
-                )
+        self._credential(plan.scope, stamp)
+        fresh = decode(UploadCurrentCheck, fresh.encoded().decode("ascii"))
+        gate.require_range(
+            instant(plan.prepared_at), instant(plan.expires_at), error="upload_plan_not_valid"
+        )
+        terms = fresh.require_current(
+            plan, now=timestamp(stamp.now), action=action, dataset_id=dataset_id
+        )
         gate.require_clock(stamp, error="state_changed")
+        return terms
 
-    def _approved(self, view: TransferView, gate: TimeGate) -> DatasetUploadApproval:
+    def _approved(self, view: VersionedTransferView, gate: TimeGate) -> UploadApproval:
         approval = view.approval
         if approval is None or approval.status != "approved":
             raise YorungeError("approval_required")
@@ -216,9 +238,11 @@ class StateUploads:
         if not within:
             raise YorungeError("state_busy")
 
-    def save(self, plan: DatasetUploadPlan, manifest: DatasetManifest) -> TransferView:
+    def save(self, plan: UploadPlan, manifest: DatasetManifest) -> VersionedTransferView:
         with self.phase():
-            plan = decode(DatasetUploadPlan, plan.encoded().decode("ascii"))
+            plan = decode_versioned(
+                DatasetUploadPlan, DatasetUploadPlanV2, plan.encoded().decode("ascii")
+            )
             if manifest_reference(manifest) != plan.manifest:
                 raise YorungeError("input_changed")
             self._secret(plan)
@@ -275,14 +299,9 @@ class StateUploads:
             raise YorungeError("invalid_request")
         with self.phase(operation_id), read_snapshot(self.connection):
             if operation_id is not None:
-                plan_id = read_any_record(self.connection, operation_id).plan_id
+                plan_id = read_record(self.connection, operation_id).plan_id
             assert plan_id is not None
-            return read_any_view(self.connection, plan_id)
-
-    def _legacy_show(
-        self, *, plan_id: str | None = None, operation_id: str | None = None
-    ) -> TransferView:
-        return require_legacy_view(self.show(plan_id=plan_id, operation_id=operation_id))
+            return read_view(self.connection, plan_id)
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None
@@ -297,32 +316,34 @@ class StateUploads:
                 (*after, limit + 1),
             ).fetchall()
             return tuple(
-                list_entry(read_any_view(self.connection, r[1])) for r in rows[:limit]
+                list_entry(read_view(self.connection, r[1])) for r in rows[:limit]
             ), encode_cursor(*rows[limit - 1]) if len(rows) > limit else None
 
-    def approve(self, plan_id: str, digest: str, fresh: DatasetUploadPlan) -> DatasetUploadApproval:
+    def approve(
+        self,
+        plan_id: str,
+        digest: str,
+        fresh: UploadCurrentCheck | UploadPlan,
+        *,
+        acknowledge_unverified_authority: bool = False,
+        acknowledge_unpriced_cost: bool = False,
+    ) -> DatasetUploadApprovalV2:
         with self.phase():
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="state_changed") as gate:
                 view = read_view(self.connection, plan_id)
+                if not isinstance(view.plan, DatasetUploadPlanV2):
+                    raise YorungeError("upload_plan_not_valid")
                 self._current(view.plan, fresh, stamp, gate)
-                if view.plan.digest != digest or view.operation is not None:
+                if view.operation is not None or view.approval is not None:
                     raise YorungeError("operation_conflict")
-                if view.approval is not None:
-                    raise YorungeError("operation_conflict")
-                approval = DatasetUploadApproval(
-                    schema_version=1,
+                approval = approve_upload_v2(
+                    view.plan,
                     approval_id=str(uuid4()),
-                    plan_id=plan_id,
-                    plan_digest=digest,
-                    binding_digest=view.plan.binding_digest(),
-                    store_id=stamp.store_id,
-                    identity_epoch=stamp.identity_epoch,
-                    clock_generation=stamp.generation,
+                    confirmed_digest=digest,
                     approved_at=timestamp(stamp.now),
-                    expires_at=view.plan.expires_at,
-                    status="approved",
-                    revoked_at=None,
+                    acknowledge_unverified_authority=acknowledge_unverified_authority,
+                    acknowledge_unpriced_cost=acknowledge_unpriced_cost,
                 )
                 self.connection.execute(
                     "INSERT INTO upload_approvals VALUES(?,?,?,?)",
@@ -337,7 +358,7 @@ class StateUploads:
             self._finish(stamp, gate, scope=view.plan.scope)
             return approval
 
-    def revoke(self, plan_id: str, digest: str) -> TransferView:
+    def revoke(self, plan_id: str, digest: str) -> VersionedTransferView:
         with self.phase():
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp):
@@ -348,19 +369,23 @@ class StateUploads:
                     changed = view.approval.model_copy(
                         update={"status": "revoked", "revoked_at": timestamp(stamp.now)}
                     )
-                    changed = decode(DatasetUploadApproval, changed.encoded().decode("ascii"))
+                    changed = decode_versioned(
+                        DatasetUploadApproval,
+                        DatasetUploadApprovalV2,
+                        changed.encoded().decode("ascii"),
+                    )
                     self.connection.execute(
                         "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
                         (changed.encoded().decode("ascii"), plan_id),
                     )
             return read_view(self.connection, plan_id)
 
-    def admit(self, plan_id: str, fresh: DatasetUploadPlan) -> TransferRecord:
+    def admit(self, plan_id: str, fresh: UploadCurrentCheck | UploadPlan) -> UploadRecord:
         before = self.clock.monotonic()
         with self.phase():
             # Exact existing lookup is idempotent, local and independent of an
             # expired/revoked plan. It never renews ownership or creates a permit.
-            view = self._legacy_show(plan_id=plan_id)
+            view = self.show(plan_id=plan_id)
             if view.operation is not None:
                 return view.operation
             stamp = self.cache.stamp()
@@ -370,6 +395,8 @@ class StateUploads:
                     return view.operation
                 self._current(view.plan, fresh, stamp, gate)
                 approval = self._approved(view, gate)
+                if not isinstance(approval, DatasetUploadApprovalV2):
+                    raise YorungeError("upload_plan_not_valid")
                 previous = self.connection.execute(
                     "SELECT create_operation_id FROM upload_namespaces WHERE "
                     "intent_digest=? AND create_operation_id IS NOT NULL",
@@ -387,8 +414,8 @@ class StateUploads:
                         min(instant(view.plan.expires_at), instant(approval.expires_at)) - stamp.now
                     ).total_seconds(),
                 )
-                record = TransferRecord(
-                    schema_version=1,
+                record = TransferRecordV2(
+                    schema_version=2,
                     operation_id=operation_id,
                     plan_id=plan_id,
                     plan_digest=view.plan.digest,
@@ -430,7 +457,7 @@ class StateUploads:
         )
 
     def _owner(
-        self, record: TransferRecord, owner: TransferLease, stamp: Stamp, gate: TimeGate
+        self, record: UploadRecord, owner: TransferLease, stamp: Stamp, gate: TimeGate
     ) -> TransferLease:
         current = record.lease
         fields = ("owner_id", "fence", "identity_epoch", "clock_generation", "mode")
@@ -466,7 +493,7 @@ class StateUploads:
             }
         )
 
-    def _change(self, record: TransferRecord, stamp: Stamp, **changes: object) -> TransferRecord:
+    def _change(self, record: UploadRecord, stamp: Stamp, **changes: object) -> UploadRecord:
         updated = record.model_copy(
             update={
                 "updated_at": timestamp(stamp.now),
@@ -477,29 +504,36 @@ class StateUploads:
                 **changes,
             }
         )
-        updated = decode(TransferRecord, updated.encoded().decode("ascii"))
+        updated = decode_versioned(
+            TransferRecord, TransferRecordV2, updated.encoded().decode("ascii")
+        )
         write_record(self.connection, updated, record.revision)
         return updated
 
     def _control(
         self,
-        record: TransferRecord,
+        record: UploadRecord,
         stamp: Stamp,
         *,
         terminal: bool,
-        proof: TransferVerification | None = None,
+        proof: UploadVerification | None = None,
     ) -> None:
         assert record.reason is not None
-        value = TransferControl(
-            schema_version=1,
-            kind="terminal" if terminal else "recovery",
-            operation_id=record.operation_id,
-            revision=record.revision,
-            observed_at=record.updated_at,
-            identity_epoch=stamp.identity_epoch,
-            clock_generation=stamp.generation,
-            reason=record.reason,
-            verification_digest=verification_digest(proof) if proof else None,
+        body = {
+            "schema_version": record.schema_version,
+            "kind": "terminal" if terminal else "recovery",
+            "operation_id": record.operation_id,
+            "revision": record.revision,
+            "observed_at": record.updated_at,
+            "identity_epoch": stamp.identity_epoch,
+            "clock_generation": stamp.generation,
+            "reason": record.reason,
+            "verification_digest": verification_digest(proof) if proof else None,
+        }
+        from yorunge.domain.capabilities import canonical
+
+        value = decode_versioned(
+            TransferControl, TransferControlV2, canonical(body).decode("ascii")
         )
         if terminal:
             self.connection.execute(
@@ -519,7 +553,7 @@ class StateUploads:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -544,13 +578,19 @@ class StateUploads:
         self,
         operation_id: str,
         owner: TransferLease,
-        fresh: DatasetUploadPlan,
+        fresh: UploadCurrentCheck | UploadPlan,
         kind: StageKind,
         file_index: int | None,
         *,
         total_end: float,
     ) -> tuple[StageIntent, DispatchPermit, float]:
         with self.phase(operation_id):
+            if (
+                type(kind) is not str
+                or kind not in {"create", "project_link", "presign", "put", "confirm"}
+                or (kind in {"create", "project_link"}) != (file_index is None)
+            ):
+                raise YorungeError("invalid_request")
             finite = False
             if type(total_end) in (int, float):
                 try:
@@ -564,7 +604,9 @@ class StateUploads:
                 raise YorungeError("execution_timeout")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
+                if not isinstance(view.plan, DatasetUploadPlanV2):
+                    raise YorungeError("upload_plan_not_valid")
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -572,7 +614,14 @@ class StateUploads:
                     raise YorungeError("operation_conflict")
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
-                self._current(view.plan, fresh, stamp, gate)
+                action: UploadPermission = "upload_created_dataset"
+                if kind == "create":
+                    action = "create_private_dataset"
+                elif kind == "project_link":
+                    action = "link_project"
+                terms = self._current(
+                    view.plan, fresh, stamp, gate, action=action, dataset_id=record.dataset_id
+                )
                 if self._approved(view, gate) != record.approval:
                     raise YorungeError("state_changed")
                 receipt_map = {i.intent_id: i for i in view.intents}
@@ -593,13 +642,11 @@ class StateUploads:
                     raise YorungeError("invalid_request")
                 owner = self._renewed(owner, stamp)
                 record = record.model_copy(update={"lease": owner})
-                assert fresh.grant is not None and fresh.cost_bound is not None
                 end = min(
                     instant(owner.expires_at),
                     instant(record.approval.expires_at),
-                    instant(fresh.expires_at),
-                    instant(fresh.grant.expires_at),
-                    instant(fresh.cost_bound.expires_at),
+                    instant(view.plan.expires_at),
+                    *(instant(term) for term in terms),
                     stamp.now
                     + timedelta(
                         seconds=min(PUT_SECONDS if kind == "put" else 30, total_end - before)
@@ -674,13 +721,13 @@ class StateUploads:
 
     def receipt(
         self, operation_id: str, owner: TransferLease, receipt: StageReceipt
-    ) -> TransferView:
+    ) -> VersionedTransferView:
         with self.phase(operation_id):
             receipt = decode(StageReceipt, receipt.encoded().decode("ascii"))
             self._secret(receipt)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -739,11 +786,11 @@ class StateUploads:
 
     def stop_local(
         self, operation_id: str, owner: TransferLease, reason: TransferReason = "request_uncertain"
-    ) -> TransferView:
+    ) -> VersionedTransferView:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -757,15 +804,17 @@ class StateUploads:
                     reason=reason,
                 )
                 self._control(changed, stamp, terminal=not record.workflow_latched)
-            return self._legacy_show(operation_id=operation_id)
+            return self.show(operation_id=operation_id)
 
     def acquire_read(self, operation_id: str, grant: UploadGrant) -> TransferLease:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
+                if record.status in TERMINAL:
+                    raise YorungeError("operation_conflict")
                 self._read_grant(view, grant, stamp, gate)
                 if record.status in TERMINAL or timestamp(stamp.now) < record.updated_at:
                     raise YorungeError("operation_conflict")
@@ -811,7 +860,7 @@ class StateUploads:
             return lease
 
     def _read_grant(
-        self, view: TransferView, grant: UploadGrant, stamp: Stamp, gate: TimeGate
+        self, view: VersionedTransferView, grant: UploadGrant, stamp: Stamp, gate: TimeGate
     ) -> None:
         grant = decode(UploadGrant, grant.encoded().decode("ascii"))
         self._credential(grant.scope, stamp)
@@ -825,17 +874,25 @@ class StateUploads:
         )
 
     def verified(
-        self, operation_id: str, owner: TransferLease, proof: TransferVerification
-    ) -> TransferView:
+        self, operation_id: str, owner: TransferLease, proof: UploadVerification
+    ) -> VersionedTransferView:
         with self.phase(operation_id):
-            proof = decode(TransferVerification, proof.encoded().decode("ascii"))
+            proof = decode_versioned(
+                TransferVerification, TransferVerificationV2, proof.encoded().decode("ascii")
+            )
             self._secret(proof)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self._legacy_show(operation_id=operation_id)
+                view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
+                if record.status in TERMINAL:
+                    raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)
+                if proof.schema_version != record.schema_version or proof.grant is None:
+                    raise YorungeError("upload_plan_not_valid")
+                if proof.schema_version == 2:
+                    require_fresh(proof.observed_at, timestamp(stamp.now))
                 self._read_grant(view, proof.grant, stamp, gate)
                 if (
                     record.dataset_id is None
@@ -856,7 +913,11 @@ class StateUploads:
                 except ValueError:
                     raise YorungeError("operation_uncertain") from None
                 changed = self._change(
-                    record, stamp, lease=None, status="succeeded", reason="verified"
+                    record,
+                    stamp,
+                    lease=None,
+                    status="succeeded",
+                    reason="verified" if record.schema_version == 1 else "metadata_verified",
                 )
                 self.connection.execute(
                     "INSERT INTO upload_verifications VALUES(?,?)",
@@ -864,5 +925,5 @@ class StateUploads:
                 )
                 self._control(changed, stamp, terminal=True, proof=proof)
                 candidate = read_view(self.connection, view.plan.plan_id)
-            self._finish(stamp, gate, scope=proof.grant.scope)
+            self._finish(stamp, gate, scope=verification_scope(proof))
             return candidate

@@ -6,8 +6,8 @@ import os
 import secrets
 from typing import NoReturn
 
-from yorunge.domain.dataset_transfer import TransferRecord
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.upload_versions import UploadRecord
 
 
 class TransferWriteAccess:
@@ -41,7 +41,7 @@ class TransferWriteAccess:
     def end(self) -> float:
         return self._end
 
-    def require(self, record: TransferRecord, now: float) -> None:
+    def require(self, record: UploadRecord, now: float) -> None:
         if (
             os.getpid() != self._issuer
             or self._operation_id != record.operation_id
