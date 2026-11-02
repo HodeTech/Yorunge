@@ -234,6 +234,15 @@ class UploadPreparationRuntime:
                 scope, "create_private_dataset", None, timestamp(self.clock.now())
             )
             inputs.recheck()
+            self._scope(bound, scope, parameters.name)
+            prepared_at = timestamp(self.clock.now())
+            check.require_current(scope, "create_private_dataset", None, prepared_at)
+            if not (
+                instant(work.execution_window.not_before)
+                <= instant(prepared_at)
+                < instant(work.execution_window.not_after)
+            ):
+                raise YorungeError("upload_plan_not_valid")
             plan = prepare_upload_v2(
                 UploadPreparationV2(
                     plan_id=str(uuid4()),
@@ -245,7 +254,7 @@ class UploadPreparationRuntime:
                     inputs_verified=True,
                     grant=None,
                     cost_bound=None,
-                    prepared_at=timestamp(self.clock.now()),
+                    prepared_at=prepared_at,
                 )
             )
             with open_existing_store(self.state_dir) as store:

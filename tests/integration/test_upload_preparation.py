@@ -19,6 +19,7 @@ from yorunge.adapters.dataset_files import open_dataset
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.state import open_existing_store
+from yorunge.adapters.upload_input_files import UploadInputObservation
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.application.datasets import DatasetBudget
 from yorunge.domain.credentials import (
@@ -518,3 +519,43 @@ def test_latched_namespace_preflight_returns_same_operation_before_hash_or_http(
         assert raised.value.code == "operation_conflict"
         assert raised.value.operation_id == record.operation_id
         assert len(server.requests) == before
+
+
+@pytest.mark.parametrize("seconds,code", [(901, "upload_plan_not_valid"), (-1, "state_changed")])
+@pytest.mark.parametrize("phase", ["recheck", "before_get"])
+def test_clock_change_during_last_recheck_is_controlled_before_plan_seal(
+    prepared_input, certificates, monkeypatch, seconds, code, phase
+):
+    class Clock:
+        value = datetime.now(UTC)
+
+        def now(self):
+            return self.value
+
+        def monotonic(self):
+            return time.monotonic()
+
+    clock = Clock()
+    original = UploadInputObservation.recheck
+
+    def changed(self):
+        original(self)
+        clock.value += timedelta(seconds=seconds)
+
+    if phase == "recheck":
+        monkeypatch.setattr(UploadInputObservation, "recheck", changed)
+    else:
+        observe = composition.ObservedUploadReader.preparation
+
+        async def later(self, client):
+            clock.value += timedelta(seconds=seconds)
+            return await observe(self, client)
+
+        monkeypatch.setattr(composition.ObservedUploadReader, "preparation", later)
+    with TlsServer(certificates, routes()) as server:
+        with failure(code):
+            prepare(runtime(prepared_input, server, clock=clock), prepared_input)
+        assert len(server.requests) == 2 and all(
+            record.method == "GET" for record in server.requests
+        )
+    assert counts(prepared_input[0]) == (0, 0, 0)
