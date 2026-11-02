@@ -19,7 +19,18 @@ from yorunge.domain.platform_upload import (
     ProviderRole,
 )
 
-Kind = Literal["identity", "project", "dataset", "owned", "membership", "role", "link"]
+Kind = Literal[
+    "identity",
+    "project",
+    "dataset",
+    "owned",
+    "membership",
+    "role",
+    "link",
+    "presign",
+    "confirm",
+    "items",
+]
 T = TypeVar("T", bound=BaseModel)
 _PROJECT = frozenset({"id", "owner_id", "org_id", "visibility"})
 _DATASET = _PROJECT | {"name", "modality", "contributions_enabled"}
@@ -32,6 +43,31 @@ _FIELDS: dict[Kind, frozenset[str]] = {
     "membership": frozenset({"id"}),
     "role": frozenset({"role", "permissions"}),
     "link": frozenset(),
+    "presign": frozenset({"presigned_urls", "duplicates"}),
+    "confirm": frozenset({"created", "actual_count", "batch_duplicates"}),
+    "items": frozenset({"items", "next_cursor", "total"}),
+}
+_NESTED_FIELDS: dict[Kind, tuple[str, frozenset[str]]] = {
+    "presign": (
+        "presigned_urls",
+        frozenset(
+            {
+                "filename",
+                "sha256_hash",
+                "file_size",
+                "client_uid",
+                "object_key",
+                "upload_url",
+                "content_type",
+                "headers",
+                "checksum",
+            }
+        ),
+    ),
+    "items": (
+        "items",
+        frozenset({"id", "dataset_id", "original_filename", "file_size_bytes", "sha256_hash"}),
+    ),
 }
 
 
@@ -94,19 +130,34 @@ def _scan(
         pending.extend(_children(item, path, fixed, captured, error))
 
 
+def _array(value: object) -> list[object]:
+    if not isinstance(value, list) or len(value) > 128:
+        raise YorungeError("invalid_response")
+    return value
+
+
+def _list_keys(
+    payload: object, kind: Kind, prefix: tuple[str, ...], selected_id: str | None
+) -> dict[tuple[str, ...], frozenset[str]]:
+    fixed = {}
+    for index, row in enumerate(_array(payload)):
+        consumed = kind == "owned" and isinstance(row, dict) and row.get("id") == selected_id
+        fixed[(*prefix, str(index))] = _LOCATED if consumed else frozenset({"id"})
+    return fixed
+
+
 def _fixed_keys(
     value: object, kind: Kind, wrapped: bool, selected_id: str | None
 ) -> dict[tuple[str, ...], frozenset[str]]:
     prefix = ("data",) if wrapped else ()
     fixed: dict[tuple[str, ...], frozenset[str]] = {prefix: _FIELDS[kind]}
+    payload = _object(value).get("data") if wrapped else value
     if kind in {"owned", "membership"}:
-        payload = _object(value).get("data") if wrapped else value
-        if not isinstance(payload, list) or len(payload) > 128:
-            raise YorungeError("invalid_response")
-        fixed = {}
-        for index, row in enumerate(payload):
-            consumed = kind == "owned" and isinstance(row, dict) and row.get("id") == selected_id
-            fixed[(*prefix, str(index))] = _LOCATED if consumed else frozenset({"id"})
+        fixed = _list_keys(payload, kind, prefix, selected_id)
+    if kind in _NESTED_FIELDS:
+        field, keys = _NESTED_FIELDS[kind]
+        rows = _array(_object(payload).get(field))
+        fixed.update({(*prefix, field, str(index)): keys for index in range(len(rows))})
     if wrapped:
         fixed[()] = frozenset({"success"}) if kind == "link" else frozenset({"success", "data"})
     return fixed
