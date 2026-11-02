@@ -110,7 +110,16 @@ Arm deadline mevcut terimlerin min'idir: original monotonic total_end, plan expi
 
 ## Tüketici profili, HTTP ve my-role
 
-`not_exposed` yalnız kanonik olarak kayıtlı **evren-platform-observed-upload-v2 / policy_version=2** producer profilinin create/link genel pre-authority oracle'ı sunmadığı boyutlar için üretilebilir. Aynı profil complete pricing source da sunmaz; bu ayrı boyutta cost_bound=null kalır. Pricing source kayıtlıysa onun transport/malformed hatası da null fiyat diye yutulamaz. Bu profil genel principal/grant üretmez; P02-R1'e bağlı ready gate değildir. Yeni profil/sürüm kayıt ve contract review ister; kullanıcı config'inden veya başarısız endpoint'ten türetilemez. Public caller raw check/profile seçip izin genişletemez. İç AuthorizationCheck tam alanları: consumer_profile (bu kayıtlı literal), policy_version=2, action (dört UploadPermission literalından biri), scope:UploadScope, dataset_id:canonical UUID|null, producer_id/producer_version, checked_at, outcome=allowed|not_exposed|denied|unavailable|invalid, grant:UploadGrant|null, error_code:ErrorCode|null. Allowed mevcut action iznini taşıyan gerçek grant ve null error; not_exposed null grant/error; diğerleri null grant ve aşağıdaki exact error code ister. Scope current credential/store/epoch/clock'tur. Freshness en çok 30 s, arm öncesi yeniden kontrol; bu authority expiry değildir.
+`not_exposed` yalnız kanonik olarak kayıtlı **evren-platform-observed-upload-v2 / policy_version=2** producer profilinin aşağıdaki dört action için doğrulanmış pre-authority oracle'ı sunmaması nedeniyle üretilebilir. Aynı profil complete pricing source da sunmaz; bu ayrı boyutta cost_bound=null kalır. Pricing source kayıtlıysa onun transport/malformed hatası da null fiyat diye yutulamaz. Bu profil genel principal/grant üretmez; P02-R1'e bağlı ready gate değildir. Yeni profil/sürüm kayıt ve contract review ister; kullanıcı config'inden veya başarısız endpoint'ten türetilemez. Public caller raw check/profile seçip izin genişletemez. İç AuthorizationCheck tam alanları: consumer_profile (bu kayıtlı literal), policy_version=2, action (dört UploadPermission literalından biri), scope:UploadScope, dataset_id:canonical UUID|null, producer_id/producer_version, checked_at, outcome=allowed|not_exposed|denied|unavailable|invalid, grant:UploadGrant|null, error_code:ErrorCode|null. Allowed mevcut action iznini taşıyan gerçek grant ve null error; not_exposed null grant/error; diğerleri null grant ve aşağıdaki exact error code ister. Scope current credential/store/epoch/clock'tur. Freshness en çok 30 s, arm öncesi yeniden kontrol; bu authority expiry değildir.
+
+| Action | Bu profilin grant oracle'ı | Not_exposed'a ek mandatory gate |
+|---|---|---|
+| create_private_dataset | yok | Current exact owner/project/private context; known negative yok |
+| link_project | yok | Aynı context ve accepted create/known dataset ID |
+| upload_created_dataset | yok | Exact dataset/credential scope'ta taze my-role has_upload=true; presign/PUT/confirm predecessor/byte gate'leri |
+| read_created_dataset | yok | Explicit read insan seçimi ve exact resource metadata şeması; verified read grant uydurulmaz |
+
+My-role pozitif etiketi upload oracle'ı veya allowed grant yerine geçirilmez; profilin bilinen oracle yokluğu not_exposed kalırken ayrı UploadObservation gate'i geçer. Read metadata'nın başarılı olması da read grant üretmez. Aşağıdaki HTTP/schema negatifleri ise bu dar gözlem kapılarını kapatır; statik oracle yokluğuna düşürülemez.
 
 Mandatory project/detail/my-role GET için kapalı eşleme:
 
