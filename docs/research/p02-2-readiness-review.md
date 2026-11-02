@@ -88,3 +88,12 @@ Yeni [beş GET yürütücüsü](probes/platform-upload-preflight-20261102/README
 Fresh kullanıcı-düzeltme R2 (7eae1ea, yeni GPT-6.1 Sol/high) güncel istek/bütçe/per-file ve güvenlik hükümlerini doğruladı; yeni güvenlik/sözleşme bulgusu yok. Üç eski durum ifadesi P3 olarak doğrulandı: araştırma başlığı ile P02-2a/b üst/teslim metni Accepted ADR'leri açık kapı gibi gösteriyordu. Güncel başlıklar Accepted, kalan kapılar yalnız endpoint/otorite/kabul olarak düzeltildi; tarihsel review kayıtları korunur.
 
 Beş GET aracı fresh R1 (7eae1ea, GPT-6.1 Sol/high) ve 19 sentetik testten geçti; doğrulanmış engelleyici güvenlik bulgusu yok. Önleyici test iyileştirmesi olarak mevcut-output testinde gerçek transport kurucusu da fail-closed monkeypatch edildi; post-parse deadline ve son-endpoint erişim reddinin outcome kaydı netleştirildi. Body sayacı TLS/header değil tüketilen raw gövdeyi ölçer; süreç duvar saati ile kontrol noktası deadline'ı ayrı anlatıldı. İkinci fresh code review canlı giriş öncesi yapılır.
+
+
+### Yetkili beş GET sonucu
+
+Fresh kod R2 (106f65a, GPT-6 Astra/high) ve tekrar 19 offline testte yeni doğrulanmış engelleyici bulgu yoktu. Sonrasında kullanıcıca verilen **tek** beş-GET kapsamı yürütüldü: **5 GET/5 attempt, 1.794 tüketilen raw body byte, 1,237609 s, 0 etkili istek**. Beş uç da HTTP 200 döndü; project dataset listesi ve owned dataset ilk sayfası boştu. Me root success=true, organizations items/total ve project owner/org alanlarının türleri gözlendi; bakiye değeri veya kimlikler yayınlanmadı. Bu gözlem yazma izni, principal anlamı, fiyat, pagination tamlığı veya current grant değildir.
+
+[Şekil/sayaç receipt'i](p02-2-five-get-observations.json) özgün baytlarla saklandı; SHA-256 **de42dc2364971ce9bcecade4db724ac5c54fcf8f294f5f56b6b2163cb888fe33**, producer source 106f65a, probe SHA **ebb64410c1929cf3a55a69399034bad0baf9dbd4de79e01f336918fb9acebac7**. Hash yeniden karşılaştırıldı. Yürütücü/test kaynağı artık bu canlı koşunun immutable snapshot'ıdır; değiştirilmez veya otomatik tekrar yapılmaz. Hiçbir billing/negative-key/POST/PUT/DELETE çağrısı yapılmadı. Özel dosya/anahtar/account ham yanıtı repoya alınmadı.
+
+API-key ile create/link yetkisi, mevcut dataset olmadığı için my-role/upload/presign/confirm şeması ve maliyet hâlâ açık. Yetkili read sınırı bunları çözmek için genişletilmedi. Bağımsız yerel domain/state/storage temel işleri bu dış kapılardan ayrılan hazır kartlarla devam eder; remote başarı uydurulmaz.
