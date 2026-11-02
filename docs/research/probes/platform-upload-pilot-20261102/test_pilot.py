@@ -382,3 +382,80 @@ def test_unforeseen_cli_exception_never_prints_private_traceback(monkeypatch):
     with pytest.raises(SystemExit) as failure:
         probe.main()
     assert SECRET not in str(failure.value) and "private inputs" in str(failure.value)
+
+
+@pytest.mark.parametrize(
+    "stage,reply",
+    [
+        ("put", False),
+        ("put", []),
+        ("put", {"unknown": True}),
+        ("confirm", False),
+        ("confirm", None),
+        ("confirm", []),
+        ("confirm", {}),
+        ("confirm", {"created": 0}),
+        ("confirm", {"created": True}),
+        ("confirm", {"created": 1, "actual_count": 0}),
+        ("confirm", {"created": 1, "batch_duplicates": ["all"]}),
+    ],
+)
+def test_unknown_or_failed_ack_stops_before_next_effect(tmp_path, stage, reply):
+    def mutate(current, raw):
+        return 200, reply if current == stage else raw
+
+    key, ledger, _, budget, pilot = setup(tmp_path, mutate)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert failure.value.code == "invalid_response"
+    assert budget.effect_counts["put"] == 1
+    assert budget.effect_counts.get("confirm", 0) == int(stage == "confirm")
+
+
+@pytest.mark.parametrize("collision", ["object_key", "upload_url", "both"])
+def test_presign_collision_is_rejected_before_any_storage_write(tmp_path, collision):
+    def mutate(stage, raw):
+        if stage == "presign":
+            item = raw["presigned_urls"][0]
+            if collision in {"object_key", "both"}:
+                item["object_key"] = "objects/shared"
+            if collision in {"upload_url", "both"}:
+                item["upload_url"] = f"/api/v1/datasets/{DATASET}/upload/put?key=objects%2Fshared"
+        return 200, raw
+
+    key, ledger, provider, budget, pilot = setup(tmp_path, mutate)
+    try:
+        with pytest.raises(YorungeError) as failure:
+            run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert failure.value.code == "invalid_response"
+    assert budget.effect_counts["presign"] == 3
+    assert budget.effect_counts.get("put", 0) == 0 and provider.uploaded == {}
+
+
+def test_known_put_ack_envelope_keeps_success_control_without_claiming_bytes():
+    probe.Pilot._put_ack(
+        probe.encoded({"success": True, "data": {"unused": True}}), SecretValue(SECRET)
+    )
+
+
+def test_dataset_name_is_durable_before_ambiguous_create(tmp_path):
+    def denied(stage, raw):
+        return (503, {}) if stage == "create" else (200, raw)
+
+    key, ledger, _, budget, pilot = setup(tmp_path, denied)
+    try:
+        with pytest.raises(YorungeError):
+            run(key, budget, pilot)
+    finally:
+        ledger.close()
+    journal = [
+        json.loads(line) for line in (ledger.root / "journal.jsonl").read_text().splitlines()
+    ]
+    kinds = [row["event"] for row in journal]
+    assert kinds.index("selected_private_name") < kinds.index("intent")
+    assert budget.effect_counts["create"] == 1

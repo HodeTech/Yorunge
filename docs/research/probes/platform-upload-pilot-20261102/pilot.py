@@ -390,6 +390,8 @@ class Pilot:
         }
         if org is not None:
             body["org_id"] = org
+        raw_safe(body, secret)
+        self.ledger.append({"event": "selected_private_name", "dataset_name": name})
         created = object_value(await self.json(transport, "create", "POST", "datasets", body))
         self.dataset = checked_id(created.get("id"), secret)
         self.budget.bind_dataset(self.dataset)
@@ -489,7 +491,37 @@ class Pilot:
             )
             object_key, target = self._descriptor(presign, info)
             descriptors.append((index, info, object_key, target))
+        # This pilot requires independent objects even for the two equal hashes;
+        # shared-key dedup semantics are not an established provider contract.
+        if (
+            len({row[2] for row in descriptors}) != 3
+            or len({row[3].wire_url for row in descriptors}) != 3
+        ):
+            raise YorungeError("invalid_response")
         return files, descriptors
+
+    @staticmethod
+    def _put_ack(data, secret):
+        if data:
+            raw = parse_json(data, max_bytes=65536)
+            payload(raw, secret)
+            ack = object_value(raw)
+            if ack.get("success") is not True:
+                raise YorungeError("invalid_response")
+
+    @staticmethod
+    def _confirm_ack(value, expected_count):
+        ack = object_value(value)
+        if type(ack.get("created")) is not int or ack["created"] != 1:
+            raise YorungeError("invalid_response")
+        if "actual_count" in ack and (
+            type(ack["actual_count"]) is not int or ack["actual_count"] != expected_count
+        ):
+            raise YorungeError("invalid_response")
+        if "batch_duplicates" in ack and (
+            type(ack["batch_duplicates"]) is not int or ack["batch_duplicates"] != 0
+        ):
+            raise YorungeError("invalid_response")
 
     async def _upload(self, transport, files, descriptors):
         secret, prefix = self.key.secret, f"datasets/{self.dataset}"
@@ -516,18 +548,18 @@ class Pilot:
                 row["sent_bytes"] = response.sent_bytes
                 if response.sent_sha256 != info["sha256_hash"]:
                     raise YorungeError("input_changed")
-            if data:
-                payload(parse_json(data, max_bytes=65536), secret)
+            self._put_ack(data, secret)
             self.ledger.append({"event": "acknowledged_http", **row})
             item = {key: info[key] for key in ("filename", "sha256_hash", "file_size")}
             item["object_key"] = object_key
-            await self.json(
+            confirmed = await self.json(
                 transport,
                 f"confirm_{index}",
                 "POST",
                 prefix + "/upload/confirm",
                 {"items": [item], "skip_dedup": True},
             )
+            self._confirm_ack(confirmed, index + 1)
 
     async def _verify(self, transport):
         secret, prefix = self.key.secret, f"datasets/{self.dataset}"
@@ -658,8 +690,10 @@ def execute(project):
             ),
             fixture_bytes=sum(len(data) for _, data in fixtures()),
         )
-        ledger.append({"event": "finished", "outcome": report["outcome"]})
-        ledger.close()
+        try:
+            ledger.append({"event": "finished", "outcome": report["outcome"]})
+        finally:
+            ledger.close()
         receipt = WORK / "receipt.json"
         with receipt.open("xb") as output:
             output.write(encoded(report))
