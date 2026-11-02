@@ -148,3 +148,12 @@ J fresh R1: Astra/high safety ve Sol/high contract aynı **P2** zaman kapısı a
 
 
 J fresh R2 iki farklı yeni ajanla 32950be üzerinde tamamlandı. Sol/high safety tam journal **78 passed / 41,18 s**; Astra/high contract 24 hedefli/54 deselected **13,07 s** bildirdi. Yeni doğrulanmış bulgu yok; R1 süre kapısı, ephemeral expiry'nin hata öncesi kalıcı gözlemi ve request-timeout önceliği bağımsız kapandı. Yerel P02-2j verified; null-grant read/recovery k sıradadır. Public producer/body-read sayaçları/native/kurulum/CI/live bu kabul değildir.
+
+
+## P02-2k — Explicit read/recovery ve metadata sonucu
+
+Initial owner/restart ayrımı ve gerçek grant/null-grant read seçimi, ayrı küçük read-access helper'ına bağlandı. V1/default read grant kapısı korunur; yalnız v2 explicit kayıt, current scoped not_exposed check + uygun insan onayıyla okunabilir. Yenileme ve proof'ta aynı seçim tekrar doğrulanır. Known negative/unavailable/invalid read sonucu write grant veya failed execution değildir; recovery slotu read_unavailable ile coalesce olur. Initial write actor outward operation_uncertain/5, ayrı readonly actor güvenli source kodu/1 veya3 ve aynı ID'yi döner. Terminal read yolları credential ve clock mutation'dan önce yerel ret verir.
+
+No-intent expiry cleanup execution izni üretmeden cancelled; dataset ID'si kayıp latched expiry ise lookup/re-create yapmadan unknown olur. Eksik graph/tazelik hatasında mümkün olan yerel unknown marker yeni arm'ı kapatır; geçerli readonly proof aynı owner'da veya read takeover ile kaydı bitirebilir. Terminal başarı geriye alınmaz. Reset sonrası current proof scope'u yeni epoch/credential'ı taşır, admission/approval değişmez; yanlış ileri UTC'nin eski confirm zamanı yeni epoch'a taşınmaz.
+
+İlk geçiş hedefinde 1 passed/2 failed, heartbeat testi create receipt'i olmadığı için artık doğru biçimde remote read açmıyordu. Teste known ID kazandıran accepted create eklendi; lost-create-ID testi ise unknown/no-read beklentisine ayrıldı. Son ilgili 7 regresyon geçti. Yeni read/error/flag/actor ve tam metadata kümesi **33 passed / 14,63 s**; unpriced+full-proof ack ayrımı ve normal/future-clock reset ekleriyle **35 passed / 16,02 s**. Helper sorumluluk ayrımı sonrası iki tam journal/recovery dosyası **113 passed / 51,35 s**; Ruff ve src/scripts strict mypy **100 dosya** geçti. İlk commit/iki fresh kod turu henüz kapanmadı; k in_progress. Public producer/CLI, gerçek HTTP sayaçları ve live/native/build/CI hâlâ a/b/c'dedir.

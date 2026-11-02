@@ -16,6 +16,7 @@ from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
+from yorunge.adapters.upload_read_access import authorize_read
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
     decode,
@@ -75,7 +76,7 @@ from yorunge.domain.dataset_upload import (
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_checks import UploadCurrentCheck
+from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -589,9 +590,18 @@ class StateUploads:
             )
 
     def renew(
-        self, operation_id: str, owner: TransferLease, *, grant: UploadGrant | None = None
+        self,
+        operation_id: str,
+        owner: TransferLease,
+        *,
+        grant: UploadGrant | None = None,
+        authorization: AuthorizationCheck | None = None,
+        accept_unverified_read: bool = False,
     ) -> TransferLease:
         with self.phase(operation_id):
+            self._nonterminal(operation_id)
+            if type(accept_unverified_read) is not bool:
+                raise YorungeError("invalid_request")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
@@ -599,12 +609,19 @@ class StateUploads:
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
                 if owner.mode == "read":
-                    if grant is None:
-                        raise YorungeError("upload_plan_not_valid")
-                    self._read_grant(view, grant, stamp, gate)
-                    scope = grant.scope
+                    access = authorize_read(
+                        self,
+                        view,
+                        stamp,
+                        gate,
+                        grant=grant,
+                        authorization=authorization,
+                        accept_unverified_read=accept_unverified_read,
+                        initial_owner=False,
+                    )
+                    scope = access.scope
                 else:
-                    if grant is not None:
+                    if grant is not None or authorization is not None or accept_unverified_read:
                         raise YorungeError("invalid_request")
                     self._credential(view.plan.scope, stamp)
                     scope = view.plan.scope
@@ -852,8 +869,25 @@ class StateUploads:
                 self._control(changed, stamp, terminal=not record.workflow_latched)
             return self.show(operation_id=operation_id)
 
-    def acquire_read(self, operation_id: str, grant: UploadGrant) -> TransferLease:
+    def acquire_read(
+        self,
+        operation_id: str,
+        grant: UploadGrant | None = None,
+        *,
+        authorization: AuthorizationCheck | None = None,
+        accept_unverified_read: bool = False,
+    ) -> TransferLease:
         with self.phase(operation_id):
+            existing = self._nonterminal(operation_id)
+            assert existing.operation is not None
+            if not existing.operation.workflow_latched or existing.operation.dataset_id is None:
+                cleaned = self.cleanup_expired(operation_id)
+                assert cleaned.operation is not None
+                raise YorungeError(
+                    "operation_uncertain"
+                    if cleaned.operation.workflow_latched
+                    else "operation_conflict"
+                )
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
@@ -861,49 +895,84 @@ class StateUploads:
                 assert record is not None
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
-                self._read_grant(view, grant, stamp, gate)
-                if record.status in TERMINAL or timestamp(stamp.now) < record.updated_at:
-                    raise YorungeError("operation_conflict")
-                previous = record.lease
-                if (
-                    previous is not None
-                    and (previous.identity_epoch, previous.clock_generation)
-                    == (stamp.identity_epoch, stamp.generation)
-                    and instant(previous.expires_at) > stamp.now
-                ):
-                    raise YorungeError("operation_conflict")
-                if record.fence >= 2**63 - 1:
-                    raise YorungeError("operation_fence_exhausted")
+                if record.workflow_latched and record.dataset_id is None:
+                    raise YorungeError("operation_uncertain")
+                access = authorize_read(
+                    self,
+                    view,
+                    stamp,
+                    gate,
+                    grant=grant,
+                    authorization=authorization,
+                    accept_unverified_read=accept_unverified_read,
+                    initial_owner=False,
+                )
+                self._takeover_allowed(record, stamp)
                 if not record.workflow_latched:
-                    reason = (
-                        "approval_revoked"
-                        if view.approval is not None and view.approval.status == "revoked"
-                        else "approval_expired"
-                        if stamp.now >= instant(record.approval.expires_at)
-                        else "lease_expired"
-                    )
-                    changed = self._change(
-                        record, stamp, lease=None, status="cancelled", reason=reason
-                    )
-                    self._control(changed, stamp, terminal=True)
-                    raise_after = True
-                    lease = self._lease(stamp, fence=record.fence + 1, mode="read")
-                else:
-                    lease = self._lease(stamp, fence=record.fence + 1, mode="read")
-                    changed = self._change(
-                        record,
-                        stamp,
-                        lease=lease,
-                        fence=lease.fence,
-                        status="unknown",
-                        reason="lease_expired",
-                    )
-                    self._control(changed, stamp, terminal=False)
-                    raise_after = False
-            if raise_after:
-                raise YorungeError("operation_conflict")
-            self._finish(stamp, gate, scope=grant.scope)
+                    raise YorungeError("operation_conflict")
+                lease = self._lease(stamp, fence=record.fence + 1, mode="read")
+                changed = self._change(
+                    record,
+                    stamp,
+                    lease=lease,
+                    fence=lease.fence,
+                    status="unknown",
+                    reason="lease_expired",
+                )
+                self._control(changed, stamp, terminal=False)
+            self._finish(stamp, gate, scope=access.scope)
             return lease
+
+    @staticmethod
+    def _takeover_allowed(record: UploadRecord, stamp: Stamp) -> None:
+        if timestamp(stamp.now) < record.updated_at:
+            raise YorungeError("operation_conflict")
+        lease = record.lease
+        if lease is not None and (
+            (lease.identity_epoch, lease.clock_generation)
+            == (stamp.identity_epoch, stamp.generation)
+            and instant(lease.expires_at) > stamp.now
+        ):
+            raise YorungeError("operation_conflict")
+        if record.fence >= 2**63 - 1:
+            raise YorungeError("operation_fence_exhausted")
+
+    def cleanup_expired(self, operation_id: str) -> VersionedTransferView:
+        """Non-executing local cleanup; no grant, remote lookup or permit is produced."""
+        with self.phase(operation_id):
+            self._nonterminal(operation_id)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                self._takeover_allowed(record, stamp)
+                reason: TransferReason = "request_uncertain"
+                if not record.workflow_latched:
+                    reason = "lease_expired"
+                    if view.approval is not None and view.approval.status == "revoked":
+                        reason = "approval_revoked"
+                    elif stamp.now >= instant(record.approval.expires_at):
+                        reason = "approval_expired"
+                changed = self._change(
+                    record,
+                    stamp,
+                    lease=None,
+                    fence=record.fence + 1,
+                    status="unknown" if record.workflow_latched else "cancelled",
+                    reason=reason,
+                )
+                self._control(changed, stamp, terminal=not record.workflow_latched)
+            final, within = self.cache._finish(
+                stamp,
+                expires=tuple(end for _, end, _ in gate.intervals),
+                checkpoint=gate.checkpoint,
+            )
+            gate.check_clock(final)
+            gate.check(final.now)
+            if not within:
+                raise YorungeError("state_busy")
+            return self.show(operation_id=operation_id)
 
     def _read_grant(
         self, view: VersionedTransferView, grant: UploadGrant, stamp: Stamp, gate: TimeGate
@@ -919,10 +988,143 @@ class StateUploads:
             instant(grant.checked_at), instant(grant.expires_at), error="upload_plan_not_valid"
         )
 
+    def _nonterminal(self, operation_id: str) -> VersionedTransferView:
+        view = self.show(operation_id=operation_id)
+        assert view.operation is not None
+        if view.operation.status in TERMINAL:
+            raise YorungeError("operation_conflict")
+        return view
+
+    def read_failed(
+        self,
+        operation_id: str,
+        owner: TransferLease | None,
+        authorization: AuthorizationCheck,
+    ) -> None:
+        """Record a failed read without claiming failed execution or a new permission."""
+        with self.phase(operation_id):
+            self._nonterminal(operation_id)
+            check = decode(AuthorizationCheck, authorization.encoded().decode("ascii"))
+            code = check.error_code
+            if (
+                code is None
+                or code
+                not in {
+                    "remote_access_denied",
+                    "remote_rate_limited",
+                    "remote_failed",
+                    "transport_timeout",
+                    "transport_failed",
+                    "invalid_response",
+                }
+                or check.action != "read_created_dataset"
+            ):
+                raise YorungeError("invalid_request")
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                if not record.workflow_latched or record.dataset_id is None:
+                    raise YorungeError("operation_uncertain")
+                self._credential(check.scope, stamp)
+                if (
+                    scope_target(check.scope) != scope_target(view.plan.scope)
+                    or check.dataset_id != record.dataset_id
+                    or instant(check.checked_at) > stamp.now
+                ):
+                    raise YorungeError("state_changed")
+                active_write = False
+                fence = record.fence
+                if owner is None:
+                    self._takeover_allowed(record, stamp)
+                    fence += 1
+                else:
+                    current = self._owner(record, owner, stamp, gate)
+                    active_write = current.mode == "write"
+                changed = self._change(
+                    record,
+                    stamp,
+                    lease=None,
+                    fence=fence,
+                    status="unknown",
+                    reason="read_unavailable"
+                    if record.schema_version == 2
+                    else "request_uncertain",
+                )
+                self._control(changed, stamp, terminal=False)
+            self._finish(stamp, gate, scope=check.scope)
+            if active_write:
+                raise OperationError("operation_uncertain", operation_id, reason_code=code)
+            raise OperationError(code, operation_id, reason_code=code)
+
     def verified(
-        self, operation_id: str, owner: TransferLease, proof: UploadVerification
+        self,
+        operation_id: str,
+        owner: TransferLease,
+        proof: UploadVerification,
+        *,
+        authorization: AuthorizationCheck | None = None,
+        accept_unverified_read: bool = False,
+    ) -> VersionedTransferView:
+        try:
+            return self._verified(
+                operation_id,
+                owner,
+                proof,
+                authorization=authorization,
+                accept_unverified_read=accept_unverified_read,
+            )
+        except OperationError as error:
+            if error.code == "operation_uncertain":
+                try:
+                    self._uncertain_verification(operation_id, owner)
+                except YorungeError as marker_error:
+                    raise OperationError(
+                        "operation_uncertain", operation_id, reason_code=marker_error.code
+                    ) from None
+            raise
+
+    def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> None:
+        with self.phase(operation_id):
+            view = self.show(operation_id=operation_id)
+            assert view.operation is not None
+            if view.operation.status in TERMINAL:
+                return
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self.show(operation_id=operation_id)
+                record = view.operation
+                assert record is not None
+                if record.status in TERMINAL:
+                    return
+                current = self._owner(record, owner, stamp, gate)
+                changed = self._change(
+                    record, stamp, status="unknown", lease=current, reason="request_uncertain"
+                )
+                self._control(changed, stamp, terminal=False)
+            # This local marker grants no new read or write authority.
+            final, within = self.cache._finish(
+                stamp,
+                expires=tuple(end for _, end, _ in gate.intervals),
+                checkpoint=gate.checkpoint,
+            )
+            gate.check_clock(final)
+            gate.check(final.now)
+            if not within:
+                raise YorungeError("state_busy")
+
+    def _verified(
+        self,
+        operation_id: str,
+        owner: TransferLease,
+        proof: UploadVerification,
+        *,
+        authorization: AuthorizationCheck | None = None,
+        accept_unverified_read: bool = False,
     ) -> VersionedTransferView:
         with self.phase(operation_id):
+            self._nonterminal(operation_id)
             proof = decode_versioned(
                 TransferVerification, TransferVerificationV2, proof.encoded().decode("ascii")
             )
@@ -935,9 +1137,23 @@ class StateUploads:
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)
-                if proof.schema_version != record.schema_version or proof.grant is None:
+                if proof.schema_version != record.schema_version:
                     raise YorungeError("upload_plan_not_valid")
-                self._read_grant(view, proof.grant, stamp, gate)
+                access = authorize_read(
+                    self,
+                    view,
+                    stamp,
+                    gate,
+                    grant=proof.grant,
+                    authorization=authorization,
+                    accept_unverified_read=accept_unverified_read,
+                    initial_owner=owner.mode == "write",
+                )
+                if verification_scope(proof) != access.scope or (
+                    isinstance(proof, TransferVerificationV2)
+                    and proof.authorization_policy != access.policy
+                ):
+                    raise YorungeError("upload_plan_not_valid")
                 if (
                     record.dataset_id is None
                     or proof.dataset_id != record.dataset_id

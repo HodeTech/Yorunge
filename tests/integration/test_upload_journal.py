@@ -344,10 +344,13 @@ def test_lost_receipt_never_reissues_stage_and_recovery_is_read_only(journal):
     journal.clock.value += timedelta(seconds=151)
     with open_store(journal.root) as store:
         repo = journal.repository(store)
-        lease = repo.acquire_read(record.operation_id, journal.plan.grant)
-        assert lease.fence == 2 and lease.mode == "read"
+        with pytest.raises(YorungeError) as missing_id:
+            repo.acquire_read(record.operation_id, journal.plan.grant)
+        assert missing_id.value.code == "operation_uncertain"
+        lease = record.lease
         view = repo.show(operation_id=record.operation_id)
         assert view.operation.status == "unknown" and view.operation.dataset_id is None
+        assert view.operation.lease is None and view.operation.fence == 2
         assert len(view.intents) == 1 and not view.receipts
 
         def invoke():
@@ -362,7 +365,7 @@ def test_lost_receipt_never_reissues_stage_and_recovery_is_read_only(journal):
 
         with pytest.raises(YorungeError) as failure:
             invoke()
-        assert failure.value.code == "operation_conflict"
+        assert failure.value.code == "operation_lease_lost"
         assert store.verify().store_schema_version == 7
 
 
@@ -1004,7 +1007,8 @@ def test_current_read_grant_can_renew_after_identity_changes(journal, change):
     from yorunge.adapters.upload_maintenance import upload_snapshot
 
     record = journal.approved()
-    journal.arm(record)
+    intent, _, _ = journal.arm(record)
+    record = journal.accept(record, intent).operation
     if change == "reset":
         preview = api.preview_identity_reset(state_dir=journal.root).data
         api.reset_identity(preview.digest, state_dir=journal.root)
@@ -1176,7 +1180,7 @@ def test_metadata_observation_before_confirm_does_not_produce_success(journal):
             repo.verified(record.operation_id, record.lease, old)
         assert failure.value.code == "operation_uncertain"
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "running" and view.verification is None
+        assert view.operation.status == "unknown" and view.verification is None
         assert (
             repo.verified(record.operation_id, record.lease, proof).operation.status == "succeeded"
         )
@@ -1656,7 +1660,7 @@ def test_verification_freshness_crossing_commit_does_not_persist_success(journal
             repo.verified(record.operation_id, record.lease, proof)
         assert error.value.code == "operation_uncertain"
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "running" and view.verification is None
+        assert view.operation.status == "unknown" and view.verification is None
         assert not any(c.kind == "terminal" for c in view.controls)
         store.verify()
 
