@@ -1,7 +1,7 @@
 ---
 id: P02-2m
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2l, P02-2f]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ Bağımsız contract negatifleri, Ruff/mypy/doc/rehber/diff; commit ve fresh R1/
 
 ## Teslim kaydı
 
-L verified; wire hazırlık incelemesinde raw-key kalıcılık kanıtı eksikliği doğrulandı. ADR-0025 mevcut file-binding seçeneğiyle raw key tamamen ephemeral tutulacak; kod başlamadan referans düzeltildi. Uygulama başladı; in_progress, kabul/review henüz yok.
+- PR/commit: [308ef9c](https://github.com/HodeTech/Yorunge/commit/308ef9c).
+- Sonuç: Ephemeral descriptor, bağımsız local binding, strict confirm/items ve gerçek journal canary tamamlandı. İki fresh review turu, protokol literal/proxy key ve iç type guard düzeltmeleri bağımsız kapandı; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2m--ephemeral-proxy-descriptor-ve-metadata-codec).
+- Kalan sınır: Pure codec/storage boundary kabulüdür; gerçek provider HTTP producer, coordinator, CLI/Python, native/build/CI ve live epik kabulü değildir. Provider raw key non-authorizing sayılmaz ve kalıcılaştırılmaz.
