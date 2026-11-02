@@ -1,11 +1,12 @@
 # Yörünge dokümantasyonu
 
-**Güncellendi:** 2026-10-27. **Uygulama durumu:** İlk çevrimdışı CLI/API dilimi çalışıyor; uzak özellikler planlandı. [Kabul kaydı](research/p01-core-validation.md).
+**Güncellendi:** 2026-11-02. Kurulum ve ilk örnek için [README](../README.md); uygulanan alt kümeler ve sıradaki işler için [güncel durum](roadmap/current.md).
 
 Belgeler okuyucunun sorusuna göre ayrılır. Bir kararın benimsenmesi, ilgili özelliğin uygulanmış olduğu anlamına gelmez.
 
 | Yer | Cevapladığı soru |
 |---|---|
+| [Yerel kullanım rehberi](reference/local-workflows.md) | CLI/Python örneklerini ve mevcut yerel akışları nasıl kullanırım? |
 | [Vizyon](vision.md) | Yörünge ne için var ve nasıl konumlanır? |
 | [Ürün kapsamı](product-scope.md) | Hangi problemler, özellikler ve öncelikler var? |
 | [Yetenek matrisi](capability-matrix.md) | Hangi yetenek hangi aşamada; hangi dış erişime bağlı? |
@@ -18,11 +19,11 @@ Belgeler okuyucunun sorusuna göre ayrılır. Bir kararın benimsenmesi, ilgili 
 | [Mimari](architecture/README.md) | Sınırlar ve ana akışlar nasıl kurulacak? |
 | [Kararlar](decisions/README.md) | Neden bu yaklaşım seçildi? |
 | [Modüller](modules/README.md) | Hangi alanın sorumluluğu kimde? |
-| [Referans sözleşmeler](reference/README.md) | CLI, config ve adaptörün kesin taslak biçimi ne? |
+| [Referans sözleşmeler](reference/README.md) | CLI, config ve adaptörlerin kesin biçimleri ve uygulanan alt kümeleri neler? |
 | [Yol haritası](roadmap/README.md) | Hangi iş hangi kanıtla tamamlanacak? |
 | [Yakın iş kartları](roadmap/tasks/README.md) | Kodlamaya hazır dar iş ve ayrıntılı kabul hangisi? |
 | [Ajan çalışma rehberi](../.agents/README.md) | Hangi görevde hangi skill ve bağlam kullanılacak? |
 | [Araştırma](research/README.md) | Kaynaklar, belirsizlikler ve doğrulama soruları neler? |
 | [Analiz yönetimi](analysis/README.md) | Yerel özel arşiv ve yayın sınırı nasıl korunur? |
 
-Başlangıç sırası: vizyon → kapsam → yetenek matrisi → kullanıcı yolculukları → mimari → etkin yol haritası. Geliştirmede ilgili standart ve sözleşme eklenir. Kanonik dil Türkçedir; teknik dosya adları ve kimlikler İngilizcedir. [Belgeleme standardı](standards/documentation.md).
+İlk kullanımda README → yerel kullanım rehberi; geliştirmede güncel durum → ilgili iş kartı → modül ve sözleşme yolunu izleyin. Vizyon/kapsam ürün yönünü, yetenek matrisi teslim sınırını anlatır. Kanonik dil Türkçedir; teknik dosya adları ve kimlikler İngilizcedir. [Belgeleme standardı](standards/documentation.md).

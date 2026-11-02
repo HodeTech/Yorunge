@@ -1,6 +1,6 @@
 # P02-0 uygulama ve review kaydı
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0 ve P02-0a/0b/0c/0d çalışma dalı kabulü verified. ADR-0020/0021/0022 Accepted; LLM ve Platform dar gözlemi, ayrı canlı consumer kabulleri, her adımın iki fresh review turu, kaynak bağlı M5 ve üç ortam source CI tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı review/merge bekler; development teslimi/yayın değildir. [Güncel Sonar/native merge takibi](#sonar-ve-native-merge-kapısı-takibi) son çalışmayı taşır; önceki CI/paket kapanışları tarihsel kaynaklarıyla korunur. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked ve eski katı decoder zorunluluğu ifadeleri kendi tarihsel aşamasını anlatır; güncel karar ADR-0022 ve son kapanış bölümüdür. **Dal/taban:** feat/p02-0a-sdk-pilot / development bc9532c. [Paket planı](../roadmap/p02-0-delivery-plan.md).
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** P02-0 ve P02-0a/0b/0c/0d verified; kullanıcı [PR #12](https://github.com/HodeTech/Yorunge/pull/12)’yi **2026-11-01 21:40:29 Europe/Istanbul** tarihinde [9f30fd2](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile development’a birleştirdi. [Development merge/CI/kanıt kapanışı](#development-merge-kapanışı) günceldir. ADR-0020/0021/0022 Accepted; dar LLM/Platform gözlemi, ayrı canlı consumer kabulleri, iki fresh review döngüleri, kaynak bağlı M5 ve üç ortam CI kabulü tamamlandı. Aşağıdaki önceki Proposed/onay-bekleme, yapılmadı/açık/blocked, PR review/merge ve saklama bekleme ifadeleri ilgili aşamanın tarihsel kaydıdır; eski başarısızlıklar korunur. Public kimlik/yetki unknown/unverified kalır; P02-R1 açıktır. Paket yayını/Master aktarımı yapılmadı. **Uygulama dalı/tabanı:** feat/p02-0a-sdk-pilot / development bc9532c; kapanış belgeleri sonraki feat/p02-1-local-manifest dalındadır. [Paket planı](../roadmap/p02-0-delivery-plan.md).
 
 ## Adım 1 — P02-0a araştırma ve karar hazırlığı
 
@@ -585,3 +585,37 @@ Source Linux cache **219,637 / 218,719 ms** ile diagnostic_budget_exceeded; edit
 Bu son belge/arşiv commit’i public Python/test/script/workflow/lock kaynak haritasını değiştirmez; son head’in zorunlu CI’ı yine beklenecektir. [ADR-0019’un açık takip istisnası](../decisions/0019-reference-startup-performance.md#linux-tanısının-görünürlüğü-ve-kalıcı-saklanması) uyarınca bu yalnız kanıt commit’inin ek Linux raw/receipt/baseline-selection koşuları ve kullanıcının olası merge koşusu ayrı kalıcı saklama takibidir: mevcut veya sonraki yetkili dalda, sonraki kabul/merge önerisinden önce ve artifact süresi dolmadan özgün baytlarla arşivlenecek. Bu takip son runtime kaynağının yukarıdaki iki tamamlanmış CI arşivini açık bırakmaz; yeni örnekler şimdiden saklanmış sayılmaz. P02-1 başlatılmadı.
 
 Son pr12_sonar_r2_ci dar fact-check’i 14 yeni kaydı bağımsız doğruladı; yeni bulgu yok. Altı ZIP hash’i, wrapper environment/JSONL/run/checkout, on iki kurulum, dört özgün dosyanın ZIP/dist/gzip eşliği ve raw/receipt/witness hash bağı doğru. Source başarısız startup tanısı ve edit başarısı ayrı korunmuş; RSS maksimum/span sayıları raporla eşleşti. Ajan native UI/job loglarını tekrar almadı; bu iki doğrulama ana ajanın doğrudan gözlemi ve GitHub loglarından gelir. Ağ/test/build/benchmark tekrarlanmadı.
+
+## Development merge kapanışı
+
+Kullanıcı [PR #12](https://github.com/HodeTech/Yorunge/pull/12)’yi **2026-11-01 21:40:29 Europe/Istanbul** tarihinde [9f30fd2bad7c3495120b127fefd588b4458d0f07](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile development’a birleştirdi. Git parent’ları **bc9532c** (önceki development) ve **a374047** (son PR head’i) olarak doğrulandı; squash/rebase merge değildir. P02-0a/0b/0c/0d ve üst P02-0 verified ve development’a teslim edildi. Bu kapanış paket yayını/Master aktarımı veya doğrulanmış uzak kimlik/izin değildir.
+
+[Merge CI 41337826876](https://github.com/HodeTech/Yorunge/actions/runs/41337826876) gerçek **9f30fd2** checkout’unda üç hücre ve offline-core ile başarılıdır:
+
+| Ortam | Tam test sonucu | Süre |
+|---|---|---|
+| Linux / Python 3.11 | 3.786 passed | 654,65 s |
+| Linux / Python 3.14 | 3.786 passed | 706,67 s |
+| macOS / Python 3.11 | 3.785 passed, 1 Linux-only skip | 688,64 s |
+
+Format/lint/strict mypy/belge/ajan denetimleri, wheel/sdist’in altı temiz kurulumu (66/414 üye ve bütün smoke’lar), kaynak bağlı M5 startup/jobs verifier’ları ve gerçek Linux raw kapısı geçti. Son PR merge kutusu önceki bölümde doğrudan doğrulanmıştı; merge işlemini kullanıcı yaptı. Bu belge kapanışında tam test/build/benchmark veya canlı EVREN yeniden çalıştırılmadı; yukarıdaki sonuçlar GitHub job loglarından doğrulandı.
+
+### Son belge ve merge artefaktlarının kalıcı saklanması
+
+Önceki açık takip kapandı: a374047’nin [source 41312090002](https://github.com/HodeTech/Yorunge/actions/runs/41312090002) ve [body-edit 41312120362](https://github.com/HodeTech/Yorunge/actions/runs/41312120362) koşuları gerçek **09d866369c73c2ecc8048e3c14b43cd2a61a972c** checkout’unda üç hücre/aggregate ile başarılıydı. İki koşunun 14 özgün kaydı ve merge koşusunun yedi kaydı olmak üzere **21 yeni kayıt** Git arşivine alındı; toplam **247** kayıpsız arşiv/manifest/indeks doğrulandı. Her grupta üç installation_v2 wrapper’ı ile özgün startup, receipt, baseline-selection witness ve raw stream dosyaları korunur. Dokuz ZIP, API digest’iyle eşleştirildi; wrapper’lar özgün JSONL/environment/hash/run ilişkisini taşır. On sekiz temiz kurulumda bütün origin/smoke kontrolleri başarılıdır.
+
+| Kalıcı kayıt grubu | Kurulum/ortam kaydı | Ham startup kaydı | Cache aday/taban p95 | Linux sonucu | Raw ek RSS maksimum/span üst sınırı |
+|---|---|---|---|---|---|
+| p02-0-pr12-doc-source | [Kurulum](evidence.md#p02-0-pr12-doc-source-linux311-installation) | [Startup](evidence.md#p02-0-pr12-doc-source-linux-startup) | 218,840 / 217,664 ms | diagnostic_budget_exceeded | 811.008 / 655.360 byte |
+| p02-0-pr12-doc-edit | [Kurulum](evidence.md#p02-0-pr12-doc-edit-linux311-installation) | [Startup](evidence.md#p02-0-pr12-doc-edit-linux-startup) | 222,802 / 223,904 ms | diagnostic_budget_exceeded | 761.856 / 655.360 byte |
+| p02-0-pr12-development-merge | [Kurulum](evidence.md#p02-0-pr12-development-merge-linux311-installation) | [Startup](evidence.md#p02-0-pr12-development-merge-linux-startup) | 216,761 / 217,777 ms | diagnostic_budget_exceeded | 876.544 / 655.360 byte |
+
+Receipt ve witness report_sha256 değerleri özgün startup byte hash’iyle, source ve pinned/effective baseline kimlikleri ilgili checkout ve bc9532c ile eşleşir. Raw 16/256/1.024 MiB, 64/8 MiB RSS ve kaynak/kurulum sabitliği kapılarını geçti. Disk türü unknown olan GitHub ortamı M5/SSD diye sunulmaz. Üç Linux mutlak aşımı başarısız tanıdır; CI’ın ADR-0019 uyarınca başarılı olması Linux’un 200 ms hedefini geçtiği anlamına gelmez. Önceki başarılı/başarısız kayıtlar silinmedi, yeniden serileştirilmedi veya farklı kaynak kabulüne yükseltilmedi.
+
+### Kapanış dalı ve sonraki kapsam
+
+Kapanış belgeleri ve bu 21 arşiv, kullanıcının isteğiyle güncel development 9f30fd2 üzerinden açılan **feat/p02-1-local-manifest** dalında tutulur; ayrı PR açılmaz, sonraki işin PR’ıyla incelenir. Roadmap/current, dört kart, paket planı, README/changelog, capability matrisi ve ilgili referans/araştırma/hazırlık özetleri development teslimini gösterir. Eski review/merge ve saklama bekleme ifadeleri yukarıdaki tarihsel adımların kaydıdır.
+
+Sıradaki **P02-1** yerel normal dosya denetimi/sürümlü manifesttir ve draft kalır; bu kapanışta uygulama veya yeni ADR kararı başlatılmadı. Doğrudan P01-1a/P01-3b bağımlılıkları tamamdır; iş kartı, manifest biçimi, sayısal tarama/çıktı bütçesi, güvenli kök ve atomik rapor kabulü kod başlamadan netleştirilir. Katalog 247/256 kayda ulaştığından yeni ölçümlerden önce kapasite/bölümleme kararı [B15](../roadmap/backlog.md) sahibinde açık takiptedir; bu kapanış kotayı artırmaz veya geçmişi silmez. Doğrulanmış hizmet kimliği/hesap-proje bağı P02-R1/B14’te draft kalır. Veri aktarımı, katalog, native çıkarım, GPU-kota ve faz kapanışı P02-2–7; ForgeLM/eğitim P03 kapsamındadır. Master/release kullanıcıdadır.
+
+**Yerel kapanış doğrulaması:** 143 public Markdown, 6 skill/17 kart, 247 arşiv ve iki current-source startup/jobs verifier geçti; diff temiz. Yeni 21 kaydın ZIP/dist/gzip byte eşliği, dokuz kurulum wrapper’ının environment/JSONL/run/source/hash ilişkisi ve üç raw/receipt/witness zinciri ayrıca kontrol edildi. Ürün/test/script/lock/workflow değişikliği yoktur. Bu adımda yerel tam suite, paket build, benchmark veya canlı EVREN çalıştırılmadı; merge CI sonuçları özgün GitHub job loglarından gelir.

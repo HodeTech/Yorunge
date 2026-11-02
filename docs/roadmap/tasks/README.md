@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-01. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-02. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -17,15 +17,21 @@
 | [P01-5b](p01-5b-stream-results.md) | Tipli stream/NDJSON, terminal/EOF ve yerel iptal/çıktı |
 | [P01-6b](p01-6b-phase-acceptance.md) | Bütünleşik faz kabulü, kurulum/performans ve gerçek ortam matrisi |
 | [P02-0a](p02-0a-contract-sdk-pilot.md) | Güncel resmî sözleşme, endpoint SDK değerlendirmesi ve yetkili pilot planı; ürün/pilot icrası değil |
-| [P02-0b](p02-0b-context-discovery.md) | Hizmete bağlı dar context gözlemi üst teslimi verified; ADR-0022 Accepted, iki hizmet/source CI tamam; PR #12 merge ayrı |
+| [P02-0b](p02-0b-context-discovery.md) | Hizmete bağlı dar context gözlemi üst teslimi; ADR-0022 tüketici sınırı |
 | [P02-0c](p02-0c-llm-context-discovery.md) | Platform’dan bağımsız LLM terms/context ve dürüst kimlik/auth sınırı |
-| [P02-0d](p02-0d-platform-context-discovery.md) | Accepted ADR-0022 ile nihai unverified consumer; gerçek üç uç/seçili proje ve son kaynak/review/kurulum/M5/CI kabulü verified; PR #12 merge ayrı |
-| [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; draft, mevcut P02-0 paketinin yeni önkoşulu değil |
+| [P02-0d](p02-0d-platform-context-discovery.md) | ADR-0022 ile nihai unverified consumer; üç uç/seçili proje gözlemi |
+| [P02-1a](p02-1a-evidence-capacity.md) | B15 aynı evidence v1 biçiminde bounded katalog kapasitesi ve yazı öncesi ret |
+| [P02-1b](p02-1b-manifest-contract.md) | ADR-0023’e bağlı strict Manifest v1 ve bağımsız byte/digest oracle’ı |
+| [P02-1c](p02-1c-descriptor-dataset-scan.md) | Bounded descriptor klasör envanteri ve yeniden hash’leyerek verify |
+| [P02-1d](p02-1d-dataset-inspection-cli.md) | Root dışı atomik artifact, ortak CLI/Python ve bütünleşik paket kabulü |
+| [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
-[Kalan P01 paketi](../p01-remaining-delivery-plan.md) bu üç kartı tek PR’da toplar; ADR-0017/0018/0019 Accepted. P01-5a/b ve P01-6b verified ve PR #11 ile development’a teslim edildi; iki fresh review turları, üç ortam/altı kurulum, kaynak bağlı M5 ve Linux raw [kapanış kaydındadır](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı). PR #11 bc9532c merge’ünde development’a alındı; güncel durum kart metadata’sındadır.
+[Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
-[P02-0a](p02-0a-contract-sdk-pilot.md) araştırması ve [P02-0b](p02-0b-context-discovery.md) keşfi kullanıcı yetkisiyle [tek P02-0 paketinde](../p02-0-delivery-plan.md) tamamlandı. Üst teslim [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabullerini topladı; çalışma dalında verified, PR #12 kullanıcı review/merge ayrıdır. Sıradaki epik P02-1’dir; [güncel sıra](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. [P02 hazırlık review’si](../../research/p02-readiness-review.md) ürün/hesap kabulü değildir. Diğer P02 uygulama kartları karar/endpoint kanıtları geldikçe hazırlanır.
+[P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.
 
-Durum kart metadata'sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Uzak fazlar için boş kart yığını üretilmez. Tamamlanan kart kanıtıyla korunur; current yalnız aktif/sonraki kartı işaret eder.
+[P02-1 teslim planı](../p02-1-delivery-plan.md), B15 kapasite bakımı, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş commit/review adımında tek nihai development PR’ına bağlar. [Kabul kaydı](../../research/p02-1-implementation-validation.md) özgün test/ölçüm/inceleme kanıtını taşır.
 
-P01-2'nin dört alt işi [teslim planıyla](../p01-2-delivery-plan.md) tek [PR #6](https://github.com/HodeTech/Yorunge/pull/6) içinde tamamlanıp development'a alındı. P01-3a/b [tek PR planı](../p01-3-delivery-plan.md) ve [PR #8](https://github.com/HodeTech/Yorunge/pull/8) ile development'a alındı; [merge/CI kapanışı](../../research/p01-3-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Takip PR #9 ile şema 5 de development’a alındı; [merge ve o tarihteki açık CI performans takibi](../../research/p01-3-implementation-validation.md#pr-9-development-merge-kapanışı) tarihsel kayıttır. Bu takip [ölçüm güvenilirliği/CLI bakımı](../../research/startup-ci-reliability.md) ve PR #10 ile kapandı. P01-4b/4c için [tek PR planı](../p01-4-delivery-plan.md), [koordinasyon](p01-4b-operation-coordination.md) ve [yerel jobs](p01-4c-local-jobs.md) kartları ADR-0016 Accepted kararına bağlıdır; PR #10 ile development'a alındı; [merge/CI kapanışı](../../research/p01-4-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Güncel durum kart metadata’sındadır; bu indeks uygulama/kabul kanıtı saymaz.
+Durum kart metadata’sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Aktif/sonraki iş için [current](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 kartları karar/endpoint kanıtları geldikçe hazırlanır; uzak fazlar için boş kart yığını üretilmez. Kart, kanıtıyla birlikte korunur.
+
+Önceki P01 epiklerinin alt kart/PR eşlemesi [P01-2](../p01-2-delivery-plan.md), [P01-3](../p01-3-delivery-plan.md) ve [P01-4](../p01-4-delivery-plan.md) planlarındadır. Store şeması/merge/CI geçmişi ilgili kabul kayıtlarından izlenir; bu indeks ikinci durum veya kanıt kaynağı değildir.

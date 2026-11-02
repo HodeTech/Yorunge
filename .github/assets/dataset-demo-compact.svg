@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="650" viewBox="0 0 560 650" role="img" aria-labelledby="title desc">
+<title id="title">Yerel manifest akışı</title>
+<desc id="desc">İncele: bir dosya, üç byte. Doğrula: eşleşiyor. Aynı boyutlu içerik değişiminde: uyuşmazlık, exit 7.</desc>
+<rect width="560" height="650" rx="18" fill="#101a2c"/>
+<text x="28" y="48" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="22" fill="#a7b7ce">YÖRÜNGE / YEREL MANİFEST</text>
+<rect x="20" y="81" width="520" height="158" rx="12" fill="#172337"/>
+<text x="38" y="116" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="28" fill="#eaf0fc">01  Envanteri çıkar</text>
+<text x="38" y="154" font-family="Menlo,Consolas,monospace" font-size="24" fill="#a7b7ce">datasets inspect</text>
+<text x="38" y="189" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="25" fill="#7ce7ce">1 dosya · 3 byte</text>
+<text x="38" y="219" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="25" fill="#7ce7ce">manifest.json oluşturuldu</text>
+<rect x="20" y="258" width="520" height="158" rx="12" fill="#172337"/>
+<text x="38" y="293" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="28" fill="#eaf0fc">02  İçeriği doğrula</text>
+<text x="38" y="331" font-family="Menlo,Consolas,monospace" font-size="24" fill="#a7b7ce">datasets verify</text>
+<text x="38" y="366" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="25" fill="#7ce7ce">Dosyalar manifestle eşleşiyor.</text>
+<rect x="20" y="435" width="520" height="158" rx="12" fill="#172337"/>
+<text x="38" y="470" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="28" fill="#eaf0fc">03  Değişikliği yakala</text>
+<text x="38" y="508" font-family="Menlo,Consolas,monospace" font-size="24" fill="#a7b7ce">abc → xyz · yine 3 byte</text>
+<text x="38" y="543" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="25" fill="#ffb49d">İçerik manifestle eşleşmiyor.</text>
+<text x="38" y="573" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="25" fill="#ffb49d">exit 7 · manifest korunur</text>
+<text x="28" y="636" font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="20" fill="#a7b7ce">Gerçek CLI akışının kısa özeti</text>
+</svg>

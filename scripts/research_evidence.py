@@ -16,12 +16,15 @@ import statistics
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
-MAX_ENTRIES = 256
+MAX_ENTRIES = 4096
+MAX_TOTAL_ARCHIVE_BYTES = 128 * 1024 * 1024
+MAX_TOTAL_REPORT_BYTES = 512 * 1024 * 1024
 MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
@@ -101,14 +104,21 @@ def encode(value: object) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
 
 
+def read_stream_bounded(reader: Callable[[int], bytes], limit: int, message: str) -> bytes:
+    content = bytearray()
+    while len(content) <= limit:
+        block = reader(min(64 * 1024, limit + 1 - len(content)))
+        if not block:
+            return bytes(content)
+        content.extend(block)
+    raise ValueError(message)
+
+
 def read_bounded(path: Path, limit: int) -> bytes:
     if path.is_symlink() or not path.is_file():
         raise ValueError("expected a regular evidence file")
-    with path.open("rb") as stream:
-        content = stream.read(limit + 1)
-    if len(content) > limit:
-        raise ValueError("evidence size limit exceeded")
-    return content
+    with path.open("rb", buffering=0) as stream:
+        return read_stream_bounded(stream.read, limit, "evidence size limit exceeded")
 
 
 def research_directory(root: Path) -> Path:
@@ -1078,6 +1088,9 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     version = report.get("schema_version")
     if type(version) is not int:
         raise ValueError("invalid typed report schema version")
+    if kind == "dataset_hash_budget_v1" and version == 1:
+        dataset = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
+        return dataset["summarize_report"](report)  # type: ignore[no-any-return]
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
     if kind == "raw_stream_budget_v2" and version == 2:
@@ -1175,17 +1188,30 @@ def entry(name: str, content: bytes, archive: bytes, original_commit: str | None
     }
 
 
+def catalog_budget(entries: list[dict[str, Any]]) -> None:
+    if not 1 <= len(entries) <= MAX_ENTRIES:
+        raise ValueError("evidence catalog capacity exceeded")
+    archive_total = report_total = 0
+    for item in entries:
+        archive_size = integer(item.get("archive_bytes"), minimum=1)
+        report_size = integer(item.get("content_bytes"), minimum=1)
+        if archive_size > MAX_ARCHIVE_BYTES or report_size > MAX_REPORT_BYTES:
+            raise ValueError("evidence entry size limit exceeded")
+        archive_total += archive_size
+        report_total += report_size
+        if archive_total > MAX_TOTAL_ARCHIVE_BYTES or report_total > MAX_TOTAL_REPORT_BYTES:
+            raise ValueError("evidence catalog total byte limit exceeded")
+
+
 def catalog(directory: Path) -> list[dict[str, Any]]:
     data = decode(read_bounded(directory / MANIFEST, MAX_REPORT_BYTES))
     if set(data) != {"schema_version", "entries"} or type(data["schema_version"]) is not int:
         raise ValueError("invalid evidence manifest")
     entries = data["entries"]
-    if (
-        data["schema_version"] != 1
-        or not isinstance(entries, list)
-        or not 1 <= len(entries) <= MAX_ENTRIES
-    ):
+    if data["schema_version"] != 1 or not isinstance(entries, list):
         raise ValueError("invalid evidence manifest entries")
+    if not 1 <= len(entries) <= MAX_ENTRIES:
+        raise ValueError("evidence catalog capacity exceeded")
     if any(
         not isinstance(item, dict)
         or not isinstance(item.get("name"), str)
@@ -1196,6 +1222,7 @@ def catalog(directory: Path) -> list[dict[str, Any]]:
     names = [item["name"] for item in entries]
     if names != sorted(set(names)):
         raise ValueError("evidence entries must be unique and sorted")
+    catalog_budget(entries)
     return list(entries)
 
 
@@ -1226,12 +1253,26 @@ def index_text(entries: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def unpack(directory: Path, item: dict[str, Any]) -> bytes:
-    archive = read_bounded(directory / "raw" / f"{item['name']}.gz", MAX_ARCHIVE_BYTES)
+def unpack(
+    directory: Path,
+    item: dict[str, Any],
+    *,
+    archive_budget: int | None = None,
+    report_budget: int | None = None,
+) -> bytes:
+    archive_limit = min(
+        MAX_ARCHIVE_BYTES,
+        MAX_ARCHIVE_BYTES if archive_budget is None else integer(archive_budget),
+    )
+    report_limit = min(
+        MAX_REPORT_BYTES, MAX_REPORT_BYTES if report_budget is None else integer(report_budget)
+    )
+    archive = read_bounded(directory / "raw" / f"{item['name']}.gz", archive_limit)
     with gzip.GzipFile(fileobj=io.BytesIO(archive)) as stream:
-        content = stream.read(MAX_REPORT_BYTES + 1)
-    if len(content) > MAX_REPORT_BYTES:
-        raise ValueError("decompressed evidence size limit exceeded")
+        # read() may prefetch 8 KiB of decoded bytes beyond the requested limit.
+        content = read_stream_bounded(
+            stream.read1, report_limit, "decompressed evidence size limit exceeded"
+        )
     expected = entry(item["name"], content, archive, item.get("original_commit"))
     if json.dumps(expected, sort_keys=True) != json.dumps(item, sort_keys=True):
         raise ValueError(f"evidence hash or summary mismatch: {item['name']}")
@@ -1244,8 +1285,18 @@ def verify(root: Path) -> int:
     expected = {f"{item['name']}.gz" for item in entries}
     if {path.name for path in (directory / "raw").iterdir()} != expected:
         raise ValueError("unregistered or missing evidence archive")
+    archive_total = report_total = 0
     for item in entries:
-        unpack(directory, item)
+        content = unpack(
+            directory,
+            item,
+            archive_budget=MAX_TOTAL_ARCHIVE_BYTES - archive_total,
+            report_budget=MAX_TOTAL_REPORT_BYTES - report_total,
+        )
+        # unpack proves that the declared compressed size equals the actual bytes.
+        archive_total += item["archive_bytes"]
+        report_total += len(content)
+        del content
         if (directory / item["name"]).exists():
             raise ValueError("archived report must not also be committed as expanded JSON")
     if read_bounded(directory / INDEX, MAX_REPORT_BYTES) != index_text(entries).encode():
@@ -1484,6 +1535,36 @@ def verify_jobs_reference(root: Path, name: str) -> dict[str, Any]:
     }
 
 
+def verify_dataset_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid dataset reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown dataset reference evidence name")
+    report = decode(unpack(directory, item))
+    helper = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
+    summary: dict[str, Any] = helper["summarize_report"](report)
+    if not summary["passed"]:
+        raise ValueError("dataset reference requires all 24 successful process measurements")
+    environment, runtime = report["environment"], report["runs"][0]["runtime"]
+    if (
+        environment != {name: JOBS_REFERENCE[name] for name in ("cpu", "disk_type")}
+        or runtime["machine"] != JOBS_REFERENCE["machine"]
+        or not runtime["os"].startswith(JOBS_REFERENCE["platform_prefix"])
+        or not runtime["python"].startswith(JOBS_REFERENCE["python_prefix"])
+    ):
+        raise ValueError("dataset proof does not declare the configured M5 reference runtime")
+    current = helper["SOURCES"]["source"](root)["source_sha256"]
+    for field in ("source_before", "source_after"):
+        if report["provenance"][field]["source_sha256"] != current:
+            raise ValueError("dataset reference differs from complete current source bytes")
+    if report["provenance"]["locked_runtime"] != helper["STREAM"]["locked_runtime"](root):
+        raise ValueError("dataset reference runtime differs from the current frozen lock")
+    return {"name": name, "source_commit": report["source_commit"], **summary}
+
+
 def verify_startup_reference(root: Path, name: str) -> dict[str, Any]:
     if NAME.fullmatch(name) is None:
         raise ValueError("invalid startup reference evidence name")
@@ -1533,14 +1614,23 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
     entries = catalog(directory) if (directory / MANIFEST).exists() else []
     if any(existing["name"] == source.name for existing in entries):
         raise ValueError("evidence already registered; existing bytes are preserved")
-    if len(entries) >= MAX_ENTRIES:
-        raise ValueError("evidence catalog capacity exceeded; existing bytes are preserved")
+    if entries:
+        verify(root)
+    elif (directory / INDEX).exists() or (
+        (directory / "raw").exists() and any((directory / "raw").iterdir())
+    ):
+        raise ValueError("unregistered evidence metadata or archive")
     entries = sorted([*entries, item], key=lambda value: value["name"])
+    catalog_budget(entries)
+    manifest = encode({"schema_version": 1, "entries": entries})
+    index = index_text(entries).encode()
+    if len(manifest) > MAX_REPORT_BYTES or len(index) > MAX_REPORT_BYTES:
+        raise ValueError("evidence metadata size limit exceeded")
     (directory / "raw").mkdir(exist_ok=True)
     with (directory / "raw" / f"{source.name}.gz").open("xb") as stream:
         stream.write(archive)
-    replace_metadata(directory / MANIFEST, encode({"schema_version": 1, "entries": entries}))
-    replace_metadata(directory / INDEX, index_text(entries).encode())
+    replace_metadata(directory / MANIFEST, manifest)
+    replace_metadata(directory / INDEX, index)
 
 
 def archive_rejected_startup(
@@ -1581,6 +1671,8 @@ def main() -> int:
     reference.add_argument("name")
     startup_reference = commands.add_parser("verify-startup-reference")
     startup_reference.add_argument("name")
+    dataset_reference = commands.add_parser("verify-dataset-reference")
+    dataset_reference.add_argument("name")
     rejected = commands.add_parser("archive-rejected-startup")
     rejected.add_argument("source", type=Path)
     rejected.add_argument("--name", required=True)
@@ -1616,6 +1708,9 @@ def main() -> int:
             )
         elif args.action == "verify-startup-reference":
             summary = verify_startup_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
+        elif args.action == "verify-dataset-reference":
+            summary = verify_dataset_reference(root, args.name)
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")

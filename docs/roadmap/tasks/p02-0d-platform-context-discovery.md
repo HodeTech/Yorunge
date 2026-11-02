@@ -8,7 +8,7 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0d — Platform salt okunur context gözlemi
 
-**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi; çalışma dalı kabulü verified. Çekirdek/public yüzey ikişer fresh review, gerçek üç uç/seçili-proje consumer kabulü, güncel kaynak/kurulum/M5 ve üç ortam CI ile tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı review/merge bekler; development’a teslim edilmiş değildir. P02-0b’nin Platform koludur; LLM bağımsızdır.
+**Tarih:** 2026-10-31. **Güncellendi:** 2026-11-01. **Durum:** ADR-0022 kullanıcı onayıyla nihai dar gözlem sözleşmesi kabul edildi; verified ve development’a teslim edildi. Çekirdek/public yüzey ikişer fresh review, gerçek üç uç/seçili-proje consumer kabulü, güncel kaynak/kurulum/M5 ve üç ortam CI ile tamamlandı. [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı tarafından [9f30fd2](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile birleştirildi; [merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. P02-0b’nin Platform koludur; LLM bağımsızdır.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -44,6 +44,6 @@ P01/P02-0a bağımlılıkları verified. [ADR-0020](../../decisions/0020-service
 
 ## Teslim kaydı
 
-- PR/commit: [PR #12](https://github.com/HodeTech/Yorunge/pull/12), source CI e475992; son kapanış commit’i yalnız belge/arşivdir.
+- PR/commit: [PR #12](https://github.com/HodeTech/Yorunge/pull/12), son PR head’i a374047; development merge’ü 9f30fd2.
 - Sonuç: [Çekirdek/public review kaydı](../../research/p02-0-implementation-validation.md#platform-ara-yerel-kabul-kapanışı), [ayrı canlı kabul](../../research/p02-platform-reverse-engineering.md#seçili-proje-canlı-kabulü--ayrı-koşu) ve [son kaynak CI/paket kapanışı](../../research/p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) tamamlandı. Seçili-proje koşusu 4 ürün GET/200 ve detail no-key 401; ayrı toplam 5 GET/5 attempt/2.090 byte/0,488645 s. Üç ortam tam takımı, altı CI temiz kurulumu ve güncel M5 startup/jobs geçti. Önceki boş-liste/başarısız/sınır dışı araştırmalar tarihsel korunur.
-- Kalan sınır: Kullanıcı PR review/merge ve Master/release ayrı süreçtir. Public auth/kimlik/izin unknown/unverified/null kalır; P02-R1 draft’tır. Linux cache p95 aşımı korunmuş tanıdır; M5 referans başarısı Linux performans kabulü değildir. Gerçek Windows veya fiziksel güç kesintisi kabulü yapılmadı.
+- Kalan sınır: [Development merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) tamamdır; Master/release kullanıcıdadır. Public auth/kimlik/izin unknown/unverified/null kalır; P02-R1 draft’tır. Linux cache p95 aşımı korunmuş tanıdır; M5 referans başarısı Linux performans kabulü değildir. Gerçek Windows veya fiziksel güç kesintisi kabulü yapılmadı.

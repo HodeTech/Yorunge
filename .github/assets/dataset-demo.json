@@ -1,0 +1,46 @@
+{
+  "kind": "readme_demo_storyboard",
+  "source_commit": "015300ee12a81264e57fc5e8b18a635be8ae6923",
+  "fixture": {
+    "path": "data/hello.txt",
+    "initial_utf8": "abc",
+    "changed_utf8": "xyz",
+    "bytes_before": 3,
+    "bytes_after": 3
+  },
+  "presentation": "Prepared illustration from selected real CLI text; executable path abbreviated to yorunge; no timing/performance claim.",
+  "steps": [
+    {
+      "title": "Envanteri çıkar",
+      "command": "yorunge datasets inspect data --manifest-out manifest.json",
+      "output_excerpt": [
+        "Dosya: 1; byte: 3"
+      ],
+      "exit_code": 0
+    },
+    {
+      "title": "İçeriği doğrula",
+      "command": "yorunge datasets verify data --manifest manifest.json",
+      "output_excerpt": [
+        "Dosyalar manifestle eşleşiyor."
+      ],
+      "exit_code": 0
+    },
+    {
+      "title": "Değişikliği yakala",
+      "preparation": "printf 'xyz' > data/hello.txt",
+      "command": "yorunge datasets verify data --manifest manifest.json",
+      "stderr": "Klasörün dosya adları veya içeriği manifestle eşleşmiyor. Değişiklikleri inceleyin.",
+      "exit_code": 7
+    }
+  ],
+  "animation": {
+    "duration_ms": 8800,
+    "repeat": false,
+    "frames": 6,
+    "static_alternatives": [
+      "dataset-demo.svg",
+      "dataset-demo-compact.svg"
+    ]
+  }
+}

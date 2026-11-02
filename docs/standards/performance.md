@@ -67,3 +67,15 @@ Listelemede N + 1 çağrısı ölçülür; varsa sunucunun batch/sayfalama/koşu
 ## Darboğaz doğrulaması
 
 Ölçüm; hazırlık/hash, bekleme, aktarım, uzak çalışma ve çıktı toplama sürelerini ayırır. Bir optimizasyon PR'ı başlangıç/son ölçümü, veri doğruluğunu ve kaynak etkisini içerir. Aşırı yükte kontrollü ret/backpressure beklenir. GPU modeli/hizmeti yavaş olduğunda gecikme Yörünge CPU optimizasyonu diye raporlanmaz.
+
+
+## Kurulu yerel dataset hash ölçümü
+
+P02-1 için `scripts/benchmark-datasets.py`, `tests/fixtures/dataset_budget.py` ile üçer ayrı runtime-only kurulu `-I` süreçte inspect ve verify’ı ölçer: 16/256/1024 MiB’da bir dosya/root sabit metadata; ayrı maksimum envanterde 4.096 dosya ve root dahil 4.096 dizin. Controller’ın veri üretimi ve RSS’i ölçüme girmez. Her worker aynı 1 MiB dosya ile iki API’yi ısıtır; native probe ve importlar önce tamamlanır. Sonra anlık B, yaşam boyu H0, gerçek API çağrısı, H1 alınır. Rapordaki pretransfer_peak alan adı ortak native araçla uyumludur; burada aktarım değil hash API’si öncesi H0’ı belirtir. Kaynak/kurulum ve typed artifact doğrulaması pencere dışında yapılır; API’nin kendi parse/hash/serialize/publish/sync işi pencereye dahildir.
+
+B/H0/H1 native yöntem/birim/sıra ve L/U hesabı yukarıdaki raw v2 ile aynıdır; fallback veya eski HWM çıkarımı yoktur. Her 24 süreç U ≤64 MiB ve API süresi ≤30 s olmalıdır. Aynı eylemin üç byte boyutundaki dokuz örneğin farklı boyut etiketleri arasında G=max(0,U_i−L_j) ≤8 MiB ayrıca zorunludur; kapasite fixture’ı sabit byte metadata kabulü olarak ayrı tutulur. Bütün örnekler saklanır; en iyi koşuyu seçme veya failed denemeyi silme yoktur. Sınırlar fiziksel I/O zaman garantisi değildir. 16 MiB worker contract smoke’u, 24-process referans kabulü yerine geçmez.
+
+`verify-dataset-reference NAME` kapalı dataset_hash_budget_v1 raporundan 24 doğru artifact/byte/digest sonucunu, eylem/boyut/tekrar kümesini, native aralıkları ve frozen kurulu kaynakları tekrar doğrular. Mevcut tüm kaynak map’i (workflow/test/script/py.typed dahil) aynı olmalı; M5/SSD ortamı jobs referansıyla aynıdır. CI bu kaynak bağlı kanıtı kontrol eder; hash veya ortam bildirimi donanım attestasyonu değildir. Gerçek sonuçlar ve çalıştırılan komutlar [P02-1 kabul kaydında](../research/p02-1-implementation-validation.md) tutulur; bu yöntem tanımı tek başına başarılı ölçüm iddiası değildir.
+
+
+Dataset ölçümünde wheel yalnız dosya adı/hash’iyle witness sayılmaz: bütün product .py/py.typed ve METADATA/WHEEL/entry point içerikleri ölçülen kaynak/kurulumla bağlanır. Tam kurulu metadata ve ürün map’leri pencere öncesi/sonrası sabittir. Artifact’ın bağımsız canonical JSON + LF bayt eşliği doğrulanır; Python dict eşitliği tür oracle’ı değildir. Worker timeout’u veya bozuk UTF-8’de stdout/stderr özgün binary dosyaları korunur; başarısız ölçüm başarılı rapora dönüşmez. Bu içerik/provenance kontrolü fiziksel kurulum eylemi veya donanım attestasyonu değildir.

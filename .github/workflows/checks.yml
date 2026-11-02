@@ -146,12 +146,17 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-0-final-reference-v2-startup.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-1-review-reference-v3-startup.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-0-final-reference-v2-jobs.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-1-review-reference-v3-jobs.json > dist/jobs-reference.txt
+      - name: Verify source-bound reference dataset hash budgets
+        id: dataset-budgets
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-1-review-reference-v3-datasets.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -188,6 +193,7 @@ jobs:
             dist/startup-baseline-selection.json
             dist/startup-reference.txt
             dist/jobs-reference.txt
+            dist/dataset-reference.txt
             dist/stream.json
             dist/cache-startup.prof
             .local/startup-check/source-manifest.json

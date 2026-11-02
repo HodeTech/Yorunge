@@ -5,6 +5,7 @@ import socket
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -257,11 +258,23 @@ def test_short_secret_substrings_do_not_reject_valid_provider_metadata(tmp_path,
 def test_shared_total_deadline_closes_slow_response_without_second_attempt(tmp_path, certificates):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
-    with TlsServer(
-        certificates, {"/v1/terms/status": Reply(body=GOOD, header_delay=0.4)}
-    ) as server:
-        with pytest.raises(YorungeError) as failure:
-            run(root, server, timeout=0.15)
+    release_headers = threading.Event()
+    headers_ready = threading.Event()
+
+    def delayed_terms(_request, _attempt):
+        release_headers.wait(timeout=4.0)
+        headers_ready.set()
+        return Reply(body=GOOD)
+
+    with TlsServer(certificates, {"/v1/terms/status": delayed_terms}) as server:
+        try:
+            # The total also covers real SQLite capture/finalization. Leave local
+            # headroom so this checks network expiry rather than a 50 ms store gate.
+            with pytest.raises(YorungeError) as failure:
+                run(root, server, timeout=3.0)
+            assert not headers_ready.is_set()
+        finally:
+            release_headers.set()
     assert failure.value.code == "transport_timeout"
     assert len(server.requests) == 1
 

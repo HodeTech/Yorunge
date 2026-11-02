@@ -461,6 +461,65 @@ def verify_installed_transport(
     return {"http_smoke": "passed", "stream_smoke": "passed"}
 
 
+def verify_installed_datasets(
+    console: Path, python: Path, scratch: Path, environment: dict[str, str]
+) -> None:
+    source, manifest = scratch / "dataset-source", scratch / "dataset-manifest.json"
+    source.mkdir()
+    (source / "a.txt").write_bytes(b"abc")
+    arguments = [str(console), "datasets"]
+    inspection = json.loads(
+        run(
+            [*arguments, "inspect", str(source), "--manifest-out", str(manifest), "--output=json"],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    artifact = json.loads(manifest.read_bytes())
+    if artifact["files"] != [
+        {"path": "a.txt", "size": 3, "sha256": hashlib.sha256(b"abc").hexdigest()}
+    ]:
+        raise ValueError("installed dataset artifact differs from independent bytes")
+    if (
+        inspection["data"]["manifest_digest"] != artifact["digest"]
+        or manifest.stat().st_mode & 0o777 != 0o600
+    ):
+        raise ValueError("installed dataset publication contract failed")
+    verified = json.loads(
+        run(
+            [*arguments, "verify", str(source), "--manifest", str(manifest), "--output=ndjson"],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    if verified["event"] != "result" or verified["payload"]["data"]["matches"] is not True:
+        raise ValueError("installed dataset NDJSON contract failed")
+    code = (
+        "import sys; from pathlib import Path; from yorunge import api; "
+        "print(api.verify_dataset(Path(sys.argv[1]), manifest=Path(sys.argv[2])).model_dump_json())"
+    )
+    result = json.loads(
+        run(
+            [str(python), "-I", "-c", code, str(source), str(manifest)],
+            cwd=scratch,
+            environment=environment,
+        )
+    )
+    if result != verified["payload"]:
+        raise ValueError("installed dataset Python and CLI differ")
+    (source / "a.txt").write_bytes(b"xyz")
+    mismatch = json.loads(
+        run(
+            [*arguments, "verify", str(source), "--manifest", str(manifest), "--output=json"],
+            cwd=scratch,
+            environment=environment,
+            expected_code=7,
+        )
+    )
+    if mismatch["code"] != "manifest_mismatch" or mismatch["details"]["changed_file_count"] != 1:
+        raise ValueError("installed dataset same-size mutation was not rejected")
+
+
 def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
@@ -540,6 +599,7 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
         execution_smoke = "not_run_unsupported_platform"
         jobs_smoke = "not_run_unsupported_platform"
         if sys.platform in ("darwin", "linux"):
+            verify_installed_datasets(console, python, scratch, environment)
             verify_installed_cache(console, root, scratch, environment)
             cache_smoke = "passed"
             execution_smoke = verify_installed_execution(console, root, scratch, environment)

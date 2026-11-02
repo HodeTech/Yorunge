@@ -1,6 +1,7 @@
 """Verify archived bytes and failure evidence without executing old measurements."""
 
 import gzip
+import io
 import json
 import runpy
 from pathlib import Path
@@ -199,29 +200,287 @@ def test_manifest_summary_exposes_all_smoke_and_help_results():
     assert later_help["checks"]["matches_initial_p014"] == {"false": 1}
 
 
-def test_full_catalog_rejects_next_archive_before_mutating_any_file(tmp_path):
+@pytest.mark.parametrize("count", [256, 4096])
+def test_catalog_extends_legacy_boundary_and_rejects_new_full_capacity(tmp_path, count):
     root, source, original = setup_archive(tmp_path)
     directory = root / "docs/research"
     packed = (directory / "raw/operation-budget.json.gz").read_bytes()
     data = json.loads((directory / "evidence-manifest.json").read_bytes())
-    for index in range(1, 256):
-        name = f"sample-{index:03}.json"
+    for index in range(1, count):
+        name = f"sample-{index:04}.json"
         (directory / "raw" / (name + ".gz")).write_bytes(packed)
         data["entries"].append(CHECKS["entry"](name, original, packed, None))
     data["entries"].sort(key=lambda item: item["name"])
     (directory / "evidence-manifest.json").write_bytes(CHECKS["encode"](data))
     (directory / "evidence.md").write_text(CHECKS["index_text"](data["entries"]))
-    assert verify(root) == 256
+    assert verify(root) == count
     before = {p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
     new_source = source.with_name("next-budget.json")
     new_source.write_bytes(original)
-    with pytest.raises(ValueError, match="capacity"):
+    if count == 4096:
+        with pytest.raises(ValueError, match="capacity"):
+            archive_report(root, new_source, None)
+        assert archive_bytes(root) == before
+        assert verify(root) == count
+    else:
         archive_report(root, new_source, None)
-    assert {
-        p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()
-    } == before
+        assert verify(root) == 257
+        current = CHECKS["catalog"](directory)
+        assert [item for item in current if item["name"] != new_source.name] == data["entries"]
+        for path, content in before.items():
+            if path.parts[0] == "raw":
+                assert (directory / path).read_bytes() == content
     assert new_source.read_bytes() == original
-    assert verify(root) == 256
+
+
+def archive_bytes(root):
+    directory = root / "docs/research"
+    return {p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+
+
+@pytest.mark.parametrize("delta", [-1, 0, 1])
+@pytest.mark.parametrize(
+    "budget", ["MAX_ENTRIES", "MAX_TOTAL_ARCHIVE_BYTES", "MAX_TOTAL_REPORT_BYTES", "metadata"]
+)
+def test_archive_budget_preflight_preserves_all_files_on_rejection(
+    tmp_path, monkeypatch, budget, delta
+):
+    root, source, original = setup_archive(tmp_path)
+    before = archive_bytes(root)
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    packed = gzip.compress(original, mtime=0)
+    directory = root / "docs/research"
+    entries = CHECKS["catalog"](directory)
+    prospective = sorted(
+        [*entries, CHECKS["entry"](new_source.name, original, packed, None)],
+        key=lambda item: item["name"],
+    )
+    totals = {
+        "MAX_ENTRIES": 2,
+        "MAX_TOTAL_ARCHIVE_BYTES": len(packed) * 2,
+        "MAX_TOTAL_REPORT_BYTES": len(original) * 2,
+        "metadata": max(
+            len(CHECKS["encode"]({"schema_version": 1, "entries": prospective})),
+            len(CHECKS["index_text"](prospective).encode()),
+        ),
+    }
+    setting = "MAX_REPORT_BYTES" if budget == "metadata" else budget
+    monkeypatch.setitem(archive_report.__globals__, setting, totals[budget] + delta)
+    if delta < 0:
+        with pytest.raises(ValueError, match="capacity|limit"):
+            archive_report(root, new_source, None)
+        assert archive_bytes(root) == before
+        assert verify(root) == 1
+    else:
+        archive_report(root, new_source, None)
+        assert verify(root) == 2
+        assert CHECKS["catalog"](directory)[0] == prospective[0]
+        assert (directory / "raw/operation-budget.json.gz").read_bytes() == before[
+            Path("raw/operation-budget.json.gz")
+        ]
+    assert new_source.read_bytes() == original
+
+
+@pytest.mark.parametrize("field", ["content_bytes", "archive_bytes"])
+@pytest.mark.parametrize("value", [True, 1.0, 0, -1, "1"])
+def test_catalog_rejects_invalid_size_types_before_opening_archives(
+    tmp_path, monkeypatch, field, value
+):
+    root, _, _ = setup_archive(tmp_path)
+    path = root / "docs/research/evidence-manifest.json"
+    data = json.loads(path.read_bytes())
+    data["entries"][0][field] = value
+    path.write_bytes(CHECKS["encode"](data))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("invalid catalogue size must be rejected before unpack")
+
+    monkeypatch.setitem(verify.__globals__, "unpack", forbidden)
+    with pytest.raises(ValueError, match="integer"):
+        verify(root)
+
+
+@pytest.mark.parametrize("field", ["content_bytes", "archive_bytes"])
+def test_archive_rejects_a_catalogue_that_understates_actual_bytes(tmp_path, field):
+    root, source, original = setup_archive(tmp_path)
+    path = root / "docs/research/evidence-manifest.json"
+    data = json.loads(path.read_bytes())
+    data["entries"][0][field] = 1
+    path.write_bytes(CHECKS["encode"](data))
+    before = archive_bytes(root)
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    with pytest.raises(ValueError, match="hash or summary"):
+        archive_report(root, new_source, None)
+    assert archive_bytes(root) == before
+    assert new_source.read_bytes() == original
+
+
+@pytest.mark.parametrize("damage", ["orphan", "stale-index", "truncated", "missing-manifest"])
+def test_archive_does_not_extend_a_broken_catalogue(tmp_path, damage):
+    root, source, original = setup_archive(tmp_path)
+    directory = root / "docs/research"
+    if damage == "orphan":
+        (directory / "raw/orphan.json.gz").write_bytes(gzip.compress(original))
+    elif damage == "stale-index":
+        (directory / "evidence.md").write_bytes(b"# stale\n")
+    elif damage == "truncated":
+        (directory / "raw/operation-budget.json.gz").write_bytes(b"bad gzip")
+    else:
+        (directory / "evidence-manifest.json").unlink()
+    before = archive_bytes(root)
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    with pytest.raises((ValueError, OSError, EOFError)):
+        archive_report(root, new_source, None)
+    assert archive_bytes(root) == before
+    assert new_source.read_bytes() == original
+
+
+@pytest.mark.parametrize("replace_number", [1, 2])
+def test_metadata_failure_preserves_source_and_rejects_partial_archive(
+    tmp_path, monkeypatch, replace_number
+):
+    root, source, original = setup_archive(tmp_path)
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    replace = CHECKS["replace_metadata"]
+    calls = 0
+
+    def interrupted(path, content):
+        nonlocal calls
+        calls += 1
+        if calls == replace_number:
+            raise OSError("injected metadata failure")
+        replace(path, content)
+
+    monkeypatch.setitem(archive_report.__globals__, "replace_metadata", interrupted)
+    with pytest.raises(OSError, match="injected"):
+        archive_report(root, new_source, None)
+    assert source.read_bytes() == original
+    assert new_source.read_bytes() == original
+    with pytest.raises(ValueError, match="unregistered|stale"):
+        verify(root)
+
+
+@pytest.mark.parametrize("budget", ["archive", "report"])
+@pytest.mark.parametrize("remaining", [0, 1])
+def test_unpack_respects_remaining_total_budget_even_if_metadata_understates_bytes(
+    tmp_path, budget, remaining
+):
+    root, _, _ = setup_archive(tmp_path)
+    directory = root / "docs/research"
+    item = CHECKS["catalog"](directory)[0]
+    options = {f"{budget}_budget": remaining}
+    with pytest.raises(ValueError, match="size limit"):
+        CHECKS["unpack"](directory, item, **options)
+
+
+@pytest.mark.parametrize("remaining", [0, 1, 17, 8192, 16384])
+def test_unpack_bounds_actual_gzip_decoding_to_remaining_budget_plus_one(
+    tmp_path, monkeypatch, remaining
+):
+    root, _, _ = setup_archive(
+        tmp_path,
+        {"runs": [{"outcome": "ok", "elapsed_ms": 1}], "padding": "x" * 32768},
+    )
+    directory = root / "docs/research"
+    item = CHECKS["catalog"](directory)[0]
+    original_read = gzip._GzipReader.read
+    produced = 0
+
+    def measured_read(reader, size=-1):
+        nonlocal produced
+        block = original_read(reader, size)
+        produced += len(block)
+        return block
+
+    monkeypatch.setattr(gzip._GzipReader, "read", measured_read)
+    with pytest.raises(ValueError, match="decompressed evidence size limit"):
+        CHECKS["unpack"](directory, item, report_budget=remaining)
+    assert produced == remaining + 1
+
+
+@pytest.mark.parametrize("remaining", [0, 1, 17, 4096, 8192])
+def test_unpack_bounds_actual_file_reads_to_remaining_gzip_budget_plus_one(
+    tmp_path, monkeypatch, remaining
+):
+    root, _, _ = setup_archive(tmp_path)
+    directory = root / "docs/research"
+    item = CHECKS["catalog"](directory)[0]
+    packed = directory / "raw/operation-budget.json.gz"
+    packed.write_bytes(bytes(range(256)) * 128)
+    original_open = Path.open
+    consumed = 0
+
+    class MeasuredFile(io.FileIO):
+        def read(self, size=-1):
+            nonlocal consumed
+            block = super().read(size)
+            consumed += len(block)
+            return block
+
+    def measured_open(path, mode="r", *args, **kwargs):
+        if path == packed and mode == "rb":
+            raw = MeasuredFile(path, "rb")
+            return raw if kwargs.get("buffering") == 0 else io.BufferedReader(raw)
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", measured_open)
+    with pytest.raises(ValueError, match="evidence size limit"):
+        CHECKS["unpack"](directory, item, archive_budget=remaining)
+    assert consumed == remaining + 1
+
+
+def test_bounded_file_reader_completes_valid_short_reads(tmp_path, monkeypatch):
+    content = b'{"runs":[{"outcome":"ok"}]}'
+    source = tmp_path / "report.json"
+    source.write_bytes(content)
+
+    class ShortFile(io.FileIO):
+        def read(self, size=-1):
+            return super().read(min(size, 3))
+
+    def short_open(path, mode="r", *args, **kwargs):
+        assert mode == "rb"
+        assert kwargs == {"buffering": 0}
+        return ShortFile(path, mode)
+
+    monkeypatch.setattr(Path, "open", short_open)
+    assert CHECKS["read_bounded"](source, len(content)) == content
+
+
+def test_archive_gzip_write_failure_preserves_source_and_is_not_success(tmp_path, monkeypatch):
+    root, source, original = setup_archive(tmp_path)
+    new_source = source.with_name("next-budget.json")
+    new_source.write_bytes(original)
+    original_open = Path.open
+
+    class FailedWrite:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def write(self, content):
+            raise OSError("injected archive write failure")
+
+    def failing_open(path, *args, **kwargs):
+        if path.name == "next-budget.json.gz" and args == ("xb",):
+            with original_open(path, "xb") as stream:
+                stream.write(b"partial")
+            return FailedWrite()
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", failing_open)
+    with pytest.raises(OSError, match="injected"):
+        archive_report(root, new_source, None)
+    assert new_source.read_bytes() == original
+    assert source.read_bytes() == original
+    with pytest.raises(ValueError, match="unregistered"):
+        verify(root)
 
 
 def test_archive_accepts_the_producers_standalone_startup_comparison_null(tmp_path):

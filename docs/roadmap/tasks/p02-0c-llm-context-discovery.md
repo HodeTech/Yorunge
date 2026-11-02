@@ -8,11 +8,11 @@ capabilities: [C01, C02, C13]
 ---
 # P02-0c — Bağımsız LLM context ve terms keşfi
 
-**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi de iki fresh review turuyla kapandı. İlk yetkili live terms ve kaynak/iki temiz kurulum/M5 referans kabulü tamamlandı; çalışma dalında verified; bütünleşik PR #12 source CI da tamamlandı, development merge ayrı. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
+**Tarih:** 2026-10-31. **Durum:** İki fresh sözleşme review turu kapandı; LLM çekirdeği iki fresh review turuyla kapandı; public CLI/Python yüzeyi de iki fresh review turuyla kapandı. İlk yetkili live terms ve kaynak/iki temiz kurulum/M5 referans kabulü tamamlandı; verified ve bütünleşik PR #12 ile development’a teslim edildi; [merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. [P02-0b](p02-0b-context-discovery.md) üst tesliminin LLM koludur; ek PR açılmaz.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; bu çalışma dalında gerçek endpoint/adaptör ve CLI/API eklendi. İlk live, yerel nihai ve bütünleşik PR CI kabulü kapandı; kullanıcı PR review/merge ayrı süreçtir.
+Kullanıcı seçili LLM anahtarı/hedefine açık terms sorgusu yapar; şart durumu ile kimlik/auth/izin eksikliğini ayrı görür. Ortak profilin Platform account/project tercihleri LLM seçimi olmaz. P01 yerel credential ve taşıma sağlar; gerçek endpoint/adaptör ve CLI/API PR #12 ile development’a teslim edildi. İlk live, yerel nihai ve bütünleşik PR CI kabulü kapandı; PR #12 development merge’ü tamamlandı; Master/release kullanıcıdadır.
 
 ## Giren ve girmeyen kapsam
 
@@ -46,4 +46,4 @@ Domain kapalı model ve değişmezler; application tek kullanım senaryosu ve ty
 
 - PR/commit: [Kaynak kabulü 0e0d2b7](https://github.com/HodeTech/Yorunge/commit/0e0d2b747d23976c46f196b02266a3ba1f6d6d8a). Bütünleşik [PR #12](https://github.com/HodeTech/Yorunge/pull/12); ayrı alt iş PR’ı yoktur.
 - Sonuç: Çekirdek/public yüzey ve her kod adımının iki fresh review turu tamamlandı. İlk yetkili live terms=false/version1/material=true; auth unknown/provider identity not_exposed/selected null sınırı korundu. Tam ürün takımının 3.567 başarılı/1 platform skip sonucu, değişen kurulum aracının 95 testi, iki temiz kurulum ve kaynak bağlı M5 startup/jobs kapıları [yerel kapanışta](../../research/p02-0-implementation-validation.md#bağımsız-llm-yerel-kabul-kapanışı) kayıtlı.
-- Kalan sınır: [Son bütünleşik kaynak CI/paket kabulü](../../research/p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) tamam; PR #12 kullanıcı review/merge ve Master/release ayrıdır. Auth/kimlik/izin doğrulaması yoktur; özgün doğrulanmış hizmet kimliği/bağ P02-R1’de draft kalır. Platform’un nihai dar sınırı kullanıcı onaylı ADR-0022’dir.
+- Kalan sınır: [Son bütünleşik kaynak CI/paket kabulü](../../research/p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) tamam; [PR #12 development merge/CI kapanışı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) tamam; Master/release kullanıcıdadır. Auth/kimlik/izin doğrulaması yoktur; özgün doğrulanmış hizmet kimliği/bağ P02-R1’de draft kalır. Platform’un nihai dar sınırı kullanıcı onaylı ADR-0022’dir.

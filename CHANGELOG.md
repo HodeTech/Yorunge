@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Fixed — 2026-11-02
+
+- `--` sonrasındaki `--output=json/ndjson` biçimli dosya adları kullanım hatasının çıktı biçimini değiştirmez; makine biçimi yalnız gerçek seçeneklerden belirlenir. Var olan text/JSON/NDJSON hata zarfı ve exit kodları korunur.
+
 ### Fixed — 2026-11-01
 
 - PR metadata edit’inde required check’in native merge kutusunda Expected kalmasına karşı sabit `offline-core` ve her olayda gerçek üç ortam doğrulaması; source/metadata concurrency ayrımı korunur. Platform raw/DTO doğrulaması küçük eşdeğer yordamlarla sadeleştirildi; raises hazırlıkları hedef assertion dışına taşındı.
@@ -15,11 +19,13 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-11-01
 
-- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam; kullanıcı review/merge ayrı, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
+- P02-1 çalışma dalında yerel `datasets inspect/verify` ve ortak Python API: taşınabilir Manifest v1, descriptor ile yeniden hash, root dışında 0600/no-clobber yayın, küçük text/JSON/NDJSON özeti ve uyuşmazlık exit 7. Kod review’ları, üç temiz kurulum turu ve kaynak bağlı native/gerçek kanıt kabulü tamamlandı; üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti, PR #13 kullanıcı incelemesindedir; development teslimi veya yayın değildir. Upload ve veri formatı değerlendirmesi eklenmedi.
+
+- `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam; PR #12 development teslimi tamam, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
 
 ### Added — 2026-10-31
 
-- P02 çalışma dalında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform’un nihai dar gözlem sınırı 1 Kasım ADR-0022 ile ayrıca benimsendi. LLM ilk canlı terms, Platform consumer/live ve bütünleşik kaynak/review/kurulum/M5/üç ortam PR CI kabulü tamamlandı; PR #12 kullanıcı review/merge bekler, development teslimi değildir.
+- P02 kapsamında açık `context discover --service evren-llm` ve ortak `api.discover_context`: mevcut store, tek credential snapshot’ı ve bounded GET terms/status; text/JSON/NDJSON. Auth ve uzak hesap/proje doğrulanmış sayılmaz; Platform’un nihai dar gözlem sınırı 1 Kasım ADR-0022 ile ayrıca benimsendi. LLM ilk canlı terms, Platform consumer/live ve bütünleşik kaynak/review/kurulum/M5/üç ortam PR CI kabulü tamamlandı; PR #12, 1 Kasım’da 9f30fd2 merge’üyle development’a teslim edildi; [merge/CI kapanışı](docs/research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır.
 
 ### Changed — 2026-10-29
 
