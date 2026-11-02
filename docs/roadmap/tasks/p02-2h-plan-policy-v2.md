@@ -1,7 +1,7 @@
 ---
 id: P02-2h
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2g]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,5 @@ Kanonik [Upload v2](../../reference/dataset-upload-v2.md) tek ayrıntı kaynağ�
 
 ## Teslim kaydı
 
-Uygulama başlamadı; draft. Gerçek commit/review/test ve kalan sınır oluşunca kaydedilir.
+P02-2g verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
 

@@ -1,7 +1,7 @@
 ---
 id: P02-2g
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2d]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,7 @@ Aynı scope farklı manifest/N/byte/root/storage/parametre/window/request cap ye
 
 ## Teslim kaydı
 
-ADR-0026 Accepted; uygulama başladı, in_progress. Gerçek commit/review/test ve kalan sınır oluşunca kaydedilir.
+- PR/commit: [a8fbd7c](https://github.com/HodeTech/Yorunge/commit/a8fbd7c) uygulama, [2c9aded](https://github.com/HodeTech/Yorunge/commit/2c9aded) R1 test güçlendirmesi; aynı dal/tek nihai PR.
+- Sonuç: 241 hedefli contract testi; Ruff/strict mypy; iki farklı fresh R1/R2 turu, doğrulanmış açık bulgu yok. [Kabul](../../research/p02-2-implementation-validation.md#p02-2g--exact-work-maliyet-v2).
+- Kalan sınır: Saf yerel maliyet modeli; gerçek pricing producer, public upload ve admission/arm kapıları henüz yoktur. Son kaynak native/build/CI/live P02-2c'dedir.
 

@@ -97,3 +97,12 @@ Farklı iki yeni reviewer 6c5e360'ı inceledi. Ağ kolu (GPT-6.1 Sol/high) **96 
 Düzeltmede dış Timeout ikinci `_window` sonrasında yeni kalan süreye reschedule edilir. Gerçek TLS regresyonu yavaş 80-byte yanıtın tamamı okunmadan `transport_timeout`, kapalı source ve serbest pool doğruladı: **1 passed / 0,82 s**; Ruff/93 dosya strict mypy geçti. Bütün storage kümesi ve reviewer düzeltme teyidi henüz aşağıya eklenmedi; f in_progress.
 
 Son storage/policy/source/network kümesi **197 passed / 19,35 s**; 164 Markdown, 6 skill/27 kart ve diff kontrolü geçti. R2 lifecycle reviewer özgün repro'yu 8eb1809 üzerinde tekrar yürüttü: **102 ms**, 30 byte'ın yalnız dördü okundu, yeni deadline sonrasında byte yok; tek request ve temiz source/slot/response. Etkilenen expiry/cancel/erken kapanış **7 passed / 4,71 s**; yeni regresyon yok. İki dilim ve her birinin iki fresh turu tamamlandı: **P02-2f çalışma dalında verified**. Provider, public UX, native, paket/CI ve live kabul hâlâ a/b/c kapsamındadır; uzak başarı veya development teslimi iddia edilmez.
+
+
+## P02-2g — Exact-work maliyet v2
+
+ADR-0026 kullanıcı bulguları, iki fresh belge revizyon turu ve koşullu onayla Accepted oldu (e58ea85). a8fbd7c exact-work/kapsam/dönem/storage modeli ve iki bağımsız literal fixture/digest'i ekledi; v1 modelleri/golden'ları değişmedi. 1 CR transfer-only veya dönem sonrası storage unknown kanıtı bütün-iş numeric bütçe garantisi değildir. Yanlış scope/manifest/root/parametre/storage/window/quantity bağı unknown'a yutulmadan reddedilir. Prod pricing source yoktur.
+
+İlk iki contract dosyası 195 geçti; R1 maliyet kolu Astra/high, wire kolu Sol/high bağımsız 239 test geçti bildirdi; runtime kusuru yoktu. Wire kolunun test kanıtı iyileştirmesi 2c9aded ile kapandı: geçerli fixture'da aynı geçerli değeri tekrar eden duplicate ve yalnız whitespace ile byte aşımı sınanır; guard kaldırıldığında bu örnekler geçerli olur. Son cost/upload/transfer kümesi **241 passed / 0,32 s**. Ruff/strict mypy geçti. Farklı fresh R2 Sol/high ve Astra/high yeni doğrulanmış bulgu bulmadı; biri 241, diğeri 115 cost testini ve bağımsız scalar/semantic negatiflerini çalıştırdı. Örtüşen testler toplanmaz.
+
+P02-2g çalışma dalında verified. Runtime v1 new-write yasağı j'nin atomik v2 geçişidir; bu kart saf domain modelidir. Public producer, gerçek fiyat/yetki, yeni hesap çağrısı, native/build/source CI kabulü yoktur; eski M5 kaydı yeni kaynak başarısı sayılmaz. H sıradaki dar uygulama birimidir.
