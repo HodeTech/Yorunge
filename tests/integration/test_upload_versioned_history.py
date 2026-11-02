@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -220,3 +221,32 @@ def test_public_identity_reset_handles_v2_epoch_and_new_preview_without_downgrad
         assert found.plan.encoded() == original.plan.encoded()
         assert found.operation.approval.encoded() == original.operation.approval.encoded()
         assert store.verify().store_schema_version == 7
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("revision", 1),
+        ("reason", "read_unavailable"),
+        ("observed_at", "2020-01-01T00:00:00.000000Z"),
+        ("identity_epoch", "00000000-0000-4000-8000-000000000099"),
+        ("clock_generation", 99),
+    ],
+)
+@pytest.mark.parametrize("boundary", ["warm", "full"])
+def test_unknown_recovery_marker_is_exact_current_state_not_unrelated_history(
+    tmp_path, field, value, boundary
+):
+    with open_store(tmp_path / "state") as store:
+        data = install_fixture(store, terminal=False)
+        control = {**data["controls"][0], field: value}
+        store.connection.execute(
+            "UPDATE upload_controls SET payload=?", (encode(control).decode(),)
+        )
+        if boundary == "warm":
+            invoke = partial(read_any_view, store.connection, data["plan"]["plan_id"])
+        else:
+            invoke = store.verify
+        with pytest.raises(YorungeError) as error:
+            invoke()
+        assert error.value.code == "state_invalid"

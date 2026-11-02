@@ -89,8 +89,9 @@ def test_each_required_intent_cannot_be_replaced_by_metadata_even_if_rest_accept
     incomplete = replace(value, intents=intents, receipts=receipts)
     assert all(x.result == "accepted" for x in incomplete.receipts)
     assert incomplete.verification.files == value.verification.files
+    source = manifest()
     with pytest.raises(YorungeError) as error:
-        validate_graph(incomplete, manifest())
+        validate_graph(incomplete, source)
     assert error.value.code == "state_invalid"
 
 
@@ -132,8 +133,9 @@ def test_mixed_record_control_approval_proof_family_is_rejected(field):
         ]
         data["grant"] = legacy
         changed = TransferVerification.model_validate_json(encode(data))
+    candidate, source = replace(value, **{field: changed}), manifest()
     with pytest.raises(YorungeError) as error:
-        validate_graph(replace(value, **{field: changed}), manifest())
+        validate_graph(candidate, source)
     assert error.value.code == "state_invalid"
 
 
@@ -151,8 +153,9 @@ def test_terminal_evidence_matches_record_and_canonical_proof(field, value):
     data = view.controls[0].model_dump(mode="json")
     data[field] = value
     control = TransferControlV2.model_validate_json(encode(data))
+    candidate, source = replace(view, controls=(control,)), manifest()
     with pytest.raises(YorungeError):
-        validate_graph(replace(view, controls=(control,)), manifest())
+        validate_graph(candidate, source)
 
 
 @pytest.mark.parametrize(
@@ -222,8 +225,9 @@ def test_duplicate_and_oversized_otherwise_valid_versioned_record():
     variants = [raw[:-1] + b',"schema_version":2}', b" " * (16 * 1024) + raw]
     for content in variants:
         assert json.loads(content) == data
+        text = content.decode()
         with pytest.raises(YorungeError) as error:
-            decode_versioned(TransferRecord, TransferRecordV2, content.decode())
+            decode_versioned(TransferRecord, TransferRecordV2, text)
         assert error.value.code == "state_invalid"
 
 

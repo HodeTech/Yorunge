@@ -441,19 +441,13 @@ def _stages(view: VersionedTransferView, manifest: DatasetManifest) -> None:
         raise ValueError("failure cannot hide pending intent ambiguity")
 
 
-def _terminal_control(view: VersionedTransferView, terminal: UploadControl | None) -> None:
-    record = view.operation
-    assert record is not None
-    if (terminal is not None) != (record.status in TERMINAL):
-        raise ValueError("terminal control mismatch")
-    if terminal is None:
-        return
+def _current_control(record: UploadRecord, control: UploadControl) -> None:
     if (
-        terminal.revision,
-        terminal.reason,
-        terminal.observed_at,
-        terminal.identity_epoch,
-        terminal.clock_generation,
+        control.revision,
+        control.reason,
+        control.observed_at,
+        control.identity_epoch,
+        control.clock_generation,
     ) != (
         record.revision,
         record.reason,
@@ -461,7 +455,17 @@ def _terminal_control(view: VersionedTransferView, terminal: UploadControl | Non
         record.observed_identity_epoch,
         record.observed_clock_generation,
     ):
-        raise ValueError("terminal evidence mismatch")
+        raise ValueError("current control evidence mismatch")
+
+
+def _terminal_control(view: VersionedTransferView, terminal: UploadControl | None) -> None:
+    record = view.operation
+    assert record is not None
+    if (terminal is not None) != (record.status in TERMINAL):
+        raise ValueError("terminal control mismatch")
+    if terminal is None:
+        return
+    _current_control(record, terminal)
     if terminal.verification_digest != (
         verification_digest(view.verification) if view.verification else None
     ):
@@ -482,8 +486,11 @@ def _controls(view: VersionedTransferView) -> None:
         ):
             raise ValueError("control revision mismatch")
     _terminal_control(view, controls.get("terminal"))
-    if record.status == "unknown" and "recovery" not in controls:
-        raise ValueError("unknown requires reserved recovery marker")
+    if record.status == "unknown":
+        recovery = controls.get("recovery")
+        if recovery is None:
+            raise ValueError("unknown requires reserved recovery marker")
+        _current_control(record, recovery)
 
 
 def validate_graph(view: VersionedTransferView, manifest: DatasetManifest) -> None:
