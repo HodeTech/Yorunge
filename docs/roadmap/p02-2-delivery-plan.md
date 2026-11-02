@@ -48,3 +48,5 @@ Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlan
 ## Bağımsız yerel kart sırası
 
 P02-2d/e/f yerel temel kartları, a/b/c üst teslim ID/kabulünü yeniden numaralandırmadan daraltır. d tamamlandıktan sonra e, ardından f uygulanır; her kart commit+iki fresh tur ister. Remote adım 3 dış otorite/wire kapısında beklerse f temelini bekletmez; f gerçek adapter/ücretli/live kabulü değildir. a/b/c, ilgili yerel temelleri kendi gerçek remote/UX/live kabulleriyle birlikte kapatır.
+
+P02-2f iki kod dilimine ayrılır: **4.1** kapalı hedef/request politikası ve gerçek descriptor byte kaynağı; **4.2** public-IP pin/peer backend, aynı client/pool storage entegrasyonu ve iki gerçek TLS origin negatifleri. Her dilim kendi commit'i ve iki farklı fresh review turuyla kapanır; f ancak ikisi tamamlanınca verified olur. Native bütünleşik ve gerçek provider codec/kabulü yine b/c kapsamındadır.

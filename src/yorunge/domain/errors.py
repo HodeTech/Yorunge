@@ -128,7 +128,10 @@ MESSAGES: dict[ErrorCode, str] = {
         "Dosya veya kök değişti. Etkin yazıcıları durdurun; güncel girdileri yeniden denetleyin."
     ),
     "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
-    "execution_timeout": "Execution hazırlığı veya doğrulaması 30 saniyelik bütçeyi aştı.",
+    "execution_timeout": (
+        "Hazırlık, doğrulama veya aktarım süre bütçesi doldu. "
+        "Kaydı inceleyin; otomatik tekrar yapmayın."
+    ),
     "plan_not_found": "Kayıtlı plan bulunamadı. Plan listesini inceleyin.",
     "plan_not_valid": (
         "Execution planı güncel ve onaylanabilir değil. Engelleri ve bağları inceleyin."

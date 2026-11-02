@@ -56,3 +56,12 @@ Son birleşik journal/contract/özgün indexed-frontier kümesi **103 passed / 2
 
 
 Adım 2 son kapanış: adversarial reviewer b2a804d üzerindeki özgün NaN reproducer'ını ve geçerli/geçersiz deadline yollarını bağımsız tekrar etti: **9 passed / 49 deselected / 3,40 s**, yeni bulgu yok. NaN/±inf/bool/string/null/overflow → invalid_request, geçmiş deadline → execution_timeout, her hatada operation ID korunarak sıfır intent/latch false; geçerli deadline ile permit ve store doğrulaması geçti. Önceki P1/P2 kapanışları korundu. **P02-2e çalışma dalında verified**; iki fresh tur/fix/commit ve son bağımsız teyit tamamlandı. Sonraki bağımsız kart P02-2f; gerçek remote/live/paket/native/CI teslimi hâlâ açık ve epik draft'tır.
+
+
+## Adım 4.1 — P02-2f hedef/request ve descriptor source
+
+P02-2e kapanışından sonra f iki gerçek kod dilimine ayrıldı; her biri commit+iki fresh tur ister. Bu ilk dilim `StorageTarget`/`StorageRequest` kapalı auth/path/query/MIME/SHA-256/header ve response-limit metadata'sını, aynı task/PID/thread'de lazy descriptor `DescriptorByteSource` uygulamasını getirir. Client/DNS/peer backend ve gerçek TLS storage request 4.2'dir; burada uygulanmış iddia edilmez. Ürün provider codec/CLI/yazma pilotu yoktur.
+
+Kaynak construction'da I/O yapmaz; no-follow root/ancestor/leaf, regular-file/size, 1 MiB pull, byte/hash, EOF'ta yeniden path/kimlik/stat/hash denetimi ve hata/cancel/context-close cleanup çalışır. Explicit iterator async-generator finalizer'ı yaratmaz. Erken normal close iptal üretmez; gerçek Task.cancel yayılır. Signed URL/private source repr ve pickle'a girmez. Shared `execution_timeout` mesajı 30 s execution'a özgü yanlış yönlendirmeden arındırıldı; numeric execution/transfer sınırları kendi sözleşmelerinde aynen kaldı.
+
+Storage policy+gerçek source ilk kümesi **88 passed / 0,31 s**; Unicode/control/yanlış tip ekleri sırasında encoded bidi negatifinin ret edilmediği saptandı (**91 passed / 1 failed**); URI denetimi mevcut canonical `safe_text` control/bidi kuralına bağlandı. Son storage+mevcut upload plan kümesi **174 passed / 0,30 s** (82 eski upload plan testi dahil); src/scripts strict mypy **90 dosya** ve ilgili Ruff geçti. Bu bir native RSS/throughput, ağ veya canlı hesap kabulü değildir. 4.1 fresh review turları henüz kapanmadı; f in_progress.
