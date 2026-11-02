@@ -1,7 +1,7 @@
 ---
 id: P02-2i
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2h, P02-2e]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,7 @@ Literal v2 graph/control/proof golden/digest; mixed version/slot/digest/chronolo
 
 ## Teslim kaydı
 
-P02-2h verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
+- PR/commit: [1ac789b](https://github.com/HodeTech/Yorunge/commit/1ac789b) union/history/graph; [88218d2](https://github.com/HodeTech/Yorunge/commit/88218d2) recovery eşlik düzeltmesi; aynı dal/tek nihai PR.
+- Sonuç: 451 ortak contract/history, 200 maintenance/migration regresyonu; fix sonrası 108 journal/version testi ve 50 yeni test. İki farklı fresh tur tamam; [kanıt](../../research/p02-2-implementation-validation.md#p02-2i--versioned-journal-ve-tam-graph).
+- Kalan sınır: Bu read/history/reset kabulüdür. Yeni writer ve v1 write yasağı j; v2 explicit read mutation k; public/provider/live/native/build/CI a/b/c'dedir.
 

@@ -48,8 +48,8 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2f | İzole storage hedefi ve bounded stream portu | P02-2d; [yerel kart](tasks/p02-2f-bounded-storage-port.md) | `verified` |
 | P02-2g | Exact işe/döneme bağlı maliyet v2 | P02-2d; [kart](tasks/p02-2g-work-cost-v2.md) | `verified` |
 | P02-2h | Policy-aware v2 plan/onay/current sözleşmesi | P02-2g; [kart](tasks/p02-2h-plan-policy-v2.md) | `verified` |
-| P02-2i | V1/V2 journal union ve tam graph okuması | P02-2h, P02-2e; [kart](tasks/p02-2i-versioned-journal.md) | `in_progress` |
-| P02-2j | V2 admission/arm ve v1 weak-cost write kapanışı | P02-2i, P02-2f; [kart](tasks/p02-2j-write-gates-v2.md) | `draft` |
+| P02-2i | V1/V2 journal union ve tam graph okuması | P02-2h, P02-2e; [kart](tasks/p02-2i-versioned-journal.md) | `verified` |
+| P02-2j | V2 admission/arm ve v1 weak-cost write kapanışı | P02-2i, P02-2f; [kart](tasks/p02-2j-write-gates-v2.md) | `in_progress` |
 | P02-2k | V2 explicit read/metadata/reset uyumu | P02-2j; [kart](tasks/p02-2k-read-recovery-v2.md) | `draft` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |

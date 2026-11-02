@@ -1,7 +1,7 @@
 ---
 id: P02-2j
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2i, P02-2f]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,5 @@ Sıfır permitli v1 ret ve v2 draft/ack retleri; aynı plan/namespace/race/PID/f
 
 ## Teslim kaydı
 
-Uygulama başlamadı; draft. Gerçek commit/review/test ve kalan sınır oluşunca kaydedilir.
+P02-2i verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
 
