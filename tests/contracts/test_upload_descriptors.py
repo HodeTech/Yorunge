@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import pickle
+from functools import partial
 from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
@@ -531,3 +532,38 @@ def test_only_consumed_protocol_keys_are_exempt_in_each_new_raw_shape(kind, secr
     with pytest.raises(YorungeError) as error:
         call(raw)
     assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "context",
+        "secret",
+        "response_context",
+        "response_secret",
+        "descriptor",
+        "confirm_secret",
+        "confirm_ack_secret",
+        "batch",
+        "batch_context",
+    ],
+)
+def test_invalid_private_codec_inputs_have_closed_errors(case):
+    context = contexts()[0]
+    raw = encoded(response(context))
+    descriptor = codec.presigned(raw, context, SECRET)
+    calls = {
+        "context": partial(codec.presign_content, None, SECRET),
+        "secret": partial(codec.presign_content, context, None),
+        "response_context": partial(codec.presigned, raw, None, SECRET),
+        "response_secret": partial(codec.presigned, raw, context, None),
+        "descriptor": partial(codec.confirm_content, None, context, SECRET),
+        "confirm_secret": partial(codec.confirm_content, descriptor, context, None),
+        "confirm_ack_secret": partial(metadata.confirm_ack, b'{"created":1}', 1, None),
+        "batch": partial(codec.distinct_uploads, None, (context,)),
+        "batch_context": partial(codec.distinct_uploads, (), (None,)),
+    }
+    invoke = calls[case]
+    with pytest.raises(YorungeError) as error:
+        invoke()
+    assert error.value.code == "invalid_request"

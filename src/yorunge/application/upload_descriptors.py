@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from yorunge.application import platform_upload_codec as control
 from yorunge.application.response_json import parse_json
-from yorunge.application.storage import StorageTarget
+from yorunge.application.storage import StorageTarget, validate_object_key
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import SecretValue, ServiceTarget, normalize_target
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
@@ -20,7 +20,6 @@ from yorunge.domain.state import canonical_uuid
 
 _PROXY_TARGET = normalize_target("https://api.ssyz.org.tr/api/v1")
 _MEDIA = re.compile(r"[\w!#$&^.+-]+/[\w!#$&^.+-]+", flags=re.ASCII)
-_KEY = re.compile(r"[A-Za-z0-9_./-]{1,512}", flags=re.ASCII)
 _MISSING = object()
 _MIMES = {
     ".png": "image/png",
@@ -213,6 +212,7 @@ def contexts(
 
 
 def presign_content(context: FileContext, secret: SecretValue) -> bytes:
+    _require_context(context)
     values: dict[str, object] = {
         "filename": context.file.path,
         "sha256_hash": context.file.sha256,
@@ -225,13 +225,10 @@ def presign_content(context: FileContext, secret: SecretValue) -> bytes:
 
 
 def _key(value: object) -> str:
-    if (
-        type(value) is not str
-        or _KEY.fullmatch(value) is None
-        or any(part in {"", ".", ".."} for part in value.split("/"))
-    ):
-        raise YorungeError("invalid_response")
-    return value
+    try:
+        return validate_object_key(value)
+    except YorungeError:
+        raise YorungeError("invalid_response") from None
 
 
 def _mime(value: object, filename: str) -> str:
@@ -283,6 +280,8 @@ def _target(
 
 
 def presigned(data: bytes, context: FileContext, secret: SecretValue) -> PresignedUpload:
+    _require_context(context)
+    control._require_secret(secret)
     value = parse_json(data)
     root = control._object(value)
     if "success" in root:
@@ -326,6 +325,12 @@ def _file_match(row: dict[str, object], context: FileContext) -> None:
 def distinct_uploads(
     uploads: tuple[PresignedUpload, ...], expected: tuple[FileContext, ...]
 ) -> None:
+    if type(uploads) is not tuple or type(expected) is not tuple:
+        raise YorungeError("invalid_request")
+    if any(type(u) is not PresignedUpload for u in uploads):
+        raise YorungeError("invalid_request")
+    for context in expected:
+        _require_context(context)
     if not expected or len(uploads) != len(expected) or len(expected) != expected[0].file_count:
         raise YorungeError("invalid_response")
     first = expected[0]
@@ -355,7 +360,14 @@ def _batch_identity(context: FileContext) -> tuple[str, str, str, str, str, str,
     )
 
 
+def _require_context(context: FileContext) -> None:
+    if type(context) is not FileContext:
+        raise YorungeError("invalid_request")
+
+
 def confirm_content(upload: PresignedUpload, expected: FileContext, secret: SecretValue) -> bytes:
+    if type(upload) is not PresignedUpload:
+        raise YorungeError("invalid_request")
     upload.require(expected)
     value: dict[str, object] = {
         "object_key": upload.provider_key.reveal(),

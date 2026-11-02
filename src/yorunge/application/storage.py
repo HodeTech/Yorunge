@@ -25,6 +25,18 @@ SIGNED_URL_BYTES = 16 * 1024
 _ESCAPES = re.compile(r"%(?![\da-fA-F]{2})", flags=re.ASCII)
 _MEDIA = re.compile(r"[\w!#$&^.+-]+/[\w!#$&^.+-]+", flags=re.ASCII)
 _SHA256 = re.compile(r"[\da-f]{64}", flags=re.ASCII)
+_OBJECT_KEY = re.compile(r"[A-Za-z0-9_./-]{1,512}", flags=re.ASCII)
+
+
+def validate_object_key(value: object) -> str:
+    """Lexical resource bound only; it does not classify authorization tokens."""
+    if (
+        type(value) is not str
+        or _OBJECT_KEY.fullmatch(value) is None
+        or any(part in {"", ".", ".."} for part in value.split("/"))
+    ):
+        raise YorungeError("invalid_service_target")
+    return value
 
 
 class ByteSource(Protocol):
@@ -240,6 +252,7 @@ class StorageTarget:
             or query[0][0] != "key"
         ):
             raise YorungeError("invalid_service_target")
+        validate_object_key(query[0][1])
 
     def check_secret(self, secret: SecretValue) -> None:
         parsed = urlsplit(self._url)

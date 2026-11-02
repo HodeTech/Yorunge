@@ -333,3 +333,27 @@ def test_registered_literal_policy_does_not_apply_to_other_targets_or_direct():
     with pytest.raises(YorungeError) as error:
         proxy(literal_policy="platform_proxy_v2")
     assert error.value.code == "invalid_service_target"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "key=",
+        "key=../x",
+        "key=objects/../x",
+        "key=objects//x",
+        "key=%2e%2e%2fx",
+        "key=%C3%A9",
+        "key=" + "x" * 513,
+    ],
+)
+def test_registered_proxy_rejects_invalid_key_at_target_construction(query):
+    with pytest.raises(YorungeError) as error:
+        registered_proxy(query)
+    assert error.value.code == "invalid_service_target"
+
+
+@pytest.mark.parametrize("size", [511, 512])
+def test_registered_proxy_accepts_actual_maximum_key_boundary(size):
+    target = registered_proxy("key=" + "x" * size)
+    target.check_secret(SecretValue("unrelated-secret"))

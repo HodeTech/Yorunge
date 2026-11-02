@@ -114,6 +114,11 @@ def _children(
     return []
 
 
+def _require_secret(secret: SecretValue) -> None:
+    if type(secret) is not SecretValue:
+        raise YorungeError("invalid_request")
+
+
 def _scan(
     value: object,
     secret: SecretValue,
@@ -122,6 +127,7 @@ def _scan(
     error: Literal["invalid_response", "invalid_request"],
     checked_string: tuple[tuple[str, ...], str] | None = None,
 ) -> None:
+    _require_secret(secret)
     captured = secret.reveal()
     pending: list[tuple[object, tuple[str, ...]]] = [(value, ())]
     while pending:
@@ -302,6 +308,7 @@ def role(data: bytes, secret: SecretValue) -> ProviderRole:
 
 
 def link_ack(data: bytes, secret: SecretValue) -> None:
+    _require_secret(secret)
     if data and _object(raw(data, "link", secret)).get("success") is not True:
         raise YorungeError("invalid_response")
 
