@@ -106,3 +106,10 @@ ADR-0026 kullanıcı bulguları, iki fresh belge revizyon turu ve koşullu onayl
 İlk iki contract dosyası 195 geçti; R1 maliyet kolu Astra/high, wire kolu Sol/high bağımsız 239 test geçti bildirdi; runtime kusuru yoktu. Wire kolunun test kanıtı iyileştirmesi 2c9aded ile kapandı: geçerli fixture'da aynı geçerli değeri tekrar eden duplicate ve yalnız whitespace ile byte aşımı sınanır; guard kaldırıldığında bu örnekler geçerli olur. Son cost/upload/transfer kümesi **241 passed / 0,32 s**. Ruff/strict mypy geçti. Farklı fresh R2 Sol/high ve Astra/high yeni doğrulanmış bulgu bulmadı; biri 241, diğeri 115 cost testini ve bağımsız scalar/semantic negatiflerini çalıştırdı. Örtüşen testler toplanmaz.
 
 P02-2g çalışma dalında verified. Runtime v1 new-write yasağı j'nin atomik v2 geçişidir; bu kart saf domain modelidir. Public producer, gerçek fiyat/yetki, yeni hesap çağrısı, native/build/source CI kabulü yoktur; eski M5 kaydı yeni kaynak başarısı sayılmaz. H sıradaki dar uygulama birimidir.
+
+
+## P02-2h — V2 plan, onay ve current modeli
+
+Private snapshot factory, exact v2 policy reducer, approval acknowledgement/binding ve typed AuthorizationCheck/UploadObservation/UploadCurrentCheck eklendi. 96 literal beklenen matris 65 draft/2 prepared/11 attempt_ready/18 invalid durum içerir; 13 eligible durumun 9'u unpriced ack, 8'i authority ack ister. Literal plan/approval byte/digest vektörleri bağımsız JSON hesaplamasından üretilmiştir. Current null/partial→supplemental positive saved planı/approval'ı değiştirmez; eski baseline, bütün mevcut proof ve current action grant expiry'leri korunur. Gerçek grant veya fiyat backend'i eklenmedi.
+
+İlk test geliştirme koşusu 39 passed/116 failed verdi: test helper ErrorCode'u Türkçe exception mesajında regex olarak arıyordu. Oracle .code alanını denetleyecek şekilde düzeltildi; ürün hata kodları değiştirilmedi. Ek current/expiry/wire sınırlarıyla son dört contract kümesi **410 passed**; src/scripts strict mypy **97 dosya**, ilgili Ruff başarılı. İki fresh kod review turu bu ilk kayıtta henüz tamamlanmadı; h in_progress. SQL union/new-write kapıları/producer/public CLI/live/native/build/CI sonraki kartlardadır.
