@@ -217,6 +217,28 @@ def test_strict_bounded_wire(model, raw):
         model.model_validate_json(raw)
 
 
+@pytest.mark.parametrize(
+    "model,path,key",
+    [
+        (UploadCostWork, WORK, "root"),
+        (UploadCostBoundV2, COST, "maximum_micros"),
+    ],
+)
+def test_wire_guards_reject_otherwise_valid_duplicate_and_oversized_json(model, path, key):
+    raw = path.read_bytes()
+    data = json.loads(raw)
+    assert model.model_validate_json(raw).encoded() == raw
+    duplicate = raw[:-1] + b"," + encode(key) + b":" + encode(data[key]) + b"}"
+    # Both values are valid and equal: a last-key-wins parser would accept this.
+    assert json.loads(duplicate) == data
+    with pytest.raises(ValueError, match="duplicate"):
+        model.model_validate_json(duplicate)
+    padded = b" " * (16 * 1024) + raw
+    assert json.loads(padded) == data
+    with pytest.raises(ValueError, match="bounded upload wire"):
+        model.model_validate_json(padded)
+
+
 def test_v1_literal_history_remains_byte_identical():
     raw = (FIXTURES / "dataset-upload-plan-v1.json").read_bytes()
     assert DatasetUploadPlan.model_validate_json(raw).encoded() == raw
