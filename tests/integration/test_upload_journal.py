@@ -1135,3 +1135,23 @@ def test_fresh_recovery_verification_after_reset_does_not_compare_old_future_utc
         )
         assert repo.verified(record.operation_id, owner, proof).operation.status == "succeeded"
         store.verify()
+
+
+@pytest.mark.parametrize(
+    "deadline",
+    [float("nan"), float("inf"), float("-inf"), True, "900", None, 10**1000],
+    ids=["nan", "positive-inf", "negative-inf", "bool", "string", "null", "overflow"],
+)
+def test_nonfinite_or_wrong_deadline_never_commits_stage_or_permit(journal, deadline):
+    record = journal.approved()
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        with pytest.raises(YorungeError) as failure:
+            repo.arm(
+                record.operation_id, record.lease, journal.plan, "create", None, total_end=deadline
+            )
+        assert failure.value.code == "invalid_request"
+        assert failure.value.operation_id == record.operation_id
+        view = repo.show(operation_id=record.operation_id)
+        assert not view.intents and not view.operation.workflow_latched
+        store.verify()

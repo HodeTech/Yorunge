@@ -1,6 +1,6 @@
 # P02-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-11-02. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1, P02-1 kapanışı 973cec5. **Durum:** Yerel temel uygulanıyor; remote producer/upload/live kabulü yoktur. ADR-0024/0025 Accepted; [hazırlık ve yetkili beş GET](p02-2-readiness-review.md) ayrı kanıttır. 200 CR geliştirme tavanı fiyat veya write yetkisi değildir.
+**Tarih:** 2026-11-02. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1, P02-1 kapanışı 973cec5. **Durum:** Yerel temel uygulanıyor; remote producer/upload/live kabulü yoktur. ADR-0024/0025 Accepted; [hazırlık ve yetkili beş GET](p02-2-readiness-review.md) ayrı kanıttır. İlk 200 CR tutarı sonraki kullanıcı yanıtında küçük canlı deneme için esnetildi; bu tercih fiyat/authority kanıtı değildir, canlı yazma henüz yapılmadı.
 
 ## Adım 1 — P02-2d yerel plan sözleşmesi
 
@@ -49,3 +49,7 @@ P1 için admission'da yalnız ilk başarılı çağrıya verilen immutable volat
 P2 için aynı clock neslinde proof gözleminin son confirm'den sonra olması hem verified yazımında hem graph doğrulamasında zorunlu oldu; tam terminal digest'i yeniden hesaplanmış eski proof da reddedilir. Predecessor receipt → sonraki intent kronolojisi de denetlenir. Reset/clock nesilleri arasında eski yanlış UTC karşılaştırılmaz; güncel read grant ve aynı neslin recovery marker'ı yeni gözlemin alt sınırıdır. +366 gün yanlış saat geçmişi sonrası fresh read verification testi bu kurtarma yolunu ayrıca kapsar.
 
 Claim ve zaman düzeltmelerinin ilk birleşik contract/journal koşusu **94 passed / 24,68 s** verdi; ek future-clock recovery testi ayrıca kontrol edildi. Bu fixlerin bağımsız teyidi ve kart kapanışı henüz bu satırda tamamlanmış sayılmaz. Native/paket/son CI ve bütün remote/live kabulleri P02-2c'de kalır; yeni hesap çağrısı yoktur.
+
+37cbc6e düzeltme commit'i iki R2 reviewer tarafından ayrıca teyit edildi. Consumer kolu **70 passed / 25 deselected / 13,24 s**; eksik/düzenlenmiş claim digest, predecessor kronolojisi, preview/quota ve reset epoch davranışında yeni kusur yoktu. Adversarial kol özgün fork/reopen ve stale-proof reproducer'larının artık reddedildiğini, güncel proof'un succeeded olduğunu doğruladı; **92 passed / 3 deselected / 21,59 s** bildirdi. Ek **P2** olarak `NaN` total deadline'ın min/comparison üzerinden intent commit'ine ulaşabildiğini saptadı. Sonlu exact int/float (bool hariç), overflow ve geçmiş deadline kontrolü arm transaction'ından önce eklendi; yedi negatifte intent/permit sıfırdır.
+
+Son birleşik journal/contract/özgün indexed-frontier kümesi **103 passed / 29,61 s** verdi. Bu sonuç önceki başarısızlıkları silmez ve native/paket/CI kabulü değildir. Kullanıcının yeni küçük canlı deneme/200 CR aşım tercihi plan/hazırlık kaydına işlendi; hiçbir hesap çağrısı yapılmadı. Son deadline fix'inin teyidi ve kart/current kapanışı sonraki kayıttadır.

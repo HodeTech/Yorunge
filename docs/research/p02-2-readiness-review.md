@@ -97,3 +97,8 @@ Fresh kod R2 (106f65a, GPT-6 Astra/high) ve tekrar 19 offline testte yeni doğru
 [Şekil/sayaç receipt'i](p02-2-five-get-observations.json) özgün baytlarla saklandı; SHA-256 **de42dc2364971ce9bcecade4db724ac5c54fcf8f294f5f56b6b2163cb888fe33**, producer source 106f65a, probe SHA **ebb64410c1929cf3a55a69399034bad0baf9dbd4de79e01f336918fb9acebac7**. Hash yeniden karşılaştırıldı. Yürütücü/test kaynağı artık bu canlı koşunun immutable snapshot'ıdır; değiştirilmez veya otomatik tekrar yapılmaz. Hiçbir billing/negative-key/POST/PUT/DELETE çağrısı yapılmadı. Özel dosya/anahtar/account ham yanıtı repoya alınmadı.
 
 API-key ile create/link yetkisi, mevcut dataset olmadığı için my-role/upload/presign/confirm şeması ve maliyet hâlâ açık. Yetkili read sınırı bunları çözmek için genişletilmedi. Bağımsız yerel domain/state/storage temel işleri bu dış kapılardan ayrılan hazır kartlarla devam eder; remote başarı uydurulmaz.
+
+
+## Kullanıcının sonraki canlı deneme tercihi
+
+Beş GET ve bağımsız yerel uygulama sürerken kullanıcı scope etiketi/tarifeye ulaşamadığını, “deneyebiliriz” ve “200’ü geçerse de sorun yok” yanıtıyla bildirdi. Başlangıçtaki 200 CR kesin tavanı bu küçük deneme için esnetildi; önceki kaynak/receipt'ler geriye dönük değiştirilmez. Somut ilk yazma denemesi [paket planındaki](../roadmap/p02-2-delivery-plan.md#canlı-kabul-hazırlığı) tek private dataset, açık test projesi, en çok üç görsel/1 MiB ve sabit istek/byte/süre sınırlarıdır. Otomatik DELETE/terms accept veya kapsamı büyüten tekrar yoktur. Bu kayıt fiyatı ücretsiz, provider yetkisini doğrulanmış veya ürünün prepared/cost-bound kapısını kapanmış göstermez; canlı yazma henüz yapılmadı. Önce yerel journal/storage kontrolleri ve exact tüketici wire'ı tamamlanır.

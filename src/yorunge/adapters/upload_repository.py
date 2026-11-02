@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import sqlite3
 from collections.abc import Iterator
@@ -540,7 +541,17 @@ class StateUploads:
         total_end: float,
     ) -> tuple[StageIntent, DispatchPermit, float]:
         with self.phase(operation_id):
+            finite = False
+            if type(total_end) in (int, float):
+                try:
+                    finite = math.isfinite(total_end)
+                except OverflowError:
+                    pass
+            if not finite:
+                raise YorungeError("invalid_request")
             before = self.clock.monotonic()
+            if total_end <= before:
+                raise YorungeError("execution_timeout")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
