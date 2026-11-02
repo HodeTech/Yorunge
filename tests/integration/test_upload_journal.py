@@ -49,16 +49,19 @@ class Journal:
     plan: DatasetUploadPlan
     manifest: DatasetManifest
     clock: object
+    access: object = None
 
     def repository(self, store):
-        return StateUploads(store, self.bound, clock=self.clock)
+        return StateUploads(store, self.bound, clock=self.clock, write_access=self.access)
 
     def approved(self):
         with open_store(self.root) as store:
             repository = self.repository(store)
             repository.save(self.plan, self.manifest)
             repository.approve(self.plan.plan_id, self.plan.digest, self.plan)
-            return repository.admit(self.plan.plan_id, self.plan)
+            record = repository.admit(self.plan.plan_id, self.plan)
+            self.access = repository.write_access
+            return record
 
     def arm(self, record, kind="create", index=None):
         with open_store(self.root) as store:
@@ -455,7 +458,7 @@ def _race_arm(journal, barrier, result):
         result.put(("error", error.code))
 
 
-def test_two_real_processes_cannot_arm_two_create_requests(journal):
+def test_forked_processes_cannot_arm_from_a_durable_lease(journal):
     import multiprocessing
 
     record = journal.approved()
@@ -468,11 +471,10 @@ def test_two_real_processes_cannot_arm_two_create_requests(journal):
         process.start()
     try:
         replies = [results.get(timeout=15) for _ in processes]
-        assert sorted(r[0] for r in replies) == ["armed", "error"]
-        assert next(r[1] for r in replies if r[0] == "error") == "operation_conflict"
+        assert all(r == ("error", "operation_lease_lost") for r in replies)
         with open_store(journal.root) as store:
             view = journal.repository(store).show(operation_id=record.operation_id)
-            assert len(view.intents) == 1 and view.intents[0].kind == "create"
+            assert not view.intents and not view.operation.workflow_latched
             store.verify()
     finally:
         for process in processes:
@@ -950,3 +952,186 @@ def test_arm_renews_same_write_owner_and_uses_current_db_lease(journal):
     # the repository re-reads current owner/fence and current DB lease timing.
     view = journal.accept(record, intent)
     assert view.operation.dataset_id == DATASET
+
+
+def test_reopened_repository_cannot_recreate_write_access_even_in_original_pid(journal):
+    from yorunge.application.transfer_access import TransferWriteAccess
+
+    record = journal.approved()
+    first, _, _ = journal.arm(record)
+    journal.accept(record, first)
+    with open_store(journal.root) as store:
+        repo = StateUploads(store, journal.bound, clock=journal.clock)
+        historical = repo.show(plan_id=journal.plan.plan_id).operation
+        assert repo.admit(journal.plan.plan_id, journal.plan) == historical
+        assert repo.write_access is None
+        for access in (
+            None,
+            TransferWriteAccess(
+                record.operation_id, record.write_owner_id, journal.clock.monotonic() + 900
+            ),
+        ):
+            repo.write_access = access
+            with pytest.raises(YorungeError) as failure:
+                repo.arm(
+                    record.operation_id,
+                    historical.lease,
+                    journal.plan,
+                    "project_link",
+                    None,
+                    total_end=journal.clock.monotonic() + 900,
+                )
+            assert failure.value.code == "operation_lease_lost"
+        assert len(repo.show(plan_id=journal.plan.plan_id).intents) == 1
+        store.verify()
+
+
+def test_same_process_two_connections_with_original_access_have_one_stage_intent(journal):
+    from concurrent.futures import ThreadPoolExecutor
+    from queue import Queue
+    from threading import Barrier
+
+    record = journal.approved()
+    barrier, results = Barrier(2), Queue()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(_race_arm, journal, barrier, results) for _ in range(2)]
+        for future in futures:
+            future.result(timeout=15)
+    replies = [results.get(timeout=1) for _ in futures]
+    assert sorted(r[0] for r in replies) == ["armed", "error"]
+    assert next(r[1] for r in replies if r[0] == "error") == "operation_conflict"
+    with open_store(journal.root) as store:
+        view = read_view(store.connection, journal.plan.plan_id)
+        assert len(view.intents) == 1 and view.operation.operation_id == record.operation_id
+        store.verify()
+
+
+def test_write_access_cannot_be_copied_serialized_or_extend_original_deadline(journal):
+    import copy
+    import pickle
+
+    record = journal.approved()
+    access = journal.access
+    for invoke in (copy.copy, copy.deepcopy, pickle.dumps):
+        with pytest.raises(TypeError):
+            invoke(access)
+    with pytest.raises(AttributeError):
+        access._end = float("inf")
+    journal.clock.elapsed += 901
+    with pytest.raises(YorungeError) as failure:
+        journal.arm(record)
+    assert failure.value.code == "operation_lease_lost"
+
+
+def complete_metadata_fixture(journal):
+    record = journal.approved()
+    for kind, index in [
+        ("create", None),
+        ("project_link", None),
+        *[(kind, i) for i in range(3) for kind in ("presign", "put", "confirm")],
+    ]:
+        intent, permit, _ = journal.arm(record, kind, index)
+        permit.consume()
+        record = journal.accept(record, intent).operation
+        journal.clock.value += timedelta(seconds=1)
+    proof = TransferVerification(
+        schema_version=1,
+        dataset_id=DATASET,
+        project_id=journal.plan.scope.project_id,
+        grant=journal.plan.grant,
+        observed_at=timestamp(journal.clock.value),
+        files=tuple(
+            VerifiedFile(
+                file_index=i,
+                item_id=str(uuid4()),
+                path_digest=hashlib.sha256(f.path.encode()).hexdigest(),
+                size_bytes=f.size,
+                sha256=f.sha256,
+            )
+            for i, f in enumerate(journal.manifest.files)
+        ),
+    )
+    return record, proof
+
+
+def test_metadata_observation_before_confirm_does_not_produce_success(journal):
+    record, proof = complete_metadata_fixture(journal)
+    old = proof.model_copy(update={"observed_at": record.created_at})
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        with pytest.raises(YorungeError) as failure:
+            repo.verified(record.operation_id, record.lease, old)
+        assert failure.value.code == "operation_uncertain"
+        view = repo.show(operation_id=record.operation_id)
+        assert view.operation.status == "running" and view.verification is None
+        assert (
+            repo.verified(record.operation_id, record.lease, proof).operation.status == "succeeded"
+        )
+        store.verify()
+
+
+@pytest.mark.parametrize("boundary", ["warm", "full"])
+def test_stale_observation_is_rejected_even_with_consistent_terminal_hash(journal, boundary):
+    record, proof = complete_metadata_fixture(journal)
+    with open_store(journal.root) as store:
+        journal.repository(store).verified(record.operation_id, record.lease, proof)
+        body = proof.model_copy(update={"observed_at": record.created_at}).encoded()
+        c = store.connection
+        c.execute("UPDATE upload_verifications SET payload=?", (body.decode(),))
+        control = json.loads(
+            c.execute("SELECT payload FROM upload_controls WHERE kind='terminal'").fetchone()[0]
+        )
+        control["verification_digest"] = hashlib.sha256(body).hexdigest()
+        c.execute(
+            "UPDATE upload_controls SET payload=? WHERE kind='terminal'",
+            (json.dumps(control, sort_keys=True, separators=(",", ":")),),
+        )
+        invoke = store.verify if boundary == "full" else lambda: read_view(c, journal.plan.plan_id)
+        with pytest.raises(YorungeError) as failure:
+            invoke()
+        assert failure.value.code == "state_invalid"
+
+
+def test_fresh_recovery_verification_after_reset_does_not_compare_old_future_utc(journal):
+    # Old clock was a year ahead. A reset's new epoch must allow fresh read
+    # evidence without waiting for that mistaken calendar date to arrive.
+    shift = timedelta(days=366)
+    journal.clock.value += shift
+    body = journal.plan.model_dump(mode="json")
+    for value in (body, body["grant"], body["cost_bound"]):
+        for key in ("prepared_at", "checked_at", "expires_at"):
+            if key in value:
+                value[key] = timestamp(instant(value[key]) + shift)
+    journal.plan = seal(body)
+    record, proof = complete_metadata_fixture(journal)
+    journal.clock.value -= shift
+    preview = api.preview_identity_reset(state_dir=journal.root).data
+    api.reset_identity(preview.digest, state_dir=journal.root)
+    with open_store(journal.root) as store:
+        credential = journal.bound.credential
+        identity = StateCredentialRegistry(store).observe(credential)
+        stamp = StateCache(store, journal.clock).stamp()
+        scope = journal.plan.scope.model_copy(
+            update={
+                "credential_id": identity.credential_id,
+                "credential_revision": identity.credential_revision,
+                "identity_epoch": stamp.identity_epoch,
+                "clock_generation": stamp.generation,
+            }
+        )
+        grant = journal.plan.grant.model_copy(
+            update={
+                "scope": scope,
+                "checked_at": timestamp(stamp.now),
+                "expires_at": timestamp(stamp.now + timedelta(seconds=900)),
+            }
+        )
+        bound = BoundCredential(journal.bound.context, credential, identity)
+        repo = StateUploads(store, bound, clock=journal.clock)
+        owner = repo.acquire_read(record.operation_id, grant)
+        journal.clock.value += timedelta(seconds=1)
+        proof = proof.model_copy(
+            update={"grant": grant, "observed_at": timestamp(journal.clock.value)}
+        )
+        assert repo.verified(record.operation_id, owner, proof).operation.status == "succeeded"
+        store.verify()

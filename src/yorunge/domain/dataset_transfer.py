@@ -67,6 +67,7 @@ class TransferRecord(UploadWire):
     intent_digest: Sha256
     approval: DatasetUploadApproval
     write_owner_id: str
+    write_access_digest: Sha256
     created_at: str
     updated_at: str
     status: TransferStatus

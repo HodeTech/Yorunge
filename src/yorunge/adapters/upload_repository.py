@@ -26,11 +26,13 @@ from yorunge.adapters.upload_store import (
     read_view,
     request_digest,
     require_capacity,
+    verification_after,
     write_record,
 )
 from yorunge.adapters.validation_memo import validation_session
 from yorunge.application.operations import DispatchPermit
 from yorunge.application.response_json import check_response_secrets
+from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
@@ -87,10 +89,15 @@ class StateUploads:
     """Internal repository. Production authority comes from a separately gated producer."""
 
     def __init__(
-        self, store: Store, credential: BoundCredential | None = None, *, clock: Clock | None = None
+        self,
+        store: Store,
+        credential: BoundCredential | None = None,
+        *,
+        clock: Clock | None = None,
+        write_access: TransferWriteAccess | None = None,
     ) -> None:
         self.store, self.connection = store, store.connection
-        self.credential = credential
+        self.credential, self.write_access = credential, write_access
         self.clock = clock or SystemClock()
         self.cache = StateCache(store, self.clock)
 
@@ -338,6 +345,7 @@ class StateUploads:
             return read_view(self.connection, plan_id)
 
     def admit(self, plan_id: str, fresh: DatasetUploadPlan) -> TransferRecord:
+        before = self.clock.monotonic()
         with self.phase():
             # Exact existing lookup is idempotent, local and independent of an
             # expired/revoked plan. It never renews ownership or creates a permit.
@@ -359,14 +367,24 @@ class StateUploads:
                 if previous is not None:
                     raise OperationError("operation_conflict", previous[0])
                 lease = self._lease(stamp, fence=1, mode="write")
+                operation_id = str(uuid4())
+                access = TransferWriteAccess(
+                    operation_id,
+                    lease.owner_id,
+                    before
+                    + (
+                        min(instant(view.plan.expires_at), instant(approval.expires_at)) - stamp.now
+                    ).total_seconds(),
+                )
                 record = TransferRecord(
                     schema_version=1,
-                    operation_id=str(uuid4()),
+                    operation_id=operation_id,
                     plan_id=plan_id,
                     plan_digest=view.plan.digest,
                     intent_digest=view.plan.intent_digest(),
                     approval=approval,
                     write_owner_id=lease.owner_id,
+                    write_access_digest=access.digest,
                     created_at=timestamp(stamp.now),
                     updated_at=timestamp(stamp.now),
                     status="admitted",
@@ -384,6 +402,7 @@ class StateUploads:
                 require_capacity(self.connection)
             with self.phase(record.operation_id):
                 self._finish(stamp, gate, scope=view.plan.scope)
+            self.write_access = access
             return record
 
     def _lease(self, stamp: Stamp, *, fence: int, mode: str) -> TransferLease:
@@ -415,6 +434,10 @@ class StateUploads:
             stamp.generation,
         ) or stamp.anomaly:
             raise YorungeError("operation_lease_lost")
+        if current.mode == "write":
+            if type(self.write_access) is not TransferWriteAccess:
+                raise YorungeError("operation_lease_lost")
+            self.write_access.require(record, self.clock.monotonic())
         if timestamp(stamp.now) < record.updated_at:
             raise YorungeError("state_changed")
         gate.require_clock(stamp, error="operation_lease_lost")
@@ -526,6 +549,8 @@ class StateUploads:
                 owner = self._owner(record, owner, stamp, gate)
                 if owner.mode != "write" or record.status not in {"admitted", "running"}:
                     raise YorungeError("operation_conflict")
+                assert self.write_access is not None
+                total_end = min(total_end, self.write_access.end)
                 self._current(view.plan, fresh, stamp, gate)
                 if self._approved(view, gate) != record.approval:
                     raise YorungeError("state_changed")
@@ -805,6 +830,10 @@ class StateUploads:
                     i.intent_id not in accepted for i in view.intents
                 ):
                     raise YorungeError("operation_uncertain")
+                try:
+                    verification_after(view, proof)
+                except ValueError:
+                    raise YorungeError("operation_uncertain") from None
                 changed = self._change(
                     record, stamp, lease=None, status="succeeded", reason="verified"
                 )

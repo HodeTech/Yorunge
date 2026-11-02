@@ -221,6 +221,32 @@ def _receipt(
         raise ValueError("only PUT has sent counters")
 
 
+def verification_after(view: TransferView, proof: TransferVerification) -> None:
+    """Compare UTC only within one clock epoch/generation; reset has a new floor."""
+    record = view.operation
+    assert record is not None
+    scope = proof.grant.scope
+    clock = scope.identity_epoch, scope.clock_generation
+    original = view.plan.scope.identity_epoch, view.plan.scope.clock_generation
+    if clock == original:
+        kinds = {item.intent_id: item.kind for item in view.intents}
+        floor = max(
+            [record.created_at]
+            + [r.recorded_at for r in view.receipts if kinds[r.intent_id] == "confirm"]
+        )
+    else:
+        controls = [
+            c
+            for c in view.controls
+            if c.kind == "recovery" and (c.identity_epoch, c.clock_generation) == clock
+        ]
+        if not controls:
+            raise ValueError("new clock requires current recovery observation")
+        floor = max(c.observed_at for c in controls)
+    if proof.observed_at < floor:
+        raise ValueError("metadata observation precedes confirmation or recovery")
+
+
 def _verify(view: TransferView, manifest: DatasetManifest) -> None:
     record, proof = view.operation, view.verification
     assert record is not None
@@ -234,6 +260,8 @@ def _verify(view: TransferView, manifest: DatasetManifest) -> None:
         or scope_target(proof.grant.scope) != scope_target(view.plan.scope)
         or proof.project_id != view.plan.scope.project_id
         or len(proof.files) != manifest.file_count
+        or (proof.grant.scope.identity_epoch, proof.grant.scope.clock_generation)
+        != (record.observed_identity_epoch, record.observed_clock_generation)
     ):
         raise ValueError("verification target mismatch")
     if (
@@ -243,6 +271,7 @@ def _verify(view: TransferView, manifest: DatasetManifest) -> None:
         or instant(proof.observed_at) > instant(record.updated_at)
     ):
         raise ValueError("success requires acknowledged stages and current read evidence")
+    verification_after(view, proof)
     for expected, actual in zip(manifest.files, proof.files, strict=True):
         if (
             hashlib.sha256(expected.path.encode("utf-8")).hexdigest(),
@@ -294,6 +323,8 @@ def validate_graph(view: TransferView, manifest: DatasetManifest) -> None:
             required = predecessor(intent.kind, intent.file_index)
             if required is not None and required not in accepted:
                 raise ValueError("stage predecessor not accepted")
+            if required is not None and intent.intended_at < accepted[required].recorded_at:
+                raise ValueError("stage precedes predecessor acknowledgement")
             if intent.request_digest != request_digest(
                 plan, manifest, intent.kind, intent.file_index, accepted
             ):
@@ -513,6 +544,7 @@ def write_record(
             "approval",
             "created_at",
             "write_owner_id",
+            "write_access_digest",
         )
         if (
             old.revision != expected
