@@ -1,6 +1,6 @@
 # Oluşturulmuş kaydı salt okumayla inceleme hazırlığı
 
-**Tarih:** 2026-11-02. Önceki [ilk pilot](../../p02-2-private-create-observations.md) detail GET 405 nedeniyle durdu; create veya upload tekrar edilmez. Bu ayrı, henüz çalıştırılmamış takip yalnız private journal'daki **aynı dataset** içindir. Yeni hesap çağrı yetkisi olmadan execute edilmez.
+**Tarih:** 2026-11-02. Önceki [ilk pilot](../../p02-2-private-create-observations.md) detail GET 405 nedeniyle durdu; create veya upload tekrar edilmez. Bu ayrı takip yalnız private journal'daki **aynı dataset** içindir. Yetki dayanağı mevcut P02-2 uygulama ve küçük deneme talimatıdır; ayrıca bir üç-GET onay yanıtı verilmiş olduğu iddia edilmez. Hazırlıkta ek onay gerektiği varsayılmıştı; aynı kaynak üzerindeki sıfır etkili inceleme mevcut yetkinin içinde değerlendirilir. Yeni write/billing veya başka kaynak kapsamı çıkarılmaz.
 
 En çok **3 mantıksal GET / 6 HTTP denemesi / 1,5 MiB tüketilen raw response / 30 s**:
 
@@ -14,4 +14,4 @@ Liste büyütme, sayfalama, başka dataset seçme, POST/PUT/DELETE, proje bağla
 .venv/bin/python -m pytest docs/research/probes/platform-created-dataset-read-20261102/test_read_probe.py -q
 ```
 
-Kaynak review ve kullanıcı tarafından bu somut scope'un onayı kapanmadan canlı çalışma yoktur.
+İki fresh kaynak review turu ve düzeltme teyitleri kapandı; [kayıt](../../p02-2-readiness-review.md#oluşturulmuş-kaydın-read-only-takip-review-r2). Bir kez çalıştırılır; sonucundan sonra frozen source/test değiştirilmez, eski başarısız pilotla birleştirilip başarı diye sunulmaz.
