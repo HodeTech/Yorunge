@@ -220,6 +220,7 @@ def survey(secret: SecretValue, project: str, budget: BudgetTransport) -> dict[s
         "pricing_verified": False,
         "effectful_requests": 0,
     }
+    denied = False
     try:
         with HttpSession(transport_factory=lambda: HttpxTransport(transport=budget)) as session:
             for label, path, query in endpoints(project):
@@ -265,6 +266,8 @@ def survey(secret: SecretValue, project: str, budget: BudgetTransport) -> dict[s
                     raw = parse_json(body)
                     no_secret(raw, secret)
                     row.update(body_bytes=len(body), shape=shape(raw))
+                    if time.monotonic() >= budget.end:
+                        raise YorungeError("transport_timeout")
                     row["logical_success_flag"] = (
                         raw.get("success") is True
                         if isinstance(raw, dict) and "success" in raw
@@ -274,13 +277,12 @@ def survey(secret: SecretValue, project: str, budget: BudgetTransport) -> dict[s
                     row["status"] = error.status_code
                     row["error_code"] = error.code
                     if error.status_code in (401, 403):
+                        denied = True
                         break
                 finally:
                     row["attempts"] = budget.per_call
                     budget.active = None
-            report["outcome"] = (
-                "completed_observations" if len(calls) == 5 else "stopped_access_denied"
-            )
+            report["outcome"] = "stopped_access_denied" if denied else "completed_observations"
     except YorungeError as error:
         report["error_code"] = error.code
         report["outcome"] = "stopped_controlled_error"

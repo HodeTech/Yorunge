@@ -9,3 +9,5 @@ Ağsız güvenlik denetimi:
 ```
 
 Canlı yürütme girişinde açık execute flag'i, önceki özel hazırlık ve kullanıcıya ait proje ID'si gerekir. Çıktı private alanda exclusive rezerve edilir; mevcut receipt ezilmez. Kaynaklar canlı koşudan sonra hash-bound snapshot olur; sonradan değişiklik ayrı yöntem/kayıt gerektirir. Bu dosya canlı tekrar yetkisi vermez. [Kapsam ve sonuç](../../p02-2-readiness-review.md) kanoniktir.
+
+Byte sayacı yalnız tüketilen raw response-body chunklarını ölçer; TLS/header ve okunmadan kapatılan error body bu sayıya dahil değildir. 512 KiB response alt sınırı ek güven payıdır. 30 s deadline kontrol noktaları/HTTP işlemi içindir; bloke dosya I/O/fsync/cleanup fiziksel duvar saati garantisi değildir. Exact kaynak/receipt hash bağı ve canlı koşu sonucu bağlı araştırma raporunda kaydedilir.

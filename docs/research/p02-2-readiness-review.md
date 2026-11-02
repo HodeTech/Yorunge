@@ -86,3 +86,5 @@ Yeni [beş GET yürütücüsü](probes/platform-upload-preflight-20261102/README
 
 
 Fresh kullanıcı-düzeltme R2 (7eae1ea, yeni GPT-6.1 Sol/high) güncel istek/bütçe/per-file ve güvenlik hükümlerini doğruladı; yeni güvenlik/sözleşme bulgusu yok. Üç eski durum ifadesi P3 olarak doğrulandı: araştırma başlığı ile P02-2a/b üst/teslim metni Accepted ADR'leri açık kapı gibi gösteriyordu. Güncel başlıklar Accepted, kalan kapılar yalnız endpoint/otorite/kabul olarak düzeltildi; tarihsel review kayıtları korunur.
+
+Beş GET aracı fresh R1 (7eae1ea, GPT-6.1 Sol/high) ve 19 sentetik testten geçti; doğrulanmış engelleyici güvenlik bulgusu yok. Önleyici test iyileştirmesi olarak mevcut-output testinde gerçek transport kurucusu da fail-closed monkeypatch edildi; post-parse deadline ve son-endpoint erişim reddinin outcome kaydı netleştirildi. Body sayacı TLS/header değil tüketilen raw gövdeyi ölçer; süreç duvar saati ile kontrol noktası deadline'ı ayrı anlatıldı. İkinci fresh code review canlı giriş öncesi yapılır.

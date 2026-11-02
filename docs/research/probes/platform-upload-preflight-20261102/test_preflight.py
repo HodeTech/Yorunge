@@ -173,6 +173,11 @@ def test_existing_output_is_never_overwritten(tmp_path, monkeypatch):
     monkeypatch.setattr(probe, "PREP", root)
     monkeypatch.setattr(probe, "ROOT", Path.cwd())
     monkeypatch.setattr(probe, "OUTPUT", output)
+
+    def forbidden_transport(*args, **kwargs):
+        raise AssertionError("offline test must never construct a real network transport")
+
+    monkeypatch.setattr(probe.httpx, "AsyncHTTPTransport", forbidden_transport)
     with pytest.raises(FileExistsError):
         probe.execute(PROJECT)
     assert output.read_bytes() == b"preserved"
