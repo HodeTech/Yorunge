@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Saved work'teki request/attempt/body limitleri gerçek service/storage çağrılarında uygulanır; kullanıcı sayaçları metadata/byte/ücret garantisiyle karıştırmaz. Bugün domain limitleri ve stage intent slotları var; actual HTTP sayaçları bağlı değildir.
+Saved work'teki request/attempt/body limitleri gerçek service/storage çağrılarında uygulanır; kullanıcı sayaçları metadata/byte/ücret garantisiyle karıştırmaz. Bu kart öncesinde domain limitleri ve stage intent slotları vardı; actual HTTP sayaçları bağlı değildi.
 
 ## Giren ve girmeyen kapsam
 
@@ -40,4 +40,6 @@ Contract + gerçek loopback TLS/source testleri; Ruff/strict mypy/doc/rehber/dif
 
 ## Teslim kaydı
 
-M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi iki fresh turla kapandı; n.2 rezervasyon modeli iki fresh tur/fix teyidiyle kapandı. N.3 gerçek wire bağlantısı iki fresh tur/fix teyidiyle kapandı; kart çalışma dalında yerel verified. Native/provider workflow/public ve epik kabulü bunun dışındadır. In_progress.
+- PR/commit: [da81289](https://github.com/HodeTech/Yorunge/commit/da81289).
+- Sonuç: Üç dar dilimin commit/iki fresh tur/fix teyidi tamamlandı. Kayıtlı URI, original invocation rezervasyonu, aynı pool gerçek attempt/body/source sayaçları ve TLS/direct/cleanup negatifleri yerel verified; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2n3--aynı-pool-üzerinde-gerçek-http-sayaçları).
+- Kalan sınır: Gerçek provider/controller/public API-CLI, native/kurulum/source CI ve canlı epik kabulü değildir. Provider direct wire veya fiyat/authority kanıtı üretilmez.
