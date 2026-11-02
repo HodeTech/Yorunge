@@ -62,3 +62,30 @@ Gerçek loopback TLS/süreç/SQLite kill testleri [P02-2c](../roadmap/tasks/p02-
 ## Gönderim ilerlemesi ve yavaş bağlantı
 
 Text/TTY yolunda en çok saniyede 10 kez coalesce edilmiş ilerleme, HTTP taşımasına teslim edilen gerçek kaynak byte sayacından gelir; bu, provider'ın kabul ettiği/kalıcılaştırdığı byte değildir. Kesin onaylanmış dosya/byte ayrıca gösterilir. Her chunk DB/event/NDJSON kaydı oluşturmaz. Non-TTY/JSON/normal tek-result NDJSON çıktısına progress karışmaz; Result/StreamEvent v1 wire'ı değiştirilmez. Python aynı tipli sayacı içeride kullanır; tam public progress imzası API wire kapanışında belirlenir. 500.000.000 byte için 120 s yaklaşık 33,34 Mbit/s payload hızı gerektirir; küçük canlı pilot bu yüksek bant genişliği sınırını kanıtlamaz. Throttle/slow-read/cancel kabulü controlled stop, ID ve sıfır otomatik replay'i sınar.
+
+## P02-2d kapalı yerel plan ve onay wire'ı
+
+Bu bölüm Accepted kararın ilk yerel kod dilimini kesinleştirir; public upload komutları henüz uygulanmış değildir. Bütün nesneler strict/frozen/extra-forbid, tüm alanlar zorunlu (nullable dahil), bool sayısal alan değildir. Raw JSON UTF-8, duplicate/nonfinite/BOM/trailing byte reddi; en çok 8 container/50.000 node. Plan/onay encoded byte sınırı 16 KiB; manifest artifact'ı eski Manifest v1 olarak ayrı tutulur ve upload alt kümesinde en çok 256 KiB'dır. Canonical plan/onay UTF-8 JSON `ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False`, LF yoktur; Manifest v1'in kendi canonical UTF-8+LF biçimi değişmez. Digest yalnız üst düzey digest alanı hariç bütün planı SHA-256 ile bağlar.
+
+| Tip | Tam alanlar |
+|---|---|
+| UploadScope | store_id, identity_epoch, clock_generation, service_id=`evren-platform`, service_origin, api_base_path, profile, owner, project_id, credential_id, credential_revision |
+| UploadOwner | kind=`user`/`organization`, id |
+| UploadRoot | anchor, device, inode |
+| UploadParameters | name, modality=`VISION`/`AUDIO`/`NLP`/`MULTIMODAL`/`MEDICAL`, visibility=`private`, contributions_enabled=false, license (string/null), tags (string listesi) |
+| UploadManifestRef | digest, content_sha256, file_count, total_bytes; content_sha256 tam Manifest v1 encoded+LF baytlarının hash'idir |
+| UploadStoragePolicy | mode=`proxy`/`direct`, origin (string/null); proxy'de null, direct'te kullanıcıca önceden seçilmiş canonical HTTPS/443 origin |
+| UploadGrant | schema_version=1, scope (tam UploadScope), permissions, producer_id, producer_version, checked_at, expires_at |
+| UploadCostBound | schema_version=1, scope (tam UploadScope), maximum_micros, source_id, source_version, checked_at, expires_at |
+| DatasetUploadPlan | schema_version=1, policy_version=1, kind=`dataset_upload_plan`, plan_id, scope, root, manifest, parameters, storage, budget_micros, inputs_verified, grant (UploadGrant/null), cost_bound (UploadCostBound/null), blockers, prepared_at, expires_at, status=`draft`/`prepared`, executable=false, digest |
+| DatasetUploadApproval | schema_version=1, approval_id, plan_id, plan_digest, binding_digest, store_id, identity_epoch, clock_generation, approved_at, expires_at, status=`approved`/`revoked`, revoked_at (string/null) |
+
+Internal ID'ler canonical UUIDv4; provider owner/project ID'leri canonical UUID'nin herhangi sürümü olabilir, yeni internal ID'ye çevrilmez. Clock/revision/inode positive int64; device ve para microcredit sayaçları nonnegative int64. CR tam olarak 1.000.000 microcredit'tir; para float kullanmaz. Bir oturumdaki 200 CR agent bütçesi ürünün evrensel fiyatı/limiti değildir. Profile/producer/source kimlikleri mevcut Identifier; timestamps canonical altı haneli UTC'dir. Root anchor P02-1'in ≤4.096 UTF-8 byte no-control/bidi canonical absolute yoludur.
+
+Name 2–128 karakter/≤256 UTF-8 byte, baş/son boşluk/control/bidi yoktur; otomatik trim/rename yoktur. License nullable ≤128 byte; tags en çok 10, tekil ASCII sıralı Identifier'dır. Modality alanının yapısal kabulü gerçek provider format desteği değildir. Storage origin scheme/host/443 dışında path/query/fragment/userinfo taşımayan canonical origin'dir; proxy origin=null olduğunda direct URL yetkisi yoktur.
+
+Grant permissions kapalı yerel görev iddialarıdır: `create_private_dataset`, `link_project`, `read_created_dataset`, `upload_created_dataset`; unique ASCII sıralıdır. Bunlar provider rol/permission adlarının uydurulmuş çevirisi değildir: trusted producer ancak her anlamı resmî/current kaynakla kapatınca üretir. Public API caller grant/cost JSON'u veya verified bayrağı kabul etmez. Grant/cost scope planla birebir, checked_at≤prepared_at<expires_at olmalı; plan kendi 900 s ömrünü ve her mevcut grant/cost expiry'sini aşamaz.
+
+Blockers bağımsız reducer'ın tekil ASCII sıralı sonucudur: inputs_verified=false → inputs_unverified; bütün dört grant izni yoksa authority_unverified; cost_bound=null → cost_unverified; bound>budget → cost_exceeds_budget. Başka blocker, serbest provider metni veya caller'ın seçtiği durum yoktur. Status prepared ancak hiçbir blocker yoksa mümkündür; bu tarihsel hazırlık etkin onay veya dispatch bileti değildir, executable=false kalır. Maliyet bilinmiyor diye sıfır atanmaz.
+
+Intent digest exact `(service_origin,api_base_path,owner.kind,owner.id,project_id,parameters.name)` canonical nesnesinden türetilir; root/credential/epoch/zaman değişimi yeni create hakkı açmaz. Binding digest plan ID/digest/zamanlar ve grant/cost gözlem zamanları hariç bütün semantik gövdeyi kapsar; producer/source sürümü, kapsam ve maliyet üst sınırı değişirse eşleşmez. Onay kendi plan ID/digest/binding/store/epoch/generation'ıyla ve `prepared_at≤approved_at<expires_at≤plan.expires_at` aralığıyla eşleşir; draft plan onaylanamaz. Revoke gerçek revoked_at≥approved_at ister; expired onay da iptal edilebilir. JSON parse/digest eşliği provenance veya insan kimliği kanıtı değildir.

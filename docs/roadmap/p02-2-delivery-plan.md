@@ -25,10 +25,10 @@ Her uygulama adımı: **geliştir → ilgili gerçek kontroller → commit → f
 | Adım | Sahip | Tek review sonucu / başlama kapısı |
 |---|---|---|
 | 0 | Paket hazırlığı | Mevcut belge/kod ve güncel kamu sözleşmesi review'si, iki Proposed ADR, gerçek kartlar ve dış kapılar; iki fresh belge turu, kullanıcı ADR onayı |
-| 1 | P02-2a yerel | Exact public/private wire, immutable upload plan/manifest, strict model/oracle, digest approve/revoke ve ortak kullanım senaryosu; ADR onayı gerekir, remote permission uydurulmaz |
-| 2 | P02-2a kalıcılık | 6→7 V2, quota/recovery rezervi, tekil niyet/intent/receipt, current credential/lease/clock, reset/preview/frontier ve eski restore yasağı; aynı kayıt üzerinde kill/race kabulü |
+| 1 | [P02-2d](tasks/p02-2d-upload-plan-contract.md) / P02-2a yerel | Exact public/private wire, immutable upload plan/manifest, strict model/oracle, digest approve/revoke ve ortak kullanım senaryosu; ADR onayı gerekir, remote permission uydurulmaz |
+| 2 | [P02-2e](tasks/p02-2e-durable-transfer-journal.md) / P02-2a kalıcılık | 6→7 V2, quota/recovery rezervi, tekil niyet/intent/receipt, current credential/lease/clock, reset/preview/frontier ve eski restore yasağı; aynı kayıt üzerinde kill/race kabulü |
 | 3 | P02-2a uzak | Gerçek current create/link authority producer, strict endpoint codec ve private create/proje bağı; auth/owner/project wire kapısı önce kapanır |
-| 4 | P02-2b | Ayrı hedef politikası, bounded descriptor streaming ve presign/PUT/confirm; exact provider wire/allowlist ve önceki durable kayıt gerekir |
+| 4 | [P02-2f](tasks/p02-2f-bounded-storage-port.md) temel / P02-2b adapter | Ayrı hedef politikası, bounded descriptor streaming ve presign/PUT/confirm; exact provider wire/allowlist ve önceki durable kayıt gerekir |
 | 5 | P02-2c recovery | Show/reconcile, her etki/commit sınırında kill/cevap kaybı, aynı-ID read-only yol; ikinci create/presign/PUT/confirm sıfır |
 | 6 | P02-2c deneyim/kabul | Ortak CLI/Python, text/JSON/NDJSON/error/cancel; gerçek TLS/kurulu upload bellek ve süre, sınır/yoğun state, altı temiz paket kurulumu, son kaynak M5 ve üç ortam CI |
 | 7 | P02-2c live/teslim | Ayrı yetkili küçük canlı kabul, belge/current/matris/README gerçek durum, kanıt saklama, tek development PR ve kullanıcı review'si |
@@ -44,3 +44,7 @@ Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlan
 ## Teslim kaydı
 
 Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). Kullanıcı review düzeltmeleri sonrası ADR-0024/0025 Accepted; kod/local kabul ve dış kapılar izleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
+
+## Bağımsız yerel kart sırası
+
+P02-2d/e/f yerel temel kartları, a/b/c üst teslim ID/kabulünü yeniden numaralandırmadan daraltır. d tamamlandıktan sonra e, ardından f uygulanır; her kart commit+iki fresh tur ister. Remote adım 3 dış otorite/wire kapısında beklerse f temelini bekletmez; f gerçek adapter/ücretli/live kabulü değildir. a/b/c, ilgili yerel temelleri kendi gerçek remote/UX/live kabulleriyle birlikte kapatır.

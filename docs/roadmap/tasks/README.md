@@ -27,6 +27,9 @@
 | [P02-2a](p02-2a-private-create.md) | Private create/proje bağı, ayrı upload planı ve kalıcı aşama temeli; karar/otorite kapılı |
 | [P02-2b](p02-2b-verified-upload.md) | Ayrı hedef politikasıyla bounded presign/PUT/confirm |
 | [P02-2c](p02-2c-upload-recovery-acceptance.md) | Aynı-ID read recovery, kesinti ve bütünleşik paket kabulü |
+| [P02-2d](p02-2d-upload-plan-contract.md) | Uzak otoriteyi beklemeyen yerel upload plan/manifest/onay sözleşmesi |
+| [P02-2e](p02-2e-durable-transfer-journal.md) | Ortak state içinde kalıcı transfer stage/CAS/recovery temeli |
+| [P02-2f](p02-2f-bounded-storage-port.md) | Ayrı hedef/auth ve sınırlı streaming storage temeli |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
