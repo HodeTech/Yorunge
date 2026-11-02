@@ -63,17 +63,20 @@ def _path(value: str) -> tuple[str, ...]:
     if not value.startswith("/") or "\\" in value or "//" in value:
         raise YorungeError("invalid_service_target")
     components = value[1:].split("/")
+    interpretations: list[str] = []
     for component in components:
         decoded = component
+        interpretations.append(component)
         for _ in range(4):
             decoded = _decoded(decoded)
+            interpretations.append(decoded)
             if decoded in {".", ".."} or "/" in decoded or "\\" in decoded:
                 raise YorungeError("invalid_service_target")
             if "%" not in decoded:
                 break
         else:
             raise YorungeError("invalid_service_target")
-    return tuple(_decoded(component) for component in components)
+    return tuple(interpretations)
 
 
 class StorageTarget:

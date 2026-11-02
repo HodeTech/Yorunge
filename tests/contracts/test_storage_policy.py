@@ -249,3 +249,24 @@ def test_only_ready_sha256_header_mapping_is_generated(checksum, header, value):
 def test_invalid_body_or_header_metadata_fails_before_io(field, value):
     with pytest.raises(YorungeError):
         request(**{field: value})
+
+
+@pytest.mark.parametrize("secret", ["a", "eight-byte-secret"])
+@pytest.mark.parametrize("layers", [1, 2, 3, 4])
+def test_every_accepted_path_decode_layer_uses_the_literal_secret_rule(secret, layers):
+    from urllib.parse import unquote
+
+    encoded = "".join(f"%{byte:02X}" for byte in secret.encode())
+    for _ in range(layers - 1):
+        encoded = encoded.replace("%", "%25")
+    decoded = encoded
+    for _ in range(layers):
+        decoded = unquote(decoded)
+    assert decoded == secret  # Independent oracle, not the implementation parser.
+    with pytest.raises(YorungeError) as failure:
+        request(direct(ORIGIN + "/bucket/" + encoded), secret=secret)
+    assert failure.value.code == "invalid_service_target"
+    different = "%62"
+    for _ in range(layers - 1):
+        different = different.replace("%", "%25")
+    assert request(direct(ORIGIN + "/bucket/" + different), secret=secret)
