@@ -88,7 +88,11 @@ def complete(journal, *, unknown=True, skip_last=False):
     for kind, index in stages[:-1] if skip_last else stages:
         intent, _, _ = journal.arm(record, kind, index)
         record = journal.accept(record, intent).operation
-    proof = TransferVerificationV2(
+    return record, metadata_proof(journal, unknown=unknown)
+
+
+def metadata_proof(journal, *, unknown=True):
+    return TransferVerificationV2(
         schema_version=2,
         dataset_id=DATASET,
         project_id=journal.plan.scope.project_id,
@@ -107,7 +111,51 @@ def complete(journal, *, unknown=True, skip_last=False):
             for i, f in enumerate(journal.manifest.files)
         ),
     )
-    return record, proof
+
+
+@pytest.mark.parametrize(
+    "pending_kind,next_kind", [("project_link", "presign"), ("put", "confirm")]
+)
+def test_late_accepted_receipt_cannot_reopen_write_after_uncertain_verification(
+    journal, pending_kind, next_kind
+):
+    record = created(journal, unknown=True)
+    if pending_kind == "put":
+        for kind, index in [("project_link", None), ("presign", 0)]:
+            intent, _, _ = journal.arm(record, kind, index)
+            record = journal.accept(record, intent).operation
+    index = None if pending_kind == "project_link" else 0
+    pending, _, _ = journal.arm(record, pending_kind, index)
+    proof = metadata_proof(journal)
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        with pytest.raises(YorungeError) as failed:
+            repo.verified(
+                record.operation_id, record.lease, proof, authorization=read_check(journal)
+            )
+        assert failed.value.code == "operation_uncertain"
+        assert repo.show(operation_id=record.operation_id).operation.status == "unknown"
+        store.verify()
+    settled = journal.accept(record, pending)
+    assert settled.operation.status == "unknown"
+    assert settled.operation.reason == "request_uncertain"
+    assert settled.receipts[-1].result == "accepted"
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        before = repo.show(operation_id=record.operation_id)
+        total_end = journal.clock.monotonic() + 900
+        with pytest.raises(YorungeError) as failed:
+            repo.arm(
+                record.operation_id,
+                settled.operation.lease,
+                journal.plan,
+                next_kind,
+                0,
+                total_end=total_end,
+            )
+        assert failed.value.code == "operation_conflict"
+        assert repo.show(operation_id=record.operation_id) == before
+        store.verify()
 
 
 @pytest.mark.parametrize(
@@ -285,6 +333,47 @@ def test_read_failure_code_actor_matrix_and_recovery_slot(journal, code, outcome
         assert (
             result.controls[0].kind == "recovery" and result.controls[0].verification_digest is None
         )
+        store.verify()
+
+
+@pytest.mark.parametrize("age", [30.000001, 151])
+def test_stale_failed_read_cannot_change_operation_or_recovery_control(journal, age):
+    record = created(journal, unknown=True)
+    journal.clock.value += timedelta(seconds=151)
+    failed = read_check(journal, outcome="denied", code="remote_access_denied").model_copy(
+        update={"checked_at": timestamp(journal.clock.value - timedelta(seconds=age))}
+    )
+    with open_store(journal.root) as store:
+        repo = StateUploads(store, journal.bound, clock=journal.clock)
+        before = repo.show(operation_id=record.operation_id)
+        with pytest.raises(YorungeError) as error:
+            repo.read_failed(record.operation_id, None, failed)
+        assert error.value.code == "upload_plan_not_valid"
+        assert repo.show(operation_id=record.operation_id) == before
+        store.verify()
+
+
+def test_failed_read_freshness_crossing_commit_rolls_back_marker(journal, monkeypatch):
+    record = created(journal, unknown=True)
+    journal.clock.value += timedelta(seconds=151)
+    failed = read_check(journal, outcome="denied", code="remote_access_denied").model_copy(
+        update={"checked_at": timestamp(journal.clock.value - timedelta(seconds=29))}
+    )
+    with open_store(journal.root) as store:
+        repo = StateUploads(store, journal.bound, clock=journal.clock)
+        original = repo._change
+
+        def advance(*args, **kwargs):
+            result = original(*args, **kwargs)
+            journal.clock.value += timedelta(seconds=2)
+            return result
+
+        monkeypatch.setattr(repo, "_change", advance)
+        before = repo.show(operation_id=record.operation_id)
+        with pytest.raises(YorungeError) as error:
+            repo.read_failed(record.operation_id, None, failed)
+        assert error.value.code == "upload_plan_not_valid"
+        assert repo.show(operation_id=record.operation_id) == before
         store.verify()
 
 

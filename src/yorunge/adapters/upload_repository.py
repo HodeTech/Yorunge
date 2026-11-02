@@ -76,7 +76,7 @@ from yorunge.domain.dataset_upload import (
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck
+from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -823,10 +823,15 @@ class StateUploads:
                     r.result == "rejected" for r in view.receipts
                 )
                 unresolved = len(view.intents) > len(view.receipts) + 1
-                status = (
-                    "unknown" if rejected and unresolved else "failed" if rejected else "running"
-                )
-                reason = "provider_rejected" if rejected else None
+                # A late receipt settles its own intent; it cannot restore the
+                # write path after recovery has permanently stopped new arms.
+                status = "running"
+                reason: str | None = None
+                if record.status == "unknown":
+                    status, reason = record.status, record.reason
+                if rejected:
+                    status = "unknown" if unresolved else "failed"
+                    reason = "provider_rejected"
                 changed = record.model_copy(
                     update={
                         "dataset_id": dataset_id,
@@ -1034,6 +1039,13 @@ class StateUploads:
                     or instant(check.checked_at) > stamp.now
                 ):
                     raise YorungeError("state_changed")
+                require_fresh(check.checked_at, timestamp(stamp.now))
+                checked = instant(check.checked_at)
+                gate.require_range(
+                    checked,
+                    checked + timedelta(seconds=30, microseconds=1),
+                    error="upload_plan_not_valid",
+                )
                 active_write = False
                 fence = record.fence
                 if owner is None:
