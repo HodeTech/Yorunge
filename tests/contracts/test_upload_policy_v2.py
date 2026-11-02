@@ -216,6 +216,12 @@ def test_required_ack_flags_are_not_inferred(authority, unpriced, error):
         approve(plan, authority, unpriced)
 
 
+def test_wrong_confirm_digest_is_invalid_plan_not_missing_acknowledgement():
+    plan = prepare()
+    with failure("upload_plan_not_valid"):
+        approve(plan, confirmed_digest="0" * 64)
+
+
 @pytest.mark.parametrize("authority,unpriced", [(True, False), (False, True), (True, True)])
 def test_unnecessary_ack_is_argument_error(authority, unpriced):
     plan = prepare(grant="full", cost="complete", cost_policy="bounded_required")

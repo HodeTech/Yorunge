@@ -106,7 +106,7 @@ def approve_upload_v2(
     ):
         raise YorungeError("upload_plan_not_valid")
     if confirmed_digest != plan.digest:
-        raise YorungeError("approval_required")
+        raise YorungeError("upload_plan_not_valid")
     require_acknowledgements(
         plan,
         authority=acknowledge_unverified_authority,
