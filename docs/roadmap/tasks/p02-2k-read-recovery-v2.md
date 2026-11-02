@@ -1,7 +1,7 @@
 ---
 id: P02-2k
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2j]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,5 @@ Read flag/grant/actor/error matrix; terminale sıfır mutation/network; pre-inte
 
 ## Teslim kaydı
 
-Uygulama başlamadı; draft. Gerçek commit/review/test ve kalan sınır oluşunca kaydedilir.
+P02-2j verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
 

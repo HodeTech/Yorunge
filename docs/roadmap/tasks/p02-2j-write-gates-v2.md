@@ -1,7 +1,7 @@
 ---
 id: P02-2j
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2i, P02-2f]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,7 @@ Sıfır permitli v1 ret ve v2 draft/ack retleri; aynı plan/namespace/race/PID/f
 
 ## Teslim kaydı
 
-P02-2i verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
+- PR/commit: [f88a6e7](https://github.com/HodeTech/Yorunge/commit/f88a6e7) v2 writer/v1 kapanışı; [32950be](https://github.com/HodeTech/Yorunge/commit/32950be) current süre/freshness COMMIT ve kalıcı son gözlem düzeltmesi; ayrı PR yok.
+- Sonuç: 529 ortak upload testi; fix sonrası 78 journal, 11 odaklı zaman/reopen testi; 99 kaynak strict mypy/Ruff. İki farklı fresh tur ve doğrulanmış P2 kapanışı; [kabul](../../research/p02-2-implementation-validation.md#p02-2j--v2-durable-write-kapıları).
+- Kalan sınır: Yerel durable writer; null-grant explicit read/recovery k, exact provider/read/body byte sayaçları ve public kullanım a/b, native/build/CI/live c'dedir.
 
