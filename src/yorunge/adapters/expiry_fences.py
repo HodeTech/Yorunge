@@ -58,15 +58,17 @@ def check_expiry_dates(connection: sqlite3.Connection, key: str, dates: tuple[st
 def next_expiry(connection: sqlite3.Connection, high: str) -> datetime | None:
     try:
         dates = []
+        consumers = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type='table' "
+                "AND name IN ('operations','upload_plans')"
+            )
+        }
         for query in NEXT_EXPIRIES:
-            # Historical migration validation precedes later consumers.
-            table = query.split(" FROM ", 1)[1].split(" ", 1)[0]
-            if (
-                connection.execute(
-                    "SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (table,)
-                ).fetchone()
-                is None
-            ):
+            if "FROM operations " in query and "operations" not in consumers:
+                continue
+            if "FROM upload_" in query and "upload_plans" not in consumers:
                 continue
             row = connection.execute(query, (high,)).fetchone()
             if row is not None:

@@ -401,10 +401,16 @@ class StateUploads:
 
     def _owner(
         self, record: TransferRecord, owner: TransferLease, stamp: Stamp, gate: TimeGate
-    ) -> None:
-        if record.lease != owner or record.status in TERMINAL:
+    ) -> TransferLease:
+        current = record.lease
+        fields = ("owner_id", "fence", "identity_epoch", "clock_generation", "mode")
+        if (
+            current is None
+            or record.status in TERMINAL
+            or any(getattr(current, name) != getattr(owner, name) for name in fields)
+        ):
             raise YorungeError("operation_lease_lost")
-        if (owner.identity_epoch, owner.clock_generation) != (
+        if (current.identity_epoch, current.clock_generation) != (
             stamp.identity_epoch,
             stamp.generation,
         ) or stamp.anomaly:
@@ -413,7 +419,17 @@ class StateUploads:
             raise YorungeError("state_changed")
         gate.require_clock(stamp, error="operation_lease_lost")
         gate.require_range(
-            instant(owner.renewed_at), instant(owner.expires_at), error="operation_lease_lost"
+            instant(current.renewed_at), instant(current.expires_at), error="operation_lease_lost"
+        )
+        return current
+
+    @staticmethod
+    def _renewed(owner: TransferLease, stamp: Stamp) -> TransferLease:
+        return owner.model_copy(
+            update={
+                "renewed_at": timestamp(stamp.now),
+                "expires_at": timestamp(stamp.now + timedelta(seconds=TRANSFER_LEASE_SECONDS)),
+            }
         )
 
     def _change(self, record: TransferRecord, stamp: Stamp, **changes: object) -> TransferRecord:
@@ -463,28 +479,31 @@ class StateUploads:
                 (record.operation_id, value.kind, value.encoded().decode("ascii")),
             )
 
-    def renew(self, operation_id: str, owner: TransferLease) -> TransferLease:
+    def renew(
+        self, operation_id: str, owner: TransferLease, *, grant: UploadGrant | None = None
+    ) -> TransferLease:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                self._owner(record, owner, stamp, gate)
-                self._credential(view.plan.scope, stamp)
-                lease = owner.model_copy(
-                    update={
-                        "renewed_at": timestamp(stamp.now),
-                        "expires_at": timestamp(
-                            stamp.now + timedelta(seconds=TRANSFER_LEASE_SECONDS)
-                        ),
-                    }
-                )
-                # Heartbeats do not change semantic revision/consent.
+                owner = self._owner(record, owner, stamp, gate)
+                if owner.mode == "read":
+                    if grant is None:
+                        raise YorungeError("upload_plan_not_valid")
+                    self._read_grant(view, grant, stamp, gate)
+                    scope = grant.scope
+                else:
+                    if grant is not None:
+                        raise YorungeError("invalid_request")
+                    self._credential(view.plan.scope, stamp)
+                    scope = view.plan.scope
+                lease = self._renewed(owner, stamp)
                 write_record(
                     self.connection, record.model_copy(update={"lease": lease}), record.revision
                 )
-            self._finish(stamp, gate, scope=view.plan.scope)
+            self._finish(stamp, gate, scope=scope)
             return lease
 
     def arm(
@@ -504,7 +523,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                self._owner(record, owner, stamp, gate)
+                owner = self._owner(record, owner, stamp, gate)
                 if owner.mode != "write" or record.status not in {"admitted", "running"}:
                     raise YorungeError("operation_conflict")
                 self._current(view.plan, fresh, stamp, gate)
@@ -526,6 +545,8 @@ class StateUploads:
                     or not 0 <= file_index < view.plan.manifest.file_count
                 ):
                     raise YorungeError("invalid_request")
+                owner = self._renewed(owner, stamp)
+                record = record.model_copy(update={"lease": owner})
                 assert fresh.grant is not None and fresh.cost_bound is not None
                 end = min(
                     instant(owner.expires_at),
@@ -616,7 +637,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                self._owner(record, owner, stamp, gate)
+                owner = self._owner(record, owner, stamp, gate)
                 self._credential(view.plan.scope, stamp)
                 if owner.mode != "write":
                     raise YorungeError("operation_conflict")
@@ -679,7 +700,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                self._owner(record, owner, stamp, gate)
+                owner = self._owner(record, owner, stamp, gate)
                 if reason not in {"request_uncertain", "local_cancelled"}:
                     raise YorungeError("invalid_request")
                 changed = self._change(
@@ -768,7 +789,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                self._owner(record, owner, stamp, gate)
+                owner = self._owner(record, owner, stamp, gate)
                 self._read_grant(view, proof.grant, stamp, gate)
                 if (
                     record.dataset_id is None

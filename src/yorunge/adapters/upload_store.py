@@ -424,10 +424,10 @@ def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
                 "upload_namespaces",
                 "upload_manifests",
                 "upload_plans",
-                "upload_approvals",
             )
         )
         + reserved
+        + plans * 16 * 1024
     )
     return plans, operations, files, used
 

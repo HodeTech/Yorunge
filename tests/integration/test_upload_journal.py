@@ -821,7 +821,7 @@ def test_actual_global_cardinality_limits_preserve_all_existing_rows(journal, ki
     count = 128 if kind == "plans" else 32
     base = journal.plan.model_dump(mode="json")
     base["manifest"] = manifest_reference(journal.manifest).model_dump(mode="json")
-    with open_store(journal.root) as store:
+    with open_store(journal.root, timeout=30) as store:
         c = store.connection
         c.execute(
             "INSERT INTO upload_manifests VALUES(?,?)",
@@ -847,6 +847,9 @@ def test_actual_global_cardinality_limits_preserve_all_existing_rows(journal, ki
                     plan.encoded().decode(),
                 ),
             )
+    # Fixture construction is not the action's five-second store phase.
+    with open_store(journal.root) as store:
+        c = store.connection
         before = capacity(c)
         assert before[0] == count
         if kind == "files":
@@ -859,3 +862,91 @@ def test_actual_global_cardinality_limits_preserve_all_existing_rows(journal, ki
         assert failure.value.code == "upload_capacity_exceeded"
         assert capacity(c) == before
         store.verify()
+
+
+def test_approval_space_is_reserved_before_creation_and_revoke(journal, monkeypatch):
+    from yorunge.adapters import upload_store
+
+    with open_store(journal.root) as store:
+        repo = journal.repository(store)
+        repo.save(journal.plan, journal.manifest)
+        reserved = capacity(store.connection)[-1]
+        monkeypatch.setattr(upload_store, "MAX_TRANSFER_PAYLOAD_BYTES", reserved)
+        repo.approve(journal.plan.plan_id, journal.plan.digest, journal.plan)
+        payload_bytes = store.connection.execute(
+            "SELECT length(CAST(payload AS BLOB)) FROM upload_approvals"
+        ).fetchone()[0]
+        assert capacity(store.connection)[-1] == reserved
+        repo.revoke(journal.plan.plan_id, journal.plan.digest)
+        larger = store.connection.execute(
+            "SELECT length(CAST(payload AS BLOB)) FROM upload_approvals"
+        ).fetchone()[0]
+        assert larger > payload_bytes
+        assert capacity(store.connection)[-1] == reserved
+        store.verify()
+
+
+@pytest.mark.parametrize("change", ["rotation", "reset"])
+def test_current_read_grant_can_renew_after_identity_changes(journal, change):
+    from yorunge.adapters.upload_maintenance import upload_snapshot
+
+    record = journal.approved()
+    journal.arm(record)
+    if change == "reset":
+        preview = api.preview_identity_reset(state_dir=journal.root).data
+        api.reset_identity(preview.digest, state_dir=journal.root)
+    else:
+        journal.clock.value += timedelta(seconds=151)
+    with open_store(journal.root) as store:
+        credential = ResolvedCredential(
+            journal.bound.credential.reference,
+            journal.bound.credential.target,
+            SecretValue("renew-current-read-synthetic-value"),
+        )
+        identity = StateCredentialRegistry(store).observe(credential)
+        stamp = StateCache(store, journal.clock).stamp()
+        scope = journal.plan.scope.model_copy(
+            update={
+                "credential_id": identity.credential_id,
+                "credential_revision": identity.credential_revision,
+                "identity_epoch": stamp.identity_epoch,
+                "clock_generation": stamp.generation,
+            }
+        )
+        grant = journal.plan.grant.model_copy(update={"scope": scope})
+        bound = BoundCredential(journal.bound.context, credential, identity)
+        repo = StateUploads(store, bound, clock=journal.clock)
+        lease = repo.acquire_read(record.operation_id, grant)
+        before = upload_snapshot(store.connection, store.deadline)
+        journal.clock.value += timedelta(seconds=1)
+        with pytest.raises(YorungeError):
+            repo.renew(record.operation_id, lease)
+        changed = repo.renew(record.operation_id, lease, grant=grant)
+        assert changed.owner_id == lease.owner_id and changed.fence == lease.fence
+        assert instant(changed.expires_at) > instant(lease.expires_at)
+        assert upload_snapshot(store.connection, store.deadline) == before
+        with pytest.raises(YorungeError):
+            repo.arm(
+                record.operation_id,
+                changed,
+                journal.plan,
+                "create",
+                None,
+                total_end=journal.clock.monotonic() + 900,
+            )
+        store.verify()
+
+
+def test_arm_renews_same_write_owner_and_uses_current_db_lease(journal):
+    record = journal.approved()
+    journal.clock.value += timedelta(seconds=120)
+    intent, _, deadline = journal.arm(record)
+    assert intent.owner.owner_id == record.lease.owner_id
+    assert intent.owner.fence == record.lease.fence
+    assert instant(intent.owner.expires_at) == journal.clock.value + timedelta(seconds=150)
+    assert deadline > journal.clock.monotonic() + 24
+    journal.clock.value += timedelta(seconds=20)
+    # The token's old expires_at is not the authority after a valid renewal;
+    # the repository re-reads current owner/fence and current DB lease timing.
+    view = journal.accept(record, intent)
+    assert view.operation.dataset_id == DATASET
