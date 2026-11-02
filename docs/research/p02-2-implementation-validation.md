@@ -116,3 +116,12 @@ Private snapshot factory, exact v2 policy reducer, approval acknowledgement/bind
 
 
 H fresh R1: policy kolu Astra/high 96 Cartesian girişini ve oracle değerlerini bağımsız doğruladı; current kolu Sol/high 169 test ve üç ek dataset/my-role zaman negatifinde yeni kusur bulmadı. Policy kolunun P2'si yanlış confirmed_digest için approval_required/4 yerine normatif upload_plan_not_valid/2 gereğiydi; 7eacc8b ile düzeltildi ve ayrı regresyon eklendi. H son kümesi **170 passed / 0,41 s**. Farklı fresh R2 Sol/high ve Astra/high yeni bulgu bulmadı; her ikisi h+cost+v1 üzerinde **367 passed**, ikinci kol ayrıca on typed-current negatifini bağımsız doğruladı. Örtüşen sayılar toplanmaz. V1 source/golden değişmedi. P02-2h çalışma dalında verified; sıradaki i union/journal dilimidir. Gerçek provider/public/live veya son kaynak native/build/CI teslimi iddia edilmez.
+
+
+## P02-2i — Versioned journal ve tam graph
+
+Kapalı v1/v2 decoder, v2 record/control/verification ve immutable literal 11-stage graph eklendi. DDL/migration/checksum değişmedi. Versioned history/list/show/full validation ve reset aynı payload sürümünü korur. Legacy writer v2'yi v1'e çeviremez; V1 new-write yasağının atomik uygulaması j'de kalır. Başarı exact create/link+her dosya için presign/PUT/confirm kümesini ve tek accepted receipt'lerini ister; eksik intent, eş metadata ile doldurulamaz. Tam graph doğrulaması header/stage/control/proof sorumluluklarına ayrıldı.
+
+İlk legacy journal geliştirme koşusu **90 passed/2 failed** idi: required_stages import'u eksikti; düzeltildi ve ilgili iki workflow testi **2 passed / 1,70 s** verdi. SQL fixture'ın ilk denemesinde stage tablosuna fazla placeholder ve daha sonra preview sayaçlarının current altında olduğu test hatası düzeltildi; ürün şeması/DTO değişmedi. Son versions+legacy journal kümesi **140 passed / 29,88 s**; ek max-128 proof ve gerçek public identity reset/epoch testleri eklendi. Son contract/history ortak kümesi **451 passed / 3,12 s**; ayrıca maintenance/data-migration/manifest regresyonu **200 passed / 64,28 s**. Bunlar örtüşen toplamlar olarak birleştirilmez. Ruff, src/scripts strict mypy **99 dosya** ve diff geçti.
+
+İlk commit sonrası fresh R1/R2 henüz tamamlanmadı; i in_progress. Public upload writer/provider, yeni live çağrı, native/build/CI ve son source-bound kabul bu sonuç değildir.

@@ -6,9 +6,15 @@ from datetime import datetime
 
 from yorunge.adapters.capability_cache import Stamp
 from yorunge.adapters.local_files import Deadline
-from yorunge.adapters.upload_store import read_record, read_view, write_record
+from yorunge.adapters.upload_store import (
+    decode_versioned,
+    read_any_record,
+    read_any_view,
+    write_record,
+)
 from yorunge.domain.capabilities import canonical, timestamp
 from yorunge.domain.dataset_transfer import TERMINAL, TransferControl
+from yorunge.domain.dataset_transfer_v2 import TransferControlV2
 
 
 def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[str, int | str]:
@@ -24,7 +30,7 @@ def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[
     ).fetchone():
         for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
             deadline.remaining()
-            view = read_view(connection, row[0])
+            view = read_any_view(connection, row[0])
             record = view.operation
             current = record.model_dump(mode="json") if record else None
             body = {
@@ -67,7 +73,7 @@ def invalidate_uploads(
         "SELECT operation_id FROM upload_operations ORDER BY operation_id"
     ).fetchall():
         deadline.remaining()
-        record = read_record(connection, row[0])
+        record = read_any_record(connection, row[0])
         if record.status in TERMINAL:
             continue
         armed = record.workflow_latched
@@ -84,16 +90,22 @@ def invalidate_uploads(
             }
         )
         write_record(connection, changed, record.revision)
-        control = TransferControl(
-            schema_version=1,
-            kind="recovery" if armed else "terminal",
-            operation_id=record.operation_id,
-            revision=changed.revision,
-            observed_at=changed.updated_at,
-            identity_epoch=epoch,
-            clock_generation=stamp.generation,
-            reason="identity_reset",
-            verification_digest=None,
+        control = decode_versioned(
+            TransferControl,
+            TransferControlV2,
+            canonical(
+                {
+                    "schema_version": record.schema_version,
+                    "kind": "recovery" if armed else "terminal",
+                    "operation_id": record.operation_id,
+                    "revision": changed.revision,
+                    "observed_at": changed.updated_at,
+                    "identity_epoch": epoch,
+                    "clock_generation": stamp.generation,
+                    "reason": "identity_reset",
+                    "verification_digest": None,
+                }
+            ).decode("ascii"),
         )
         connection.execute(
             "INSERT INTO upload_controls VALUES(?,?,?) ON "

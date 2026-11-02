@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from yorunge.adapters.state import metadata
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import canonical, instant
-from yorunge.domain.dataset_manifest import DatasetManifest
+from yorunge.domain.dataset_manifest import DatasetManifest, decode_manifest_json
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
     StageIntent,
@@ -21,7 +21,11 @@ from yorunge.domain.dataset_transfer import (
     TransferVerification,
     operation_reservation,
     scope_target,
-    verification_digest,
+)
+from yorunge.domain.dataset_transfer_v2 import (
+    TransferControlV2,
+    TransferRecordV2,
+    TransferVerificationV2,
 )
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
@@ -32,10 +36,23 @@ from yorunge.domain.dataset_upload import (
     DatasetUploadPlan,
     UploadWire,
     manifest_reference,
-    validate_approval_binding,
 )
+from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_versions import (
+    UploadApproval,
+    UploadControl,
+    UploadPlan,
+    UploadRecord,
+    UploadVerification,
+    required_stages,
+    validate_versioned_approval,
+    verification_scope,
+)
+from yorunge.domain.upload_versions import (
+    proof_digest as verification_digest,
+)
 
 T = TypeVar("T", bound=UploadWire)
 OP_COLUMNS = "operation_id,plan_id,intent_digest,revision,lease_expires_at,reservation,payload"
@@ -57,7 +74,29 @@ def _decode(cls: type[T], payload: object) -> T:
         raise YorungeError("state_invalid") from None
 
 
-def namespace(plan: DatasetUploadPlan) -> bytes:
+U = TypeVar("U", bound=UploadWire)
+
+
+def decode_versioned(v1: type[T], v2: type[U], payload: object) -> T | U:
+    try:
+        if not isinstance(payload, str) or len(payload) > max(v1.max_wire_bytes, v2.max_wire_bytes):
+            raise ValueError("bounded versioned payload required")
+        raw = payload.encode("utf-8")
+        if len(raw) > max(v1.max_wire_bytes, v2.max_wire_bytes):
+            raise ValueError("bounded versioned payload required")
+        body = decode_manifest_json(raw)
+        if not isinstance(body, dict) or type(body.get("schema_version")) is not int:
+            raise ValueError("integer payload version required")
+        if body["schema_version"] == 1:
+            return decode(v1, payload)
+        if body["schema_version"] == 2:
+            return decode(v2, payload)
+        raise ValueError("closed payload version required")
+    except (ValueError, TypeError, RecursionError):
+        raise YorungeError("state_invalid") from None
+
+
+def namespace(plan: UploadPlan) -> bytes:
     scope = plan.scope
     return canonical(
         {
@@ -70,12 +109,12 @@ def namespace(plan: DatasetUploadPlan) -> bytes:
     )
 
 
-def read_plan(connection: sqlite3.Connection, identifier: str) -> DatasetUploadPlan:
+def read_plan(connection: sqlite3.Connection, identifier: str) -> UploadPlan:
     canonical_uuid(identifier)
     row = connection.execute("SELECT * FROM upload_plans WHERE plan_id=?", (identifier,)).fetchone()
     if row is None:
         raise YorungeError("upload_plan_not_found")
-    plan = decode(DatasetUploadPlan, row[5])
+    plan = decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, row[5])
     if row[:5] != (
         plan.plan_id,
         plan.intent_digest(),
@@ -92,7 +131,7 @@ def read_plan(connection: sqlite3.Connection, identifier: str) -> DatasetUploadP
     return plan
 
 
-def read_manifest(connection: sqlite3.Connection, plan: DatasetUploadPlan) -> DatasetManifest:
+def read_manifest(connection: sqlite3.Connection, plan: UploadPlan) -> DatasetManifest:
     row = connection.execute(
         "SELECT payload FROM upload_manifests WHERE digest=?", (plan.manifest.digest,)
     ).fetchone()
@@ -107,18 +146,16 @@ def read_manifest(connection: sqlite3.Connection, plan: DatasetUploadPlan) -> Da
         raise YorungeError("state_invalid") from None
 
 
-def read_approval(
-    connection: sqlite3.Connection, plan: DatasetUploadPlan
-) -> DatasetUploadApproval | None:
+def read_approval(connection: sqlite3.Connection, plan: UploadPlan) -> UploadApproval | None:
     row = connection.execute(
         "SELECT approval_id,expires_at,payload FROM upload_approvals WHERE plan_id=?",
         (plan.plan_id,),
     ).fetchone()
     if row is None:
         return None
-    value = decode(DatasetUploadApproval, row[2])
+    value = decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2, row[2])
     try:
-        validate_approval_binding(plan, value)
+        validate_versioned_approval(plan, value)
         if row[:2] != (value.approval_id, value.expires_at):
             raise ValueError("approval index mismatch")
     except ValueError:
@@ -126,16 +163,16 @@ def read_approval(
     return value
 
 
-def read_record(connection: sqlite3.Connection, identifier: str) -> TransferRecord:
+def read_any_record(connection: sqlite3.Connection, identifier: str) -> UploadRecord:
     canonical_uuid(identifier)
     row = connection.execute(
         f"SELECT {OP_COLUMNS} FROM upload_operations WHERE operation_id=?", (identifier,)
     ).fetchone()
     if row is None:
         raise YorungeError("operation_not_found")
-    record = decode(TransferRecord, row[-1])
+    record = decode_versioned(TransferRecord, TransferRecordV2, row[-1])
     plan = read_plan(connection, record.plan_id)
-    if row[:-1] != (
+    if record.schema_version != plan.schema_version or row[:-1] != (
         record.operation_id,
         record.plan_id,
         record.intent_digest,
@@ -147,19 +184,41 @@ def read_record(connection: sqlite3.Connection, identifier: str) -> TransferReco
     return record
 
 
+P = TypeVar("P", bound=UploadWire, covariant=True)
+A = TypeVar("A", bound=UploadWire, covariant=True)
+R = TypeVar("R", bound=UploadWire, covariant=True)
+C = TypeVar("C", bound=UploadWire, covariant=True)
+V = TypeVar("V", bound=UploadWire, covariant=True)
+
+
 @dataclass(frozen=True)
-class TransferView:
-    plan: DatasetUploadPlan
-    approval: DatasetUploadApproval | None
-    operation: TransferRecord | None
+class _TransferView(Generic[P, A, R, C, V]):
+    plan: P
+    approval: A | None
+    operation: R | None
     intents: tuple[StageIntent, ...] = ()
     receipts: tuple[StageReceipt, ...] = ()
-    controls: tuple[TransferControl, ...] = ()
-    verification: TransferVerification | None = None
+    controls: tuple[C, ...] = ()
+    verification: V | None = None
+
+
+TransferView = _TransferView[
+    DatasetUploadPlan, DatasetUploadApproval, TransferRecord, TransferControl, TransferVerification
+]
+VersionedTransferView = _TransferView[
+    UploadPlan, UploadApproval, UploadRecord, UploadControl, UploadVerification
+]
+
+
+def read_record(connection: sqlite3.Connection, identifier: str) -> TransferRecord:
+    record = read_any_record(connection, identifier)
+    if not isinstance(record, TransferRecord):
+        raise YorungeError("state_invalid")
+    return record
 
 
 def request_digest(
-    plan: DatasetUploadPlan,
+    plan: UploadPlan,
     manifest: DatasetManifest,
     kind: StageKind,
     index: int | None,
@@ -191,7 +250,7 @@ def predecessor(kind: StageKind, index: int | None) -> tuple[StageKind, int | No
 
 
 def _receipt(
-    plan: DatasetUploadPlan,
+    plan: UploadPlan,
     manifest: DatasetManifest,
     intent: StageIntent,
     receipt: StageReceipt,
@@ -221,11 +280,11 @@ def _receipt(
         raise ValueError("only PUT has sent counters")
 
 
-def verification_after(view: TransferView, proof: TransferVerification) -> None:
+def verification_after(view: VersionedTransferView, proof: UploadVerification) -> None:
     """Compare UTC only within one clock epoch/generation; reset has a new floor."""
     record = view.operation
     assert record is not None
-    scope = proof.grant.scope
+    scope = verification_scope(proof)
     clock = scope.identity_epoch, scope.clock_generation
     original = view.plan.scope.identity_epoch, view.plan.scope.clock_generation
     if clock == original:
@@ -247,7 +306,7 @@ def verification_after(view: TransferView, proof: TransferVerification) -> None:
         raise ValueError("metadata observation precedes confirmation or recovery")
 
 
-def _verify(view: TransferView, manifest: DatasetManifest) -> None:
+def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
     record, proof = view.operation, view.verification
     assert record is not None
     if proof is None:
@@ -256,21 +315,32 @@ def _verify(view: TransferView, manifest: DatasetManifest) -> None:
         return
     if (
         record.status != "succeeded"
+        or proof.schema_version != record.schema_version
         or record.dataset_id != proof.dataset_id
-        or scope_target(proof.grant.scope) != scope_target(view.plan.scope)
+        or scope_target(verification_scope(proof)) != scope_target(view.plan.scope)
         or proof.project_id != view.plan.scope.project_id
         or len(proof.files) != manifest.file_count
-        or (proof.grant.scope.identity_epoch, proof.grant.scope.clock_generation)
+        or (verification_scope(proof).identity_epoch, verification_scope(proof).clock_generation)
         != (record.observed_identity_epoch, record.observed_clock_generation)
     ):
         raise ValueError("verification target mismatch")
     if (
-        len(view.intents) != 2 + 3 * manifest.file_count
+        {(i.kind, i.file_index) for i in view.intents} != required_stages(manifest.file_count)
+        or len(view.intents) != 2 + 3 * manifest.file_count
         or len(view.receipts) != len(view.intents)
         or any(r.result != "accepted" for r in view.receipts)
         or instant(proof.observed_at) > instant(record.updated_at)
     ):
         raise ValueError("success requires acknowledged stages and current read evidence")
+    if (
+        isinstance(proof, TransferVerificationV2)
+        and proof.authorization_policy == "explicit_read_attempt"
+        and (
+            not isinstance(view.plan, DatasetUploadPlanV2)
+            or view.plan.admission_policy != "explicit_attempt"
+        )
+    ):
+        raise ValueError("explicit read proof requires explicit v2 plan")
     verification_after(view, proof)
     for expected, actual in zip(manifest.files, proof.files, strict=True):
         if (
@@ -283,98 +353,152 @@ def _verify(view: TransferView, manifest: DatasetManifest) -> None:
         raise ValueError("verification reservation exceeded")
 
 
-def validate_graph(view: TransferView, manifest: DatasetManifest) -> None:
+def _operation_header(view: VersionedTransferView) -> None:
     record, plan = view.operation, view.plan
-    if record is None:
+    assert record is not None
+    validate_versioned_approval(plan, record.approval)
+    if (record.plan_id, record.plan_digest, record.intent_digest) != (
+        plan.plan_id,
+        plan.digest,
+        plan.intent_digest(),
+    ):
+        raise ValueError("operation plan mismatch")
+    if view.approval is None or view.approval.model_dump(
+        exclude={"status", "revoked_at"}
+    ) != record.approval.model_dump(exclude={"status", "revoked_at"}):
+        raise ValueError("admission approval history mismatch")
+    if record.approval.status != "approved" or not instant(record.approval.approved_at) <= instant(
+        record.created_at
+    ) < instant(record.approval.expires_at):
+        raise ValueError("admission without effective approval")
+    if bool(view.intents) != record.workflow_latched:
+        raise ValueError("workflow latch mismatch")
+
+
+def _intent_binding(
+    view: VersionedTransferView,
+    manifest: DatasetManifest,
+    intent: StageIntent,
+    sequence: int,
+    keys: set[tuple[StageKind, int | None]],
+    accepted: dict[tuple[StageKind, int | None], StageReceipt],
+) -> None:
+    record, plan = view.operation, view.plan
+    assert record is not None
+    if (
+        (intent.kind, intent.file_index) in keys
+        or intent.sequence != sequence
+        or intent.operation_id != record.operation_id
+        or (intent.file_index is not None and intent.file_index >= manifest.file_count)
+        or intent.owner.identity_epoch != plan.scope.identity_epoch
+        or intent.owner.clock_generation != plan.scope.clock_generation
+        or intent.owner.fence != 1
+        or intent.owner.owner_id != record.write_owner_id
+        or instant(intent.intended_at) < instant(record.created_at)
+        or instant(intent.expires_at) > instant(record.approval.expires_at)
+    ):
+        raise ValueError("invalid stage binding")
+    required = predecessor(intent.kind, intent.file_index)
+    if required is not None:
+        if required not in accepted:
+            raise ValueError("stage predecessor not accepted")
+        if intent.intended_at < accepted[required].recorded_at:
+            raise ValueError("stage precedes predecessor acknowledgement")
+    if intent.request_digest != request_digest(
+        plan, manifest, intent.kind, intent.file_index, accepted
+    ):
+        raise ValueError("stage request digest mismatch")
+
+
+def _stages(view: VersionedTransferView, manifest: DatasetManifest) -> None:
+    record = view.operation
+    assert record is not None
+    accepted: dict[tuple[StageKind, int | None], StageReceipt] = {}
+    receipts = {r.intent_id: r for r in view.receipts}
+    keys: set[tuple[StageKind, int | None]] = set()
+    rejected = False
+    for sequence, intent in enumerate(view.intents, 1):
+        key = intent.kind, intent.file_index
+        _intent_binding(view, manifest, intent, sequence, keys, accepted)
+        receipt = receipts.get(intent.intent_id)
+        if receipt is not None:
+            _receipt(view.plan, manifest, intent, receipt, accepted)
+            if receipt.result == "accepted":
+                accepted[key] = receipt
+            else:
+                rejected = True
+        keys.add(key)
+    if len(receipts) != len(view.receipts) or not set(receipts) <= {
+        i.intent_id for i in view.intents
+    }:
+        raise ValueError("orphan receipt")
+    created = accepted.get(("create", None))
+    if record.dataset_id != (created.dataset_id if created else None):
+        raise ValueError("dataset receipt mismatch; no name-based ID recovery")
+    if rejected and record.status not in {"unknown", "failed"}:
+        raise ValueError("definitive rejection mismatch")
+    if record.status == "failed" and (not rejected or len(view.receipts) != len(view.intents)):
+        raise ValueError("failure cannot hide pending intent ambiguity")
+
+
+def _terminal_control(view: VersionedTransferView, terminal: UploadControl | None) -> None:
+    record = view.operation
+    assert record is not None
+    if (terminal is not None) != (record.status in TERMINAL):
+        raise ValueError("terminal control mismatch")
+    if terminal is None:
+        return
+    if (
+        terminal.revision,
+        terminal.reason,
+        terminal.observed_at,
+        terminal.identity_epoch,
+        terminal.clock_generation,
+    ) != (
+        record.revision,
+        record.reason,
+        record.updated_at,
+        record.observed_identity_epoch,
+        record.observed_clock_generation,
+    ):
+        raise ValueError("terminal evidence mismatch")
+    if terminal.verification_digest != (
+        verification_digest(view.verification) if view.verification else None
+    ):
+        raise ValueError("terminal verification digest mismatch")
+
+
+def _controls(view: VersionedTransferView) -> None:
+    record = view.operation
+    assert record is not None
+    controls = {c.kind: c for c in view.controls}
+    if len(controls) != len(view.controls):
+        raise ValueError("control slot collision")
+    for control in view.controls:
+        if (
+            control.operation_id != record.operation_id
+            or control.revision > record.revision
+            or control.schema_version != record.schema_version
+        ):
+            raise ValueError("control revision mismatch")
+    _terminal_control(view, controls.get("terminal"))
+    if record.status == "unknown" and "recovery" not in controls:
+        raise ValueError("unknown requires reserved recovery marker")
+
+
+def validate_graph(view: VersionedTransferView, manifest: DatasetManifest) -> None:
+    if view.operation is None:
         return
     try:
-        validate_approval_binding(plan, record.approval)
-        if (record.plan_digest, record.intent_digest) != (plan.digest, plan.intent_digest()):
-            raise ValueError("operation plan mismatch")
-        if view.approval is None or view.approval.model_dump(
-            exclude={"status", "revoked_at"}
-        ) != record.approval.model_dump(exclude={"status", "revoked_at"}):
-            raise ValueError("admission approval history mismatch")
-        if record.approval.status != "approved" or not instant(
-            record.approval.approved_at
-        ) <= instant(record.created_at) < instant(record.approval.expires_at):
-            raise ValueError("admission without effective approval")
-        if bool(view.intents) != record.workflow_latched:
-            raise ValueError("workflow latch mismatch")
-        accepted: dict[tuple[StageKind, int | None], StageReceipt] = {}
-        receipts = {r.intent_id: r for r in view.receipts}
-        keys: set[tuple[StageKind, int | None]] = set()
-        rejected = False
-        for sequence, intent in enumerate(view.intents, 1):
-            key = intent.kind, intent.file_index
-            if (
-                key in keys
-                or intent.sequence != sequence
-                or intent.operation_id != record.operation_id
-                or (intent.file_index is not None and intent.file_index >= manifest.file_count)
-                or intent.owner.identity_epoch != plan.scope.identity_epoch
-                or intent.owner.clock_generation != plan.scope.clock_generation
-                or intent.owner.fence != 1
-                or intent.owner.owner_id != record.write_owner_id
-                or instant(intent.intended_at) < instant(record.created_at)
-                or instant(intent.expires_at) > instant(record.approval.expires_at)
-            ):
-                raise ValueError("invalid stage binding")
-            required = predecessor(intent.kind, intent.file_index)
-            if required is not None and required not in accepted:
-                raise ValueError("stage predecessor not accepted")
-            if required is not None and intent.intended_at < accepted[required].recorded_at:
-                raise ValueError("stage precedes predecessor acknowledgement")
-            if intent.request_digest != request_digest(
-                plan, manifest, intent.kind, intent.file_index, accepted
-            ):
-                raise ValueError("stage request digest mismatch")
-            receipt = receipts.get(intent.intent_id)
-            if receipt is not None:
-                _receipt(plan, manifest, intent, receipt, accepted)
-                if receipt.result == "accepted":
-                    accepted[key] = receipt
-                else:
-                    rejected = True
-            keys.add(key)
-        if len(receipts) != len(view.receipts) or not set(receipts) <= {
-            i.intent_id for i in view.intents
-        }:
-            raise ValueError("orphan receipt")
-        created = accepted.get(("create", None))
-        if record.dataset_id != (created.dataset_id if created else None):
-            raise ValueError("dataset receipt mismatch; no name-based ID recovery")
-        if rejected and record.status not in {"unknown", "failed"}:
-            raise ValueError("definitive rejection mismatch")
-        if record.status == "failed" and (not rejected or len(view.receipts) != len(view.intents)):
-            raise ValueError("failure cannot hide pending intent ambiguity")
-        controls = {c.kind: c for c in view.controls}
-        if len(controls) != len(view.controls):
-            raise ValueError("control slot collision")
-        for control in view.controls:
-            if control.operation_id != record.operation_id or control.revision > record.revision:
-                raise ValueError("control revision mismatch")
-        terminal = controls.get("terminal")
-        if (terminal is not None) != (record.status in TERMINAL):
-            raise ValueError("terminal control mismatch")
-        if terminal is not None and (terminal.revision, terminal.reason, terminal.observed_at) != (
-            record.revision,
-            record.reason,
-            record.updated_at,
-        ):
-            raise ValueError("terminal evidence mismatch")
-        if record.status == "unknown" and "recovery" not in controls:
-            raise ValueError("unknown requires reserved recovery marker")
-        if terminal is not None and terminal.verification_digest != (
-            verification_digest(view.verification) if view.verification else None
-        ):
-            raise ValueError("terminal verification digest mismatch")
+        _operation_header(view)
+        _stages(view, manifest)
+        _controls(view)
         _verify(view, manifest)
     except (ValueError, KeyError, IndexError, TypeError):
         raise YorungeError("state_invalid") from None
 
 
-def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
+def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransferView:
     plan = read_plan(connection, plan_id)
     manifest = read_manifest(connection, plan)
     approval = read_approval(connection, plan)
@@ -382,8 +506,8 @@ def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
         "SELECT operation_id FROM upload_operations WHERE plan_id=?", (plan_id,)
     ).fetchone()
     if row is None:
-        return TransferView(plan, approval, None)
-    record = read_record(connection, row[0])
+        return VersionedTransferView(plan, approval, None)
+    record = read_any_record(connection, row[0])
     intents = []
     for item in connection.execute(
         "SELECT intent_id,sequence,kind,file_index,payload FROM "
@@ -413,20 +537,22 @@ def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
         "SELECT kind,payload FROM upload_controls WHERE operation_id=? ORDER BY kind",
         (record.operation_id,),
     ).fetchall()
-    controls = tuple(decode(TransferControl, r[1]) for r in control_rows)
+    controls = tuple(
+        decode_versioned(TransferControl, TransferControlV2, r[1]) for r in control_rows
+    )
     if any(row[0] != control.kind for row, control in zip(control_rows, controls, strict=True)):
         raise YorungeError("state_invalid")
     proof = connection.execute(
         "SELECT payload FROM upload_verifications WHERE operation_id=?", (record.operation_id,)
     ).fetchone()
-    view = TransferView(
+    view = VersionedTransferView(
         plan,
         approval,
         record,
         tuple(intents),
         receipts,
         controls,
-        decode(TransferVerification, proof[0]) if proof else None,
+        decode_versioned(TransferVerification, TransferVerificationV2, proof[0]) if proof else None,
     )
     if record.workflow_latched and connection.execute(
         "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
@@ -437,13 +563,35 @@ def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
     return view
 
 
+def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
+    return require_legacy_view(read_any_view(connection, plan_id))
+
+
+def require_legacy_view(view: VersionedTransferView) -> TransferView:
+    if (
+        not isinstance(view.plan, DatasetUploadPlan)
+        or (view.approval is not None and not isinstance(view.approval, DatasetUploadApproval))
+        or (view.operation is not None and not isinstance(view.operation, TransferRecord))
+        or any(not isinstance(c, TransferControl) for c in view.controls)
+        or (
+            view.verification is not None
+            and not isinstance(view.verification, TransferVerification)
+        )
+    ):
+        raise YorungeError("state_invalid")
+    # Pair validation above established the exact v1 family; no payload is rewritten.
+    from typing import cast
+
+    return cast(TransferView, view)
+
+
 def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
     plans = connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
     operations, reserved = connection.execute(
         "SELECT count(*),coalesce(sum(reservation),0) FROM upload_operations"
     ).fetchone()
     files = sum(
-        decode(DatasetUploadPlan, r[0]).manifest.file_count
+        decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, r[0]).manifest.file_count
         for r in connection.execute("SELECT payload FROM upload_plans")
     )
     used = (
@@ -485,7 +633,7 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
     require_capacity(connection, corrupt=True)
     store = metadata(connection)
     for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
-        view = read_view(connection, row[0])
+        view = read_any_view(connection, row[0])
         record = view.operation
         if (
             record is not None
@@ -508,7 +656,7 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
         "SELECT intent_digest,create_operation_id FROM "
         "upload_namespaces WHERE create_operation_id IS NOT NULL"
     ):
-        record = read_record(connection, operation_id)
+        record = read_any_record(connection, operation_id)
         if record.intent_digest != intent_digest or not record.workflow_latched:
             raise YorungeError("state_invalid")
     # FK integrity is also checked by Store.verify; warm graph reads compare all
@@ -516,9 +664,9 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
 
 
 def write_record(
-    connection: sqlite3.Connection, record: TransferRecord, expected: int | None
+    connection: sqlite3.Connection, record: UploadRecord, expected: int | None
 ) -> None:
-    value = decode(TransferRecord, record.encoded().decode("ascii"))
+    value = decode_versioned(TransferRecord, TransferRecordV2, record.encoded().decode("ascii"))
     lease = value.lease.expires_at if value.lease else None
     if expected is None:
         plan = read_plan(connection, value.plan_id)
@@ -535,8 +683,9 @@ def write_record(
             ),
         )
     else:
-        old = read_record(connection, value.operation_id)
+        old = read_any_record(connection, value.operation_id)
         fixed = (
+            "schema_version",
             "operation_id",
             "plan_id",
             "plan_digest",

@@ -18,15 +18,18 @@ from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.adapters.upload_store import (
     TransferView,
+    VersionedTransferView,
     decode,
     namespace,
     predecessor,
+    read_any_record,
+    read_any_view,
     read_manifest,
     read_plan,
-    read_record,
     read_view,
     request_digest,
     require_capacity,
+    require_legacy_view,
     verification_after,
     write_record,
 )
@@ -75,7 +78,7 @@ class UploadListEntry:
     operation_status: str | None
 
 
-def list_entry(view: TransferView) -> UploadListEntry:
+def list_entry(view: VersionedTransferView) -> UploadListEntry:
     return UploadListEntry(
         view.plan.plan_id,
         view.plan.digest,
@@ -265,14 +268,21 @@ class StateUploads:
             self._finish(stamp, gate, scope=plan.scope)
             return view
 
-    def show(self, *, plan_id: str | None = None, operation_id: str | None = None) -> TransferView:
+    def show(
+        self, *, plan_id: str | None = None, operation_id: str | None = None
+    ) -> VersionedTransferView:
         if (plan_id is None) == (operation_id is None):
             raise YorungeError("invalid_request")
         with self.phase(operation_id), read_snapshot(self.connection):
             if operation_id is not None:
-                plan_id = read_record(self.connection, operation_id).plan_id
+                plan_id = read_any_record(self.connection, operation_id).plan_id
             assert plan_id is not None
-            return read_view(self.connection, plan_id)
+            return read_any_view(self.connection, plan_id)
+
+    def _legacy_show(
+        self, *, plan_id: str | None = None, operation_id: str | None = None
+    ) -> TransferView:
+        return require_legacy_view(self.show(plan_id=plan_id, operation_id=operation_id))
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None
@@ -287,7 +297,7 @@ class StateUploads:
                 (*after, limit + 1),
             ).fetchall()
             return tuple(
-                list_entry(read_view(self.connection, r[1])) for r in rows[:limit]
+                list_entry(read_any_view(self.connection, r[1])) for r in rows[:limit]
             ), encode_cursor(*rows[limit - 1]) if len(rows) > limit else None
 
     def approve(self, plan_id: str, digest: str, fresh: DatasetUploadPlan) -> DatasetUploadApproval:
@@ -350,7 +360,7 @@ class StateUploads:
         with self.phase():
             # Exact existing lookup is idempotent, local and independent of an
             # expired/revoked plan. It never renews ownership or creates a permit.
-            view = self.show(plan_id=plan_id)
+            view = self._legacy_show(plan_id=plan_id)
             if view.operation is not None:
                 return view.operation
             stamp = self.cache.stamp()
@@ -509,7 +519,7 @@ class StateUploads:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -554,7 +564,7 @@ class StateUploads:
                 raise YorungeError("execution_timeout")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -670,7 +680,7 @@ class StateUploads:
             self._secret(receipt)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -733,7 +743,7 @@ class StateUploads:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
@@ -747,13 +757,13 @@ class StateUploads:
                     reason=reason,
                 )
                 self._control(changed, stamp, terminal=not record.workflow_latched)
-            return self.show(operation_id=operation_id)
+            return self._legacy_show(operation_id=operation_id)
 
     def acquire_read(self, operation_id: str, grant: UploadGrant) -> TransferLease:
         with self.phase(operation_id):
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 self._read_grant(view, grant, stamp, gate)
@@ -822,7 +832,7 @@ class StateUploads:
             self._secret(proof)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
-                view = self.show(operation_id=operation_id)
+                view = self._legacy_show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
                 owner = self._owner(record, owner, stamp, gate)
