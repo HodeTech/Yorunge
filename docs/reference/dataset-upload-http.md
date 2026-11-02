@@ -1,6 +1,6 @@
 # Upload HTTP quota ve sayaç sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2n kanonik sözleşme; kayıtlı URI dilimi kodlandı, iki fresh turu bekliyor. Rezervasyon ve gerçek HTTP quota bağlantısı henüz kabul edilmedi. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
+**Tarih:** 2026-11-03. **Durum:** P02-2n kanonik sözleşme; kayıtlı URI dilimi iki fresh turla yerel olarak kabul edildi. Rezervasyon ve gerçek HTTP quota bağlantısı henüz kabul edilmedi. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
 
 ## Kayıtlı service URI provenance
 

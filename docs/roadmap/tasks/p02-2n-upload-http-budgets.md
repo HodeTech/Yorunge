@@ -40,4 +40,4 @@ Contract + gerçek loopback TLS/source testleri; Ruff/strict mypy/doc/rehber/dif
 
 ## Teslim kaydı
 
-M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi uygulanıyor; rezervasyon modeli, wire bağlantısı ve kabul/review henüz yok. In_progress.
+M iki fresh turla kapandı. N referansı/kartı hazırlandı; 1. URI dilimi iki fresh turla kapandı; rezervasyon modeli ve wire bağlantısının kod/kabul/review işleri sıradadır. In_progress.
