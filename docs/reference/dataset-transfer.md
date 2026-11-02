@@ -117,6 +117,8 @@ Yeni kapalı yerel hatalar: `upload_plan_not_found`, `upload_plan_not_valid`, `u
 
 ## P02-2f private storage port sözleşmesi
 
+Default `StorageTarget.literal_policy=all_parts` generic URI literal denetimini korur. Yeni gerçek tüketici için yalnız kayıtlı `platform_proxy_v2` politikası seçilebilir: constructor exact resmi origin/API kökü/dataset upload/put ve tek decoded key query biçimini doğrular; sonra dinamik dataset UUID ile raw/decoded query değeri taranır. Başka origin, direct hedef, rota veya query bu sabit protokol istisnasını kullanamaz. [Tüketici yaprağına bağlı raw-tree kuralı](platform-upload-consumer.md#ortak-decode-ve-yerel-alan-güvenliği) adjacent metadata'yı muaf tutmaz. Bu private seçenek public config/flag değildir; eski service HttpRequest/default storage tüketicileri değişmez.
+
 **Çalışma dalı durumu:** 4.1 hedef/request/source ve 4.2 DNS/peer/shared-client dilimleri kendi iki fresh review turu ve doğrulanmış bulgu düzeltmeleriyle tamamlandı; P02-2f verified. [Yerel kabul kaydı](../research/p02-2-implementation-validation.md#adım-42-fresh-r2) development teslimi veya gerçek provider upload kabulü değildir.
 
 Bu yerel port gerçek provider presign/confirm codec'i veya public upload CLI/API değildir. `StorageRequest` yalnız PUT taşır: private `StorageTarget`, lazy owned `ByteSource`, MIME, nullable SHA-256 header kodlaması, nullable proxy credential ve seçili literal denetim sırları. User header dict'i/body bytes veya keyfî yöntem almaz; response sınırı değişmez 64 KiB'dır. MIME ASCII media-type sözdizimindedir; checksum header adı/değeri yalnız önceden bilinen digest'ten kapalı `none|sha256_hex|sha256_base64` politikasıyla üretilir. Direct header-signed auth yoktur. Hedef/source/request repr'i URL/path/credential göstermez.

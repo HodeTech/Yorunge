@@ -270,3 +270,66 @@ def test_every_accepted_path_decode_layer_uses_the_literal_secret_rule(secret, l
     for _ in range(layers - 1):
         different = different.replace("%", "%25")
     assert request(direct(ORIGIN + "/bucket/" + different), secret=secret)
+
+
+def registered_proxy(query="key=object-handle", **changes):
+    service = normalize_target("https://api.ssyz.org.tr/api/v1")
+    args = dict(
+        mode="proxy",
+        origin=service.service_origin,
+        prefix=f"/api/v1/datasets/{DATASET}/upload/",
+        expires_at=None,
+        service=service,
+        dataset_id=DATASET,
+        literal_policy="platform_proxy_v2",
+    )
+    args.update(changes)
+    return StorageTarget(
+        service.service_origin + f"/api/v1/datasets/{DATASET}/upload/put?{query}", **args
+    )
+
+
+@pytest.mark.parametrize("secret", ["key", "put", "datasets"])
+def test_registered_proxy_exempts_fixed_protocol_but_checks_dynamic_resources(secret):
+    target = registered_proxy()
+    captured = SecretValue(secret)
+    credential = HttpCredential(
+        "X-API-Key", captured, target=target.service, service_id="evren-platform"
+    )
+    result = StorageRequest(target, MetadataSource(), captured, "image/png", credential=credential)
+    assert result.target.literal_policy == "platform_proxy_v2"
+    assert result.wire_headers()[-1] == ("X-API-Key", secret)
+
+
+@pytest.mark.parametrize(
+    "secret,query",
+    [
+        ("key", "key=key"),
+        ("put", "key=put"),
+        ("datasets", "key=prefix-datasets-value"),
+        ("key", "key=%6b%65%79"),
+        ("%6b%65%79", "key=%6b%65%79"),
+    ],
+)
+def test_registered_proxy_still_rejects_raw_and_decoded_dynamic_secret(secret, query):
+    target = registered_proxy(query)
+    captured = SecretValue(secret)
+    with pytest.raises(YorungeError) as error:
+        target.check_secret(captured)
+    assert error.value.code == "invalid_service_target"
+
+
+@pytest.mark.parametrize("query", ["key=x&token=y", "other=x", "key=x&key=y", "key"])
+def test_registered_literal_policy_cannot_exempt_unregistered_query_shapes(query):
+    with pytest.raises(YorungeError) as error:
+        registered_proxy(query)
+    assert error.value.code == "invalid_service_target"
+
+
+def test_registered_literal_policy_does_not_apply_to_other_targets_or_direct():
+    with pytest.raises(YorungeError) as error:
+        direct(literal_policy="platform_proxy_v2")
+    assert error.value.code == "invalid_service_target"
+    with pytest.raises(YorungeError) as error:
+        proxy(literal_policy="platform_proxy_v2")
+    assert error.value.code == "invalid_service_target"

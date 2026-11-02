@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Literal, NoReturn, Protocol
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 from yorunge.application.http_transport import HttpCredential, HttpResponse, HttpTransport
 from yorunge.application.response_json import literal_secret_match
@@ -83,7 +83,16 @@ def _path(value: str) -> tuple[str, ...]:
 class StorageTarget:
     """Non-serializable ephemeral URL; the plan/policy must precede the descriptor."""
 
-    __slots__ = ("_url", "mode", "origin", "prefix", "expires_at", "service", "dataset_id")
+    __slots__ = (
+        "_url",
+        "mode",
+        "origin",
+        "prefix",
+        "expires_at",
+        "service",
+        "dataset_id",
+        "literal_policy",
+    )
     _url: str
     mode: Literal["proxy", "direct"]
     origin: str
@@ -91,6 +100,7 @@ class StorageTarget:
     expires_at: str | None
     service: ServiceTarget | None
     dataset_id: str | None
+    literal_policy: Literal["all_parts", "platform_proxy_v2"]
 
     def __init__(
         self,
@@ -102,6 +112,7 @@ class StorageTarget:
         expires_at: str | None,
         service: ServiceTarget | None,
         dataset_id: str | None,
+        literal_policy: Literal["all_parts", "platform_proxy_v2"] = "all_parts",
     ) -> None:
         self._validate_url(url, origin, prefix)
         if expires_at is not None and type(expires_at) is not str:
@@ -122,6 +133,7 @@ class StorageTarget:
                     raise YorungeError("invalid_service_target") from None
         else:
             raise YorungeError("invalid_service_target")
+        self._check_literal_policy(url, mode, service, dataset_id, literal_policy)
         attributes: tuple[tuple[str, object], ...] = (
             ("_url", url),
             ("mode", mode),
@@ -130,6 +142,7 @@ class StorageTarget:
             ("expires_at", expires_at),
             ("service", service),
             ("dataset_id", dataset_id),
+            ("literal_policy", literal_policy),
         )
         for name, item in attributes:
             object.__setattr__(self, name, item)
@@ -194,8 +207,57 @@ class StorageTarget:
     def wire_url(self) -> str:
         return self._url
 
+    @staticmethod
+    def _check_literal_policy(
+        url: str, mode: str, service: ServiceTarget | None, dataset_id: str | None, policy: str
+    ) -> None:
+        if policy == "all_parts":
+            return
+        if policy != "platform_proxy_v2" or mode != "proxy":
+            raise YorungeError("invalid_service_target")
+        StorageTarget._platform_proxy(url, service, dataset_id)
+
+    @staticmethod
+    def _platform_proxy(url: str, service: ServiceTarget | None, dataset_id: str | None) -> None:
+        if service is None or (
+            service.service_origin != "https://api.ssyz.org.tr"
+            or service.api_base_path != "/api/v1"
+        ):
+            raise YorungeError("invalid_service_target")
+        try:
+            query = parse_qsl(
+                urlsplit(url).query,
+                keep_blank_values=True,
+                strict_parsing=True,
+                encoding="utf-8",
+                errors="strict",
+            )
+        except ValueError:
+            raise YorungeError("invalid_service_target") from None
+        if (
+            urlsplit(url).path != f"/api/v1/datasets/{dataset_id}/upload/put"
+            or len(query) != 1
+            or query[0][0] != "key"
+        ):
+            raise YorungeError("invalid_service_target")
+
     def check_secret(self, secret: SecretValue) -> None:
         parsed = urlsplit(self._url)
+        if self.literal_policy == "platform_proxy_v2":
+            # Constructor verified the exact registered route. Only these two
+            # resource values vary; protocol path and query names are fixed.
+            raw_value = parsed.query.split("=", 1)[1]
+            decoded_value = parse_qsl(
+                parsed.query,
+                keep_blank_values=True,
+                strict_parsing=True,
+                encoding="utf-8",
+                errors="strict",
+            )[0][1]
+            values = [self.dataset_id or "", raw_value, decoded_value]
+            if any(literal_secret_match(value, secret.reveal()) for value in values):
+                raise YorungeError("invalid_service_target")
+            return
         values = [self._url, parsed.hostname or "", *_path(parsed.path)]
         for pair in parsed.query.split("&"):
             values.extend(_decoded(v) for v in pair.split("=", 1))

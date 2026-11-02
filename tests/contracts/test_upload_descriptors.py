@@ -99,6 +99,30 @@ def test_generated_local_bindings_and_network_uids_are_disjoint_for_entire_batch
     assert error.value.code == "invalid_request"
 
 
+@pytest.mark.parametrize("secret", ["key", "put", "datasets"])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_fixed_proxy_uri_parts_do_not_reject_valid_selected_short_credentials(secret, wrapped):
+    captured = SecretValue(secret)
+    context = contexts(secret=captured)[0]
+    value = response(context)
+    if wrapped:
+        value = {"success": True, "data": value}
+    descriptor = codec.presigned(encoded(value), context, captured)
+    assert descriptor.target.literal_policy == "platform_proxy_v2"
+    assert descriptor.provider_key.reveal() == KEY
+
+
+def test_checked_proxy_url_exception_does_not_exempt_discarded_metadata_url():
+    captured = SecretValue("datasets")
+    context = contexts(secret=captured)[0]
+    value = response(context)
+    value["metadata"] = {"upload_url": value["presigned_urls"][0]["upload_url"]}
+    raw = encoded(value)
+    with pytest.raises(YorungeError) as error:
+        codec.presigned(raw, context, captured)
+    assert error.value.code == "invalid_response"
+
+
 @pytest.mark.parametrize("wrapped", [False, True])
 @pytest.mark.parametrize("form", ["relative", "api_root", "absolute"])
 def test_exact_proxy_target_keeps_raw_percent_encoding(form, wrapped):

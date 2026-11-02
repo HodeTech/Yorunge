@@ -120,11 +120,16 @@ def _scan(
     fixed: dict[tuple[str, ...], frozenset[str]],
     *,
     error: Literal["invalid_response", "invalid_request"],
+    checked_string: tuple[tuple[str, ...], str] | None = None,
 ) -> None:
     captured = secret.reveal()
     pending: list[tuple[object, tuple[str, ...]]] = [(value, ())]
     while pending:
         item, path = pending.pop()
+        if checked_string is not None and (path, item) == checked_string:
+            # The presign caller already checked its exact URI policy and all
+            # dynamic resource values; this exempts no adjacent metadata.
+            continue
         if isinstance(item, str) and literal_secret_match(item, captured):
             raise YorungeError(error)
         pending.extend(_children(item, path, fixed, captured, error))
@@ -163,10 +168,28 @@ def _fixed_keys(
     return fixed
 
 
-def raw(data: bytes, kind: Kind, secret: SecretValue, *, selected_id: str | None = None) -> object:
-    value = parse_json(data)
+def _checked_raw(
+    value: object,
+    kind: Kind,
+    secret: SecretValue,
+    *,
+    selected_id: str | None = None,
+    checked_presign_url: str | None = None,
+) -> object:
     wrapped = isinstance(value, dict) and "success" in value
-    _scan(value, secret, _fixed_keys(value, kind, wrapped, selected_id), error="invalid_response")
+    checked_string = None
+    if checked_presign_url is not None:
+        if kind != "presign":
+            raise YorungeError("invalid_response")
+        prefix = ("data",) if wrapped else ()
+        checked_string = ((*prefix, "presigned_urls", "0", "upload_url"), checked_presign_url)
+    _scan(
+        value,
+        secret,
+        _fixed_keys(value, kind, wrapped, selected_id),
+        error="invalid_response",
+        checked_string=checked_string,
+    )
     if wrapped:
         root = _object(value)
         if root["success"] is not True:
@@ -175,6 +198,10 @@ def raw(data: bytes, kind: Kind, secret: SecretValue, *, selected_id: str | None
     if kind == "identity":
         raise YorungeError("invalid_response")
     return value
+
+
+def raw(data: bytes, kind: Kind, secret: SecretValue, *, selected_id: str | None = None) -> object:
+    return _checked_raw(parse_json(data), kind, secret, selected_id=selected_id)
 
 
 def _projection(value: object, fields: frozenset[str]) -> dict[str, object]:

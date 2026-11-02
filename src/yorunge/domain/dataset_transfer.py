@@ -193,8 +193,9 @@ class StageReceipt(UploadWire):
     @field_validator("object_key")
     @classmethod
     def key(cls, value: str | None) -> str | None:
-        # Structural policy only: the provider contract must separately establish
-        # that this handle carries no authorization. Signed URLs are never keys.
+        # Structural policy only: persisted provider handles require separate
+        # non-authorizing evidence. The observed-v2 producer instead uses an
+        # independent local file binding here; raw provider keys/URLs stay private.
         if value is not None and (
             not 1 <= len(value) <= 512
             or any(

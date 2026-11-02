@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urlsplit
 from uuid import uuid4
 
 from yorunge.application import platform_upload_codec as control
+from yorunge.application.response_json import parse_json
 from yorunge.application.storage import StorageTarget
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import SecretValue, ServiceTarget, normalize_target
@@ -145,6 +146,7 @@ class PresignedUpload(_Ephemeral):
             or target.service != context.target
             or target.dataset_id != context.dataset_id
             or target.expires_at is not None
+            or target.literal_policy != "platform_proxy_v2"
         ):
             raise YorungeError("invalid_request")
         key = _key(provider_key.reveal())
@@ -261,6 +263,7 @@ def _target(
             expires_at=None,
             service=service,
             dataset_id=context.dataset_id,
+            literal_policy="platform_proxy_v2",
         )
         parsed = urlsplit(url)
         query = parse_qsl(
@@ -280,8 +283,13 @@ def _target(
 
 
 def presigned(data: bytes, context: FileContext, secret: SecretValue) -> PresignedUpload:
-    root = control._object(control.raw(data, "presign", secret))
-    rows = root["presigned_urls"]
+    value = parse_json(data)
+    root = control._object(value)
+    if "success" in root:
+        if root["success"] is not True:
+            raise YorungeError("invalid_response")
+        root = control._object(root.get("data"))
+    rows = root.get("presigned_urls")
     if not isinstance(rows, list) or len(rows) != 1 or root.get("duplicates", []) != []:
         raise YorungeError("invalid_response")
     row = control._object(rows[0])
@@ -289,10 +297,15 @@ def presigned(data: bytes, context: FileContext, secret: SecretValue) -> Presign
     key = _key(row.get("object_key"))
     if row.get("headers", {}) != {} or row.get("checksum") is not None:
         raise YorungeError("invalid_response")
+    url = row.get("upload_url")
+    if type(url) is not str:
+        raise YorungeError("invalid_response")
+    target = _target(url, key, context, secret)
+    control._checked_raw(value, "presign", secret, checked_presign_url=url)
     return PresignedUpload(
         context,
         SecretValue(key),
-        _target(row.get("upload_url"), key, context, secret),
+        target,
         _mime(row.get("content_type", _MISSING), context.file.path),
     )
 
