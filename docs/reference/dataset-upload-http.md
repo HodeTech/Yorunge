@@ -1,6 +1,6 @@
 # Upload HTTP quota ve sayaç sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2n kanonik sözleşme; kayıtlı URI dilimi iki fresh turla yerel olarak kabul edildi. Rezervasyon modeli kodlandı, iki fresh turu bekliyor; gerçek HTTP quota bağlantısı henüz kabul edilmedi. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
+**Tarih:** 2026-11-03. **Durum:** P02-2n kanonik sözleşme; kayıtlı URI dilimi iki fresh turla yerel olarak kabul edildi. Rezervasyon modeli iki fresh turla yerel olarak kabul edildi; gerçek HTTP quota bağlantısı henüz kabul edilmedi. [V2 work limitleri](dataset-upload-v2.md#işe-ve-döneme-bağlı-maliyet-kanıtı), [provider codec](platform-upload-consumer.md), [generic HTTP](http-transport.md) ve [storage](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) sınırları korunur.
 
 ## Kayıtlı service URI provenance
 
@@ -31,6 +31,14 @@ Private UploadBudget yalnız strict saved UploadRequestLimits ve özgün monoton
 Her mantıksal read ve etkili çağrı için private tek kullanımlık rezervasyon vardır. Read request/upload byte sıfır; PUT control request byte sıfır; diğer aşamaların upload byte’ı sıfırdır. Control request ve service response kapasitesi çağrı başına en çok 1 MiB; PUT response kapasitesi en çok 64 KiB; tek PUT declared byte en çok 500.000.000’dır. Sıfır-byte dosya ve boş response kapasitesi geçerlidir; body/protocol codec kabulü ayrıca gerekir. Effect count, JSON control request byte'ları, PUT'un declared source byte'ları ve response kapasitesi **intent'ten önce** ayrılır. Sayfa/read sayacı da HTTP'den önce ayrılır. İki worker'ın toplam pending response rezervi ile işlenmiş byte toplamı work sınırını aşamaz. Begin yalnız owner task’ı bağlar; fiziksel attempt sayılmaz. Çağrı bırakıldığında rezervasyon ancak hiç physical attempt oluşmadığı doğrulanırsa geri verilebilir; başlamış effect/attempt byte slotu replay hakkına dönmez.
 
 Low-level wrapper her fiziksel HTTP denemesini delegate/socket öncesinde sayar; read en çok iki attempt ile mevcut retry sahibini kullanır. Bir effect rezervasyonu bir fiziksel deneme açar; 429/5xx/connect refusal/timeout/cancel ikinci effect veya URL yenileme üretmez. Yanlış request/reservation/task veya ikinci kullanım HTTP'den önce ret edilir. Sayaç nesnesi DB, raw URL, body hash'i veya credential kopyası tutmaz; private pending call expectation yalnız çağrı ömründedir.
+
+## N.3 gerçek HTTP bağlantı hedefi
+
+Private UploadHttpxTransport mevcut TransferHttpxTransport'u genişletir; yalnız iki yeni explicit facade girişinde reservation bağlar: open_budgeted(HttpRequest, reservation, deadline, permit=None) ve open_storage_budgeted(StorageRequest, reservation, deadline, permit). Service girişinde kayıtlı upload_endpoint zorunludur; kind/body length/response capacity ve aynı budget birebir karşılaştırılır. GET permit almaz; bütün POST/PUT girişleri aynı durable intent'ten composition'a gelen DispatchPermit ister. Permit physical delegate öncesi tüketilir; budget grant veya journal bağının yerine geçmez. Başka budget/request/task, tekrar kullanılan permit/token veya default unmetered giriş, socket öncesi reddedilir.
+
+Facade içindeki private call, ContextVar ile yalnız kendi async task'ına aittir. Low-level AsyncBaseTransport wrapper aynı GuardedHttpTransport/pool'u sarar; ikinci client/pool/Runner yoktur. Wrapper her physical request'i method/exact wire URL/body veya exact StorageBody kimliğiyle karşılaştırır; delegate'den önce sayar. Read retry sahibi mevcut HttpxTransport'tur. Response raw stream'i ve PUT source stream'i sayılır; context ancak response/source cleanup sonrasında temizlenir. Böylece retry, iptal veya erken close call kapasitesini erken iade etmez. URL/body/secret yalnız bu private call ömründedir; sayaç snapshot'ı bunları içermez.
+
+UploadSession aynı HttpSession Runner modelini kullanır; tek budget tüm exchange'lerde korunur. Bu bölüm n.3 uygulama hedefidir; gerçek TLS/test ve iki fresh tur bitmeden wire kabulü sayılmaz.
 
 ## Byte anlamı ve cleanup
 
