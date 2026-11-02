@@ -20,7 +20,7 @@ Ayrı immutable upload planı/manifest, güncel onay/revoke, 6→7 state/migrati
 
 ## Bağımlılıklar ve kararlar
 
-P02-0a/d PR #12/9f30fd2 ve P02-1 PR #13/50d68b1 ile development'tadır. [ADR-0024](../../decisions/0024-durable-dataset-transfers.md) ve [0025](../../decisions/0025-isolated-storage-streaming.md) Proposed; onaydan önce bağımlı kod yoktur. Endpoint/owner/project ve API-key otorite kapısı [araştırmada](../../research/p02-2-readiness-review.md) açıktır; yerel alt adımlar onay sonrası ayrılabilir, remote kod/pozitif prepared kabulü önce bu kapıyı kapatır.
+P02-0a/d PR #12/9f30fd2 ve P02-1 PR #13/50d68b1 ile development'tadır. [ADR-0024](../../decisions/0024-durable-dataset-transfers.md) ve [0025](../../decisions/0025-isolated-storage-streaming.md) Accepted — 2 Kasım kullanıcı review düzeltmeleri sonrası yerel uygulama yetkili. Endpoint/owner/project ve API-key otorite kapısı [araştırmada](../../research/p02-2-readiness-review.md) açıktır; yerel alt adımlar onay sonrası ayrılabilir, remote kod/pozitif prepared kabulü önce bu kapıyı kapatır.
 
 ## Sözleşme ve uygulama sınırı
 

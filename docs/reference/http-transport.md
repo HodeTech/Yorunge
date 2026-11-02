@@ -1,6 +1,6 @@
 # HTTP taşıma sözleşmesi
 
-**Durum:** Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md) sözleşmesi; tipli byte/JSON taşıması ve owned session P01-5a’da uygulandı/verified. P02-0 ile [sınırlı salt okunur context keşfi](context-discovery.md) ortak taşımanın public tüketicisidir; genel ham HTTP komutu veya streaming upload yoktur. P02-2 için ayrı storage portu [ADR-0025](../decisions/0025-isolated-storage-streaming.md) Proposed aşamasındadır; aşağıdaki mevcut service request sınırları değişmez. **Güncellendi:** 2026-11-02.
+**Durum:** Accepted [ADR-0017](../decisions/0017-bounded-http-transport.md) sözleşmesi; tipli byte/JSON taşıması ve owned session P01-5a’da uygulandı/verified. P02-0 ile [sınırlı salt okunur context keşfi](context-discovery.md) ortak taşımanın public tüketicisidir; genel ham HTTP komutu veya streaming upload yoktur. P02-2 için ayrı storage portu [ADR-0025](../decisions/0025-isolated-storage-streaming.md) Accepted, uygulama aşamasındadır; aşağıdaki mevcut service request sınırları değişmez. **Güncellendi:** 2026-11-02.
 
 ## Port ve sahiplik
 

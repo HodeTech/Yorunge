@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Durum:** Hazırlık sürüyor; ürün kartları draft. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Durum:** ADR-0024/0025 Accepted; bağımsız yerel uygulama başlıyor, remote kart kapıları açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -10,11 +10,11 @@ Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşt
 
 | Kapı | Mevcut kanıt / açılma koşulu | Bekleyen dilim |
 |---|---|---|
-| Karar | [ADR-0024](../decisions/0024-durable-dataset-transfers.md)/[0025](../decisions/0025-isolated-storage-streaming.md) Proposed; ayrı transfer ailesi, aşama niyeti, proje bağı, storage ve bütçe onayı gerekir | Yerel ve uzak bağımlı ürün kodu |
+| Karar | [ADR-0024](../decisions/0024-durable-dataset-transfers.md)/[0025](../decisions/0025-isolated-storage-streaming.md) Accepted — 2 Kasım kullanıcı yetkisi/review düzeltmeleri; yerel uygulama açıldı, gerçek otorite/wire kapıları ayrı | Yerel ve uzak bağımlı ürün kodu |
 | Create/link authority ve wire | Kamu istemcisi `POST datasets` ve **ayrı** `POST projects/{id}/datasets` gösteriyor; API-key auth, owner/project ve current izin oracle'ı doğrulanmadı | Gerçek adapter, prepared/start pozitif yolu |
 | Upload/verification wire | `my-role`, presign direct/proxy, `client_uid`, `skip_dedup`, item cursor alanları istemci kanıtı; exact strict response/expiry/header/object key güvenliği ve aynı hash farklı ad desteği açık | Gerçek adapter/pozitif aktarım |
 | Live yetki | Mevcut private test projesi önceki discovery kabulündendir. Yeni dataset/create/link/presign/PUT/confirm veya masraf yetkisi verilmiş değildir | Canlı yazma kabulü |
-| Fiyat ve kalacak kaynak | Create/storage/upload/okuma için geçerli ücret bilgisi ve kullanıcı azami CR tavanı bilinmiyor; unknown sıfır ücret değildir. Kaynak private kalır, otomatik silinmez | Canlı kabul |
+| Fiyat ve kalacak kaynak | Kullanıcı geliştirme için toplam **200 CR** üst sınırını belirledi; create/storage/upload/okuma tarifesi ve provider hard-cap mekanizması doğrulanmadı; unknown sıfır ücret değildir. Kaynak private kalır, otomatik silinmez | Canlı kabul |
 
 Onaylanan mimariyle bağımsız local domain/journal/stream fixture işi bu dış kapıları beklemeden ilerleyebilir. Ancak adapter endpoint'leri tahmin edilmez; public `prepared` veya ürün/live `verified` iddiası kapılar kapanmadan yoktur. Dış gate kapanmazsa P02-2 partial/blocked nedeni ve somut açılma koşulu kaydedilir; kapsam kullanıcı kararı olmadan daraltılmaz. [Araştırma](../research/p02-2-readiness-review.md) bu kapıların kanonik kanıtıdır.
 
@@ -37,10 +37,10 @@ Her uygulama adımı: **geliştir → ilgili gerçek kontroller → commit → f
 
 ## Canlı kabul hazırlığı
 
-Önce **ayrı yetkili salt okuma sözleşme pilotu** önerilecektir: exact mevcut Platform hedef/proje, en çok 8 mantıksal GET/16 attempt/8 MiB/30 s; endpoint listesi yürütmeden önce kesinleşir. Mevcut anahtar değeri sohbete/repoya girmez. Kamu bundle kaynak okuması ile auth'lu hesap çağrısı aynı kanıt sayılmaz. Bu plan tek başına hesap çağrısı yetkisi vermez.
+Kullanıcı **beş GET/10 attempt/5 MiB/30 s** salt okuma pilotunu açıkça onayladı: mevcut Platform target üzerinde auth/me, organizations, seçilmiş projects/{id}, projects/{id}/datasets ve datasets ilk sayfası (`page=1,page_size=5,scope=owned`). Bu kapsam billing/başka endpoint veya yanlış-key kontrolü içermez. Mevcut anahtar değeri sohbete/repoya girmez. Kamu bundle kaynak okuması ile auth'lu hesap çağrısı aynı kanıt sayılmaz. Bu plan tek başına hesap çağrısı yetkisi vermez.
 
-Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlantısı; toplam ≤1 MiB üç sentetik normal görsel (iki farklı ad aynı içerik, üçüncü farklı içerik); create≤1/link≤1, presign≤3/PUT≤3/confirm≤3, read≤10 ve isteğe bağlı bağımsız byte doğrulama≤3; effectful retry=0, read max2 attempt, toplam≤120 s. Batch/cardinality sağlayıcı sözleşmesi doğrulanırsa daha az çağrı kullanılabilir; tavan hedef değildir. Kesin byte toplamı, izinli storage origin, format, CR tavanı ve gerideki kaynağın sahibi **pilot öncesi** kaydedilir. Beklenmeyen ücret/şart, wrong parent, schema, secret, sınır veya ilk belirsizlikte durulur; cleanup adıyla DELETE yoktur. Bu öneri kullanıcı onayı değildir.
+Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlantısı; toplam ≤1 MiB üç sentetik normal görsel (iki farklı ad aynı içerik, üçüncü farklı içerik); create≤1/link≤1, presign≤3/PUT≤3/confirm≤3, read≤10 ve isteğe bağlı bağımsız byte doğrulama≤3; effectful retry=0, read max2 attempt, toplam≤120 s. İlk sürüm dosya başına presign/confirm yapar; batch istisnası yoktur, tavan hedef değildir. Bu yazma planı henüz ayrıca yetkilendirilmedi; kullanıcı önce salt okumayı istedi. Kesin byte toplamı, izinli storage origin, format, CR tavanı ve gerideki kaynağın sahibi **pilot öncesi** kaydedilir. Beklenmeyen ücret/şart, wrong parent, schema, secret, sınır veya ilk belirsizlikte durulur; cleanup adıyla DELETE yoktur. Bu öneri kullanıcı onayı değildir.
 
 ## Teslim kaydı
 
-Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). ADR kullanıcı onayı bekleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
+Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). Kullanıcı review düzeltmeleri sonrası ADR-0024/0025 Accepted; kod/local kabul ve dış kapılar izleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.

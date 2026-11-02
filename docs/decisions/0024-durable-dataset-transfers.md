@@ -1,6 +1,6 @@
 # ADR-0024: Private veri aktarımında plan, aşama ve kalıcı gönderim sınırı
 
-**Durum:** Proposed; kullanıcı onayı bekleniyor. **Tarih:** 2026-11-02. **İş:** P02-2a–c. [Araştırma](../research/p02-2-readiness-review.md), [paket planı](../roadmap/p02-2-delivery-plan.md), [önerilen sözleşme](../reference/dataset-transfer.md). Ürün uygulaması veya canlı yazma kabulü değildir.
+**Durum:** Accepted — 2026-11-02 kullanıcı, review bulguları giderildikten sonra uygulamayı açıkça yetkilendirdi; dış wire/yetki/live kabulü ayrıca kapatılır. **Tarih:** 2026-11-02. **İş:** P02-2a–c. [Araştırma](../research/p02-2-readiness-review.md), [paket planı](../roadmap/p02-2-delivery-plan.md), [önerilen sözleşme](../reference/dataset-transfer.md). Ürün uygulaması veya canlı yazma kabulü değildir.
 
 ## Bağlam
 
@@ -8,7 +8,7 @@ P02-1 güncel yerel Manifest v1 üretir; upload yetkisi veya gönderilecek deği
 
 Kamu web istemcisinde dataset create için kişisel/organizasyon sahipliği, **ayrı** `POST projects/{id}/datasets` için proje ilişkisi gözlenmiştir. Bu istemci kanıtı API-key yetkisi veya idempotency garantisi değildir. [ADR-0022](0022-observed-platform-consumer-contract.md) salt gözlem istisnası yan etkili bu işe taşınmaz.
 
-## Önerilen karar
+## Karar
 
 ### Ayrı transfer planı, ortak güvenlik ilkeleri
 

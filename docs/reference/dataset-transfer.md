@@ -1,6 +1,6 @@
 # Private dataset aktarımı taslağı
 
-**Durum:** Proposed; P02-2 ürün kodu yoktur. **Tarih:** 2026-11-02. [ADR-0024](../decisions/0024-durable-dataset-transfers.md) ve [ADR-0025](../decisions/0025-isolated-storage-streaming.md) kullanıcı onayı bekler. Bu belge mevcut inspect/verify, execution veya jobs sözleşmesini değiştirmez. [Dış kapılar](../roadmap/p02-2-delivery-plan.md#başlangıç-kapıları) kapanmadan remote uygulama hazır sayılmaz.
+**Durum:** ADR-0024/0025 Accepted; transfer wire ve ürün uygulaması hazırlanıyor. **Tarih:** 2026-11-02. [ADR-0024](../decisions/0024-durable-dataset-transfers.md) ve [ADR-0025](../decisions/0025-isolated-storage-streaming.md) 2026-11-02 kullanıcı yetkisiyle benimsendi. Bu belge mevcut inspect/verify, execution veya jobs sözleşmesini değiştirmez. [Dış kapılar](../roadmap/p02-2-delivery-plan.md#başlangıç-kapıları) kapanmadan remote uygulama hazır sayılmaz.
 
 ## Kullanıcı yüzeyi ve uyumluluk
 
