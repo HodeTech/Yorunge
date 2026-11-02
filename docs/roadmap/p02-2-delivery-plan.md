@@ -43,4 +43,4 @@ Sonra yazma pilotu somutlaştırılır: bir private dataset ve bir proje bağlan
 
 ## Teslim kaydı
 
-Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. Fresh belge review sonuçları ve gerçek doğrulamalar [hazırlık kaydına](../research/p02-2-readiness-review.md) eklenecek. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
+Henüz ürün geliştirmesi, ürün testi, native ölçüm veya canlı hesap çağrısı yapılmadı. İki hazırlık ajanı salt okunur mevcut kod/belge sınırlarını doğruladı. İlk hazırlık 2655c2b, doğrulanmış R1 düzeltmeleri 5e185a0 ile commit edildi. İki fresh belge turu tamamlandı; R2'de yeni doğrulanmış bulgu yok. Gerçek belge/rehber/arşiv ve mevcut kaynak bağlı referans sonuçları [hazırlık kaydındadır](../research/p02-2-readiness-review.md#fresh-belge-review-r2-ve-onay-öncesi-kapanış). ADR kullanıcı onayı bekleniyor. Önceki P02-1 kapanışı bu paketin ürün kabulü yerine geçmez.
