@@ -176,6 +176,9 @@ class TransferHttpxTransport(HttpxTransport):
                 "timeout": httpx.Timeout(min(5.0, remaining), pool=min(1.0, remaining)).as_dict()
             },
         )
+        # Keep HTTPX's prepared headers, but expose our public AsyncByteStream
+        # directly instead of its content= convenience iterator wrapper.
+        wire.stream = body
         if str(wire.url) != request.target.wire_url:
             raise YorungeError("invalid_service_target")
         expected = {name.lower(): value for name, value in request.wire_headers()}

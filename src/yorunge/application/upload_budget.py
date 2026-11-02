@@ -192,6 +192,30 @@ class UploadReservation(_PrivateQuota):
         self._started = self._closed = False
         self._task: asyncio.Task[object] | None = None
 
+    def require(
+        self,
+        budget: UploadBudget,
+        kind: CallKind,
+        *,
+        request_bytes: int,
+        upload_bytes: int,
+        response_bytes: int,
+    ) -> None:
+        """Bind the previously reserved quantities to one concrete typed HTTP call."""
+        self._budget._current()
+        for size in (request_bytes, upload_bytes, response_bytes):
+            _quantity(size, 1_073_741_824)
+        if (
+            self._budget is not budget
+            or self not in budget._live
+            or self._started
+            or self._closed
+            or self._kind != kind
+            or (self._request, self._upload, self._pending)
+            != (request_bytes, upload_bytes, response_bytes)
+        ):
+            raise YorungeError("invalid_request")
+
     def begin(self) -> None:
         self._budget._current()
         loop = _loop()
