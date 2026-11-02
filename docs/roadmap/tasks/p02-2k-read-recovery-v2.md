@@ -1,7 +1,7 @@
 ---
 id: P02-2k
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2j]
 capabilities: [C03, C12, C13]
@@ -36,5 +36,7 @@ Read flag/grant/actor/error matrix; terminale sıfır mutation/network; pre-inte
 
 ## Teslim kaydı
 
-P02-2j verified sonrası uygulama başladı; in_progress. Gerçek commit/review/test ve kalan sınır kapanışta kaydedilir.
+- PR/commit: [d0c8ef7](https://github.com/HodeTech/Yorunge/commit/d0c8ef7).
+- Sonuç: 07b7ff8 uygulaması, iki fresh review turu ve R2'de doğrulanan geç receipt/write-closure ile negatif gözlem güncellik düzeltmeleri tamamlandı. Son journal/recovery 118 passed; iki reviewer özgün karşı örneklerini bağımsız yeniden kapattı. [Ayrıntılı kayıt](../../research/p02-2-implementation-validation.md#p02-2k--explicit-readrecovery-ve-metadata-sonucu).
+- Kalan sınır: Gerçek provider/public koordinatör/HTTP sayacı ve native/kurulum/CI/live bütünleşik kabulü a/b/c kapsamındadır. Yerel kabul yeni canlı yazma yetkisi değildir.
 

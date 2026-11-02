@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Mevcut HTTP bytes request'i ≤1 MiB'dır; signed target/streaming request/presign/confirm adaptörü yoktur.
+Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile çalışma dalında verified, gerçek presign/confirm codec/producer henüz yoktur.
 
 ## Giren ve girmeyen kapsam
 
@@ -20,7 +20,7 @@ API proxy/direct signed target ayrımı, exact allowlist/header/expiry, descript
 
 ## Bağımlılıklar ve kararlar
 
-P02-2a durable plan/authority/intent gerçek kabulü ve [ADR-0025](../../decisions/0025-isolated-storage-streaming.md) onayı gerekir. Proxy path veya direct origin/expiry/header, `skip_dedup` ve aynı hash farklı ad oracle'ı kapalı değildir; araştırma kapısı kapanmadan gerçek adapter hazır sayılmaz. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
+P02-2a gerçek current/intent kabulü ve Accepted [ADR-0025](../../decisions/0025-isolated-storage-streaming.md)/[0026](../../decisions/0026-explicit-unverified-transfer-attempts.md) gerekir. Default verified_only ile açık explicit_attempt risk/onay kapıları ayrı korunur. Proxy path veya direct origin/expiry/header, `skip_dedup` ve aynı hash farklı ad oracle'ı kapalı değildir; araştırma kapısı kapanmadan gerçek adapter hazır sayılmaz. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -41,4 +41,4 @@ Contract/loopback TLS/descriptor/process testleri ve byte sayan bağımsız serv
 
 ## Teslim kaydı
 
-Uygulama/kabul yapılmadı. ADR-0024/0025 Accepted; P02-2a ve provider wire/kabul kapıları açık, draft.
+Yerel f storage ve g–k v2 temeli çalışma dalında verified; gerçek provider codec/current producer/public ve bütünleşik/live kabul eksik, üst kart draft.

@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Durum:** ADR-0024/0025 Accepted; bağımsız yerel uygulama başlıyor, remote kart kapıları açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–k verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -11,12 +11,12 @@ Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşt
 | Kapı | Mevcut kanıt / açılma koşulu | Bekleyen dilim |
 |---|---|---|
 | Karar | [ADR-0024](../decisions/0024-durable-dataset-transfers.md)/[0025](../decisions/0025-isolated-storage-streaming.md) Accepted — 2 Kasım kullanıcı yetkisi/review düzeltmeleri; yerel uygulama açıldı, gerçek otorite/wire kapıları ayrı | Yerel ve uzak bağımlı ürün kodu |
-| Create/link authority ve wire | Kamu istemcisi `POST datasets` ve **ayrı** `POST projects/{id}/datasets` gösteriyor; API-key auth, owner/project ve current izin oracle'ı doğrulanmadı | Gerçek adapter, prepared/start pozitif yolu |
+| Create/link authority ve wire | Kamu istemcisi `POST datasets` ve **ayrı** `POST projects/{id}/datasets` gösteriyor; API-key auth, owner/project ve current izin oracle'ı doğrulanmadı | Gerçek codec; verified_only için prepared, explicit_attempt için v2 risk/onay kapısı |
 | Upload/verification wire | `my-role`, presign direct/proxy, `client_uid`, `skip_dedup`, item cursor alanları istemci kanıtı; exact strict response/expiry/header/object key güvenliği ve aynı hash farklı ad desteği açık | Gerçek adapter/pozitif aktarım |
 | Live yetki | Mevcut private test projesi önceki discovery kabulündendir. Kullanıcı son yanıtında küçük denemeye ve 200 CR aşımına izin verdi; somut ilk pilot aşağıdaki tek dataset/üç küçük görselle sınırlıdır; ilk create 201, sonraki detail GET 405 ve kontrollü durma [kaydedildi](../research/p02-2-private-create-observations.md) | Canlı yazma kabulü |
 | Fiyat ve kalacak kaynak | Kullanıcı başlangıçta **200 CR** tavanı belirledi, sonraki yanıtında bu tutarın aşılmasını kabul edip denemeyi istedi. İlk deneme tek private dataset/≤1 MiB üç görselle sınırlanır; create/storage/upload/okuma tarifesi ve provider hard-cap mekanizması hâlâ doğrulanmadı. Bu tercih ürün cost-bound/authority kanıtı değildir. Kaynak private kalır, otomatik silinmez | Canlı kabul |
 
-Onaylanan mimariyle bağımsız local domain/journal/stream fixture işi bu dış kapıları beklemeden ilerleyebilir. Ancak adapter endpoint'leri tahmin edilmez; public `prepared` veya ürün/live `verified` iddiası kapılar kapanmadan yoktur. Dış gate kapanmazsa P02-2 partial/blocked nedeni ve somut açılma koşulu kaydedilir; kapsam kullanıcı kararı olmadan daraltılmaz. [Araştırma](../research/p02-2-readiness-review.md) bu kapıların kanonik kanıtıdır.
+Onaylanan mimariyle bağımsız local domain/journal/stream fixture işi bu dış kapıları beklemeden ilerleyebilir. Adapter endpoint'leri tahmin edilmez. Verified_only için gerçek tam grant/complete cost gerekir; ADR-0026 explicit_attempt yolu unknown yetki/fiyatı risk ve açık onayla taşır. Hiçbir mod wire/owner/private veya ürün/live kabul kapısını atlamaz. Dış gate kapanmazsa P02-2 partial/blocked nedeni ve somut açılma koşulu kaydedilir; kapsam kullanıcı kararı olmadan daraltılmaz. [Araştırma](../research/p02-2-readiness-review.md) bu kapıların kanonik kanıtıdır.
 
 ## Adımlar ve review döngüsü
 
@@ -27,7 +27,7 @@ Her uygulama adımı: **geliştir → ilgili gerçek kontroller → commit → f
 | 0 | Paket hazırlığı | Mevcut belge/kod ve güncel kamu sözleşmesi review'si, iki Proposed ADR, gerçek kartlar ve dış kapılar; iki fresh belge turu, kullanıcı ADR onayı |
 | 1 | [P02-2d](tasks/p02-2d-upload-plan-contract.md) / P02-2a yerel | Exact public/private wire, immutable upload plan/manifest, strict model/oracle, digest approve/revoke ve ortak kullanım senaryosu; ADR onayı gerekir, remote permission uydurulmaz |
 | 2 | [P02-2e](tasks/p02-2e-durable-transfer-journal.md) / P02-2a kalıcılık | 6→7 V2, quota/recovery rezervi, tekil niyet/intent/receipt, current credential/lease/clock, reset/preview/frontier ve eski restore yasağı; aynı kayıt üzerinde kill/race kabulü |
-| 3 | P02-2a uzak | Gerçek current create/link authority producer, strict endpoint codec ve private create/proje bağı; auth/owner/project wire kapısı önce kapanır |
+| 3 | P02-2a uzak | Kayıtlı v2 current producer, strict endpoint codec ve private create/proje bağı; verified_only ile açık explicit_attempt kapıları ayrıdır |
 | 4 | [P02-2f](tasks/p02-2f-bounded-storage-port.md) temel / P02-2b adapter | Ayrı hedef politikası, bounded descriptor streaming ve presign/PUT/confirm; exact provider wire/allowlist ve önceki durable kayıt gerekir |
 | 5 | P02-2c recovery | Show/reconcile, her etki/commit sınırında kill/cevap kaybı, aynı-ID read-only yol; ikinci create/presign/PUT/confirm sıfır |
 | 6 | P02-2c deneyim/kabul | Ortak CLI/Python, text/JSON/NDJSON/error/cancel; gerçek TLS/kurulu upload bellek ve süre, sınır/yoğun state, altı temiz paket kurulumu, son kaynak M5 ve üç ortam CI |
@@ -59,4 +59,9 @@ Ardından gerçek current tüketici codec'leri ve private create/proje bağı, b
 
 ## V2 dar kartları
 
-P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G in_progress; h/i/j/k bağımlılık kabulüne kadar draft. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
+P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G/h/i/j/k çalışma dalında verified; her biri iki fresh kod review turu ve doğrulanmış düzeltmeleriyle kapandı. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
+
+
+## Gerçek tüketiciye geçiş
+
+[P02-2l](tasks/p02-2l-platform-control-codecs.md), a üst kartının context/create/link strict codec dilimidir; [kanonik tüketici referansı](../reference/platform-upload-consumer.md) ürün kodundan önce yazıldı. Ardından upload codec/storage descriptor, gerçek HTTP read/attempt/body bütçe sayacı, ortak koordinatör ve CLI/Python yüzeyi ayrı S/M commit/review dilimleri olarak somutlaştırılır. Bu teknik ayırma epik kapsamını daraltmaz; her dilim iki fresh turla kapanır, üst a/b/c ancak kendi bütünleşik ve live kabulüyle verified olur. Profil grant/fiyat uydurmaz; yeni canlı write, exact planı ve kapsamı hazırlanıp incelendikten sonra ayrı yetki ister.
