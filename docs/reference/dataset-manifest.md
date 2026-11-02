@@ -88,7 +88,7 @@ Girdi manifesti malformed ise tarama veya output oluşturulmaz. Tarama değişim
 
 ## Bağımsız kabul
 
-Golden vektörler elle sabit dosya baytları ve bağımsız beklenen SHA/canonical manifest byte/digest kullanır; üreticinin kendi çıktısını tek oracle yapmaz. Boş dosya/ağaç, Unicode, farklı root/sıra, same-hash ve hardlink isimleri korunur. Parser, tüm quota ve adversarial yarışlar, disk-full/kill/existing target ve API/CLI JSON/NDJSON/locale/pipe negatifleri [kartlara](../roadmap/p02-1-delivery-plan.md) dağılır. Bu belge hedefi tanımlar; uygulanmış/testten geçmiş iddiası değildir.
+Golden vektörler elle sabit dosya baytları ve bağımsız beklenen SHA/canonical manifest byte/digest kullanır; üreticinin kendi çıktısını tek oracle yapmaz. Boş dosya/ağaç, Unicode, farklı root/sıra, same-hash ve hardlink isimleri korunur. Parser, tüm quota ve adversarial yarışlar, disk-full/kill/existing target ve API/CLI JSON/NDJSON/locale/pipe negatifleri [kartlara](../roadmap/p02-1-delivery-plan.md) dağılır. Uygulanmış kapsam, çalıştırılan kontroller ve kabul sınırları [güncel uygulama/CI kaydında](../research/p02-1-implementation-validation.md#pr-13-review-bulguları-ve-saklama-kapanışı) kaynaklarıyla belirtilir.
 
 ## Senkron API ve iptal ayrımı
 
