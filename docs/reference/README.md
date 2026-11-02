@@ -19,6 +19,6 @@
 | [Operation/jobs](operations.md) | ADR-0016 çekirdeği ve yerel list/show verified; PR #10 ile development'a teslim edildi; [merge/CI kanıtı](../research/p01-4-implementation-validation.md#development-merge-kapanışı) |
 | [HTTP taşıma](http-transport.md) | Çalışma dalında verified — ADR-0017; hedef/sır/deadline/retry ve owned async session; gerçek TLS/kurulu artifact kabulü |
 | [Akış sonucu](stream-results.md) | Çalışma dalında verified — ADR-0018; kapalı event, terminal/EOF, NDJSON ve yerel iptal; CLI/Python ve gerçek süreç kabulü |
-| [Upload v2](dataset-upload-v2.md) | ADR-0026 kullanıcı review düzeltmesi: exact-work maliyet, policy reducer ve v2 gate/uyumluluk; henüz uygulanmadı |
+| [Upload v2](dataset-upload-v2.md) | ADR-0026 Accepted: exact-work maliyet, policy reducer ve v2 gate/uyumluluk hedefi; uygulama P02-2g ile başlıyor |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [bf652f6 tarihsel kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) ile [ADR-0019/Sonar son kaynak kapanışı](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) ayrı kayıtlardır.

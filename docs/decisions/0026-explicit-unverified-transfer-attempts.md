@@ -1,6 +1,6 @@
 # ADR-0026: Doğrulanmamış transfer denemesinde açık politika ve onay
 
-**Durum:** Proposed — kullanıcı review bulguları kapandıktan sonra Accepted yapıp uygulamayı sürdürmeyi koşullu yetkilendirdi; revizyonun iki fresh turu henüz kapanmadı. **Tarih:** 2026-11-02. **İş:** P02-2a/b/c. [ADR-0024](0024-durable-dataset-transfers.md), [ADR-0025](0025-isolated-storage-streaming.md), [v2 kanonik sözleşme](../reference/dataset-upload-v2.md), [paket planı](../roadmap/p02-2-delivery-plan.md).
+**Durum:** Accepted — kullanıcı 2026-11-02 review bulguları kapandıktan sonra uygulamayı açıkça yetkilendirdi; revizyonun iki fresh turu tamamlandı. **Tarih:** 2026-11-02. **İş:** P02-2a/b/c. [ADR-0024](0024-durable-dataset-transfers.md), [ADR-0025](0025-isolated-storage-streaming.md), [v2 kanonik sözleşme](../reference/dataset-upload-v2.md), [paket planı](../roadmap/p02-2-delivery-plan.md).
 
 ## Bağlam
 

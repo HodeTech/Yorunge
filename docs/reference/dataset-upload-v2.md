@@ -1,6 +1,6 @@
 # Upload v2 politika, maliyet ve geçiş sözleşmesi
 
-**Durum:** ADR-0026 kullanıcı review düzeltmesi; koşullu uygulama onayı verildi, iki fresh belge turu kapanmadan Accepted/ürün uygulaması değildir. **Tarih:** 2026-11-02. [Karar](../decisions/0026-explicit-unverified-transfer-attempts.md), [v1 geçmişi ve ortak storage/journal sınırları](dataset-transfer.md). Bu belge v2'nin kanonik alan/reducer/gate/acceptance kaynağıdır; v1 golden'ları yeniden tanımlamaz.
+**Durum:** ADR-0026 Accepted; kanonik v2 hedef sözleşmesi. Yerel v1 d/e/f temeli verified; v2 uygulaması P02-2g ile başlıyor. Bu belgenin varlığı v2 runtime veya public upload teslimi değildir. **Tarih:** 2026-11-02. [Karar](../decisions/0026-explicit-unverified-transfer-attempts.md), [v1 geçmişi ve ortak storage/journal sınırları](dataset-transfer.md). Bu belge v2'nin kanonik alan/reducer/gate/acceptance kaynağıdır; v1 golden'ları yeniden tanımlamaz.
 
 ## Kapalı tipler ve sürümler
 

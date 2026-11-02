@@ -176,3 +176,9 @@ Revizyon henüz iki yeni fresh turu bitirmedi; durum Proposed ve bağımlı v2 s
 ### Kullanıcı revizyonu fresh R1
 
 75c210b, önceki hazırlık reviewer'larından farklı iki fresh ajanla incelendi. Maliyet kolu (GPT-6 Astra/high) maddi bulgu bulmadı; exact work/period/storage, request caps, weak-v1 write kapanışı ve 96 matris tutarlı bulundu. Gate kolu (GPT-6.1 Sol/high) **P2** doğruladı: not_exposed registry yalnız create/link için yazılmıştı; observed profile grant üretmediğinden upload/read explicit fallback'i erişilemezdi. Dört action için ayrı oracle/mandatory gate tablosu eklendi; my-role label ayrı prerequisite kalır, grant'a çevrilmez. Denied/unavailable/invalid fallback olamaz. Kullanıcı revizyonunun fresh R2'si henüz kapanmadı; v2 ürün kodu başlamadı. Reviewer'lar test/canlı/özel dosya çağrısı yapmadı, yalnız statik sözleşme/kod okudu.
+
+### Kullanıcı revizyonu fresh R2 ve Accepted kapanışı
+
+B26cfa9 iki farklı yeni ajan tarafından incelendi. Maliyet/provenance kolu (GPT-6.1 Sol/high) ve gate/uyumluluk kolu (GPT-6 Astra/high) yeni maddi bulgu bulmadı; dört-action registry düzeltmesi kapandı. İkinci kol 96 oracle dağılımını bağımsız saydı: **65 draft, 2 prepared, 11 attempt_ready, 18 invalid**; onaylanabilir dokuz unpriced satırda cost ack zorunlu. İnceleme statikti, ürün/live testi diye sunulmaz.
+
+Kullanıcının “bulguları gider, sonra Accepted yap ve devam et” talimatı uyarınca ADR-0026 Accepted yapıldı; aynı karar yeniden onaya sorulmadı. Yeni kanonik v2 ref, ADR-0024 forward amendment, ref/karar indeksleri, phase/current ve beş dar g/h/i/j/k kartı hizalandı. G maliyet adımı in_progress; h/i/j/k ve remote a/b/c draft. D/e/f v1 tarihsel kabulü korunur. Bu sırada yeni canlı çağrı, source-bound ölçüm/build/CI yapılmadı; eski M5 referans yeni kaynağın kabulü değildir.

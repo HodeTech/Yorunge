@@ -1,6 +1,6 @@
 # Private dataset aktarımı taslağı
 
-**Durum:** ADR-0024/0025 Accepted; transfer wire ve ürün uygulaması hazırlanıyor. **Tarih:** 2026-11-02. [ADR-0024](../decisions/0024-durable-dataset-transfers.md) ve [ADR-0025](../decisions/0025-isolated-storage-streaming.md) 2026-11-02 kullanıcı yetkisiyle benimsendi. Bu belge mevcut inspect/verify, execution veya jobs sözleşmesini değiştirmez. [Dış kapılar](../roadmap/p02-2-delivery-plan.md#başlangıç-kapıları) kapanmadan remote uygulama hazır sayılmaz.
+**Durum:** ADR-0024/0025/0026 Accepted; d/e/f v1 yerel temel verified, v2 ürün uygulaması hazırlanıyor. [V2 kanonik politika/maliyet/gate sözleşmesi](dataset-upload-v2.md) aşağıdaki tarihsel v1 kurallarının yeni yazma karşılığını tanımlar. **Tarih:** 2026-11-02. [ADR-0024](../decisions/0024-durable-dataset-transfers.md) ve [ADR-0025](../decisions/0025-isolated-storage-streaming.md) 2026-11-02 kullanıcı yetkisiyle benimsendi. Bu belge mevcut inspect/verify, execution veya jobs sözleşmesini değiştirmez. [Dış kapılar](../roadmap/p02-2-delivery-plan.md#başlangıç-kapıları) kapanmadan remote uygulama hazır sayılmaz.
 
 ## Kullanıcı yüzeyi ve uyumluluk
 
@@ -9,13 +9,15 @@
 ```text
 yorunge datasets upload plan ROOT --manifest FILE --name NAME --project UUID
     (--owner-user UUID | --owner-org UUID) --modality MODALITY
-    [--storage-origin HTTPS_ORIGIN] [--config FILE] [--profile NAME] [--state-dir PATH]
-yorunge datasets upload approve --plan-id UUID --confirm FULL_PLAN_DIGEST [...context]
+    [--storage-origin HTTPS_ORIGIN] [--admission-policy verified-only|explicit-attempt]
+    (--budget-cr DECIMAL | --unpriced) [--config FILE] [--profile NAME] [--state-dir PATH]
+yorunge datasets upload approve --plan-id UUID --confirm FULL_PLAN_DIGEST
+    [--accept-unverified-authority] [--accept-unpriced-cost] [...context]
 yorunge datasets upload revoke --plan-id UUID [--state-dir PATH]
 yorunge datasets upload start --plan-id UUID [...context]
 yorunge datasets upload list [--plan-id UUID] [--limit N] [--cursor CURSOR] [--state-dir PATH]
 yorunge datasets upload show (--operation-id UUID | --plan-id UUID) [--state-dir PATH]
-yorunge datasets upload reconcile --operation-id UUID [...context]
+yorunge datasets upload reconcile --operation-id UUID [--accept-unverified-read] [...context]
 ```
 
 Python karşılıkları aynı kullanım senaryolarına bağlanacak ayrı upload plan/approve/revoke/start/list/show/reconcile API'leridir; senkron köprü asyncio active-loop/PID/thread kapısını state/credential/etki öncesi uygular. Python çağıranından raw provider JSON, producer/verified flag, authorization listesi, HTTP client veya storage header dict'i alınmaz. JSON/NDJSON Result v1 korunur; bütün dosya/journal stdout'a basılmaz. Bilinen operation ID hem kontrollü hata hem belirsizlik/çıktı iptali yolunda korunur.
@@ -65,7 +67,7 @@ Text/TTY yolunda en çok saniyede 10 kez coalesce edilmiş ilerleme, HTTP taşı
 
 ## P02-2d kapalı yerel plan ve onay wire'ı
 
-Bu bölüm Accepted kararın ilk yerel kod dilimini kesinleştirir; public upload komutları henüz uygulanmış değildir. Bütün nesneler strict/frozen/extra-forbid, tüm alanlar zorunlu (nullable dahil), bool sayısal alan değildir. Raw JSON UTF-8, duplicate/nonfinite/BOM/trailing byte reddi; en çok 8 container/50.000 node. Plan/onay encoded byte sınırı 16 KiB; manifest artifact'ı eski Manifest v1 olarak ayrı tutulur ve upload alt kümesinde en çok 256 KiB'dır. Canonical plan/onay UTF-8 JSON `ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False`, LF yoktur; Manifest v1'in kendi canonical UTF-8+LF biçimi değişmez. Digest yalnız üst düzey digest alanı hariç bütün planı SHA-256 ile bağlar.
+Bu bölüm tarihsel v1 yerel kod dilimini kesinleştirir; yeni public producer ve yazma hedefi [v2 sözleşmesidir](dataset-upload-v2.md). Scope-only v1 cost v2 bütçe kanıtı değildir; yeni v1 write yasağı P02-2j uyum adımında uygulanır; mevcut private v1 prototip teslim edilmiş public API değildir. public upload komutları henüz uygulanmış değildir. Bütün nesneler strict/frozen/extra-forbid, tüm alanlar zorunlu (nullable dahil), bool sayısal alan değildir. Raw JSON UTF-8, duplicate/nonfinite/BOM/trailing byte reddi; en çok 8 container/50.000 node. Plan/onay encoded byte sınırı 16 KiB; manifest artifact'ı eski Manifest v1 olarak ayrı tutulur ve upload alt kümesinde en çok 256 KiB'dır. Canonical plan/onay UTF-8 JSON `ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False`, LF yoktur; Manifest v1'in kendi canonical UTF-8+LF biçimi değişmez. Digest yalnız üst düzey digest alanı hariç bütün planı SHA-256 ile bağlar.
 
 | Tip | Tam alanlar |
 |---|---|
@@ -92,7 +94,7 @@ Intent digest exact `(service_origin,api_base_path,owner.kind,owner.id,project_i
 
 ## P02-2e kalıcı yerel journal sözleşmesi
 
-Bu bölüm çalışma dalındaki yerel repository tüketicisini tanımlar; public CLI/API, gerçek provider producer/adapter ve canlı yazma teslimi değildir. SQL-only V2 adım 6→7 yalnız boş transfer tablolarını/indekslerini ekler. Şema 1–6 SQL/checksum ve eski Plan/Recipe/jobs wire'ları değişmez.
+Bu bölüm çalışma dalındaki tarihsel v1 yerel repository tüketicisini tanımlar; v2 union/current/arm/read karşılıkları [ayrı kanonik sözleşmededir](dataset-upload-v2.md#işlem-kapıları-ve-current-kanıt). public CLI/API, gerçek provider producer/adapter ve canlı yazma teslimi değildir. SQL-only V2 adım 6→7 yalnız boş transfer tablolarını/indekslerini ekler. Şema 1–6 SQL/checksum ve eski Plan/Recipe/jobs wire'ları değişmez.
 
 `upload_namespaces` sabit intent digest'i, tam canonical namespace'i ve ilk create intent'inde CAS ile bir kez atanan operation FK'sini; `upload_manifests` canonical Manifest v1 byte'larını (LF dahil); `upload_plans` immutable planı; `upload_approvals` tek onayı/revoke durumunu; `upload_operations` plan başına tek operation ve namespace başına tek create intent sahibini tutar. `upload_stage_intents` sıra/kind/file-index üzerinde tekil, `upload_stage_receipts` intent başına immutable'dır. `upload_controls` operation başına ayrı `recovery` ve `terminal` slotlarıdır. `upload_verifications` tam, sıralı dosya metadata okuma kanıtıdır; uzak byte hash'i iddiası üretmez. Signed URL/header/query hiçbir row veya request digest'ine girmez.
 

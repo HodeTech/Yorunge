@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 2026-11-02 kullanıcı, review bulguları giderildikten sonra uygulamayı açıkça yetkilendirdi; dış wire/yetki/live kabulü ayrıca kapatılır. **Tarih:** 2026-11-02. **İş:** P02-2a–c. [Araştırma](../research/p02-2-readiness-review.md), [paket planı](../roadmap/p02-2-delivery-plan.md), [önerilen sözleşme](../reference/dataset-transfer.md). Ürün uygulaması veya canlı yazma kabulü değildir.
 
+**2026-11-02 kısmi değişiklik:** [ADR-0026](0026-explicit-unverified-transfer-attempts.md) ve [v2 sözleşmesi](../reference/dataset-upload-v2.md) bu kararın authority/cost/current/read hükümlerini değiştirir: verified_only default korunur; yalnız açık v2 explicit_attempt ve uygun ack ile attempt_ready admit/arm/read mümkün olur. Numeric bound exact iş/kategori/dönem/storage v2 kanıtı ister; scope-only v1 cost yeni approve/admit/arm açamaz. Null current term için sahte expiry yoktur; metadata success tam 2+3N accepted graph ister ve authority'yi yükseltmez. V1 history/golden, namespace/intent/PID/lease/replay, storage/kota/secret ve ayrı live kapıları değişmez. Bu amendment uygulanmış v2 runtime iddiası değildir.
+
 ## Bağlam
 
 P02-1 güncel yerel Manifest v1 üretir; upload yetkisi veya gönderilecek değişmez snapshot üretmez. P02-0d yalnız unknown/unverified gözlemdir. Mevcut execution v2 en çok 128 girdi/64 KiB gövde, operation ise tek dispatch latch'i ve gönderim sonrası yalnız read reconciliation taşır. Create, proje bağı, presign, PUT ve confirm'ü tek start içine gizlemek kesintide hangi isteğin yapılmış olabileceğini kaybettirir.

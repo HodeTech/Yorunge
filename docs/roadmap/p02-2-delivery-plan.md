@@ -51,8 +51,12 @@ P02-2d/e/f yerel temel kartları, a/b/c üst teslim ID/kabulünü yeniden numara
 
 P02-2f iki kod dilimine ayrılır: **4.1** kapalı hedef/request politikası ve gerçek descriptor byte kaynağı; **4.2** public-IP pin/peer backend, aynı client/pool storage entegrasyonu ve iki gerçek TLS origin negatifleri. Her dilim kendi commit'i ve iki farklı fresh review turuyla kapanır; f ancak ikisi tamamlanınca verified olur. Native bütünleşik ve gerçek provider codec/kabulü yine b/c kapsamındadır.
 
-## ADR-0026 önerisine bağlı sonraki sıra
+## ADR-0026 sonrası sıra
 
-[ADR-0026](../decisions/0026-explicit-unverified-transfer-attempts.md) Proposed; mevcut Accepted kapıları henüz değişmedi. Kullanıcının onayı gelirse önce (1) ayrı v2 policy/plan/approval reducer ve literal golden'lar, sonra (2) v1/v2 kapalı journal decoder/arm/read/reset/quota/preview uyumu uygulanır. Bunlar M veya daha küçük yeni hazır kartlara bölünür; d/e/f'nin mevcut v1 yerel teslim kanıtı tarihsel korunur. Her kod dilimi commit + fresh R1 + fix + farklı fresh R2 + fix ister.
+[ADR-0026](../decisions/0026-explicit-unverified-transfer-attempts.md) kullanıcı review revizyonu ve iki fresh tur sonrası Accepted; kanonik v2 sözleşmesi geçerlidir. Önce (1) ayrı v2 policy/plan/approval reducer ve literal golden'lar, sonra (2) v1/v2 kapalı journal decoder/arm/read/reset/quota/preview uyumu uygulanır. Bunlar M veya daha küçük yeni hazır kartlara bölünür; d/e/f'nin mevcut v1 yerel teslim kanıtı tarihsel korunur. Her kod dilimi commit + fresh R1 + fix + farklı fresh R2 + fix ister.
 
 Ardından gerçek current tüketici codec'leri ve private create/proje bağı, bounded upload ve ortak public CLI/Python; aynı-ID read reconciliation ve bütünleşik UX/native/kurulum/source-CI/kanıt kapanışı gelir. Öneri v2 explicit operasyon için ayrı insan seçimiyle current scoped read-attempt ve metadata sonucunu da tanımlar; v1/default read grant kapısı korunur. Yeni politika tek başına provider wire, aynı hash farklı ad desteği veya canlı kabulü kapatmaz. Durmuş araştırma workflow'ı yeniden arm edilmez; sonraki canlı write kendi somut planı/kapsamı hazır ve review edilmişken ayrıca değerlendirilir. Bu öneri yeni bir canlı write çağrı yetkisi değildir.
+
+## V2 dar kartları
+
+P02-2g exact-work cost → P02-2h policy/plan/approval → P02-2i union/full graph → P02-2j durable write gates → P02-2k read/reset/metadata. Review revizyonu ve iki fresh tur kapandı; ADR-0026 Accepted. G in_progress; h/i/j/k bağımlılık kabulüne kadar draft. I aşaması yeni v2 writer açmaz; j geçişi yeni v1 write yasağıyla v2 write testlerini atomik tamamlar. D/e/f mevcut v1 kabulü tarihsel kalır; yeni public writer yalnız j/k kabulünden sonra tüketilir. Ardından a/b/c gerçek producer/API/CLI/codec ve nihai native/kurulum/CI/live kapsamı devam eder.
