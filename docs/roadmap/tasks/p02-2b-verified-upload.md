@@ -32,7 +32,7 @@ Domain hedef/byte/receipt tipleri, application transfer state machine, somut HTT
 2. Kısa/uzun secret, signed query/header canary; raw metadata, stdout/stderr/JSON/NDJSON/log/repr/exception/DB/receipt ve cancel yollarında kapsamlı literal denetim geçer. Muaf sabit protocol alanları genel secret detector iddiası üretmez.
 3. Bounded descriptor streaming byte/hash ve Content-Length, kısa okuma, aynı boyutlu değişim, root/ancestor değişimi ve byte/worker/queue sınırları gerçek HTTP yolunda doğrulanır. Gönderilen hash uyuşmazlığında confirm yoktur; geçici nesne kalabilir.
 4. Presign ve confirm bijeksiyonu her dosya adı/size/hash/index'ini korur; duplicate/eksik/fazla/yanlış key veya dataset, mantıksal hata 2xx, metadata ETag/nullable hash ve aynı hash farklı adlarda yanlış success yoktur. Desteklenmeyen adı flatten/skip yapmak yasaktır.
-5. Her etkili aşamada durable intent + tek permit + tek HTTP denemesi vardır. Timeout/connection-refused/429/5xx otomatik PUT/presign/confirm üretmez; işlem ve kalan durum korunur.
+5. Her etkili aşamada durable intent + tek permit + tek HTTP denemesi vardır. Timeout/connection-refused/429/5xx otomatik PUT/presign/confirm üretmez; işlem ve kalan durum korunur. İki worker'dan biri durduğunda yeni arm/confirm açılmaz; diğerinin önceden arm edilmiş/in-flight intent'i kendi receipt/unknown kaydıyla gözlenir, rollback varsayılmaz.
 6. Strict response/total/phase sınırı, cleanup ve Task.cancel yayılımı gerçek async/TLS testte geçer. Yerel iptal uzak iptal veya onaylı ikinci gönderim değildir.
 
 ## Doğrulama

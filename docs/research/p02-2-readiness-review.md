@@ -47,3 +47,8 @@ Yeni ADR onayı olmadan bağımlı ürün kodu yoktur. Onay, açık provider sö
 ## Review ve doğrulama kaydı
 
 İlk preflight: iki bağımsız salt okunur agent (state/HTTP/code ve scope/docs/authority) ile ana kaynak incelemesi tamamlandı. Bununla yeni yazılmış ADR/metinlerin iki fresh review turu tamamlanmış sayılmaz. Doküman/rehber kontrolleri ve fresh tur sonuçları çalıştırıldıktan sonra aşağıda gerçek sonuçlarıyla kaydedilecektir. Ürün test/build/native ölçüm ve hesap API çağrısı bu hazırlıkta çalıştırılmadı.
+
+
+### Fresh belge review R1
+
+İlk hazırlık commit'i **2655c2b**, iki yeni reviewer ile state/authority (GPT-6 Astra, high) ve transport/evidence (GPT-6.1 Sol, high) eksenlerinde incelendi. State kolunun iki P2 bulgusu current metin/kodla doğrulandı: ilk prepare/approve için döngüsel approval/owner koşulu; total deadline için eksik 5 s sonuç payı. İkisi aşamaya özgü kapılar ve ortak total/lease/authority/URL formülüyle düzeltildi. Taşıma kolu yeni doğrulanmış bulgu bildirmedi. Ana inceleme ayrıca iki worker'dan birinin hatasında yeni intent/confirm'in durmasını, in-flight diğer etkinin geri alınmış sayılmamasını açıklaştırdı. R1 ürün testi veya gerçek hesap kabulü değildir; ikinci fresh tur düzeltme commit'inden sonra yapılacaktır.
