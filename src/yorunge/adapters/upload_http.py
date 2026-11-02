@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -170,7 +171,13 @@ class UploadHttpxTransport(TransferHttpxTransport):
             # The base facade owns source cleanup once entered. Before that,
             # close even a rejected lazy source in this same calling task.
             if not delegated:
-                await request.source.aclose()
+                pending, close_failed = sys.exc_info()[0] is not None, False
+                try:
+                    await request.source.aclose()
+                except (OSError, httpx.HTTPError, YorungeError):
+                    close_failed = True
+                if close_failed and not pending:
+                    raise YorungeError("transport_failed")
 
     def _deadline(self, deadline: float) -> float:
         # Validate the caller's value before min() can hide NaN or a bool.

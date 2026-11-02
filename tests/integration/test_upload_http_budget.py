@@ -820,3 +820,45 @@ def test_direct_storage_keeps_explicit_origin_policy_and_no_credentials(
             assert remote.requests[0].header("Cookie") is None
             assert api.requests[0].header("X-API-Key") == SECRET
     assert base._closed and value.snapshot().response_pending == 0
+
+
+@pytest.mark.parametrize("close_error", [OSError, httpx.ReadError, YorungeError])
+def test_early_source_cleanup_cannot_replace_primary_or_publish_private_error(
+    tmp_path, close_error
+):
+    value, key = budget(), credential()
+    base = source(tmp_path, "early-close.bin", b"source")
+
+    class BadClose:
+        def __getattr__(self, name):
+            return getattr(base, name)
+
+        async def aclose(self):
+            await base.aclose()
+            if close_error is YorungeError:
+                raise YorungeError("input_invalid")
+            raise close_error("PRIVATE-SOURCE-CLOSE-CANARY")
+
+    wanted = storage(key, BadClose())
+    reserved = value.reserve("put", upload_bytes=base.size - 1, response_bytes=65_536)
+    delegated = []
+
+    async def handler(wire):
+        delegated.append(wire)
+        return httpx.Response(200)
+
+    async def run():
+        async with UploadHttpxTransport(
+            key, value, transport=httpx.MockTransport(handler)
+        ) as client:
+            with pytest.raises(YorungeError) as failure:
+                await put(client, wanted, reserved, DispatchPermit(os.getpid))
+            assert failure.value.code == "invalid_request"
+            assert failure.value.__context__ is None and failure.value.__cause__ is None
+            assert "PRIVATE-SOURCE-CLOSE-CANARY" not in str(failure.value.envelope())
+
+    asyncio.run(run())
+    assert delegated == [] and base._closed and base._file_fd is None
+    reserved.finish()
+    assert value.snapshot().put_requests == value.snapshot().effect_attempts == 0
+    assert value.snapshot().response_pending == 0
