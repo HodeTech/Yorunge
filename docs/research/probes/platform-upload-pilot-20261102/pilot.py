@@ -454,7 +454,10 @@ class Pilot:
             raise YorungeError("invalid_response")
         safe_text(object_key)
         # Select the provider's explicit proxy descriptor; never try/fallback from direct.
-        if upload_url.startswith("/") and not upload_url.startswith("//"):
+        relative = f"/datasets/{self.dataset}/upload/"
+        if upload_url.startswith(relative):
+            upload_url = TARGET.service_origin + TARGET.api_base_path.rstrip("/") + upload_url
+        elif upload_url.startswith("/") and not upload_url.startswith("//"):
             upload_url = TARGET.service_origin + upload_url
         route = TARGET.api_base_path.rstrip("/") + f"/datasets/{self.dataset}/upload/"
         target = StorageTarget(

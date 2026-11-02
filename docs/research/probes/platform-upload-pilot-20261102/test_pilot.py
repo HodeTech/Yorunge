@@ -519,3 +519,21 @@ def test_equivalent_percent_encoding_is_accepted_when_object_identity_matches(tm
         ledger.close()
     assert result["three_named_files_metadata_match"] is True
     assert budget.effects == 11
+
+
+def test_sdk_style_api_root_relative_proxy_path_stays_under_exact_dataset(tmp_path):
+    def mutate(stage, raw):
+        if stage == "presign":
+            item = raw["presigned_urls"][0]
+            item["upload_url"] = item["upload_url"].removeprefix("/api/v1")
+        return 200, raw
+
+    key, ledger, provider, budget, pilot = setup(tmp_path, mutate)
+    try:
+        result = run(key, budget, pilot)
+    finally:
+        ledger.close()
+    assert result["three_named_files_metadata_match"] is True
+    paths = [path for method, path, _ in provider.calls if method == "PUT"]
+    assert paths == [f"/api/v1/datasets/{DATASET}/upload/put"] * 3
+    assert budget.effects == 11
