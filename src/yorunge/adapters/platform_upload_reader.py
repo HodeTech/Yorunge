@@ -304,6 +304,7 @@ class ObservedUploadReader:
         inputs.recheck()
         check, observation = await self._observe(client, action, expected_dataset, plan.parameters)
         inputs.recheck()
+        require_fresh(check.checked_at, self._now())
         return UploadCurrentCheck(
             saved_plan_id=plan.plan_id,
             saved_plan_digest=plan.digest,

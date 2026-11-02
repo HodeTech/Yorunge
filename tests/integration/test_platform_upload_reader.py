@@ -631,3 +631,53 @@ def test_reported_owner_fields_are_preserved_without_principal_inference(
             )
     assert check.outcome == "not_exposed" and check.grant is None
     assert check.scope.owner == scope.owner and baseline.org_id == org
+
+
+@pytest.mark.parametrize("advance", [1, 2])
+def test_final_metadata_recheck_cannot_return_evidence_older_than_30_seconds(
+    tmp_path, certificates, monkeypatch, advance
+):
+    from yorunge.adapters.upload_input_files import UploadInputObservation
+
+    plan, inputs, key = current_input(tmp_path)
+    value, now, checks = budget(), [NOW], [0]
+    original = UploadInputObservation.recheck
+
+    def recheck(observation):
+        original(observation)
+        checks[0] += 1
+        if checks[0] == 2:
+            now[0] += timedelta(seconds=advance)
+
+    monkeypatch.setattr(UploadInputObservation, "recheck", recheck)
+    values = routes()
+
+    def delayed_context(record, count):
+        now[0] += timedelta(seconds=29)
+        return json_reply(project())
+
+    values[PROJECT_PATH] = delayed_context
+    source = reader(key, value, clock=lambda: now[0])
+    with TlsServer(certificates, values) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            if advance == 2:
+                with pytest.raises(YorungeError) as failure:
+                    owned.exchange(
+                        lambda client: source.current(
+                            client, plan, inputs, action="create_private_dataset"
+                        )
+                    )
+                assert failure.value.code == "upload_plan_not_valid"
+            else:
+                check = owned.exchange(
+                    lambda client: source.current(
+                        client, plan, inputs, action="create_private_dataset"
+                    )
+                )
+                assert check.checked_at == timestamp(NOW)
+                check.require_current(
+                    plan, now=timestamp(now[0]), action="create_private_dataset", dataset_id=None
+                )
+        assert len(server.requests) == 2
+    assert checks[0] == 2 and value.snapshot().effect_attempts == 0
