@@ -47,13 +47,15 @@ class Reply:
 Route = Reply | Callable[[RequestRecord, int], Reply]
 
 
-def certificate(directory: Path) -> tuple[Path, Path]:
+def certificate(directory: Path, *, names: tuple[str, ...] = ("localhost",)) -> tuple[Path, Path]:
     """Create an explicitly trusted, short-lived test CA/server certificate."""
     directory.mkdir(parents=True, exist_ok=True)
     config = directory / "openssl.cnf"
     config.write_text(
         "[req]\nprompt=no\ndistinguished_name=subject\nx509_extensions=server\n"
-        "[subject]\nCN=localhost\n[server]\nsubjectAltName=DNS:localhost\n"
+        "[subject]\nCN=localhost\n[server]\nsubjectAltName="
+        + ",".join("DNS:" + name for name in names)
+        + "\n"
         "basicConstraints=critical,CA:TRUE\n"
         "keyUsage=critical,digitalSignature,keyEncipherment,keyCertSign\n"
         "extendedKeyUsage=serverAuth\n",

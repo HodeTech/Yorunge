@@ -5,11 +5,12 @@ from __future__ import annotations
 import base64
 import re
 from collections.abc import AsyncIterator
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Literal, NoReturn, Protocol
 from urllib.parse import unquote, urlsplit
 
-from yorunge.application.http_transport import HttpCredential
+from yorunge.application.http_transport import HttpCredential, HttpResponse, HttpTransport
 from yorunge.application.response_json import literal_secret_match
 from yorunge.domain.capabilities import instant
 from yorunge.domain.credentials import SecretValue, ServiceTarget, normalize_target
@@ -195,7 +196,7 @@ class StorageTarget:
 
     def check_secret(self, secret: SecretValue) -> None:
         parsed = urlsplit(self._url)
-        values = [self._url, *_path(parsed.path)]
+        values = [self._url, parsed.hostname or "", *_path(parsed.path)]
         for pair in parsed.query.split("&"):
             values.extend(_decoded(v) for v in pair.split("=", 1))
         if any(literal_secret_match(value, secret.reveal()) for value in values):
@@ -219,6 +220,8 @@ class StorageRequest:
     content_type: str
     checksum: Literal["none", "sha256_hex", "sha256_base64"] = "none"
     credential: HttpCredential | None = field(default=None, repr=False)
+    _size: int = field(init=False, repr=False)
+    _sha256: str = field(init=False, repr=False)
 
     def _source_valid(self) -> bool:
         try:
@@ -245,6 +248,8 @@ class StorageRequest:
             raise YorungeError("invalid_request")
         self.target.check_secret(self.selected_secret)
         self._auth()
+        object.__setattr__(self, "_size", self.source.size)
+        object.__setattr__(self, "_sha256", self.source.sha256)
         # The intentional proxy credential header is excluded from literal scanning.
         if any(
             literal_secret_match(v, self.selected_secret.reveal())
@@ -273,19 +278,27 @@ class StorageRequest:
     def max_bytes(self) -> int:
         return STORAGE_RESPONSE_BYTES
 
+    @property
+    def size(self) -> int:
+        return self._size
+
+    @property
+    def sha256(self) -> str:
+        return self._sha256
+
     def public_headers(self) -> tuple[tuple[str, str], ...]:
         values: tuple[tuple[str, str], ...] = (
             ("Content-Type", self.content_type),
-            ("Content-Length", str(self.source.size)),
+            ("Content-Length", str(self.size)),
             ("Accept-Encoding", "identity"),
         )
         if self.checksum == "sha256_hex":
-            values += (("X-Content-SHA256", self.source.sha256),)
+            values += (("X-Content-SHA256", self.sha256),)
         elif self.checksum == "sha256_base64":
             values += (
                 (
                     "X-Amz-Checksum-Sha256",
-                    base64.b64encode(bytes.fromhex(self.source.sha256)).decode("ascii"),
+                    base64.b64encode(bytes.fromhex(self.sha256)).decode("ascii"),
                 ),
             )
         return values
@@ -295,3 +308,16 @@ class StorageRequest:
 
     def __repr__(self) -> str:
         return "<StorageRequest redacted>"
+
+
+class StorageResponse(HttpResponse, Protocol):
+    @property
+    def sent_bytes(self) -> int: ...
+    @property
+    def sent_sha256(self) -> str: ...
+
+
+class StorageTransport(HttpTransport, Protocol):
+    def open_storage(
+        self, request: StorageRequest, *, deadline: float
+    ) -> AbstractAsyncContextManager[StorageResponse]: ...

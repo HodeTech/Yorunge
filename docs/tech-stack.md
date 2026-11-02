@@ -8,7 +8,7 @@
 | Paket yapısı | Tek dağıtım, `src/yorunge`, Hatchling 1.30.1 | Wheel/sdist ve gerçek konsol girişi kuruldu. |
 | Kullanıcı yüzeyi | CLI + Python API | Hızlı ve otomasyona uygun başlangıç; rehberli katman aynı çekirdeği kullanır. |
 | CLI görünümü | Standart `argparse`, düz metin/JSON/NDJSON | Ortak UTF-8 renderer ve yerel iptal/çıktı hata sözleşmesi testli; help/version lazy kalır. Rich eklenmedi. |
-| HTTP | HTTPX 0.28.1 AsyncClient/HTTP1.1 | Tipli owned session/tek deadline/bounded retry gerçek yerel TLS ile testli; EVREN adaptörü değildir. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
+| HTTP | HTTPX 0.28.1 AsyncClient/HTTP1.1; transfer için HTTPcore 1.0.9 public pool/backend | Tipli owned session/tek deadline/bounded retry gerçek yerel TLS ile testli. P02-2 çalışma dalındaki transfer portu DNS pin/peer denetimini aynı client/pool'a ekler; gerçek provider upload kabulü değildir. SDK core bağımlılığı yok, public yerel komutlar HTTP import etmez. |
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |
