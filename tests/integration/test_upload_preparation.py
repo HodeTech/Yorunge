@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -28,7 +29,7 @@ from yorunge.domain.credentials import (
     SecretValue,
     normalize_target,
 )
-from yorunge.domain.dataset_upload import UploadStoragePolicy
+from yorunge.domain.dataset_upload import UploadParameters, UploadRoot, UploadStoragePolicy
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context, Profile
 
@@ -559,3 +560,103 @@ def test_clock_change_during_last_recheck_is_controlled_before_plan_seal(
             record.method == "GET" for record in server.requests
         )
     assert counts(prepared_input[0]) == (0, 0, 0)
+
+
+def test_combined_plan_wire_preflight_rejects_legal_long_metadata_before_http(
+    prepared_input, monkeypatch
+):
+    # Model-level long-path fixture: Darwin cannot create this 4,080-byte path.
+    # Actual credential/SQLite phases run; this test claims no native Linux I/O.
+    root = UploadRoot(anchor="/" + "/".join(["é" * 127] * 16), device=1, inode=1)
+    parameters = UploadParameters(
+        name="é" * 128,
+        modality="MULTIMODAL",
+        visibility="private",
+        contributions_enabled=False,
+        license="é" * 64,
+        tags=tuple(str(index) + "x" * 127 for index in range(10)),
+    )
+    observed = composition.capture_upload_input(
+        prepared_input[1], prepared_input[2], SecretValue(SECRET), end=time.monotonic() + 900
+    )
+    inputs = replace(observed, root=root)
+    context = prepared_input[3].model_copy(update={"profile": "x" * 128})
+    data = (*prepared_input[:3], context, prepared_input[4])
+    monkeypatch.setattr(composition, "capture_upload_input", lambda *args, **kwargs: inputs)
+    with pytest.raises(YorungeError) as raised:
+        prepare(runtime(data), data, parameters=parameters)
+    assert raised.value.code == "invalid_request" and raised.value.exit_code == 2
+    assert raised.value.__context__ is raised.value.__cause__ is None
+    assert counts(data[0]) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("size", [16383, 16384, 16385])
+def test_seal_wire_exact_boundary_has_controlled_rejection(prepared_input, size):
+    # Use the independent literal manifest and canonical plan shape to choose
+    # a legal root whose encoded plan is exactly at the wire boundary.
+    from pathlib import Path
+
+    from tests.contracts.test_platform_upload_codec import PLAN
+    from yorunge.application.upload_policy import UploadPreparationV2
+    from yorunge.domain.dataset_manifest import DatasetManifest
+
+    manifest = DatasetManifest.model_validate_json(
+        (Path(__file__).parents[1] / "fixtures" / "dataset-manifest-v1.json").read_bytes()
+    )
+    parameters = UploadParameters(
+        name="é" * 128,
+        modality="MULTIMODAL",
+        visibility="private",
+        contributions_enabled=False,
+        license="é" * 64,
+        tags=tuple(str(index) + "x" * 127 for index in range(10)),
+    )
+    root = UploadRoot(anchor="/" + "/".join(["é" * 127] * 16), device=1, inode=1)
+    # Shorter ASCII tags tune one byte at a time without crossing field bounds.
+    work = PLAN.cost_work().model_copy(
+        update={
+            "scope": PLAN.scope.model_copy(update={"profile": "x" * 128}),
+            "root": root,
+            "parameters": parameters,
+        }
+    )
+    work = type(work).model_validate_json(work.encoded())
+    request = UploadPreparationV2(
+        plan_id=PLAN.plan_id,
+        work=work,
+        manifest=manifest,
+        admission_policy="explicit_attempt",
+        cost_policy="unpriced_accepted",
+        budget_micros=None,
+        inputs_verified=True,
+        grant=None,
+        cost_bound=None,
+        prepared_at=PLAN.prepared_at,
+    )
+    # Adjust using a test-only raw decoder seam to count the actual producer's
+    # bytes; the real final _seal below uses the strict production decoder.
+    from unittest.mock import patch
+
+    with patch.object(type(PLAN), "model_validate_json", side_effect=lambda payload: payload):
+        encoded = composition.prepare_upload_v2(request)
+    excess = len(encoded) - size
+    assert 127 < excess < 254
+    tuned = parameters.model_copy(
+        update={
+            "tags": (
+                parameters.tags[0][:1],
+                parameters.tags[1][: -(excess - 127)],
+                *parameters.tags[2:],
+            )
+        }
+    )
+    work = type(work).model_validate_json(work.model_copy(update={"parameters": tuned}).encoded())
+    request = replace(request, work=work)
+    if size <= 16384:
+        result = composition._seal(request)
+        assert len(result.encoded()) == size
+    else:
+        with pytest.raises(YorungeError) as raised:
+            composition._seal(request)
+        assert raised.value.code == "invalid_request"
+        assert raised.value.__context__ is raised.value.__cause__ is None

@@ -7,7 +7,8 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import timedelta
+from dataclasses import replace
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,7 +19,7 @@ from yorunge.adapters.platform_upload_reader import ObservedUploadReader
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_http import UploadSession
-from yorunge.adapters.upload_input_files import capture_upload_input
+from yorunge.adapters.upload_input_files import UploadInputObservation, capture_upload_input
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import VersionedTransferView, read_manifest
 from yorunge.application.credentials import bind_credential, resolve_credential
@@ -81,6 +82,44 @@ def _limits(manifest: DatasetManifest) -> UploadRequestLimits:
         max_control_response_bytes=16777216,
         max_upload_bytes=manifest.total_bytes,
     )
+
+
+def _work(
+    scope: UploadScope,
+    inputs: UploadInputObservation,
+    parameters: UploadParameters,
+    storage: UploadStoragePolicy,
+    start: datetime,
+) -> UploadCostWork:
+    work: UploadCostWork | None = None
+    try:
+        work = UploadCostWork(
+            scope=scope,
+            root=inputs.root,
+            manifest=manifest_reference(inputs.manifest),
+            parameters=parameters,
+            storage=storage,
+            request_limits=_limits(inputs.manifest),
+            execution_window=UploadExecutionWindow(
+                not_before=timestamp(start), not_after=timestamp(start + timedelta(seconds=900))
+            ),
+        )
+    except ValueError:
+        pass
+    if work is None:
+        raise YorungeError("invalid_request")
+    return work
+
+
+def _seal(request: UploadPreparationV2) -> DatasetUploadPlanV2:
+    plan: DatasetUploadPlanV2 | None = None
+    try:
+        plan = prepare_upload_v2(request)
+    except ValueError:
+        pass
+    if plan is None:
+        raise YorungeError("invalid_request")
+    return plan
 
 
 class UploadPreparationRuntime:
@@ -216,17 +255,20 @@ class UploadPreparationRuntime:
             inputs = capture_upload_input(root, manifest, bound.credential.secret, end=end)
             self._scope(bound, scope, parameters.name)
             start = self.clock.now()
-            work = UploadCostWork(
-                scope=scope,
-                root=inputs.root,
-                manifest=manifest_reference(inputs.manifest),
-                parameters=parameters,
-                storage=storage,
-                request_limits=_limits(inputs.manifest),
-                execution_window=UploadExecutionWindow(
-                    not_before=timestamp(start), not_after=timestamp(start + timedelta(seconds=900))
-                ),
+            work = _work(scope, inputs, parameters, storage, start)
+            preparation = UploadPreparationV2(
+                plan_id=str(uuid4()),
+                work=work,
+                manifest=inputs.manifest,
+                admission_policy=admission_policy,
+                cost_policy=cost_policy,
+                budget_micros=budget_micros,
+                inputs_verified=True,
+                grant=None,
+                cost_bound=None,
+                prepared_at=timestamp(start),
             )
+            _seal(preparation)  # Entire plan wire must fit before even readonly HTTP.
             session, reader = self._http(bound, scope, work.request_limits, end)
             with session:
                 check = session.exchange(reader.preparation)
@@ -243,20 +285,7 @@ class UploadPreparationRuntime:
                 < instant(work.execution_window.not_after)
             ):
                 raise YorungeError("upload_plan_not_valid")
-            plan = prepare_upload_v2(
-                UploadPreparationV2(
-                    plan_id=str(uuid4()),
-                    work=work,
-                    manifest=inputs.manifest,
-                    admission_policy=admission_policy,
-                    cost_policy=cost_policy,
-                    budget_micros=budget_micros,
-                    inputs_verified=True,
-                    grant=None,
-                    cost_bound=None,
-                    prepared_at=prepared_at,
-                )
-            )
+            plan = _seal(replace(preparation, prepared_at=prepared_at))
             with open_existing_store(self.state_dir) as store:
                 StateUploads(store, bound, clock=self.clock).save(
                     plan, inputs.manifest, authorization=check
