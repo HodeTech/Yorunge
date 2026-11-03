@@ -13,7 +13,6 @@ from pathlib import Path
 from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Clock, StateCache, SystemClock
-from yorunge.adapters.http_session import _active_loop
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.platform_upload_reader import ObservedUploadReader
 from yorunge.adapters.secrets import EnvSecretReader
@@ -22,6 +21,9 @@ from yorunge.adapters.upload_http import UploadSession
 from yorunge.adapters.upload_input_files import UploadInputObservation, capture_upload_input
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import VersionedTransferView, read_manifest
+from yorunge.adapters.upload_sync import (
+    require_upload_sync_context as require_upload_sync_context,
+)
 from yorunge.application.credentials import bind_credential, resolve_credential
 from yorunge.application.http_transport import HttpCredential
 from yorunge.application.response_json import check_response_secrets
@@ -52,12 +54,6 @@ from yorunge.domain.models import Context, Profile
 from yorunge.domain.upload_costs import UploadCostWork, UploadExecutionWindow, UploadRequestLimits
 
 SessionFactory = Callable[[HttpCredential, UploadBudget], UploadSession]
-
-
-def require_upload_sync_context() -> None:
-    """Future public sync entrypoints call this before loading config or credentials."""
-    if _active_loop():
-        raise YorungeError("invalid_request")
 
 
 def revoke_upload_approval(plan_id: str, state_dir: Path | None) -> VersionedTransferView:

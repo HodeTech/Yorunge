@@ -1,6 +1,6 @@
 # CLI sözleşmesi
 
-**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02-0 verified ve development’a teslim edildi: LLM terms ve Platform nihai dar unverified gözlemi ADR-0022 sınırında uygulandı; canlı consumer, kaynak/review/kurulum/M5 ve üç ortam PR CI tamam. PR #12 / 9f30fd2 ile development teslimi tamamlandı; [merge/CI kaydı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-1 yerel datasets inspect/verify de PR #13 / 50d68b1 ile development’a teslim edildi; [merge/CI kaydı](../research/p02-1-implementation-validation.md#development-merge-kapanışı). Public run/watch açık değildir. **Güncellendi:** 2026-11-02.
+**Durum:** Yerel CLI/Python alt kümesi uygulandı; sonuç zarfı v1, ayrı capability/execution kayıtları v2. Yerel jobs list/show ve normal komutlarda NDJSON uygulandı; P01-5b ve P01-6b/ADR-0019/Sonar [son kaynak kabulü](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) verified ve PR #11 ile development’a teslim edildi. Önceki bf652f6 kaydı tarihseldir; Master/release ayrı. P02-0 verified ve development’a teslim edildi: LLM terms ve Platform nihai dar unverified gözlemi ADR-0022 sınırında uygulandı; canlı consumer, kaynak/review/kurulum/M5 ve üç ortam PR CI tamam. PR #12 / 9f30fd2 ile development teslimi tamamlandı; [merge/CI kaydı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-1 yerel datasets inspect/verify de PR #13 / 50d68b1 ile development’a teslim edildi; [merge/CI kaydı](../research/p02-1-implementation-validation.md#development-merge-kapanışı). Public run/watch açık değildir. **Güncellendi:** 2026-11-03. Çalışma dalında P02-2t public upload kodu/testleri uygulandı, CLI/progress iki fresh kod turu ve bütünleşik c kabulü henüz kapanmadı.
 
 ## Uygulanan alt küme
 
@@ -21,6 +21,7 @@
 | `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
 | `yorunge jobs list/show` | Son yerel summary/plan/attempt/terminal outcome; current validation veya provider sorgusu yok; [exact sözleşme](operations.md) |
 | `yorunge datasets inspect/verify` | Yerel normal dosya envanteri, root dışı no-clobber manifest ve yeniden hash ile doğrulama; [kesin sözleşme](dataset-manifest.md) |
+| `yorunge datasets upload plan/review/approve/revoke/start/list/show/reconcile` | Çalışma dalında private aktarım/aynı-ID salt okuma; [public sözleşme](dataset-upload-public.md) ve [kullanım](upload-workflows.md); t.3 review/c kabulü bekleniyor |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
@@ -79,7 +80,7 @@ Onay seçeneği açık yürütme niyetini planla bağlar; kendi başına kriptog
 
 ## Çıktı
 
-- `text`: İnsan sonucu stdout; ilerleme/diagnostic stderr. Renk ve TUI kapatılabilir.
+- `text`: İnsan sonucu stdout; ilerleme/diagnostic stderr. Bilinen operation ID kontrollü hata metninde ayrı `İş: UUID` satırıyla korunur. Upload ilerlemesi yalnız text+TTY stderr, en çok 10 Hz; JSON/NDJSON/non-TTY’de yoktur. Renk ve TUI kapatılabilir.
 - `json`: Tek sonuç nesnesi stdout. Başlamadan/sonuçta başarısız komut stdout'u boş tutar, tek yapılandırılmış hata stderr'e yazar; kısmi operation kimliği hata içinde taşınır. İnsan ilerleme metni çıkmaz.
 - `ndjson`: Uygulandı; P01-5b kabul/review kapandı. Bütün normal komutlarda opt-in (`--output ndjson`/`--output=ndjson`), tek başarılı sonuç tek result olayıdır. Çok olaylı gerçek taşıma fixture composition'ındadır; public watch/stream açılmaz. İlk publish öncesi hata stderr JSON, sonrası tek terminal error stdout; ikinci başarılı özet yoktur. Makine çıktı UTF-8 byte olarak yazılır, locale/PYTHONIOENCODING bunu değiştirmez.
 

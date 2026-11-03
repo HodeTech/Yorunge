@@ -28,6 +28,7 @@ from yorunge.application.storage import (
     StorageRequest,
     StorageTransport,
 )
+from yorunge.application.upload_progress import source_chunk
 from yorunge.domain.capabilities import instant
 from yorunge.domain.credentials import normalize_target
 from yorunge.domain.errors import ErrorCode, YorungeError
@@ -84,6 +85,7 @@ class _StorageBody(httpx.AsyncByteStream):
         if self.count > self.request.size:
             raise YorungeError("input_changed")
         self.digest.update(chunk)
+        source_chunk(len(chunk))
         return chunk
 
     async def aclose(self) -> None:

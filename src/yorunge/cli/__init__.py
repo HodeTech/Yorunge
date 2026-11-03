@@ -30,6 +30,11 @@ if TYPE_CHECKING:
     from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
+    from yorunge.domain.upload_public import (
+        DatasetUploadsPage,
+        DatasetUploadSummary,
+        UploadIntentReview,
+    )
 
     CliResult: TypeAlias = (
         Result[Plan]
@@ -41,6 +46,9 @@ if TYPE_CHECKING:
         | Result[PlatformContextDiscovery]
         | Result[DatasetInspection]
         | Result[DatasetVerification]
+        | Result[DatasetUploadSummary]
+        | Result[UploadIntentReview]
+        | Result[DatasetUploadsPage]
         | Result[StateInfo]
         | Result[MaintenancePreview]
         | Result[ConfigUpdate]
@@ -156,7 +164,7 @@ def parser() -> Parser:
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
     add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
     add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
-    add("datasets", "Yerel dosyaları manifestle kaydet ve yeniden doğrula", _datasets_options)
+    add("datasets", "Yerel veri manifestleri ve private dataset aktarımı", _datasets_options)
     return root
 
 
@@ -177,6 +185,11 @@ def _datasets_options(datasets: Parser) -> None:
             "Unicode sürümü yeni ad çakışmalarını reddedebilir. "
             "Manifest kök dışında olmalıdır; gizli dosyalar dahil edilir, otomatik ignore yoktur."
         )
+
+    upload = actions.add_parser("upload", help="Private aktarımı planla, onayla ve izle")
+    from yorunge.cli.upload import configure
+
+    upload._configure = configure
 
 
 def _doctor_options(doctor: Parser) -> None:
@@ -247,6 +260,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         _jobs_singletons(arguments)
     elif args.command == "context" and args.action == "discover":
         _discovery_singletons(arguments)
+    elif args.command == "datasets" and args.action == "upload":
+        from yorunge.cli.upload import SINGLETONS
+
+        _reject_duplicates(arguments, SINGLETONS)
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
@@ -422,6 +439,10 @@ def discovery_text_result(data: Model) -> str:
 
 def _result_text(args: argparse.Namespace, data: Model) -> str:
     if args.command == "datasets":
+        if args.action == "upload":
+            from yorunge.cli.upload import text
+
+            return text(data)
         return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
@@ -683,6 +704,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return renderer.error(YorungeError("file_unreadable"))
 
     try:
+        if args.command == "datasets" and args.action == "upload":
+            from yorunge.cli.upload import operation_id
+
+            renderer = OutputRenderer(renderer.output, operation_id=operation_id(result.data))
         text = _result_text(args, result.data) if renderer.output == "text" else None
         renderer.result(cast("Result[Model]", result), text=text)
         return 0
@@ -762,6 +787,10 @@ def dispatch(args: argparse.Namespace) -> CliResult:
 
     options = vars(args)
     if args.command == "datasets":
+        if args.action == "upload":
+            from yorunge.cli.upload import dispatch as upload_result
+
+            return upload_result(args)
         reject_context(args, ("config", "profile", "project"))
         from yorunge.adapters.dataset_files import anchor_dataset_paths
 

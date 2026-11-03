@@ -7,10 +7,10 @@ from typing import TypeVar
 from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, open_existing_store
-from yorunge.adapters.upload_preparation import require_upload_sync_context
 from yorunge.adapters.upload_projection import review, summary
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view
+from yorunge.adapters.upload_sync import require_upload_sync_context
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Model, Result

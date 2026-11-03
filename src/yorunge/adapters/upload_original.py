@@ -24,12 +24,13 @@ from yorunge.adapters.upload_preparation import (
     require_upload_sync_context,
 )
 from yorunge.adapters.upload_repository import StateUploads
-from yorunge.adapters.upload_store import created_dataset, read_manifest
+from yorunge.adapters.upload_store import VersionedTransferView, created_dataset, read_manifest
 from yorunge.application import upload_descriptors as descriptors
 from yorunge.application.http_transport import HttpCredential
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_budget import UploadBudget
+from yorunge.application.upload_progress import UploadCounter, count_upload
 from yorunge.application.upload_workflow import (
     EffectOutcome,
     OriginalEnvironment,
@@ -87,6 +88,16 @@ class _Call:
         return "<bound upload call private>"
 
 
+def _confirmed_indices(view: VersionedTransferView) -> tuple[int, ...]:
+    accepted = {receipt.intent_id for receipt in view.receipts if receipt.result == "accepted"}
+    indices = []
+    for intent in view.intents:
+        if intent.kind == "confirm" and intent.intent_id in accepted:
+            assert intent.file_index is not None
+            indices.append(intent.file_index)
+    return tuple(indices)
+
+
 class _Environment:
     def __init__(
         self,
@@ -98,6 +109,7 @@ class _Environment:
         port: ObservedUploadPort,
         client: UploadHttpxTransport,
         end: float,
+        progress: UploadCounter | None = None,
     ) -> None:
         self.runtime, self.plan, self.bound, self.inputs = runtime, plan, bound, inputs
         self.reader, self.port, self.client, self.end = reader, port, client, end
@@ -108,6 +120,7 @@ class _Environment:
         self.contexts: tuple[descriptors.FileContext, ...] = ()
         self.uploads: dict[int, descriptors.PresignedUpload] = {}
         self.confirmed_count = 0
+        self.progress = progress
 
     @property
     def write_owned(self) -> bool:
@@ -166,6 +179,8 @@ class _Environment:
             if type(record) is not TransferRecordV2:
                 raise YorungeError("upload_plan_not_valid")
             self.record, self.access = record, repository.write_access
+        if self.progress is not None:
+            self.progress.bind(record.operation_id)
         # Another process may have won between the initial lookup and admission.
         # Its durable owner IDs cannot manufacture this process's write access.
         return self.access is not None
@@ -245,8 +260,14 @@ class _Environment:
                 receipt.result == "accepted" and kinds[receipt.intent_id] == "confirm"
                 for receipt in view.receipts
             )
+            confirmed = _confirmed_indices(view) if self.progress is not None else ()
             if outcome.upload is not None:
                 self.uploads[outcome.upload.context.file_index] = outcome.upload
+        # Cosmetic I/O runs after closing the durable receipt transaction/store.
+        if self.progress is not None:
+            for index in confirmed:
+                assert index is not None
+                self.progress.confirm(index)
 
     async def verify(self) -> TransferRecordV2:
         from yorunge.adapters.upload_original_read import verify_original
@@ -370,8 +391,11 @@ def _execute_phase(
 
     async def consume(client: UploadHttpxTransport) -> TransferRecordV2:
         nonlocal environment
-        environment = _Environment(runtime, plan, bound, inputs, reader, port, client, end)
-        return await algorithm(environment)
+        with count_upload(tuple(file.size for file in inputs.manifest.files)) as progress:
+            environment = _Environment(
+                runtime, plan, bound, inputs, reader, port, client, end, progress=progress
+            )
+            return await algorithm(environment)
 
     failure = None
     record: TransferRecordV2 | None = None

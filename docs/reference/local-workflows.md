@@ -4,6 +4,8 @@
 
 Başlangıç için [README](../../README.md), kesin komut/çıktı biçimleri için [CLI sözleşmesi](cli-contract.md). Bu rehber örnekleri bir araya getirir; uzak yürütme veya eğitim desteği vaat etmez.
 
+Private aktarım için ayrı [upload rehberi](upload-workflows.md) vardır; çalışma dalı ve kalan kabul sınırı o belgenin başında belirtilir.
+
 ## Çalışan başlangıç
 
 Kurulum için [README başlangıcını](../../README.md#çalışan-başlangıç) izleyin. Aşağıdaki örnekler depo kökünde çalıştırılır:

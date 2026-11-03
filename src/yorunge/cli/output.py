@@ -249,6 +249,11 @@ class OutputRenderer:
             if self.output in ("json", "ndjson")
             else error.message
         )
+        if self.output == "text":
+            from yorunge.domain.errors import OperationError
+
+            if isinstance(error, OperationError) and error.operation_id is not None:
+                message += f"\nİş: {error.operation_id}"
         try:
             write_utf8(message + "\n", self.stderr)
         except (OSError, ValueError):
