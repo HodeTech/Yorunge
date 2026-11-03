@@ -501,3 +501,6 @@ Safety authority_verified için explicit/not_exposed şüphesini gerçek tam jou
 
 
 T.1 cursor3 + authority2 sınıf erişimi delta’sı **5 passed / 2,04 s**, -W error ile temizdir; 20 kapsam dışı deselected. 189 Markdown/6 skill/41 kart ve diff temiz. Fix commit/özgün reviewer teyidi sıradadır.
+
+
+T.1 R1 cursor fix dc4228f özgün Astra/high safety reviewer’ında **5 passed / 1,79 s**, -W error ile teyit edildi (20 deselected). Cursor P2 kapandı; authority pozitif test delta’sında yeni bulgu yok. Farklı fresh R2 sıradadır.
