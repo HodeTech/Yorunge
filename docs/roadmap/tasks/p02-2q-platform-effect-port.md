@@ -20,7 +20,7 @@ Strict codec/quota/receipt tek başına gerçek request producer değildir. Port
 2. Intent öncesi private effect-call hazırlığı/quota; actual TLS create/link/presign/confirm ve typed receipt/descriptor.
 3. Aynı pool bounded descriptor PUT/byte hash, items pagination ve exact ordered metadata.
 
-Üç dilimin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
+Q.1/q.2 verified; numeric thread-ID yeniden kullanımının ortak kaynak guard’larındaki takip düzeltmesi q.2a olarak PUT öncesinde kapanır. Üç ana dilim ve bu dar düzeltmenin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
 
 ## Bağımlılıklar ve kararlar
 
