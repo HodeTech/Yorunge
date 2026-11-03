@@ -532,3 +532,6 @@ Fix sonrası yeni request/API + local public kümesi **81 passed / 15,20 s**, -W
 
 
 T.2 405ec9e fix’i özgün Astra/high safety reviewer’ında **6 passed / 2,82 s**, -W error ile teyit edildi. Existing status/latch ve post-coordinator actual SIGINT ID iki P2 kapandı; yeni bulgu yok. Farklı fresh R2 sıradadır.
+
+
+T.2 farklı fresh R2 temiz: Astra/high contract yeni API/preparation/versioned history **124 passed / 73,47 s**, public/local/admission-race **46 passed / 12,63 s**, -W error. Sol/high safety yeni2dosya **56 passed**, preparation/local/DTO **99 passed**, -W error; ek sekiz bozuk/copied/duplicate/surrogate girdi kapalı invalid_request/temiz chain ile reddedildi. Doğrulanmış yeni kusur yok; status/latch5/2/0, actual SIGINT ID, current scope/default policy/cost/approval CAS ve no-replay sınırları incelendi. Çalışma ağacı/diff temiz; edit/hesap/native/full suite yoktur. **T.2 iki fresh tur ve iki P2 fix teyidiyle yerel kapandı**; t.3 CLI/progress sıradadır. T ve c/epik bütünleşik son kabulü henüz tamamlanmadı.

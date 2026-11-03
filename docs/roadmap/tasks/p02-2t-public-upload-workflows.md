@@ -36,4 +36,4 @@ T.1 golden/type/strict/projection/keyset ve gerçek SQLite; t.2 gerçek TLS/stat
 
 ## Teslim kaydı
 
-S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 summary/yerel API iki fresh kod turu ve cursor P2 fix teyidiyle yerel kapandı; t.2 gerçek network API kodu/odak testleri uygulandı; iki fresh kod turu bekleniyor. T.3 CLI/progress sıradadır. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.
+S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 summary/yerel API iki fresh kod turu ve cursor P2 fix teyidiyle yerel kapandı; t.2 gerçek network API iki fresh tur ve iki P2 fix teyidiyle yerel kapandı. T.3 CLI/progress sıradadır. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.
