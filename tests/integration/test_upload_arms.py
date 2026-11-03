@@ -4,12 +4,14 @@ import copy
 import multiprocessing
 import pickle
 import threading
+from types import SimpleNamespace
 
 import pytest
 
 from tests.integration.test_upload_journal import journal as journal
 from yorunge.adapters import upload_repository
 from yorunge.adapters.state import open_store
+from yorunge.application import upload_arms
 from yorunge.application.operations import DispatchPermit
 from yorunge.application.upload_arms import UploadArm
 from yorunge.domain.errors import OperationError, YorungeError
@@ -91,6 +93,37 @@ def test_other_thread_cannot_claim_but_original_owner_can(journal):
     worker.join(5)
     assert not worker.is_alive() and failures == ["operation_conflict"]
     assert arm.claim()[0] == arm.intent
+
+
+def test_sequential_thread_cannot_claim_after_issuer_exits(journal, monkeypatch):
+    arms = []
+    failures = []
+    # Force a recycled numeric ID on every platform. The actual issuer and
+    # claimant remain two separate real Thread objects, with no arm mutation.
+    monkeypatch.setattr(
+        upload_arms,
+        "threading",
+        SimpleNamespace(get_ident=lambda: 17, current_thread=threading.current_thread),
+    )
+
+    def issue():
+        arms.append(issued(journal)[1])
+
+    issuer = threading.Thread(target=issue)
+    issuer.start()
+    issuer.join(5)
+    assert not issuer.is_alive() and len(arms) == 1
+
+    def claim():
+        try:
+            arms[0].claim()
+        except OperationError as error:
+            failures.append(error.code)
+
+    claimant = threading.Thread(target=claim)
+    claimant.start()
+    claimant.join(5)
+    assert not claimant.is_alive() and failures == ["operation_conflict"]
 
 
 def test_forked_child_cannot_claim_parent_arm(journal):

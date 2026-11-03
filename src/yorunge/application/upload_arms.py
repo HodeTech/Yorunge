@@ -38,7 +38,7 @@ class UploadArm:
     _deadline: float
     _clock: Callable[[], float]
     _pid: int
-    _thread: int
+    _thread: threading.Thread
     _used: bool
     _lock: LockType
     _operation_id: str
@@ -64,7 +64,7 @@ class UploadArm:
             ("_deadline", float(deadline)),
             ("_clock", clock),
             ("_pid", os.getpid()),
-            ("_thread", threading.get_ident()),
+            ("_thread", threading.current_thread()),
             ("_used", False),
             ("_lock", Lock()),
             ("_operation_id", intent.operation_id),
@@ -85,7 +85,7 @@ class UploadArm:
         return self._deadline
 
     def claim(self) -> tuple[StageIntent, DispatchPermit, float]:
-        if os.getpid() != self._pid or threading.get_ident() != self._thread:
+        if os.getpid() != self._pid or threading.current_thread() is not self._thread:
             raise OperationError("operation_conflict", self._operation_id)
         with self._lock:
             if self._used:
