@@ -54,7 +54,10 @@ def result(process, output):
 
 
 @pytest.mark.parametrize("output", ["json", "ndjson"])
-def test_real_cli_plan_review_approve_start_show_and_history(public_inputs, certificates, output):
+@pytest.mark.parametrize("project_first", [False, True])
+def test_real_cli_plan_review_approve_start_show_and_history(
+    public_inputs, certificates, output, project_first
+):
     data, manifest, config = public_inputs
     data = many(data)
     manifest.write_bytes(data[2].encoded())
@@ -63,6 +66,7 @@ def test_real_cli_plan_review_approve_start_show_and_history(public_inputs, cert
         common = ("--state-dir", str(data[0]), "--output", output)
         created = execute(
             server,
+            *(["--project", SCOPE.project_id] if project_first else []),
             "datasets",
             "upload",
             "plan",
@@ -71,8 +75,7 @@ def test_real_cli_plan_review_approve_start_show_and_history(public_inputs, cert
             str(manifest),
             "--name",
             "örnek-uydu",
-            "--project",
-            SCOPE.project_id,
+            *([] if project_first else ["--project", SCOPE.project_id]),
             "--owner-user",
             SCOPE.owner.id,
             "--modality",
@@ -193,6 +196,35 @@ def test_upload_help_remains_metadata_only(cli, path):
 
 def test_local_cli_rejects_inherited_context_instead_of_reading_it(cli):
     found = cli("--config", "private-missing-config", "datasets", "upload", "list", "--output=json")
+    assert found.returncode == 2 and not found.stdout
+    assert json.loads(found.stderr)["code"] == "invalid_request"
+
+
+@pytest.mark.parametrize("duplicate", [False, True])
+def test_plan_missing_or_duplicate_inherited_project_fails_before_dependencies(cli, duplicate):
+    before = ["--project", SCOPE.project_id] if duplicate else []
+    after = ["--project=" + SCOPE.project_id] if duplicate else []
+    found = cli(
+        *before,
+        "datasets",
+        "upload",
+        "plan",
+        "source",
+        "--manifest",
+        "missing.json",
+        "--name",
+        "sample",
+        "--owner-user",
+        SCOPE.owner.id,
+        "--modality",
+        "VISION",
+        "--unpriced",
+        "--admission-policy",
+        "explicit-attempt",
+        *after,
+        "--output=json",
+        recipe_loader=False,
+    )
     assert found.returncode == 2 and not found.stdout
     assert json.loads(found.stderr)["code"] == "invalid_request"
 

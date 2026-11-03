@@ -120,7 +120,9 @@ def _plan_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument("root", type=Path)
     command.add_argument("--manifest", type=Path, required=True)
     command.add_argument("--name", required=True)
-    command.add_argument("--project", required=True)
+    command.add_argument(
+        "--project", default=argparse.SUPPRESS, help="Açık proje kimliği (zorunlu)"
+    )
     owner = command.add_mutually_exclusive_group(required=True)
     owner.add_argument("--owner-user")
     owner.add_argument("--owner-org")
@@ -150,6 +152,8 @@ def _plan(args: argparse.Namespace) -> Result[DatasetUploadSummary]:
     from yorunge.domain.dataset_upload_v2 import AdmissionPolicy
     from yorunge.domain.errors import YorungeError
 
+    if "project" not in vars(args):
+        raise YorungeError("invalid_request")
     owner = parameters = None
     try:
         if len(args.tag) != len(set(args.tag)):
