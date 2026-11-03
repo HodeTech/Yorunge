@@ -5,7 +5,7 @@
   "observed_head": "f71a0c3ac0a5660525eb133411a27b9529442eda",
   "status": "reviewed_proposals_not_applied_remotely",
   "observed_total": 611,
-  "code_fix_count": 565,
+  "code_fix_count": 564,
   "active_and_assertions": 545,
   "active_assertion_files": 50,
   "exceptions": [
@@ -514,7 +514,27 @@
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
       "applied_resolution": null
+    },
+    {
+      "key": "AaGjoDpro3Mt4jn-uIMX",
+      "rule": "python:S5754",
+      "file": "scripts/upload_live_acceptance.py",
+      "observed_line": 306,
+      "classification": "intentional_private_cli_error_boundary",
+      "rationale_code": "private_exception_normalization_required_for_closed_cli_output",
+      "proposed_resolution": "accepted",
+      "remote_status_at_observation": "OPEN",
+      "applied_resolution": null,
+      "follow_up_line": 308
     }
   ],
-  "rationale_reference": "p02-2-sonar-review.md"
+  "rationale_reference": "p02-2-sonar-review.md",
+  "follow_up_analysis": {
+    "head": "027b5c1d78e3c8017cc8b710ee32e52e7ee0648f",
+    "analysis_date": "2026-11-03T23:39:48+0000",
+    "unresolved_count": 47,
+    "bugs": 0,
+    "vulnerabilities": 3,
+    "code_smells": 44
+  }
 }

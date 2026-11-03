@@ -1,12 +1,12 @@
 # P02-2 / PR #14 Sonar incelemesi
 
-**Tarih:** 2026-11-04. **Durum:** İlk gerçek analizdeki 611 kayıt tek envanterde sınıflandı; 565 kod kaydı tek düzeltme grubunda ele alındı. İki fresh review turu temiz kapandı; Sonar üzerindeki disposition uygulanmadı. [Kayıt bazlı 46 istisna](p02-2-sonar-disposition.json), kaynak `f71a0c3` analizini gösterir; güncel satır numarası iddiası değildir. [Kabul kaydı](p02-2-implementation-validation.md) sonuçların kanonik sahibidir.
+**Tarih:** 2026-11-04. **Durum:** İlk gerçek analizdeki 611 kayıt için tek kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` gerçek takip analizinde 564 kayıt kapandı, bug sayısı 0 oldu; 47 gerekçeli disposition önerisi kaldı ve uzakta henüz uygulanmadı. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk `f71a0c3` koordinatları ile takip analizini ayırır. [Kabul kaydı](p02-2-implementation-validation.md) sonuçların kanonik sahibidir.
 
 ## Tek düzeltme grubu
 
 545 aktif pytest assertion’ı 50 dosyada üst seviyede `And` ifadesidir. Sırayla ayrı assertion’lara çevrilir; kısa devre, mesajın yalnız hata halinde değerlendirilmesi, yorumlar ve kalan dosyanın AST’si korunur. Bağımsız AST genişletme ve yorum karşılaştırması dönüşümü denetler. Bu biçim değişikliği için yerel tam takım tekrar edilmez; değişen runtime sınırları hedefli testlerle, final CI kendi tam takımıyla doğrulanır.
 
-Diğer 20 kod kaydı: beş native sink giriş kontrolü ve PTY okuma kontrolü; bir raises bloğunda hazırlık çağrıları; üç redundant exception alt sınıfı; üç context-manager biçimi; iki nested conditional; iki aynı regex satırındaki ASCII digit sınıfı; bir yinelenen manifest adı; bir URL authority karşılaştırması; CLI hata normalizasyonu. Toplam **565 kod kaydı** tek grupta ele alınır. Wire, migration, eski golden veya ürün bütçesi değişmez.
+Diğer 19 kapanan kod kaydı: beş native sink giriş kontrolü ve PTY okuma kontrolü; bir raises bloğunda hazırlık çağrıları; üç redundant exception alt sınıfı; üç context-manager biçimi; iki nested conditional; iki aynı regex satırındaki ASCII digit sınıfı; bir yinelenen manifest adı; bir URL authority karşılaştırması. Toplam **564 kayıt** kod grubuyla kapandı. CLI hata normalizasyonu da aynı pakette sadeleştirildi; aşağıda açıklanan tek S5754 kaydı analizörde açık kaldı. Wire, migration, eski golden veya ürün bütçesi değişmedi.
 
 Native beş kontrol normal `-I` başlatıcıda zaten hatayı sayıp kabulü reddediyordu. Ayrı ağsız inceleme, `-O` altında assertion’ların kaybolduğunu gösterdi; açık `if`/`ValueError` kontrolleri bu precondition’ları iki kipte de korur. Bu düzeltme bütün provider fixture’larının `-O` desteği olduğu anlamına gelmez. Önceki `-I` native kanıtları tarihsel olarak geçerlidir.
 
@@ -31,6 +31,12 @@ Güvenlik ve runtime-contract eksenleri bağımsız salt okunur ajan incelemesin
 Üç frozen araştırmanın kaynak ve testleri kabul receipt/README hash’leriyle bağlıdır. Bu dosyalar yeni ürün kodu gibi yeniden biçimlendirilmez: [preflight](probes/platform-upload-preflight-20261102/README.md), [ilk pilot](probes/platform-upload-pilot-20261102/README.md), [aynı dataset salt okuma](probes/platform-created-dataset-read-20261102/README.md). Pilotun görsel üreticisi ayrıca canlı runner’ın sabit `FROZEN_SHA` kontrolüyle kullanılır.
 
 19 assertion, beş raises ve bir complexity kaydı bu değişmez kanıt kopyalarındadır. Bunlar yeni runtime borcu veya sonraki işe atılan ürün düzeltmesi değildir; doğrulanabilir tarihsel kaynak korunur. Kayıt bazlı `accepted` gerekçesi önerilir; genel dosya/rule exclusion eklenmez. Bu Sonar disposition’ı yapılmadan yapılmış diye raporlanmaz.
+
+## Bilinçli private CLI hata sınırı — 1
+
+S5754 / `AaGjoDpro3Mt4jn-uIMX`, bütün provider/iptal hatalarını özel `_PilotStopped` sinyaline çeviren `_run_guarded` sınırında kaldı. Özgün istisna yeniden yükseltilmez; `main` yalnız özel sinyali yakalayıp sabit güvenli mesaj ve exit 1 üretir. Bu işlem başarı üretmez ve private exception zincirini dışarı vermez. Analyzer farklı özel exception yükseltilmesini yeterli görmedi; bu sonuç kodla kapanmış diye raporlanmaz. Ayrı `accepted / intentional_private_cli_error_boundary` gerekçesi önerilir; frozen 25 kayda dahil değildir. Her iki R2 reviewer’ı bu dar sınıflandırmayı kaynak üzerinden teyit etti; test/kod/02 ölçüm değişikliği gerekmedi.
+
+Güncel tam eşleme: **564 kapanan + 21 false positive + 25 tarihsel accepted + 1 bilinçli accepted = 611**. Takip analizindeki 47 açık issue anahtarı bu 47 öneriyle birebir eşleşir; yeni, sınıflandırılmamış kayıt yoktur.
 
 ## Sonraki doğrulama
 
