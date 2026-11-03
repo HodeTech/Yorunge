@@ -58,6 +58,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2p | Kalıcı create baseline, receipt union ve legacy gate | P02-2o; [kart](tasks/p02-2p-created-dataset-context.md), ADR-0027 Accepted | `verified` |
 | P02-2q | Gerçek bütçeli Platform effect/metadata portu | P02-2p, P02-2n, P02-2o; [kart](tasks/p02-2q-platform-effect-port.md) | `verified` |
 | P02-2r | Original upload koordinatörü | P02-2q; [kart](tasks/p02-2r-original-upload-workflow.md) | `verified` |
+| P02-2s | Salt okuma upload uzlaştırması | P02-2r; [kart](tasks/p02-2s-readonly-upload-reconciliation.md) | `draft` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı | P02-3a, P02-3b; gerekirse açık sürüm oluşturma/freeze kararı | `draft` |
