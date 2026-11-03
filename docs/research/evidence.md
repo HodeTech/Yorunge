@@ -2616,6 +2616,34 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-1a-evidence-catalog-profile.json.gz`.
 **Özet:** `{"cases": 9, "diagnostic_only": true, "kind": "operation", "max_elapsed_ms": 1156.6550000570714, "outcomes": {"ok": 9}, "source_commit": "ec401641a5135976cbfc7e0a4d53f502ecb4f59c"}`.
 
+## p02-2-upload-v1-smoke-01-rejected
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `b6d89885bf198aab544e5136d587c46a86fd3883e46aa22a3f2bdee76d83b9e6`.
+**Yerel arşiv:** `raw/p02-2-upload-v1-smoke-01-rejected.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 9, "kind": "rejected-upload", "original_bytes": 35954, "source_commit": "b80a55e840ec764165650eba7bb4cd368d28b02d"}`.
+
+## p02-2-upload-v1-smoke-02-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `0b2dc33fd25947aca8649bfc5eec136a7827a8e17b2d70c0b78f46b466417ab0`.
+**Yerel arşiv:** `raw/p02-2-upload-v1-smoke-02-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 9, "kind": "rejected-upload", "original_bytes": 69599, "source_commit": "b80a55e840ec764165650eba7bb4cd368d28b02d"}`.
+
+## p02-2-upload-v1-smoke-03-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `4feb6cb2076d5e8f9d73866fbf283215c5339bb7d96b3620018184adc7328c73`.
+**Yerel arşiv:** `raw/p02-2-upload-v1-smoke-03-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 9, "kind": "rejected-upload", "original_bytes": 71318, "source_commit": "6fb5b9b652417da98c2b50e56ea0e038be6b0b69"}`.
+
+## p02-2-upload-v2-smoke-01-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `d814a0f89f07b62a37e1effd3e6749231690d2e478ea4b85472e82ea93587a43`.
+**Yerel arşiv:** `raw/p02-2-upload-v2-smoke-01-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 11, "kind": "rejected-upload", "original_bytes": 153274, "source_commit": "5a90477ed56bebaaec488114718de37d18b4f9df"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.

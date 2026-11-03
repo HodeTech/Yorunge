@@ -16503,6 +16503,74 @@
       }
     },
     {
+      "name": "p02-2-upload-v1-smoke-01-rejected.json",
+      "archive": "raw/p02-2-upload-v1-smoke-01-rejected.json.gz",
+      "original_commit": null,
+      "content_bytes": 49789,
+      "content_sha256": "b6d89885bf198aab544e5136d587c46a86fd3883e46aa22a3f2bdee76d83b9e6",
+      "archive_bytes": 21653,
+      "archive_sha256": "ae1297a5038127f50538082426241601b52719a6908cff8c087687ed115fe12f",
+      "summary": {
+        "source_commit": "b80a55e840ec764165650eba7bb4cd368d28b02d",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 9,
+        "original_bytes": 35954
+      }
+    },
+    {
+      "name": "p02-2-upload-v1-smoke-02-unverified.json",
+      "archive": "raw/p02-2-upload-v1-smoke-02-unverified.json.gz",
+      "original_commit": null,
+      "content_bytes": 94663,
+      "content_sha256": "0b2dc33fd25947aca8649bfc5eec136a7827a8e17b2d70c0b78f46b466417ab0",
+      "archive_bytes": 33253,
+      "archive_sha256": "85d053b21147f97c2392028f5dddb06f9631cd5bc7530f3e144236f3de1e5a4f",
+      "summary": {
+        "source_commit": "b80a55e840ec764165650eba7bb4cd368d28b02d",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 9,
+        "original_bytes": 69599
+      }
+    },
+    {
+      "name": "p02-2-upload-v1-smoke-03-unverified.json",
+      "archive": "raw/p02-2-upload-v1-smoke-03-unverified.json.gz",
+      "original_commit": null,
+      "content_bytes": 96955,
+      "content_sha256": "4feb6cb2076d5e8f9d73866fbf283215c5339bb7d96b3620018184adc7328c73",
+      "archive_bytes": 34261,
+      "archive_sha256": "ff76da61000863fa9e5fbc793295d1f61dcdbf64810658c2fd109814383dbac8",
+      "summary": {
+        "source_commit": "6fb5b9b652417da98c2b50e56ea0e038be6b0b69",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 9,
+        "original_bytes": 71318
+      }
+    },
+    {
+      "name": "p02-2-upload-v2-smoke-01-unverified.json",
+      "archive": "raw/p02-2-upload-v2-smoke-01-unverified.json.gz",
+      "original_commit": null,
+      "content_bytes": 206651,
+      "content_sha256": "d814a0f89f07b62a37e1effd3e6749231690d2e478ea4b85472e82ea93587a43",
+      "archive_bytes": 68704,
+      "archive_sha256": "7d074a13881924eef834af825d9d1e477e26ba913c031563fbe8c1d7f6ae7e1e",
+      "summary": {
+        "source_commit": "5a90477ed56bebaaec488114718de37d18b4f9df",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 11,
+        "original_bytes": 153274
+      }
+    },
+    {
       "name": "startup-ci-control.json",
       "archive": "raw/startup-ci-control.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",
