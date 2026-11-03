@@ -3,7 +3,7 @@ id: P02-2v
 phase: P02
 status: draft
 size: M
-depends_on: [P02-2u]
+depends_on: [P02-2w]
 capabilities: [C03, C12, C13]
 ---
 # P02-2v — Kurulu upload native ölçüm araçları
@@ -20,7 +20,7 @@ V.1 ayrı süreçte streaming TLS sink ve kurulu public API worker; v.2 kaynak/w
 
 ## Bağımlılıklar ve kararlar
 
-U verified; mevcut [performans](../../standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) ve [kanıt](../../standards/research-evidence.md) standardı uygulanır. Önceden sabitlenen ölçüm yöntemi [upload kabul planındadır](../../research/p02-2-upload-measurement-plan.md). Yeni ürün sözleşmesi/ADR gerekmez; kaynak yöntemi veya güven sınırı değişirse önce değerlendirilir.
+U ve W verified; mevcut [performans](../../standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) ve [kanıt](../../standards/research-evidence.md) standardı uygulanır. Önceden sabitlenen ölçüm yöntemi [upload kabul planındadır](../../research/p02-2-upload-measurement-plan.md). Yeni ürün sözleşmesi/ADR gerekmez; kaynak yöntemi veya güven sınırı değişirse önce değerlendirilir.
 
 ## Sözleşme ve uygulama sınırı
 

@@ -46,6 +46,7 @@
 | [P02-2t](p02-2t-public-upload-workflows.md) | Ortak sekiz API/CLI, dar public niyet/sonuç ve bounded TTY ilerleme |
 | [P02-2u](p02-2u-offline-upload-acceptance.md) | Public süreç/azami envanter ve çevrimdışı test kabulü |
 | [P02-2v](p02-2v-installed-upload-measurement.md) | Kurulu gerçek upload için native ölçüm araçları ve bağımsız kanıt |
+| [P02-2w](p02-2w-upload-maintainability.md) | Son kaynak öncesi upload doğrulama/transaction bakım sınırları |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.

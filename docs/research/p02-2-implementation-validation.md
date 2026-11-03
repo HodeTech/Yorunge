@@ -577,3 +577,25 @@ U.1 fresh R1 temiz. Sol/high contract bütün22 test diff’ini ve before/after 
 
 
 U.1 farklı fresh R2 temiz: Astra/high contract bütün22 diff’te assertion ve raises exception/match AST eşliğini bağımsız doğruladı; contract/codec/input/workflow/legacy/recovery/deadline/slot seçkisi **255 passed / 36,30 s**, -W error. Sol/high safety assert sıraları ve raises/fail AST kümelerini karşılaştırdı; 11 integration dosyasından cancellation/marker/replay/lease/timeout/namespace/legacy seçkisi **45 passed / 32,79 s** (304 deselected), -W error. Yeni doğrulanmış bulgu veya edit yok. **U.1 iki fresh turla yerel kapandı**; u.2 gerçek public admission/kill/ID ve azami128/129 kabulü sırada. Native/live/kurulum/source CI/epik hâlâ açık; test sayıları örtüşür.
+
+
+## P02-2w — Kaynak bakım hazırlığı
+
+Bağımsız Sol/high salt okuma audit’i ürün kaynağı **98c50cd** ve development50d68b1 diff’i üzerinde yapıldı. [Resmî Python visitor](https://raw.githubusercontent.com/SonarSource/sonar-python/master/python-frontend/src/main/java/org/sonar/python/metrics/CognitiveComplexityVisitor.java) ve [test vektörleri](https://raw.githubusercontent.com/SonarSource/sonar-python/master/python-frontend/src/test/resources/metrics/cognitive-complexities.py) üzerinden tek seferlik yerel AST sayımı/elle kontrol kullanıldı. Kaynaklar inceleme sırasındaki master’dır; ayrı visitor commit SHA’sı kaydedilmedi. Bu kalıcı bir analyzer veya gerçek Sonar koşusu değildir; sayılar yaklaşık triage’dır ve nihai PR Sonar sonucunun yerini almaz. If/loop/except/conditional için1+nesting, elif/else için1, Boolean operatör grubu/değişimi için1 sayıldı; try/with nesting eklemez, try-else ekler. Bu yöntemle başlangıç failure16 adayı elle try-else kontrolüyle21’e düzeltildi; skorlar davranış kusuru değildir.
+
+| Dilim | Kaynak/fonksiyon | Yaklaşık CC |
+|---|---|---:|
+| W.1 | domain/dataset_transfer.py TransferRecord.state | 27 |
+| W.1 | domain/upload_public.py DatasetUploadSummary.relationships | 19 |
+| W.1 | domain/dataset_upload_v2.py reduce_upload_policy | 16 |
+| W.1 | application/storage.py StorageTarget.__init__ | 16 |
+| W.1 | application/platform_upload_literals.py _query | 16 |
+| W.1 | adapters/upload_store.py _receipt / _stages | 16 / 16 |
+| W.2 | adapters/upload_repository.py StateUploads.arm / receipt | 27 / 22 |
+| W.2 | adapters/upload_maintenance.py upload_snapshot | 19 |
+| W.2 | adapters/upload_original.py _Environment.failure | 21 |
+| W.2 | cli/__init__.py dispatch | 18 |
+
+Bütün yollar src/yorunge altındadır. Application HttpRequest.__post_init__ yaklaşık16 olsa da gövdesi bu PR’da değişmediği için kapsam dışıdır. W.1 adapters/guarded_network.py içindeki **connection deadline elapsed** literal’inin üç kullanımını aynı mesajlı immutable sabite alır. W.2 upload_repository’nin aynı namespace SELECT ve conflict çözümünü ortaklaştırır; create CAS UPDATE veya CAS kaybı sorgusu farklıdır, otomatik birleştirilmez. Yeni broad-except sessiz başarı kusuru doğrulanmadı; BaseException cleanup/uncertainty/cancel sınırları korunur.
+
+W preflight Sol/high contract kanonik kayıt/audit tablosu henüz yokken kartın ona bağlanmasını P2 hazırlık açığı olarak buldu; bu bölümle kaynak HEAD/yöntem/12 aday ve iki tekrar kapsamı eklendi. Astra/high safety engelleyici mimari/ürün kararı bulmadı; literal dosya/dilim ve test sahipliği netleştirildi. V1 state ilk ret sırası V2 helper’larıyla yeniden sıralanmaz; tek decorated validator/helper sırası korunur. Arm current/owner/approval/predecessor, deadline interval insert(0), namespace/intent/latch aynı transaction ve COMMIT→finish→tek permit; receipt prevalidation/secret→owner/time/idempotency→atomik insert/dataset/control sırası değişmez. Snapshot journal digest tam journal üzerinden, yalnız operation lease renewal alanları ayıklanarak aynı canonical LF satırıyla kalır. W kodu U verified ve preflight teyidi sonrasıdır; yeni ADR gerekmez, native/live/Sonar/CI yapılmadı.
