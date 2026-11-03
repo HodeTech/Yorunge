@@ -151,6 +151,42 @@ def test_capacity_is_bounded_separately_and_not_constant_file_count_growth(evide
     assert evidence["summarize_report"](report)["passed"] is True
 
 
+@pytest.mark.parametrize("failure", ["longest", "occupancy", "put_occupancy", "over_900"])
+def test_observed_request_intervals_cannot_fit_an_impossibly_short_window(
+    evidence, report, failure
+):
+    row = report["runs"][9]
+    item = row["client"]["metrics"]
+    count = len(item["put_seconds"])
+    if failure == "longest":
+        item["request_seconds"][0] = item["put_seconds"][0] = 1.5
+    elif failure == "occupancy":
+        item["request_seconds"] = [0.01] * len(item["request_seconds"])
+        item["put_seconds"] = [0.01] * count
+    elif failure == "put_occupancy":
+        item["request_seconds"] = [0.01] * count + [0.0001] * (len(item["request_seconds"]) - count)
+        item["put_seconds"] = [0.01] * count
+        item["peak_puts"] = 1
+    else:
+        item["request_seconds"] = [120.0] * len(item["request_seconds"])
+        item["put_seconds"] = [120.0] * count
+    with pytest.raises(ValueError, match="durations contradict"):
+        evidence["summarize_report"](report)
+
+
+def test_exact_binary_occupancy_boundary_and_separate_warm_window(evidence, report):
+    row = report["runs"][9]
+    item = row["client"]["metrics"]
+    item["request_seconds"] = [0.125] * len(item["request_seconds"])
+    item["put_seconds"] = [0.125] * len(item["put_seconds"])
+    row["client"]["elapsed_seconds"] = 25.5  # 408 * 0.125 == 2 * 25.5 exactly.
+    for other in report["runs"]:
+        warm = other["client"]["warm_metrics"]
+        warm["request_seconds"] = [0.1] * len(warm["request_seconds"])
+        warm["put_seconds"] = [0.1] * len(warm["put_seconds"])
+    assert evidence["summarize_report"](report)["passed"] is True
+
+
 @pytest.mark.parametrize("failure", ["rss", "time", "resources", "source_changed"])
 def test_honest_failed_budget_is_retained_as_failed_not_forced_green(evidence, report, failure):
     row = report["runs"][0]

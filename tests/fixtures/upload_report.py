@@ -51,8 +51,8 @@ def metrics(expected):
         "confirmed_bytes": size,
         "peak_sources": 2,
         "open_sources": 0,
-        "request_seconds": [0.1] * (22 + 2 + 3 * count),
-        "put_seconds": [0.1] * count,
+        "request_seconds": [0.001] * (22 + 2 + 3 * count),
+        "put_seconds": [0.001] * count,
     }
 
 

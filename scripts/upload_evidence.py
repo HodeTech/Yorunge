@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import runpy
 from collections import Counter
@@ -266,6 +267,15 @@ def metrics_passed(item: dict[str, Any]) -> bool:
     )
 
 
+def timing_window(item: dict[str, Any], elapsed: float) -> None:
+    # These intervals start/end within the measured flow, on the same clock.
+    # Peak concurrency bounds their total occupancy; warm is a separate flow.
+    for key, peak in (("request_seconds", "peak_requests"), ("put_seconds", "peak_puts")):
+        values = item[key]
+        if max(values) > elapsed or math.fsum(values) > elapsed * item[peak]:
+            raise ValueError("upload observed request durations contradict measured window")
+
+
 def graph(value: object, expected: dict[str, Any], items: list[dict[str, Any]]) -> None:
     item = closed(value, "intent_count receipt_count accepted_receipts intents receipts files")
     count = expected["file_count"]
@@ -432,6 +442,7 @@ def evaluate_run(value: object, proof: dict[str, Any], controller_pid: int) -> b
     elapsed = number(client["elapsed_seconds"])
     if elapsed <= 0:
         raise ValueError("upload elapsed time must be positive")
+    timing_window(observed, elapsed)
     return bool(
         upper <= LIMITS["rss_upper_bytes"]
         and elapsed <= LIMITS["window_seconds"]
