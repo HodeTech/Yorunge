@@ -1,6 +1,6 @@
 # P02-2 / PR #14 Sonar incelemesi
 
-**Tarih:** 2026-11-04. **Durum:** İlk gerçek analizdeki 611 kayıt tek envanterde sınıflandı; 565 kod kaydı tek düzeltme grubunda ele alındı. İki fresh review henüz kapanmadı; Sonar üzerindeki disposition uygulanmadı. [Kayıt bazlı 46 istisna](p02-2-sonar-disposition.json), kaynak `f71a0c3` analizini gösterir; güncel satır numarası iddiası değildir. [Kabul kaydı](p02-2-implementation-validation.md) sonuçların kanonik sahibidir.
+**Tarih:** 2026-11-04. **Durum:** İlk gerçek analizdeki 611 kayıt tek envanterde sınıflandı; 565 kod kaydı tek düzeltme grubunda ele alındı. İki fresh review turu temiz kapandı; Sonar üzerindeki disposition uygulanmadı. [Kayıt bazlı 46 istisna](p02-2-sonar-disposition.json), kaynak `f71a0c3` analizini gösterir; güncel satır numarası iddiası değildir. [Kabul kaydı](p02-2-implementation-validation.md) sonuçların kanonik sahibidir.
 
 ## Tek düzeltme grubu
 
@@ -35,6 +35,8 @@ Güvenlik ve runtime-contract eksenleri bağımsız salt okunur ajan incelemesin
 ## Sonraki doğrulama
 
 Ruff format/check ve strict mypy (140 dosya) geçti. Ayrı negatif testlerde native beş precondition normal ve optimize kipte reddedildi; runner’ın RuntimeError/KeyboardInterrupt/SystemExit yollarında private exception zinciri çıktıya taşınmadı: 13 passed. İlgili mevcut runtime/HTTP/bütçe/maintenance/CI/reference seçkisi 724 passed; gerçek PTY kapanış testi ayrıca geçti. Bu kümeler birbirinden ayrıdır; tam takım tekrar edilmedi. 50 dosyanın bağımsız AST/yorum karşılaştırması 545 assertion dönüşümünü doğruladı; dört elle değiştirilen/yeni test fonksiyonu bu eşdeğerlik iddiasından çıkarılıp yukarıdaki testlerle sınandı. Frozen probe kaynak ve testleri değiştirilmedi.
+
+`deb9772` kod paketi iki fresh turda, her turda ayrı contract/safety ajanlarıyla incelendi (R1 Sol/high + Astra/high; R2 farklı Astra/high + Sol/high ajanları). Dört inceleme de temizdir; yeni doğrulanmış bulgu veya kod değişikliği gerekmedi. Ajanlar geçen test/build/ölçümleri tekrar çalıştırmadı. 196 Markdown, 6 skill/44 kart ve actionlint kontrolleri geçti. İlk agent-guide çağrısı desteklenmeyen sistem Python 3.9 ile hatalı metadata sonucu verdi; proje Python 3.11 ortamında aynı dosyalar 0 sorunla doğrulandı, kaynak değişmedi.
 
 Üç güvenlik kaydı ve bütün istisnaların tam issue anahtarları JSON’dadır. Uygulanan Sonar durumları ayrıca API’den geri okunur. Tarayıcı şu anda giriş istiyor; ekran girişte hizmet şartlarının kabulünü belirttiğinden bu adım açık kullanıcı onayı gerektiriyor. Anahtar/token istenmez veya aranmaz.
 
