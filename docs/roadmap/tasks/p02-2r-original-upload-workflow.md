@@ -1,7 +1,7 @@
 ---
 id: P02-2r
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2q]
 capabilities: [C03, C12, C13]
@@ -40,4 +40,8 @@ Application/gerçek composition testleri; stateful loopback TLS, SQLite/process 
 
 ## Teslim kaydı
 
-R.1 private original invocation/admission/create-link commit ve iki fresh kod review/fix turuyla yerel kapandı. R.2 dosya fazları doğrulanmış worker yarışı fix’i, bağımsız teyit ve farklı fresh R2 ile yerel kapandı. R.3 initial proof/full workflow kodlandı; iki fresh tur bekliyor. Tam workflow yalnız repository’nin kalıcı metadata proof’u ile succeeded olur; r.1/r.2 private ara record running’dır, teslim başarısı değildir. Q yerel verified temeli korunur.
+R.1 private original invocation/admission/create-link commit ve iki fresh kod review/fix turuyla yerel kapandı. R.2 dosya fazları doğrulanmış worker yarışı fix’i, bağımsız teyit ve farklı fresh R2 ile yerel kapandı. R.3 initial proof/full workflow iki fresh tur ve ek gerçek kill test delta teyitleriyle yerel kapandı. Tam workflow yalnız repository’nin kalıcı metadata proof’u ile succeeded olur; r.1/r.2 private ara record running’dır, teslim başarısı değildir. Q yerel verified temeli korunur.
+
+- PR/commit: [b499074](https://github.com/HodeTech/Yorunge/commit/b499074) original proof kodu; [6c35ed9](https://github.com/HodeTech/Yorunge/commit/6c35ed9) son actual kill kabulü; aynı epik dalı, henüz nihai PR yok.
+- Sonuç: [R.1/R.2/R.3 kabul kaydı](../../research/p02-2-implementation-validation.md); tek gerçek original workflow, accepted graph+metadata proof, same-ID unknown/no replay ve sekiz actual SIGKILL sınırı; her dilimde iki fresh tur/fix teyidi.
+- Kalan sınır: Ayrı read-reconcile/public API/CLI/sentinel; native/kurulum/source CI/kanıt/ayrı live ve üst a/b/c/epik. Bunlar bu private koordinatör tesliminin dışında, aynı epik içinde devam eder.
