@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -21,9 +21,11 @@ from yorunge.adapters.upload_reconcile_local import ReadInput, ReadPhase, load_r
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.application.http_transport import HttpCredential
 from yorunge.application.upload_budget import UploadBudget
+from yorunge.application.upload_reconciliation import reconcile_read
 from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import BoundCredential, normalize_target
-from yorunge.domain.dataset_transfer import TERMINAL, scope_target
+from yorunge.domain.dataset_transfer import TERMINAL, TransferLease, scope_target
+from yorunge.domain.dataset_transfer_v2 import TransferRecordV2, TransferVerificationV2
 from yorunge.domain.dataset_upload import UploadScope
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
@@ -61,6 +63,7 @@ class _ReadEnvironment:
         self.reader, self.client = reader, client
         self.record = loaded.record
         self.authorization: AuthorizationCheck | None = None
+        self.owner: TransferLease | None = None
 
     @contextmanager
     def repository(self) -> Iterator[StateUploads]:
@@ -79,6 +82,10 @@ class _ReadEnvironment:
             repository.check_scope(self.scope)
 
     async def observe(self) -> ReadPhase:
+        check = await self.current()
+        return ReadPhase(self.loaded.plan, self.record, check)
+
+    async def current(self) -> AuthorizationCheck:
         self.inspect()
         check = await self.reader.read_authorization(
             self.client, self.loaded.baseline, self.loaded.plan.parameters
@@ -87,7 +94,7 @@ class _ReadEnvironment:
         self.require_current(check)
         self.inspect()
         self.require_current(check)
-        return ReadPhase(self.loaded.plan, self.record, check)
+        return check
 
     def require_current(self, check: AuthorizationCheck) -> None:
         # A real source-negative keeps its source code at the deadline. Only a
@@ -119,6 +126,41 @@ class _ReadEnvironment:
             code,
         )
 
+    def acquire(self, check: AuthorizationCheck) -> None:
+        self.require_current(check)
+        with self.repository() as repository:
+            self.owner = repository.acquire_read(
+                self.record.operation_id, authorization=check, accept_unverified_read=True
+            )
+            record = repository.show(operation_id=self.record.operation_id).operation
+            assert type(record) is TransferRecordV2
+            self.record = record
+
+    async def metadata(self) -> TransferVerificationV2:
+        from yorunge.adapters.upload_reconcile_metadata import observe_metadata
+
+        return await observe_metadata(self)
+
+    def commit(self, proof: TransferVerificationV2) -> TransferRecordV2:
+        assert self.owner is not None and self.authorization is not None
+        self.require_current(self.authorization)
+        # Convert the remaining network-clock budget once, conservatively,
+        # into the repository clock domain; neither deadline is extended.
+        before = self.runtime.clock.monotonic()
+        deadline = before + self.reader._budget.end - time.monotonic()
+        with self.repository() as repository:
+            view = repository.verified(
+                self.record.operation_id,
+                self.owner,
+                proof,
+                authorization=self.authorization,
+                accept_unverified_read=True,
+                deadline=deadline,
+            )
+            assert type(view.operation) is TransferRecordV2
+            self.record, self.owner = view.operation, None
+        return self.record
+
     def failure(self, error: BaseException) -> OperationError:
         code, operation_id = _source_code(error), self.record.operation_id
         reason = error.reason_code if isinstance(error, OperationError) else None
@@ -128,10 +170,18 @@ class _ReadEnvironment:
                 assert view.operation is not None
                 record = view.operation
                 if record.status in TERMINAL:
-                    return OperationError(code, operation_id, reason_code=reason)
+                    return OperationError(
+                        "operation_conflict" if code == "operation_uncertain" else code,
+                        operation_id,
+                        reason_code=reason,
+                    )
                 if code in READ_FAILURES:
-                    repository.read_failed(operation_id, None, self._negative(code))
+                    repository.read_failed(operation_id, self.owner, self._negative(code))
+                elif self.owner is not None and record.lease is not None:
+                    repository.stop_local(operation_id, self.owner, "request_uncertain")
         except YorungeError as marker:
+            if code == "request_cancelled":
+                return OperationError(code, operation_id, reason_code=marker.code)
             return OperationError(marker.code, operation_id, reason_code=code)
         return OperationError(code, operation_id, reason_code=reason)
 
@@ -139,12 +189,18 @@ class _ReadEnvironment:
         return "<readonly upload environment private>"
 
 
-def _observe_read(
+async def _complete_read(environment: _ReadEnvironment) -> ReadPhase:
+    record = await reconcile_read(environment)
+    return ReadPhase(environment.loaded.plan, record, None)
+
+
+def _execute_read(
     runtime: UploadPreparationRuntime,
     loaded: ReadInput,
     bound: BoundCredential,
     scope: UploadScope,
     end: float,
+    algorithm: Callable[[_ReadEnvironment], Awaitable[ReadPhase]],
 ) -> ReadPhase:
     if time.monotonic() >= end:
         raise YorungeError("execution_timeout")
@@ -161,7 +217,7 @@ def _observe_read(
     async def consume(client: UploadHttpxTransport) -> ReadPhase:
         nonlocal environment
         environment = _ReadEnvironment(runtime, loaded, bound, scope, reader, client)
-        return await environment.observe()
+        return await algorithm(environment)
 
     failure = None
     try:
@@ -207,16 +263,16 @@ def _bind_current(
     return bound, scope
 
 
-def probe_reconciliation(
+def _reconcile(
     operation_id: str,
     state_dir: Path | None,
     load_context: ContextLoader,
+    algorithm: Callable[[_ReadEnvironment], Awaitable[ReadPhase]],
     *,
     accept_unverified_read: bool = False,
     session_factory: SessionFactory = UploadSession,
     clock: Clock | None = None,
 ) -> ReadPhase:
-    """Private S.1 observation only, without read lease or metadata proof."""
     end = time.monotonic() + 30
     _validate_request(operation_id, state_dir, accept_unverified_read)
     clock = clock or SystemClock()
@@ -231,7 +287,7 @@ def probe_reconciliation(
         )
         with runtime._invocation():
             bound, scope = _bind_current(runtime, loaded)
-            return _observe_read(runtime, loaded, bound, scope, end)
+            return _execute_read(runtime, loaded, bound, scope, end, algorithm)
     except BaseException as error:
         if isinstance(error, asyncio.CancelledError):
             raise
@@ -242,3 +298,44 @@ def probe_reconciliation(
         )
     failure.__cause__ = failure.__context__ = None
     raise failure
+
+
+def probe_reconciliation(
+    operation_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    accept_unverified_read: bool = False,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> ReadPhase:
+    """Private S.1 observation only, without read lease or metadata proof."""
+    return _reconcile(
+        operation_id,
+        state_dir,
+        load_context,
+        lambda environment: environment.observe(),
+        accept_unverified_read=accept_unverified_read,
+        session_factory=session_factory,
+        clock=clock,
+    )
+
+
+def reconcile_upload(
+    operation_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    accept_unverified_read: bool = False,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> ReadPhase:
+    return _reconcile(
+        operation_id,
+        state_dir,
+        load_context,
+        _complete_read,
+        accept_unverified_read=accept_unverified_read,
+        session_factory=session_factory,
+        clock=clock,
+    )

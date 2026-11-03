@@ -1237,6 +1237,43 @@ class StateUploads:
             self._finish(stamp, gate, scope=view.plan.scope)
             return access
 
+    def prepare_recovery_read(
+        self,
+        operation_id: str,
+        owner: TransferLease,
+        authorization: AuthorizationCheck,
+        *,
+        accept_unverified_read: bool = False,
+    ) -> ReadAccess:
+        """Recheck an acquired read owner before items, without renewing its lease."""
+        with self.phase(operation_id):
+            self.require_created_baseline(operation_id, owner)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                self._baseline_in_view(view)
+                current = self._owner(record, owner, stamp, gate)
+                if current.mode != "read" or record.status != "unknown":
+                    raise YorungeError("operation_conflict")
+                if not acknowledged_stages(view):
+                    raise YorungeError("operation_uncertain")
+                authorization = revalidate_input(AuthorizationCheck, authorization)
+                self._secret(authorization)
+                access = authorize_read(
+                    self,
+                    view,
+                    stamp,
+                    gate,
+                    grant=authorization.grant,
+                    authorization=authorization,
+                    accept_unverified_read=accept_unverified_read,
+                    initial_owner=False,
+                )
+            self._finish(stamp, gate, scope=access.scope)
+            return access
+
     def verified(
         self,
         operation_id: str,
@@ -1245,6 +1282,7 @@ class StateUploads:
         *,
         authorization: AuthorizationCheck | None = None,
         accept_unverified_read: bool = False,
+        deadline: float | None = None,
     ) -> VersionedTransferView:
         try:
             return self._verified(
@@ -1253,6 +1291,7 @@ class StateUploads:
                 proof,
                 authorization=authorization,
                 accept_unverified_read=accept_unverified_read,
+                deadline=deadline,
             )
         except OperationError as error:
             if error.code == "operation_uncertain":
@@ -1263,6 +1302,19 @@ class StateUploads:
                         "operation_uncertain", operation_id, reason_code=marker_error.code
                     ) from None
             raise
+
+    def _proof_deadline(self, deadline: float | None) -> None:
+        if deadline is None:
+            return
+        valid = type(deadline) in (int, float)
+        try:
+            valid = valid and math.isfinite(deadline)
+        except OverflowError:
+            valid = False
+        if not valid:
+            raise YorungeError("invalid_request")
+        if self.clock.monotonic() >= deadline:
+            raise YorungeError("execution_timeout")
 
     def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> None:
         with self.phase(operation_id):
@@ -1305,8 +1357,10 @@ class StateUploads:
         *,
         authorization: AuthorizationCheck | None = None,
         accept_unverified_read: bool = False,
+        deadline: float | None = None,
     ) -> VersionedTransferView:
         with self.phase(operation_id):
+            self._proof_deadline(deadline)
             self._nonterminal(operation_id)
             self.require_created_baseline(operation_id, owner)
             proof = decode_versioned(
@@ -1375,5 +1429,7 @@ class StateUploads:
                 )
                 self._control(changed, stamp, terminal=True, proof=proof)
                 candidate = read_view(self.connection, view.plan.plan_id)
+                self._proof_deadline(deadline)
             self._finish(stamp, gate, scope=verification_scope(proof))
+            self._proof_deadline(deadline)
             return candidate
