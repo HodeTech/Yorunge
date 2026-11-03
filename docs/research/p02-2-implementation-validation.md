@@ -742,3 +742,19 @@ e7be505 sabit kaynağında `.venv/bin/pytest -q -W error` tek kez çalıştı: *
 Bu gerçek süre, diğer compatibility hücrelerinin25 dakika tavanında setup/build/iki kurulum ve host farkı için yalnız3:38 pay bırakıyordu. İlk native referans başlamadan Linux3.14/macOS3.11 job scheduling45 dakikaya hizalandı. Yalnız iki YAML değeri, literal CI test beklentisi ve aktif ölçüm/kart açıklaması değişir; ürün/source algoritma ve performans eşiği değişmez. İşlemin tamamlanma garantisi değildir. Tüm takımı yeniden çalıştırmadan dar CI graph/actionlint/doc ve iki fresh review ile bu son orchestration farkı doğrulanır. Önceki45/25 kayıtları tarihsel korunur; yeni kaynak referansları henüz üretilmediğinden ölçüm tekrarı oluşmaz.
 
 Scheduling delta d6898e3 iki farklı fresh kaynak review’sinde temiz kapandı: Sol/medium R1 ve Astra/medium R2, beş dosya diff’i ve özgün tam takım stdout’unu doğruladı; test/build/ölçüm tekrarlanmadı. Dar CI graph61 passed /1,04 s, actionlint/Ruff/doc195/skill6-kart44/diff temiz. Bundan sonra source/ref ölçümü öncesi başka kod değişikliği planlanmıyor. Yerel tam takım e7be505 ürün kodunu doğrular; son fark yalnız iki orchestration süresi ve üç parametreli literal beklentidir, final source CI tam takımı kendi başına çalıştıracaktır.
+
+## Son kaynak M5 kabulü — 510de0a
+
+Dört yeni zorunlu referans ve ek raw stream, önceden sabitlenen adlarla aynı runtime-only aday wheel üzerinde seri ve **birer kez** çalıştı; hepsi ilk koşuda geçti. Aralarında test/build veya ikinci ölçüm başlatılmadı. Ortam: Apple M5 Max/arm64, macOS27.0.1, CPython3.11.18, internal SSD/APFS beyanı; donanım attestasyonu veya fiziksel soğuk cache iddiası değildir. Karşılaştırma tabanı development50d68b1 temiz detached checkout’udur. Tam kaynak510de0a0986f5e7d086c1fac9cbcc18974314fe5; workflow/test/script ve upload sabit vektörü ilgili kapılarda bağlıdır.
+
+| Kayıt | Gerçek sonuç |
+|---|---|
+| p02-2-reference-startup-01.json | Aday p95 help24,94/version23,13/context78,69/cache128,60 ms; her komut30 süreç, bütçeler geçti |
+| p02-2-reference-jobs-01.json | Dört normal/yoğun list-show ×30 süreç; en yüksek p95 dense/list144,53 ms, hepsi≤200 ms |
+| p02-2-reference-datasets-01.json | 24 süreç; en uzun1,0355 s, en yüksek ek RSS üst sınırı19,375 MiB; inspect/verify büyüme32/16 KiB, geçti |
+| p02-2-reference-raw-01.json | Gerçek16/256/1024 MiB; byte/hash/source/runtime eşliği; en uzun1,5848 s, büyüme üst sınırı1,140625 MiB, geçti |
+| p02-2-reference-upload-01.json | Dört label ×3 fresh worker=12 süreç; gerçek public prepare/approve/start, tam accepted graph ve bağımsız sink/oracle; en uzun64,5396 s, en yüksek U11,25 MiB, G3,265625 MiB; bütün bütçeler geçti |
+
+Startup/jobs/dataset/upload güncel kaynak bağlı verifier’ları ve tam katalog388 kayıpsız arşiv/indeks denetimi geçti. Özgün JSON/stdout/stderr ve özel sentetik workspace’ler Git dışında korundu; raporlar gzip/manifest/indekstedir. Büyük raw açılımı review bağlamına taşınmaz; [manifest/özet](evidence.md) kullanılır. Bu başarı Linux veya canlı sağlayıcı/fiyat/otorite kanıtı değildir.
+
+Yerel tam takım ve bütün M5 referanslar tamamlandı; üst c için üç ortam gerçek CI/altı temiz kurulum, Linux native/raw/receipt/witness kalıcı saklama ve ayrıca yeni kullanıcı onaylı237 byte/üç PNG canlı kabulü bekler. Tek epik PR taslağı CI kanıtını toplar; final kullanıcı review’sine geçiş bu açık kapılar kapanınca yapılır. Yeni hesap çağrısı henüz yapılmadı; canlı yetki sorusu bekliyor.
