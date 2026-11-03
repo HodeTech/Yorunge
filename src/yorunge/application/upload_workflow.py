@@ -112,6 +112,12 @@ def _completed_error(tasks: list[asyncio.Task[EffectOutcome]]) -> BaseException 
     return None
 
 
+def _check_workers(tasks: list[asyncio.Task[EffectOutcome]]) -> None:
+    error = _completed_error([task for task in tasks if task.done()])
+    if error is not None:
+        raise error
+
+
 async def _drain(
     environment: OriginalEnvironment, tasks: list[asyncio.Task[EffectOutcome]]
 ) -> None:
@@ -119,9 +125,7 @@ async def _drain(
     while pending:
         done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
         ordered = [task for task in tasks if task in done]
-        error = _completed_error(ordered)
-        if error is not None:
-            raise error
+        _check_workers(ordered)
         for task in ordered:
             environment.publish(task.result())
 
@@ -131,7 +135,11 @@ async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
     tasks: list[asyncio.Task[EffectOutcome]] = []
     try:
         for index in indices:
+            _check_workers(tasks)
             check = await environment.current("put")
+            # A stale current probe yields to already armed workers. A failed
+            # worker must stop the batch before another permit is committed.
+            _check_workers(tasks)
             call = environment.prepare("put", index)
             calls.append(call)
             arm = environment.arm(check, "put", index)

@@ -249,3 +249,68 @@ def test_cancel_original_during_put_drains_workers_before_same_id_unknown(
         view = StateUploads(store).show(plan_id=plan.plan_id)
         assert view.operation.lease is None and view.verification is None
         assert store.verify().store_schema_version == 7
+
+
+def test_stale_second_current_never_arms_after_first_real_put_failed(
+    prepared_input, certificates, execution_clock, monkeypatch
+):
+    from yorunge.adapters import upload_original
+
+    clock, failed = execution_clock, asyncio.Event()
+    data = many(prepared_input)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, fail_put_name="one.bin")
+    original_arm = upload_original._Environment.arm
+    original_current = upload_original._Environment.current
+    original_execute = upload_original._Call.execute
+    put_checks = []
+
+    def advance(seconds):
+        clock.value += timedelta(seconds=seconds)
+        clock.elapsed += seconds
+
+    provider.after_presign = lambda name: advance(29) if provider.presign_calls == 3 else None
+
+    def arm(environment, check, kind, index=None):
+        result = original_arm(environment, check, kind, index)
+        if kind == "put" and index == 0:
+            advance(2)
+        return result
+
+    async def current(environment, kind):
+        result = await original_current(environment, kind)
+        if kind == "put":
+            put_checks.append(result)
+            if len(put_checks) == 2:
+                await failed.wait()
+        return result
+
+    async def execute(call, issued):
+        try:
+            return await original_execute(call, issued)
+        except BaseException:
+            if issued.intent.kind == "put":
+                failed.set()
+            raise
+
+    monkeypatch.setattr(upload_original._Environment, "arm", arm)
+    monkeypatch.setattr(upload_original._Environment, "current", current)
+    monkeypatch.setattr(upload_original._Call, "execute", execute)
+    with TlsServer(certificates, provider.routes()) as server:
+        preparation = runtime(data, server, clock=clock)
+        plan = prepare(preparation, data)
+        approve(preparation, plan)
+        with pytest.raises(OperationError) as raised:
+            upload_files_original(
+                plan.plan_id,
+                data[0],
+                loader(data),
+                session_factory=factory(server),
+                clock=clock,
+            )
+        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
+        assert len(put_checks) == 2 and put_checks[0].checked_at < put_checks[1].checked_at
+        assert provider.put_calls == 1 and provider.confirm_calls == 0
+    with open_existing_store(data[0]) as store:
+        view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
+        assert sum(intent.kind == "put" for intent in view.intents) == 1
+        assert view.operation.status == "unknown" and store.verify().store_schema_version == 7
