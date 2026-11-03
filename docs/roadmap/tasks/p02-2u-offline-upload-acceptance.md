@@ -36,4 +36,4 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 
 ## Teslim kaydı
 
-T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi ilgili seçki/117 test delta teyidi ve iki farklı fresh turla kapandı; u.2 süreç/azami envanter sıradadır. V ölçüm planındaki iki yöntem/saklama açıklığı özgün reviewer teyidiyle kapandı; v hazır veya ölçülmüş sayılmaz.
+T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi ilgili seçki/117 test delta teyidi ve iki farklı fresh turla kapandı; u.2 gerçek public süreç/azami128/129 kabulü uygulandı; current memo payı kusuru deterministik testle düzeltildi, son84 testlik geniş seçki geçti. U.2 iki fresh kod turu bekleniyor. V ölçüm planındaki iki yöntem/saklama açıklığı özgün reviewer teyidiyle kapandı; v hazır veya ölçülmüş sayılmaz.

@@ -284,7 +284,7 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
     def arm(environment, check, kind, index=None):
         result = original_arm(environment, check, kind, index)
         if kind == "put" and index == 0:
-            advance(2)
+            advance(26)  # Cross the refresh boundary after the first worker is armed.
         return result
 
     async def current(environment, kind):
@@ -327,3 +327,51 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
         assert sum(intent.kind == "put" for intent in view.intents) == 1
         assert view.operation.status == "unknown" and store.verify().store_schema_version == 7
+
+
+def test_nearly_expired_current_is_refreshed_before_local_arm_work(
+    prepared_input, certificates, execution_clock, monkeypatch
+):
+    from yorunge.adapters import upload_original
+
+    clock = execution_clock
+    data = many(prepared_input)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    original_arm = upload_original._Environment.arm
+    checks = []
+
+    def advance(seconds):
+        clock.value += timedelta(seconds=seconds)
+        clock.elapsed += seconds
+
+    provider.after_presign = lambda name: advance(29) if provider.presign_calls == 3 else None
+
+    def arm(environment, check, kind, index=None):
+        if kind == "put" and index == 0:
+            # Current evidence must leave time for local descriptor/transaction work.
+            advance(2)
+            checks.append(check)
+        return original_arm(environment, check, kind, index)
+
+    monkeypatch.setattr(upload_original._Environment, "arm", arm)
+    budgets = []
+    with TlsServer(certificates, provider.routes()) as server:
+        preparation = runtime(data, server, clock=clock)
+        plan = prepare(preparation, data)
+        approve(preparation, plan)
+        result = upload_files_original(
+            plan.plan_id,
+            data[0],
+            loader(data),
+            session_factory=factory(server, budgets),
+            clock=clock,
+        )
+        assert result.record.status == "running" and provider.confirm_calls == 3
+        assert len(checks) == 1
+        assert budgets[0].snapshot().read_requests == 18  # Six fresh mandatory upload reads.
+        assert provider.put_calls == 3 and provider.presign_calls == 3
+    with open_existing_store(data[0]) as store:
+        view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
+        assert len(view.intents) == len(view.receipts) == 11
+        assert all(receipt.result == "accepted" for receipt in view.receipts)
+        assert store.verify().store_schema_version == 7

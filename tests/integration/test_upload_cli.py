@@ -37,10 +37,12 @@ def command(server, *args):
     ]
 
 
-def execute(server, *args):
+def execute(server, *args, timeout=30):
     environment = dict(os.environ)
     environment.update(LC_ALL="C", PYTHONIOENCODING="ascii", PYTHONUTF8="0")
-    return subprocess.run(command(server, *args), env=environment, capture_output=True, timeout=30)
+    return subprocess.run(
+        command(server, *args), env=environment, capture_output=True, timeout=timeout
+    )
 
 
 def result(process, output):

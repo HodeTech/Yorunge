@@ -44,7 +44,7 @@ from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
-from yorunge.domain.dataset_upload import UploadPermission
+from yorunge.domain.dataset_upload import COMMIT_MARGIN_SECONDS, UploadPermission
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
 from yorunge.domain.models import Context, Profile
@@ -151,8 +151,8 @@ class _Environment:
         key = action, dataset_id
         cached = self.memo.get(key)
         now = self.runtime.clock.now()
-        if cached is not None and timedelta(0) <= now - instant(cached.checked_at) <= timedelta(
-            seconds=30
+        if cached is not None and timedelta(0) <= now - instant(cached.checked_at) < timedelta(
+            seconds=30 - COMMIT_MARGIN_SECONDS
         ):
             self.inputs.recheck()
             cached.require_current(

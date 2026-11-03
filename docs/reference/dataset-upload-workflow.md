@@ -22,7 +22,7 @@ CreateReceiptV2 ve dataset ID atomik kaydedilir. Full original ProviderDataset b
 
 ## Current memo ve dosya aşamaları
 
-Pozitif current check yalnız exact action/dataset/saved scope/plan/work ve immutable create baseline için yeniden kullanılabilir. checked_at ilk gerçek gözlem anıdır; memo reuse zamanı ileri kaydırmaz. Her arm’da mevcut freshness/input gate’i yeniden uygulanır. Stale check yeniden gerçek bounded probe gerektirir; source error, denied veya invalid sonuç cache’de pozitif kalmaz. Scalar/binding değişimi yeni proof/plan uydurarak aşılmaz. Memo bir authority veya pricing cache değildir.
+Pozitif current check yalnız exact action/dataset/saved scope/plan/work ve immutable create baseline için yeniden kullanılabilir. checked_at ilk gerçek gözlem anıdır; memo reuse zamanı ileri kaydırmaz. Her arm’da mevcut freshness/input gate’i yeniden uygulanır. Memo en çok 25 saniyeden kısa yaşta yeniden kullanılır; 30 saniyelik freshness kapısının kalan 5 saniyesi yerel hazırlık/arm commit payı olarak bırakılır. Bu, freshness süresini uzatmaz veya fiziksel I/O garantisi vermez; final kapılar aynı kalır. Bu paya giren veya stale check yeniden gerçek bounded probe gerektirir; source error, denied veya invalid sonuç cache’de pozitif kalmaz. Scalar/binding değişimi yeni proof/plan uydurarak aşılmaz. Memo bir authority veya pricing cache değildir.
 
 Bütün N presign descriptor’ı accepted receipt ile kayıtlı ve raw provider key/exact wire target bijeksiyonu doğrulanmış olmadan ilk PUT yoktur. Local binding ve ephemeral client_uid ayrı kalır; restart raw mapping’i yeniden kurmaz. Pre-intent rezervasyon reddi durur; quota receipt/plan veya HTTP izni değildir.
 
