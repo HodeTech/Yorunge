@@ -41,6 +41,7 @@
 | [P02-2o](p02-2o-current-upload-preparation.md) | Güncel input/current provider ve prepare/approve kompozisyonu |
 | [P02-2p](p02-2p-created-dataset-context.md) | Atomik create baseline, versioned receipt ve legacy mutation gate |
 | [P02-2q](p02-2q-platform-effect-port.md) | Bütçeli gerçek effect/metadata HTTP portu |
+| [P02-2r](p02-2r-original-upload-workflow.md) | Original invocation, create/link ve tam upload koordinatörü |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.

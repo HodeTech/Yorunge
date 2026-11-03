@@ -1,0 +1,43 @@
+# Upload original koordinatörü
+
+**Tarih:** 2026-11-03. **Durum:** P02-2r uygulama öncesi dar composition sözleşmesi; koordinatör henüz yoktur. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+
+## Katman ve invocation
+
+Application algoritması private typed environment protokolünü kullanır; somut SQLite, dosya, config/env ve HTTP session outer composition’dadır. Application adapter import etmez. Tek private owned session/loop/pool, aynı captured credential ve aynı original UploadBudget kullanılır. Source full hash/recheck ve ağ await sırasında SQLite store/transaction açık tutulmaz; her yerel faz open_existing_store/owner/fence/CAS/final scope/clock kapısını yeniden uygular. Örtük state init/migration yoktur.
+
+Original start önce plan ID/state-dir türünü ve sync context’i doğrular, sonra yalnız yerel kayıt arar. Mevcut operation varsa immutable durumu ve aynı ID ile local sonuç yolu seçilir; config/env/manifest/root/hash, remote probe, yeni budget reservation/admission/lease/write access/permit üretilmez. Bu, existing-admit kuralının composition karşılığıdır; mevcut kaydı yürütmeye devam etmez. Public start’ın pending/unknown hata ve dar summary renderer’ı sonraki public wire adımında mevcut exit-5 önceliğine göre bağlanır; bu private sonuç terminal success üretmez.
+
+Yeni operation için saved plan’ın profile/target/owner/project niyeti yeniden seçilmez. Caller’ın config/profile loader’ı ancak yerel lookup yeni işlem yolunu açtıktan sonra çağrılır; gerçek current config/credential saved scope ile karşılaştırılır. Credential env invocation başına bir kez çözülür. Registry gözlemi yerel yazı olabilir; saved credential ID/revision/epoch/store/clock farkı yeni plan üretmeden ret verir. Default observed profile saved gerçek grant/cost’u yenileyemiyorsa mevcut upload_plan_not_valid kapısı korunur.
+
+Toplam monotonic son, invocation girişinde bir kez seçilir ve saved plan/approval/current/repository/port sınırlarında yalnız daralır. Full input kontrolü ayrı mevcut 30 saniye kapısına ve bu toplam sona tabidir. Aynı original invocation’ın pre-admission/current/metadata okumaları ve bütün physical attempt/byte’ları aynı saved request_limits bütçesindedir. Yeni prepare/approve veya ayrı readonly reconcile bu bütçenin uzatılması değildir.
+
+## Yeni admission ve create/link
+
+Full saved manifest/root yeniden hash’lenir; mevcut gerçek current producer create action’ını doğrular. Typed request ve quota reservation durable intent’ten önce hazırlanır. Admission yeni original TransferWriteAccess’i yalnız aynı sürece verir; mevcut kayıt veya restart bunu yeniden üretemez. Admission COMMIT sonrası kayıp cevapta operation plan ID ile bulunabilir. Yerel phase başarıları internal record’dur; public teslim başarısı değildir.
+
+Her effect için sıra: current/input observation kapısı → exact private call/reservation → son kısa repository arm fazı → bütün UploadArm ile tek HTTP → aynı intent’in strict receipt’ini kısa transaction’da kaydetme. Source metadata recheck ve current freshness arm’dan önce yapılır; repository kendi final scope/approval/owner/clock/time kapısını tekrarlar. Arm COMMIT yetkinin sıralama noktasıdır; sonradan revoke/reset, önceden verilmiş permit’in henüz HTTP başlamamış olmasını geri alma garantisine dönüştürmez.
+
+CreateReceiptV2 ve dataset ID atomik kaydedilir. Full original ProviderDataset baseline sonraki current/detail kontrolünde korunur; current owned cevabından yeniden üretilmez. Link ayrı visible effect’tir; ack tek başına membership veya upload izni değildir. Link sonrası upload mandatory context/detail/membership/my-role kontrolü ayrı gerçek producer’dan alınır.
+
+## Current memo ve dosya aşamaları
+
+Pozitif current check yalnız exact action/dataset/saved scope/plan/work ve immutable create baseline için yeniden kullanılabilir. checked_at ilk gerçek gözlem anıdır; memo reuse zamanı ileri kaydırmaz. Her arm’da mevcut freshness/input gate’i yeniden uygulanır. Stale check yeniden gerçek bounded probe gerektirir; source error, denied veya invalid sonuç cache’de pozitif kalmaz. Scalar/binding değişimi yeni proof/plan uydurarak aşılmaz. Memo bir authority veya pricing cache değildir.
+
+Bütün N presign descriptor’ı accepted receipt ile kayıtlı ve raw provider key/exact wire target bijeksiyonu doğrulanmış olmadan ilk PUT yoktur. Local binding ve ephemeral client_uid ayrı kalır; restart raw mapping’i yeniden kurmaz. Pre-intent rezervasyon reddi durur; quota receipt/plan veya HTTP izni değildir.
+
+PUT en çok iki worker’dır. Her worker kendi source/response/call/reservation temizliğini aynı Task’ta tamamlar. Koordinatör ilk hatada yeni worker/aşama başlatmaz, diğer pending worker’ları iptal edip bekler; cleanup tamamlanmadan session kapanmaz. Daha önce verilmiş permit ve uzakta gerçekleşmiş etki geri alınmış sayılmaz. Commit edilmiş accepted receipt silinmez; sonucu commit edilemeyen response unknown kalır; durduktan sonra yeni presign/PUT/confirm veya otomatik retry/fallback yoktur. Confirm publication seri, kabul edilmiş confirm sayısı+1 oracle’ıyla yapılır; iki worker sayacı tahmin etmez.
+
+## Initial read, proof ve hata sınırı
+
+Tam accepted graph tamamlanınca initial-owner read matrisi uygulanır. Observed profile null grant’ı read grant yapmaz; etkin initial approval’ın authority acknowledgement kapısı gerekir. Mandatory exact-ID detail full baseline ve membership, ardından bounded items metadata gerçek okunur. Source dosyalarını read doğrulaması için yeniden açmak gerekmez. Seri okuma atomik uzak snapshot değildir; metadata seviyesidir, remote_bytes_verified=false kalır.
+
+Proof observed_at gerçek metadata gözlem zamanıdır; freshness için geçmiş timestamp ileri taşınmaz. Tam 2+3N graph, accepted CreateReceiptV2 ve owner/name/modality/private eşliği, ordered metadata ve current read scope/authorization/time kapıları repository’nin yeni proof transaction’ında tekrar uygulanır. Terminal geçmiş yeniden doğrulanmaz veya düşürülmez. Application tek başına status=succeeded üretmez; repository’nin durable sonucu gerekir.
+
+Yeni operation bilinmeden pre-admission hata mevcut güvenli kodudur. ID biliniyorsa hata aynı ID’ye bağlanır. Latched aktif workflow’da HTTP/schema/receipt/metadata/input/lease/clock/storage/çıktı belirsizliği operation_uncertain/5 ve origin reason_code önceliğini taşır. Aynı geçerli owner/CAS ile best-effort request_uncertain marker denenir; marker reddinde eski business durum korunabilir. Unlatched admission unknown’a çevrilmez; mevcut local cancellation/expiry kuralları uygulanır. Gerçek Task.cancel cleanup/marker denemesinden sonra CancelledError olarak yayılır; bu remote cancel/rollback değildir. Yeni hakkı olmayan restart yalnız local lookup veya ayrı yetkili read-reconcile yoludur.
+
+Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Bu ayrı controller ve public summary/API/CLI sonraki teslimlerdir.
+
+## Dilimler ve kabul
+
+R.1 private environment/invocation/admission ve create/link; r.2 presign bijeksiyonu/bounded worker/seri confirm; r.3 initial read/proof ve bütün original workflow/error/kill kabulü. Her dilim ayrı commit ve iki fresh review turudur. Stateful gerçek TLS fixture yalnız test alanındadır; ürün kodunda fixture grant, test success veya provider mock seçeneği yoktur. Kill/cevap kaybı admission/intent/HTTP/receipt/proof commit öncesi ve sonrası ayrılır; ikinci create/presign/PUT/confirm üretilmez. Public sentinel/API-CLI, native 16/256/1024 MiB, altı kurulum, son source-bound M5/CI ve ayrı canlı kabul c üst tesliminde açık kalır.
