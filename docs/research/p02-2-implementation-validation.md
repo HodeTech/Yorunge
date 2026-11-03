@@ -574,3 +574,6 @@ U.1 ilk değişen22 dosya seçkisi **933 passed / 1 failed / 330,96 s**, -W erro
 
 
 U.1 fresh R1 temiz. Sol/high contract bütün22 test diff’ini ve before/after assert AST’lerini inceledi; assert beklentileri birebir aynı. Bağımsız negatif/setup/guarded-network/legacy/race/expired-source/slot/child-task/deadline seçkisi **112 passed / 8,45 s**, -W error. Astra/high safety aynı semantik/task/thread/permit/lease/replay sınırlarını ve async fail guard’larını teyit etti; odaklı **33 passed / 11,35 s**, -W error. İki reviewer doğrulanmış yeni bulgu bulmadı, dosya değiştirmedi. Tam934/Sonar/CI/native/live tekrar koşulmadı. Farklı fresh R2 sıradadır; u.1 henüz kapanmadı.
+
+
+U.1 farklı fresh R2 temiz: Astra/high contract bütün22 diff’te assertion ve raises exception/match AST eşliğini bağımsız doğruladı; contract/codec/input/workflow/legacy/recovery/deadline/slot seçkisi **255 passed / 36,30 s**, -W error. Sol/high safety assert sıraları ve raises/fail AST kümelerini karşılaştırdı; 11 integration dosyasından cancellation/marker/replay/lease/timeout/namespace/legacy seçkisi **45 passed / 32,79 s** (304 deselected), -W error. Yeni doğrulanmış bulgu veya edit yok. **U.1 iki fresh turla yerel kapandı**; u.2 gerçek public admission/kill/ID ve azami128/129 kabulü sırada. Native/live/kurulum/source CI/epik hâlâ açık; test sayıları örtüşür.
