@@ -170,7 +170,19 @@ class GuardedStream(httpcore.AsyncNetworkStream):
             or not self.peer_valid()
         ):
             await self.reject()
-        encrypted = await self._stream.start_tls(ssl_context, server_hostname, timeout)
+        try:
+            encrypted = await self._stream.start_tls(ssl_context, server_hostname, timeout)
+        except BaseException:
+            # Until the handshake returns, httpcore has no pooled connection
+            # to close. Its AnyIO stream catches Exception, not Task.cancel().
+            # Retain ownership of this raw TCP socket throughout that gap.
+            try:
+                await self._stream.aclose()
+            except (OSError, httpcore.NetworkError, httpcore.TimeoutException):
+                # Preserve the handshake failure (especially Task.cancel),
+                # rather than replacing it with a secondary close failure.
+                pass
+            raise
         result = GuardedStream(encrypted, self._host, self._approved, self._allowed)
         if not result.peer_valid():
             await result.reject()

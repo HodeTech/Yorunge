@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
@@ -13,6 +13,7 @@ from typing import NoReturn
 
 from yorunge.adapters.capability_cache import Clock, SystemClock
 from yorunge.adapters.platform_upload_port import ObservedUploadPort, PreparedUploadCall
+from yorunge.adapters.platform_upload_put import PreparedPutCall
 from yorunge.adapters.platform_upload_reader import ObservedUploadReader
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_http import UploadHttpxTransport, UploadSession
@@ -24,19 +25,22 @@ from yorunge.adapters.upload_preparation import (
 )
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import created_dataset, read_manifest
+from yorunge.application import upload_descriptors as descriptors
 from yorunge.application.http_transport import HttpCredential
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_budget import UploadBudget
 from yorunge.application.upload_workflow import (
-    CreateStage,
     EffectOutcome,
+    OriginalEnvironment,
     PreparedEffect,
     create_and_link,
+    create_link_and_upload,
 )
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
+from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
 from yorunge.domain.dataset_upload import UploadPermission
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
@@ -64,14 +68,19 @@ class OriginalPhase:
 
 
 class _Call:
-    def __init__(self, call: PreparedUploadCall, client: UploadHttpxTransport) -> None:
+    def __init__(
+        self, call: PreparedUploadCall | PreparedPutCall, client: UploadHttpxTransport
+    ) -> None:
         self.call, self.client = call, client
 
     async def execute(self, arm: UploadArm) -> EffectOutcome:
         return await self.call.execute(self.client, arm)
 
     async def aclose(self) -> None:
-        self.call.close()
+        if isinstance(self.call, PreparedPutCall):
+            await self.call.aclose()
+        else:
+            self.call.close()
 
     def __repr__(self) -> str:
         return "<bound upload call private>"
@@ -95,6 +104,13 @@ class _Environment:
         self.access: TransferWriteAccess | None = None
         self.baseline: ProviderDataset | None = None
         self.memo: dict[tuple[UploadPermission, str | None], UploadCurrentCheck] = {}
+        self.contexts: tuple[descriptors.FileContext, ...] = ()
+        self.uploads: dict[int, descriptors.PresignedUpload] = {}
+        self.confirmed_count = 0
+
+    @property
+    def write_owned(self) -> bool:
+        return self.access is not None
 
     @contextmanager
     def repository(self) -> Iterator[StateUploads]:
@@ -107,9 +123,13 @@ class _Environment:
         with self.repository() as repository:
             repository.check_scope(self.plan.scope)
 
-    async def current(self, kind: CreateStage) -> UploadCurrentCheck:
+    async def current(self, kind: StageKind) -> UploadCurrentCheck:
         self.scope()
-        action: UploadPermission = "create_private_dataset" if kind == "create" else "link_project"
+        action: UploadPermission = "upload_created_dataset"
+        if kind == "create":
+            action = "create_private_dataset"
+        elif kind == "project_link":
+            action = "link_project"
         expected = None if kind == "create" else self.baseline
         if kind != "create" and expected is None:
             raise YorungeError("operation_conflict")
@@ -128,6 +148,7 @@ class _Environment:
                 dataset_id=dataset_id,
             )
             return cached
+        self._renew_for_probe()
         check = await self.reader.current(
             self.client, self.plan, self.inputs, action=action, expected_dataset=expected
         )
@@ -148,21 +169,63 @@ class _Environment:
         # Its durable owner IDs cannot manufacture this process's write access.
         return self.access is not None
 
-    def prepare(self, kind: CreateStage) -> PreparedEffect:
+    def _renew_for_probe(self) -> None:
+        record = self.record
+        if record is None or record.lease is None or self.access is None:
+            return
+        if instant(record.lease.expires_at) - self.runtime.clock.now() > timedelta(seconds=35):
+            return
+        with self.repository() as repository:
+            repository.renew(record.operation_id, record.lease)
+            current = repository.show(operation_id=record.operation_id).operation
+            assert type(current) is TransferRecordV2
+            self.record = current
+
+    def _context(self, index: int | None) -> descriptors.FileContext:
+        assert self.record is not None and self.record.dataset_id is not None
+        if type(index) is not int or not 0 <= index < self.plan.manifest.file_count:
+            raise YorungeError("invalid_request")
+        if not self.contexts:
+            self.contexts = self.port.files(self.record.operation_id, self.record.dataset_id)
+        return self.contexts[index]
+
+    def prepare(self, kind: StageKind, index: int | None = None) -> PreparedEffect:
         assert self.record is not None
+        call: PreparedUploadCall | PreparedPutCall
         if kind == "create":
             call = self.port.prepare_create(self.record.operation_id)
-        else:
+        elif kind == "project_link":
             assert self.record.dataset_id is not None
             call = self.port.prepare_link(self.record.operation_id, self.record.dataset_id)
+        elif kind == "presign":
+            call = self.port.prepare_presign(self._context(index))
+        else:
+            context = self._context(index)
+            upload = self.uploads.get(context.file_index)
+            if upload is None:
+                raise YorungeError("invalid_response")
+            call = (
+                self.port.prepare_put(upload)
+                if kind == "put"
+                else self.port.prepare_confirm(upload, confirmed_count=self.confirmed_count + 1)
+            )
         return _Call(call, self.client)
 
-    def arm(self, check: UploadCurrentCheck, kind: CreateStage) -> UploadArm:
+    def validate_uploads(self) -> None:
+        if set(self.uploads) != set(range(self.plan.manifest.file_count)):
+            raise YorungeError("invalid_response")
+        descriptors.distinct_uploads(
+            tuple(self.uploads[index] for index in range(len(self.contexts))), self.contexts
+        )
+
+    def arm(
+        self, check: UploadCurrentCheck, kind: StageKind, index: int | None = None
+    ) -> UploadArm:
         assert self.record is not None and self.record.lease is not None
         self.inputs.recheck()
         with self.repository() as repository:
             arm = repository.arm(
-                self.record.operation_id, self.record.lease, check, kind, None, total_end=self.end
+                self.record.operation_id, self.record.lease, check, kind, index, total_end=self.end
             )
             record = repository.show(operation_id=self.record.operation_id).operation
             assert type(record) is TransferRecordV2
@@ -176,6 +239,13 @@ class _Environment:
             assert type(view.operation) is TransferRecordV2
             self.record = view.operation
             self.baseline = created_dataset(view)
+            kinds = {intent.intent_id: intent.kind for intent in view.intents}
+            self.confirmed_count = sum(
+                receipt.result == "accepted" and kinds[receipt.intent_id] == "confirm"
+                for receipt in view.receipts
+            )
+            if outcome.upload is not None:
+                self.uploads[outcome.upload.context.file_index] = outcome.upload
 
     def _stop(self, operation_id: str) -> bool | None:
         with self.repository() as repository:
@@ -261,12 +331,13 @@ def _initial(
         return plan, read_manifest(store.connection, plan)
 
 
-def _execute_create_link(
+def _execute_phase(
     runtime: UploadPreparationRuntime,
     plan: DatasetUploadPlanV2,
     bound: BoundCredential,
     inputs: UploadInputObservation,
     end: float,
+    algorithm: Callable[[OriginalEnvironment], Awaitable[TransferRecordV2]],
 ) -> OriginalPhase:
     key = HttpCredential(
         "X-API-Key",
@@ -286,7 +357,7 @@ def _execute_create_link(
     async def consume(client: UploadHttpxTransport) -> TransferRecordV2:
         nonlocal environment
         environment = _Environment(runtime, plan, bound, inputs, reader, port, client, end)
-        return await create_and_link(environment)
+        return await algorithm(environment)
 
     failure = None
     record: TransferRecordV2 | None = None
@@ -307,10 +378,11 @@ def _execute_create_link(
     return OriginalPhase(plan, record, environment is not None and environment.access is None)
 
 
-def create_link_original(
+def _original_phase(
     plan_id: str,
     state_dir: Path | None,
     load_context: ContextLoader,
+    algorithm: Callable[[OriginalEnvironment], Awaitable[TransferRecordV2]],
     *,
     session_factory: SessionFactory = UploadSession,
     clock: Clock | None = None,
@@ -345,4 +417,40 @@ def create_link_original(
             expected_root=plan.root,
         )
         runtime._scope(bound, scope, plan.parameters.name)
-        return _execute_create_link(runtime, plan, bound, inputs, end)
+        return _execute_phase(runtime, plan, bound, inputs, end, algorithm)
+
+
+def create_link_original(
+    plan_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> OriginalPhase:
+    return _original_phase(
+        plan_id,
+        state_dir,
+        load_context,
+        create_and_link,
+        session_factory=session_factory,
+        clock=clock,
+    )
+
+
+def upload_files_original(
+    plan_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> OriginalPhase:
+    return _original_phase(
+        plan_id,
+        state_dir,
+        load_context,
+        create_link_and_upload,
+        session_factory=session_factory,
+        clock=clock,
+    )

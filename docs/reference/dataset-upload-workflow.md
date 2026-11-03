@@ -1,6 +1,6 @@
 # Upload original koordinatörü
 
-**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 private invocation/admission/create-link kodlandı, iki fresh kod review bekliyor; r.2/r.3 full koordinatör henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 iki fresh kod turuyla yerel kapandı; r.2 presign/PUT/confirm kodlandı, iki fresh kod review bekliyor. R.3 initial proof/full koordinatör henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
 
 ## Katman ve invocation
 
@@ -27,6 +27,8 @@ Pozitif current check yalnız exact action/dataset/saved scope/plan/work ve immu
 Bütün N presign descriptor’ı accepted receipt ile kayıtlı ve raw provider key/exact wire target bijeksiyonu doğrulanmış olmadan ilk PUT yoktur. Local binding ve ephemeral client_uid ayrı kalır; restart raw mapping’i yeniden kurmaz. Pre-intent rezervasyon reddi durur; quota receipt/plan veya HTTP izni değildir.
 
 PUT en çok iki worker’dır. Her worker kendi source/response/call/reservation temizliğini aynı Task’ta tamamlar. Koordinatör ilk hatada yeni worker/aşama başlatmaz, diğer pending worker’ları iptal edip bekler; cleanup tamamlanmadan session kapanmaz. Daha önce verilmiş permit ve uzakta gerçekleşmiş etki geri alınmış sayılmaz. Commit edilmiş accepted receipt silinmez; sonucu commit edilemeyen response unknown kalır; durduktan sonra yeni presign/PUT/confirm veya otomatik retry/fallback yoktur. Confirm publication seri, kabul edilmiş confirm sayısı+1 oracle’ıyla yapılır; iki worker sayacı tahmin etmez.
+
+Uygulama ikili PUT grupları arasında seri confirm yapar; bir sonraki grup önceki grubun confirm kayıtları tamamlanınca açılır. Uzun PUT sonrası stale current probe’dan önce lease’te en çok 35 saniye pay kalmışsa yalnız original owner’ın mevcut renew kapısı kullanılır; yeni access/attempt/fence veya toplam pencere üretilmez. Süresi zaten dolmuş lease canlandırılmaz. TLS el sıkışması pool’a kayıtlı bağlantı üretmeden iptal edilirse raw TCP kaynağı aynı Task’ta kapatılır; gerçek CancelledError cleanup sonrası yayılır.
 
 ## Initial read, proof ve hata sınırı
 

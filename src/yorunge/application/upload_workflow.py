@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Literal, Protocol
 
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_descriptors import PresignedUpload
+from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError
@@ -36,33 +38,27 @@ class OriginalEnvironment(Protocol):
     @property
     def record(self) -> TransferRecordV2 | None: ...
 
-    async def current(self, kind: CreateStage) -> UploadCurrentCheck: ...
+    @property
+    def write_owned(self) -> bool: ...
+
+    async def current(self, kind: StageKind) -> UploadCurrentCheck: ...
     def admit(self, check: UploadCurrentCheck) -> bool: ...
-    def prepare(self, kind: CreateStage) -> PreparedEffect: ...
-    def arm(self, check: UploadCurrentCheck, kind: CreateStage) -> UploadArm: ...
+    def prepare(self, kind: StageKind, index: int | None = None) -> PreparedEffect: ...
+    def arm(
+        self, check: UploadCurrentCheck, kind: StageKind, index: int | None = None
+    ) -> UploadArm: ...
     def publish(self, outcome: EffectOutcome) -> None: ...
+    def validate_uploads(self) -> None: ...
     def failure(self, error: BaseException) -> OperationError | None: ...
 
 
-async def create_and_link(environment: OriginalEnvironment) -> TransferRecordV2:
-    """A private phase, never a public successful-delivery result."""
+async def _guarded(
+    environment: OriginalEnvironment,
+    steps: Callable[[], Awaitable[TransferRecordV2]],
+) -> TransferRecordV2:
     failure: OperationError | None = None
     try:
-        current = await environment.current("create")
-        if environment.admit(current):
-            for kind in ("create", "project_link"):
-                stage: CreateStage = kind
-                check = await environment.current(stage)
-                call = environment.prepare(stage)
-                try:
-                    arm = environment.arm(check, stage)
-                    outcome = await call.execute(arm)
-                    environment.publish(outcome)
-                finally:
-                    await call.aclose()
-        record = environment.record
-        assert record is not None
-        return record
+        return await steps()
     except BaseException as error:
         # Cleanup may record uncertainty, but an actual Task cancellation must
         # still propagate. The outer sync bridge binds SIGINT separately.
@@ -71,7 +67,103 @@ async def create_and_link(environment: OriginalEnvironment) -> TransferRecordV2:
             raise
         if failure is None:
             raise
-    # Raise outside the rejected exception's active context, not merely with
-    # suppress_context: even private source exception chains must be released.
     failure.__context__ = failure.__cause__ = None
     raise failure
+
+
+async def _effect(
+    environment: OriginalEnvironment, kind: StageKind, index: int | None = None
+) -> None:
+    check = await environment.current(kind)
+    call = environment.prepare(kind, index)
+    try:
+        arm = environment.arm(check, kind, index)
+        outcome = await call.execute(arm)
+        environment.publish(outcome)
+    finally:
+        await call.aclose()
+
+
+async def _create_link(environment: OriginalEnvironment) -> TransferRecordV2:
+    current = await environment.current("create")
+    if environment.admit(current):
+        await _effect(environment, "create")
+        await _effect(environment, "project_link")
+    record = environment.record
+    assert record is not None
+    return record
+
+
+async def create_and_link(environment: OriginalEnvironment) -> TransferRecordV2:
+    """A private phase, never a public successful-delivery result."""
+    return await _guarded(environment, lambda: _create_link(environment))
+
+
+def _completed_error(tasks: list[asyncio.Task[EffectOutcome]]) -> BaseException | None:
+    for task in tasks:
+        if task.cancelled():
+            try:
+                task.result()
+            except asyncio.CancelledError as cancelled:
+                return cancelled
+        error = task.exception()
+        if error is not None:
+            return error
+    return None
+
+
+async def _drain(
+    environment: OriginalEnvironment, tasks: list[asyncio.Task[EffectOutcome]]
+) -> None:
+    pending = set(tasks)
+    while pending:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        ordered = [task for task in tasks if task in done]
+        error = _completed_error(ordered)
+        if error is not None:
+            raise error
+        for task in ordered:
+            environment.publish(task.result())
+
+
+async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
+    calls: list[PreparedEffect] = []
+    tasks: list[asyncio.Task[EffectOutcome]] = []
+    try:
+        for index in indices:
+            check = await environment.current("put")
+            call = environment.prepare("put", index)
+            calls.append(call)
+            arm = environment.arm(check, "put", index)
+            tasks.append(asyncio.create_task(call.execute(arm)))
+        await _drain(environment, tasks)
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        for call in calls:
+            await call.aclose()
+
+
+async def create_link_and_upload(environment: OriginalEnvironment) -> TransferRecordV2:
+    """Complete all write receipts; metadata proof is the next private phase."""
+
+    async def steps() -> TransferRecordV2:
+        record = await _create_link(environment)
+        if not environment.write_owned:
+            return record
+        count = environment.plan.manifest.file_count
+        for index in range(count):
+            await _effect(environment, "presign", index)
+        environment.validate_uploads()
+        for start in range(0, count, 2):
+            indices = range(start, min(count, start + 2))
+            await _put_batch(environment, indices)
+            for index in indices:
+                await _effect(environment, "confirm", index)
+        assert environment.record is not None
+        return environment.record
+
+    return await _guarded(environment, steps)

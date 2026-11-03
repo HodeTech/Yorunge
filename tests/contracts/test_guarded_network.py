@@ -240,6 +240,40 @@ def test_dns_and_connect_share_one_phase_deadline():
     assert connector.calls == []
 
 
+@pytest.mark.parametrize("close_error", [False, True])
+def test_task_cancel_during_tls_closes_tcp_in_owner_task_and_propagates(close_error):
+    stream = Stream()
+    entered = None
+    closing_tasks = []
+
+    async def handshake(*args):
+        entered.set()
+        await asyncio.Future()
+
+    async def close():
+        closing_tasks.append(asyncio.current_task())
+        stream.closed = True
+        if close_error:
+            raise OSError("secondary close failure")
+
+    stream.start_tls, stream.aclose = handshake, close
+    guarded = GuardedStream(stream, "storage.example", frozenset({"8.8.8.8"}), public_address)
+
+    async def run():
+        nonlocal entered
+        entered = asyncio.Event()
+        task = asyncio.create_task(
+            guarded.start_tls(ssl.create_default_context(), "storage.example")
+        )
+        await entered.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert stream.closed and closing_tasks == [task]
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize(
     "timeout", [float("nan"), float("inf"), float("-inf"), True, "5", 10**1000]
 )
