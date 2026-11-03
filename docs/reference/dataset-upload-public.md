@@ -1,6 +1,6 @@
 # Upload CLI ve Python sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2t iki eksenli preflight ve iki P2 düzeltme teyidi kapandı; t.1 summary/yerel list-show-review-revoke API iki fresh kod turu ve cursor P2 fix teyidiyle yerel kapandı. T.2 prepare/approve/start/reconcile API iki fresh kod turu ve iki P2 fix teyidiyle yerel kapandı. T.3 CLI/progress kodu ve gerçek subprocess/PTY testleri uygulandı, iki fresh kod turu bekleniyor. [Kullanım akışı](upload-workflows.md). [V2 politika/kanıt](dataset-upload-v2.md), [hazırlık](dataset-upload-preparation.md), [original akış](dataset-upload-workflow.md) ve [salt okuma uzlaştırması](dataset-upload-reconciliation.md) kurallarının public tüketicisidir. Yeni yetki/fiyat/retry hakkı veya live yetkisi değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2t iki eksenli preflight ve iki P2 düzeltme teyidi kapandı; t.1 summary/yerel list-show-review-revoke API iki fresh kod turu ve cursor P2 fix teyidiyle yerel kapandı. T.2 prepare/approve/start/reconcile API iki fresh kod turu ve iki P2 fix teyidiyle yerel kapandı. T.3 CLI/progress, gerçek subprocess/PTY ve iki fresh kod turu/fix teyitleriyle yerel kapandı; üst c son native/kurulum/CI/ayrı canlı kabulü sürüyor. [Kullanım akışı](upload-workflows.md). [V2 politika/kanıt](dataset-upload-v2.md), [hazırlık](dataset-upload-preparation.md), [original akış](dataset-upload-workflow.md) ve [salt okuma uzlaştırması](dataset-upload-reconciliation.md) kurallarının public tüketicisidir. Yeni yetki/fiyat/retry hakkı veya live yetkisi değildir.
 
 ## Niyet incelemesi ve dar sonuç
 

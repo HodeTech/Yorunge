@@ -6,7 +6,7 @@
 |---|---|---|---|
 | [P00](phase-00-foundation.md) | Ürün ve belge temeli | Tamamlandı; tarihsel kanıt | Ürün çalışıyor iddiası yok |
 | [P01](phase-01-core.md) | Güvenilir yerel çekirdek ve taşıma/durum sözleşmesi | Tamamlandı; PR #11 ile development’a teslim edildi | Gerçek EVREN veya eğitim adaptörü değil |
-| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0 ve bütün alt kartlar verified; PR #12 / 9f30fd2 ile development’a teslim edildi. P02-1 ve P02-1a/b/c/d verified; Accepted ADR-0023 manifest/scan/inspect/verify, native ve üç ortam CI/kanıt kabulü PR #13 / 50d68b1 ile development’a teslim edildi. [Merge kapanışı](../research/p02-1-implementation-validation.md#development-merge-kapanışı). P02-2–7 henüz uygulanmadı | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
+| [P02](phase-02-data-and-inference.md) | Veri aktarımı, katalog ve native çıkarım | P02-0 ve bütün alt kartlar verified; PR #12 / 9f30fd2 ile development’a teslim edildi. P02-1 ve P02-1a/b/c/d verified; Accepted ADR-0023 manifest/scan/inspect/verify, native ve üç ortam CI/kanıt kabulü PR #13 / 50d68b1 ile development’a teslim edildi. [Merge kapanışı](../research/p02-1-implementation-validation.md#development-merge-kapanışı). P02-2 d–w yerel kod/review tamam; nihai native/kurulum/CI/ayrı canlı kabul açık. P02-3–7 planlandı | Canlı endpoint/hesap ve yeni kararlar ilgili tüketicide kapılı |
 | [P03](phase-03-training-and-tools.md) | Yönetilen eğitim ve ForgeLM + bir muadil | Planlandı; iki bağımsız hat | Runtime erişimi varsayılmaz |
 | [P04](phase-04-automation-and-hardening.md) | Seçilmiş ileri işler ve yayın kabulü | Planlandı; koşullu hatlar | Bütün opsiyonel işler ilk yayın önkoşulu değil |
 

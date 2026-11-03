@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı kesinti/kayıp cevap sonrasında aynı operation ID'siyle neyin bilindiğini görür, yetkili salt okumayla uzlaştırır ve eksik kanıtı anlar. Mevcut jobs generic execution geçmişidir; transfer stage/read reconciliation yüzeyi veya gerçek upload kabulü yoktur.
+Kullanıcı kesinti/kayıp cevap sonrasında aynı operation ID'siyle neyin bilindiğini görür, yetkili salt okumayla uzlaştırır ve eksik kanıtı anlar. Başlangıçta yalnız generic jobs geçmişi vardı. Transfer stage/read reconciliation ve public yüzey d–w dilimlerinde yerel verified; bu üst kart son kaynak/native/kurulum/CI/ayrı canlı kabulünü kapatır.
 
 ## Giren ve girmeyen kapsam
 

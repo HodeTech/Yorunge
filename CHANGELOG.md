@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-11-04
+
+- Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
+
 ### Fixed — 2026-11-03
 
 - Ortak `approval_required` mesajı işlemin gerektirdiği onay seçimine yönlendirir; plan digest’i dışındaki açık kabul yolları için yanlış toparlanma önermez. Kod ve exit 4 değişmez.

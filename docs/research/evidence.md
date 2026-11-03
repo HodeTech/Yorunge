@@ -2616,6 +2616,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-1a-evidence-catalog-profile.json.gz`.
 **Özet:** `{"cases": 9, "diagnostic_only": true, "kind": "operation", "max_elapsed_ms": 1156.6550000570714, "outcomes": {"ok": 9}, "source_commit": "ec401641a5135976cbfc7e0a4d53f502ecb4f59c"}`.
 
+## p02-2-live-runner-development-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `c4bdaa4ccd9b669abc787669d1892a70a17b02d185b6849070acc553aa555033`.
+**Yerel arşiv:** `raw/p02-2-live-runner-development-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 3, "kind": "rejected-upload", "original_bytes": 70913, "source_commit": "da243e54d97b3f393e647fc08f427b766ddb83ff"}`.
+
 ## p02-2-upload-v1-smoke-01-rejected
 
 **Tür:** `rejected-upload`.

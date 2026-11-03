@@ -55,7 +55,7 @@
 
 [P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. Sıradaki P02-2a–c kartları [P02-2 planında](../p02-2-delivery-plan.md) hazırlandı; ADR-0024/0025 Accepted; bağımsız yerel dilimler yetkili, ilgili provider/otorite kabulü açıkken remote kartlar draft kalır. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
 
-[P02-2t](p02-2t-public-upload-workflows.md), s salt okuma kabulünden sonra ortak CLI/Python ve dar public sonuç/niyet görünümünü tamamlar; [kanonik yüzey](../../reference/dataset-upload-public.md) uygulama öncesi hazırlanır.
+[P02-2t](p02-2t-public-upload-workflows.md), s salt okuma kabulünden sonra ortak CLI/Python ve dar public sonuç/niyet görünümünü iki fresh turla tamamladı; [kanonik yüzey](../../reference/dataset-upload-public.md) uygulanmıştır.
 
 Durum kart metadata’sında ve onunla denetlenen faz satırındadır; indeks durumu tekrar etmez. Aktif/sonraki iş için [current](../current.md#sıradaki-iş-ve-kalan-kapsam) kanoniktir. Diğer P02 kartları karar/endpoint kanıtları geldikçe hazırlanır; uzak fazlar için boş kart yığını üretilmez. Kart, kanıtıyla birlikte korunur.
 

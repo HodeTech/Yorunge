@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile çalışma dalında verified, gerçek presign/confirm codec/producer henüz yoktur.
+Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile çalışma dalında verified, gerçek presign/confirm codec/producer ve ortak workflow d–w dilimlerinde yerel verified; üst teslimin nihai kabulü açıktır.
 
 ## Giren ve girmeyen kapsam
 

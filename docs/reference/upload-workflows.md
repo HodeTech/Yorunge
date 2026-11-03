@@ -1,6 +1,6 @@
 # Private dataset aktarımı
 
-**Tarih:** 2026-11-03. **Durum:** P02-2t.3 çalışma dalındaki kullanıcı akışı; iki fresh kod turu ve üst c native/kurulum/CI/ayrı canlı kabulü henüz kapanmadı. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
+**Tarih:** 2026-11-03. **Durum:** P02-2t ortak CLI/Python akışı ve iki fresh review turu çalışma dalında yerel tamamlandı. Üst c son native/altı kurulum/üç ortam CI/ayrı canlı kabulü sürüyor. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
 
 Önce yerel dosyaları inceleyin, seçtiğiniz owner/projeyi kontrol edin ve planın tam digest’ini onaylayın. Aktarım bir kez gönderilir. Uzak metadata eşliği, dosyaların uzaktan indirilip hash’lendiği veya yetkinizin doğrulandığı anlamına gelmez.
 
