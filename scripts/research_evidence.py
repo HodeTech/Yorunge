@@ -1091,6 +1091,12 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     if kind == "dataset_hash_budget_v1" and version == 1:
         dataset = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
         return dataset["summarize_report"](report)  # type: ignore[no-any-return]
+    if kind == "upload_budget_v1" and version == 1:
+        upload = runpy.run_path(str(Path(__file__).with_name("upload_evidence.py")))
+        return upload["summarize_report"](report)  # type: ignore[no-any-return]
+    if kind == "rejected_upload_evidence_v1" and version == 1:
+        diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
+        return diagnostic["summarize"](report)  # type: ignore[no-any-return]
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
     if kind == "raw_stream_budget_v2" and version == 2:
@@ -1683,10 +1689,30 @@ def main() -> int:
         required=True,
         choices=("invalid_evidence", "interrupted_measurement", "unverified_measurement"),
     )
+    upload_rejected = commands.add_parser("archive-rejected-upload")
+    upload_rejected.add_argument("workspace", type=Path)
+    upload_rejected.add_argument("--name", required=True)
+    upload_rejected.add_argument("--source-commit", required=True)
+    upload_rejected.add_argument("--run-url")
+    upload_rejected.add_argument(
+        "--reason",
+        required=True,
+        choices=(
+            "invalid_evidence",
+            "interrupted_measurement",
+            "unverified_measurement",
+        ),
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
-        if args.action == "archive-rejected-startup":
+        if args.action == "archive-rejected-upload":
+            diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
+            diagnostic["retain"](
+                root, args.workspace, args.name, args.source_commit, args.reason, args.run_url
+            )
+            print("Archived original synthetic upload diagnostics; not acceptance.")
+        elif args.action == "archive-rejected-startup":
             archive_rejected_startup(
                 root, args.source, args.name, args.source_commit, args.run_url, args.reason
             )

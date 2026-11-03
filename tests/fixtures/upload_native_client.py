@@ -87,12 +87,21 @@ def graph(directory, operation_id):
         view = StateUploads(store).show(operation_id=operation_id)
         if view.verification is None:
             raise ValueError("upload produced no durable verification")
+        intents = {intent.intent_id: intent for intent in view.intents}
         return {
             "intent_count": len(view.intents),
             "receipt_count": len(view.receipts),
             "accepted_receipts": sum(receipt.result == "accepted" for receipt in view.receipts),
             "intents": [
                 {"kind": intent.kind, "file_index": intent.file_index} for intent in view.intents
+            ],
+            "receipts": [
+                {
+                    "kind": intents[receipt.intent_id].kind,
+                    "file_index": intents[receipt.intent_id].file_index,
+                    "result": receipt.result,
+                }
+                for receipt in view.receipts
             ],
             "files": [file.model_dump(mode="json") for file in view.verification.files],
         }

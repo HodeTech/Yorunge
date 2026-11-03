@@ -36,4 +36,4 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Teslim kaydı
 
-U ve W verified; iki eksenli son preflight ve installation-v3 düzeltme teyitleri kapandı. V.1 streaming sink, izole kurulu worker ve ortak test-only mapping uygulandı; küçük runtime-only wheel smoke’u geçti. Dilimin kod review turları sürüyor; V.2 bağımsız verifier/katalog ve V.3 kurulum/CI bağlantıları henüz tamamlanmadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
+U ve W verified; iki eksenli son preflight ve installation-v3 düzeltme teyitleri kapandı. V.1 streaming sink, izole kurulu worker ve ortak test-only mapping iki fresh tur/fix teyitleriyle kapandı; küçük runtime-only wheel smoke’u geçti. V.2 bağımsız verifier/driver/katalog ve kayıpsız tanı kodu uygulandı, review turları sırada. V.3 kurulum/CI bağlantıları henüz tamamlanmadı. Geliştirme smoke’larının kalıcı tanı takibi V.2 review sonrasında kapanacak; eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
