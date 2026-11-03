@@ -32,7 +32,9 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
         port=port, client_context=lambda: ssl.create_default_context(cafile=certificate)
     )
     original_admit, original_publish = _Environment.admit, _Environment.publish
+    original_arm = _Environment.arm
     original_verified = StateUploads.verified
+    original_control = StateUploads._control
 
     def pause():
         connection.send("paused")
@@ -57,6 +59,17 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
         ):
             pause()
 
+    def arm(environment, check, kind, index=None):
+        result = original_arm(environment, check, kind, index)
+        if boundary == "create_intent" and kind == "create":
+            pause()
+        return result
+
+    def control(repository, *args, **kwargs):
+        original_control(repository, *args, **kwargs)
+        if boundary == "proof_before_commit" and kwargs.get("proof") is not None:
+            pause()
+
     def verified(repository, *args, **kwargs):
         result = original_verified(repository, *args, **kwargs)
         if boundary == "proof_commit":
@@ -64,6 +77,7 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
         return result
 
     _Environment.admit, _Environment.publish, StateUploads.verified = admit, publish, verified
+    _Environment.arm, StateUploads._control = arm, control
     run_upload_original(
         plan_id,
         Path(state),
@@ -77,10 +91,12 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
     "boundary,intents,receipts,writes,terminal",
     [
         ("admission", 0, 0, 0, False),
+        ("create_intent", 1, 0, 0, False),
         ("create_response", 1, 0, 1, False),
         ("create_commit", 1, 1, 1, False),
         ("put_response", 4, 3, 4, False),
         ("confirm_commit", 5, 5, 5, False),
+        ("proof_before_commit", 5, 5, 5, False),
         ("proof_commit", 5, 5, 5, True),
     ],
 )
