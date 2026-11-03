@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TypeVar
 
 from yorunge.adapters.capability_cache import SystemClock
-from yorunge.adapters.upload_original import ContextLoader, run_upload_original
+from yorunge.adapters.upload_original import ContextLoader, OriginalPhase, run_upload_original
 from yorunge.adapters.upload_preparation import UploadPreparationRuntime, read_approval_input
 from yorunge.adapters.upload_public import show_upload, validate_local
 from yorunge.adapters.upload_reconciliation import reconcile_upload
@@ -20,7 +20,7 @@ from yorunge.domain.dataset_upload import (
     provider_uuid,
 )
 from yorunge.domain.dataset_upload_v2 import AdmissionPolicy, CostPolicy, validate_policy_choice
-from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
 from yorunge.domain.models import Context, Model, Profile, Result
 from yorunge.domain.upload_public import DatasetUploadSummary
 
@@ -44,7 +44,16 @@ def credit_micros(value: str | None, unpriced: bool) -> tuple[CostPolicy, int | 
     return "bounded_required", micros
 
 
-def _safe(action: Callable[[], Result[T]]) -> Result[T]:
+def _bound(code: ErrorCode, identity: Callable[[], str | None] | None) -> YorungeError:
+    operation_id = identity() if identity is not None else None
+    return OperationError(code, operation_id) if operation_id is not None else YorungeError(code)
+
+
+def _safe(
+    action: Callable[[], Result[T]],
+    *,
+    identity: Callable[[], str | None] | None = None,
+) -> Result[T]:
     failure: YorungeError
     try:
         return action()
@@ -52,18 +61,18 @@ def _safe(action: Callable[[], Result[T]]) -> Result[T]:
         if isinstance(error, OperationError):
             failure = OperationError(
                 error.code,
-                error.operation_id,
+                error.operation_id or (identity() if identity is not None else None),
                 reason_code=error.reason_code,
                 capacity_kind=error.capacity_kind,
             )
         else:
-            failure = YorungeError(error.code)
+            failure = _bound(error.code, identity)
     except KeyboardInterrupt:
-        failure = YorungeError("request_cancelled")
+        failure = _bound("request_cancelled", identity)
     except OSError:
-        failure = YorungeError("file_unreadable")
+        failure = _bound("file_unreadable", identity)
     except (ValueError, TypeError):
-        failure = YorungeError("invalid_request")
+        failure = _bound("invalid_request", identity)
     failure.__cause__ = failure.__context__ = None
     raise failure
 
@@ -161,11 +170,20 @@ def start_upload(
     if plan_id is None:
         raise YorungeError("invalid_request")
 
-    def start() -> Result[DatasetUploadSummary]:
-        phase = run_upload_original(plan_id, state_dir, load_context)
-        return show_upload(state_dir, operation_id=phase.record.operation_id)
+    phase: OriginalPhase | None = None
 
-    return _safe(start)
+    def start() -> Result[DatasetUploadSummary]:
+        nonlocal phase
+        phase = run_upload_original(plan_id, state_dir, load_context)
+        record = phase.record
+        if record.status != "succeeded":
+            code: ErrorCode = "operation_conflict"
+            if record.workflow_latched and record.status in {"running", "unknown", "admitted"}:
+                code = "operation_uncertain"
+            raise OperationError(code, record.operation_id)
+        return show_upload(state_dir, operation_id=record.operation_id)
+
+    return _safe(start, identity=lambda: phase.record.operation_id if phase is not None else None)
 
 
 def recover_upload(
@@ -185,4 +203,4 @@ def recover_upload(
         )
         return show_upload(state_dir, operation_id=phase.record.operation_id)
 
-    return _safe(recover)
+    return _safe(recover, identity=lambda: operation_id)

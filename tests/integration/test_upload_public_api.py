@@ -11,6 +11,7 @@ from tests.contracts.test_platform_upload_codec import PARAMETERS, SCOPE
 from tests.fixtures.http_server import Reply, TlsServer
 from tests.fixtures.upload_provider import DATASET, UploadProvider
 from tests.integration.test_upload_file_workflow import many
+from tests.integration.test_upload_journal import journal as journal
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import ENV
 from tests.integration.test_upload_preparation import certificates as certificates
@@ -323,3 +324,71 @@ def test_public_read_propagates_real_task_cancellation_and_releases_only_its_rea
         assert view.operation.status == "unknown" and view.operation.lease is None
         assert len(view.receipts) == 5 and view.verification is None
         assert store.verify().store_schema_version == 7
+
+
+@pytest.mark.parametrize(
+    "state,code",
+    [
+        ("admitted", "operation_conflict"),
+        ("running", "operation_uncertain"),
+        ("unknown", "operation_uncertain"),
+        ("cancelled", "operation_conflict"),
+        ("failed", "operation_conflict"),
+    ],
+)
+def test_public_existing_start_is_local_but_not_a_false_delivery_success(
+    journal, tmp_path, state, code
+):
+    record = journal.approved()
+    if state in {"running", "unknown", "failed"}:
+        intent, _, _ = journal.arm(record)
+    if state == "failed":
+        journal.accept(record, intent, rejected=True)
+    elif state in {"unknown", "cancelled"}:
+        with open_existing_store(journal.root) as store:
+            journal.repository(store).stop_local(
+                record.operation_id,
+                record.lease,
+                "request_uncertain" if state == "unknown" else "local_cancelled",
+            )
+    with open_existing_store(journal.root) as store:
+        before = StateUploads(store).show(operation_id=record.operation_id)
+    invoke = partial(
+        api.start_dataset_upload,
+        journal.plan.plan_id,
+        state_dir=journal.root,
+        config=tmp_path / "missing.toml",
+        profile="missing-profile",
+    )
+    with pytest.raises(OperationError) as raised:
+        invoke()
+    assert raised.value.code == code and raised.value.operation_id == record.operation_id
+    assert raised.value.__cause__ is raised.value.__context__ is None
+    with open_existing_store(journal.root) as store:
+        assert StateUploads(store).show(operation_id=record.operation_id) == before
+
+
+def test_actual_sigint_after_coordinator_result_keeps_the_known_operation_id(tmp_path, monkeypatch):
+    import signal
+
+    from tests.integration.test_upload_versioned_history import install_fixture
+    from yorunge.adapters.state import open_store
+
+    root = tmp_path / "state"
+    with open_store(root) as store:
+        data = install_fixture(store)
+    identity, plan_id = data["record"]["operation_id"], data["plan"]["plan_id"]
+
+    def interrupt(*args, **kwargs):
+        signal.raise_signal(signal.SIGINT)
+        raise AssertionError("SIGINT was not raised")
+
+    monkeypatch.setattr(upload_api, "show_upload", interrupt)
+    invoke = partial(api.start_dataset_upload, plan_id, state_dir=root)
+    with pytest.raises(OperationError) as raised:
+        invoke()
+    assert raised.value.code == "request_cancelled" and raised.value.operation_id == identity
+    assert raised.value.__cause__ is raised.value.__context__ is None
+    assert api.show_dataset_upload(operation_id=identity, state_dir=root).data.operation_status == (
+        "succeeded"
+    )
