@@ -1,6 +1,6 @@
 # Upload CLI ve Python sözleşmesi
 
-**Tarih:** 2026-11-03. **Durum:** P02-2t uygulama öncesi draft; aşağıdaki yüzey henüz çalışmaz. [V2 politika/kanıt](dataset-upload-v2.md), [hazırlık](dataset-upload-preparation.md), [original akış](dataset-upload-workflow.md) ve [salt okuma uzlaştırması](dataset-upload-reconciliation.md) kurallarının public tüketicisidir. Yeni yetki/fiyat/retry hakkı veya live yetkisi değildir.
+**Tarih:** 2026-11-03. **Durum:** P02-2t iki eksenli preflight ve iki P2 düzeltme teyidi kapandı; t.1 uygulaması başladı. Aşağıdaki public yüzey henüz teslim edilmedi. [V2 politika/kanıt](dataset-upload-v2.md), [hazırlık](dataset-upload-preparation.md), [original akış](dataset-upload-workflow.md) ve [salt okuma uzlaştırması](dataset-upload-reconciliation.md) kurallarının public tüketicisidir. Yeni yetki/fiyat/retry hakkı veya live yetkisi değildir.
 
 ## Niyet incelemesi ve dar sonuç
 

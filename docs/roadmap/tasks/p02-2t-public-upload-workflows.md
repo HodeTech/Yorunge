@@ -1,7 +1,7 @@
 ---
 id: P02-2t
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2s]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,4 @@ T.1 golden/type/strict/projection/keyset ve gerçek SQLite; t.2 gerçek TLS/stat
 
 ## Teslim kaydı
 
-Uygulama öncesi draft. Public sözleşme ve kullanıcı yolculuğu hazırlanıyor; preflight ve S kapanışı bekleniyor. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.
+S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 uygulaması başladı. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.

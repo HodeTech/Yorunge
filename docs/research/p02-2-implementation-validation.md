@@ -479,3 +479,6 @@ P02-2t public hazırlığı: dar summary’ye receipt’ten değil mevcut operat
 
 
 T preflight Sol/high contract ve Astra/high safety iki **P2** çelişkiyi bağımsız doğruladı. Draft üst Result.operation_id’ye gerçek ID istiyordu; mevcut Result v1/ADR-0018 null kuralı korunarak gerçek ID summary ve bound event/error/renderer bağlamına ayrıldı. Draft review credential/epoch/clock yok derken summary.cost_bound full private scope’u açabiliyordu; ayrı UploadCostSummary v1 yalnız scope-dışı fiyat/work-digest/kategori/dönem/source/zaman alanlarına indirildi. Nonnull cost identity sentinel kabulü eklendi. İş kanıtı/binding/quote private kalır. Operation.dataset_id, saved approval alanları ve requested-plan review mevcut ADR-0026/0027 ile uyumlu; yeni temel karar/ADR yok. Başka doğrulanmış blocker yok; düzeltme teyidi bekleniyor. Public ürün kodu henüz başlamadı; test/native/live yoktur.
+
+
+T preflight 333cf16 düzeltmeleri özgün iki reviewer tarafından salt okunur teyit edildi; iki P2 kapandı, yeni bulgu/ADR gereği yok. S verified sonrası t.1 uygulaması açıldı. Yeni test/live/native yoktur; public API teslimi henüz tamamlanmadı.
