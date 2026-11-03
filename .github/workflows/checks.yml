@@ -251,7 +251,7 @@ jobs:
   linux314:
     name: Linux / Python 3.14
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       PYTHON_VERSION: "3.14"
       RUN_BUDGETS: "false"
@@ -260,7 +260,7 @@ jobs:
   macos311:
     name: macOS / Python 3.11
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "false"

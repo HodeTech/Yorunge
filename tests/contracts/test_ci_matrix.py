@@ -86,7 +86,7 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
     job = workflow["jobs"][cell]
     runner, python, budgets = CELLS[cell]
     assert job["runs-on"] == runner
-    assert job["timeout-minutes"] == ("45" if cell == "linux311" else "25")
+    assert job["timeout-minutes"] == "45"
     assert job["env"] == {
         "PYTHON_VERSION": python,
         "RUN_BUDGETS": budgets,
