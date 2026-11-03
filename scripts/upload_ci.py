@@ -4,43 +4,123 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import runpy
+import select
 import signal
+import socket
 import subprocess
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DRIVER = runpy.run_path(str(ROOT / "scripts/benchmark-upload.py"))
 CHECKS = DRIVER["CHECKS"]
 SCHEDULING_SECONDS = 2700
+_termination_depth = 0
+
+
+@contextmanager
+def termination_signals() -> Iterator[None]:
+    global _termination_depth
+    previous = signal.getsignal(signal.SIGTERM)
+
+    def interrupted(signum: int, frame: object) -> None:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        raise SystemExit(128 + signum)
+
+    first = _termination_depth == 0
+    if first:
+        signal.signal(signal.SIGTERM, interrupted)
+    _termination_depth += 1
+    try:
+        yield
+    finally:
+        _termination_depth -= 1
+        if first:
+            signal.signal(signal.SIGTERM, previous)
 
 
 def stop_group(process: subprocess.Popen[bytes]) -> None:
-    if process.poll() is None:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+    if process.returncode is not None:
+        raise ValueError("upload supervisor ownership ended before group cleanup")
+    # No poll()/wait() has reaped this session leader yet. Its PID cannot have
+    # been reassigned to an unrelated group, even if the supervisor crashed.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
     process.wait(timeout=10)
 
 
 def execute(command: list[str], stdout: Path, stderr: Path) -> int:
-    with stdout.open("xb") as out, stderr.open("xb") as err:
-        with subprocess.Popen(
-            command,
-            cwd=ROOT,
-            env=DRIVER["CONTROL"]["environment"](),
-            stdout=out,
-            stderr=err,
-            start_new_session=True,
-        ) as process:
-            try:
-                return process.wait(timeout=SCHEDULING_SECONDS)
-            except BaseException:
-                stop_group(process)
-                raise
+    if signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+        raise ValueError("upload CI requires default child reaping ownership")
+    with termination_signals(), stdout.open("xb") as out, stderr.open("xb") as err:
+        control, child = socket.socketpair()
+        with control, child:
+            return owned_controller(command, control, child, out, err)
+
+
+def wait_status(control: socket.socket, command: list[str]) -> int:
+    end = time.monotonic() + SCHEDULING_SECONDS
+    data = bytearray()
+    while b"\n" not in data:
+        remaining = end - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, SCHEDULING_SECONDS)
+        ready, _, _ = select.select([control], [], [], min(remaining, 1.0))
+        if not ready:
+            continue
+        chunk = control.recv(32 - len(data))
+        if not chunk:
+            raise ValueError("upload supervisor closed before controller status")
+        data.extend(chunk)
+        if len(data) >= 32:
+            raise ValueError("upload supervisor status exceeded bound")
+    if re.fullmatch(rb"-?\d{1,3}\n", data, flags=re.ASCII) is None:
+        raise ValueError("invalid upload supervisor status")
+    code = int(data)
+    if not -128 <= code <= 255:
+        raise ValueError("invalid upload controller exit code")
+    return code
+
+
+def owned_controller(
+    command: list[str],
+    control: socket.socket,
+    child: socket.socket,
+    out: IO[bytes],
+    err: IO[bytes],
+) -> int:
+    supervisor = [
+        sys.executable,
+        "-I",
+        str(ROOT / "tests/fixtures/upload_supervisor.py"),
+        "--control-fd",
+        str(child.fileno()),
+        "--",
+        *command,
+    ]
+    with subprocess.Popen(
+        supervisor,
+        cwd=ROOT,
+        env=DRIVER["CONTROL"]["environment"](),
+        stdout=out,
+        stderr=err,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+        pass_fds=(child.fileno(),),
+    ) as process:
+        child.close()
+        try:
+            return wait_status(control, command)
+        finally:
+            stop_group(process)
 
 
 def copy_logs(workspace: Path, stdout: Path, stderr: Path) -> None:
@@ -116,6 +196,11 @@ def validate_output(path: Path, root: Path, environment: dict[str, Any]) -> None
 
 
 def check(args: argparse.Namespace) -> int:
+    with termination_signals():
+        return _check(args)
+
+
+def _check(args: argparse.Namespace) -> int:
     if sys.platform not in {"linux", "darwin"}:
         raise ValueError("native upload CI requires Linux or macOS")
     CHECKS["pattern_value"](args.run_url, CHECKS["CI_RUN_URL"])

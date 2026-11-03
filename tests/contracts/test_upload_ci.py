@@ -4,8 +4,11 @@ import copy
 import json
 import os
 import runpy
+import signal
+import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -25,7 +28,7 @@ def test_real_controller_timeout_kills_and_reaps_owned_group_with_original_logs(
     tmp_path, helper, monkeypatch
 ):
     namespace = helper["execute"].__globals__
-    monkeypatch.setitem(namespace, "SCHEDULING_SECONDS", 0.2)
+    monkeypatch.setitem(namespace, "SCHEDULING_SECONDS", 0.5)
     original = subprocess.Popen
     processes = []
 
@@ -45,10 +48,160 @@ def test_real_controller_timeout_kills_and_reaps_owned_group_with_original_logs(
     with pytest.raises(subprocess.TimeoutExpired):
         helper["execute"](command, stdout, stderr)
     assert len(processes) == 1 and processes[0].returncode == -9
-    assert stdout.read_text().strip() == str(processes[0].pid)
+    assert int(stdout.read_text().strip()) != processes[0].pid
     assert stderr.read_bytes() == b""
     with pytest.raises(ChildProcessError):
         os.waitpid(processes[0].pid, os.WNOHANG)
+
+
+def stopped(identity):
+    result = subprocess.run(
+        ["ps", "-o", "stat=", "-p", str(identity)], capture_output=True, text=True, timeout=5
+    )
+    return result.returncode == 1 or result.stdout.strip().startswith("Z")
+
+
+def eventually_stopped(identity):
+    end = time.monotonic() + 3
+    while not stopped(identity):
+        if time.monotonic() >= end:
+            return False
+        time.sleep(0.01)
+    return True
+
+
+def test_reaped_process_cannot_be_used_to_signal_a_reused_group(helper, monkeypatch):
+    def unexpected(*args):
+        pytest.fail("reaped process must not signal any group")
+
+    monkeypatch.setattr(os, "killpg", unexpected)
+    process = SimpleNamespace(returncode=0, pid=os.getpid())
+    with pytest.raises(ValueError, match="ownership ended"):
+        helper["stop_group"](process)
+
+
+def test_nondefault_child_reaping_is_rejected_before_spawn(tmp_path, helper, monkeypatch):
+    original = signal.getsignal
+    monkeypatch.setattr(
+        signal,
+        "getsignal",
+        lambda name: signal.SIG_IGN if name == signal.SIGCHLD else original(name),
+    )
+    stdout, stderr = tmp_path / "stdout", tmp_path / "stderr"
+    with pytest.raises(ValueError, match="child reaping ownership"):
+        helper["execute"]([sys.executable, "-I", "-c", "raise SystemExit(0)"], stdout, stderr)
+    assert not stdout.exists() and not stderr.exists()
+
+
+def test_abrupt_controller_exit_cannot_leave_owned_descendant_writing(tmp_path, helper):
+    stdout, stderr = tmp_path / "stdout", tmp_path / "stderr"
+    code = (
+        "import json,os,subprocess,sys;"
+        "child=subprocess.Popen([sys.executable,'-I','-c','import time;time.sleep(5)']);"
+        "print(json.dumps({'pid':child.pid,'group':os.getpgrp()}),flush=True);"
+        "raise SystemExit(7)"
+    )
+    assert helper["execute"]([sys.executable, "-I", "-c", code], stdout, stderr) == 7
+    child = json.loads(stdout.read_bytes())
+    try:
+        assert eventually_stopped(child["pid"])
+    finally:
+        if not stopped(child["pid"]) and os.getpgid(child["pid"]) == child["group"]:
+            os.killpg(child["group"], signal.SIGKILL)
+
+
+def test_parent_control_eof_stops_supervisor_group_before_reap(tmp_path):
+    control, child = socket.socketpair()
+    stdout, stderr = tmp_path / "stdout", tmp_path / "stderr"
+    with stdout.open("xb") as out, stderr.open("xb") as err, control, child:
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-I",
+                str(ROOT / "tests/fixtures/upload_supervisor.py"),
+                "--control-fd",
+                str(child.fileno()),
+                "--",
+                sys.executable,
+                "-I",
+                "-c",
+                "import os,time;print(os.getpid(),flush=True);time.sleep(5)",
+            ],
+            stdout=out,
+            stderr=err,
+            start_new_session=True,
+            pass_fds=(child.fileno(),),
+        )
+        child.close()
+        try:
+            end = time.monotonic() + 5
+            while not stdout.stat().st_size:
+                assert time.monotonic() < end
+                time.sleep(0.01)
+            control.close()  # Same EOF the supervisor sees when its owner dies.
+            process.wait(timeout=5)
+            assert process.returncode == -9
+            assert eventually_stopped(int(stdout.read_text().strip()))
+        finally:
+            if process.returncode is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=5)
+
+
+def test_actual_sigterm_runs_check_cleanup_retention_and_handler_restore(tmp_path):
+    root = tmp_path.resolve()
+    (root / "docs/research").mkdir(parents=True)
+    (root / "dist").mkdir()
+    (root / "wheels").mkdir()
+    (root / "wheels/package.whl").write_bytes(b"synthetic unused artifact")
+    supervisor = root / "tests/fixtures/upload_supervisor.py"
+    supervisor.parent.mkdir(parents=True)
+    supervisor.write_bytes((ROOT / "tests/fixtures/upload_supervisor.py").read_bytes())
+    (root / "environment.json").write_text(
+        json.dumps({"source_sha": "a" * 40, "cpu": "synthetic", "disk_type": "unknown"})
+    )
+    code = """
+import json,runpy,signal,subprocess,sys
+from pathlib import Path
+from types import SimpleNamespace
+helper=runpy.run_path(sys.argv[1]); root=Path(sys.argv[2])
+namespace=helper['check'].__globals__; namespace['ROOT']=root
+subprocess.run=lambda *args,**kwargs: SimpleNamespace(stdout='a'*40)
+execute=namespace['execute']; previous=signal.getsignal(signal.SIGTERM)
+namespace['execute']=lambda command,out,err: execute([sys.executable,'-I','-c',
+    'import os,time;print(os.getpid(),flush=True);time.sleep(5)'],out,err)
+args=SimpleNamespace(environment=root/'environment.json',wheel_dir=root/'wheels',
+    python=Path(sys.executable),workspace=root/'upload-check',output=root/'dist/upload.json',
+    run_url='https://github.com/HodeTech/Yorunge/actions/runs/123')
+try:
+    helper['check'](args)
+except SystemExit:
+    (root/'restored.json').write_text(json.dumps({'restored':signal.getsignal(signal.SIGTERM)==previous}))
+    raise
+"""
+    process = subprocess.Popen(
+        [sys.executable, "-I", "-c", code, str(ROOT / "scripts/upload_ci.py"), str(root)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        end = time.monotonic() + 10
+        marker = root / "upload-check-controller-stdout.txt"
+        while not marker.exists() or not marker.stat().st_size:
+            assert process.poll() is None and time.monotonic() < end
+            time.sleep(0.01)
+        process.send_signal(signal.SIGTERM)
+        output, error = process.communicate(timeout=10)
+        assert process.returncode == 143 and not output and not error
+        assert json.loads((root / "restored.json").read_bytes()) == {"restored": True}
+        assert eventually_stopped(int(marker.read_text().strip()))
+        checks = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
+        assert checks["verify"](root) == 1
+        assert checks["catalog"](root / "docs/research")[0]["summary"]["accepted"] is False
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.communicate(timeout=10)
 
 
 def test_real_controller_nonzero_preserves_non_utf8_and_stderr(tmp_path, helper):
