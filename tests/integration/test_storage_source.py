@@ -252,3 +252,38 @@ def test_empty_regular_file_has_empty_hash_and_successful_eof(source_file):
 
     assert asyncio.run(run()) == []
     assert source.complete and source.sent_bytes == 0 and source.sent_sha256 == entry.sha256
+
+
+def test_source_deadline_only_narrows_before_first_read(source_file):
+    source = make_source(source_file)
+    initial = source._end
+
+    async def run():
+        narrowed = time.monotonic() + 30
+        source.restrict_deadline(narrowed)
+        assert source._end == narrowed and source._file_fd is source._root_fd is None
+        source.restrict_deadline(initial + 999)
+        assert source._end == narrowed
+        await anext(source.chunks())
+        with pytest.raises(YorungeError) as raised:
+            source.restrict_deadline(time.monotonic() + 1)
+        assert raised.value.code == "invalid_request" and source._end == narrowed
+        await source.aclose()
+
+    asyncio.run(run())
+    assert source._file_fd is source._root_fd is None
+
+
+@pytest.mark.parametrize("deadline", [True, None, float("nan"), float("inf"), 10**1000])
+def test_source_rejects_invalid_arm_deadline_before_open(source_file, deadline):
+    source = make_source(source_file)
+    initial = source._end
+
+    async def run():
+        with pytest.raises(YorungeError) as raised:
+            source.restrict_deadline(deadline)
+        assert raised.value.code == "invalid_request" and source._end == initial
+        assert source._file_fd is source._root_fd is None
+        await source.aclose()
+
+    asyncio.run(run())

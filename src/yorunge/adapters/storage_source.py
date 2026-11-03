@@ -102,6 +102,19 @@ class DescriptorByteSource(AsyncIterator[bytes]):
         if time.monotonic() >= self._end:
             raise YorungeError("execution_timeout")
 
+    def restrict_deadline(self, deadline: float) -> None:
+        """Bind an unstarted lazy source to an issued arm without extending it."""
+        self._check()
+        valid = type(deadline) in (int, float)
+        try:
+            valid = valid and math.isfinite(deadline)
+        except OverflowError:
+            valid = False
+        if not valid or self._started or self._used:
+            raise YorungeError("invalid_request")
+        self._end = min(self._end, deadline)
+        self._check()
+
     def chunks(self) -> AsyncIterator[bytes]:
         self._check()
         if self._used:

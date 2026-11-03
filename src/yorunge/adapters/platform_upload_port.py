@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, NoReturn
+from typing import TYPE_CHECKING, Literal, NoReturn
 
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.application import platform_upload_codec as codec
@@ -30,13 +30,16 @@ from yorunge.domain.credentials import (
     normalize_target,
 )
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
-from yorunge.domain.dataset_transfer import StageIntent, StageReceipt, scope_target
+from yorunge.domain.dataset_transfer import StageIntent, StageReceipt, VerifiedFile, scope_target
 from yorunge.domain.dataset_upload import UploadScope, manifest_reference
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_requests import upload_request_digest
+
+if TYPE_CHECKING:
+    from yorunge.adapters.platform_upload_put import PreparedPutCall
 
 ControlKind = Literal["create", "project_link", "presign", "confirm"]
 
@@ -298,6 +301,7 @@ class ObservedUploadPort(_Private):
             type(context.file_index) is not int
             or not 0 <= context.file_index < len(owned)
             or owned[context.file_index] is not context
+            or revalidate_input(ServiceTarget, context.target) != self._credential.target
             or revalidate_input(DatasetFile, context.file)
             != self._manifest.files[context.file_index]
         ):
@@ -383,3 +387,15 @@ class ObservedUploadPort(_Private):
             context=context,
             confirmed_count=confirmed_count,
         )
+
+    def prepare_put(self, upload: descriptors.PresignedUpload) -> PreparedPutCall:
+        from yorunge.adapters.platform_upload_put import PreparedPutCall
+
+        return PreparedPutCall(self, upload)
+
+    async def items(
+        self, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+    ) -> tuple[VerifiedFile, ...]:
+        from yorunge.adapters.platform_upload_items import read_items
+
+        return await read_items(self, client, dataset_id, deadline=deadline)
