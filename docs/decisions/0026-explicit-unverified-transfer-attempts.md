@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — kullanıcı 2026-11-02 review bulguları kapandıktan sonra uygulamayı açıkça yetkilendirdi; revizyonun iki fresh turu tamamlandı. **Tarih:** 2026-11-02. **İş:** P02-2a/b/c. [ADR-0024](0024-durable-dataset-transfers.md), [ADR-0025](0025-isolated-storage-streaming.md), [v2 kanonik sözleşme](../reference/dataset-upload-v2.md), [paket planı](../roadmap/p02-2-delivery-plan.md).
 
+**Kısmi değişiklik:** [ADR-0027](0027-durable-created-dataset-context.md) accepted-create receipt, legacy nonterminal mutation kapısı ve yeni success baseline şartını değiştirir; aşağıdaki sürüm/success metni buna göre hizalıdır. Diğer yetki/maliyet/replay sınırları korunur.
+
 ## Bağlam
 
 [Canlı gözlemler](../research/p02-2-private-create-observations.md) bir private create 201, yanlış ID-detail GET 405 ve ayrı username/slug detail/my-role okumalarında 200/upload etiketi gösterdi. Link/presign/PUT/confirm yapılmadı. Bunlar genel yetki, principal veya fiyat garantisi değildir. Küçük deneme/200 CR aşımı izni varsayılan ürün politikası onayı sayılmaz.
@@ -19,7 +21,7 @@ Verified-only yol complete pre-authority/cost oracle yoksa draft kalır. Fixture
 | Numeric maliyet | exact-work complete UploadCostBound v2 gerekir; v1 scope-only tutar yeni write izni vermez |
 | Current/deadline | v2 ayrı baseline/supplemental check; mevcut gerçek süreler korunur, null expiry min'e girmez |
 | Read | yalnız v2 explicit için scoped read-attempt; v1/default read grant korunur |
-| Başarı | tam 2+3N stage grafiği, accepted receipt ve metadata proof; authority veya indirilmiş byte iddiası değildir |
+| Başarı | tam 2+3N stage grafiği; yeni v2 accepted create CreateReceiptV2 baseline ve metadata proof ister. Tarihsel v2+v1 terminal history korunur; authority/indirilmiş byte iddiası değildir |
 | Diğerleri | Capability/P02-R1, known negative, PID/owner/fence/lease/clock, namespace/intent/permit/replay, storage/secret/kota, ayrı live/nihai kabul değişmez |
 
 ### Açık seçim, maliyet ve insan onayı
@@ -48,13 +50,13 @@ Fresh pozitif için **seçenek A**: saved plan/approval/status/risks/binding imm
 
 Ayrı readonly reconcile 401/403→remote_access_denied/3, 429/5xx/transport→ilgili mevcut kod/1, malformed/404/405→invalid_response/1; operation ID korunur. Latched nonterminal read failure unknown/read_unavailable'dır, execution failure değildir. Bu sıfır-write çağrı genel exit-5 önceliğinin açık istisnasıdır; aktif write coordinator teslimi kesinleştiremezse operation_uncertain/5 önceliği sürer.
 
-Success **tam graph** ister: create+project_link ve her i=0..N−1 için presign/PUT/confirm, tam 2+3N intent, hepsinin tek accepted receipt'i, chronology ve tam ordered metadata. Eksik intent fakat mevcut bütün receipt'ler accepted+metadata eş ise sonuç unknown'dır. Kayıp create ID/receipt read ile yeniden üretilmez. Metadata/read authority'yi yükseltmez; remote_bytes_verified=false kalır.
+Success **tam graph** ister: create+project_link ve her i=0..N−1 için presign/PUT/confirm, tam 2+3N intent, hepsinin tek accepted receipt'i, chronology ve tam ordered metadata. Eksik intent fakat mevcut bütün receipt'ler accepted+metadata eş ise sonuç unknown'dır. Kayıp create ID/receipt read ile yeniden üretilmez. ADR-0027 gereği yeni nonterminal v2 success accepted CreateReceiptV2 ister; legacy v2+accepted create v1 yeni arm/renew/read lease/proof öncesinde HTTP'siz durur. Marker owner/CAS kapısına bağlıdır; yazılamazsa aynı ID/operation_uncertain döner, unknown yazıldı denmez. Eski terminal full validation korunur. Metadata/read authority'yi yükseltmez; remote_bytes_verified=false kalır.
 
 ### Sürümleme ve geçiş
 
 [Kapalı tip kataloğu](../reference/dataset-upload-v2.md#kapalı-tipler-ve-sürümler) plan/cost/approval/record/control/verification ve [public summary](../reference/dataset-upload-v2.md#public-özet-ve-kabul) v2'yi tanımlar. V1 byte/digest/golden/decode/history/local show/revoke ve güvenli recovery korunur. **Maliyet P1 düzeltmesinin açık istisnası:** scope-only v1 cost yeni write vermez; historical prepared writable değildir. V1 quote/plan'a varsayılan v2 alanları eklenmez, belirsiz iş v2'ye çevrilip arm edilmez.
 
-DDL/checksum 1–7 değişmez; ayrım payload JSON schema_version'ıdır, ayrı SQL version kolonu değildir. V2 operation/approval/control/proof eşleşir; stage/receipt/lease v1 biçimi korunur. Metadata_verified yalnız succeeded/terminal+nonnull v2 proof digest; read_unavailable yalnız unknown/recovery+null; diğer non-success digest null. İki slot/coalescing/reset/takeover ve byte/gerçek rezerv sınırları korunur. Eski binary kontrollü ret verir; rewrite/downgrade yoktur.
+DDL/checksum 1–7 değişmez; ayrım payload JSON schema_version'ıdır, ayrı SQL version kolonu değildir. V2 operation/approval/control/proof eşleşir; StageIntent/TransferLease v1 kalır. StageReceipt v1 rejected create ve diğer stage'ler içindir; yeni v2 accepted create insert'i yalnız ayrı CreateReceiptV2 kullanır. V1 byte/golden/decode/history korunması bütün yeni receipt'lerin v1 kalması anlamına gelmez. Metadata_verified yalnız succeeded/terminal+nonnull v2 proof digest; read_unavailable yalnız unknown/recovery+null; diğer non-success digest null. İki slot/coalescing/reset/takeover ve byte/gerçek rezerv sınırları korunur. Eski binary kontrollü ret verir; rewrite/downgrade yoktur.
 
 ## Onay sonrası akış ve kabul
 

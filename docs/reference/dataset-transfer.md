@@ -34,6 +34,8 @@ Kullanıcının owner/project seçimi niyettir; create/link/upload izni değildi
 
 ## Kalıcı aşama modeli
 
+**V2 amendment:** [ADR-0027](../decisions/0027-durable-created-dataset-context.md) Accepted; yeni v2 accepted create yalnız CreateReceiptV2, diğer receipt'ler v1. [Kapalı union ve tarihsel geçiş](dataset-upload-v2.md#kalıcı-create-receipt-ve-tarihsel-geçiş) yeni writer/legacy gate ve owner/CAS marker kuralının kaynağıdır. DDL7/2 KiB slot/rezerv değişmez; aşağıdaki tarihsel v1 wire geriye dönük yeniden yazılmaz.
+
 Plan/approval/transfer operation ayrı strict sürümlü kayıtlar; immutable manifest ayrı bounded canonical payload'dır. Yeni 6→7 SQL-only V2 migration yeni boş transfer tablolarını/indekslerini ekler; eski kayıt/payload/checksum için backfill yoktur. Full/hot validation, backup, bakım preview/fingerprint ve global expiry hesabı birlikte gelir. Güncel development şeması 6'dır; eski migration/manifest/checksum değiştirilmez. Restore/recover'ın operation runtime yasağı korunur.
 
 Owner/fence/CAS ortak güvenlik mekanizmasıdır; transferin 150 s lease'i, tek workflow attempt'i ve stage kotası ayrı aileye aittir. Genel execution'ın 30 s/16 attempt/256 business-event sınırları değiştirilmez veya transfer stage'ine uygulanmaz. Workflow latch ve aşama intent'leri yeniden gönderilemez. Aşama türleri create, project_link, presign, put, confirm; read verification etki izni üretmez. Her aşamanın key'i operation/kind/file index, request digest'i, kalıcı sıra/revision, gerçek UTC/clock alanı ve varsa güvenli resource bağını içerir. Tam private row/receipt alanları, canonical tipler, index/FK ve byte/counter eşitliği P02-2a yerel kayıt adımından önce sabitlenir. Raw signed URL, auth/header/body veya kullanıcı secret'ı journal değildir.

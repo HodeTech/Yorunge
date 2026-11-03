@@ -42,4 +42,4 @@ Dar local input/codec testleri, ilgili eski dataset regresyonları, gerçek TLS 
 
 - PR/commit: [75e35d7](https://github.com/HodeTech/Yorunge/commit/75e35d7); tek nihai P02-2 PR'ı henüz açılmadı.
 - Sonuç: O.1 input/revalidation, o.2 gerçek readonly producer ve o.3 private prepare/approve/revoke, her dilimde iki fresh tur ve doğrulanmış bulgu/fix teyidiyle çalışma dalında yerel verified. O.3 son runtime/policy/golden kümesi 342 passed; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2o3--gerçek-private-prepareapproverevoke-kompozisyonu).
-- Kalan sınır: Public API/CLI ve etkili controller, ADR-0027 onayına bağlı kalıcı create baseline, native/kurulum/source CI ve ayrı canlı kabul tamamlanmadı. Üst a/b/c veya epik verified değildir; grant/fiyat kanıtı üretilmez.
+- Kalan sınır: Public API/CLI ve etkili controller, Accepted ADR-0027/P02-2p kalıcı create baseline uygulaması, native/kurulum/source CI ve ayrı canlı kabul tamamlanmadı. Üst a/b/c veya epik verified değildir; grant/fiyat kanıtı üretilmez.
