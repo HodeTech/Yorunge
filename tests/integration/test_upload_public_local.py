@@ -260,3 +260,32 @@ def test_real_store_projection_does_not_publish_create_baseline_or_invalid_paylo
     assert raised.value.code == "state_invalid"
     assert "PRIVATE-CORRUPTED-BASELINE" not in str(raised.value)
     assert raised.value.__cause__ is raised.value.__context__ is None
+
+
+@pytest.mark.parametrize("cursor", ["bad", b"bad", "PRIVATE-SENTINEL-秘密"])
+def test_invalid_cursor_never_retains_raw_decoder_exception_chain(tmp_path, cursor):
+    root = tmp_path / "absent"
+    invoke = partial(api.list_dataset_uploads, state_dir=root, cursor=cursor)
+    with pytest.raises(YorungeError) as raised:
+        invoke()
+    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.__cause__ is raised.value.__context__ is None
+
+
+@pytest.mark.parametrize("policy", ["verified_only", "explicit_attempt"])
+def test_authority_summary_is_historical_full_grant_only_after_durable_success(journal, policy):
+    from tests.integration.test_upload_recovery_v2 import complete
+
+    body = journal.plan.model_dump(mode="json")
+    body["admission_policy"] = policy
+    journal.plan = seal(body)
+    record, proof = complete(journal, unknown=False)
+    before = api.show_dataset_upload(operation_id=record.operation_id, state_dir=journal.root).data
+    assert not before.authority_verified and before.verification_level == "none"
+    with open_existing_store(journal.root) as store:
+        journal.repository(store).verified(record.operation_id, record.lease, proof)
+        assert store.verify().store_schema_version == 7
+    after = api.show_dataset_upload(operation_id=record.operation_id, state_dir=journal.root).data
+    assert after.authority_verified and after.verification_level == "metadata"
+    assert not after.remote_bytes_verified
+    assert after.cost_bound is not None and "scope" not in type(after.cost_bound).model_fields

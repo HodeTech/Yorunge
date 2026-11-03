@@ -130,6 +130,21 @@ def _page(
         return DatasetUploadsPage(schema_version=1, uploads=tuple(included), next_cursor=cursor)
 
 
+def _cursor(value: str | None) -> tuple[str, str]:
+    if value is None:
+        return "", ""
+    decoded = None
+    try:
+        decoded = decode_cursor(value)
+    except YorungeError:
+        pass
+    if decoded is None:
+        # The shared decoder suppresses its traceback, but its Unicode/base64
+        # exception chain may retain input. Do not export that private chain.
+        raise YorungeError("invalid_request")
+    return decoded
+
+
 def list_uploads(
     state_dir: Path | None,
     *,
@@ -140,7 +155,7 @@ def list_uploads(
     validate_local(state_dir, plan_id)
     if type(limit) is not int or not 1 <= limit <= 100:
         raise YorungeError("invalid_request")
-    after = decode_cursor(cursor) if cursor is not None else ("", "")
+    after = _cursor(cursor)
     return Result[DatasetUploadsPage](
         data=_safe_local(state_dir, None, lambda store: _page(store, plan_id, limit, after))
     )
