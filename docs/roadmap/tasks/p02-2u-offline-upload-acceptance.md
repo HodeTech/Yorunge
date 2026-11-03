@@ -1,7 +1,7 @@
 ---
 id: P02-2u
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2t]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,4 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 
 ## Teslim kaydı
 
-Henüz uygulanmadı. T.3 R2 sürerken yalnız hazırlık yapılmıştır; bağımlı kod başlamadı.
+T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi başlayabilir; kod/iki fresh tur henüz yapılmadı. V ölçüm planındaki iki yöntem/saklama açıklığı ayrı kapatılır; v hazır veya ölçülmüş sayılmaz.
