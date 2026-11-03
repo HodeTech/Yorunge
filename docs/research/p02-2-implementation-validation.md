@@ -768,3 +768,17 @@ Bağımsız tüm-dosya AST genişletme/yorum karşılaştırması 50 dosya/545 a
 İlk [source CI 41734832370](https://github.com/HodeTech/Yorunge/actions/runs/41734832370), üç compatibility hücresi queued iken bu toplu kaynak düzeltmesi için iptal edildi. Hücreler sıfır step ile cancelled, aggregate ise eksik zorunlu hücreler nedeniyle failure oldu; bu teknik test başarısızlığı veya tamamlanmış kaynak kabulü değildir. API artifact envanteri 0 döndürdü; bu koşuda kalıcılaştırılacak Linux ölçümü üretilmedi. Yeni kaynak ve referanslar hazır olmadan ara push/rerun yapılmaz. Sonar giriş ekranının şart kabulü için açık kullanıcı cevabı ve ayrı yeni canlı deneme yetkisi bekler; bu beklemeler bağımsız yerel kapanışları durdurmaz.
 
 Sonar kaynak paketi `deb9772`, R1 Sol/high contract + Astra/high safety ve farklı fresh R2 Astra/high contract + Sol/high safety incelemelerinde temiz kapandı. Her iki tur yalnız kaynak/kanıt okudu; geçen test, build, benchmark veya CI tekrar edilmedi. Tüm-dosya dönüşüm kanıtı, dört mekanik-dışı test, cleanup/auth/URL/private exception sınırı ve 611 issue eşlemesi bağımsız teyit edildi. Yeni doğrulanmış bulgu veya fix commit’i gerekmedi. 196 Markdown, 6 skill/44 kart/actionlint/diff geçti. Agent-guide ilk sistem Python 3.9 çağrısı 40 metadata hatası bildirdi; desteklenen proje Python 3.11 çağrısı değişmeden 0 sorun verdi. Kaynak paketi kapalıdır; yeni ölçüm için kod değişikliği planlanmaz.
+
+## Sonar sonrası sabit kaynak M5 kabulü — f088cd7
+
+Tam kaynak `f088cd7f37be201671b652fbfaab87cd7ab4acd1`, aynı development 50d68b1 tabanı ve yeni runtime-only aday wheel üzerinde önceden seçilen 02 adlarıyla ölçüldü. Beş seri birbirleriyle veya başka yerel test/build ile çakıştırılmadan birer kez çalıştı; hepsi ilk koşuda geçti. İlan edilen M5 Max/arm64, macOS 27.0.1, Python 3.11.18 ve internal SSD/APFS ortamı önceki yöntemle aynıdır; donanım attestasyonu değildir. 01 serisi 510de0a’nın tarihsel kanıtı olarak aynen korunur, yeni kaynağa yeniden etiketlenmez.
+
+| Yeni kayıpsız kayıt | Sonuç |
+|---|---|
+| p02-2-reference-startup-02.json | Aday p95 help 28,35 / version 27,54 / context 94,17 / cache 131,54 ms; her komut 30 süreç, bütün kapılar geçti |
+| p02-2-reference-jobs-02.json | Dört × 30 süreç; en yüksek p95 dense/list 168,29 ms, hepsi ≤200 ms |
+| p02-2-reference-datasets-02.json | 24 süreç; en uzun 0,8971 s, en yüksek U 19,65625 MiB; inspect/verify G 1,03125 /4,109375 MiB, geçti |
+| p02-2-reference-raw-02.json | Gerçek 16/256/1024 MiB; en uzun 1,8586 s, en yüksek U 1,15625 MiB, G 1,140625 MiB; byte/hash/source/runtime eşliği geçti |
+| p02-2-reference-upload-02.json | 12 süreç; en uzun 64,8341 s, en yüksek U 13,46875 MiB, G 7,078125 MiB; tam accepted graph, bağımsız sink/oracle ve bütün kaynak/süre sınırları geçti |
+
+Dört güncel startup/jobs/dataset/upload source-reference kapısı ile **393 kayıpsız arşiv/indeks** doğrulandı. Upload G’nin 8 MiB sınırına kalan payı 0,921875 MiB’dir; gözlenen geçerli sonuç korunur, daha iyi örnek seçmek için tekrar yapılmadı. Özgün JSON/stdout/stderr ve sentetik workspace’ler Git dışında korunur. Bütün bu sonuçlar yerel kaynak kabulüdür; final üç ortam CI/altı temiz kurulum, Linux çıktılarının kalıcı saklanması, Sonar issue disposition ve ayrı kullanıcı onaylı canlı çağrı hâlâ açık. Mevcut draft PR #14’e tek toplu push yapılır; ara kaynak/eksik referans koşusu başlatılmaz.
