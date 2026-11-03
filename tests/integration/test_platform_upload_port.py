@@ -552,3 +552,37 @@ def test_selected_literal_in_local_plan_is_rejected_before_reservation(journal, 
     assert raised.value.code == "invalid_request"
     assert raised.value.__cause__ is raised.value.__context__ is None
     assert value.snapshot().create_requests == value.snapshot().effect_attempts == 0
+
+
+@pytest.mark.parametrize("timing", ["before_claim", "during_response"])
+def test_prepared_presign_cannot_accept_a_mutated_nested_file(journal, certificates, timing):
+    record, call, port, key, value = stage_call(journal, "presign")
+    context = port.files(record.operation_id, DATASET)[0]
+    original_hash = journal.manifest.files[0].sha256
+    changed_hash = "0" * 64
+    assert original_hash != changed_hash
+    if timing == "before_claim":
+        context.file.__dict__["sha256"] = changed_hash
+    arm = journal.arm(record, "presign", 0)
+
+    def changed_response(request, count):
+        assert json.loads(request.body)["files"][0]["sha256_hash"] == original_hash
+        context.file.__dict__["sha256"] = changed_hash
+        return encoded(presign_response(context))
+
+    path = f"/api/v1/datasets/{DATASET}/upload/presign"
+    with TlsServer(certificates, {path: changed_response}) as server:
+        owned, instances = session(server, key, value)
+        with owned:
+            with pytest.raises(YorungeError) as raised:
+                owned.exchange(lambda client: call.execute(client, arm))
+            assert raised.value.code == "invalid_request"
+            assert not instances[0]._responses and instances[0]._slots._value == 2
+        assert len(server.requests) == int(timing == "during_response")
+    assert value.snapshot().effect_attempts == int(timing == "during_response")
+    assert value.snapshot().response_pending == 0
+    with open_store(journal.root) as store:
+        view = journal.repository(store).show(operation_id=record.operation_id)
+        assert arm.intent.intent_id not in {r.intent_id for r in view.receipts}
+    if timing == "before_claim":
+        arm[1].consume()

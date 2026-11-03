@@ -129,6 +129,8 @@ class PreparedUploadCall(_Private):
         self._owner()
         try:
             self._port._client(client)
+            if self._context is not None:
+                self._port._file(self._context)
             self._arm(arm)
             intent, permit, deadline = arm.claim()
             self._used = True
@@ -142,6 +144,8 @@ class PreparedUploadCall(_Private):
 
     def _outcome(self, intent: StageIntent, raw: bytes) -> ControlOutcome:
         port, secret = self._port, self._port._credential.secret
+        if self._context is not None:
+            port._file(self._context)
         at = port._now()
         if self._kind == "create":
             created = codec.created(raw, port._scope, port._plan.parameters, secret)
