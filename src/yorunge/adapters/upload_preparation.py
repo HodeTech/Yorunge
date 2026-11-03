@@ -122,6 +122,33 @@ def _seal(request: UploadPreparationV2) -> DatasetUploadPlanV2:
     return plan
 
 
+def read_approval_input(
+    plan_id: str,
+    digest: str,
+    authority: bool,
+    unpriced: bool,
+    state_dir: Path | None,
+    clock: Clock,
+) -> tuple[DatasetUploadPlanV2, DatasetManifest]:
+    """Local approval gate, reusable before deferred config/credential resolution."""
+    with open_existing_store(state_dir) as store:
+        repository = StateUploads(store, clock=clock)
+        view = repository.show(plan_id=plan_id)
+        plan = view.plan
+        if (
+            not isinstance(plan, DatasetUploadPlanV2)
+            or plan.status == "draft"
+            or plan.digest != digest
+            or not instant(plan.prepared_at) <= clock.now() < instant(plan.expires_at)
+        ):
+            raise YorungeError("upload_plan_not_valid")
+        require_acknowledgements(plan, authority=authority, unpriced=unpriced)
+        if view.approval is not None or view.operation is not None:
+            raise YorungeError("operation_conflict")
+        with repository.phase():
+            return plan, read_manifest(store.connection, plan)
+
+
 class UploadPreparationRuntime:
     """Outer composition only; its session/clock seams are private test dependencies."""
 
@@ -295,22 +322,7 @@ class UploadPreparationRuntime:
     def _approval_input(
         self, plan_id: str, digest: str, authority: bool, unpriced: bool
     ) -> tuple[DatasetUploadPlanV2, DatasetManifest]:
-        with open_existing_store(self.state_dir) as store:
-            repository = StateUploads(store, clock=self.clock)
-            view = repository.show(plan_id=plan_id)
-            plan = view.plan
-            if (
-                not isinstance(plan, DatasetUploadPlanV2)
-                or plan.status == "draft"
-                or plan.digest != digest
-                or not instant(plan.prepared_at) <= self.clock.now() < instant(plan.expires_at)
-            ):
-                raise YorungeError("upload_plan_not_valid")
-            require_acknowledgements(plan, authority=authority, unpriced=unpriced)
-            if view.approval is not None or view.operation is not None:
-                raise YorungeError("operation_conflict")
-            with repository.phase():
-                return plan, read_manifest(store.connection, plan)
+        return read_approval_input(plan_id, digest, authority, unpriced, self.state_dir, self.clock)
 
     def approve(
         self,
