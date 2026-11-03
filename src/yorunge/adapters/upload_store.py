@@ -41,6 +41,7 @@ from yorunge.domain.dataset_upload import (
 )
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_versions import (
     UploadApproval,
@@ -209,6 +210,27 @@ TransferView = _TransferView[
 VersionedTransferView = _TransferView[
     UploadPlan, UploadApproval, UploadRecord, UploadControl, UploadVerification, UploadReceipt
 ]
+
+
+def created_dataset(view: VersionedTransferView) -> ProviderDataset | None:
+    """Read only the immutable strict receipt, never infer it from current remote data."""
+    for receipt in view.receipts:
+        if isinstance(receipt, CreateReceiptV2):
+            return receipt.created_dataset
+    return None
+
+
+def legacy_create_without_baseline(view: VersionedTransferView) -> bool:
+    record = view.operation
+    if not isinstance(record, TransferRecordV2) or record.status in TERMINAL:
+        return False
+    create_ids = {intent.intent_id for intent in view.intents if intent.kind == "create"}
+    return any(
+        isinstance(receipt, StageReceipt)
+        and receipt.intent_id in create_ids
+        and receipt.result == "accepted"
+        for receipt in view.receipts
+    )
 
 
 def read_record(connection: sqlite3.Connection, identifier: str) -> TransferRecord:

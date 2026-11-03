@@ -94,7 +94,7 @@ Selected-owner-only eşliği, güncel owned/detail'den baseline, eski receipt/re
 
 ## Onay sonrası doküman geçişi ve kod planı
 
-**Doküman geçişi** tek commit/review paketinde eşlemeyi ADR-0026'ya; dataset-upload-v2 tip/byte/graph/gate/public projeksiyona; dataset-transfer receipt/union ve provider create/detail sınırına işler. O preparation/current, sonraki controller kartı, plan/current/faz, karar/ref indeksleri ve research readiness/validation hizalanır. Karar Accepted'dır; receipt ürün kodu henüz uygulanmış değildir. Kullanıcının review yanıtı bu geçişi ve bağımlı uygulamayı yetkilendirir; yeni canlı write yetkisi değildir.
+**Doküman geçişi** tek commit/review paketinde eşlemeyi ADR-0026'ya; dataset-upload-v2 tip/byte/graph/gate/public projeksiyona; dataset-transfer receipt/union ve provider create/detail sınırına işler. O preparation/current, sonraki controller kartı, plan/current/faz, karar/ref indeksleri ve research readiness/validation hizalanır. Karar Accepted'dır; uygulama durumu P02-2p kartındadır ve kararın benimsenmesi runtime/live kabulü değildir. Kullanıcının review yanıtı bu geçişi ve bağımlı uygulamayı yetkilendirir; yeni canlı write yetkisi değildir.
 
 **Kod** iki ayrı commit/review dilimidir: (1) DTO/union/golden/yapısal geçmiş ve bakım/capacity; (2) yeni receipt writer, legacy baseline pre-arm/read/lease/proof gate'leri, atomik/yarış/kill kabulü. Her dilim iki fresh tur/fix ile kapanır. Controller/public projeksiyon ve native/kurulum/source CI/ayrı live kabulü sonraki bütünleşik teslimdir.
 

@@ -20,8 +20,10 @@ from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.adapters.upload_read_access import authorize_read
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
+    created_dataset,
     decode,
     decode_versioned,
+    legacy_create_without_baseline,
     namespace,
     predecessor,
     read_manifest,
@@ -41,8 +43,10 @@ from yorunge.adapters.validation_memo import validation_session
 from yorunge.application.operations import DispatchPermit
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.transfer_access import TransferWriteAccess
+from yorunge.application.upload_inputs import revalidate_input
 from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
@@ -77,13 +81,16 @@ from yorunge.domain.dataset_upload import (
 )
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
+    UploadReceipt,
     UploadRecord,
     UploadVerification,
+    validate_create_receipt,
     verification_scope,
 )
 from yorunge.domain.upload_versions import (
@@ -652,6 +659,7 @@ class StateUploads:
     ) -> TransferLease:
         with self.phase(operation_id):
             self._nonterminal(operation_id)
+            self.require_created_baseline(operation_id, owner)
             if type(accept_unverified_read) is not bool:
                 raise YorungeError("invalid_request")
             stamp = self.cache.stamp()
@@ -659,6 +667,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
+                self._baseline_in_view(view)
                 owner = self._owner(record, owner, stamp, gate)
                 if owner.mode == "read":
                     access = authorize_read(
@@ -712,6 +721,7 @@ class StateUploads:
             before = self.clock.monotonic()
             if total_end <= before:
                 raise YorungeError("execution_timeout")
+            self.require_created_baseline(operation_id, owner)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
@@ -719,6 +729,7 @@ class StateUploads:
                     raise YorungeError("upload_plan_not_valid")
                 record = view.operation
                 assert record is not None
+                self._baseline_in_view(view)
                 owner = self._owner(record, owner, stamp, gate)
                 if owner.mode != "write" or record.status not in {"admitted", "running"}:
                     raise YorungeError("operation_conflict")
@@ -835,10 +846,15 @@ class StateUploads:
             return intent, DispatchPermit(os.getpid), deadline
 
     def receipt(
-        self, operation_id: str, owner: TransferLease, receipt: StageReceipt
+        self, operation_id: str, owner: TransferLease, receipt: UploadReceipt
     ) -> VersionedTransferView:
         with self.phase(operation_id):
-            receipt = decode(StageReceipt, receipt.encoded().decode("ascii"))
+            if type(receipt) is CreateReceiptV2:
+                receipt = revalidate_input(CreateReceiptV2, receipt)
+            elif type(receipt) is StageReceipt:
+                receipt = revalidate_input(StageReceipt, receipt)
+            else:
+                raise YorungeError("invalid_request")
             self._secret(receipt)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
@@ -866,6 +882,16 @@ class StateUploads:
                     if existing != receipt:
                         raise YorungeError("operation_conflict")
                     return view
+                self._baseline_in_view(view)
+                if (
+                    isinstance(view.plan, DatasetUploadPlanV2)
+                    and intent.kind == "create"
+                    and receipt.result == "accepted"
+                    and not isinstance(receipt, CreateReceiptV2)
+                ):
+                    raise YorungeError("state_invalid")
+                if isinstance(receipt, CreateReceiptV2):
+                    validate_create_receipt(view.plan, intent, receipt)
                 dataset_id = (
                     receipt.dataset_id
                     if intent.kind == "create" and receipt.result == "accepted"
@@ -936,6 +962,7 @@ class StateUploads:
     ) -> TransferLease:
         with self.phase(operation_id):
             existing = self._nonterminal(operation_id)
+            self.require_created_baseline(operation_id)
             assert existing.operation is not None
             if not existing.operation.workflow_latched or existing.operation.dataset_id is None:
                 cleaned = self.cleanup_expired(operation_id)
@@ -950,6 +977,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
+                self._baseline_in_view(view)
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 if record.workflow_latched and record.dataset_id is None:
@@ -1004,6 +1032,15 @@ class StateUploads:
                 record = view.operation
                 assert record is not None
                 self._takeover_allowed(record, stamp)
+                if (
+                    legacy_create_without_baseline(view)
+                    and record.status == "unknown"
+                    and record.reason == "request_uncertain"
+                    and record.lease is None
+                ):
+                    # A concurrent local cleanup already closed the same legacy
+                    # state; no new fence/revision is required for inspection.
+                    return view
                 reason: TransferReason = "request_uncertain"
                 if not record.workflow_latched:
                     reason = "lease_expired"
@@ -1052,6 +1089,40 @@ class StateUploads:
             raise YorungeError("operation_conflict")
         return view
 
+    @staticmethod
+    def _baseline_in_view(view: VersionedTransferView) -> None:
+        """Repeat inside mutation savepoints; a preflight observation is not a lock."""
+        if legacy_create_without_baseline(view):
+            assert view.operation is not None
+            raise OperationError("operation_uncertain", view.operation.operation_id)
+
+    def require_created_baseline(
+        self, operation_id: str, owner: TransferLease | None = None
+    ) -> ProviderDataset | None:
+        """Local pre-HTTP gate; an unsuccessful marker never claims a new permission."""
+        with self.phase(operation_id):
+            view = self._nonterminal(operation_id)
+            if not legacy_create_without_baseline(view):
+                return created_dataset(view)
+            record = view.operation
+            assert record is not None
+            if record.status == "unknown" and record.reason == "request_uncertain":
+                raise OperationError("operation_uncertain", operation_id)
+            try:
+                if (
+                    owner is not None
+                    and record.lease is not None
+                    and instant(record.lease.expires_at) > self.clock.now()
+                ):
+                    self._uncertain_verification(operation_id, owner)
+                else:
+                    self.cleanup_expired(operation_id)
+            except YorungeError as error:
+                raise OperationError(
+                    "operation_uncertain", operation_id, reason_code=error.code
+                ) from None
+            raise OperationError("operation_uncertain", operation_id)
+
     def read_failed(
         self,
         operation_id: str,
@@ -1061,6 +1132,7 @@ class StateUploads:
         """Record a failed read without claiming failed execution or a new permission."""
         with self.phase(operation_id):
             self._nonterminal(operation_id)
+            self.require_created_baseline(operation_id, owner)
             check = decode(AuthorizationCheck, authorization.encoded().decode("ascii"))
             code = check.error_code
             if (
@@ -1082,6 +1154,7 @@ class StateUploads:
                 view = self._nonterminal(operation_id)
                 record = view.operation
                 assert record is not None
+                self._baseline_in_view(view)
                 if not record.workflow_latched or record.dataset_id is None:
                     raise YorungeError("operation_uncertain")
                 self._credential(check.scope, stamp)
@@ -1153,14 +1226,18 @@ class StateUploads:
         with self.phase(operation_id):
             view = self.show(operation_id=operation_id)
             assert view.operation is not None
-            if view.operation.status in TERMINAL:
+            if view.operation.status in TERMINAL or (
+                view.operation.status == "unknown" and view.operation.reason == "request_uncertain"
+            ):
                 return
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
-                if record.status in TERMINAL:
+                if record.status in TERMINAL or (
+                    record.status == "unknown" and record.reason == "request_uncertain"
+                ):
                     return
                 current = self._owner(record, owner, stamp, gate)
                 changed = self._change(
@@ -1189,6 +1266,7 @@ class StateUploads:
     ) -> VersionedTransferView:
         with self.phase(operation_id):
             self._nonterminal(operation_id)
+            self.require_created_baseline(operation_id, owner)
             proof = decode_versioned(
                 TransferVerification, TransferVerificationV2, proof.encoded().decode("ascii")
             )
@@ -1198,6 +1276,7 @@ class StateUploads:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
                 assert record is not None
+                self._baseline_in_view(view)
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)

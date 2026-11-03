@@ -39,4 +39,4 @@ Domain/golden ve gerçek SQLite/process sınırları; önceki journal/recovery/h
 
 ## Teslim kaydı
 
-ADR-0027 Accepted; p.1 DTO/union/yapısal geçmiş uygulanıyor. Yeni receipt writer ve legacy mutation/proof kapısı p.2 dilimindedir; kart bütünü henüz verified değildir. Aynı dalda uygulama tamamlanınca commit ve gerçek test/fix kanıtıyla güncellenir; a/b/c epik kapanışı değildir.
+ADR-0027 Accepted; p.1 DTO/union/yapısal geçmiş iki fresh turla kapandı; p.2 writer/legacy gate uygulanıyor. Yeni receipt writer ve legacy mutation/proof kapısı p.2 dilimindedir; kart bütünü henüz verified değildir. Aynı dalda uygulama tamamlanınca commit ve gerçek test/fix kanıtıyla güncellenir; a/b/c epik kapanışı değildir.

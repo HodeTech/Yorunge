@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 
+from tests.fixtures.upload_receipts import accepted_create
 from yorunge import api
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.identity import StateCredentialRegistry
@@ -197,6 +198,8 @@ class Journal:
             sent_bytes=file.size if not rejected and intent.kind == "put" else None,
             sent_sha256=file.sha256 if not rejected and intent.kind == "put" else None,
         )
+        if intent.kind == "create" and not rejected:
+            receipt = accepted_create(self.plan, intent, timestamp(self.clock.value), DATASET)
         with open_store(self.root) as store:
             return self.repository(store).receipt(record.operation_id, record.lease, receipt)
 
@@ -748,6 +751,8 @@ def test_386_intents_have_independent_recovery_slots_and_bounded_full_validation
                 sent_bytes=0 if kind == "put" else None,
                 sent_sha256=hashlib.sha256(b"").hexdigest() if kind == "put" else None,
             )
+            if kind == "create":
+                receipt = accepted_create(journal.plan, intent, record.created_at, DATASET)
             accepted[(kind, index)] = receipt
             c.execute(
                 "INSERT INTO upload_stage_intents VALUES(?,?,?,?,?,?)",
