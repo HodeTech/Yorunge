@@ -40,4 +40,4 @@ Application/gerçek composition testleri; stateful loopback TLS, SQLite/process 
 
 ## Teslim kaydı
 
-R.1 private original invocation/admission/create-link commit ve iki fresh kod review/fix turuyla yerel kapandı. R.2 dosya fazları kodlandı; iki fresh kod turu bekliyor. R.3 initial proof/full workflow açık; private ara record running’dır, teslim başarısı değildir. Q yerel verified temeli korunur.
+R.1 private original invocation/admission/create-link commit ve iki fresh kod review/fix turuyla yerel kapandı. R.2 dosya fazları doğrulanmış worker yarışı fix’i, bağımsız teyit ve farklı fresh R2 ile yerel kapandı. R.3 initial proof/full workflow açık; private ara record running’dır, teslim başarısı değildir. Q yerel verified temeli korunur.
