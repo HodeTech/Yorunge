@@ -4,13 +4,14 @@
 
 ## Kullanıcı yüzeyi ve uyumluluk
 
-Önerilen ayrı komut ailesi aşağıdadır; **henüz çalışmaz**. Ortak config/profile/state-dir ve text/JSON/NDJSON seçimleri mevcut parse/render ilkelerine uyacaktır; tam argüman/type/DTO/error wire'ı P02-2a yerel kod adımından önce bu referansta kapatılır.
+Önerilen ayrı komut ailesi aşağıdadır; **henüz çalışmaz**. Ortak config/profile/state-dir ve text/JSON/NDJSON seçimleri mevcut parse/render ilkelerine uyacaktır; tam argüman/type/DTO ve ortak API imzalarının kanonik uygulama öncesi kaynağı [public yüzey referansıdır](dataset-upload-public.md).
 
 ```text
 yorunge datasets upload plan ROOT --manifest FILE --name NAME --project UUID
     (--owner-user UUID | --owner-org UUID) --modality MODALITY
     [--storage-origin HTTPS_ORIGIN] [--admission-policy verified-only|explicit-attempt]
     (--budget-cr DECIMAL | --unpriced) [--config FILE] [--profile NAME] [--state-dir PATH]
+yorunge datasets upload review --plan-id UUID [--state-dir PATH]
 yorunge datasets upload approve --plan-id UUID --confirm FULL_PLAN_DIGEST
     [--accept-unverified-authority] [--accept-unpriced-cost] [...context]
 yorunge datasets upload revoke --plan-id UUID [--state-dir PATH]
@@ -22,7 +23,7 @@ yorunge datasets upload reconcile --operation-id UUID [--accept-unverified-read]
 
 Python karşılıkları aynı kullanım senaryolarına bağlanacak ayrı upload plan/approve/revoke/start/list/show/reconcile API'leridir; senkron köprü asyncio active-loop/PID/thread kapısını state/credential/etki öncesi uygular. Python çağıranından raw provider JSON, producer/verified flag, authorization listesi, HTTP client veya storage header dict'i alınmaz. JSON/NDJSON Result v1 korunur; bütün dosya/journal stdout'a basılmaz. Bilinen operation ID hem kontrollü hata hem belirsizlik/çıktı iptali yolunda korunur.
 
-Bu ön yüz önerisi kesinleşmiş wire değildir. Product API adları, exact alanlar ve kapalı hata tetik/exit matrisi P02-2a'nın uygulama öncesi kabulüdür; genel CLI kataloğunda ikinci bağımsız hata tablosu tutulmaz. Kayıt bulunamadı, geçersiz plan, kapasite, hedef/yetki reddi ve belirsiz yan etki birbirinden ayrılır. Eski `plan execution` yeni upload planlarını import etmez; `jobs` mevcut execution kayıtlarını göstermeyi sürdürür. Transferin kanonik geçmiş/uzlaştırma yüzeyi bu yeni ailedir. List varsayılan 50/en çok 100 satır, immutable `(prepared_at, plan_id)` keyset cursor ve optional exact plan filtresiyle plan/nullable operation özetlerini verir; ağ/env/hash/onay istemez. Show'da iki ID karşılıklı dışlanır. `show --plan-id` commit edilmiş operation'ı exact FK ile bulur; henüz yoksa operation=null döner, yeni admission/permit üretmez. Admission/ilk ID çıktısı arasındaki kill/BrokenPipe sonrasında kullanıcı yalnız bu yüzeylerle aynı işi bulabilir; start'ı yeniden gönderme recovery önerisi değildir.
+Public imza/projeksiyon ve tüketici davranışı P02-2t referansında uygulamadan önce kesinleştirilir; genel CLI kataloğunda ikinci bağımsız hata tablosu tutulmaz. Kayıt bulunamadı, geçersiz plan, kapasite, hedef/yetki reddi ve belirsiz yan etki birbirinden ayrılır. Eski `plan execution` yeni upload planlarını import etmez; `jobs` mevcut execution kayıtlarını göstermeyi sürdürür. Transferin kanonik geçmiş/uzlaştırma yüzeyi bu yeni ailedir. List varsayılan 50/en çok 100 satır, immutable `(prepared_at, plan_id)` keyset cursor ve optional exact plan filtresiyle plan/nullable operation özetlerini verir; ağ/env/hash/onay istemez. Show'da iki ID karşılıklı dışlanır. `show --plan-id` commit edilmiş operation'ı exact FK ile bulur; henüz yoksa operation=null döner, yeni admission/permit üretmez. Admission/ilk ID çıktısı arasındaki kill/BrokenPipe sonrasında kullanıcı yalnız bu yüzeylerle aynı işi bulabilir; start'ı yeniden gönderme recovery önerisi değildir.
 
 ## Bağlanan veriler ve otorite
 

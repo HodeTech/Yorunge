@@ -1,6 +1,6 @@
 # Upload salt okuma uzlaştırması
 
-**Tarih:** 2026-11-03. **Durum:** P02-2s.1 local/current/mandatory probe iki fresh kod turu/fix teyidiyle yerel kapandı. S.2 read lease/items/proof kodu ve gerçek TLS/process-kill regresyonları uygulandı; iki fresh kod review turu bekleniyor. [V2 read/terminal/proof matrisi](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği), [ADR-0027](../decisions/0027-durable-created-dataset-context.md) baseline/history ve [original workflow](dataset-upload-workflow.md) kanoniktir. Bu belge yeni auth/fiyat/receipt/success veya retry hakkı tanımlamaz.
+**Tarih:** 2026-11-03. **Durum:** P02-2s.1 local/current/mandatory probe iki fresh kod turu/fix teyidiyle yerel kapandı. S.2 read lease/items/proof ve gerçek TLS/process-kill regresyonları iki fresh kod turuyla kapandı; P02-2s çalışma dalında yerel verified. [V2 read/terminal/proof matrisi](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği), [ADR-0027](../decisions/0027-durable-created-dataset-context.md) baseline/history ve [original workflow](dataset-upload-workflow.md) kanoniktir. Bu belge yeni auth/fiyat/receipt/success veya retry hakkı tanımlamaz.
 
 ## Yerel preflight ve öncelik
 

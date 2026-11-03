@@ -1,7 +1,7 @@
 ---
 id: P02-2s
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2r]
 capabilities: [C03, C12, C13]
@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Original invocation artık metadata proof’u kalıcılaştırabilir. Durmuş tam write grafiğinin yeni bir çağrıda, güncel credential ve aynı exact uzak kaynakla yalnız okunarak doğrulanması henüz gerçek composition’a bağlı değildir. Bu kart o yolu tamamlar; missing receipt veya bilinmeyen create için success uydurmaz.
+Original invocation artık metadata proof’u kalıcılaştırabilir. Durmuş tam write grafiğinin yeni bir çağrıda, güncel credential ve aynı exact uzak kaynakla yalnız okunarak doğrulanması bu kartla gerçek salt okuma composition’ına bağlandı. Bu kart o yolu tamamlar; missing receipt veya bilinmeyen create için success uydurmaz.
 
 ## Giren ve girmeyen kapsam
 
@@ -36,4 +36,9 @@ Gerçek loopback TLS + SQLite/credential registry/reset/clock ve process-kill; l
 
 ## Teslim kaydı
 
-İki eksenli preflight temiz. S.1 local/current/probe iki fresh kod turu ve iki P2 fix teyidiyle yerel kapandı; s.2 read lease/items/proof ve gerçek kesinti regresyonları uygulandı, iki fresh kod review turu bekleniyor; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. İki cohesive kod dilimi: s.1 ağsız preflight + deferred current binding + gerçek mandatory read gözlemi (lease/proof yok); s.2 read lease/items/proof + source hata/iptal/rotation/kill tam uzlaştırma. Her dilim ayrı commit ve iki fresh turla kapanır; s.1 gözlemi public success değildir.
+İki eksenli preflight temiz. S.1 local/current/probe iki fresh kod turu ve iki P2 fix teyidiyle yerel kapandı; s.2 read lease/items/proof ve gerçek kesinti regresyonları iki fresh turla kapandı; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. İki cohesive kod dilimi: s.1 ağsız preflight + deferred current binding + gerçek mandatory read gözlemi (lease/proof yok); s.2 read lease/items/proof + source hata/iptal/rotation/kill tam uzlaştırma. Her dilim ayrı commit ve iki fresh turla kapanır; s.1 gözlemi public success değildir.
+
+
+- PR/commit: [0b5f973](https://github.com/HodeTech/Yorunge/commit/0b5f973) s.2 gerçek read/proof; s.1 kapanışı [57bf46a](https://github.com/HodeTech/Yorunge/commit/57bf46a); tek nihai epik PR bekleniyor.
+- Sonuç: Her iki kod dilimi iki fresh review turu ve s.1 doğrulanmış fix teyitleriyle yerel verified. Gerçek TLS/SQLite/read lease/proof ve dört gerçek s.2 process-kill kabulü [kayıttadır](../../research/p02-2-implementation-validation.md#p02-2s2--read-lease-metadata-proof-ve-gerçek-restartkesinti).
+- Kalan sınır: Public summary/API/CLI, native/kurulum/son kaynak CI/kanıt/ayrı live ve üst a/b/c/epik henüz tamamlanmadı; yeni write yetkisi veya resume yoktur.
