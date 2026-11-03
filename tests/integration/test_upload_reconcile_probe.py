@@ -2,6 +2,7 @@
 
 import asyncio
 import pickle
+import time
 from datetime import timedelta
 from uuid import uuid4
 
@@ -327,3 +328,132 @@ def test_discarded_provider_metadata_secret_never_reaches_error_chain_or_repr(
         assert view.operation.reason == "read_unavailable" and view.operation.lease is None
         assert len(view.receipts) == 5 and view.verification is None
         assert store.verify().store_schema_version == 7
+
+
+@pytest.mark.parametrize("existing_marker", [False, True])
+def test_read_failure_revalidates_current_credential_even_with_existing_marker(
+    prepared_input, certificates, execution_clock, monkeypatch, existing_marker
+):
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    routes = provider.routes()
+    detail = "/api/v1/datasets/test-user/test-dataset"
+    with TlsServer(certificates, routes) as server:
+        _, operation_id = ready(prepared_input, server, execution_clock)
+        if existing_marker:
+            routes[detail] = Reply(status=403, body=b"{}")
+            with pytest.raises(OperationError) as initial:
+                probe_reconciliation(
+                    operation_id,
+                    prepared_input[0],
+                    loader(prepared_input),
+                    accept_unverified_read=True,
+                    session_factory=factory(server),
+                    clock=execution_clock,
+                )
+            assert initial.value.code == "remote_access_denied"
+
+        def rotated(request, count):
+            monkeypatch.setenv(ENV, "changed-credential-during-read")
+            runtime(prepared_input, clock=execution_clock)._bind(SCOPE.owner)
+            return Reply(status=403, body=b"{}")
+
+        routes[detail] = rotated
+        count = len(server.requests)
+        with pytest.raises(OperationError) as raised:
+            probe_reconciliation(
+                operation_id,
+                prepared_input[0],
+                loader(prepared_input),
+                accept_unverified_read=True,
+                session_factory=factory(server),
+                clock=execution_clock,
+            )
+        assert raised.value.code == "state_changed" and raised.value.exit_code == 2
+        assert raised.value.reason_code == "remote_access_denied"
+        assert raised.value.operation_id == operation_id
+        assert raised.value.__cause__ is raised.value.__context__ is None
+        assert all(r.method == "GET" for r in server.requests[count:])
+    with open_existing_store(prepared_input[0]) as store:
+        view = StateUploads(store).show(operation_id=operation_id)
+        assert view.verification is None and len(view.receipts) == 5
+        assert store.verify().store_schema_version == 7
+
+
+@pytest.mark.parametrize("expired", ["budget", "authorization"])
+def test_final_local_phase_cannot_return_expired_positive_observation(
+    prepared_input, certificates, execution_clock, monkeypatch, expired
+):
+    from yorunge.adapters.upload_reconciliation import _ReadEnvironment
+
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    original, calls = _ReadEnvironment.inspect, []
+
+    def inspect(environment):
+        original(environment)
+        calls.append(True)
+        if len(calls) == 2:
+            if expired == "budget":
+                environment.reader._budget._end = time.monotonic() - 1
+            else:
+                execution_clock.value += timedelta(seconds=31)
+                execution_clock.elapsed += 31
+
+    with TlsServer(certificates, provider.routes()) as server:
+        _, operation_id = ready(prepared_input, server, execution_clock)
+        monkeypatch.setattr(_ReadEnvironment, "inspect", inspect)
+        count = len(server.requests)
+        with pytest.raises(OperationError) as raised:
+            probe_reconciliation(
+                operation_id,
+                prepared_input[0],
+                loader(prepared_input),
+                accept_unverified_read=True,
+                session_factory=factory(server),
+                clock=execution_clock,
+            )
+        expected = "execution_timeout" if expired == "budget" else "upload_plan_not_valid"
+        assert raised.value.code == expected and raised.value.exit_code == 2
+        assert raised.value.operation_id == operation_id
+        assert raised.value.__cause__ is raised.value.__context__ is None
+        assert len(calls) == 2 and len(server.requests) == count + 5
+    with open_existing_store(prepared_input[0]) as store:
+        view = StateUploads(store).show(operation_id=operation_id)
+        assert view.verification is None and view.operation.lease is None
+        assert view.operation.status == "unknown" and store.verify().store_schema_version == 7
+
+
+@pytest.mark.parametrize("status,code", [(403, "remote_access_denied"), (503, "remote_failed")])
+def test_source_negative_at_budget_end_keeps_source_error(
+    prepared_input, certificates, execution_clock, monkeypatch, status, code
+):
+    from yorunge.adapters.platform_upload_reader import ObservedUploadReader
+
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    routes = provider.routes()
+    original = ObservedUploadReader.read_authorization
+
+    async def read(reader, *args, **kwargs):
+        check = await original(reader, *args, **kwargs)
+        reader._budget._end = time.monotonic() - 1
+        return check
+
+    with TlsServer(certificates, routes) as server:
+        _, operation_id = ready(prepared_input, server, execution_clock)
+        routes["/api/v1/datasets/test-user/test-dataset"] = Reply(status=status, body=b"{}")
+        monkeypatch.setattr(ObservedUploadReader, "read_authorization", read)
+        with pytest.raises(OperationError) as raised:
+            probe_reconciliation(
+                operation_id,
+                prepared_input[0],
+                loader(prepared_input),
+                accept_unverified_read=True,
+                session_factory=factory(server),
+                clock=execution_clock,
+            )
+        assert raised.value.code == code and raised.value.exit_code == (3 if status == 403 else 1)
+        assert raised.value.operation_id == operation_id
+        assert raised.value.__cause__ is raised.value.__context__ is None
+    with open_existing_store(prepared_input[0]) as store:
+        view = StateUploads(store).show(operation_id=operation_id)
+        assert view.operation.reason == "read_unavailable" and view.operation.lease is None
+        assert view.verification is None and store.verify().store_schema_version == 7

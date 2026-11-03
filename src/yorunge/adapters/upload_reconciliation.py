@@ -84,14 +84,23 @@ class _ReadEnvironment:
             self.client, self.loaded.baseline, self.loaded.plan.parameters
         )
         self.authorization = check
+        self.require_current(check)
+        self.inspect()
+        self.require_current(check)
+        return ReadPhase(self.loaded.plan, self.record, check)
+
+    def require_current(self, check: AuthorizationCheck) -> None:
+        # A real source-negative keeps its source code at the deadline. Only a
+        # positive observation may proceed, and it must still fit this budget.
+        if check.error_code is None:
+            self.reader._budget._current()
         check.require_current(
             self.scope,
             "read_created_dataset",
             self.loaded.baseline.id,
             timestamp(self.runtime.clock.now()),
         )
-        self.inspect()
-        return ReadPhase(self.loaded.plan, self.record, check)
+        self.reader._budget._current()
 
     def _negative(self, code: ErrorCode) -> AuthorizationCheck:
         check = self.authorization
@@ -120,9 +129,7 @@ class _ReadEnvironment:
                 record = view.operation
                 if record.status in TERMINAL:
                     return OperationError(code, operation_id, reason_code=reason)
-                if code in READ_FAILURES and not (
-                    record.reason == "read_unavailable" and record.lease is None
-                ):
+                if code in READ_FAILURES:
                     repository.read_failed(operation_id, None, self._negative(code))
         except YorungeError as marker:
             return OperationError(marker.code, operation_id, reason_code=code)
