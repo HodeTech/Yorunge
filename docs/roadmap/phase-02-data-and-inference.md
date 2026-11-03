@@ -60,9 +60,9 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2r | Original upload koordinatörü | P02-2q; [kart](tasks/p02-2r-original-upload-workflow.md) | `verified` |
 | P02-2s | Salt okuma upload uzlaştırması | P02-2r; [kart](tasks/p02-2s-readonly-upload-reconciliation.md) | `verified` |
 | P02-2t | Ortak upload CLI/Python ve dar sonuç/niyet incelemesi | P02-2s; [kart](tasks/p02-2t-public-upload-workflows.md) | `verified` |
-| P02-2u | Çevrimdışı upload süreç/azami envanter kabulü | P02-2t; [kart](tasks/p02-2u-offline-upload-acceptance.md) | `in_progress` |
+| P02-2u | Çevrimdışı upload süreç/azami envanter kabulü | P02-2t; [kart](tasks/p02-2u-offline-upload-acceptance.md) | `verified` |
 | P02-2v | Kurulu upload native ölçüm araçları | P02-2w; [kart](tasks/p02-2v-installed-upload-measurement.md) | `draft` |
-| P02-2w | Upload kaynak bakım/refaktör sınırları | P02-2u; [kart](tasks/p02-2w-upload-maintainability.md) | `draft` |
+| P02-2w | Upload kaynak bakım/refaktör sınırları | P02-2u; [kart](tasks/p02-2w-upload-maintainability.md) | `in_progress` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı | P02-3a, P02-3b; gerekirse açık sürüm oluşturma/freeze kararı | `draft` |

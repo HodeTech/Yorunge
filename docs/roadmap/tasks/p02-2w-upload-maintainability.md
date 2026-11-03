@@ -1,7 +1,7 @@
 ---
 id: P02-2w
 phase: P02
-status: draft
+status: in_progress
 size: M
 depends_on: [P02-2u]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,4 @@ W.1 domain/policy matrisleri/public summary/descriptor/URI/codec ile receipt/ful
 
 ## Teslim kaydı
 
-Henüz uygulanmadı. Salt okunur yaklaşık audit kanıtı [aday/yöntem kaydına](../../research/p02-2-implementation-validation.md#p02-2w--kaynak-bakım-hazırlığı) bağlıdır; U.2 sınır kabulü sürerken yalnız hazırlık yapılmıştır. Üst c/epik açık kalır.
+U verified; iki eksenli preflight ve audit-bağlantı P2 fix teyidi kapandı. W.1 başlayabilir; kod henüz uygulanmadı. Salt okunur yaklaşık audit kanıtı [aday/yöntem kaydına](../../research/p02-2-implementation-validation.md#p02-2w--kaynak-bakım-hazırlığı) bağlıdır; U.2 sınır kabulü iki fresh turla kapandı. Üst c/epik açık kalır.

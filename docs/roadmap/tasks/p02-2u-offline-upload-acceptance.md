@@ -1,7 +1,7 @@
 ---
 id: P02-2u
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2t]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 
 ## Teslim kaydı
 
-T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi ilgili seçki/117 test delta teyidi ve iki farklı fresh turla kapandı; u.2 gerçek public süreç/azami128/129 kabulü uygulandı; current memo payı kusuru deterministik testle düzeltildi, son84 testlik geniş seçki geçti. U.2 iki fresh kod turu bekleniyor. V ölçüm planındaki iki yöntem/saklama açıklığı özgün reviewer teyidiyle kapandı; v hazır veya ölçülmüş sayılmaz.
+- PR/commit: [U.1 test sınırları](https://github.com/HodeTech/Yorunge/commit/cfe9737), [U.2 gerçek süreç/azami envanter ve memo payı](https://github.com/HodeTech/Yorunge/commit/2eaa729); tek nihai PR aynı daldadır.
+- Sonuç: İki kod diliminde ikişer farklı fresh review turu kapandı. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2u2--public-süreç-ve-azami-envanter) ilk retleri/fix’i, 84 testlik geniş kaynak teyidini ve bağımsız max128/386 graph, gerçek CLI kill/ID,129 ret, semantik/son kapı sonuçlarını taşır. Kart yerel verified.
+- Kalan sınır: W kaynak bakımı, V kurulu/native ölçüm araçları ve üst c kurulum/son kaynak CI/kayıpsız kanıt/ayrı live/human UX sınırı açıktır. U başarısı epik veya gerçek sağlayıcı kabulü değildir.
