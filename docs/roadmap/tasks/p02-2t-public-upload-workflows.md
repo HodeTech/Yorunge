@@ -36,4 +36,4 @@ T.1 golden/type/strict/projection/keyset ve gerçek SQLite; t.2 gerçek TLS/stat
 
 ## Teslim kaydı
 
-S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 uygulaması başladı. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.
+S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 summary/yerel API kodu ve odak testleri uygulandı; iki fresh kod review turu bekleniyor. Yeni canlı write yetkisi yoktur. Gerçek public kod ve iki fresh kod turları henüz yapılmadı.

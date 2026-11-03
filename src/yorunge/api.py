@@ -50,6 +50,11 @@ if TYPE_CHECKING:
     from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
+    from yorunge.domain.upload_public import (
+        DatasetUploadsPage,
+        DatasetUploadSummary,
+        UploadIntentReview,
+    )
 
 
 class Request(Model):
@@ -1193,3 +1198,50 @@ def forget_execution_plan(
             data=forget_plan(store, plan_id, confirmation),
             warnings=("local_forget_does_not_cancel_remote_work",),
         )
+
+
+def show_dataset_upload(
+    *,
+    plan_id: str | None = None,
+    operation_id: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Read one durable upload summary; no credentials or network are needed."""
+    from yorunge.adapters.upload_public import show_upload
+
+    return show_upload(state_dir, plan_id=plan_id, operation_id=operation_id)
+
+
+def review_dataset_upload(
+    plan_id: str,
+    *,
+    state_dir: Path | None = None,
+) -> Result[UploadIntentReview]:
+    """Review the selected plan intent before confirming its full digest."""
+    from yorunge.adapters.upload_public import review_upload
+
+    return review_upload(plan_id, state_dir)
+
+
+def list_dataset_uploads(
+    *,
+    plan_id: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadsPage]:
+    """Read a bounded keyset page without resolving configuration or secrets."""
+    from yorunge.adapters.upload_public import list_uploads
+
+    return list_uploads(state_dir, plan_id=plan_id, limit=limit, cursor=cursor)
+
+
+def revoke_dataset_upload(
+    plan_id: str,
+    *,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Revoke the saved approval locally; an issued permit is not recalled."""
+    from yorunge.adapters.upload_public import revoke_upload
+
+    return revoke_upload(plan_id, state_dir)
