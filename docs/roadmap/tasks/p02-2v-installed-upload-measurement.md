@@ -36,4 +36,4 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Teslim kaydı
 
-U ve W verified; ilk iki eksenli preflight ve oracle/kalıcı tanı iki P2 fix teyidi kapandı. Son preflight installation_v2 içindeki görünmez upload smoke kabulünü P2 olarak buldu. Sürümlü v3 zorunlu alanı ve Linux scheduling/always-artifact/test sahipliği plana işlendi; fix teyidi bekleniyor. Ölçüm kodu henüz başlamadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
+U ve W verified; iki eksenli son preflight ve installation-v3 düzeltme teyitleri kapandı. V.1 streaming sink, izole kurulu worker ve ortak test-only mapping uygulandı; küçük runtime-only wheel smoke’u geçti. Dilimin kod review turları sürüyor; V.2 bağımsız verifier/katalog ve V.3 kurulum/CI bağlantıları henüz tamamlanmadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
