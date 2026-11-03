@@ -148,7 +148,8 @@ def test_parent_control_eof_stops_supervisor_group_before_reap(tmp_path):
                 process.wait(timeout=5)
 
 
-def test_actual_sigterm_runs_check_cleanup_retention_and_handler_restore(tmp_path):
+@pytest.mark.parametrize("boundary", ["running", "child_close"])
+def test_actual_sigterm_runs_check_cleanup_retention_and_handler_restore(tmp_path, boundary):
     root = tmp_path.resolve()
     (root / "docs/research").mkdir(parents=True)
     (root / "dist").mkdir()
@@ -161,7 +162,7 @@ def test_actual_sigterm_runs_check_cleanup_retention_and_handler_restore(tmp_pat
         json.dumps({"source_sha": "a" * 40, "cpu": "synthetic", "disk_type": "unknown"})
     )
     code = """
-import json,runpy,signal,subprocess,sys
+import json,os,runpy,signal,socket,subprocess,sys,time
 from pathlib import Path
 from types import SimpleNamespace
 helper=runpy.run_path(sys.argv[1]); root=Path(sys.argv[2])
@@ -170,6 +171,27 @@ subprocess.run=lambda *args,**kwargs: SimpleNamespace(stdout='a'*40)
 execute=namespace['execute']; previous=signal.getsignal(signal.SIGTERM)
 namespace['execute']=lambda command,out,err: execute([sys.executable,'-I','-c',
     'import os,time;print(os.getpid(),flush=True);time.sleep(5)'],out,err)
+if sys.argv[3] == 'child_close':
+    pair=socket.socketpair
+    class Child:
+        def __init__(self,inner): self.inner,self.first=inner,True
+        def fileno(self): return self.inner.fileno()
+        def __enter__(self): return self
+        def __exit__(self,*args): self.inner.close()
+        def close(self):
+            self.inner.close()
+            if self.first:
+                self.first=False
+                end=time.monotonic()+5
+                marker=root/'upload-check-controller-stdout.txt'
+                while not marker.exists() or not marker.stat().st_size:
+                    if time.monotonic()>=end: raise RuntimeError('fixture not ready')
+                    time.sleep(0.01)
+                os.kill(os.getpid(),signal.SIGTERM)
+    def socketpair():
+        control,child=pair()
+        return control,Child(child)
+    socket.socketpair=socketpair
 args=SimpleNamespace(environment=root/'environment.json',wheel_dir=root/'wheels',
     python=Path(sys.executable),workspace=root/'upload-check',output=root/'dist/upload.json',
     run_url='https://github.com/HodeTech/Yorunge/actions/runs/123')
@@ -180,7 +202,7 @@ except SystemExit:
     raise
 """
     process = subprocess.Popen(
-        [sys.executable, "-I", "-c", code, str(ROOT / "scripts/upload_ci.py"), str(root)],
+        [sys.executable, "-I", "-c", code, str(ROOT / "scripts/upload_ci.py"), str(root), boundary],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -190,7 +212,8 @@ except SystemExit:
         while not marker.exists() or not marker.stat().st_size:
             assert process.poll() is None and time.monotonic() < end
             time.sleep(0.01)
-        process.send_signal(signal.SIGTERM)
+        if boundary == "running":
+            process.send_signal(signal.SIGTERM)
         output, error = process.communicate(timeout=10)
         assert process.returncode == 143 and not output and not error
         assert json.loads((root / "restored.json").read_bytes()) == {"restored": True}

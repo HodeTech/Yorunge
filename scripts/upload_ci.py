@@ -106,20 +106,22 @@ def owned_controller(
         "--",
         *command,
     ]
-    with subprocess.Popen(
-        supervisor,
-        cwd=ROOT,
-        env=DRIVER["CONTROL"]["environment"](),
-        stdout=out,
-        stderr=err,
-        stdin=subprocess.DEVNULL,
-        start_new_session=True,
-        pass_fds=(child.fileno(),),
-    ) as process:
+    process = None
+    try:
+        process = subprocess.Popen(
+            supervisor,
+            cwd=ROOT,
+            env=DRIVER["CONTROL"]["environment"](),
+            stdout=out,
+            stderr=err,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            pass_fds=(child.fileno(),),
+        )
         child.close()
-        try:
-            return wait_status(control, command)
-        finally:
+        return wait_status(control, command)
+    finally:
+        if process is not None:
             stop_group(process)
 
 
