@@ -16,7 +16,7 @@ capabilities: [C03, C12, C13]
 
 ## Giren ve girmeyen kapsam
 
-V.1 ayrı süreçte streaming TLS sink ve kurulu public API worker; v.2 kaynak/wheel/runtime eşliği, kapalı rapor/bağımsız verifier/kayıpsız katalog ve anlamlı negatif vektörler. Her dilimde iki fresh tur. Sentetik loopback ölçümü canlı sağlayıcı/hız/ücret veya fiziksel RAM attestasyonu değildir. Eğitim/büyük üçüncü taraf bağımlılığı, yeni ürün flag’i, gerçek anahtar ve sağlayıcı çağrısı yoktur.
+V.1 ayrı süreçte streaming TLS sink, ortak test-only network mapping ve kurulu public API worker; v.2 kaynak/wheel/runtime eşliği, kapalı rapor/bağımsız verifier/kayıpsız katalog ve anlamlı negatif vektörler. Her dilimde iki fresh tur. Sentetik loopback ölçümü canlı sağlayıcı/hız/ücret veya fiziksel RAM attestasyonu değildir. Eğitim/büyük üçüncü taraf bağımlılığı, yeni ürün flag’i, gerçek anahtar ve sağlayıcı çağrısı yoktur.
 
 ## Bağımlılıklar ve kararlar
 
@@ -32,8 +32,8 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Doğrulama
 
-Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Üç ortam CI, altı kurulum ve gerçek live üst c’de ayrıca kapanır.
+Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Linux 3.11 source CI’da upload native koşusu mevcut ölçümlerle seri, M5 upload reference kaynak denetimi zorunlu olacak şekilde V.2’de bağlanır; üç ortam CI/altı kurulumun gerçek sonucu ve live üst c’de ayrıca kapanır.
 
 ## Teslim kaydı
 
-Henüz uygulanmadı/ölçülmedi; doküman preflight bekleniyor. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
+U ve W verified; ilk iki eksenli preflight ve oracle/kalıcı tanı iki P2 fix teyidi kapandı. CI/source-gate ve kurulu smoke ayrıntısı son preflight’tadır; ürün ölçüm kodu henüz başlamadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.

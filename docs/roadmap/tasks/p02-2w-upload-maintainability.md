@@ -1,7 +1,7 @@
 ---
 id: P02-2w
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2u]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ W.1 domain/policy matrisleri/public summary/descriptor/URI/codec ile receipt/ful
 
 ## Teslim kaydı
 
-U verified; iki eksenli preflight ve audit-bağlantı P2 fix teyidi kapandı. W.1 saf validation/URI/graph yardımcıları 734 ilk test, bağımsız diferansiyel eşlik ve iki farklı fresh turla kapandı. W.2 transaction/snapshot/CLI sınırları uygulandı; 338 ve ek139 test geçti, commit/iki fresh tur bekleniyor. Salt okunur yaklaşık audit kanıtı [aday/yöntem kaydına](../../research/p02-2-implementation-validation.md#p02-2w--kaynak-bakım-hazırlığı) bağlıdır; U.2 sınır kabulü iki fresh turla kapandı. Üst c/epik açık kalır.
+- PR/commit: [W.1](https://github.com/HodeTech/Yorunge/commit/0f8d3bf), [W.2](https://github.com/HodeTech/Yorunge/commit/037309b), [dar CC selector düzeltmesi](https://github.com/HodeTech/Yorunge/commit/4bf0563); aynı dal/tek nihai PR.
+- Sonuç: İki kod diliminde ikişer farklı fresh review turu ve dar delta teyitleri kapandı. [W.1](../../research/p02-2-implementation-validation.md#p02-2w1--saf-doğrulama-ve-graph-yardımcı-sınırları) ve [W.2](../../research/p02-2-implementation-validation.md#p02-2w2--transaction-snapshot-ve-dispatch-yardımcı-sınırları) test/diferansiyel/ara tanı kanıtını taşır. Wire/DDL/golden/ilk-ret ve transaction/fingerprint eşliği korundu. Yaklaşık audit’te ilk 12 adayın tamamı≤15, en yüksek13; gerçek Sonar sonucu değildir. Kart yerel verified.
+- Kalan sınır: V ölçüm araçları, üst c native/kurulum/son kaynak CI/gerçek Sonar/kayıpsız kanıt/ayrı canlı kabulü ve epik kapanışı hâlâ açıktır.
