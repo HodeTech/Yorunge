@@ -1,6 +1,6 @@
 # Upload original koordinatörü
 
-**Tarih:** 2026-11-03. **Durum:** P02-2r uygulama öncesi dar composition sözleşmesi; koordinatör henüz yoktur. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 private invocation/admission/create-link kodlandı, iki fresh kod review bekliyor; r.2/r.3 full koordinatör henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
 
 ## Katman ve invocation
 

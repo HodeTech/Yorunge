@@ -1,7 +1,7 @@
 ---
 id: P02-2r
 phase: P02
-status: ready
+status: in_progress
 size: M
 depends_on: [P02-2q]
 capabilities: [C03, C12, C13]
@@ -40,4 +40,4 @@ Application/gerçek composition testleri; stateful loopback TLS, SQLite/process 
 
 ## Teslim kaydı
 
-Henüz r ürün kodu yoktur. Q gerçek port temeli verified; r kartı preflight sonrası ready’dir. Test sonucu veya success iddiası eklenmedi.
+R.1 private original invocation/admission/create-link kodlandı; commit ve iki fresh kod review/fix turu henüz kapanmadı. R.2 dosya fazları ve r.3 initial proof/full workflow açık; private ara record running’dır, teslim başarısı değildir. Q yerel verified temeli korunur.
