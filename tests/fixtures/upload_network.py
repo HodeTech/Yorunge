@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import errno
+import os
 import socket
 import ssl
 import time
@@ -39,6 +41,7 @@ class Metrics:
     request_seconds: list[float] = field(default_factory=list, repr=False)
     put_seconds: list[float] = field(default_factory=list, repr=False)
     _sources: set[int] = field(default_factory=set, repr=False)
+    _source_fds: dict[int, set[int]] = field(default_factory=dict, repr=False)
 
     def progress(self, value):
         delta = value.source_bytes - self.source_bytes
@@ -72,7 +75,7 @@ class Metrics:
             **{
                 name: getattr(self, name)
                 for name in self.__dataclass_fields__
-                if name not in {"sessions", "_sources"}
+                if name not in {"sessions", "_sources", "_source_fds"}
             },
             "open_sources": len(self._sources),
         }
@@ -157,15 +160,25 @@ def sources(metrics):
         try:
             opened(source)
         finally:
-            if source._file_fd is not None:
+            handles = {fd for fd in (source._file_fd, source._root_fd) if fd is not None}
+            if handles:
+                metrics._source_fds.setdefault(id(source), set()).update(handles)
                 metrics._sources.add(id(source))
                 metrics.peak_sources = max(metrics.peak_sources, len(metrics._sources))
 
     async def observed_close(source):
+        handles = set(metrics._source_fds.get(id(source), ()))
+        handles.update(fd for fd in (source._file_fd, source._root_fd) if fd is not None)
         try:
             await closed(source)
         finally:
-            if source._file_fd is None:
+            remaining = {fd for fd in handles if descriptor_may_be_open(fd)}
+            if remaining:
+                metrics._source_fds[id(source)] = remaining
+                metrics._sources.add(id(source))
+                metrics.peak_sources = max(metrics.peak_sources, len(metrics._sources))
+            else:
+                metrics._source_fds.pop(id(source), None)
                 metrics._sources.discard(id(source))
 
     DescriptorByteSource._open, DescriptorByteSource.aclose = observed_open, observed_close
@@ -174,6 +187,16 @@ def sources(metrics):
             yield
     finally:
         DescriptorByteSource._open, DescriptorByteSource.aclose = opened, closed
+
+
+def descriptor_may_be_open(descriptor):
+    # Fields may already be cleared and close errors may be attached to a primary
+    # exception. Only EBADF proves release; reuse or other failures stay conservative.
+    try:
+        os.fstat(descriptor)
+    except OSError as error:
+        return error.errno != errno.EBADF
+    return True
 
 
 @contextmanager

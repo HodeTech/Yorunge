@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -25,6 +26,10 @@ from tests.fixtures.upload_native_server import StreamingProvider
 from tests.fixtures.upload_network import Connection, CountedResponse, CountingStream, Metrics
 from tests.integration.test_upload_preparation import loopback_only as loopback_only
 from yorunge import api
+from yorunge.adapters import storage_source
+from yorunge.domain.dataset_manifest import DatasetFile
+from yorunge.domain.dataset_upload import UploadRoot
+from yorunge.domain.errors import YorungeError
 
 
 def prepared(directory, label):
@@ -156,3 +161,59 @@ def test_failed_close_cannot_claim_released_resource(kind):
         asyncio.run(close)
     assert metrics.open_connections == (kind == "connection")
     assert metrics.active_requests == (kind == "response")
+
+
+@pytest.mark.parametrize("root_only", [False, True])
+@pytest.mark.parametrize("primary", [False, True])
+def test_real_source_close_failure_and_partial_open_cannot_hide_descriptors(
+    tmp_path, monkeypatch, root_only, primary
+):
+    from tests.fixtures.upload_network import sources
+
+    root = tmp_path.resolve()
+    (root / "one.bin").write_bytes(b"x")
+    info = root.stat()
+    source = storage_source.DescriptorByteSource(
+        UploadRoot(anchor=str(root), device=info.st_dev, inode=info.st_ino + int(root_only)),
+        DatasetFile(path="one.bin", size=1, sha256=hashlib.sha256(b"x").hexdigest()),
+        deadline=time.monotonic() + 30,
+    )
+    metrics = Metrics()
+    handles = []
+    close = os.close
+
+    def fail_close(descriptor):
+        if descriptor in handles:
+            raise OSError("synthetic descriptor close failure")
+        return close(descriptor)
+
+    async def action():
+        with sources(metrics):
+            if root_only:
+                with pytest.raises(YorungeError):
+                    source._open()
+            else:
+                source._open()
+            handles.extend(fd for fd in (source._root_fd, source._file_fd) if fd is not None)
+            assert len(handles) == (1 if root_only else 2)
+            assert metrics.summary()["open_sources"] == 1
+            monkeypatch.setattr(os, "close", fail_close)
+            if primary:
+                try:
+                    raise RuntimeError("synthetic primary failure")
+                except RuntimeError:
+                    await source.aclose()  # The real helper attaches close errors to primary.
+            else:
+                with pytest.raises(YorungeError):
+                    await source.aclose()
+            assert source._root_fd is source._file_fd is None
+            assert metrics.summary()["open_sources"] == 1
+            for descriptor in handles:
+                os.fstat(descriptor)  # It remains genuinely open, despite the cleared fields.
+
+    try:
+        asyncio.run(action())
+    finally:
+        monkeypatch.setattr(os, "close", close)
+        for descriptor in handles:
+            close(descriptor)
