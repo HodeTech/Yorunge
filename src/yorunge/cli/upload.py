@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO, cast
 
-from yorunge.cli.output import write_utf8
+from yorunge.cli.output import _silence_failed_descriptor, write_utf8
 
 if TYPE_CHECKING:
     from yorunge.application.upload_progress import UploadProgress
@@ -417,3 +417,4 @@ class ProgressText:
             )
         except (OSError, UnicodeError, ValueError):
             self.enabled = False
+            _silence_failed_descriptor(self.stream)

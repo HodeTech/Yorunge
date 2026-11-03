@@ -553,3 +553,6 @@ Ek readonly SIGINT/non-TTY text/duplicate tag ve genel eski regresyonlarla **699
 
 
 T.3 final actual PTY operation-ID eşliği assertion’ı **1 passed / 3,28 s**, -W error ile geçti (21 deselected). Bütün progress satırları final summary’nin aynı ID’sine bağlıdır; geçici TRACE kodu yoktur. Commit/fresh R1 sıradadır.
+
+
+T.3 fresh R1 contract Sol/high yeni CLI/progress **28 passed / 21,32 s**, lazy/output/NDJSON **106 passed / 2,62 s**, bulgusuz. Astra/high safety progress/CLI/original/storage **85 passed / 62,86 s** ardından tek **P2** doğruladı: gerçek stderr PTY kapanınca ProgressText yalnız disable ediyor, CPython shutdown yeniden flush edip başarılı workflow çıkışını120 yapıyordu. Root tam CLI/TLS workflow regresyonuyla fix öncesi **1 failed / 2,56 s** elde etti; stdout metadata success iken exit120 idi. Mevcut _silence_failed_descriptor aynı gerçek stdio sink için kullanıldı; KeyboardInterrupt yakalanmaz, business/proof wire değişmez. Sonraki yeni+original/storage **86 passed / 64,01 s**, -W error temiz: hangup sonrası exit0/durable success, aynı-ID lookup ve tekrar start sıfır HTTP/yeni etki. Ruff/strict mypy117 source temiz. Özgün safety teyidi ve farklı fresh R2 bekleniyor; yeni hesap/native/kurulum/full suite yoktur.

@@ -496,6 +496,89 @@ def test_non_tty_text_start_has_no_progress_or_prompt(public_inputs, certificate
         assert provider.create_calls == provider.link_calls == provider.put_calls == 1
 
 
+def test_actual_progress_pty_hangup_keeps_success_exit_and_durable_result(
+    public_inputs, certificates
+):
+    import threading
+    import time
+
+    from yorunge import api
+
+    data, _, config = public_inputs
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    first_line, read_errors = threading.Event(), []
+
+    def wait_for_hangup():
+        assert first_line.wait(10), "initial progress never reached the actual PTY"
+        time.sleep(0.2)  # Next source update must pass the 100 ms coalescing window.
+
+    provider.after_create = wait_for_hangup
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = approved_cli(server, public_inputs)
+        master, slave = os.openpty()
+
+        def hangup():
+            try:
+                assert os.read(master, 4096), "progress PTY closed before its first line"
+            except (OSError, AssertionError) as error:
+                read_errors.append(error)
+            finally:
+                os.close(master)
+                first_line.set()
+
+        reader = threading.Thread(target=hangup)
+        reader.start()
+        process = subprocess.Popen(
+            command(
+                server,
+                "datasets",
+                "upload",
+                "start",
+                "--plan-id",
+                plan["plan_id"],
+                "--config",
+                str(config),
+                "--state-dir",
+                str(data[0]),
+                "--output",
+                "text",
+            ),
+            stdout=subprocess.PIPE,
+            stderr=slave,
+        )
+        os.close(slave)
+        try:
+            stdout, _ = process.communicate(timeout=30)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.communicate(timeout=10)
+            reader.join(timeout=5)
+        assert not reader.is_alive() and not read_errors
+        assert process.returncode == 0, stdout.decode("utf-8", "strict")
+        assert "metadata doğrulaması" in stdout.decode("utf-8", "strict")
+        found = api.show_dataset_upload(plan_id=plan["plan_id"], state_dir=data[0]).data
+        assert found.operation_status == "succeeded" and found.verification_level == "metadata"
+        assert found.operation_id.encode() in stdout
+        count = len(server.requests)
+        again = execute(
+            server,
+            "datasets",
+            "upload",
+            "start",
+            "--plan-id",
+            plan["plan_id"],
+            "--state-dir",
+            str(data[0]),
+            "--output",
+            "json",
+        )
+        assert result(again, "json")["operation_id"] == found.operation_id
+        assert len(server.requests) == count
+        assert provider.create_calls == provider.link_calls == provider.put_calls == 1
+        assert provider.confirm_calls == 1
+
+
 def test_actual_cli_sigint_during_read_is_code_six_without_new_effects(public_inputs, certificates):
     import signal
     import threading
