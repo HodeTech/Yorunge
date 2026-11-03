@@ -409,7 +409,10 @@ def _cleanup_worker(root, identifier, cutoff, ready, start):
     ready.close()
 
 
-def test_two_process_expired_cleanup_coalesces_without_new_read_lease(journal):
+def test_two_process_expired_cleanup_coalesces_without_new_read_lease(journal, monkeypatch):
+    # pytest's console entrypoint with importlib collection does not place the
+    # repository on sys.path. Spawn copies this explicit temporary import root.
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[2]))
     record, _ = historical_running(journal)
     # Deterministic UTC after the lease, without a real wall-clock assumption.
     # No child receives an execution capability; these are local cleanup actors.
