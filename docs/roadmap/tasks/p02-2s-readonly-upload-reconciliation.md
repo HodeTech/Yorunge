@@ -36,4 +36,4 @@ Gerçek loopback TLS + SQLite/credential registry/reset/clock ve process-kill; l
 
 ## Teslim kaydı
 
-İki eksenli preflight temiz; kart ready. Ürün kodu başlamadı; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. Boyut uygulanırken M sınırını aşarsa aynı kartın cohesive kod dilimleri ayrıca commit/iki fresh turla ayrılır.
+İki eksenli preflight temiz; kart ready. Ürün kodu başlamadı; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. İki cohesive kod dilimi: s.1 ağsız preflight + deferred current binding + gerçek mandatory read gözlemi (lease/proof yok); s.2 read lease/items/proof + source hata/iptal/rotation/kill tam uzlaştırma. Her dilim ayrı commit ve iki fresh turla kapanır; s.1 gözlemi public success değildir.

@@ -43,3 +43,5 @@ Gerçek Task.cancel response/session cleanup ve sahip olunan read lease için m�
 ## Kabul sınırı
 
 Local retlerde dependency trap ve sıfır HTTP; tam unknown→gerçek current read→aynı-ID durable metadata success; credential rotation/reset/clock/scope/active owner; mandatory/items kaynak hata ve marker yarışı; gerçek Task.cancel/kill/receipt/proof commit kaybı; no source/no effect meter ve terminal history. Her cohesive kod dilimi commit ve iki fresh turla kapanır. Public summary/API/CLI/sentinel, native/kurulum/source CI/kanıt/ayrı live üst c tesliminde açık kalır.
+
+Kod sırası: s.1 local preflight/current binding/gerçek mandatory read gözlemini private olarak bağlar; s.2 aynı açık invocation’daki gözlemi read lease/items/proof ve tam hata/kesinti yoluna bağlar. S.1 ayrı public komut veya metadata success değildir. Her dilim kendi commit/iki fresh turuyla kapanır.
