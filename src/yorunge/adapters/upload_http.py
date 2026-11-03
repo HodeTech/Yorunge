@@ -132,10 +132,12 @@ class UploadHttpxTransport(TransferHttpxTransport):
             if effect is None:
                 raise YorungeError("invalid_request")
             kind = effect
-        async with self._call(request, reservation, kind, permit):
-            async with self._window_error(deadline) as end:
-                async with super().open(request, deadline=end) as response:
-                    yield response
+        async with (
+            self._call(request, reservation, kind, permit),
+            self._window_error(deadline) as end,
+            super().open(request, deadline=end) as response,
+        ):
+            yield response
 
     def open_storage_budgeted(
         self,
@@ -159,14 +161,16 @@ class UploadHttpxTransport(TransferHttpxTransport):
             raise YorungeError("invalid_request")
         delegated = False
         try:
-            async with self._call(request, reservation, "put", permit):
-                async with self._window_error(deadline) as end:
-                    if self._closed or self._client is None:
-                        raise YorungeError("invalid_request")
-                    context = super().open_storage(request, deadline=end)
-                    delegated = True
-                    async with context as response:
-                        yield response
+            async with (
+                self._call(request, reservation, "put", permit),
+                self._window_error(deadline) as end,
+            ):
+                if self._closed or self._client is None:
+                    raise YorungeError("invalid_request")
+                context = super().open_storage(request, deadline=end)
+                delegated = True
+                async with context as response:
+                    yield response
         finally:
             # The base facade owns source cleanup once entered. Before that,
             # close even a rejected lazy source in this same calling task.

@@ -27,7 +27,8 @@ def test_literal_public_summary_preserves_result_v1_and_metadata_level():
     assert value.encoded() == expected
     assert DatasetUploadSummary.model_validate_json(expected) == value
     assert value.verification_level == "metadata"
-    assert not value.authority_verified and not value.remote_bytes_verified
+    assert not value.authority_verified
+    assert not value.remote_bytes_verified
     assert Result[DatasetUploadSummary](data=value).operation_id is None
     assert value.dataset_id == graph().operation.dataset_id
 
@@ -81,7 +82,8 @@ def test_provider_receipt_sentinels_are_absent_from_public_summary(output):
     content = stdout.getvalue() + stderr.getvalue()
     for sentinel in (reported.name, reported.owner_id, reported.org_id):
         assert sentinel not in content
-    assert "created_dataset" not in content and "receipts" not in content
+    assert "created_dataset" not in content
+    assert "receipts" not in content
     if output == "ndjson":
         event = json.loads(stdout.getvalue())
         assert event["operation_id"] == value.operation_id
@@ -93,9 +95,12 @@ def test_legacy_plan_review_does_not_upgrade_scope_only_price():
     plan = DatasetUploadPlan.model_validate_json(json.dumps(data["plan"]))
     approval = DatasetUploadApproval.model_validate_json(json.dumps(data["approval"]))
     value = review(VersionedTransferView(plan, approval, None))
-    assert value.summary.source_plan_schema == 1 and value.summary.legacy_history_only
-    assert value.summary.cost_bound is None and value.summary.cost_scope == "legacy_unknown"
-    assert value.summary.plan_status == "prepared" and value.request_limits is None
+    assert value.summary.source_plan_schema == 1
+    assert value.summary.legacy_history_only
+    assert value.summary.cost_bound is None
+    assert value.summary.cost_scope == "legacy_unknown"
+    assert value.summary.plan_status == "prepared"
+    assert value.request_limits is None
     assert value.summary.approval_status == "approved"
     assert not value.summary.authority_verified
 

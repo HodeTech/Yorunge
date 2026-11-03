@@ -133,7 +133,8 @@ def test_selected_owner_by_kind_preserves_other_owner(owner_kind, org):
     body["org_id"] = org
     value = receipt(created_dataset=body)
     validate_create_receipt(plan, view.intents[0], value)
-    assert value.created_dataset.owner_id == owner_id and value.created_dataset.org_id == org
+    assert value.created_dataset.owner_id == owner_id
+    assert value.created_dataset.org_id == org
 
 
 @pytest.mark.parametrize(
@@ -238,7 +239,8 @@ def test_large_clean_raw_response_projects_into_small_receipt():
     raw = canonical(body)
     assert 2048 < len(raw) < 1048576
     typed = codec.created(raw, view.plan.scope, view.plan.parameters, SECRET)
-    assert typed == receipt().created_dataset and type(typed) is ProviderDataset
+    assert typed == receipt().created_dataset
+    assert type(typed) is ProviderDataset
     assert receipt(created_dataset=typed.model_dump(mode="json")).encoded() == GOLDEN
 
 

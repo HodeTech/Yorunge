@@ -25,15 +25,20 @@ def issued(journal):
 
 def test_repository_issues_one_immutable_arm_with_legacy_tuple_view(journal):
     record, arm = issued(journal)
-    assert type(arm) is UploadArm and len(arm) == 3
+    assert type(arm) is UploadArm
+    assert len(arm) == 3
     intent, permit, deadline = arm
     assert type(permit) is DispatchPermit
-    assert arm[0] == intent and arm[1] is permit and arm[-1] == deadline
+    assert arm[0] == intent
+    assert arm[1] is permit
+    assert arm[-1] == deadline
     assert arm[:] == (intent, permit, deadline)
-    assert arm.deadline == deadline and arm.intent == intent
+    assert arm.deadline == deadline
+    assert arm.intent == intent
     with open_store(journal.root) as store:
         stored = journal.repository(store).show(operation_id=record.operation_id)
-        assert stored.intents == (intent,) and stored.operation.workflow_latched
+        assert stored.intents == (intent,)
+        assert stored.operation.workflow_latched
     claimed = arm.claim()
     assert claimed == (intent, permit, deadline)
     # The generic permit is consumed only at the actual HTTP boundary.
@@ -59,7 +64,8 @@ def test_callers_cannot_construct_or_mutate_or_reencode_issued_parts(journal):
     assert arm.intent.request_digest != observed.request_digest
     observed.owner.__dict__["expires_at"] = "2099-01-01T00:00:00.000000Z"
     assert arm.intent.owner.expires_at != observed.owner.expires_at
-    assert "operation_id" not in repr(arm) and arm.intent.operation_id not in repr(arm)
+    assert "operation_id" not in repr(arm)
+    assert arm.intent.operation_id not in repr(arm)
     for operation in (copy.copy, copy.deepcopy, pickle.dumps):
         with pytest.raises(TypeError):
             operation(arm)
@@ -72,10 +78,8 @@ def test_claim_expiry_does_not_extend_the_issued_deadline(journal):
     journal.clock.elapsed += 1000
     with pytest.raises(OperationError) as raised:
         arm.claim()
-    assert (
-        raised.value.code == "execution_timeout"
-        and raised.value.operation_id == record.operation_id
-    )
+    assert raised.value.code == "execution_timeout"
+    assert raised.value.operation_id == record.operation_id
     assert arm.deadline == original
 
 
@@ -92,7 +96,8 @@ def test_other_thread_cannot_claim_but_original_owner_can(journal):
     worker = threading.Thread(target=other)
     worker.start()
     worker.join(5)
-    assert not worker.is_alive() and failures == ["operation_conflict"]
+    assert not worker.is_alive()
+    assert failures == ["operation_conflict"]
     assert arm.claim()[0] == arm.intent
 
 
@@ -113,7 +118,8 @@ def test_sequential_thread_cannot_claim_after_issuer_exits(journal, monkeypatch)
     issuer = threading.Thread(target=issue)
     issuer.start()
     issuer.join(5)
-    assert not issuer.is_alive() and len(arms) == 1
+    assert not issuer.is_alive()
+    assert len(arms) == 1
 
     def claim():
         try:
@@ -124,7 +130,8 @@ def test_sequential_thread_cannot_claim_after_issuer_exits(journal, monkeypatch)
     claimant = threading.Thread(target=claim)
     claimant.start()
     claimant.join(5)
-    assert not claimant.is_alive() and failures == ["operation_conflict"]
+    assert not claimant.is_alive()
+    assert failures == ["operation_conflict"]
 
 
 def test_forked_child_cannot_claim_parent_arm(journal):
@@ -142,7 +149,8 @@ def test_forked_child_cannot_claim_parent_arm(journal):
     process.start()
     child.close()
     try:
-        assert parent.poll(5) and parent.recv() == "operation_conflict"
+        assert parent.poll(5)
+        assert parent.recv() == "operation_conflict"
         process.join(5)
         assert process.exitcode == 0
         assert arm.claim()[0] == arm.intent

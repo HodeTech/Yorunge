@@ -25,7 +25,7 @@ def parse_budget_cr(value: str) -> int:
     if (
         type(value) is not str
         or len(value) > 32
-        or re.fullmatch(r"[0-9]+(?:\.[0-9]{1,6})?", value, re.ASCII) is None
+        or re.fullmatch(r"\d+(?:\.\d{1,6})?", value, re.ASCII) is None
     ):
         raise YorungeError("invalid_request")
     whole, _, fraction = value.partition(".")

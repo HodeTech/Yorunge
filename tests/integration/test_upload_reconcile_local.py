@@ -57,13 +57,15 @@ def test_local_rejection_priority_without_loading_credential(journal, case, acce
         previous = journal.repository(store).show(operation_id=record.operation_id)
     with pytest.raises(OperationError) as raised:
         load_read_input(record.operation_id, journal.root, accepted, journal.clock)
-    assert raised.value.code == code and raised.value.operation_id == record.operation_id
+    assert raised.value.code == code
+    assert raised.value.operation_id == record.operation_id
     with open_existing_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
         if code in {"approval_required", "operation_conflict"}:
             assert view == previous
         if case == "missing_id" or (case == "incomplete" and accepted):
-            assert view.operation.status == "unknown" and view.operation.lease is None
+            assert view.operation.status == "unknown"
+            assert view.operation.lease is None
         assert store.verify().store_schema_version == 7
 
 
@@ -71,8 +73,10 @@ def test_unlatched_expiry_cleanup_needs_neither_flag_nor_credential(journal):
     record = admit(journal, unknown=True)
     later(journal)
     result = load_read_input(record.operation_id, journal.root, False, journal.clock)
-    assert isinstance(result, ReadPhase) and result.authorization is None
-    assert result.record.status == "cancelled" and result.record.lease is None
+    assert isinstance(result, ReadPhase)
+    assert result.authorization is None
+    assert result.record.status == "cancelled"
+    assert result.record.lease is None
     assert result.record.operation_id == record.operation_id
 
 
@@ -82,8 +86,10 @@ def test_complete_true_returns_db_manifest_and_original_baseline_without_mutatio
     with open_existing_store(journal.root) as store:
         before = journal.repository(store).show(operation_id=record.operation_id)
     result = load_read_input(record.operation_id, journal.root, True, journal.clock)
-    assert isinstance(result, ReadInput) and result.manifest == journal.manifest
-    assert result.plan == journal.plan and result.record == before.operation
+    assert isinstance(result, ReadInput)
+    assert result.manifest == journal.manifest
+    assert result.plan == journal.plan
+    assert result.record == before.operation
     assert result.baseline.id == record.dataset_id
     with open_existing_store(journal.root) as store:
         assert journal.repository(store).show(operation_id=record.operation_id) == before

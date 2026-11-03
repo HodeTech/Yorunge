@@ -31,7 +31,8 @@ def test_shared_request_binding_matches_every_literal_v2_stage():
 def test_shared_request_binding_preserves_literal_v1_create_digest():
     body = json.loads((FIXTURES / "dataset-transfer-journal-v1.json").read_bytes())
     intent = body["intent"]
-    assert intent["kind"] == "create" and intent["file_index"] is None
+    assert intent["kind"] == "create"
+    assert intent["file_index"] is None
     assert (
         upload_request_digest(body["record"]["plan_digest"], "create", None, None, None, None)
         == intent["request_digest"]

@@ -23,7 +23,8 @@ def receipt():
 def test_new_installation_has_nine_mandatory_checks_and_archives_losslessly(tmp_path):
     value = receipt()
     found = CHECKS["summarize"](value)
-    assert found["kind"] == "installation_v3" and found["passed"] is True
+    assert found["kind"] == "installation_v3"
+    assert found["passed"] is True
     assert set(found["checks"]) == {*CHECKS["INSTALL_CHECKS"], "upload_smoke"}
     assert found["checks"]["upload_smoke"] == {"passed": 2}
     (tmp_path / "docs/research").mkdir(parents=True)
@@ -74,7 +75,8 @@ def test_v3_closed_rows_reject_missing_or_ambiguous_upload_acceptance(damage):
 def test_historical_v2_stays_closed_and_keeps_exact_old_summary():
     old = receipt_v2()
     summary = CHECKS["summarize"](old)
-    assert summary["kind"] == "installation_v2" and summary["passed"] is True
+    assert summary["kind"] == "installation_v2"
+    assert summary["passed"] is True
     assert "upload_smoke" not in summary["checks"]
     old["results"][0]["upload_smoke"] = "passed"
     with pytest.raises(ValueError):

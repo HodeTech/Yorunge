@@ -199,7 +199,8 @@ def test_restart_flag_grant_policy_matrix_never_creates_write_access(
             assert repo.show(operation_id=record.operation_id) == before
         else:
             lease = repo.acquire_read(record.operation_id, **kwargs)
-            assert lease.mode == "read" and lease.fence == 2
+            assert lease.mode == "read"
+            assert lease.fence == 2
             assert repo.write_access is None
             total_end = journal.clock.monotonic() + 900
             with pytest.raises(YorungeError):
@@ -221,10 +222,8 @@ def test_initial_acknowledged_owner_can_finish_only_metadata_without_authority_u
         result = repo.verified(
             record.operation_id, record.lease, proof, authorization=read_check(journal)
         )
-        assert (
-            result.operation.status == "succeeded"
-            and result.operation.reason == "metadata_verified"
-        )
+        assert result.operation.status == "succeeded"
+        assert result.operation.reason == "metadata_verified"
         assert result.verification.grant is result.plan.grant is None
         assert result.plan.risks == ("authority_unverified", "cost_unverified")
         assert result.plan.encoded() == journal.plan.encoded()
@@ -253,7 +252,8 @@ def test_restart_explicit_read_flag_is_required_again_for_renew_and_proof(journa
         result = repo.verified(
             record.operation_id, renewed, proof, authorization=check, accept_unverified_read=True
         )
-        assert result.operation.status == "succeeded" and result.verification.grant is None
+        assert result.operation.status == "succeeded"
+        assert result.verification.grant is None
         store.verify()
 
 
@@ -304,7 +304,8 @@ def test_revoked_initial_approval_blocks_owner_but_not_new_explicit_read_takeove
         result = repo.verified(
             record.operation_id, lease, proof, authorization=check, accept_unverified_read=True
         )
-        assert result.operation.status == "succeeded" and result.approval.status == "revoked"
+        assert result.operation.status == "succeeded"
+        assert result.approval.status == "revoked"
         store.verify()
 
 
@@ -342,13 +343,12 @@ def test_read_failure_code_actor_matrix_and_recovery_slot(journal, code, outcome
         assert error.value.code == ("operation_uncertain" if actor == "initial" else code)
         assert error.value.exit_code == (5 if actor == "initial" else exit)
         result = repo.show(operation_id=record.operation_id)
-        assert (
-            result.operation.status == "unknown" and result.operation.reason == "read_unavailable"
-        )
-        assert result.operation.lease is None and len(result.controls) == 1
-        assert (
-            result.controls[0].kind == "recovery" and result.controls[0].verification_digest is None
-        )
+        assert result.operation.status == "unknown"
+        assert result.operation.reason == "read_unavailable"
+        assert result.operation.lease is None
+        assert len(result.controls) == 1
+        assert result.controls[0].kind == "recovery"
+        assert result.controls[0].verification_digest is None
         store.verify()
 
 
@@ -410,8 +410,10 @@ def test_partial_graph_with_all_existing_receipts_accepted_and_matching_metadata
             rejected_call()
         assert error.value.code == "operation_uncertain"
         found = repo.show(operation_id=record.operation_id)
-        assert len(found.intents) == 10 and all(r.result == "accepted" for r in found.receipts)
-        assert found.operation.status == "unknown" and found.verification is None
+        assert len(found.intents) == 10
+        assert all(r.result == "accepted" for r in found.receipts)
+        assert found.operation.status == "unknown"
+        assert found.verification is None
         store.verify()
 
 
@@ -444,8 +446,10 @@ def test_local_unlatched_expired_cleanup_requires_no_credential_or_read_flag(jou
     with open_store(journal.root) as store:
         repo = StateUploads(store, clock=journal.clock)
         result = repo.cleanup_expired(record.operation_id)
-        assert result.operation.status == "cancelled" and result.operation.reason == "lease_expired"
-        assert result.intents == () and result.controls[0].kind == "terminal"
+        assert result.operation.status == "cancelled"
+        assert result.operation.reason == "lease_expired"
+        assert result.intents == ()
+        assert result.controls[0].kind == "terminal"
         assert repo.write_access is None
         store.verify()
 
@@ -492,9 +496,11 @@ def test_explicit_read_after_reset_uses_new_scope_without_rewriting_history(jour
         result = repo.verified(
             record.operation_id, lease, proof, authorization=check, accept_unverified_read=True
         )
-        assert result.operation.status == "succeeded" and result.verification.scope == scope
+        assert result.operation.status == "succeeded"
+        assert result.verification.scope == scope
         assert result.plan.encoded() == before.plan.encoded()
         assert result.operation.approval.encoded() == before.operation.approval.encoded()
         assert result.plan.scope.identity_epoch != result.verification.scope.identity_epoch
-        assert result.plan.grant is None and result.verification.grant is None
+        assert result.plan.grant is None
+        assert result.verification.grant is None
         store.verify()

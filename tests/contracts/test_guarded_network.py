@@ -117,7 +117,8 @@ def test_dns_is_pinned_once_and_original_sni_is_preserved():
     assert resolutions == [("storage.example", 443)]
     assert connector.calls == [("8.8.8.8", 443)]
     assert stream.sni == "storage.example"
-    assert stream.writes == [b"approved HTTP bytes"] and stream.closed
+    assert stream.writes == [b"approved HTTP bytes"]
+    assert stream.closed
 
 
 @pytest.mark.parametrize("changed_at", ["connect", "tls", "reuse"])
@@ -152,7 +153,8 @@ def test_another_public_dns_answer_cannot_replace_the_selected_peer(changed_at):
     with pytest.raises(YorungeError) as failure:
         rejected_call()
     assert failure.value.code == "invalid_service_target"
-    assert connector.calls == [("8.8.8.8", 443)] and stream.closed
+    assert connector.calls == [("8.8.8.8", 443)]
+    assert stream.closed
     assert stream.writes == []
 
 
@@ -200,7 +202,8 @@ def test_actual_unapproved_peer_closes_before_http_bytes(peer):
     rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError):
         rejected_call()
-    assert stream.closed and stream.writes == []
+    assert stream.closed
+    assert stream.writes == []
 
 
 def test_peer_change_after_validation_is_rejected_on_pool_reuse_write():
@@ -210,7 +213,8 @@ def test_peer_change_after_validation_is_rejected_on_pool_reuse_write():
     rejected_call = partial(asyncio.run, guarded.write(b"must never reach peer"))
     with pytest.raises(YorungeError):
         rejected_call()
-    assert stream.closed and stream.writes == []
+    assert stream.closed
+    assert stream.writes == []
 
 
 @pytest.mark.parametrize("mode", ["wrong-sni", "tls-verification-disabled"])
@@ -226,7 +230,9 @@ def test_tls_original_host_and_certificate_verification_are_required(mode):
     rejected_call = partial(asyncio.run, guarded.start_tls(context, host))
     with pytest.raises(YorungeError):
         rejected_call()
-    assert stream.closed and stream.sni is None and stream.writes == []
+    assert stream.closed
+    assert stream.sni is None
+    assert stream.writes == []
 
 
 def test_dns_and_connect_share_one_phase_deadline():
@@ -276,7 +282,8 @@ def test_task_cancel_during_tls_closes_tcp_in_owner_task_and_propagates(close_er
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
-        assert stream.closed and closing_tasks == [task]
+        assert stream.closed
+        assert closing_tasks == [task]
 
     asyncio.run(run())
 
@@ -297,4 +304,5 @@ def test_invalid_connect_timeout_never_resolves_or_connects(timeout):
     rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
         rejected_call()
-    assert failure.value.code == "invalid_request" and not called
+    assert failure.value.code == "invalid_request"
+    assert not called

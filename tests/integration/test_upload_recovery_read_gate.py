@@ -31,7 +31,8 @@ def test_pre_items_gate_checks_current_read_without_renewing_or_rewriting(journa
         access = repository.prepare_recovery_read(
             operation_id, owner, check, accept_unverified_read=True
         )
-        assert access.policy == "explicit_read_attempt" and access.grant is None
+        assert access.policy == "explicit_read_attempt"
+        assert access.grant is None
         assert access.scope == check.scope
         assert repository.show(operation_id=operation_id) == before
         assert store.verify().store_schema_version == 7
@@ -66,7 +67,8 @@ def test_recovery_gate_rejects_without_new_ownership(journal, failure, code):
             repository.prepare_recovery_read(
                 operation_id, owner, check, accept_unverified_read=failure != "consent"
             )
-        assert raised.value.code == code and raised.value.operation_id == operation_id
+        assert raised.value.code == code
+        assert raised.value.operation_id == operation_id
         assert repository.show(operation_id=operation_id) == before
         assert store.verify().store_schema_version == 7
 
@@ -79,6 +81,7 @@ def test_invalid_proof_deadline_cannot_disable_the_budget_or_mutate_history(jour
         before = repository.show(operation_id=operation_id)
         with pytest.raises(OperationError) as raised:
             repository.verified(operation_id, owner, None, deadline=deadline)
-        assert raised.value.code == "invalid_request" and raised.value.operation_id == operation_id
+        assert raised.value.code == "invalid_request"
+        assert raised.value.operation_id == operation_id
         assert repository.show(operation_id=operation_id) == before
         assert store.verify().store_schema_version == 7

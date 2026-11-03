@@ -273,9 +273,11 @@ def test_two_workers_share_quota_and_partial_upload_stays_spent(clock):
 
     asyncio.run(run())
     snapshot = value.snapshot()
-    assert snapshot.upload_reserved == 10 and snapshot.upload_bytes == 6
+    assert snapshot.upload_reserved == 10
+    assert snapshot.upload_bytes == 6
     assert snapshot.put_requests == snapshot.effect_attempts == 2
-    assert snapshot.response_bytes == 2 and snapshot.response_pending == 0
+    assert snapshot.response_bytes == 2
+    assert snapshot.response_pending == 0
     error("upload_limit_exceeded", lambda: value.reserve("put", upload_bytes=0, response_bytes=0))
     assert all(type(number) is int for number in asdict(snapshot).values())
 
@@ -402,7 +404,8 @@ def test_private_state_cannot_be_cloned_or_serialized_and_public_error_is_closed
                 callback()
         assert repr(instance) == "<upload quota private>"
     failure = YorungeError("upload_limit_exceeded")
-    assert failure.exit_code == 2 and failure.envelope()["retryable"] is False
+    assert failure.exit_code == 2
+    assert failure.envelope()["retryable"] is False
     bound = OperationError(
         "operation_uncertain",
         "11111111-1111-4111-8111-111111111111",
@@ -426,7 +429,8 @@ def test_revalidation_never_serializes_rejected_values_or_emits_warnings(
         failure = error("invalid_request", lambda: budget(values=bad))
     assert observed == []
     assert capsys.readouterr() == ("", "")
-    assert failure.__context__ is None and failure.__cause__ is None
+    assert failure.__context__ is None
+    assert failure.__cause__ is None
     assert "QUOTA-REJECTED-INPUT-CANARY" not in str(failure.envelope())
 
 

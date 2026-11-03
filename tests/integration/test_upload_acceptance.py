@@ -69,7 +69,8 @@ def test_cli_sigkill_before_first_id_is_recovered_by_documented_local_commands(
             process.kill()
             stdout, stderr = process.communicate(timeout=10)
             assert process.returncode == -signal.SIGKILL
-            assert not stdout and not stderr  # The user has never received the operation ID.
+            assert not stdout
+            assert not stderr  # The user has never received the operation ID.
         finally:
             if process.poll() is None:
                 process.kill()
@@ -89,27 +90,31 @@ def test_cli_sigkill_before_first_id_is_recovered_by_documented_local_commands(
             execute(server, "datasets", "upload", "list", "--plan-id", plan["plan_id"], *local),
             "json",
         )
-        assert page["uploads"] == [shown] and page["next_cursor"] is None
+        assert page["uploads"] == [shown]
+        assert page["next_cursor"] is None
         assert shown["operation_id"] is not None
         assert shown["operation_status"] == ("admitted" if boundary == "admission" else "running")
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=shown["operation_id"])
             before = view.operation.encoded()
             assert len(view.intents) == (0 if boundary == "admission" else 1)
-            assert not view.receipts and view.operation.dataset_id is None
+            assert not view.receipts
+            assert view.operation.dataset_id is None
         repeated = execute(
             server, "datasets", "upload", "start", "--plan-id", plan["plan_id"], *local
         )
         failure = json.loads(repeated.stderr)
         assert repeated.returncode == (2 if boundary == "admission" else 5)
-        assert failure["operation_id"] == shown["operation_id"] and not repeated.stdout
+        assert failure["operation_id"] == shown["operation_id"]
+        assert not repeated.stdout
         assert failure["code"] == (
             "operation_conflict" if boundary == "admission" else "operation_uncertain"
         )
         assert len(server.requests) == count
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=shown["operation_id"])
-            assert view.operation.encoded() == before and not view.receipts
+            assert view.operation.encoded() == before
+            assert not view.receipts
             assert store.verify().store_schema_version == 7
 
 
@@ -134,10 +139,10 @@ def test_real_cli_maximum_file_inventory_has_complete_distinct_graph(public_inpu
             timeout=300,
         )
         shown = result(process, "json")
-        assert (
-            shown["operation_status"] == "succeeded" and shown["verification_level"] == "metadata"
-        )
-        assert not shown["authority_verified"] and not shown["remote_bytes_verified"]
+        assert shown["operation_status"] == "succeeded"
+        assert shown["verification_level"] == "metadata"
+        assert not shown["authority_verified"]
+        assert not shown["remote_bytes_verified"]
         assert provider.create_calls == provider.link_calls == 1
         assert provider.presign_calls == provider.put_calls == provider.confirm_calls == 128
         assert len(provider.objects) == len(provider.confirmed) == 128
@@ -149,10 +154,12 @@ def test_real_cli_maximum_file_inventory_has_complete_distinct_graph(public_inpu
             assert key not in keys
             keys.add(key)
             actual = provider.objects[key]
-            assert len(actual) == file.size and hashlib.sha256(actual).hexdigest() == file.sha256
+            assert len(actual) == file.size
+            assert hashlib.sha256(actual).hexdigest() == file.sha256
             remote = provider.confirmed[file.path]
             assert remote["original_filename"] == file.path
-            assert remote["file_size_bytes"] == file.size and remote["sha256_hash"] == file.sha256
+            assert remote["file_size_bytes"] == file.size
+            assert remote["sha256_hash"] == file.sha256
         assert (
             provider.confirmed["file-000.bin"]["sha256_hash"]
             == provider.confirmed["file-001.bin"]["sha256_hash"]
@@ -189,7 +196,8 @@ def test_real_cli_maximum_file_inventory_has_complete_distinct_graph(public_inpu
             ),
             "json",
         )
-        assert found == shown and len(server.requests) == count
+        assert found == shown
+        assert len(server.requests) == count
 
 
 def test_cli_file_129_is_rejected_before_http_or_saved_plan(public_inputs, certificates):
@@ -223,7 +231,8 @@ def test_cli_file_129_is_rejected_before_http_or_saved_plan(public_inputs, certi
             str(data[0]),
             "--output=json",
         )
-        assert process.returncode == 2 and not process.stdout
+        assert process.returncode == 2
+        assert not process.stdout
         assert json.loads(process.stderr)["code"] == "input_budget_exceeded"
         assert not server.requests
         with open_existing_store(data[0]) as store:

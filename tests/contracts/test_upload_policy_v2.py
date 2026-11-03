@@ -416,7 +416,8 @@ def test_upload_observation_is_required_fresh_and_never_a_grant():
     )
     check = current(plan, authorization=auth, upload_observation=obs)
     require(check, plan, action="upload_created_dataset", dataset_id=DATASET)
-    assert plan.grant is None and auth.outcome == "not_exposed"
+    assert plan.grant is None
+    assert auth.outcome == "not_exposed"
     denied = current(
         plan, authorization=auth, upload_observation=obs.model_copy(update={"has_upload": False})
     )

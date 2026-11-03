@@ -133,7 +133,9 @@ def test_recycled_numeric_thread_id_cannot_transfer_a_resource(kind, tmp_path, m
     issuer = threading.Thread(target=issue)
     issuer.start()
     issuer.join(5)
-    assert not issuer.is_alive() and not failures and len(captured) == 1
+    assert not issuer.is_alive()
+    assert not failures
+    assert len(captured) == 1
 
     def claim():
         try:
@@ -144,6 +146,8 @@ def test_recycled_numeric_thread_id_cannot_transfer_a_resource(kind, tmp_path, m
     claimant = threading.Thread(target=claim)
     claimant.start()
     claimant.join(5)
-    assert not claimant.is_alive() and claimant is not issuer
-    assert len(failures) == 1 and isinstance(failures[0], YorungeError)
+    assert not claimant.is_alive()
+    assert claimant is not issuer
+    assert len(failures) == 1
+    assert isinstance(failures[0], YorungeError)
     assert failures[0].code == "invalid_request"

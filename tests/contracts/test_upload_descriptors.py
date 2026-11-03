@@ -195,7 +195,8 @@ def test_proxy_path_query_authority_is_exact_without_fallback(url):
     raw = encoded(response(context, upload_url=url))
     with pytest.raises(YorungeError) as error:
         codec.presigned(raw, context, SECRET)
-    assert error.value.code == "invalid_response" and KEY not in str(error.value)
+    assert error.value.code == "invalid_response"
+    assert KEY not in str(error.value)
 
 
 @pytest.mark.parametrize("change", ["missing", "zero", "two", "duplicates", "logical_false"])
@@ -221,7 +222,8 @@ def test_presign_cardinality_and_duplicate_shortcut_are_closed(change):
 def test_context_and_descriptor_cannot_be_mutated_serialized_or_copied():
     context = contexts()[0]
     descriptor = codec.presigned(encoded(response(context)), context, SECRET)
-    assert KEY not in repr(descriptor) and "upload/put" not in repr(descriptor)
+    assert KEY not in repr(descriptor)
+    assert "upload/put" not in repr(descriptor)
     for value in (context, descriptor):
         with pytest.raises(AttributeError):
             value.file_index = 1

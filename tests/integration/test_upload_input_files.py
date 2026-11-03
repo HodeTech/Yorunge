@@ -79,14 +79,16 @@ def test_both_manifest_sources_hash_all_names_and_retain_no_descriptors(tmp_path
         {tracking_open if item is original_open else item for item in os.supports_dir_fd},
     )
     first = capture(root, artifact)
-    assert first.manifest == manifest and first.manifest.file_count == 3
+    assert first.manifest == manifest
+    assert first.manifest.file_count == 3
     assert len({file.sha256 for file in manifest.files}) == 1
     assert opened == set()
     first.recheck()
     assert opened == set()
     second = capture(root, manifest, expected_root=first.root)
     second.recheck()
-    assert second.root == first.root and opened == set()
+    assert second.root == first.root
+    assert opened == set()
     assert first.root.anchor == str(root)
 
 

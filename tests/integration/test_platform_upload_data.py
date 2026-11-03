@@ -132,7 +132,8 @@ def test_actual_three_puts_preserve_empty_unicode_bytes_hashes_and_private_bindi
                 outcome = owned.exchange(
                     lambda client, call=call, arm=arm: call.execute(client, arm)
                 )
-                assert call._source._end <= arm.deadline and call._source.complete
+                assert call._source._end <= arm.deadline
+                assert call._source.complete
                 assert call._source._file_fd is call._source._root_fd is None
                 assert (outcome.receipt.sent_bytes, outcome.receipt.sent_sha256) == (
                     upload.context.file.size,
@@ -144,17 +145,20 @@ def test_actual_three_puts_preserve_empty_unicode_bytes_hashes_and_private_bindi
                         .receipt(record.operation_id, record.lease, outcome.receipt)
                         .operation
                     )
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert [r.path for r in server.requests] == paths
         for request, upload in zip(server.requests, uploads, strict=True):
-            assert request.method == "PUT" and request.body == data[upload.context.file.path]
+            assert request.method == "PUT"
+            assert request.body == data[upload.context.file.path]
             assert hashlib.sha256(request.body).hexdigest() == upload.context.file.sha256
             assert request.header("X-API-Key") == key.secret.reveal()
             assert upload.context.local_binding not in request.path + request.body.decode()
     assert value.snapshot().upload_bytes == sum(map(len, data.values()))
     assert value.snapshot().effect_attempts == value.snapshot().put_requests == 3
     assert value.snapshot().response_pending == 0
-    assert "private-provider-key" not in caplog.text and key.secret.reveal() not in caplog.text
+    assert "private-provider-key" not in caplog.text
+    assert key.secret.reveal() not in caplog.text
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
         assert "private-provider-key" not in b"".join(r.encoded() for r in view.receipts).decode()
@@ -197,10 +201,13 @@ def test_put_failure_never_accepts_or_replays_and_closes_source(
                 rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
                 with pytest.raises(YorungeError):
                     rejected_call()
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) <= int(failure != "wrong_arm")
-    assert call._closed and call._source._file_fd is call._source._root_fd is None
-    assert value.snapshot().effect_attempts <= 1 and value.snapshot().response_pending == 0
+    assert call._closed
+    assert call._source._file_fd is call._source._root_fd is None
+    assert value.snapshot().effect_attempts <= 1
+    assert value.snapshot().response_pending == 0
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
         assert arm.intent.intent_id not in {r.intent_id for r in view.receipts}
@@ -213,7 +220,8 @@ def test_unused_put_source_closes_and_returns_pre_intent_quota(journal, tmp_path
     assert value.snapshot().put_requests == 1
     asyncio.run(call.aclose())
     assert value.snapshot().put_requests == value.snapshot().upload_reserved == 0
-    assert call._closed and call._source._closed
+    assert call._closed
+    assert call._source._closed
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
 
 
@@ -258,7 +266,8 @@ def test_metadata_is_read_only_paginated_ordered_and_requires_no_source_files(
             result = owned.exchange(
                 lambda client: port.items(client, DATASET, deadline=time.monotonic() + 10)
             )
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert [r.path for r in server.requests] == [ITEMS, cursor_path]
         assert all(r.method == "GET" for r in server.requests)
     assert [r.file_index for r in result] == [0, 1, 2]
@@ -331,7 +340,8 @@ def test_metadata_mismatch_never_becomes_complete(journal, certificates, bad):
             with pytest.raises(YorungeError) as raised:
                 rejected_call()
             assert raised.value.code == "invalid_response"
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert all(r.method == "GET" for r in server.requests)
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
 
@@ -381,7 +391,8 @@ def test_metadata_page_cap_stops_before_request_129(journal, certificates):
             with pytest.raises(YorungeError) as raised:
                 rejected_call()
             assert raised.value.code == "invalid_response"
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 128
     assert value.snapshot().read_requests == value.snapshot().read_attempts == 128
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
@@ -400,8 +411,10 @@ def test_metadata_transient_retry_is_one_logical_read_and_never_a_write(journal,
             result = owned.exchange(
                 lambda client: port.items(client, DATASET, deadline=time.monotonic() + 10)
             )
-        assert len(server.requests) == 2 and len(result) == len(rows)
-    assert value.snapshot().read_requests == 1 and value.snapshot().read_attempts == 2
+        assert len(server.requests) == 2
+        assert len(result) == len(rows)
+    assert value.snapshot().read_requests == 1
+    assert value.snapshot().read_attempts == 2
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
 
 
@@ -444,14 +457,17 @@ def test_partial_actual_put_cancel_counts_delivered_bytes_and_closes_fds(
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
 
         with owned:
             owned.exchange(cancel_partial)
-    assert call._closed and not call._source.complete
+    assert call._closed
+    assert not call._source.complete
     assert call._source._file_fd is call._source._root_fd is None
     assert value.snapshot().upload_bytes == block
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
     assert sum(len(r.body) for r in server.requests) <= block
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
@@ -492,7 +508,8 @@ def test_rotated_current_scope_can_read_exact_resource_but_cannot_arm_writes(jou
             result = owned.exchange(
                 lambda client: port.items(client, DATASET, deadline=time.monotonic() + 5)
             )
-        assert len(result) == 3 and len(server.requests) == 1
+        assert len(result) == 3
+        assert len(server.requests) == 1
         assert server.requests[0].header("X-API-Key") == bound.credential.secret.reveal()
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
     assert journal.plan.scope.credential_id != identity.credential_id
@@ -551,14 +568,17 @@ def test_two_put_workers_own_their_sources_and_share_the_same_bounded_pool(
 
         with owned:
             results = owned.exchange(workers)
-            assert not instances[0]._responses and instances[0]._slots._value == 2
-        assert {r.path for r in server.requests} == set(paths) and len(server.requests) == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
+        assert {r.path for r in server.requests} == set(paths)
+        assert len(server.requests) == 2
         assert len({r.connection for r in server.requests}) <= 2
     assert [result.receipt.object_key for result in results] == [
         upload.context.local_binding for upload in uploads[:2]
     ]
     assert value.snapshot().effect_attempts == value.snapshot().put_requests == 2
-    assert value.snapshot().upload_bytes == 3 and value.snapshot().response_pending == 0
+    assert value.snapshot().upload_bytes == 3
+    assert value.snapshot().response_pending == 0
     for result in results:
         with open_store(journal.root) as store:
             record = (

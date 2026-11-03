@@ -108,13 +108,15 @@ def session(server, key, value, *, storage_server=None, origins=()):
         # Test-only mapping: the production public-IP policy is unchanged.
         def __init__(self):
             async def resolver(host, port, timeout):
-                assert host in routes and port == 443
+                assert host in routes
+                assert port == 443
                 return ("127.0.0.1",)
 
             super().__init__(resolver=resolver, allowed=lambda address: address == "127.0.0.1")
 
         async def _connect(self, pinned, port, timeout, options, original_host):
-            assert pinned == "127.0.0.1" and port == 443
+            assert pinned == "127.0.0.1"
+            assert port == 443
             return await httpcore.AnyIOBackend().connect_tcp(
                 pinned, routes[original_host].port, timeout=timeout, socket_options=options
             )
@@ -206,7 +208,8 @@ def test_real_read_retry_and_post_single_attempt_share_one_client_pool(certifica
             with pytest.raises(YorungeError) as error:
                 rejected_call()
             assert error.value.code == "remote_failed"
-            assert len(instances) == 1 and not instances[0]._responses
+            assert len(instances) == 1
+            assert not instances[0]._responses
             assert instances[0]._slots._value == 2
         assert [record.method for record in server.requests] == ["GET", "GET", "POST"]
         assert server.requests[-1].body == effect.content
@@ -214,7 +217,8 @@ def test_real_read_retry_and_post_single_attempt_share_one_client_pool(certifica
         # GET and the later exchange still reuse the same owned pool/socket.
         assert server.requests[1].connection == server.requests[2].connection
     counts = value.snapshot()
-    assert counts.read_requests == 1 and counts.read_attempts == 2
+    assert counts.read_requests == 1
+    assert counts.read_attempts == 2
     assert counts.create_requests == counts.effect_attempts == 1
     assert counts.control_request_bytes == len(effect.content)
     assert counts.response_bytes == len(b'{"accepted":true}')
@@ -236,15 +240,20 @@ def test_real_proxy_put_counters_match_server_and_descriptor_eof(tmp_path, certi
             result = owned.exchange(
                 lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
             )
-            assert instances[0]._slots._value == 2 and not instances[0]._responses
-        assert len(server.requests) == 1 and server.requests[0].body == data
+            assert instances[0]._slots._value == 2
+            assert not instances[0]._responses
+        assert len(server.requests) == 1
+        assert server.requests[0].body == data
         assert server.requests[0].header("Content-Length") == str(size)
     assert result == (b"{}", size, hashlib.sha256(data).hexdigest())
-    assert body.complete and body._file_fd is None and body._root_fd is None
+    assert body.complete
+    assert body._file_fd is None
+    assert body._root_fd is None
     counts = value.snapshot()
     assert counts.upload_reserved == counts.upload_bytes == size
     assert counts.effect_attempts == counts.put_requests == 1
-    assert counts.response_bytes == 2 and counts.response_pending == 0
+    assert counts.response_bytes == 2
+    assert counts.response_pending == 0
 
 
 @pytest.mark.parametrize(
@@ -330,7 +339,8 @@ def test_real_response_overflow_releases_capacity_without_refunding_request(cert
         with owned, pytest.raises(YorungeError) as error:
             rejected_call()
         assert error.value.code == "invalid_response"
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
         assert len(server.requests) == 1
     assert value.snapshot().read_requests == value.snapshot().read_attempts == 1
     assert value.snapshot().response_pending == value.snapshot().response_bytes == 0
@@ -385,12 +395,14 @@ def test_real_two_put_workers_share_budget_and_pool(tmp_path, certificates):
 
         with owned:
             results = owned.exchange(run)
-            assert len(instances) == 1 and instances[0]._slots._value == 2
+            assert len(instances) == 1
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 2
         assert all(record.body == data for record in server.requests)
     assert all(result[1] == len(data) for result in results)
     assert value.snapshot().upload_bytes == value.snapshot().upload_reserved == 2 * len(data)
-    assert value.snapshot().response_bytes == 4 and value.snapshot().response_pending == 0
+    assert value.snapshot().response_bytes == 4
+    assert value.snapshot().response_pending == 0
 
 
 def test_cancel_mid_source_keeps_partial_count_and_closes_same_task(tmp_path, certificates):
@@ -435,10 +447,12 @@ def test_cancel_mid_source_keeps_partial_count_and_closes_same_task(tmp_path, ce
             assert CURRENT_CALL.get() is None
             assert value.snapshot().upload_bytes == MIB
             assert value.snapshot().response_pending == 0
-            assert base._file_fd is None and not base.complete
+            assert base._file_fd is None
+            assert not base.complete
             wanted = request(key)
             assert await get(client, wanted, claim(value, wanted)) == b"{}"
-            assert instances[0]._slots._value == 2 and not instances[0]._responses
+            assert instances[0]._slots._value == 2
+            assert not instances[0]._responses
 
         with owned:
             owned.exchange(run)
@@ -518,7 +532,8 @@ def test_raw_response_faults_preserve_attempt_and_cleanup(certificates, fault):
             "truncated": "transport_failed",
         }
         assert failure.value.code == expected[fault]
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
         assert len(server.requests) == 1
     assert value.snapshot().read_requests == value.snapshot().read_attempts == 1
     assert value.snapshot().response_pending == 0
@@ -552,9 +567,12 @@ def test_real_put_failure_has_one_attempt_no_replay_and_closes_source(
                 "failed": "remote_failed",
             }[fault]
         )
-        assert len(server.requests) == 1 and server.requests[0].body == b"small-upload"
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
-    assert base._file_fd is None and base._root_fd is None
+        assert len(server.requests) == 1
+        assert server.requests[0].body == b"small-upload"
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
+    assert base._file_fd is None
+    assert base._root_fd is None
     assert value.snapshot().upload_bytes == base.size
     assert value.snapshot().put_requests == value.snapshot().effect_attempts == 1
     assert value.snapshot().response_bytes == value.snapshot().response_pending == 0
@@ -601,8 +619,10 @@ def test_storage_preflight_rejection_closes_lazy_source_without_socket(tmp_path,
         )
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
-        assert failure.value.code == "invalid_request" and server.requests == []
-    assert base._closed and base._file_fd is None
+        assert failure.value.code == "invalid_request"
+        assert server.requests == []
+    assert base._closed
+    assert base._file_fd is None
     reserved.finish()
     assert value.snapshot().put_requests == value.snapshot().effect_attempts == 0
 
@@ -631,7 +651,8 @@ def test_connect_failure_counts_physical_attempts_and_erases_private_exception(e
             with pytest.raises(YorungeError) as failure:
                 await rejected_call()
             assert failure.value.code == "transport_failed"
-            assert failure.value.__context__ is None and failure.value.__cause__ is None
+            assert failure.value.__context__ is None
+            assert failure.value.__cause__ is None
             assert "PRIVATE-CONNECT-EXCEPTION-CANARY" not in str(failure.value.envelope())
 
     asyncio.run(run())
@@ -720,7 +741,8 @@ def test_real_wire_stream_mutation_is_rejected_before_permit_and_socket(certific
         )
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
-        assert failure.value.code == "invalid_request" and server.requests == []
+        assert failure.value.code == "invalid_request"
+        assert server.requests == []
     assert value.snapshot().effect_attempts == value.snapshot().create_requests == 0
     permit.consume()  # Guard failure did not consume the effect capability.
 
@@ -745,7 +767,8 @@ def test_not_entered_or_closed_storage_client_still_closes_source(tmp_path, ente
         assert failure.value.code == "invalid_request"
 
     asyncio.run(run())
-    assert base._closed and base._file_fd is None
+    assert base._closed
+    assert base._file_fd is None
     assert value.snapshot().effect_attempts == value.snapshot().put_requests == 0
     assert value.snapshot().response_pending == 0
 
@@ -793,12 +816,14 @@ def test_total_budget_and_shorter_network_deadline_have_distinct_safe_errors(
                 "execution_timeout" if total_first else "transport_timeout"
             )
             assert failure.value.exit_code == (2 if total_first else 1)
-            assert failure.value.__context__ is None and failure.value.__cause__ is None
+            assert failure.value.__context__ is None
+            assert failure.value.__cause__ is None
 
     asyncio.run(run())
     assert value.snapshot().response_pending == 0
     if storage_call:
-        assert base._closed and base._file_fd is None
+        assert base._closed
+        assert base._file_fd is None
         assert value.snapshot().effect_attempts == 1
     else:
         assert value.snapshot().read_attempts == 1
@@ -847,7 +872,8 @@ def test_direct_storage_keeps_explicit_origin_policy_and_no_credentials(
                 with pytest.raises(YorungeError) as failure:
                     rejected_call()
                 assert failure.value.code == "invalid_service_target"
-            assert len(instances) == 1 and instances[0]._slots._value == 2
+            assert len(instances) == 1
+            assert instances[0]._slots._value == 2
         assert len(remote.requests) == int(selected)
         if selected:
             assert remote.requests[0].body == b"direct-source"
@@ -855,7 +881,8 @@ def test_direct_storage_keeps_explicit_origin_policy_and_no_credentials(
             assert remote.requests[0].header("Authorization") is None
             assert remote.requests[0].header("Cookie") is None
             assert api.requests[0].header("X-API-Key") == SECRET
-    assert base._closed and value.snapshot().response_pending == 0
+    assert base._closed
+    assert value.snapshot().response_pending == 0
 
 
 @pytest.mark.parametrize("close_error", [OSError, httpx.ReadError, YorungeError])
@@ -891,11 +918,14 @@ def test_early_source_cleanup_cannot_replace_primary_or_publish_private_error(
             with pytest.raises(YorungeError) as failure:
                 await rejected_call()
             assert failure.value.code == "invalid_request"
-            assert failure.value.__context__ is None and failure.value.__cause__ is None
+            assert failure.value.__context__ is None
+            assert failure.value.__cause__ is None
             assert "PRIVATE-SOURCE-CLOSE-CANARY" not in str(failure.value.envelope())
 
     asyncio.run(run())
-    assert delegated == [] and base._closed and base._file_fd is None
+    assert delegated == []
+    assert base._closed
+    assert base._file_fd is None
     reserved.finish()
     assert value.snapshot().put_requests == value.snapshot().effect_attempts == 0
     assert value.snapshot().response_pending == 0

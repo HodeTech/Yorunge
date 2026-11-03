@@ -153,8 +153,11 @@ def test_v2_full_history_show_list_and_validation_never_rewrite_payload(tmp_path
         found = repo.show(plan_id=data["plan"]["plan_id"])
         assert repo.show(operation_id=data["record"]["operation_id"]) == found
         rows, cursor = repo.list()
-        assert len(rows) == 1 and rows[0].operation_status == "succeeded" and cursor is None
-        assert found.operation.reason == "metadata_verified" and found.verification.grant is None
+        assert len(rows) == 1
+        assert rows[0].operation_status == "succeeded"
+        assert cursor is None
+        assert found.operation.reason == "metadata_verified"
+        assert found.verification.grant is None
         validate_uploads(store.connection)
         assert store.verify().store_schema_version == 7
         assert store.connection.total_changes == before
@@ -179,12 +182,12 @@ def test_reset_coalesces_v2_recovery_in_existing_slot_and_preserves_history(tmp_
             )
         updated = read_any_view(store.connection, data["plan"]["plan_id"])
         assert updated.operation.schema_version == updated.controls[0].schema_version == 2
-        assert (
-            updated.operation.status == "unknown" and updated.operation.reason == "identity_reset"
-        )
+        assert updated.operation.status == "unknown"
+        assert updated.operation.reason == "identity_reset"
         assert len(updated.controls) == 1
         assert updated.plan.encoded() == original.plan.encoded()
-        assert updated.intents == original.intents and updated.receipts == original.receipts
+        assert updated.intents == original.intents
+        assert updated.receipts == original.receipts
         validate_uploads(store.connection)
 
 

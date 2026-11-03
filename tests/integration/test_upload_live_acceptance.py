@@ -97,28 +97,31 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
             current = api.show_dataset_upload(
                 operation_id=identity["operation_id"], state_dir=args.workspace / "state"
             ).data
-            assert current.operation_status == "succeeded" and provider.confirm_calls == 3
+            assert current.operation_status == "succeeded"
+            assert provider.confirm_calls == 3
         else:
             value = helper["run"](args)
             assert value["outcome"] == "metadata_succeeded"
-            assert value["same_hash_different_names"] is True and value["fixture_bytes"] == 237
+            assert value["same_hash_different_names"] is True
+            assert value["fixture_bytes"] == 237
             actual = value["counters"]["actual"]
             assert actual["read_requests"] == actual["read_attempts"] == 23
-            assert actual["effect_attempts"] == 11 and actual["upload_bytes"] == 237
+            assert actual["effect_attempts"] == 11
+            assert actual["upload_bytes"] == 237
             assert value["counters"]["open_reservations"] == 0
         count = len(server.requests)
         with pytest.raises(ValueError):
             helper["run"](args)
-        assert len(server.requests) == count and provider.create_calls == provider.link_calls == 1
+        assert len(server.requests) == count
+        assert provider.create_calls == provider.link_calls == 1
     import os
 
     assert os.environ["PILOT_PLATFORM_KEY"] == "prior-env-value"
     receipt = (args.workspace / "receipt.json").read_bytes()
-    assert provider.owner_id.encode() not in receipt and SCOPE.project_id.encode() not in receipt
-    assert (
-        b"synthetic-pilot-selected-key" not in receipt
-        and b"yorunge-acceptance-pilot" not in receipt
-    )
+    assert provider.owner_id.encode() not in receipt
+    assert SCOPE.project_id.encode() not in receipt
+    assert b"synthetic-pilot-selected-key" not in receipt
+    assert b"yorunge-acceptance-pilot" not in receipt
     assert json.loads(receipt)["outcome"] == (
         "metadata_succeeded" if outcome == "success" else "incomplete"
     )
@@ -153,3 +156,38 @@ def test_private_file_and_config_target_do_not_open_another_account_target(tmp_p
     alias.symlink_to(args.credentials)
     with pytest.raises(ValueError, match="symlinks"):
         helper["private_file"](alias)
+
+
+@pytest.mark.parametrize("failure", ["RuntimeError", "KeyboardInterrupt", "SystemExit"])
+def test_pilot_main_stops_without_rendering_private_exception_chain(failure):
+    import subprocess
+
+    code = """
+import builtins,runpy,sys
+helper=runpy.run_path(sys.argv[1])
+kind=getattr(builtins,sys.argv[2])
+def failed(args):
+    raise kind('private-exception-canary')
+helper['main'].__globals__['run']=failed
+sys.argv=['pilot','--project','00000000-0000-4000-8000-000000000004']
+for option in ('config','credentials','workspace','wheel'):
+    sys.argv.extend(['--'+option,'unused'])
+raise SystemExit(helper['main']())
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            code,
+            str(ROOT / "scripts/upload_live_acceptance.py"),
+            failure,
+        ],
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 1
+    assert result.stdout == b""
+    assert b"private-exception-canary" not in result.stderr
+    assert b"Traceback" not in result.stderr
+    assert b"Pilot stopped." in result.stderr

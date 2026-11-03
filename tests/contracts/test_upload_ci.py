@@ -47,7 +47,8 @@ def test_real_controller_timeout_kills_and_reaps_owned_group_with_original_logs(
     ]
     with pytest.raises(subprocess.TimeoutExpired):
         helper["execute"](command, stdout, stderr)
-    assert len(processes) == 1 and processes[0].returncode == -9
+    assert len(processes) == 1
+    assert processes[0].returncode == -9
     assert int(stdout.read_text().strip()) != processes[0].pid
     assert stderr.read_bytes() == b""
     with pytest.raises(ChildProcessError):
@@ -90,7 +91,8 @@ def test_nondefault_child_reaping_is_rejected_before_spawn(tmp_path, helper, mon
     stdout, stderr = tmp_path / "stdout", tmp_path / "stderr"
     with pytest.raises(ValueError, match="child reaping ownership"):
         helper["execute"]([sys.executable, "-I", "-c", "raise SystemExit(0)"], stdout, stderr)
-    assert not stdout.exists() and not stderr.exists()
+    assert not stdout.exists()
+    assert not stderr.exists()
 
 
 def test_abrupt_controller_exit_cannot_leave_owned_descendant_writing(tmp_path, helper):
@@ -210,12 +212,15 @@ except SystemExit:
         end = time.monotonic() + 10
         marker = root / "upload-check-controller-stdout.txt"
         while not marker.exists() or not marker.stat().st_size:
-            assert process.poll() is None and time.monotonic() < end
+            assert process.poll() is None
+            assert time.monotonic() < end
             time.sleep(0.01)
         if boundary == "running":
             process.send_signal(signal.SIGTERM)
         output, error = process.communicate(timeout=10)
-        assert process.returncode == 143 and not output and not error
+        assert process.returncode == 143
+        assert not output
+        assert not error
         assert json.loads((root / "restored.json").read_bytes()) == {"restored": True}
         assert eventually_stopped(int(marker.read_text().strip()))
         checks = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
@@ -236,7 +241,8 @@ def test_real_controller_nonzero_preserves_non_utf8_and_stderr(tmp_path, helper)
         "import os;os.write(1,b'\\xffbad');os.write(2,b'failure');raise SystemExit(7)",
     ]
     assert helper["execute"](command, stdout, stderr) == 7
-    assert stdout.read_bytes() == b"\xffbad" and stderr.read_bytes() == b"failure"
+    assert stdout.read_bytes() == b"\xffbad"
+    assert stderr.read_bytes() == b"failure"
 
 
 def test_log_copy_is_lossless_idempotent_and_never_overwrites_different_bytes(tmp_path, helper):

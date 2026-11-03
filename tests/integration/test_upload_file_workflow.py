@@ -59,7 +59,8 @@ def test_all_presigns_before_two_workers_and_serial_exact_confirm(prepared_input
         result = upload_files_original(
             plan.plan_id, data[0], loader(data), session_factory=factory(server, budgets)
         )
-        assert result.record.status == "running" and not result.existing
+        assert result.record.status == "running"
+        assert not result.existing
         assert provider.presign_calls == provider.put_calls == provider.confirm_calls == 3
         assert provider.events == [
             "create",
@@ -78,7 +79,8 @@ def test_all_presigns_before_two_workers_and_serial_exact_confirm(prepared_input
         for file in data[2].files:
             row = provider.presigns[file.path]
             content = provider.objects[row["object_key"]]
-            assert len(content) == file.size and hashlib.sha256(content).hexdigest() == file.sha256
+            assert len(content) == file.size
+            assert hashlib.sha256(content).hexdigest() == file.sha256
         assert (
             provider.presigns["one.bin"]["sha256_hash"]
             == provider.presigns["two.bin"]["sha256_hash"]
@@ -89,14 +91,18 @@ def test_all_presigns_before_two_workers_and_serial_exact_confirm(prepared_input
         assert not any("/items?" in request.path for request in server.requests[before:])
         counts = budgets[0].snapshot()
         assert counts.read_requests == counts.read_attempts == 12
-        assert counts.effect_attempts == 11 and counts.upload_bytes == data[2].total_bytes
+        assert counts.effect_attempts == 11
+        assert counts.upload_bytes == data[2].total_bytes
         assert counts.response_pending == 0
         count = len(server.requests)
         again = upload_files_original(plan.plan_id, data[0], denied, session_factory=denied)
-        assert again.existing and again.record == result.record and len(server.requests) == count
+        assert again.existing
+        assert again.record == result.record
+        assert len(server.requests) == count
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert len(view.intents) == len(view.receipts) == 11 and view.verification is None
+        assert len(view.intents) == len(view.receipts) == 11
+        assert view.verification is None
         assert all(receipt.result == "accepted" for receipt in view.receipts)
         assert "objects/blob" not in b"".join(r.encoded() for r in view.receipts).decode()
         assert store.verify().store_schema_version == 7
@@ -133,30 +139,36 @@ def test_file_stage_failure_stops_without_new_writes_or_replay(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
-        assert raised.value.operation_id is not None and raised.value.reason_code is not None
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.exit_code == 5
+        assert raised.value.operation_id is not None
+        assert raised.value.reason_code is not None
         assert raised.value.__cause__ is raised.value.__context__ is None
         assert provider.create_calls == provider.link_calls == 1
         if failure == "role":
             assert provider.presign_calls == provider.put_calls == provider.confirm_calls == 0
         elif failure in {"duplicate", "input"}:
-            assert provider.presign_calls == 3 and provider.put_calls == provider.confirm_calls == 0
+            assert provider.presign_calls == 3
+            assert provider.put_calls == provider.confirm_calls == 0
         elif failure == "put":
-            assert (
-                provider.presign_calls == 3
-                and 1 <= provider.put_calls <= 2
-                and provider.confirm_calls == 0
-            )
+            assert provider.presign_calls == 3
+            assert 1 <= provider.put_calls <= 2
+            assert provider.confirm_calls == 0
         else:
-            assert provider.put_calls == 2 and provider.confirm_calls == 1
+            assert provider.put_calls == 2
+            assert provider.confirm_calls == 1
         count = len(server.requests)
         found = upload_files_original(plan.plan_id, data[0], denied, session_factory=denied)
         assert found.record.operation_id == raised.value.operation_id
-        assert found.existing and found.record.status == "unknown" and len(server.requests) == count
+        assert found.existing
+        assert found.record.status == "unknown"
+        assert len(server.requests) == count
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.status == "unknown" and view.operation.lease is None
-        assert view.verification is None and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert view.operation.lease is None
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7
 
 
 def test_long_put_renews_only_original_lease_before_fresh_probe(
@@ -206,13 +218,17 @@ def test_long_put_renews_only_original_lease_before_fresh_probe(
             session_factory=factory(server),
             clock=clock,
         )
-        assert result.record.status == "running" and provider.confirm_calls == 1
-        assert len(renewals) == 1 and renewals[0].mode == "write"
-        assert result.record.write_owner_id == renewals[0].owner_id and result.record.fence == 1
+        assert result.record.status == "running"
+        assert provider.confirm_calls == 1
+        assert len(renewals) == 1
+        assert renewals[0].mode == "write"
+        assert result.record.write_owner_id == renewals[0].owner_id
+        assert result.record.fence == 1
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
         assert len(view.intents) == len(view.receipts) == 5
-        assert view.operation.status == "running" and view.verification is None
+        assert view.operation.status == "running"
+        assert view.verification is None
 
 
 def test_cancel_original_during_put_drains_workers_before_same_id_unknown(
@@ -250,15 +266,19 @@ def test_cancel_original_during_put_drains_workers_before_same_id_unknown(
         )
         with pytest.raises(asyncio.CancelledError):
             rejected_call()
-        assert children and all(task.done() for task in children)
-        assert provider.confirm_calls == 0 and 1 <= provider.put_calls <= 2
+        assert children
+        assert all(task.done() for task in children)
+        assert provider.confirm_calls == 0
+        assert 1 <= provider.put_calls <= 2
         count = len(server.requests)
         result = upload_files_original(plan.plan_id, data[0], denied, session_factory=denied)
-        assert result.existing and result.record.status == "unknown"
+        assert result.existing
+        assert result.record.status == "unknown"
         assert len(server.requests) == count
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.lease is None and view.verification is None
+        assert view.operation.lease is None
+        assert view.verification is None
         assert store.verify().store_schema_version == 7
 
 
@@ -320,13 +340,17 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
-        assert len(put_checks) == 2 and put_checks[0].checked_at < put_checks[1].checked_at
-        assert provider.put_calls == 1 and provider.confirm_calls == 0
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.exit_code == 5
+        assert len(put_checks) == 2
+        assert put_checks[0].checked_at < put_checks[1].checked_at
+        assert provider.put_calls == 1
+        assert provider.confirm_calls == 0
     with open_existing_store(data[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
         assert sum(intent.kind == "put" for intent in view.intents) == 1
-        assert view.operation.status == "unknown" and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert store.verify().store_schema_version == 7
 
 
 def test_nearly_expired_current_is_refreshed_before_local_arm_work(
@@ -366,10 +390,12 @@ def test_nearly_expired_current_is_refreshed_before_local_arm_work(
             session_factory=factory(server, budgets),
             clock=clock,
         )
-        assert result.record.status == "running" and provider.confirm_calls == 3
+        assert result.record.status == "running"
+        assert provider.confirm_calls == 3
         assert len(checks) == 1
         assert budgets[0].snapshot().read_requests == 18  # Six fresh mandatory upload reads.
-        assert provider.put_calls == 3 and provider.presign_calls == 3
+        assert provider.put_calls == 3
+        assert provider.presign_calls == 3
     with open_existing_store(data[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
         assert len(view.intents) == len(view.receipts) == 11

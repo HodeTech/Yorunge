@@ -93,9 +93,12 @@ def test_original_phase_uses_one_secret_budget_and_short_store_phases(
             loader(prepared_input),
             session_factory=factory(server, budgets),
         )
-        assert result.plan == plan and not result.existing
-        assert result.record.status == "running" and result.record.dataset_id == DATASET
-        assert result.record.workflow_latched and len(reads) == len(budgets) == 1
+        assert result.plan == plan
+        assert not result.existing
+        assert result.record.status == "running"
+        assert result.record.dataset_id == DATASET
+        assert result.record.workflow_latched
+        assert len(reads) == len(budgets) == 1
         requests = server.requests[before:]
         assert [r.method for r in requests] == [
             "GET",
@@ -107,14 +110,15 @@ def test_original_phase_uses_one_secret_budget_and_short_store_phases(
             "GET",
             "POST",
         ]
-        assert len(locks) == len(requests) and provider.create_calls == provider.link_calls == 1
-        assert (
-            budgets[0].snapshot().read_requests == 6 and budgets[0].snapshot().effect_attempts == 2
-        )
+        assert len(locks) == len(requests)
+        assert provider.create_calls == provider.link_calls == 1
+        assert budgets[0].snapshot().read_requests == 6
+        assert budgets[0].snapshot().effect_attempts == 2
         assert budgets[0].snapshot().response_pending == 0
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation == result.record and len(view.intents) == len(view.receipts) == 2
+        assert view.operation == result.record
+        assert len(view.intents) == len(view.receipts) == 2
         assert type(view.receipts[0]) is CreateReceiptV2
         assert view.receipts[0].created_dataset.owner_id == SCOPE.owner.id
         assert store.verify().store_schema_version == 7
@@ -136,7 +140,9 @@ def test_existing_operation_skips_loader_secret_files_and_http(
         second = create_link_original(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
         )
-        assert second.existing and second.record == first.record and len(server.requests) == count
+        assert second.existing
+        assert second.record == first.record
+        assert len(server.requests) == count
         assert provider.create_calls == provider.link_calls == 1
 
 
@@ -178,7 +184,8 @@ def test_pre_admission_rejection_has_no_write_or_operation(prepared_input, certi
         with pytest.raises(YorungeError) as raised:
             rejected_call()
         assert raised.value.code == expected
-        assert len(server.requests) == before and not provider.created
+        assert len(server.requests) == before
+        assert not provider.created
     with open_existing_store(prepared_input[0]) as store:
         assert StateUploads(store).show(plan_id=plan.plan_id).operation is None
 
@@ -213,20 +220,26 @@ def test_post_intent_failure_is_same_id_unknown_and_never_replays(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
-        assert raised.value.operation_id is not None and raised.value.reason_code is not None
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.exit_code == 5
+        assert raised.value.operation_id is not None
+        assert raised.value.reason_code is not None
         assert raised.value.__cause__ is raised.value.__context__ is None
         count = len(server.requests)
         found = create_link_original(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
         )
-        assert found.existing and found.record.operation_id == raised.value.operation_id
-        assert found.record.status == "unknown" and found.record.reason == "request_uncertain"
-        assert len(server.requests) == count and provider.create_calls == 1
+        assert found.existing
+        assert found.record.operation_id == raised.value.operation_id
+        assert found.record.status == "unknown"
+        assert found.record.reason == "request_uncertain"
+        assert len(server.requests) == count
+        assert provider.create_calls == 1
         assert provider.link_calls == int(failure == "link_status")
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.status == "unknown" and view.operation.lease is None
+        assert view.operation.status == "unknown"
+        assert view.operation.lease is None
         assert len(view.intents) == (2 if failure == "link_status" else 1)
         assert len(view.receipts) == int(failure not in {"create_body", "create_lost"})
         assert store.verify().store_schema_version == 7
@@ -267,12 +280,17 @@ def test_admission_race_returns_winner_without_manufacturing_write_access(
         result = create_link_original(
             plan.plan_id, prepared_input[0], loader(prepared_input), session_factory=factory(server)
         )
-        assert result.existing and result.record == winners[0]
-        assert result.record.status == "admitted" and not result.record.workflow_latched
-        assert not provider.created and provider.create_calls == provider.link_calls == 0
+        assert result.existing
+        assert result.record == winners[0]
+        assert result.record.status == "admitted"
+        assert not result.record.workflow_latched
+        assert not provider.created
+        assert provider.create_calls == provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert not view.intents and not view.receipts and view.operation == winners[0]
+        assert not view.intents
+        assert not view.receipts
+        assert view.operation == winners[0]
 
 
 def test_failed_marker_preserves_old_state_and_reason_without_claiming_unknown(
@@ -300,11 +318,14 @@ def test_failed_marker_preserves_old_state_and_reason_without_claiming_unknown(
         assert raised.value.code == "operation_uncertain"
         assert raised.value.reason_code == "state_write_failed"
         assert raised.value.__cause__ is raised.value.__context__ is None
-        assert provider.create_calls == 1 and provider.link_calls == 0
+        assert provider.create_calls == 1
+        assert provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.status == "running" and view.operation.reason is None
-        assert view.operation.operation_id == raised.value.operation_id and not view.receipts
+        assert view.operation.status == "running"
+        assert view.operation.reason is None
+        assert view.operation.operation_id == raised.value.operation_id
+        assert not view.receipts
 
 
 def test_committed_create_receipt_survives_caller_failure_without_new_link(
@@ -329,15 +350,16 @@ def test_committed_create_receipt_survives_caller_failure_without_new_link(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert (
-            raised.value.code == "operation_uncertain"
-            and raised.value.reason_code == "state_write_failed"
-        )
-        assert provider.create_calls == 1 and provider.link_calls == 0
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.reason_code == "state_write_failed"
+        assert provider.create_calls == 1
+        assert provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.status == "unknown" and view.operation.dataset_id == DATASET
-        assert len(view.receipts) == 1 and type(view.receipts[0]) is CreateReceiptV2
+        assert view.operation.status == "unknown"
+        assert view.operation.dataset_id == DATASET
+        assert len(view.receipts) == 1
+        assert type(view.receipts[0]) is CreateReceiptV2
 
 
 def test_real_task_cancellation_after_create_propagates_with_local_recovery_record(
@@ -365,12 +387,15 @@ def test_real_task_cancellation_after_create_propagates_with_local_recovery_reco
         )
         with pytest.raises(asyncio.CancelledError):
             rejected_call()
-        assert provider.create_calls == 1 and provider.link_calls == 0
+        assert provider.create_calls == 1
+        assert provider.link_calls == 0
         found = create_link_original(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
         )
-        assert found.existing and found.record.status == "unknown"
-        assert found.record.dataset_id is None and found.record.lease is None
+        assert found.existing
+        assert found.record.status == "unknown"
+        assert found.record.dataset_id is None
+        assert found.record.lease is None
 
 
 def test_full_hash_runs_without_holding_a_store_or_writer_lock(
@@ -398,7 +423,8 @@ def test_full_hash_runs_without_holding_a_store_or_writer_lock(
         result = create_link_original(
             plan.plan_id, prepared_input[0], loader(prepared_input), session_factory=factory(server)
         )
-        assert result.record.status == "running" and held == [True]
+        assert result.record.status == "running"
+        assert held == [True]
 
 
 def test_known_current_denial_is_not_an_explicit_attempt_fallback(prepared_input, certificates):
@@ -417,8 +443,10 @@ def test_known_current_denial_is_not_an_explicit_attempt_fallback(prepared_input
         )
         with pytest.raises(YorungeError) as raised:
             rejected_call()
-        assert raised.value.code == "remote_access_denied" and raised.value.exit_code == 3
-        assert len(server.requests) == before + 1 and provider.create_calls == 0
+        assert raised.value.code == "remote_access_denied"
+        assert raised.value.exit_code == 3
+        assert len(server.requests) == before + 1
+        assert provider.create_calls == 0
         assert budgets[0].snapshot().effect_attempts == 0
     with open_existing_store(prepared_input[0]) as store:
         assert StateUploads(store).show(plan_id=plan.plan_id).operation is None
@@ -446,12 +474,16 @@ def test_revoke_after_armed_create_preserves_receipt_but_blocks_new_link(
         with pytest.raises(OperationError) as raised:
             rejected_call()
         assert raised.value.code == "operation_uncertain"
-        assert provider.create_calls == 1 and provider.link_calls == 0
+        assert provider.create_calls == 1
+        assert provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.approval.status == "revoked" and len(view.receipts) == 1
-        assert view.operation.status == "unknown" and view.operation.dataset_id == DATASET
-        assert view.intents[0].kind == "create" and len(view.intents) == 1
+        assert view.approval.status == "revoked"
+        assert len(view.receipts) == 1
+        assert view.operation.status == "unknown"
+        assert view.operation.dataset_id == DATASET
+        assert view.intents[0].kind == "create"
+        assert len(view.intents) == 1
 
 
 def test_namespace_race_does_not_mark_another_operations_state(
@@ -500,13 +532,16 @@ def test_namespace_race_does_not_mark_another_operations_state(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_conflict" and raised.value.exit_code == 2
+        assert raised.value.code == "operation_conflict"
+        assert raised.value.exit_code == 2
         assert raised.value.operation_id == winners[0].operation_id
         assert provider.create_calls == provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
         winner_view = StateUploads(store).show(plan_id=first.plan_id)
-        assert winner_view.operation.status == "running" and winner_view.operation.reason is None
-        assert winner_view.operation.lease is not None and len(winner_view.intents) == 1
+        assert winner_view.operation.status == "running"
+        assert winner_view.operation.reason is None
+        assert winner_view.operation.lease is not None
+        assert len(winner_view.intents) == 1
         assert StateUploads(store).show(plan_id=second.plan_id).operation is None
 
 
@@ -517,4 +552,5 @@ def test_missing_store_is_not_initialized_and_loader_is_not_called(tmp_path):
     )
     with pytest.raises(YorungeError) as raised:
         rejected_call()
-    assert raised.value.code == "state_invalid" and not root.exists()
+    assert raised.value.code == "state_invalid"
+    assert not root.exists()

@@ -22,7 +22,8 @@ def test_initial_read_gate_returns_only_current_access_without_mutation(journal)
         access = repo.prepare_initial_read(
             record.operation_id, record.lease, authorization=read_check(journal)
         )
-        assert access.policy == "explicit_read_attempt" and access.grant is None
+        assert access.policy == "explicit_read_attempt"
+        assert access.grant is None
         assert access.scope == journal.plan.scope
         assert repo.show(operation_id=record.operation_id) == before
         assert store.verify().store_schema_version == 7
@@ -68,7 +69,8 @@ def test_initial_read_gate_closes_before_network(journal, failure, code):
             check = read_check(journal).model_copy(update={"dataset_id": str(uuid4())})
         with pytest.raises(OperationError) as raised:
             repo.prepare_initial_read(record.operation_id, owner, authorization=check)
-        assert raised.value.code == code and raised.value.operation_id == record.operation_id
+        assert raised.value.code == code
+        assert raised.value.operation_id == record.operation_id
         assert (
             repo.show(operation_id=record.operation_id).verification is None
             or failure == "terminal"

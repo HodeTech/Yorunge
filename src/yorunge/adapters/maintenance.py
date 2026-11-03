@@ -233,8 +233,14 @@ def make_preview(
     source: Snapshot | None = None,
     announced_epoch: str | None = None,
 ) -> Preview:
+    if transfer_runtime():
+        schema_version = 4
+    elif operation_runtime():
+        schema_version = 3
+    else:
+        schema_version = 2
     payload = {
-        "schema_version": 4 if transfer_runtime() else 3 if operation_runtime() else 2,
+        "schema_version": schema_version,
         "cache_invalidated": True,
         "action": action,
         "current": current.model_dump() if current else None,

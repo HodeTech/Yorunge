@@ -75,13 +75,13 @@ def test_new_v2_cannot_insert_new_v1_accepted_create(journal):
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert (
-            raised.value.code == "state_invalid"
-            and raised.value.operation_id == record.operation_id
-        )
+        assert raised.value.code == "state_invalid"
+        assert raised.value.operation_id == record.operation_id
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.encoded() == before and not view.receipts
-        assert len(view.intents) == 1 and view.operation.dataset_id is None
+        assert view.operation.encoded() == before
+        assert not view.receipts
+        assert len(view.intents) == 1
+        assert view.operation.dataset_id is None
 
 
 def test_full_receipt_atomically_binds_id_and_is_idempotent(journal):
@@ -121,7 +121,9 @@ def test_wrong_baseline_has_no_receipt_or_id_commit(journal, field, value):
             repo.receipt(record.operation_id, record.lease, bad)
         assert raised.value.code == "state_invalid"
         found = repo.show(operation_id=record.operation_id)
-        assert found.operation.dataset_id is None and not found.receipts and len(found.intents) == 1
+        assert found.operation.dataset_id is None
+        assert not found.receipts
+        assert len(found.intents) == 1
 
 
 def test_insert_and_operation_id_rollback_together(journal, monkeypatch):
@@ -142,7 +144,8 @@ def test_insert_and_operation_id_rollback_together(journal, monkeypatch):
             repo.receipt(record.operation_id, record.lease, good)
         assert raised.value.code == "state_write_failed"
         view = repo.show(operation_id=record.operation_id)
-        assert not view.receipts and view.operation.dataset_id is None
+        assert not view.receipts
+        assert view.operation.dataset_id is None
     monkeypatch.setattr(StateUploads, "_change", original)
     with open_store(journal.root) as store:
         assert (
@@ -164,9 +167,11 @@ def test_late_response_cannot_extend_intent_or_lease(journal, seconds, code):
         repo = journal.repository(store)
         with pytest.raises(OperationError) as raised:
             repo.receipt(record.operation_id, record.lease, value)
-        assert raised.value.code == code and raised.value.operation_id == record.operation_id
+        assert raised.value.code == code
+        assert raised.value.operation_id == record.operation_id
         view = repo.show(operation_id=record.operation_id)
-        assert not view.receipts and view.operation.dataset_id is None
+        assert not view.receipts
+        assert view.operation.dataset_id is None
 
 
 @pytest.mark.parametrize(
@@ -215,18 +220,15 @@ def test_legacy_nonterminal_cannot_obtain_new_rights(journal, phase):
             )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert (
-            raised.value.code == "operation_uncertain"
-            and raised.value.operation_id == record.operation_id
-        )
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.operation_id == record.operation_id
         view = repo.show(operation_id=record.operation_id)
         assert len(view.intents) == len(view.receipts) == 1
         assert view.operation.fence == record.fence
         assert view.operation.lease == record.lease  # No renewal/takeover.
         if phase != "read":
-            assert (
-                view.operation.status == "unknown" and view.operation.reason == "request_uncertain"
-            )
+            assert view.operation.status == "unknown"
+            assert view.operation.reason == "request_uncertain"
             before = view.operation.encoded()
             with pytest.raises(OperationError):
                 repo.require_created_baseline(record.operation_id, record.lease)
@@ -245,8 +247,10 @@ def test_legacy_expired_lease_cleanup_marks_unknown_without_new_lease(journal):
             repo.require_created_baseline(record.operation_id)
         assert raised.value.code == "operation_uncertain"
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "unknown" and view.operation.reason == "request_uncertain"
-        assert view.operation.lease is None and view.operation.fence == record.fence + 1
+        assert view.operation.status == "unknown"
+        assert view.operation.reason == "request_uncertain"
+        assert view.operation.lease is None
+        assert view.operation.fence == record.fence + 1
         assert len(view.intents) == len(view.receipts) == 1
         store.verify()
 
@@ -329,7 +333,8 @@ def test_real_kill_preserves_atomic_receipt_baseline_and_no_replay(journal, boun
             view = repo.show(operation_id=identifier)
             assert len(view.intents) == 1
             if boundary == "before_commit":
-                assert not view.receipts and view.operation.dataset_id is None
+                assert not view.receipts
+                assert view.operation.dataset_id is None
             else:
                 assert isinstance(view.receipts[0], CreateReceiptV2)
                 assert created_dataset(view).id == view.operation.dataset_id == DATASET
@@ -403,7 +408,8 @@ def test_legacy_state_appearing_after_preflight_is_blocked_in_savepoint(
         assert raised.value.code == "operation_uncertain"
         found = repo.show(operation_id=record.operation_id)
         assert len(found.intents) == len(found.receipts) == 1
-        assert found.operation.fence == record.fence and found.operation.lease == record.lease
+        assert found.operation.fence == record.fence
+        assert found.operation.lease == record.lease
 
 
 def _cleanup_worker(root, identifier, cutoff, ready, start):
@@ -453,7 +459,8 @@ def test_two_process_expired_cleanup_coalesces_without_new_read_lease(journal, m
         child.close()
     try:
         for parent, _ in pairs:
-            assert parent.poll(15) and parent.recv() is True
+            assert parent.poll(15)
+            assert parent.recv() is True
         start.set()
         for parent, _ in pairs:
             assert parent.poll(15)
@@ -463,10 +470,12 @@ def test_two_process_expired_cleanup_coalesces_without_new_read_lease(journal, m
             assert worker.exitcode == 0
         with open_store(journal.root) as store:
             view = journal.repository(store).show(operation_id=record.operation_id)
-            assert view.operation.status == "unknown" and view.operation.lease is None
+            assert view.operation.status == "unknown"
+            assert view.operation.lease is None
             assert view.operation.fence == record.fence + 1
             assert view.operation.revision == record.revision + 1
-            assert len(view.controls) == 1 and len(view.receipts) == len(view.intents) == 1
+            assert len(view.controls) == 1
+            assert len(view.receipts) == len(view.intents) == 1
     finally:
         for worker in workers:
             if worker.is_alive():
@@ -500,7 +509,8 @@ def test_untrusted_nested_receipt_never_serializes_warning_or_secret(journal, ba
         )
         assert secret not in caplog.text + str(capsys.readouterr())
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.dataset_id is None and not view.receipts
+        assert view.operation.dataset_id is None
+        assert not view.receipts
 
 
 def test_normal_precreate_and_lost_response_are_not_misclassified_as_legacy(journal):
@@ -514,8 +524,10 @@ def test_normal_precreate_and_lost_response_are_not_misclassified_as_legacy(jour
         repo = journal.repository(store)
         assert repo.require_created_baseline(record.operation_id, record.lease) is None
         view = repo.show(operation_id=record.operation_id)
-        assert not legacy_create_without_baseline(view) and not view.receipts
-        assert view.intents[0] == intent and view.operation.workflow_latched
+        assert not legacy_create_without_baseline(view)
+        assert not view.receipts
+        assert view.intents[0] == intent
+        assert view.operation.workflow_latched
 
 
 def test_existing_exact_legacy_receipt_is_not_new_write_or_backfill(journal):
@@ -571,9 +583,7 @@ def test_terminal_entry_and_terminal_race_never_downgrade_history(tmp_path, monk
         monkeypatch.setattr(repo, "_nonterminal", observed_once)
         with pytest.raises(OperationError) as raised:
             repo.require_created_baseline(identifier)
-        assert (
-            raised.value.code == "operation_uncertain"
-            and raised.value.reason_code == "operation_conflict"
-        )
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.reason_code == "operation_conflict"
         assert repo.show(operation_id=identifier) == actual
         store.verify()

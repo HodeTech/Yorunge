@@ -252,7 +252,9 @@ def test_exact_plan_lookup_and_idempotent_admission_after_lost_output(journal):
         # No credential, approval, hash or effect is required to find the ID.
         assert repo.admit(journal.plan.plan_id, journal.plan) == record
         rows, cursor = repo.list()
-        assert len(rows) == 1 and rows[0].operation_id == record.operation_id and cursor is None
+        assert len(rows) == 1
+        assert rows[0].operation_id == record.operation_id
+        assert cursor is None
         assert store.verify().store_schema_version == 7
 
 
@@ -293,8 +295,10 @@ def test_full_workflow_has_one_permit_per_stage_and_separate_read_verification(j
     with open_store(journal.root) as store:
         repo = journal.repository(store)
         view = repo.verified(record.operation_id, record.lease, proof)
-        assert view.operation.status == "succeeded" and view.operation.lease is None
-        assert len(view.intents) == 11 and len(view.receipts) == 11
+        assert view.operation.status == "succeeded"
+        assert view.operation.lease is None
+        assert len(view.intents) == 11
+        assert len(view.receipts) == 11
         assert store.verify().store_schema_version == 7
 
         def invoke():
@@ -352,9 +356,12 @@ def test_lost_receipt_never_reissues_stage_and_recovery_is_read_only(journal):
         assert missing_id.value.code == "operation_uncertain"
         lease = record.lease
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "unknown" and view.operation.dataset_id is None
-        assert view.operation.lease is None and view.operation.fence == 2
-        assert len(view.intents) == 1 and not view.receipts
+        assert view.operation.status == "unknown"
+        assert view.operation.dataset_id is None
+        assert view.operation.lease is None
+        assert view.operation.fence == 2
+        assert len(view.intents) == 1
+        assert not view.receipts
 
         def invoke():
             return repo.arm(
@@ -384,7 +391,8 @@ def test_predispatch_owner_loss_can_be_closed_after_revoke(journal):
         view = repo.show(operation_id=record.operation_id)
         assert view.operation.status == "cancelled"
         assert view.operation.reason == "approval_revoked"
-        assert not view.intents and len(view.controls) == 1
+        assert not view.intents
+        assert len(view.controls) == 1
         store.verify()
 
 
@@ -421,7 +429,8 @@ def test_reset_preserves_history_and_handles_future_year(journal, monkeypatch, a
         view = StateUploads(store, clock=journal.clock).show(plan_id=journal.plan.plan_id)
         assert view.operation.status == ("unknown" if armed else "cancelled")
         assert view.operation.observed_identity_epoch == result.identity_epoch
-        assert view.operation.clock_anomaly and view.operation.lease is None
+        assert view.operation.clock_anomaly
+        assert view.operation.lease is None
         assert len(view.intents) == armed
         assert store.verify().store_schema_version == 7
 
@@ -542,12 +551,14 @@ def test_real_kill_after_admission_before_id_output_is_recoverable(journal):
         assert committed.wait(10), "child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode != 0 and not process.is_alive()
+        assert process.exitcode != 0
+        assert not process.is_alive()
         with open_store(journal.root) as store:
             repo = StateUploads(store, clock=journal.clock)
             view = repo.show(plan_id=journal.plan.plan_id)
             assert view.operation is not None
-            assert not view.intents and not view.operation.workflow_latched
+            assert not view.intents
+            assert not view.operation.workflow_latched
             assert repo.admit(journal.plan.plan_id, journal.plan) == view.operation
             assert store.verify().store_schema_version == 7
     finally:
@@ -591,7 +602,8 @@ def test_forked_processes_cannot_arm_from_a_durable_lease(journal):
         assert all(r == ("error", "operation_lease_lost") for r in replies)
         with open_store(journal.root) as store:
             view = journal.repository(store).show(operation_id=record.operation_id)
-            assert not view.intents and not view.operation.workflow_latched
+            assert not view.intents
+            assert not view.operation.workflow_latched
             store.verify()
     finally:
         for process in processes:
@@ -797,8 +809,10 @@ def test_386_intents_have_independent_recovery_slots_and_bounded_full_validation
         repo = journal.repository(store)
         lease = repo.acquire_read(record.operation_id, journal.plan.grant)
         view = repo.show(operation_id=record.operation_id)
-        assert lease.mode == "read" and len(view.intents) == 386
-        assert len(view.controls) == 1 and view.controls[0].kind == "recovery"
+        assert lease.mode == "read"
+        assert len(view.intents) == 386
+        assert len(view.controls) == 1
+        assert view.controls[0].kind == "recovery"
         assert capacity(store.connection) == before
         repo.stop_local(record.operation_id, lease)
         assert len(repo.show(operation_id=record.operation_id).controls) == 1
@@ -813,11 +827,13 @@ def test_known_rejection_does_not_hide_another_inflight_request(journal):
     first, _, _ = journal.arm(record, "presign", 0)
     second, _, _ = journal.arm(record, "presign", 1)
     view = journal.accept(record, first, rejected=True)
-    assert view.operation.status == "unknown" and view.operation.reason == "provider_rejected"
+    assert view.operation.status == "unknown"
+    assert view.operation.reason == "provider_rejected"
     with pytest.raises(YorungeError):
         journal.arm(view.operation, "presign", 2)
     view = journal.accept(view.operation, second)
-    assert view.operation.status == "failed" and view.operation.lease is None
+    assert view.operation.status == "failed"
+    assert view.operation.lease is None
     assert {c.kind for c in view.controls} == {"recovery", "terminal"}
     with open_store(journal.root) as store:
         store.verify()
@@ -843,7 +859,8 @@ def test_cancelled_preintent_does_not_burn_a_future_plan_namespace(journal):
             None,
             total_end=journal.clock.monotonic() + 900,
         )
-        assert next_record.operation_id != record.operation_id and intent.kind == "create"
+        assert next_record.operation_id != record.operation_id
+        assert intent.kind == "create"
         permit.consume()
         store.verify()
 
@@ -925,7 +942,8 @@ def test_failure_after_intent_commit_preserves_unknown_id_and_blocks_replay(jour
         assert failure.value.code == "operation_uncertain"
         assert failure.value.operation_id == record.operation_id
         view = repo.show(plan_id=journal.plan.plan_id)
-        assert len(view.intents) == 1 and view.operation.workflow_latched
+        assert len(view.intents) == 1
+        assert view.operation.workflow_latched
     with pytest.raises(YorungeError) as failure:
         journal.arm(record)
     assert failure.value.code == "operation_conflict"
@@ -1050,7 +1068,8 @@ def test_current_read_grant_can_renew_after_identity_changes(journal, change):
         with pytest.raises(YorungeError):
             repo.renew(record.operation_id, lease)
         changed = repo.renew(record.operation_id, lease, grant=grant)
-        assert changed.owner_id == lease.owner_id and changed.fence == lease.fence
+        assert changed.owner_id == lease.owner_id
+        assert changed.fence == lease.fence
         assert instant(changed.expires_at) > instant(lease.expires_at)
         assert upload_snapshot(store.connection, store.deadline) == before
         rejected_call = partial(
@@ -1132,7 +1151,8 @@ def test_same_process_two_connections_with_original_access_have_one_stage_intent
     assert next(r[1] for r in replies if r[0] == "error") == "operation_conflict"
     with open_store(journal.root) as store:
         view = read_view(store.connection, journal.plan.plan_id)
-        assert len(view.intents) == 1 and view.operation.operation_id == record.operation_id
+        assert len(view.intents) == 1
+        assert view.operation.operation_id == record.operation_id
         store.verify()
 
 
@@ -1195,7 +1215,8 @@ def test_metadata_observation_before_confirm_does_not_produce_success(journal):
             repo.verified(record.operation_id, record.lease, old)
         assert failure.value.code == "operation_uncertain"
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "unknown" and view.verification is None
+        assert view.operation.status == "unknown"
+        assert view.verification is None
         assert (
             repo.verified(record.operation_id, record.lease, proof).operation.status == "succeeded"
         )
@@ -1285,7 +1306,8 @@ def test_nonfinite_or_wrong_deadline_never_commits_stage_or_permit(journal, dead
         assert failure.value.code == "invalid_request"
         assert failure.value.operation_id == record.operation_id
         view = repo.show(operation_id=record.operation_id)
-        assert not view.intents and not view.operation.workflow_latched
+        assert not view.intents
+        assert not view.operation.workflow_latched
         store.verify()
 
 
@@ -1350,7 +1372,8 @@ def test_explicit_unknown_proofs_can_arm_once_without_fabricated_expiry(journal)
             None,
             total_end=journal.clock.monotonic() + 900,
         )
-        assert intent.schema_version == 1 and record.schema_version == approval.schema_version == 2
+        assert intent.schema_version == 1
+        assert record.schema_version == approval.schema_version == 2
         assert deadline > journal.clock.monotonic()
         permit.consume()
         rejected_call = partial(
@@ -1365,8 +1388,10 @@ def test_explicit_unknown_proofs_can_arm_once_without_fabricated_expiry(journal)
         with pytest.raises(YorungeError):
             rejected_call()
         saved = repo.show(plan_id=journal.plan.plan_id)
-        assert len(saved.intents) == 1 and saved.plan.grant is saved.plan.cost_bound is None
-        assert saved.plan.status == "attempt_ready" and saved.plan.risks == (
+        assert len(saved.intents) == 1
+        assert saved.plan.grant is saved.plan.cost_bound is None
+        assert saved.plan.status == "attempt_ready"
+        assert saved.plan.risks == (
             "authority_unverified",
             "cost_unverified",
         )
@@ -1412,7 +1437,8 @@ def test_explicit_policy_never_bypasses_current_known_negative_or_unavailable(
         )
         with pytest.raises(YorungeError) as error:
             rejected_call()
-        assert error.value.code == code and error.value.operation_id == record.operation_id
+        assert error.value.code == code
+        assert error.value.operation_id == record.operation_id
         assert repo.show(operation_id=record.operation_id).intents == ()
         store.verify()
 
@@ -1560,7 +1586,8 @@ def test_legacy_existing_lookup_and_inflight_receipt_survive_but_new_arm_is_clos
             sent_sha256=None,
         )
         found = repo.receipt(operation_id, lease, receipt)
-        assert found.operation.schema_version == 1 and found.operation.dataset_id == DATASET
+        assert found.operation.schema_version == 1
+        assert found.operation.dataset_id == DATASET
         assert len(found.receipts) == 1
         store.verify()
 
@@ -1600,7 +1627,8 @@ def test_current_evidence_expiry_crossing_commit_rolls_back_business(journal, mo
             invoke()
         assert error.value.code == "upload_plan_not_valid"
         view = repo.show(plan_id=journal.plan.plan_id)
-        assert view.operation is None and repo.write_access is None
+        assert view.operation is None
+        assert repo.write_access is None
         if phase == "approve":
             assert view.approval is None
         store.verify()
@@ -1679,7 +1707,8 @@ def test_verification_freshness_crossing_commit_does_not_persist_success(journal
             repo.verified(record.operation_id, record.lease, proof)
         assert error.value.code == "operation_uncertain"
         view = repo.show(operation_id=record.operation_id)
-        assert view.operation.status == "unknown" and view.verification is None
+        assert view.operation.status == "unknown"
+        assert view.verification is None
         assert not any(c.kind == "terminal" for c in view.controls)
         store.verify()
 
@@ -1720,4 +1749,5 @@ def test_postcommit_ephemeral_expiry_is_durable_before_clock_rollback_and_reopen
         assert error.value.code == "state_changed"
         assert reopened.show(plan_id=journal.plan.plan_id).operation is None
         stamp = reopened.cache.stamp()
-        assert stamp.anomaly and stamp.generation > journal.plan.scope.clock_generation
+        assert stamp.anomaly
+        assert stamp.generation > journal.plan.scope.clock_generation

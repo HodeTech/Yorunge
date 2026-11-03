@@ -64,7 +64,8 @@ class FixtureNetwork(GuardedBackend):
         super().__init__(resolver=resolver, allowed=lambda value: value == "127.0.0.1")
 
     async def _connect(self, pinned, port, timeout, options, original_host):
-        assert pinned == "127.0.0.1" and port == 443
+        assert pinned == "127.0.0.1"
+        assert port == 443
         self.connections.append((pinned, port, original_host))
         return await httpcore.AnyIOBackend().connect_tcp(
             pinned, self.routes[original_host].port, timeout=timeout, socket_options=options
@@ -173,9 +174,11 @@ def test_actual_proxy_and_direct_share_client_but_never_auth_cookie_or_url_logs(
 
         with caplog.at_level(logging.DEBUG), owned:
             first_result, second_result = owned.exchange(run)
-            assert len(instances) == 1 and len(instances[0]._responses) == 0
+            assert len(instances) == 1
+            assert len(instances[0]._responses) == 0
         assert [r.method for r in api.requests] == ["GET", "PUT"]
-        assert len(storage.requests) == 1 and storage.requests[0].path == storage_path
+        assert len(storage.requests) == 1
+        assert storage.requests[0].path == storage_path
         assert all(r.header("X-API-Key") == SECRET for r in api.requests)
         assert storage.requests[0].header("X-API-Key") is None
         assert all(
@@ -188,8 +191,10 @@ def test_actual_proxy_and_direct_share_client_but_never_auth_cookie_or_url_logs(
             for result in [first_result, second_result]
         )
         assert {item[2] for item in network.connections} == {"api.localhost", "storage.localhost"}
-    assert "PRIVATE-URL-CANARY" not in caplog.text and SECRET not in caplog.text
-    assert first.complete and second.complete
+    assert "PRIVATE-URL-CANARY" not in caplog.text
+    assert SECRET not in caplog.text
+    assert first.complete
+    assert second.complete
     assert first._file_fd is second._file_fd is None
 
 
@@ -204,8 +209,10 @@ def test_expired_or_insufficient_url_expiry_has_zero_tcp_and_http(tmp_path, cert
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
         assert failure.value.code == "transport_timeout"
-        assert not network.connections and not server.requests
-        assert body._file_fd is None and body.sent_bytes == 0
+        assert not network.connections
+        assert not server.requests
+        assert body._file_fd is None
+        assert body.sent_bytes == 0
 
 
 @pytest.mark.parametrize("status", [302, 307, 401, 403, 404, 429, 500, 503])
@@ -231,7 +238,8 @@ def test_effect_http_failure_never_retries_redirects_or_proxy_fallback(
             "remote_access_denied",
         }
         assert len(server.requests) == len(network.connections) == 1
-        assert "PRIVATE" not in str(failure.value) and "PRIVATE" not in repr(failure.value)
+        assert "PRIVATE" not in str(failure.value)
+        assert "PRIVATE" not in repr(failure.value)
         assert failure.value.__cause__ is failure.value.__context__ is None
         assert body._file_fd is None
 
@@ -253,7 +261,8 @@ def test_raw_response_guards_and_cleanup(tmp_path, certificates, reply):
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
         assert failure.value.code in {"invalid_response", "transport_failed"}
-        assert body._file_fd is None and len(instances[0]._responses) == 0
+        assert body._file_fd is None
+        assert len(instances[0]._responses) == 0
         assert instances[0]._slots._value == 2
         assert len(server.requests) == 1
 
@@ -292,8 +301,10 @@ def test_prepared_wire_changes_fail_before_dns_or_source_read(
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
         assert failure.value.code == "invalid_service_target"
-        assert not server.requests and not network.connections
-        assert body.sent_bytes == 0 and body._file_fd is None
+        assert not server.requests
+        assert not network.connections
+        assert body.sent_bytes == 0
+        assert body._file_fd is None
 
 
 def test_presign_response_cannot_add_storage_origin_to_owned_session(tmp_path, certificates):
@@ -305,7 +316,9 @@ def test_presign_response_cannot_add_storage_origin_to_owned_session(tmp_path, c
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
         assert failure.value.code == "invalid_service_target"
-        assert not server.requests and not network.connections and body.sent_bytes == 0
+        assert not server.requests
+        assert not network.connections
+        assert body.sent_bytes == 0
 
 
 def test_same_origin_direct_request_does_not_inherit_prior_platform_auth(tmp_path, certificates):
@@ -428,7 +441,8 @@ def test_two_storage_calls_and_service_call_share_two_slots(tmp_path, certificat
                 with pytest.raises(YorungeError) as failure:
                     await acquire_third_slot()
                 assert failure.value.code == "transport_timeout"
-                assert api.requests == [] and len(network.connections) == 2
+                assert api.requests == []
+                assert len(network.connections) == 2
             finally:
                 for gate in gates:
                     gate.set()
@@ -437,7 +451,8 @@ def test_two_storage_calls_and_service_call_share_two_slots(tmp_path, certificat
         with owned:
             owned.exchange(run)
             assert instances[0]._slots._value == 2
-        assert len(server.requests) == 2 and all(body.complete for body in bodies)
+        assert len(server.requests) == 2
+        assert all(body.complete for body in bodies)
 
 
 def test_normal_early_response_close_releases_pool_and_source(tmp_path, certificates):
@@ -468,8 +483,10 @@ def test_normal_early_response_close_releases_pool_and_source(tmp_path, certific
 
         with owned:
             owned.exchange(run)
-            assert instances[0]._slots._value == 2 and not instances[0]._responses
-        assert body.complete and body._file_fd is None
+            assert instances[0]._slots._value == 2
+            assert not instances[0]._responses
+        assert body.complete
+        assert body._file_fd is None
 
 
 def test_cancel_mid_source_closes_on_owner_task_and_session_still_works(tmp_path, certificates):
@@ -512,7 +529,8 @@ def test_cancel_mid_source_closes_on_owner_task_and_session_still_works(tmp_path
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
-            assert base._file_fd is None and not base.complete
+            assert base._file_fd is None
+            assert not base.complete
             request = HttpRequest(
                 API, "GET", "check", credential=key, read_only=True, service_id="evren-platform"
             )
@@ -521,8 +539,10 @@ def test_cancel_mid_source_closes_on_owner_task_and_session_still_works(tmp_path
 
         with owned:
             owned.exchange(run)
-            assert instances[0]._slots._value == 2 and not instances[0]._responses
-        assert base.sent_bytes == 1024 * 1024 and base.sent_sha256 is None
+            assert instances[0]._slots._value == 2
+            assert not instances[0]._responses
+        assert base.sent_bytes == 1024 * 1024
+        assert base.sent_sha256 is None
 
 
 def test_empty_source_still_has_verified_eof_before_accepting_response(tmp_path, certificates):
@@ -533,7 +553,8 @@ def test_empty_source_still_has_verified_eof_before_accepting_response(tmp_path,
         with owned:
             result = owned.exchange(lambda transport: put(transport, direct(body, key)))
         assert result[1:] == (0, hashlib.sha256(b"").hexdigest())
-        assert body.complete and server.requests[0].body == b""
+        assert body.complete
+        assert server.requests[0].body == b""
 
 
 def test_source_change_has_no_confirm_or_automatic_retry(tmp_path, certificates, monkeypatch):
@@ -562,7 +583,8 @@ def test_source_change_has_no_confirm_or_automatic_retry(tmp_path, certificates,
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
         assert failure.value.code == "input_changed"
-        assert body._file_fd is None and not body.complete
+        assert body._file_fd is None
+        assert not body.complete
         assert len(network.connections) == 1
         assert all(r.method == "PUT" for r in server.requests)
 
@@ -604,8 +626,10 @@ def test_production_address_policy_applies_to_both_request_types(tmp_path, opera
     ):
         owned.exchange(run)
     assert failure.value.code == "invalid_service_target"
-    assert len(calls) == 1 and calls[0][1] == 443
-    assert body.sent_bytes == 0 and body._file_fd is None
+    assert len(calls) == 1
+    assert calls[0][1] == 443
+    assert body.sent_bytes == 0
+    assert body._file_fd is None
 
 
 @pytest.mark.parametrize("operation", ["service", "storage"])
@@ -640,8 +664,10 @@ def test_untrusted_certificate_never_sends_http_or_source_bytes(tmp_path, certif
             owned.exchange(run)
         assert failure.value.code == "transport_failed"
         assert failure.value.__cause__ is failure.value.__context__ is None
-        assert len(network.connections) == 1 and not server.requests
-        assert body.sent_bytes == 0 and body._file_fd is None
+        assert len(network.connections) == 1
+        assert not server.requests
+        assert body.sent_bytes == 0
+        assert body._file_fd is None
 
 
 def test_mutated_source_metadata_cannot_change_prepared_content_length(tmp_path, certificates):
@@ -663,7 +689,9 @@ def test_mutated_source_metadata_cannot_change_prepared_content_length(tmp_path,
             rejected_call()
         assert failure.value.code == "input_changed"
         assert dict(request.public_headers())["Content-Length"] == str(base.size)
-        assert not network.connections and not server.requests and base.sent_bytes == 0
+        assert not network.connections
+        assert not server.requests
+        assert base.sent_bytes == 0
 
 
 def test_shortened_expiry_window_interrupts_body_instead_of_waiting_for_context_exit(
@@ -692,5 +720,7 @@ def test_shortened_expiry_window_interrupts_body_instead_of_waiting_for_context_
         assert failure.value.code == "transport_timeout"
         # The old timer read all 80 bytes, then rejected only on context exit.
         assert len(b"".join(consumed)) < 80
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
-        assert body._file_fd is None and len(server.requests) == 1
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
+        assert body._file_fd is None
+        assert len(server.requests) == 1

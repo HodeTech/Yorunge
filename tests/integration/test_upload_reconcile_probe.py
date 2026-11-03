@@ -74,11 +74,15 @@ def test_real_probe_has_one_secret_five_reads_and_no_source_or_ownership_mutatio
             session_factory=factory(server, budgets),
             clock=execution_clock,
         )
-        assert phase.plan == plan and phase.record == previous.operation
-        assert phase.authorization.outcome == "not_exposed" and phase.authorization.grant is None
-        assert phase.authorization.dataset_id == DATASET and len(secrets) == 1
+        assert phase.plan == plan
+        assert phase.record == previous.operation
+        assert phase.authorization.outcome == "not_exposed"
+        assert phase.authorization.grant is None
+        assert phase.authorization.dataset_id == DATASET
+        assert len(secrets) == 1
         requests = server.requests[before:]
-        assert len(requests) == len(locks) == 5 and all(r.method == "GET" for r in requests)
+        assert len(requests) == len(locks) == 5
+        assert all(r.method == "GET" for r in requests)
         assert not any("/items?" in r.path or r.path.endswith("/my-role") for r in requests)
         counts = budgets[0].snapshot()
         assert counts.read_requests == counts.read_attempts == 5
@@ -86,7 +90,8 @@ def test_real_probe_has_one_secret_five_reads_and_no_source_or_ownership_mutatio
         with open_existing_store(prepared_input[0]) as store:
             assert StateUploads(store).show(operation_id=operation_id) == previous
             assert store.verify().store_schema_version == 7
-    assert provider.owner_id not in repr(phase) and DATASET not in repr(phase)
+    assert provider.owner_id not in repr(phase)
+    assert DATASET not in repr(phase)
     with pytest.raises(TypeError):
         pickle.dumps(phase)
 
@@ -109,7 +114,8 @@ def test_full_id_flag_false_skips_loader_and_leaves_operation_unchanged(
                 session_factory=denied,
                 clock=execution_clock,
             )
-        assert raised.value.code == "approval_required" and raised.value.exit_code == 4
+        assert raised.value.code == "approval_required"
+        assert raised.value.exit_code == 4
         assert raised.value.__cause__ is raised.value.__context__ is None
         assert len(server.requests) == count
         with open_existing_store(prepared_input[0]) as store:
@@ -144,10 +150,10 @@ def test_current_key_and_explicit_profile_can_change_without_rewriting_history(
         )
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=operation_id)
-            assert (
-                view.plan == plan and view.operation.write_owner_id == result.record.write_owner_id
-            )
-            assert view.verification is None and view.operation.lease is None
+            assert view.plan == plan
+            assert view.operation.write_owner_id == result.record.write_owner_id
+            assert view.verification is None
+            assert view.operation.lease is None
             assert store.verify().store_schema_version == 7
 
 
@@ -180,17 +186,19 @@ def test_mandatory_read_source_error_keeps_its_code_and_read_unavailable_marker(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == codes[status] and raised.value.exit_code == (
-            3 if status < 404 else 1
-        )
+        assert raised.value.code == codes[status]
+        assert raised.value.exit_code == (3 if status < 404 else 1)
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
         assert all(r.method == "GET" for r in server.requests[before:])
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.status == "unknown" and view.operation.reason == "read_unavailable"
-        assert view.operation.lease is None and len(view.receipts) == 5
-        assert view.verification is None and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert view.operation.reason == "read_unavailable"
+        assert view.operation.lease is None
+        assert len(view.receipts) == 5
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7
 
 
 def test_active_loop_fails_before_local_store_or_loader(prepared_input):
@@ -223,11 +231,14 @@ def test_reset_and_expired_write_approval_do_not_rewrite_baseline_or_block_expli
             clock=execution_clock,
         )
         assert phase.authorization.scope.identity_epoch != plan.scope.identity_epoch
-        assert phase.authorization.grant is None and phase.plan == plan
+        assert phase.authorization.grant is None
+        assert phase.plan == plan
         with open_existing_store(prepared_input[0]) as store:
             view = StateUploads(store).show(operation_id=operation_id)
-            assert view.receipts == before.receipts and view.plan == before.plan
-            assert view.operation.lease is None and view.verification is None
+            assert view.receipts == before.receipts
+            assert view.plan == before.plan
+            assert view.operation.lease is None
+            assert view.verification is None
             assert store.verify().store_schema_version == 7
 
 
@@ -251,7 +262,8 @@ def test_current_target_mismatch_is_state_changed_before_secret_or_network(
                 session_factory=denied,
                 clock=execution_clock,
             )
-        assert raised.value.code == "state_changed" and raised.value.operation_id == operation_id
+        assert raised.value.code == "state_changed"
+        assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
         assert len(server.requests) == count
 
@@ -306,7 +318,8 @@ def test_missing_store_never_initializes_or_loads_context(tmp_path, monkeypatch)
     )
     with pytest.raises(OperationError) as raised:
         rejected_call()
-    assert raised.value.code == "state_invalid" and not missing.exists()
+    assert raised.value.code == "state_invalid"
+    assert not missing.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None
 
 
@@ -333,13 +346,17 @@ def test_discarded_provider_metadata_secret_never_reaches_error_chain_or_repr(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "invalid_response" and raised.value.exit_code == 1
-        assert SECRET not in str(raised.value) and SECRET not in repr(raised.value.envelope())
+        assert raised.value.code == "invalid_response"
+        assert raised.value.exit_code == 1
+        assert SECRET not in str(raised.value)
+        assert SECRET not in repr(raised.value.envelope())
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.reason == "read_unavailable" and view.operation.lease is None
-        assert len(view.receipts) == 5 and view.verification is None
+        assert view.operation.reason == "read_unavailable"
+        assert view.operation.lease is None
+        assert len(view.receipts) == 5
+        assert view.verification is None
         assert store.verify().store_schema_version == 7
 
 
@@ -385,14 +402,16 @@ def test_read_failure_revalidates_current_credential_even_with_existing_marker(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "state_changed" and raised.value.exit_code == 2
+        assert raised.value.code == "state_changed"
+        assert raised.value.exit_code == 2
         assert raised.value.reason_code == "remote_access_denied"
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
         assert all(r.method == "GET" for r in server.requests[count:])
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.verification is None and len(view.receipts) == 5
+        assert view.verification is None
+        assert len(view.receipts) == 5
         assert store.verify().store_schema_version == 7
 
 
@@ -431,14 +450,18 @@ def test_final_local_phase_cannot_return_expired_positive_observation(
         with pytest.raises(OperationError) as raised:
             rejected_call()
         expected = "execution_timeout" if expired == "budget" else "upload_plan_not_valid"
-        assert raised.value.code == expected and raised.value.exit_code == 2
+        assert raised.value.code == expected
+        assert raised.value.exit_code == 2
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
-        assert len(calls) == 2 and len(server.requests) == count + 5
+        assert len(calls) == 2
+        assert len(server.requests) == count + 5
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.verification is None and view.operation.lease is None
-        assert view.operation.status == "unknown" and store.verify().store_schema_version == 7
+        assert view.verification is None
+        assert view.operation.lease is None
+        assert view.operation.status == "unknown"
+        assert store.verify().store_schema_version == 7
 
 
 @pytest.mark.parametrize("status,code", [(403, "remote_access_denied"), (503, "remote_failed")])
@@ -471,10 +494,13 @@ def test_source_negative_at_budget_end_keeps_source_error(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == code and raised.value.exit_code == (3 if status == 403 else 1)
+        assert raised.value.code == code
+        assert raised.value.exit_code == (3 if status == 403 else 1)
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.reason == "read_unavailable" and view.operation.lease is None
-        assert view.verification is None and store.verify().store_schema_version == 7
+        assert view.operation.reason == "read_unavailable"
+        assert view.operation.lease is None
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7

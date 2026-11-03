@@ -57,16 +57,16 @@ def worker(
     with (
         (work / "client-stdout.json").open("xb") as stdout,
         (work / "client-stderr.txt").open("xb") as stderr,
-    ):
-        with subprocess.Popen(
+        subprocess.Popen(
             command, cwd=work, env=CONTROL["environment"](), stdout=stdout, stderr=stderr
-        ) as process:
-            try:
-                result = process.wait(timeout=1020)
-            except BaseException:
-                process.kill()
-                process.wait(timeout=10)
-                raise
+        ) as process,
+    ):
+        try:
+            result = process.wait(timeout=1020)
+        except BaseException:
+            process.kill()
+            process.wait(timeout=10)
+            raise
     if result or (work / "client-stderr.txt").stat().st_size:
         raise ValueError("upload worker failed; original stdout/stderr preserved")
     value = decode_output(work / "client-stdout.json")

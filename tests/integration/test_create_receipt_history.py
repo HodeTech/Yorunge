@@ -35,7 +35,8 @@ def test_real_new_receipt_read_full_capacity_and_backup(tmp_path, terminal):
         repo = StateUploads(store)
         before = store.connection.total_changes
         view = repo.show(plan_id=data["plan"]["plan_id"])
-        assert view.receipts[0] == receipt() and isinstance(view.receipts[0], CreateReceiptV2)
+        assert view.receipts[0] == receipt()
+        assert isinstance(view.receipts[0], CreateReceiptV2)
         assert view.operation.dataset_id == view.receipts[0].created_dataset.id
         assert repo.show(operation_id=data["record"]["operation_id"]) == view
         assert repo.list()[0][0].operation_status == ("succeeded" if terminal else "unknown")
@@ -65,7 +66,8 @@ def test_identity_reset_preserves_full_create_baseline(tmp_path):
     api.reset_identity(preview.digest, state_dir=root)
     with open_store(root) as store:
         view = StateUploads(store).show(plan_id=data["plan"]["plan_id"])
-        assert view.operation.reason == "identity_reset" and view.receipts[0] == receipt()
+        assert view.operation.reason == "identity_reset"
+        assert view.receipts[0] == receipt()
         validate_uploads(store.connection)
 
 

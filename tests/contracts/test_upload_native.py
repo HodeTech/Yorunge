@@ -55,6 +55,47 @@ def test_fixed_warm_data_matches_manifest_and_no_clobber(tmp_path):
         write_fixture(work / "source", work / "manifest.json", expected)
 
 
+@pytest.mark.parametrize("optimized", [False, True])
+@pytest.mark.parametrize("invalid", ["method", "key", "encoding", "duplicate_length", "size"])
+def test_sink_preconditions_remain_active_with_python_optimization(optimized, invalid):
+    from tests.fixtures.upload_native_control import ROOT
+
+    code = """
+import sys
+from email.message import Message
+from types import SimpleNamespace
+sys.path.insert(0,sys.argv[1])
+from tests.fixtures.upload_native_data import KEY,fixture
+from tests.fixtures.upload_native_server import Sink
+sink=Sink(fixture('warm'))
+def unexpected(*args):
+    raise RuntimeError('invalid request reached the route')
+sink.route=unexpected
+headers=Message(); headers['X-API-Key']=KEY; headers['Content-Length']='0'
+handler=SimpleNamespace(command='GET',headers=headers,client_address=('synthetic',0),close_connection=False)
+invalid=sys.argv[2]
+if invalid=='method': handler.command='DELETE'
+elif invalid=='key': headers.replace_header('X-API-Key','wrong-synthetic-key')
+elif invalid=='encoding': headers['Transfer-Encoding']='chunked'
+elif invalid=='duplicate_length': headers['Content-Length']='1'
+elif invalid=='size': headers.replace_header('Content-Length','500000001')
+else: raise RuntimeError('unknown negative fixture')
+sink.respond(handler)
+if (sink.errors,sink.active,handler.close_connection)!=(1,0,True):
+    raise RuntimeError('invalid request was not rejected and cleaned up')
+print('rejected')
+"""
+    flags = ["-I", "-O"] if optimized else ["-I"]
+    result = subprocess.run(
+        [sys.executable, *flags, "-c", code, str(ROOT), invalid],
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert result.stdout == b"rejected\n"
+    assert result.stderr == b""
+
+
 def test_sink_rejects_a_consistent_but_wrong_client_hash_before_put():
     provider = StreamingProvider(fixture("warm"))
     provider.created = provider.linked = True
@@ -70,7 +111,8 @@ def test_sink_rejects_a_consistent_but_wrong_client_hash_before_put():
     )
     with pytest.raises(AssertionError):
         provider.presign(request, 1)
-    assert provider.presign_calls == provider.put_calls == 0 and not provider.objects
+    assert provider.presign_calls == provider.put_calls == 0
+    assert not provider.objects
 
 
 def test_worker_rejects_editable_install_before_network(tmp_path):
@@ -101,7 +143,8 @@ def test_worker_rejects_editable_install_before_network(tmp_path):
         capture_output=True,
         timeout=10,
     )
-    assert result.returncode != 0 and not result.stdout
+    assert result.returncode != 0
+    assert not result.stdout
     assert b"product import escaped the selected installed environment" in result.stderr
     assert not (tmp_path / "absent").exists()
 
@@ -122,7 +165,8 @@ def test_separate_streaming_sink_public_flow_observes_closed_bounded_resources(
     assert result.data.operation_status == "succeeded"
     observed = metrics.summary()
     assert observed["source_bytes"] == observed["confirmed_bytes"] == 1_048_576
-    assert observed["confirmed_files"] == 3 and observed["max_source_chunk_bytes"] <= 1_048_576
+    assert observed["confirmed_files"] == 3
+    assert observed["max_source_chunk_bytes"] <= 1_048_576
     assert 1 <= observed["peak_sources"] <= 2
     assert 1 <= observed["peak_connections"] <= 2
     assert 1 <= observed["peak_puts"] <= 2
@@ -136,11 +180,14 @@ def test_separate_streaming_sink_public_flow_observes_closed_bounded_resources(
     )
     found = json.loads((tmp_path / "server/stdout.json").read_bytes())
     assert found["received"] == fixture("warm")["files"]
-    assert 0 < found["max_read_bytes"] <= 65_536 and found["errors"] == 0
+    assert 0 < found["max_read_bytes"] <= 65_536
+    assert found["errors"] == 0
     assert found["presign_calls"] == found["put_calls"] == found["confirm_calls"] == 3
     assert found["create_calls"] == found["link_calls"] == 1
-    assert found["requests"]["POST"] == 8 and found["requests"]["PUT"] == 3
-    assert found["active_requests"] == 0 and found["peak_active_requests"] <= 2
+    assert found["requests"]["POST"] == 8
+    assert found["requests"]["PUT"] == 3
+    assert found["active_requests"] == 0
+    assert found["peak_active_requests"] <= 2
     assert (tmp_path / "server/stderr.txt").read_bytes() == b""
 
 

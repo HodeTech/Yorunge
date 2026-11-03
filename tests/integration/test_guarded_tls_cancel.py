@@ -50,7 +50,8 @@ def test_cancel_handshake_delivers_eof_to_real_peer_before_session_close():
             with pytest.raises(asyncio.CancelledError):
                 await task
             await asyncio.wait_for(eof.wait(), 1)
-            assert records[0].startswith(b"\x16\x03") and records[1] == b""
+            assert records[0].startswith(b"\x16\x03")
+            assert records[1] == b""
         finally:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)

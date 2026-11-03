@@ -106,18 +106,23 @@ def test_public_plan_review_approve_start_complete_flow_and_local_restart(
     with TlsServer(certificates, provider.routes()) as server:
         seam(monkeypatch, server, execution_clock, budgets)
         plan = prepare(inputs).data
-        assert plan.plan_status == "attempt_ready" and plan.operation_id is None
+        assert plan.plan_status == "attempt_ready"
+        assert plan.operation_id is None
         assert plan.risks == ("authority_unverified", "cost_unverified")
         chosen = api.review_dataset_upload(plan.plan_id, state_dir=data[0]).data
-        assert chosen.manifest.file_count == 3 and chosen.target.profile == "test"
+        assert chosen.manifest.file_count == 3
+        assert chosen.target.profile == "test"
         approved = approve(inputs, plan).data
         assert approved.approval_status == "approved"
         # Saved profile, rather than active_profile=other, selects the credential.
         result = api.start_dataset_upload(plan.plan_id, config=config, state_dir=data[0])
         value = result.data
-        assert value.operation_status == "succeeded" and value.dataset_id == DATASET
-        assert value.verification_level == "metadata" and not value.authority_verified
-        assert not value.remote_bytes_verified and result.operation_id is None
+        assert value.operation_status == "succeeded"
+        assert value.dataset_id == DATASET
+        assert value.verification_level == "metadata"
+        assert not value.authority_verified
+        assert not value.remote_bytes_verified
+        assert result.operation_id is None
         assert len(budgets) == 3
         assert [b.snapshot().read_requests for b in budgets] == [2, 2, 18]
         assert budgets[-1].snapshot().effect_attempts == 11
@@ -132,16 +137,19 @@ def test_public_plan_review_approve_start_complete_flow_and_local_restart(
         found = api.start_dataset_upload(
             plan.plan_id, config=config, profile="missing", state_dir=data[0]
         )
-        assert found == result and len(server.requests) == count
+        assert found == result
+        assert len(server.requests) == count
         for output in ("json", "ndjson"):
             stdout = io.StringIO()
             renderer = OutputRenderer(output, stdout=stdout, operation_id=value.operation_id)
             renderer.result(result)
-            assert DATASET in stdout.getvalue() and "created_dataset" not in stdout.getvalue()
+            assert DATASET in stdout.getvalue()
+            assert "created_dataset" not in stdout.getvalue()
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(operation_id=value.operation_id)
         assert len(view.receipts) == len(view.intents) == 11
-        assert view.verification.grant is None and store.verify().store_schema_version == 7
+        assert view.verification.grant is None
+        assert store.verify().store_schema_version == 7
 
 
 def test_public_same_id_read_recovery_after_write_metadata_failure_and_rotation(
@@ -160,7 +168,8 @@ def test_public_same_id_read_recovery_after_write_metadata_failure_and_rotation(
         start = partial(api.start_dataset_upload, plan.plan_id, config=config, state_dir=data[0])
         with pytest.raises(OperationError) as raised:
             start()
-        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.exit_code == 5
         operation_id = raised.value.operation_id
         assert operation_id is not None
         assert raised.value.__cause__ is raised.value.__context__ is None
@@ -179,16 +188,20 @@ def test_public_same_id_read_recovery_after_write_metadata_failure_and_rotation(
         )
         with pytest.raises(YorungeError) as denied:
             recover()
-        assert denied.value.code == "approval_required" and len(server.requests) == before
+        assert denied.value.code == "approval_required"
+        assert len(server.requests) == before
         with pytest.raises(OperationError) as read_error:
             recover(accept_unverified_read=True)
-        assert read_error.value.code == "remote_failed" and read_error.value.exit_code == 1
+        assert read_error.value.code == "remote_failed"
+        assert read_error.value.exit_code == 1
         assert read_error.value.operation_id == operation_id
         assert read_error.value.__cause__ is read_error.value.__context__ is None
         routes[item_path] = original
         value = recover(accept_unverified_read=True).data
-        assert value.operation_id == operation_id and value.operation_status == "succeeded"
-        assert value.verification_level == "metadata" and not value.authority_verified
+        assert value.operation_id == operation_id
+        assert value.operation_status == "succeeded"
+        assert value.verification_level == "metadata"
+        assert not value.authority_verified
         assert len(server.requests) == before + 13
         assert budgets[-2].snapshot().read_requests == 6
         assert budgets[-2].snapshot().read_attempts == 7
@@ -200,7 +213,8 @@ def test_public_same_id_read_recovery_after_write_metadata_failure_and_rotation(
         view = StateUploads(store).show(operation_id=operation_id)
         assert view.verification.scope.profile == "current"
         assert view.verification.scope.credential_revision > view.plan.scope.credential_revision
-        assert len(view.receipts) == 5 and store.verify().store_schema_version == 7
+        assert len(view.receipts) == 5
+        assert store.verify().store_schema_version == 7
 
 
 @pytest.mark.parametrize(
@@ -229,7 +243,8 @@ def test_public_approval_rejection_precedes_config_env_and_network(
         )
         with pytest.raises(YorungeError) as raised:
             invoke()
-        assert raised.value.code == code and raised.value.__context__ is None
+        assert raised.value.code == code
+        assert raised.value.__context__ is None
         assert len(server.requests) == count
 
 
@@ -247,8 +262,10 @@ def test_default_or_numeric_budget_does_not_fabricate_authority_or_price(
     with TlsServer(certificates, provider.routes()) as server:
         seam(monkeypatch, server, execution_clock, budgets)
         value = prepare(public_inputs, **options).data
-        assert value.plan_status == "draft" and value.cost_bound is None
-        assert value.budget_micros == 200_000_000 and "cost_unverified" in value.blockers
+        assert value.plan_status == "draft"
+        assert value.cost_bound is None
+        assert value.budget_micros == 200_000_000
+        assert "cost_unverified" in value.blockers
         if value.admission_policy == "verified_only":
             assert "authority_unverified" in value.blockers
         invoke = partial(
@@ -260,7 +277,8 @@ def test_default_or_numeric_budget_does_not_fabricate_authority_or_price(
         count = len(server.requests)
         with pytest.raises(YorungeError) as raised:
             invoke()
-        assert raised.value.code == "upload_plan_not_valid" and len(server.requests) == count
+        assert raised.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == count
 
 
 def test_public_local_metadata_secret_is_rejected_before_any_http(
@@ -275,7 +293,8 @@ def test_public_local_metadata_secret_is_rejected_before_any_http(
         invoke = partial(prepare, public_inputs, parameters=parameters)
         with pytest.raises(YorungeError) as raised:
             invoke()
-        assert raised.value.code == "invalid_request" and not server.requests
+        assert raised.value.code == "invalid_request"
+        assert not server.requests
         assert SECRET not in str(raised.value)
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(public_inputs[0][0]) as store:
@@ -321,8 +340,10 @@ def test_public_read_propagates_real_task_cancellation_and_releases_only_its_rea
         assert all(r.method == "GET" for r in server.requests[before:])
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.status == "unknown" and view.operation.lease is None
-        assert len(view.receipts) == 5 and view.verification is None
+        assert view.operation.status == "unknown"
+        assert view.operation.lease is None
+        assert len(view.receipts) == 5
+        assert view.verification is None
         assert store.verify().store_schema_version == 7
 
 
@@ -362,7 +383,8 @@ def test_public_existing_start_is_local_but_not_a_false_delivery_success(
     )
     with pytest.raises(OperationError) as raised:
         invoke()
-    assert raised.value.code == code and raised.value.operation_id == record.operation_id
+    assert raised.value.code == code
+    assert raised.value.operation_id == record.operation_id
     assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(journal.root) as store:
         assert StateUploads(store).show(operation_id=record.operation_id) == before
@@ -387,7 +409,8 @@ def test_actual_sigint_after_coordinator_result_keeps_the_known_operation_id(tmp
     invoke = partial(api.start_dataset_upload, plan_id, state_dir=root)
     with pytest.raises(OperationError) as raised:
         invoke()
-    assert raised.value.code == "request_cancelled" and raised.value.operation_id == identity
+    assert raised.value.code == "request_cancelled"
+    assert raised.value.operation_id == identity
     assert raised.value.__cause__ is raised.value.__context__ is None
     assert api.show_dataset_upload(operation_id=identity, state_dir=root).data.operation_status == (
         "succeeded"

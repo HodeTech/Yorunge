@@ -142,7 +142,8 @@ def test_growth_uses_all_cross_label_sample_pairs_not_correlated_high_peaks(evid
     report["growth"] = {"span_upper_bound_bytes": 64 * 1_048_576, "passed": False}
     report["passed"] = False
     result = evidence["summarize_report"](report)
-    assert result["passed"] is False and result["growth"]["span_upper_bound_bytes"] == 67_108_864
+    assert result["passed"] is False
+    assert result["growth"]["span_upper_bound_bytes"] == 67_108_864
 
 
 def test_capacity_is_bounded_separately_and_not_constant_file_count_growth(evidence, report):

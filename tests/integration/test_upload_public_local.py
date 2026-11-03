@@ -27,17 +27,21 @@ def test_public_local_history_review_and_revoke_need_no_external_dependencies(jo
     monkeypatch.setenv("TEST_PLATFORM_KEY", "DIFFERENT-CREDENTIAL")
     before = api.show_dataset_upload(plan_id=journal.plan.plan_id, state_dir=journal.root)
     value = api.show_dataset_upload(operation_id=record.operation_id, state_dir=journal.root)
-    assert value == before and value.operation_id is None
+    assert value == before
+    assert value.operation_id is None
     assert value.data.operation_id == record.operation_id
-    assert value.data.approval_status == "approved" and value.data.dataset_id is None
+    assert value.data.approval_status == "approved"
+    assert value.data.dataset_id is None
     selected = api.review_dataset_upload(journal.plan.plan_id, state_dir=journal.root).data
     assert selected.parameters == journal.plan.parameters
     assert selected.selected_owner == journal.plan.scope.owner
     assert selected.summary == value.data
     page = api.list_dataset_uploads(state_dir=journal.root)
-    assert page.data.uploads == (value.data,) and page.operation_id is None
+    assert page.data.uploads == (value.data,)
+    assert page.operation_id is None
     changed = api.revoke_dataset_upload(journal.plan.plan_id, state_dir=journal.root).data
-    assert changed.approval_status == "revoked" and changed.operation_id == record.operation_id
+    assert changed.approval_status == "revoked"
+    assert changed.operation_id == record.operation_id
     assert changed.operation_status == value.data.operation_status
     assert api.revoke_dataset_upload(journal.plan.plan_id, state_dir=journal.root).data == changed
     with open_existing_store(journal.root) as store:
@@ -50,7 +54,8 @@ def test_terminal_legacy_receipt_history_is_public_without_rewriting(tmp_path):
         data = install_fixture(store)
         before = StateUploads(store).show(plan_id=data["plan"]["plan_id"])
     value = api.show_dataset_upload(plan_id=data["plan"]["plan_id"], state_dir=root).data
-    assert value.verification_level == "metadata" and not value.authority_verified
+    assert value.verification_level == "metadata"
+    assert not value.authority_verified
     assert value.dataset_id == before.operation.dataset_id
     with open_existing_store(root) as store:
         assert StateUploads(store).show(plan_id=data["plan"]["plan_id"]) == before
@@ -92,7 +97,8 @@ def test_keyset_limit_byte_boundary_and_exact_filter_skip_no_plan(journal, monke
     filtered = api.list_dataset_uploads(plan_id=plans[3].plan_id, state_dir=journal.root).data
     assert [p.plan_id for p in filtered.uploads] == [plans[3].plan_id]
     absent = api.list_dataset_uploads(plan_id=str(uuid4()), state_dir=journal.root).data
-    assert not absent.uploads and absent.next_cursor is None
+    assert not absent.uploads
+    assert absent.next_cursor is None
 
 
 @pytest.mark.parametrize(
@@ -112,7 +118,8 @@ def test_local_request_rejection_precedes_state_access(tmp_path, options):
     invoke = partial(api.list_dataset_uploads, state_dir=root, **options)
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.code == "invalid_request"
+    assert not root.exists()
 
 
 @pytest.mark.parametrize(
@@ -129,7 +136,8 @@ def test_show_exactly_one_valid_identity_before_store(tmp_path, options):
     invoke = partial(api.show_dataset_upload, state_dir=root, **options)
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.code == "invalid_request"
+    assert not root.exists()
 
 
 def test_missing_store_and_unknown_record_preserve_closed_error(tmp_path):
@@ -137,7 +145,8 @@ def test_missing_store_and_unknown_record_preserve_closed_error(tmp_path):
     invoke = partial(api.show_dataset_upload, operation_id=identity, state_dir=root)
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "state_invalid" and not root.exists()
+    assert raised.value.code == "state_invalid"
+    assert not root.exists()
     assert raised.value.operation_id == identity
     assert raised.value.__cause__ is raised.value.__context__ is None
     api.initialize_state(state_dir=root)
@@ -242,7 +251,8 @@ def test_real_store_projection_does_not_publish_create_baseline_or_invalid_paylo
         assert store.verify().store_schema_version == 7
     value = api.show_dataset_upload(plan_id=view.plan.plan_id, state_dir=root)
     content = value.model_dump_json()
-    assert sentinel not in content and view.plan.parameters.name not in content
+    assert sentinel not in content
+    assert view.plan.parameters.name not in content
     assert view.plan.scope.owner.id not in content
     requested = api.review_dataset_upload(view.plan.plan_id, state_dir=root)
     assert sentinel not in requested.model_dump_json()
@@ -268,7 +278,8 @@ def test_invalid_cursor_never_retains_raw_decoder_exception_chain(tmp_path, curs
     invoke = partial(api.list_dataset_uploads, state_dir=root, cursor=cursor)
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.code == "invalid_request"
+    assert not root.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None
 
 
@@ -281,11 +292,14 @@ def test_authority_summary_is_historical_full_grant_only_after_durable_success(j
     journal.plan = seal(body)
     record, proof = complete(journal, unknown=False)
     before = api.show_dataset_upload(operation_id=record.operation_id, state_dir=journal.root).data
-    assert not before.authority_verified and before.verification_level == "none"
+    assert not before.authority_verified
+    assert before.verification_level == "none"
     with open_existing_store(journal.root) as store:
         journal.repository(store).verified(record.operation_id, record.lease, proof)
         assert store.verify().store_schema_version == 7
     after = api.show_dataset_upload(operation_id=record.operation_id, state_dir=journal.root).data
-    assert after.authority_verified and after.verification_level == "metadata"
+    assert after.authority_verified
+    assert after.verification_level == "metadata"
     assert not after.remote_bytes_verified
-    assert after.cost_bound is not None and "scope" not in type(after.cost_bound).model_fields
+    assert after.cost_bound is not None
+    assert "scope" not in type(after.cost_bound).model_fields

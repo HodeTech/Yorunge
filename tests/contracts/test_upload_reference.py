@@ -61,13 +61,15 @@ def test_actual_catalog_reference_gate_requires_current_bytes_and_declared_refer
     monkeypatch.setattr(runpy, "run_path", load)
     (tmp_path / "dist").mkdir()
     (tmp_path / "docs/research").mkdir(parents=True)
-    name = "p02-2-reference-upload-01.json"
+    name = "p02-2-reference-upload-02.json"
     source = tmp_path / "dist" / name
     source.write_bytes(checks["encode"](report))
     checks["archive_report"](tmp_path, source, None)
     if damage is None:
         result = checks["verify_upload_reference"](tmp_path, name)
-        assert result["passed"] is True and result["cases"] == 12 and result["name"] == name
+        assert result["passed"] is True
+        assert result["cases"] == 12
+        assert result["name"] == name
     else:
         with pytest.raises(ValueError):
             checks["verify_upload_reference"](tmp_path, name)

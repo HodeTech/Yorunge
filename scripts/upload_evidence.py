@@ -92,7 +92,11 @@ def file_hash(index: int, size: int) -> str:
 def expected_manifest(label: str) -> dict[str, Any]:
     if label not in ("warm", *LABELS):
         raise ValueError("unknown upload fixture label")
-    total = 128 if label == "capacity" else (1 if label == "warm" else int(label)) * 1_048_576
+    if label == "capacity":
+        total = 128
+    else:
+        megabytes = 1 if label == "warm" else int(label)
+        total = megabytes * 1_048_576
     count = 128 if label == "capacity" else 3
     base, remainder = divmod(total, count)
     files = [

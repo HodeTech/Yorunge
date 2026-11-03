@@ -150,7 +150,8 @@ def test_sigkill_read_never_resumes_write_and_requires_valid_new_read_owner(
         )
         with pytest.raises(OperationError) as raised:
             rejected()
-        assert raised.value.code == "operation_conflict" and len(server.requests) == count
+        assert raised.value.code == "operation_conflict"
+        assert len(server.requests) == count
         with open_existing_store(prepared_input[0]) as store:
             view = StateUploads(store).show(operation_id=operation_id)
             assert view.operation.status == ("succeeded" if terminal else "unknown")
@@ -171,14 +172,15 @@ def test_sigkill_read_never_resumes_write_and_requires_valid_new_read_owner(
                 session_factory=factory(server),
                 clock=execution_clock,
             )
-            assert (
-                result.record.status == "succeeded" and result.record.operation_id == operation_id
-            )
-            assert result.record.fence > fence and result.record.lease is None
+            assert result.record.status == "succeeded"
+            assert result.record.operation_id == operation_id
+            assert result.record.fence > fence
+            assert result.record.lease is None
             assert len(server.requests) == count + 6
             with open_existing_store(prepared_input[0]) as store:
                 view = StateUploads(store).show(operation_id=operation_id)
-                assert view.verification is not None and len(view.receipts) == 5
+                assert view.verification is not None
+                assert len(view.receipts) == 5
                 assert store.verify().store_schema_version == 7
         assert (
             provider.create_calls

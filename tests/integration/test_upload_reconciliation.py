@@ -70,24 +70,29 @@ def test_same_operation_becomes_durable_metadata_success_without_files_or_writes
         provider.on_request = unlocked
         count = len(server.requests)
         phase = call(data, server, execution_clock, operation_id, budgets=budgets)()
-        assert phase.record.status == "succeeded" and phase.record.reason == "metadata_verified"
-        assert phase.record.operation_id == operation_id and phase.record.lease is None
+        assert phase.record.status == "succeeded"
+        assert phase.record.reason == "metadata_verified"
+        assert phase.record.operation_id == operation_id
+        assert phase.record.lease is None
         assert phase.record.write_owner_id == before.operation.write_owner_id
         assert phase.record.write_access_digest == before.operation.write_access_digest
         assert phase.record.fence > before.operation.fence
         requests = server.requests[count:]
-        assert len(requests) == len(locks) == 6 and all(r.method == "GET" for r in requests)
+        assert len(requests) == len(locks) == 6
+        assert all(r.method == "GET" for r in requests)
         assert requests[-1].path == f"/api/v1/datasets/{DATASET}/items?limit=128"
         counters = budgets[0].snapshot()
         assert counters.read_requests == counters.read_attempts == 6
         assert counters.effect_attempts == counters.upload_bytes == counters.response_pending == 0
         with open_existing_store(prepared_input[0]) as store:
             view = StateUploads(store).show(operation_id=operation_id)
-            assert view.plan == plan and view.receipts == before.receipts
+            assert view.plan == plan
+            assert view.receipts == before.receipts
             assert view.intents == before.intents
             assert len(view.receipts) == 2 + 3 * data[2].file_count
             proof = view.verification
-            assert proof.grant is None and proof.authorization_policy == "explicit_read_attempt"
+            assert proof.grant is None
+            assert proof.authorization_policy == "explicit_read_attempt"
             assert len(proof.files) == data[2].file_count
             assert all(
                 (actual.size_bytes, actual.sha256) == (expected.size, expected.sha256)
@@ -96,7 +101,8 @@ def test_same_operation_becomes_durable_metadata_success_without_files_or_writes
             if current_scope == "rotated":
                 assert proof.scope.credential_revision > plan.scope.credential_revision
             if current_scope == "profile":
-                assert proof.scope.profile == "readonly" and plan.scope.profile == "test"
+                assert proof.scope.profile == "readonly"
+                assert plan.scope.profile == "test"
             if current_scope == "reset":
                 assert proof.scope.identity_epoch != plan.scope.identity_epoch
             assert store.verify().store_schema_version == 7
@@ -111,7 +117,8 @@ def test_same_operation_becomes_durable_metadata_success_without_files_or_writes
         )
         with pytest.raises(OperationError) as terminal:
             invoke()
-        assert terminal.value.code == "operation_conflict" and len(server.requests) == count + 6
+        assert terminal.value.code == "operation_conflict"
+        assert len(server.requests) == count + 6
 
 
 @pytest.mark.parametrize(
@@ -145,16 +152,21 @@ def test_items_failure_keeps_source_error_and_cannot_downgrade_to_execution_fail
             "429": "remote_rate_limited",
             "503": "remote_failed",
         }.get(failure, "invalid_response")
-        assert raised.value.code == expected and raised.value.operation_id == operation_id
+        assert raised.value.code == expected
+        assert raised.value.operation_id == operation_id
         assert raised.value.exit_code == (3 if failure in {"401", "403"} else 1)
         assert raised.value.__cause__ is raised.value.__context__ is None
-        assert SECRET not in str(raised.value) and SECRET not in repr(raised.value.envelope())
+        assert SECRET not in str(raised.value)
+        assert SECRET not in repr(raised.value.envelope())
         assert all(r.method == "GET" for r in server.requests[count:])
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.status == "unknown" and view.operation.reason == "read_unavailable"
-        assert view.operation.lease is None and len(view.receipts) == 5
-        assert view.verification is None and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert view.operation.reason == "read_unavailable"
+        assert view.operation.lease is None
+        assert len(view.receipts) == 5
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7
 
 
 def test_real_cancel_after_read_acquire_releases_lease_and_propagates(
@@ -177,9 +189,12 @@ def test_real_cancel_after_read_acquire_releases_lease_and_propagates(
             invoke()
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.status == "unknown" and view.operation.lease is None
-        assert view.operation.reason == "request_uncertain" and view.verification is None
-        assert len(view.receipts) == 5 and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert view.operation.lease is None
+        assert view.operation.reason == "request_uncertain"
+        assert view.verification is None
+        assert len(view.receipts) == 5
+        assert store.verify().store_schema_version == 7
 
 
 @pytest.mark.parametrize("changed", ["owner", "scope", "authorization"])
@@ -212,15 +227,18 @@ def test_post_acquire_change_closes_before_items_and_proof(
         invoke = call(prepared_input, server, execution_clock, operation_id)
         with pytest.raises(OperationError) as raised:
             invoke()
-        assert raised.value.exit_code == 2 and raised.value.operation_id == operation_id
+        assert raised.value.exit_code == 2
+        assert raised.value.operation_id == operation_id
         expected = "upload_plan_not_valid" if changed == "authorization" else "operation_lease_lost"
         assert raised.value.code == expected
         assert counts == [len(server.requests)]
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.operation.status == "unknown" and view.verification is None
-        assert len(view.receipts) == 5 and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert view.verification is None
+        assert len(view.receipts) == 5
+        assert store.verify().store_schema_version == 7
 
 
 def test_items_age_cannot_refresh_authorization_or_create_stale_proof(
@@ -240,10 +258,12 @@ def test_items_age_cannot_refresh_authorization_or_create_stale_proof(
         invoke = call(prepared_input, server, execution_clock, operation_id)
         with pytest.raises(OperationError) as raised:
             invoke()
-        assert raised.value.code == "upload_plan_not_valid" and raised.value.exit_code == 2
+        assert raised.value.code == "upload_plan_not_valid"
+        assert raised.value.exit_code == 2
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert view.verification is None and view.operation.lease is None
+        assert view.verification is None
+        assert view.operation.lease is None
         assert store.verify().store_schema_version == 7
 
 
@@ -276,14 +296,16 @@ def test_read_proof_commit_and_reply_windows_preserve_same_record(
         invoke = call(prepared_input, server, execution_clock, operation_id)
         with pytest.raises(OperationError) as raised:
             invoke()
-        assert raised.value.code == "state_write_failed" and raised.value.exit_code == 2
+        assert raised.value.code == "state_write_failed"
+        assert raised.value.exit_code == 2
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
         assert view.operation.status == ("succeeded" if committed else "unknown")
         assert (view.verification is not None) == committed
-        assert len(view.receipts) == 5 and view.operation.lease is None
+        assert len(view.receipts) == 5
+        assert view.operation.lease is None
         assert store.verify().store_schema_version == 7
 
 
@@ -327,14 +349,16 @@ def test_total_read_budget_is_enforced_through_proof_publication(
         invoke = call(prepared_input, server, execution_clock, operation_id)
         with pytest.raises(OperationError) as raised:
             invoke()
-        assert raised.value.code == "execution_timeout" and raised.value.exit_code == 2
+        assert raised.value.code == "execution_timeout"
+        assert raised.value.exit_code == 2
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
         assert (view.verification is not None) == (window == "after_commit")
         assert view.operation.status == ("succeeded" if window == "after_commit" else "unknown")
-        assert len(view.receipts) == 5 and store.verify().store_schema_version == 7
+        assert len(view.receipts) == 5
+        assert store.verify().store_schema_version == 7
 
 
 def test_read_acquisition_loser_cannot_release_the_winners_lease(
@@ -363,12 +387,13 @@ def test_read_acquisition_loser_cannot_release_the_winners_lease(
         count = len(server.requests)
         with pytest.raises(OperationError) as raised:
             invoke()
-        assert (
-            raised.value.code == "operation_conflict" and raised.value.operation_id == operation_id
-        )
+        assert raised.value.code == "operation_conflict"
+        assert raised.value.operation_id == operation_id
         assert len(server.requests) == count + 5
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(operation_id=operation_id)
-        assert len(winner) == 1 and view.operation.lease == winner[0]
-        assert view.verification is None and view.operation.status == "unknown"
+        assert len(winner) == 1
+        assert view.operation.lease == winner[0]
+        assert view.verification is None
+        assert view.operation.status == "unknown"
         assert store.verify().store_schema_version == 7

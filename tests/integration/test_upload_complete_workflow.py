@@ -34,30 +34,40 @@ def test_complete_original_writes_exact_graph_and_durable_metadata_proof(
         result = run_upload_original(
             plan.plan_id, data[0], loader(data), session_factory=factory(server, budgets)
         )
-        assert result.record.status == "succeeded" and result.record.reason == "metadata_verified"
-        assert result.record.lease is None and not result.existing
+        assert result.record.status == "succeeded"
+        assert result.record.reason == "metadata_verified"
+        assert result.record.lease is None
+        assert not result.existing
         gets = [r for r in server.requests[before:] if r.method == "GET"]
-        assert len(gets) == 18 and gets[-1].path == f"/api/v1/datasets/{DATASET}/items?limit=128"
+        assert len(gets) == 18
+        assert gets[-1].path == f"/api/v1/datasets/{DATASET}/items?limit=128"
         assert sum(r.path.endswith("/my-role") for r in gets) == 1
         counts = budgets[0].snapshot()
         assert counts.read_requests == counts.read_attempts == 18
         assert counts.effect_attempts == 2 + 3 * data[2].file_count
-        assert counts.upload_bytes == data[2].total_bytes and counts.response_pending == 0
+        assert counts.upload_bytes == data[2].total_bytes
+        assert counts.response_pending == 0
         count = len(server.requests)
         found = run_upload_original(plan.plan_id, data[0], denied, session_factory=denied)
-        assert found.existing and found.record == result.record and len(server.requests) == count
+        assert found.existing
+        assert found.record == result.record
+        assert len(server.requests) == count
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation == result.record and len(view.intents) == len(view.receipts)
+        assert view.operation == result.record
+        assert len(view.intents) == len(view.receipts)
         proof = view.verification
-        assert proof.schema_version == 2 and proof.authorization_policy == "explicit_read_attempt"
-        assert proof.grant is None and proof.scope == plan.scope
+        assert proof.schema_version == 2
+        assert proof.authorization_policy == "explicit_read_attempt"
+        assert proof.grant is None
+        assert proof.scope == plan.scope
         assert len(proof.files) == data[2].file_count
         assert {f.item_id for f in proof.files} == {f["id"] for f in provider.confirmed.values()}
         assert all(f.sha256 == data[2].files[f.file_index].sha256 for f in proof.files)
         assert view.controls[-1].reason == "metadata_verified"
         assert store.verify().store_schema_version == 7
-    assert provider.owner_id not in repr(result) and provider.name not in repr(result)
+    assert provider.owner_id not in repr(result)
+    assert provider.name not in repr(result)
 
 
 @pytest.mark.parametrize(
@@ -110,8 +120,10 @@ def test_post_write_read_failures_are_unknown_same_id_and_never_replay(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
-        assert raised.value.operation_id is not None and raised.value.reason_code is not None
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.exit_code == 5
+        assert raised.value.operation_id is not None
+        assert raised.value.reason_code is not None
         assert raised.value.__context__ is raised.value.__cause__ is None
         assert (
             provider.create_calls
@@ -122,12 +134,13 @@ def test_post_write_read_failures_are_unknown_same_id_and_never_replay(
         )
         count = len(server.requests)
         found = run_upload_original(plan.plan_id, prepared_input[0], denied, session_factory=denied)
-        assert found.record.status == "unknown" and len(server.requests) == count
+        assert found.record.status == "unknown"
+        assert len(server.requests) == count
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert (
-            len(view.receipts) == 5 and view.verification is None and view.operation.lease is None
-        )
+        assert len(view.receipts) == 5
+        assert view.verification is None
+        assert view.operation.lease is None
         assert store.verify().store_schema_version == 7
 
 
@@ -159,7 +172,8 @@ def test_initial_read_revoked_after_last_confirm_stops_before_any_metadata_get(
         )
         with pytest.raises(OperationError) as raised:
             rejected_call()
-        assert raised.value.code == "operation_uncertain" and counts == [len(server.requests)]
+        assert raised.value.code == "operation_uncertain"
+        assert counts == [len(server.requests)]
         assert not any("/items?" in r.path for r in server.requests)
 
 
@@ -194,7 +208,8 @@ def test_initial_read_deadline_does_not_slide_authorization_to_item_completion(
         assert raised.value.code == "operation_uncertain"
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
-        assert view.operation.status == "unknown" and view.verification is None
+        assert view.operation.status == "unknown"
+        assert view.verification is None
         assert store.verify().store_schema_version == 7
 
 
@@ -224,8 +239,10 @@ def test_actual_cancel_during_metadata_propagates_and_preserves_complete_receipt
             rejected_call()
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert view.operation.status == "unknown" and len(view.receipts) == 5
-        assert view.verification is None and store.verify().store_schema_version == 7
+        assert view.operation.status == "unknown"
+        assert len(view.receipts) == 5
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7
 
 
 @pytest.mark.parametrize("committed", [False, True])
@@ -275,7 +292,8 @@ def test_proof_commit_or_reply_failure_never_replays_or_downgrades_terminal(
         assert result.record.status == ("succeeded" if committed else "unknown")
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
-        assert (view.verification is not None) == committed and len(view.receipts) == 5
+        assert (view.verification is not None) == committed
+        assert len(view.receipts) == 5
         assert store.verify().store_schema_version == 7
 
 
@@ -301,6 +319,7 @@ def test_metadata_read_does_not_reopen_already_sent_source_files(
             loader(prepared_input),
             session_factory=factory(server),
         )
-        assert result.record.status == "succeeded" and not (prepared_input[1] / "one.bin").exists()
+        assert result.record.status == "succeeded"
+        assert not (prepared_input[1] / "one.bin").exists()
     with open_existing_store(prepared_input[0]) as store:
         assert store.verify().store_schema_version == 7

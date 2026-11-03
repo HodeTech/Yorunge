@@ -151,7 +151,8 @@ def test_real_control_chain_is_single_attempt_and_keeps_provider_key_volatile(
             arm = journal.arm(record, "presign", 0)
             outcome = owned.exchange(lambda client: call.execute(client, arm))
             upload = outcome.upload
-            assert upload is not None and outcome.receipt.object_key == context.local_binding
+            assert upload is not None
+            assert outcome.receipt.object_key == context.local_binding
             record = save(journal, record, outcome)
             # Q.2 owns control effects. A synthetic accepted PUT predecessor is
             # explicit test data; descriptor streaming is the separate q.3 slice.
@@ -181,24 +182,26 @@ def test_real_control_chain_is_single_attempt_and_keeps_provider_key_volatile(
             arm = journal.arm(record, "confirm", 0)
             outcome = owned.exchange(lambda client: call.execute(client, arm))
             record = save(journal, record, outcome)
-            assert instances[0]._slots._value == 2 and not instances[0]._responses
+            assert instances[0]._slots._value == 2
+            assert not instances[0]._responses
         assert [r.path for r in server.requests] == paths
         assert all(r.method == "POST" for r in server.requests)
         assert all(r.header("X-API-Key") == key.secret.reveal() for r in server.requests)
         assert all(r.header("Accept-Encoding") == "identity" for r in server.requests)
         assert all(context.local_binding not in r.body.decode() for r in server.requests)
         presign = json.loads(server.requests[2].body)["files"][0]
-        assert (
-            presign["filename"] == context.file.path and presign["client_uid"] == context.client_uid
-        )
+        assert presign["filename"] == context.file.path
+        assert presign["client_uid"] == context.client_uid
         confirm = json.loads(server.requests[3].body)
-        assert confirm["skip_dedup"] is True and confirm["items"][0]["object_key"] == RAW_KEY
+        assert confirm["skip_dedup"] is True
+        assert confirm["items"][0]["object_key"] == RAW_KEY
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
         assert RAW_KEY not in b"".join(r.encoded() for r in view.receipts).decode()
         assert store.verify().store_schema_version == 7
     counts = value.snapshot()
-    assert counts.effect_attempts == 4 and counts.response_pending == 0
+    assert counts.effect_attempts == 4
+    assert counts.response_pending == 0
     assert all(x not in caplog.text for x in (RAW_KEY, key.secret.reveal(), "unused"))
     assert all(x not in repr(outcome) + repr(port) + repr(call) for x in (RAW_KEY, DATASET))
     for obj in (outcome, port, call):
@@ -235,9 +238,11 @@ def test_real_effect_status_never_retries_or_manufactures_rejection(
                 rejected_call()
             assert raised.value.code == code
             assert raised.value.__cause__ is raised.value.__context__ is None
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 1
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
     with open_store(journal.root) as store:
         assert not journal.repository(store).show(operation_id=record.operation_id).receipts
 
@@ -264,9 +269,11 @@ def test_real_malformed_compressed_truncated_create_is_no_replay(journal, certif
             rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError):
                 rejected_call()
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 1
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
 
 
 @pytest.mark.parametrize("mismatch", ["tuple", "operation", "stage", "digest", "expired"])
@@ -383,12 +390,14 @@ def test_cancelled_real_effect_closes_resources_without_receipt_or_retry(journal
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
 
         with owned:
             owned.exchange(cancel)
         assert len(server.requests) == 1
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
 
 
 def stage_call(journal, kind):
@@ -446,9 +455,11 @@ def test_stage_specific_invalid_body_never_produces_an_accepted_receipt(
                 rejected_call()
             assert raised.value.code == "invalid_response"
             assert key.secret.reveal() not in str(raised.value) + repr(raised.value)
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 1
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)
         assert arm.intent.intent_id not in {r.intent_id for r in view.receipts}
@@ -522,9 +533,11 @@ def test_short_issued_deadline_reaches_actual_network_without_extension(journal,
             with pytest.raises(YorungeError) as raised:
                 rejected_call()
             assert raised.value.code == "transport_timeout"
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == 1
-    assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
+    assert value.snapshot().effect_attempts == 1
+    assert value.snapshot().response_pending == 0
 
 
 def test_file_batch_is_bounded_and_foreign_or_nested_mutated_context_is_rejected(journal):
@@ -587,7 +600,8 @@ def test_prepared_presign_cannot_accept_a_mutated_nested_file(journal, certifica
             with pytest.raises(YorungeError) as raised:
                 rejected_call()
             assert raised.value.code == "invalid_request"
-            assert not instances[0]._responses and instances[0]._slots._value == 2
+            assert not instances[0]._responses
+            assert instances[0]._slots._value == 2
         assert len(server.requests) == int(timing == "during_response")
     assert value.snapshot().effect_attempts == int(timing == "during_response")
     assert value.snapshot().response_pending == 0

@@ -53,7 +53,7 @@ def item_query(cursor: str | None, secret: SecretValue) -> tuple[tuple[str, str]
     try:
         if type(cursor) is not str or not 1 <= len(safe_text(cursor)) <= 1024:
             raise ValueError("bounded cursor required")
-    except (ValueError, UnicodeError):
+    except ValueError:
         raise YorungeError("invalid_request") from None
     control._scan(cursor, secret, {}, error="invalid_request")
     return (("limit", "128"), ("cursor", cursor))

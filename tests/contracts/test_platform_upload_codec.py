@@ -62,8 +62,10 @@ def test_literal_create_and_separate_link_request_never_embed_project_or_grant()
     )
     scope = SCOPE.model_copy(update={"owner": UploadOwner(kind="organization", id=OTHER)})
     body = json.loads(codec.create_content(scope, PARAMETERS, SECRET))
-    assert body["org_id"] == OTHER and "project_id" not in body
-    assert "grant" not in body and "owner_id" not in body
+    assert body["org_id"] == OTHER
+    assert "project_id" not in body
+    assert "grant" not in body
+    assert "owner_id" not in body
 
 
 @pytest.mark.parametrize(
@@ -72,7 +74,8 @@ def test_literal_create_and_separate_link_request_never_embed_project_or_grant()
 def test_invalid_local_link_id_is_request_error_not_provider_error(value):
     with pytest.raises(YorungeError) as error:
         codec.link_content(value, SECRET)
-    assert error.value.code == "invalid_request" and error.value.exit_code == 2
+    assert error.value.code == "invalid_request"
+    assert error.value.exit_code == 2
 
 
 @pytest.mark.parametrize(
@@ -112,9 +115,11 @@ def test_reported_context_create_and_exact_detail_preserve_private_owner(wrapped
     me = codec.identity(encoded({"success": True, "data": {"id": SCOPE.owner.id}}), SECRET)
     codec.context(me, selected, SCOPE)
     created = codec.created(encoded(envelope(dataset())), SCOPE, PARAMETERS, SECRET)
-    assert created.id == DATASET and created.org_id is None
+    assert created.id == DATASET
+    assert created.org_id is None
     assert codec.detail(encoded(envelope(dataset())), created, SCOPE, PARAMETERS, SECRET) == created
-    assert "grant" not in created.model_dump() and "permissions" not in selected.model_dump()
+    assert "grant" not in created.model_dump()
+    assert "permissions" not in selected.model_dump()
 
 
 @pytest.mark.parametrize("kind", ["project", "dataset", "role", "link", "identity"])
@@ -312,7 +317,8 @@ def test_wrapped_lists_and_unrelated_name_match_do_not_change_exact_selection():
     found = codec.owned_match(
         encoded({"success": True, "data": rows}), DATASET, SCOPE, PARAMETERS, SECRET
     )
-    assert found is not None and found.id == DATASET
+    assert found is not None
+    assert found.id == DATASET
     assert codec.membership(encoded({"success": True, "data": [{"id": DATASET}]}), DATASET, SECRET)
 
 
@@ -336,7 +342,8 @@ def test_my_role_label_is_typed_prerequisite_without_grant(permissions, expected
         assert error.value.code == expected
     else:
         observed = codec.role(raw, SECRET)
-        assert "upload" in observed.permissions and "grant" not in observed.model_dump()
+        assert "upload" in observed.permissions
+        assert "grant" not in observed.model_dump()
 
 
 @pytest.mark.parametrize(

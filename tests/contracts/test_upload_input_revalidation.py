@@ -26,8 +26,10 @@ def test_invalid_parameter_fields_never_warn_or_keep_error_chain(field, value, c
         with pytest.raises(YorungeError) as failure:
             create_content(SCOPE, copied, SECRET)
     assert failure.value.code == "invalid_request"
-    assert failure.value.__context__ is None and failure.value.__cause__ is None
-    assert observed == [] and capsys.readouterr() == ("", "")
+    assert failure.value.__context__ is None
+    assert failure.value.__cause__ is None
+    assert observed == []
+    assert capsys.readouterr() == ("", "")
 
 
 @pytest.mark.parametrize(
@@ -45,8 +47,10 @@ def test_invalid_nested_scope_is_checked_before_json_normalizes_it(change, capsy
         warnings.simplefilter("error")
         with pytest.raises(YorungeError) as failure:
             create_content(copied, PARAMETERS, SECRET)
-    assert failure.value.code == "invalid_request" and failure.value.__context__ is None
-    assert observed == [] and capsys.readouterr() == ("", "")
+    assert failure.value.code == "invalid_request"
+    assert failure.value.__context__ is None
+    assert observed == []
+    assert capsys.readouterr() == ("", "")
 
 
 def test_nested_plan_input_has_same_warning_free_boundary():
@@ -58,5 +62,6 @@ def test_nested_plan_input_has_same_warning_free_boundary():
         rejected_call = partial(revalidate_input, type(PLAN), bad)
         with pytest.raises(YorungeError) as failure:
             rejected_call()
-    assert failure.value.code == "invalid_request" and observed == []
+    assert failure.value.code == "invalid_request"
+    assert observed == []
     assert failure.value.__context__ is None

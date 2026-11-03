@@ -139,7 +139,8 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
         result = run_upload_original(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
         )
-        assert result.existing and len(server.requests) == count
+        assert result.existing
+        assert len(server.requests) == count
         expected_status = "running" if intents else "admitted"
         if terminal:
             expected_status = "succeeded"
@@ -148,7 +149,8 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
         with open_existing_store(prepared_input[0]) as store:
             repository = StateUploads(store)
             view = repository.show(plan_id=plan.plan_id)
-            assert len(view.intents) == intents and len(view.receipts) == receipts
+            assert len(view.intents) == intents
+            assert len(view.receipts) == receipts
             assert (view.operation.dataset_id == DATASET) == (receipts > 0)
             assert (view.verification is not None) == terminal
             assert view.operation.operation_id == result.record.operation_id

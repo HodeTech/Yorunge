@@ -57,7 +57,7 @@ class ByteSource(Protocol):
 def _text(value: str) -> None:
     try:
         safe_text(value)
-    except (ValueError, UnicodeError):
+    except ValueError:
         raise YorungeError("invalid_service_target") from None
 
 
@@ -172,7 +172,7 @@ class StorageTarget:
                 and target.service_origin == origin
                 and target.api_base_path == "/"
                 and parsed.scheme == "https"
-                and parsed.netloc == origin[8:]
+                and parsed.netloc == urlsplit(origin).netloc
                 and not parsed.fragment
                 and "#" not in url
                 and parsed.username is None

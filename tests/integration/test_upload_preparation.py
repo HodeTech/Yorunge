@@ -139,23 +139,30 @@ def test_prepare_approve_revoke_real_journey(prepared_input, certificates, monke
     with TlsServer(certificates, routes()) as server:
         value = runtime(prepared_input, server)
         plan = prepare(value, prepared_input)
-        assert plan.status == "attempt_ready" and plan.inputs_verified
-        assert plan.grant is plan.cost_bound is None and not plan.executable
-        assert plan.risks == ("authority_unverified", "cost_unverified") and not plan.blockers
-        assert (
-            plan.root.anchor == str(prepared_input[1])
-            and plan.manifest.digest == prepared_input[2].digest
-        )
-        assert plan.request_limits.max_presign == 1 and plan.request_limits.max_upload_bytes == 8
-        assert len(reads) == 1 and counts(prepared_input[0]) == (1, 0, 0)
+        assert plan.status == "attempt_ready"
+        assert plan.inputs_verified
+        assert plan.grant is plan.cost_bound is None
+        assert not plan.executable
+        assert plan.risks == ("authority_unverified", "cost_unverified")
+        assert not plan.blockers
+        assert plan.root.anchor == str(prepared_input[1])
+        assert plan.manifest.digest == prepared_input[2].digest
+        assert plan.request_limits.max_presign == 1
+        assert plan.request_limits.max_upload_bytes == 8
+        assert len(reads) == 1
+        assert counts(prepared_input[0]) == (1, 0, 0)
         approval = approve(value, plan)
-        assert approval.plan_digest == plan.digest and approval.status == "approved"
-        assert counts(prepared_input[0]) == (1, 1, 0) and len(reads) == 2
+        assert approval.plan_digest == plan.digest
+        assert approval.status == "approved"
+        assert counts(prepared_input[0]) == (1, 1, 0)
+        assert len(reads) == 2
         monkeypatch.delenv(ENV)
         (prepared_input[1] / "one.bin").unlink()
         view = value.revoke(plan.plan_id)
-        assert view.approval.status == "revoked" and len(reads) == 2
-        assert len(server.requests) == 4 and all(r.method == "GET" for r in server.requests)
+        assert view.approval.status == "revoked"
+        assert len(reads) == 2
+        assert len(server.requests) == 4
+        assert all(r.method == "GET" for r in server.requests)
         assert all(r.header("X-API-Key") == SECRET for r in server.requests)
     assert SECRET not in plan.encoded().decode() + repr(value) + caplog.text
 
@@ -173,10 +180,12 @@ def test_numeric_budget_remains_draft_without_provider_quote(
             cost_policy="bounded_required",
             budget_micros=200_000_000,
         )
-        assert plan.status == "draft" and "cost_unverified" in plan.blockers
+        assert plan.status == "draft"
+        assert "cost_unverified" in plan.blockers
         with failure("upload_plan_not_valid"):
             approve(value, plan)
-        assert len(server.requests) == 2 and counts(prepared_input[0]) == (1, 0, 0)
+        assert len(server.requests) == 2
+        assert counts(prepared_input[0]) == (1, 0, 0)
 
 
 @pytest.mark.parametrize(
@@ -418,7 +427,8 @@ def test_selected_literal_in_local_fields_never_reaches_http_or_plan(
     with TlsServer(certificates, routes()) as server:
         with failure("invalid_request"):
             prepare(runtime(data, server), data, **changes)
-        assert not server.requests and counts(data[0]) == (0, 0, 0)
+        assert not server.requests
+        assert counts(data[0]) == (0, 0, 0)
 
 
 def test_env_is_resolved_once_and_not_replaced_during_http(
@@ -435,7 +445,8 @@ def test_env_is_resolved_once_and_not_replaced_during_http(
         before = len(server.requests)
         with failure("state_changed"):
             approve(value, plan)
-        assert len(server.requests) == before and counts(prepared_input[0]) == (1, 0, 0)
+        assert len(server.requests) == before
+        assert counts(prepared_input[0]) == (1, 0, 0)
 
 
 @pytest.mark.parametrize("bad", ["missing", "other", "profile_mismatch"])
@@ -477,7 +488,8 @@ def test_local_revoke_does_not_load_context_or_env(prepared_input, certificates,
 
         monkeypatch.setattr(EnvSecretReader, "read", forbidden)
         view = composition.revoke_upload_approval(plan.plan_id, prepared_input[0])
-        assert view.approval.status == "revoked" and len(server.requests) == before
+        assert view.approval.status == "revoked"
+        assert len(server.requests) == before
 
 
 def test_latched_namespace_preflight_returns_same_operation_before_hash_or_http(
@@ -557,9 +569,8 @@ def test_clock_change_during_last_recheck_is_controlled_before_plan_seal(
     with TlsServer(certificates, routes()) as server:
         with failure(code):
             prepare(runtime(prepared_input, server, clock=clock), prepared_input)
-        assert len(server.requests) == 2 and all(
-            record.method == "GET" for record in server.requests
-        )
+        assert len(server.requests) == 2
+        assert all(record.method == "GET" for record in server.requests)
     assert counts(prepared_input[0]) == (0, 0, 0)
 
 
@@ -587,7 +598,8 @@ def test_combined_plan_wire_preflight_rejects_legal_long_metadata_before_http(
     rejected_call = partial(prepare, runtime(data), data, parameters=parameters)
     with pytest.raises(YorungeError) as raised:
         rejected_call()
-    assert raised.value.code == "invalid_request" and raised.value.exit_code == 2
+    assert raised.value.code == "invalid_request"
+    assert raised.value.exit_code == 2
     assert raised.value.__context__ is raised.value.__cause__ is None
     assert counts(data[0]) == (0, 0, 0)
 

@@ -21,12 +21,15 @@ def test_counter_uses_actual_chunk_deltas_and_separate_durable_confirmation():
         counter.bind(identity)
         source_chunk(3)
         source_chunk(5)
-        assert updates[-1].source_bytes == 8 and updates[-1].confirmed_files == 0
+        assert updates[-1].source_bytes == 8
+        assert updates[-1].confirmed_files == 0
         counter.confirm(0)
-        assert updates[-1].confirmed_files == 1 and updates[-1].confirmed_bytes == 3
+        assert updates[-1].confirmed_files == 1
+        assert updates[-1].confirmed_bytes == 3
         counter.confirm(1)
         counter.confirm(1)
-    assert len(updates) == 5 and updates[-1].confirmed_bytes == 8
+    assert len(updates) == 5
+    assert updates[-1].confirmed_bytes == 8
     assert {p.operation_id for p in updates} == {identity}
     source_chunk(999)
     assert len(updates) == 5
@@ -53,7 +56,8 @@ def test_counter_rejects_cross_thread_use_without_increment():
         thread = threading.Thread(target=worker)
         thread.start()
         thread.join(timeout=5)
-    assert not thread.is_alive() and errors == ["invalid_request"]
+    assert not thread.is_alive()
+    assert errors == ["invalid_request"]
     assert updates[-1].source_bytes == 0
 
 
@@ -84,7 +88,8 @@ def test_progress_is_tty_only_coalesced_and_safe_when_the_sink_fails(monkeypatch
         progress(UploadProgress(identity, i, 100, 0, 0, 1))
     assert 8 <= len(sink.getvalue().splitlines()) <= 10
     assert all(right - left >= 0.1 for left, right in pairwise(emitted))
-    assert "Taşımaya verilen" in sink.getvalue() and "Onaylı" in sink.getvalue()
+    assert "Taşımaya verilen" in sink.getvalue()
+    assert "Onaylı" in sink.getvalue()
     assert not ProgressText(io.StringIO()).enabled
 
     class Closed(Terminal):
@@ -121,4 +126,5 @@ def test_text_error_keeps_known_operation_identity_without_changing_the_wire():
     error = OperationError("operation_uncertain", identity)
     renderer = OutputRenderer("text", stdout=io.StringIO(), stderr=sink)
     assert renderer.error(error) == 5
-    assert identity in sink.getvalue() and error.message in sink.getvalue()
+    assert identity in sink.getvalue()
+    assert error.message in sink.getvalue()

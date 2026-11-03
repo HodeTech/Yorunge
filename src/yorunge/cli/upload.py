@@ -419,6 +419,6 @@ class ProgressText:
                 f"{progress.confirmed_bytes} byte\n",
                 self.stream,
             )
-        except (OSError, UnicodeError, ValueError):
+        except (OSError, ValueError):
             self.enabled = False
             _silence_failed_descriptor(self.stream)

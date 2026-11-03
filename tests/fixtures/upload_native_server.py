@@ -127,13 +127,18 @@ class Sink:
     def respond(self, handler):
         self.begin(handler)
         try:
-            assert handler.command in {"GET", "POST", "PUT"}
-            assert handler.headers.get_all("X-API-Key") == [KEY]
-            assert not handler.headers.get_all("Transfer-Encoding")
+            if handler.command not in {"GET", "POST", "PUT"}:
+                raise ValueError("unsupported native fixture method")
+            if handler.headers.get_all("X-API-Key") != [KEY]:
+                raise ValueError("unexpected native fixture credential")
+            if handler.headers.get_all("Transfer-Encoding"):
+                raise ValueError("native fixture requires Content-Length")
             lengths = handler.headers.get_all("Content-Length") or ["0"]
-            assert len(lengths) == 1 and lengths[0].isascii() and lengths[0].isdigit()
+            if len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
+                raise ValueError("invalid native fixture Content-Length")
             size = int(lengths[0])
-            assert 0 <= size <= 500_000_000
+            if size < 0 or size > 500_000_000:
+                raise ValueError("native fixture body limit exceeded")
             response = self.route(handler, size)
             with self.lock:
                 self.statuses[str(response.status)] += 1

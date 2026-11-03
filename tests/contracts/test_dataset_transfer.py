@@ -112,7 +112,8 @@ def test_literal_request_digest_and_quota_reserve_have_independent_oracles():
 )
 def test_upload_errors_preserve_closed_envelope_and_useful_next_step(code):
     error = OperationError(code, GOLDEN["record"]["operation_id"])
-    assert error.exit_code == 2 and error.message == MESSAGES[code]
+    assert error.exit_code == 2
+    assert error.message == MESSAGES[code]
     assert "plan execution" not in error.message
     assert error.envelope()["operation_id"] == GOLDEN["record"]["operation_id"]
     assert YorungeError(code).exit_code == 2

@@ -79,7 +79,8 @@ def test_signed_query_and_percent_encoding_remain_opaque_and_ordered():
     target = direct(url)
     assert target.wire_url == url
     assert request(target).max_bytes == 65536
-    assert "prefix" not in repr(target) and "signed" not in repr(request(target))
+    assert "prefix" not in repr(target)
+    assert "signed" not in repr(request(target))
     with pytest.raises(TypeError):
         pickle.dumps(target)
     with pytest.raises(AttributeError):

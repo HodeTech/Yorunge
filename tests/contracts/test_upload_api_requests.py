@@ -84,7 +84,8 @@ def test_invalid_public_prepare_request_precedes_missing_config_and_state(tmp_pa
     invoke = partial(api.prepare_dataset_upload, tmp_path / "root", **(options | change))
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.code == "invalid_request"
+    assert not root.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None
 
 
@@ -140,7 +141,8 @@ def test_provider_direct_mode_is_not_silently_selected_or_contacted(tmp_path, or
     )
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == code and not state.exists()
+    assert raised.value.code == code
+    assert not state.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None
 
 
@@ -165,5 +167,6 @@ def test_invalid_public_controls_precede_store(tmp_path, operation, change):
         invoke = partial(api.start_dataset_upload, identity, state_dir=root, **change)
     with pytest.raises(YorungeError) as raised:
         invoke()
-    assert raised.value.code == "invalid_request" and not root.exists()
+    assert raised.value.code == "invalid_request"
+    assert not root.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None

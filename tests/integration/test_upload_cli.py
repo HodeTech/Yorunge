@@ -49,9 +49,11 @@ def result(process, output):
     assert process.returncode == 0, process.stderr.decode("utf-8", "strict")
     value = json.loads(process.stdout.decode("utf-8", "strict"))
     if output == "ndjson":
-        assert value["event"] == "result" and value["sequence"] == 1
+        assert value["event"] == "result"
+        assert value["sequence"] == 1
         value = value["payload"]
-    assert value["operation_id"] is None and not process.stderr
+    assert value["operation_id"] is None
+    assert not process.stderr
     return value["data"]
 
 
@@ -92,7 +94,8 @@ def test_real_cli_plan_review_approve_start_show_and_history(
             *common,
         )
         plan = result(created, output)
-        assert plan["plan_status"] == "attempt_ready" and plan["operation_id"] is None
+        assert plan["plan_status"] == "attempt_ready"
+        assert plan["operation_id"] is None
         checked = result(
             execute(server, "datasets", "upload", "review", "--plan-id", plan["plan_id"], *common),
             output,
@@ -132,8 +135,10 @@ def test_real_cli_plan_review_approve_start_show_and_history(
             *common,
         )
         summary = result(started, output)
-        assert summary["operation_status"] == "succeeded" and summary["dataset_id"] == DATASET
-        assert summary["verification_level"] == "metadata" and not summary["authority_verified"]
+        assert summary["operation_status"] == "succeeded"
+        assert summary["dataset_id"] == DATASET
+        assert summary["verification_level"] == "metadata"
+        assert not summary["authority_verified"]
         if output == "ndjson":
             assert json.loads(started.stdout)["operation_id"] == summary["operation_id"]
         count = len(server.requests)
@@ -142,7 +147,8 @@ def test_real_cli_plan_review_approve_start_show_and_history(
             output,
         )
         page = result(execute(server, "datasets", "upload", "list", *common), output)
-        assert shown == summary and page["uploads"] == [summary]
+        assert shown == summary
+        assert page["uploads"] == [summary]
         assert len(server.requests) == count
         assert provider.create_calls == provider.link_calls == 1
         assert provider.put_calls == provider.confirm_calls == 3
@@ -177,7 +183,8 @@ def test_local_cli_upload_commands_do_not_load_http_credentials_or_config(cli, t
 )
 def test_upload_duplicate_options_fail_closed_before_state(cli, arguments):
     found = cli("datasets", "upload", "list", *arguments, "--output=json")
-    assert found.returncode == 2 and not found.stdout
+    assert found.returncode == 2
+    assert not found.stdout
     assert json.loads(found.stderr)["code"] == "invalid_request"
 
 
@@ -193,12 +200,15 @@ def test_upload_duplicate_options_fail_closed_before_state(cli, arguments):
 )
 def test_upload_help_remains_metadata_only(cli, path):
     found = cli(*path, "--help", metadata=True, recipe_loader=False)
-    assert found.returncode == 0 and found.stdout and not found.stderr
+    assert found.returncode == 0
+    assert found.stdout
+    assert not found.stderr
 
 
 def test_local_cli_rejects_inherited_context_instead_of_reading_it(cli):
     found = cli("--config", "private-missing-config", "datasets", "upload", "list", "--output=json")
-    assert found.returncode == 2 and not found.stdout
+    assert found.returncode == 2
+    assert not found.stdout
     assert json.loads(found.stderr)["code"] == "invalid_request"
 
 
@@ -227,7 +237,8 @@ def test_plan_missing_or_duplicate_inherited_project_fails_before_dependencies(c
         "--output=json",
         recipe_loader=False,
     )
-    assert found.returncode == 2 and not found.stdout
+    assert found.returncode == 2
+    assert not found.stdout
     assert json.loads(found.stderr)["code"] == "invalid_request"
 
 
@@ -320,11 +331,11 @@ def test_closed_stdout_after_durable_success_reports_same_id_and_never_replays(
                 process.communicate(timeout=10)
         assert process.returncode == 6
         failure = json.loads(stderr)
-        assert failure["code"] == "output_closed" and failure["operation_id"] is not None
+        assert failure["code"] == "output_closed"
+        assert failure["operation_id"] is not None
         shown = api.show_dataset_upload(plan_id=plan["plan_id"], state_dir=data[0]).data
-        assert (
-            shown.operation_id == failure["operation_id"] and shown.operation_status == "succeeded"
-        )
+        assert shown.operation_id == failure["operation_id"]
+        assert shown.operation_status == "succeeded"
         count = len(server.requests)
         found = result(
             execute(
@@ -341,7 +352,8 @@ def test_closed_stdout_after_durable_success_reports_same_id_and_never_replays(
             ),
             "json",
         )
-        assert found["operation_id"] == shown.operation_id and len(server.requests) == count
+        assert found["operation_id"] == shown.operation_id
+        assert len(server.requests) == count
         assert provider.create_calls == provider.link_calls == provider.put_calls == 1
 
 
@@ -393,16 +405,19 @@ def test_actual_cli_sigint_during_create_preserves_unknown_id_and_zero_replay(
             if process.poll() is None:
                 process.kill()
                 process.communicate(timeout=10)
-        assert process.returncode == 5 and not stdout
+        assert process.returncode == 5
+        assert not stdout
         failure = json.loads(stderr)
-        assert failure["code"] == "operation_uncertain" and failure["operation_id"] is not None
+        assert failure["code"] == "operation_uncertain"
+        assert failure["operation_id"] is not None
         shown = api.show_dataset_upload(plan_id=plan["plan_id"], state_dir=data[0]).data
-        assert shown.operation_id == failure["operation_id"] and shown.operation_status == "unknown"
+        assert shown.operation_id == failure["operation_id"]
+        assert shown.operation_status == "unknown"
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=shown.operation_id)
-            assert (
-                len(view.intents) == 1 and not view.receipts and view.operation.dataset_id is None
-            )
+            assert len(view.intents) == 1
+            assert not view.receipts
+            assert view.operation.dataset_id is None
             assert store.verify().store_schema_version == 7
         count = len(server.requests)
         again = execute(
@@ -417,9 +432,12 @@ def test_actual_cli_sigint_during_create_preserves_unknown_id_and_zero_replay(
             "--output",
             "text",
         )
-        assert again.returncode == 5 and shown.operation_id.encode() in again.stderr
-        assert not again.stdout and len(server.requests) == count
-        assert provider.create_calls == 1 and provider.link_calls == provider.put_calls == 0
+        assert again.returncode == 5
+        assert shown.operation_id.encode() in again.stderr
+        assert not again.stdout
+        assert len(server.requests) == count
+        assert provider.create_calls == 1
+        assert provider.link_calls == provider.put_calls == 0
 
 
 def test_actual_pty_progress_uses_transport_and_confirmed_byte_counts(public_inputs, certificates):
@@ -491,17 +509,21 @@ def test_actual_pty_progress_uses_transport_and_confirmed_byte_counts(public_inp
                 process.communicate(timeout=10)
             reader.join(timeout=5)
             os.close(master)
-        assert not reader.is_alive() and not read_errors
+        assert not reader.is_alive()
+        assert not read_errors
         text = bytes(progress).decode("utf-8", "strict")
-        assert process.returncode == 0 and "metadata" in stdout.decode("utf-8", "strict")
+        assert process.returncode == 0
+        assert "metadata" in stdout.decode("utf-8", "strict")
         identity = re.search(r"^İş: ([a-f0-9-]{36})$", stdout.decode("utf-8"), re.MULTILINE)
         assert identity is not None
         assert all(line.startswith(f"İş {identity.group(1)} |") for line in text.splitlines())
         counts = re.findall(r"Taşımaya verilen: (\d+)/(\d+) byte", text)
-        assert len(counts) >= 2 and any(int(sent) > 0 for sent, total in counts), repr(text)
+        assert len(counts) >= 2, repr(text)
+        assert any(int(sent) > 0 for sent, total in counts), repr(text)
         assert int(counts[-1][0]) == int(counts[-1][1]) == data[2].total_bytes
         assert f"Onaylı: 3/3 dosya, {data[2].total_bytes} byte" in text
-        assert SCOPE.owner.id not in text and "sample" not in text
+        assert SCOPE.owner.id not in text
+        assert "sample" not in text
         assert all(int(sent) <= int(total) for sent, total in counts)
 
 
@@ -524,7 +546,8 @@ def test_non_tty_text_start_has_no_progress_or_prompt(public_inputs, certificate
             "text",
             "--non-interactive",
         )
-        assert process.returncode == 0 and not process.stderr
+        assert process.returncode == 0
+        assert not process.stderr
         assert "metadata doğrulaması" in process.stdout.decode("utf-8", "strict")
         assert DATASET.encode() in process.stdout
         assert provider.create_calls == provider.link_calls == provider.put_calls == 1
@@ -553,8 +576,10 @@ def test_actual_progress_pty_hangup_keeps_success_exit_and_durable_result(
 
         def hangup():
             try:
-                assert os.read(master, 4096), "progress PTY closed before its first line"
-            except (OSError, AssertionError) as error:
+                first = os.read(master, 4096)
+                if not first:
+                    raise ValueError("progress PTY closed before its first line")
+            except (OSError, ValueError) as error:
                 read_errors.append(error)
             finally:
                 os.close(master)
@@ -588,11 +613,13 @@ def test_actual_progress_pty_hangup_keeps_success_exit_and_durable_result(
                 process.kill()
                 process.communicate(timeout=10)
             reader.join(timeout=5)
-        assert not reader.is_alive() and not read_errors
+        assert not reader.is_alive()
+        assert not read_errors
         assert process.returncode == 0, stdout.decode("utf-8", "strict")
         assert "metadata doğrulaması" in stdout.decode("utf-8", "strict")
         found = api.show_dataset_upload(plan_id=plan["plan_id"], state_dir=data[0]).data
-        assert found.operation_status == "succeeded" and found.verification_level == "metadata"
+        assert found.operation_status == "succeeded"
+        assert found.verification_level == "metadata"
         assert found.operation_id.encode() in stdout
         count = len(server.requests)
         again = execute(
@@ -662,7 +689,8 @@ def test_actual_cli_sigint_during_read_is_code_six_without_new_effects(public_in
             "--output",
             "json",
         )
-        assert denied.returncode == 4 and json.loads(denied.stderr)["operation_id"] == identity
+        assert denied.returncode == 4
+        assert json.loads(denied.stderr)["operation_id"] == identity
         assert len(server.requests) == count
 
         def waiting(request, calls):
@@ -699,17 +727,21 @@ def test_actual_cli_sigint_during_read_is_code_six_without_new_effects(public_in
             if process.poll() is None:
                 process.kill()
                 process.communicate(timeout=10)
-        assert process.returncode == 6 and not stdout
+        assert process.returncode == 6
+        assert not stdout
         error = json.loads(stderr)
-        assert error["code"] == "request_cancelled" and error["operation_id"] == identity
+        assert error["code"] == "request_cancelled"
+        assert error["operation_id"] == identity
         found = api.show_dataset_upload(operation_id=identity, state_dir=data[0]).data
         assert found.operation_status == "unknown"
         assert provider.create_calls == provider.link_calls == provider.put_calls == 1
         assert provider.confirm_calls == 1
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=identity)
-            assert len(view.receipts) == 5 and view.operation.lease is None
-            assert view.verification is None and store.verify().store_schema_version == 7
+            assert len(view.receipts) == 5
+            assert view.operation.lease is None
+            assert view.verification is None
+            assert store.verify().store_schema_version == 7
 
 
 def test_duplicate_tags_fail_before_any_external_dependency(cli):
@@ -737,5 +769,6 @@ def test_duplicate_tags_fail_before_any_external_dependency(cli):
         "--output=json",
         recipe_loader=False,
     )
-    assert found.returncode == 2 and not found.stdout
+    assert found.returncode == 2
+    assert not found.stdout
     assert json.loads(found.stderr)["code"] == "invalid_request"

@@ -130,10 +130,15 @@ def test_real_preparation_is_two_reads_not_a_grant_or_cost(certificates, caplog)
             check = owned.exchange(source.preparation)
         assert [record.path for record in server.requests] == ["/api/v1/auth/me", PROJECT_PATH]
         assert all(record.method == "GET" for record in server.requests)
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
-    assert check.outcome == "not_exposed" and check.grant is None and check.error_code is None
-    assert check.action == "create_private_dataset" and check.dataset_id is None
-    assert check.checked_at == timestamp(NOW) and check.scope == SCOPE
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
+    assert check.outcome == "not_exposed"
+    assert check.grant is None
+    assert check.error_code is None
+    assert check.action == "create_private_dataset"
+    assert check.dataset_id is None
+    assert check.checked_at == timestamp(NOW)
+    assert check.scope == SCOPE
     assert value.snapshot().read_requests == value.snapshot().read_attempts == 2
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
     assert key.secret.reveal() not in repr(check) + caplog.text
@@ -158,11 +163,12 @@ def test_real_current_proof_binds_full_input_and_exact_expected_dataset(
                     client, plan, inputs, action=action, expected_dataset=baseline
                 )
             )
-        assert len(server.requests) == count and all(
-            record.method == "GET" for record in server.requests
-        )
-    assert check.saved_plan_id == plan.plan_id and check.saved_plan_digest == plan.digest
-    assert check.work_digest == plan.cost_work().digest() and check.inputs_verified
+        assert len(server.requests) == count
+        assert all(record.method == "GET" for record in server.requests)
+    assert check.saved_plan_id == plan.plan_id
+    assert check.saved_plan_digest == plan.digest
+    assert check.work_digest == plan.cost_work().digest()
+    assert check.inputs_verified
     assert (
         check.baseline_grant
         is check.baseline_cost_bound
@@ -170,7 +176,8 @@ def test_real_current_proof_binds_full_input_and_exact_expected_dataset(
         is check.supplemental_cost_bound
         is None
     )
-    assert check.authorization.outcome == "not_exposed" and check.authorization.grant is None
+    assert check.authorization.outcome == "not_exposed"
+    assert check.authorization.grant is None
     check.require_current(
         plan,
         now=timestamp(NOW),
@@ -178,7 +185,8 @@ def test_real_current_proof_binds_full_input_and_exact_expected_dataset(
         dataset_id=None if baseline is None else baseline.id,
     )
     assert (check.upload_observation is not None) is (action == "upload_created_dataset")
-    assert value.snapshot().read_requests == count and value.snapshot().effect_attempts == 0
+    assert value.snapshot().read_requests == count
+    assert value.snapshot().effect_attempts == 0
 
 
 @pytest.mark.parametrize("endpoint", ["/api/v1/auth/me", PROJECT_PATH, ROLE_PATH])
@@ -217,7 +225,8 @@ def test_mandatory_statuses_never_become_absent_authority(
         assert all(record.method == "GET" for record in server.requests)
         assert value.snapshot().read_attempts == len(server.requests)
     assert (check.authorization.outcome, check.authorization.error_code) == (outcome, code)
-    assert check.authorization.grant is None and check.upload_observation is None
+    assert check.authorization.grant is None
+    assert check.upload_observation is None
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
     assert "PRIVATE-ERROR-BODY" not in check.model_dump_json()
 
@@ -289,7 +298,8 @@ def test_mandatory_schema_and_known_negative_are_closed(tmp_path, certificates, 
     assert check.authorization.error_code == (
         "remote_access_denied" if fault == "no_upload" else "invalid_response"
     )
-    assert check.upload_observation is None and check.authorization.grant is None
+    assert check.upload_observation is None
+    assert check.authorization.grant is None
 
 
 def test_read_authorization_does_not_require_local_files_or_upload_permission(
@@ -308,14 +318,11 @@ def test_read_authorization_does_not_require_local_files_or_upload_permission(
                     client, ProviderDataset(**dataset()), PARAMETERS
                 )
             )
-        assert len(server.requests) == 5 and ROLE_PATH not in [
-            record.path for record in server.requests
-        ]
-    assert (
-        check.action == "read_created_dataset"
-        and check.outcome == "not_exposed"
-        and check.grant is None
-    )
+        assert len(server.requests) == 5
+        assert ROLE_PATH not in [record.path for record in server.requests]
+    assert check.action == "read_created_dataset"
+    assert check.outcome == "not_exposed"
+    assert check.grant is None
 
 
 @pytest.mark.parametrize("field", ["org_id", "owner_id"])
@@ -341,7 +348,8 @@ def test_full_historical_owner_pair_is_checked_even_when_selected_owner_matches(
             check = owned.exchange(
                 lambda client: source.read_authorization(client, baseline, PARAMETERS)
             )
-    assert check.outcome == "invalid" and check.error_code == "invalid_response"
+    assert check.outcome == "invalid"
+    assert check.error_code == "invalid_response"
 
 
 def test_file_change_during_mandatory_reads_does_not_yield_verified_inputs(tmp_path, certificates):
@@ -362,7 +370,8 @@ def test_file_change_during_mandatory_reads_does_not_yield_verified_inputs(tmp_p
         )
         with owned, pytest.raises(YorungeError) as failure:
             rejected_call()
-        assert failure.value.code == "input_changed" and len(server.requests) == 2
+        assert failure.value.code == "input_changed"
+        assert len(server.requests) == 2
     assert value.snapshot().effect_attempts == 0
 
 
@@ -379,7 +388,8 @@ def test_first_observation_timestamp_is_not_refreshed_at_probe_end(certificates)
         owned, _ = session(server, key, value)
         with owned, pytest.raises(YorungeError) as failure:
             owned.exchange(source.preparation)
-        assert failure.value.code == "upload_plan_not_valid" and len(server.requests) == 2
+        assert failure.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == 2
     assert value.snapshot().response_pending == 0
 
 
@@ -401,8 +411,10 @@ def test_changed_read_identity_keeps_historical_expected_dataset_immutable(certi
             check = owned.exchange(
                 lambda client: source.read_authorization(client, baseline, PARAMETERS)
             )
-    assert check.scope == changed and check.scope != SCOPE
-    assert baseline.encoded() == before and check.grant is None
+    assert check.scope == changed
+    assert check.scope != SCOPE
+    assert baseline.encoded() == before
+    assert check.grant is None
 
 
 @pytest.mark.parametrize("fault", ["expired", "scope", "input", "grant", "cost"])
@@ -463,7 +475,8 @@ def test_invalid_saved_plan_or_input_is_rejected_before_http(tmp_path, fault):
             )
 
     asyncio.run(run())
-    assert calls == [] and value.snapshot().read_requests == 0
+    assert calls == []
+    assert value.snapshot().read_requests == 0
 
 
 @pytest.mark.parametrize("fault", ["short_missing", "cross_page_duplicate", "all_128_pages"])
@@ -482,7 +495,8 @@ def test_owned_lookup_is_bounded_exact_id_and_detects_observed_duplicates(fault)
         else:
             assert path == "/api/v1/datasets"
             page = int(wire.url.params["page"])
-            assert 1 <= page <= 128 and wire.url.params["page_size"] == "128"
+            assert 1 <= page <= 128
+            assert wire.url.params["page_size"] == "128"
             result = [
                 {"id": str(uuid.UUID(int=1000 + (page - 1) * 128 + index))} for index in range(128)
             ]
@@ -502,9 +516,11 @@ def test_owned_lookup_is_bounded_exact_id_and_detects_observed_duplicates(fault)
             return await source.read_authorization(client, ProviderDataset(**dataset()), PARAMETERS)
 
     check = asyncio.run(run())
-    assert check.outcome == "invalid" and check.error_code == "invalid_response"
+    assert check.outcome == "invalid"
+    assert check.error_code == "invalid_response"
     assert count[0] == {"short_missing": 3, "cross_page_duplicate": 4, "all_128_pages": 130}[fault]
-    assert value.snapshot().read_attempts == count[0] and value.snapshot().response_pending == 0
+    assert value.snapshot().read_attempts == count[0]
+    assert value.snapshot().response_pending == 0
 
 
 def test_owned_found_on_later_page_uses_only_returned_safe_username_slug():
@@ -536,7 +552,8 @@ def test_owned_found_on_later_page_uses_only_returned_safe_username_slug():
             return await source.read_authorization(client, ProviderDataset(**dataset()), PARAMETERS)
 
     check = asyncio.run(run())
-    assert check.outcome == "not_exposed" and len(paths) == 6
+    assert check.outcome == "not_exposed"
+    assert len(paths) == 6
     assert not any(path.split("?")[0].endswith(f"/datasets/{DATASET}") for path in paths)
 
 
@@ -563,7 +580,8 @@ def test_wrong_client_budget_and_local_secret_are_rejected_without_reads():
             assert failure.value.code == "invalid_request"
 
     asyncio.run(run())
-    assert calls == [] and value.snapshot().read_requests == 0
+    assert calls == []
+    assert value.snapshot().read_requests == 0
 
 
 def test_new_negative_keeps_source_timeout_code_without_refreshing_a_positive():
@@ -584,10 +602,13 @@ def test_new_negative_keeps_source_timeout_code_without_refreshing_a_positive():
             return await source.preparation(client)
 
     check = asyncio.run(run())
-    assert check.outcome == "unavailable" and check.error_code == "transport_timeout"
+    assert check.outcome == "unavailable"
+    assert check.error_code == "transport_timeout"
     assert check.checked_at == timestamp(NOW + timedelta(seconds=31))
-    assert check.grant is None and "PRIVATE-TIMEOUT-CANARY" not in check.model_dump_json()
-    assert value.snapshot().read_attempts == 1 and value.snapshot().response_pending == 0
+    assert check.grant is None
+    assert "PRIVATE-TIMEOUT-CANARY" not in check.model_dump_json()
+    assert value.snapshot().read_attempts == 1
+    assert value.snapshot().response_pending == 0
 
 
 def test_oversized_mandatory_raw_response_is_invalid_and_keeps_consumed_quota(certificates):
@@ -599,10 +620,13 @@ def test_oversized_mandatory_raw_response_is_invalid_and_keeps_consumed_quota(ce
         with owned:
             check = owned.exchange(source.preparation)
         assert len(server.requests) == 1
-        assert instances[0]._slots._value == 2 and not instances[0]._responses
-    assert check.outcome == "invalid" and check.error_code == "invalid_response"
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
+    assert check.outcome == "invalid"
+    assert check.error_code == "invalid_response"
     assert value.snapshot().read_requests == value.snapshot().read_attempts == 1
-    assert value.snapshot().response_bytes <= 1_048_576 and value.snapshot().response_pending == 0
+    assert value.snapshot().response_bytes <= 1_048_576
+    assert value.snapshot().response_pending == 0
 
 
 @pytest.mark.parametrize("organization_owner", [False, True])
@@ -632,8 +656,10 @@ def test_reported_owner_fields_are_preserved_without_principal_inference(
             check = owned.exchange(
                 lambda client: source.read_authorization(client, baseline, PARAMETERS)
             )
-    assert check.outcome == "not_exposed" and check.grant is None
-    assert check.scope.owner == scope.owner and baseline.org_id == org
+    assert check.outcome == "not_exposed"
+    assert check.grant is None
+    assert check.scope.owner == scope.owner
+    assert baseline.org_id == org
 
 
 @pytest.mark.parametrize("advance", [1, 2])
@@ -685,4 +711,5 @@ def test_final_metadata_recheck_cannot_return_evidence_older_than_30_seconds(
                     plan, now=timestamp(now[0]), action="create_private_dataset", dataset_id=None
                 )
         assert len(server.requests) == 2
-    assert checks[0] == 2 and value.snapshot().effect_attempts == 0
+    assert checks[0] == 2
+    assert value.snapshot().effect_attempts == 0

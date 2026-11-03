@@ -37,6 +37,7 @@ LIMITS, PilotGuard = GUARD["LIMITS"], GUARD["PilotGuard"]
 TARGET = normalize_target("https://api.ssyz.org.tr/api/v1")
 FROZEN = ROOT / "docs/research/probes/platform-upload-pilot-20261102/pilot.py"
 FROZEN_SHA = "c7a192c3ac9b5f25613fe817d4138951d18814376058705ae141f375e3e984cf"
+MANIFEST_NAME = "manifest.json"
 
 
 def encoded(value: object) -> bytes:
@@ -96,8 +97,8 @@ def fixtures(work: Path) -> DatasetManifest:
     for name, content in images:
         with (source / name).open("xb") as target:
             target.write(content)
-    api.inspect_dataset(source, manifest_out=work / "manifest.json")
-    return DatasetManifest.model_validate_json((work / "manifest.json").read_bytes())
+    api.inspect_dataset(source, manifest_out=work / MANIFEST_NAME)
+    return DatasetManifest.model_validate_json((work / MANIFEST_NAME).read_bytes())
 
 
 def select_owner(project_id: str, secret: SecretValue, manifest: DatasetManifest) -> UploadOwner:
@@ -151,7 +152,7 @@ def flow(
     }
     prepared = api.prepare_dataset_upload(
         args.workspace / "source",
-        manifest=args.workspace / "manifest.json",
+        manifest=args.workspace / MANIFEST_NAME,
         owner=owner,
         parameters=UploadParameters(
             name="yorunge-acceptance-" + args.workspace.name,
@@ -294,6 +295,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     return receipt
 
 
+class _PilotStopped(Exception):
+    """Private control signal; never expose the underlying provider exception."""
+
+
+def _run_guarded(args: argparse.Namespace) -> dict[str, Any]:
+    try:
+        result = run(args)
+        if result.get("outcome") != "metadata_succeeded":
+            raise ValueError("pilot did not complete its acceptance")
+        return result
+    except BaseException:
+        raise _PilotStopped from None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("config", "credentials", "workspace", "wheel"):
@@ -301,9 +316,10 @@ def main() -> int:
     parser.add_argument("--project", required=True)
     parser.add_argument("--accept-live-unpriced-write", action="store_true")
     args = parser.parse_args()
+    result: dict[str, Any] | None = None
     try:
-        result = run(args)
-    except BaseException:
+        result = _run_guarded(args)
+    except _PilotStopped:
         # Do not render private provider/credential exceptions or tracebacks.
         result = None
     if result is None:

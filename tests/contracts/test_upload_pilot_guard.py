@@ -46,7 +46,8 @@ def test_global_read_limit_spans_new_budget_instances_and_restores_methods(guard
         assert failure.value.code == "upload_limit_exceeded"
     assert UploadBudget.reserve is original
     value = guard.snapshot()
-    assert value["claims"]["read"] == 40 and value["actual"]["read_attempts"] == 0
+    assert value["claims"]["read"] == 40
+    assert value["actual"]["read_attempts"] == 0
     assert value["open_reservations"] == value["response_pending"] == 0
 
 
@@ -95,7 +96,8 @@ def test_guard_preserves_production_readonly_and_deadline_rejection(guard):
         assert failure.value.code == "invalid_request"
     assert UploadBudget.__init__ is original
     guard.end = time.monotonic() - 1
+    current_limits, end = limits(), time.monotonic() + 30
     with guard.install(), pytest.raises(YorungeError) as failure:
-        UploadBudget(limits(), end=time.monotonic() + 30, read_only=False)
+        UploadBudget(current_limits, end=end, read_only=False)
 
     assert failure.value.code == "execution_timeout"
