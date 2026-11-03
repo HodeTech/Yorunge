@@ -1,7 +1,7 @@
 ---
 id: P02-2q
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2p, P02-2n, P02-2o]
 capabilities: [C03, C12, C13]
@@ -20,7 +20,7 @@ Strict codec/quota/receipt tek başına gerçek request producer değildir. Port
 2. Intent öncesi private effect-call hazırlığı/quota; actual TLS create/link/presign/confirm ve typed receipt/descriptor.
 3. Aynı pool bounded descriptor PUT/byte hash, items pagination ve exact ordered metadata.
 
-Q.1/q.2 verified; numeric thread-ID yeniden kullanımının ortak kaynak guard’larındaki takip düzeltmesi q.2a olarak PUT öncesinde kapanır. Üç ana dilim ve bu dar düzeltmenin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
+Q.1/q.2/q.2a/q.3 yerel verified; numeric thread-ID yeniden kullanımının ortak kaynak guard’larındaki takip düzeltmesi de tamamlandı. Üç ana dilim ve bu dar düzeltmenin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
 
 ## Bağımlılıklar ve kararlar
 
@@ -40,4 +40,6 @@ Dar codec/semantic/actual TLS port/source/HTTP quota testleri ve gerekli önceki
 
 ## Teslim kaydı
 
-Q.1 immutable arm/semantic temel kodu doğrulanıyor; gerçek HTTP portu q.2/q.3 henüz başlamadı. P02-2p yerel kalıcılık temeli verified, actual remote/public üst teslimi açık. Uygulama gerçek commit/review/test sonuçlarıyla güncellenir.
+- PR/commit: [d179903](https://github.com/HodeTech/Yorunge/commit/d179903); tek nihai P02-2 PR’ı henüz açılmadı.
+- Sonuç: Q.1 immutable arm/semantic digest; q.2 gerçek control effect’leri; q.2a ortak owner düzeltmesi; q.3 gerçek bounded PUT/items, her dilimde commit ve iki farklı fresh review/fix teyidiyle yerel verified. [Kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2q3--gerçek-descriptor-put-ve-exact-öğe-metadatası).
+- Kalan sınır: Controller/current memo/worker sırası, restart/kill/public summary/API/CLI, native/kurulum/source CI ve ayrı live kabulü tamamlanmadı. Üst a/b/c ve epik açık; grant/fiyat kanıtı üretilmez.
