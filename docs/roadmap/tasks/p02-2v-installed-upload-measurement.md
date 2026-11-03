@@ -32,7 +32,7 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Doğrulama
 
-Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Linux 3.11 source CI’da upload native koşusu mevcut ölçümlerle seri, M5 upload reference kaynak denetimi zorunlu olacak şekilde V.3’te bağlanır. Yalnız Linux3.11 job scheduling timeout’u45 dakika, diğer hücreler25 dakika olur; bu12×900 saniyelik teorik pencereyi veya fiziksel süreyi garanti etmez. Ürün900/120 saniye sınırları değişmez; kesilmiş koşular başarısız/diagnostic ve açık saklama takibi kalır; üç ortam CI/altı kurulumun gerçek sonucu ve live üst c’de ayrıca kapanır.
+Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Linux 3.11 source CI’da upload native koşusu mevcut ölçümlerle seri, M5 upload reference kaynak denetimi zorunlu olacak şekilde V.3’te bağlanır. Yalnız Linux 3.11 job scheduling timeout’u 45 dakika, diğer hücreler 25 dakika olur; bu 12×900 saniyelik teorik pencereyi veya fiziksel süreyi garanti etmez. Ürün 900/120 saniye sınırları değişmez; kesilmiş koşular başarısız/diagnostic ve açık saklama takibi kalır; üç ortam CI/altı kurulumun gerçek sonucu ve live üst c’de ayrıca kapanır.
 
 ## Teslim kaydı
 
