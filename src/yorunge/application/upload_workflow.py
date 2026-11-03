@@ -15,6 +15,7 @@ from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_checks import UploadCurrentCheck
 from yorunge.domain.upload_versions import UploadReceipt
 
+
 class EffectOutcome(Protocol):
     @property
     def receipt(self) -> UploadReceipt: ...
