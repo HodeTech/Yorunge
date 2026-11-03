@@ -22,6 +22,9 @@ Resolver = Callable[[str, int, float], Awaitable[tuple[str, ...]]]
 MAX_DNS_ADDRESSES = 16
 
 
+_CONNECTION_DEADLINE_ELAPSED = "connection deadline elapsed"
+
+
 def _phase_timeout(value: float | None) -> float:
     if value is None:
         return 5.0
@@ -33,7 +36,7 @@ def _phase_timeout(value: float | None) -> float:
     if not valid:
         raise YorungeError("invalid_request")
     if value <= 0:
-        raise httpcore.ConnectTimeout("connection deadline elapsed")
+        raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED)
     return min(5.0, value)
 
 
@@ -234,14 +237,14 @@ class GuardedBackend(httpcore.AsyncNetworkBackend):
                 # A numeric IP is passed to the backend, never the original hostname.
                 remaining = end - time.monotonic()
                 if remaining <= 0:
-                    raise httpcore.ConnectTimeout("connection deadline elapsed")
+                    raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED)
                 stream = await self._connect(pinned[0], port, remaining, socket_options, host)
                 guarded = GuardedStream(stream, host, frozenset({pinned[0]}), self._allowed)
                 if not guarded.peer_valid():
                     await guarded.reject()
                 return guarded
         except TimeoutError:
-            raise httpcore.ConnectTimeout("connection deadline elapsed") from None
+            raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED) from None
 
     async def _connect(
         self,

@@ -96,6 +96,13 @@ class TransferRecord(UploadWire):
         created, updated = instant(self.created_at), instant(self.updated_at)
         if updated < created and not self.clock_anomaly:
             raise ValueError("backward business time requires clock marker")
+        self._lease_identity()
+        self._effect_state()
+        self._outcome_state()
+        self._dispatch_ownership()
+        return self
+
+    def _lease_identity(self) -> None:
         if self.lease is not None and (
             self.status in TERMINAL
             or self.lease.fence != self.fence
@@ -103,6 +110,8 @@ class TransferRecord(UploadWire):
             or self.lease.clock_generation != self.observed_clock_generation
         ):
             raise ValueError("lease ownership mismatch")
+
+    def _effect_state(self) -> None:
         if self.status == "admitted" and (
             self.lease is None
             or self.lease.mode != "write"
@@ -118,6 +127,8 @@ class TransferRecord(UploadWire):
             raise ValueError("effect state requires permanent workflow latch")
         if self.status == "cancelled" and self.workflow_latched:
             raise ValueError("local cancellation cannot undo an intent")
+
+    def _outcome_state(self) -> None:
         if self.status in {"unknown", "failed", "cancelled", "succeeded"} and self.reason is None:
             raise ValueError("stopped state requires reason")
         if self.status == "succeeded" and (self.dataset_id is None or self.reason != "verified"):
@@ -126,6 +137,8 @@ class TransferRecord(UploadWire):
             raise ValueError("only definitive rejection is failure")
         if self.status == "running" and (self.lease is None or self.reason is not None):
             raise ValueError("running requires an owner")
+
+    def _dispatch_ownership(self) -> None:
         if (
             self.lease is not None
             and self.lease.mode == "write"
@@ -134,7 +147,6 @@ class TransferRecord(UploadWire):
             raise ValueError("write ownership cannot be reacquired")
         if self.lease is not None and self.lease.mode == "read" and self.status != "unknown":
             raise ValueError("read takeover cannot dispatch")
-        return self
 
 
 class StageIntent(UploadWire):

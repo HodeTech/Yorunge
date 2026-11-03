@@ -64,6 +64,16 @@ def validate_policy_choice(
         raise YorungeError("invalid_request")
 
 
+def _policy_status(
+    cost_policy: CostPolicy, risks: list[UploadRisk], blockers: list[UploadBlocker]
+) -> UploadPlanStatus:
+    if blockers:
+        return "draft"
+    if cost_policy == "bounded_required" and not risks:
+        return "prepared"
+    return "attempt_ready"
+
+
 def reduce_upload_policy(
     work: UploadCostWork,
     *,
@@ -97,11 +107,7 @@ def reduce_upload_policy(
         blockers.append("cost_exceeds_budget")
     if not inputs_verified:
         blockers.append("inputs_unverified")
-    status: UploadPlanStatus = "attempt_ready"
-    if blockers:
-        status = "draft"
-    elif cost_policy == "bounded_required" and not risks:
-        status = "prepared"
+    status = _policy_status(cost_policy, risks, blockers)
     return UploadPolicyState(tuple(sorted(risks)), tuple(sorted(blockers)), status)
 
 

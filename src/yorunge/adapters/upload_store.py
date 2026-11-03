@@ -271,6 +271,22 @@ def predecessor(kind: StageKind, index: int | None) -> tuple[StageKind, int | No
     return ("presign" if kind == "put" else "put"), index
 
 
+def _receipt_key(
+    kind: StageKind,
+    index: int | None,
+    receipt: UploadReceipt,
+    accepted: dict[tuple[StageKind, int | None], UploadReceipt],
+) -> None:
+    expected_key = accepted[("presign", index)].object_key if kind in {"put", "confirm"} else None
+    if kind in {"presign", "put", "confirm"}:
+        if receipt.object_key is None or (
+            expected_key is not None and receipt.object_key != expected_key
+        ):
+            raise ValueError("receipt object key mismatch")
+    elif receipt.object_key is not None:
+        raise ValueError("unexpected receipt key")
+
+
 def _receipt(
     plan: UploadPlan,
     manifest: DatasetManifest,
@@ -287,14 +303,7 @@ def _receipt(
     kind, index = intent.kind, intent.file_index
     if kind != "create" and receipt.dataset_id != accepted[("create", None)].dataset_id:
         raise ValueError("receipt dataset mismatch")
-    expected_key = accepted[("presign", index)].object_key if kind in {"put", "confirm"} else None
-    if kind in {"presign", "put", "confirm"}:
-        if receipt.object_key is None or (
-            expected_key is not None and receipt.object_key != expected_key
-        ):
-            raise ValueError("receipt object key mismatch")
-    elif receipt.object_key is not None:
-        raise ValueError("unexpected receipt key")
+    _receipt_key(kind, index, receipt, accepted)
     if kind == "put":
         assert index is not None
         file = manifest.files[index]
@@ -456,6 +465,16 @@ def _stages(view: VersionedTransferView, manifest: DatasetManifest) -> None:
             else:
                 rejected = True
         keys.add(key)
+    _stage_outcome(view, record, receipts, accepted, rejected)
+
+
+def _stage_outcome(
+    view: VersionedTransferView,
+    record: UploadRecord,
+    receipts: dict[str, UploadReceipt],
+    accepted: dict[tuple[StageKind, int | None], UploadReceipt],
+    rejected: bool,
+) -> None:
     if len(receipts) != len(view.receipts) or not set(receipts) <= {
         i.intent_id for i in view.intents
     }:

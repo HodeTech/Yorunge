@@ -106,6 +106,14 @@ class DatasetUploadSummary(UploadWire):
 
     @model_validator(mode="after")
     def relationships(self) -> Self:
+        self._source_binding()
+        self._operation_binding()
+        self._approval_binding()
+        self._evidence_binding()
+        self.encoded()
+        return self
+
+    def _source_binding(self) -> None:
         legacy = self.source_plan_schema == 1
         if self.legacy_history_only != legacy or self.cost_scope != (
             "legacy_unknown" if legacy else "original_start_invocation"
@@ -113,16 +121,22 @@ class DatasetUploadSummary(UploadWire):
             raise ValueError("historical source family mismatch")
         if legacy and (self.cost_bound is not None or self.plan_status == "attempt_ready"):
             raise ValueError("legacy quote cannot become current pricing evidence")
+
+    def _operation_binding(self) -> None:
         if (self.operation_id is None) != (self.operation_status is None):
             raise ValueError("operation identity and state must be paired")
         if self.operation_status == "succeeded" and self.dataset_id is None:
             raise ValueError("success requires a dataset identity")
         if self.operation_id is None and self.dataset_id is not None:
             raise ValueError("dataset identity requires an operation")
+
+    def _approval_binding(self) -> None:
         if (self.approval_status is None) != (self.approval_expires_at is None):
             raise ValueError("approval state and expiry must be paired")
         if self.approval_expires_at is not None:
             instant(self.approval_expires_at)
+
+    def _evidence_binding(self) -> None:
         succeeded = self.operation_status == "succeeded"
         if (self.verification_level == "metadata") != succeeded or (
             self.authority_verified and not succeeded
@@ -134,8 +148,6 @@ class DatasetUploadSummary(UploadWire):
             raise ValueError("canonical risk and blocker sets required")
         if (self.cost_policy == "bounded_required") != (self.budget_micros is not None):
             raise ValueError("cost policy and budget mismatch")
-        self.encoded()
-        return self
 
 
 class UploadReviewTarget(UploadWire):

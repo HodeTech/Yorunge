@@ -132,17 +132,11 @@ class StorageTarget:
         if mode == "direct":
             if expires_at is None or service is not None or dataset_id is not None:
                 raise YorungeError("invalid_service_target")
-            try:
-                instant(expires_at)
-            except (ValueError, TypeError):
-                raise YorungeError("invalid_service_target") from None
+            self._expiry(expires_at)
         elif mode == "proxy":
             self._proxy(service, dataset_id, origin, prefix)
             if expires_at is not None:
-                try:
-                    instant(expires_at)
-                except (ValueError, TypeError):
-                    raise YorungeError("invalid_service_target") from None
+                self._expiry(expires_at)
         else:
             raise YorungeError("invalid_service_target")
         self._check_literal_policy(url, mode, service, dataset_id, literal_policy)
@@ -158,6 +152,13 @@ class StorageTarget:
         )
         for name, item in attributes:
             object.__setattr__(self, name, item)
+
+    @staticmethod
+    def _expiry(expires_at: str) -> None:
+        try:
+            instant(expires_at)
+        except (ValueError, TypeError):
+            raise YorungeError("invalid_service_target") from None
 
     @staticmethod
     def _validate_url(url: str, origin: str, prefix: str) -> None:

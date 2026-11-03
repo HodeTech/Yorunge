@@ -75,36 +75,44 @@ def _route(kind: UploadEndpoint, endpoint: str) -> tuple[str, ...]:
     return (_identifier(parts[1]),)
 
 
+def _owned_query(values: dict[str, str]) -> tuple[str, ...]:
+    page = values.get("page", "")
+    if (
+        set(values) != {"page", "page_size", "scope"}
+        or values["page_size"] != "128"
+        or values["scope"] != "owned"
+        or re.fullmatch(r"[1-9]\d{0,2}", page, flags=re.ASCII) is None
+        or int(page) > 128
+    ):
+        raise YorungeError("invalid_service_target")
+    return ()
+
+
+def _items_query(values: dict[str, str]) -> tuple[str, ...]:
+    if values.get("limit") != "128" or set(values) - {"limit", "cursor"}:
+        raise YorungeError("invalid_service_target")
+    if "cursor" not in values:
+        return ()
+    cursor = values["cursor"]
+    from yorunge.domain.dataset_manifest import safe_text
+
+    try:
+        size = len(safe_text(cursor))
+    except ValueError:
+        raise YorungeError("invalid_service_target") from None
+    if not 1 <= size <= 1024:
+        raise YorungeError("invalid_service_target")
+    return (cursor,)
+
+
 def _query(kind: UploadEndpoint, query: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
     values = dict(query)
     if len(values) != len(query):
         raise YorungeError("invalid_service_target")
     if kind == "owned":
-        page = values.get("page", "")
-        if (
-            set(values) != {"page", "page_size", "scope"}
-            or values["page_size"] != "128"
-            or values["scope"] != "owned"
-            or re.fullmatch(r"[1-9][0-9]{0,2}", page, flags=re.ASCII) is None
-            or int(page) > 128
-        ):
-            raise YorungeError("invalid_service_target")
-        return ()
+        return _owned_query(values)
     if kind == "items":
-        if values.get("limit") != "128" or set(values) - {"limit", "cursor"}:
-            raise YorungeError("invalid_service_target")
-        if "cursor" not in values:
-            return ()
-        cursor = values["cursor"]
-        from yorunge.domain.dataset_manifest import safe_text
-
-        try:
-            size = len(safe_text(cursor))
-        except ValueError:
-            raise YorungeError("invalid_service_target") from None
-        if not 1 <= size <= 1024:
-            raise YorungeError("invalid_service_target")
-        return (cursor,)
+        return _items_query(values)
     if values:
         raise YorungeError("invalid_service_target")
     return ()

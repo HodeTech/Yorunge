@@ -36,4 +36,4 @@ W.1 domain/policy matrisleri/public summary/descriptor/URI/codec ile receipt/ful
 
 ## Teslim kaydı
 
-U verified; iki eksenli preflight ve audit-bağlantı P2 fix teyidi kapandı. W.1 başlayabilir; kod henüz uygulanmadı. Salt okunur yaklaşık audit kanıtı [aday/yöntem kaydına](../../research/p02-2-implementation-validation.md#p02-2w--kaynak-bakım-hazırlığı) bağlıdır; U.2 sınır kabulü iki fresh turla kapandı. Üst c/epik açık kalır.
+U verified; iki eksenli preflight ve audit-bağlantı P2 fix teyidi kapandı. W.1 saf validation/URI/graph yardımcıları uygulandı; 734 ilgili test geçti, commit/iki fresh tur bekleniyor. W.2 henüz başlamadı. Salt okunur yaklaşık audit kanıtı [aday/yöntem kaydına](../../research/p02-2-implementation-validation.md#p02-2w--kaynak-bakım-hazırlığı) bağlıdır; U.2 sınır kabulü iki fresh turla kapandı. Üst c/epik açık kalır.
