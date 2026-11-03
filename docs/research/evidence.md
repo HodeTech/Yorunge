@@ -2644,6 +2644,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-upload-v2-smoke-01-unverified.json.gz`.
 **Özet:** `{"accepted": false, "diagnostic_only": true, "files": 11, "kind": "rejected-upload", "original_bytes": 153274, "source_commit": "5a90477ed56bebaaec488114718de37d18b4f9df"}`.
 
+## p02-2-upload-v3-sdist-development-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `71d81db149f29f85a2975681e50ace5980d61388958342ff410d063888cffe01`.
+**Yerel arşiv:** `raw/p02-2-upload-v3-sdist-development-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 218641, "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5"}`.
+
+## p02-2-upload-v3-wheel-development-unverified
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `ac705153b9947fb596e920f83d8776747f7f9aa9b43fca412e121b8420ee2a06`.
+**Yerel arşiv:** `raw/p02-2-upload-v3-wheel-development-unverified.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 218655, "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5"}`.
+
+## p02-2-v3-development-installation
+
+**Tür:** `installation_v3`.
+**Özgün JSON SHA-256:** `88a69265ecfd9d10c0d907cd48495df98f227c8525fc502716c4676ad1b1958f`.
+[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/5363423f48f182e5408067866c5b53eb5fb106d5/docs/research/p02-2-v3-development-installation.json); yerel arşiv `raw/p02-2-v3-development-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5"}`.
+
 ## startup-ci-control
 
 **Tür:** `startup`.

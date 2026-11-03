@@ -16571,6 +16571,85 @@
       }
     },
     {
+      "name": "p02-2-upload-v3-sdist-development-unverified.json",
+      "archive": "raw/p02-2-upload-v3-sdist-development-unverified.json.gz",
+      "original_commit": null,
+      "content_bytes": 294528,
+      "content_sha256": "71d81db149f29f85a2975681e50ace5980d61388958342ff410d063888cffe01",
+      "archive_bytes": 98456,
+      "archive_sha256": "41d986d242ff0619020e146d7b9cb7c520096c0816a5ff1c29953d41b7f7bd71",
+      "summary": {
+        "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 15,
+        "original_bytes": 218641
+      }
+    },
+    {
+      "name": "p02-2-upload-v3-wheel-development-unverified.json",
+      "archive": "raw/p02-2-upload-v3-wheel-development-unverified.json.gz",
+      "original_commit": null,
+      "content_bytes": 294548,
+      "content_sha256": "ac705153b9947fb596e920f83d8776747f7f9aa9b43fca412e121b8420ee2a06",
+      "archive_bytes": 98489,
+      "archive_sha256": "6949b9d3666f330c2e04de66522f05329a52dd68a08abf96368b18b39cc28186",
+      "summary": {
+        "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 15,
+        "original_bytes": 218655
+      }
+    },
+    {
+      "name": "p02-2-v3-development-installation.json",
+      "archive": "raw/p02-2-v3-development-installation.json.gz",
+      "original_commit": "5363423f48f182e5408067866c5b53eb5fb106d5",
+      "content_bytes": 1211,
+      "content_sha256": "88a69265ecfd9d10c0d907cd48495df98f227c8525fc502716c4676ad1b1958f",
+      "archive_bytes": 496,
+      "archive_sha256": "4af4efddf27322e78a36d8aae274c5e3fa397dd4d97de45386a47479427b1ccd",
+      "summary": {
+        "source_commit": "5363423f48f182e5408067866c5b53eb5fb106d5",
+        "diagnostic_only": false,
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "startup-ci-control.json",
       "archive": "raw/startup-ci-control.json.gz",
       "original_commit": "f186d27ac9b7313d5640877e574e9337fbd6b4ff",

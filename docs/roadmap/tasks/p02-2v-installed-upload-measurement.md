@@ -1,7 +1,7 @@
 ---
 id: P02-2v
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2w]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,7 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Teslim kaydı
 
-U ve W verified; iki eksenli son preflight ve installation-v3 düzeltme teyitleri kapandı. V.1 streaming sink, izole kurulu worker ve ortak test-only mapping; V.2 bağımsız verifier/driver/katalog ve kayıpsız tanı kodu ikişer fresh tur/fix teyitleriyle kapandı. Dört geliştirme smoke’u ayrı accepted=false/diagnostic_only arşivlerle saklandı; açık ilk run-01 takibi kapandı. V.3 zorunlu installation_v3/upload_smoke, source reference ve gerçek Linux native/always-artifact bağlantısı uygulandı, kod review turları sırada. İki gerçek runtime-only wheel/sdist geliştirme kurulumu geçti; aggregate ve iki smoke’un saklama takibi review sonrasında kapanacak. Eski startup/jobs/dataset referansları yeni kaynağın güncel kabulü değildir. Nihai 12 süreç/native, altı kurulum ve CI sonuçları bu araç kapanışından ayrıdır.
+- PR/commit: [V.1](https://github.com/HodeTech/Yorunge/commit/6fb5b9b), [V.2](https://github.com/HodeTech/Yorunge/commit/4df5081), [V.3](https://github.com/HodeTech/Yorunge/commit/d160244), [R2 düzeltmesi](https://github.com/HodeTech/Yorunge/commit/8d24847); aynı dal/tek nihai PR.
+- Sonuç: V.1/V.2/V.3 bütün kod dilimleri iki farklı fresh review turu ve doğrulanmış P2 fix teyitleriyle yerel verified. V.3 iki gerçek geliştirme wheel/sdist kurulumu, zorunlu upload_smoke ve kapalı installation_v3 geçti; aggregate ve iki accepted=false/unverified smoke kayıpsız arşivlenip saklama takibi kapandı. Toplam 382 arşiv doğrulandı. Süreç cleanup’ında SIGTERM, abrupt controller, parent EOF ve kesin child.close kesinti regresyonları geçti. Ayrıntılı [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2v3--sürümlü-kurulum-güncel-kaynak-kapısı-ve-gerçek-ci-ölçüm-bağlantısı) kanoniktir.
+
+- Kalan sınır: Bu araç teslimi nihai kaynak/native/altı kurulum/üç ortam CI/ayrı canlı kabulü değildir; üst c’de kalır. Yeni dört kaynak referansı bütün kaynaklar ve canlı kabul aracı sabitlendikten sonra ölçülecek. Üst a/b/c ve epik draft; yeni canlı write yetkisi yoktur.
