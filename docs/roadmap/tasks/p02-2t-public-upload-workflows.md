@@ -1,7 +1,7 @@
 ---
 id: P02-2t
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2s]
 capabilities: [C03, C12, C13]
@@ -36,4 +36,6 @@ T.1 golden/type/strict/projection/keyset ve gerçek SQLite; t.2 gerçek TLS/stat
 
 ## Teslim kaydı
 
-S yerel verified; public sözleşme preflight iki eksende ve iki P2 düzeltme teyidiyle kapandı (333cf16). T.1 summary/yerel API iki fresh kod turu ve cursor P2 fix teyidiyle yerel kapandı; t.2 gerçek network API iki fresh tur ve iki P2 fix teyidiyle yerel kapandı. T.3 CLI/progress kodu ve gerçek süreç/PTY testleri uygulandı. Fresh R1 gerçek PTY hangup sonrasında CPython shutdown flush exit120 kusurunu buldu; stdio descriptor susturma ve tam workflow regresyonuyla düzeltildi. Özgün reviewer teyidi ve farklı fresh R2 bekleniyor. Yeni canlı write yetkisi yoktur; üst c bütünleşik kabulü açıktır.
+- PR/commit: [T.3 CLI/progress](https://github.com/HodeTech/Yorunge/commit/f484cd0), [PTY hangup düzeltmesi](https://github.com/HodeTech/Yorunge/commit/5227a6a), [inherited proje düzeltmesi](https://github.com/HodeTech/Yorunge/commit/68bf7ed); aynı dal/tek nihai PR.
+- Sonuç: T.1 ve T.2 iki fresh tur/fix teyidiyle kapandı. T.3 iki farklı fresh turda iki P2 bulundu ve özgün reviewer’lar gerçek PTY/SIGINT ve JSON/NDJSON global/local proje workflow’larıyla kapanışı doğruladı. [Kanonik kayıt](../../research/p02-2-implementation-validation.md#p02-2t3--cli-utf-8-renderer-ve-gerçek-transport-ilerlemesi) test/ara başarısızlık sınırını taşır; son genel CLI/progress/renderer kümesi139 passed, -W error.
+- Kalan sınır: Kart yerel verified. Üst c azami envanter, kurulu/native/son kaynak CI/kanıt/ayrı live ve ölçülmemiş insan UX sınırını ayrıca sahiplenir; yeni canlı write yetkisi yoktur. Epik henüz tamamlanmadı.

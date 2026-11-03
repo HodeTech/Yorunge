@@ -1,0 +1,21 @@
+# P02-2 kurulu upload ölçüm planı
+
+**Tarih:** 2026-11-03. **Durum:** Uygulama öncesi yöntem; ölçüm sonucu değildir. Sahip [P02-2v](../roadmap/tasks/p02-2v-installed-upload-measurement.md), bütünleşik kabul sahibi [P02-2c](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md).
+
+## Sabit fixture ve pencere
+
+Dört label: 16/256/1024 MiB toplam ve capacity 128. Her label üç farklı fresh installed isolated istemci sürecinde çalışır; bütün 12 worker seri, başarısız örnek atılmadan tutulur. Üç byte label’ında dosya sayısı sabit 3, toplam byte üçe dengeli bölünür; en büyük dosya500.000.000 byte altında kalır. Capacity label 128 normal bir-byte dosyadır. Her dosyanın bağımsız hash/path/size ve manifest digest’i controller tarafından bloklu üretimden hesaplanır; sunucu client’ın sonuç hash’ini oracle diye kabul etmez.
+
+İstemci aynı gerçek consumer üzerinde ayrı warm kaynak/state ve sabit 1 MiB/üç dosyayla bir tam prepare→approve→start akışı yapar. Modül/native probe hazırlığı ve fixture üretimi B/H0 öncesindedir. Ölçülen pencere yeni kaynak/state için public prepare→approve→start’ın tamamıdır; üç hash geçişi, current read, SQLite ve TLS/PUT/confirm/proof maliyeti dahildir. İnceleme/paket hash ve JSON/çıktı doğrulaması pencere dışında yapılır. Her üretim çağrısının mevcut deadline’ı korunur; bütün pencere pozitif ve ≤900 s olmalıdır, her PUT mevcut≤120 s sınırındadır. Bu fiziksel I/O süre garantisi değildir.
+
+## Kaynak ve bellek kanıtı
+
+Runtime-only wheel kaynağın tam ürün baytları/py.typed/metadata/entry point ve frozen runtime paketleriyle eşleşir. Ölçüm before/after kaynak haritası mevcut startup snapshot yöntemiyle test/script/workflow dahil sabittir. Kaynak veya kurulum değişiminde sonuç geçersizdir. Controller/server/client PID’leri farklıdır; server/controller RSS’i client ölçümüne eklenmez. Sunucu PUT gövdesini en çok64 KiB bloklarla hash’ler, dosya boyutunda bytes/list/queue tutmaz; yalnız bounded metadata/count saklar. İstemcinin production iki-worker/1 MiB chunk/2 MiB buffer tavanı korunur.
+
+Native B/H0/H1 ve U/L dönüşümü [mevcut performans standardıyla](../standards/performance.md#kurulu-jobs-ve-raw-stream-ölçümü) aynıdır. Her 12 koşuda U≤64 MiB; byte label’larının farklı label bütün örnek çiftlerinde G=max(0,U_i−L_j)≤8 MiB. Capacity sonucu ayrı U/süre/byte/graph tavanındadır; farklı dosya sayısını sabit-N boyut büyümesi diye kıyaslamayız. H1==H0’da L=0 kalır; yüksek eski peak çıkarılmaz, clamp/fallback yoktur. Referans aynı M5 Max/macOS/Python3.11/internal SSD ortamıdır; donanım attestasyonu değildir.
+
+## Bağımsız karar ve sınırlar
+
+Raporda toplam byte/path/hash, N, tam 2+3N effect/intents/accepted receipts, request/attempt/bağlantı/concurrency sayaçları ve metadata summary boolean’ları bulunur. Özgün worker stdout/stderr ve server sayacı workspace’te kalır. Ayrı kapalı verifier tam örnek kimliği/PID, sayılar, native dönüşüm/growth, kaynak/wheel eşliği ve passed kararını yeniden hesaplar. Başarısız bütçe raporu passed=false ile kalıcı saklanabilir; bozuk/eksik araç çıktısı başarısız tanıdır ve başarılı rapora dönüştürülmez.
+
+Sentetik ağ mapping’i yalnız ölçüm fixture’ında ve loopback allowlist’indedir; üretimde seçilebilir backend/flag yoktur. Sırlar sentetiktir. Unknown authority/pricing ile explicit plan/onay gerçek public akışta seçilir; grant/cost uydurulmaz. Başarı metadata eşliğidir; remote byte indirme, gerçek provider fiyatı/hızı/otoritesi veya insan UX araştırması kanıtı değildir. Büyük/native koşular tüm kod/test/script/workflow sabitlendikten ve dış yoğun işler bittikten sonra seri yapılacaktır.
