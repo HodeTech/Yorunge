@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import math
-import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -40,9 +39,9 @@ from yorunge.adapters.upload_store import (
     read_any_view as read_view,
 )
 from yorunge.adapters.validation_memo import validation_session
-from yorunge.application.operations import DispatchPermit
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.transfer_access import TransferWriteAccess
+from yorunge.application.upload_arms import UploadArm, _issue_upload_arm
 from yorunge.application.upload_inputs import revalidate_input
 from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
@@ -702,7 +701,7 @@ class StateUploads:
         file_index: int | None,
         *,
         total_end: float,
-    ) -> tuple[StageIntent, DispatchPermit, float]:
+    ) -> UploadArm:
         with self.phase(operation_id):
             if (
                 type(kind) is not str
@@ -839,11 +838,12 @@ class StateUploads:
                 self._finish(stamp, gate, scope=view.plan.scope)
                 if self.clock.monotonic() >= deadline:
                     raise YorungeError("execution_timeout")
+                issued = _issue_upload_arm(intent, deadline, self.clock.monotonic)
             except YorungeError as error:
                 raise OperationError(
                     "operation_uncertain", operation_id, reason_code=error.code
                 ) from None
-            return intent, DispatchPermit(os.getpid), deadline
+            return issued
 
     def receipt(
         self, operation_id: str, owner: TransferLease, receipt: UploadReceipt

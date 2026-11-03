@@ -1,7 +1,7 @@
 ---
 id: P02-2q
 phase: P02
-status: ready
+status: in_progress
 size: M
 depends_on: [P02-2p, P02-2n, P02-2o]
 capabilities: [C03, C12, C13]
@@ -40,4 +40,4 @@ Dar codec/semantic/actual TLS port/source/HTTP quota testleri ve gerekli önceki
 
 ## Teslim kaydı
 
-Kart ready; port kodu henüz başlamadı. P02-2p yerel kalıcılık temeli verified, actual remote/public üst teslimi açık. Uygulama gerçek commit/review/test sonuçlarıyla güncellenir.
+Q.1 immutable arm/semantic temel kodu doğrulanıyor; gerçek HTTP portu q.2/q.3 henüz başlamadı. P02-2p yerel kalıcılık temeli verified, actual remote/public üst teslimi açık. Uygulama gerçek commit/review/test sonuçlarıyla güncellenir.

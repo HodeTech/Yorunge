@@ -9,7 +9,7 @@ from typing import Generic, TypeVar
 
 from yorunge.adapters.state import metadata
 from yorunge.adapters.validation_memo import validated
-from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_manifest import DatasetManifest, decode_manifest_json
 from yorunge.domain.dataset_transfer import (
@@ -43,6 +43,7 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUpl
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_requests import upload_request_digest
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadControl,
@@ -250,16 +251,14 @@ def request_digest(
     """Secret-free semantic request binding; never hashes a signed URL/header."""
     create = receipts.get(("create", None))
     previous = receipts.get(("presign", index)) if index is not None else None
-    file = manifest.files[index].model_dump(mode="json") if index is not None else None
-    payload = {
-        "plan_digest": plan.digest,
-        "kind": kind,
-        "file_index": index,
-        "file": file,
-        "dataset_id": create.dataset_id if kind != "create" and create else None,
-        "object_key": previous.object_key if kind in {"put", "confirm"} and previous else None,
-    }
-    return hashlib.sha256(canonical(payload)).hexdigest()
+    return upload_request_digest(
+        plan.digest,
+        kind,
+        index,
+        manifest.files[index] if index is not None else None,
+        create.dataset_id if kind != "create" and create else None,
+        previous.object_key if kind in {"put", "confirm"} and previous else None,
+    )
 
 
 def predecessor(kind: StageKind, index: int | None) -> tuple[StageKind, int | None] | None:
