@@ -529,3 +529,6 @@ T.2 fresh R1 contract Sol/high **129 passed / 62,46 s**, safety Astra/high **104
 Safety post-coordinator SIGINT’te ID kaybını şüphe olarak iletti; özgün deneyi dispatch öncesi durduğu için kanıt saymadı. Root actual signal.raise_signal(SIGINT) ile coordinator dönüşünden sonraki projection sınırında yeniden üretti: **beş status + bir actual SIGINT toplam6 failed / 2,67 s**. Beşinde pending/failed/cancelled yanlış Result0, sonuncuda request_cancelled6 kimliksizdi. Public _safe private identity getter’ını kullanır: coordinator sonucu elde edilince projection/I-O/interrupt hatası aynı ID’ye bağlanır; gerçek Task.cancel yine yayılır. Terminal COMMIT geriye düşmez. Source status/graph query yanlış Result teslimine çevrilmez. Bu gerçek OS SIGINT checkpoint testidir; bütün olası fiziksel instruction aralıklarının atomikliği iddia edilmez.
 
 Fix sonrası yeni request/API + local public kümesi **81 passed / 15,20 s**, -W error temiz. Ruff/strict mypy114 source geçti. Özgün safety fix teyidi ve farklı fresh R2 bekleniyor; t.2 henüz yerel kapalı değildir. Native/live/source CI/üst epik açık kalır.
+
+
+T.2 405ec9e fix’i özgün Astra/high safety reviewer’ında **6 passed / 2,82 s**, -W error ile teyit edildi. Existing status/latch ve post-coordinator actual SIGINT ID iki P2 kapandı; yeni bulgu yok. Farklı fresh R2 sıradadır.
