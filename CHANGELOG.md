@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Fixed — 2026-11-03
+
+- Ortak `approval_required` mesajı işlemin gerektirdiği onay seçimine yönlendirir; plan digest’i dışındaki açık kabul yolları için yanlış toparlanma önermez. Kod ve exit 4 değişmez.
+
 ### Changed — 2026-11-02
 
 - README genel EVREN kapsamı, mevcut/planlanan yetenek ayrımı, özgün kapak, isteğe bağlı erişilebilir CLI GIF’i, kısa başlangıç ve katkı bağlantılarıyla yenilendi; ayrıntılı mevcut CLI/Python örnekleri yerel kullanım rehberine taşındı.

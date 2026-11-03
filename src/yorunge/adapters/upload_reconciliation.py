@@ -1,0 +1,237 @@
+"""Private current read composition, independent of source files and write authority."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from pathlib import Path
+
+from yorunge.adapters.capability_cache import Clock, SystemClock
+from yorunge.adapters.platform_upload_reader import ObservedUploadReader
+from yorunge.adapters.state import open_existing_store
+from yorunge.adapters.upload_http import UploadHttpxTransport, UploadSession
+from yorunge.adapters.upload_preparation import (
+    SessionFactory,
+    UploadPreparationRuntime,
+    require_upload_sync_context,
+)
+from yorunge.adapters.upload_reconcile_local import ReadInput, ReadPhase, load_read_input
+from yorunge.adapters.upload_repository import StateUploads
+from yorunge.application.http_transport import HttpCredential
+from yorunge.application.upload_budget import UploadBudget
+from yorunge.domain.capabilities import timestamp
+from yorunge.domain.credentials import BoundCredential, normalize_target
+from yorunge.domain.dataset_transfer import TERMINAL, scope_target
+from yorunge.domain.dataset_upload import UploadScope
+from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
+from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
+from yorunge.domain.models import Context, Profile
+from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_checks import (
+    UNAVAILABLE_CODES,
+    AuthorizationCheck,
+    AuthorizationOutcome,
+)
+
+ContextLoader = Callable[[DatasetUploadPlanV2], tuple[Context, Profile]]
+READ_FAILURES = UNAVAILABLE_CODES | {"remote_access_denied", "invalid_response"}
+
+
+def _source_code(error: BaseException) -> ErrorCode:
+    if isinstance(error, YorungeError):
+        return error.code
+    if isinstance(error, (asyncio.CancelledError, KeyboardInterrupt)):
+        return "request_cancelled"
+    return "transport_failed"
+
+
+class _ReadEnvironment:
+    def __init__(
+        self,
+        runtime: UploadPreparationRuntime,
+        loaded: ReadInput,
+        bound: BoundCredential,
+        scope: UploadScope,
+        reader: ObservedUploadReader,
+        client: UploadHttpxTransport,
+    ) -> None:
+        self.runtime, self.loaded, self.bound, self.scope = runtime, loaded, bound, scope
+        self.reader, self.client = reader, client
+        self.record = loaded.record
+        self.authorization: AuthorizationCheck | None = None
+
+    @contextmanager
+    def repository(self) -> Iterator[StateUploads]:
+        with open_existing_store(self.runtime.state_dir) as store:
+            # Deliberately no TransferWriteAccess in a restart/read invocation.
+            yield StateUploads(store, self.bound, clock=self.runtime.clock)
+
+    def inspect(self) -> None:
+        loaded = load_read_input(
+            self.record.operation_id, self.runtime.state_dir, True, self.runtime.clock
+        )
+        if not isinstance(loaded, ReadInput):
+            raise YorungeError("operation_conflict")
+        self.record = loaded.record
+        with self.repository() as repository:
+            repository.check_scope(self.scope)
+
+    async def observe(self) -> ReadPhase:
+        self.inspect()
+        check = await self.reader.read_authorization(
+            self.client, self.loaded.baseline, self.loaded.plan.parameters
+        )
+        self.authorization = check
+        check.require_current(
+            self.scope,
+            "read_created_dataset",
+            self.loaded.baseline.id,
+            timestamp(self.runtime.clock.now()),
+        )
+        self.inspect()
+        return ReadPhase(self.loaded.plan, self.record, check)
+
+    def _negative(self, code: ErrorCode) -> AuthorizationCheck:
+        check = self.authorization
+        if check is not None and check.error_code == code:
+            return check
+        outcome: AuthorizationOutcome = "unavailable"
+        if code == "remote_access_denied":
+            outcome = "denied"
+        elif code == "invalid_response":
+            outcome = "invalid"
+        return self.reader._check(
+            "read_created_dataset",
+            self.loaded.baseline.id,
+            timestamp(self.runtime.clock.now()),
+            outcome,
+            code,
+        )
+
+    def failure(self, error: BaseException) -> OperationError:
+        code, operation_id = _source_code(error), self.record.operation_id
+        reason = error.reason_code if isinstance(error, OperationError) else None
+        try:
+            with self.repository() as repository:
+                view = repository.show(operation_id=operation_id)
+                assert view.operation is not None
+                record = view.operation
+                if record.status in TERMINAL:
+                    return OperationError(code, operation_id, reason_code=reason)
+                if code in READ_FAILURES and not (
+                    record.reason == "read_unavailable" and record.lease is None
+                ):
+                    repository.read_failed(operation_id, None, self._negative(code))
+        except YorungeError as marker:
+            return OperationError(marker.code, operation_id, reason_code=code)
+        return OperationError(code, operation_id, reason_code=reason)
+
+    def __repr__(self) -> str:
+        return "<readonly upload environment private>"
+
+
+def _observe_read(
+    runtime: UploadPreparationRuntime,
+    loaded: ReadInput,
+    bound: BoundCredential,
+    scope: UploadScope,
+    end: float,
+) -> ReadPhase:
+    if time.monotonic() >= end:
+        raise YorungeError("execution_timeout")
+    key = HttpCredential(
+        "X-API-Key",
+        bound.credential.secret,
+        target=bound.credential.target,
+        service_id="evren-platform",
+    )
+    budget = UploadBudget(loaded.plan.request_limits, end=end, read_only=True)
+    reader = ObservedUploadReader(scope, key, budget, utc_clock=runtime.clock.now)
+    environment: _ReadEnvironment | None = None
+
+    async def consume(client: UploadHttpxTransport) -> ReadPhase:
+        nonlocal environment
+        environment = _ReadEnvironment(runtime, loaded, bound, scope, reader, client)
+        return await environment.observe()
+
+    failure = None
+    try:
+        session = runtime._session(key, budget)
+        with session:
+            return session.exchange(consume)
+    except BaseException as error:
+        if environment is not None:
+            failure = environment.failure(error)
+        else:
+            failure = OperationError(_source_code(error), loaded.record.operation_id)
+        if isinstance(error, asyncio.CancelledError):
+            raise
+    failure.__cause__ = failure.__context__ = None
+    raise failure
+
+
+def _validate_request(operation_id: str, state_dir: Path | None, accepted: bool) -> None:
+    require_upload_sync_context()
+    valid = type(accepted) is bool and (state_dir is None or isinstance(state_dir, Path))
+    try:
+        canonical_uuid(operation_id)
+    except (ValueError, TypeError, AttributeError):
+        valid = False
+    if not valid:
+        raise YorungeError("invalid_request")
+
+
+def _bind_current(
+    runtime: UploadPreparationRuntime, loaded: ReadInput
+) -> tuple[BoundCredential, UploadScope]:
+    target = normalize_target(runtime.context.platform_url)
+    historical = loaded.plan.scope
+    if (target.service_origin, target.api_base_path) != (
+        historical.service_origin,
+        historical.api_base_path,
+    ):
+        raise YorungeError("state_changed")
+    bound, scope = runtime._bind(historical.owner)
+    if scope_target(scope) != scope_target(historical):
+        raise YorungeError("state_changed")
+    runtime._local_values(bound, runtime.context, loaded.plan.parameters, loaded.plan.storage)
+    return bound, scope
+
+
+def probe_reconciliation(
+    operation_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    accept_unverified_read: bool = False,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> ReadPhase:
+    """Private S.1 observation only, without read lease or metadata proof."""
+    end = time.monotonic() + 30
+    _validate_request(operation_id, state_dir, accept_unverified_read)
+    clock = clock or SystemClock()
+    failure = None
+    try:
+        loaded = load_read_input(operation_id, state_dir, accept_unverified_read, clock)
+        if isinstance(loaded, ReadPhase):
+            return loaded
+        context, profile = load_context(loaded.plan)
+        runtime = UploadPreparationRuntime(
+            context, profile, state_dir, session_factory=session_factory, clock=clock
+        )
+        with runtime._invocation():
+            bound, scope = _bind_current(runtime, loaded)
+            return _observe_read(runtime, loaded, bound, scope, end)
+    except BaseException as error:
+        if isinstance(error, asyncio.CancelledError):
+            raise
+        failure = OperationError(
+            _source_code(error),
+            operation_id,
+            reason_code=error.reason_code if isinstance(error, OperationError) else None,
+        )
+    failure.__cause__ = failure.__context__ = None
+    raise failure

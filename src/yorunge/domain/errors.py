@@ -121,7 +121,7 @@ MESSAGES: dict[ErrorCode, str] = {
         "İş gönderilmiş olabilir; yerel kaydı ve aynı işi uzlaştırın, yeniden göndermeyin."
     ),
     "plan_in_use": "Plan bir operation geçmişine bağlı; unutulamaz ve işi iptal etmez.",
-    "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
+    "approval_required": "Açık onay gerekli. İşlem için gereken onay seçimini verin.",
     "input_unsupported": (
         "Bu ortam güvenli yerel dosya erişimini desteklemiyor. "
         "Desteklenen macOS/Linux yerel disk ortamını kullanın."
