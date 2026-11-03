@@ -15,6 +15,7 @@ from tests.fixtures.upload_network import loopback_upload
 from tests.fixtures.upload_provider import UploadProvider
 from tests.integration.test_upload_file_workflow import certificates as certificates
 from tests.integration.test_upload_file_workflow import loopback_only as loopback_only
+from yorunge import api
 from yorunge.domain.errors import OperationError
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,11 +43,20 @@ platform_key_env = "PILOT_PLATFORM_KEY"
     )
 
 
-def provenance_seam(helper, monkeypatch):
+def provenance_seam(helper, monkeypatch, wheel_changed=False):
     """Only isolated wheel provenance is a double; all API/state/HTTP/effects are real."""
     namespace = helper["run"].__globals__
     driver = runpy.run_path(str(ROOT / "scripts/benchmark-upload.py"))
-    driver["WHEEL"]["snapshot"] = lambda *args: {"metadata_sha256": {}}
+    snapshots = []
+
+    def wheel_snapshot(*args):
+        snapshots.append(None)
+        return {
+            "metadata_sha256": {},
+            "sha256": "changed" if wheel_changed and len(snapshots) > 1 else "original",
+        }
+
+    driver["WHEEL"]["snapshot"] = wheel_snapshot
     original = runpy.run_path
 
     def load(path):
@@ -62,24 +72,32 @@ def provenance_seam(helper, monkeypatch):
     )
 
 
-@pytest.mark.parametrize("partial", [False, True])
+@pytest.mark.parametrize("outcome", ["success", "partial_put", "wheel_changed"])
 def test_real_api_graph_receipt_and_no_retry_workspace(
-    tmp_path, certificates, monkeypatch, partial
+    tmp_path, certificates, monkeypatch, outcome
 ):
     helper = runpy.run_path(str(ROOT / "scripts/upload_live_acceptance.py"))
     args = inputs(tmp_path)
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, name="yorunge-acceptance-pilot")
-    if partial:
+    if outcome == "partial_put":
         provider.fail_put_name = "first.png"
-    provenance_seam(helper, monkeypatch)
+    provenance_seam(helper, monkeypatch, wheel_changed=outcome == "wheel_changed")
     monkeypatch.setenv("PILOT_PLATFORM_KEY", "prior-env-value")
     with (
         TlsServer(certificates, provider.routes()) as server,
         loopback_upload(server.certificates[0], server.port),
     ):
-        if partial:
+        if outcome == "partial_put":
             with pytest.raises(OperationError):
                 helper["run"](args)
+        elif outcome == "wheel_changed":
+            with pytest.raises(ValueError, match="wheel changed"):
+                helper["run"](args)
+            identity = json.loads((args.workspace / "operation-identity.json").read_bytes())
+            current = api.show_dataset_upload(
+                operation_id=identity["operation_id"], state_dir=args.workspace / "state"
+            ).data
+            assert current.operation_status == "succeeded" and provider.confirm_calls == 3
         else:
             value = helper["run"](args)
             assert value["outcome"] == "metadata_succeeded"
@@ -101,7 +119,9 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
         b"synthetic-pilot-selected-key" not in receipt
         and b"yorunge-acceptance-pilot" not in receipt
     )
-    assert json.loads(receipt)["outcome"] == ("incomplete" if partial else "metadata_succeeded")
+    assert json.loads(receipt)["outcome"] == (
+        "metadata_succeeded" if outcome == "success" else "incomplete"
+    )
     expected = {
         "first.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
         "same-content.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",

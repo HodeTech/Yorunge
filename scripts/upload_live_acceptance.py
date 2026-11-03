@@ -261,6 +261,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         write(args.workspace / "source-after.json", after)
         if before != after:
             raise ValueError("pilot source changed during acceptance")
+        if (
+            driver["WHEEL"]["snapshot"](args.wheel, after["source_sha256"], locked["yorunge"])
+            != wheel
+        ):
+            raise ValueError("pilot wheel changed during acceptance")
         snapshot = guard.snapshot()
         if snapshot["open_reservations"] or snapshot["response_pending"]:
             raise ValueError("pilot left a live HTTP reservation")
