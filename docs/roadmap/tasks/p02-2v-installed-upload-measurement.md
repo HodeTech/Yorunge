@@ -32,8 +32,8 @@ Scripts ve tests/fixtures; gerçek production API/consumer üzerinde yalnız pri
 
 ## Doğrulama
 
-Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Linux 3.11 source CI’da upload native koşusu mevcut ölçümlerle seri, M5 upload reference kaynak denetimi zorunlu olacak şekilde V.2’de bağlanır; üç ortam CI/altı kurulumun gerçek sonucu ve live üst c’de ayrıca kapanır.
+Ölçüm araçlarının küçük gerçek TLS/kurulu worker smoke’u ve bağımsız sabit negatif vektörler; uygun Ruff/type/doc/skill/evidence/diff. Ağır native ölçüm ancak bütün runtime/test/script/workflow kaynakları son halini aldıktan ve dış yoğun işler bitince seri yapılır. Linux 3.11 source CI’da upload native koşusu mevcut ölçümlerle seri, M5 upload reference kaynak denetimi zorunlu olacak şekilde V.3’te bağlanır. Yalnız Linux3.11 job scheduling timeout’u45 dakika, diğer hücreler25 dakika olur; bu12×900 saniyelik teorik pencereyi veya fiziksel süreyi garanti etmez. Ürün900/120 saniye sınırları değişmez; kesilmiş koşular başarısız/diagnostic ve açık saklama takibi kalır; üç ortam CI/altı kurulumun gerçek sonucu ve live üst c’de ayrıca kapanır.
 
 ## Teslim kaydı
 
-U ve W verified; ilk iki eksenli preflight ve oracle/kalıcı tanı iki P2 fix teyidi kapandı. CI/source-gate ve kurulu smoke ayrıntısı son preflight’tadır; ürün ölçüm kodu henüz başlamadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
+U ve W verified; ilk iki eksenli preflight ve oracle/kalıcı tanı iki P2 fix teyidi kapandı. Son preflight installation_v2 içindeki görünmez upload smoke kabulünü P2 olarak buldu. Sürümlü v3 zorunlu alanı ve Linux scheduling/always-artifact/test sahipliği plana işlendi; fix teyidi bekleniyor. Ölçüm kodu henüz başlamadı. Eski startup/jobs/dataset referansları bu yeni kaynağın güncel kabulü değildir.
