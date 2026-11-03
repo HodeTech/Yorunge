@@ -55,7 +55,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2m | Platform proxy upload/confirm/items codec'leri | P02-2l, P02-2f; [kart](tasks/p02-2m-platform-upload-codecs.md) | `verified` |
 | P02-2n | Kayıtlı service URI ve gerçek HTTP quota bağlantısı | P02-2g, P02-2f, P02-2k, P02-2l; [kart](tasks/p02-2n-upload-http-budgets.md) | `verified` |
 | P02-2o | Güncel input/current provider ve prepare/approve kompozisyonu | P02-2n, P02-2m, P02-2k; [kart](tasks/p02-2o-current-upload-preparation.md) | `verified` |
-| P02-2p | Kalıcı create baseline, receipt union ve legacy gate | P02-2o; [kart](tasks/p02-2p-created-dataset-context.md), ADR-0027 Accepted | `in_progress` |
+| P02-2p | Kalıcı create baseline, receipt union ve legacy gate | P02-2o; [kart](tasks/p02-2p-created-dataset-context.md), ADR-0027 Accepted | `verified` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı | P02-3a, P02-3b; gerekirse açık sürüm oluşturma/freeze kararı | `draft` |

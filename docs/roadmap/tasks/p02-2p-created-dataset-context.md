@@ -1,7 +1,7 @@
 ---
 id: P02-2p
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2o]
 capabilities: [C03, C12, C13]
@@ -39,4 +39,6 @@ Domain/golden ve gerçek SQLite/process sınırları; önceki journal/recovery/h
 
 ## Teslim kaydı
 
-ADR-0027 Accepted; p.1 DTO/union/yapısal geçmiş iki fresh turla kapandı; p.2 writer/legacy gate uygulanıyor. Yeni receipt writer ve legacy mutation/proof kapısı p.2 dilimindedir; kart bütünü henüz verified değildir. Aynı dalda uygulama tamamlanınca commit ve gerçek test/fix kanıtıyla güncellenir; a/b/c epik kapanışı değildir.
+- PR/commit: [746ac36](https://github.com/HodeTech/Yorunge/commit/746ac36); tek nihai P02-2 PR'ı henüz açılmadı.
+- Sonuç: P.1 DTO/union/history ve p.2 writer/legacy gate, ayrı commit ve ikişer fresh review/fix teyidiyle çalışma dalında yerel verified. Yeni V2 accepted-create, atomik receipt+ID, strict read/history/backup/reset, legacy no-new-rights ve gerçek SQLite kill/spawn kanıtı; [kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2p2--atomik-writer-ve-legacy-mutation-kapısı).
+- Kalan sınır: Gerçek HTTP effect portu/controller, public summary sentinel, API/CLI, native/kurulum/source CI ve ayrı canlı upload henüz kabul değildir. Üst a/b/c ve epik açık kalır; grant/fiyat kanıtı yoktur.
