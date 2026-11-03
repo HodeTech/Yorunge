@@ -745,16 +745,16 @@ Scheduling delta d6898e3 iki farklı fresh kaynak review’sinde temiz kapandı:
 
 ## Son kaynak M5 kabulü — 510de0a
 
-Dört yeni zorunlu referans ve ek raw stream, önceden sabitlenen adlarla aynı runtime-only aday wheel üzerinde seri ve **birer kez** çalıştı; hepsi ilk koşuda geçti. Aralarında test/build veya ikinci ölçüm başlatılmadı. Ortam: Apple M5 Max/arm64, macOS27.0.1, CPython3.11.18, internal SSD/APFS beyanı; donanım attestasyonu veya fiziksel soğuk cache iddiası değildir. Karşılaştırma tabanı development50d68b1 temiz detached checkout’udur. Tam kaynak510de0a0986f5e7d086c1fac9cbcc18974314fe5; workflow/test/script ve upload sabit vektörü ilgili kapılarda bağlıdır.
+Dört yeni zorunlu referans ve ek raw stream, önceden sabitlenen adlarla aynı runtime-only aday wheel üzerinde seri ve **birer kez** çalıştı; hepsi ilk koşuda geçti. Aralarında test/build veya ikinci ölçüm başlatılmadı. Ortam: Apple M5 Max/arm64, macOS 27.0.1, CPython 3.11.18, internal SSD/APFS beyanı; donanım attestasyonu veya fiziksel soğuk cache iddiası değildir. Karşılaştırma tabanı development 50d68b1 temiz detached checkout’udur. Tam kaynak 510de0a0986f5e7d086c1fac9cbcc18974314fe5; workflow/test/script ve upload sabit vektörü ilgili kapılarda bağlıdır.
 
 | Kayıt | Gerçek sonuç |
 |---|---|
-| p02-2-reference-startup-01.json | Aday p95 help24,94/version23,13/context78,69/cache128,60 ms; her komut30 süreç, bütçeler geçti |
-| p02-2-reference-jobs-01.json | Dört normal/yoğun list-show ×30 süreç; en yüksek p95 dense/list144,53 ms, hepsi≤200 ms |
-| p02-2-reference-datasets-01.json | 24 süreç; en uzun1,0355 s, en yüksek ek RSS üst sınırı19,375 MiB; inspect/verify büyüme32/16 KiB, geçti |
-| p02-2-reference-raw-01.json | Gerçek16/256/1024 MiB; byte/hash/source/runtime eşliği; en uzun1,5848 s, büyüme üst sınırı1,140625 MiB, geçti |
-| p02-2-reference-upload-01.json | Dört label ×3 fresh worker=12 süreç; gerçek public prepare/approve/start, tam accepted graph ve bağımsız sink/oracle; en uzun64,5396 s, en yüksek U11,25 MiB, G3,265625 MiB; bütün bütçeler geçti |
+| p02-2-reference-startup-01.json | Aday p95 help 24,94 / version 23,13 / context 78,69 / cache 128,60 ms; her komut 30 süreç, bütçeler geçti |
+| p02-2-reference-jobs-01.json | Dört normal/yoğun list-show × 30 süreç; en yüksek p95 dense/list 144,53 ms, hepsi ≤200 ms |
+| p02-2-reference-datasets-01.json | 24 süreç; en uzun 1,0355 s, en yüksek ek RSS üst sınırı 19,375 MiB; inspect/verify büyüme 32/16 KiB, geçti |
+| p02-2-reference-raw-01.json | Gerçek 16/256/1024 MiB; byte/hash/source/runtime eşliği; en uzun 1,5848 s, büyüme üst sınırı 1,140625 MiB, geçti |
+| p02-2-reference-upload-01.json | Dört label × 3 fresh worker = 12 süreç; gerçek public prepare/approve/start, tam accepted graph ve bağımsız sink/oracle; en uzun 64,5396 s, en yüksek U 11,25 MiB, G 3,265625 MiB; bütün bütçeler geçti |
 
-Startup/jobs/dataset/upload güncel kaynak bağlı verifier’ları ve tam katalog388 kayıpsız arşiv/indeks denetimi geçti. Özgün JSON/stdout/stderr ve özel sentetik workspace’ler Git dışında korundu; raporlar gzip/manifest/indekstedir. Büyük raw açılımı review bağlamına taşınmaz; [manifest/özet](evidence.md) kullanılır. Bu başarı Linux veya canlı sağlayıcı/fiyat/otorite kanıtı değildir.
+Startup/jobs/dataset/upload güncel kaynak bağlı verifier’ları ve tam katalog 388 kayıpsız arşiv/indeks denetimi geçti. Özgün JSON/stdout/stderr ve özel sentetik workspace’ler Git dışında korundu; raporlar gzip/manifest/indekstedir. Büyük raw açılımı review bağlamına taşınmaz; [manifest/özet](evidence.md) kullanılır. Bu başarı Linux veya canlı sağlayıcı/fiyat/otorite kanıtı değildir.
 
-Yerel tam takım ve bütün M5 referanslar tamamlandı; üst c için üç ortam gerçek CI/altı temiz kurulum, Linux native/raw/receipt/witness kalıcı saklama ve ayrıca yeni kullanıcı onaylı237 byte/üç PNG canlı kabulü bekler. Tek epik PR taslağı CI kanıtını toplar; final kullanıcı review’sine geçiş bu açık kapılar kapanınca yapılır. Yeni hesap çağrısı henüz yapılmadı; canlı yetki sorusu bekliyor.
+Yerel tam takım ve bütün M5 referanslar tamamlandı; üst c için üç ortam gerçek CI/altı temiz kurulum, Linux native/raw/receipt/witness kalıcı saklama ve ayrıca yeni kullanıcı onaylı 237 byte/üç PNG canlı kabulü bekler. Tek epik PR taslağı CI kanıtını toplar; final kullanıcı review’sine geçiş bu açık kapılar kapanınca yapılır. Yeni hesap çağrısı henüz yapılmadı; canlı yetki sorusu bekliyor.
