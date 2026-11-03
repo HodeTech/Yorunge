@@ -47,6 +47,7 @@ INSTALL_CHECKS = (
     "execution_smoke",
     "jobs_smoke",
 )
+INSTALL_CHECKS_V3 = (*INSTALL_CHECKS, "upload_smoke")
 JOBS_REFERENCE = {
     "cpu": "Apple M5 Max",
     "disk_type": "internal SSD/APFS",
@@ -791,6 +792,54 @@ def installation_row(value: object) -> str:
     return kind
 
 
+def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit environment results passed",
+        "installation v3",
+    )
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 3
+        or report["report_kind"] != "installation_v3"
+    ):
+        raise ValueError("unknown installation v3 schema")
+    pattern_value(report["source_commit"], COMMIT)
+    if not isinstance(report["environment"], dict):
+        raise ValueError("installation environment must be an object")
+    results = report["results"]
+    if not isinstance(results, list) or len(results) != 2:
+        raise ValueError("one wheel and one sdist installation are required")
+    kinds = [installation_row_v3(row) for row in results]
+    if set(kinds) != {"wheel", "sdist"}:
+        raise ValueError("installation artifacts must be unique wheel and sdist")
+    passed = all(
+        row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V3[1:])
+        for row in results
+    )
+    flag(report["passed"], passed)
+    return {
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": passed,
+        "checks": check_counts(results, INSTALL_CHECKS_V3),
+    }
+
+
+def installation_row_v3(value: object) -> str:
+    row = closed(
+        value, "archive sha256 members " + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
+    )
+    kind = installation_row({key: item for key, item in row.items() if key != "upload_smoke"})
+    if not isinstance(row["upload_smoke"], str) or row["upload_smoke"] not in {
+        "passed",
+        "failed",
+        "not_run_unsupported_platform",
+    }:
+        raise ValueError("unknown installation upload smoke status")
+    return kind
+
+
 def measurement(value: dict[str, Any], *, startup: bool, rounded: bool = False) -> dict[str, Any]:
     samples_key, p95_key = (
         ("warm_samples_ms", "warm_p95_ms") if startup else ("samples_ms", "p95_ms")
@@ -1103,6 +1152,8 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
         return stream_summary_v2(report)
     if kind == "installation_v2" and version == 2:
         return installation_summary(report)
+    if kind == "installation_v3" and version == 3:
+        return installation_summary_v3(report)
     if kind == "startup_evidence_v1" and version == 1:
         startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
         return startup["validate"](report)  # type: ignore[no-any-return]
@@ -1584,6 +1635,36 @@ def verify_startup_reference(root: Path, name: str) -> dict[str, Any]:
     return startup["reference"](root, report)  # type: ignore[no-any-return]
 
 
+def verify_upload_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid upload reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown upload reference evidence name")
+    report = decode(unpack(directory, item))
+    helper = runpy.run_path(str(Path(__file__).with_name("upload_evidence.py")))
+    summary: dict[str, Any] = helper["summarize_report"](report)
+    if not summary["passed"]:
+        raise ValueError("upload reference requires twelve successful process measurements")
+    environment, runtime = report["environment"], report["runs"][0]["client"]["runtime"]
+    if (
+        environment != {name: JOBS_REFERENCE[name] for name in ("cpu", "disk_type")}
+        or runtime["machine"] != JOBS_REFERENCE["machine"]
+        or not runtime["os"].startswith(JOBS_REFERENCE["platform_prefix"])
+        or not runtime["python"].startswith(JOBS_REFERENCE["python_prefix"])
+    ):
+        raise ValueError("upload proof does not declare configured M5 reference runtime")
+    current = helper["source"](root)["source_sha256"]
+    for field in ("source_before", "source_after"):
+        if report["provenance"][field]["source_sha256"] != current:
+            raise ValueError("upload reference differs from complete current source/oracle bytes")
+    if report["provenance"]["locked_runtime"] != helper["STREAM"]["locked_runtime"](root):
+        raise ValueError("upload reference runtime differs from current frozen lock")
+    return {"name": name, "source_commit": report["source_commit"], **summary}
+
+
 def replace_metadata(path: Path, content: bytes) -> None:
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("metadata target must be a regular file")
@@ -1679,6 +1760,8 @@ def main() -> int:
     startup_reference.add_argument("name")
     dataset_reference = commands.add_parser("verify-dataset-reference")
     dataset_reference.add_argument("name")
+    upload_reference = commands.add_parser("verify-upload-reference")
+    upload_reference.add_argument("name")
     rejected = commands.add_parser("archive-rejected-startup")
     rejected.add_argument("source", type=Path)
     rejected.add_argument("--name", required=True)
@@ -1737,6 +1820,9 @@ def main() -> int:
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
         elif args.action == "verify-dataset-reference":
             summary = verify_dataset_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
+        elif args.action == "verify-upload-reference":
+            summary = verify_upload_reference(root, args.name)
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")

@@ -20,6 +20,8 @@ ROOT_FILES = (
     "source-after.json",
     "oracle.json",
     "controller-error.json",
+    "metadata-stdout.json",
+    "metadata-stderr.txt",
     "source.json",
     "stdout.json",
     "stderr.txt",

@@ -6,6 +6,8 @@ import argparse
 import hashlib
 import json
 import os
+import platform
+import runpy
 import stat
 import subprocess
 import sys
@@ -13,6 +15,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 GITHUB_DIRECTORY = ".github"
@@ -520,7 +523,13 @@ def verify_installed_datasets(
         raise ValueError("installed dataset same-size mutation was not rejected")
 
 
-def verify_package(package: Path, uv: str, root: Path, environment: dict[str, str]) -> None:
+def verify_package(
+    package: Path,
+    uv: str,
+    root: Path,
+    environment: dict[str, str],
+    upload_workspace: Path,
+) -> dict[str, Any]:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
         scratch = Path(directory).resolve()
@@ -598,45 +607,97 @@ def verify_package(package: Path, uv: str, root: Path, environment: dict[str, st
         cache_smoke = "not_run_unsupported_platform"
         execution_smoke = "not_run_unsupported_platform"
         jobs_smoke = "not_run_unsupported_platform"
+        upload_smoke = "not_run_unsupported_platform"
         if sys.platform in ("darwin", "linux"):
             verify_installed_datasets(console, python, scratch, environment)
             verify_installed_cache(console, root, scratch, environment)
             cache_smoke = "passed"
             execution_smoke = verify_installed_execution(console, root, scratch, environment)
             jobs_smoke = verify_installed_jobs(console, python, root, scratch, environment)
-        print(
-            json.dumps(
-                {
-                    "archive": package.name,
-                    "sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
-                    "members": len(members),
-                    "origin_verified": True,
-                    "smoke": "passed",
-                    "ndjson_smoke": ndjson_smoke,
-                    **transport_smoke,
-                    "cache_smoke": cache_smoke,
-                    "execution_smoke": execution_smoke,
-                    "jobs_smoke": jobs_smoke,
-                }
+            upload = runpy.run_path(str(root / "scripts/upload_installation.py"))
+            artifact_kind = "wheel" if package.suffix == ".whl" else "sdist"
+            upload_smoke = upload["verify"](
+                python,
+                venv,
+                root,
+                scratch,
+                upload_workspace / artifact_kind,
+                environment,
+                artifact_kind,
             )
-        )
+        result = {
+            "archive": package.name,
+            "sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
+            "members": len(members),
+            "origin_verified": True,
+            "smoke": "passed",
+            "ndjson_smoke": ndjson_smoke,
+            **transport_smoke,
+            "cache_smoke": cache_smoke,
+            "execution_smoke": execution_smoke,
+            "jobs_smoke": jobs_smoke,
+            "upload_smoke": upload_smoke,
+        }
+        print(json.dumps(result))
+        return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--uv", required=True, type=Path)
     parser.add_argument("--dist", default=Path("dist"), type=Path)
+    parser.add_argument("--evidence-output", default=Path("dist/installation.json"), type=Path)
+    parser.add_argument(
+        "--upload-workspace", default=Path(".local/distribution-upload-check"), type=Path
+    )
     args = parser.parse_args()
     uv = str(args.uv.resolve())
     root = Path(__file__).resolve().parents[1]
     packages = distribution_pair(args.dist.resolve())
+    output = args.evidence_output.absolute()
+    upload_workspace = args.upload_workspace.absolute()
+    if (
+        output.exists()
+        or output.is_symlink()
+        or not output.parent.is_dir()
+        or any(parent.is_symlink() for parent in output.parents)
+    ):
+        raise ValueError("installation evidence requires a new file in an existing directory")
+    if (
+        upload_workspace.exists()
+        or upload_workspace.is_symlink()
+        or any(parent.is_symlink() for parent in upload_workspace.parents)
+    ):
+        raise ValueError("installation upload requires a new workspace without symlinks")
+    upload_workspace.mkdir(parents=True, mode=0o700)
     environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
     environment["PYTHONNOUSERSITE"] = "1"
-    for package in packages:
-        verify_package(package, uv, root, environment)
-    return 0
+    results = [
+        verify_package(package, uv, root, environment, upload_workspace) for package in packages
+    ]
+    evidence = runpy.run_path(str(root / "scripts/research_evidence.py"))
+    passed = all(
+        row["origin_verified"]
+        and all(row[key] == "passed" for key in evidence["INSTALL_CHECKS_V3"][1:])
+        for row in results
+    )
+    report = {
+        "schema_version": 3,
+        "report_kind": "installation_v3",
+        "source_commit": run(
+            ["git", "rev-parse", "HEAD"], cwd=root, environment=environment
+        ).strip(),
+        "environment": {"os": platform.platform(), "python": sys.version},
+        "results": results,
+        "passed": passed,
+    }
+    evidence["installation_summary_v3"](report)
+    with output.open("x", encoding="utf-8") as target:
+        json.dump(report, target, ensure_ascii=False, indent=2, allow_nan=False)
+        target.write("\n")
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

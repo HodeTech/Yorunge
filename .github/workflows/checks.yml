@@ -15,7 +15,7 @@ jobs:
   linux311:
     name: Linux / Python 3.11
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "true"
@@ -113,6 +113,8 @@ jobs:
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
               "raw_stream_budget_scope": "reference_linux311"
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "upload_budget_scope": "native_linux311_and_source_bound_m5"
+              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
           }
           Path("dist").mkdir(exist_ok=True)
           encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
@@ -135,7 +137,7 @@ jobs:
         id: build
         run: |
           .ci-tools/bin/uv build
-          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv > dist/verification.jsonl
+          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv --evidence-output dist/installation.json --upload-workspace .local/distribution-upload-check > dist/verification.jsonl
           cat dist/verification.jsonl
       - name: Record and verify Linux startup diagnostics
         id: startup-budgets
@@ -146,22 +148,32 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-1-review-reference-v3-startup.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-01.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-1-review-reference-v3-jobs.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-01.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-1-review-reference-v3-datasets.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-01.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
+      - name: Verify source-bound reference upload budgets
+        id: upload-reference
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-01.json > dist/upload-reference.txt
+      - name: Enforce installed native upload budgets
+        id: upload-budgets
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/upload_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check --output dist/upload.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - name: Diagnose a failed startup budget
         id: startup-diagnostics
         if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' }}
@@ -188,6 +200,8 @@ jobs:
           path: |
             dist/ci-environment.json
             dist/verification.jsonl
+            dist/installation.json
+            dist/installation-upload-*-rejected.json
             dist/startup.json
             dist/startup-diagnostic.json
             dist/startup-baseline-selection.json
@@ -195,6 +209,9 @@ jobs:
             dist/jobs-reference.txt
             dist/dataset-reference.txt
             dist/stream.json
+            dist/upload.json
+            dist/upload-reference.txt
+            dist/upload*-rejected.json
             dist/cache-startup.prof
             .local/startup-check/source-manifest.json
             .local/startup-check/measurement.json
@@ -206,6 +223,31 @@ jobs:
             .local/stream-check/*/client-stderr.txt
             .local/stream-check/*/server-stdout.txt
             .local/stream-check/*/server-stderr.txt
+            .local/upload-check/source-before.json
+            .local/upload-check/source-manifest.json
+            .local/upload-check/source-after.json
+            .local/upload-check/oracle.json
+            .local/upload-check/controller-error.json
+            .local/upload-check/stdout.json
+            .local/upload-check/stderr.txt
+            .local/upload-check-controller-stdout.txt
+            .local/upload-check-controller-stderr.txt
+            .local/upload-check/*/client-stdout.json
+            .local/upload-check/*/client-stderr.txt
+            .local/upload-check/*/*-server/*.json
+            .local/upload-check/*/*-server/*.txt
+            .local/distribution-upload-check/*/source-before.json
+            .local/distribution-upload-check/*/source-manifest.json
+            .local/distribution-upload-check/*/source-after.json
+            .local/distribution-upload-check/*/oracle.json
+            .local/distribution-upload-check/*/controller-error.json
+            .local/distribution-upload-check/*/metadata-stdout.json
+            .local/distribution-upload-check/*/metadata-stderr.txt
+            .local/distribution-upload-check/*/stdout.json
+            .local/distribution-upload-check/*/*/client-stdout.json
+            .local/distribution-upload-check/*/*/client-stderr.txt
+            .local/distribution-upload-check/*/*/*-server/*.json
+            .local/distribution-upload-check/*/*/*-server/*.txt
   linux314:
     name: Linux / Python 3.14
     runs-on: ubuntu-24.04

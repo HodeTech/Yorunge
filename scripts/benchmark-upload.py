@@ -136,6 +136,7 @@ def assemble(
     wheel_after: dict[str, Any],
     locked: dict[str, str],
     runs: list[dict[str, Any]],
+    *,
     cpu: str,
     disk: str,
 ) -> dict[str, Any]:
@@ -210,7 +211,9 @@ def check(args: argparse.Namespace) -> int:
         after = EVIDENCE["source"](ROOT)
         (workspace / "source-after.json").write_bytes(CHECKS["encode"](after))
         last = WHEEL["snapshot"](wheel, before["source_sha256"], locked["yorunge"])
-        report = assemble(before, after, first, last, locked, runs, args.cpu, args.disk_type)
+        report = assemble(
+            before, after, first, last, locked, runs, cpu=args.cpu, disk=args.disk_type
+        )
         with output.open("xb") as target:
             target.write(CHECKS["encode"](report))
     except BaseException:
