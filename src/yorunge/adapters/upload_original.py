@@ -98,6 +98,13 @@ def _confirmed_indices(view: VersionedTransferView) -> tuple[int, ...]:
     return tuple(indices)
 
 
+def _failure_identity(record: TransferRecordV2 | None, error: BaseException) -> str | None:
+    operation_id = record.operation_id if record is not None else None
+    if isinstance(error, OperationError) and error.operation_id is not None:
+        operation_id = error.operation_id
+    return operation_id
+
+
 class _Environment:
     def __init__(
         self,
@@ -296,9 +303,7 @@ class _Environment:
             return "latched" if record.workflow_latched else "unlatched"
 
     def failure(self, error: BaseException) -> OperationError | None:
-        operation_id = self.record.operation_id if self.record is not None else None
-        if isinstance(error, OperationError) and error.operation_id is not None:
-            operation_id = error.operation_id
+        operation_id = _failure_identity(self.record, error)
         if operation_id is None:
             return None
         code = _source_code(error)

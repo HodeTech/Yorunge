@@ -115,6 +115,14 @@ def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> Non
         raise YorungeError("invalid_request")
 
 
+def _arm_permission(kind: StageKind) -> UploadPermission:
+    if kind == "create":
+        return "create_private_dataset"
+    if kind == "project_link":
+        return "link_project"
+    return "upload_created_dataset"
+
+
 def _arm_predecessors(
     view: VersionedTransferView, kind: StageKind, file_index: int | None
 ) -> dict[tuple[StageKind, int | None], UploadReceipt]:
@@ -792,11 +800,7 @@ class StateUploads:
                     raise YorungeError("operation_conflict")
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
-                action: UploadPermission = "upload_created_dataset"
-                if kind == "create":
-                    action = "create_private_dataset"
-                elif kind == "project_link":
-                    action = "link_project"
+                action = _arm_permission(kind)
                 terms = self._current(
                     view.plan, fresh, stamp, gate, action=action, dataset_id=record.dataset_id
                 )
