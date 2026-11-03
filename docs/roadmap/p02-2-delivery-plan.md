@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-03. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–o verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-03. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–p verified, gerçek provider/public ve bütünleşik kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -79,3 +79,5 @@ O.2 hazırlık incelemesi, unconditional create/detail owner_id+org_id eşliği 
 O.1/o.2/o.3 her dilimde iki fresh tur ve bulgu/fix teyitleriyle yerel verified oldu. Bağımsız prepare/approve/revoke kompozisyonu kapandı; sıradaki kalıcı create baseline ADR-0027/P02-2p ile uygulanır; restart/controller onu tüketir. Sonra ortak public yüzey ve c kabulü gelir. Bu sıralama yeni canlı write yetkisi veya epik kapanışı değildir.
 
 P02-2p iki kod dilimi ve her birinde iki fresh review/fix teyidiyle yerel verified oldu. Gerçek HTTP effect/metadata portu, original start ve salt okuma controller'ı, ortak public summary/API/CLI ve c nihai kabulü kalan somut işlerdir. P kartı schema/golden/history ve no-new-rights kabulüdür; remote upload veya epik kapanışı değildir.
+
+[P02-2q](tasks/p02-2q-platform-effect-port.md) gerçek HTTP portunu iki code/review dilimine ayırır: q.1 pre-intent call/quota/semantic ve control effect'ler; q.2 bounded PUT ve item metadata. Yeni [kanonik port referansı](../reference/dataset-upload-port.md) implementation öncesidir. Sonra original-start/read-only controller, public summary/API/CLI ve c nihai kabulü gelir; generic status definitive rejected receipt'e dönüştürülmez.
