@@ -467,3 +467,6 @@ Son geniş recovery-read/flow/kill/s.1/initial-read/full original/history kümes
 
 
 S.2 son three-file/eşhash/Unicode success ve acquisition-loser delta’sı dahil yeni flow/actual-kill/local recovery gate kümesi **39 passed / 40,62 s** geçti. Winner read lease’i loser failure cleanup’ıyla bırakılmadı. Ruff tüm src/tests **264 dosya format + check**, strict mypy **110 source dosyası** temiz. Sistem python3 ile rehber denetimi 36 eski/aktif kartı reddetti; canonical CONTRIBUTING ortamı olan .venv/bin/python ile **6 skill/40 kart, 0 sorun** geçti. Bu runtime seçimi hatası ürün/metadata fix’i diye sunulmaz. 187 Markdown ve git diff --check temiz; source/test/doküman ilk commit’i ve fresh R1 sıradadır. Native/hesap çağrısı yoktur.
+
+
+S.2 fresh R1, 0b5f973 üzerinde temiz: Sol/high contract yeni reconciliation/kill/gate **39 passed / 51,52 s**, eski recovery_v2/initial-read **50 passed / 27,85 s**; Astra/high safety yeni küme **39 passed / 49,94 s**. Safety ek gerçek TLS items await sırasında credential rotation/reset/UTC geri sıçrama probunda state_changed/operation_lease_lost retlerini ve sıfır proof/yeni write’ı teyit etti (**4 passed / 6,65 s**, biri mevcut baseline). Doğrulanmış kusur yok; dosya değişmedi/diff temiz. Farklı fresh R2 bekleniyor; s.2/üst kart henüz verified değildir. Full suite/native/live/gerçek SIGINT kabulü yapılmadı.
