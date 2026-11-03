@@ -504,3 +504,6 @@ T.1 cursor3 + authority2 sınıf erişimi delta’sı **5 passed / 2,04 s**, -W 
 
 
 T.1 R1 cursor fix dc4228f özgün Astra/high safety reviewer’ında **5 passed / 1,79 s**, -W error ile teyit edildi (20 deselected). Cursor P2 kapandı; authority pozitif test delta’sında yeni bulgu yok. Farklı fresh R2 sıradadır.
+
+
+T.1 farklı fresh R2 temiz: Astra/high contract **95 passed / 23,38 s**, -W error; Sol/high safety yeni public+versions/history/journal **173 passed / 61,13 s** (45 yeni public test). Strict DTO/history/cost-scope/receipt/Result specialization, snapshot/keyset/byte/exactfilter ve safe exception chain incelendi; yeni doğrulanmış kusur yok. Kaynak/test edit edilmedi, diff ve çalışma ağacı temizdi. **T.1 iki fresh tur ve cursor P2 teyidiyle yerel kapandı**; t kartı in_progress, t.2 gerçek prepare/approve/start/reconcile API ardından t.3 CLI/progress. Native/kurulum/son kaynak CI/kanıt/ayrı live ve üst epik açık kalır.
