@@ -217,3 +217,63 @@ def test_real_source_close_failure_and_partial_open_cannot_hide_descriptors(
         monkeypatch.setattr(os, "close", close)
         for descriptor in handles:
             close(descriptor)
+
+
+@pytest.mark.parametrize("stage", ["before_fields", "recheck"])
+def test_source_transient_descriptors_remain_observed_after_actual_close_failure(
+    tmp_path, monkeypatch, stage
+):
+    from tests.fixtures.upload_network import sources
+
+    root = tmp_path.resolve()
+    (root / "one.bin").write_bytes(b"x")
+    info = root.stat()
+    source = storage_source.DescriptorByteSource(
+        UploadRoot(anchor=str(root), device=info.st_dev, inode=info.st_ino),
+        DatasetFile(path="one.bin", size=1, sha256=hashlib.sha256(b"x").hexdigest()),
+        deadline=time.monotonic() + 30,
+    )
+    metrics, leaked = Metrics(), []
+    opened, closed, relative = os.open, os.close, storage_source.relative_file
+    relative_calls = 0
+
+    def observe_open(path, *args, **kwargs):
+        descriptor = opened(path, *args, **kwargs)
+        if stage == "before_fields" and path == "/" and not leaked:
+            leaked.append(descriptor)
+        return descriptor
+
+    def observe_relative(*args):
+        nonlocal relative_calls
+        result = relative(*args)
+        relative_calls += 1
+        if stage == "recheck" and relative_calls == 2:
+            leaked.append(result[0])
+        return result
+
+    def fail_selected_close(descriptor):
+        if descriptor in leaked:
+            raise OSError("synthetic transient descriptor close failure")
+        return closed(descriptor)
+
+    async def action():
+        with sources(metrics):
+            monkeypatch.setattr(os, "open", observe_open)
+            monkeypatch.setattr(os, "close", fail_selected_close)
+            monkeypatch.setattr(storage_source, "relative_file", observe_relative)
+            if stage == "recheck":
+                assert await anext(source) == b"x"
+            pending = anext(source)
+            with pytest.raises(YorungeError):
+                await pending
+            assert source._root_fd is source._file_fd is None
+            assert len(leaked) == metrics.summary()["open_sources"] == 1
+            os.fstat(leaked[0])
+
+    try:
+        asyncio.run(action())
+    finally:
+        monkeypatch.setattr(os, "open", opened)
+        monkeypatch.setattr(os, "close", closed)
+        for descriptor in leaked:
+            closed(descriptor)

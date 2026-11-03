@@ -8,6 +8,7 @@ import socket
 import ssl
 import time
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -15,6 +16,7 @@ import httpcore
 import httpx
 
 from tests.fixtures.http_server import loopback_sockets
+from yorunge.adapters import input_files, storage_source
 from yorunge.adapters.guarded_http import GuardedHttpTransport
 from yorunge.adapters.guarded_network import GuardedBackend
 from yorunge.adapters.storage_source import DescriptorByteSource
@@ -154,39 +156,84 @@ class CountingTransport(httpx.AsyncBaseTransport):
 
 @contextmanager
 def sources(metrics):
-    opened, closed = DescriptorByteSource._open, DescriptorByteSource.aclose
+    opened, rechecked, closed = (
+        DescriptorByteSource._open,
+        DescriptorByteSource._recheck,
+        DescriptorByteSource.aclose,
+    )
+    input_close, source_close = (
+        input_files.close_input_descriptor,
+        storage_source.close_input_descriptor,
+    )
+    active: ContextVar[int | None] = ContextVar("native_source_descriptor_owner", default=None)
+
+    def remember(owner, handles):
+        if handles:
+            metrics._source_fds.setdefault(owner, set()).update(handles)
+            metrics._sources.add(owner)
+            metrics.peak_sources = max(metrics.peak_sources, len(metrics._sources))
+
+    def settle(owner):
+        remaining = {fd for fd in metrics._source_fds.get(owner, ()) if descriptor_may_be_open(fd)}
+        if remaining:
+            metrics._source_fds[owner] = remaining
+        else:
+            metrics._source_fds.pop(owner, None)
+            metrics._sources.discard(owner)
+
+    def closing(delegate):
+        def observe(descriptor, primary=None):
+            owner = active.get()
+            if owner is not None:
+                remember(owner, {descriptor})
+            try:
+                return delegate(descriptor, primary)
+            finally:
+                if owner is not None:
+                    settle(owner)
+
+        return observe
+
+    def retained(source):
+        remember(id(source), {fd for fd in (source._file_fd, source._root_fd) if fd is not None})
+
+    def during(method, source):
+        token = active.set(id(source))
+        try:
+            return method(source)
+        finally:
+            retained(source)
+            active.reset(token)
 
     def observed_open(source):
-        try:
-            opened(source)
-        finally:
-            handles = {fd for fd in (source._file_fd, source._root_fd) if fd is not None}
-            if handles:
-                metrics._source_fds.setdefault(id(source), set()).update(handles)
-                metrics._sources.add(id(source))
-                metrics.peak_sources = max(metrics.peak_sources, len(metrics._sources))
+        return during(opened, source)
+
+    def observed_recheck(source):
+        return during(rechecked, source)
 
     async def observed_close(source):
-        handles = set(metrics._source_fds.get(id(source), ()))
-        handles.update(fd for fd in (source._file_fd, source._root_fd) if fd is not None)
+        token = active.set(id(source))
+        retained(source)
         try:
             await closed(source)
         finally:
-            remaining = {fd for fd in handles if descriptor_may_be_open(fd)}
-            if remaining:
-                metrics._source_fds[id(source)] = remaining
-                metrics._sources.add(id(source))
-                metrics.peak_sources = max(metrics.peak_sources, len(metrics._sources))
-            else:
-                metrics._source_fds.pop(id(source), None)
-                metrics._sources.discard(id(source))
+            settle(id(source))
+            active.reset(token)
 
     DescriptorByteSource._open, DescriptorByteSource.aclose = observed_open, observed_close
+    DescriptorByteSource._recheck = observed_recheck
+    input_files.close_input_descriptor = closing(input_close)
+    storage_source.close_input_descriptor = closing(source_close)
     try:
         with observe_upload(metrics.progress):
             yield
     finally:
         DescriptorByteSource._open, DescriptorByteSource.aclose = opened, closed
+        DescriptorByteSource._recheck = rechecked
+        input_files.close_input_descriptor, storage_source.close_input_descriptor = (
+            input_close,
+            source_close,
+        )
 
 
 def descriptor_may_be_open(descriptor):
