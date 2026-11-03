@@ -330,6 +330,16 @@ def verification_after(view: VersionedTransferView, proof: UploadVerification) -
         raise ValueError("metadata observation precedes confirmation or recovery")
 
 
+def acknowledged_stages(view: VersionedTransferView) -> bool:
+    count = view.plan.manifest.file_count
+    return (
+        {(i.kind, i.file_index) for i in view.intents} == required_stages(count)
+        and len(view.intents) == 2 + 3 * count
+        and len(view.receipts) == len(view.intents)
+        and all(r.result == "accepted" for r in view.receipts)
+    )
+
+
 def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
     record, proof = view.operation, view.verification
     assert record is not None
@@ -348,13 +358,7 @@ def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
         != (record.observed_identity_epoch, record.observed_clock_generation)
     ):
         raise ValueError("verification target mismatch")
-    if (
-        {(i.kind, i.file_index) for i in view.intents} != required_stages(manifest.file_count)
-        or len(view.intents) != 2 + 3 * manifest.file_count
-        or len(view.receipts) != len(view.intents)
-        or any(r.result != "accepted" for r in view.receipts)
-        or instant(proof.observed_at) > instant(record.updated_at)
-    ):
+    if not acknowledged_stages(view) or instant(proof.observed_at) > instant(record.updated_at):
         raise ValueError("success requires acknowledged stages and current read evidence")
     if (
         isinstance(proof, TransferVerificationV2)

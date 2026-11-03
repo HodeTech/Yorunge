@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Literal, Protocol
+from typing import Protocol
 
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_descriptors import PresignedUpload
@@ -14,9 +14,6 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_checks import UploadCurrentCheck
 from yorunge.domain.upload_versions import UploadReceipt
-
-CreateStage = Literal["create", "project_link"]
-
 
 class EffectOutcome(Protocol):
     @property
@@ -49,6 +46,7 @@ class OriginalEnvironment(Protocol):
     ) -> UploadArm: ...
     def publish(self, outcome: EffectOutcome) -> None: ...
     def validate_uploads(self) -> None: ...
+    async def verify(self) -> TransferRecordV2: ...
     def failure(self, error: BaseException) -> OperationError | None: ...
 
 
@@ -155,23 +153,31 @@ async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
             await call.aclose()
 
 
-async def create_link_and_upload(environment: OriginalEnvironment) -> TransferRecordV2:
-    """Complete all write receipts; metadata proof is the next private phase."""
+async def _upload_files(environment: OriginalEnvironment) -> TransferRecordV2:
+    record = await _create_link(environment)
+    if not environment.write_owned:
+        return record
+    count = environment.plan.manifest.file_count
+    for index in range(count):
+        await _effect(environment, "presign", index)
+    environment.validate_uploads()
+    for start in range(0, count, 2):
+        indices = range(start, min(count, start + 2))
+        await _put_batch(environment, indices)
+        for index in indices:
+            await _effect(environment, "confirm", index)
+    assert environment.record is not None
+    return environment.record
 
+
+async def create_link_and_upload(environment: OriginalEnvironment) -> TransferRecordV2:
+    """Complete all write receipts; metadata proof is a separate private phase."""
+    return await _guarded(environment, lambda: _upload_files(environment))
+
+
+async def complete_original(environment: OriginalEnvironment) -> TransferRecordV2:
     async def steps() -> TransferRecordV2:
-        record = await _create_link(environment)
-        if not environment.write_owned:
-            return record
-        count = environment.plan.manifest.file_count
-        for index in range(count):
-            await _effect(environment, "presign", index)
-        environment.validate_uploads()
-        for start in range(0, count, 2):
-            indices = range(start, min(count, start + 2))
-            await _put_batch(environment, indices)
-            for index in indices:
-                await _effect(environment, "confirm", index)
-        assert environment.record is not None
-        return environment.record
+        record = await _upload_files(environment)
+        return await environment.verify() if environment.write_owned else record
 
     return await _guarded(environment, steps)

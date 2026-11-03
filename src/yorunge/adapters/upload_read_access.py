@@ -76,6 +76,23 @@ def _initial_approval(view: VersionedTransferView, stamp: Stamp, gate: TimeGate)
     )
 
 
+def initial_read_consent(view: VersionedTransferView, stamp: Stamp, gate: TimeGate) -> None:
+    """Before network: actual saved read authority or the initial fallback consent."""
+    _initial_approval(view, stamp, gate)
+    grant = view.plan.grant
+    if grant is not None and "read_created_dataset" in grant.permissions:
+        gate.require_range(
+            instant(grant.checked_at), instant(grant.expires_at), error="upload_plan_not_valid"
+        )
+        return
+    if (
+        not isinstance(view.plan, DatasetUploadPlanV2)
+        or view.plan.admission_policy != "explicit_attempt"
+    ):
+        raise YorungeError("upload_plan_not_valid")
+    _fallback_consent(view, True, False)
+
+
 def _selected_grant(
     grant: UploadGrant | None, check: AuthorizationCheck | None
 ) -> UploadGrant | None:

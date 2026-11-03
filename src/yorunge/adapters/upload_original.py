@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import NoReturn
+from typing import Literal, NoReturn
 
 from yorunge.adapters.capability_cache import Clock, SystemClock
 from yorunge.adapters.platform_upload_port import ObservedUploadPort, PreparedUploadCall
@@ -34,6 +34,7 @@ from yorunge.application.upload_workflow import (
     EffectOutcome,
     OriginalEnvironment,
     PreparedEffect,
+    complete_original,
     create_and_link,
     create_link_and_upload,
 )
@@ -247,13 +248,20 @@ class _Environment:
             if outcome.upload is not None:
                 self.uploads[outcome.upload.context.file_index] = outcome.upload
 
-    def _stop(self, operation_id: str) -> bool | None:
+    async def verify(self) -> TransferRecordV2:
+        from yorunge.adapters.upload_original_read import verify_original
+
+        return await verify_original(self)
+
+    def _stop(self, operation_id: str) -> Literal["terminal", "latched", "unlatched"] | None:
         with self.repository() as repository:
             view = repository.show(operation_id=operation_id)
             if view.plan.plan_id != self.plan.plan_id:
                 return None
             record = view.operation
             assert record is not None
+            if record.status in {"succeeded", "failed", "cancelled"}:
+                return "terminal"
             if (
                 self.access is not None
                 and record.lease is not None
@@ -264,7 +272,7 @@ class _Environment:
                     record.lease,
                     "request_uncertain" if record.workflow_latched else "local_cancelled",
                 )
-            return record.workflow_latched
+            return "latched" if record.workflow_latched else "unlatched"
 
     def failure(self, error: BaseException) -> OperationError | None:
         operation_id = self.record.operation_id if self.record is not None else None
@@ -282,7 +290,13 @@ class _Environment:
         else:
             if latched is None:
                 return error if isinstance(error, OperationError) else None
-            uncertain = uncertain or latched
+            if latched == "terminal":
+                return OperationError(
+                    "operation_conflict" if code == "operation_uncertain" else code,
+                    operation_id,
+                    reason_code=reason,
+                )
+            uncertain = uncertain or latched == "latched"
         if uncertain:
             return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
         return OperationError(code, operation_id, reason_code=reason)
@@ -387,7 +401,7 @@ def _original_phase(
     session_factory: SessionFactory = UploadSession,
     clock: Clock | None = None,
 ) -> OriginalPhase:
-    """Private r.1 phase; public start will bind the complete workflow later."""
+    """Private original workflow; a separate public layer provides safe summaries."""
     started = time.monotonic()
     require_upload_sync_context()
     _plan_id(plan_id)
@@ -451,6 +465,24 @@ def upload_files_original(
         state_dir,
         load_context,
         create_link_and_upload,
+        session_factory=session_factory,
+        clock=clock,
+    )
+
+
+def run_upload_original(
+    plan_id: str,
+    state_dir: Path | None,
+    load_context: ContextLoader,
+    *,
+    session_factory: SessionFactory = UploadSession,
+    clock: Clock | None = None,
+) -> OriginalPhase:
+    return _original_phase(
+        plan_id,
+        state_dir,
+        load_context,
+        complete_original,
         session_factory=session_factory,
         clock=clock,
     )

@@ -16,9 +16,10 @@ from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
-from yorunge.adapters.upload_read_access import authorize_read
+from yorunge.adapters.upload_read_access import ReadAccess, authorize_read, initial_read_consent
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
+    acknowledged_stages,
     created_dataset,
     decode,
     decode_versioned,
@@ -1195,6 +1196,47 @@ class StateUploads:
                 raise OperationError("operation_uncertain", operation_id, reason_code=code)
             raise OperationError(code, operation_id, reason_code=code)
 
+    def prepare_initial_read(
+        self,
+        operation_id: str,
+        owner: TransferLease,
+        *,
+        authorization: AuthorizationCheck | None = None,
+    ) -> ReadAccess | None:
+        """Short local gate, before the read probe and again before item metadata."""
+        with self.phase(operation_id):
+            self.require_created_baseline(operation_id, owner)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                self._baseline_in_view(view)
+                current = self._owner(record, owner, stamp, gate)
+                if current.mode != "write" or record.status != "running":
+                    raise YorungeError("operation_conflict")
+                self._credential(view.plan.scope, stamp)
+                if self._approved(view, gate) != record.approval:
+                    raise YorungeError("state_changed")
+                if not acknowledged_stages(view):
+                    raise YorungeError("operation_uncertain")
+                initial_read_consent(view, stamp, gate)
+                access = None
+                if authorization is not None:
+                    self._secret(authorization)
+                    access = authorize_read(
+                        self,
+                        view,
+                        stamp,
+                        gate,
+                        grant=authorization.grant,
+                        authorization=authorization,
+                        accept_unverified_read=False,
+                        initial_owner=True,
+                    )
+            self._finish(stamp, gate, scope=view.plan.scope)
+            return access
+
     def verified(
         self,
         operation_id: str,
@@ -1314,10 +1356,7 @@ class StateUploads:
                 # All normal write stages must be acknowledged. Recovery without
                 # this evidence remains unknown until an exact provider oracle
                 # is implemented; an ID/name match cannot manufacture success.
-                accepted = {r.intent_id for r in view.receipts if r.result == "accepted"}
-                if len(view.intents) != 2 + 3 * view.plan.manifest.file_count or any(
-                    i.intent_id not in accepted for i in view.intents
-                ):
+                if not acknowledged_stages(view):
                     raise YorungeError("operation_uncertain")
                 try:
                     verification_after(view, proof)
