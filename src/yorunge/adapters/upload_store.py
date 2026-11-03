@@ -10,6 +10,7 @@ from typing import Generic, TypeVar
 from yorunge.adapters.state import metadata
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_manifest import DatasetManifest, decode_manifest_json
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -45,9 +46,11 @@ from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadControl,
     UploadPlan,
+    UploadReceipt,
     UploadRecord,
     UploadVerification,
     required_stages,
+    validate_create_receipt,
     validate_versioned_approval,
     verification_scope,
 )
@@ -181,24 +184,30 @@ A = TypeVar("A", bound=UploadWire, covariant=True)
 R = TypeVar("R", bound=UploadWire, covariant=True)
 C = TypeVar("C", bound=UploadWire, covariant=True)
 V = TypeVar("V", bound=UploadWire, covariant=True)
+S = TypeVar("S", bound=UploadWire, covariant=True)
 
 
 @dataclass(frozen=True)
-class _TransferView(Generic[P, A, R, C, V]):
+class _TransferView(Generic[P, A, R, C, V, S]):
     plan: P
     approval: A | None
     operation: R | None
     intents: tuple[StageIntent, ...] = ()
-    receipts: tuple[StageReceipt, ...] = ()
+    receipts: tuple[S, ...] = ()
     controls: tuple[C, ...] = ()
     verification: V | None = None
 
 
 TransferView = _TransferView[
-    DatasetUploadPlan, DatasetUploadApproval, TransferRecord, TransferControl, TransferVerification
+    DatasetUploadPlan,
+    DatasetUploadApproval,
+    TransferRecord,
+    TransferControl,
+    TransferVerification,
+    StageReceipt,
 ]
 VersionedTransferView = _TransferView[
-    UploadPlan, UploadApproval, UploadRecord, UploadControl, UploadVerification
+    UploadPlan, UploadApproval, UploadRecord, UploadControl, UploadVerification, UploadReceipt
 ]
 
 
@@ -214,7 +223,7 @@ def request_digest(
     manifest: DatasetManifest,
     kind: StageKind,
     index: int | None,
-    receipts: dict[tuple[StageKind, int | None], StageReceipt],
+    receipts: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> str:
     """Secret-free semantic request binding; never hashes a signed URL/header."""
     create = receipts.get(("create", None))
@@ -245,9 +254,11 @@ def _receipt(
     plan: UploadPlan,
     manifest: DatasetManifest,
     intent: StageIntent,
-    receipt: StageReceipt,
-    accepted: dict[tuple[StageKind, int | None], StageReceipt],
+    receipt: UploadReceipt,
+    accepted: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> None:
+    if isinstance(receipt, CreateReceiptV2):
+        validate_create_receipt(plan, intent, receipt)
     if not instant(intent.intended_at) <= instant(receipt.recorded_at) < instant(intent.expires_at):
         raise ValueError("receipt outside issuing authority")
     if receipt.result == "rejected":
@@ -373,7 +384,7 @@ def _intent_binding(
     intent: StageIntent,
     sequence: int,
     keys: set[tuple[StageKind, int | None]],
-    accepted: dict[tuple[StageKind, int | None], StageReceipt],
+    accepted: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> None:
     record, plan = view.operation, view.plan
     assert record is not None
@@ -405,7 +416,7 @@ def _intent_binding(
 def _stages(view: VersionedTransferView, manifest: DatasetManifest) -> None:
     record = view.operation
     assert record is not None
-    accepted: dict[tuple[StageKind, int | None], StageReceipt] = {}
+    accepted: dict[tuple[StageKind, int | None], UploadReceipt] = {}
     receipts = {r.intent_id: r for r in view.receipts}
     keys: set[tuple[StageKind, int | None]] = set()
     rejected = False
@@ -527,7 +538,7 @@ def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTran
         "upload_stage_intents i USING(intent_id) WHERE i.operation_id=? ORDER BY i.sequence",
         (record.operation_id,),
     ).fetchall()
-    receipts = tuple(decode(StageReceipt, r[1]) for r in receipt_rows)
+    receipts = tuple(decode_versioned(StageReceipt, CreateReceiptV2, r[1]) for r in receipt_rows)
     if any(
         row[0] != receipt.intent_id for row, receipt in zip(receipt_rows, receipts, strict=True)
     ):
@@ -572,6 +583,7 @@ def require_legacy_view(view: VersionedTransferView) -> TransferView:
         or (view.approval is not None and not isinstance(view.approval, DatasetUploadApproval))
         or (view.operation is not None and not isinstance(view.operation, TransferRecord))
         or any(not isinstance(c, TransferControl) for c in view.controls)
+        or any(not isinstance(receipt, StageReceipt) for receipt in view.receipts)
         or (
             view.verification is not None
             and not isinstance(view.verification, TransferVerification)

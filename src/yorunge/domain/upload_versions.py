@@ -2,8 +2,11 @@
 
 import hashlib
 
+from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_transfer import (
+    StageIntent,
     StageKind,
+    StageReceipt,
     TransferControl,
     TransferRecord,
     TransferVerification,
@@ -30,6 +33,29 @@ UploadApproval = DatasetUploadApproval | DatasetUploadApprovalV2
 UploadRecord = TransferRecord | TransferRecordV2
 UploadControl = TransferControl | TransferControlV2
 UploadVerification = TransferVerification | TransferVerificationV2
+UploadReceipt = StageReceipt | CreateReceiptV2
+
+
+def validate_create_receipt(
+    plan: UploadPlan, intent: StageIntent, receipt: CreateReceiptV2
+) -> None:
+    """Structural binding only; historical v1 receipts remain readable."""
+    if not isinstance(plan, DatasetUploadPlanV2) or intent.kind != "create":
+        raise ValueError("v2 create receipt requires v2 plan and create intent")
+    dataset, parameters, owner = receipt.created_dataset, plan.parameters, plan.scope.owner
+    selected_owner = dataset.owner_id if owner.kind == "user" else dataset.org_id
+    if (
+        dataset.id != receipt.dataset_id
+        or selected_owner != owner.id
+        or (dataset.name, dataset.modality, dataset.visibility, dataset.contributions_enabled)
+        != (
+            parameters.name,
+            parameters.modality,
+            parameters.visibility,
+            parameters.contributions_enabled,
+        )
+    ):
+        raise ValueError("created dataset differs from approved owner or parameters")
 
 
 def validate_versioned_approval(plan: UploadPlan, approval: UploadApproval) -> None:
