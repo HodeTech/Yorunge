@@ -212,3 +212,9 @@ Farklı fresh R2 Astra/high contract ve Sol/high safety, f68f69a üzerinde norma
 
 Accepted geçişinin ilk agent-guide kontrolü p kartında gerekli exact bölüm başlıkları eksikliği nedeniyle reddedildi; başlıklar ve uygulama sınırı düzeltildi. Bu metadata reddi başarı diye sunulmaz.
 İkinci denetim ayrıca ready kartta zorunlu Teslim kaydı bölümünü reddetti; henüz uygulanmadığını açıkça belirten bölüm eklendi. Üçüncü kontrolün gerçek sonucu commit kapısıdır.
+
+## Q gerçek HTTP portu ön incelemesi
+
+P verified sonrası bc70edb üzerinde yeni port referansı/card q iki fresh uzmanla salt okunur ön incelemeden geçti. Astra/high contract **P2** doğruladı: generic DispatchPermit sadece PID/one-shot; mevcut arm bağımsız tuple olduğundan port sözleşmesinin exact intent/permit/deadline bağı tek başına sağlanmıyordu. Sol/high safety bunu trusted composition sorumluluğu olarak not etti, başka substantive bulgu bulmadı.
+
+Somut düzeltme: yeni private UploadArm, repository'nin COMMIT+final gate sonrası aynı intent snapshot/permit/deadline'ını immutable tek paket olarak taşır; gerçek port ayrı parça/tuple/deadline kabul etmez. Generic execution permit ve persisted DDL/wire/golden değişmez. Ordinary construction/copy/pickle, yanlış PID/thread/tek claim ve parça/deadline takası negatifleri q.1 kabulüdür. Trusted issuer DB kökenini sağlar; hostile in-process private kod çalıştırmaya karşı sandbox veya bağımsız DB attestasyonu iddia edilmez. Ortak semantic request fonksiyonu aynı golden byte'larını korur. Bu routine internal bağlama mevcut ADR intent/tek gönderim politikasını daraltarak uygular; yeni user policy/ADR gerektirmez. Q üç kod/review dilimine ayrıldı: issuance/semantic, control HTTP, PUT/items. Ürün kodu henüz başlamadı; her dilimin iki fresh kod review turu zorunlu.

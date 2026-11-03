@@ -16,14 +16,15 @@ Strict codec/quota/receipt tek başına gerçek request producer değildir. Port
 
 ## Giren ve girmeyen kapsam
 
-1. Intent öncesi private effect-call hazırlığı/quota/semantic bağ; actual TLS create/link/presign/confirm ve typed receipt/descriptor.
-2. Aynı pool bounded descriptor PUT/byte hash, items pagination ve exact ordered metadata.
+1. Repository-issued immutable UploadArm (aynı intent/permit/deadline), tek claim ve aynı semantic request fonksiyonunu paylaşma; eski tuple unpack/index ve generic execution permit korunur.
+2. Intent öncesi private effect-call hazırlığı/quota; actual TLS create/link/presign/confirm ve typed receipt/descriptor.
+3. Aynı pool bounded descriptor PUT/byte hash, items pagination ve exact ordered metadata.
 
-Her dilim commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
+Üç dilimin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
 
 ## Bağımlılıklar ve kararlar
 
-P/n/o verified; Accepted ADR-0024/0025/0026/0027. [Port referansı](../../reference/dataset-upload-port.md) code öncesi exact internal sınırı tanımlar; [provider](../../reference/platform-upload-consumer.md) ve [v2 receipt/current](../../reference/dataset-upload-v2.md) değişmez. Yeni temel karar/ADR yoktur.
+P/n/o verified; Accepted ADR-0024/0025/0026/0027. [Port referansı](../../reference/dataset-upload-port.md) kod öncesi exact internal sınırı tanımlar; [provider](../../reference/platform-upload-consumer.md) ve [v2 receipt/current](../../reference/dataset-upload-v2.md) değişmez. Yeni temel karar/ADR yoktur.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -39,4 +40,4 @@ Dar codec/semantic/actual TLS port/source/HTTP quota testleri ve gerekli önceki
 
 ## Teslim kaydı
 
-Kart ready; port code henüz başlamadı. P02-2p yerel kalıcılık temeli verified, actual remote/public üst teslimi açık. Uygulama gerçek commit/review/test sonuçlarıyla güncellenir.
+Kart ready; port kodu henüz başlamadı. P02-2p yerel kalıcılık temeli verified, actual remote/public üst teslimi açık. Uygulama gerçek commit/review/test sonuçlarıyla güncellenir.
