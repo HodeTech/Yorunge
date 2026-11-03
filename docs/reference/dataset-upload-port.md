@@ -1,6 +1,6 @@
 # Upload gerçek HTTP portu
 
-**Tarih:** 2026-11-03. **Durum:** P02-2q.1 immutable arm yerel verified; q.2 gerçek kontrol çağrıları kodlandı, iki fresh review bekliyor. PUT/items q.3 ve controller henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027; [provider codec](platform-upload-consumer.md), [HTTP quota](dataset-upload-http.md), [receipt/current](dataset-upload-v2.md), [güncel input](dataset-upload-preparation.md) temel alınır. Yeni grant/pricing/target/format veya retry politikası yoktur.
+**Tarih:** 2026-11-03. **Durum:** P02-2q.1 immutable arm yerel verified; q.2 gerçek kontrol çağrıları iki fresh turla yerel verified. Ortak resource owner takibi q.2a review aşamasında. PUT/items q.3 ve controller henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027; [provider codec](platform-upload-consumer.md), [HTTP quota](dataset-upload-http.md), [receipt/current](dataset-upload-v2.md), [güncel input](dataset-upload-preparation.md) temel alınır. Yeni grant/pricing/target/format veya retry politikası yoktur.
 
 ## Sahiplik ve hazırlanan çağrı
 

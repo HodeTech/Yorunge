@@ -83,10 +83,10 @@ class UploadInputObservation:
     _tree: TreeObservation = field(repr=False)
     _end: float = field(repr=False)
     _pid: int = field(repr=False)
-    _thread: int = field(repr=False)
+    _thread: threading.Thread = field(repr=False)
 
     def recheck(self) -> None:
-        if os.getpid() != self._pid or threading.get_ident() != self._thread:
+        if os.getpid() != self._pid or threading.current_thread() is not self._thread:
             raise YorungeError("invalid_request")
         _deadline(self._end)
         budget = _InputBudget(self._end)
@@ -153,5 +153,5 @@ def capture_upload_input(
         snapshot = tree.observation()
     budget.check()
     return UploadInputObservation(
-        captured_root, expected, snapshot, float(end), os.getpid(), threading.get_ident()
+        captured_root, expected, snapshot, float(end), os.getpid(), threading.current_thread()
     )

@@ -141,12 +141,12 @@ class UploadPreparationRuntime:
             raise YorungeError("invalid_request")
         self.state_dir, self._session = state_dir, session_factory
         self.clock = clock or SystemClock()
-        self._pid, self._thread, self._busy = os.getpid(), threading.get_ident(), False
+        self._pid, self._thread, self._busy = os.getpid(), threading.current_thread(), False
 
     @contextmanager
     def _invocation(self) -> Iterator[float]:
         require_upload_sync_context()
-        if self._busy or self._pid != os.getpid() or self._thread != threading.get_ident():
+        if self._busy or self._pid != os.getpid() or self._thread is not threading.current_thread():
             raise YorungeError("invalid_request")
         self._busy = True
         try:

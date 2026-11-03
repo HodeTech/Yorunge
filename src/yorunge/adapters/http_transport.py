@@ -216,7 +216,7 @@ class HttpxTransport:
         self._transport = transport
         self._client: httpx.AsyncClient | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._thread, self._pid = threading.get_ident(), os.getpid()
+        self._thread, self._pid = threading.current_thread(), os.getpid()
         self._closed = False
         self._responses: set[httpx.Response] = set()
         self._slots = asyncio.Semaphore(2)
@@ -247,7 +247,7 @@ class HttpxTransport:
         return self
 
     def _owner(self) -> None:
-        if self._thread != threading.get_ident() or self._pid != os.getpid():
+        if self._thread is not threading.current_thread() or self._pid != os.getpid():
             raise YorungeError("invalid_request")
         loop = asyncio.get_running_loop()
         if self._loop is None:

@@ -87,7 +87,7 @@ class UploadBudget(_PrivateQuota):
         if not valid_end:
             raise YorungeError("invalid_request")
         self._limits, self._end, self._readonly = valid_limits, float(end), read_only
-        self._pid, self._thread = os.getpid(), threading.get_ident()
+        self._pid, self._thread = os.getpid(), threading.current_thread()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._requests = dict.fromkeys(_KINDS, 0)
         self._request_reserved = self._upload_reserved = self._response_pending = 0
@@ -99,7 +99,7 @@ class UploadBudget(_PrivateQuota):
         loop = _loop()
         if (
             os.getpid() != self._pid
-            or threading.get_ident() != self._thread
+            or threading.current_thread() is not self._thread
             or (loop is not None and self._loop is not None and loop is not self._loop)
         ):
             raise YorungeError("invalid_request")

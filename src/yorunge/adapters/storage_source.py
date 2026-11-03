@@ -50,7 +50,7 @@ class DescriptorByteSource(AsyncIterator[bytes]):
             raise YorungeError("input_invalid") from None
         self._end = deadline
         self._task: asyncio.Task[object] | None = None
-        self._pid, self._thread = os.getpid(), threading.get_ident()
+        self._pid, self._thread = os.getpid(), threading.current_thread()
         self._root_fd: int | None = None
         self._file_fd: int | None = None
         self._absolute: tuple[tuple[int, int], ...] = ()
@@ -89,7 +89,7 @@ class DescriptorByteSource(AsyncIterator[bytes]):
         if (
             current is None
             or self._pid != os.getpid()
-            or self._thread != threading.get_ident()
+            or self._thread is not threading.current_thread()
             or (self._task is not None and self._task is not current)
         ):
             raise YorungeError("invalid_request")

@@ -236,7 +236,7 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
         self._context: AbstractAsyncContextManager[HttpResponse] | None = None
         self._chunks: AsyncIterator[bytes] | None = None
         self._task: asyncio.Task[object] | None = None
-        self._pid, self._thread = os.getpid(), threading.get_ident()
+        self._pid, self._thread = os.getpid(), threading.current_thread()
         self._entered, self._closed, self._exited = False, False, False
         self._delivered = False
         self._sequence = 1
@@ -247,7 +247,7 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
         if (
             not self._entered
             or os.getpid() != self._pid
-            or threading.get_ident() != self._thread
+            or threading.current_thread() is not self._thread
             or asyncio.current_task() is not self._task
         ):
             raise YorungeError("invalid_request")
@@ -257,7 +257,7 @@ class OwnedStream(AbstractAsyncContextManager["OwnedStream[T]"], AsyncIterator["
             self._entered
             or self._closed
             or os.getpid() != self._pid
-            or threading.get_ident() != self._thread
+            or threading.current_thread() is not self._thread
         ):
             raise YorungeError("invalid_request")
         self._entered, self._task = True, asyncio.current_task()
