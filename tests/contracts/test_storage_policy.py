@@ -4,6 +4,7 @@ import base64
 import hashlib
 import pickle
 from dataclasses import dataclass
+from functools import partial
 
 import pytest
 
@@ -158,8 +159,9 @@ def test_direct_descriptor_is_closed_and_requires_expiry(field, value):
 def test_url_length_limit_minus_boundary_plus():
     prefix = ORIGIN + "/bucket/object?signature="
     assert len(direct(prefix + "x" * (16384 - len(prefix))).wire_url) == 16384
+    rejected_call = partial(direct, prefix + "x" * (16385 - len(prefix)))
     with pytest.raises(YorungeError):
-        direct(prefix + "x" * (16385 - len(prefix)))
+        rejected_call()
 
 
 @pytest.mark.parametrize(
@@ -172,8 +174,9 @@ def test_url_length_limit_minus_boundary_plus():
     ],
 )
 def test_dynamic_url_fields_use_selected_literal_rule(secret, url):
+    rejected_call = partial(request, direct(url), secret=secret)
     with pytest.raises(YorungeError):
-        request(direct(url), secret=secret)
+        rejected_call()
 
 
 @pytest.mark.parametrize("secret", ["a", "0", "identity", "X-API-Key"])
@@ -195,8 +198,11 @@ def test_proxy_has_one_exact_platform_header_and_direct_has_none():
         for name, _ in request().wire_headers()
     )
     assert SECRET not in repr(value)
+    rejected_call = partial(
+        StorageRequest, direct(), MetadataSource(), key, "image/png", credential=credential
+    )
     with pytest.raises(YorungeError):
-        StorageRequest(direct(), MetadataSource(), key, "image/png", credential=credential)
+        rejected_call()
 
 
 @pytest.mark.parametrize("change", ["llm", "wrong-target", "prefix", "wrong-snapshot", "missing"])
@@ -212,8 +218,11 @@ def test_proxy_never_accepts_other_auth_source(change):
     elif change == "wrong-snapshot":
         args["secret"] = SecretValue(SECRET)
     credential = None if change == "missing" else HttpCredential(**args)
+    rejected_call = partial(
+        StorageRequest, proxy(), MetadataSource(), key, "image/png", credential=credential
+    )
     with pytest.raises(YorungeError):
-        StorageRequest(proxy(), MetadataSource(), key, "image/png", credential=credential)
+        rejected_call()
 
 
 @pytest.mark.parametrize(
@@ -263,8 +272,9 @@ def test_every_accepted_path_decode_layer_uses_the_literal_secret_rule(secret, l
     for _ in range(layers):
         decoded = unquote(decoded)
     assert decoded == secret  # Independent oracle, not the implementation parser.
+    rejected_call = partial(request, direct(ORIGIN + "/bucket/" + encoded), secret=secret)
     with pytest.raises(YorungeError) as failure:
-        request(direct(ORIGIN + "/bucket/" + encoded), secret=secret)
+        rejected_call()
     assert failure.value.code == "invalid_service_target"
     different = "%62"
     for _ in range(layers - 1):

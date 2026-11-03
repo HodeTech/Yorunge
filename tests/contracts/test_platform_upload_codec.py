@@ -1,6 +1,7 @@
 """Independent consumed-field, request and literal-secret boundaries; no live account."""
 
 import json
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -254,8 +255,9 @@ def test_owned_lookup_uses_exact_id_and_bounded_unchanged_segments():
     assert codec.detail_path(found, SECRET) == "datasets/sample-user/sample-dataset"
     assert codec.owned_match(encoded([{"id": OTHER}]), DATASET, SCOPE, PARAMETERS, SECRET) is None
     invalid = {**found.model_dump(), "slug": "../wrong"}
+    rejected_call = partial(LocatedDataset.model_validate_json, encoded(invalid))
     with pytest.raises(ValidationError):
-        LocatedDataset.model_validate_json(encoded(invalid))
+        rejected_call()
 
 
 @pytest.mark.parametrize("kind", ["owned", "membership"])

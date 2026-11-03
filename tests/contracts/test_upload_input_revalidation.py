@@ -1,6 +1,7 @@
 """Copied/constructed request inputs cannot emit their rejected values or warnings."""
 
 import warnings
+from functools import partial
 
 import pytest
 
@@ -54,7 +55,8 @@ def test_nested_plan_input_has_same_warning_free_boundary():
     )
     with warnings.catch_warnings(record=True) as observed:
         warnings.simplefilter("error")
+        rejected_call = partial(revalidate_input, type(PLAN), bad)
         with pytest.raises(YorungeError) as failure:
-            revalidate_input(type(PLAN), bad)
+            rejected_call()
     assert failure.value.code == "invalid_request" and observed == []
     assert failure.value.__context__ is None

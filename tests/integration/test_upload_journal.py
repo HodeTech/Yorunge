@@ -615,8 +615,9 @@ def test_other_stateful_call_observes_upload_frontier_before_clock_rollback(jour
     with open_store(journal.root) as store:
         after = StateCache(store, journal.clock).stamp()
         assert after.generation > observed.generation
+        rejected_call = partial(journal.repository(store).renew, record.operation_id, record.lease)
         with pytest.raises(YorungeError):
-            journal.repository(store).renew(record.operation_id, record.lease)
+            rejected_call()
         assert not read_view(store.connection, journal.plan.plan_id).intents
 
 
@@ -632,15 +633,17 @@ def test_stage_deadline_crossed_before_commit_rolls_back_intent(journal):
             return value
 
         repo._change = delay
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            record.lease,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(YorungeError) as failure:
-            repo.arm(
-                record.operation_id,
-                record.lease,
-                journal.plan,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         assert failure.value.code == "execution_timeout"
         assert not repo.show(operation_id=record.operation_id).intents
         assert not repo.show(operation_id=record.operation_id).operation.workflow_latched
@@ -908,15 +911,17 @@ def test_failure_after_intent_commit_preserves_unknown_id_and_blocks_replay(jour
             raise YorungeError("state_changed")
 
         monkeypatch.setattr(repo, "_finish", changed)
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            record.lease,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(YorungeError) as failure:
-            repo.arm(
-                record.operation_id,
-                record.lease,
-                journal.plan,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         assert failure.value.code == "operation_uncertain"
         assert failure.value.operation_id == record.operation_id
         view = repo.show(plan_id=journal.plan.plan_id)
@@ -978,8 +983,9 @@ def test_actual_global_cardinality_limits_preserve_all_existing_rows(journal, ki
         body["plan_id"] = str(uuid4())
         body["parameters"] = {**body["parameters"], "name": "one-too-many"}
         overflow = seal(body)
+        rejected_call = partial(journal.repository(store).save, overflow, journal.manifest)
         with pytest.raises(YorungeError) as failure:
-            journal.repository(store).save(overflow, journal.manifest)
+            rejected_call()
         assert failure.value.code == "upload_capacity_exceeded"
         assert capacity(c) == before
         store.verify()
@@ -1047,15 +1053,17 @@ def test_current_read_grant_can_renew_after_identity_changes(journal, change):
         assert changed.owner_id == lease.owner_id and changed.fence == lease.fence
         assert instant(changed.expires_at) > instant(lease.expires_at)
         assert upload_snapshot(store.connection, store.deadline) == before
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            changed,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(YorungeError):
-            repo.arm(
-                record.operation_id,
-                changed,
-                journal.plan,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         store.verify()
 
 
@@ -1092,15 +1100,17 @@ def test_reopened_repository_cannot_recreate_write_access_even_in_original_pid(j
             ),
         ):
             repo.write_access = access
+            rejected_call = partial(
+                repo.arm,
+                record.operation_id,
+                historical.lease,
+                journal.plan,
+                "project_link",
+                None,
+                total_end=journal.clock.monotonic() + 900,
+            )
             with pytest.raises(YorungeError) as failure:
-                repo.arm(
-                    record.operation_id,
-                    historical.lease,
-                    journal.plan,
-                    "project_link",
-                    None,
-                    total_end=journal.clock.monotonic() + 900,
-                )
+                rejected_call()
             assert failure.value.code == "operation_lease_lost"
         assert len(repo.show(plan_id=journal.plan.plan_id).intents) == 1
         store.verify()
@@ -1343,15 +1353,17 @@ def test_explicit_unknown_proofs_can_arm_once_without_fabricated_expiry(journal)
         assert intent.schema_version == 1 and record.schema_version == approval.schema_version == 2
         assert deadline > journal.clock.monotonic()
         permit.consume()
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            record.lease,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(YorungeError):
-            repo.arm(
-                record.operation_id,
-                record.lease,
-                journal.plan,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         saved = repo.show(plan_id=journal.plan.plan_id)
         assert len(saved.intents) == 1 and saved.plan.grant is saved.plan.cost_bound is None
         assert saved.plan.status == "attempt_ready" and saved.plan.risks == (
@@ -1389,15 +1401,17 @@ def test_explicit_policy_never_bypasses_current_known_negative_or_unavailable(
         check = repo.capture(journal.plan)
         failed = check.authorization.model_copy(update={"outcome": outcome, "error_code": code})
         check = check.model_copy(update={"authorization": failed})
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            record.lease,
+            check,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(YorungeError) as error:
-            repo.arm(
-                record.operation_id,
-                record.lease,
-                check,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         assert error.value.code == code and error.value.operation_id == record.operation_id
         assert repo.show(operation_id=record.operation_id).intents == ()
         store.verify()

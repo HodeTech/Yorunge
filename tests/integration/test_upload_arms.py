@@ -4,6 +4,7 @@ import copy
 import multiprocessing
 import pickle
 import threading
+from functools import partial
 from types import SimpleNamespace
 
 import pytest
@@ -175,15 +176,17 @@ def test_no_arm_escapes_failed_transaction_or_final_gate(journal, monkeypatch, f
             monkeypatch.setattr(repo, "_change", fail)
         elif failure == "finish":
             monkeypatch.setattr(repo, "_finish", fail)
+        rejected_call = partial(
+            repo.arm,
+            record.operation_id,
+            record.lease,
+            journal.plan,
+            "create",
+            None,
+            total_end=journal.clock.monotonic() + 900,
+        )
         with pytest.raises(OperationError) as raised:
-            repo.arm(
-                record.operation_id,
-                record.lease,
-                journal.plan,
-                "create",
-                None,
-                total_end=journal.clock.monotonic() + 900,
-            )
+            rejected_call()
         assert raised.value.code == (
             "state_changed" if failure == "transaction" else "operation_uncertain"
         )

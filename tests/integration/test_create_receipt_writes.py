@@ -5,6 +5,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
@@ -66,10 +67,14 @@ def test_new_v2_cannot_insert_new_v1_accepted_create(journal):
     with open_store(journal.root) as store:
         repo = journal.repository(store)
         before = repo.show(operation_id=record.operation_id).operation.encoded()
+        rejected_call = partial(
+            repo.receipt,
+            record.operation_id,
+            record.lease,
+            legacy_receipt(intent, record.created_at),
+        )
         with pytest.raises(OperationError) as raised:
-            repo.receipt(
-                record.operation_id, record.lease, legacy_receipt(intent, record.created_at)
-            )
+            rejected_call()
         assert (
             raised.value.code == "state_invalid"
             and raised.value.operation_id == record.operation_id
@@ -183,27 +188,33 @@ def test_legacy_nonterminal_cannot_obtain_new_rights(journal, phase):
     record, _ = historical_running(journal)
     with open_store(journal.root) as store:
         repo = journal.repository(store)
+        if phase == "preflight":
+            rejected_call = partial(
+                repo.require_created_baseline, record.operation_id, record.lease
+            )
+        elif phase == "renew":
+            rejected_call = partial(repo.renew, record.operation_id, record.lease)
+        elif phase == "read":
+            rejected_call = partial(
+                repo.acquire_read, record.operation_id, accept_unverified_read=True
+            )
+        elif phase == "proof":
+            rejected_call = partial(repo.verified, record.operation_id, record.lease, None)
+        elif phase == "read_failed":
+            rejected_call = partial(repo.read_failed, record.operation_id, record.lease, None)
+        else:
+            index = 0 if phase in {"presign", "put", "confirm"} else None
+            rejected_call = partial(
+                repo.arm,
+                record.operation_id,
+                record.lease,
+                journal.plan,
+                phase,
+                index,
+                total_end=journal.clock.monotonic() + 900,
+            )
         with pytest.raises(OperationError) as raised:
-            if phase == "preflight":
-                repo.require_created_baseline(record.operation_id, record.lease)
-            elif phase == "renew":
-                repo.renew(record.operation_id, record.lease)
-            elif phase == "read":
-                repo.acquire_read(record.operation_id, accept_unverified_read=True)
-            elif phase == "proof":
-                repo.verified(record.operation_id, record.lease, None)
-            elif phase == "read_failed":
-                repo.read_failed(record.operation_id, record.lease, None)
-            else:
-                index = 0 if phase in {"presign", "put", "confirm"} else None
-                repo.arm(
-                    record.operation_id,
-                    record.lease,
-                    journal.plan,
-                    phase,
-                    index,
-                    total_end=journal.clock.monotonic() + 900,
-                )
+            rejected_call()
         assert (
             raised.value.code == "operation_uncertain"
             and raised.value.operation_id == record.operation_id
@@ -351,40 +362,44 @@ def test_legacy_state_appearing_after_preflight_is_blocked_in_savepoint(
     monkeypatch.setattr(StateUploads, "require_created_baseline", raced)
     with open_store(journal.root) as store:
         repo = journal.repository(store)
-        with pytest.raises(OperationError) as raised:
-            if phase == "arm":
-                repo.arm(
-                    record.operation_id,
-                    record.lease,
-                    journal.plan,
-                    "project_link",
-                    None,
-                    total_end=journal.clock.monotonic() + 900,
-                )
-            elif phase == "renew":
-                repo.renew(record.operation_id, record.lease)
-            elif phase == "read":
-                repo.acquire_read(record.operation_id)
-            elif phase == "proof":
-                repo.verified(record.operation_id, record.lease, graph().verification)
-            else:
-                # A well-formed negative read check; the legacy gate precedes it.
-                from yorunge.domain.upload_checks import AuthorizationCheck
+        if phase == "arm":
+            rejected_call = partial(
+                repo.arm,
+                record.operation_id,
+                record.lease,
+                journal.plan,
+                "project_link",
+                None,
+                total_end=journal.clock.monotonic() + 900,
+            )
+        elif phase == "renew":
+            rejected_call = partial(repo.renew, record.operation_id, record.lease)
+        elif phase == "read":
+            rejected_call = partial(repo.acquire_read, record.operation_id)
+        elif phase == "proof":
+            rejected_call = partial(
+                repo.verified, record.operation_id, record.lease, graph().verification
+            )
+        else:
+            # A well-formed negative read check; the legacy gate precedes it.
+            from yorunge.domain.upload_checks import AuthorizationCheck
 
-                check = AuthorizationCheck(
-                    consumer_profile="evren-platform-observed-upload-v2",
-                    policy_version=2,
-                    action="read_created_dataset",
-                    scope=journal.plan.scope,
-                    dataset_id=DATASET,
-                    producer_id="fixture",
-                    producer_version="2",
-                    checked_at=timestamp(journal.clock.value),
-                    outcome="denied",
-                    grant=None,
-                    error_code="remote_access_denied",
-                )
-                repo.read_failed(record.operation_id, record.lease, check)
+            check = AuthorizationCheck(
+                consumer_profile="evren-platform-observed-upload-v2",
+                policy_version=2,
+                action="read_created_dataset",
+                scope=journal.plan.scope,
+                dataset_id=DATASET,
+                producer_id="fixture",
+                producer_version="2",
+                checked_at=timestamp(journal.clock.value),
+                outcome="denied",
+                grant=None,
+                error_code="remote_access_denied",
+            )
+            rejected_call = partial(repo.read_failed, record.operation_id, record.lease, check)
+        with pytest.raises(OperationError) as raised:
+            rejected_call()
         assert raised.value.code == "operation_uncertain"
         found = repo.show(operation_id=record.operation_id)
         assert len(found.intents) == len(found.receipts) == 1

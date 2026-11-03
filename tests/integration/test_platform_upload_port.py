@@ -8,6 +8,7 @@ import pickle
 import socket
 import time
 from dataclasses import replace
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -229,8 +230,9 @@ def test_real_effect_status_never_retries_or_manufactures_rejection(
     ) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert raised.value.code == code
             assert raised.value.__cause__ is raised.value.__context__ is None
             assert not instances[0]._responses and instances[0]._slots._value == 2
@@ -259,8 +261,9 @@ def test_real_malformed_compressed_truncated_create_is_no_replay(journal, certif
     with TlsServer(certificates, {"/api/v1/datasets": reply}) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError):
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert len(server.requests) == 1
     assert value.snapshot().effect_attempts == 1 and value.snapshot().response_pending == 0
@@ -298,8 +301,9 @@ def test_wrong_arm_or_extended_tuple_is_zero_wire_and_does_not_consume_permit(
     with TlsServer(certificates, {}) as server:
         owned, _ = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, supplied))
             with pytest.raises(YorungeError):
-                owned.exchange(lambda client: call.execute(client, supplied))
+                rejected_call()
         assert not server.requests
     assert value.snapshot().effect_attempts == value.snapshot().create_requests == 0
     assert value.snapshot().project_link_requests == value.snapshot().response_pending == 0
@@ -319,8 +323,9 @@ def test_unstarted_call_close_refunds_and_call_reuse_cannot_dispatch(journal, ce
         owned, _ = session(server, key, value)
         with owned:
             owned.exchange(lambda client: call.execute(client, arm))
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError):
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
         assert len(server.requests) == 1
     assert value.snapshot().create_requests == value.snapshot().effect_attempts == 1
 
@@ -436,8 +441,9 @@ def test_stage_specific_invalid_body_never_produces_an_accepted_receipt(
     with TlsServer(certificates, {"/api/v1/" + call._request.endpoint: Reply(body=raw)}) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert raised.value.code == "invalid_response"
             assert key.secret.reveal() not in str(raised.value) + repr(raised.value)
             assert not instances[0]._responses and instances[0]._slots._value == 2
@@ -481,8 +487,9 @@ def test_other_client_is_zero_wire_and_releases_only_its_own_reservation(
             foreign_budget if mismatch == "budget" else value,
         )
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert raised.value.code == "invalid_request"
         assert not server.requests
     assert value.snapshot().create_requests == value.snapshot().effect_attempts == 0
@@ -511,8 +518,9 @@ def test_short_issued_deadline_reaches_actual_network_without_extension(journal,
     ) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert raised.value.code == "transport_timeout"
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert len(server.requests) == 1
@@ -524,8 +532,9 @@ def test_file_batch_is_bounded_and_foreign_or_nested_mutated_context_is_rejected
     port, _, value = setup(journal)
     files = port.files(record.operation_id, DATASET)
     assert port.files(record.operation_id, DATASET) is files
+    rejected_call = partial(port.files, str(uuid4()), DATASET)
     with pytest.raises(YorungeError):
-        port.files(str(uuid4()), DATASET)
+        rejected_call()
     foreign, _, _ = setup(journal)
     other = foreign.files(record.operation_id, DATASET)[0]
     with pytest.raises(YorungeError):
@@ -574,8 +583,9 @@ def test_prepared_presign_cannot_accept_a_mutated_nested_file(journal, certifica
     with TlsServer(certificates, {path: changed_response}) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(lambda client: call.execute(client, arm))
+                rejected_call()
             assert raised.value.code == "invalid_request"
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert len(server.requests) == int(timing == "during_response")

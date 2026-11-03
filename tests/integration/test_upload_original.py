@@ -2,6 +2,7 @@
 
 import asyncio
 import socket
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -167,13 +168,15 @@ def test_pre_admission_rejection_has_no_write_or_operation(prepared_input, certi
             "input": "input_changed",
             "scope": "state_changed",
         }[failure]
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            data[0],
+            denied if failure in {"approval", "draft"} else loader(data),
+            session_factory=factory(server),
+        )
         with pytest.raises(YorungeError) as raised:
-            create_link_original(
-                plan.plan_id,
-                data[0],
-                denied if failure in {"approval", "draft"} else loader(data),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == expected
         assert len(server.requests) == before and not provider.created
     with open_existing_store(prepared_input[0]) as store:
@@ -201,13 +204,15 @@ def test_post_intent_failure_is_same_id_unknown_and_never_replays(
         provider.after_create = lambda: (prepared_input[1] / "one.bin").write_bytes(b"mutated!")
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
         assert raised.value.operation_id is not None and raised.value.reason_code is not None
         assert raised.value.__cause__ is raised.value.__context__ is None
@@ -233,8 +238,11 @@ def test_active_loop_rejects_before_store_or_loader(prepared_input, monkeypatch)
     monkeypatch.setattr(upload_original, "open_existing_store", denied)
 
     async def run():
+        rejected_call = partial(
+            create_link_original, str(uuid4()), prepared_input[0], denied, session_factory=denied
+        )
         with pytest.raises(YorungeError) as raised:
-            create_link_original(str(uuid4()), prepared_input[0], denied, session_factory=denied)
+            rejected_call()
         assert raised.value.code == "invalid_request"
 
     asyncio.run(run())
@@ -280,13 +288,15 @@ def test_failed_marker_preserves_old_state_and_reason_without_claiming_unknown(
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
         monkeypatch.setattr(StateUploads, "stop_local", unavailable)
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain"
         assert raised.value.reason_code == "state_write_failed"
         assert raised.value.__cause__ is raised.value.__context__ is None
@@ -310,13 +320,15 @@ def test_committed_create_receipt_survives_caller_failure_without_new_link(
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
         monkeypatch.setattr(StateUploads, "receipt", lost_reply)
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert (
             raised.value.code == "operation_uncertain"
             and raised.value.reason_code == "state_write_failed"
@@ -344,13 +356,15 @@ def test_real_task_cancellation_after_create_propagates_with_local_recovery_reco
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
         monkeypatch.setattr(upload_original._Call, "execute", cancel_after_response)
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(asyncio.CancelledError):
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert provider.create_calls == 1 and provider.link_calls == 0
         found = create_link_original(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
@@ -394,13 +408,15 @@ def test_known_current_denial_is_not_an_explicit_attempt_fallback(prepared_input
         plan = approved(prepared_input, server)
         before = len(server.requests)
         server.routes["/api/v1/auth/me"] = Reply(status=403, body=b"private-access-denied")
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server, budgets),
+        )
         with pytest.raises(YorungeError) as raised:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server, budgets),
-            )
+            rejected_call()
         assert raised.value.code == "remote_access_denied" and raised.value.exit_code == 3
         assert len(server.requests) == before + 1 and provider.create_calls == 0
         assert budgets[0].snapshot().effect_attempts == 0
@@ -420,13 +436,15 @@ def test_revoke_after_armed_create_preserves_receipt_but_blocks_new_link(
                 StateUploads(store).revoke(plan.plan_id, plan.digest)
 
         provider.after_create = revoke
+        rejected_call = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain"
         assert provider.create_calls == 1 and provider.link_calls == 0
     with open_existing_store(prepared_input[0]) as store:
@@ -473,13 +491,15 @@ def test_namespace_race_does_not_mark_another_operations_state(
             return original_admit(repository, plan_id, check)
 
         monkeypatch.setattr(StateUploads, "admit", race)
+        rejected_call = partial(
+            create_link_original,
+            second.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            create_link_original(
-                second.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_conflict" and raised.value.exit_code == 2
         assert raised.value.operation_id == winners[0].operation_id
         assert provider.create_calls == provider.link_calls == 0
@@ -492,6 +512,9 @@ def test_namespace_race_does_not_mark_another_operations_state(
 
 def test_missing_store_is_not_initialized_and_loader_is_not_called(tmp_path):
     root = tmp_path / "missing"
+    rejected_call = partial(
+        create_link_original, str(uuid4()), root, denied, session_factory=denied
+    )
     with pytest.raises(YorungeError) as raised:
-        create_link_original(str(uuid4()), root, denied, session_factory=denied)
+        rejected_call()
     assert raised.value.code == "state_invalid" and not root.exists()

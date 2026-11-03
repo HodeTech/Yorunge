@@ -3,6 +3,7 @@
 import hashlib
 import json
 from datetime import timedelta
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -129,10 +130,15 @@ def test_late_accepted_receipt_cannot_reopen_write_after_uncertain_verification(
     proof = metadata_proof(journal)
     with open_store(journal.root) as store:
         repo = journal.repository(store)
+        rejected_call = partial(
+            repo.verified,
+            record.operation_id,
+            record.lease,
+            proof,
+            authorization=read_check(journal),
+        )
         with pytest.raises(YorungeError) as failed:
-            repo.verified(
-                record.operation_id, record.lease, proof, authorization=read_check(journal)
-            )
+            rejected_call()
         assert failed.value.code == "operation_uncertain"
         assert repo.show(operation_id=record.operation_id).operation.status == "unknown"
         store.verify()
@@ -259,10 +265,15 @@ def test_initial_owner_with_no_authority_ack_cannot_infer_explicit_read_from_unp
     )
     with open_store(journal.root) as store:
         repo = journal.repository(store)
+        rejected_call = partial(
+            repo.verified,
+            record.operation_id,
+            record.lease,
+            explicit,
+            authorization=read_check(journal),
+        )
         with pytest.raises(YorungeError) as error:
-            repo.verified(
-                record.operation_id, record.lease, explicit, authorization=read_check(journal)
-            )
+            rejected_call()
         assert error.value.code == "approval_required"
         assert repo.show(operation_id=record.operation_id).verification is None
 
@@ -272,10 +283,15 @@ def test_revoked_initial_approval_blocks_owner_but_not_new_explicit_read_takeove
     with open_store(journal.root) as store:
         repo = journal.repository(store)
         repo.revoke(journal.plan.plan_id, journal.plan.digest)
+        rejected_call = partial(
+            repo.verified,
+            record.operation_id,
+            record.lease,
+            proof,
+            authorization=read_check(journal),
+        )
         with pytest.raises(YorungeError) as error:
-            repo.verified(
-                record.operation_id, record.lease, proof, authorization=read_check(journal)
-            )
+            rejected_call()
         assert error.value.code == "approval_required"
     journal.clock.value += timedelta(seconds=151)
     with open_store(journal.root) as store:
@@ -383,10 +399,15 @@ def test_partial_graph_with_all_existing_receipts_accepted_and_matching_metadata
     record, proof = complete(journal, skip_last=True)
     with open_store(journal.root) as store:
         repo = journal.repository(store)
+        rejected_call = partial(
+            repo.verified,
+            record.operation_id,
+            record.lease,
+            proof,
+            authorization=read_check(journal),
+        )
         with pytest.raises(YorungeError) as error:
-            repo.verified(
-                record.operation_id, record.lease, proof, authorization=read_check(journal)
-            )
+            rejected_call()
         assert error.value.code == "operation_uncertain"
         found = repo.show(operation_id=record.operation_id)
         assert len(found.intents) == 10 and all(r.result == "accepted" for r in found.receipts)

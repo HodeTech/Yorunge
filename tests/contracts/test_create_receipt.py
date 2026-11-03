@@ -3,6 +3,7 @@
 import hashlib
 import json
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -49,8 +50,9 @@ def test_literal_receipt_separate_closed_model_and_canonical_union():
     # The canonical original fixture byte sequence is not rewritten.
     legacy = graph().receipts[0]
     assert decode_versioned(StageReceipt, CreateReceiptV2, legacy.encoded().decode()) == legacy
+    rejected_call = partial(decode, StageReceipt, GOLDEN.decode())
     with pytest.raises(YorungeError) as raised:
-        decode(StageReceipt, GOLDEN.decode())
+        rejected_call()
     assert raised.value.code == "state_invalid"
 
 
@@ -100,8 +102,9 @@ def test_receipt_invalid_fields_and_identity(field, value):
 def test_no_implicit_defaults_for_nullable_or_required_fields(field):
     body = json.loads(GOLDEN)
     del body[field]
+    rejected_call = partial(CreateReceiptV2.model_validate_json, canonical(body))
     with pytest.raises(ValueError):
-        CreateReceiptV2.model_validate_json(canonical(body))
+        rejected_call()
 
 
 @pytest.mark.parametrize(
@@ -149,8 +152,9 @@ def test_structural_plan_and_selected_owner_binding(field, value):
     with pytest.raises(ValueError):
         validate_create_receipt(view.plan, view.intents[0], changed)
     candidate = replace(view, receipts=(changed, *view.receipts[1:]))
+    rejected_call = partial(validate_graph, candidate, manifest())
     with pytest.raises(YorungeError) as raised:
-        validate_graph(candidate, manifest())
+        rejected_call()
     assert raised.value.code == "state_invalid"
 
 
@@ -169,10 +173,14 @@ def test_wrong_intent_kind_and_legacy_family_rejected():
         (FIXTURES / "dataset-upload-plan-v1.json").read_bytes()
     )
     for plan, intent in [(view.plan, view.intents[1]), (legacy_plan, view.intents[0])]:
+        rejected_call = partial(validate_create_receipt, plan, intent, receipt())
         with pytest.raises(ValueError):
-            validate_create_receipt(plan, intent, receipt())
+            rejected_call()
+    rejected_call = partial(
+        require_legacy_view, VersionedTransferView(legacy_plan, None, None, receipts=(receipt(),))
+    )
     with pytest.raises(YorungeError) as raised:
-        require_legacy_view(VersionedTransferView(legacy_plan, None, None, receipts=(receipt(),)))
+        rejected_call()
     assert raised.value.code == "state_invalid"
 
 
@@ -188,8 +196,11 @@ def test_new_receipt_terminal_graph_and_legacy_terminal_are_both_valid():
 def test_receipt_for_another_canonical_intent_is_orphan_in_graph():
     view = graph()
     changed = receipt(intent_id=OTHER)
+    rejected_call = partial(
+        validate_graph, replace(view, receipts=(changed, *view.receipts[1:])), manifest()
+    )
     with pytest.raises(YorungeError) as raised:
-        validate_graph(replace(view, receipts=(changed, *view.receipts[1:])), manifest())
+        rejected_call()
     assert raised.value.code == "state_invalid"
 
 
@@ -214,8 +225,9 @@ def test_receipt_wire_decoder_limit_and_canonical_storage(size):
     else:
         with pytest.raises(ValueError):
             CreateReceiptV2.model_validate_json(raw)
+    rejected_call = partial(decode_versioned, StageReceipt, CreateReceiptV2, raw.decode())
     with pytest.raises(YorungeError) as raised:
-        decode_versioned(StageReceipt, CreateReceiptV2, raw.decode())
+        rejected_call()
     assert raised.value.code == "state_invalid"
 
 

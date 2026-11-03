@@ -4,6 +4,7 @@ import asyncio
 import pickle
 import time
 from datetime import timedelta
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -168,15 +169,17 @@ def test_mandatory_read_source_error_keeps_its_code_and_read_unavailable_marker(
         _, operation_id = ready(prepared_input, server, execution_clock)
         before = len(server.requests)
         routes["/api/v1/datasets/test-user/test-dataset"] = Reply(status=status, body=b"{}")
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(OperationError) as raised:
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         assert raised.value.code == codes[status] and raised.value.exit_code == (
             3 if status < 404 else 1
         )
@@ -272,15 +275,17 @@ def test_actual_cancel_during_probe_closes_session_without_changing_execution_st
             before = StateUploads(store).show(operation_id=operation_id)
         count = len(server.requests)
         monkeypatch.setattr(_ReadEnvironment, "observe", observe)
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(asyncio.CancelledError):
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         assert len(server.requests) == count + 1
         assert server.requests[-1].method == "GET"
     with open_existing_store(prepared_input[0]) as store:
@@ -291,10 +296,16 @@ def test_actual_cancel_during_probe_closes_session_without_changing_execution_st
 def test_missing_store_never_initializes_or_loads_context(tmp_path, monkeypatch):
     missing = tmp_path / "missing"
     monkeypatch.setattr(EnvSecretReader, "read", denied)
+    rejected_call = partial(
+        probe_reconciliation,
+        str(uuid4()),
+        missing,
+        denied,
+        accept_unverified_read=True,
+        session_factory=denied,
+    )
     with pytest.raises(OperationError) as raised:
-        probe_reconciliation(
-            str(uuid4()), missing, denied, accept_unverified_read=True, session_factory=denied
-        )
+        rejected_call()
     assert raised.value.code == "state_invalid" and not missing.exists()
     assert raised.value.__cause__ is raised.value.__context__ is None
 
@@ -311,15 +322,17 @@ def test_discarded_provider_metadata_secret_never_reaches_error_chain_or_repr(
         routes["/api/v1/datasets/test-user/test-dataset"] = lambda request, count: reply(
             {**provider.dataset(), "unused": {"nested": SECRET}}
         )
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(OperationError) as raised:
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         assert raised.value.code == "invalid_response" and raised.value.exit_code == 1
         assert SECRET not in str(raised.value) and SECRET not in repr(raised.value.envelope())
         assert raised.value.__cause__ is raised.value.__context__ is None
@@ -341,15 +354,17 @@ def test_read_failure_revalidates_current_credential_even_with_existing_marker(
         _, operation_id = ready(prepared_input, server, execution_clock)
         if existing_marker:
             routes[detail] = Reply(status=403, body=b"{}")
+            rejected_call = partial(
+                probe_reconciliation,
+                operation_id,
+                prepared_input[0],
+                loader(prepared_input),
+                accept_unverified_read=True,
+                session_factory=factory(server),
+                clock=execution_clock,
+            )
             with pytest.raises(OperationError) as initial:
-                probe_reconciliation(
-                    operation_id,
-                    prepared_input[0],
-                    loader(prepared_input),
-                    accept_unverified_read=True,
-                    session_factory=factory(server),
-                    clock=execution_clock,
-                )
+                rejected_call()
             assert initial.value.code == "remote_access_denied"
 
         def rotated(request, count):
@@ -359,15 +374,17 @@ def test_read_failure_revalidates_current_credential_even_with_existing_marker(
 
         routes[detail] = rotated
         count = len(server.requests)
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(OperationError) as raised:
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         assert raised.value.code == "state_changed" and raised.value.exit_code == 2
         assert raised.value.reason_code == "remote_access_denied"
         assert raised.value.operation_id == operation_id
@@ -402,15 +419,17 @@ def test_final_local_phase_cannot_return_expired_positive_observation(
         _, operation_id = ready(prepared_input, server, execution_clock)
         monkeypatch.setattr(_ReadEnvironment, "inspect", inspect)
         count = len(server.requests)
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(OperationError) as raised:
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         expected = "execution_timeout" if expired == "budget" else "upload_plan_not_valid"
         assert raised.value.code == expected and raised.value.exit_code == 2
         assert raised.value.operation_id == operation_id
@@ -441,15 +460,17 @@ def test_source_negative_at_budget_end_keeps_source_error(
         _, operation_id = ready(prepared_input, server, execution_clock)
         routes["/api/v1/datasets/test-user/test-dataset"] = Reply(status=status, body=b"{}")
         monkeypatch.setattr(ObservedUploadReader, "read_authorization", read)
+        rejected_call = partial(
+            probe_reconciliation,
+            operation_id,
+            prepared_input[0],
+            loader(prepared_input),
+            accept_unverified_read=True,
+            session_factory=factory(server),
+            clock=execution_clock,
+        )
         with pytest.raises(OperationError) as raised:
-            probe_reconciliation(
-                operation_id,
-                prepared_input[0],
-                loader(prepared_input),
-                accept_unverified_read=True,
-                session_factory=factory(server),
-                clock=execution_clock,
-            )
+            rejected_call()
         assert raised.value.code == code and raised.value.exit_code == (3 if status == 403 else 1)
         assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None

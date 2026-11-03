@@ -6,6 +6,7 @@ import logging
 import socket
 import time
 from datetime import UTC, datetime, timedelta
+from functools import partial
 
 import httpcore
 import pytest
@@ -199,8 +200,9 @@ def test_expired_or_insufficient_url_expiry_has_zero_tcp_and_http(tmp_path, cert
         owned, network, _ = session(key, certificates, {"storage.localhost": server})
         body = source(tmp_path)
         request = direct(body, key, expiry=timestamp(NOW + timedelta(seconds=seconds)))
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, request))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, request))
+            rejected_call()
         assert failure.value.code == "transport_timeout"
         assert not network.connections and not server.requests
         assert body._file_fd is None and body.sent_bytes == 0
@@ -220,8 +222,9 @@ def test_effect_http_failure_never_retries_redirects_or_proxy_fallback(
     with TlsServer(certificates, {path: reply}) as server:
         owned, network, _ = session(key, certificates, {"storage.localhost": server})
         body = source(tmp_path)
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, direct(body, key)))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, direct(body, key)))
+            rejected_call()
         assert failure.value.code in {
             "remote_failed",
             "remote_rate_limited",
@@ -246,8 +249,9 @@ def test_raw_response_guards_and_cleanup(tmp_path, certificates, reply):
     with TlsServer(certificates, {"/bucket/object" + SIGNED_QUERY: reply}) as server:
         owned, _, instances = session(key, certificates, {"storage.localhost": server})
         body = source(tmp_path)
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, direct(body, key)))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, direct(body, key)))
+            rejected_call()
         assert failure.value.code in {"invalid_response", "transport_failed"}
         assert body._file_fd is None and len(instances[0]._responses) == 0
         assert instances[0]._slots._value == 2
@@ -284,8 +288,9 @@ def test_prepared_wire_changes_fail_before_dns_or_source_read(
     with TlsServer(certificates, {}) as server:
         owned, network, _ = session(key, certificates, {"storage.localhost": server})
         monkeypatch.setattr(storage_transport.httpx, "Request", changed)
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, request))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, request))
+            rejected_call()
         assert failure.value.code == "invalid_service_target"
         assert not server.requests and not network.connections
         assert body.sent_bytes == 0 and body._file_fd is None
@@ -296,8 +301,9 @@ def test_presign_response_cannot_add_storage_origin_to_owned_session(tmp_path, c
     with TlsServer(certificates, {}) as server:
         owned, network, _ = session(key, certificates, {"storage.localhost": server}, origins=())
         body = source(tmp_path)
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, direct(body, key)))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, direct(body, key)))
+            rejected_call()
         assert failure.value.code == "invalid_service_target"
         assert not server.requests and not network.connections and body.sent_bytes == 0
 
@@ -413,9 +419,14 @@ def test_two_storage_calls_and_service_call_share_two_slots(tmp_path, certificat
                 request = HttpRequest(
                     API, "GET", "check", credential=key, read_only=True, service_id="evren-platform"
                 )
-                with pytest.raises(YorungeError) as failure:
-                    async with transport.open(request, deadline=time.monotonic() + 3):
+                deadline = time.monotonic() + 3
+
+                async def acquire_third_slot():
+                    async with transport.open(request, deadline=deadline):
                         pytest.fail("third request acquired a separate slot")
+
+                with pytest.raises(YorungeError) as failure:
+                    await acquire_third_slot()
                 assert failure.value.code == "transport_timeout"
                 assert api.requests == [] and len(network.connections) == 2
             finally:
@@ -547,8 +558,9 @@ def test_source_change_has_no_confirm_or_automatic_retry(tmp_path, certificates,
     monkeypatch.setattr(storage_source.os, "read", edit_after_first_read)
     with TlsServer(certificates, {"/bucket/object" + SIGNED_QUERY: Reply()}) as server:
         owned, network, _ = session(key, certificates, {"storage.localhost": server})
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, direct(body, key)))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, direct(body, key)))
+            rejected_call()
         assert failure.value.code == "input_changed"
         assert body._file_fd is None and not body.complete
         assert len(network.connections) == 1
@@ -646,8 +658,9 @@ def test_mutated_source_metadata_cannot_change_prepared_content_length(tmp_path,
     wrapped.size += 1
     with TlsServer(certificates, {}) as server:
         owned, network, _ = session(key, certificates, {"storage.localhost": server})
+        rejected_call = partial(owned.exchange, lambda transport: put(transport, request))
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda transport: put(transport, request))
+            rejected_call()
         assert failure.value.code == "input_changed"
         assert dict(request.public_headers())["Content-Length"] == str(base.size)
         assert not network.connections and not server.requests and base.sent_bytes == 0

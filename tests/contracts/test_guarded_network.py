@@ -2,6 +2,7 @@
 
 import asyncio
 import ssl
+from functools import partial
 
 import httpcore
 import pytest
@@ -147,8 +148,9 @@ def test_another_public_dns_answer_cannot_replace_the_selected_peer(changed_at):
             stream.peer = ("1.1.1.1", 443)
         await tls.write(b"must never be sent")
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(run())
+        rejected_call()
     assert failure.value.code == "invalid_service_target"
     assert connector.calls == [("8.8.8.8", 443)] and stream.closed
     assert stream.writes == []
@@ -175,8 +177,9 @@ def test_mixed_private_or_unbounded_dns_is_rejected_before_tcp(answers):
             "storage.example", 443
         )
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(run())
+        rejected_call()
     assert failure.value.code == "invalid_service_target"
     assert connector.calls == []
 
@@ -194,8 +197,9 @@ def test_actual_unapproved_peer_closes_before_http_bytes(peer):
             "storage.example", 443
         )
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError):
-        asyncio.run(run())
+        rejected_call()
     assert stream.closed and stream.writes == []
 
 
@@ -203,8 +207,9 @@ def test_peer_change_after_validation_is_rejected_on_pool_reuse_write():
     stream = Stream()
     guarded = GuardedStream(stream, "storage.example", frozenset({"8.8.8.8"}), public_address)
     stream.peer = ("127.0.0.1", 443)
+    rejected_call = partial(asyncio.run, guarded.write(b"must never reach peer"))
     with pytest.raises(YorungeError):
-        asyncio.run(guarded.write(b"must never reach peer"))
+        rejected_call()
     assert stream.closed and stream.writes == []
 
 
@@ -218,8 +223,9 @@ def test_tls_original_host_and_certificate_verification_are_required(mode):
         host = "other.example"
     else:
         context.check_hostname = False
+    rejected_call = partial(asyncio.run, guarded.start_tls(context, host))
     with pytest.raises(YorungeError):
-        asyncio.run(guarded.start_tls(context, host))
+        rejected_call()
     assert stream.closed and stream.sni is None and stream.writes == []
 
 
@@ -235,8 +241,9 @@ def test_dns_and_connect_share_one_phase_deadline():
             "storage.example", 443, timeout=0.01
         )
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(httpcore.ConnectTimeout):
-        asyncio.run(run())
+        rejected_call()
     assert connector.calls == []
 
 
@@ -287,6 +294,7 @@ def test_invalid_connect_timeout_never_resolves_or_connects(timeout):
     async def run():
         await GuardedBackend(resolver=resolver).connect_tcp("storage.example", 443, timeout=timeout)
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(run())
+        rejected_call()
     assert failure.value.code == "invalid_request" and not called

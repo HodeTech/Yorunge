@@ -7,6 +7,7 @@ import os
 import socket
 import time
 from datetime import UTC, datetime, timedelta
+from functools import partial
 
 import httpcore
 import httpx
@@ -198,10 +199,12 @@ def test_real_read_retry_and_post_single_attempt_share_one_client_pool(certifica
             )
             effect = request(key, effect=True, body=b'{"private":true}')
             permit = DispatchPermit(os.getpid)
+            rejected_call = partial(
+                owned.exchange,
+                lambda client: get(client, effect, claim(value, effect), permit=permit),
+            )
             with pytest.raises(YorungeError) as error:
-                owned.exchange(
-                    lambda client: get(client, effect, claim(value, effect), permit=permit)
-                )
+                rejected_call()
             assert error.value.code == "remote_failed"
             assert len(instances) == 1 and not instances[0]._responses
             assert instances[0]._slots._value == 2
@@ -306,8 +309,11 @@ def test_invalid_deadline_cannot_hide_behind_budget_minimum(certificates, deadli
     reserved = claim(value, wanted)
     with TlsServer(certificates, {}) as server:
         owned, _ = session(server, key, value)
+        rejected_call = partial(
+            owned.exchange, lambda client: get(client, wanted, reserved, deadline=deadline)
+        )
         with owned, pytest.raises(YorungeError) as error:
-            owned.exchange(lambda client: get(client, wanted, reserved, deadline=deadline))
+            rejected_call()
         assert error.value.code == "invalid_request"
         assert server.requests == []
     assert value.snapshot().read_requests == value.snapshot().response_pending == 0
@@ -318,8 +324,11 @@ def test_real_response_overflow_releases_capacity_without_refunding_request(cert
     wanted = request(key, maximum=3)
     with TlsServer(certificates, {"/api/v1/auth/me": Reply(body=b"four")}) as server:
         owned, instances = session(server, key, value)
+        rejected_call = partial(
+            owned.exchange, lambda client: get(client, wanted, claim(value, wanted))
+        )
         with owned, pytest.raises(YorungeError) as error:
-            owned.exchange(lambda client: get(client, wanted, claim(value, wanted)))
+            rejected_call()
         assert error.value.code == "invalid_response"
         assert instances[0]._slots._value == 2 and not instances[0]._responses
         assert len(server.requests) == 1
@@ -462,11 +471,13 @@ def test_lowlevel_call_context_is_not_a_reusable_bypass(change):
                 wire = httpx.Request("GET", wanted.url, headers=wanted.wire_headers(), content=b"x")
             elif change == "headers":
                 wire.headers["X-API-Key"] = "another-key"
+            rejected_call = (
+                partial(asyncio.create_task, low.handle_async_request(wire))
+                if change == "child_task"
+                else partial(low.handle_async_request, wire)
+            )
             with pytest.raises(YorungeError) as error:
-                if change == "child_task":
-                    await asyncio.create_task(low.handle_async_request(wire))
-                else:
-                    await low.handle_async_request(wire)
+                await rejected_call()
             assert error.value.code == "invalid_request"
         finally:
             CURRENT_CALL.reset(token)
@@ -490,15 +501,17 @@ def test_raw_response_faults_preserve_attempt_and_cleanup(certificates, fault):
     with TlsServer(certificates, {"/api/v1/auth/me": replies[fault]}) as server:
         owned, instances = session(server, key, value)
         wanted = request(key)
+        rejected_call = partial(
+            owned.exchange,
+            lambda client: get(
+                client,
+                wanted,
+                claim(value, wanted),
+                deadline=time.monotonic() + (0.05 if fault == "timeout" else 3),
+            ),
+        )
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(
-                lambda client: get(
-                    client,
-                    wanted,
-                    claim(value, wanted),
-                    deadline=time.monotonic() + (0.05 if fault == "timeout" else 3),
-                )
-            )
+            rejected_call()
         expected = {
             "compressed": "invalid_response",
             "timeout": "transport_timeout",
@@ -526,8 +539,11 @@ def test_real_put_failure_has_one_attempt_no_replay_and_closes_source(
     ) as server:
         owned, instances = session(server, key, value)
         reserved = value.reserve("put", upload_bytes=base.size, response_bytes=65_536)
+        rejected_call = partial(
+            owned.exchange, lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
+        )
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid)))
+            rejected_call()
         assert (
             failure.value.code
             == {
@@ -580,8 +596,11 @@ def test_storage_preflight_rejection_closes_lazy_source_without_socket(tmp_path,
     reserved = value.reserve("put", upload_bytes=base.size - 1, response_bytes=65_536)
     with TlsServer(certificates, {}) as server:
         owned, _ = session(server, key, value)
+        rejected_call = partial(
+            owned.exchange, lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
+        )
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid)))
+            rejected_call()
         assert failure.value.code == "invalid_request" and server.requests == []
     assert base._closed and base._file_fd is None
     reserved.finish()
@@ -602,13 +621,15 @@ def test_connect_failure_counts_physical_attempts_and_erases_private_exception(e
         async with UploadHttpxTransport(
             key, value, transport=httpx.MockTransport(handler)
         ) as client:
+            rejected_call = partial(
+                get,
+                client,
+                wanted,
+                claim(value, wanted),
+                permit=DispatchPermit(os.getpid) if effect else None,
+            )
             with pytest.raises(YorungeError) as failure:
-                await get(
-                    client,
-                    wanted,
-                    claim(value, wanted),
-                    permit=DispatchPermit(os.getpid) if effect else None,
-                )
+                await rejected_call()
             assert failure.value.code == "transport_failed"
             assert failure.value.__context__ is None and failure.value.__cause__ is None
             assert "PRIVATE-CONNECT-EXCEPTION-CANARY" not in str(failure.value.envelope())
@@ -661,11 +682,13 @@ def test_nested_unmetered_entrypoints_cannot_borrow_active_read_claim(certificat
             async with client.open_budgeted(
                 wanted, claim(value, wanted), deadline=time.monotonic() + 3
             ) as response:
+                rejected_call = partial(client.open, wanted, deadline=time.monotonic() + 3)
                 with pytest.raises(YorungeError) as failure:
-                    client.open(wanted, deadline=time.monotonic() + 3)
+                    rejected_call()
                 assert failure.value.code == "invalid_request"
+                rejected_call = partial(client.open_storage, None, deadline=time.monotonic() + 3)
                 with pytest.raises(YorungeError) as failure:
-                    client.open_storage(None, deadline=time.monotonic() + 3)
+                    rejected_call()
                 assert failure.value.code == "invalid_request"
                 return b"".join([part async for part in response.chunks()])
 
@@ -692,8 +715,11 @@ def test_real_wire_stream_mutation_is_rejected_before_permit_and_socket(certific
     monkeypatch.setattr(UploadHttpxTransport, "_wire_request", staticmethod(changed))
     with TlsServer(certificates, {}) as server:
         owned, _ = session(server, key, value)
+        rejected_call = partial(
+            owned.exchange, lambda client: get(client, wanted, claim(value, wanted), permit=permit)
+        )
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(lambda client: get(client, wanted, claim(value, wanted), permit=permit))
+            rejected_call()
         assert failure.value.code == "invalid_request" and server.requests == []
     assert value.snapshot().effect_attempts == value.snapshot().create_requests == 0
     permit.consume()  # Guard failure did not consume the effect capability.
@@ -713,8 +739,9 @@ def test_not_entered_or_closed_storage_client_still_closes_source(tmp_path, ente
         if entered:
             async with client:
                 pass
+        rejected_call = partial(put, client, wanted, reserved, DispatchPermit(os.getpid))
         with pytest.raises(YorungeError) as failure:
-            await put(client, wanted, reserved, DispatchPermit(os.getpid))
+            await rejected_call()
         assert failure.value.code == "invalid_request"
 
     asyncio.run(run())
@@ -747,14 +774,21 @@ def test_total_budget_and_shorter_network_deadline_have_distinct_safe_errors(
             key, value, transport=httpx.MockTransport(handler)
         ) as client:
             deadline = time.monotonic() + (1 if total_first else 0.05)
+            permit = DispatchPermit(os.getpid)
+
+            async def storage_response():
+                async with client.open_storage_budgeted(
+                    wanted, reserved, deadline=deadline, permit=permit
+                ):
+                    pytest.fail("deadline must interrupt response")
+
+            rejected_call = (
+                storage_response
+                if storage_call
+                else partial(get, client, wanted, reserved, deadline=deadline)
+            )
             with pytest.raises(YorungeError) as failure:
-                if storage_call:
-                    async with client.open_storage_budgeted(
-                        wanted, reserved, deadline=deadline, permit=DispatchPermit(os.getpid)
-                    ):
-                        pytest.fail("deadline must interrupt response")
-                else:
-                    await get(client, wanted, reserved, deadline=deadline)
+                await rejected_call()
             assert failure.value.code == (
                 "execution_timeout" if total_first else "transport_timeout"
             )
@@ -806,10 +840,12 @@ def test_direct_storage_keeps_explicit_origin_policy_and_no_credentials(
                     == b"{}"
                 )
             else:
+                rejected_call = partial(
+                    owned.exchange,
+                    lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid)),
+                )
                 with pytest.raises(YorungeError) as failure:
-                    owned.exchange(
-                        lambda client: put(client, wanted, reserved, DispatchPermit(os.getpid))
-                    )
+                    rejected_call()
                 assert failure.value.code == "invalid_service_target"
             assert len(instances) == 1 and instances[0]._slots._value == 2
         assert len(remote.requests) == int(selected)
@@ -851,8 +887,9 @@ def test_early_source_cleanup_cannot_replace_primary_or_publish_private_error(
         async with UploadHttpxTransport(
             key, value, transport=httpx.MockTransport(handler)
         ) as client:
+            rejected_call = partial(put, client, wanted, reserved, DispatchPermit(os.getpid))
             with pytest.raises(YorungeError) as failure:
-                await put(client, wanted, reserved, DispatchPermit(os.getpid))
+                await rejected_call()
             assert failure.value.code == "invalid_request"
             assert failure.value.__context__ is None and failure.value.__cause__ is None
             assert "PRIVATE-SOURCE-CLOSE-CANARY" not in str(failure.value.envelope())

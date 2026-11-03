@@ -7,6 +7,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from functools import partial
 
 import pytest
 
@@ -583,8 +584,9 @@ def test_combined_plan_wire_preflight_rejects_legal_long_metadata_before_http(
     context = prepared_input[3].model_copy(update={"profile": "x" * 128})
     data = (*prepared_input[:3], context, prepared_input[4])
     monkeypatch.setattr(composition, "capture_upload_input", lambda *args, **kwargs: inputs)
+    rejected_call = partial(prepare, runtime(data), data, parameters=parameters)
     with pytest.raises(YorungeError) as raised:
-        prepare(runtime(data), data, parameters=parameters)
+        rejected_call()
     assert raised.value.code == "invalid_request" and raised.value.exit_code == 2
     assert raised.value.__context__ is raised.value.__cause__ is None
     assert counts(data[0]) == (0, 0, 0)

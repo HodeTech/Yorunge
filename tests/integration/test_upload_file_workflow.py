@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import socket
 from datetime import timedelta
+from functools import partial
 
 import pytest
 
@@ -123,10 +124,15 @@ def test_file_stage_failure_stops_without_new_writes_or_replay(
         provider.after_presign = changed
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(data, server)
+        rejected_call = partial(
+            upload_files_original,
+            plan.plan_id,
+            data[0],
+            loader(data),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            upload_files_original(
-                plan.plan_id, data[0], loader(data), session_factory=factory(server)
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
         assert raised.value.operation_id is not None and raised.value.reason_code is not None
         assert raised.value.__cause__ is raised.value.__context__ is None
@@ -235,10 +241,15 @@ def test_cancel_original_during_put_drains_workers_before_same_id_unknown(
     provider.after_put = lambda name: owner[0].get_loop().call_soon_threadsafe(owner[0].cancel)
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(data, server)
+        rejected_call = partial(
+            upload_files_original,
+            plan.plan_id,
+            data[0],
+            loader(data),
+            session_factory=factory(server),
+        )
         with pytest.raises(asyncio.CancelledError):
-            upload_files_original(
-                plan.plan_id, data[0], loader(data), session_factory=factory(server)
-            )
+            rejected_call()
         assert children and all(task.done() for task in children)
         assert provider.confirm_calls == 0 and 1 <= provider.put_calls <= 2
         count = len(server.requests)
@@ -299,14 +310,16 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
         preparation = runtime(data, server, clock=clock)
         plan = prepare(preparation, data)
         approve(preparation, plan)
+        rejected_call = partial(
+            upload_files_original,
+            plan.plan_id,
+            data[0],
+            loader(data),
+            session_factory=factory(server),
+            clock=clock,
+        )
         with pytest.raises(OperationError) as raised:
-            upload_files_original(
-                plan.plan_id,
-                data[0],
-                loader(data),
-                session_factory=factory(server),
-                clock=clock,
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
         assert len(put_checks) == 2 and put_checks[0].checked_at < put_checks[1].checked_at
         assert provider.put_calls == 1 and provider.confirm_calls == 0

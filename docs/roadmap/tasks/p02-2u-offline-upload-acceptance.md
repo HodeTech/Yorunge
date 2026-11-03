@@ -28,7 +28,7 @@ Yalnız test/fixture ve gerekli kullanıcı kabul kayıtları; ürün kusuru do�
 
 ## Kabul
 
-Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI list/show --plan-id ile aynı ID, sıfır config/env/source/HTTP; yeni start pending/latch durumuna göre güvenli exit2/5, sıfır yeni permit/yazma. 128 dosya: tam 2+3N intent/accepted receipt, distinct object/item bağları ve son metadata proof; azami128 korunur, 129 önce kontrollü ret. Global store capacity/reset/recovery rezervi mevcut regresyonlarıyla birlikte geçer. Pytest ret blokları tek throwing action taşır; hazırlık hatası beklenen ürün ret’i gibi geçemez. Her dilimde commit + iki farklı fresh review turu/fix teyidi.
+Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI list/show --plan-id ile aynı ID, sıfır config/env/source/HTTP; yeni start pending/latch durumuna göre güvenli exit2/5, sıfır yeni permit/yazma. 128 dosya: tam 2+3N intent/accepted receipt, distinct object/item bağları ve son metadata proof; azami 128 korunur, 129 önce kontrollü ret. Global store capacity/reset/recovery rezervi mevcut regresyonlarıyla birlikte geçer. Pytest ret blokları tek throwing action taşır; hazırlık hatası beklenen ürün ret’i gibi geçemez. Her dilimde commit + iki farklı fresh review turu/fix teyidi.
 
 ## Doğrulama
 
@@ -36,4 +36,4 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 
 ## Teslim kaydı
 
-T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi başlayabilir; kod/iki fresh tur henüz yapılmadı. V ölçüm planındaki iki yöntem/saklama açıklığı ayrı kapatılır; v hazır veya ölçülmüş sayılmaz.
+T verified; iki eksenli preflight u için doğrulanmış kusur bulmadı. U.1 test sınırı düzenlemesi uygulandı; ilgili seçki/117 test delta teyidi geçti, iki fresh kod turu bekleniyor. V ölçüm planındaki iki yöntem/saklama açıklığı özgün reviewer teyidiyle kapandı; v hazır veya ölçülmüş sayılmaz.

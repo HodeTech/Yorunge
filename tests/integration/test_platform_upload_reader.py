@@ -9,6 +9,7 @@ import socket
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from pathlib import Path
 
 import httpx
@@ -355,10 +356,12 @@ def test_file_change_during_mandatory_reads_does_not_yield_verified_inputs(tmp_p
     source = reader(key, value)
     with TlsServer(certificates, values) as server:
         owned, _ = session(server, key, value)
+        rejected_call = partial(
+            owned.exchange,
+            lambda client: source.current(client, plan, inputs, action="create_private_dataset"),
+        )
         with owned, pytest.raises(YorungeError) as failure:
-            owned.exchange(
-                lambda client: source.current(client, plan, inputs, action="create_private_dataset")
-            )
+            rejected_call()
         assert failure.value.code == "input_changed" and len(server.requests) == 2
     assert value.snapshot().effect_attempts == 0
 
@@ -662,12 +665,14 @@ def test_final_metadata_recheck_cannot_return_evidence_older_than_30_seconds(
         owned, _ = session(server, key, value)
         with owned:
             if advance == 2:
+                rejected_call = partial(
+                    owned.exchange,
+                    lambda client: source.current(
+                        client, plan, inputs, action="create_private_dataset"
+                    ),
+                )
                 with pytest.raises(YorungeError) as failure:
-                    owned.exchange(
-                        lambda client: source.current(
-                            client, plan, inputs, action="create_private_dataset"
-                        )
-                    )
+                    rejected_call()
                 assert failure.value.code == "upload_plan_not_valid"
             else:
                 check = owned.exchange(

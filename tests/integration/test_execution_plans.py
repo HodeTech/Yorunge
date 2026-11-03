@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from datetime import timedelta
+from functools import partial
 
 import pytest
 from pydantic import ValidationError
@@ -236,8 +237,9 @@ def test_plan_corruption_is_rejected_before_epoch_reset(tmp_path, execution_fixt
         body = json.loads(damaged[-1])
         body["digest"] = "0" * 64
         damaged[-1] = json.dumps(body)
+        rejected_call = partial(decode_plan, tuple(damaged))
         with pytest.raises(YorungeError):
-            decode_plan(tuple(damaged))
+            rejected_call()
         store.connection.execute("UPDATE execution_plans SET payload=?", (damaged[-1],))
     with pytest.raises(YorungeError) as error:
         api.preview_identity_reset(state_dir=state)

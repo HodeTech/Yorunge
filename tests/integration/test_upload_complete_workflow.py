@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import timedelta
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -100,13 +101,15 @@ def test_post_write_read_failures_are_unknown_same_id_and_never_replay(
     routes[confirm_path] = confirm
     with TlsServer(certificates, routes) as server:
         plan = approved(prepared_input, server)
+        rejected_call = partial(
+            run_upload_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            run_upload_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain" and raised.value.exit_code == 5
         assert raised.value.operation_id is not None and raised.value.reason_code is not None
         assert raised.value.__context__ is raised.value.__cause__ is None
@@ -147,13 +150,15 @@ def test_initial_read_revoked_after_last_confirm_stops_before_any_metadata_get(
     monkeypatch.setattr(upload_original._Environment, "publish", publish)
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
+        rejected_call = partial(
+            run_upload_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            run_upload_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain" and counts == [len(server.requests)]
         assert not any("/items?" in r.path for r in server.requests)
 
@@ -176,14 +181,16 @@ def test_initial_read_deadline_does_not_slide_authorization_to_item_completion(
         preparation = runtime(prepared_input, server, clock=clock)
         plan = prepare(preparation, prepared_input)
         approve(preparation, plan)
+        rejected_call = partial(
+            run_upload_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+            clock=clock,
+        )
         with pytest.raises(OperationError) as raised:
-            run_upload_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-                clock=clock,
-            )
+            rejected_call()
         assert raised.value.code == "operation_uncertain"
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
@@ -206,13 +213,15 @@ def test_actual_cancel_during_metadata_propagates_and_preserves_complete_receipt
     monkeypatch.setattr(ObservedUploadPort, "items", items)
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
+        rejected_call = partial(
+            run_upload_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(asyncio.CancelledError):
-            run_upload_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
     with open_existing_store(prepared_input[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
         assert view.operation.status == "unknown" and len(view.receipts) == 5
@@ -243,13 +252,15 @@ def test_proof_commit_or_reply_failure_never_replays_or_downgrades_terminal(
         monkeypatch.setattr(StateUploads, "_control", before)
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
+        rejected_call = partial(
+            run_upload_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(OperationError) as raised:
-            run_upload_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            rejected_call()
         assert raised.value.exit_code == (2 if committed else 5)
         if committed:
             assert raised.value.code == "state_write_failed"

@@ -1,6 +1,7 @@
 """Scheduler boundary: an observed worker failure must prevent the next arm."""
 
 import asyncio
+from functools import partial
 
 import pytest
 
@@ -42,8 +43,9 @@ def test_worker_failure_during_next_current_prevents_second_arm():
             def publish(self, outcome):
                 pytest.fail("failed batch published an outcome")
 
+        rejected_call = partial(_put_batch, Environment(), range(2))
         with pytest.raises(ValueError, match="first PUT failed"):
-            await _put_batch(Environment(), range(2))
+            await rejected_call()
         assert events == [("prepare", 0), ("arm", 0), ("execute", 0), ("close", 0)]
 
     asyncio.run(run())

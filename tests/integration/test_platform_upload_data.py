@@ -7,6 +7,7 @@ import logging
 import socket
 import time
 from dataclasses import replace
+from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -193,8 +194,9 @@ def test_put_failure_never_accepts_or_replays_and_closes_source(
 
                 owned.exchange(cancelled)
             else:
+                rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
                 with pytest.raises(YorungeError):
-                    owned.exchange(lambda client: call.execute(client, arm))
+                    rejected_call()
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert len(server.requests) <= int(failure != "wrong_arm")
     assert call._closed and call._source._file_fd is call._source._root_fd is None
@@ -322,10 +324,12 @@ def test_metadata_mismatch_never_becomes_complete(journal, certificates, bad):
     with TlsServer(certificates, routes) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(
+                owned.exchange,
+                lambda client: port.items(client, DATASET, deadline=time.monotonic() + 10),
+            )
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(
-                    lambda client: port.items(client, DATASET, deadline=time.monotonic() + 10)
-                )
+                rejected_call()
             assert raised.value.code == "invalid_response"
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert all(r.method == "GET" for r in server.requests)
@@ -350,10 +354,12 @@ def test_metadata_status_uses_mandatory_read_error_without_effect(
     with TlsServer(certificates, {ITEMS: Reply(status=status, body=b"private-error")}) as server:
         owned, _ = session(server, key, value)
         with owned:
+            rejected_call = partial(
+                owned.exchange,
+                lambda client: port.items(client, DATASET, deadline=time.monotonic() + 5),
+            )
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(
-                    lambda client: port.items(client, DATASET, deadline=time.monotonic() + 5)
-                )
+                rejected_call()
             assert raised.value.code == code
             assert raised.value.__cause__ is raised.value.__context__ is None
         assert 1 <= len(server.requests) <= 2
@@ -368,10 +374,12 @@ def test_metadata_page_cap_stops_before_request_129(journal, certificates):
     with TlsServer(certificates, routes) as server:
         owned, instances = session(server, key, value)
         with owned:
+            rejected_call = partial(
+                owned.exchange,
+                lambda client: port.items(client, DATASET, deadline=time.monotonic() + 20),
+            )
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(
-                    lambda client: port.items(client, DATASET, deadline=time.monotonic() + 20)
-                )
+                rejected_call()
             assert raised.value.code == "invalid_response"
             assert not instances[0]._responses and instances[0]._slots._value == 2
         assert len(server.requests) == 128
@@ -474,8 +482,9 @@ def test_rotated_current_scope_can_read_exact_resource_but_cannot_arm_writes(jou
         }
     )
     port, key, value = setup(journal, readonly=True, bound=bound, scope=scope)
+    rejected_call = partial(port.prepare_create, str(uuid4()))
     with pytest.raises(YorungeError) as raised:
-        port.prepare_create(str(uuid4()))
+        rejected_call()
     assert raised.value.code == "upload_plan_not_valid"
     with TlsServer(certificates, {ITEMS: page(item_rows(journal))}) as server:
         owned, _ = session(server, key, value)
@@ -502,10 +511,12 @@ def test_unused_metadata_secret_is_rejected_after_raw_scan(journal, certificates
     with TlsServer(certificates, {ITEMS: Reply(body=response)}) as server:
         owned, _ = session(server, key, value)
         with owned:
+            rejected_call = partial(
+                owned.exchange,
+                lambda client: port.items(client, DATASET, deadline=time.monotonic() + 5),
+            )
             with pytest.raises(YorungeError) as raised:
-                owned.exchange(
-                    lambda client: port.items(client, DATASET, deadline=time.monotonic() + 5)
-                )
+                rejected_call()
             assert raised.value.code == "invalid_response"
             assert key.secret.reveal() not in str(raised.value)
         assert len(server.requests) == 1

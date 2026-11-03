@@ -6,6 +6,7 @@ import hashlib
 import os
 import pickle
 import time
+from functools import partial
 
 import pytest
 
@@ -102,8 +103,9 @@ def test_invalid_or_changed_binding_is_rejected_and_all_fds_close(source_file, k
         async for _ in source.chunks():
             pass
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(run())
+        rejected_call()
     assert failure.value.code == "input_changed"
     assert not source.complete and source.sent_sha256 is None
     assert source._file_fd is source._root_fd is None
@@ -143,8 +145,9 @@ def test_mutation_after_first_block_is_detected(source_file, change):
         async for _ in stream:
             pass
 
+    rejected_call = partial(asyncio.run, run())
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(run())
+        rejected_call()
     assert failure.value.code == "input_changed"
     assert not source.complete and source._file_fd is source._root_fd is None
 
@@ -233,7 +236,7 @@ def test_expired_deadline_and_no_copy_or_serialization(source_file):
 
     async def run():
         with pytest.raises(YorungeError) as failure:
-            await anext(source.chunks())
+            source.chunks()
         assert failure.value.code == "execution_timeout"
         await source.aclose()
 
@@ -265,8 +268,9 @@ def test_source_deadline_only_narrows_before_first_read(source_file):
         source.restrict_deadline(initial + 999)
         assert source._end == narrowed
         await anext(source.chunks())
+        rejected_call = partial(source.restrict_deadline, time.monotonic() + 1)
         with pytest.raises(YorungeError) as raised:
-            source.restrict_deadline(time.monotonic() + 1)
+            rejected_call()
         assert raised.value.code == "invalid_request" and source._end == narrowed
         await source.aclose()
 
