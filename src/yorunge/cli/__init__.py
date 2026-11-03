@@ -782,23 +782,29 @@ def context_result(args: argparse.Namespace) -> CliResult:
     return api.show_context(**context_options)
 
 
+def datasets_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    if args.action == "upload":
+        from yorunge.cli.upload import dispatch as upload_result
+
+        return upload_result(args)
+    reject_context(args, ("config", "profile", "project"))
+    from yorunge.adapters.dataset_files import anchor_dataset_paths
+
+    artifact = args.manifest_out if args.action == "inspect" else args.manifest
+    args.root, artifact = anchor_dataset_paths(args.root, artifact)
+    if args.action == "inspect":
+        return api.inspect_dataset(args.root, manifest_out=artifact)
+    return api.verify_dataset(args.root, manifest=artifact)
+
+
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
     options = vars(args)
     if args.command == "datasets":
-        if args.action == "upload":
-            from yorunge.cli.upload import dispatch as upload_result
-
-            return upload_result(args)
-        reject_context(args, ("config", "profile", "project"))
-        from yorunge.adapters.dataset_files import anchor_dataset_paths
-
-        artifact = args.manifest_out if args.action == "inspect" else args.manifest
-        args.root, artifact = anchor_dataset_paths(args.root, artifact)
-        if args.action == "inspect":
-            return api.inspect_dataset(args.root, manifest_out=artifact)
-        return api.verify_dataset(args.root, manifest=artifact)
+        return datasets_result(args)
     if args.command == "state":
         return state_result(args)
     if args.command == "jobs":

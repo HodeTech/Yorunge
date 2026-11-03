@@ -7,6 +7,7 @@ from datetime import datetime
 from yorunge.adapters.capability_cache import Stamp
 from yorunge.adapters.local_files import Deadline
 from yorunge.adapters.upload_store import (
+    VersionedTransferView,
     decode_versioned,
     read_any_record,
     read_any_view,
@@ -15,6 +16,33 @@ from yorunge.adapters.upload_store import (
 from yorunge.domain.capabilities import canonical, timestamp
 from yorunge.domain.dataset_transfer import TERMINAL, TransferControl
 from yorunge.domain.dataset_transfer_v2 import TransferControlV2
+
+
+def _snapshot_body(view: VersionedTransferView) -> dict[str, object]:
+    record = view.operation
+    current = record.model_dump(mode="json") if record else None
+    body: dict[str, object] = {
+        "plan": view.plan.model_dump(mode="json"),
+        "approval": view.approval.model_dump(mode="json") if view.approval else None,
+        "operation": current,
+        "journal_digest": hashlib.sha256(
+            canonical(
+                {
+                    "intents": [v.model_dump(mode="json") for v in view.intents],
+                    "receipts": [v.model_dump(mode="json") for v in view.receipts],
+                    "controls": [v.model_dump(mode="json") for v in view.controls],
+                    "verification": view.verification.model_dump(mode="json")
+                    if view.verification
+                    else None,
+                }
+            )
+        ).hexdigest(),
+    }
+    if record and record.lease and current is not None:
+        # Renewals alone do not invalidate an otherwise reviewed reset.
+        current["lease"].pop("expires_at")
+        current["lease"].pop("renewed_at")
+    return body
 
 
 def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[str, int | str]:
@@ -32,29 +60,7 @@ def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[
             deadline.remaining()
             view = read_any_view(connection, row[0])
             record = view.operation
-            current = record.model_dump(mode="json") if record else None
-            body = {
-                "plan": view.plan.model_dump(mode="json"),
-                "approval": view.approval.model_dump(mode="json") if view.approval else None,
-                "operation": current,
-                "journal_digest": hashlib.sha256(
-                    canonical(
-                        {
-                            "intents": [v.model_dump(mode="json") for v in view.intents],
-                            "receipts": [v.model_dump(mode="json") for v in view.receipts],
-                            "controls": [v.model_dump(mode="json") for v in view.controls],
-                            "verification": view.verification.model_dump(mode="json")
-                            if view.verification
-                            else None,
-                        }
-                    )
-                ).hexdigest(),
-            }
-            if record and record.lease and current is not None:
-                # Renewals alone do not invalidate an otherwise reviewed reset.
-                current["lease"].pop("expires_at")
-                current["lease"].pop("renewed_at")
-            digest.update(canonical(body) + b"\n")
+            digest.update(canonical(_snapshot_body(view)) + b"\n")
             counts["upload_plan_count"] += 1
             if record:
                 counts["transfer_operation_count"] += 1

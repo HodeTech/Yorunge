@@ -307,17 +307,18 @@ class _Environment:
         try:
             latched = self._stop(operation_id)
         except YorungeError as marker_error:
-            reason, uncertain = marker_error.code, True
-        else:
-            if latched is None:
-                return error if isinstance(error, OperationError) else None
-            if latched == "terminal":
-                return OperationError(
-                    "operation_conflict" if code == "operation_uncertain" else code,
-                    operation_id,
-                    reason_code=reason,
-                )
-            uncertain = uncertain or latched == "latched"
+            return OperationError(
+                "operation_uncertain", operation_id, reason_code=marker_error.code
+            )
+        if latched is None:
+            return error if isinstance(error, OperationError) else None
+        if latched == "terminal":
+            return OperationError(
+                "operation_conflict" if code == "operation_uncertain" else code,
+                operation_id,
+                reason_code=reason,
+            )
+        uncertain = uncertain or latched == "latched"
         if uncertain:
             return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
         return OperationError(code, operation_id, reason_code=reason)

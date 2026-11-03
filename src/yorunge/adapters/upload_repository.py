@@ -98,6 +98,85 @@ from yorunge.domain.upload_versions import (
 )
 
 
+def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> None:
+    if (
+        type(kind) is not str
+        or kind not in {"create", "project_link", "presign", "put", "confirm"}
+        or (kind in {"create", "project_link"}) != (file_index is None)
+    ):
+        raise YorungeError("invalid_request")
+    finite = False
+    if type(total_end) in (int, float):
+        try:
+            finite = math.isfinite(total_end)
+        except OverflowError:
+            pass
+    if not finite:
+        raise YorungeError("invalid_request")
+
+
+def _arm_predecessors(
+    view: VersionedTransferView, kind: StageKind, file_index: int | None
+) -> dict[tuple[StageKind, int | None], UploadReceipt]:
+    receipt_map = {i.intent_id: i for i in view.intents}
+    accepted = {
+        (receipt_map[r.intent_id].kind, receipt_map[r.intent_id].file_index): r
+        for r in view.receipts
+        if r.result == "accepted"
+    }
+    if any((i.kind, i.file_index) == (kind, file_index) for i in view.intents):
+        raise YorungeError("operation_conflict")
+    required = predecessor(kind, file_index)
+    if required is not None and required not in accepted:
+        raise YorungeError("operation_conflict")
+    if file_index is not None and (
+        type(file_index) is not int or not 0 <= file_index < view.plan.manifest.file_count
+    ):
+        raise YorungeError("invalid_request")
+    return accepted
+
+
+def _typed_receipt(receipt: UploadReceipt) -> UploadReceipt:
+    if type(receipt) is CreateReceiptV2:
+        return revalidate_input(CreateReceiptV2, receipt)
+    if type(receipt) is StageReceipt:
+        return revalidate_input(StageReceipt, receipt)
+    raise YorungeError("invalid_request")
+
+
+def _receipt_record(
+    record: UploadRecord,
+    intent: StageIntent,
+    receipt: UploadReceipt,
+    receipts: tuple[UploadReceipt, ...],
+    owner: TransferLease,
+    intent_count: int,
+) -> UploadRecord:
+    dataset_id = (
+        receipt.dataset_id
+        if intent.kind == "create" and receipt.result == "accepted"
+        else record.dataset_id
+    )
+    rejected = receipt.result == "rejected" or any(r.result == "rejected" for r in receipts)
+    unresolved = intent_count > len(receipts) + 1
+    # A late receipt settles its own intent; it cannot restore the write path.
+    status = "running"
+    reason: str | None = None
+    if record.status == "unknown":
+        status, reason = record.status, record.reason
+    if rejected:
+        status = "unknown" if unresolved else "failed"
+        reason = "provider_rejected"
+    return record.model_copy(
+        update={
+            "dataset_id": dataset_id,
+            "status": status,
+            "lease": None if status == "failed" else owner,
+            "reason": reason,
+        }
+    )
+
+
 @dataclass(frozen=True)
 class UploadListEntry:
     plan_id: str
@@ -289,6 +368,15 @@ class StateUploads:
         if not within:
             raise YorungeError("state_busy")
 
+    def _namespace_available(self, digest: str) -> None:
+        active = self.connection.execute(
+            "SELECT create_operation_id FROM upload_namespaces WHERE "
+            "intent_digest=? AND create_operation_id IS NOT NULL",
+            (digest,),
+        ).fetchone()
+        if active is not None:
+            raise OperationError("operation_conflict", active[0])
+
     def check_scope(self, scope: UploadScope, *, name: str | None = None) -> None:
         """Short current-state phase; never holds a transaction across file/network I/O."""
         with self.phase():
@@ -300,13 +388,7 @@ class StateUploads:
                 gate.require_clock(stamp, error="state_changed")
                 if name is not None:
                     digest = hashlib.sha256(upload_namespace(scope, name)).hexdigest()
-                    active = self.connection.execute(
-                        "SELECT create_operation_id FROM upload_namespaces WHERE "
-                        "intent_digest=? AND create_operation_id IS NOT NULL",
-                        (digest,),
-                    ).fetchone()
-                    if active is not None:
-                        raise OperationError("operation_conflict", active[0])
+                    self._namespace_available(digest)
             self._finish(stamp, gate, scope=scope)
 
     @staticmethod
@@ -362,13 +444,7 @@ class StateUploads:
                     if read_plan(self.connection, plan.plan_id) != plan:
                         raise YorungeError("operation_conflict")
                 else:
-                    active = self.connection.execute(
-                        "SELECT create_operation_id FROM upload_namespaces WHERE "
-                        "intent_digest=? AND create_operation_id IS NOT NULL",
-                        (plan.intent_digest(),),
-                    ).fetchone()
-                    if active is not None:
-                        raise OperationError("operation_conflict", active[0])
+                    self._namespace_available(plan.intent_digest())
                     self.connection.execute(
                         "INSERT OR IGNORE INTO upload_namespaces VALUES(?,?,NULL)",
                         (plan.intent_digest(), namespace(plan).decode("ascii")),
@@ -498,13 +574,7 @@ class StateUploads:
                 approval = self._approved(view, gate)
                 if not isinstance(approval, DatasetUploadApprovalV2):
                     raise YorungeError("upload_plan_not_valid")
-                previous = self.connection.execute(
-                    "SELECT create_operation_id FROM upload_namespaces WHERE "
-                    "intent_digest=? AND create_operation_id IS NOT NULL",
-                    (view.plan.intent_digest(),),
-                ).fetchone()
-                if previous is not None:
-                    raise OperationError("operation_conflict", previous[0])
+                self._namespace_available(view.plan.intent_digest())
                 lease = self._lease(stamp, fence=1, mode="write")
                 operation_id = str(uuid4())
                 access = TransferWriteAccess(
@@ -704,20 +774,7 @@ class StateUploads:
         total_end: float,
     ) -> UploadArm:
         with self.phase(operation_id):
-            if (
-                type(kind) is not str
-                or kind not in {"create", "project_link", "presign", "put", "confirm"}
-                or (kind in {"create", "project_link"}) != (file_index is None)
-            ):
-                raise YorungeError("invalid_request")
-            finite = False
-            if type(total_end) in (int, float):
-                try:
-                    finite = math.isfinite(total_end)
-                except OverflowError:
-                    pass
-            if not finite:
-                raise YorungeError("invalid_request")
+            _arm_input(kind, file_index, total_end)
             before = self.clock.monotonic()
             if total_end <= before:
                 raise YorungeError("execution_timeout")
@@ -745,22 +802,7 @@ class StateUploads:
                 )
                 if self._approved(view, gate) != record.approval:
                     raise YorungeError("state_changed")
-                receipt_map = {i.intent_id: i for i in view.intents}
-                accepted = {
-                    (receipt_map[r.intent_id].kind, receipt_map[r.intent_id].file_index): r
-                    for r in view.receipts
-                    if r.result == "accepted"
-                }
-                if any((i.kind, i.file_index) == (kind, file_index) for i in view.intents):
-                    raise YorungeError("operation_conflict")
-                required = predecessor(kind, file_index)
-                if required is not None and required not in accepted:
-                    raise YorungeError("operation_conflict")
-                if file_index is not None and (
-                    type(file_index) is not int
-                    or not 0 <= file_index < view.plan.manifest.file_count
-                ):
-                    raise YorungeError("invalid_request")
+                accepted = _arm_predecessors(view, kind, file_index)
                 owner = self._renewed(owner, stamp)
                 record = record.model_copy(update={"lease": owner})
                 end = min(
@@ -850,12 +892,7 @@ class StateUploads:
         self, operation_id: str, owner: TransferLease, receipt: UploadReceipt
     ) -> VersionedTransferView:
         with self.phase(operation_id):
-            if type(receipt) is CreateReceiptV2:
-                receipt = revalidate_input(CreateReceiptV2, receipt)
-            elif type(receipt) is StageReceipt:
-                receipt = revalidate_input(StageReceipt, receipt)
-            else:
-                raise YorungeError("invalid_request")
+            receipt = _typed_receipt(receipt)
             self._secret(receipt)
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
@@ -893,31 +930,8 @@ class StateUploads:
                     raise YorungeError("state_invalid")
                 if isinstance(receipt, CreateReceiptV2):
                     validate_create_receipt(view.plan, intent, receipt)
-                dataset_id = (
-                    receipt.dataset_id
-                    if intent.kind == "create" and receipt.result == "accepted"
-                    else record.dataset_id
-                )
-                rejected = receipt.result == "rejected" or any(
-                    r.result == "rejected" for r in view.receipts
-                )
-                unresolved = len(view.intents) > len(view.receipts) + 1
-                # A late receipt settles its own intent; it cannot restore the
-                # write path after recovery has permanently stopped new arms.
-                status = "running"
-                reason: str | None = None
-                if record.status == "unknown":
-                    status, reason = record.status, record.reason
-                if rejected:
-                    status = "unknown" if unresolved else "failed"
-                    reason = "provider_rejected"
-                changed = record.model_copy(
-                    update={
-                        "dataset_id": dataset_id,
-                        "status": status,
-                        "lease": None if status == "failed" else owner,
-                        "reason": reason,
-                    }
+                changed = _receipt_record(
+                    record, intent, receipt, view.receipts, owner, len(view.intents)
                 )
                 # Persist and validate in the same savepoint; malformed receipts
                 # roll back without losing the permanent stage intent.
