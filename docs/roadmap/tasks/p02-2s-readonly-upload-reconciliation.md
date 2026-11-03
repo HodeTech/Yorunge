@@ -1,7 +1,7 @@
 ---
 id: P02-2s
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-2r]
 capabilities: [C03, C12, C13]
@@ -20,7 +20,7 @@ Yerel preflight/expired cleanup, deferred config/env/current binding, gerçek ma
 
 ## Bağımlılıklar ve kararlar
 
-P02-2r üç dilim/ikişer fresh turla yerel verified; p/q/o/k read/receipt/current temeli verified. Accepted ADR-0024/0025/0026/0027 ve [v2 read matrisi](../../reference/dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) değişmez. [Uzlaştırma composition referansı](../../reference/dataset-upload-reconciliation.md) implementasyon öncesi daraltmadır. Yeni grant, fiyat, replay veya temel karar yoktur; iki eksenli belge preflight’ı henüz tamamlanmadı.
+P02-2r üç dilim/ikişer fresh turla yerel verified; p/q/o/k read/receipt/current temeli verified. Accepted ADR-0024/0025/0026/0027 ve [v2 read matrisi](../../reference/dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) değişmez. [Uzlaştırma composition referansı](../../reference/dataset-upload-reconciliation.md) implementasyon öncesi daraltmadır. Yeni grant, fiyat, replay veya temel karar yoktur; Sol/high contract ve Astra/high safety belge/kod preflight’ı temiz tamamlandı; yeni ADR veya açık temel karar yoktur.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -36,4 +36,4 @@ Gerçek loopback TLS + SQLite/credential registry/reset/clock ve process-kill; l
 
 ## Teslim kaydı
 
-Draft preflight. Ürün kodu başlamadı; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. Boyut uygulanırken M sınırını aşarsa aynı kartın cohesive kod dilimleri ayrıca commit/iki fresh turla ayrılır.
+İki eksenli preflight temiz; kart ready. Ürün kodu başlamadı; r’nin original success’i bu ayrı restart/read tesliminin kabulü sayılmaz. Boyut uygulanırken M sınırını aşarsa aynı kartın cohesive kod dilimleri ayrıca commit/iki fresh turla ayrılır.
