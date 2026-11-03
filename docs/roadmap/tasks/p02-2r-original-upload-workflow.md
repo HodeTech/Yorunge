@@ -1,7 +1,7 @@
 ---
 id: P02-2r
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-2q]
 capabilities: [C03, C12, C13]
@@ -24,7 +24,7 @@ Her dilim commit + fresh R1/fix + farklı fresh R2/fix ile kapanır. Ayrı resta
 
 ## Bağımlılıklar ve kararlar
 
-Q verified; p baseline/writer, o current/input/preparation, n meter/budget ve önceki v2 state/policy temeli verified. Accepted ADR-0024/0025/0026/0027 değişmez. [Koordinatör referansı](../../reference/dataset-upload-workflow.md) uygulama öncesi akışı daraltır; [v2](../../reference/dataset-upload-v2.md) tek state/policy/proof kaynağıdır. Yeni temel karar veya ADR yoktur; preflight incelemesi bitmeden ready yapılmaz.
+Q verified; p baseline/writer, o current/input/preparation, n meter/budget ve önceki v2 state/policy temeli verified. Accepted ADR-0024/0025/0026/0027 değişmez. [Koordinatör referansı](../../reference/dataset-upload-workflow.md) uygulama öncesi akışı daraltır; [v2](../../reference/dataset-upload-v2.md) tek state/policy/proof kaynağıdır. Yeni temel karar veya ADR yoktur; iki eksenli preflight ve katman açıklığı düzeltmesi tamamlandı.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -40,4 +40,4 @@ Application/gerçek composition testleri; stateful loopback TLS, SQLite/process 
 
 ## Teslim kaydı
 
-Henüz r ürün kodu yoktur. Q gerçek port temeli verified; r kartı preflight aşamasında draft’tır. Test sonucu veya success iddiası eklenmedi.
+Henüz r ürün kodu yoktur. Q gerçek port temeli verified; r kartı preflight sonrası ready’dir. Test sonucu veya success iddiası eklenmedi.
