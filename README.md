@@ -8,7 +8,7 @@ Veri setleri, modeller, çıkarım, eğitim, kaynaklar ve sonuçlar arasında da
 
 [**Denemeye başla**](#çalışan-başlangıç) · [Kullanım rehberi](docs/reference/local-workflows.md) · [Yol haritası](docs/roadmap/README.md) · [Katkı yap](#birlikte-geliştirelim)
 
-**Geliştirme sürümü · 4 Kasım 2026.** Henüz yayımlanmış paket yok; kurulum kaynaktan. [Güncel teslim durumu →](docs/roadmap/current.md)
+**Geliştirme sürümü · 5 Kasım 2026.** Henüz yayımlanmış paket yok; kurulum kaynaktan. [Güncel teslim durumu →](docs/roadmap/current.md)
 
 ## Genel bakış
 

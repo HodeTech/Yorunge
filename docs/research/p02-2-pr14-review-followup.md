@@ -1,6 +1,6 @@
 # PR #14 kullanıcı review takibi
 
-**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Dört düzeltme dilimi ve fresh review’ları tamamlandı; 07 süre/bellek ve iki kurulum geçti; disk etiket hatası referans verifier’larını reddetti. Yeni kaynak CI/altı kurulum/Sonar/saklama beklenir; P02-2/a/b/c ve PR draft. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
+**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Dört kaynak düzeltmesi ve fresh turları kapandı; 08 dataset/raw/upload geçti, startup/jobs süreleri reddedildi. Yeni kaynak CI/kurulum/Sonar/saklama açık; P02-2/a/b/c ve PR draft. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
 
 ## Uygulama sırası
 
@@ -126,3 +126,8 @@ Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/en
 
 
 08 adı/kapı geçişi 9b482ea’da R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz teyit edildi; 61 dar CI testi geçti. İki yeni temiz paket kurulumu ve actual context gizlilik kontrolü tamamlandı. Native başlamadan yeniden yoğun dotnet işi görüldü; 08 örnekleri başlatılmadı. Bekleme yeni ürün kodu veya geçen testleri yeniden çalıştırma gereği doğurmaz. [Hazırlık/saklama kaydı](p02-2-implementation-validation.md#4-kasım--08-hazırlığı-ve-ölçüm-bekleme-sınırı).
+
+
+## 5 Kasım — ilk 08 sonuçları
+
+[08 kaydı](p02-2-implementation-validation.md#5-kasım--08-ilk-ölçümler-ve-açık-süre-kapıları): dataset/raw/upload geçti; startup cache ve jobs normal list/show süreleri reddedildi. Özgünler ve profiler’lı tek fresh-hit tanısı saklandı; aynı ölçüm tekrar edilmedi, eşik veya doğrulama gevşetilmedi. Yeni kaynak functional CI/kurulum/Sonar bağımsız ilerler; known reference reddi saklanır. Üst kartlar/PR draft kalır.

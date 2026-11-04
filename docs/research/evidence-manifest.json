@@ -16503,6 +16503,21 @@
       }
     },
     {
+      "name": "p02-2-cache-profile-after08.json",
+      "archive": "raw/p02-2-cache-profile-after08.json.gz",
+      "original_commit": null,
+      "content_bytes": 451926,
+      "content_sha256": "1bdd9c7cc779b4d615b3eeac84f0ba29a7aac08d563b9b4325294f4b5214b558",
+      "archive_bytes": 152390,
+      "archive_sha256": "b5f723e8e21d06e36062b8d8f7b63ea305f91450185fe0405757111be622aa04",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "profiling_diagnostic_only"
+      }
+    },
+    {
       "name": "p02-2-ci41740901679-incomplete.json",
       "archive": "raw/p02-2-ci41740901679-incomplete.json.gz",
       "original_commit": null,
@@ -17196,6 +17211,21 @@
       }
     },
     {
+      "name": "p02-2-native08-upload-preflight-rejected.json",
+      "archive": "raw/p02-2-native08-upload-preflight-rejected.json.gz",
+      "original_commit": null,
+      "content_bytes": 718,
+      "content_sha256": "38b92b3577535f979acd8a940e20f7c6c2617b8e75b820969eaa1bac1d5b5d30",
+      "archive_bytes": 470,
+      "archive_sha256": "f8b60287848ceffb789e1cac93094f2f6dfc89aae552d9e54c7375cc7b312678",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "operator_preflight_rejected"
+      }
+    },
+    {
       "name": "p02-2-owned-diagnostic-20261104-incomplete.json",
       "archive": "raw/p02-2-owned-diagnostic-20261104-incomplete.json.gz",
       "original_commit": null,
@@ -17416,6 +17446,34 @@
           },
           "verify": {
             "span_upper_bound_bytes": 622592,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-2-reference-datasets-08.json",
+      "archive": "raw/p02-2-reference-datasets-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 528549,
+      "content_sha256": "a18128f3d18a893ba25759e135c4925be3da8b66b80565af454f3796600955bf",
+      "archive_bytes": 45629,
+      "archive_sha256": "47e224a189a88b3306f06585e77eeaf74990e8bd94dd5f88dd0824f650c71fe3",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "dataset-hash",
+        "cases": 24,
+        "passed": true,
+        "max_elapsed_seconds": 0.7542337090708315,
+        "max_extra_rss_upper_bound_bytes": 20692992,
+        "growth": {
+          "inspect": {
+            "span_upper_bound_bytes": 622592,
+            "passed": true
+          },
+          "verify": {
+            "span_upper_bound_bytes": 458752,
             "passed": true
           }
         }
@@ -17741,6 +17799,52 @@
         "unchanged": true,
         "isolated_python": true,
         "passed": true
+      }
+    },
+    {
+      "name": "p02-2-reference-jobs-08.json",
+      "archive": "raw/p02-2-reference-jobs-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 188172,
+      "content_sha256": "b16698c5e5fbf359b055f14beb556e5ca53a68af73619d1ba26980da08ce8ec6",
+      "archive_bytes": 53843,
+      "archive_sha256": "c2e3daf90d2229e67cac5c6fc597504217b872bd44cb7c0f49ec3902e4202070",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 351.4427077025175,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 260.3295841254294,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 172.67104191705585,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 130.60254137963057,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": false
       }
     },
     {
@@ -18339,6 +18443,91 @@
       }
     },
     {
+      "name": "p02-2-reference-raw-08.json",
+      "archive": "raw/p02-2-reference-raw-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 89618,
+      "content_sha256": "cc6612e40e3bcf5596c2ae4ef9237a19badfe6ecec329b0f6380dc1796696c5a",
+      "archive_bytes": 11089,
+      "archive_sha256": "55fc252cc00ed74e120ead3a009f2f798c99c57f4a0952031d2a6570113b224e",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "bytes",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            229376,
+            524288,
+            917504
+          ],
+          "upper_bound_bytes": [
+            229376,
+            524288,
+            917504
+          ],
+          "span_upper_bound_bytes": 688128,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 56459264,
+            "pretransfer_peak_rss_bytes": 56459264,
+            "peak_rss_bytes": 56688640,
+            "extra_rss_lower_bound_bytes": 229376,
+            "extra_rss_upper_bound_bytes": 229376,
+            "elapsed_seconds": 0.028453749604523182,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 48693248,
+            "pretransfer_peak_rss_bytes": 48693248,
+            "peak_rss_bytes": 49217536,
+            "extra_rss_lower_bound_bytes": 524288,
+            "extra_rss_upper_bound_bytes": 524288,
+            "elapsed_seconds": 0.4443076252937317,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 48513024,
+            "pretransfer_peak_rss_bytes": 48513024,
+            "peak_rss_bytes": 49430528,
+            "extra_rss_lower_bound_bytes": 917504,
+            "extra_rss_upper_bound_bytes": 917504,
+            "elapsed_seconds": 1.765873999800533,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p02-2-reference-startup-01.json",
       "archive": "raw/p02-2-reference-startup-01.json.gz",
       "original_commit": null,
@@ -18801,6 +18990,72 @@
       }
     },
     {
+      "name": "p02-2-reference-startup-08.json",
+      "archive": "raw/p02-2-reference-startup-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 244246,
+      "content_sha256": "a69fd8389c89108d8f89dc2055cbdd17f063607f21e380c72da16a2cd2b9d505",
+      "archive_bytes": 73684,
+      "archive_sha256": "b720bba9f94cc35fddffa82d90c708c0f7721d78c0134bb373e626e24563e553",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": false,
+        "outcome": "diagnostic_budget_exceeded",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 71.90791703760624,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 41.23987536877394,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 167.173583060503,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 214.5575419999659,
+            "budget_ms": 200.0,
+            "passed": false
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 65.58004161342978,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 35.57129204273224,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 124.04470797628164,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 205.74499992653728,
+            "budget_ms": 200.0,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
       "name": "p02-2-reference-upload-01.json",
       "archive": "raw/p02-2-reference-upload-01.json.gz",
       "original_commit": null,
@@ -18952,6 +19207,28 @@
         },
         "max_elapsed_seconds": 64.35536962514743,
         "max_extra_rss_upper_bound_bytes": 3080192
+      }
+    },
+    {
+      "name": "p02-2-reference-upload-08.json",
+      "archive": "raw/p02-2-reference-upload-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 1271300,
+      "content_sha256": "51f89d099254f27da4094df276479d955bc82c924ff519f296bde751b73dc1c2",
+      "archive_bytes": 243512,
+      "archive_sha256": "bb092030dbec37ec850938b1689b30bfcd2e2716fa6257b9ca932288c6dff502",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "upload-budget",
+        "cases": 12,
+        "passed": true,
+        "growth": {
+          "span_upper_bound_bytes": 1622016,
+          "passed": true
+        },
+        "max_elapsed_seconds": 65.63126674992964,
+        "max_extra_rss_upper_bound_bytes": 2424832
       }
     },
     {

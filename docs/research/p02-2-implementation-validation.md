@@ -1,6 +1,6 @@
 # P02-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-11-04. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Ortak upload CLI/Python ve yerel temeller uygulandı; kullanıcı review düzeltmeleri ve Accepted ADR-0029 aracı iki fresh turla kapandı. 32109a7 kaynağında 07 süre/bellek ölçümleri, iki temiz paket kurulumu ve gerçek üretim bağlamıyla gizlilik kontrolü geçti; dört referans verifier yanlış disk etiketi nedeniyle reddetti. Doğru ortam beyanıyla 08 serisi hazırlanır. R5 tarihsel canlı metadata kabulüdür. PR #14 draft; yeni kaynak üç ortam CI/altı kurulum/Sonar ve yeni çıktılarının kalıcı saklaması beklenir. Önceki başarısız ölçümler ve r1–r4 unknown işler korunur; yeniden yazma yapılmaz. Aşağıdaki adımlar kendi tarihsel kaynaklarına aittir; güncel sınır [PR review takibinde](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kaydındadır.
+**Tarih:** 2026-11-04; güncellendi 2026-11-05. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Dört kullanıcı review düzeltme dilimi ve Accepted ADR-0029 uygulaması iki fresh turla kapandı. 9b482ea kaynağındaki 08 serisinde dataset/raw/upload ve iki temiz kurulum geçti; startup cache ve jobs normal list/show süre sınırını aştı. Bu kapılar açık, eski başarılı kaynak sonuçları güncel kabul yerine geçmez. PR #14 ve P02-2/a/b/c draft; yeni kaynak üç ortam CI/altı kurulum/Sonar ve üretilen çıktılarının kalıcı saklaması ayrıca beklenir. Önceki retler ve r1–r4 unknown işler korunur; yeniden yazma yoktur. [Güncel PR takibi](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kanoniktir.
 
 ## Adım 1 — P02-2d yerel plan sözleşmesi
 
@@ -1070,3 +1070,22 @@ Yedi yeni özgün rapor gerçek private üretim bağlamıyla bounded gizlilik ka
 9b482ea’daki dört workflow/test referans adı değişimi R1 Sol/high ve farklı fresh R2 Astra/high tarafından dar salt okuma incelemesiyle bulgusuz teyit edildi; 61 CI sözleşme testi geçti. Sayısal bütçe, yöntem ve ürün kodu değişmedi. Gerçek Data volume için APFS/Internal/SolidState doğrulandı; başlatıcı exact cpu/disk değerlerini kanonik reference politikasıyla **ölçüm öncesinde** karşılaştırır.
 
 Yeni kişisiz kaynak/controller/temp kökünde [08 wheel/sdist iki temiz kurulumu](evidence.md#p02-2-review-final-installation-08) ve gerçek private context ile gizlilik kontrolü geçti. Bu rapor özgün baytlarıyla saklandı; **450** kayıpsız arşiv kapsamına eklendi. 08 native workspace ve örnekleri henüz oluşturulmadı. Başlatmadan önce yeni yoğun dotnet işi görüldüğünden native seri bekletildi; bu işin 07 sonucuna neden olduğu iddia edilmez. Kaynak/CI kabulü henüz kapanmadı; ölçüm uygun ortamda aynı hazır kaynaktan devam eder, geçen fonksiyonel testler ve kurulumlar sırf bekleme için tekrarlanmaz.
+
+
+## 5 Kasım — 08 ilk ölçümler ve açık süre kapıları
+
+Kullanıcı diğer test/build işinin bittiğini bildirdi. Hazır 9b482ea kaynağının tam haritası güncel checkout ile aynıydı; başlangıç öncesi kısa süreç örneklemesinde geçici language-server etkinliği görüldü, son örnekte aktif build/test görülmedi. Sürekli yük veya fiziksel donanım attestasyonu yapılmadı. Exact `internal SSD/APFS` beyanı, gerçek filesystem/controller/child/temp kökleri ve özel üretim bağlamı önceden doğrulandı. 08’in her gerçek ölçümü bir kez çalıştı; ilk retlerden sonra diğer bağımsız seriler sürdürüldü.
+
+| 08 raporu | İlk gerçek sonuç |
+|---|---|
+| [Startup](evidence.md#p02-2-reference-startup-08) | Aday help/version/context/cache p95 **71,9079/41,2399/167,1736/214,5575 ms**. Cache >200 ms, overall **false**. Taban cache **205,7450 ms**; tabanın reddi adayı başarılı yapmaz. |
+| [Jobs](evidence.md#p02-2-reference-jobs-08) | Normal list/show p95 **351,4427/260,3296 ms** >200; dense list/show **172,6710/130,6025 ms** geçti. Overall **false**; kaynak/kurulum/fixture sabitliği geçti. |
+| [Dataset](evidence.md#p02-2-reference-datasets-08) | 24 süreç geçti; en uzun **0,7543 s**, U≤**20.692.992 byte**, inspect/verify G=**622.592/458.752 byte**. |
+| [Raw](evidence.md#p02-2-reference-raw-08) | Exact byte/kaynak ve 64/8 MiB bellek kapıları geçti; G=**688.128 byte**. |
+| [Upload](evidence.md#p02-2-reference-upload-08) | 12 süreç, exact byte/hash/tam graph ve kaynak kapıları geçti; en uzun çağrı **65,6313 s**, U≤**2.424.832 byte**, G=**1.622.016 byte**. |
+
+Upload başlatıcısının ilk çağrısı mevcut olması gereken dist parent dizini oluşturulmadığından **ölçüm/workspace başlamadan** reddedildi. [Özgün boş stdout ve stderr](evidence.md#p02-2-native08-upload-preflight-rejected) ayrı tutuldu. Dizinin hazırlanması sonrası upload’ın ilk gerçek ölçümü başladı; önceki startup/jobs/dataset/raw çağrıları tekrarlanmadı. İki operatör başlatma hatası (07 yanlış disk etiketi/konum ve 08 parent hazırlığı) ürün başarısı veya başarısız ölçümü silme gerekçesi değildir.
+
+Ölçümler bittikten sonra ayrı yeni 1.024 kayıtlı fixture’da [tek cache cProfile tanısı](evidence.md#p02-2-cache-profile-after08) çalıştı; fresh-hit predicate’i doğrulandı. Profiler’lı süreç kabul/p95 ya da kazanç kanıtı değildir. Trace’te import/codec hazırlığı ve iki kalıcı clock transaction’ı görüldü; bu sınırlar atlanmaz. Salt okuma kaynak review’sü, jobs’ta deferred modellerin validator içinden serializer hazırlamasını ve cache’te küçük saf politika tekrarını dar inceleme adayı buldu; bunların ret nedeni veya yeterli hız kazancı olduğu kanıtlanmadı. Ölçüm ile profil eşzamanlı çalışmadı. Yeni kaynak değişimi veya açıkça belgelenmiş farklı ölçüm koşulu olmadan yeşil aramak için tekrar yapılmaz.
+
+Beş rapor, preflight reddi ve profil tanısı gerçek özel üretim bağlamıyla gizlilik kontrolünden geçirilip özgün baytlarıyla seri saklandı; katalog **457** kayıt kapsamına ulaştı. 457 arşiv/indeks doğrulandı; startup/jobs reference verifier’ları ret verdi, dataset/upload verifier’ları pozitif sonucu ve güncel kaynak eşliğini doğruladı. Bu kaynakla üç ortam functional/kurulum ve Sonar kontrolü bağımsız yürütülecek; bilinen referans reddi overall CI’ı durdurabilir. Bu koşu nihai kabul veya merge önerisi değildir. P02-2/a/b/c ve PR draft kalır. Yeni gerçek EVREN çağrısı yapılmadı; r5 tarihsel kapsamı değişmedi.

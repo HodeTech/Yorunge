@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-04. **Durum:** ADR-0024–0028 Accepted; d–w kod/review kartları, r5 canlı metadata ve 06 tarihsel native kabulü; 07 ortam etiketi ret, 08 geçerli referansı beklenir tamamlandı. Son üç ortam CI/altı temiz kurulum ve yeni Linux çıktılarının kalıcı saklanması bekleniyor; a/b/c/epik draft. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` tabanı. Tek [PR #14](https://github.com/HodeTech/Yorunge/pull/14); merge/Master/release kullanıcıdadır.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-05. **Durum:** ADR-0024–0029 Accepted; d–w kod/review, r5 tarihsel canlı metadata ve kullanıcı review düzeltmeleri tamamlandı. Son 08 serisinde dataset/raw/upload geçti; startup/jobs süre kabulü açık. Yeni kaynak CI/altı kurulum/Sonar/saklama ayrıca beklenir; a/b/c/epik draft. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` tabanı. Tek [PR #14](https://github.com/HodeTech/Yorunge/pull/14); merge/Master/release kullanıcıdadır.
 
 **ADR-0028 sınırı:** Tekrarlı SHA-256 upload’ı ağ/create öncesi açıkça reddedilir; yerel Manifest dosya kimliği korunur. Max128 kabulü 128 farklı hash/386 accepted aşamayla geçti. İki PNG/158-byte/8-graph runner ve iki fresh kod turu tamamlandı; r5 gerçek olumlu metadata kabulüdür. Önceki üç-PNG frozen helper/receipt ve r4 unknown korunur. Özgün çoklu-ad ihtiyacı P02-R2’de açık kalır.
 
@@ -17,7 +17,7 @@ Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşt
 | Upload/verification consumer | Proxy presign/PUT/confirm ve sayfalı item metadata, exact ad/size/SHA eşliği uygulanmış. Genel direct port sentetik TLS’te testlidir; gerçek direct provider wire desteği iddia edilmez | İlk proxy yolu tamam |
 | Yetki ve fiyat | Verified-only tam grant/exact-work complete cost ister. Explicit/unpriced bilinmeyeni ayrı insan onayıyla risk olarak taşır; r5 authority/pricing/remote-bytes=false | Bilinmeyen görünür; doğrulanmış provider kaynağı gerekir |
 | Canlı kabul | Ayrı bounded r5 gerçek create/link/iki dosya upload/aynı-ID read proof geçti; kaynak private kaldı. Önceki denemeler yeni gönderim hakkı üretmez | Dar metadata kabulü tamam |
-| Son kaynak teslimi | 07 süre/bellek, iki temiz kurulum ve gizlilik/kanıt kapıları geçti; disk etiketi nedeniyle reference kapısı ret, 08 beklenir; yeni kaynak üç ortam CI/altı kurulum/Sonar ve zorunlu çıktıların saklaması beklenir | Üst kartlar draft |
+| Son kaynak teslimi | 08 dataset/raw/upload ve iki temiz kurulum geçti; startup cache ve jobs normal yolları >200 ms. Yeni kaynak functional CI/altı kurulum/Sonar ve çıktılarının saklaması beklenir; önceki 06/07 sonuçları tarihsel kalır | Üst kartlar draft |
 
 [Kanonik consumer](../reference/platform-upload-consumer.md) endpoint ve typed oracle’ın, [v2 sözleşmesi](../reference/dataset-upload-v2.md) yetki/maliyet/onay kapısının sahibidir. Araştırma belgesi veya yerel OpenAPI örneği provider yetki/fiyat garantisi oluşturmaz. Yeni hesap çağrısı veya kapsam değişikliği bu teslim planından otomatik yetki çıkarmaz.
 
