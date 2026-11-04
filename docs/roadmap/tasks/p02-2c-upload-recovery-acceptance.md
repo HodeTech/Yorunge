@@ -44,4 +44,4 @@ Contract/integration/gerçek TLS/süreç/SQLite testleri, gerçek kurulu API/CLI
 
 ## Teslim kaydı
 
-Yerel d–l temelleri çalışma dalında verified; public yolculuk, native/kurulum/CI ve bütünleşik canlı kabul tamamlanmadı. P02-2b ve dış kapılar açık; draft. Bu kart verified olmadan P02-2 kapanmaz.
+Yerel d–w temelleri ve public yolculuk çalışma dalında verified; yerel tam takım/M5 native referansları geçti. Son kaynak değişikliği sonrası referans/üç ortam CI/altı kurulum ve bütünleşik canlı upload kabulü açık kalır. İlk nihai canlı deneme accepted create sonrası durdu; ayrıca onaylı salt okuma tanısı da eksik kaldı. İki tüketilmiş yetki yeni etki veya çağrı hakkı üretmez. [Güncel kabul kaydı](../../research/p02-2-implementation-validation.md) kanoniktir. P02-2b ve dış kapılar açık; draft. Bu kart verified olmadan P02-2 kapanmaz.

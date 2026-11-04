@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-03. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–t verified; gerçek ortak provider/API/CLI kodu yerel kabulü geçti, bütünleşik kurulum/native/son kaynak CI/kanıt/ayrı canlı kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-04. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–w verified; gerçek ortak provider/API/CLI kodu yerel kabulü geçti, bütünleşik kurulum/native/son kaynak CI/kanıt/ayrı canlı kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
 ## Kullanıcı sonucu
 
@@ -37,7 +37,7 @@ Her uygulama adımı: **geliştir → ilgili gerçek kontroller → commit → f
 
 ## Canlı kabul hazırlığı
 
-**4 Kasım nihai hazırlık:** Aşağıdaki ilk pilot kapsamı tarihsel ve tüketilmiştir. Yeni public API kabulü [ayrı nihai planda](../research/p02-2-final-live-plan.md) 40 GET/80 read attempt, 11 tekil etki, üç sabit PNG/237 byte, ortak180 s ve unknown/unpriced maliyetle somutlaştırılır; ayrıca kullanıcı onayı gerekir. Yeni ürün özelliği veya önceki create’in devamı değildir.
+**4 Kasım nihai kabul:** Aşağıdaki ilk pilot tarihsel ve tüketilmiştir. [Ayrı nihai plan](../research/p02-2-final-live-plan.md) kullanıcı onayıyla bir kez çalıştı; accepted create sonrası durdu, upload yapılmadı. Ayrı onaylı iki-GET tanısı da ilk okumada durdu; iki yetki tüketildi. Yeni sorgu/locator tanısı yalnız öneridir, ayrıca onay gerektirir. Yerel tam takım/M5 referansları ve Sonar kapanışı tamamlandı; ilk source CI’ın macOS kabulü ve iki Linux timeout’u [kayıtta](../research/p02-2-implementation-validation.md) korunur. Son source serisi/üç ortam CI ve tam canlı upload kabulü açık kalır.
 
 Kullanıcı **beş GET/10 attempt/5 MiB/30 s** salt okuma pilotunu açıkça onayladı: mevcut Platform target üzerinde auth/me, organizations, seçilmiş projects/{id}, projects/{id}/datasets ve datasets ilk sayfası (`page=1,page_size=5,scope=owned`). Bu kapsam billing/başka endpoint veya yanlış-key kontrolü içermez. Mevcut anahtar değeri sohbete/repoya girmez. Kamu bundle kaynak okuması ile auth'lu hesap çağrısı aynı kanıt sayılmaz. Bu plan tek başına hesap çağrısı yetkisi vermez.
 
