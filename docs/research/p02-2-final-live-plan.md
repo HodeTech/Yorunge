@@ -79,3 +79,6 @@ POST/PUT/DELETE, create, proje bağlantısı, start/reconcile, yeni permit veya 
 - `explicit_attempt` + `unpriced`, yetki/fiyat ve süreğen depolama maliyeti unknown; **sayısal CR tavanı uygulanmaz**. Şart kabulü, eğitim, export/indirme veya başka kaynak değişikliği yoktur.
 
 Mevcut aynı runner yeni runtime-only wheel’den çalışır; provenance, source/wheel önce-sonra eşliği ve accepted grafiği değiştirilmez. İlk beklenmeyen hata/belirsizlikte durur; aynı ID üzerindeki original salt okuma proof’u bu tek koşuya dahildir. İki aynı hash/farklı adın üç ayrı item’ı ve exact manifest metadata’sı zorunludur. Bu deneme gerekli kaynak ölçümlerinden önce yapılır; aksi halde yeni doğrulanmış wire farkı bütün M5 referanslarını gereksiz yere tekrar ettirebilir. Yeni source/native/CI kabulü, canlı başarının ardından ayrı ve birer kez kapanır.
+
+
+**Uygulama hazırlığı tamam:** c279e4f düzeltmesi iki farklı fresh contract/safety turunda temiz kapandı; 372 odaklı test ve ayrıca 1 gerçek API/TLS runner success case’i geçti. Yeni runtime-only wheel’in gerçek `-I` provenance kapısı doğrulandı; bu yeni canlı çağrı değildir. Somut yeni create/upload onayı beklenir.

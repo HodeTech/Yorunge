@@ -831,3 +831,6 @@ Dar ürün düzeltmesi: query sabit page_size=20; aynı 128-page/GET/byte/deadli
 
 
 Owned wire düzeltmesi c279e4f, farklı ajanlarla iki fresh contract/safety turunda temiz kapandı: R1 Astra/high + Sol/high, R2 Sol/high + Astra/high. DTO/golden/history, tam detail-baseline zorunluluğu, present-false/missing ayrımı, query20/128-page/20-row/duplicate ve bütünlük/secret kaynak sınırları doğrulandı. Hiçbir ajan test/build/native/ağ/özel pilot veya ham arşiv tekrarı yapmadı; yeni doğrulanmış bulgu yok. R2 contract, sonraki yeni-instance tam kabul önerisinin aynı sayısal sınırları ve ayrı yetki ihtiyacını da teyit etti. Ürün delta’sı review açısından kapandı; yeni tam canlı deneme henüz onaylanmadı.
+
+
+D14a0ff kaynağından canlı kabul için ayrı frozen runtime-only wheel hazırlandı; wheel SHA-256 `a75ccf3f60fa2c815c9c3adfe8bac8b2caf9457a7550d5233e28def5d310cabd`. Gerçek `-I` kurulu süreçte tam ürün hash haritası, wheel metadata ve frozen paket provenance kapısı ağsız geçti. Gözlenen eksik liste alanını taşıyan gerçek API/TLS acceptance runner’ın tek success case’i **1 passed /3,81 s** verdi; provenance bu testte double’dır, kurulu tam smoke diye sunulmaz. Bunlar yeni tam takım/native/ref veya hesap çağrısı değildir. Yeni-instance plan ve mevcut runner somuttur; yeni create/upload için açık onay beklenir.
