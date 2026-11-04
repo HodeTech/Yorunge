@@ -6,7 +6,7 @@ import json
 import math
 from collections.abc import Collection
 from enum import Enum
-from types import UnionType
+from types import MethodType, UnionType
 from typing import Annotated, Literal, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -186,6 +186,18 @@ def _closed_codec(model: BaseModel) -> None:
     ):
         raise YorungeError("invalid_response")
     schema = kind.__pydantic_core_schema__
+    if not isinstance(schema, dict) and kind.model_config.get("defer_build") is True:
+        # A nested model may have been validated through its parent's inline
+        # schema without building its own codec. Use the framework classmethod,
+        # never a caller-provided model_rebuild override, then inspect as usual.
+        try:
+            rebuild = BaseModel.model_rebuild
+            if not isinstance(rebuild, MethodType):
+                raise YorungeError("invalid_response")
+            rebuild.__func__(kind)
+        except (NameError, TypeError, ValueError):
+            raise YorungeError("invalid_response") from None
+        schema = kind.__pydantic_core_schema__
     if not isinstance(schema, dict):
         raise YorungeError("invalid_response")
     pending: list[object] = [schema]
