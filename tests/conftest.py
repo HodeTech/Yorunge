@@ -13,6 +13,26 @@ ROOT = Path(__file__).resolve().parents[1]
 SECRET = "synthetic-secret-NEVER-PRINT-48291"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def foreground_test_job():
+    from tests.fixtures.signal_baseline import foreground_signals
+
+    # A background launcher can inherit ignored/blocked SIGINT. Establish the
+    # intended test-job policy once, and restore it when pytest returns.
+    with foreground_signals():
+        yield
+
+
+@pytest.fixture(autouse=True)
+def no_signal_policy_leak(foreground_test_job):
+    from tests.fixtures.signal_baseline import assert_foreground_signals
+
+    assert_foreground_signals()
+    yield
+    # Assert, never reset per test: a product/fixture leak must fail visibly.
+    assert_foreground_signals()
+
+
 @pytest.fixture(autouse=True)
 def offline_home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -25,6 +45,11 @@ def offline_home(tmp_path, monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", denied)
     monkeypatch.setattr(socket.socket, "connect_ex", denied)
     monkeypatch.setattr(socket, "getaddrinfo", denied)
+    for name in ("gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo"):
+        monkeypatch.setattr(socket, name, denied)
+    monkeypatch.setattr(socket.socket, "sendto", denied)
+    if hasattr(socket.socket, "sendmsg"):
+        monkeypatch.setattr(socket.socket, "sendmsg", denied)
 
 
 @pytest.fixture

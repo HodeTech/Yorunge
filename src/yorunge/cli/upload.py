@@ -117,7 +117,15 @@ def _arguments(command: argparse.ArgumentParser, action: str) -> None:
 
 
 def _plan_arguments(command: argparse.ArgumentParser) -> None:
-    command.add_argument("root", type=Path)
+    command.epilog = (
+        "Gizli dosyalar dahil en çok 128 dosya; dosya başına 500.000.000 byte, toplam 1 GiB. "
+        "Her PUT en çok 120 s: 500 MB için kesintisiz en az 33,34 Mbit/s gerekir; "
+        "daha yavaş aktarım belirsiz kalabilir, otomatik resume yoktur. "
+        "Plan/onay/ilk çalıştırma bütçesi ayrı ayrı en çok 900 s. "
+        "Kalıcı store kotası: 128 plan/iş, 4.096 dosya ve 16 MiB rezerv; "
+        "taslak ve geçmiş kayıtlar otomatik silinmez."
+    )
+    command.add_argument("root", type=Path, help="Gizli dosyalar dahil taranacak yerel kök")
     command.add_argument("--manifest", type=Path, required=True)
     command.add_argument("--name", required=True)
     command.add_argument(
@@ -135,7 +143,10 @@ def _plan_arguments(command: argparse.ArgumentParser) -> None:
         "--storage-origin", help="Direct origin; mevcut Platform profili desteklemez"
     )
     command.add_argument(
-        "--admission-policy", choices=("verified-only", "explicit-attempt"), default="verified-only"
+        "--admission-policy",
+        choices=("verified-only", "explicit-attempt"),
+        default="verified-only",
+        help="Varsayılan verified-only kanıt ister; explicit-attempt ayrı açık risk seçimidir",
     )
     cost = command.add_mutually_exclusive_group(required=True)
     cost.add_argument(
@@ -311,28 +322,66 @@ def _summary_text(data: DatasetUploadSummary) -> list[str]:
 
 def _next_text(data: DatasetUploadSummary) -> list[str]:
     if data.operation_id is not None:
-        if data.operation_status == "unknown":
-            return [
-                f"İncele: yorunge datasets upload show --operation-id {data.operation_id}",
-                "Eksik aşamaları yeniden göndermeyin; uygun kaydı salt okumayla uzlaştırın.",
-            ]
-        return []
+        return _unknown_text(data) if data.operation_status == "unknown" else []
     lines = [f"İncele: yorunge datasets upload review --plan-id {data.plan_id}"]
     if data.legacy_history_only or data.blockers:
+        if data.blockers:
+            lines.append(
+                "Engeller kapanmadan onay veya aktarım başlamaz. Mevcut Platform profili "
+                "yetki/fiyat kanıtı üretmez; verified-only bu eksiklerle taslak kalır. "
+                "Doğrulanmamış deneme ayrı explicit-attempt ve maliyet seçimi gerektirir."
+            )
         return lines
+    lines.extend(_approval_text(data))
+    lines.append("Özel --config/--state-dir kullandıysanız aynı seçenekleri koruyun.")
+    return lines
+
+
+def _unknown_text(data: DatasetUploadSummary) -> list[str]:
+    lines = [
+        f"İncele: yorunge datasets upload show --operation-id {data.operation_id}",
+        "Aynı --state-dir ve uzlaştırmada aynı --config/--profile seçimini koruyun.",
+        "Eksik aşamaları yeni plan/ad/store ile yeniden göndermeyin.",
+    ]
+    if data.dataset_id is None:
+        lines.append(
+            "Dataset ID kaydedilmedi; Platform’da private kaynak oluşmuş olabilir. "
+            "Adından ID tahmin edilmez; otomatik kurtarma veya silme yapılmaz."
+        )
+    else:
+        lines.extend(
+            (
+                "Yalnız tam accepted grafiği ve create kanıtı olan uygun kayıt için salt okuma: "
+                f"yorunge datasets upload reconcile --operation-id {data.operation_id}",
+                "Doğrulanmamış okuma gerekiyorsa --accept-unverified-read ayrı açık seçimdir; "
+                "eksik receipt okuma ile doldurulmaz.",
+            )
+        )
+    return lines
+
+
+def _approval_text(data: DatasetUploadSummary) -> list[str]:
+    lines = []
     if data.approval_status is None:
         command = (
             f"Onay: yorunge datasets upload approve --plan-id {data.plan_id} "
             f"--confirm {data.plan_digest}"
         )
         if "authority_unverified" in data.risks:
-            command += " --accept-unverified-authority"
+            lines.append(
+                "Yetki riskini kabul ediyorsanız onaya ayrıca "
+                "--accept-unverified-authority ekleyin."
+            )
         if data.cost_policy == "unpriced_accepted":
-            command += " --accept-unpriced-cost"
+            lines.append(
+                "Sayısal CR tavanı olmamasını kabul ediyorsanız ayrıca "
+                "--accept-unpriced-cost ekleyin."
+            )
         lines.append(command)
     elif data.approval_status == "approved":
         lines.append(f"Başlat: yorunge datasets upload start --plan-id {data.plan_id}")
-    lines.append("Özel --config/--state-dir kullandıysanız aynı seçenekleri koruyun.")
+    else:
+        lines.append("Bu planın onayı geri alındı; aynı plan yeniden onaylanmaz.")
     return lines
 
 
@@ -380,6 +429,9 @@ def _review_text(data: UploadIntentReview) -> str:
             f"Manifest: {data.manifest.digest}",
             f"Yükleme hedefi: {data.storage.origin or 'Platform API'}",
             f"Plan bitişi: {data.expires_at}",
+            "Gizli dosyalar da dahildir; dosya adlarını onaydan önce yerel manifestten inceleyin.",
+            "Sınırlar: 128 dosya; dosya başına 500.000.000 byte; toplam 1 GiB; PUT başına 120 s.",
+            "500 MB için kesintisiz en az 33,34 Mbit/s gerekir; timeout otomatik resume üretmez.",
             "Bu seçilmiş niyettir; sağlayıcı kimlik veya izin doğrulaması değildir.",
         )
     )

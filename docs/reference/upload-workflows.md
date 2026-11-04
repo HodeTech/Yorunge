@@ -75,6 +75,10 @@ DIGEST='FULL_64_HEX_DIGEST_FROM_REVIEW'
 
 Sadece gereken acknowledgement’lar kabul edilir. Plan/onay en çok 900 saniye geçerlidir; değişmiş kaynak veya bağ eski onayla gönderilmez. TTY ilerlemesinde **taşımaya verilen byte** ve **kalıcı confirm ile onaylanan dosya/byte** ayrı görünür. JSON/NDJSON ve non-TTY’de ilerleme metni yoktur. Başarılı sonuç operation ve dataset ID ile yalnız metadata doğrulama seviyesini gösterir.
 
+İlk yol en çok **128 dosya**, dosya başına **500.000.000 byte**, toplam **1 GiB** kabul eder. Her PUT en çok **120 saniyedir**; 500 MB için kesintisiz en az **33,34 Mbit/s** yükleme hızı gerekir. Kontrol ve bağlantı giderleri ek süre tüketir. Daha yavaş bağlantıda uzak yazma gerçekleşmiş olsa bile sonuç belirsiz kalabilir; otomatik resume yoktur. Plan, onay ve ilk çalıştırmanın 900 saniyelik pencereleri ayrı uygulanır; kalan onay süresi aktarımı tamamlamaya yetmeyebilir.
+
+Store kotası **128 plan ve bağlı iş**, **4.096 dosya** ve **16 MiB ayrılmış payload** sınırlarından ilk dolana kadardır. Taslaklar, süresi dolan planlar ve terminal geçmiş de yer kaplar; otomatik silinmez. Bunlar bütün üst sınırlara aynı anda ulaşma garantisi değildir. `upload list` ile geçmişi inceleyin; belirsiz işi aşmak için yeni store veya ad kullanmayın. `revoke` onayı geri alır; aynı plan yeniden onaylanmaz ve geçmişi silmez.
+
 ## Aynı içerikli dosyaları bulma
 
 İlk Platform upload yolu, farklı adlarla aynı SHA-256 içeriğini taşıyan dosyaları uzak çağrıdan önce reddeder. Yerel `inspect`/`verify` ve manifest bu adları ayrı korur. Boş dosyalar ve hardlink’ler de aynı içeriğe sahip olabilir. Manifestte hangi adların birlikte göründüğünü ağ veya credential kullanmadan bulabilirsiniz:
@@ -113,6 +117,8 @@ OPERATION_ID='OPERATION_UUID_FROM_SHOW'
 ```
 
 Bu yeni yazma hakkı veya etkili resume değildir. Kaynak dosyaları gerekmez; güncel anahtarla aynı uzak kaynak okunur. Missing receipt/ID veya etkin başka owner başarıyla doldurulmaz. Okuma retleri güvenli kaynak koduyla döner; uzak iptal sayılmaz. Yerel onayı geri almak için `upload revoke --plan-id "$PLAN_ID" --state-dir "$STATE"` kullanılır; zaten arm edilmiş istek geri çekilmiş sayılmaz.
+
+Create cevabı yerel kayda girmeden kesildiyse dataset ID bilinmeyebilir; Platform’da private bir kaynak kalmış olabilir. Adından ID tahmin etmek veya yeni create göndermek güvenli kurtarma değildir. Yerel kaydı koruyun; Platform arayüzünde salt inceleme yapabilirsiniz. Bu yol otomatik silme veya eksik receipt’i sonradan üretme desteği sunmaz.
 
 Aynı yerel sonuç Python’dan:
 

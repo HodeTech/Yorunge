@@ -199,14 +199,23 @@ def test_put_failure_never_accepts_or_replays_and_closes_source(
                 owned.exchange(cancelled)
             else:
                 rejected_call = partial(owned.exchange, lambda client: call.execute(client, arm))
-                with pytest.raises(YorungeError):
+                with pytest.raises(YorungeError) as caught:
                     rejected_call()
+                expected = {
+                    "wrong_arm": "invalid_request",
+                    "changed_file": "input_changed",
+                    "bad_ack": "invalid_response",
+                    "status": "remote_failed",
+                }
+                assert caught.value.code == expected[failure]
             assert not instances[0]._responses
             assert instances[0]._slots._value == 2
-        assert len(server.requests) <= int(failure != "wrong_arm")
+        # The changed bytes can be sent before the final streaming hash fails;
+        # that is not an accepted receipt or permission to resend.
+        assert len(server.requests) == int(failure != "wrong_arm")
     assert call._closed
     assert call._source._file_fd is call._source._root_fd is None
-    assert value.snapshot().effect_attempts <= 1
+    assert value.snapshot().effect_attempts == int(failure != "wrong_arm")
     assert value.snapshot().response_pending == 0
     with open_store(journal.root) as store:
         view = journal.repository(store).show(operation_id=record.operation_id)

@@ -138,7 +138,10 @@ MESSAGES: dict[ErrorCode, str] = {
     "input_changed": (
         "Dosya veya kök değişti. Etkin yazıcıları durdurun; güncel girdileri yeniden denetleyin."
     ),
-    "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
+    "input_budget_exceeded": (
+        "Yerel girdi dosya sayısı, boyut veya okuma bütçesini aşıyor. "
+        "Komut sınırlarını inceleyip daha dar bir girdi hazırlayın."
+    ),
     "execution_timeout": (
         "Hazırlık, doğrulama veya aktarım süre bütçesi doldu. "
         "Kaydı inceleyin; otomatik tekrar yapmayın."

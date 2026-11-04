@@ -88,8 +88,10 @@ class OutputRenderer:
         stderr: TextIO | None = None,
         stream_id: str | None = None,
         operation_id: str | None = None,
+        upload_guidance: bool = False,
     ) -> None:
         self.output = output
+        self._upload_guidance = upload_guidance
         self.stdout = sys.stdout if stdout is None else stdout
         self.stderr = sys.stderr if stderr is None else stderr
         if stream_id is not None or operation_id is not None:
@@ -254,6 +256,12 @@ class OutputRenderer:
 
             if isinstance(error, OperationError) and error.operation_id is not None:
                 message += f"\nİş: {error.operation_id}"
+                if self._upload_guidance:
+                    message += (
+                        "\nİncele: yorunge datasets upload show --operation-id "
+                        f"{error.operation_id}\nAynı --state-dir seçimini koruyun; "
+                        "yeni plan/ad/store ile tekrar göndermeyin."
+                    )
         try:
             write_utf8(message + "\n", self.stderr)
         except (OSError, ValueError):

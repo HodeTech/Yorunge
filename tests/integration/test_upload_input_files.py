@@ -170,12 +170,15 @@ def test_observed_tree_mutations_reject_before_next_effect(tmp_path, change):
 
 def test_fresh_capture_detects_same_size_content_change_with_preserved_mtime(tmp_path):
     root, manifest, artifact = fixture(tmp_path)
+    observation = capture(root, manifest)
     path = root / "file.bin"
     before = path.stat()
     path.write_bytes(b"CONTENT")
     os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
     assert path.stat().st_size == before.st_size
     assert path.stat().st_mtime_ns == before.st_mtime_ns
+    assert path.stat().st_ctime_ns != before.st_ctime_ns
+    rejected("input_changed", observation.recheck)
     for expected in (manifest, artifact):
         rejected("input_changed", lambda expected=expected: capture(root, expected))
 

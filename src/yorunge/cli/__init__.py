@@ -693,7 +693,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from yorunge.domain.errors import YorungeError
 
-    renderer = OutputRenderer(vars(args).get("output", "text"))
+    upload_guidance = args.command == "datasets" and args.action == "upload"
+    renderer = OutputRenderer(vars(args).get("output", "text"), upload_guidance=upload_guidance)
     try:
         result = dispatch(args)
     except YorungeError as error:
@@ -707,7 +708,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "datasets" and args.action == "upload":
             from yorunge.cli.upload import operation_id
 
-            renderer = OutputRenderer(renderer.output, operation_id=operation_id(result.data))
+            renderer = OutputRenderer(
+                renderer.output, operation_id=operation_id(result.data), upload_guidance=True
+            )
         text = _result_text(args, result.data) if renderer.output == "text" else None
         renderer.result(cast("Result[Model]", result), text=text)
         return 0

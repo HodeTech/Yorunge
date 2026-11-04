@@ -33,6 +33,82 @@ def test_literal_public_summary_preserves_result_v1_and_metadata_level():
     assert value.dataset_id == graph().operation.dataset_id
 
 
+def test_text_guidance_keeps_risk_flags_separate_from_approval_command():
+    from yorunge.cli.upload import text
+
+    view = graph()
+    value = summary(
+        replace(
+            view,
+            operation=None,
+            approval=None,
+            verification=None,
+            intents=(),
+            receipts=(),
+            controls=(),
+        )
+    )
+    rendered = text(value)
+    command = next(line for line in rendered.splitlines() if line.startswith("Onay: yorunge"))
+    assert "--confirm " + value.plan_digest in command
+    assert "--accept-" not in command
+    assert "--accept-unverified-authority" in rendered
+    assert "--accept-unpriced-cost" in rendered
+
+
+@pytest.mark.parametrize("dataset", [None, "00000000-0000-4000-8000-000000000099"])
+def test_unknown_text_has_same_id_show_and_only_conditional_read_recovery(dataset):
+    from yorunge.cli.upload import text
+
+    value = summary(graph()).model_copy(
+        update={
+            "operation_status": "unknown",
+            "dataset_id": dataset,
+            "verification_level": "none",
+        }
+    )
+    rendered = text(value)
+    assert f"upload show --operation-id {value.operation_id}" in rendered
+    assert "--state-dir" in rendered
+    assert "yeni plan/ad/store ile yeniden göndermeyin" in rendered
+    if dataset is None:
+        assert "upload reconcile" not in rendered
+        assert "private kaynak oluşmuş olabilir" in rendered
+    else:
+        assert f"upload reconcile --operation-id {value.operation_id}" in rendered
+        assert "eksik receipt okuma ile doldurulmaz" in rendered
+
+
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+def test_known_upload_error_guidance_does_not_change_machine_envelope(output):
+    from yorunge.domain.errors import OperationError
+
+    identity = graph().operation.operation_id
+    failure = OperationError("operation_uncertain", identity)
+    stdout, stderr = io.StringIO(), io.StringIO()
+    renderer = OutputRenderer(output, stdout=stdout, stderr=stderr, upload_guidance=True)
+    assert renderer.error(failure) == 5
+    assert not stdout.getvalue()
+    if output == "text":
+        assert f"upload show --operation-id {identity}" in stderr.getvalue()
+    else:
+        assert json.loads(stderr.getvalue()) == failure.envelope()
+
+
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+def test_input_budget_message_covers_count_and_size_without_an_execution_plan(output):
+    from yorunge.domain.errors import YorungeError
+
+    failure = YorungeError("input_budget_exceeded")
+    stdout, stderr = io.StringIO(), io.StringIO()
+    assert OutputRenderer(output, stdout=stdout, stderr=stderr).error(failure) == 2
+    assert not stdout.getvalue()
+    message = stderr.getvalue() if output == "text" else json.loads(stderr.getvalue())["message"]
+    assert "dosya sayısı, boyut veya okuma bütçesini" in message
+    assert "Komut sınırlarını inceleyip daha dar bir girdi" in message
+    assert "1 GiB" not in message
+
+
 def test_nonnull_cost_summary_and_requested_review_never_include_private_scope():
     data = json.loads((FIXTURES / "dataset-upload-approved-v2.json").read_bytes())
     plan = DatasetUploadPlanV2.model_validate_json(json.dumps(data["plan"]))

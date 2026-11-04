@@ -4,6 +4,7 @@ import hashlib
 import json
 from collections import Counter
 from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from yorunge.application.upload_policy import (
     parse_budget_cr,
     prepare_upload_v2,
 )
+from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_upload import REQUIRED_PERMISSIONS, UploadGrant
 from yorunge.domain.dataset_upload_v2 import (
@@ -510,6 +512,13 @@ def test_refreshed_current_timestamps_preserve_binding_but_not_historical_expiry
         ("plan_digest", "a" * 64),
         ("binding_digest", "b" * 64),
         ("cost_policy", "bounded_required"),
+        ("plan_id", "00000000-0000-4000-8000-000000000011"),
+        ("store_id", "00000000-0000-4000-8000-000000000012"),
+        ("identity_epoch", "00000000-0000-4000-8000-000000000013"),
+        ("clock_generation", 42),
+        ("admission_policy", "verified_only"),
+        ("approved_at", "2026-11-02T10:59:58.000000Z"),
+        ("expires_at", "2026-11-02T11:20:00.000000Z"),
     ],
 )
 def test_saved_approval_binding_mismatch_is_rejected(field, value):
@@ -518,6 +527,15 @@ def test_saved_approval_binding_mismatch_is_rejected(field, value):
     data[field] = value
     if field == "cost_policy":
         data["acknowledge_unpriced_cost"] = False
+    if field == "admission_policy":
+        # Valid standalone approval for another policy; the binding must reject it.
+        data["cost_policy"] = "bounded_required"
+        data["acknowledge_unpriced_cost"] = False
+        data["acknowledge_unverified_authority"] = False
+    if field == "approved_at":
+        data["expires_at"] = timestamp(instant(data[field]) + timedelta(seconds=899))
+    if field == "expires_at":
+        data["approved_at"] = timestamp(instant(data[field]) - timedelta(seconds=899))
     altered = DatasetUploadApprovalV2.model_validate_json(encode(data))
     with pytest.raises(ValueError, match="mismatch"):
         validate_approval_binding_v2(plan, altered)

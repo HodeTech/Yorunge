@@ -294,6 +294,135 @@ def approved_cli(server, inputs):
     return plan
 
 
+def plan_cli(server, inputs, *, bounded=False):
+    data, manifest, config = inputs
+    return result(
+        execute(
+            server,
+            "datasets",
+            "upload",
+            "plan",
+            str(data[1]),
+            "--manifest",
+            str(manifest),
+            "--name",
+            "sample",
+            "--project",
+            SCOPE.project_id,
+            "--owner-user",
+            SCOPE.owner.id,
+            "--modality",
+            "VISION",
+            *(
+                ("--budget-cr", "200")
+                if bounded
+                else ("--unpriced", "--admission-policy", "explicit-attempt")
+            ),
+            "--config",
+            str(config),
+            "--profile",
+            "test",
+            "--state-dir",
+            str(data[0]),
+            "--output",
+            "json",
+        ),
+        "json",
+    )
+
+
+@pytest.mark.parametrize("output", ["text", "json", "ndjson"])
+@pytest.mark.parametrize("missing", ["authority", "cost", "digest"])
+def test_real_cli_approval_missing_choice_or_wrong_digest_has_no_approval_or_http(
+    public_inputs, certificates, output, missing
+):
+    from yorunge import api
+    from yorunge.domain.errors import YorungeError
+
+    data, _, config = public_inputs
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = plan_cli(server, public_inputs)
+        before = len(server.requests)
+        flags = []
+        if missing != "authority":
+            flags.append("--accept-unverified-authority")
+        if missing != "cost":
+            flags.append("--accept-unpriced-cost")
+        digest = "0" * 64 if plan["plan_digest"] != "0" * 64 else "1" * 64
+        found = execute(
+            server,
+            "datasets",
+            "upload",
+            "approve",
+            "--plan-id",
+            plan["plan_id"],
+            "--confirm",
+            digest if missing == "digest" else plan["plan_digest"],
+            *flags,
+            "--config",
+            str(config),
+            "--state-dir",
+            str(data[0]),
+            "--output",
+            output,
+        )
+        expected = YorungeError(
+            "upload_plan_not_valid" if missing == "digest" else "approval_required"
+        )
+        assert found.returncode == expected.exit_code
+        assert not found.stdout
+        if output == "text":
+            assert found.stderr.decode().strip() == expected.message
+        else:
+            assert json.loads(found.stderr) == expected.envelope()
+        assert len(server.requests) == before
+        saved = api.show_dataset_upload(plan_id=plan["plan_id"], state_dir=data[0]).data
+        assert saved.approval_status is saved.operation_id is None
+
+
+def test_real_cli_default_verified_only_numeric_budget_stays_draft(public_inputs, certificates):
+    data, _, _ = public_inputs
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = plan_cli(server, public_inputs, bounded=True)
+        assert plan["admission_policy"] == "verified_only"
+        assert plan["plan_status"] == "draft"
+        assert plan["blockers"] == ["authority_unverified", "cost_unverified"]
+        assert plan["budget_micros"] == 200_000_000
+        checked = execute(
+            server,
+            "datasets",
+            "upload",
+            "show",
+            "--plan-id",
+            plan["plan_id"],
+            "--state-dir",
+            str(data[0]),
+        )
+        assert checked.returncode == 0
+        assert "verified-only bu eksiklerle taslak kalır" in checked.stdout.decode()
+        assert "Onay: yorunge" not in checked.stdout.decode()
+        assert provider.create_calls == 0
+
+
+def test_upload_plan_help_discloses_file_time_speed_and_durable_capacity(cli):
+    found = cli("datasets", "upload", "plan", "--help", metadata=True, recipe_loader=False)
+    text = " ".join(found.stdout.split())
+    assert found.returncode == 0
+    for value in (
+        "128 dosya",
+        "500.000.000",
+        "1 GiB",
+        "120 s",
+        "33,34 Mbit/s",
+        "900 s",
+        "16 MiB",
+        "Gizli dosyalar",
+    ):
+        assert value in text
+
+
 def test_closed_stdout_after_durable_success_reports_same_id_and_never_replays(
     public_inputs, certificates
 ):

@@ -270,6 +270,7 @@ def loopback_sockets(
 ) -> Iterator[None]:
     """Unused by product: allow actual loopback sockets inside this fixture only."""
     original = socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo
+    original_reverse = socket.gethostbyaddr
 
     def permitted(self: socket.socket, address: tuple[str, int]) -> object:
         assert address[0] in ("127.0.0.1", "::1"), "non-loopback connection forbidden"
@@ -286,7 +287,15 @@ def loopback_sockets(
     socket.socket.connect = permitted  # type: ignore[method-assign,assignment]
     socket.socket.connect_ex = permitted_ex  # type: ignore[method-assign,assignment]
     socket.getaddrinfo = resolve  # type: ignore[assignment]
+
+    def reverse(host: str) -> tuple[str, list[str], list[str]]:
+        assert host in ("127.0.0.1", "::1"), "non-loopback reverse DNS forbidden"
+        return "localhost", [], [host]
+
+    # HTTPServer asks getfqdn(); deterministic loopback metadata needs no DNS.
+    socket.gethostbyaddr = reverse
     try:
         yield
     finally:
         socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo = original
+        socket.gethostbyaddr = original_reverse

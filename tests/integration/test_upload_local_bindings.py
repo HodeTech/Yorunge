@@ -66,6 +66,7 @@ def test_logical_receipt_graph_never_persists_provider_key_url_or_network_uid(jo
         view = journal.repository(store).show(operation_id=record.operation_id)
         assert len(view.intents) == len(view.receipts) == 11
         dump = "\n".join(store.connection.iterdump())
+        assert secret.reveal() not in dump
         assert "unproven-provider-capability" not in dump
         assert "upload/put?key=" not in dump
         for context in expected:
