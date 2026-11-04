@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-11-02. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-04. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -31,5 +31,6 @@
 | [0025](0025-isolated-storage-streaming.md) | Ayrı storage hedef/auth politikası ve bounded descriptor request streaming | Accepted — 2026-11-02 kullanıcı review düzeltmeleri sonrası uygulama yetkisi; provider hedef/expiry/wire kapısı korunur |
 | [0026](0026-explicit-unverified-transfer-attempts.md) | Verified varsayılanını koruyan açık unverified/unpriced transfer deneme politikası; v2 plan/onay | Accepted — kullanıcı review revizyonu ve iki fresh tur kapandı; ADR-0024 authority/cost/read hükümlerini kısmen değiştirir |
 | [0027](0027-durable-created-dataset-context.md) | Create cevabının iki sahiplik alanını dar v2 receipt ile atomik korumak | Accepted — 3 Kasım kullanıcı review düzeltmeleri ve iki fresh tur kapandı; ADR-0026 receipt/legacy/new-success hükümlerini kısmen değiştirir |
+| [0028](0028-platform-upload-content-cardinality.md) | İlk Platform upload’ında tekrarlı içerik hash’ini erken reddetme ve özgün çoklu-ad ihtiyacını takip etme | Proposed — gerçek r4 dedup durması sonrası kapsam tercihi; kullanıcı onayı yok, mevcut kabul değişmedi |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

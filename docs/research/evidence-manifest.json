@@ -16642,6 +16642,21 @@
       }
     },
     {
+      "name": "p02-2-final-live-20261104-r4-incomplete.json",
+      "archive": "raw/p02-2-final-live-20261104-r4-incomplete.json.gz",
+      "original_commit": "b5f293bf31f92f2c2b8b648a3cf2a5b2a101e789",
+      "content_bytes": 10007,
+      "content_sha256": "298412df16d2a66d763f70f1a6ec28e920b867cc785643ab299e653e9c613036",
+      "archive_bytes": 1040,
+      "archive_sha256": "f3b44a40b3102ddd5e00f7efde5ab88c6c1e20ea1167bde0228e8ca457b4c06a",
+      "summary": {
+        "source_commit": "b5f293bf31f92f2c2b8b648a3cf2a5b2a101e789",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "incomplete"
+      }
+    },
+    {
       "name": "p02-2-link-contract-20261104.json",
       "archive": "raw/p02-2-link-contract-20261104.json.gz",
       "original_commit": null,
