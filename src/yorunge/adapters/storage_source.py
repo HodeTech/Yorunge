@@ -29,6 +29,10 @@ from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.dataset_upload import UploadRoot
 from yorunge.domain.errors import YorungeError
 
+# Leave room for the simultaneous plaintext and TLS-encrypted write buffers.
+# The storage port still accepts sources with chunks up to STORAGE_CHUNK_BYTES.
+_FILE_READ_BYTES = 128 * 1024
+
 
 class DescriptorByteSource(AsyncIterator[bytes]):
     """One iteration, no source I/O during construction, no executor or producer task."""
@@ -170,7 +174,10 @@ class DescriptorByteSource(AsyncIterator[bytes]):
             await asyncio.sleep(0)
             self._check()
             if self._sent < self.size:
-                chunk = os.read(self._file_fd, min(STORAGE_CHUNK_BYTES, self.size - self._sent))
+                chunk = os.read(
+                    self._file_fd,
+                    min(_FILE_READ_BYTES, STORAGE_CHUNK_BYTES, self.size - self._sent),
+                )
                 self._check()
                 if not chunk:
                     raise YorungeError("input_changed")

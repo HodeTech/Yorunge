@@ -17,6 +17,7 @@ from yorunge.domain.dataset_upload import UploadRoot
 from yorunge.domain.errors import YorungeError
 
 CHUNK = 1024 * 1024
+READ_BLOCK = 128 * 1024
 
 
 @pytest.fixture
@@ -61,13 +62,14 @@ def test_stream_has_exact_blocks_counts_hash_and_no_worker_tasks(source_file):
         chunks = []
         async with source:
             async for chunk in source.chunks():
-                assert 0 < len(chunk) <= CHUNK
+                assert 0 < len(chunk) <= READ_BLOCK
+                assert len(chunk) <= CHUNK
                 assert asyncio.all_tasks() == {asyncio.current_task()}
                 chunks.append(chunk)
         return chunks
 
     chunks = asyncio.run(run())
-    assert list(map(len, chunks)) == [CHUNK, CHUNK, 31]
+    assert list(map(len, chunks)) == [READ_BLOCK] * 16 + [31]
     assert b"".join(chunks) == source_file[2]
     assert source.complete
     assert source.sent_bytes == len(source_file[2])
@@ -123,10 +125,10 @@ def test_mutation_after_first_block_is_detected(source_file, change):
 
     async def run():
         stream = source.chunks()
-        assert len(await anext(stream)) == CHUNK
+        assert len(await anext(stream)) == READ_BLOCK
         if change == "edit":
             with path.open("r+b") as file:
-                file.seek(CHUNK)
+                file.seek(READ_BLOCK)
                 file.write(b"b")
         elif change == "truncate":
             path.write_bytes(b"short")
@@ -161,14 +163,14 @@ def test_early_close_is_normal_and_does_not_claim_complete_or_leave_fd(source_fi
 
     async def run():
         async with source:
-            assert len(await anext(source.chunks())) == CHUNK
+            assert len(await anext(source.chunks())) == READ_BLOCK
             descriptor = source._file_fd
         with pytest.raises(OSError):
             os.fstat(descriptor)
         await source.aclose()
 
     asyncio.run(run())
-    assert source.sent_bytes == CHUNK
+    assert source.sent_bytes == READ_BLOCK
     assert not source.complete
     assert source.sent_sha256 is None
 
@@ -200,7 +202,7 @@ def test_actual_task_cancellation_is_reraised_after_source_cleanup(source_file, 
 
     asyncio.run(run())
     assert calls == 1
-    assert source.sent_bytes == CHUNK
+    assert source.sent_bytes == READ_BLOCK
     assert not source.complete
     assert source._file_fd is source._root_fd is None
 

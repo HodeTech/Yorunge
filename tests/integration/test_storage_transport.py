@@ -541,7 +541,7 @@ def test_cancel_mid_source_closes_on_owner_task_and_session_still_works(tmp_path
             owned.exchange(run)
             assert instances[0]._slots._value == 2
             assert not instances[0]._responses
-        assert base.sent_bytes == 1024 * 1024
+        assert base.sent_bytes == 128 * 1024
         assert base.sent_sha256 is None
 
 

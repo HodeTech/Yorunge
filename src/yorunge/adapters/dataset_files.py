@@ -31,6 +31,8 @@ from yorunge.domain.dataset_manifest import (
 from yorunge.domain.errors import ErrorCode, YorungeError
 
 Chain = tuple[tuple[int, int], ...]
+# Keep consecutive read allocations small; HASH_BLOCK_BYTES remains the public cap.
+_HASH_READ_BYTES = 128 * 1024
 
 
 def close_descriptor(
@@ -304,7 +306,10 @@ class DatasetTree:
             digest, count = hashlib.sha256(), 0
             while count < observed.st_size:
                 self.budget.check()
-                block = os.read(descriptor, min(policy.HASH_BLOCK_BYTES, observed.st_size - count))
+                block = os.read(
+                    descriptor,
+                    min(_HASH_READ_BYTES, policy.HASH_BLOCK_BYTES, observed.st_size - count),
+                )
                 if not block:
                     raise YorungeError("input_changed")
                 digest.update(block)
