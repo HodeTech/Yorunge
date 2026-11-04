@@ -100,3 +100,6 @@ Tavan: **6 GET + 1 POST / 13 fiziksel deneme / 13 MiB response body / 128 byte P
 ## Sonraki public tam kontrol
 
 Genel kullanıcı kontrol yetkisinde, yukarıdaki aynı kapalı full-runner/sayısal sınırlarda bir yeni private instance planlanır: `.local/p02-pilot/p02-2-final-20261104-r3`, dataset `yorunge-acceptance-p02-2-final-20261104-r3`. Aynı test projesi/anahtar, toplam 237 byte olan üç PNG ve iki aynı hash/farklı ad korunur. Tam one-shot private create/link/3 presign/3 PUT/3 confirm; 40 GET/80 read attempt/16 MiB response/64 KiB control/180 s, unknown/unpriced maliyet ve sayısal CR tavanı yokluğu değişmez. İlk hata/belirsizlikte durur; eski işler veya nonce’lar yeniden kullanılmaz. Root/data/bare-link wire uyumu iki fresh kaynak turu ve yeni runtime-only wheel provenance kapısından sonra çalışır. Ek kaynak/hesap değişikliği, cleanup/silme/şart kabulü veya indirme/eğitim içermez.
+
+
+**r3 kaynak kapısı:** 821e155 exact ilişki decoder uyumu ve finalization, iki farklı fresh contract/safety turunda temiz kapandı. Önceki koşular yeniden gönderilmez; yalnız r3 exclusive workspace aynı sabit sayısal kapsamda bir defa kullanılır.
