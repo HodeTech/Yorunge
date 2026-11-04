@@ -294,6 +294,7 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
     original_current = upload_original._Environment.current
     original_execute = upload_original._Call.execute
     put_checks = []
+    wait_timeouts = []
 
     def advance(seconds):
         clock.value += timedelta(seconds=seconds)
@@ -312,7 +313,11 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
         if kind == "put":
             put_checks.append(result)
             if len(put_checks) == 2:
-                await failed.wait()
+                try:
+                    await asyncio.wait_for(failed.wait(), timeout=5)
+                except TimeoutError:
+                    wait_timeouts.append(True)
+                    raise
         return result
 
     async def execute(call, issued):
@@ -346,6 +351,7 @@ def test_stale_second_current_never_arms_after_first_real_put_failed(
         assert put_checks[0].checked_at < put_checks[1].checked_at
         assert provider.put_calls == 1
         assert provider.confirm_calls == 0
+        assert not wait_timeouts, "the injected first PUT failure was never observed"
     with open_existing_store(data[0]) as store:
         view = StateUploads(store, clock=clock).show(plan_id=plan.plan_id)
         assert sum(intent.kind == "put" for intent in view.intents) == 1
