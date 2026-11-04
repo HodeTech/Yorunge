@@ -761,7 +761,7 @@
     {
       "observed_head": "36f9442fbfaca17f07c2603bcc1376b0b92517af",
       "observed_total": 20,
-      "status": "proposed_source_fixes_and_dispositions",
+      "status": "dispositions_verified_source_fixes_pending_reanalysis",
       "issues": [
         {
           "key": "AaGoc2tXCo9rc6Gw1TBD",
@@ -804,8 +804,12 @@
           "classification": "false_positive",
           "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T21:43:12+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "286bbee7e841a85f05abd139de1c5d3115108de4f98f13ee5623da5873bc64e8"
         },
         {
           "key": "AaGoc2tXCo9rc6Gw1TBJ",
@@ -815,8 +819,12 @@
           "classification": "false_positive",
           "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T21:45:17+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "286bbee7e841a85f05abd139de1c5d3115108de4f98f13ee5623da5873bc64e8"
         },
         {
           "key": "AaGoc2tXCo9rc6Gw1TBF",
@@ -837,8 +845,12 @@
           "classification": "false_positive",
           "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T21:50:50+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "286bbee7e841a85f05abd139de1c5d3115108de4f98f13ee5623da5873bc64e8"
         },
         {
           "key": "AaGoc2tXCo9rc6Gw1TBL",
@@ -848,8 +860,12 @@
           "classification": "false_positive",
           "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T21:58:32+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "286bbee7e841a85f05abd139de1c5d3115108de4f98f13ee5623da5873bc64e8"
         },
         {
           "key": "AaGoc2tXCo9rc6Gw1TBG",
@@ -892,8 +908,12 @@
           "classification": "false_positive",
           "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T21:59:50+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "ab39e2ad042a4ee9e51381ff518d7675d6e30bdae105960332b0da6b37b9dca2"
         },
         {
           "key": "AaGoc2i1Co9rc6Gw1TA5",
@@ -903,8 +923,12 @@
           "classification": "false_positive",
           "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T22:00:55+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "ab39e2ad042a4ee9e51381ff518d7675d6e30bdae105960332b0da6b37b9dca2"
         },
         {
           "key": "AaGoc2i1Co9rc6Gw1TA6",
@@ -914,8 +938,12 @@
           "classification": "false_positive",
           "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T22:01:45+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "ab39e2ad042a4ee9e51381ff518d7675d6e30bdae105960332b0da6b37b9dca2"
         },
         {
           "key": "AaGoc2i1Co9rc6Gw1TA7",
@@ -925,8 +953,12 @@
           "classification": "false_positive",
           "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T22:04:20+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true,
+          "rationale_comment_sha256": "ab39e2ad042a4ee9e51381ff518d7675d6e30bdae105960332b0da6b37b9dca2"
         },
         {
           "key": "AaGoc2pBCo9rc6Gw1TA8",

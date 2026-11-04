@@ -16999,6 +16999,36 @@
       }
     },
     {
+      "name": "p02-2-ci41915696824-test-failure.json",
+      "archive": "raw/p02-2-ci41915696824-test-failure.json.gz",
+      "original_commit": null,
+      "content_bytes": 10118,
+      "content_sha256": "9a41f648266dc43cae25e254b16a9fc32e90b73dff8a00f27fd48a9f117e8898",
+      "archive_bytes": 3327,
+      "archive_sha256": "436310552c91f728f28baee3bddb509c7b505340cd821e6633b2b6d6efdebbe3",
+      "summary": {
+        "source_commit": "36f9442fbfaca17f07c2603bcc1376b0b92517af",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "ci_test_failure_audit"
+      }
+    },
+    {
+      "name": "p02-2-ci41915766769-test-failure.json",
+      "archive": "raw/p02-2-ci41915766769-test-failure.json.gz",
+      "original_commit": null,
+      "content_bytes": 10100,
+      "content_sha256": "bbbc0a40b0f897404a086242059b12af0527c61f38d2a23e95d57a2e08580b27",
+      "archive_bytes": 3211,
+      "archive_sha256": "204fdbd8743fee70baa8db3fc4ea140fe3927e73657bd578503ec9db478f556e",
+      "summary": {
+        "source_commit": "36f9442fbfaca17f07c2603bcc1376b0b92517af",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "ci_test_failure_audit"
+      }
+    },
+    {
       "name": "p02-2-final-installations-01.json",
       "archive": "raw/p02-2-final-installations-01.json.gz",
       "original_commit": null,

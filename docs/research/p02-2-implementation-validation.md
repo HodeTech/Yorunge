@@ -1117,3 +1117,16 @@ Tam CI hedefli seçkilerin yakalamadığı fixture varsayımlarını ortaya çı
 - Tam yanıtı send/flush edip hemen fiziksel RST göndermek, istemcinin byte’ları aldığına dair oracle değildir; Linux’ta transport_failed meşrudur. Pozitif gerçek 8 MiB TLS testinde orderly full reply exact byte/SHA başarıyla; negatifte truncated fiziksel RST kesin transport_failed ile sınanır. Tek request/connection ve FD/response cleanup assertions korunur. Kayıp peer metadata’sı + tamponlanmış cevap için strict None/OSError × read/write contract oracle’ı değişmedi; yeni tam-cevap testinin fiziksel RST teslimini garanti ettiği iddia edilmez.
 
 Altı fixture/test dosyasındaki dar düzeltme seçkisi **116 passed /7,30 s**, Ruff temiz. Geçen 6592 testi yerelde tekrar etmek veya eşiği/skip’i değiştirmek yerine gerçek başarısız yollar düzeltildi. Native09 henüz başlamadı; bu CI düzeltmeleri de commit + iki fresh review ile son kaynağa dahil edilmeden ölçüm yapılmayacak. 22b2cc0 Sonar/jobs codec dilimi farklı fresh R1/R2 contract/safety ajanlarınca bulgusuz kapandı; bu yeni CI delta’sı onun yerine incelenmiş sayılmaz. CI’ın var olan seçilmiş environment çıktılarının kalıcı saklama takibi açıktır.
+
+
+### CI fixture review ve mevcut çıktı saklama kapanışı
+
+D013814 dar fixture düzeltmesi fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz kapandı. 22b2cc0 kaynak diliminin dört eksenli R1/R2 kapanışı ayrıca korunur. Yeni ürün/taşıma/gizlilik istisnası yoktur; 09 öncesi bütün source/test/script/workflow değişiklikleri review’dan geçti.
+
+36f9442’nin iki full-cell koşusu da tamamlandı: source 41915696824 Linux 3.11/3.14 **6 failed /6592 passed**, macOS **10 failed /6587 passed /1 skipped**; metadata 41915766769 aynı sayıları verdi. Süreler ve job eşliği [source tanısında](evidence.md#p02-2-ci41915696824-test-failure) ve [metadata tanısında](evidence.md#p02-2-ci41915766769-test-failure) özgün environment baytlarıyla saklandı. Altı hücrenin context, privacy gate ve artifact upload adımları başarılıdır. Test aşaması reddettiği için build/kurulum/native raporu üretilmedi; olmayan çıktı için saklama başarısı iddia edilmez.
+
+Özgün environment kayıtlarındaki tested merge `6103e756` GitHub commit API’den doğrulandı: parent’ları exact development tabanı `50d68b1` ve PR head’i `36f9442`’dir. PR head’i ile test edilmiş merge birbirinin yerine yazılmadı.
+
+Her ZIP’in servis digest’i, boyutu, CRC’si ve tek seçilmiş `dist/ci-environment.json` üyesi doğrulandı. Public rapor yalnız bu altı özgün üye ile dar run/job/test/digest metadata’sını taşır; tam API/log/ZIP özel çalışma alanında kalır. Public sarmalayıcılar gerçek yerel üretim bağlamıyla ayrıca kontrol edildi; CI’ın özel context’i sonradan yeniden üretilmiş gibi sunulmadı. Var olan seçilmiş CI çıktılarının saklama takibi kapandı; **460** arşiv/indeks doğrulandı. İki CI koşusu başarısız kalır, overall teslim veya merge kabulü değildir.
+
+Sekiz Sonar false-positive durumu ve her birinin tek gerekçe yorumu API’den doğrulandı; 12 source-fix key yeni analizi bekler. AC güç fiziksel kontrolü yapıldı. Nihai kaynakta iki temiz paket kurulumu sonrası 60 saniyelik ön kontrolle bir 09 serisi çalıştırılır; 08’in başarısız örnekleri korunur.

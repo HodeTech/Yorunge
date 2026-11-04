@@ -134,3 +134,6 @@ Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/en
 
 
 09 öncesi tek yeni kaynak dilimi: 36f9442 Sonar analizindeki 12 kaynak düzeltmesi/sekiz disposition önerisi ve tek A/B tanısıyla gerekçelenmiş dar jobs codec hazırlığı. Sonuç/ilk kullanım/wire testleri ve strict mypy geçti; iki fresh eksenli tur beklenir. Kullanıcı adaptörü bağladı; son kaynakta AC/önceden sakin pencereyle tek 09 hazırlanır. Bu, 08 retlerini veya tanı örneklerini değiştirmez; [güncel kaynak kaydı](p02-2-implementation-validation.md#5-kasım--sonar-ve-jobs-codec-kaynak-dilimi) kanoniktir.
+
+
+22b2cc0 kaynak dilimi dört fresh contract/safety review ile, d013814 CI fixture düzeltmesi de farklı fresh R1/R2 ile bulgusuz kapandı. Sekiz Sonar false-positive kaydı tek gerekçe yorumuyla uygulanıp API’den doğrulandı; 12 kaynak düzeltmesi yeni analiz bekler. İki 36f9442 CI koşusunun altı hücresi test hatasıyla durdu; var olan altı environment çıktısı özgün baytları ve ZIP/job eşliğiyle kalıcı saklandı. Katalog 460; başarılı tam CI/kurulum/native kabulü iddia edilmez. [Ayrıntılı kapanış](p02-2-implementation-validation.md#ci-fixture-review-ve-mevcut-çıktı-saklama-kapanışı). 09 serisi bu son kaynak ve AC/sakin ortam koşulunda bir kez yapılacaktır.

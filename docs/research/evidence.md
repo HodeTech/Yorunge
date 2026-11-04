@@ -2735,6 +2735,20 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-ci41854038211-macos-capacity.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "hosted_macos_runner_unavailable", "source_commit": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1"}`.
 
+## p02-2-ci41915696824-test-failure
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `9a41f648266dc43cae25e254b16a9fc32e90b73dff8a00f27fd48a9f117e8898`.
+**Yerel arşiv:** `raw/p02-2-ci41915696824-test-failure.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "ci_test_failure_audit", "source_commit": "36f9442fbfaca17f07c2603bcc1376b0b92517af"}`.
+
+## p02-2-ci41915766769-test-failure
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `bbbc0a40b0f897404a086242059b12af0527c61f38d2a23e95d57a2e08580b27`.
+**Yerel arşiv:** `raw/p02-2-ci41915766769-test-failure.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "ci_test_failure_audit", "source_commit": "36f9442fbfaca17f07c2603bcc1376b0b92517af"}`.
+
 ## p02-2-final-installations-01
 
 **Tür:** `installation_v3`.
