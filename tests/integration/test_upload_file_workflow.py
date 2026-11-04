@@ -19,7 +19,7 @@ from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_original import upload_files_original
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.application.datasets import DatasetBudget
-from yorunge.domain.errors import OperationError
+from yorunge.domain.errors import OperationError, YorungeError
 
 CONNECT, CONNECT_EX, GETADDRINFO = (
     socket.socket.connect,
@@ -165,6 +165,75 @@ def test_file_stage_failure_stops_without_new_writes_or_replay(
         assert len(server.requests) == count
     with open_existing_store(data[0]) as store:
         view = StateUploads(store).show(plan_id=plan.plan_id)
+        assert view.operation.status == "unknown"
+        assert view.operation.lease is None
+        assert view.verification is None
+        assert store.verify().store_schema_version == 7
+
+
+def test_successful_sibling_put_receipt_is_durable_before_batch_becomes_unknown(
+    prepared_input, certificates, monkeypatch
+):
+    from yorunge.adapters import upload_original
+
+    data = many(prepared_input)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, fail_put_name="two.bin")
+    execute = upload_original._Call.execute
+    gates = {}
+
+    async def synchronized(call, arm):
+        if arm.intent.kind != "put":
+            return await execute(call, arm)
+        if not gates:
+            gates.update(first=asyncio.Event(), failed=asyncio.Event())
+        try:
+            outcome = await execute(call, arm)
+        except YorungeError:
+            await gates["first"].wait()
+            gates["failed"].set()
+            raise
+        gates["first"].set()
+        try:
+            await gates["failed"].wait()
+        except asyncio.CancelledError:
+            # This response was already received and validated before the
+            # sibling failed; retain it even if batch cleanup wins the wakeup.
+            pass
+        return outcome
+
+    monkeypatch.setattr(upload_original._Call, "execute", synchronized)
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = approved(data, server)
+        rejected = partial(
+            upload_files_original,
+            plan.plan_id,
+            data[0],
+            loader(data),
+            session_factory=factory(server),
+        )
+        with pytest.raises(OperationError) as raised:
+            rejected()
+        assert raised.value.code == "operation_uncertain"
+        assert provider.create_calls == provider.link_calls == 1
+        assert provider.presign_calls == 3
+        assert provider.put_calls == 2
+        assert provider.confirm_calls == 0
+        before = len(server.requests)
+        found = upload_files_original(plan.plan_id, data[0], denied, session_factory=denied)
+        assert found.existing
+        assert found.record.operation_id == raised.value.operation_id
+        assert len(server.requests) == before
+    with open_existing_store(data[0]) as store:
+        view = StateUploads(store).show(plan_id=plan.plan_id)
+        intents = {intent.intent_id: intent for intent in view.intents}
+        accepted_puts = [
+            intents[receipt.intent_id].file_index
+            for receipt in view.receipts
+            if intents[receipt.intent_id].kind == "put" and receipt.result == "accepted"
+        ]
+        assert accepted_puts == [0]
+        assert len(view.intents) == 7
+        assert len(view.receipts) == 6
         assert view.operation.status == "unknown"
         assert view.operation.lease is None
         assert view.verification is None

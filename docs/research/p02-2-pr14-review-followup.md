@@ -57,3 +57,10 @@ Dilim 1 /9815f70, R1 Astra/high contract + Sol/high safety ve farklı fresh R2 S
 
 
 ADR-0029 önerisi ve 90 kayıtlı dar envanter, d5f04c5 kaynağında fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz incelendi. Karar Proposed; bağımlı privacy/retention kodu yoktur. Kullanıcıya somut onay sorusu sunulur; bağımsız receipt ve kullanıcı/test düzeltmeleri sürer.
+
+
+## Dilim 2 ilk doğrulama
+
+PUT task’larının tek publish-attempt kümesi, başarıları worker hatasından önce toplar; sonraki current/prepare/arm hatasında cleanup da henüz denenmemiş başarılı sonucu işler. İşaret publish’den öncedir; commit cevabı kaybı tekrar deneme üretmez. Cleanup her kaynağı kapatmayı dener ve gerçek cancellation önceliğini korur.
+
+Saf scheduler/reply-loss/cancel senaryoları ve gerçek SQLite/TLS fixture’ında bir başarılı PUT + bir 503, kalıcı **7 intent/6 accepted receipt**, tek accepted PUT index0, unknown/no lease/no verification ve sıfır confirm ile geçti; aynı-ID local lookup yeni ağ açmadı. İlk ek cleanup-cancel testinde gather’ın opsiyonel cancel mesajını koruduğu varsayılmıştı; Python bu mesajı düşürebildiğinden contract oracle’ı gerçek CancelledError tipi, receipt ve bütün close sonuçlarına düzeltildi. Daha dar ilk grupta 10 passed/1 bu test-oracle hatası vardı. Son scheduler/file-workflow/gerçek kill seçkisi **29 passed /30,58 s**. Yeni kod strict mypy ve Ruff’la denetlenir; R1/R2 kaynak review henüz beklenir. Genel tam suite/ölçüm veya hesap çağrısı yapılmadı.

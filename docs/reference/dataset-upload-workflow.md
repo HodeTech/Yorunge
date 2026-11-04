@@ -49,3 +49,8 @@ Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğ
 ## Dilimler ve kabul
 
 R.1 private environment/invocation/admission ve create/link; r.2 presign bijeksiyonu/bounded worker/seri confirm; r.3 initial read/proof ve bütün original workflow/error/kill kabulü. Her dilim ayrı commit ve iki fresh review turudur. Stateful gerçek TLS fixture yalnız test alanındadır; ürün kodunda fixture grant, test success veya provider mock seçeneği yoktur. Kill/cevap kaybı admission/intent/HTTP/receipt/proof commit öncesi ve sonrası ayrılır; ikinci create/presign/PUT/confirm üretilmez. Public sentinel/API-CLI, native 16/256/1024 MiB, altı kurulum, son source-bound M5/CI ve ayrı canlı kabul c üst tesliminde açık kalır.
+
+
+## Eşzamanlı PUT yanıtlarının kalıcılığı
+
+Bir worker hatası gözlenince yeni arm ve confirm kapanır. Aynı wait sonucundaki veya pending task cleanup’ı sırasında başarıyla dönen ayrı PUT outcome’ları, owner/lease/clock/intent kapıları altında birer receipt publish denemesi alır; diğer hata bu bilinen yanıtı atmaz. Publish çağrısından önce task attempted olarak işaretlenir: commit sonrası cevap kaybında aynı receipt cleanup’ta tekrar yazılmaya çalışılmaz. Bir publish veya close hatası diğer başarılı outcome’un tek denemesini/diğer kaynağın kapanışını engellemez. Gerçek owner Task.cancel cleanup sonrası CancelledError olarak yayılır; kaynak hata korunur, ikinci HTTP/arm açılmaz. Artık geçerli olmayan state kapısı gevşetilmez; kalıcılaştırılamayan sonuç aynı operation üzerinde unknown kalabilir.

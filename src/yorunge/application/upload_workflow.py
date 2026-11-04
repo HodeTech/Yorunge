@@ -117,21 +117,83 @@ def _check_workers(tasks: list[asyncio.Task[EffectOutcome]]) -> None:
         raise error
 
 
+def _prefer_failure(
+    first: BaseException | None, later: BaseException | None
+) -> BaseException | None:
+    if first is None:
+        return later
+    if isinstance(later, asyncio.CancelledError) and not isinstance(first, asyncio.CancelledError):
+        return later
+    return first
+
+
+def _publish_completed(
+    environment: OriginalEnvironment,
+    tasks: list[asyncio.Task[EffectOutcome]],
+    attempted: set[asyncio.Task[EffectOutcome]],
+) -> BaseException | None:
+    failure: BaseException | None = None
+    for task in tasks:
+        if task in attempted or not task.done() or task.cancelled() or task.exception() is not None:
+            continue
+        # Publication itself can commit and then fail. Mark before entering it:
+        # neither drain nor cancellation cleanup may submit this receipt twice.
+        attempted.add(task)
+        try:
+            environment.publish(task.result())
+        except BaseException as error:
+            failure = _prefer_failure(failure, error)
+    return failure
+
+
 async def _drain(
-    environment: OriginalEnvironment, tasks: list[asyncio.Task[EffectOutcome]]
+    environment: OriginalEnvironment,
+    tasks: list[asyncio.Task[EffectOutcome]],
+    attempted: set[asyncio.Task[EffectOutcome]] | None = None,
 ) -> None:
+    if attempted is None:
+        attempted = set()
     pending = set(tasks)
     while pending:
         done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
         ordered = [task for task in tasks if task in done]
-        _check_workers(ordered)
-        for task in ordered:
-            environment.publish(task.result())
+        failure = _completed_error(ordered)
+        failure = _prefer_failure(failure, _publish_completed(environment, ordered, attempted))
+        if failure is not None:
+            raise failure
+
+
+async def _cleanup_batch(
+    environment: OriginalEnvironment,
+    calls: list[PreparedEffect],
+    tasks: list[asyncio.Task[EffectOutcome]],
+    attempted: set[asyncio.Task[EffectOutcome]],
+    failure: BaseException | None,
+) -> BaseException | None:
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    if tasks:
+        try:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except BaseException as error:
+            failure = _prefer_failure(failure, error)
+    # A cancelled worker may still have received and validated a response.
+    # Intentional cleanup cancellations are not new primary worker failures.
+    failure = _prefer_failure(failure, _publish_completed(environment, tasks, attempted))
+    for call in calls:
+        try:
+            await call.aclose()
+        except BaseException as error:
+            failure = _prefer_failure(failure, error)
+    return failure
 
 
 async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
     calls: list[PreparedEffect] = []
     tasks: list[asyncio.Task[EffectOutcome]] = []
+    attempted: set[asyncio.Task[EffectOutcome]] = set()
+    failure: BaseException | None = None
     try:
         for index in indices:
             _check_workers(tasks)
@@ -143,15 +205,12 @@ async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
             calls.append(call)
             arm = environment.arm(check, "put", index)
             tasks.append(asyncio.create_task(call.execute(arm)))
-        await _drain(environment, tasks)
-    finally:
-        for task in tasks:
-            if not task.done():
-                task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        for call in calls:
-            await call.aclose()
+        await _drain(environment, tasks, attempted)
+    except BaseException as error:
+        failure = error
+    failure = await _cleanup_batch(environment, calls, tasks, attempted, failure)
+    if failure is not None:
+        raise failure
 
 
 async def _upload_files(environment: OriginalEnvironment) -> TransferRecordV2:
