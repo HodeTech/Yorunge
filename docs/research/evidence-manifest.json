@@ -16642,6 +16642,21 @@
       }
     },
     {
+      "name": "p02-2-ci41854038211-attempt2-macos-capacity.json",
+      "archive": "raw/p02-2-ci41854038211-attempt2-macos-capacity.json.gz",
+      "original_commit": null,
+      "content_bytes": 23387,
+      "content_sha256": "4757a1698e4d4426ac17184110e35b74f1ee1f451b9aface865e00977c4406ae",
+      "archive_bytes": 7022,
+      "archive_sha256": "19230dc7ff763e70aa4f9489c697840ad1b6a73275dea707ee4762501d96049a",
+      "summary": {
+        "source_commit": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "hosted_macos_runner_unavailable_again"
+      }
+    },
+    {
       "name": "p02-2-ci41854038211-linux311-installation.json",
       "archive": "raw/p02-2-ci41854038211-linux311-installation.json.gz",
       "original_commit": null,

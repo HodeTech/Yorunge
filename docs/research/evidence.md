@@ -2665,6 +2665,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-ci41854038211-attempt1-audit.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "linux_source_ci_passed_macos_runner_unavailable", "source_commit": "354559dd5ed2a032ad11cfb19a291ef9241a1f19"}`.
 
+## p02-2-ci41854038211-attempt2-macos-capacity
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `4757a1698e4d4426ac17184110e35b74f1ee1f451b9aface865e00977c4406ae`.
+**Yerel arşiv:** `raw/p02-2-ci41854038211-attempt2-macos-capacity.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "hosted_macos_runner_unavailable_again", "source_commit": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1"}`.
+
 ## p02-2-ci41854038211-linux311-installation
 
 **Tür:** `installation_v3`.

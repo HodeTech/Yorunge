@@ -17,7 +17,7 @@ Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşt
 | Upload/verification consumer | Proxy presign/PUT/confirm ve sayfalı item metadata, exact ad/size/SHA eşliği uygulanmış. Genel direct port sentetik TLS’te testlidir; gerçek direct provider wire desteği iddia edilmez | İlk proxy yolu tamam |
 | Yetki ve fiyat | Verified-only tam grant/exact-work complete cost ister. Explicit/unpriced bilinmeyeni ayrı insan onayıyla risk olarak taşır; r5 authority/pricing/remote-bytes=false | Bilinmeyen görünür; doğrulanmış provider kaynağı gerekir |
 | Canlı kabul | Ayrı bounded r5 gerçek create/link/iki dosya upload/aynı-ID read proof geçti; kaynak private kaldı. Önceki denemeler yeni gönderim hakkı üretmez | Dar metadata kabulü tamam |
-| Son kaynak teslimi | 06 M5 startup/jobs/dataset/raw/upload ve 432 arşiv doğrulandı; güncel üç ortam CI/altı kurulum ve yeni Linux saklama sonucu bekleniyor | Üst kartlar draft |
+| Son kaynak teslimi | 06 M5 startup/jobs/dataset/raw/upload ve kanıt kataloğu doğrulandı; iki Linux tam takım/dört kurulum ve saklaması geçti. macOS kapasite iptali nedeniyle o hücre/iki kurulum/aggregate açık | Üst kartlar draft |
 
 [Kanonik consumer](../reference/platform-upload-consumer.md) endpoint ve typed oracle’ın, [v2 sözleşmesi](../reference/dataset-upload-v2.md) yetki/maliyet/onay kapısının sahibidir. Araştırma belgesi veya yerel OpenAPI örneği provider yetki/fiyat garantisi oluşturmaz. Yeni hesap çağrısı veya kapsam değişikliği bu teslim planından otomatik yetki çıkarmaz.
 
