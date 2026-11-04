@@ -132,7 +132,7 @@ jobs:
           .venv/bin/python scripts/research_evidence.py verify
       - name: Test offline contracts and real console entry
         id: tests
-        run: .venv/bin/pytest
+        run: .venv/bin/pytest -o faulthandler_timeout=60
       - name: Build and verify both distributions in clean environments
         id: build
         run: |

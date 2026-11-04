@@ -123,7 +123,7 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         ".venv/bin/python scripts/check-agent-guides.py",
         ".venv/bin/python scripts/research_evidence.py verify",
     ]
-    assert steps["tests"]["run"] == ".venv/bin/pytest"
+    assert steps["tests"]["run"] == ".venv/bin/pytest -o faulthandler_timeout=60"
     assert steps["build"]["run"].splitlines() == [
         ".ci-tools/bin/uv build",
         ".venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv "
