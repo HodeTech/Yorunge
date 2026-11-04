@@ -123,3 +123,6 @@ Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/en
 ## Son kaynak 07 ve kalan teslim
 
 32109a7 kaynağı iki temiz paket kurulumunu ve beş ölçümün süre/bellek kontrolünü geçti; yanlış `SSD` disk etiketi dört reference verifier’da reddedildi; [tam sonuç/kayıpsız arşivler](p02-2-implementation-validation.md#4-kasım--pr-review-kapanışı-ve-nötr-07-kaynak-kabulü) kanoniktir. Gerçek nötr checkout/interpreter/temp pozitifleri, context ve kodlanmış ek kontrolleri geçti. Ölçüm öncesi yanlış upload output komutu ayrı başarısız tanıdır; örnek başlamadan düzeltildi, geçen ölçümler tekrarlanmadı. 07 baytları korunur; doğru exact disk beyanıyla yeni 08 seri isimleri workflow/testte önceden seçilir. Ürün kodu değişmez; eşik gevşetilmez. Son kaynak üç ortam CI/altı kurulum/Sonar ve yeni zorunlu çıktıların saklaması tamamlanmadan üst işler veya PR hazır sayılmaz.
+
+
+08 adı/kapı geçişi 9b482ea’da R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz teyit edildi; 61 dar CI testi geçti. İki yeni temiz paket kurulumu ve actual context gizlilik kontrolü tamamlandı. Native başlamadan yeniden yoğun dotnet işi görüldü; 08 örnekleri başlatılmadı. Bekleme yeni ürün kodu veya geçen testleri yeniden çalıştırma gereği doğurmaz. [Hazırlık/saklama kaydı](p02-2-implementation-validation.md#4-kasım--08-hazırlığı-ve-ölçüm-bekleme-sınırı).

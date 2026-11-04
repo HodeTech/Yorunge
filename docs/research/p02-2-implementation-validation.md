@@ -1063,3 +1063,10 @@ Yedi yeni özgün rapor gerçek private üretim bağlamıyla bounded gizlilik ka
 **Başlatma düzeltmesi:** Gerçek dosya sistemi internal SSD/APFS olarak diskutil ile doğrulandı. Hata operatör komutundadır; eşik veya verifier gevşetilmez. Workflow/testte 08 isimleri ölçüm öncesi sabitlenir ve dar iki fresh turla teyit edilir; doğru disk beyanıyla fresh seri alınır. Bu, daha hızlı örnek seçmek için tekrar değildir.
 
 **Kalan teslim:** Geçerli 08 referansı, bu yeni kaynak için üç ortam tam CI, altı temiz kurulum, Sonar ve üretilen zorunlu CI çıktılarının kalıcı saklaması. Önceki 7e5675c Linux kabulleri ve macOS kapasite iptalleri tarihsel kalır. P02-2/a/b/c ve PR draft; merge/Master/release kullanıcıdadır.
+
+
+## 4 Kasım — 08 hazırlığı ve ölçüm bekleme sınırı
+
+9b482ea’daki dört workflow/test referans adı değişimi R1 Sol/high ve farklı fresh R2 Astra/high tarafından dar salt okuma incelemesiyle bulgusuz teyit edildi; 61 CI sözleşme testi geçti. Sayısal bütçe, yöntem ve ürün kodu değişmedi. Gerçek Data volume için APFS/Internal/SolidState doğrulandı; başlatıcı exact cpu/disk değerlerini kanonik reference politikasıyla **ölçüm öncesinde** karşılaştırır.
+
+Yeni kişisiz kaynak/controller/temp kökünde [08 wheel/sdist iki temiz kurulumu](evidence.md#p02-2-review-final-installation-08) ve gerçek private context ile gizlilik kontrolü geçti. Bu rapor özgün baytlarıyla saklandı; **450** kayıpsız arşiv kapsamına eklendi. 08 native workspace ve örnekleri henüz oluşturulmadı. Başlatmadan önce yeni yoğun dotnet işi görüldüğünden native seri bekletildi; bu işin 07 sonucuna neden olduğu iddia edilmez. Kaynak/CI kabulü henüz kapanmadı; ölçüm uygun ortamda aynı hazır kaynaktan devam eder, geçen fonksiyonel testler ve kurulumlar sırf bekleme için tekrarlanmaz.

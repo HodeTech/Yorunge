@@ -3064,6 +3064,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-review-final-installation-07.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "32109a7deb10a3073410f5922066fff24ee9a734"}`.
 
+## p02-2-review-final-installation-08
+
+**Tür:** `installation_v3`.
+**Özgün JSON SHA-256:** `c1e0ab51737854572eefbc80532bb8a4d5b43eb6638c62a33e79e4d7d888a583`.
+**Yerel arşiv:** `raw/p02-2-review-final-installation-08.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9"}`.
+
 ## p02-2-storage-contract-different-20261104
 
 **Tür:** `diagnostic`.

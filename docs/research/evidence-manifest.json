@@ -19000,6 +19000,51 @@
       }
     },
     {
+      "name": "p02-2-review-final-installation-08.json",
+      "archive": "raw/p02-2-review-final-installation-08.json.gz",
+      "original_commit": null,
+      "content_bytes": 1211,
+      "content_sha256": "c1e0ab51737854572eefbc80532bb8a4d5b43eb6638c62a33e79e4d7d888a583",
+      "archive_bytes": 495,
+      "archive_sha256": "42cbdbc4629d128dce664cc76e613dcbd3943cdd9aa0694e957a1ca2e1761b33",
+      "summary": {
+        "source_commit": "9b482ea2d1ed2d39a7974afc01d297c7dad625d9",
+        "diagnostic_only": false,
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-2-storage-contract-different-20261104.json",
       "archive": "raw/p02-2-storage-contract-different-20261104.json.gz",
       "original_commit": null,
