@@ -207,6 +207,16 @@ def test_zip_directory_cannot_hide_compressed_personal_payload(nonempty, tmp_pat
 
 def test_ci_profile_rejects_a_personal_interpreter_even_with_generic_runner_home(tmp_path):
     value = synthetic_context(tmp_path, ci=True)
+    GUARD["neutral_inputs"](value)
+    value["controller"]["executable"] = "/Users/synthetic-private-operator/venv/bin/python"
+    with pytest.raises(ValueError, match="personal_runtime_input"):
+        GUARD["neutral_inputs"](value)
+
+
+@pytest.mark.parametrize("home", ["/home/runner", "/Users/runner"])
+def test_ci_context_uses_its_own_runner_home_before_testing_personal_runtime(home):
+    value = synthetic_context(Path(home) / "work/project", ci=True)
+    GUARD["neutral_inputs"](value)
     value["controller"]["executable"] = "/Users/synthetic-private-operator/venv/bin/python"
     with pytest.raises(ValueError, match="personal_runtime_input"):
         GUARD["neutral_inputs"](value)

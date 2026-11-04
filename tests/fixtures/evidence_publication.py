@@ -2,7 +2,9 @@
 
 
 def synthetic_context(root, *, ci=False):
-    home = "/home/runner" if ci else "/Users/synthetic-private-operator"
+    home = "/Users/synthetic-private-operator"
+    if ci:
+        home = "/Users/runner" if root.is_relative_to("/Users/runner") else "/home/runner"
     return {
         "schema_version": 1,
         "mode": "ci" if ci else "local",

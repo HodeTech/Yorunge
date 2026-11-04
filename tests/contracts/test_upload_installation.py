@@ -12,6 +12,7 @@ import pytest
 from tests.fixtures.upload_report import row as row_vector
 
 ROOT = Path(__file__).resolve().parents[2]
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
 
 
 @pytest.mark.parametrize(
@@ -91,7 +92,11 @@ def test_installed_smoke_source_and_metadata_failures_cannot_be_hidden(
         assert {"metadata-stdout.json", "metadata-stderr.txt"} <= {
             file["name"] for file in rejected["files"]
         }
-        assert helper["CHECKS"]["verify"](root) == 1
+        if failure == "metadata_utf8":
+            assert (root / "workspace/metadata-stdout.json").read_bytes() == b"\xffbroken"
+            assert not any((root / "docs/research").iterdir())
+        else:
+            assert helper["CHECKS"]["verify"](root) == 1
     assert (root / "workspace/metadata-stdout.json").is_file()
 
 

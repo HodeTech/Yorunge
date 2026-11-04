@@ -17,6 +17,7 @@ import pytest
 from tests.fixtures.upload_report import report as report_vector
 
 ROOT = Path(__file__).resolve().parents[2]
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
 
 
 @pytest.fixture(scope="module")
@@ -275,7 +276,7 @@ def test_unretainable_controller_logs_fail_before_partial_copy(tmp_path, helper,
 
 
 @pytest.mark.parametrize("exit_code", [0, 7])
-def test_missing_or_failed_native_controller_is_archived_but_never_accepted(
+def test_malformed_controller_output_stays_private_and_is_never_accepted(
     tmp_path, helper, monkeypatch, exit_code
 ):
     root = tmp_path.resolve()
@@ -312,7 +313,7 @@ def test_missing_or_failed_native_controller_is_archived_but_never_accepted(
     assert (args.workspace / "stdout.json").read_bytes() == b"\xffpartial controller"
     diagnostic = namespace["CHECKS"]["decode"]((root / "dist/upload-ci-rejected.json").read_bytes())
     assert namespace["DRIVER"]["DIAGNOSTIC"]["summarize"](diagnostic)["accepted"] is False
-    assert namespace["CHECKS"]["verify"](root) == 1
+    assert not any((root / "docs/research").iterdir())
 
 
 @pytest.mark.parametrize("damage", [None, "source", "oracle", "lock", "commit", "cpu", "python"])

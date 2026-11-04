@@ -142,7 +142,7 @@ async def put(transport, request, *, seconds=3):
 
 
 @pytest.mark.parametrize("truncated", [False, True])
-def test_guarded_large_put_preserves_complete_response_when_peer_resets(
+def test_guarded_large_put_accepts_full_reply_and_rejects_truncated_reset(
     tmp_path, certificates, truncated
 ):
     key = credential()
@@ -151,7 +151,14 @@ def test_guarded_large_put_preserves_complete_response_when_peer_resets(
     route = PROXY_PREFIX + "put?key=objects%2Ffixture"
     with TlsServer(
         certificates,
-        {route: Reply(body=reply, reset_after_body=True, truncate_at=4 if truncated else None)},
+        {
+            route: Reply(
+                body=reply,
+                headers=(("Connection", "close"),),
+                reset_after_body=truncated,
+                truncate_at=4 if truncated else None,
+            )
+        },
     ) as server:
         owned, network, instances = session(key, certificates, {"api.localhost": server})
         body = source(tmp_path, payload)
@@ -164,6 +171,9 @@ def test_guarded_large_put_preserves_complete_response_when_peer_resets(
                     exchange()
                 assert failure.value.code == "transport_failed"
             else:
+                # send/flush before an immediate RST does not prove delivery.
+                # Use orderly full delivery here; buffered/lost-peer behavior
+                # has a separate deterministic GuardedStream contract oracle.
                 assert exchange() == (reply, len(payload), hashlib.sha256(payload).hexdigest())
         assert len(server.requests) == 1
         assert server.requests[0].body == payload
