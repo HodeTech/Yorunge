@@ -140,3 +140,9 @@ Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/en
 
 
 [09 AC serisi](p02-2-implementation-validation.md#5-kasım--09-ac-serisi-ve-açık-performans-kabulü) f180cb8 kaynak haritasıyla bir kez tamamlandı. İki temiz kurulum, dataset/raw/upload pozitif; startup cache ve dört jobs süre kapısı ret. AC/61,50 s sakin pencere spot kontrolleri sürekli host izolasyonu değildir. Yedi özgün kayıt saklandı; katalog 467. Sonuç nedeni kanıtlanmadan aynı koşulda yeni ölçüm veya spekülatif ürün değişikliği yapılmaz. Üst işler/PR draft kalır; final CI/Sonar ve açık performans kabulü ayrıdır.
+
+
+Kullanıcı 09 sonrasında sürekli dış test işini doğruladı ve bu hattın diğer işleri bloklamamasını istedi. Pozitif sayaçlar izole M5 kabulü sayılmaz. [ADR-0030](../decisions/0030-development-performance-acceptance.md) Proposed ve P02-R3 draft’tır; CI/kabul değişikliği kullanıcı onayından önce uygulanmaz. Onay sonrası kaynak ve politika tek push/tam CI paketinde doğrulanır; yalnız öneri metadata’sı için ek tam CI başlatılmaz.
+
+
+ADR-0030 ve P02-R3 önerisi 8602e1e’de fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından kapsam/CI uygulanabilirliği ve kaynak/kanıt dürüstlüğü açısından bulgusuz incelendi. Uygulama yoktur; sonraki sürekli dış iş açıklaması önerinin bağlamıdır, kabul yetkisi değildir. Kullanıcının yeni ADR’leri önce onaylama talebi nedeniyle karar Proposed kalır.
