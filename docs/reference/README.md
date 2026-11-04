@@ -26,7 +26,7 @@
 | [Upload original koordinatörü](dataset-upload-workflow.md) | P02-2r yerel verified original composition, current memo, worker, proof ve hata sınırı |
 | [Upload salt okuma uzlaştırması](dataset-upload-reconciliation.md) | P02-2s yerel verified preflight/current/read lease/proof ve source hata sınırı |
 | [Private aktarım kullanım rehberi](upload-workflows.md) | Plan/review/onay/start ve aynı-ID salt okuma; çalışma dalı kabul durumu bölüm başındadır |
-| [Upload CLI/Python](dataset-upload-public.md) | P02-2t uygulama öncesi dar public summary, requested-intent review ve ortak kullanım senaryoları |
+| [Upload CLI/Python](dataset-upload-public.md) | Uygulanmış P02-2t dar public summary, requested-intent review ve ortak kullanım senaryoları |
 | [Upload HTTP bütçeleri](dataset-upload-http.md) | V2 work limitlerinin gerçek HTTP çağrı/deneme/gövde yoluna bağlanması ve kayıtlı service URI; uygulama/kabul ilgili kartta |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [bf652f6 tarihsel kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) ile [ADR-0019/Sonar son kaynak kapanışı](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) ayrı kayıtlardır.
