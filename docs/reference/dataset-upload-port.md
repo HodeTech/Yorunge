@@ -1,6 +1,6 @@
 # Upload gerçek HTTP portu
 
-**Tarih:** 2026-11-03. **Durum:** P02-2q.1 immutable arm yerel verified; q.2 gerçek kontrol çağrıları iki fresh turla yerel verified. Ortak resource owner takibi q.2a yerel verified; PUT/items q.3 iki fresh turla yerel verified. Controller henüz tamamlanmadı. Accepted ADR-0024/0025/0026/0027; [provider codec](platform-upload-consumer.md), [HTTP quota](dataset-upload-http.md), [receipt/current](dataset-upload-v2.md), [güncel input](dataset-upload-preparation.md) temel alınır. Yeni grant/pricing/target/format veya retry politikası yoktur.
+**Tarih:** 2026-11-03. **Durum:** P02-2q.1 immutable arm yerel verified; q.2 gerçek kontrol çağrıları iki fresh turla yerel verified. Ortak resource owner takibi q.2a yerel verified; PUT/items q.3 iki fresh turla yerel verified. Controller/public yüzey çalışma dalında tamamlandı; son kullanıcı review/kabul takibi ayrıdır. Accepted ADR-0024/0025/0026/0027; [provider codec](platform-upload-consumer.md), [HTTP quota](dataset-upload-http.md), [receipt/current](dataset-upload-v2.md), [güncel input](dataset-upload-preparation.md) temel alınır. Yeni grant/pricing/target/format veya retry politikası yoktur.
 
 ## Sahiplik ve hazırlanan çağrı
 
@@ -38,4 +38,4 @@ Port ordered metadata’yı manifest sırasındaki private `tuple[VerifiedFile, 
 
 Q.1 UploadArm issuance/claim ve ortak semantic request kuralı; q.2 effect call/quota + create/link/presign/confirm actual TLS ve strict receipt/descriptor; q.3 bounded PUT/source/hash + metadata pagination/reducer. Her dilim commit ve iki fresh review/fix turu. No-permit/wrong-intent/digest/credential/budget/call reuse, başka arm'dan permit parçalama veya büyütülmüş deadline tuple'ı zero wire; gerçek effect fiziksel attempt1 ve read≤2; status/redirect/timeout/body malformed/oversize/compression/raw secret/lost response/cancel/close; local UUID ağda yok, provider key/URL receipt/DB/log/exception/serialization'da yok. Normal/partial/early close pool/FD/quota kapanışı, exact server bytes/hash, descriptor swap ve metadata duplicate/change/null hash sınırları gerçek TLS'te sınanır.
 
-State controller ile bütünleşik replay/kill/marker/public sentinel, API/CLI, native16/256/1024 MiB/kurulum/source CI ve ayrı live kabulü sonraki r/public/c dilimleridir. Q.1/q.2/q.2a/q.3 actual TLS yerel port kabulü tamamlandı; bu kabul controller/public/native/live tesliminin yerine geçmez.
+State controller, replay/kill/marker/public sentinel ve ortak API/CLI çalışma dalında uygulandı. R5 canlı metadata ve 06 önceki kaynak native kabulü tarihseldir; review düzeltmeleri sonrası son kaynak native/kurulum/CI takibi üst c’de açıktır. Q.1/q.2/q.2a/q.3 actual TLS yerel port kabulü tamamlandı; bu kabul controller/public/native/live tesliminin yerine geçmez.

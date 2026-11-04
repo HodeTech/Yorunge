@@ -8,6 +8,8 @@ import pytest
 
 from tests.contracts.test_installation_evidence import receipt as receipt_v2
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
 

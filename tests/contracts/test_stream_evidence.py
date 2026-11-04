@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 CHECKS = runpy.run_path(str(Path(__file__).parents[2] / "scripts/research_evidence.py"))
 HASHES = {
     16: "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",

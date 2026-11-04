@@ -9,6 +9,8 @@ import pytest
 from tests.contracts.test_installation_evidence import receipt as installation
 from tests.fixtures.upload_report import report as vector
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).resolve().parents[2]
 
 

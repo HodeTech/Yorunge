@@ -333,7 +333,7 @@ def _next_text(data: DatasetUploadSummary) -> list[str]:
             )
         return lines
     lines.extend(_approval_text(data))
-    lines.append("Özel --config/--state-dir kullandıysanız aynı seçenekleri koruyun.")
+    lines.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
     return lines
 
 

@@ -4,7 +4,7 @@
 
 **Tamamlandı:** ca0d29c/runtime07, 3,2064 s /23 GET /8 effect /158 byte; tam graph/iki metadata item ve kaynak eşliği geçti. [Sonuç](p02-2-implementation-validation.md#4-kasım--r5-tam-canlı-metadata-kabulü); aynı exclusive slot tekrar çalıştırılmaz. Aşağıdaki sayılar gerçekleşmiş koşunun önceden tanımlanan tavanlarıdır.
 
-4 Kasım genel kullanıcı kontrol yetkisi ve Accepted ADR-0028 kapsamında, ilk koşulda durma ve yeni private instance sınırı korunur. Yalnız `.local/p02-pilot/p02-2-final-20261104-r5`, dataset `yorunge-acceptance-p02-2-final-20261104-r5`; aynı canonical Platform key’i/test projesi `01a19492-2404-7701-afee-d45c26561062`. Eski operation/intent/URL veya tanı slotu yeniden kullanılmaz.
+4 Kasım genel kullanıcı kontrol yetkisi ve Accepted ADR-0028 kapsamında, ilk koşulda durma ve yeni private instance sınırı korunur. Yalnız `.local/p02-pilot/p02-2-final-20261104-r5`, dataset `yorunge-acceptance-p02-2-final-20261104-r5`; aynı canonical Platform key’i/test projesi (kimliği yalnız özel scope/receipt’te tutulan test projesi). Eski operation/intent/URL veya tanı slotu yeniden kullanılmaz.
 
 Frozen üç-PNG üreticisi değiştirilmez. Yeni runner yalnız literal ad/hash ile first.png (`8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa`) ve different.png (`2ba82df1c51676319e2542bec023cc95fd9d594cc70b0d6b60cdaa9bafb77fd9`) seçer; her biri 79 byte, toplam **158 byte**. En fazla **1 create/1 link/2 presign/2 PUT/2 confirm = 8 effect attempt**; GET 40/read attempt 80, yanıt 16 MiB/kontrol isteği 64 KiB ve bütün çağrılara ortak 180 s. Ek private guard bu effect/158-byte tavanlarını ağdan önce uygular. Her etki tek deneme; ilk hata/belirsizlikte durulur, yeni dataset veya otomatik devam yoktur.
 
@@ -86,7 +86,7 @@ POST/PUT/DELETE, create, proje bağlantısı, start/reconcile, yeni permit veya 
 
 İlk tam deneme ve iki ayrı tanı tarihsel kayıtlardır; eski unknown operation yeniden arm edilmez. Gözlenen liste/detail wire farkı düzeltildikten ve iki fresh kod review turu kapandıktan sonra yeni tam kabul için **ayrı** bir somut deneme önerilir. Kullanıcı bu kapsamı “ihtiyacın olan tüm kontrolleri yapabilirsin” yanıtıyla onayladı; 59ff11a kaynağındaki tek koşu link aşamasında durdu. Bu tüketilmiş koşu yeniden çalıştırılmaz.
 
-- Aynı hazırlanmış Platform key’i ve `yorunge-discovery-test` projesi (`01a19492-2404-7701-afee-d45c26561062`).
+- Aynı hazırlanmış Platform key’i ve `yorunge-discovery-test` projesi ((kimliği yalnız özel scope/receipt’te tutulan test projesi)).
 - Yeni exclusive workspace `.local/p02-pilot/p02-2-final-20261104-r2`; yeni private dataset `yorunge-acceptance-p02-2-final-20261104-r2`. Önceki kaynaklar hesabında kalır; DELETE/cleanup yoktur.
 - Aynı üç sentetik PNG, toplam 237 byte; iki ayrı ad aynı hash. En fazla 1 create/1 project link/3 presign/3 PUT/3 confirm; her etki tek deneme, durma sonrası otomatik devam yoktur.
 - Toplam en fazla 40 GET/80 okuma denemesi, 16 MiB response body, 64 KiB control request body ve ortak 180 s. Product’ın daha dar request/lease/current/deadline sınırları korunur.

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 LEGACY = runpy.run_path(str(Path(__file__).with_name("test_stream_evidence.py")))
 CHECKS = LEGACY["CHECKS"]
 MIB = 1_048_576

@@ -13,6 +13,8 @@ import pytest
 
 from tests.fixtures.startup_receipt import receipt
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).resolve().parents[2]
 HELPERS = runpy.run_path(str(ROOT / "scripts/startup_diagnostic.py"))
 

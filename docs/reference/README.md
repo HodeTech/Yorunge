@@ -9,7 +9,7 @@
 | [Yapılandırma](configuration.md) | Profil/reçete, öncelik ve doğrulama |
 | [Context keşfi](context-discovery.md) | Accepted ADR-0020/0021/0022: uygulanmış dar LLM terms/Platform ID-liste-seçim gözlemi, kapalı wire/target/snapshot ve state sınırı; unknown/unverified/no-authority, PR/CI ayrı |
 | [Yerel veri manifesti](dataset-manifest.md) | Accepted ADR-0023’e bağlı inspect/verify, Manifest v1, bounded dosya ve no-clobber çıktı; PR #13 ile development’a teslim edildi, kabul durumu bağlı sözleşmede |
-| [Private dataset aktarımı](dataset-transfer.md) | Accepted ADR-0024/0025: ayrı transfer/aşama/target taslağı; ürün kodu veya kapanmış endpoint wire değildir |
+| [Private dataset aktarımı](dataset-transfer.md) | Accepted ADR-0024–0028: çalışma dalında ortak upload uygulaması; provider consumer sözleşmesi ve kalan nihai kabul ayrı referanslarda |
 | [Araç sağlayıcısı](tool-provider-contract.md) | Görev, plan, execution ve sonuç sınırı |
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
 | [CapabilityScopeV2](capability-scope-v2.md) | Uygulandı — ADR-0013'e bağlı kapalı wire, nullability, sıralama ve kanonik anahtar; P01-3 kabulü tamamlandı |

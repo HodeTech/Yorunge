@@ -11,6 +11,8 @@ import pytest
 
 from tests.fixtures.upload_report import report as report_vector
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -214,7 +216,7 @@ def test_rejected_bytes_are_lossless_bounded_and_never_acceptance(tmp_path):
     helper = diagnostic()
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    original = b"\xffnot-json\x00\n"
+    original = b'{ "failed": true } \n'
     (workspace / "stdout.json").write_bytes(original)
     (workspace / "credentials.json").write_bytes(b"must-not-archive")
     (workspace / "source").mkdir()

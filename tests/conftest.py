@@ -53,6 +53,17 @@ def offline_home(tmp_path, monkeypatch):
 
 
 @pytest.fixture
+def evidence_publication_context(tmp_path, monkeypatch):
+    from tests.fixtures.evidence_publication import synthetic_context
+
+    path = tmp_path / "private-publication-context.json"
+    path.write_text(json.dumps(synthetic_context(tmp_path)))
+    path.chmod(0o600)
+    monkeypatch.setenv("YORUNGE_EVIDENCE_CONTEXT", str(path))
+    return path
+
+
+@pytest.fixture
 def cli():
     def invoke(
         *args: str,

@@ -44,7 +44,7 @@ Yeni operation bilinmeden pre-admission hata mevcut güvenli kodudur. ID biliniy
 
 Proof COMMIT sonrası caller/session hatasında yerel tam kayıttan terminal sonuç görülebiliyorsa unknown marker yazılmaz; güvenli source error ve aynı ID korunur. Örneğin open-existing-store fazındaki OSError mevcut state_write_failed/2 olur. Kalıcı başarı bu cevap kaybıyla düşürülmez. Yerel kayıt artık okunamıyorsa terminal olduğuna dair yeni kesinlik iddia edilmez.
 
-Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Bu ayrı controller ve public summary/API/CLI sonraki teslimlerdir.
+Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Ayrı controller ve public summary/API/CLI çalışma dalında uygulandı; nihai paket kabulü güncel durum kaydında izlenir.
 
 ## Dilimler ve kabul
 

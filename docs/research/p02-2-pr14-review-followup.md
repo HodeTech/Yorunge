@@ -46,7 +46,7 @@ R5 ca0d29c/runtime07’de iki 79-byte dosyayı kapsar. Sonraki 128 KiB okuma/cod
 
 ## Gizlilik kararı
 
-Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. İlk gizlilik/retention önerisi ayrı [ADR-0029](../decisions/0029-evidence-provenance-privacy.md) ile kullanıcı onayına sunulur; bu karar bağımsız ürün kusurlarını bekletmez. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
+Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. İlk gizlilik/retention önerisi ayrı [ADR-0029](../decisions/0029-evidence-provenance-privacy.md) olarak kullanıcı onayına sunulmuştu; aşağıdaki revizyon/kabul kaydı günceldir. Bağımsız ürün kusurları bu kararı beklemedi. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
 
 ## Dilim 1 ilk doğrulama
 
@@ -91,3 +91,17 @@ ADR-0029 /f331d7e revizyonu fresh R1 Sol/high ve farklı fresh R2 Astra/high tar
 
 
 Dilim 3 /cd3473a R1: Sol/high safety bulgusuz; Astra/high contract bir P2 test izolasyonu buldu. Admission-policy vektörü cost/ack’i de değiştirdiği için tuple yerine önce risk mismatch ile kapanıyordu. Tam kanıtlı bounded planda yalnız policy’yi değiştiren geçerli DTO’ya taşındı; tam binding mismatch zorunlu, 11 ilgili test geçti. Mevcut cost_policy vektörü DTO/ack bağı gereği risk retini de sınar; bağımsız yalnız cost predicate iddiası kurulmaz. Son leak/counter seçkisi 7 passed; Ruff temiz. Farklı fresh R2 beklenir.
+
+
+Dilim 3 /6787300, farklı fresh R2 Sol/high contract ve Astra/high safety tarafından bulgusuz kapandı. Admission-policy izolasyonu, bütün yeni test oracle’ları ve text-only ürün rehberi kaynak üzerinden teyit edildi; reviewer’lar test/native/live/raw tekrar etmedi. Dilim 4 artık Accepted ADR-0029 araç/CI kapısı ve kalan belge/katalog düzeltmelerine geçer.
+
+
+## Dilim 4 ilk doğrulama
+
+Accepted ADR-0029 için zorunlu private üretim bağlamı, known-provenance byte/string kontrolü, bounded strict base64/gzip/stored-deflate ZIP ve opaque profil/text ayrımı eklendi. Unsupported/bozuk/denetlenemeyen ek temiz sayılmaz; encoded nesnenin text/string içinde saklanması da ret verir. Dosya/FIFO/dizin/symlink kapısı descriptor’ları kapatır. Git archive ve CI artefakt upload önce aynı kontrolü kullanır; CI önce actual kaynak/interpreter/temp/child köklerini beyan eder, son always adımı bütün seçilmiş özgünleri denetleyip hash eşliğiyle ayrı staging’e kopyalar. Rette upload yok, güvenli job özetinde açık retention ve geçici runner kaybı riski görünür. Measurement/test başarısızlığı başarıya çevrilmez.
+
+İlk birleşik seçki 502 passed/93 failed verdi: yeni privacy yükleyicisinin benchmark-only runpy test seam’iyle çakışması ve artık yayımlanamayan bozuk tanı beklentisi. Privacy yükleyicisi benchmark seam’inden ayrıldı; malformed özgünler private kalıp açık takipte ret edilir, geçerli tanı byte-kayıpsız pozitif olarak ayrıca korunur. İlgili dar tekrar 208 passed; devam eden gerçek source-map/CI/yeni boundary seçkisi 328, son source-map/CI alt seçkisi 118 passed (örtüşür; toplanmaz). Bounded gzip/ZIP ve special-file testinin yakaladığı directory fdopen sınıflandırması fstat-before-wrap/finally-close ile düzeltildi; son privacy seçkisi 56 passed. Ruff tüm src/tests/scripts, strict mypy 145 dosya ve actionlint geçti. Yeni kontrol gerçek native/CI kabulü sayılmaz.
+
+Önceki iki Linux CI artefaktı, sentetik CI bağlamıyla yalnız format/limit uyumu için okundu; scanner 166 ve 33 üye işledi (nested dahil). Bu bir yeni CI veya kişisel veri attestasyonu değildir. Final marker eklemesi sonrası aynı dar format uyumu da teyit edildi. Metadata [düzeltme kaydı](p02-2-evidence-catalog-corrections.json) 28 ilk exact-byte commit’i ve bir null düzeltmesini taşır; 442 gzip/content hash’i değişmeden katalog/indeks doğrulandı. Aktif eski durum metinleri ve gerçek proje UUID’li test örnekleri düzeltildi; frozen source/test byte’ları değiştirilmedi.
+
+07 startup/jobs/datasets/upload referans adları ilk ölçümden önce workflow/test/standartta sabitlendi; raw da aynı seri workspace’inde üretilecektir. Yeni kaynak kontrolü kaynak haritasında Python dosyalarıyla birlikte artifact allowlist metnini de kapsar. Henüz 07 ölçümü, yeni kaynak CI, paket kabulü veya yeni canlı çağrı yapılmadı. R1/R2 beklenir.

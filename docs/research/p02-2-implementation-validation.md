@@ -1,6 +1,6 @@
 # P02-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-11-02. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1, P02-1 kapanışı 973cec5. **Durum:** Yerel temel uygulanıyor; remote producer/upload/live kabulü yoktur. ADR-0024/0025 Accepted; [hazırlık ve yetkili beş GET](p02-2-readiness-review.md) ayrı kanıttır. İlk 200 CR tutarı sonraki kullanıcı yanıtında küçük canlı deneme için esnetildi; bu tercih fiyat/authority kanıtı değildir, canlı yazma henüz yapılmadı.
+**Tarih:** 2026-11-04. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Ortak upload CLI/Python ve yerel temeller uygulandı; r5 tarihsel canlı metadata kabulü ve 06 önceki kaynak native serisi geçti. PR #14 draft; kullanıcı review düzeltmeleri ve Accepted ADR-0029 kontrolü sürüyor. Yeni kaynak için son native/CI/kurulum ve kalıcı saklama kapıları açık. Önceki başarısız ölçümler ve r1–r4 unknown işler korunur; yeniden yazma yapılmaz. Aşağıdaki adımlar kendi tarihsel kaynaklarına aittir; güncel sınır [PR review takibinde](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kaydındadır.
 
 ## Adım 1 — P02-2d yerel plan sözleşmesi
 

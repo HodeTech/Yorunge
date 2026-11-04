@@ -115,7 +115,7 @@ def test_literal_golden_and_manifest_byte_bound():
         (("storage", "origin"), "https://storage.invalid"),
         (("scope", "service_origin"), "https://api.ssyz.org.tr/api"),
         (("scope", "project_id"), "not-a-uuid"),
-        (("plan_id",), "01a19492-2404-7701-afee-d45c26561062"),
+        (("plan_id",), "0192a1b2-c3d4-7a56-8b90-123456789abc"),
         (("expires_at",), "2026-11-02T11:15:00.000001Z"),
         (("expires_at",), "2026-11-02T11:00:00.000000Z"),
         (("blockers",), ["cost_unverified", "authority_unverified"]),
@@ -178,7 +178,7 @@ def test_unicode_name_byte_bound_and_original_spelling():
 
 def test_provider_v7_id_is_preserved_and_internal_v7_is_not_accepted():
     data = payload()
-    identifier = "01a19492-2404-7701-afee-d45c26561062"
+    identifier = "0192a1b2-c3d4-7a56-8b90-123456789abc"
     data["scope"]["project_id"] = identifier
     plan = upload.DatasetUploadPlan.model_validate_json(reseal(data))
     assert plan.scope.project_id == identifier
@@ -338,6 +338,24 @@ def test_upload_manifest_bounds_and_equal_hash_names_are_separate():
     above = build_manifest((DatasetFile(path="a.png", size=500_000_001, sha256=digest),))
     with pytest.raises(ValueError):
         upload.manifest_reference(above)
+
+
+@pytest.mark.parametrize("extra", [0, 1])
+def test_upload_input_aggregate_byte_boundary_with_individually_valid_file_sizes(extra):
+    sizes = (500_000_000, 500_000_000, 73_741_824 + extra)
+    files = tuple(
+        DatasetFile(path=f"part-{i}.bin", size=size, sha256=str(i) * 64)
+        for i, size in enumerate(sizes)
+    )
+
+    def reference():
+        return upload.manifest_reference(build_manifest(files))
+
+    if extra:
+        with pytest.raises(ValueError):
+            reference()
+    else:
+        assert reference().total_bytes == 1_073_741_824
 
 
 def test_literal_intent_and_semantic_binding_digests():

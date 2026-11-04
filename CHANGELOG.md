@@ -6,8 +6,19 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-11-04
 
+- Çalışma dalında upload state’i için SQL-only şema 6→7 migration; var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
+
 - ADR-0028: ilk Platform upload yolu aynı SHA-256’lı farklı adları ağ/create öncesinde açık `upload_duplicate_content`/exit 2 ile reddeder. Yerel Manifest/inspect/verify ve geçmiş kayıtlar korunur; tekrarlı adları bulmak için salt yerel rehber örneği eklendi. Özgün çoklu-ad upload desteği P02-R2’de açık kalır.
 - Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
+
+### Fixed — 2026-11-04
+
+- Doğrulanmış TCP alternatifleri aynı bağlantı bütçesinde denenir; kapanan bağlantıdaki peer metadata kaybı tamponlu yanıtı gizlemez. Guarded keepalive 5 s ile sınırlanır, owned TLS context keylogging’i kapatılır; HTTP replay açılmaz.
+- Eşzamanlı PUT hatasında tamamlanmış başarılı sibling sonucu owner bırakılmadan bir receipt yayınlama denemesi alır. Upload risk kabul bayrakları önerilen onay komutuna hazır eklenmez; sınır ve aynı-ID toparlanma rehberi netleşti.
+
+### Changed — 2026-11-04
+
+- Accepted ADR-0029: 95 hash bağlı tarihsel nonsecret provenance kaydı korunur; yeni kanıt Git/CI artefakt yayımı öncesi zorunlu üretim bağlamı ve bounded kodlanmış ek kontrolünden geçer. Genel PII/sır temizliği garantisi değildir.
 
 ### Fixed — 2026-11-03
 

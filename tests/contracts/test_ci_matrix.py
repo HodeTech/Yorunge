@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github/workflows/checks.yml"
+ARTIFACT_PATHS = Path(__file__).resolve().parents[2] / "scripts/evidence-artifact-paths.txt"
 CELLS = {
     "linux311": ("ubuntu-24.04", "3.11", "true"),
     "linux314": ("ubuntu-24.04", "3.14", "false"),
@@ -173,17 +174,17 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-2-reference-startup-06.json > dist/startup-reference.txt",
+            "p02-2-reference-startup-07.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-2-reference-jobs-06.json > dist/jobs-reference.txt",
+            "p02-2-reference-jobs-07.json > dist/jobs-reference.txt",
         ),
         (
             "dataset-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
-            "p02-2-reference-datasets-06.json > dist/dataset-reference.txt",
+            "p02-2-reference-datasets-07.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -194,7 +195,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "upload-reference",
             ".venv/bin/python scripts/research_evidence.py verify-upload-reference "
-            "p02-2-reference-upload-06.json > dist/upload-reference.txt",
+            "p02-2-reference-upload-07.json > dist/upload-reference.txt",
         ),
         (
             "upload-budgets",
@@ -218,13 +219,24 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
     upload = steps["upload-evidence"]
     assert upload is workflow["jobs"]["linux311"]["steps"][-1]
-    assert upload["if"] == "${{ always() }}"
+    assert upload["if"] == "${{ always() && steps.evidence-privacy.outcome == 'success' }}"
+    assert upload["with"]["path"] == ".local/evidence-publication/"
+    context, privacy = steps["evidence-context"], steps["evidence-privacy"]
+    assert context["if"] == privacy["if"] == "${{ always() }}"
+    assert "--producer-preflight" in context["run"]
+    assert "--child-root" in context["run"]
+    assert "TMPDIR" in context["run"]
+    assert "stage-ci --context .local/evidence-privacy-context.json" in privacy["run"]
+    assert "--patterns scripts/evidence-artifact-paths.txt" in privacy["run"]
+    assert "--destination .local/evidence-publication" in privacy["run"]
+    assert list(steps).index("evidence-context") < list(steps).index("environment-report")
+    assert list(steps).index("evidence-privacy") < list(steps).index("upload-evidence")
     assert upload["uses"] == "actions/upload-artifact@v4"
     assert upload["with"]["name"] == "compatibility-${{ github.job }}"
     assert upload["with"]["if-no-files-found"] == "error"
     assert upload["with"]["retention-days"] == "90"
     assert upload["with"]["include-hidden-files"] == "true"
-    assert set(upload["with"]["path"].splitlines()) == {
+    assert set(ARTIFACT_PATHS.read_text().splitlines()) == {
         "dist/ci-environment.json",
         "dist/verification.jsonl",
         "dist/installation.json",
@@ -280,7 +292,8 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
 
 def test_upload_artifacts_preserve_interrupted_logs_and_exclude_payloads_and_state(workflow):
     upload = steps_by_id(workflow["jobs"]["linux311"])["upload-evidence"]
-    patterns = upload["with"]["path"].splitlines()
+    assert upload["with"]["path"] == ".local/evidence-publication/"
+    patterns = ARTIFACT_PATHS.read_text().splitlines()
     selected = (
         ".local/upload-check/16-1/client-stdout.json",
         ".local/upload-check/16-1/measured-server/stderr.txt",

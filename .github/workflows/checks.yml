@@ -46,6 +46,16 @@ jobs:
           python -m venv .ci-tools
           .ci-tools/bin/pip install uv==0.11.2
           .ci-tools/bin/uv sync --frozen --python "$PYTHON_VERSION"
+      - name: Declare actual evidence production inputs
+        id: evidence-context
+        if: ${{ always() }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/yorunge-evidence-tmp"
+          export TMPDIR="$RUNNER_TEMP/yorunge-evidence-tmp"
+          echo "TMPDIR=$TMPDIR" >> "$GITHUB_ENV"
+          producer_python=python
+          if test -x .venv/bin/python; then producer_python=.venv/bin/python; fi
+          "$producer_python" scripts/evidence_privacy.py context --mode ci --producer-preflight --source-root "$GITHUB_WORKSPACE" --workspace .local/startup-baseline --workspace .local/startup-check --workspace .local/stream-check --workspace .local/upload-check --workspace .local/distribution-upload-check --child-root .venv --child-root .local/startup-check --child-root .local/stream-check --child-root .local/upload-check --child-root .local/distribution-upload-check --child-root "$TMPDIR" --output .local/evidence-privacy-context.json
       - name: Record compatibility environment
         id: environment-report
         env:
@@ -148,17 +158,17 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-06.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-07.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-06.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-07.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-06.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-07.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -168,7 +178,7 @@ jobs:
         id: upload-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-06.json > dist/upload-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-07.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
         id: upload-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -188,66 +198,22 @@ jobs:
         if: ${{ always() && env.RUN_BUDGETS == 'true' && steps.startup-budgets.outcome == 'success' }}
         run: |
           .venv/bin/python scripts/startup_diagnostic.py --verify-receipt --baseline-project .local/startup-baseline --report dist/startup.json --receipt dist/startup-diagnostic.json
+      - name: Validate evidence before public artifact upload
+        id: evidence-privacy
+        if: ${{ always() }}
+        run: |
+          python scripts/evidence_privacy.py stage-ci --context .local/evidence-privacy-context.json --source-root "$GITHUB_WORKSPACE" --patterns scripts/evidence-artifact-paths.txt --destination .local/evidence-publication
       - name: Preserve compatibility evidence
         id: upload-evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.evidence-privacy.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: compatibility-${{ github.job }}
           if-no-files-found: error
           retention-days: 90
           include-hidden-files: true
-          path: |
-            dist/ci-environment.json
-            dist/verification.jsonl
-            dist/installation.json
-            dist/installation-upload-*-rejected.json
-            dist/startup.json
-            dist/startup-diagnostic.json
-            dist/startup-baseline-selection.json
-            dist/startup-reference.txt
-            dist/jobs-reference.txt
-            dist/dataset-reference.txt
-            dist/stream.json
-            dist/upload.json
-            dist/upload-reference.txt
-            dist/upload*-rejected.json
-            dist/cache-startup.prof
-            .local/startup-check/source-manifest.json
-            .local/startup-check/measurement.json
-            .local/startup-check/stdout-checks.json
-            .local/stream-check/source-manifest.json
-            .local/stream-check/*/measurement.json
-            .local/stream-check/*/failure.json
-            .local/stream-check/*/client-stdout.txt
-            .local/stream-check/*/client-stderr.txt
-            .local/stream-check/*/server-stdout.txt
-            .local/stream-check/*/server-stderr.txt
-            .local/upload-check/source-before.json
-            .local/upload-check/source-manifest.json
-            .local/upload-check/source-after.json
-            .local/upload-check/oracle.json
-            .local/upload-check/controller-error.json
-            .local/upload-check/stdout.json
-            .local/upload-check/stderr.txt
-            .local/upload-check-controller-stdout.txt
-            .local/upload-check-controller-stderr.txt
-            .local/upload-check/*/client-stdout.json
-            .local/upload-check/*/client-stderr.txt
-            .local/upload-check/*/*-server/*.json
-            .local/upload-check/*/*-server/*.txt
-            .local/distribution-upload-check/*/source-before.json
-            .local/distribution-upload-check/*/source-manifest.json
-            .local/distribution-upload-check/*/source-after.json
-            .local/distribution-upload-check/*/oracle.json
-            .local/distribution-upload-check/*/controller-error.json
-            .local/distribution-upload-check/*/metadata-stdout.json
-            .local/distribution-upload-check/*/metadata-stderr.txt
-            .local/distribution-upload-check/*/stdout.json
-            .local/distribution-upload-check/*/*/client-stdout.json
-            .local/distribution-upload-check/*/*/client-stderr.txt
-            .local/distribution-upload-check/*/*/*-server/*.json
-            .local/distribution-upload-check/*/*/*-server/*.txt
+          path: .local/evidence-publication/
+
   linux314:
     name: Linux / Python 3.14
     runs-on: ubuntu-24.04

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).parents[2]
 CHECKS = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
 NAME = "reference-jobs.json"
@@ -33,6 +35,9 @@ def reference(tmp_path, monkeypatch):
         ),
         "scripts/benchmark-jobs.py": (ROOT / "scripts/benchmark-jobs.py").read_bytes(),
         "scripts/research_evidence.py": (ROOT / "scripts/research_evidence.py").read_bytes(),
+        "scripts/evidence-artifact-paths.txt": (
+            ROOT / "scripts/evidence-artifact-paths.txt"
+        ).read_bytes(),
     }
     for name, content in contents.items():
         path = root / name
@@ -304,6 +309,7 @@ def test_docs_only_commit_change_keeps_reference_valid_when_measured_bytes_are_e
         "src/yorunge/__init__.py",
         "scripts/benchmark-jobs.py",
         "scripts/research_evidence.py",
+        "scripts/evidence-artifact-paths.txt",
         "tests/fixtures/seed_jobs.py",
         "tests/conftest.py",
         "examples/profile.toml",

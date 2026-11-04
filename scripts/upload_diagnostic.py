@@ -139,7 +139,14 @@ def validate_attachment(item: object) -> tuple[str, int]:
 
 
 def retain(
-    root: Path, workspace: Path, name: str, commit: str, reason: str, run_url: str | None = None
+    root: Path,
+    workspace: Path,
+    name: str,
+    commit: str,
+    reason: str,
+    run_url: str | None = None,
+    *,
+    privacy_context: dict[str, Any] | None = None,
 ) -> Path:
     if CHECKS["NAME"].fullmatch(name) is None:
         raise ValueError("invalid upload diagnostic archive name")
@@ -167,5 +174,5 @@ def retain(
         raise ValueError("upload diagnostic output must not use a symlink")
     with destination.open("xb") as stream:
         stream.write(CHECKS["encode"](report))
-    CHECKS["archive_report"](root, destination, None)
+    CHECKS["archive_report"](root, destination, None, privacy_context=privacy_context)
     return destination

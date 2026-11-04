@@ -7,7 +7,7 @@ from yorunge.domain.credentials import SecretValue, normalize_target
 from yorunge.domain.errors import YorungeError
 
 API = normalize_target("https://api.ssyz.org.tr/api/v1")
-ID = "01a19492-2404-7701-afee-d45c26561062"
+ID = "0192a1b2-c3d4-7a56-8b90-123456789abc"
 ROUTES = [
     ("me", "GET", "auth/me", ()),
     ("project", "GET", f"projects/{ID}", ()),

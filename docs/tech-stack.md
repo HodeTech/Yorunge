@@ -1,6 +1,6 @@
 # Teknoloji yaklaşımı
 
-**Güncellendi:** 2026-10-30. **Durum:** P01-1–6 development’a teslim edildi; ADR-0017/0018/0019 Accepted. [PR #11 merge ve kaynak/ortam kabulü](research/p01-remaining-implementation-validation.md#development-merge-kapanışı) verified; Master/release ayrıdır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve önceki development teslimleri tarihsel olarak korunur.
+**Güncellendi:** 2026-11-04. **Durum:** P01-1–6 development’a teslim edildi; ADR-0017/0018/0019 Accepted. [PR #11 merge ve kaynak/ortam kabulü](research/p01-remaining-implementation-validation.md#development-merge-kapanışı) verified; Master/release ayrıdır. [İlk offline seçim](decisions/0008-offline-core-stack.md) ve önceki development teslimleri tarihsel olarak korunur.
 
 | Katman | Başlangıç tercihi | Gerekçe / durum |
 |---|---|---|
@@ -12,7 +12,7 @@
 | Şema doğrulama | Pydantic 2.14.1 | Strict tip, unknown alan reddi ve ortak tipli API; yalnız yerel şemalar doğrulandı. |
 | Profil | TOML | Python standart kütüphanesiyle okunur, sır referanslarını açık tutar. |
 | İş reçetesi | PyYAML 6.0.3 SafeLoader + dar şema | Duplicate/alias/anchor/unknown tag reddi, boyut/derinlik/düğüm sınırı. |
-| Durum | SQLite, şema 6 | Store/migration, identity/cache/plan/onay ve operation/lease/sonuç/reset uygulandı; explicit state kullanımında açılır. |
+| Durum | SQLite; development şema 6, P02-2 çalışma dalı şema 7 | Store/migration, identity/cache/plan/onay ve operation/lease/sonuç/reset uygulandı; çalışma dalında ayrı upload journal için SQL-only 6→7 migration eklendi, eski payload baytları korunur; explicit state kullanımında açılır. |
 | Sırlar | Hizmete bağlı açık env çözümleme | Gereken hizmet sırrı açık kullanımda bir kez çözülür; kalıcı opak kimlik/nesil vardır, ham sır DB/çıktıya yazılmaz. Keychain uygulanmadı. |
 | Eğitim | Ayrı ortamda araç adaptörleri | ForgeLM varsayılan; muadiller seçilebilir; torch/TRL çekirdek bağımlılığı olmaz. |
 | Test/lint | pytest 9.1.1, Ruff 0.15.22, mypy 1.20.2 | `uv.lock` ile sabit; gerçek offline testler ve CI tanımı. |

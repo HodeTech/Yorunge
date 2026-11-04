@@ -13,11 +13,13 @@ import os
 import re
 import runpy
 import statistics
+import subprocess
 import sys
 import tempfile
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
+from runpy import run_path as load_privacy
 from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
@@ -1302,7 +1304,7 @@ def index_text(entries: list[dict[str, Any]]) -> str:
                 "https://github.com/HodeTech/Yorunge/blob/"
                 f"{item['original_commit']}/docs/research/{name}"
             )
-            lines.append(f"[İlk kayıt baytları]({url}); yerel arşiv `raw/{name}.gz`.")
+            lines.append(f"[İlk eşleşen kayıt baytları]({url}); yerel arşiv `raw/{name}.gz`.")
         else:
             lines.append(f"**Yerel arşiv:** `raw/{name}.gz`.")
         lines.append("**Özet:** `" + json.dumps(summary, ensure_ascii=False, sort_keys=True) + "`.")
@@ -1690,10 +1692,67 @@ def report_source(root: Path, source: Path) -> Path:
     return directory / source.name
 
 
-def archive_report(root: Path, source: Path, original_commit: str | None) -> None:
+def validate_original_commit(root: Path, name: str, content: bytes, commit: str | None) -> None:
+    if commit is None:
+        return
+    if COMMIT.fullmatch(commit) is None:
+        raise ValueError("invalid original commit")
+    path = "docs/research/" + name
+    history = (
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "log",
+                "--full-history",
+                "--reverse",
+                "--format=%H",
+                "--",
+                path,
+            ],
+            capture_output=True,
+            check=True,
+            timeout=30,
+        )
+        .stdout.decode("ascii")
+        .splitlines()
+    )
+    expected = hashlib.sha256(content).digest()
+    for revision in history:
+        blob = subprocess.run(
+            ["git", "-C", str(root), "show", f"{revision}:{path}"],
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+        if (
+            blob.returncode == 0
+            and len(blob.stdout) == len(content)
+            and (hashlib.sha256(blob.stdout).digest() == expected)
+        ):
+            if revision == commit:
+                return
+            break
+    raise ValueError("original commit is not the first exact archived bytes")
+
+
+def archive_report(
+    root: Path,
+    source: Path,
+    original_commit: str | None,
+    *,
+    privacy_context: dict[str, Any] | None = None,
+) -> None:
     directory = research_directory(root)
     source = report_source(root, source)
     content = read_bounded(source, MAX_REPORT_BYTES)
+    privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
+    if privacy_context is None:
+        context_path = os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
+        privacy_context = privacy["load_context"](Path(context_path) if context_path else None)
+    privacy["check"](content, source.name, privacy_context)
+    validate_original_commit(root, source.name, content, original_commit)
     archive = gzip.compress(content, mtime=0)
     if len(archive) > MAX_ARCHIVE_BYTES:
         raise ValueError("compressed evidence size limit exceeded")
@@ -1721,7 +1780,14 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
 
 
 def archive_rejected_startup(
-    root: Path, source: Path, name: str, source_commit: str, run_url: str, reason: str
+    root: Path,
+    source: Path,
+    name: str,
+    source_commit: str,
+    run_url: str,
+    reason: str,
+    *,
+    privacy_context: dict[str, Any] | None = None,
 ) -> None:
     source = report_source(root, source)
     if NAME.fullmatch(name) is None:
@@ -1742,7 +1808,7 @@ def archive_rejected_startup(
     destination = root / "dist" / name
     with destination.open("xb") as stream:
         stream.write(encode(report))
-    archive_report(root, destination, None)
+    archive_report(root, destination, None, privacy_context=privacy_context)
 
 
 def main() -> int:
@@ -1786,22 +1852,41 @@ def main() -> int:
             "unverified_measurement",
         ),
     )
+    for command in (add, rejected, upload_rejected):
+        command.add_argument("--privacy-context", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
+        privacy_context = None
+        if args.action in {"archive", "archive-rejected-upload", "archive-rejected-startup"}:
+            privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
+            declared = args.privacy_context or os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
+            privacy_context = privacy["load_context"](Path(declared) if declared else None)
         if args.action == "archive-rejected-upload":
             diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
             diagnostic["retain"](
-                root, args.workspace, args.name, args.source_commit, args.reason, args.run_url
+                root,
+                args.workspace,
+                args.name,
+                args.source_commit,
+                args.reason,
+                args.run_url,
+                privacy_context=privacy_context,
             )
             print("Archived original synthetic upload diagnostics; not acceptance.")
         elif args.action == "archive-rejected-startup":
             archive_rejected_startup(
-                root, args.source, args.name, args.source_commit, args.run_url, args.reason
+                root,
+                args.source,
+                args.name,
+                args.source_commit,
+                args.run_url,
+                args.reason,
+                privacy_context=privacy_context,
             )
             print("Archived rejected startup bytes as a diagnostic attachment; not acceptance.")
         elif args.action == "archive":
-            archive_report(root, args.source, args.original_commit)
+            archive_report(root, args.source, args.original_commit, privacy_context=privacy_context)
             print("Archived original bytes; the input file was preserved.")
         elif args.action == "show":
             directory = research_directory(root)
@@ -1826,8 +1911,18 @@ def main() -> int:
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
-    except (OSError, ValueError, KeyError, TypeError, EOFError) as error:
-        parser.exit(1, f"Evidence check failed: {error}\n")
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        EOFError,
+        RecursionError,
+        subprocess.SubprocessError,
+    ):
+        parser.exit(
+            1, "Evidence check failed; preserve originals privately and keep retention open.\n"
+        )
     return 0
 
 
