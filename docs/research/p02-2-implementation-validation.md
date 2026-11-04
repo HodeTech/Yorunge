@@ -873,3 +873,6 @@ Paylaşılan historical context/typed five-read kapıları link helper’dan ayr
 
 
 Storage tanı R1 contract temiz; safety tek P2 doğruladı: presign sırasında aynı boyutlu dosya değişimi, PUT öncesi yeniden observation kontrolü yoksa final SHA reddinden önce bytes gönderebilirdi. 1bb9041, strict presign decode sonrasına `observed.recheck()` ekler. Yeni negatif 0,23 s’de geçti; sıfır storage/confirm çağrısı. Her iki özgün reviewer dar fix’i temiz teyit etti; test/ağ/native tekrarı yok. Bu, trusted-local modelde gözlenen değişim kapısıdır; atomik snapshot veya hostile filesystem sandbox iddiası değildir. Farklı fresh R2 beklenir; storage hesap çağrısı henüz yapılmadı.
+
+
+Storage tanısı 1bb9041/51f4d34, farklı fresh R2 Sol/high contract ve Astra/high safety turlarında temiz kapandı. Parametre/typed-durum/role/manifest/nonce/byte/no-replay/secret/finalizer ve research/public ayrımı kaynak üzerinden doğrulandı. İki tur ve dar fix teyidi tamamdır; yeni test/build/native/ağ/özel pilot/raw tekrarı yapılmadı. Genel kullanıcı kontrol yetkisindeki ilk `first.png` slotu, exact ilk test kaynağında yalnız bir fresh presign/79-byte PUT için bir kez çalıştırılır; confirm bayrağı verilmez.
