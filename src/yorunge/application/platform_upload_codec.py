@@ -31,6 +31,7 @@ Kind = Literal[
     "membership",
     "role",
     "link",
+    "ack",
     "presign",
     "confirm",
     "items",
@@ -47,6 +48,7 @@ _FIELDS: dict[Kind, frozenset[str]] = {
     "membership": frozenset({"id"}),
     "role": frozenset({"role", "permissions"}),
     "link": frozenset(),
+    "ack": frozenset(),
     "presign": frozenset({"presigned_urls", "duplicates"}),
     "confirm": frozenset({"created", "actual_count", "batch_duplicates"}),
     "items": frozenset({"items", "next_cursor", "total"}),
@@ -164,6 +166,8 @@ def _list_keys(
 def _fixed_keys(
     value: object, kind: Kind, wrapped: bool, selected_id: str | None
 ) -> dict[tuple[str, ...], frozenset[str]]:
+    if kind in {"link", "ack"}:
+        return _ack_keys(value, relational=kind == "link")
     prefix = ("data",) if wrapped else ()
     fixed: dict[tuple[str, ...], frozenset[str]] = {prefix: _FIELDS[kind]}
     payload = _object(value).get("data") if wrapped else value
@@ -174,7 +178,18 @@ def _fixed_keys(
         rows = _array(_object(payload).get(field))
         fixed.update({(*prefix, field, str(index)): keys for index in range(len(rows))})
     if wrapped:
-        fixed[()] = frozenset({"success"}) if kind == "link" else frozenset({"success", "data"})
+        fixed[()] = frozenset({"success", "data"})
+    return fixed
+
+
+def _ack_keys(value: object, *, relational: bool) -> dict[tuple[str, ...], frozenset[str]]:
+    fields = frozenset({"success"})
+    if relational:
+        fields |= {"project_id", "dataset_id"}
+    fixed: dict[tuple[str, ...], frozenset[str]] = {(): fields}
+    if type(_object(value).get("data")) is dict:
+        fixed[()] |= {"data"}
+        fixed[("data",)] = fields
     return fixed
 
 
@@ -204,7 +219,7 @@ def _checked_raw(
         root = _object(value)
         if root["success"] is not True:
             raise YorungeError("invalid_response")
-        return root if kind == "link" else root.get("data")
+        return root if kind in {"link", "ack"} else root.get("data")
     if kind == "identity":
         raise YorungeError("invalid_response")
     return value
@@ -334,16 +349,42 @@ def role(data: bytes, secret: SecretValue) -> ProviderRole:
     return result
 
 
-def link_ack(data: bytes, secret: SecretValue) -> None:
+def link_ack(
+    data: bytes,
+    secret: SecretValue,
+    *,
+    project_id: str | None = None,
+    dataset_id: str | None = None,
+) -> None:
     _require_secret(secret)
+    expected = None
+    if project_id is not None or dataset_id is not None:
+        expected = {
+            "project_id": _identifier(project_id, error="invalid_request"),
+            "dataset_id": _identifier(dataset_id, error="invalid_request"),
+        }
     if not data:
         return
-    root = _object(raw(data, "link", secret))
-    nested = root.get("data")
-    if root.get("success") is not True or (
-        type(nested) is dict and "success" in nested and nested["success"] is not True
-    ):
+    root = _object(raw(data, "ack" if expected is None else "link", secret))
+    _ack_controls(root, expected)
+    if root.get("success") is True:
+        return
+    if expected is None or any(key not in root for key in expected):
         raise YorungeError("invalid_response")
+
+
+def _ack_controls(root: dict[str, object], expected: dict[str, str] | None) -> None:
+    for node in (root, root.get("data")):
+        if type(node) is not dict:
+            continue
+        if "success" in node and node["success"] is not True:
+            raise YorungeError("invalid_response")
+        if expected is not None and any(
+            type(node[key]) is not str or node[key] != wanted
+            for key, wanted in expected.items()
+            if key in node
+        ):
+            raise YorungeError("invalid_response")
 
 
 def _request(value: dict[str, object], secret: SecretValue) -> bytes:

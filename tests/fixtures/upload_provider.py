@@ -82,7 +82,14 @@ class UploadProvider:
         assert json.loads(request.body) == {"dataset_id": DATASET}
         self.events.append("project_link")
         self.linked = True
-        return self.link_reply or reply({"success": True})
+        return self.link_reply or reply(
+            {
+                "project_id": self.project_id,
+                "dataset_id": DATASET,
+                "id": "00000000-0000-4000-8000-000000000098",
+                "unconsumed": "fixture metadata",
+            }
+        )
 
     def owned(self, request, count):
         if self.on_request:

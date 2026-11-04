@@ -167,7 +167,7 @@ class PreparedUploadCall(_Private):
             )
         upload = None
         if self._kind == "project_link":
-            codec.link_ack(raw, secret)
+            codec.link_ack(raw, secret, project_id=port._scope.project_id, dataset_id=self._dataset)
         elif self._kind == "presign":
             assert self._context is not None
             upload = descriptors.presigned(raw, self._context, secret)

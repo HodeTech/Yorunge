@@ -345,6 +345,77 @@ def test_nested_link_success_true_is_accepted_as_an_acknowledgement_only():
     codec.link_ack(encoded({"success": True, "data": {"success": True}}), SECRET)
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_relation_link_ack_requires_exact_expected_pair_and_does_not_return_metadata(wrapped):
+    row = {
+        "project_id": SCOPE.project_id,
+        "dataset_id": DATASET,
+        "unused": {"email": "private-person"},
+    }
+    raw = encoded({"success": True, "data": row} if wrapped else row)
+    assert codec.link_ack(raw, SECRET, project_id=SCOPE.project_id, dataset_id=DATASET) is None
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "project",
+        "dataset",
+        "missing_project",
+        "missing_dataset",
+        "null",
+        "boolean",
+        "negative",
+        "wrapped_wrong",
+    ],
+)
+def test_relation_link_ack_cannot_hide_missing_mismatched_or_negative_binding(fault):
+    row = {"project_id": SCOPE.project_id, "dataset_id": DATASET}
+    if fault == "project":
+        row["project_id"] = OTHER
+    if fault == "dataset":
+        row["dataset_id"] = OTHER
+    if fault.startswith("missing_"):
+        row.pop(fault.removeprefix("missing_") + "_id")
+    if fault == "null":
+        row["dataset_id"] = None
+    if fault == "boolean":
+        row["dataset_id"] = True
+    if fault == "negative":
+        row["success"] = False
+    if fault == "wrapped_wrong":
+        row["project_id"] = OTHER
+    raw = encoded({"success": True, "data": row} if fault == "wrapped_wrong" else row)
+    with pytest.raises(YorungeError) as error:
+        codec.link_ack(raw, SECRET, project_id=SCOPE.project_id, dataset_id=DATASET)
+    assert error.value.code == "invalid_response"
+
+
+def test_relation_form_does_not_expand_generic_put_acknowledgements():
+    from yorunge.application.upload_metadata_codec import put_ack
+
+    raw = encoded({"project_id": SCOPE.project_id, "dataset_id": DATASET})
+    with pytest.raises(YorungeError) as error:
+        put_ack(raw, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("field", ["project_id", "dataset_id"])
+def test_relation_key_literal_exemption_is_bound_to_consumed_link_context(field):
+    secret = SecretValue(field)
+    raw = encoded({"success": True, "project_id": SCOPE.project_id, "dataset_id": DATASET})
+    codec.link_ack(raw, secret, project_id=SCOPE.project_id, dataset_id=DATASET)
+    with pytest.raises(YorungeError) as error:
+        codec.link_ack(raw, secret)
+    assert error.value.code == "invalid_response"
+    metadata = encoded(
+        {"project_id": SCOPE.project_id, "dataset_id": DATASET, "unused": {field: "unused"}}
+    )
+    with pytest.raises(YorungeError) as error:
+        codec.link_ack(metadata, secret, project_id=SCOPE.project_id, dataset_id=DATASET)
+    assert error.value.code == "invalid_response"
+
+
 def test_context_rejects_another_reported_user_and_identity_requires_wrapped_uuid():
     selected = codec.project(encoded(project()), SCOPE, SECRET)
     with pytest.raises(YorungeError) as error:

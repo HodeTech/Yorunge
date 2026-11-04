@@ -16627,6 +16627,21 @@
       }
     },
     {
+      "name": "p02-2-link-contract-20261104.json",
+      "archive": "raw/p02-2-link-contract-20261104.json.gz",
+      "original_commit": null,
+      "content_bytes": 1424,
+      "content_sha256": "d85e3558ec1ebdc1ab6de0d2ad40f4d7ae8086576af33199920fa33364e7b198",
+      "archive_bytes": 605,
+      "archive_sha256": "91b86f60b5c8fa1aea75a23bd3d403c5983a5608553b444706264f56685e750e",
+      "summary": {
+        "source_commit": "f843e6f9be4ff0eeaf586cf535638d05d00989cf",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "evidence_collected"
+      }
+    },
+    {
       "name": "p02-2-live-runner-development-unverified.json",
       "archive": "raw/p02-2-live-runner-development-unverified.json.gz",
       "original_commit": null,

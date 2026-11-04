@@ -17,7 +17,7 @@ Yerel hazırlık veya arm reddinde henüz başlamamış reservation açıkça ka
 | Aşama | Private request ve geçerli dönüş |
 |---|---|
 | create | codec create body → tek POST datasets; strict create DTO → CreateReceiptV2 + immutable ProviderDataset. ID/owner/name/modality/private/false/1 MiB raw/literal kuralları korunur |
-| project_link | codec link body → tek POST projects/{id}/datasets; strict boş/success ack → accepted StageReceipt v1; membership ayrıca okunur |
+| project_link | codec link body → tek POST projects/{id}/datasets; strict boş/success veya exact project/dataset ilişki ack’i → accepted StageReceipt v1; [consumer bağı](platform-upload-consumer.md#context-create-ve-proje-bağlantısı) ve ayrı membership okuması korunur |
 | presign | dosya başına codec body → tek POST datasets/{id}/upload/presign; strict private descriptor → accepted StageReceipt v1 içinde yalnız local_binding. Raw key/URL descriptor'da ephemeral kalır |
 | PUT | lazy bounded descriptor kaynağıyla tek PUT; StorageResponse ve source EOF exact byte/SHA eşliği + strict 64 KiB ack → accepted StageReceipt v1 sent bytes/hash/local binding |
 | confirm | exact descriptor/context body, skip_dedup=true → tek POST confirm; created=1, mevcut accepted confirm sayısı+1 ve duplicate=0 oracle → accepted StageReceipt v1 local binding |

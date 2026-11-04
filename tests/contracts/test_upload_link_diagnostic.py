@@ -34,6 +34,7 @@ HELPER = runpy.run_path(str(Path(__file__).parents[2] / "scripts/upload_link_dia
     "case",
     [
         "message",
+        "message_only",
         "standard",
         "already",
         "wrong_binding",
@@ -55,6 +56,8 @@ def test_link_probe_never_replays_and_only_records_closed_shape_predicates(case)
     }
     if case == "standard":
         link["success"] = True
+    if case == "message_only":
+        link = {"message": "private-link-message-canary"}
     if case == "wrong_binding":
         link["dataset_id"] = OTHER
     if case == "logical_false":
@@ -99,7 +102,7 @@ def test_link_probe_never_replays_and_only_records_closed_shape_predicates(case)
     view = SimpleNamespace(plan=SimpleNamespace(scope=SCOPE, parameters=PARAMETERS))
     report = {"requests": [], "outcome": "incomplete"}
     action = HELPER["probe"](Client(), key, view, expected, report)
-    if case in ("message", "standard", "already"):
+    if case in ("message", "message_only", "standard", "already"):
         asyncio.run(action)
         assert report["outcome"] == (
             "already_linked_no_post" if case == "already" else "evidence_collected"
@@ -110,17 +113,22 @@ def test_link_probe_never_replays_and_only_records_closed_shape_predicates(case)
         assert failure.value.code == (
             "remote_access_denied" if case == "denied" else "invalid_response"
         )
-    assert len(calls) == {"message": 7, "standard": 7, "already": 5, "wrong_detail": 4}.get(case, 6)
+    assert len(calls) == {
+        "message": 7,
+        "message_only": 7,
+        "standard": 7,
+        "already": 5,
+        "wrong_detail": 4,
+    }.get(case, 6)
     assert sum(request.method == "POST" for request in calls) == (
         0 if case in ("already", "wrong_detail") else 1
     )
-    if case in ("message", "standard"):
-        assert report["typed_ack_accepted"] is (case == "standard")
+    if case in ("message", "standard", "message_only"):
+        assert report["typed_ack_accepted"] is (case != "message_only")
         assert report["membership_after"] is True
-        assert report["link_shape"]["root"]["matches_expected"] == {
-            "dataset_id": True,
-            "project_id": True,
-        }
+        assert report["link_shape"]["root"]["matches_expected"] == (
+            {} if case == "message_only" else {"dataset_id": True, "project_id": True}
+        )
     if case == "denied":
         assert report["requests"][-1]["status"] == 403
     public = json.dumps(report)
@@ -160,10 +168,7 @@ def test_control_trace_has_no_free_field_names_values_or_exception_text(raw):
     assert shape["json_valid"] is (raw.startswith(b'{"unknown'))
 
 
-@pytest.mark.parametrize("case", ["existing_link", "active_owner", "wrong_project", "non_test"])
-def test_link_probe_preflight_cannot_touch_an_existing_arm_owner_or_other_resource(
-    tmp_path, monkeypatch, case
-):
+def run_args(tmp_path, monkeypatch, case="valid"):
     namespace = HELPER["run"].__globals__
     receipt = CreateReceiptV2.model_validate_json(
         (Path(__file__).parents[1] / "fixtures/dataset-create-receipt-v2.json").read_bytes()
@@ -198,12 +203,6 @@ def test_link_probe_preflight_cannot_touch_an_existing_arm_owner_or_other_resour
         base, "StateUploads", lambda *args: SimpleNamespace(show=lambda **kwargs: view)
     )
 
-    def forbidden(*args, **kwargs):
-        raise AssertionError("rejected preflight must not create a network session")
-
-    import yorunge.adapters.http_session as sessions
-
-    monkeypatch.setattr(sessions, "HttpSession", forbidden)
     args = SimpleNamespace(
         accept_link_probe=True,
         config=tmp_path / "config",
@@ -212,6 +211,66 @@ def test_link_probe_preflight_cannot_touch_an_existing_arm_owner_or_other_resour
         workspace=tmp_path / "new",
         project=OTHER if case == "wrong_project" else SCOPE.project_id,
     )
+    return args
+
+
+@pytest.mark.parametrize("case", ["existing_link", "active_owner", "wrong_project", "non_test"])
+def test_link_probe_preflight_cannot_touch_an_existing_arm_owner_or_other_resource(
+    tmp_path, monkeypatch, case
+):
+    args = run_args(tmp_path, monkeypatch, case)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("rejected preflight must not create a network session")
+
+    import yorunge.adapters.http_session as sessions
+
+    monkeypatch.setattr(sessions, "HttpSession", forbidden)
     with pytest.raises(ValueError):
         HELPER["run"](args)
     assert not args.workspace.exists()
+
+
+@pytest.mark.parametrize("failure", ["source", "close"])
+def test_link_probe_final_source_or_close_error_cannot_publish_completed_outcome(
+    tmp_path, monkeypatch, failure
+):
+    args = run_args(tmp_path, monkeypatch)
+    namespace = HELPER["run"].__globals__
+    reads = []
+
+    def source(*args):
+        reads.append(None)
+        return {"commit": "a" * 40, "synthetic_revision": len(reads) if failure == "source" else 0}
+
+    driver = {"EVIDENCE": {"source": source}, "STREAM": {"new_path": lambda path: path}}
+    monkeypatch.setitem(namespace, "runpy", SimpleNamespace(run_path=lambda *args: driver))
+
+    async def probe(*args):
+        args[-1]["outcome"] = "evidence_collected"
+
+    monkeypatch.setitem(namespace, "probe", probe)
+
+    class Session:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def call(self, consumer):
+            return asyncio.run(consumer(None))
+
+        def __exit__(self, *args):
+            if failure == "close":
+                raise ValueError("private-close-canary")
+
+    import yorunge.adapters.http_session as sessions
+
+    monkeypatch.setattr(sessions, "HttpSession", Session)
+    with pytest.raises(ValueError):
+        HELPER["run"](args)
+    raw = (args.workspace / "receipt.json").read_bytes()
+    assert json.loads(raw)["outcome"] == "incomplete"
+    assert b"private-close-canary" not in raw
+    assert (args.workspace / "started.json").exists()

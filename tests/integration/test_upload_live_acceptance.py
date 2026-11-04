@@ -147,8 +147,6 @@ def test_link_decoder_failure_retains_closed_trace_without_accepting_or_replayin
         body=json.dumps(
             {
                 "message": "private-link-message-canary",
-                "dataset_id": DATASET,
-                "project_id": SCOPE.project_id,
             }
         ).encode()
     )
@@ -168,7 +166,7 @@ def test_link_decoder_failure_retains_closed_trace_without_accepting_or_replayin
     assert trace[0]["typed_accepted"] is True
     assert trace[1]["typed_accepted"] is False
     assert trace[1]["transport_2xx_accepted"] is True
-    assert trace[1]["shape"]["root"]["matches_expected"] == {"dataset_id": True, "project_id": True}
+    assert trace[1]["shape"]["root"]["matches_expected"] == {}
     assert b"private-link-message-canary" not in raw
     assert DATASET.encode() not in raw
     assert provider.owner_id.encode() not in raw

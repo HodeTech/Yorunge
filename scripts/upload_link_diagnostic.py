@@ -107,7 +107,7 @@ async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[st
     report["link_shape"] = TRACE["body_shape"](raw, matches)
     validate_link(raw, matches, secret)
     try:
-        codec.link_ack(raw, secret)
+        codec.link_ack(raw, secret, project_id=scope.project_id, dataset_id=expected.id)
         report["typed_ack_accepted"] = True
     except YorungeError as error:
         report.update(typed_ack_accepted=False, typed_ack_error_code=error.code)
@@ -185,6 +185,7 @@ def run(args: argparse.Namespace) -> None:
         "operation_mutated": False,
         "authority_verified": False,
     }
+    completed = False
     try:
         with HttpSession(
             transport_factory=lambda: HttpxTransport(transport=GuardedHttpTransport())
@@ -192,10 +193,13 @@ def run(args: argparse.Namespace) -> None:
             session.call(lambda client: probe(client, key, view, expected, report))
         if before != driver["EVIDENCE"]["source"](ROOT):
             raise ValueError("link diagnostic source changed")
+        completed = True
     except YorungeError as error:
         report["error_code"] = error.code
         raise
     finally:
+        if not completed:
+            report["outcome"] = "incomplete"
         BASE["write"](args.workspace / "receipt.json", report)
 
 
