@@ -212,6 +212,7 @@ class Probe:
         )
         self.report["presign_shape"] = TRACE["body_shape"](raw, {})
         upload = descriptors.presigned(raw, self.context, self.key.secret)
+        observed.recheck()
         if await self.put(upload) and self.confirm:
             observed.recheck()
             await self.confirm_upload(upload, before)

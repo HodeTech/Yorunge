@@ -47,6 +47,7 @@ HELPER = runpy.run_path(str(ROOT / "scripts/upload_storage_diagnostic.py"))
         "changed_input",
         "role_denied",
         "changed_after_put",
+        "changed_during_presign",
     ],
 )
 def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_path, case):
@@ -123,6 +124,8 @@ def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_
                     ],
                     "duplicates": [],
                 }
+                if case == "changed_during_presign":
+                    (work / "source/first.png").write_bytes(b"x" * 79)
             elif path.endswith("/upload/confirm"):
                 assert len(storage_requests) == 1
                 raw = {
@@ -187,6 +190,7 @@ def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_
         "changed_input",
         "role_denied",
         "changed_after_put",
+        "changed_during_presign",
     ):
         with pytest.raises(YorungeError) as error:
             asyncio.run(action)
@@ -196,12 +200,13 @@ def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_
             "changed_input": "input_changed",
             "role_denied": "remote_access_denied",
             "changed_after_put": "input_changed",
+            "changed_during_presign": "input_changed",
         }.get(case, "invalid_response")
     else:
         asyncio.run(action)
         assert report["outcome"] == "evidence_collected"
     assert len(storage_requests) == (
-        0 if case in ("existing", "changed_input", "role_denied") else 1
+        0 if case in ("existing", "changed_input", "role_denied", "changed_during_presign") else 1
     )
     assert sum(request.endpoint.endswith("/upload/presign") for request in requests) == (
         0 if case in ("existing", "changed_input", "role_denied") else 1
