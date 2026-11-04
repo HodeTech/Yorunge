@@ -46,8 +46,11 @@ R5 ca0d29c/runtime07’de iki 79-byte dosyayı kapsar. Sonraki 128 KiB okuma/cod
 
 ## Gizlilik kararı
 
-Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. Gizlilik/retention değişikliği ayrı Proposed ADR-0029 ile kullanıcı onayına sunulacaktır; bu karar bağımsız ürün kusurlarını bekletmez. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
+Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. Gizlilik/retention değişikliği ayrı [Proposed ADR-0029](../decisions/0029-evidence-provenance-privacy.md) ile kullanıcı onayına sunulur; bu karar bağımsız ürün kusurlarını bekletmez. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
 
 ## Dilim 1 ilk doğrulama
 
 Yeni bounded/fallback/peer/idle/keylog ve mevcut network unit seçkisi **84 passed**. Gerçek guarded 8 MiB PUT/RST’nin tam cevabı ve eksik cevap taşıma hatası ayrı sınandı. İlk iki test son resource assertion’ında olmayan closed özelliğine baktı; ürün beklentileri geçmişti. Test gerçek descriptor alanlarına düzeltildi, dar iki case geçti; ardından storage/gerçek TLS cancel/normal HTTP regresyonu **76 passed /41,99 s**. Bu iki son seçki ayrıdır. Strict mypy 144 ve değişen dosyalarda Ruff geçti. Kaynak review turları henüz beklenir; native/CI veya hesap çağrısı yapılmadı.
+
+
+Dilim 1 /9815f70, R1 Astra/high contract + Sol/high safety ve farklı fresh R2 Sol/high contract + Astra/high safety tarafından bulgusuz kapandı. Reviewer’lar geçen testleri/ölçümleri tekrar çalıştırmadı. Literal socket-options iterator ve TLS-failure fallback için ek test fikri opsiyonel kapsam olarak kaydedildi; mevcut kod kusuru bulunmadı. İkinci kod dilimi artık receipt toplama bütünlüğüne geçebilir. Proposed ADR-0029 yalnız gizlilik/retention politikasını bekletir; ağ düzeltmesinin onay kapısı değildir.
