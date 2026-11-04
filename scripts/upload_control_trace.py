@@ -41,6 +41,17 @@ FIELDS = (
     "linked",
     "added",
     "already_linked",
+    "uploaded",
+    "stored",
+    "size",
+    "bytes",
+    "bytes_written",
+    "etag",
+    "items",
+    "total",
+    "next_cursor",
+    "file_size_bytes",
+    "original_filename",
 )
 LITERALS = {
     "status_ok": ("status", "ok"),
@@ -66,6 +77,11 @@ TYPES = {
 def facts(value: object, expected: Mapping[str, object]) -> dict[str, Any]:
     result: dict[str, Any] = {"type": TYPES[type(value)]}
     if type(value) is not dict:
+        if type(value) is list:
+            result["array_count"] = len(value)
+        if type(value) is str:
+            result["string_is_ok"] = value == "OK"
+            result["string_is_uploaded"] = value == "uploaded"
         return result
     result["key_count"] = len(value)
     result["fields"] = {key: TYPES[type(value[key])] for key in FIELDS if key in value}
@@ -84,7 +100,13 @@ def facts(value: object, expected: Mapping[str, object]) -> dict[str, Any]:
     if "success" in value:
         result["success_true"] = value["success"] is True
         result["success_false"] = value["success"] is False
-    for key in ("presigned_urls", "duplicates"):
+    result["integer_is_one"] = {
+        key: value[key] == 1 for key in FIELDS if type(value.get(key)) is int
+    }
+    result["integer_is_zero"] = {
+        key: value[key] == 0 for key in FIELDS if type(value.get(key)) is int
+    }
+    for key in FIELDS:
         if type(value.get(key)) is list:
             result[key + "_count"] = len(value[key])
     return result
@@ -94,7 +116,13 @@ def body_shape(data: bytes, expected: Mapping[str, object]) -> dict[str, Any]:
     try:
         value = parse_json(data, max_bytes=1_048_576)
     except YorungeError as error:
-        return {"json_valid": False, "error_code": error.code, "empty": not data}
+        return {
+            "json_valid": False,
+            "error_code": error.code,
+            "empty": not data,
+            "raw_is_ok": data in (b"OK", b"ok"),
+            "raw_is_uploaded": data == b"uploaded",
+        }
     result = {"json_valid": True, "root": facts(value, expected)}
     if type(value) is dict and "data" in value:
         result["data"] = facts(value["data"], expected)
@@ -103,4 +131,6 @@ def body_shape(data: bytes, expected: Mapping[str, object]) -> dict[str, Any]:
         rows = payload["presigned_urls"]
         if len(rows) == 1:
             result["presigned_item"] = facts(rows[0], expected)
+    if type(payload) is dict and type(payload.get("items")) is list and payload["items"]:
+        result["first_item"] = facts(payload["items"][0], expected)
     return result

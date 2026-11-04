@@ -103,3 +103,16 @@ Genel kullanıcı kontrol yetkisinde, yukarıdaki aynı kapalı full-runner/say�
 
 
 **r3 kaynak kapısı:** 821e155 exact ilişki decoder uyumu ve finalization, iki farklı fresh contract/safety turunda temiz kapandı. Önceki koşular yeniden gönderilmez; yalnız r3 exclusive workspace aynı sabit sayısal kapsamda bir defa kullanılır.
+
+
+## Storage sözleşmesi — üç dosyalık bağımsız tanı
+
+Genel kontrol yetkisinde, aynı ilk sentetik dataset/proje/anahtar kullanılır; r3’ün unknown işi veya onun presign/PUT istekleri yeniden gönderilmez. [Storage tanısı](../../scripts/upload_storage_diagnostic.py) yalnız orijinal Manifest’teki üç sabit PNG’yi ve literal hash’lerini kabul eder. Dosya başına tek exclusive slot vardır: `.local/p02-pilot/p02-2-storage-contract-20261104/first`, `different`, `same-content`. İlk `first.png` yalnız presign/PUT cevabını inceler; sonraki dosyalarda `--confirm`, yalnız mevcut typed PUT kabulünden sonra confirm’i açabilir. Üç slot toplam en fazla 3 presign/3 PUT/3 confirm/237 byte gönderir; yeni create/link, eski operation mutation, silme/şart/eğitim/indirme yoktur.
+
+Her slotta azami 8 GET (me/project/owned20/exact detail/membership/my-role/items-before/after), 1 presign POST, 1 PUT ve isteğe bağlı 1 confirm POST; **19 fiziksel deneme /5 MiB response /4 KiB control request /79 byte upload /30 s ortak deadline**. Kontrol yanıtı/attempt 256 KiB, PUT response 64 KiB; GET en çok 2, POST/PUT tek denemedir. Fiyat/storage unknown ve sayısal CR tavanı yoktur; kaynak private kalır.
+
+Önce sadece-create-intent/accepted-v2/unknown/no-active-lease/exact historical context kapısı korunur. Gerçek dosyalar tamamen yeniden hash’lenir; root/manifest eşliği gerekir. Fresh me/project/owner/private/detail/membership ve my-role literal upload etiketi zorunludur; etiket grant değildir. Items yalnız üç bilinen dosya ve exact hash/size ile tutarlı, küçük ve terminal tek sayfa olmalıdır. Seçilen dosya zaten metadata’da varsa effect sıfırdır. Her yeni effect öncesi uygun input observation recheck, gönderimde gerçek descriptor byte/SHA ve source complete eşliği korunur.
+
+Presign descriptor’ı mevcut strict proxy decoder’ından geçer; direct origin/fallback veya redirect açılmaz. Signed URL/provider key yalnız aynı çağrının volatile descriptor’ında kalır. PUT yanıtında mevcut typed ack’in kabul/ret sonucu ve kapalı şekil/eşlik bool’ları kaydedilir; ret sonrasında confirm yoktur. Confirm araştırmasında mevcut toplam sayacı beklentisi ile singleton count=1 iki ayrı **decoder predicate’i** olarak kaydedilir; bunlar product policy veya receipt değildir. Logical-negative/malformed/binding/secret/byte HTTP hatasında başka write yoktur. En az bir kapalı singleton confirm oracle’ı geçerse yalnız items-after okunur; total/name/size/hash karşılaştırması metadata gözlemidir, remote byte doğrulaması değildir.
+
+Nonce/dizin fsync ve kaynak önce/sonra eşliği HTTP’den önce/sonra uygulanır. Response type/alan adı/sayı/literal/expected bool dışında serbest metin, kimlik, object key, URL veya credential saklanmaz. Mevcut public runner’da PUT için de task-context’e bağlı kapalı iz eklenmiştir: iki worker’ın satırları karışmaz; original ownership/permit/source/decoder/cleanup aynen delegate edilir. Wrapper’a giriş, fiziksel deneme diye sunulmaz; actual sayaç ayrı kalır. Script/test ve iki fresh review kapısı kapanmadan bu yeni slotlar çalışmaz.

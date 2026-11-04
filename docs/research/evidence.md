@@ -2658,6 +2658,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-final-live-20261104-r2-incomplete.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "incomplete", "source_commit": "59ff11aeac026e06b8e62b39275d3d41ca0e8b0b"}`.
 
+## p02-2-final-live-20261104-r3-incomplete
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `d27fe776236a47f90f10871c44f337212d257bea79b40dd3706280834dea8e0f`.
+**Yerel arşiv:** `raw/p02-2-final-live-20261104-r3-incomplete.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "incomplete", "source_commit": "ee5afce496ffba64f1901fdfbacef424cb8ef175"}`.
+
 ## p02-2-link-contract-20261104
 
 **Tür:** `diagnostic`.

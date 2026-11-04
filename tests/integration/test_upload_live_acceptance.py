@@ -81,6 +81,23 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, name="yorunge-acceptance-pilot")
     if outcome == "partial_put":
         provider.fail_put_name = "first.png"
+    if outcome == "success":
+        original_put = provider.put
+
+        def echoed_put(request, count):
+            response = original_put(request, count)
+            return Reply(
+                body=json.dumps(
+                    {
+                        "success": True,
+                        "size": len(request.body),
+                        "sha256_hash": hashlib.sha256(request.body).hexdigest(),
+                    }
+                ).encode(),
+                status=response.status,
+            )
+
+        provider.put = echoed_put
     provenance_seam(helper, monkeypatch, wheel_changed=outcome == "wheel_changed")
     monkeypatch.setenv("PILOT_PLATFORM_KEY", "prior-env-value")
     with (
@@ -93,6 +110,10 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
             receipt = json.loads((args.workspace / "receipt.json").read_bytes())
             assert receipt["reason_code"] == stopped.value.reason_code
             assert receipt["reason_code"] != "operation_uncertain"
+            assert any(
+                row["kind"] == "put" and row["http_status"] == 503
+                for row in receipt["counters"]["control_responses"]
+            )
         elif outcome == "wheel_changed":
             with pytest.raises(ValueError, match="wheel changed"):
                 helper["run"](args)
@@ -112,6 +133,12 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
             assert actual["effect_attempts"] == 11
             assert actual["upload_bytes"] == 237
             assert value["counters"]["open_reservations"] == 0
+            puts = [row for row in value["counters"]["control_responses"] if row["kind"] == "put"]
+            assert {row["file_index"] for row in puts} == {0, 1, 2}
+            assert all(row["typed_accepted"] is True for row in puts)
+            assert all(
+                row["shape"]["root"]["matches_expected"]["sha256_hash"] is True for row in puts
+            )
         count = len(server.requests)
         with pytest.raises(ValueError):
             helper["run"](args)

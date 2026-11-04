@@ -40,6 +40,38 @@ def validate_link(raw: bytes, matches: dict[str, str], secret: Any) -> None:
             raise YorungeError("invalid_response")
 
 
+async def inspect_context(exchange: Any, key: Any, view: Any, expected: Any) -> tuple[str, bool]:
+    from yorunge.domain.errors import YorungeError
+
+    secret, scope = key.secret, view.plan.scope
+    project_path = "projects/" + codec.segment(scope.project_id, secret)
+    me = codec.identity(await exchange("me", "auth/me"), secret)
+    selected_project = codec.project(await exchange("project", project_path), scope, secret)
+    codec.context(me, selected_project, scope)
+    owned = codec.owned_page(
+        await exchange(
+            "owned", "datasets", query=(("page", "1"), ("page_size", "20"), ("scope", "owned"))
+        ),
+        expected.id,
+        scope,
+        view.plan.parameters,
+        secret,
+    )
+    if owned.selected is None:
+        raise YorungeError("invalid_response")
+    codec.detail(
+        await exchange("detail", codec.detail_path(owned.selected, secret)),
+        expected,
+        scope,
+        view.plan.parameters,
+        secret,
+    )
+    member_path = project_path + "/datasets"
+    return member_path, codec.membership(
+        await exchange("membership_before", member_path), expected.id, secret
+    )
+
+
 async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[str, Any]) -> None:
     from yorunge.application.http_transport import HttpRequest, HttpStatusFailure
     from yorunge.domain.errors import YorungeError
@@ -76,30 +108,8 @@ async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[st
             row["status"] = error.status_code
             raise
 
-    project_path = "projects/" + codec.segment(scope.project_id, secret)
-    me = codec.identity(await exchange("me", "auth/me"), secret)
-    selected_project = codec.project(await exchange("project", project_path), scope, secret)
-    codec.context(me, selected_project, scope)
-    owned = codec.owned_page(
-        await exchange(
-            "owned", "datasets", query=(("page", "1"), ("page_size", "20"), ("scope", "owned"))
-        ),
-        expected.id,
-        scope,
-        view.plan.parameters,
-        secret,
-    )
-    if owned.selected is None:
-        raise YorungeError("invalid_response")
-    codec.detail(
-        await exchange("detail", codec.detail_path(owned.selected, secret)),
-        expected,
-        scope,
-        view.plan.parameters,
-        secret,
-    )
-    member_path = project_path + "/datasets"
-    if codec.membership(await exchange("membership_before", member_path), expected.id, secret):
+    member_path, linked = await inspect_context(exchange, key, view, expected)
+    if linked:
         report["outcome"] = "already_linked_no_post"
         return
     raw = await exchange("link", member_path, content=codec.link_content(expected.id, secret))
@@ -117,17 +127,11 @@ async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[st
     report["outcome"] = "evidence_collected"
 
 
-def run(args: argparse.Namespace) -> None:
-    from yorunge.adapters.guarded_http import GuardedHttpTransport
-    from yorunge.adapters.http_session import HttpSession
-    from yorunge.adapters.http_transport import HttpxTransport
+def historical_context(args: argparse.Namespace) -> tuple[Any, Any, Any]:
     from yorunge.domain.capabilities import instant
     from yorunge.domain.create_receipt import CreateReceiptV2
     from yorunge.domain.credentials import SecretValue
-    from yorunge.domain.errors import YorungeError
 
-    if not sys.flags.isolated or not args.accept_link_probe:
-        raise ValueError("isolated runtime and explicit link-probe authorization required")
     _, value = BASE["credential"](args.config, args.credentials)
     identity = json.loads(BASE["private_file"](args.pilot / "uncertain-identity.json"))
     with BASE["open_existing_store"](args.pilot / "state") as store:
@@ -157,6 +161,18 @@ def run(args: argparse.Namespace) -> None:
     key = BASE["HttpCredential"](
         "X-API-Key", SecretValue(value), target=TARGET, service_id="evren-platform"
     )
+    return view, expected, key
+
+
+def run(args: argparse.Namespace) -> None:
+    from yorunge.adapters.guarded_http import GuardedHttpTransport
+    from yorunge.adapters.http_session import HttpSession
+    from yorunge.adapters.http_transport import HttpxTransport
+    from yorunge.domain.errors import YorungeError
+
+    if not sys.flags.isolated or not args.accept_link_probe:
+        raise ValueError("isolated runtime and explicit link-probe authorization required")
+    view, expected, key = historical_context(args)
     driver = runpy.run_path(str(ROOT / "scripts/benchmark-upload.py"))
     before = driver["EVIDENCE"]["source"](ROOT)
     driver["STREAM"]["new_path"](args.workspace).mkdir(mode=0o700)
