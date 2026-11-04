@@ -16629,6 +16629,21 @@
       }
     },
     {
+      "name": "p02-2-owned-diagnostic-20261104-incomplete.json",
+      "archive": "raw/p02-2-owned-diagnostic-20261104-incomplete.json.gz",
+      "original_commit": null,
+      "content_bytes": 746,
+      "content_sha256": "62475baaf352998d7ca7d138103c2aa83b03f8403d566f4208b20197d1ae6b47",
+      "archive_bytes": 415,
+      "archive_sha256": "518f9f0d8807a0f94d52498f78b685130fecde2c21a022c891e9137d22d21295",
+      "summary": {
+        "source_commit": "06c26508a6b1b430194557995c4c51d89b6607c4",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "incomplete"
+      }
+    },
+    {
       "name": "p02-2-reference-datasets-01.json",
       "archive": "raw/p02-2-reference-datasets-01.json.gz",
       "original_commit": null,

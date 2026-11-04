@@ -1,8 +1,9 @@
-"""No live account: the diagnostic exposes field types and performs at most two GETs."""
+"""No live account: field types, exact locators and at most three research GETs."""
 
 import asyncio
 import json
 import runpy
+import socket
 import subprocess
 import sys
 import time
@@ -15,28 +16,46 @@ import pytest
 from tests.contracts.test_platform_upload_codec import (
     DATASET,
     PARAMETERS,
-    PLAN,
     SCOPE,
     SECRET,
     dataset,
     encoded,
     located,
 )
+from tests.fixtures.http_server import Reply, TlsServer, certificate, loopback_sockets
+from yorunge.adapters.http_session import HttpSession
+from yorunge.adapters.http_transport import HttpxTransport
 from yorunge.application import platform_upload_codec as codec
-from yorunge.application.http_transport import HttpCredential
-from yorunge.application.upload_budget import UploadBudget
+from yorunge.application.http_transport import HttpCredential, HttpStatusFailure
 from yorunge.domain.credentials import normalize_target
 from yorunge.domain.errors import YorungeError
 
 HELPER = runpy.run_path(
     str(Path(__file__).resolve().parents[2] / "scripts/upload_owned_diagnostic.py")
 )
+CONNECT, CONNECT_EX, GETADDRINFO = (
+    socket.socket.connect,
+    socket.socket.connect_ex,
+    socket.getaddrinfo,
+)
 
 
 @pytest.mark.parametrize(
-    "case", ["valid", "missing", "bad_locator", "wrong_owner", "pii", "secret", "wrong_boolean"]
+    "case",
+    [
+        "valid",
+        "missing",
+        "bad_locator",
+        "wrong_owner",
+        "pii",
+        "secret",
+        "wrong_boolean",
+        "missing_metadata",
+        "query_rejected",
+        "http_405",
+    ],
 )
-def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
+def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
     selected = located()
     if case == "bad_locator":
         selected["owner_username"] = "../private-locator-canary"
@@ -44,6 +63,8 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
         selected["owner_id"] = "00000000-0000-4000-8000-000000000099"
     if case == "wrong_boolean":
         selected["contributions_enabled"] = 0
+    if case == "missing_metadata":
+        selected.pop("contributions_enabled")
     if case == "pii":
         selected["email"] = "private-person-canary@example.test"
     if case == "secret":
@@ -54,25 +75,22 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
     class Response:
         status_code = 200
 
-        def __init__(self, data, reservation):
-            self.data, self.reservation = data, reservation
+        def __init__(self, data):
+            self.data = data
 
         async def chunks(self):
-            self.reservation.response(len(self.data))
             yield self.data
 
     class Client:
         @asynccontextmanager
-        async def open_budgeted(self, request, reservation, *, deadline):
+        async def open(self, request, *, deadline):
             calls.append(request)
-            reservation.require(
-                budget, "read", request_bytes=0, upload_bytes=0, response_bytes=request.max_bytes
-            )
-            reservation.begin()
-            reservation.attempt()
-            yield Response(body if len(calls) == 1 else encoded(dataset()), reservation)
+            if case == "query_rejected" and len(calls) == 1:
+                raise HttpStatusFailure(422)
+            if case == "http_405":
+                raise HttpStatusFailure(405)
+            yield Response(body if request.endpoint == "datasets" else encoded(dataset()))
 
-    budget = UploadBudget(PLAN.request_limits, end=time.monotonic() + 30, read_only=True)
     key = HttpCredential(
         "X-API-Key",
         SECRET,
@@ -82,21 +100,30 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
     report = {"requests": [], "outcome": "incomplete"}
     action = HELPER["inspect"](
         Client(),
-        budget,
         key,
         SimpleNamespace(plan=SimpleNamespace(scope=SCOPE, parameters=PARAMETERS)),
         codec.created(encoded(dataset()), SCOPE, PARAMETERS, SECRET),
         report,
+        end=time.monotonic() + 30,
     )
-    if case in ("valid", "pii"):
+    if case in ("valid", "pii", "missing_metadata", "query_rejected"):
         asyncio.run(action)
-        assert report["consumer_accepted"] is True
-        assert len(calls) == 2
+        assert report["consumer_accepted"] is (case != "missing_metadata")
+        assert report["detail_matches_create"] is True
+        assert len(calls) == (3 if case == "query_rejected" else 2)
     else:
         with pytest.raises(YorungeError) as raised:
             asyncio.run(action)
-        assert raised.value.code == "invalid_response"
+        assert raised.value.code == ("remote_failed" if case == "http_405" else "invalid_response")
         assert len(calls) == 1
+    if case == "http_405":
+        assert report["requests"][0]["status"] == 405
+    if case == "query_rejected":
+        assert report["requests"][0]["status"] == 422
+        assert report["requests"][1]["page_size"] == 5
+    if case == "missing_metadata":
+        assert report["owned_consumer_accepted"] is False
+        assert report["owned_shape"]["selected_fields"]["contributions_enabled"] == "missing"
     if case == "wrong_owner":
         assert report["owned_shape"]["matches_create"]["owner_id"] is False
     if case == "wrong_boolean":
@@ -105,12 +132,44 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
         assert request.method == "GET"
         assert request.read_only is True
         assert request.max_bytes == 1_048_576
-    assert budget.snapshot().effect_attempts == 0
-    assert budget.snapshot().response_pending == 0
+        assert request.upload_endpoint is None
     assert DATASET not in json.dumps(report)
     assert "private-person-canary" not in json.dumps(report)
     assert "private-locator-canary" not in json.dumps(report)
     assert "synthetic-platform-secret" not in json.dumps(report)
+
+
+def test_owned_diagnostic_uses_real_read_session_and_preserves_rejected_http_status(tmp_path):
+    row = located()
+    row.pop("contributions_enabled")
+    routes = {
+        "/api/v1/datasets?page=1&page_size=20&scope=owned": Reply(status=422, body=b"{}"),
+        "/api/v1/datasets?page=1&page_size=5&scope=owned": Reply(body=encoded([row])),
+        "/api/v1/datasets/sample-user/sample-dataset": Reply(body=encoded(dataset())),
+    }
+    key = HttpCredential("X-API-Key", SECRET, target=HELPER["TARGET"], service_id="evren-platform")
+    expected = codec.created(encoded(dataset()), SCOPE, PARAMETERS, SECRET)
+    view = SimpleNamespace(plan=SimpleNamespace(scope=SCOPE, parameters=PARAMETERS))
+    report = {"requests": [], "outcome": "incomplete"}
+    with loopback_sockets(CONNECT, CONNECT_EX, GETADDRINFO):
+        with TlsServer(certificate(tmp_path), routes) as server:
+            with HttpSession(
+                transport_factory=lambda: HttpxTransport(transport=server.transport())
+            ) as session:
+                session.call(
+                    lambda client: HELPER["inspect"](
+                        client, key, view, expected, report, end=time.monotonic() + 5
+                    )
+                )
+    assert [row["status"] for row in report["requests"]] == [422, 200, 200]
+    assert report["owned_consumer_accepted"] is False
+    assert report["detail_matches_create"] is True
+    assert report["detail_shape"]["matches_create"] == dict.fromkeys(HELPER["FIELDS"][:7], True)
+    assert report["consumer_accepted"] is False
+    assert len(server.requests) == 3
+    assert all(record.method == "GET" for record in server.requests)
+    assert DATASET not in json.dumps(report)
+    assert SECRET.reveal() not in json.dumps(report)
 
 
 @pytest.mark.parametrize(

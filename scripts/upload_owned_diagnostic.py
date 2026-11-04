@@ -1,4 +1,4 @@
-"""Separately authorized, two-GET diagnosis of an already accepted create; no writes."""
+"""Separately authorized, at most three GETs for an accepted create; no writes."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import runpy
 import subprocess
 import sys
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Literal
 
@@ -83,19 +82,51 @@ def wire_shape(data: bytes, expected: Any) -> dict[str, Any]:
     }
 
 
+def locate(raw: bytes, view: Any, expected: Any, secret: Any, report: dict[str, Any]) -> str:
+    from yorunge.domain.errors import YorungeError
+    from yorunge.domain.platform_upload import LocatedDataset
+
+    rows = api_codec._rows(api_codec.raw(raw, "owned", secret, selected_id=expected.id))
+    selected = next((row for row in rows if row["id"] == expected.id), None)
+    if selected is None:
+        raise YorungeError("invalid_response")
+    matches = selected_facts(selected, expected)["matches_create"]
+    if any(not matches[name] for name in FIELDS[:7] if name in selected):
+        raise YorungeError("invalid_response")
+    try:
+        username = LocatedDataset.segment(selected.get("owner_username"))
+        slug = LocatedDataset.segment(selected.get("slug"))
+    except (TypeError, ValueError):
+        raise YorungeError("invalid_response") from None
+    # This research read uses only the exact ID and validated locator. Missing list
+    # metadata stays missing; it is never filled from the create receipt.
+    try:
+        api_codec.owned_page(raw, expected.id, view.plan.scope, view.plan.parameters, secret)
+        report["owned_consumer_accepted"] = True
+    except YorungeError as error:
+        report["owned_consumer_accepted"] = False
+        report["owned_consumer_error_code"] = error.code
+    return f"datasets/{api_codec.segment(username, secret)}/{api_codec.segment(slug, secret)}"
+
+
 async def inspect(
-    client: Any, budget: Any, key: Any, view: Any, expected: Any, report: dict[str, Any]
+    client: Any, key: Any, view: Any, expected: Any, report: dict[str, Any], *, end: float
 ) -> None:
-    from yorunge.application.http_transport import HttpRequest
+    from yorunge.application.http_transport import HttpRequest, HttpStatusFailure
     from yorunge.domain.errors import YorungeError
 
     async def read(
         kind: Literal["owned", "detail"], endpoint: str, query: tuple[tuple[str, str], ...] = ()
     ) -> bytes:
-        if len(report["requests"]) >= 2:
+        if len(report["requests"]) >= 3:
             raise YorungeError("upload_limit_exceeded")
         report["stage"] = kind
-        row: dict[str, Any] = {"endpoint_kind": kind, "status": None, "bytes": 0}
+        row: dict[str, Any] = {
+            "endpoint_kind": kind,
+            "status": None,
+            "bytes": 0,
+            "page_size": int(dict(query)["page_size"]) if kind == "owned" else None,
+        }
         report["requests"].append(row)
         request = HttpRequest(
             TARGET,
@@ -105,35 +136,47 @@ async def inspect(
             credential=key,
             service_id="evren-platform",
             read_only=True,
-            upload_endpoint=kind,
         )
-        reserved = budget.reserve("read", response_bytes=request.max_bytes)
         try:
-            async with client.open_budgeted(request, reserved, deadline=budget.end) as response:
+            async with client.open(request, deadline=end) as response:
                 row["status"] = response.status_code
                 data = b"".join([part async for part in response.chunks()])
                 row["bytes"] = len(data)
                 return data
-        finally:
-            if not reserved._closed:
-                reserved.finish()
+        except HttpStatusFailure as error:
+            row["status"] = error.status_code
+            raise
 
-    raw = await read("owned", "datasets", (("page", "1"), ("page_size", "128"), ("scope", "owned")))
+    try:
+        raw = await read(
+            "owned", "datasets", (("page", "1"), ("page_size", "20"), ("scope", "owned"))
+        )
+    except HttpStatusFailure as error:
+        if error.status_code != 422:
+            raise
+        raw = await read(
+            "owned", "datasets", (("page", "1"), ("page_size", "5"), ("scope", "owned"))
+        )
     report["stage"] = "owned_shape"
     report["owned_shape"] = wire_shape(raw, expected)
-    report["stage"] = "owned_consumer"
-    owned = api_codec.owned_page(
-        raw, expected.id, view.plan.scope, view.plan.parameters, key.secret
-    )
-    if owned.selected is None:
-        raise YorungeError("invalid_response")
-    raw = await read("detail", api_codec.detail_path(owned.selected, key.secret))
+    report["stage"] = "owned_locator"
+    endpoint = locate(raw, view, expected, key.secret, report)
+    raw = await read("detail", endpoint)
     report["stage"] = "detail_consumer"
+    detail = api_codec._object(api_codec.raw(raw, "dataset", key.secret))
+    report["detail_shape"] = selected_facts(detail, expected)
     api_codec.detail(raw, expected, view.plan.scope, view.plan.parameters, key.secret)
-    report.update(consumer_accepted=True, stage="complete")
+    report.update(
+        consumer_accepted=report["owned_consumer_accepted"],
+        detail_matches_create=True,
+        stage="complete",
+    )
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    from yorunge.adapters.guarded_http import GuardedHttpTransport
+    from yorunge.adapters.http_session import HttpSession
+    from yorunge.adapters.http_transport import HttpxTransport
     from yorunge.domain.create_receipt import CreateReceiptV2
     from yorunge.domain.credentials import SecretValue
     from yorunge.domain.errors import YorungeError
@@ -158,9 +201,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     key = BASE["HttpCredential"](
         "X-API-Key", SecretValue(value), target=TARGET, service_id="evren-platform"
     )
-    budget = BASE["UploadBudget"](
-        view.plan.request_limits, end=time.monotonic() + 30, read_only=True
-    )
+    end = time.monotonic() + 30
     driver = runpy.run_path(str(ROOT / "scripts/benchmark-upload.py"))
     before = driver["EVIDENCE"]["source"](ROOT)
     driver["STREAM"]["new_path"](args.output.parent).mkdir(mode=0o700)
@@ -174,22 +215,31 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "source_commit": before["commit"],
         "requests": [],
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        "limits": {"get": 2, "attempts": 4, "response_bytes": 4_194_304, "seconds": 30},
+        "limits": {"get": 3, "attempts": 6, "response_bytes": 6_291_456, "seconds": 30},
         "authority_verified": False,
         "operation_mutated": False,
     }
-    session = BASE["UploadSession"](key, budget)
+    # Research queries use the ordinary P01 read port with the real guarded
+    # backend. The production upload literal registry is left unchanged.
+    session = HttpSession(
+        transport_factory=lambda: HttpxTransport(transport=GuardedHttpTransport())
+    )
     try:
         with session:
-            session.exchange(lambda client: inspect(client, budget, key, view, expected, report))
+            session.call(lambda client: inspect(client, key, view, expected, report, end=end))
         if before != driver["EVIDENCE"]["source"](ROOT):
             raise ValueError("diagnostic source changed")
-        report["outcome"] = "consumer_accepted"
+        report["outcome"] = "evidence_collected"
     except YorungeError as error:
         report["error_code"] = error.code
         raise
     finally:
-        report["counters"] = asdict(budget.snapshot())
+        report["counters"] = {
+            "logical_gets": len(report["requests"]),
+            "physical_attempts_upper_bound": 2 * len(report["requests"]),
+            "returned_body_bytes": sum(row["bytes"] for row in report["requests"]),
+            "write_requests": 0,
+        }
         BASE["write"](args.output, report)
     return report
 
