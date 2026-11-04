@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Annotated, Any, ClassVar, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic.config import ExtraValues
 
 from yorunge.domain.credentials import normalize_target
@@ -130,7 +130,13 @@ class WireModel(JsonWireModel):
         return value
 
 
-class ResourceGrant(WireModel):
+class _CapabilityWire(WireModel):
+    """Build reusable cache codecs before nested size validators serialize them."""
+
+    model_config = ConfigDict(defer_build=False)
+
+
+class ResourceGrant(_CapabilityWire):
     namespace: Identifier
     resource_type: Identifier
     resource_id: OpaqueText
@@ -151,7 +157,7 @@ class ResourceGrant(WireModel):
         return value
 
 
-class AuthorizationScope(WireModel):
+class AuthorizationScope(_CapabilityWire):
     permissions: Annotated[tuple[Permission, ...], Field(max_length=128)]
     resources: Annotated[tuple[ResourceGrant, ...], Field(max_length=128)]
 
@@ -173,21 +179,21 @@ class AuthorizationScope(WireModel):
         return self
 
 
-class ModelBinding(WireModel):
+class ModelBinding(_CapabilityWire):
     source: Identifier
     id: OpaqueText
     revision: OpaqueText | None
     content_digest: Digest | None
 
 
-class ToolBinding(WireModel):
+class ToolBinding(_CapabilityWire):
     id: Identifier
     version: OpaqueText | None
     executable_digest: Digest | None
     environment_digest: Digest | None
 
 
-class ExecutionBinding(WireModel):
+class ExecutionBinding(_CapabilityWire):
     backend: Execution
     runtime_id: OpaqueText | None
     runtime_revision: OpaqueText | None
@@ -200,7 +206,7 @@ class ExecutionBinding(WireModel):
         return self
 
 
-class CapabilityScopeV2(WireModel):
+class CapabilityScopeV2(_CapabilityWire):
     schema_version: Literal[2]
     store_id: str
     identity_epoch: str
@@ -253,7 +259,7 @@ class CapabilityScopeV2(WireModel):
         return self
 
 
-class CapabilityKey(WireModel):
+class CapabilityKey(_CapabilityWire):
     capability_id: Identifier
     task: Task
     scope: CapabilityScopeV2
@@ -270,12 +276,12 @@ class CapabilityKey(WireModel):
         return canonical(value).decode("ascii")
 
 
-class Constraint(WireModel):
+class Constraint(_CapabilityWire):
     name: Identifier
     value: OpaqueText | Annotated[int, Field(ge=0, le=2**63 - 1)] | bool
 
 
-class Evidence(WireModel):
+class Evidence(_CapabilityWire):
     kind: Literal["local_policy", "documentation", "synthetic_test", "live_account", "not_verified"]
     producer_id: Identifier
     producer_version: Identifier
@@ -307,7 +313,7 @@ class Evidence(WireModel):
         return canonical(self.model_dump(mode="json", exclude={"checked_at", "expires_at"}))
 
 
-class CapabilityRecord(WireModel):
+class CapabilityRecord(_CapabilityWire):
     schema_version: Literal[2] = 2
     key: CapabilityKey
     support: Support
@@ -375,7 +381,7 @@ class CapabilityRecord(WireModel):
         return max(dates) if dates else None
 
 
-class CachedCapability(WireModel):
+class CachedCapability(_CapabilityWire):
     key: CapabilityKey
     hit: bool
     freshness: Freshness
@@ -388,5 +394,5 @@ class CachedCapability(WireModel):
     historical_candidates: Annotated[tuple[CapabilityRecord, ...], Field(max_length=4)] = ()
 
 
-class CachedCapabilityView(WireModel):
+class CachedCapabilityView(_CapabilityWire):
     records: tuple[CachedCapability, ...]

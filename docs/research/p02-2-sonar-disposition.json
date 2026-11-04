@@ -638,5 +638,102 @@
     "quality_gate": "OK",
     "api_snapshot_sha256": "27357a6190295828b9ddbaeceb72ff16cd82b7def20427d2a11b3620f50b2834",
     "comments_verified": 47
-  }
+  },
+  "followup_analyses": [
+    {
+      "observed_head": "f7d68092f443870e6a6d3f90e4e514575bfe696c",
+      "observed_total": 8,
+      "status": "proposed_pending_review",
+      "issues": [
+        {
+          "key": "AaGm2Mtm72_cgqO0Mjn0",
+          "rule": "python:S3415",
+          "file": "tests/integration/test_upload_content_eligibility.py",
+          "observed_line": 127,
+          "classification": "source_fix",
+          "rationale_code": "clarified_source_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2MwL72_cgqO0Mjn1",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_upload_descriptors.py",
+          "observed_line": 398,
+          "classification": "source_fix",
+          "rationale_code": "clarified_source_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2MwL72_cgqO0Mjn2",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_upload_descriptors.py",
+          "observed_line": 409,
+          "classification": "source_fix",
+          "rationale_code": "clarified_source_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2MwR72_cgqO0Mjn3",
+          "rule": "pythonsecurity:S8707",
+          "file": "scripts/upload_link_diagnostic.py",
+          "observed_line": 181,
+          "classification": "false_positive",
+          "rationale_code": "authorized_operator_path_not_http_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2Mym72_cgqO0Mjn4",
+          "rule": "python:S1192",
+          "file": "scripts/upload_storage_diagnostic.py",
+          "observed_line": 84,
+          "classification": "source_fix",
+          "rationale_code": "clarified_source_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2Mym72_cgqO0Mjn5",
+          "rule": "pythonsecurity:S8707",
+          "file": "scripts/upload_storage_diagnostic.py",
+          "observed_line": 251,
+          "classification": "false_positive",
+          "rationale_code": "authorized_operator_path_not_http_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2M0072_cgqO0Mjn6",
+          "rule": "python:S4143",
+          "file": "scripts/upload_owned_diagnostic.py",
+          "observed_line": 162,
+          "classification": "false_positive",
+          "rationale_code": "phase_marker_preserved_when_intermediate_shape_raises",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGm2M0072_cgqO0Mjn7",
+          "rule": "python:S5754",
+          "file": "scripts/upload_owned_diagnostic.py",
+          "observed_line": 264,
+          "classification": "accepted",
+          "rationale_code": "intentional_private_cli_error_boundary",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        }
+      ]
+    }
+  ]
 }

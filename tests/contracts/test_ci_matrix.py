@@ -173,17 +173,17 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-2-reference-startup-05.json > dist/startup-reference.txt",
+            "p02-2-reference-startup-06.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-2-reference-jobs-05.json > dist/jobs-reference.txt",
+            "p02-2-reference-jobs-06.json > dist/jobs-reference.txt",
         ),
         (
             "dataset-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
-            "p02-2-reference-datasets-05.json > dist/dataset-reference.txt",
+            "p02-2-reference-datasets-06.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -194,7 +194,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "upload-reference",
             ".venv/bin/python scripts/research_evidence.py verify-upload-reference "
-            "p02-2-reference-upload-05.json > dist/upload-reference.txt",
+            "p02-2-reference-upload-06.json > dist/upload-reference.txt",
         ),
         (
             "upload-budgets",

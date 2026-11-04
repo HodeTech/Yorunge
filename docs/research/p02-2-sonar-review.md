@@ -1,6 +1,6 @@
 # P02-2 / PR #14 Sonar incelemesi
 
-**Tarih:** 2026-11-04. **Durum:** İlk 611 kayıt için kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` analizinde 564 kayıt kodla kapandı; kalan 21 false positive +26 accepted, gerekçeli yorumlarıyla Sonar’da uygulandı ve 47 kaydın tamamı API’den doğrulandı. Kalite kapısı **OK**, reliability/security/maintainability **A**. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk koordinatları ve sonraki gerçek durumları ayırır. [Kabul kaydı](p02-2-implementation-validation.md) CI ve canlı kabulün ayrı sahibidir.
+**Tarih:** 2026-11-04. **Durum:** İlk 611 kayıt için kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` analizinde 564 kayıt kodla kapandı; kalan 21 false positive +26 accepted, gerekçeli yorumlarıyla Sonar’da uygulandı ve 47 kaydın tamamı API’den doğrulandı. O analizde kalite kapısı **OK**, reliability/security/maintainability **A** idi. Sonraki f7d6809 analizinde sekiz yeni kayıt ve failed gate görüldü; aşağıdaki follow-up bunları ayrı izler. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk koordinatları ve sonraki gerçek durumları ayırır. [Kabul kaydı](p02-2-implementation-validation.md) CI ve canlı kabulün ayrı sahibidir.
 
 ## Tek düzeltme grubu
 
@@ -50,3 +50,17 @@ Kullanıcı Sonar oturumunu kendisi açtı. Yalnız issue kayıtlarının duruml
 
 
 **4 Kasım güncel sınır:** 47 kayıt için uzak disposition ve kalite kapısı kapanmıştır. CI/live bölümlerindeki önceki gelecek zaman ifadeleri o hazırlık anının kaydıdır. Sonrasında ilk source CI’ın macOS kabulü ve iki Linux timeout’u ile başarısız nihai canlı create/tanı koşuları [kanonik kabul kaydına](p02-2-implementation-validation.md#4-kasım--onaylanan-canlı-koşu-sonar-kapanışı-ve-linux-ci-tanısı) alınmıştır. Sonar OK, P02-2’nin bütünleşik kabulünün tamamlandığı anlamına gelmez.
+
+
+## F7d6809 sonrası sekiz yeni kayıt
+
+Yerel read-only public Sonar API ve açık UI sekiz benzersiz issue anahtarını/kurallarını teyit etti; JSON’daki followup_analyses önceki 611/47 kaydı değiştirmez. Henüz uzak disposition uygulanmadı.
+
+- S1192: storage diagnostic’te datasets/ sabiti çıkarıldı; request byte/path aynı kalır.
+- İki S5778: expected SecretValue hazırlığı raises öncesine alındı; blok yalnız hedef put_ack çağrısını kapsar.
+- S3415: karşılaştırmanın beklenen error envelope’u ayrı değişkenle adlandırıldı; gerçek çıktı solda kalır. Sonar kapanışı yeni analizden sonra teyit edilir.
+- İki S8707 önerisi false_positive: dosya konumu açık izole operator CLI girdisi ve ayrı pilot-consent bayrağıdır; HTTP/LLM yanıtından gelen hedef yoktur. Exact historical resource/target, private-input/no-clobber/fresh canonical workspace ve script/source guard’ları korunur. Genel filesystem/LLM sandbox iddiası değildir.
+- S4143 önerisi false_positive: stage bir phase marker’dır. owned_shape hesaplaması bozuk JSON’da yükselirse ilk marker kalıcı diagnostic receipt’in hata aşamasını gösterir; başarılıysa owned_locator’a geçer. Yeni malformed fixture bu farkı doğrular.
+- S5754 önerisi accepted: private read-only CLI KeyboardInterrupt/SystemExit/CancelledError’ı sabit durma mesajı/exit 1’e çevirir; provider veya private exception zincirini çıktıya vermez. Product API Task.cancel sözleşmesi değişmez. Üç yeni interrupt canary vektörü bu sınırı doğrular.
+
+197 ilgili descriptor/diagnostic/API-CLI vektörü geçti; source disposition iki fresh review turundan sonra gerekçeyle uygulanabilir. Kural/quality gate/severity/exclusion değiştirilmez; genel ret veya gizli sır tespit garantisi üretilmez.

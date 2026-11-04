@@ -395,8 +395,9 @@ def test_put_ok_size_ack_is_bound_to_exact_sent_size_and_volatile_key(size):
 )
 def test_put_ok_ack_never_accepts_negative_or_mismatched_echo(update):
     raw = encoded({"ok": True, "size": 79, "key": KEY, **update})
+    expected_key = SecretValue(KEY)
     with pytest.raises(YorungeError) as error:
-        metadata.put_ack(raw, SECRET, expected_size=79, expected_key=SecretValue(KEY))
+        metadata.put_ack(raw, SECRET, expected_size=79, expected_key=expected_key)
     assert error.value.code == "invalid_response"
 
 
@@ -404,10 +405,11 @@ def test_put_ok_ack_never_accepts_negative_or_mismatched_echo(update):
 def test_put_consumed_key_exemption_does_not_reach_discarded_metadata(field):
     raw = encoded({"ok": True, "size": 79, "key": KEY, "object_key": KEY})
     secret = SecretValue(field)
-    metadata.put_ack(raw, secret, expected_size=79, expected_key=SecretValue(KEY))
+    expected_key = SecretValue(KEY)
+    metadata.put_ack(raw, secret, expected_size=79, expected_key=expected_key)
     nested = encoded({"ok": True, "size": 79, "unused": {field: "not-a-secret-value"}})
     with pytest.raises(YorungeError) as error:
-        metadata.put_ack(nested, secret, expected_size=79, expected_key=SecretValue(KEY))
+        metadata.put_ack(nested, secret, expected_size=79, expected_key=expected_key)
     assert error.value.code == "invalid_response"
 
 

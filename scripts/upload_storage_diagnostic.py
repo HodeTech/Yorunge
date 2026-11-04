@@ -17,6 +17,7 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 LINK = runpy.run_path(str(ROOT / "scripts/upload_link_diagnostic.py"))
 BASE, TRACE, codec, TARGET = LINK["BASE"], LINK["TRACE"], LINK["codec"], LINK["TARGET"]
+DATASET_PREFIX = "datasets/"
 FILES = {
     "first.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
     "same-content.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
@@ -81,7 +82,7 @@ class Probe:
         from yorunge.application import upload_metadata_codec as metadata
         from yorunge.domain.errors import YorungeError
 
-        path = "datasets/" + codec.segment(self.expected.id, self.key.secret) + "/items"
+        path = DATASET_PREFIX + codec.segment(self.expected.id, self.key.secret) + "/items"
         raw = await self.exchange(label, path, query=(("limit", "128"),))
         self.report[label + "_shape"] = TRACE["body_shape"](raw, {"dataset_id": self.expected.id})
         result = metadata.items(raw, self.expected.id, self.key.secret)
@@ -155,7 +156,7 @@ class Probe:
         from yorunge.application import upload_metadata_codec as metadata
         from yorunge.domain.errors import YorungeError
 
-        path = "datasets/" + codec.segment(self.expected.id, self.key.secret) + "/upload/confirm"
+        path = DATASET_PREFIX + codec.segment(self.expected.id, self.key.secret) + "/upload/confirm"
         raw = await self.exchange(
             "confirm",
             path,
@@ -199,7 +200,7 @@ class Probe:
         _, linked = await LINK["inspect_context"](self.exchange, self.key, self.view, self.expected)
         if not linked:
             raise YorungeError("invalid_response")
-        role_path = "datasets/" + codec.segment(self.expected.id, self.key.secret) + "/my-role"
+        role_path = DATASET_PREFIX + codec.segment(self.expected.id, self.key.secret) + "/my-role"
         codec.role(await self.exchange("role", role_path), self.key.secret)
         self.report["upload_label_observed"] = True
         before = await self.inventory("items_before")
@@ -209,7 +210,7 @@ class Probe:
             raise YorungeError("invalid_response")
         self.report["item_count_before"] = before.total
         observed.recheck()
-        path = "datasets/" + codec.segment(self.expected.id, self.key.secret) + "/upload/presign"
+        path = DATASET_PREFIX + codec.segment(self.expected.id, self.key.secret) + "/upload/presign"
         raw = await self.exchange(
             "presign", path, content=descriptors.presign_content(self.context, self.key.secret)
         )

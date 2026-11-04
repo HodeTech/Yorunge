@@ -96,6 +96,7 @@ def test_public_api_and_cli_duplicate_rejection_has_no_http_or_plan(
                 state_dir=data[0],
             )
         assert_duplicate(rejected.value)
+        expected_error = rejected.value.envelope()
         process = execute(
             server,
             "datasets",
@@ -130,7 +131,7 @@ def test_public_api_and_cli_duplicate_rejection_has_no_http_or_plan(
         if output != "text":
             value = json.loads(process.stderr)
             # Before a stream opens, both machine modes use the safe error envelope.
-            assert value == rejected.value.envelope()
+            assert value == expected_error
         assert not server.requests
     assert counts(data[0]) == (0, 0, 0)
     for sentinel in (

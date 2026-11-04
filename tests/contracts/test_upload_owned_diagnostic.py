@@ -53,6 +53,7 @@ CONNECT, CONNECT_EX, GETADDRINFO = (
         "missing_metadata",
         "query_rejected",
         "http_405",
+        "malformed_json",
     ],
 )
 def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
@@ -70,6 +71,8 @@ def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
     if case == "secret":
         selected["unused"] = "synthetic-platform-secret"
     body = encoded([] if case == "missing" else [selected])
+    if case == "malformed_json":
+        body = b"{"
     calls = []
 
     class Response:
@@ -118,6 +121,9 @@ def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
         assert len(calls) == 1
     if case == "http_405":
         assert report["requests"][0]["status"] == 405
+    if case == "malformed_json":
+        assert report["stage"] == "owned_shape"
+        assert "owned_shape" not in report
     if case == "query_rejected":
         assert report["requests"][0]["status"] == 422
         assert report["requests"][1]["page_size"] == 5
@@ -229,3 +235,24 @@ def test_diagnostic_rejects_reserved_output_before_private_input_or_network(
     with pytest.raises(ValueError, match="output"):
         HELPER["run"](args)
     assert not (tmp_path / "new").exists()
+
+
+@pytest.mark.parametrize("exception", [KeyboardInterrupt, SystemExit, asyncio.CancelledError])
+def test_private_diagnostic_cli_stops_without_revealing_interrupt_value(
+    tmp_path, monkeypatch, capsys, exception
+):
+    arguments = ["diagnostic"]
+    for name in ("config", "credentials", "pilot", "output"):
+        arguments.extend(("--" + name, str(tmp_path / name)))
+    arguments.append("--accept-read-diagnostic")
+    monkeypatch.setattr(sys, "argv", arguments)
+
+    def interrupted(args):
+        raise exception("private-interrupt-canary")
+
+    monkeypatch.setitem(HELPER["main"].__globals__, "run", interrupted)
+    assert HELPER["main"]() == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "Read diagnostic stopped; preserve its safe receipt.\n"
+    assert "private-interrupt-canary" not in output.err
