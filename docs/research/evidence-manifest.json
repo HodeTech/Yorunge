@@ -16597,6 +16597,51 @@
       }
     },
     {
+      "name": "p02-2-final-installations-01.json",
+      "archive": "raw/p02-2-final-installations-01.json.gz",
+      "original_commit": null,
+      "content_bytes": 1211,
+      "content_sha256": "ebd4127fac0a29f09eb4449804d6f228eb488bf2988a1b94d3754faa9c04e79e",
+      "archive_bytes": 495,
+      "archive_sha256": "79db3db039269e088d9ab4650d07e207acdc24e6494c1a71b8f6a9c5a4afa9df",
+      "summary": {
+        "source_commit": "eab79e6a2d9ab29b5726272de4e85b49ebda21af",
+        "diagnostic_only": false,
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-2-final-live-20261104-incomplete.json",
       "archive": "raw/p02-2-final-live-20261104-incomplete.json.gz",
       "original_commit": null,

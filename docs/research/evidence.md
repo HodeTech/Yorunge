@@ -2644,6 +2644,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-ci41740901679-macos311-wheel-smoke.json.gz`.
 **Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 220362, "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
 
+## p02-2-final-installations-01
+
+**Tür:** `installation_v3`.
+**Özgün JSON SHA-256:** `ebd4127fac0a29f09eb4449804d6f228eb488bf2988a1b94d3754faa9c04e79e`.
+**Yerel arşiv:** `raw/p02-2-final-installations-01.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "eab79e6a2d9ab29b5726272de4e85b49ebda21af"}`.
+
 ## p02-2-final-live-20261104-incomplete
 
 **Tür:** `diagnostic`.
