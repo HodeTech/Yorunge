@@ -41,6 +41,6 @@ Contract/loopback TLS/descriptor/process testleri ve byte sayan bağımsız serv
 
 ## Teslim kaydı
 
-Yerel f storage ve g–k v2 temeli çalışma dalında verified; gerçek provider codec/current producer/public ve bütünleşik/live kabul eksik, üst kart draft.
+D–w alt kartlarının kodu, ortak provider/API/CLI ve her dilimin iki fresh review turu çalışma dalında tamamlandı. [R5 canlı kabulü](../../research/p02-2-implementation-validation.md#4-kasım--r5-tam-canlı-metadata-kabulü) iki farklı içerikli PNG ile tam 8 accepted aşama ve exact metadata sonucu verdi. [06 güncel kaynak serisi](../../research/p02-2-implementation-validation.md#4-kasım--06-güncel-kaynak-native-kabulü) startup/jobs/dataset/raw/upload kapılarını geçti. Eski partial/unknown canlı denemeler ve başarısız ölçümler korunur; metadata sonucu yetki/fiyat/uzak byte kanıtı değildir.
 
-**4 Kasım güncel canlı kapısı:** [r5](../../research/p02-2-implementation-validation.md#4-kasım--r5-tam-canlı-metadata-kabulü) iki farklı SHA-256 PNG ile tam 8 accepted graph ve exact metadata sonucu verdi. ADR-0028 yerel duplicate ret ve önceki r4 unknown kaydı ayrı korunur. Bu üst kart son 03 kaynak/native, üç ortam CI/altı kurulum ve kalıcı saklama kapanana kadar draft kalır; metadata yetki/fiyat/remote-byte kanıtı değildir.
+Üst kart, son üç ortam CI/altı temiz kurulum ve yeni Linux çıktılarının kalıcı saklanması kapanana kadar draft kalır. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md) ve [current](../current.md#sıradaki-iş-ve-kalan-kapsam) gerçek kalan işi gösterir; P02-1 veya eski bir kaynak sonucu bu kabulün yerine sayılmaz.

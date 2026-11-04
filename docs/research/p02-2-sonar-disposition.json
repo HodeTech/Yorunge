@@ -643,7 +643,7 @@
     {
       "observed_head": "f7d68092f443870e6a6d3f90e4e514575bfe696c",
       "observed_total": 8,
-      "status": "one_analyzer_false_positive_pending_review",
+      "status": "applied_verified_remotely",
       "issues": [
         {
           "key": "AaGm2Mtm72_cgqO0Mjn0",
@@ -653,10 +653,13 @@
           "classification": "false_positive",
           "rationale_code": "current_actual_tuple_compared_to_before_expected_snapshot",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null,
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
           "prior_classification": "source_fix",
-          "source_clarification_result": "warning_remained_analyzer_labels_expected_snapshot_as_actual"
+          "source_clarification_result": "warning_remained_analyzer_labels_expected_snapshot_as_actual",
+          "remote_updated_at": "2026-11-04T15:09:57+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true
         },
         {
           "key": "AaGm2MwL72_cgqO0Mjn1",
@@ -667,7 +670,7 @@
           "rationale_code": "clarified_source_pending_reanalysis",
           "remote_status_at_observation": "OPEN",
           "applied_resolution": null,
-          "remote_status_after": "closed_by_reanalysis",
+          "remote_status_after": "FIXED",
           "verified_reanalysis_head": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1"
         },
         {
@@ -679,7 +682,7 @@
           "rationale_code": "clarified_source_pending_reanalysis",
           "remote_status_at_observation": "OPEN",
           "applied_resolution": null,
-          "remote_status_after": "closed_by_reanalysis",
+          "remote_status_after": "FIXED",
           "verified_reanalysis_head": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1"
         },
         {
@@ -705,7 +708,7 @@
           "rationale_code": "clarified_source_pending_reanalysis",
           "remote_status_at_observation": "OPEN",
           "applied_resolution": null,
-          "remote_status_after": "closed_by_reanalysis",
+          "remote_status_after": "FIXED",
           "verified_reanalysis_head": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1"
         },
         {
@@ -753,7 +756,7 @@
       ],
       "quality_gate_after_dispositions": "OK",
       "reanalysis_head": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1",
-      "reanalysis_open_total": 1
+      "reanalysis_open_total": 0
     }
   ]
 }
