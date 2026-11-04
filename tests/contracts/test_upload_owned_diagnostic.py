@@ -3,6 +3,8 @@
 import asyncio
 import json
 import runpy
+import subprocess
+import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -109,3 +111,58 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
     assert "private-person-canary" not in json.dumps(report)
     assert "private-locator-canary" not in json.dumps(report)
     assert "synthetic-platform-secret" not in json.dumps(report)
+
+
+@pytest.mark.parametrize("case", ["missing_profile", "wrong_profiles_type"])
+def test_diagnostic_cli_hides_private_preflight_lookup_failures(tmp_path, case):
+    root = tmp_path.resolve()
+    config = root / "config.toml"
+    profile = "private-profile-lookup-canary"
+    spec = f'active_profile = "{profile}"\n'
+    if case == "missing_profile":
+        spec += '[profiles.other]\nplatform_url = "https://api.ssyz.org.tr/api/v1"\n'
+    else:
+        spec += 'profiles = "private-profiles-type-canary"\n'
+    config.write_text(spec)
+    config.chmod(0o600)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(Path(HELPER["__file__"])),
+            "--config",
+            str(config),
+            "--credentials",
+            str(root / "absent-credentials.json"),
+            "--pilot",
+            str(root / "absent-pilot"),
+            "--output",
+            str(root / "new/receipt.json"),
+            "--accept-read-diagnostic",
+        ],
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 1
+    assert result.stdout == b""
+    assert b"Traceback" not in result.stderr
+    assert b"private-profile" not in result.stderr
+    assert b"Read diagnostic stopped" in result.stderr
+    assert not (root / "new").exists()
+
+
+@pytest.mark.parametrize("leaf", ["started.json", ".."])
+def test_diagnostic_rejects_reserved_output_before_private_input_or_network(
+    tmp_path, monkeypatch, leaf
+):
+    namespace = HELPER["run"].__globals__
+    monkeypatch.setitem(namespace, "sys", SimpleNamespace(flags=SimpleNamespace(isolated=True)))
+
+    def forbidden(*args):
+        raise AssertionError("private inputs must not be opened for an invalid output")
+
+    monkeypatch.setitem(namespace["BASE"], "credential", forbidden)
+    args = SimpleNamespace(accept_read_diagnostic=True, output=tmp_path / "new" / leaf)
+    with pytest.raises(ValueError, match="output"):
+        HELPER["run"](args)
+    assert not (tmp_path / "new").exists()

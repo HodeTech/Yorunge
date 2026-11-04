@@ -140,6 +140,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     if not sys.flags.isolated or not args.accept_read_diagnostic:
         raise ValueError("isolated runtime and separate read consent required")
+    if args.output.name in ("", ".", "..", "started.json"):
+        raise ValueError("diagnostic output must be a non-reserved file name")
     _, value = BASE["credential"](args.config, args.credentials)
     identity = json.loads(BASE["private_file"](args.pilot / "uncertain-identity.json"))
     with BASE["open_existing_store"](args.pilot / "state") as store:
@@ -204,6 +206,8 @@ def main() -> int:
         YorungeError,
         OSError,
         ValueError,
+        KeyError,
+        TypeError,
         KeyboardInterrupt,
         SystemExit,
         asyncio.CancelledError,
