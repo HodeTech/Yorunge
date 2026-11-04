@@ -54,7 +54,7 @@ Kullanıcı Sonar oturumunu kendisi açtı. Yalnız issue kayıtlarının duruml
 
 ## F7d6809 sonrası sekiz yeni kayıt
 
-Yerel read-only public Sonar API ve açık UI sekiz benzersiz issue anahtarını/kurallarını teyit etti; JSON’daki followup_analyses önceki 611/47 kaydı değiştirmez. Henüz uzak disposition uygulanmadı.
+Yerel read-only public Sonar API ve açık UI sekiz benzersiz issue anahtarını/kurallarını teyit etti; JSON’daki followup_analyses önceki 611/47 kaydı değiştirmez. Bu gözlem anında disposition uygulanmamıştı; aşağıdaki kapanış notu gerçek sonraki durumu kaydeder.
 
 - S1192: storage diagnostic’te datasets/ sabiti çıkarıldı; request byte/path aynı kalır.
 - İki S5778: expected SecretValue hazırlığı raises öncesine alındı; blok yalnız hedef put_ack çağrısını kapsar.
@@ -64,3 +64,6 @@ Yerel read-only public Sonar API ve açık UI sekiz benzersiz issue anahtarını
 - S5754 önerisi accepted: private read-only CLI KeyboardInterrupt/SystemExit/CancelledError’ı sabit durma mesajı/exit 1’e çevirir; provider veya private exception zincirini çıktıya vermez. Product API Task.cancel sözleşmesi değişmez. Üç yeni interrupt canary vektörü bu sınırı doğrular.
 
 197 ilgili descriptor/diagnostic/API-CLI vektörü geçti; source disposition iki fresh review turundan sonra gerekçeyle uygulanabilir. Kural/quality gate/severity/exclusion değiştirilmez; genel ret veya gizli sır tespit garantisi üretilmez.
+
+
+E562015 kaynak dilimi iki fresh contract/safety turunda bulgusuz kapandı. Üç false-positive ve bir accepted disposition Sonar’da gerekçeli birer yorumla uygulandı; dört exact anahtarın durumu, yorum varlığı ve gerekçe eşliği API’den ayrıca doğrulandı. Follow-up kalite kapısı bu f7d6809 analizinde **OK** oldu. Dört source-fix kaydı yeni kaynak analizini bekler; mevcut gate sonucu o düzeltmelerin kapanışı veya bütün P02-2 kabulü sayılmaz. Kural, severity, exclusion ve kalite kapısı değişmedi.

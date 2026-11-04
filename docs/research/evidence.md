@@ -2644,6 +2644,20 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-ci41740901679-macos311-wheel-smoke.json.gz`.
 **Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 220362, "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
 
+## p02-2-ci41842539187-test-failure
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `9c967cf171ea0e7a5ab82dea359ae8b9f16231a0fa3f747c33e80014b01a2077`.
+**Yerel arşiv:** `raw/p02-2-ci41842539187-test-failure.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "source_ci_failed_tests", "source_commit": "f749b57a0efc9461dbde66261bcabfbd7699d9f3"}`.
+
+## p02-2-ci41842843032-test-failure
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `4bc0b3a4c995f06cc91de9cf67dbffe612406eee5c4ef6009052a10a8a490eeb`.
+**Yerel arşiv:** `raw/p02-2-ci41842843032-test-failure.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "source_ci_failed_tests", "source_commit": "f749b57a0efc9461dbde66261bcabfbd7699d9f3"}`.
+
 ## p02-2-final-installations-01
 
 **Tür:** `installation_v3`.

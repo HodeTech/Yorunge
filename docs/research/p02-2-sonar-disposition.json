@@ -643,7 +643,7 @@
     {
       "observed_head": "f7d68092f443870e6a6d3f90e4e514575bfe696c",
       "observed_total": 8,
-      "status": "proposed_pending_review",
+      "status": "dispositions_applied_source_fixes_pending_reanalysis",
       "issues": [
         {
           "key": "AaGm2Mtm72_cgqO0Mjn0",
@@ -686,8 +686,11 @@
           "classification": "false_positive",
           "rationale_code": "authorized_operator_path_not_http_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T14:26:42+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true
         },
         {
           "key": "AaGm2Mym72_cgqO0Mjn4",
@@ -708,8 +711,11 @@
           "classification": "false_positive",
           "rationale_code": "authorized_operator_path_not_http_input",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T14:27:22+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true
         },
         {
           "key": "AaGm2M0072_cgqO0Mjn6",
@@ -719,8 +725,11 @@
           "classification": "false_positive",
           "rationale_code": "phase_marker_preserved_when_intermediate_shape_raises",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "false_positive",
+          "remote_status_after": "FALSE_POSITIVE",
+          "remote_updated_at": "2026-11-04T14:31:57+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true
         },
         {
           "key": "AaGm2M0072_cgqO0Mjn7",
@@ -730,10 +739,14 @@
           "classification": "accepted",
           "rationale_code": "intentional_private_cli_error_boundary",
           "remote_status_at_observation": "OPEN",
-          "applied_resolution": null,
-          "remote_status_after": null
+          "applied_resolution": "accepted",
+          "remote_status_after": "ACCEPTED",
+          "remote_updated_at": "2026-11-04T14:47:41+0000",
+          "comment_count": 1,
+          "rationale_comment_verified": true
         }
-      ]
+      ],
+      "quality_gate_after_dispositions": "OK"
     }
   ]
 }
