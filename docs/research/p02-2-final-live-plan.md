@@ -66,3 +66,16 @@ Bu araştırmada yalnız locator için kullanılan kapı, üretim owned consumer
 Toplam tavan **3 mantıksal GET /6 fiziksel deneme /6 MiB yanıt /30 s ortak deadline**; her response/attempt için mevcut 1 MiB sınırı korunur. Ortak P01 salt okuma `HttpSession` ve gerçek public DNS/peer korumalı HTTPX backend kullanılır; credential yalnız aynı canonical Platform hedefine gider. Redirect/cookie/environment proxy kapalıdır. Receipt `physical_attempts_upper_bound` ile muhafazakâr deneme üst sınırını ve yalnız başarıyla alınan `returned_body_bytes` değerini bildirir; bunlar gözlenmiş toplam fiziksel deneme/hat byte sayısı diye sunulmaz. HTTP ret kodu `HttpStatusFailure.status_code` üzerinden kaydedilir; ham hata gövdesi saklanmaz.
 
 POST/PUT/DELETE, create, proje bağlantısı, start/reconcile, yeni permit veya operation değişikliği yoktur. Ham yanıt, kimlik, owner/org/name, kullanıcı adı/slug, URL veya anahtar değeri saklanmaz. `evidence_collected` yalnız araştırmanın tamamlandığını belirtir; workflow, yetki veya fiyat başarısı değildir. Araç/testler ile iki farklı fresh contract/safety review turu bc74509/0e06b9b üzerinde temiz kapandı. Sonraki açık kullanıcı onayıyla yalnız iki GET çalıştı: owned20 HTTP 200/1.403 byte ve detail HTTP 200/993 byte. 422 dalı kullanılmadı. Liste contribution alanı eksikti, tam detail create baseline’ıyla eşleşti. Üretim consumer’ının ret sonucu ve bu alanların predicate’leri [özgün kayıtta](evidence.md#p02-2-owned-diagnostic-20261104-r2) korunur; kaynak/op değişmedi. Araştırma tamamlandı; yazma hakkı üretmez.
+
+
+## Yeni tam kabul denemesi — öneri
+
+İlk tam deneme ve iki ayrı tanı tarihsel kayıtlardır; eski unknown operation yeniden arm edilmez. Gözlenen liste/detail wire farkı düzeltildikten ve iki fresh kod review turu kapandıktan sonra yeni tam kabul için **ayrı** bir somut deneme önerilir. Bu bölüm henüz yazma yetkisi değildir.
+
+- Aynı hazırlanmış Platform key’i ve `yorunge-discovery-test` projesi (`01a19492-2404-7701-afee-d45c26561062`).
+- Yeni exclusive workspace `.local/p02-pilot/p02-2-final-20261104-r2`; yeni private dataset `yorunge-acceptance-p02-2-final-20261104-r2`. Önceki kaynaklar hesabında kalır; DELETE/cleanup yoktur.
+- Aynı üç sentetik PNG, toplam 237 byte; iki ayrı ad aynı hash. En fazla 1 create/1 project link/3 presign/3 PUT/3 confirm; her etki tek deneme, durma sonrası otomatik devam yoktur.
+- Toplam en fazla 40 GET/80 okuma denemesi, 16 MiB response body, 64 KiB control request body ve ortak 180 s. Product’ın daha dar request/lease/current/deadline sınırları korunur.
+- `explicit_attempt` + `unpriced`, yetki/fiyat ve süreğen depolama maliyeti unknown; **sayısal CR tavanı uygulanmaz**. Şart kabulü, eğitim, export/indirme veya başka kaynak değişikliği yoktur.
+
+Mevcut aynı runner yeni runtime-only wheel’den çalışır; provenance, source/wheel önce-sonra eşliği ve accepted grafiği değiştirilmez. İlk beklenmeyen hata/belirsizlikte durur; aynı ID üzerindeki original salt okuma proof’u bu tek koşuya dahildir. İki aynı hash/farklı adın üç ayrı item’ı ve exact manifest metadata’sı zorunludur. Bu deneme gerekli kaynak ölçümlerinden önce yapılır; aksi halde yeni doğrulanmış wire farkı bütün M5 referanslarını gereksiz yere tekrar ettirebilir. Yeni source/native/CI kabulü, canlı başarının ardından ayrı ve birer kez kapanır.
