@@ -27,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Check out pinned startup comparison source
         id: startup-baseline
         if: ${{ env.RUN_BUDGETS == 'true' }}
@@ -56,6 +57,7 @@ jobs:
           producer_python=python
           if test -x .venv/bin/python; then producer_python=.venv/bin/python; fi
           "$producer_python" scripts/evidence_privacy.py context --mode ci --producer-preflight --source-root "$GITHUB_WORKSPACE" --workspace .local/startup-baseline --workspace .local/startup-check --workspace .local/stream-check --workspace .local/upload-check --workspace .local/distribution-upload-check --child-root .venv --child-root .local/startup-check --child-root .local/stream-check --child-root .local/upload-check --child-root .local/distribution-upload-check --child-root "$TMPDIR" --output .local/evidence-privacy-context.json
+          echo "YORUNGE_EVIDENCE_CONTEXT=$GITHUB_WORKSPACE/.local/evidence-privacy-context.json" >> "$GITHUB_ENV"
       - name: Record compatibility environment
         id: environment-report
         env:

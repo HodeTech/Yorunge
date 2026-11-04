@@ -79,6 +79,8 @@ Son komut yalnız ihtiyaç duyulan raporun doğrulanmış özgün baytlarını s
 
 Katalogdaki original_commit, ilgili özgün JSON yolunun tam Git geçmişinde arşivlenen byte boyutu/SHA-256 ile birebir eşleşen blob’un ilk bulunduğu commit’tir. Dosyanın farklı byte taşıyan ilk sürümü veya ölçülen source_commit değildir; eşleşen blob yoksa null olur. Bu metadata’nın kanıtlı düzeltmesi özgün gzip/content byte’larını değiştirmez.
 
+Yeni archive’de alan belirtilmezse ilk eşleşme araçla otomatik türetilir; mevcut eşleşme null ile gizlenmez. Git repo’su shallow ise tam yol geçmişi iddiası kurulmaz ve archive reddedilir. CI candidate checkout bu nedenle tam geçmişi alır; ayrı pinned baseline checkout’un ölçülen içeriği değişmez. History almak archive aracının örtük ağ işlemi değildir.
+
 ### Yeni kanıtın üretim ve yayım kontrolü
 
 Araç `scripts/evidence_privacy.py`’dır. Sabit sınırlar: dosya/ek başına 16 MiB, toplam taranan açılmış byte 512 MiB, 512 üye, en çok dört nested encoding katmanı ve 200.000 JSON node. JSON/JSONL, UTF-8 text, çalıştırılmayan opaque profil ve boyut/hash/strict-base64 eşliği olan desteklenen ekler taranır; gzip ve stored/deflate ZIP bounded açılır; diğer ZIP yöntemleri desteklenmez. Bozuk/şifreli/unsupported veya doğrulanamayan ek temiz sayılmaz. Genel PII/sır detector değildir. Kişisel ve generic CI runner yolu ayrımı ADR-0029’dadır.

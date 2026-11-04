@@ -1692,11 +1692,21 @@ def report_source(root: Path, source: Path) -> Path:
     return directory / source.name
 
 
-def validate_original_commit(root: Path, name: str, content: bytes, commit: str | None) -> None:
-    if commit is None:
-        return
-    if COMMIT.fullmatch(commit) is None:
+def original_commit_for(root: Path, name: str, content: bytes, commit: str | None) -> str | None:
+    if commit is not None and COMMIT.fullmatch(commit) is None:
         raise ValueError("invalid original commit")
+    if not (root / ".git").exists():
+        if commit is None:
+            return None
+        raise ValueError("original commit is not the first exact archived bytes")
+    shallow = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--is-shallow-repository"],
+        capture_output=True,
+        check=True,
+        timeout=5,
+    ).stdout.strip()
+    if shallow != b"false":
+        raise ValueError("full Git history required for original commit metadata")
     path = "docs/research/" + name
     history = (
         subprocess.run(
@@ -1731,10 +1741,12 @@ def validate_original_commit(root: Path, name: str, content: bytes, commit: str 
             and len(blob.stdout) == len(content)
             and (hashlib.sha256(blob.stdout).digest() == expected)
         ):
-            if revision == commit:
-                return
-            break
-    raise ValueError("original commit is not the first exact archived bytes")
+            if commit not in (None, revision):
+                raise ValueError("original commit is not the first exact archived bytes")
+            return revision
+    if commit is not None:
+        raise ValueError("original commit is not the first exact archived bytes")
+    return None
 
 
 def archive_report(
@@ -1752,7 +1764,7 @@ def archive_report(
         context_path = os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
         privacy_context = privacy["load_context"](Path(context_path) if context_path else None)
     privacy["check"](content, source.name, privacy_context)
-    validate_original_commit(root, source.name, content, original_commit)
+    original_commit = original_commit_for(root, source.name, content, original_commit)
     archive = gzip.compress(content, mtime=0)
     if len(archive) > MAX_ARCHIVE_BYTES:
         raise ValueError("compressed evidence size limit exceeded")

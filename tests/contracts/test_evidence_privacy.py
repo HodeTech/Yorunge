@@ -13,6 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from tests.fixtures.evidence_publication import synthetic_context
 
@@ -186,6 +187,38 @@ def test_unknown_zip_compression_and_corrupt_deflate_are_controlled_rejections(t
     corrupt = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x06" + b"\x00" * 8
     with pytest.raises(ValueError, match="invalid_encoded_evidence"):
         GUARD["check"](corrupt, "bad.txt.gz", value)
+
+
+@pytest.mark.parametrize("nonempty", [False, True])
+def test_zip_directory_cannot_hide_compressed_personal_payload(nonempty, tmp_path):
+    value = synthetic_context(tmp_path)
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("trace/", value["system_home"].encode() if nonempty else b"")
+    raw = encode(part(zipped.getvalue(), "trace.zip"))
+    if nonempty:
+        with pytest.raises(ValueError, match="unsupported_encoded_evidence"):
+            GUARD["check"](raw, "report.json", value)
+    else:
+        GUARD["check"](raw, "report.json", value)
+
+
+def test_ci_profile_rejects_a_personal_interpreter_even_with_generic_runner_home(tmp_path):
+    value = synthetic_context(tmp_path, ci=True)
+    value["controller"]["executable"] = "/Users/synthetic-private-operator/venv/bin/python"
+    with pytest.raises(ValueError, match="personal_runtime_input"):
+        GUARD["neutral_inputs"](value)
+
+
+def test_empty_zip_directories_still_consume_the_global_member_budget(tmp_path, monkeypatch):
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w") as archive:
+        archive.writestr("first/", b"")
+        archive.writestr("second/", b"")
+    raw, value = zipped.getvalue(), synthetic_context(tmp_path)
+    monkeypatch.setitem(GUARD["Scanner"].scan.__globals__, "MAX_MEMBERS", 2)
+    with pytest.raises(ValueError, match="publication_limit"):
+        GUARD["check"](raw, "directories.zip", value)
 
 
 @pytest.mark.parametrize("kind", ["fifo", "symlink", "directory"])
@@ -372,6 +405,43 @@ def test_ci_privacy_failure_records_open_retention_without_exposing_exception_or
     assert "ephemeral runner" in summary.read_text()
 
 
+def test_ci_declared_context_reaches_automatic_failure_retention_without_private_argument(
+    tmp_path, monkeypatch
+):
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/checks.yml").read_text(), Loader=yaml.BaseLoader
+    )
+    step = next(
+        s for s in workflow["jobs"]["linux311"]["steps"] if s.get("id") == "evidence-context"
+    )
+    exported = next(
+        line
+        for line in step["run"].splitlines()
+        if line.startswith('echo "YORUNGE_EVIDENCE_CONTEXT=')
+    )
+    context_path = tmp_path / ".local/evidence-privacy-context.json"
+    GUARD["private_write"](context_path, synthetic_context(tmp_path, ci=True))
+    environment = dict(os.environ, GITHUB_WORKSPACE=str(tmp_path), GITHUB_ENV=str(tmp_path / "env"))
+    subprocess.run(["bash", "-e", "-c", exported], env=environment, check=True, timeout=5)
+    name, value = (tmp_path / "env").read_text().strip().split("=", 1)
+    assert name == "YORUNGE_EVIDENCE_CONTEXT"
+    assert value == str(context_path)
+    monkeypatch.setenv(name, value)
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    raw = b'{ "failed": true }\n'
+    (workspace / "stdout.json").write_bytes(raw)
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "docs/research").mkdir(parents=True)
+    diagnostic = runpy.run_path(str(ROOT / "scripts/upload_diagnostic.py"))
+    report = diagnostic["retain"](
+        tmp_path, workspace, "ci-failure.json", "a" * 40, "invalid_evidence"
+    )
+    assert report.exists()
+    assert (tmp_path / "docs/research/raw/ci-failure.json.gz").exists()
+    assert (workspace / "stdout.json").read_bytes() == raw
+
+
 def test_original_commit_means_first_matching_bytes_not_first_path_or_later_copy(tmp_path):
     checks = runpy.run_path(str(ROOT / "scripts/research_evidence.py"))
 
@@ -407,18 +477,32 @@ def test_original_commit_means_first_matching_bytes_not_first_path_or_later_copy
     git("add", ".")
     git("commit", "-qm", "first path, different report")
     first_path = git("rev-parse", "HEAD")
-    original.write_bytes(b"exact archived bytes")
+    original.write_bytes(
+        encode({"source_base_commit": "a" * 40, "runs": [{"outcome": "ok", "elapsed_ms": 3.0}]})
+    )
     git("add", ".")
     git("commit", "-qm", "first matching report")
     first_match = git("rev-parse", "HEAD")
     git("commit", "--allow-empty", "-qm", "later snapshot with identical blob")
     later = git("rev-parse", "HEAD")
-    verify = checks["validate_original_commit"]
+    verify = checks["original_commit_for"]
     raw = original.read_bytes()
-    verify(tmp_path, original.name, raw, first_match)
+    assert verify(tmp_path, original.name, raw, first_match) == first_match
+    assert verify(tmp_path, original.name, raw, None) == first_match
     for rejected in (first_path, later):
         with pytest.raises(ValueError, match="first exact archived bytes"):
             verify(tmp_path, original.name, raw, rejected)
     with pytest.raises(ValueError, match="first exact archived bytes"):
         verify(tmp_path, "missing.json", raw, first_match)
-    verify(tmp_path, "missing.json", raw, None)
+    assert verify(tmp_path, "missing.json", raw, None) is None
+    original.unlink()
+    (tmp_path / "dist").mkdir()
+    source = tmp_path / "dist/example.json"
+    source.write_bytes(raw)
+    checks["archive_report"](tmp_path, source, None, privacy_context=synthetic_context(tmp_path))
+    catalog = json.loads((tmp_path / "docs/research/evidence-manifest.json").read_bytes())
+    assert catalog["entries"][0]["original_commit"] == first_match
+    assert checks["verify"](tmp_path) == 1
+    (tmp_path / ".git/shallow").write_text(later + "\n")
+    with pytest.raises(ValueError, match="full Git history"):
+        verify(tmp_path, "missing.json", raw, None)

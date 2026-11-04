@@ -28,7 +28,7 @@ MAX_MEMBERS = 512
 MAX_DEPTH = 4
 MAX_NODES = 200_000
 ENCODED_MARKER = re.compile(
-    rb"""(?m)(?:["'][A-Za-z_][A-Za-z0-9_]*_base64["']|^\s*[A-Za-z_][A-Za-z0-9_]*_base64)\s*:"""
+    rb"""(?m)["'][A-Za-z_][A-Za-z0-9_]*_base64["']|^[ \t]*[A-Za-z_][A-Za-z0-9_]*_base64[ \t]*:"""
 )
 CONTEXT_FIELDS = {
     "schema_version",
@@ -169,6 +169,17 @@ def validate_runner(data: dict[str, Any]) -> None:
         or runner["workspace"] != data["source_root"]
     ):
         reject("invalid_context")
+    paths = [
+        *data["workspaces"],
+        *data["child_roots"],
+        *data["controller"].values(),
+        *runner.values(),
+    ]
+    for path in paths:
+        if path.startswith(("/Users/", "/home/")) and not (
+            path == runner["home"] or path.startswith(runner["home"] + "/")
+        ):
+            reject("personal_runtime_input")
 
 
 def personal_roots(data: dict[str, Any], controller: dict[str, Any]) -> list[str]:
@@ -304,7 +315,13 @@ class Scanner:
                     or part.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
                 ):
                     reject("unsupported_encoded_evidence")
+                self.literal(part.filename.encode("utf-8", "strict"))
                 if part.is_dir():
+                    self.members += 1
+                    if self.members > MAX_MEMBERS:
+                        reject("publication_limit")
+                    if part.file_size != 0:
+                        reject("unsupported_encoded_evidence")
                     continue
                 with archive.open(part) as stream:
                     content = stream.read(MAX_FILE + 1)

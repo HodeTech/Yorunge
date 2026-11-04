@@ -217,6 +217,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
 
 def test_each_cell_preserves_evidence_even_after_failure(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
+    assert workflow["jobs"]["linux311"]["steps"][0]["with"]["fetch-depth"] == "0"
     upload = steps["upload-evidence"]
     assert upload is workflow["jobs"]["linux311"]["steps"][-1]
     assert upload["if"] == "${{ always() && steps.evidence-privacy.outcome == 'success' }}"
@@ -226,6 +227,10 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
     assert "--producer-preflight" in context["run"]
     assert "--child-root" in context["run"]
     assert "TMPDIR" in context["run"]
+    assert (
+        'echo "YORUNGE_EVIDENCE_CONTEXT=$GITHUB_WORKSPACE/.local/evidence-privacy-context.json" '
+        '>> "$GITHUB_ENV"' in context["run"]
+    )
     assert "stage-ci --context .local/evidence-privacy-context.json" in privacy["run"]
     assert "--patterns scripts/evidence-artifact-paths.txt" in privacy["run"]
     assert "--destination .local/evidence-publication" in privacy["run"]
