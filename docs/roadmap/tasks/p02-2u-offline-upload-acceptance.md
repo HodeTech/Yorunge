@@ -1,7 +1,7 @@
 ---
 id: P02-2u
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-2t]
 capabilities: [C03, C12, C13]
@@ -37,5 +37,7 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 ## Teslim kaydı
 
 - PR/commit: [U.1 test sınırları](https://github.com/HodeTech/Yorunge/commit/cfe9737), [U.2 gerçek süreç/azami envanter ve memo payı](https://github.com/HodeTech/Yorunge/commit/2eaa729); tek nihai PR aynı daldadır.
-- Sonuç: İki kod diliminde ikişer farklı fresh review turu kapandı. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2u2--public-süreç-ve-azami-envanter) ilk retleri/fix’i, 84 testlik geniş kaynak teyidini ve bağımsız max128/386 graph, gerçek CLI kill/ID,129 ret, semantik/son kapı sonuçlarını taşır. Bu önceki kabul tarihsel olarak verified idi; 4 Kasım ADR-0028 geçişi için güncel max128/ret kabulü yeniden doğrulanıyor.
+- Sonuç: İki kod diliminde ikişer farklı fresh review turu kapandı. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2u2--public-süreç-ve-azami-envanter) ilk retleri/fix’i, 84 testlik geniş kaynak teyidini ve bağımsız max128/386 graph, gerçek CLI kill/ID,129 ret, semantik/son kapı sonuçlarını taşır. Bu önceki kabul tarihsel olarak verified idi; 4 Kasım ADR-0028 geçişi için güncel max128/ret kabulü 985c8d9/5ccf3a0 ve iki farklı fresh turla yeniden doğrulandı; aşağıdaki güncel kayıt geçerlidir.
 - Kalan sınır: W kaynak bakımı, V kurulu/native ölçüm araçları ve üst c kurulum/son kaynak CI/kayıpsız kanıt/ayrı live/human UX sınırı açıktır. U başarısı epik veya gerçek sağlayıcı kabulü değildir.
+
+**4 Kasım güncel kabul:** [ADR-0028 uygunluk dilimi](../../research/p02-2-implementation-validation.md#adr-0028--dilim-1-uygunluk-ve-tarihçe): 310 test/214,68 s içinde gerçek CLI max128/386 tam graph ve distinct item/SHA geçer. Yeni 13 uygunluk/lifecycle/history testi ayrıca 12,40 s’de geçti; önceki eş-hash olumlu kod tarihi değiştirilmedi, yerel input/Manifest koruması regresyonları geçti. R1 Astra/Sol ve farklı fresh R2 Sol/Astra temiz. Yeni scope altında kart yerel verified; son runner/live/native/CI ve üst c kapsamı açıktır.
