@@ -61,7 +61,7 @@ def test_actual_catalog_reference_gate_requires_current_bytes_and_declared_refer
     monkeypatch.setattr(runpy, "run_path", load)
     (tmp_path / "dist").mkdir()
     (tmp_path / "docs/research").mkdir(parents=True)
-    name = "p02-2-reference-upload-02.json"
+    name = "p02-2-reference-upload-03.json"
     source = tmp_path / "dist" / name
     source.write_bytes(checks["encode"](report))
     checks["archive_report"](tmp_path, source, None)

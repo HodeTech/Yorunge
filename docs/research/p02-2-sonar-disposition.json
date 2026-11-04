@@ -3,7 +3,7 @@
   "project_key": "HodeTech_Yorunge",
   "pull_request": 14,
   "observed_head": "f71a0c3ac0a5660525eb133411a27b9529442eda",
-  "status": "reviewed_proposals_not_applied_remotely",
+  "status": "applied_verified_remotely",
   "observed_total": 611,
   "code_fix_count": 564,
   "active_and_assertions": 545,
@@ -18,7 +18,9 @@
       "rationale_code": "authorized_operator_path_not_http_input",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDpro3Mt4jn-uIMY",
@@ -29,7 +31,9 @@
       "rationale_code": "authorized_operator_path_not_http_input",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDlPo3Mt4jn-uIMU",
@@ -40,7 +44,9 @@
       "rationale_code": "fixed_executable_script_and_separate_argv_no_shell",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgfo3Mt4jn-uIDp",
@@ -51,7 +57,9 @@
       "rationale_code": "variable_length_typed_collection",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgTo3Mt4jn-uIDg",
@@ -62,7 +70,9 @@
       "rationale_code": "nonlocal_identity_observed_after_action",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgOo3Mt4jn-uIDd",
@@ -73,7 +83,9 @@
       "rationale_code": "variable_length_typed_collection",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDaqo3Mt4jn-uIDQ",
@@ -84,7 +96,9 @@
       "rationale_code": "dataclass_replace_preserves_type",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgfo3Mt4jn-uIDo",
@@ -95,7 +109,9 @@
       "rationale_code": "variable_length_typed_collection",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgao3Mt4jn-uIDl",
@@ -106,7 +122,9 @@
       "rationale_code": "variable_length_typed_collection",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMj",
@@ -117,7 +135,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMd",
@@ -128,7 +148,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMe",
@@ -139,7 +161,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMf",
@@ -150,7 +174,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMg",
@@ -161,7 +187,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMh",
@@ -172,7 +200,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpzo3Mt4jn-uIMi",
@@ -183,7 +213,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMy",
@@ -194,7 +226,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMx",
@@ -205,7 +239,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMk",
@@ -216,7 +252,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMl",
@@ -227,7 +265,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMm",
@@ -238,7 +278,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMn",
@@ -249,7 +291,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMo",
@@ -260,7 +304,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMp",
@@ -271,7 +317,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMq",
@@ -282,7 +330,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMr",
@@ -293,7 +343,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMs",
@@ -304,7 +356,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMt",
@@ -315,7 +369,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMu",
@@ -326,7 +382,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMv",
@@ -337,7 +395,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDp2o3Mt4jn-uIMw",
@@ -348,7 +408,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDT",
@@ -359,7 +421,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDU",
@@ -370,7 +434,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDV",
@@ -381,7 +447,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDW",
@@ -392,7 +460,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDX",
@@ -403,7 +473,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDY",
@@ -414,7 +486,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDZ",
@@ -425,7 +499,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDa",
@@ -436,7 +512,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDb",
@@ -447,7 +525,9 @@
       "rationale_code": "explicit_network_denylist_not_connection_target",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgLo3Mt4jn-uIDc",
@@ -458,7 +538,9 @@
       "rationale_code": "resolver_protocol_uses_timeout_context",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDdeo3Mt4jn-uIDR",
@@ -469,7 +551,9 @@
       "rationale_code": "async_protocol_same_task_descriptor_cleanup",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDgdo3Mt4jn-uIDn",
@@ -480,7 +564,9 @@
       "rationale_code": "nan_fail_closed_comparison",
       "proposed_resolution": "false_positive",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "false_positive",
+      "remote_status_after": "FALSE_POSITIVE",
+      "remote_updated_at": "2026-11-04T06:12:02+0000"
     },
     {
       "key": "AaGjoDpvo3Mt4jn-uIMa",
@@ -491,7 +577,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpwo3Mt4jn-uIMb",
@@ -502,7 +590,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpwo3Mt4jn-uIMc",
@@ -513,7 +603,9 @@
       "rationale_code": "hash_bound_source_and_tests_must_not_change",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null
+      "applied_resolution": "accepted",
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:15:30+0000"
     },
     {
       "key": "AaGjoDpro3Mt4jn-uIMX",
@@ -524,8 +616,10 @@
       "rationale_code": "private_exception_normalization_required_for_closed_cli_output",
       "proposed_resolution": "accepted",
       "remote_status_at_observation": "OPEN",
-      "applied_resolution": null,
-      "follow_up_line": 308
+      "applied_resolution": "accepted",
+      "follow_up_line": 308,
+      "remote_status_after": "ACCEPTED",
+      "remote_updated_at": "2026-11-04T06:18:11+0000"
     }
   ],
   "rationale_reference": "p02-2-sonar-review.md",
@@ -536,5 +630,13 @@
     "bugs": 0,
     "vulnerabilities": 3,
     "code_smells": 44
+  },
+  "after_disposition": {
+    "verified_head": "027b5c1d78e3c8017cc8b710ee32e52e7ee0648f",
+    "false_positive": 21,
+    "accepted": 26,
+    "quality_gate": "OK",
+    "api_snapshot_sha256": "27357a6190295828b9ddbaeceb72ff16cd82b7def20427d2a11b3620f50b2834",
+    "comments_verified": 47
   }
 }

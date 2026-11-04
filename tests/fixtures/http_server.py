@@ -220,11 +220,36 @@ class TlsServer:
                     owner.disconnected.set()
                     self.close_connection = True
 
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self._server.daemon_threads = True
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(*(str(path) for path in self.certificates))
-        self._server.socket = context.wrap_socket(self._server.socket, server_side=True)
+
+        class TlsHTTPServer(ThreadingHTTPServer):
+            def get_request(self):
+                connection, address = super().get_request()
+                try:
+                    return (
+                        context.wrap_socket(
+                            connection, server_side=True, do_handshake_on_connect=False
+                        ),
+                        address,
+                    )
+                except BaseException:
+                    connection.close()
+                    raise
+
+            def finish_request(self, request, client_address):
+                # Handshake in the request worker, never in the listening thread.
+                # A peer cancelled between TCP and TLS must not block shutdown().
+                try:
+                    request.settimeout(5)
+                    request.do_handshake()
+                    request.settimeout(None)
+                except (OSError, ValueError):
+                    return
+                super().finish_request(request, client_address)
+
+        self._server = TlsHTTPServer(("127.0.0.1", 0), Handler)
+        self._server.daemon_threads = True
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
         return self

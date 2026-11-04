@@ -88,8 +88,11 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
         loopback_upload(server.certificates[0], server.port),
     ):
         if outcome == "partial_put":
-            with pytest.raises(OperationError):
+            with pytest.raises(OperationError) as stopped:
                 helper["run"](args)
+            receipt = json.loads((args.workspace / "receipt.json").read_bytes())
+            assert receipt["reason_code"] == stopped.value.reason_code
+            assert receipt["reason_code"] != "operation_uncertain"
         elif outcome == "wheel_changed":
             with pytest.raises(ValueError, match="wheel changed"):
                 helper["run"](args)

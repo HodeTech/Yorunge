@@ -16503,6 +16503,115 @@
       }
     },
     {
+      "name": "p02-2-ci41740901679-incomplete.json",
+      "archive": "raw/p02-2-ci41740901679-incomplete.json.gz",
+      "original_commit": null,
+      "content_bytes": 68967,
+      "content_sha256": "e9de29aa1b93d7cb73b8424c335bc54018a6afd41bf87f5e39642e5d239c099c",
+      "archive_bytes": 47507,
+      "archive_sha256": "cde5e751b363bf30c37f0938133ce3a8fc575183750ea80abf9d562344910d65",
+      "summary": {
+        "source_commit": "72538f8d6d2550a353931ae45e56421e37692180",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "source_ci_incomplete_linux_timeout"
+      }
+    },
+    {
+      "name": "p02-2-ci41740901679-macos311-installation.json",
+      "archive": "raw/p02-2-ci41740901679-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1225,
+      "content_sha256": "f732def4210be7760ec537cbc1bc3e2089417e1a20686e1773719607d70a1556",
+      "archive_bytes": 505,
+      "archive_sha256": "41907f676706888ceca454a492353aac4f7d31a65ad73831eb85dec1c1910980",
+      "summary": {
+        "source_commit": "72538f8d6d2550a353931ae45e56421e37692180",
+        "diagnostic_only": false,
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-2-ci41740901679-macos311-sdist-smoke.json",
+      "archive": "raw/p02-2-ci41740901679-macos311-sdist-smoke.json.gz",
+      "original_commit": null,
+      "content_bytes": 296910,
+      "content_sha256": "1e61391184de032db85dd22b0f24da63bc43262a5f14b8b9e6d066c12e85e95d",
+      "archive_bytes": 99203,
+      "archive_sha256": "b72775d776559ceaf0f05255459575b5f60d4ef8804faaeed30a5492353b6376",
+      "summary": {
+        "source_commit": "72538f8d6d2550a353931ae45e56421e37692180",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 15,
+        "original_bytes": 220384
+      }
+    },
+    {
+      "name": "p02-2-ci41740901679-macos311-wheel-smoke.json",
+      "archive": "raw/p02-2-ci41740901679-macos311-wheel-smoke.json.gz",
+      "original_commit": null,
+      "content_bytes": 296882,
+      "content_sha256": "409929b7803905cc93ac3477dea641a0a490c7401fb59dc78eb177b2e75f493d",
+      "archive_bytes": 99197,
+      "archive_sha256": "5435fa03e8264e6bebd96524c6259d7f5872aa5580bc97be37bf1849c6409426",
+      "summary": {
+        "source_commit": "72538f8d6d2550a353931ae45e56421e37692180",
+        "diagnostic_only": true,
+        "kind": "rejected-upload",
+        "accepted": false,
+        "files": 15,
+        "original_bytes": 220362
+      }
+    },
+    {
+      "name": "p02-2-final-live-20261104-incomplete.json",
+      "archive": "raw/p02-2-final-live-20261104-incomplete.json.gz",
+      "original_commit": null,
+      "content_bytes": 1797,
+      "content_sha256": "4cd3344426902e25a55f048248137fe6db9cf8c6e5a452ccebdc1ea014aed1cd",
+      "archive_bytes": 802,
+      "archive_sha256": "eb59dd4668c7f6a00e9f76808dbf9b08bb12d9eddee690b740929dc4ad465987",
+      "summary": {
+        "source_commit": "b9f310168c23aa20117c621a7878d966d599a6c2",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "live_acceptance_incomplete_after_accepted_create"
+      }
+    },
+    {
       "name": "p02-2-live-runner-development-unverified.json",
       "archive": "raw/p02-2-live-runner-development-unverified.json.gz",
       "original_commit": null,

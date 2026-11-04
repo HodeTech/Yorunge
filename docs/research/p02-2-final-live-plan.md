@@ -1,6 +1,6 @@
 # P02-2 nihai canlı kabul planı
 
-**Tarih:** 2026-11-04. **Durum:** Araç hazırlığı; yeni hesap çağrısı yapılmadı. İki fresh kod review turu ve ayrı somut kullanıcı yetkisi sonrasında uygulanabilir. Sahip [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul). Önceki [partial pilot](p02-2-private-create-observations.md) tüketilmiş araştırma yetkisidir; yeniden çalıştırılmaz.
+**Tarih:** 2026-11-04. **Durum:** Kullanıcı bu somut kapsamı onayladı; tek deneme b9f3101 kaynağında create sonrasında `operation_uncertain` ile durdu. 1 create, 10 GET, 0 upload; accepted CreateReceiptV2 aynı unknown operation’da korunuyor. Yazma yetkisi tüketildi; yeni create veya devam denemesi yapılmaz. [Kabul kaydı](p02-2-implementation-validation.md) başarısız özgün receipt’in kanonik sahibidir. Sahip [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul). Önceki [partial pilot](p02-2-private-create-observations.md) de tüketilmiş araştırma yetkisidir.
 
 ## Tek denemenin kapsamı
 
@@ -39,3 +39,11 @@ RUNTIME/bin/python -I scripts/upload_live_acceptance.py \
 ```
 
 Bu komut örneği kendi başına hesap çağrısı yetkisi vermez. Onay sorusunda gerçek test projesi/yeni workspace ve aynı sayısal sınırlar belirtilir. Fixture veya kurulu sentetik başarı, canlı kabul yerine yazılmaz; insan UX deneyi ayrıca yapılmadıysa belirtilir.
+
+## Durma sonrası salt okuma tanısı — öneri
+
+İlk koşu durdu ve 180 saniyelik penceresi sona erdi. Aşağıdaki ayrı kapsam henüz yetkilendirilmemiştir. Amacı, yeni oluşturulan exact dataset’in owned-list/detail consumer’ında niçin reddedildiğini değer saklamadan ayırmaktır. Operation’ı uzlaştırmaz veya değiştirmez; yeni yazma/create hakkı üretmez.
+
+[Dar tanı aracı](../../scripts/upload_owned_diagnostic.py), aynı hazırlıktaki canonical Platform key’i ve yalnız mevcut accepted CreateReceiptV2 baseline’ını kullanır. İlk çağrı `GET datasets?page=1&page_size=128&scope=owned`; yalnız exact dataset satırı mevcut strict consumer’dan geçerse ikinci çağrı aynı satırın doğrulanmış username/slug detail rotasıdır. Başka sayfa/rota/host veya my-role çağrısı yoktur. İlk hata sonrasında ikinci GET yapılmaz. En çok **2 GET /4 fiziksel deneme /4 MiB yanıt /30 s ortak deadline**; iki GET’in her biri mevcut 1 MiB response sınırındadır. Başlık/framing bu gövde sayacı değildir. Hiç POST/PUT/DELETE, start veya reconcile çağrısı yoktur.
+
+Özel yeni output dizini ilk GET’ten önce no-clobber oluşturulur. Yayınlanabilir receipt yalnız HTTP status veya güvenli hata kodu, byte/counter, root/envelope türü, satır sayısı, exact ID bulunma sayısı, sabit alanların varlık/türleri ve create eşliği bool’larını taşır. Raw gövde, kimlik/owner/org/name, kullanıcı adı/slug, URL veya credential değeri saklanmaz. Kaynak önce/sonra eşliği ayrıca denetlenir; sonuç yeni metadata success/auth kanıtı sayılmaz. Kaynak/test review’si ve somut kullanıcı onayı kapanmadan ağ çağrısı yapılmaz.

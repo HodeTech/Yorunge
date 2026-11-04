@@ -1,6 +1,6 @@
 # P02-2 / PR #14 Sonar incelemesi
 
-**Tarih:** 2026-11-04. **Durum:** İlk gerçek analizdeki 611 kayıt için tek kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` gerçek takip analizinde 564 kayıt kapandı, bug sayısı 0 oldu; 47 gerekçeli disposition önerisi kaldı ve uzakta henüz uygulanmadı. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk `f71a0c3` koordinatları ile takip analizini ayırır. [Kabul kaydı](p02-2-implementation-validation.md) sonuçların kanonik sahibidir.
+**Tarih:** 2026-11-04. **Durum:** İlk 611 kayıt için kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` analizinde 564 kayıt kodla kapandı; kalan 21 false positive +26 accepted, gerekçeli yorumlarıyla Sonar’da uygulandı ve 47 kaydın tamamı API’den doğrulandı. Kalite kapısı **OK**, reliability/security/maintainability **A**. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk koordinatları ve sonraki gerçek durumları ayırır. [Kabul kaydı](p02-2-implementation-validation.md) CI ve canlı kabulün ayrı sahibidir.
 
 ## Tek düzeltme grubu
 
@@ -44,6 +44,6 @@ Ruff format/check ve strict mypy (140 dosya) geçti. Ayrı negatif testlerde nat
 
 `deb9772` kod paketi iki fresh turda, her turda ayrı contract/safety ajanlarıyla incelendi (R1 Sol/high + Astra/high; R2 farklı Astra/high + Sol/high ajanları). Dört inceleme de temizdir; yeni doğrulanmış bulgu veya kod değişikliği gerekmedi. Ajanlar geçen test/build/ölçümleri tekrar çalıştırmadı. 196 Markdown, 6 skill/44 kart ve actionlint kontrolleri geçti. İlk agent-guide çağrısı desteklenmeyen sistem Python 3.9 ile hatalı metadata sonucu verdi; proje Python 3.11 ortamında aynı dosyalar 0 sorunla doğrulandı, kaynak değişmedi.
 
-Üç güvenlik kaydı ve bütün istisnaların tam issue anahtarları JSON’dadır. Uygulanan Sonar durumları ayrıca API’den geri okunur. Tarayıcı şu anda giriş istiyor; ekran girişte hizmet şartlarının kabulünü belirttiğinden bu adım açık kullanıcı onayı gerektiriyor. Anahtar/token istenmez veya aranmaz.
+Kullanıcı Sonar oturumunu kendisi açtı. Yalnız issue kayıtlarının durumları ve gerekçe yorumları üç dar grupta değiştirildi; 21 false positive, 25 frozen accepted ve 1 private-boundary accepted. API geri okuması tam 47 benzersiz anahtar ve 47 yorumu doğruladı: 21 `FALSE_POSITIVE`, 26 `ACCEPTED`; bekleyen bu grupta kayıt yok. Gate `OK`, üç rating `1`, duplicate %0,5 ve hotspot review %100’dür. Kural, kapsam, severity, quality gate veya erişim ayarı değiştirilmedi. Önceki öneri ifadeleri hazırlık aşamasının gerekçeleridir; gerçek uygulama durumu JSON’daki `applied_resolution` ve `remote_status_after` alanlarıdır.
 
 İlk source CI koşusu `41734832370`, hücreler hâlâ queued iken kaynak düzeltmesi için iptal edildi; tamamlanmış CI/ölçüm sayılmaz, üretilmiş Linux artefaktı yoktur. İki review turundan sonra önceden sabitlenen **02** referans serisi f088cd7 kaynağında seri ve birer kez çalıştı; beşi de geçti. Dört güncel kaynak kapısı ve 393 kayıpsız arşiv doğrulandı. Yeni source CI tek push ile başlatılır. Başarılı 01 serisi değiştirilmedi veya yeni kaynağın kanıtı diye yeniden etiketlenmedi. Canlı hesap denemesi ayrıca somut kullanıcı onayını bekler.

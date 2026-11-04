@@ -148,17 +148,17 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-02.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-03.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-02.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-03.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-02.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-03.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -168,7 +168,7 @@ jobs:
         id: upload-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-02.json > dist/upload-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-03.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
         id: upload-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}

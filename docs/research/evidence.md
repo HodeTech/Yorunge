@@ -2616,6 +2616,41 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-1a-evidence-catalog-profile.json.gz`.
 **Özet:** `{"cases": 9, "diagnostic_only": true, "kind": "operation", "max_elapsed_ms": 1156.6550000570714, "outcomes": {"ok": 9}, "source_commit": "ec401641a5135976cbfc7e0a4d53f502ecb4f59c"}`.
 
+## p02-2-ci41740901679-incomplete
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `e9de29aa1b93d7cb73b8424c335bc54018a6afd41bf87f5e39642e5d239c099c`.
+**Yerel arşiv:** `raw/p02-2-ci41740901679-incomplete.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "source_ci_incomplete_linux_timeout", "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
+
+## p02-2-ci41740901679-macos311-installation
+
+**Tür:** `installation_v3`.
+**Özgün JSON SHA-256:** `f732def4210be7760ec537cbc1bc3e2089417e1a20686e1773719607d70a1556`.
+**Yerel arşiv:** `raw/p02-2-ci41740901679-macos311-installation.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
+
+## p02-2-ci41740901679-macos311-sdist-smoke
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `1e61391184de032db85dd22b0f24da63bc43262a5f14b8b9e6d066c12e85e95d`.
+**Yerel arşiv:** `raw/p02-2-ci41740901679-macos311-sdist-smoke.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 220384, "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
+
+## p02-2-ci41740901679-macos311-wheel-smoke
+
+**Tür:** `rejected-upload`.
+**Özgün JSON SHA-256:** `409929b7803905cc93ac3477dea641a0a490c7401fb59dc78eb177b2e75f493d`.
+**Yerel arşiv:** `raw/p02-2-ci41740901679-macos311-wheel-smoke.json.gz`.
+**Özet:** `{"accepted": false, "diagnostic_only": true, "files": 15, "kind": "rejected-upload", "original_bytes": 220362, "source_commit": "72538f8d6d2550a353931ae45e56421e37692180"}`.
+
+## p02-2-final-live-20261104-incomplete
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `4cd3344426902e25a55f048248137fe6db9cf8c6e5a452ccebdc1ea014aed1cd`.
+**Yerel arşiv:** `raw/p02-2-final-live-20261104-incomplete.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "live_acceptance_incomplete_after_accepted_create", "source_commit": "b9f310168c23aa20117c621a7878d966d599a6c2"}`.
+
 ## p02-2-live-runner-development-unverified
 
 **Tür:** `rejected-upload`.

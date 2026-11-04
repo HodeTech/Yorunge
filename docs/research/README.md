@@ -72,4 +72,4 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 [P02-2 upload ölçüm planı](p02-2-upload-measurement-plan.md), kurulu native worker/sink/report kodundan ve gerçek ölçümden önce fixture/pencere/örnek/limitleri sabitler; bir kabul sonucu değildir.
 
-[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kaydın tek düzeltme grubu ile kayıt bazlı yanlış pozitif/tarihsel kanıt gerekçelerini ayırır. Uzak issue durumları henüz değiştirilmedi; [kabul kaydı](p02-2-implementation-validation.md) son kaynak, CI ve canlı kabul kapılarının sahibidir.
+[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kaydın tek kaynak grubu ile gerekçeli 47 disposition’ını ayırır. Uzak durumlar API’den doğrulandı ve Sonar gate geçti; [kabul kaydı](p02-2-implementation-validation.md) açık CI ve canlı kabul koşullarının sahibidir.

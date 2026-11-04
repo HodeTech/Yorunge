@@ -283,6 +283,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     except YorungeError as error:
         receipt["error_code"] = error.code
         if isinstance(error, OperationError):
+            receipt["reason_code"] = error.reason_code
             write(args.workspace / "uncertain-identity.json", {"operation_id": error.operation_id})
         raise
     finally:
