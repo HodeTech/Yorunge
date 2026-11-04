@@ -445,7 +445,7 @@ def test_cancel_mid_source_keeps_partial_count_and_closes_same_task(tmp_path, ce
             with pytest.raises(asyncio.CancelledError):
                 await task
             assert CURRENT_CALL.get() is None
-            assert value.snapshot().upload_bytes == MIB
+            assert value.snapshot().upload_bytes == 128 * 1024
             assert value.snapshot().response_pending == 0
             assert base._file_fd is None
             assert not base.complete

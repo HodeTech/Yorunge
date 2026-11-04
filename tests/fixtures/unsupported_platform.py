@@ -1,6 +1,7 @@
 """Simulate platform/import absence in a fresh process, without pretending to run Windows."""
 
 import builtins
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -11,6 +12,9 @@ from yorunge.domain.errors import YorungeError
 
 scenario, surface, action, config_arg, state_arg = sys.argv[1:]
 config, state_dir = Path(config_arg), Path(state_arg)
+# Bootstrap host stdlib before spoofing only the product platform. Python 3.14
+# argparse loads shutil lazily; its native imports must use the actual host.
+importlib.import_module("shutil")
 if scenario != "native-missing-fcntl":
     sys.platform = "win32"
 original_import = builtins.__import__
