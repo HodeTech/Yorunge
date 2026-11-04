@@ -17198,6 +17198,21 @@
       }
     },
     {
+      "name": "p02-2-storage-contract-different-20261104.json",
+      "archive": "raw/p02-2-storage-contract-different-20261104.json.gz",
+      "original_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf",
+      "content_bytes": 5399,
+      "content_sha256": "682a78e917e7adfdb8d69938030e8688f19c81bff312f06f4be61e46d29acfee",
+      "archive_bytes": 1108,
+      "archive_sha256": "fb18bec28158c80346b3c79a9f3a1756c7e7f5e66ddaa1dc6cef808f0800e9e2",
+      "summary": {
+        "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "evidence_collected"
+      }
+    },
+    {
       "name": "p02-2-storage-contract-first-20261104.json",
       "archive": "raw/p02-2-storage-contract-first-20261104.json.gz",
       "original_commit": null,
@@ -17207,6 +17222,21 @@
       "archive_sha256": "6487f37d68768d6cb50185a03e81b41b85c10ad44f77a0d9075cd106147a78ac",
       "summary": {
         "source_commit": "00658dfc18fb6f52067e4f68ccc72814fc1bae52",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "evidence_collected"
+      }
+    },
+    {
+      "name": "p02-2-storage-contract-same-content-20261104.json",
+      "archive": "raw/p02-2-storage-contract-same-content-20261104.json.gz",
+      "original_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf",
+      "content_bytes": 6010,
+      "content_sha256": "6867a74c8a888c39920ce9dfcaf3fe0884e2b295ab1e3e18928e1c49ba27a5d0",
+      "archive_bytes": 1105,
+      "archive_sha256": "f022578c0db34879d047f8be015145ee472aee0dc8df123518a60b9d217be0a5",
+      "summary": {
+        "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf",
         "diagnostic_only": true,
         "kind": "diagnostic",
         "outcome": "evidence_collected"

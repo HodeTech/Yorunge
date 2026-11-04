@@ -2763,12 +2763,26 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-reference-upload-02.json.gz`.
 **Özet:** `{"cases": 12, "diagnostic_only": false, "growth": {"passed": true, "span_upper_bound_bytes": 7421952}, "kind": "upload-budget", "max_elapsed_seconds": 64.8340523748193, "max_extra_rss_upper_bound_bytes": 14123008, "passed": true, "source_commit": "f088cd7f37be201671b652fbfaab87cd7ab4acd1"}`.
 
+## p02-2-storage-contract-different-20261104
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `682a78e917e7adfdb8d69938030e8688f19c81bff312f06f4be61e46d29acfee`.
+[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/998ee7d75f7db1b8b039b9362a19ab525b8dd2cf/docs/research/p02-2-storage-contract-different-20261104.json); yerel arşiv `raw/p02-2-storage-contract-different-20261104.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf"}`.
+
 ## p02-2-storage-contract-first-20261104
 
 **Tür:** `diagnostic`.
 **Özgün JSON SHA-256:** `77b458ad7134f0fdd203aaff4f76af90d5c2a357274cc8b9f41df26680ba4221`.
 **Yerel arşiv:** `raw/p02-2-storage-contract-first-20261104.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "00658dfc18fb6f52067e4f68ccc72814fc1bae52"}`.
+
+## p02-2-storage-contract-same-content-20261104
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `6867a74c8a888c39920ce9dfcaf3fe0884e2b295ab1e3e18928e1c49ba27a5d0`.
+[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/998ee7d75f7db1b8b039b9362a19ab525b8dd2cf/docs/research/p02-2-storage-contract-same-content-20261104.json); yerel arşiv `raw/p02-2-storage-contract-same-content-20261104.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf"}`.
 
 ## p02-2-upload-v1-smoke-01-rejected
 

@@ -119,3 +119,9 @@ Nonce/dizin fsync ve kaynak önce/sonra eşliği HTTP’den önce/sonra uygulan�
 
 
 **İlk storage slotu tüketildi:** 00658df’de first.png için 7 GET/1 presign/1 PUT; PUT 200/79 sent byte/hash eşliği true, root ok=true/size 79, eski typed ack ret. Confirm yoktur. Yeni decoder bu bağlamı destekledikten ve iki fresh tur/provenance kapandıktan sonra `different.png --confirm`, ardından `same-content.png --confirm` ayrı birer slotta çalışabilir. İlk dosya tekrar gönderilmez. Bu sıra yeni dataset veya eski operation’a devam değildir; singleton/current confirm predicate’i ile sonraki metadata wire’ını araştırır.
+
+**Kalan storage slotları tamamlandı:** 998ee7d kaynağı/runtime06 provenance ile her dosyada 8 GET/1 presign/1 PUT/1 confirm; PUT 200 ve confirm 201. Gönderilen 79-byte kaynak/hash eşliği ve items-after exact metadata eşliği true. İlk confirm actual_count=1, ikincisi actual_count=2; singleton-only ikinci predicate false. Yeni product uyumu gerekmiyor. Eski operation değiştirilmedi; üç bağımsız slot tüketildi, yeniden kullanılmaz.
+
+## Son public bütünleşik kontrol — r4
+
+Genel kullanıcı kontrol yetkisinde ve tamamlanan iki fresh PUT review turundan sonra, aynı kaynak/runtime06 ile yalnız bir yeni private instance kullanılır: `.local/p02-pilot/p02-2-final-20261104-r4`, dataset `yorunge-acceptance-p02-2-final-20261104-r4`. Aynı test projesi/anahtar, üç PNG/toplam 237 byte ve iki aynı hash/farklı ad korunur. En fazla 1 create, 1 project link, 3 presign, 3 PUT, 3 confirm; 40 GET/80 read attempt/16 MiB response/64 KiB control/ortak 180 s. İlk hata veya belirsizlikte durur; tüketilmiş operation/nonce/URL yeniden kullanılmaz. `explicit_attempt + unpriced`; fiyat ve süreğen depolama unknown, **sayısal CR tavanı uygulanmaz**. Kaynak private kalır; silme, şart kabulü, indirme/export veya eğitim yoktur. Aynı mevcut public runner’ın önce/sonra provenance, gerçek sayaç, accepted tam graph ve üç exact metadata kontrolü değişmeden uygulanır.
