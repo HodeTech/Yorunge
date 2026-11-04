@@ -64,3 +64,13 @@ ADR-0029 önerisi ve 90 kayıtlı dar envanter, d5f04c5 kaynağında fresh R1 So
 PUT task’larının tek publish-attempt kümesi, başarıları worker hatasından önce toplar; sonraki current/prepare/arm hatasında cleanup da henüz denenmemiş başarılı sonucu işler. İşaret publish’den öncedir; commit cevabı kaybı tekrar deneme üretmez. Cleanup her kaynağı kapatmayı dener ve gerçek cancellation önceliğini korur.
 
 Saf scheduler/reply-loss/cancel senaryoları ve gerçek SQLite/TLS fixture’ında bir başarılı PUT + bir 503, kalıcı **7 intent/6 accepted receipt**, tek accepted PUT index0, unknown/no lease/no verification ve sıfır confirm ile geçti; aynı-ID local lookup yeni ağ açmadı. İlk ek cleanup-cancel testinde gather’ın opsiyonel cancel mesajını koruduğu varsayılmıştı; Python bu mesajı düşürebildiğinden contract oracle’ı gerçek CancelledError tipi, receipt ve bütün close sonuçlarına düzeltildi. Daha dar ilk grupta 10 passed/1 bu test-oracle hatası vardı. Son scheduler/file-workflow/gerçek kill seçkisi **29 passed /30,58 s**. Yeni kod strict mypy ve Ruff’la denetlenir; R1/R2 kaynak review henüz beklenir. Genel tam suite/ölçüm veya hesap çağrısı yapılmadı.
+
+
+Dilim 2 /a9b1ffb, iki farklı fresh R1 (Astra/high contract, Sol/high safety) ve R2 (Sol/high contract, Astra/high safety) tarafından bulgusuz kapandı. Reviewer’lar testleri yeniden çalıştırmadı. Başarılı ayrı PUT sonucunun tek publish denemesi, cancellation ve release sırası doğrulandı.
+
+
+## ADR-0029 kullanıcı bulguları sonrası revizyon
+
+Kullanıcı, doğrulanmış bulgular kapatıldıktan sonra Accepted’a taşıyıp devam etmemizi yetkilendirdi. Bağımsız dar audit: üst düzey 82 gerçek kişisel yol + 8 yayımlanmış e-posta arşivi; önceki 5 runner/e-posta kesişimi kişisel yol değildir. Beş adlandırılmış base64/sıkıştırılmış tanı ekinde size/SHA/strict decode sonrası gerçek kişisel yol doğrulandı. Hash’li envanter 95 kayda revize edildi (87 gerçek yol, 8 e-posta); özgün byte’lar değişmedi. İlk 90 kayıt review’sü bu yeni kapsamın doğrulaması diye sunulmaz.
+
+Yeni karar kontrolü hem Git hem CI artefakt upload öncesine, gerçek runtime/interpreter/temp kaynaklarını kapsayan zorunlu özel üretim bağlamına ve bounded kodlanmış ek doğrulamasına bağlar. Eksik beyan veya çözülemeyen ek temiz sayılmaz; privacy reddi public yayımı durdurur ve somut kalıcı saklama kapanmadan kabul/merge önerisi verilmez. Katalog original_commit için ilk exact-byte Git blob’u kuralı netleşir; 28 daha geç commit ve bir olmayan yol kaydı metadata olarak düzeltilecektir. Yeni politika uygulaması revize belgenin fresh teyidinden sonradır.
