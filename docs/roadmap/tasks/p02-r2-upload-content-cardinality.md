@@ -3,7 +3,7 @@ id: P02-R2
 phase: P02
 status: draft
 size: M
-depends_on: [P02-2b]
+depends_on: [P02-2m, P02-2q]
 capabilities: [C03, C12, C13]
 ---
 # P02-R2 — Aynı içerikli dosya adlarının uzak çokluğu
@@ -20,7 +20,10 @@ Desteklenen sağlayıcı wire/sürüm/semantik araştırması, ad/hash/cardinali
 
 ## Bağımlılıklar ve kararlar
 
-P02-2b bounded temel yolu ve gerçek sağlayıcı çözümü gerekir. Resmî düzeltme/sözleşme veya aynı anlamı kapatan izinli deney olmadan ready değildir. ADR-0028 reddedilirse özgün P02-2c olumlu kabulü bu ihtiyaca bağlı kalır. Onaylanırsa ilk teslimden ayrılan takip işidir; ihtiyacın tamamlandığı anlamına gelmez.
+Araştırma, verified P02-2m codec ve P02-2q gerçek port temeline bağlıdır; P02-2b’nin nihai kabulünü beklemez. Araştırma ve sağlayıcı çözümünün kanıtlanması önce, bu kanıtı producer’da tüketen entegrasyon/kabul sonra ayrı dilimlerdir. Resmî çözüm veya aynı anlamı kapatan izinli deney olmadan entegrasyon ready değildir.
+
+- ADR-0028 kabul edilirse P02-2b/c, duplicate-ret negatifini ve tekil-hash olumlu yolu kapatabilir; P02-R2 özgün ihtiyacın bağımsız takip işidir.
+- ADR-0028 reddedilseydi P02-R2 araştırması aynı yerel temellerle yine ilerler, çözüm P02-2b/c’nin özgün olumlu kabulüne girdi olurdu. P02-2b kapanışı araştırmanın önkoşulu değildir; döngü yoktur.
 
 ## Sözleşme ve uygulama sınırı
 
