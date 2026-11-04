@@ -10,9 +10,9 @@ from types import SimpleNamespace
 import pytest
 
 from tests.contracts.test_platform_upload_codec import SCOPE
-from tests.fixtures.http_server import TlsServer
+from tests.fixtures.http_server import Reply, TlsServer
 from tests.fixtures.upload_network import loopback_upload
-from tests.fixtures.upload_provider import UploadProvider
+from tests.fixtures.upload_provider import DATASET, UploadProvider
 from tests.integration.test_upload_file_workflow import certificates as certificates
 from tests.integration.test_upload_file_workflow import loopback_only as loopback_only
 from yorunge import api
@@ -135,6 +135,43 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
     }
     for name, digest in expected.items():
         assert hashlib.sha256((args.workspace / "source" / name).read_bytes()).hexdigest() == digest
+
+
+def test_link_decoder_failure_retains_closed_trace_without_accepting_or_replaying(
+    tmp_path, certificates, monkeypatch
+):
+    helper = runpy.run_path(str(ROOT / "scripts/upload_live_acceptance.py"))
+    args = inputs(tmp_path)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, name="yorunge-acceptance-pilot")
+    provider.link_reply = Reply(
+        body=json.dumps(
+            {
+                "message": "private-link-message-canary",
+                "dataset_id": DATASET,
+                "project_id": SCOPE.project_id,
+            }
+        ).encode()
+    )
+    provenance_seam(helper, monkeypatch)
+    with (
+        TlsServer(certificates, provider.routes()) as server,
+        loopback_upload(server.certificates[0], server.port),
+    ):
+        with pytest.raises(OperationError) as stopped:
+            helper["run"](args)
+        assert stopped.value.reason_code == "invalid_response"
+        assert provider.create_calls == provider.link_calls == 1
+        assert provider.confirm_calls == 0
+        raw = (args.workspace / "receipt.json").read_bytes()
+    trace = json.loads(raw)["counters"]["control_responses"]
+    assert [row["kind"] for row in trace] == ["create", "project_link"]
+    assert trace[0]["typed_accepted"] is True
+    assert trace[1]["typed_accepted"] is False
+    assert trace[1]["transport_2xx_accepted"] is True
+    assert trace[1]["shape"]["root"]["matches_expected"] == {"dataset_id": True, "project_id": True}
+    assert b"private-link-message-canary" not in raw
+    assert DATASET.encode() not in raw
+    assert provider.owner_id.encode() not in raw
 
 
 def test_no_consent_and_nonprivate_credential_files_fail_before_any_workspace(tmp_path):

@@ -70,7 +70,7 @@ POST/PUT/DELETE, create, proje bağlantısı, start/reconcile, yeni permit veya 
 
 ## Yeni tam kabul denemesi — öneri
 
-İlk tam deneme ve iki ayrı tanı tarihsel kayıtlardır; eski unknown operation yeniden arm edilmez. Gözlenen liste/detail wire farkı düzeltildikten ve iki fresh kod review turu kapandıktan sonra yeni tam kabul için **ayrı** bir somut deneme önerilir. Bu bölüm henüz yazma yetkisi değildir.
+İlk tam deneme ve iki ayrı tanı tarihsel kayıtlardır; eski unknown operation yeniden arm edilmez. Gözlenen liste/detail wire farkı düzeltildikten ve iki fresh kod review turu kapandıktan sonra yeni tam kabul için **ayrı** bir somut deneme önerilir. Kullanıcı bu kapsamı “ihtiyacın olan tüm kontrolleri yapabilirsin” yanıtıyla onayladı; 59ff11a kaynağındaki tek koşu link aşamasında durdu. Bu tüketilmiş koşu yeniden çalıştırılmaz.
 
 - Aynı hazırlanmış Platform key’i ve `yorunge-discovery-test` projesi (`01a19492-2404-7701-afee-d45c26561062`).
 - Yeni exclusive workspace `.local/p02-pilot/p02-2-final-20261104-r2`; yeni private dataset `yorunge-acceptance-p02-2-final-20261104-r2`. Önceki kaynaklar hesabında kalır; DELETE/cleanup yoktur.
@@ -82,3 +82,14 @@ Mevcut aynı runner yeni runtime-only wheel’den çalışır; provenance, sourc
 
 
 **Uygulama hazırlığı tamam:** c279e4f düzeltmesi iki farklı fresh contract/safety turunda temiz kapandı; 372 odaklı test ve ayrıca 1 gerçek API/TLS runner success case’i geçti. Yeni runtime-only wheel’in gerçek `-I` provenance kapısı doğrulandı; bu yeni canlı çağrı değildir. Somut yeni create/upload onayı beklenir.
+
+
+## Tek-link sözleşme tanısı
+
+4 Kasım’daki genel kontrol yetkisi kapsamında, aynı test projesi/anahtarı ve **ilk** `p02-2-final-20261104` koşusunun accepted create baseline’ı kullanılır. Bu kayıtta yalnız create intent/receipt’i bulunmalıdır; herhangi bir link intent’i, aktif lease, başka proje/hedef veya test dışı ad HTTP’den önce reddedilir. İkinci koşunun belirsiz link’i yeniden gönderilmez; eski operation değiştirilmez. Bu bağımsız, tek kullanımlık araştırma slotu ürün restart/recovery yolu değildir.
+
+[Link tanısı](../../scripts/upload_link_diagnostic.py) önce auth/me, exact project, owned ilk 20, exact username/slug detail ve project membership okur. Me/project/owner/private ve tam immutable create-detail eşliği zorunludur. Kaynak zaten bağlıysa POST yapılmaz. Değilse aynı project endpoint’ine yalnız dataset_id taşıyan **tek POST** yapılır. HTTP 2xx sonrası strict JSON/literal taraması ve varsa dataset_id/project_id eşliği korunur; logical false, malformed/secret/binding veya HTTP hatasında durulur. Bilinmeyen ama bu temel kapılardan geçen 2xx acknowledgement, araştırmanın hedefidir: eski typed decoder sonucu kaydedilir ve yalnız membership sonrası bir GET ile actual bağ kontrol edilir. Bu gözlem accepted receipt veya product success yazmaz.
+
+Tavan: **6 GET + 1 POST / 13 fiziksel deneme / 13 MiB response body / 128 byte POST body / ortak 30 s**; response/attempt başına 1 MiB, read en çok 2 ve POST tek deneme. Yeni create, presign, PUT, confirm, silme, eğitim, şart kabulü veya byte indirme yoktur. Fiyat unknown, sayısal CR tavanı yoktur; private kaynak hesabında kalır. Yeni exclusive workspace `.local/p02-pilot/p02-2-link-contract-20261104`, fsync edilmiş start marker’ıyla HTTP’den önce kalıcılaşır; ikinci çalışma reddedilir.
+
+[Ortak control izi](../../scripts/upload_control_trace.py), gelecekteki mevcut runner’da create/link/presign/confirm gövdelerinin yalnız kapalı alan türlerini, sayıları ve exact expected/literal eşlik bool’larını decoder’dan önce kaydeder. Ham gövde, serbest anahtar/metin, kimlik, owner/org/name, object key, URL veya credential değeri tutulmaz. HTTP hata kodu typed exception’dan kaydedilir; `_outcome`a ulaşılmışsa yalnız transport 2xx kabulü bilinir, gerçek 2xx status icat edilmez. Bütün origin/secret/permit/budget/decoder davranışları delegate edilir. Yeni script/test dilimi ve iki fresh kaynak turu kapanmadan hesap çağrısı yapılmaz.

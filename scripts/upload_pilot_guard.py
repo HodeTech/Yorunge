@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import runpy
 import time
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from yorunge.adapters.platform_upload_port import PreparedUploadCall
+from yorunge.application.http_transport import HttpStatusFailure
 from yorunge.application.upload_budget import UploadBudget, UploadReservation
 from yorunge.domain.errors import YorungeError
 
@@ -26,6 +30,7 @@ LIMITS = {
     "upload_bytes": 1_048_576,
     "seconds": 180,
 }
+TRACE = runpy.run_path(str(Path(__file__).with_name("upload_control_trace.py")))
 
 
 class PilotGuard:
@@ -38,6 +43,8 @@ class PilotGuard:
         self.budgets: set[UploadBudget] = set()
         self.pending: dict[UploadReservation, int] = {}
         self.response_claims = 0
+        self.controls: list[dict[str, Any]] = []
+        self.active_controls: dict[Any, dict[str, Any]] = {}
 
     def current(self) -> None:
         if time.monotonic() >= self.end:
@@ -80,6 +87,7 @@ class PilotGuard:
             "response_pending": self.response_claims,
             "open_reservations": len(self.pending),
             "elapsed_seconds": time.monotonic() - self.started,
+            "control_responses": list(self.controls),
         }
 
     @contextmanager
@@ -87,6 +95,32 @@ class PilotGuard:
         initialize, reserve = UploadBudget.__init__, UploadBudget.reserve
         attempt, response = UploadReservation.attempt, UploadReservation.response
         upload, finish = UploadReservation.upload, UploadReservation.finish
+        execute, outcome = PreparedUploadCall.execute, PreparedUploadCall._outcome
+
+        async def executed(call: Any, client: Any, arm: Any) -> Any:
+            row = {"kind": call._kind, "http_status": None, "typed_accepted": False}
+            self.controls.append(row)
+            self.active_controls[call] = row
+            try:
+                result = await execute(call, client, arm)
+                row["typed_accepted"] = True
+                return result
+            except HttpStatusFailure as error:
+                row["http_status"] = error.status_code
+                raise
+            except YorungeError as error:
+                row["error_code"] = error.code
+                raise
+            finally:
+                self.active_controls.pop(call, None)
+
+        def observed(call: Any, intent: Any, raw: bytes) -> Any:
+            expected = {"dataset_id": call._dataset, "project_id": call._port._scope.project_id}
+            row = self.active_controls[call]
+            row["transport_2xx_accepted"] = True
+            row["body_bytes"] = len(raw)
+            row["shape"] = TRACE["body_shape"](raw, expected)
+            return outcome(call, intent, raw)
 
         def initialized(budget: UploadBudget, limits: Any, *, end: float, read_only: bool) -> None:
             self.current()
@@ -124,6 +158,8 @@ class PilotGuard:
             (UploadReservation, "response", responded),
             (UploadReservation, "upload", uploaded),
             (UploadReservation, "finish", finished),
+            (PreparedUploadCall, "execute", executed),
+            (PreparedUploadCall, "_outcome", observed),
         )
         with ExitStack() as stack:
             for kind, name, method in patches:

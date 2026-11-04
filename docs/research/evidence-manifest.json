@@ -16612,6 +16612,21 @@
       }
     },
     {
+      "name": "p02-2-final-live-20261104-r2-incomplete.json",
+      "archive": "raw/p02-2-final-live-20261104-r2-incomplete.json.gz",
+      "original_commit": null,
+      "content_bytes": 789,
+      "content_sha256": "837e92f4e01481ac7a151f380b0f522bb6f7b4d98e26221cba51e7dfe44b3e4a",
+      "archive_bytes": 361,
+      "archive_sha256": "79ac189841fef5855185adc4169b22ea95e35d07fdf4b80fdd72994afc8127d1",
+      "summary": {
+        "source_commit": "59ff11aeac026e06b8e62b39275d3d41ca0e8b0b",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "incomplete"
+      }
+    },
+    {
       "name": "p02-2-live-runner-development-unverified.json",
       "archive": "raw/p02-2-live-runner-development-unverified.json.gz",
       "original_commit": null,
