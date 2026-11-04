@@ -50,6 +50,8 @@
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 | [P02-R2](p02-r2-upload-content-cardinality.md) | Aynı hash/farklı adın ayrı uzak item olarak korunması; Accepted ADR-0028 ile ilk teslimden ayrılan özgün ihtiyacın açık takip sahibi |
 
+| [P02-R3](p02-r3-isolated-performance-acceptance.md) | Son kaynakta izole performans kabulü; ADR-0030 Proposed, mevcut kapılar henüz değişmedi |
+
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
 [P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.

@@ -1130,3 +1130,28 @@ D013814 dar fixture düzeltmesi fresh R1 Sol/high ve farklı fresh R2 Astra/high
 Her ZIP’in servis digest’i, boyutu, CRC’si ve tek seçilmiş `dist/ci-environment.json` üyesi doğrulandı. Public rapor yalnız bu altı özgün üye ile dar run/job/test/digest metadata’sını taşır; tam API/log/ZIP özel çalışma alanında kalır. Public sarmalayıcılar gerçek yerel üretim bağlamıyla ayrıca kontrol edildi; CI’ın özel context’i sonradan yeniden üretilmiş gibi sunulmadı. Var olan seçilmiş CI çıktılarının saklama takibi kapandı; **460** arşiv/indeks doğrulandı. İki CI koşusu başarısız kalır, overall teslim veya merge kabulü değildir.
 
 Sekiz Sonar false-positive durumu ve her birinin tek gerekçe yorumu API’den doğrulandı; 12 source-fix key yeni analizi bekler. AC güç fiziksel kontrolü yapıldı. Nihai kaynakta iki temiz paket kurulumu sonrası 60 saniyelik ön kontrolle bir 09 serisi çalıştırılır; 08’in başarısız örnekleri korunur.
+
+
+## 5 Kasım — 09 AC serisi ve açık performans kabulü
+
+f180cb8 belge/saklama geçişi fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz kapandı. Aynı commit’in source/test/script/workflow haritası kişisiz yeni checkout’a sabitlendi. [İki temiz wheel/sdist kurulumu](evidence.md#p02-2-review-final-installation-09) geçti. HOME değiştirilmedi; controller/runtime/temp/child kökleri actual private context ile doğrulandı.
+
+[Koşul kaydı](evidence.md#p02-2-native09-conditions): AC güç, kapalı düşük güç modu ve termal/performance warning bulunmaması bütün aşama sınırlarında doğrulandı. Bilinen yoğun süreçler yüzünden ölçümden önce sakin pencere yedi kez sıfırlandı; bu sırada benchmark örneği alınmadı. Son pencere **61,50 s** ve sıfır gözlenen yoğun örnekti. Bu sınırlı spot kontrolü bütün OS yükünün yokluğunu veya ölçüm boyunca sürekli izolasyonu kanıtlamaz. Her gerçek ölçüm bir kez çalıştı; ret sonrası diğer bağımsız seriler sürdü.
+
+| 09 raporu | İlk gerçek sonuç |
+|---|---|
+| [Startup](evidence.md#p02-2-reference-startup-09) | Aday help/version/context/cache p95 **34,6915/35,0227/148,4595/330,5362 ms**. Cache >200 ms; overall **false**. Taban cache **549,7925 ms** ile reddetti; göreli fark kabul değildir. |
+| [Jobs](evidence.md#p02-2-reference-jobs-09) | Normal list/show **920,9770/318,0306 ms**, dense list/show **902,6161/315,5782 ms**. Dört 200 ms kapısı reddetti; kaynak/kurulum/fixture sabitliği geçti. |
+| [Dataset](evidence.md#p02-2-reference-datasets-09) | 24 süreç geçti; en uzun **0,8473 s**, U≤**21.544.960 byte**, inspect/verify G=**622.592/442.368 byte**. |
+| [Raw](evidence.md#p02-2-reference-raw-09) | Exact içerik/kaynak/native bellek kapıları geçti; G=**606.208 byte**. |
+| [Upload](evidence.md#p02-2-reference-upload-09) | 12 süreç ve exact byte/SHA/tam graph kapıları geçti; tek çağrı en çok **87,0730 s**, U≤**4.472.832 byte**, G=**2.015.232 byte**. Parent serisi **303,003 s**, tek API süresi değildir. |
+
+Jobs normal list’in 30 örneği **151,19–966,06 ms**, medyanı **187,10 ms** idi; düşük örnekler seçilmez, p95 ret kararı korunur. Startup cache’te hem CPU hem CPU dışı tahminlerde dalgalanma görülür. Bu veriler spesifik bir ürün regresyonu, fsync, güç veya dış süreç nedenini tek başına ispatlamaz. Kaynakta yeni bir kusur doğrulanmadan varsayımsal optimizasyon veya aynı koşulda yeni yeşil arama ölçümü yapılmaz. 08/07 ve eski retler özgün kalır.
+
+Yedi özgün kayıt actual üretim bağlamıyla bounded gizlilik kapısından geçirilip seri arşivlendi; **467** kayıpsız arşiv/indeks doğrulanır. Startup/jobs reference retleri kapanış başarısı sayılmaz; dataset/upload pozitifleri yalnız exact ölçülen kaynağa aittir. Yeni kaynak tam CI/altı kurulum ve 12 Sonar source-fix’in gerçek analiz kapanışı ayrıca izlenecek. P02-2/a/b/c ve PR draft kalır; performans kapıları kapanmadan merge önerisi verilmez. Yeni gerçek EVREN çağrısı veya CR harcaması yapılmadı.
+
+
+**Ölçüm sonrası kullanıcı beyanı:** Arka planda sürekli başka bir test çalışıyor. Dolayısıyla 61,50 s spot kontrolü ADR-0019’un eşzamanlı ağır iş bulunmaması koşulunu kanıtlamadı; 09’un olumlu sayısal dataset/raw/upload sonuçları da bu koşullu referans kabulünün tamamlandığı diye sunulmaz. Retlerin spesifik nedeni hâlâ kanıtlanmış değildir. Kullanıcı işlerin bununla bloklanmamasını/ertelemeyi istedi; [ADR-0030](../decisions/0030-development-performance-acceptance.md) yerel kabulü P02-R3’e ayırmayı, strict native Linux ve işlevsel CI’ı korumayı önerir. Mevcut kapılar onay öncesi değişmedi; yeni yerel ölçüm yapılmaz.
+
+
+09 sonuç/kanıt snapshot’ı farklı fresh R1 Sol/high ve R2 Astra/high tarafından bulgusuz teyit edildi; reviewer’lar ölçüm veya geniş testleri tekrarlamadı. Sonradan gelen sürekli dış test beyanı ve ADR-0030 yeni önerisi bu snapshot review’sünün onayı sayılmaz; ayrı karar incelemesi yapılır.
