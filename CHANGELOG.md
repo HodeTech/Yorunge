@@ -6,6 +6,7 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-11-04
 
+- ADR-0028: ilk Platform upload yolu aynı SHA-256’lı farklı adları ağ/create öncesinde açık `upload_duplicate_content`/exit 2 ile reddeder. Yerel Manifest/inspect/verify ve geçmiş kayıtlar korunur; tekrarlı adları bulmak için salt yerel rehber örneği eklendi. Özgün çoklu-ad upload desteği P02-R2’de açık kalır.
 - Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
 
 ### Fixed — 2026-11-03

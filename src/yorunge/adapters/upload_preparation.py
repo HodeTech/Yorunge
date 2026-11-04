@@ -28,7 +28,7 @@ from yorunge.application.credentials import bind_credential, resolve_credential
 from yorunge.application.http_transport import HttpCredential
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.upload_budget import UploadBudget
-from yorunge.application.upload_inputs import revalidate_input
+from yorunge.application.upload_inputs import require_distinct_upload_content, revalidate_input
 from yorunge.application.upload_policy import UploadPreparationV2, prepare_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential, normalize_target
@@ -142,7 +142,9 @@ def read_approval_input(
         if view.approval is not None or view.operation is not None:
             raise YorungeError("operation_conflict")
         with repository.phase():
-            return plan, read_manifest(store.connection, plan)
+            manifest = read_manifest(store.connection, plan)
+        require_distinct_upload_content(manifest)
+        return plan, manifest
 
 
 class UploadPreparationRuntime:
@@ -277,6 +279,7 @@ class UploadPreparationRuntime:
             self._scope(bound, scope, parameters.name)
             inputs = capture_upload_input(root, manifest, bound.credential.secret, end=end)
             self._scope(bound, scope, parameters.name)
+            require_distinct_upload_content(inputs.manifest)
             start = self.clock.now()
             work = _work(scope, inputs, parameters, storage, start)
             preparation = UploadPreparationV2(

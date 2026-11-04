@@ -5,9 +5,16 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from yorunge.domain.capabilities import canonical
+from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.errors import YorungeError
 
 T = TypeVar("T", bound=BaseModel)
+
+
+def require_distinct_upload_content(manifest: DatasetManifest) -> None:
+    """Producer eligibility only; never invalidate local manifests or history."""
+    if len({file.sha256 for file in manifest.files}) != manifest.file_count:
+        raise YorungeError("upload_duplicate_content")
 
 
 def revalidate_input(kind: type[T], value: T) -> T:

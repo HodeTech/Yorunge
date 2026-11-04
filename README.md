@@ -15,7 +15,7 @@ Veri setleri, modeller, çıkarım, eğitim, kaynaklar ve sonuçlar arasında da
 | Alan | Bugün ve sırada |
 |---|---|
 | **Hesap ve proje** | **Var:** yerel profil/doctor ve EVREN hizmetlerinden salt okuma gözlemleri. Doğrulanmış uzak kimlik/yetki çözümlemesi ayrı iş. |
-| **Veri setleri** | **Var:** yerel envanter, manifest ve içerik doğrulama. **Bu dalda:** onaylı private yükleme ve aynı işi salt okumayla inceleme; [kabul durumu](docs/roadmap/current.md). **Planlandı:** indirme ve veri sürümleri. |
+| **Veri setleri** | **Var:** yerel envanter, manifest ve içerik doğrulama. **Bu dalda:** farklı içerikli dosyalar için onaylı private yükleme ve aynı işi salt okumayla inceleme; [kabul durumu](docs/roadmap/current.md). **Planlandı:** indirme ve veri sürümleri. |
 | **Modeller ve çıkarım** | **Planlandı:** model kataloğu, LLM metin/akış, embedding, rerank ve görsel çıkarım. |
 | **Eğitim ve araçlar** | **Var:** yerel plan hazırlığı. **Planlandı:** yönetilen EVREN eğitimi, varsayılan ForgeLM ve seçilebilir araç adaptörleri. |
 | **Kaynaklar ve sonuçlar** | **Var:** yerel iş geçmişi. **Planlandı:** GPU/kota görünürlüğü, uzak iş izleme ve sonuç toplama. |

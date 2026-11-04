@@ -28,7 +28,7 @@ def inventory(inputs, count):
     data, artifact, config = inputs
     (data[1] / "one.bin").unlink()
     for index in range(count):
-        (data[1] / f"file-{index:03}.bin").write_bytes(b"same" if index < 2 else bytes([index]))
+        (data[1] / f"file-{index:03}.bin").write_bytes(index.to_bytes(2, "big"))
     with open_dataset(data[1], DatasetBudget()) as tree:
         manifest = tree.scan()
     artifact.write_bytes(manifest.encoded())
@@ -160,10 +160,7 @@ def test_real_cli_maximum_file_inventory_has_complete_distinct_graph(public_inpu
             assert remote["original_filename"] == file.path
             assert remote["file_size_bytes"] == file.size
             assert remote["sha256_hash"] == file.sha256
-        assert (
-            provider.confirmed["file-000.bin"]["sha256_hash"]
-            == provider.confirmed["file-001.bin"]["sha256_hash"]
-        )
+        assert len({row["sha256_hash"] for row in provider.confirmed.values()}) == 128
         with open_existing_store(data[0]) as store:
             view = StateUploads(store).show(operation_id=shown["operation_id"])
             assert len(view.intents) == len(view.receipts) == 2 + 3 * 128

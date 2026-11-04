@@ -30,6 +30,7 @@ from yorunge.application.http_transport import HttpCredential
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_budget import UploadBudget
+from yorunge.application.upload_inputs import require_distinct_upload_content
 from yorunge.application.upload_progress import UploadCounter, count_upload
 from yorunge.application.upload_workflow import (
     EffectOutcome,
@@ -369,7 +370,9 @@ def _initial(
             instant(approval.approved_at) <= now < instant(approval.expires_at)
         ):
             raise YorungeError("upload_plan_not_valid")
-        return plan, read_manifest(store.connection, plan)
+        manifest = read_manifest(store.connection, plan)
+        require_distinct_upload_content(manifest)
+        return plan, manifest
 
 
 def _execute_phase(

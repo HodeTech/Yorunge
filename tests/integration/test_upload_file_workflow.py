@@ -42,7 +42,7 @@ def loopback_only():
 
 
 def many(data):
-    (data[1] / "two.bin").write_bytes(b"original")
+    (data[1] / "two.bin").write_bytes(b"distinct")
     (data[1] / "ölçüm.bin").write_bytes(b"different")
     with open_dataset(data[1], DatasetBudget()) as tree:
         manifest = tree.scan()
@@ -83,7 +83,7 @@ def test_all_presigns_before_two_workers_and_serial_exact_confirm(prepared_input
             assert hashlib.sha256(content).hexdigest() == file.sha256
         assert (
             provider.presigns["one.bin"]["sha256_hash"]
-            == provider.presigns["two.bin"]["sha256_hash"]
+            != provider.presigns["two.bin"]["sha256_hash"]
         )
         assert (
             provider.presigns["one.bin"]["object_key"] != provider.presigns["two.bin"]["object_key"]

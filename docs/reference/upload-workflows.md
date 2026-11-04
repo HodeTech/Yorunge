@@ -75,6 +75,26 @@ DIGEST='FULL_64_HEX_DIGEST_FROM_REVIEW'
 
 Sadece gereken acknowledgement’lar kabul edilir. Plan/onay en çok 900 saniye geçerlidir; değişmiş kaynak veya bağ eski onayla gönderilmez. TTY ilerlemesinde **taşımaya verilen byte** ve **kalıcı confirm ile onaylanan dosya/byte** ayrı görünür. JSON/NDJSON ve non-TTY’de ilerleme metni yoktur. Başarılı sonuç operation ve dataset ID ile yalnız metadata doğrulama seviyesini gösterir.
 
+## Aynı içerikli dosyaları bulma
+
+İlk Platform upload yolu, farklı adlarla aynı SHA-256 içeriğini taşıyan dosyaları uzak çağrıdan önce reddeder. Yerel `inspect`/`verify` ve manifest bu adları ayrı korur. Boş dosyalar ve hardlink’ler de aynı içeriğe sahip olabilir. Manifestte hangi adların birlikte göründüğünü ağ veya credential kullanmadan bulabilirsiniz:
+
+```sh
+.venv/bin/python - "$MANIFEST" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+groups = {}
+for item in json.loads(Path(sys.argv[1]).read_bytes())["files"]:
+    groups.setdefault(item["sha256"], []).append(item["path"])
+print(json.dumps([names for names in groups.values() if len(names) > 1],
+                 ensure_ascii=False, indent=2))
+PY
+```
+
+Bu örnek yalnız ad gruplarını gösterir; dosya kopyalamaz/silmez ve manifesti değiştirmez. Aktarmak istediğiniz dosyaları kendi seçiminizle ayrı bir klasörde düzenleyip o klasör için yeni manifest ve plan üretin. Aynı içerikli bütün adları uzak tarafta korumak gerekiyorsa [P02-R2](../roadmap/tasks/p02-r2-upload-content-cardinality.md) desteği henüz açık olduğundan bu upload yolunu kullanmayın. Mevcut unknown işi yeni planla tekrar göndermeyin; aşağıdaki geçmiş/uzlaştırma yolunu izleyin.
+
 ## Kesinti ve geçmiş
 
 `start` aynı planı tekrar göndermez. Latched pending/unknown exit5 + aynı ID, henüz arm edilmemiş veya failed/cancelled kayıt exit2, mevcut succeeded kayıt yerel başarıdır. Gönderim belirsizliğinde yeni create/plan/ad ile denemeyi tekrarlamayın. Önce yerel kaydı inceleyin; ID ilk çıktıdan önce kaybolmuşsa plan ID yeterlidir:

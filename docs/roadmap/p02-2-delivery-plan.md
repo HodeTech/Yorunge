@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-11-02. **Güncellendi:** 2026-11-04. **Durum:** ADR-0024/0025/0026 Accepted; yerel d–w verified; gerçek ortak provider/API/CLI kodu yerel kabulü geçti, bütünleşik kurulum/native/son kaynak CI/kanıt/ayrı canlı kabul açık. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` üzerinden; P02-1 kapanışı `973cec5` aynı daldadır. Kullanıcı P02-2a/b/c'yi tek nihai development PR'ında, adım başına commit ve iki fresh review turuyla istedi. Yeni ADR'ler onaylanmadan bağımlı ürün kodu başlamaz; ayrı hazırlık PR'ı açılmaz.
 
+**4 Kasım ADR-0028 geçişi:** Kullanıcı review revizyonu ve iki fresh teyit sonrası Accepted. İlk Platform producer’ında tekrarlı hash yerel ret; özgün olumlu çoklu-ad ihtiyacı P02-R2’de açık kalır. Güncel max128 kabulü 128 farklı hash/386 accepted aşamayı korur; eski eş-hash olumlu kayıt tarihsel kalır. İlk kod dilimi uygunluk/lifecycle/CLI/API ve fixture geçişi; ikinci dilim iki PNG/158-byte/8-graph runner’dır. Her dilim commit ve iki fresh review turuyla kapanır. Son olumlu live, tek 03 kaynak serisi/CI/kurulum/kanıt bu geçişten sonra yapılır; r4 unknown başarıya çevrilmez.
+
 ## Kullanıcı sonucu
 
 Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşturur; normal dosyaları hedef/yetki/byte sınırları içinde yükler ve neyin doğrulandığını görür. Cevap kaybında aynı operation ID'sine dönüp salt okuma ile durumu inceler; ikinci create/PUT üretmez. Gelişmiş etkili resume P02-3a'dır; ilk kesinti güvenliği ve read reconciliation bu pakettedir.
