@@ -46,7 +46,7 @@ R5 ca0d29c/runtime07’de iki 79-byte dosyayı kapsar. Sonraki 128 KiB okuma/cod
 
 ## Gizlilik kararı
 
-Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. Gizlilik/retention değişikliği ayrı [Proposed ADR-0029](../decisions/0029-evidence-provenance-privacy.md) ile kullanıcı onayına sunulur; bu karar bağımsız ürün kusurlarını bekletmez. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
+Belgelemenin kişisel yol yasağı ile orijinal kanıt baytlarını koruma kuralı çakışıyor. 442 arşivde bilinen yerel hesap yolu ve yayımlanmış Git author e-posta literal’lerinin dar taraması 90 eşleşen arşiv buldu: 87 yerel yol, 8 e-posta (örtüşür). Bu genel PII/secret veya gömülü ZIP taraması değildir; değerler yeni belgeye kopyalanmaz. İlk gizlilik/retention önerisi ayrı [ADR-0029](../decisions/0029-evidence-provenance-privacy.md) ile kullanıcı onayına sunulur; bu karar bağımsız ürün kusurlarını bekletmez. Secret sızıntısı bulunduğu iddia edilmez; tarihsel gzip/history yeniden yazılmaz.
 
 ## Dilim 1 ilk doğrulama
 
@@ -85,3 +85,6 @@ Gerçek CLI eksik iki acknowledgement ve yanlış digest negatifleri sıfır yen
 Offline guard standart DNS/reverse-DNS/datagram yollarını kapatır; TLS fixture yalnız explicit loopback reverse bilgisini üretir. Bu native-extension sandbox’ı değildir. Foreground test işi inherited ignored/blocked SIGINT’i bir kez normalleştirip çıkışta eski durumu döndürür; testler arası kontrol reset yapmadan sızıntıyı assert eder. İki nested launcher modu gerçek HTTP session/CLI publication/known-ID iptal testlerini geçti.
 
 İlk seçki 358 passed/6 test-oracle hatası verdi: dört binding vektörü yanlışlıkla standalone strict DTO listesine konmuştu; wrong-arm kodu invalid_request ve post-stream hash retinde bir HTTP doğru beklentilerdir. Bunlar düzeltildi; ilgili 22 test geçti. Sonraki dar text/CLI kontrolleri 7, dolu terminal migration/mesaj kontrolleri 4 test geçti (kümeler örtüşür, toplam olarak toplanmaz). Ruff ve dört değişen source dosyasında strict mypy geçti. Son leak/counter assertion’ları ayrıca dar koşulur; fresh review beklenir. Tam suite veya native/live çağrı çalıştırılmadı.
+
+
+ADR-0029 /f331d7e revizyonu fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz teyit edildi. Kullanıcının koşullu kabul talimatıyla Accepted’a taşındı; 95 hash’li kayıt sınırı sabittir. Bu, yeni kontrolün veya son nötr native kabulünün uygulandığı anlamına gelmez. Standart/ADR-0019 forward bağları aynı kabul commit’inde güncellenir; araç/workflow ve metadata düzeltmesi dilim 4’te kapanacaktır.

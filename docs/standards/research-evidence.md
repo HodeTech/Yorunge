@@ -75,6 +75,10 @@ Son komut yalnız ihtiyaç duyulan raporun doğrulanmış özgün baytlarını s
 
 ## Paket ve saklama
 
+[ADR-0029](../decisions/0029-evidence-provenance-privacy.md), 95 hash bağlı tarihsel nonsecret provenance kaydının dar istisnasını ve **yeni** kanıtın Git/CI artefakt yayımı öncesindeki kontrolünü tanımlar. Sorumlu PR/ölçüm operatörüdür. Zorunlu gerçek runtime/interpreter/temp üretim bağlamı ve desteklenen kodlanmış/sıkıştırılmış ekler kontrol kapsamındadır; eksik beyan veya denetlenemeyen ek temiz sayılmaz. Gizlilik reddinde özgünler özel quarantine’da korunur, public upload durur; onaylı kalıcı saklama/ayrı somut karar olmadan takip ve kabul/merge kapısı kapanmaz. Yerel quarantine kalıcı kanıtın yerine geçmez. Bu kontrol genel PII/sır tespiti değildir; tarihsel istisna yeni kayıtlarla otomatik büyümez.
+
+Katalogdaki original_commit, ilgili özgün JSON yolunun tam Git geçmişinde arşivlenen byte boyutu/SHA-256 ile birebir eşleşen blob’un ilk bulunduğu commit’tir. Dosyanın farklı byte taşıyan ilk sürümü veya ölçülen source_commit değildir; eşleşen blob yoksa null olur. Bu metadata’nın kanıtlı düzeltmesi özgün gzip/content byte’larını değiştirmez.
+
 Ham gzip arşivleri Git'te korunur; sdist/wheel'e dahil edilmez. Paket denetimi raw dizinini ve üyelerini ayrıca reddeder. Manifest/indeks, yöntem, rapor ve gerekli test vektörleri sdist geliştirme girdisidir. İndeksteki ilk kayıt bağlantıları değişmez Git commit'lerine gider; arşivin kendi yerel yolu paket içinde varmış gibi linklenmez. Arşiv tam denetimi Git checkout'u gerektirir.
 
 CI log/artifact saklama süresi tek kalıcı kanıt kaynağı olarak kullanılmaz. İleride ayrı arşiv deposuna geçilirse kalıcı erişim, içerik hash'i ve saklama politikası ayrıca korunur; başarısız kayıtlar yalnız PR'ı küçültmek için atılmaz.

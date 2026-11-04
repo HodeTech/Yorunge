@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "proposed_inventory_not_retention_approval",
+  "status": "accepted_limited_historical_retention",
   "snapshot_entries": 442,
   "scan_scope": "Known personal-home and published Git-author provenance literals in original report bytes, plus five specifically named strict base64/size/hash-verified embedded payloads. Generic CI runner paths are not personal-home evidence. No generic PII/secret or complete nested-archive guarantee.",
   "records": [

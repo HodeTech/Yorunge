@@ -26,6 +26,8 @@ Taslak/benimsenmiş tasarım ile uygulanmış/yayımlanmış davranış ayrı ya
 
 İç bağlantılar göreli ve mevcut dosyaya gider. Kişisel mutlak yollar, başka checkout'a bağımlı belge bağlantıları ve sır/özel veri repo belgelerine yazılmaz. Dış kaynakta URL, erişim tarihi, kanıt türü ve sınır kaydedilir. Ham site metni ve büyük bundle kopyalanmaz; kendi sözlerimizle tespit yazılır.
 
+2026-11-04 tarihli [ADR-0029](../decisions/0029-evidence-provenance-privacy.md) yalnız envanterde adı/iki hash’i sabit 95 tarihsel kanıtın sır olmayan makine provenance’ı için dar retention istisnasıdır. Yeni çıktılar kişisiz üretim ve Git/CI yayımı öncesi bounded kontrol kapsamındadır; bu genel PII/sır temizliği garantisi değildir. İstisna veya gizlilik reddi takibinin sahibi ilgili PR/ölçüm operatörüdür; sır ve özel analiz için istisna yoktur.
+
 ## Özel analiz arşivi
 
 `docs/analysis/private/` Git'ten ve yayın kapsamından dışlanır. Bu arşivin içeriği, kaynak proje adları, bağlantıları veya deney sonuçları yayımlanabilir belgelerin ve uygulama kodunun referansı olamaz. Arşive yönlendiren içerik bağlantısı oluşturulmaz; ürünün gerektirdiği karar kanonik belgede bağımsız anlatılır. Arşivdeki tarihsel belgeler mevcut biçimleriyle korunur; genel belge indeks/biçim kontrolleri ve yayın taramaları bu dizini kapsamaz.
