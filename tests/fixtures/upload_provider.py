@@ -153,7 +153,10 @@ class UploadProvider:
             self.objects[key] = request.body
         if self.after_put:
             self.after_put(row["filename"])
-        return reply({"success": True}, 503 if row["filename"] == self.fail_put_name else 200)
+        return reply(
+            {"ok": True, "size": len(request.body), "key": key},
+            503 if row["filename"] == self.fail_put_name else 200,
+        )
 
     def confirm(self, request, count):
         if self.on_request:

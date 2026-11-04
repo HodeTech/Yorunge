@@ -17198,6 +17198,21 @@
       }
     },
     {
+      "name": "p02-2-storage-contract-first-20261104.json",
+      "archive": "raw/p02-2-storage-contract-first-20261104.json.gz",
+      "original_commit": null,
+      "content_bytes": 3352,
+      "content_sha256": "77b458ad7134f0fdd203aaff4f76af90d5c2a357274cc8b9f41df26680ba4221",
+      "archive_bytes": 898,
+      "archive_sha256": "6487f37d68768d6cb50185a03e81b41b85c10ad44f77a0d9075cd106147a78ac",
+      "summary": {
+        "source_commit": "00658dfc18fb6f52067e4f68ccc72814fc1bae52",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "evidence_collected"
+      }
+    },
+    {
       "name": "p02-2-upload-v1-smoke-01-rejected.json",
       "archive": "raw/p02-2-upload-v1-smoke-01-rejected.json.gz",
       "original_commit": null,

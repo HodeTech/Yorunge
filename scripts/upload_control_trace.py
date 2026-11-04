@@ -33,6 +33,7 @@ FIELDS = (
     "file_size",
     "client_uid",
     "object_key",
+    "key",
     "upload_url",
     "content_type",
     "headers",

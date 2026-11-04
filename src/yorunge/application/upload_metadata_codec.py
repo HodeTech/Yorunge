@@ -1,6 +1,7 @@
 """Closed acknowledgements and item pages; no write replay or remote-byte claims."""
 
 from yorunge.application import platform_upload_codec as control
+from yorunge.application.storage import validate_object_key
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.dataset_manifest import safe_text
 from yorunge.domain.errors import YorungeError
@@ -11,10 +12,52 @@ _ITEM_FIELDS = frozenset(
 )
 
 
-def put_ack(data: bytes, secret: SecretValue) -> None:
+def put_ack(
+    data: bytes,
+    secret: SecretValue,
+    *,
+    expected_size: int | None = None,
+    expected_key: SecretValue | None = None,
+) -> None:
     if len(data) > 64 * 1024:
         raise YorungeError("invalid_response")
-    control.link_ack(data, secret)
+    if expected_size is None and expected_key is None:
+        control.link_ack(data, secret)
+        return
+    if (
+        type(expected_size) is not int
+        or not 0 <= expected_size <= 500_000_000
+        or type(expected_key) is not SecretValue
+    ):
+        raise YorungeError("invalid_request")
+    try:
+        key = validate_object_key(expected_key.reveal())
+    except YorungeError:
+        raise YorungeError("invalid_request") from None
+    control._require_secret(secret)
+    if not data:
+        return
+    root = control._object(control.raw(data, "put_ack", secret))
+    control._ack_controls(root, None)
+    _put_controls(root, expected_size, key)
+    if root.get("success") is not True and (root.get("ok") is not True or "size" not in root):
+        raise YorungeError("invalid_response")
+
+
+def _put_controls(root: dict[str, object], size: int, key: str) -> None:
+    for node in (root, root.get("data")):
+        if type(node) is not dict:
+            continue
+        if "ok" in node and node["ok"] is not True:
+            raise YorungeError("invalid_response")
+        if "size" in node and (type(node["size"]) is not int or node["size"] != size):
+            raise YorungeError("invalid_response")
+        if any(
+            type(node[field]) is not str or node[field] != key
+            for field in ("key", "object_key")
+            if field in node
+        ):
+            raise YorungeError("invalid_response")
 
 
 def _count(root: dict[str, object], key: str, expected: int, *, required: bool = False) -> None:

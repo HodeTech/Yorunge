@@ -126,6 +126,7 @@ class Probe:
                 raw,
                 {
                     "object_key": upload.provider_key.reveal(),
+                    "key": upload.provider_key.reveal(),
                     "size": file.size,
                     "file_size": file.size,
                     "bytes_written": file.size,
@@ -133,7 +134,9 @@ class Probe:
                 },
             )
             try:
-                metadata.put_ack(raw, self.key.secret)
+                metadata.put_ack(
+                    raw, self.key.secret, expected_size=file.size, expected_key=upload.provider_key
+                )
             except YorungeError as error:
                 self.report.update(
                     typed_put_ack_accepted=False, typed_put_ack_error_code=error.code

@@ -36,6 +36,7 @@ HELPER = runpy.run_path(str(ROOT / "scripts/upload_storage_diagnostic.py"))
     "case",
     [
         "valid",
+        "ok",
         "opaque",
         "denied",
         "wrong_sent",
@@ -167,6 +168,8 @@ def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_
             if case == "denied":
                 raise HttpStatusFailure(403)
             raw = {"success": True}
+            if case == "ok":
+                raw = {"ok": True, "size": 79, "key": "synthetic/key.png"}
             if case == "opaque":
                 raw = {"uploaded": True, "size": 79, "object_key": "synthetic/key.png"}
             if case == "secret_put":
@@ -213,7 +216,7 @@ def test_storage_research_keeps_one_effect_per_stage_and_exact_source_bytes(tmp_
     )
     confirmed = sum(request.endpoint.endswith("/upload/confirm") for request in requests)
     assert confirmed == (
-        1 if case in ("valid", "confirm_counter", "bad_confirm", "missing_hash") else 0
+        1 if case in ("valid", "ok", "confirm_counter", "bad_confirm", "missing_hash") else 0
     )
     if sinks:
         assert len(sinks[0]) == 79

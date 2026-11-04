@@ -32,6 +32,7 @@ Kind = Literal[
     "role",
     "link",
     "ack",
+    "put_ack",
     "presign",
     "confirm",
     "items",
@@ -49,6 +50,7 @@ _FIELDS: dict[Kind, frozenset[str]] = {
     "role": frozenset({"role", "permissions"}),
     "link": frozenset(),
     "ack": frozenset(),
+    "put_ack": frozenset(),
     "presign": frozenset({"presigned_urls", "duplicates"}),
     "confirm": frozenset({"created", "actual_count", "batch_duplicates"}),
     "items": frozenset({"items", "next_cursor", "total"}),
@@ -166,8 +168,8 @@ def _list_keys(
 def _fixed_keys(
     value: object, kind: Kind, wrapped: bool, selected_id: str | None
 ) -> dict[tuple[str, ...], frozenset[str]]:
-    if kind in {"link", "ack"}:
-        return _ack_keys(value, relational=kind == "link")
+    if kind in {"link", "ack", "put_ack"}:
+        return _ack_keys(value, kind)
     prefix = ("data",) if wrapped else ()
     fixed: dict[tuple[str, ...], frozenset[str]] = {prefix: _FIELDS[kind]}
     payload = _object(value).get("data") if wrapped else value
@@ -182,10 +184,12 @@ def _fixed_keys(
     return fixed
 
 
-def _ack_keys(value: object, *, relational: bool) -> dict[tuple[str, ...], frozenset[str]]:
+def _ack_keys(value: object, kind: Kind) -> dict[tuple[str, ...], frozenset[str]]:
     fields = frozenset({"success"})
-    if relational:
+    if kind == "link":
         fields |= {"project_id", "dataset_id"}
+    if kind == "put_ack":
+        fields |= {"ok", "size", "key", "object_key"}
     fixed: dict[tuple[str, ...], frozenset[str]] = {(): fields}
     if type(_object(value).get("data")) is dict:
         fixed[()] |= {"data"}
@@ -219,7 +223,7 @@ def _checked_raw(
         root = _object(value)
         if root["success"] is not True:
             raise YorungeError("invalid_response")
-        return root if kind in {"link", "ack"} else root.get("data")
+        return root if kind in {"link", "ack", "put_ack"} else root.get("data")
     if kind == "identity":
         raise YorungeError("invalid_response")
     return value

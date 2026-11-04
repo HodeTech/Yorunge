@@ -158,7 +158,7 @@ class PilotGuard:
             finally:
                 self.put_context.reset(token)
 
-        def put_observed(raw: bytes, secret: Any) -> None:
+        def put_observed(raw: bytes, secret: Any, **kwargs: Any) -> None:
             current = self.put_context.get()
             if current is not None:
                 row, expected = current
@@ -167,7 +167,7 @@ class PilotGuard:
                     body_bytes=len(raw),
                     shape=TRACE["body_shape"](raw, expected),
                 )
-            put_ack(raw, secret)
+            put_ack(raw, secret, **kwargs)
 
         return put_executed, put_observed
 

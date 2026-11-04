@@ -368,6 +368,49 @@ def test_null_remote_hash_stays_unknown_and_cursor_is_opaque():
     metadata.put_ack(b'{"success":true}', SECRET)
 
 
+@pytest.mark.parametrize("size", [0, 79, 500_000_000])
+def test_put_ok_size_ack_is_bound_to_exact_sent_size_and_volatile_key(size):
+    raw = encoded({"ok": True, "size": size, "key": KEY, "unused": {"value": "discarded"}})
+    metadata.put_ack(raw, SECRET, expected_size=size, expected_key=SecretValue(KEY))
+    with pytest.raises(YorungeError) as error:
+        metadata.put_ack(raw, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "update",
+    [
+        {"ok": False},
+        {"ok": 1},
+        {"ok": "true"},
+        {"size": 78},
+        {"size": True},
+        {"size": 79.0},
+        {"key": "wrong/key"},
+        {"object_key": "wrong/key"},
+        {"success": False},
+        {"data": {"ok": False}},
+        {"data": {"size": 78}},
+    ],
+)
+def test_put_ok_ack_never_accepts_negative_or_mismatched_echo(update):
+    raw = encoded({"ok": True, "size": 79, "key": KEY, **update})
+    with pytest.raises(YorungeError) as error:
+        metadata.put_ack(raw, SECRET, expected_size=79, expected_key=SecretValue(KEY))
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("field", ["ok", "size", "key", "object_key"])
+def test_put_consumed_key_exemption_does_not_reach_discarded_metadata(field):
+    raw = encoded({"ok": True, "size": 79, "key": KEY, "object_key": KEY})
+    secret = SecretValue(field)
+    metadata.put_ack(raw, secret, expected_size=79, expected_key=SecretValue(KEY))
+    nested = encoded({"ok": True, "size": 79, "unused": {field: "not-a-secret-value"}})
+    with pytest.raises(YorungeError) as error:
+        metadata.put_ack(nested, secret, expected_size=79, expected_key=SecretValue(KEY))
+    assert error.value.code == "invalid_response"
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

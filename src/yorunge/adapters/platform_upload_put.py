@@ -13,6 +13,7 @@ from yorunge.application import upload_descriptors as descriptors
 from yorunge.application import upload_metadata_codec as metadata
 from yorunge.application.storage import StorageRequest
 from yorunge.application.upload_arms import UploadArm
+from yorunge.domain.credentials import SecretValue
 from yorunge.domain.dataset_transfer import StageReceipt
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_requests import upload_request_digest
@@ -30,6 +31,7 @@ class PreparedPutCall(_Private):
             context, upload.provider_key, upload.target, upload.content_type
         )
         self._port, self._context = port, context
+        self._provider_key: SecretValue | None = upload.provider_key
         self._source = DescriptorByteSource(
             port._plan.root, context.file, deadline=port._budget.end
         )
@@ -74,6 +76,8 @@ class PreparedPutCall(_Private):
                     self._reservation.finish()
             except YorungeError:
                 failed = True
+            finally:
+                self._provider_key = None
         if failed and not pending:
             raise YorungeError("transport_failed")
 
@@ -83,6 +87,9 @@ class PreparedPutCall(_Private):
             self._port._client(client)
             self._port._file(self._context)
             if type(arm) is not UploadArm or self._closed or self._used:
+                raise YorungeError("invalid_request")
+            provider_key = self._provider_key
+            if type(provider_key) is not SecretValue:
                 raise YorungeError("invalid_request")
             intent = arm.intent
             context = self._context
@@ -108,7 +115,12 @@ class PreparedPutCall(_Private):
                 or (self._source.sent_bytes, self._source.sent_sha256) != sent
             ):
                 raise YorungeError("input_changed")
-            metadata.put_ack(raw, self._port._credential.secret)
+            metadata.put_ack(
+                raw,
+                self._port._credential.secret,
+                expected_size=context.file.size,
+                expected_key=provider_key,
+            )
             return ControlOutcome(
                 StageReceipt(
                     schema_version=1,

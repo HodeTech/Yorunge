@@ -876,3 +876,12 @@ Storage tanı R1 contract temiz; safety tek P2 doğruladı: presign sırasında 
 
 
 Storage tanısı 1bb9041/51f4d34, farklı fresh R2 Sol/high contract ve Astra/high safety turlarında temiz kapandı. Parametre/typed-durum/role/manifest/nonce/byte/no-replay/secret/finalizer ve research/public ayrımı kaynak üzerinden doğrulandı. İki tur ve dar fix teyidi tamamdır; yeni test/build/native/ağ/özel pilot/raw tekrarı yapılmadı. Genel kullanıcı kontrol yetkisindeki ilk `first.png` slotu, exact ilk test kaynağında yalnız bir fresh presign/79-byte PUT için bir kez çalıştırılır; confirm bayrağı verilmez.
+
+
+## 4 Kasım — PUT ok/size acknowledgement uyumu
+
+00658df ve gerçek runtime05 provenance eşliği altında ilk first.png slotu bir kez çalıştı; 7 GET HTTP 200, 1 presign POST HTTP 200, 1 PUT HTTP 200. Actual 79 byte ve source/sent SHA eşliği true; my-role upload etiketi gözlendi, items-before 0. PUT yanıtı 113 byte/root object/3 alan; tüketilen ok strict true ve size strict integer=79, üçüncü alanın adı/değeri kaydedilmedi. Eski typed ack invalid_response verdi, confirm yapılmadı. [Özgün safe receipt](evidence.md#p02-2-storage-contract-first-20261104) arşivlendi; toplam 404 kayıt. Yeni create/link/old-operation mutation yoktur. Bu kaynak tekrar PUT edilmez; diğer iki slot farklı dosyaları kullanır.
+
+Dar decoder uyumu: actual source/transport tuple tam eşit olduktan sonra core PreparedPutCall, expected_size ve SecretValue türündeki volatile provider key’i PUT decoder’a verir. Legacy empty/root-success biçimleri korunur; yeni ok/size formu yalnız bu context ile açılır, strict exact size gerekir. Sunulan key/object_key/size ve root/data success/ok çelişkisi kontrollü ret olur. Key referansı close’un tüm finally yollarında temizlenir; StageReceipt yalnız eski local UUID’yi taşır. Raw-tree seçili-credential taraması ve PUT-specific key muafiyeti başka metadata veya link/generic ack’e taşınmaz. Generic kontrol fonksiyonu context’siz yeni biçimi kabul etmez; kalıcı wire/DDL/history/authority/replay değişmez.
+
+Codec/descriptors/research/real data-port/runner seçkisi **183 passed/39,74 s/-W error** verdi. Strict malformed/false/size/key/root-data negatifleri; zero/79/500.000.000 expected size, kısa protocol-key secret muafiyeti ve discarded metadata retleri eklendi. Fixture artık HTTP backend’in ok/size/key biçimini taşır; core gerçekten context’i geçirir. Mypy 144/Ruff temiz. Sonraki iki dosya/optional confirm slotları yeni runtime ve iki fresh review’den sonra çalışır; source/native ve tam-suite ölçümleri tekrarlanmadı.
