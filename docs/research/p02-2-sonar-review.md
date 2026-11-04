@@ -67,3 +67,8 @@ Yerel read-only public Sonar API ve açık UI sekiz benzersiz issue anahtarını
 
 
 E562015 kaynak dilimi iki fresh contract/safety turunda bulgusuz kapandı. Üç false-positive ve bir accepted disposition Sonar’da gerekçeli birer yorumla uygulandı; dört exact anahtarın durumu, yorum varlığı ve gerekçe eşliği API’den ayrıca doğrulandı. Follow-up kalite kapısı bu f7d6809 analizinde **OK** oldu. Dört source-fix kaydı yeni kaynak analizini bekler; mevcut gate sonucu o düzeltmelerin kapanışı veya bütün P02-2 kabulü sayılmaz. Kural, severity, exclusion ve kalite kapısı değişmedi.
+
+
+### 7e5675c yeni analizinin tek kalan uyarısı
+
+Yeni analiz üç source-fix kaydını kapattı; gate OK ve tek açık S3415 kaldı. Analyzer’ın flow konumları incelendi: `test_upload_content_eligibility.py` içindeki `(len(server.requests), counts(data[0])) == before` assertion’ını “expected first” sayıyor. Sol taraf çağrı sonrası güncel gerçek gözlem, `before` sağ tarafta beklenen işlem-öncesi snapshot’tır; dosyanın diğer actual-first assertion’larıyla tutarlıdır. Önceki expected_error adlandırması bu uyarıyı kapatmadı; kodla kapandı diye sayılmaz. Bu tek kayıt için `current_actual_tuple_compared_to_before_expected_snapshot` gerekçesiyle false-positive önerilir. Ürün/test byte haritası, assertion oracle’ı veya kaynak bağlı kabul sırf analizörü susturmak için değiştirilmez. Uzak disposition henüz uygulanmadı; dar iki fresh review ve gerçek geri okuma beklenir.
