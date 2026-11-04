@@ -14,7 +14,7 @@ ROUTES = [
     ("create", "POST", "datasets", ()),
     ("project_link", "POST", f"projects/{ID}/datasets", ()),
     ("membership", "GET", f"projects/{ID}/datasets", ()),
-    ("owned", "GET", "datasets", (("page", "1"), ("page_size", "128"), ("scope", "owned"))),
+    ("owned", "GET", "datasets", (("page", "1"), ("page_size", "20"), ("scope", "owned"))),
     ("detail", "GET", "datasets/sample-user/my-role", ()),
     ("role", "GET", f"datasets/{ID}/my-role", ()),
     ("presign", "POST", f"datasets/{ID}/upload/presign", ()),
@@ -127,7 +127,7 @@ def test_default_generic_http_policy_stays_strict_and_marker_is_not_sent():
 
 @pytest.mark.parametrize("page", ["0", "01", "129", "1.0", "1e2", "١", ""])
 def test_owned_pagination_is_canonical_bounded_protocol_not_free_query(page):
-    query = (("page", page), ("page_size", "128"), ("scope", "owned"))
+    query = (("page", page), ("page_size", "20"), ("scope", "owned"))
     with pytest.raises(YorungeError) as error:
         request("owned", "GET", "datasets", query)
     assert error.value.code == "invalid_service_target"
@@ -135,8 +135,16 @@ def test_owned_pagination_is_canonical_bounded_protocol_not_free_query(page):
 
 @pytest.mark.parametrize("page", ["1", "128"])
 def test_owned_page_boundaries_and_order_independence(page):
-    query = (("scope", "owned"), ("page_size", "128"), ("page", page))
+    query = (("scope", "owned"), ("page_size", "20"), ("page", page))
     assert request("owned", "GET", "datasets", query, secret=page)
+
+
+@pytest.mark.parametrize("size", ["5", "128", "020", "21"])
+def test_owned_page_size_is_the_observed_fixed_value_with_no_automatic_fallback(size):
+    query = (("page", "1"), ("page_size", size), ("scope", "owned"))
+    with pytest.raises(YorungeError) as error:
+        request("owned", "GET", "datasets", query)
+    assert error.value.code == "invalid_service_target"
 
 
 @pytest.mark.parametrize("cursor", ["", "x" * 1025, "a\n", "\u202e", "ü" * 513])

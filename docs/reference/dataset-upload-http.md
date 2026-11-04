@@ -13,7 +13,7 @@ Default HttpRequest endpoint/query literal politikası değişmez. Yalnız priva
 | create | POST datasets | Query yok; URI sabit; body codec ayrı zorunlu |
 | project_link | POST projects/{uuid}/datasets | Query yok; project UUID dinamik |
 | membership | GET projects/{uuid}/datasets | Query yok; project UUID dinamik |
-| owned | GET datasets | page=1..128 canonical decimal, page_size=128, scope=owned; bu sayfa/protokol değerleri kapalı, fazladan/duplicate key yok |
+| owned | GET datasets | page=1..128 canonical decimal, page_size=20, scope=owned; bu sayfa/protokol değerleri kapalı, fazladan/duplicate key yok |
 | detail | GET datasets/{username}/{slug} | Query yok; iki bounded safe segment dinamik. UUID my-role rotası bu seçimden tahmin edilmez |
 | role | GET datasets/{uuid}/my-role | Query yok; dataset UUID dinamik |
 | presign | POST datasets/{uuid}/upload/presign | Query yok; dataset UUID dinamik |

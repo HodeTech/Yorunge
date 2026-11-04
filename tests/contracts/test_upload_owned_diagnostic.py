@@ -108,7 +108,7 @@ def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
     )
     if case in ("valid", "pii", "missing_metadata", "query_rejected"):
         asyncio.run(action)
-        assert report["consumer_accepted"] is (case != "missing_metadata")
+        assert report["consumer_accepted"] is True
         assert report["detail_matches_create"] is True
         assert len(calls) == (3 if case == "query_rejected" else 2)
     else:
@@ -122,7 +122,7 @@ def test_bounded_consumer_diagnostic_has_no_write_or_private_value_output(case):
         assert report["requests"][0]["status"] == 422
         assert report["requests"][1]["page_size"] == 5
     if case == "missing_metadata":
-        assert report["owned_consumer_accepted"] is False
+        assert report["owned_consumer_accepted"] is True
         assert report["owned_shape"]["selected_fields"]["contributions_enabled"] == "missing"
     if case == "wrong_owner":
         assert report["owned_shape"]["matches_create"]["owner_id"] is False
@@ -162,10 +162,10 @@ def test_owned_diagnostic_uses_real_read_session_and_preserves_rejected_http_sta
                     )
                 )
     assert [row["status"] for row in report["requests"]] == [422, 200, 200]
-    assert report["owned_consumer_accepted"] is False
+    assert report["owned_consumer_accepted"] is True
     assert report["detail_matches_create"] is True
     assert report["detail_shape"]["matches_create"] == dict.fromkeys(HELPER["FIELDS"][:7], True)
-    assert report["consumer_accepted"] is False
+    assert report["consumer_accepted"] is True
     assert len(server.requests) == 3
     assert all(record.method == "GET" for record in server.requests)
     assert DATASET not in json.dumps(report)

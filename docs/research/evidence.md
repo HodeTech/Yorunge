@@ -2665,6 +2665,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-owned-diagnostic-20261104-incomplete.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "incomplete", "source_commit": "06c26508a6b1b430194557995c4c51d89b6607c4"}`.
 
+## p02-2-owned-diagnostic-20261104-r2
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `84d9714eb44a8505898d48ed7ef83b293385760d105e8041b555b79903b3bfe7`.
+**Yerel arşiv:** `raw/p02-2-owned-diagnostic-20261104-r2.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "70e787c74ad2381a52e4dd57896c70d1ab8c3019"}`.
+
 ## p02-2-reference-datasets-01
 
 **Tür:** `dataset-hash`.

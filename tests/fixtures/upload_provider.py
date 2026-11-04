@@ -87,8 +87,10 @@ class UploadProvider:
     def owned(self, request, count):
         if self.on_request:
             self.on_request()
+        listed = self.dataset()
+        listed.pop("contributions_enabled")
         return reply(
-            [{**self.dataset(), "owner_username": "test-user", "slug": "test-dataset"}]
+            [{**listed, "owner_username": "test-user", "slug": "test-dataset"}]
             if self.created
             else []
         )
@@ -213,7 +215,7 @@ class UploadProvider:
             f"/api/v1/projects/{self.project_id}": project,
             "/api/v1/datasets": self.create,
             f"/api/v1/projects/{self.project_id}/datasets": self.link,
-            "/api/v1/datasets?page=1&page_size=128&scope=owned": self.owned,
+            "/api/v1/datasets?page=1&page_size=20&scope=owned": self.owned,
             "/api/v1/datasets/test-user/test-dataset": self.detail,
             f"/api/v1/datasets/{DATASET}/my-role": self.role,
             f"/api/v1/datasets/{DATASET}/upload/presign": self.presign,

@@ -16644,6 +16644,21 @@
       }
     },
     {
+      "name": "p02-2-owned-diagnostic-20261104-r2.json",
+      "archive": "raw/p02-2-owned-diagnostic-20261104-r2.json.gz",
+      "original_commit": null,
+      "content_bytes": 1629,
+      "content_sha256": "84d9714eb44a8505898d48ed7ef83b293385760d105e8041b555b79903b3bfe7",
+      "archive_bytes": 638,
+      "archive_sha256": "edebc61d341a0d3f6702cfcb7b02fcd5bebb8dfddaf584b5bfc6e9e59dd37b90",
+      "summary": {
+        "source_commit": "70e787c74ad2381a52e4dd57896c70d1ab8c3019",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "evidence_collected"
+      }
+    },
+    {
       "name": "p02-2-reference-datasets-01.json",
       "archive": "raw/p02-2-reference-datasets-01.json.gz",
       "original_commit": null,

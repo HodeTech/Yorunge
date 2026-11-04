@@ -10,7 +10,11 @@ from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.adapters.upload_input_files import UploadInputObservation
 from yorunge.application import platform_upload_codec as codec
 from yorunge.application.http_transport import HttpCredential, HttpRequest, HttpStatusFailure
-from yorunge.application.platform_upload_literals import UploadEndpoint
+from yorunge.application.platform_upload_literals import (
+    OWNED_MAX_PAGES,
+    OWNED_PAGE_SIZE,
+    UploadEndpoint,
+)
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.upload_budget import UploadBudget
 from yorunge.application.upload_inputs import revalidate_input
@@ -149,13 +153,13 @@ class ObservedUploadReader:
         secret = self._credential.secret
         seen: set[str] = set()
         located: LocatedDataset | None = None
-        for page in range(1, 129):
+        for page in range(1, OWNED_MAX_PAGES + 1):
             raw = await self._get(
                 client,
                 "owned",
                 "datasets",
                 end,
-                (("page", str(page)), ("page_size", "128"), ("scope", "owned")),
+                (("page", str(page)), ("page_size", str(OWNED_PAGE_SIZE)), ("scope", "owned")),
             )
             owned = codec.owned_page(raw, expected.id, self.scope, parameters, secret)
             if seen.intersection(owned.ids):
@@ -164,7 +168,7 @@ class ObservedUploadReader:
             if owned.selected is not None:
                 located = owned.selected
                 break
-            if len(owned.ids) < 128:
+            if len(owned.ids) < OWNED_PAGE_SIZE:
                 break
         if located is None:
             raise YorungeError("invalid_response")

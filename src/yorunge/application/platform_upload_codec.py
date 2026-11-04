@@ -8,6 +8,7 @@ from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
+from yorunge.application.platform_upload_literals import OWNED_PAGE_SIZE
 from yorunge.application.response_json import literal_secret_match, parse_json
 from yorunge.application.upload_inputs import revalidate_input
 from yorunge.domain.capabilities import canonical
@@ -17,6 +18,7 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload import (
     LocatedDataset,
     ProviderDataset,
+    ProviderDatasetMetadata,
     ProviderProject,
     ProviderRole,
 )
@@ -241,7 +243,9 @@ def context(me_id: str, selected: ProviderProject, scope: UploadScope) -> None:
         raise YorungeError("invalid_response")
 
 
-def _owner(result: ProviderDataset, scope: UploadScope, parameters: UploadParameters) -> None:
+def _owner(
+    result: ProviderDatasetMetadata, scope: UploadScope, parameters: UploadParameters
+) -> None:
     owner = result.owner_id if scope.owner.kind == "user" else result.org_id
     if (
         owner != scope.owner.id
@@ -296,11 +300,15 @@ def owned_page(
     secret: SecretValue,
 ) -> OwnedPage:
     rows = _rows(raw(data, "owned", secret, selected_id=dataset_id))
+    if len(rows) > OWNED_PAGE_SIZE:
+        raise YorungeError("invalid_response")
     ids = tuple(_identifier(row["id"]) for row in rows)
     selected = next((row for row in rows if row["id"] == dataset_id), None)
     if selected is None:
         return OwnedPage(ids, None)
-    result = _validate(LocatedDataset, _projection(selected, _LOCATED))
+    if "contributions_enabled" in selected and selected["contributions_enabled"] is not False:
+        raise YorungeError("invalid_response")
+    result = _validate(LocatedDataset, _projection(selected, _LOCATED - {"contributions_enabled"}))
     _owner(result, scope, parameters)
     return OwnedPage(ids, result)
 

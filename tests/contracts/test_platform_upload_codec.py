@@ -265,6 +265,49 @@ def test_owned_lookup_uses_exact_id_and_bounded_unchanged_segments():
         rejected_call()
 
 
+@pytest.mark.parametrize("present", [False, True])
+def test_owned_contribution_policy_is_never_invented_or_used_as_detail_proof(present):
+    listed = located()
+    if not present:
+        listed.pop("contributions_enabled")
+    found = codec.owned_match(encoded([listed]), DATASET, SCOPE, PARAMETERS, SECRET)
+    assert found is not None
+    assert "contributions_enabled" not in found.model_dump()
+    expected = codec.created(encoded(dataset()), SCOPE, PARAMETERS, SECRET)
+    missing_detail = dataset()
+    missing_detail.pop("contributions_enabled")
+    raw = encoded(missing_detail)
+    with pytest.raises(YorungeError) as error:
+        codec.detail(raw, expected, SCOPE, PARAMETERS, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("value", [None, True, 0, 1, "false"])
+def test_present_owned_contribution_policy_stays_strict_false(value):
+    raw = encoded([located(contributions_enabled=value)])
+    with pytest.raises(YorungeError) as error:
+        codec.owned_match(raw, DATASET, SCOPE, PARAMETERS, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("field", ["id", "owner_id", "org_id", "name", "modality", "visibility"])
+def test_owned_locator_still_requires_all_other_metadata_fields(field):
+    listed = located()
+    listed.pop(field)
+    raw = encoded([listed])
+    with pytest.raises(YorungeError) as error:
+        codec.owned_match(raw, DATASET, SCOPE, PARAMETERS, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+def test_owned_page_rejects_more_rows_than_requested_even_below_generic_array_limit():
+    rows = [{"id": f"00000000-0000-4000-8000-{i:012d}"} for i in range(21)]
+    raw = encoded(rows)
+    with pytest.raises(YorungeError) as error:
+        codec.owned_match(raw, DATASET, SCOPE, PARAMETERS, SECRET)
+    assert error.value.code == "invalid_response"
+
+
 @pytest.mark.parametrize("kind", ["owned", "membership"])
 @pytest.mark.parametrize("rows", [[{"id": DATASET}, {"id": DATASET}], [{"id": OTHER}] * 129])
 def test_duplicate_or_oversize_list_does_not_select_first_match(kind, rows):

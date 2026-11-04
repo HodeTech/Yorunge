@@ -8,6 +8,9 @@ from typing import Literal
 from yorunge.domain.credentials import ServiceId, ServiceTarget
 from yorunge.domain.errors import YorungeError
 
+OWNED_PAGE_SIZE = 20
+OWNED_MAX_PAGES = 128
+
 UploadEndpoint = Literal[
     "me",
     "project",
@@ -79,10 +82,10 @@ def _owned_query(values: dict[str, str]) -> tuple[str, ...]:
     page = values.get("page", "")
     if (
         set(values) != {"page", "page_size", "scope"}
-        or values["page_size"] != "128"
+        or values["page_size"] != str(OWNED_PAGE_SIZE)
         or values["scope"] != "owned"
         or re.fullmatch(r"[1-9]\d{0,2}", page, flags=re.ASCII) is None
-        or int(page) > 128
+        or int(page) > OWNED_MAX_PAGES
     ):
         raise YorungeError("invalid_service_target")
     return ()

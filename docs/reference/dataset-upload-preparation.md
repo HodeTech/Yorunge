@@ -33,7 +33,7 @@ Private girişler: preparation(client)→AuthorizationCheck(create_private_datas
 | upload | link okumaları + project membership + exact my-role | ilişki + has_upload gözlemi; not_exposed ve ayrı UploadObservation |
 | read | context + known ID owned lookup + detail + membership | current exact metadata; not_exposed, upload grant/etiketi gerektirmez |
 
-Owned lookup page=1..128/page_size=128/scope=owned; her sayfanın canonical ID'leri ve gözlenen sayfalar arasında duplicate ID reddedilir. ID bulununca yalnız o detail rotası kullanılır; kısa/boş sayfada veya tavan sonunda bulunamama invalid_response. Bu lookup liste tamlığı/snapshot kanıtı değildir. Bütün read/physical retry/response byte'ları aynı n bütçesinde sayılır.
+Owned lookup page=1..128/page_size=20/scope=owned; her sayfanın canonical ID'leri ve gözlenen sayfalar arasında duplicate ID reddedilir. ID bulununca yalnız o detail rotası kullanılır; kısa/boş sayfada veya tavan sonunda bulunamama invalid_response. Bu lookup liste tamlığı/snapshot kanıtı değildir. Bütün read/physical retry/response byte'ları aynı n bütçesinde sayılır.
 
 Mandatory HTTP/schema/typed negative, v2 tablosundaki denied/unavailable/invalid Check'e eşlenir; yalnız bütün mandatory kapılar geçtiyse not_exposed. Local input, deadline veya quota hatası authority yokluğu gibi yutulmaz. Parametre/plan/current scope uyuşmazlığı HTTP öncesi kontrollü ret verir. Bu profil planın mevcut gerçek grant/cost baseline'ını yenileyemez; böyle bir saved plan için upload_plan_not_valid, sıfır HTTP.
 

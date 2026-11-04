@@ -36,7 +36,7 @@ CONNECT, CONNECT_EX, GETADDRINFO = (
 )
 NOW = datetime(2026, 11, 2, 11, tzinfo=UTC)
 PROJECT_PATH = f"/api/v1/projects/{SCOPE.project_id}"
-OWNED_PATH = "/api/v1/datasets?page=1&page_size=128&scope=owned"
+OWNED_PATH = "/api/v1/datasets?page=1&page_size=20&scope=owned"
 DETAIL_PATH = "/api/v1/datasets/sample-user/sample-dataset"
 ROLE_PATH = f"/api/v1/datasets/{DATASET}/my-role"
 
@@ -186,6 +186,40 @@ def test_real_current_proof_binds_full_input_and_exact_expected_dataset(
     )
     assert (check.upload_observation is not None) is (action == "upload_created_dataset")
     assert value.snapshot().read_requests == count
+    assert value.snapshot().effect_attempts == 0
+
+
+@pytest.mark.parametrize("policy", ["valid", "missing", "null", "true", "integer"])
+def test_list_without_contribution_policy_requires_full_strict_detail(certificates, policy):
+    key, value = credential(), budget(readonly=True)
+    source = reader(key, value)
+    listed = {**dataset(), "owner_username": "sample-user", "slug": "sample-dataset"}
+    listed.pop("contributions_enabled")
+    detail = dataset()
+    if policy == "missing":
+        detail.pop("contributions_enabled")
+    elif policy != "valid":
+        detail["contributions_enabled"] = {"null": None, "true": True, "integer": 0}[policy]
+    values = routes()
+    values[OWNED_PATH] = json_reply([listed])
+    values[DETAIL_PATH] = json_reply(detail)
+    with TlsServer(certificates, values) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            check = owned.exchange(
+                lambda client: source.read_authorization(
+                    client, ProviderDataset(**dataset()), PARAMETERS
+                )
+            )
+    assert [record.path for record in server.requests[:4]] == [
+        "/api/v1/auth/me",
+        PROJECT_PATH,
+        OWNED_PATH,
+        DETAIL_PATH,
+    ]
+    assert check.outcome == ("not_exposed" if policy == "valid" else "invalid")
+    assert check.error_code == (None if policy == "valid" else "invalid_response")
+    assert len(server.requests) == (5 if policy == "valid" else 4)
     assert value.snapshot().effect_attempts == 0
 
 
@@ -496,9 +530,9 @@ def test_owned_lookup_is_bounded_exact_id_and_detects_observed_duplicates(fault)
             assert path == "/api/v1/datasets"
             page = int(wire.url.params["page"])
             assert 1 <= page <= 128
-            assert wire.url.params["page_size"] == "128"
+            assert wire.url.params["page_size"] == "20"
             result = [
-                {"id": str(uuid.UUID(int=1000 + (page - 1) * 128 + index))} for index in range(128)
+                {"id": str(uuid.UUID(int=1000 + (page - 1) * 20 + index))} for index in range(20)
             ]
             if fault == "short_missing":
                 result.pop()
@@ -531,7 +565,7 @@ def test_owned_found_on_later_page_uses_only_returned_safe_username_slug():
     async def handler(wire):
         paths.append(str(wire.url))
         if wire.url.path == "/api/v1/datasets" and wire.url.params["page"] == "1":
-            result = [{"id": str(uuid.UUID(int=1000 + index))} for index in range(128)]
+            result = [{"id": str(uuid.UUID(int=1000 + index))} for index in range(20)]
         elif wire.url.path == "/api/v1/datasets":
             result = [{**dataset(), "owner_username": "sample-user", "slug": "sample-dataset"}]
         elif wire.url.path == "/api/v1/auth/me":

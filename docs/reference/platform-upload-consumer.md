@@ -1,6 +1,6 @@
 # Platform upload tüketici sözleşmesi
 
-**Tarih:** 2026-11-02. **Durum:** ADR-0026 kapsamındaki gerçek adaptör için dar wire sözleşmesi; ürün adaptörü ve canlı upload kabulü henüz tamamlanmadı. [Politika/current/onay](dataset-upload-v2.md) ve [storage portu](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) ayrı kanonik kaynaklardır. Bu belge grant, fiyat veya genel provider API garantisi tanımlamaz.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-04. **Durum:** ADR-0026 kapsamındaki gerçek adaptörün dar wire sözleşmesi; yerel uygulama/kabul tamamlandı, bütünleşik canlı upload ve son kaynak/CI kabulü açık. [Politika/current/onay](dataset-upload-v2.md) ve [storage portu](dataset-transfer.md#p02-2f-private-storage-port-sözleşmesi) ayrı kanonik kaynaklardır. Bu belge grant, fiyat veya genel provider API garantisi tanımlamaz.
 
 ## Kaynak ve güven sınırı
 
@@ -30,9 +30,13 @@ Request builder, typed scope/parametreleri de yeniden doğrular; frozen/model_co
 | Create yanıtı | id/name/modality/visibility/contributions_enabled/owner_id/org_id tüketilir. id canonical UUID; ad/modality/private/false planla eşit; user owner'da owner_id, organization owner'da org_id beklenen owner ile eşit. org_id eksikliği null sayılmaz. HTTP 2xx veya ID tek başına yeterli değildir |
 | POST projects/{project_id}/datasets | Body yalnız dataset_id. Yanıt boş 2xx acknowledgement veya root success=true; dolu logical false/malformed ret edilir. Receipt, ilişkiyi tek başına doğrulanmış saymaz |
 | GET projects/{project_id}/datasets | En çok 128 nesnelik liste; her id canonical UUID ve tekil. Exact dataset ID tam bir kez bulunmalıdır; başka ad benzerliği veya ilk kayıt seçilmez. Eksik/tamlığı bilinmeyen liste başarı kanıtı değildir |
-| GET datasets | Yalnız kayıtta bilinen exact ID'yi bulmak için page=1..128, page_size=128, scope=owned. Her sayfa en çok 128 kayıt; yinelenen ID, sayfa bütçesi veya kaynak bulunamaması controlled ret/unknown. Ada göre sahiplenme yoktur |
+| GET datasets | Yalnız kayıtta bilinen exact ID'yi bulmak için page=1..128, page_size=20, scope=owned. Her sayfa en çok 20 kayıt; yinelenen ID, sayfa bütçesi veya kaynak bulunamaması controlled ret/unknown. Ada göre sahiplenme yoktur |
 | GET datasets/{owner_username}/{slug} | Rota yalnız exact ID ile bulunan nesnenin güvenli username/slug alanlarından kurulur. Detail ID/name/modality/private/contributions_enabled/owner_id/org_id eşliği zorunludur. `datasets/{id}` detail rotası kullanılmaz |
 | GET datasets/{id}/my-role | [V2 my-role şeması](dataset-upload-v2.md#tüketici-profili-http-ve-my-role): strict role/permissions, literal upload etiketi, en çok 30 s current scope. Etiket grant değildir |
+
+Owned locator için id/name/modality/private/owner_id/org_id/owner_username/slug alanları zorunlu ve strict kalır. Listede `contributions_enabled` bulunmayabilir; eksiklik false/null değeriyle doldurulmaz ve `LocatedDataset` bu politikayı taşımaz. Alan sunulursa yalnız gerçek bool false kabul edilir; true/null/0/string kontrollü reddir. Tam `ProviderDataset` create/detail şeması değişmez: detail bu alanı zorunlu strict false olarak sunmalı ve kalıcı create baseline’ının bütün alanlarıyla eşleşmelidir. Locator veya eksik liste metadata’sı write/proof izni vermez.
+
+4 Kasım [ayrı yetkili tanı](../research/p02-2-implementation-validation.md#4-kasım--owned-listdetail-wire-uyumunun-kapanışı), page_size=20 ile HTTP 200 liste ve detail eşliğini gösterdi; liste contribution alanını sunmadı, detail sundu. Bu gözlem bütün provider sürümleri veya eski 128 isteğinin ret nedeni için garanti değildir. Yerel query sabit 20’dir; otomatik sayfa-boyutu fallback’i yoktur. 128 sayfa, toplam okuma/byte/deadline bütçeleri içinde bir tavandır; tarama tamlığı veya sunucu azami sayfa boyutu iddiası değildir.
 
 Organization context kontrolü kullanıcı üyeliği veya write permission garantisi üretmez. User owner'da org_id nonnull olabilir; kişisel organizasyon ID'si yokmuş gibi varsayılmaz. Create ile sonraki exact-ID detail'deki owner_id/org_id birbirine de eşit olmalıdır. İlk create receipt'inin ID'si hiçbir owned/name aramasıyla değiştirilemez; ID kayıpsa lookup/re-create yapılmaz. [ADR-0027](../decisions/0027-durable-created-dataset-context.md) Accepted: strict create DTO yeni accepted CreateReceiptV2 içinde atomik saklanır; normalizer ham 1 MiB yanıtı tarayıp projekte eder, 2 KiB yalnız canonical receipt'tir. Reader/current expected değeri original veya bu immutable baseline'dır; current owned cevabı tarihsel baseline değildir. Public summary receipt içeriğini yayımlamaz; üretim writer/controller uygulaması p ve sonraki kartların kabulüdür.
 
@@ -72,6 +76,6 @@ Kabulde provider-key canary'sinin DB/receipt/semantic digest girdisi/çıktı/lo
 
 ## İzleyen dilimler ve kabul
 
-İlk dar kod dilimi l context/create/link/my-role codec'lerini ve bağımsız negatif fixture'ları sahiplenir. Yukarıdaki proxy upload sözleşmesi sonraki m codec diliminden önce yazıldı; bugün bu provider yolu hazır sayılmaz. Ardından gerçek HTTP bütçe sayacı, ortak koordinatör ve CLI/Python yüzeyi ayrı commit/iki fresh review turuyla uygulanır. Her dilimin tamamlanması a/b/c üst kartlarının bütünleşik/live kabulü yerine geçmez.
+Yerel l/m codec, gerçek HTTP bütçe sayacı, ortak koordinatör ve CLI/Python yüzeyi ayrı commit/ikişer fresh review turuyla tamamlandı. Yukarıdaki sözleşme bu uygulamanın sahibidir; canlı tam upload ve son kaynak/CI kabulü ayrıca kapanır. Her dilimin tamamlanması a/b/c üst kartlarının bütünleşik/live kabulü yerine geçmez.
 
 Kabul: strict bool/UUID/envelope/eksik-null ayrımı; wrong owner/project/private; exact dataset/detail; kısa/uzun sırın dinamik request alanı veya atılan metadata içinde bulunması; duplicate/nonfinite/UTF-8/byte sınırı; create/link ayrımı ve known-negative hata eşliği. Yalnız fixture yeşili canlı provider desteği sayılmaz. Gerçek producer yeni grant/fiyat kaynağı uyduramaz ve frozen araştırma probe'unu ürün modülü olarak import edemez.

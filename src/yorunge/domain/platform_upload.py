@@ -23,10 +23,9 @@ class ProviderProject(UploadWire):
         return None if value is None else provider_uuid(value)
 
 
-class ProviderDataset(ProviderProject):
+class ProviderDatasetMetadata(ProviderProject):
     name: Annotated[str, Field(min_length=2, max_length=128)]
     modality: Literal["VISION", "AUDIO", "NLP", "MULTIMODAL", "MEDICAL"]
-    contributions_enabled: Literal[False]
 
     @field_validator("name")
     @classmethod
@@ -34,6 +33,10 @@ class ProviderDataset(ProviderProject):
         if value != value.strip() or len(safe_text(value)) > 256:
             raise ValueError("bounded unmodified dataset name required")
         return value
+
+
+class ProviderDataset(ProviderDatasetMetadata):
+    contributions_enabled: Literal[False]
 
     @field_validator("contributions_enabled", mode="before")
     @classmethod
@@ -43,7 +46,8 @@ class ProviderDataset(ProviderProject):
         return value
 
 
-class LocatedDataset(ProviderDataset):
+class LocatedDataset(ProviderDatasetMetadata):
+    # A list locator does not assert the detail-only contribution policy.
     owner_username: str
     slug: str
 
