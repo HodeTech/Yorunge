@@ -24,13 +24,13 @@ LIMITS = {
     "read_attempts": 80,
     "create": 1,
     "project_link": 1,
-    "presign": 3,
-    "put": 3,
-    "confirm": 3,
-    "effect_attempts": 11,
+    "presign": 2,
+    "put": 2,
+    "confirm": 2,
+    "effect_attempts": 8,
     "request_bytes": 65_536,
     "response_bytes": 16_777_216,
-    "upload_bytes": 1_048_576,
+    "upload_bytes": 158,
     "seconds": 180,
 }
 TRACE = runpy.run_path(str(Path(__file__).with_name("upload_control_trace.py")))

@@ -9,14 +9,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.contracts.test_platform_upload_codec import SCOPE
+from tests.contracts.test_platform_upload_codec import PARAMETERS, SCOPE
 from tests.fixtures.http_server import Reply, TlsServer
 from tests.fixtures.upload_network import loopback_upload
 from tests.fixtures.upload_provider import DATASET, UploadProvider
 from tests.integration.test_upload_file_workflow import certificates as certificates
 from tests.integration.test_upload_file_workflow import loopback_only as loopback_only
 from yorunge import api
-from yorunge.domain.errors import OperationError
+from yorunge.domain.errors import OperationError, YorungeError
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -122,19 +122,21 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
                 operation_id=identity["operation_id"], state_dir=args.workspace / "state"
             ).data
             assert current.operation_status == "succeeded"
-            assert provider.confirm_calls == 3
+            assert provider.confirm_calls == 2
         else:
             value = helper["run"](args)
             assert value["outcome"] == "metadata_succeeded"
-            assert value["same_hash_different_names"] is True
-            assert value["fixture_bytes"] == 237
+            assert "same_hash_different_names" not in value
+            assert value["fixture_file_count"] == 2
+            assert value["distinct_content_hashes"] is True
+            assert value["fixture_bytes"] == 158
             actual = value["counters"]["actual"]
             assert actual["read_requests"] == actual["read_attempts"] == 23
-            assert actual["effect_attempts"] == 11
-            assert actual["upload_bytes"] == 237
+            assert actual["effect_attempts"] == 8
+            assert actual["upload_bytes"] == 158
             assert value["counters"]["open_reservations"] == 0
             puts = [row for row in value["counters"]["control_responses"] if row["kind"] == "put"]
-            assert {row["file_index"] for row in puts} == {0, 1, 2}
+            assert {row["file_index"] for row in puts} == {0, 1}
             assert all(row["typed_accepted"] is True for row in puts)
             assert all(
                 row["shape"]["root"]["matches_expected"]["sha256_hash"] is True for row in puts
@@ -157,11 +159,11 @@ def test_real_api_graph_receipt_and_no_retry_workspace(
     )
     expected = {
         "first.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
-        "same-content.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
         "different.png": "2ba82df1c51676319e2542bec023cc95fd9d594cc70b0d6b60cdaa9bafb77fd9",
     }
     for name, digest in expected.items():
         assert hashlib.sha256((args.workspace / "source" / name).read_bytes()).hexdigest() == digest
+    assert not (args.workspace / "source" / "same-content.png").exists()
 
 
 def test_link_decoder_failure_retains_closed_trace_without_accepting_or_replaying(
@@ -256,3 +258,41 @@ raise SystemExit(helper['main']())
     assert b"private-exception-canary" not in result.stderr
     assert b"Traceback" not in result.stderr
     assert b"Pilot stopped." in result.stderr
+
+
+def test_frozen_three_pngs_remain_a_local_duplicate_negative(tmp_path, certificates, monkeypatch):
+    helper = runpy.run_path(str(ROOT / "scripts/upload_live_acceptance.py"))
+    assert len(helper["SELECTED_IMAGES"]) == len(set(helper["SELECTED_IMAGES"].values())) == 2
+    frozen = runpy.run_path(str(helper["FROZEN"]))["fixtures"]()
+    assert len(frozen) == 3
+    assert len({hashlib.sha256(body).hexdigest() for _, body in frozen}) == 2
+    args = inputs(tmp_path)
+    args.workspace.mkdir()
+    source = args.workspace / "source"
+    source.mkdir()
+    for name, body in frozen:
+        (source / name).write_bytes(body)
+    artifact, state = args.workspace / "manifest.json", args.workspace / "state"
+    api.inspect_dataset(source, manifest_out=artifact)
+    api.initialize_state(state_dir=state)
+    monkeypatch.setenv("PILOT_PLATFORM_KEY", "synthetic-pilot-selected-key")
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with (
+        TlsServer(certificates, provider.routes()) as server,
+        loopback_upload(server.certificates[0], server.port),
+    ):
+        with pytest.raises(YorungeError) as rejected:
+            api.prepare_dataset_upload(
+                source,
+                manifest=artifact,
+                owner=SCOPE.owner,
+                parameters=PARAMETERS,
+                project=SCOPE.project_id,
+                admission_policy="explicit_attempt",
+                unpriced=True,
+                config=args.config,
+                state_dir=state,
+            )
+        assert rejected.value.code == "upload_duplicate_content"
+        assert not server.requests
+        assert api.list_dataset_uploads(state_dir=state).data.uploads == ()

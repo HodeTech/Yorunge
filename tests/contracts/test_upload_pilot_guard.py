@@ -76,15 +76,28 @@ def test_response_pending_and_consumed_bytes_share_global_pre_network_limit(guar
     assert guard.snapshot()["actual"]["response_bytes"] == 1024
 
 
-@pytest.mark.parametrize("kind", ["create", "project_link"])
-def test_effect_limit_spans_invocations_even_when_unstarted_claim_is_released(guard, kind):
+@pytest.mark.parametrize(
+    "kind,maximum", [("create", 1), ("project_link", 1), ("presign", 2), ("put", 2), ("confirm", 2)]
+)
+def test_effect_limit_spans_invocations_even_when_unstarted_claim_is_released(guard, kind, maximum):
     with guard.install():
         budget = UploadBudget(limits(), end=time.monotonic() + 30, read_only=False)
-        budget.reserve(kind).finish()
+        for _ in range(maximum):
+            budget.reserve(kind, response_bytes=65_536).finish()
         other = UploadBudget(limits(), end=time.monotonic() + 30, read_only=False)
         with pytest.raises(YorungeError) as failure:
             other.reserve(kind)
         assert failure.value.code == "upload_limit_exceeded"
+
+
+def test_selected_image_bytes_are_capped_before_any_attempt(guard):
+    with guard.install():
+        budget = UploadBudget(limits(), end=time.monotonic() + 30, read_only=False)
+        with pytest.raises(YorungeError) as failure:
+            budget.reserve("put", upload_bytes=159)
+        assert failure.value.code == "upload_limit_exceeded"
+        assert budget.snapshot().effect_attempts == budget.snapshot().upload_bytes == 0
+        assert guard.snapshot()["open_reservations"] == 0
 
 
 def test_guard_preserves_production_readonly_and_deadline_rejection(guard):

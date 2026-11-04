@@ -38,6 +38,10 @@ TARGET = normalize_target("https://api.ssyz.org.tr/api/v1")
 FROZEN = ROOT / "docs/research/probes/platform-upload-pilot-20261102/pilot.py"
 FROZEN_SHA = "c7a192c3ac9b5f25613fe817d4138951d18814376058705ae141f375e3e984cf"
 MANIFEST_NAME = "manifest.json"
+SELECTED_IMAGES = {
+    "first.png": "8f7eb0f9bebe51f1f6aceaf60bbb8e99a845b88e77cb86e0aaf66df9bb0b21aa",
+    "different.png": "2ba82df1c51676319e2542bec023cc95fd9d594cc70b0d6b60cdaa9bafb77fd9",
+}
 
 
 def encoded(value: object) -> bytes:
@@ -91,10 +95,13 @@ def credential(config: Path, credentials: Path) -> tuple[str, str]:
 def fixtures(work: Path) -> DatasetManifest:
     if hashlib.sha256(FROZEN.read_bytes()).hexdigest() != FROZEN_SHA:
         raise ValueError("frozen synthetic image helper changed")
-    images = runpy.run_path(str(FROZEN))["fixtures"]()
+    images = dict(runpy.run_path(str(FROZEN))["fixtures"]())
     source = work / "source"
     source.mkdir(mode=0o700)
-    for name, content in images:
+    for name, digest in SELECTED_IMAGES.items():
+        content = images[name]
+        if len(content) != 79 or hashlib.sha256(content).hexdigest() != digest:
+            raise ValueError("selected frozen image changed")
         with (source / name).open("xb") as target:
             target.write(content)
     api.inspect_dataset(source, manifest_out=work / MANIFEST_NAME)
@@ -197,10 +204,18 @@ def verify_files(work: Path, operation_id: str, manifest: DatasetManifest) -> No
     with open_existing_store(work / "state") as store:
         view = StateUploads(store).show(operation_id=operation_id)
         proof = view.verification
-        if proof is None or len(view.intents) != 11 or len(view.receipts) != 11:
+        count = manifest.file_count
+        if (
+            proof is None
+            or len(view.intents) != 2 + 3 * count
+            or len(view.receipts) != 2 + 3 * count
+        ):
             raise ValueError("pilot requires the complete durable stage graph")
-        if any(receipt.result != "accepted" for receipt in view.receipts) or len(proof.files) != 3:
-            raise ValueError("pilot requires all accepted receipts and three verified files")
+        if (
+            any(receipt.result != "accepted" for receipt in view.receipts)
+            or len(proof.files) != count
+        ):
+            raise ValueError("pilot requires all accepted receipts and every verified file")
         for expected, observed in zip(manifest.files, proof.files, strict=True):
             if (
                 expected.size,
@@ -212,8 +227,8 @@ def verify_files(work: Path, operation_id: str, manifest: DatasetManifest) -> No
                 observed.path_digest,
             ):
                 raise ValueError("pilot metadata differs from original synthetic files")
-        if len({file.item_id for file in proof.files}) != 3:
-            raise ValueError("same-content different-name files require distinct remote items")
+        if len({file.item_id for file in proof.files}) != count:
+            raise ValueError("every selected file requires a distinct remote item")
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -277,7 +292,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             authority_verified=False,
             pricing_verified=False,
             remote_bytes_verified=False,
-            same_hash_different_names=True,
+            fixture_file_count=manifest.file_count,
+            distinct_content_hashes=len({file.sha256 for file in manifest.files})
+            == manifest.file_count,
             complete_accepted_graph=True,
         )
     except YorungeError as error:
