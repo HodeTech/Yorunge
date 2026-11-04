@@ -2669,7 +2669,7 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 
 **Tür:** `diagnostic`.
 **Özgün JSON SHA-256:** `298412df16d2a66d763f70f1a6ec28e920b867cc785643ab299e653e9c613036`.
-[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/b5f293bf31f92f2c2b8b648a3cf2a5b2a101e789/docs/research/p02-2-final-live-20261104-r4-incomplete.json); yerel arşiv `raw/p02-2-final-live-20261104-r4-incomplete.json.gz`.
+**Yerel arşiv:** `raw/p02-2-final-live-20261104-r4-incomplete.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "incomplete", "source_commit": "b5f293bf31f92f2c2b8b648a3cf2a5b2a101e789"}`.
 
 ## p02-2-link-contract-20261104
@@ -2774,7 +2774,7 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 
 **Tür:** `diagnostic`.
 **Özgün JSON SHA-256:** `682a78e917e7adfdb8d69938030e8688f19c81bff312f06f4be61e46d29acfee`.
-[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/998ee7d75f7db1b8b039b9362a19ab525b8dd2cf/docs/research/p02-2-storage-contract-different-20261104.json); yerel arşiv `raw/p02-2-storage-contract-different-20261104.json.gz`.
+**Yerel arşiv:** `raw/p02-2-storage-contract-different-20261104.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf"}`.
 
 ## p02-2-storage-contract-first-20261104
@@ -2788,7 +2788,7 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 
 **Tür:** `diagnostic`.
 **Özgün JSON SHA-256:** `6867a74c8a888c39920ce9dfcaf3fe0884e2b295ab1e3e18928e1c49ba27a5d0`.
-[İlk kayıt baytları](https://github.com/HodeTech/Yorunge/blob/998ee7d75f7db1b8b039b9362a19ab525b8dd2cf/docs/research/p02-2-storage-contract-same-content-20261104.json); yerel arşiv `raw/p02-2-storage-contract-same-content-20261104.json.gz`.
+**Yerel arşiv:** `raw/p02-2-storage-contract-same-content-20261104.json.gz`.
 **Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "evidence_collected", "source_commit": "998ee7d75f7db1b8b039b9362a19ab525b8dd2cf"}`.
 
 ## p02-2-upload-v1-smoke-01-rejected
