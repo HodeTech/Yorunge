@@ -42,3 +42,5 @@ Contract/loopback TLS/descriptor/process testleri ve byte sayan bağımsız serv
 ## Teslim kaydı
 
 Yerel f storage ve g–k v2 temeli çalışma dalında verified; gerçek provider codec/current producer/public ve bütünleşik/live kabul eksik, üst kart draft.
+
+**4 Kasım güncel canlı kapısı:** [r5](../../research/p02-2-implementation-validation.md#4-kasım--r5-tam-canlı-metadata-kabulü) iki farklı SHA-256 PNG ile tam 8 accepted graph ve exact metadata sonucu verdi. ADR-0028 yerel duplicate ret ve önceki r4 unknown kaydı ayrı korunur. Bu üst kart son 03 kaynak/native, üç ortam CI/altı kurulum ve kalıcı saklama kapanana kadar draft kalır; metadata yetki/fiyat/remote-byte kanıtı değildir.
