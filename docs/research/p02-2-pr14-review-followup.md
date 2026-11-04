@@ -54,3 +54,6 @@ Yeni bounded/fallback/peer/idle/keylog ve mevcut network unit seçkisi **84 pass
 
 
 Dilim 1 /9815f70, R1 Astra/high contract + Sol/high safety ve farklı fresh R2 Sol/high contract + Astra/high safety tarafından bulgusuz kapandı. Reviewer’lar geçen testleri/ölçümleri tekrar çalıştırmadı. Literal socket-options iterator ve TLS-failure fallback için ek test fikri opsiyonel kapsam olarak kaydedildi; mevcut kod kusuru bulunmadı. İkinci kod dilimi artık receipt toplama bütünlüğüne geçebilir. Proposed ADR-0029 yalnız gizlilik/retention politikasını bekletir; ağ düzeltmesinin onay kapısı değildir.
+
+
+ADR-0029 önerisi ve 90 kayıtlı dar envanter, d5f04c5 kaynağında fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz incelendi. Karar Proposed; bağımlı privacy/retention kodu yoktur. Kullanıcıya somut onay sorusu sunulur; bağımsız receipt ve kullanıcı/test düzeltmeleri sürer.

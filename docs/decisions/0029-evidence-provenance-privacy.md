@@ -30,3 +30,6 @@ Bu ayrım yeni bir performans/kurulum rapor biçimi veya yeni ürün wire sürü
 Onay sonrası belgeleme/kanıt standartlarında dar tarihsel istisna ve yeni üretim öncesi/sonrası kontrolün sahibi açık yazılır. Arşiv katalogunun v1 byte biçimi, geçmiş gzip’ler ve native kabul eşikleri değişmez. Yeni nötr çalışma kökünde source-bound kabul gerçek kaynak ve kurulu paket eşliğiyle yeniden üretilir; önceki başarısız ölçümler korunur.
 
 Kabul: envanterdeki her ad/digest’in katalogla eşliği; sır/özel analiz referansı için istisna olmaması; yeni raporun known-personal-path/e-posta negatifinde public yazı olmaması; nötr workspace pozitifinin gerçek source/kurulum/oracle kapılarını geçmesi; original_commit düzeltmesinde gzip/content byte değişmemesi. Kontrol genel PII temizliği sayılmaz. Belge revizyonu iki farklı fresh review turundan sonra kullanıcı onayına sunulur; onay gelmeden retention istisnası veya bağımlı araç politikası uygulanmaz. Bağımsız ağ/receipt/UX/test bugfix’leri bu kararı beklemez.
+
+
+**Öneri review kapanışı:** d5f04c5 sabit metni fresh R1 Sol/high ve farklı fresh R2 Astra/high salt okunur değerlendirdi; doğrulanmış bulgu yok. R2 442 katalog kaydında 90 benzersiz envanter adı ve iki digest’in eşliğini, 90 gzip’in byte SHA-256’sını teyit etti; ham içerik veya literal taraması tekrar edilmedi. Bu review kullanıcı onayı değildir; karar Proposed kalır.
