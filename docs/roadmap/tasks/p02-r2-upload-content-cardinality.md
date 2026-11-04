@@ -8,7 +8,7 @@ capabilities: [C03, C12, C13]
 ---
 # P02-R2 — Aynı içerikli dosya adlarının uzak çokluğu
 
-**Tarih:** 2026-11-04. **Sahip:** P02 / datasets modülü. [ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) Proposed; bu kart ihtiyacı görünür tutar, kabul daraltması veya uygulama yetkisi değildir.
+**Tarih:** 2026-11-04. **Sahip:** P02 / datasets modülü. [ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) Accepted; bu kart ilk sınırlı teslimden ayrılan özgün ihtiyacın açık sahibidir, kendisi uygulama veya ready yetkisi değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

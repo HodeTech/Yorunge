@@ -38,6 +38,8 @@ Dataset transfer domain/application ve adapters; CLI/Python aynı show/reconcile
 8. Ayrı yetkili küçük canlı private create/link/upload ve aynı ID read doğrulaması exact sahiplik/dosya oracle'ıyla geçer; test sırrı/ham hesap verisi olmadan request/byte/süre/fiyat/doğrulama sınırı kanıta bağlanır. İki aynı hash farklı ad ayrıca kanıtlanır. Live eksikliği sessizce kapsamdan atılmaz.
 9. Kartlar, current, matris, referans/README/changelog gerçek sonuca göre güncellenir; her adım iki fresh review/fix commit ve tek P02-2 development PR kullanıcı review'sine sunulur. Master/release/merge kullanıcıdadır.
 
+**4 Kasım kabul 8 kısmi değişikliği:** Yukarıdaki özgün aynı-hash/farklı-ad olumlu ifade [Accepted ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) ile değiştirilir: iki farklı hash’li dosyanın tam olumlu akışı ve aynı-hash girdinin sıfır HTTP’li yerel reddi ayrı kapılardır. Özgün olumlu ihtiyaç P02-R2’de açık kalır; r4 controlled unknown sonucu pozitif kabul değildir. Diğer canlı/son kaynak/CI/kanıt kabulleri değişmez.
+
 ## Doğrulama
 
 Contract/integration/gerçek TLS/süreç/SQLite testleri, gerçek kurulu API/CLI örnekleri ve kaynak bağlı native ölçümler. Kanıtlar [standarda](../../standards/research-evidence.md) göre kompakt rapor + kayıpsız arşiv/manifest olarak tutulur; büyük raw diff review'a taşınmaz. Ölçülmemiş UX, canlı davranış, fiziksel güç kesintisi veya donanım attestasyonu başarı diye yazılmaz.

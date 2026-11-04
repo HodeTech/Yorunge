@@ -1,7 +1,7 @@
 ---
 id: P02-2u
 phase: P02
-status: verified
+status: in_progress
 size: M
 depends_on: [P02-2t]
 capabilities: [C03, C12, C13]
@@ -20,11 +20,11 @@ U.1 mevcut pytest exception bloklarının anlamı korunarak setup’ın ret sın
 
 ## Bağımlılıklar ve kararlar
 
-T bütün kod dilimlerinde iki fresh turla verified olmalıdır. Accepted ADR-0024–0027, public/workflow/reconciliation referansları geçerlidir; yeni ürün kararı yoktur. Doküman preflight tamamlanmadan ready yapılmaz.
+T bütün kod dilimlerinde iki fresh turla verified olmalıdır. Accepted ADR-0024–0028, public/workflow/reconciliation referansları geçerlidir; 4 Kasım ADR-0028 kabul geçişi bu kartın güncel testlerini ayrıca doğrular. Doküman preflight tamamlanmadan ready yapılmaz.
 
 ## Sözleşme ve uygulama sınırı
 
-Yalnız test/fixture ve gerekli kullanıcı kabul kayıtları; ürün kusuru doğrulanırsa aynı dilimde dar düzeltme/test yapılır. Özel fault hook yalnız fixture’da kalır, public flag veya ikinci backend açılmaz. Manifest 128 normal dosyaya sahiptir; iki eşhash/farklı ad ve duplicate-safe confirm kuralı korunur.
+Yalnız test/fixture ve gerekli kullanıcı kabul kayıtları; ürün kusuru doğrulanırsa aynı dilimde dar düzeltme/test yapılır. Özel fault hook yalnız fixture’da kalır, public flag veya ikinci backend açılmaz. Manifest 128 normal dosyaya sahiptir; Accepted ADR-0028 ile güncel 128-dosya olumlu fixture’ının bütün hash’leri farklıdır; 386 accepted aşama/128 item korunur. Eş-hash upload ayrı sıfır-HTTP yerel ret; yerel input/Manifest koruma ve batch_duplicates codec-ret testleri değişmez. Önceki eş-hash olumlu fixture tarihsel kabul kaydında korunur.
 
 ## Kabul
 
@@ -37,5 +37,5 @@ Admission COMMIT’inden ilk ID teslimine kadar gerçek SIGKILL: yalnız CLI lis
 ## Teslim kaydı
 
 - PR/commit: [U.1 test sınırları](https://github.com/HodeTech/Yorunge/commit/cfe9737), [U.2 gerçek süreç/azami envanter ve memo payı](https://github.com/HodeTech/Yorunge/commit/2eaa729); tek nihai PR aynı daldadır.
-- Sonuç: İki kod diliminde ikişer farklı fresh review turu kapandı. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2u2--public-süreç-ve-azami-envanter) ilk retleri/fix’i, 84 testlik geniş kaynak teyidini ve bağımsız max128/386 graph, gerçek CLI kill/ID,129 ret, semantik/son kapı sonuçlarını taşır. Kart yerel verified.
+- Sonuç: İki kod diliminde ikişer farklı fresh review turu kapandı. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2u2--public-süreç-ve-azami-envanter) ilk retleri/fix’i, 84 testlik geniş kaynak teyidini ve bağımsız max128/386 graph, gerçek CLI kill/ID,129 ret, semantik/son kapı sonuçlarını taşır. Bu önceki kabul tarihsel olarak verified idi; 4 Kasım ADR-0028 geçişi için güncel max128/ret kabulü yeniden doğrulanıyor.
 - Kalan sınır: W kaynak bakımı, V kurulu/native ölçüm araçları ve üst c kurulum/son kaynak CI/kayıpsız kanıt/ayrı live/human UX sınırı açıktır. U başarısı epik veya gerçek sağlayıcı kabulü değildir.

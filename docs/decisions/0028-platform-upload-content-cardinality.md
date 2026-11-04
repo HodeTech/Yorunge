@@ -1,6 +1,6 @@
 # ADR-0028 — Platform upload’ında tekrarlı içerik sınırı
 
-**Durum:** Proposed — 4 Kasım kullanıcı, review düzeltmeleri sonrası Accepted’a geçişi ve uygulamayı yetkilendirdi; aşağıdaki revizyonların teyidi tamamlanıyor. **Tarih:** 2026-11-04. **İş:** P02-2 canlı kabulü. Öneri, [ADR-0024](0024-durable-dataset-transfers.md) ve [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul) içindeki aynı hash/farklı ad olumlu upload beklentisini daraltır. Manifest v1, geçmiş kayıtlar ve tam başarı grafiği değişmez.
+**Durum:** Accepted — 4 Kasım kullanıcı review düzeltmeleri sonrası uygulamayı yetkilendirdi; revizyonlar iki farklı fresh turda temiz teyit edildi. Ürün/kabul geçişi aşağıdaki adımlarla uygulanır. **Tarih:** 2026-11-04. **İş:** P02-2 canlı kabulü. Öneri, [ADR-0024](0024-durable-dataset-transfers.md) ve [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul) içindeki aynı hash/farklı ad olumlu upload beklentisini daraltır. Manifest v1, geçmiş kayıtlar ve tam başarı grafiği değişmez.
 
 ## Bağlam ve kanıt sınırı
 
@@ -16,7 +16,7 @@ Kamu kaynağının kalıcı gözlem metadatası [ayrı receipt’te](../research
 
 P02-2’nin mevcut Platform producer’ı ilk teslimde yalnız **dosyaların SHA-256 değerleri birbirinden farklı** upload manifestlerini başlatır. Aynı hash taşıyan farklı adlar Manifest v1’de ayrı dosyalar olarak geçerli kalır; yerel inspect/verify bunları korur. Upload yolu dosyaları birleştirmez, atlamaz, yeniden adlandırmaz, içerik/hash değiştirmez veya kısmi teslimi tam başarı saymaz.
 
-Yeni `upload_duplicate_content` kodu exit 2’dir. Kapalı mesaj: “Aynı içerikli farklı dosya adları bu Platform upload yolunda desteklenmiyor. Uzak istek yapılmadı. Manifestteki sha256 değerlerinden tekrarlayan adları bulun; istediğiniz dosyalar için ayrı bir klasör ve yeni manifest hazırlayın.” Yol/hash/provider metni eklenmez; CLI text/JSON/NDJSON ve Python aynı kod/mesajı kullanır. Kanonik katalog `src/yorunge/domain/errors.py`, hata referansı `docs/reference/dataset-transfer.md`’dir; public referansa ikinci katalog eklenmez. Mevcut hata zarfı korunur: operation_id null, yeni details/sayaç alanı yoktur. Yerel manifest zaten ad/SHA alanlarını taşır; kullanıcı rehberindeki salt yerel örnek tekrarları bunlardan bulur. Kapalı sayaçlar hangi adların çakıştığını çözmeyeceği için bu düzeltmede DTO/inspect biçimi genişletilmez.
+Yeni `upload_duplicate_content` kodu exit 2’dir. Kapalı mesaj: “Aynı içerikli farklı dosya adları bu Platform upload yolunda desteklenmiyor. Uzak istek yapılmadı. Manifestteki sha256 değerlerinden tekrarlayan adları bulun; istediğiniz dosyalar için ayrı bir klasör ve yeni manifest hazırlayın.” Yol/hash/provider metni eklenmez; CLI text/JSON/NDJSON ve Python aynı kod/mesajı kullanır. Kanonik katalog `src/yorunge/domain/errors.py`, hata referansı `docs/reference/dataset-transfer.md`’dir; public referansa ikinci katalog eklenmez. Mevcut hata zarfı korunur: operation_id null, mevcut details boş nesne; yeni details/sayaç alanı yoktur. Yerel manifest zaten ad/SHA alanlarını taşır; kullanıcı rehberindeki salt yerel örnek tekrarları bunlardan bulur. Kapalı sayaçlar hangi adların çakıştığını çözmeyeceği için bu düzeltmede DTO/inspect biçimi genişletilmez.
 
 ### Kapı yeri ve hata önceliği
 
@@ -65,4 +65,4 @@ Bu geçişler Accepted geçişinde uygulanır; yeni davranış kod/test/live kab
 - **Açık ret ile sınırlı ilk yolu teslim etmek (önerilen):** Farklı içerikli upload kullanılabilir; aynı içerikli ad ihtiyacı P02-R2’de açık ve görünürdür. Uygunluk kapısı gereksiz create/storage maliyetini önler.
 - Sessiz dedup/skip, yanlış hash/eksik item ile başarı veya rastgele tekrar seçilmedi; dosya kimliğini/tek gönderimi ihlal eder veya kanıtsızdır.
 
-Bu bir kapsam tercihidir; sağlayıcı davranışını düzelttiği iddia edilmez. Kullanıcının review düzeltmeleri sonrası uygulama yetkisiyle, revizyon teyidi ardından Accepted’a geçilir; tekrar onay istenmez.
+Bu bir kapsam tercihidir; sağlayıcı davranışını düzelttiği iddia edilmez. Kullanıcının review düzeltmeleri sonrası uygulama yetkisi ve iki fresh revizyon teyidiyle Accepted’a geçildi; bağımlı uygulama yetkilidir.
