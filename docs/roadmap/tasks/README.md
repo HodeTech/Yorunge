@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-03. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-04. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
