@@ -88,3 +88,6 @@ Offline guard standart DNS/reverse-DNS/datagram yollarını kapatır; TLS fixtur
 
 
 ADR-0029 /f331d7e revizyonu fresh R1 Sol/high ve farklı fresh R2 Astra/high tarafından bulgusuz teyit edildi. Kullanıcının koşullu kabul talimatıyla Accepted’a taşındı; 95 hash’li kayıt sınırı sabittir. Bu, yeni kontrolün veya son nötr native kabulünün uygulandığı anlamına gelmez. Standart/ADR-0019 forward bağları aynı kabul commit’inde güncellenir; araç/workflow ve metadata düzeltmesi dilim 4’te kapanacaktır.
+
+
+Dilim 3 /cd3473a R1: Sol/high safety bulgusuz; Astra/high contract bir P2 test izolasyonu buldu. Admission-policy vektörü cost/ack’i de değiştirdiği için tuple yerine önce risk mismatch ile kapanıyordu. Tam kanıtlı bounded planda yalnız policy’yi değiştiren geçerli DTO’ya taşındı; tam binding mismatch zorunlu, 11 ilgili test geçti. Mevcut cost_policy vektörü DTO/ack bağı gereği risk retini de sınar; bağımsız yalnız cost predicate iddiası kurulmaz. Son leak/counter seçkisi 7 passed; Ruff temiz. Farklı fresh R2 beklenir.

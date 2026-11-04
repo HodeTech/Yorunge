@@ -522,22 +522,25 @@ def test_refreshed_current_timestamps_preserve_binding_but_not_historical_expiry
     ],
 )
 def test_saved_approval_binding_mismatch_is_rejected(field, value):
-    plan = prepare()
-    data = approve(plan).model_dump(mode="json")
+    if field == "admission_policy":
+        plan = prepare(cost_policy="bounded_required", grant="full", cost="complete")
+        approval = approve(plan, authority=False, unpriced=False)
+    else:
+        plan = prepare()
+        approval = approve(plan)
+    data = approval.model_dump(mode="json")
     data[field] = value
     if field == "cost_policy":
         data["acknowledge_unpriced_cost"] = False
-    if field == "admission_policy":
-        # Valid standalone approval for another policy; the binding must reject it.
-        data["cost_policy"] = "bounded_required"
-        data["acknowledge_unpriced_cost"] = False
-        data["acknowledge_unverified_authority"] = False
     if field == "approved_at":
         data["expires_at"] = timestamp(instant(data[field]) + timedelta(seconds=899))
     if field == "expires_at":
         data["approved_at"] = timestamp(instant(data[field]) - timedelta(seconds=899))
     altered = DatasetUploadApprovalV2.model_validate_json(encode(data))
-    with pytest.raises(ValueError, match="mismatch"):
+    # The admission-policy mutation changes no cost/ack field and must pass
+    # require_acknowledgements before reaching this exact binding predicate.
+    message = "binding mismatch" if field == "admission_policy" else "mismatch"
+    with pytest.raises(ValueError, match=message):
         validate_approval_binding_v2(plan, altered)
 
 
