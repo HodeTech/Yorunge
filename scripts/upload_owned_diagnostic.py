@@ -140,7 +140,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     if not sys.flags.isolated or not args.accept_read_diagnostic:
         raise ValueError("isolated runtime and separate read consent required")
-    if args.output.name in ("", ".", "..", "started.json"):
+    if args.output.name.casefold() in ("", ".", "..", "started.json"):
         raise ValueError("diagnostic output must be a non-reserved file name")
     _, value = BASE["credential"](args.config, args.credentials)
     identity = json.loads(BASE["private_file"](args.pilot / "uncertain-identity.json"))
@@ -165,6 +165,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     before = driver["EVIDENCE"]["source"](ROOT)
     driver["STREAM"]["new_path"](args.output.parent).mkdir(mode=0o700)
     BASE["write"](args.output.parent / "started.json", {"source_commit": before["commit"]})
+    if args.output.exists():
+        raise ValueError("diagnostic output aliases the start marker")
     report: dict[str, Any] = {
         "schema_version": 1,
         "diagnostic_only": True,
@@ -206,7 +208,7 @@ def main() -> int:
         YorungeError,
         OSError,
         ValueError,
-        KeyError,
+        LookupError,
         TypeError,
         KeyboardInterrupt,
         SystemExit,

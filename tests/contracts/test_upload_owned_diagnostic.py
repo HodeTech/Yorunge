@@ -113,7 +113,9 @@ def test_two_get_consumer_diagnostic_has_no_write_or_private_value_output(case):
     assert "synthetic-platform-secret" not in json.dumps(report)
 
 
-@pytest.mark.parametrize("case", ["missing_profile", "wrong_profiles_type"])
+@pytest.mark.parametrize(
+    "case", ["missing_profile", "wrong_profiles_type", "invalid_profile_index"]
+)
 def test_diagnostic_cli_hides_private_preflight_lookup_failures(tmp_path, case):
     root = tmp_path.resolve()
     config = root / "config.toml"
@@ -121,8 +123,10 @@ def test_diagnostic_cli_hides_private_preflight_lookup_failures(tmp_path, case):
     spec = f'active_profile = "{profile}"\n'
     if case == "missing_profile":
         spec += '[profiles.other]\nplatform_url = "https://api.ssyz.org.tr/api/v1"\n'
-    else:
+    elif case == "wrong_profiles_type":
         spec += 'profiles = "private-profiles-type-canary"\n'
+    else:
+        spec = "active_profile = 0\nprofiles = []\n"
     config.write_text(spec)
     config.chmod(0o600)
     result = subprocess.run(
@@ -151,7 +155,7 @@ def test_diagnostic_cli_hides_private_preflight_lookup_failures(tmp_path, case):
     assert not (root / "new").exists()
 
 
-@pytest.mark.parametrize("leaf", ["started.json", ".."])
+@pytest.mark.parametrize("leaf", ["started.json", "STARTED.JSON", ".."])
 def test_diagnostic_rejects_reserved_output_before_private_input_or_network(
     tmp_path, monkeypatch, leaf
 ):
