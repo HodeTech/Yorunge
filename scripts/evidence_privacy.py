@@ -14,6 +14,7 @@ import pwd
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,9 @@ MAX_TOTAL = 512 * 1024 * 1024
 MAX_MEMBERS = 512
 MAX_DEPTH = 4
 MAX_NODES = 200_000
+MAX_ZIP_NAME = 1024
+ZIP_END = struct.Struct("<4s4H2IH")
+ZIP_LOCAL = struct.Struct("<4s5H3I2H")
 ENCODED_MARKER = re.compile(
     rb"""(?m)["'][A-Za-z_][A-Za-z0-9_]*_base64["']|^[ \t]*[A-Za-z_][A-Za-z0-9_]*_base64[ \t]*:"""
 )
@@ -249,6 +253,100 @@ def decode_json(raw: bytes) -> Any:
     )
 
 
+def zip_end(raw: bytes) -> tuple[int, int, int]:
+    # Narrow PKWARE APPNOTE 4.3.7/4.3.12/4.3.16 subset, without descriptors,
+    # ZIP64, extra fields, comments, prefix or unreferenced gaps.
+    if len(raw) < ZIP_END.size:
+        reject("invalid_encoded_evidence")
+    signature, disk, central_disk, here, total, size, offset, comment = ZIP_END.unpack(
+        raw[-ZIP_END.size :]
+    )
+    if signature != b"PK\x05\x06" or disk or central_disk or comment or here != total:
+        reject("unsupported_encoded_evidence")
+    if total > MAX_MEMBERS or size > MAX_MEMBERS * (46 + MAX_ZIP_NAME):
+        reject("publication_limit")
+    if offset + size != len(raw) - ZIP_END.size:
+        reject("invalid_encoded_evidence")
+    return offset, size, total
+
+
+def zip_parts(
+    archive: zipfile.ZipFile, frame: tuple[int, int, int]
+) -> list[tuple[zipfile.ZipInfo, bytes]]:
+    offset, size, total = frame
+    entries = archive.infolist()
+    if len(entries) != total or archive.start_dir != offset:
+        reject("invalid_encoded_evidence")
+    if len({part.filename for part in entries}) != total:
+        reject("unsupported_encoded_evidence")
+    result = []
+    for part in sorted(entries, key=lambda part: part.header_offset):
+        zip_part_policy(part)
+        name = part.filename.encode("utf-8" if part.flag_bits & 0x800 else "cp437", "strict")
+        if not 1 <= len(name) <= MAX_ZIP_NAME:
+            reject("publication_limit")
+        result.append((part, name))
+    if size != sum(46 + len(name) for _, name in result):
+        reject("invalid_encoded_evidence")
+    return result
+
+
+def zip_part_policy(part: zipfile.ZipInfo) -> None:
+    path = PurePosixPath(part.filename)
+    if path.is_absolute() or ".." in path.parts or "\\" in part.filename:
+        reject("unsupported_encoded_evidence")
+    if (
+        part.flag_bits not in (0, 0x800)
+        or part.extract_version > 20
+        or part.extra
+        or part.comment
+        or part.volume
+    ):
+        reject("unsupported_encoded_evidence")
+    if part.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+        reject("unsupported_encoded_evidence")
+    if part.file_size > MAX_FILE:
+        reject("unsupported_encoded_evidence")
+
+
+def zip_payload(
+    raw: bytes, part: zipfile.ZipInfo, name: bytes, cursor: int, central: int
+) -> tuple[bytes, int]:
+    if part.header_offset != cursor or cursor + ZIP_LOCAL.size > central:
+        reject("invalid_encoded_evidence")
+    header = ZIP_LOCAL.unpack_from(raw, cursor)
+    signature, version, flags, method, _, _, crc, compressed_size, size, length, extra = header
+    if (
+        signature != b"PK\x03\x04"
+        or version != part.extract_version
+        or flags != part.flag_bits
+        or method != part.compress_type
+        or crc != part.CRC
+        or compressed_size != part.compress_size
+        or size != part.file_size
+        or length != len(name)
+        or extra
+    ):
+        reject("invalid_encoded_evidence")
+    start = cursor + ZIP_LOCAL.size + length
+    end = start + compressed_size
+    if raw[cursor + ZIP_LOCAL.size : start] != name or end > central:
+        reject("invalid_encoded_evidence")
+    compressed = raw[start:end]
+    if method == zipfile.ZIP_DEFLATED:
+        decoder = zlib.decompressobj(-zlib.MAX_WBITS)
+        content = decoder.decompress(compressed, MAX_FILE + 1)
+        if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+            reject("invalid_encoded_evidence")
+    else:
+        content = compressed
+    if len(content) > MAX_FILE:
+        reject("publication_limit")
+    if len(content) != size or binascii.crc32(content) & 0xFFFFFFFF != crc:
+        reject("invalid_encoded_evidence")
+    return content, end
+
+
 class Scanner:
     def __init__(self, value: object):
         self.needles = validate_context(value)
@@ -298,34 +396,21 @@ class Scanner:
                 self.tree(decode_json(line), depth)
 
     def zip(self, raw: bytes, depth: int) -> None:
-        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            entries = archive.infolist()
-            if len(entries) > MAX_MEMBERS or len({part.filename for part in entries}) != len(
-                entries
-            ):
-                reject("publication_limit")
-            for part in entries:
-                path = PurePosixPath(part.filename)
-                if (
-                    path.is_absolute()
-                    or ".." in path.parts
-                    or "\\" in part.filename
-                    or part.flag_bits & 1
-                    or part.file_size > MAX_FILE
-                    or part.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
-                ):
-                    reject("unsupported_encoded_evidence")
+        frame, cursor = zip_end(raw), 0
+        with io.BytesIO(raw) as stream, zipfile.ZipFile(stream) as archive:
+            for part, name in zip_parts(archive, frame):
+                content, cursor = zip_payload(raw, part, name, cursor, frame[0])
                 self.literal(part.filename.encode("utf-8", "strict"))
                 if part.is_dir():
                     self.members += 1
                     if self.members > MAX_MEMBERS:
                         reject("publication_limit")
-                    if part.file_size != 0:
+                    if content:
                         reject("unsupported_encoded_evidence")
                     continue
-                with archive.open(part) as stream:
-                    content = stream.read(MAX_FILE + 1)
                 self.scan(content, part.filename, depth + 1)
+            if cursor != frame[0]:
+                reject("invalid_encoded_evidence")
 
     def tree(self, value: Any, depth: int) -> None:
         pending = [(value, 0)]

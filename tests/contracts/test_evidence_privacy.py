@@ -7,8 +7,10 @@ import io
 import json
 import os
 import runpy
+import struct
 import subprocess
 import zipfile
+import zlib
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -171,7 +173,7 @@ def test_zip_oversize_member_rejects_before_opening_member(tmp_path, monkeypatch
     def forbidden(*args, **kwargs):
         raise AssertionError("oversize member was opened")
 
-    monkeypatch.setattr(zipfile.ZipFile, "open", forbidden)
+    monkeypatch.setattr(zlib, "decompressobj", forbidden)
     value = synthetic_context(tmp_path)
     with pytest.raises(ValueError, match="unsupported_encoded_evidence"):
         GUARD["check"](raw, "archive.zip", value)
@@ -219,6 +221,104 @@ def test_empty_zip_directories_still_consume_the_global_member_budget(tmp_path, 
     monkeypatch.setitem(GUARD["Scanner"].scan.__globals__, "MAX_MEMBERS", 2)
     with pytest.raises(ValueError, match="publication_limit"):
         GUARD["check"](raw, "directories.zip", value)
+
+
+def zip_fixture(name="trace.txt", content=b"safe", compression=zipfile.ZIP_DEFLATED):
+    target = io.BytesIO()
+    with zipfile.ZipFile(target, "w", compression=compression) as archive:
+        archive.writestr(name, content)
+    return target.getvalue()
+
+
+@pytest.mark.parametrize("name", ["trace/", "trace.txt"])
+@pytest.mark.parametrize("forged", ["size_crc", "compressed_size", "crc"])
+def test_zip_stream_cannot_be_hidden_by_consistent_but_false_metadata(name, forged, tmp_path):
+    value = synthetic_context(tmp_path)
+    content = value["system_home"].encode()
+    raw = bytearray(zip_fixture(name, content))
+    central = struct.unpack_from("<I", raw, len(raw) - 6)[0]
+    if forged == "size_crc":
+        for offset in (14, 22, central + 16, central + 24):
+            struct.pack_into("<I", raw, offset, 0)
+        # This is the demonstrated bypass in metadata-trusting readers.
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            assert archive.read(name) == b""
+    elif forged == "compressed_size":
+        for offset in (18, central + 20):
+            struct.pack_into("<I", raw, offset, 0)
+    else:
+        for offset in (14, central + 16):
+            struct.pack_into("<I", raw, offset, 0)
+    assert content not in raw
+    report = encode(part(bytes(raw), "trace.zip"))
+    with pytest.raises(ValueError, match="invalid_encoded_evidence"):
+        GUARD["check"](report, "report.json", value)
+
+
+@pytest.mark.parametrize("variant", ["gap", "unused_deflate", "truncated_deflate"])
+def test_zip_local_extent_and_deflate_full_consumption_are_checked(variant, tmp_path):
+    original = zip_fixture()
+    central = struct.unpack_from("<I", original, len(original) - 6)[0]
+    size = struct.unpack_from("<I", original, 18)[0]
+    if variant == "truncated_deflate":
+        raw, change = bytearray(original[: central - 1] + original[central:]), -1
+    else:
+        raw, change = bytearray(original[:central] + b"extra" + original[central:]), 5
+    new_central = central + change
+    struct.pack_into("<I", raw, len(raw) - 6, new_central)
+    if variant != "gap":
+        struct.pack_into("<I", raw, 18, size + change)
+        struct.pack_into("<I", raw, new_central + 20, size + change)
+    value, wire = synthetic_context(tmp_path), bytes(raw)
+    with pytest.raises(ValueError, match="invalid_encoded_evidence"):
+        GUARD["check"](wire, "trace.zip", value)
+
+
+@pytest.mark.parametrize(
+    "variant", ["comment", "extra", "member_comment", "descriptor", "zip64", "prefix"]
+)
+def test_unsupported_zip_variants_are_explicitly_rejected(variant, tmp_path):
+    class Unseekable(io.BytesIO):
+        def seek(self, *args):
+            raise io.UnsupportedOperation("synthetic unseekable writer")
+
+    target = Unseekable() if variant == "descriptor" else io.BytesIO()
+    member = zipfile.ZipInfo("trace.txt")
+    if variant == "extra":
+        member.extra = b"\xfe\xca\x00\x00"
+    elif variant == "member_comment":
+        member.comment = b"comment"
+    with zipfile.ZipFile(target, "w") as archive:
+        if variant == "comment":
+            archive.comment = b"comment"
+        if variant == "zip64":
+            with archive.open(member, "w", force_zip64=True) as output:
+                output.write(b"safe")
+        else:
+            archive.writestr(member, b"safe")
+    raw = target.getvalue()
+    if variant == "prefix":
+        raw = b"prefix" + raw
+    value = synthetic_context(tmp_path)
+    with pytest.raises(ValueError):
+        GUARD["check"](raw, "trace.zip", value)
+
+
+@pytest.mark.parametrize("compression", [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED])
+@pytest.mark.parametrize("name", ["trace.txt", "öğe.txt"])
+def test_supported_zip_member_streams_preserve_safe_ascii_and_utf8_names(
+    compression, name, tmp_path
+):
+    GUARD["check"](
+        zip_fixture(name, compression=compression), "trace.zip", synthetic_context(tmp_path)
+    )
+
+
+def test_supported_cp437_zip_name_is_decoded_before_literal_scan(tmp_path):
+    raw = bytearray(zip_fixture("a.txt"))
+    central = struct.unpack_from("<I", raw, len(raw) - 6)[0]
+    raw[30:35] = raw[central + 46 : central + 51] = b"\x82.txt"
+    GUARD["check"](bytes(raw), "trace.zip", synthetic_context(tmp_path))
 
 
 @pytest.mark.parametrize("kind", ["fifo", "symlink", "directory"])
