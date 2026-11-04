@@ -65,8 +65,9 @@ def test_all_connect_failures_preserve_transport_class_without_http(failure):
     async def run():
         await GuardedBackend(resolver=resolver, backend=connector).connect_tcp("example", 443)
 
+    coroutine = run()
     with pytest.raises(failure):
-        asyncio.run(run())
+        asyncio.run(coroutine)
     assert connector.calls == [("8.8.8.8", 443), ("1.1.1.1", 443)]
     assert connector.stream.writes == []
 
@@ -87,8 +88,9 @@ def test_connect_deadline_never_opens_next_address_after_timeout():
             "example", 443, timeout=0.01
         )
 
+    coroutine = run()
     with pytest.raises(httpcore.ConnectTimeout):
-        asyncio.run(run())
+        asyncio.run(coroutine)
     assert connector.calls == [("8.8.8.8", 443)]
 
 
@@ -169,8 +171,9 @@ def test_lost_peer_metadata_never_bypasses_initial_post_tls_verification():
     raw = GuardedStream(stream, "example", frozenset({"8.8.8.8"}), public_address)
     assert raw.peer_valid()
     context = ssl.create_default_context()
+    coroutine = raw.start_tls(context, "example")
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(raw.start_tls(context, "example"))
+        asyncio.run(coroutine)
     assert failure.value.code == "invalid_service_target"
     assert stream.closed
     assert stream.writes == []
@@ -182,15 +185,17 @@ def test_invalid_tcp_parameters_reject_before_dns(arguments):
         pytest.fail("invalid target reached resolver")
 
     call = partial(GuardedBackend(resolver=forbidden).connect_tcp, "example", **arguments)
+    coroutine = call()
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(call())
+        asyncio.run(coroutine)
     assert failure.value.code == "invalid_service_target"
 
 
 def test_unix_socket_target_is_never_opened():
     call = partial(GuardedBackend().connect_unix_socket, "/never-opened")
+    coroutine = call()
     with pytest.raises(YorungeError) as failure:
-        asyncio.run(call())
+        asyncio.run(coroutine)
     assert failure.value.code == "invalid_service_target"
 
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import (
     CapabilityRecord,
@@ -282,6 +282,9 @@ _PLAN_DIGEST_FIELD = "digest"
 
 
 class ExecutionPlan(ExecutionBody):
+    # Integrity checks serialize this same object during its first validation.
+    model_config = ConfigDict(defer_build=False)
+
     digest: Digest
 
     def computed_digest(self) -> str:

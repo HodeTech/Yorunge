@@ -30,6 +30,7 @@ MAX_TOTAL_REPORT_BYTES = 512 * 1024 * 1024
 MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
+ORIGINAL_COMMIT_MISMATCH = "original commit is not the first exact archived bytes"
 CI_RUN_URL = re.compile(
     r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9]\d*", re.ASCII
 )
@@ -1698,7 +1699,7 @@ def original_commit_for(root: Path, name: str, content: bytes, commit: str | Non
     if not (root / ".git").exists():
         if commit is None:
             return None
-        raise ValueError("original commit is not the first exact archived bytes")
+        raise ValueError(ORIGINAL_COMMIT_MISMATCH)
     shallow = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--is-shallow-repository"],
         capture_output=True,
@@ -1742,10 +1743,10 @@ def original_commit_for(root: Path, name: str, content: bytes, commit: str | Non
             and (hashlib.sha256(blob.stdout).digest() == expected)
         ):
             if commit not in (None, revision):
-                raise ValueError("original commit is not the first exact archived bytes")
+                raise ValueError(ORIGINAL_COMMIT_MISMATCH)
             return revision
     if commit is not None:
-        raise ValueError("original commit is not the first exact archived bytes")
+        raise ValueError(ORIGINAL_COMMIT_MISMATCH)
     return None
 
 
@@ -1823,6 +1824,14 @@ def archive_rejected_startup(
     archive_report(root, destination, None, privacy_context=privacy_context)
 
 
+def publication_context(args: argparse.Namespace) -> dict[str, Any] | None:
+    if args.action not in {"archive", "archive-rejected-upload", "archive-rejected-startup"}:
+        return None
+    privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
+    declared = args.privacy_context or os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
+    return privacy["load_context"](Path(declared) if declared else None)  # type: ignore[no-any-return]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
@@ -1869,11 +1878,7 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
-        privacy_context = None
-        if args.action in {"archive", "archive-rejected-upload", "archive-rejected-startup"}:
-            privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
-            declared = args.privacy_context or os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
-            privacy_context = privacy["load_context"](Path(declared) if declared else None)
+        privacy_context = publication_context(args)
         if args.action == "archive-rejected-upload":
             diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
             diagnostic["retain"](

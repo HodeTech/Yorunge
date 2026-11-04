@@ -131,3 +131,6 @@ Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/en
 ## 5 Kasım — ilk 08 sonuçları
 
 [08 kaydı](p02-2-implementation-validation.md#5-kasım--08-ilk-ölçümler-ve-açık-süre-kapıları): dataset/raw/upload geçti; startup cache ve jobs normal list/show süreleri reddedildi. Özgünler ve profiler’lı tek fresh-hit tanısı saklandı; aynı ölçüm tekrar edilmedi, eşik veya doğrulama gevşetilmedi. Yeni kaynak functional CI/kurulum/Sonar bağımsız ilerler; known reference reddi saklanır. Üst kartlar/PR draft kalır.
+
+
+09 öncesi tek yeni kaynak dilimi: 36f9442 Sonar analizindeki 12 kaynak düzeltmesi/sekiz disposition önerisi ve tek A/B tanısıyla gerekçelenmiş dar jobs codec hazırlığı. Sonuç/ilk kullanım/wire testleri ve strict mypy geçti; iki fresh eksenli tur beklenir. Kullanıcı adaptörü bağladı; son kaynakta AC/önceden sakin pencereyle tek 09 hazırlanır. Bu, 08 retlerini veya tanı örneklerini değiştirmez; [güncel kaynak kaydı](p02-2-implementation-validation.md#5-kasım--sonar-ve-jobs-codec-kaynak-dilimi) kanoniktir.

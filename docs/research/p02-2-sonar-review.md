@@ -1,6 +1,6 @@
 # P02-2 / PR #14 Sonar incelemesi
 
-**Tarih:** 2026-11-04. **Durum:** İlk 611 kayıt için kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` analizinde 564 kayıt kodla kapandı; kalan 21 false positive +26 accepted, gerekçeli yorumlarıyla Sonar’da uygulandı ve 47 kaydın tamamı API’den doğrulandı. O analizde kalite kapısı **OK**, reliability/security/maintainability **A** idi. Sonraki f7d6809 analizinde sekiz yeni kayıt ve failed gate görüldü; aşağıdaki follow-up bunları ayrı izler. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk koordinatları ve sonraki gerçek durumları ayırır. [Kabul kaydı](p02-2-implementation-validation.md) CI ve canlı kabulün ayrı sahibidir.
+**Tarih:** 2026-11-04; güncellendi 2026-11-05. **Durum:** İlk 611 kayıt için kaynak paketi ve iki fresh review turu tamamlandı. `027b5c1` analizinde 564 kayıt kodla kapandı; kalan 21 false positive +26 accepted, gerekçeli yorumlarıyla Sonar’da uygulandı ve 47 kaydın tamamı API’den doğrulandı. O analizde kalite kapısı **OK**, reliability/security/maintainability **A** idi. Sonraki f7d6809 analizinde sekiz yeni kayıt ve failed gate görüldü; aşağıdaki follow-up bunları ayrı izler. [Kayıt bazlı istisnalar](p02-2-sonar-disposition.json), ilk koordinatları ve sonraki gerçek durumları ayırır. [Kabul kaydı](p02-2-implementation-validation.md) CI ve canlı kabulün ayrı sahibidir.
 
 ## Tek düzeltme grubu
 
@@ -75,3 +75,16 @@ Yeni analiz üç source-fix kaydını kapattı; gate OK ve tek açık S3415 kald
 
 
 Dar R1 Sol/high ve farklı fresh R2 Astra/high, before/after veri akışı ve oracle’ı bağımsız doğruladı; bulgu yok. Son tek false-positive gerekçeli yorumuyla uygulandı ve UI/API’den teyit edildi. 7e5675c analizinde sekiz kaydın gerçek karşılığı **3 FIXED +4 FALSE_POSITIVE +1 ACCEPTED**; her disposition’ın tek gerekçe yorumu doğrulandı. Açık kayıt **0**, gate **OK**. İlk 611 kaydın tarihsel sayımı değiştirilmedi. Test/runtime/workflow kaynağı değişmedi, native06 yeniden çalıştırılmadı.
+
+
+## 5 Kasım — 36f9442 sonrası 20 yeni kayıt
+
+Sonar PR analizinin 36f9442 kaynağında 20 yeni issue’su ve gate ERROR gözlendi; önceki 7e5675c/611 kayıtlarının tarihsel kapanışı değiştirilmez. [Exact anahtarlar](p02-2-sonar-disposition.json) ayrı followup_analyses grubundadır. Yeni kaynak paketi ve aşağıdaki sekiz disposition iki fresh review sonrasında uygulanır; henüz uzakta kapandı sayılmaz.
+
+**12 kaynak düzeltmesi:** İki S6353 için opaque-text marker regex’i strict UTF-8 metinde açık re.ASCII ile aynı ASCII sözcük sınıfına taşınır; decoded değer aramada kullanıldığı için S2201 de açıklığa kavuşur. Geçersiz UTF-8 reddi ve bounded encoding/gizlilik taraması korunur. İki S5713’te ValueError alt sınıflarının redundant yakalaması kaldırılır. Original-commit hata mesajı tek sabite alınır (S1192); archive context seçimi ayrı küçük yardımcıya çıkarılır (S3776). Beş S5778’de coroutine hazırlığı raises öncesindedir; blok tek asyncio.run çağrısını kapsar. Hata beklentileri, istek sayısı ve no-replay sınırı değişmez.
+
+**Dört security false-positive önerisi:** S8705/S8707 girdileri açık maintainer/CI operatörünün argparse namespace’idir; HTTP/provider/LLM yanıtından üretilmez. Git komutu sabit executable/subcommand ve ayrı argv ile `-C` operandını kullanır, shell yoktur. Read/copy/private-write yolları açık seçilmiş yerel evidence/context hedefleridir; regular/no-follow/nonblocking/byte sınırları, no-clobber/context mode ve staging hash kapıları korunur. Bu araç genel kötü niyetli operatör/LLM/filesystem sandbox’ı değildir; Accepted ADR-0029 bu sınırı açık tanımlar.
+
+**Dört S5754 false-positive önerisi:** `_publish_completed`, `_cleanup_batch` ve `_put_batch` yakalanan özgün BaseException nesnelerini cleanup boyunca taşır; `_prefer_failure` gerçek CancelledError’a öncelik verir ve ilk olağan hatayı korur. Başarılı her task en çok bir receipt publish denemesi alır; bütün prepared call’lar kapatıldıktan sonra `_put_batch` seçilen özgün hatayı yeniden yükseltir. Dar Exception yakalamak cancellation/interrupt cleanup’ını, catch içinde hemen raise etmek diğer tamamlanmış receipt’leri/kaynakları kaybettirir. Bu, private CLI’daki kasıtlı başka sinyale çeviren eski accepted örneğinden ayrıdır: burada hata başarıya veya başka tipe çevrilmez. Genel BaseException suppression/exclusion eklenmez.
+
+Kalite kapısı, severity, kural veya izin ayarı değiştirilmez. Kaynakla kapanacak 12 kayıt yeni gerçek analizle; sekiz false-positive önerisi ise tek tek gerekçe/durum geri okumasıyla ayrıca teyit edilecektir.

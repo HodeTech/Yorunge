@@ -757,6 +757,233 @@
       "quality_gate_after_dispositions": "OK",
       "reanalysis_head": "7e5675c0b1fc920abff81bd8c486bb4fbeeb8aa1",
       "reanalysis_open_total": 0
+    },
+    {
+      "observed_head": "36f9442fbfaca17f07c2603bcc1376b0b92517af",
+      "observed_total": 20,
+      "status": "proposed_source_fixes_and_dispositions",
+      "issues": [
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBD",
+          "rule": "python:S6353",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 35,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBE",
+          "rule": "python:S6353",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 35,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2rOCo9rc6Gw1TBB",
+          "rule": "python:S1192",
+          "file": "scripts/research_evidence.py",
+          "observed_line": 1701,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBI",
+          "rule": "pythonsecurity:S8705",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 77,
+          "classification": "false_positive",
+          "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBJ",
+          "rule": "pythonsecurity:S8707",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 215,
+          "classification": "false_positive",
+          "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBF",
+          "rule": "python:S2201",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 360,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBK",
+          "rule": "pythonsecurity:S8707",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 530,
+          "classification": "false_positive",
+          "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBL",
+          "rule": "pythonsecurity:S8707",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 547,
+          "classification": "false_positive",
+          "rationale_code": "explicit_operator_argv_and_paths_not_remote_or_llm_input",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBG",
+          "rule": "python:S5713",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 587,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2tXCo9rc6Gw1TBH",
+          "rule": "python:S5713",
+          "file": "scripts/evidence_privacy.py",
+          "observed_line": 590,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2rOCo9rc6Gw1TBC",
+          "rule": "python:S3776",
+          "file": "scripts/research_evidence.py",
+          "observed_line": 1826,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2i1Co9rc6Gw1TA4",
+          "rule": "python:S5754",
+          "file": "src/yorunge/application/upload_workflow.py",
+          "observed_line": 144,
+          "classification": "false_positive",
+          "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2i1Co9rc6Gw1TA5",
+          "rule": "python:S5754",
+          "file": "src/yorunge/application/upload_workflow.py",
+          "observed_line": 179,
+          "classification": "false_positive",
+          "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2i1Co9rc6Gw1TA6",
+          "rule": "python:S5754",
+          "file": "src/yorunge/application/upload_workflow.py",
+          "observed_line": 187,
+          "classification": "false_positive",
+          "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2i1Co9rc6Gw1TA7",
+          "rule": "python:S5754",
+          "file": "src/yorunge/application/upload_workflow.py",
+          "observed_line": 209,
+          "classification": "false_positive",
+          "rationale_code": "original_failure_rethrown_after_complete_receipt_and_resource_cleanup",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2pBCo9rc6Gw1TA8",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_guarded_connections.py",
+          "observed_line": 68,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2pBCo9rc6Gw1TA9",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_guarded_connections.py",
+          "observed_line": 90,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2pBCo9rc6Gw1TA-",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_guarded_connections.py",
+          "observed_line": 172,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2pBCo9rc6Gw1TA_",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_guarded_connections.py",
+          "observed_line": 185,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        },
+        {
+          "key": "AaGoc2pBCo9rc6Gw1TBA",
+          "rule": "python:S5778",
+          "file": "tests/contracts/test_guarded_connections.py",
+          "observed_line": 192,
+          "classification": "source_fix",
+          "rationale_code": "source_clarification_pending_reanalysis",
+          "remote_status_at_observation": "OPEN",
+          "applied_resolution": null,
+          "remote_status_after": null
+        }
+      ]
     }
   ]
 }

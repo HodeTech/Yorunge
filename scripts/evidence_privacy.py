@@ -32,7 +32,8 @@ MAX_ZIP_NAME = 1024
 ZIP_END = struct.Struct("<4s4H2IH")
 ZIP_LOCAL = struct.Struct("<4s5H3I2H")
 ENCODED_MARKER = re.compile(
-    rb"""(?m)["'][A-Za-z_][A-Za-z0-9_]*_base64["']|^[ \t]*[A-Za-z_][A-Za-z0-9_]*_base64[ \t]*:"""
+    r"""(?m)["'][A-Za-z_]\w*_base64["']|^[ \t]*[A-Za-z_]\w*_base64[ \t]*:""",
+    flags=re.ASCII,
 )
 CONTEXT_FIELDS = {
     "schema_version",
@@ -357,8 +358,8 @@ class Scanner:
             reject("personal_provenance")
 
     def opaque_text(self, raw: bytes) -> None:
-        raw.decode("utf-8", "strict")
-        if ENCODED_MARKER.search(raw):
+        text = raw.decode("utf-8", "strict")
+        if ENCODED_MARKER.search(text):
             reject("unsupported_encoded_evidence")
 
     def scan(self, raw: bytes, name: str, depth: int = 0) -> None:
@@ -584,10 +585,8 @@ def main() -> int:
     except (
         ValueError,
         OSError,
-        UnicodeError,
         LookupError,
         RecursionError,
-        binascii.Error,
         zipfile.BadZipFile,
         EOFError,
         subprocess.SubprocessError,
