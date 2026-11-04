@@ -2651,6 +2651,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-final-installations-01.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "eab79e6a2d9ab29b5726272de4e85b49ebda21af"}`.
 
+## p02-2-final-installations-02
+
+**Tür:** `installation_v3`.
+**Özgün JSON SHA-256:** `447c28879805c893365b67da072875979a3458746ccd1f051d8e590b0b736c78`.
+**Yerel arşiv:** `raw/p02-2-final-installations-02.json.gz`.
+**Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe"}`.
+
 ## p02-2-final-live-20261104-incomplete
 
 **Tür:** `diagnostic`.
@@ -2742,6 +2749,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-reference-datasets-04.json.gz`.
 **Özet:** `{"cases": 24, "diagnostic_only": false, "growth": {"inspect": {"passed": true, "span_upper_bound_bytes": 4308992}, "verify": {"passed": true, "span_upper_bound_bytes": 1785856}}, "kind": "dataset-hash", "max_elapsed_seconds": 0.8500754591077566, "max_extra_rss_upper_bound_bytes": 20643840, "passed": true, "source_commit": "aa542ba28df73d9dd2ddc625e9fca469ed46abda"}`.
 
+## p02-2-reference-datasets-05
+
+**Tür:** `dataset-hash`.
+**Özgün JSON SHA-256:** `908abea6f653c5eb6c1e5978553cd8e6724eb3047937413163d492535eb6fbd6`.
+**Yerel arşiv:** `raw/p02-2-reference-datasets-05.json.gz`.
+**Özet:** `{"cases": 24, "diagnostic_only": false, "growth": {"inspect": {"passed": true, "span_upper_bound_bytes": 622592}, "verify": {"passed": true, "span_upper_bound_bytes": 622592}}, "kind": "dataset-hash", "max_elapsed_seconds": 0.9553306247107685, "max_extra_rss_upper_bound_bytes": 21053440, "passed": true, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe"}`.
+
 ## p02-2-reference-jobs-01
 
 **Tür:** `jobs`.
@@ -2769,6 +2783,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `19115cc1ac7ba646374d0e2d10da1be6cbe1796f989848709a6cf92decfbf645`.
 **Yerel arşiv:** `raw/p02-2-reference-jobs-04.json.gz`.
 **Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 164.61591701954603, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 120.18816685304046, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 118.26795805245638, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 125.34087477251887, "passed": true, "samples": 30}}, "passed": true, "source_commit": "aa542ba28df73d9dd2ddc625e9fca469ed46abda", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-2-reference-jobs-05
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `db37df3cfa63c441860b8ece85f1f669f8fdf683d4197a5fac3bc9d01636a1ac`.
+**Yerel arşiv:** `raw/p02-2-reference-jobs-05.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 177.8037496842444, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 130.19399996846914, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 126.19799980893731, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 128.50895803421736, "passed": true, "samples": 30}}, "passed": true, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe", "source_unchanged_during_measurement": true, "unchanged": true}`.
 
 ## p02-2-reference-raw-01
 
@@ -2798,6 +2819,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-reference-raw-04.json.gz`.
 **Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 48611328, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 1.6091990410350263, "extra_rss_lower_bound_bytes": 1064960, "extra_rss_upper_bound_bytes": 1064960, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 49676288, "pretransfer_peak_rss_bytes": 48611328, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 56049664, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.026480499655008316, "extra_rss_lower_bound_bytes": 16384, "extra_rss_upper_bound_bytes": 16384, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 56066048, "pretransfer_peak_rss_bytes": 56049664, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 48447488, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.39805129216983914, "extra_rss_lower_bound_bytes": 65536, "extra_rss_upper_bound_bytes": 65536, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 48513024, "pretransfer_peak_rss_bytes": 48447488, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "bytes", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [16384, 65536, 1064960], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 1048576, "upper_bound_bytes": [16384, 65536, 1064960]}, "source_commit": "aa542ba28df73d9dd2ddc625e9fca469ed46abda", "source_unchanged_during_measurement": true}`.
 
+## p02-2-reference-raw-05
+
+**Tür:** `raw_stream_budget_v2`.
+**Özgün JSON SHA-256:** `77f1c8272fbb70a8f4d86a635f736faff184b1615a6ec0b03977d64fd0b21948`.
+**Yerel arşiv:** `raw/p02-2-reference-raw-05.json.gz`.
+**Özet:** `{"diagnostic_only": false, "installed_source_matches": true, "kind": "raw_stream_budget_v2", "measurements": {"1024MiB": {"baseline_rss_bytes": 48644096, "chunk_count": 65536, "connection_count": 1, "elapsed_seconds": 1.695370875298977, "extra_rss_lower_bound_bytes": 1245184, "extra_rss_upper_bound_bytes": 1245184, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 49889280, "pretransfer_peak_rss_bytes": 48644096, "received_bytes": 1073741824}, "16MiB": {"baseline_rss_bytes": 56573952, "chunk_count": 1024, "connection_count": 1, "elapsed_seconds": 0.03280012495815754, "extra_rss_lower_bound_bytes": 917504, "extra_rss_upper_bound_bytes": 917504, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 57491456, "pretransfer_peak_rss_bytes": 56573952, "received_bytes": 16777216}, "256MiB": {"baseline_rss_bytes": 48447488, "chunk_count": 16384, "connection_count": 1, "elapsed_seconds": 0.4227258749306202, "extra_rss_lower_bound_bytes": 393216, "extra_rss_upper_bound_bytes": 393216, "max_chunk_bytes": 16384, "passed": true, "peak_rss_bytes": 48840704, "pretransfer_peak_rss_bytes": 48447488, "received_bytes": 268435456}}, "passed": true, "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup", "rss_baseline_source": "darwin.MACH_TASK_BASIC_INFO.resident_size", "rss_interval": "new_high_water_exact_else_zero_to_upper", "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2", "rss_native_unit": "bytes", "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation", "size_growth_acceptance": {"lower_bound_bytes": [917504, 393216, 1245184], "method": "max_cross_size_upper_minus_lower", "passed": true, "size_bytes": [16777216, 268435456, 1073741824], "span_upper_bound_bytes": 851968, "upper_bound_bytes": [917504, 393216, 1245184]}, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe", "source_unchanged_during_measurement": true}`.
+
 ## p02-2-reference-startup-01
 
 **Tür:** `startup_evidence`.
@@ -2826,6 +2854,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-reference-startup-04.json.gz`.
 **Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 136.10487524420023, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 88.20495894178748, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 32.27704204618931, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 26.38437505811453, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 130.9408750385046, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 78.95875023677945, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 35.266249906271696, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 26.16220898926258, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "aa542ba28df73d9dd2ddc625e9fca469ed46abda"}`.
 
+## p02-2-reference-startup-05
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `3f5c653f4d342d3e2c7df1bba8e11fa01701333c3be5b3704b0ba8f0f809c5fb`.
+**Yerel arşiv:** `raw/p02-2-reference-startup-05.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 158.6586246266961, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 114.77025039494038, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 34.90383364260197, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 32.22633386030793, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 206.82066632434726, "passed": false, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 131.6442503593862, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 37.40616701543331, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 34.898582845926285, "passed": true, "samples": 30}}, "outcome": "diagnostic_budget_exceeded", "passed": false, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe"}`.
+
 ## p02-2-reference-upload-01
 
 **Tür:** `upload-budget`.
@@ -2853,6 +2888,13 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Özgün JSON SHA-256:** `2f813ad12a2aabd5497596425a3edb216377bddbd4f892f0e812b7c792758858`.
 **Yerel arşiv:** `raw/p02-2-reference-upload-04.json.gz`.
 **Özet:** `{"cases": 12, "diagnostic_only": false, "growth": {"passed": false, "span_upper_bound_bytes": 14614528}, "kind": "upload-budget", "max_elapsed_seconds": 71.91362408269197, "max_extra_rss_upper_bound_bytes": 19513344, "passed": false, "source_commit": "aa542ba28df73d9dd2ddc625e9fca469ed46abda"}`.
+
+## p02-2-reference-upload-05
+
+**Tür:** `upload-budget`.
+**Özgün JSON SHA-256:** `faf27b888676859dfaa35be09a30a3c7b9c5a278ac14bfd9e9f95f63eadeb381`.
+**Yerel arşiv:** `raw/p02-2-reference-upload-05.json.gz`.
+**Özet:** `{"cases": 12, "diagnostic_only": false, "growth": {"passed": true, "span_upper_bound_bytes": 868352}, "kind": "upload-budget", "max_elapsed_seconds": 65.1306690000929, "max_extra_rss_upper_bound_bytes": 4112384, "passed": true, "source_commit": "fad497745c74291efa96a518adf1d45fa9d5bebe"}`.
 
 ## p02-2-storage-contract-different-20261104
 
