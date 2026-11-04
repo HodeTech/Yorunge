@@ -13,6 +13,7 @@ from tests.contracts.test_platform_upload_codec import PARAMETERS, SCOPE
 from tests.fixtures.http_server import TlsServer
 from tests.fixtures.upload_provider import UploadProvider
 from tests.integration.test_upload_cli import execute
+from tests.integration.test_upload_http_budget import SECRET
 from tests.integration.test_upload_original import factory, loader
 from tests.integration.test_upload_preparation import ENV, approve, counts, prepare, runtime
 from tests.integration.test_upload_preparation import certificates as certificates
@@ -136,7 +137,7 @@ def test_public_api_and_cli_duplicate_rejection_has_no_http_or_plan(
         b"private-duplicate-name-canary",
         data[2].files[0].sha256.encode(),
         str(data[1]).encode(),
-        b"synthetic-UPLOAD-key",
+        SECRET.encode(),
     ):
         assert sentinel not in process.stdout + process.stderr
     with open_existing_store(data[0]) as store:
