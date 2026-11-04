@@ -1,6 +1,6 @@
 # PR #14 kullanıcı review takibi
 
-**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Doğrulanmış düzeltmeler uygulanıyor; P02-2/a/b/c ve PR draft. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
+**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Dört düzeltme dilimi ve fresh review’ları tamamlandı; 07 süre/bellek ve iki kurulum geçti; disk etiket hatası referans verifier’larını reddetti. Yeni kaynak CI/altı kurulum/Sonar/saklama beklenir; P02-2/a/b/c ve PR draft. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
 
 ## Uygulama sırası
 
@@ -118,3 +118,8 @@ Directory ve regular forged-size/CRC/compressed-size saldırıları, deflate tra
 Dilim 4 /4aa100d ZIP fix’i aynı R2 reviewer’larının dar teyidiyle kapandı. Astra/high önceki directory/regular bellek içi bypass’larının ikisini de invalid_encoded_evidence olarak reddedildiğini ve 28 ZIP testini doğruladı; Sol/high sözleşme/CI/source bağının değişmediğini teyit etti. Yeni bulgu yok. Son kaynak native üretime hazırdır; üç ortam CI ve paket/kalıcı saklama hâlâ ayrıca gereklidir.
 
 Final CI retention kapsamı ADR-0029 uyarınca seçilir: özgün installation/environment, startup ham rapor/receipt/baseline witness, stream/upload raporları ve oluşmuş desteklenen failure diagnostic’leri byte/hash eşliğiyle ayrı arşivlenir. Run/job/artefakt kimlikleri, sonuçları ve ZIP hash’leri dar diagnostic metadata projection’ında bağlanır. Gereksiz bütün API/PR/job-log/ZIP gövdeleri yeniden yayımlanmaz; tüm log/ZIP’in public tutulduğu iddia edilmez. Bu seçim özgün zorunlu ölçüm dosyalarını redakte etmez veya projection ile değiştirmez. Yeni istisna gerektiren veri çıkarsa public yayım durur ve retention açık kalır.
+
+
+## Son kaynak 07 ve kalan teslim
+
+32109a7 kaynağı iki temiz paket kurulumunu ve beş ölçümün süre/bellek kontrolünü geçti; yanlış `SSD` disk etiketi dört reference verifier’da reddedildi; [tam sonuç/kayıpsız arşivler](p02-2-implementation-validation.md#4-kasım--pr-review-kapanışı-ve-nötr-07-kaynak-kabulü) kanoniktir. Gerçek nötr checkout/interpreter/temp pozitifleri, context ve kodlanmış ek kontrolleri geçti. Ölçüm öncesi yanlış upload output komutu ayrı başarısız tanıdır; örnek başlamadan düzeltildi, geçen ölçümler tekrarlanmadı. 07 baytları korunur; doğru exact disk beyanıyla yeni 08 seri isimleri workflow/testte önceden seçilir. Ürün kodu değişmez; eşik gevşetilmez. Son kaynak üç ortam CI/altı kurulum/Sonar ve yeni zorunlu çıktıların saklaması tamamlanmadan üst işler veya PR hazır sayılmaz.

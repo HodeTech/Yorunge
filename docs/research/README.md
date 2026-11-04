@@ -4,9 +4,9 @@
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
-- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): doğrulanan kod/test/UX düzeltmeleri, kabul edilmiş sınırlar ve ayrı gizlilik kararı; son kaynak kabulü henüz yenilenmedi.
+- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): doğrulanan kod/test/UX düzeltmeleri, kabul edilmiş sınırlar ve ayrı gizlilik kararı; dört kaynak/review dilimi ve 07 süre/bellek pozitifleri, ortam etiketi ret/08 referansı açık; yeni CI/kurulum/Sonar/saklama beklenir.
 - [P02-2 ilk private create gözlemi](p02-2-private-create-observations.md): create 201, detail GET 405 ve kontrollü durma; link/upload yok, kaynak/test/receipt hash bağı korunur.
-- [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): Accepted kararlar altında d–w kod/review, r5 canlı metadata ve 06 kaynak bağlı native kabulü; son CI/kurulum/saklama gerçek durumu.
+- [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): Accepted kararlar altında d–w kod/review, r5 canlı metadata ve 06 tarihsel kaynak bağlı native kabulü; 07 ortam etiketi ret/08 açık; son CI/kurulum/saklama gerçek durumu.
 - [P02-2 hazırlık review’si](p02-2-readiness-review.md): mevcut code/contract sınırları, 13 credentialsız kamu kaynağı, create–project link ayrımı, Accepted ADR-0024/0025, tarihsel hazırlık ve gerçek dış kapılar; ürün/live kabulü değildir.
 - [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 development’a birleştirildi; [merge/kanıt kapanışı](p01-remaining-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Önceki retler korunur; son PR/iptal/merge kanıtlarıyla 149 arşiv ve gerçek merge CI doğrulandı.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
@@ -73,4 +73,4 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 [P02-2 upload ölçüm planı](p02-2-upload-measurement-plan.md), kurulu native worker/sink/report kodundan ve gerçek ölçümden önce fixture/pencere/örnek/limitleri sabitler; bir kabul sonucu değildir.
 
-[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kayıt ile sonraki sekiz kaydı ayrı izler; source fix ve gerekçeli disposition durumları API’den doğrulandı. Güncel açık kayıt 0 ve gate OK; [kabul kaydı](p02-2-implementation-validation.md) kalan CI/kurulum/saklamanın sahibidir.
+[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kayıt ile sonraki sekiz kaydı ayrı izler; source fix ve gerekçeli disposition durumları API’den doğrulandı. Önceki 7e5675c kaynağında açık kayıt 0 ve gate OK; son kaynak analizi beklenir; [kabul kaydı](p02-2-implementation-validation.md) kalan CI/kurulum/saklamanın sahibidir.

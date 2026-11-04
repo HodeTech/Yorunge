@@ -1,6 +1,6 @@
 # P02-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-11-04. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Ortak upload CLI/Python ve yerel temeller uygulandı; r5 tarihsel canlı metadata kabulü ve 06 önceki kaynak native serisi geçti. PR #14 draft; kullanıcı review düzeltmeleri ve Accepted ADR-0029 kontrolü sürüyor. Yeni kaynak için son native/CI/kurulum ve kalıcı saklama kapıları açık. Önceki başarısız ölçümler ve r1–r4 unknown işler korunur; yeniden yazma yapılmaz. Aşağıdaki adımlar kendi tarihsel kaynaklarına aittir; güncel sınır [PR review takibinde](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kaydındadır.
+**Tarih:** 2026-11-04. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Ortak upload CLI/Python ve yerel temeller uygulandı; kullanıcı review düzeltmeleri ve Accepted ADR-0029 aracı iki fresh turla kapandı. 32109a7 kaynağında 07 süre/bellek ölçümleri, iki temiz paket kurulumu ve gerçek üretim bağlamıyla gizlilik kontrolü geçti; dört referans verifier yanlış disk etiketi nedeniyle reddetti. Doğru ortam beyanıyla 08 serisi hazırlanır. R5 tarihsel canlı metadata kabulüdür. PR #14 draft; yeni kaynak üç ortam CI/altı kurulum/Sonar ve yeni çıktılarının kalıcı saklaması beklenir. Önceki başarısız ölçümler ve r1–r4 unknown işler korunur; yeniden yazma yapılmaz. Aşağıdaki adımlar kendi tarihsel kaynaklarına aittir; güncel sınır [PR review takibinde](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kaydındadır.
 
 ## Adım 1 — P02-2d yerel plan sözleşmesi
 
@@ -1040,3 +1040,26 @@ macOS runner **hiç atanmadı**: job126657689502 adım/checkout/test üretmeden 
 İlk attempt’in Linux/metadata audit deltasını R1 Sol/high ve farklı fresh R2 Astra/high salt okunur teyit etti; maddi bulgu yok. İkinci iptalde yeni ürün kodu/sözleşme/ölçüm yoktur; provider olayı aynı güven sınırıyla kaydedildi. **442** kayıpsız arşiv ve indeks son denetim kapsamındadır. P02-2/a/b/c ve PR #14 draft kalır. Kalan somut koşul: hosted macOS kapasitesi açıldıktan sonra aynı ölçülen kaynakta yalnız macOS tam test/wheel+sdist iki kurulumunu, ardından aggregate ve var olan çıktılarının saklamasını kapatmak. M5 veya Linux ölçümleri/testleri sırf bu altyapı iptali için tekrar edilmez. Üçüncü kör yeniden başlatma, runner/eşik değişimi, skip veya required-check bypass yapılmadı.
 
 Runtime/test/script/workflow ve 06 kaynak eşliği değişmedi. Yeni belge/kanıt commit’leri yerelde tutulur; yalnız bunları yayımlamak için mevcut full-cell workflow’da Linux testlerini tekrar başlatacak ara push veya PR metadata düzenlemesi yapılmadı. Remote ürün/source head 7e5675c’tir; macOS kapısı kapanınca son belge/kanıt grubu tek push ve PR açıklama/ready geçişiyle yayımlanır. Bu, kanıtın veya PR’nin şu anda hazır olduğu iddiası değildir; dış runner koşulu somut kalan iştir. Yeni kullanıcı kararı veya yeni ADR gerekmiyor.
+
+
+## 4 Kasım — PR review kapanışı ve nötr 07 kaynak kabulü
+
+[Review takibi](p02-2-pr14-review-followup.md) ağ dayanıklılığı, başarılı PUT receipt’lerinin kaybolmaması, onay/unknown deneyimi, anlamlı negatif testler ve Accepted ADR-0029 gizlilik/kanıt düzeltmelerini dört dilimde kapatır. Her kaynak dilimi iki farklı fresh contract/safety turu ve doğrulanmış fix teyidiyle tamamlandı. Son kaynak kapsamı **32109a7**; runtime/test/script/workflow haritası bütün 07 serisi boyunca sabittir. Kaynak metadata’sı sonradan eklenmedi; önceki 06 ve başarısız 03/04/05 kayıtları değişmedi.
+
+Gerçek M5 Max/macOS 27.0.1/SSD/Python 3.11.18 ortamında ayrı kişisiz checkout, controller/runtime, wheel, temp ve workspace kökleri kullanıldı. Gerçek HOME değiştirilmedi; özel üretim bağlamı yayımlanmadı. Build/test işiyle eşzamanlı ölçüm yapılmadı. [İki temiz wheel/sdist kurulumu](evidence.md#p02-2-review-final-installation-07) bütün smoke’ları geçti. Sonra startup→jobs→dataset→raw→upload birer kez çalıştı:
+
+| 07 raporu | Gerçek sonuç |
+|---|---|
+| [Startup](evidence.md#p02-2-reference-startup-07) | Aday help/version/context/cache p95 **30,7098/25,1394/105,2567/160,1709 ms**; dört mutlak bütçe geçti. Eşli taban cache **212,0756 ms** ile kendi bütçesini aşar; taban başarısı veya göreli kazanç iddia edilmez. Bütün 30 süreç/komut örnekleri korunur. |
+| [Jobs](evidence.md#p02-2-reference-jobs-07) | Normal list/show ve dense list/show p95 **125,1476/112,8499/163,2667/112,9370 ms**; dört 200 ms kapısı geçti. |
+| [Dataset](evidence.md#p02-2-reference-datasets-07) | 24 süreç, en uzun **0,7863 s**; U≤**20.201.472 byte**, inspect/verify G=**622.592 byte**. |
+| [Raw](evidence.md#p02-2-reference-raw-07) | 16/256/1.024 MiB exact içerik, kaynak ve bellek kapıları geçti; G=**1.097.728 byte**. |
+| [Upload](evidence.md#p02-2-reference-upload-07) | 12 süreç, exact byte/hash/tam graph ve kaynak kontrolleri geçti; en uzun çağrı **64,3554 s**, U≤**3.080.192 byte**, G=**2.801.664 byte**. |
+
+Upload başlatıcısının ilk komutu, zorunlu direct dist hedefi yerine başka output dizini verildiğinden **örnek/workspace oluşmadan** reddedildi. [Özgün preflight stdout/stderr](evidence.md#p02-2-native07-upload-preflight-rejected) ayrı tanı olarak korunur. Kaynak değişmeden doğru output konumuyla upload’ın ilk gerçek ölçümü yapıldı; geçen ilk dört ölçüm tekrarlanmadı. Parent runner’ın bütün upload serisi süresi yaklaşık 250,85 s’dir; bu, rapordaki tek API çağrısının 64,3554 s üst sınırıyla karıştırılmaz.
+
+Yedi yeni özgün rapor gerçek private üretim bağlamıyla bounded gizlilik kapısını geçti, seri arşivlendi. **449** kayıpsız arşiv/indeks doğrulandı. Dört kaynak bağlı reference verifier **reddetti**: producer’a `SSD` etiketi verilmiş, kanonik `internal SSD/APFS` exact beyanı kullanılmamıştı. Süre/bellek pozitifleri referans kabulü sayılmaz; 07 JSON/gzip baytları değiştirilmez. Bu sınırlı bilinen-provenance kontrolü genel PII/sır garantisi değildir. 95 tarihsel istisna genişletilmedi; 29 original_commit metadata düzeltmesi özgün gzip/content baytlarını değiştirmedi. Gerçek r5 kabulü ca0d29c/runtime07 kaynağına aittir; yeni transport/privacy düzeltmeleri yeni canlı çağrı yapılmış gibi sunulmaz.
+
+**Başlatma düzeltmesi:** Gerçek dosya sistemi internal SSD/APFS olarak diskutil ile doğrulandı. Hata operatör komutundadır; eşik veya verifier gevşetilmez. Workflow/testte 08 isimleri ölçüm öncesi sabitlenir ve dar iki fresh turla teyit edilir; doğru disk beyanıyla fresh seri alınır. Bu, daha hızlı örnek seçmek için tekrar değildir.
+
+**Kalan teslim:** Geçerli 08 referansı, bu yeni kaynak için üç ortam tam CI, altı temiz kurulum, Sonar ve üretilen zorunlu CI çıktılarının kalıcı saklaması. Önceki 7e5675c Linux kabulleri ve macOS kapasite iptalleri tarihsel kalır. P02-2/a/b/c ve PR draft; merge/Master/release kullanıcıdadır.
