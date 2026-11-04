@@ -21,6 +21,25 @@ TRACE = runpy.run_path(str(ROOT / "scripts/upload_control_trace.py"))
 codec, TARGET = BASE["codec"], BASE["TARGET"]
 
 
+def validate_link(raw: bytes, matches: dict[str, str], secret: Any) -> None:
+    from yorunge.domain.errors import YorungeError
+
+    if not raw:
+        return
+    value = codec._object(codec.raw(raw, "link", secret))
+    for node in (value, value.get("data")):
+        if type(node) is not dict:
+            continue
+        if "success" in node and node["success"] is not True:
+            raise YorungeError("invalid_response")
+        if any(
+            type(node[key]) is not str or node[key] != wanted
+            for key, wanted in matches.items()
+            if key in node
+        ):
+            raise YorungeError("invalid_response")
+
+
 async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[str, Any]) -> None:
     from yorunge.application.http_transport import HttpRequest, HttpStatusFailure
     from yorunge.domain.errors import YorungeError
@@ -86,15 +105,7 @@ async def probe(client: Any, key: Any, view: Any, expected: Any, report: dict[st
     raw = await exchange("link", member_path, content=codec.link_content(expected.id, secret))
     matches = {"dataset_id": expected.id, "project_id": scope.project_id}
     report["link_shape"] = TRACE["body_shape"](raw, matches)
-    if raw:
-        value = codec._object(codec.raw(raw, "link", secret))
-        for node in (value, value.get("data")):
-            if type(node) is dict and any(
-                type(node[key]) is not str or node[key] != wanted
-                for key, wanted in matches.items()
-                if key in node
-            ):
-                raise YorungeError("invalid_response")
+    validate_link(raw, matches, secret)
     try:
         codec.link_ack(raw, secret)
         report["typed_ack_accepted"] = True

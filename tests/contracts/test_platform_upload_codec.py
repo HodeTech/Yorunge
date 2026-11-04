@@ -333,6 +333,18 @@ def test_project_link_ack_and_exact_membership_are_separate_oracles():
     assert error.value.code == "invalid_response"
 
 
+@pytest.mark.parametrize("value", [False, 0, 1, "true", None])
+def test_nested_link_success_cannot_hide_a_negative_or_malformed_control(value):
+    raw = encoded({"success": True, "data": {"success": value}})
+    with pytest.raises(YorungeError) as error:
+        codec.link_ack(raw, SECRET)
+    assert error.value.code == "invalid_response"
+
+
+def test_nested_link_success_true_is_accepted_as_an_acknowledgement_only():
+    codec.link_ack(encoded({"success": True, "data": {"success": True}}), SECRET)
+
+
 def test_context_rejects_another_reported_user_and_identity_requires_wrapped_uuid():
     selected = codec.project(encoded(project()), SCOPE, SECRET)
     with pytest.raises(YorungeError) as error:

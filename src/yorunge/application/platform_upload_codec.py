@@ -336,7 +336,13 @@ def role(data: bytes, secret: SecretValue) -> ProviderRole:
 
 def link_ack(data: bytes, secret: SecretValue) -> None:
     _require_secret(secret)
-    if data and _object(raw(data, "link", secret)).get("success") is not True:
+    if not data:
+        return
+    root = _object(raw(data, "link", secret))
+    nested = root.get("data")
+    if root.get("success") is not True or (
+        type(nested) is dict and "success" in nested and nested["success"] is not True
+    ):
         raise YorungeError("invalid_response")
 
 

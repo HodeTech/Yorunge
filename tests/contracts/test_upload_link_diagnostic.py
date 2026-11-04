@@ -41,6 +41,8 @@ HELPER = runpy.run_path(str(Path(__file__).parents[2] / "scripts/upload_link_dia
         "denied",
         "wrong_detail",
         "secret",
+        "nested_false",
+        "nested_number",
     ],
 )
 def test_link_probe_never_replays_and_only_records_closed_shape_predicates(case):
@@ -59,6 +61,8 @@ def test_link_probe_never_replays_and_only_records_closed_shape_predicates(case)
         link["success"] = False
     if case == "secret":
         link["unused-private-key-canary"] = SECRET.reveal()
+    if case in ("nested_false", "nested_number"):
+        link = {"success": True, "data": {"success": False if case == "nested_false" else 1}}
 
     class Response:
         status_code = 200
