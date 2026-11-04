@@ -60,6 +60,8 @@ Teslim edilenler: B15 bounded kanıt kapasitesi; taşınabilir strict Manifest v
 
 ## Sıradaki iş ve kalan kapsam
 
+**PR #14 kullanıcı review düzeltmeleri:** [Doğrulanmış takip ve adımlar](../research/p02-2-pr14-review-followup.md) uygulanıyor. Yeni source/test değişiklikleri başladı; aşağıdaki 06 M5 kabulü önceki kaynağa aittir. Tüm düzeltmeler ve iki fresh review kapanmadan yeni native/CI serisi başlatılmaz. Gizlilik/retention kararı ayrıca onaylanmadan bağımlı politika uygulanmaz.
+
 **P02-2 son kabulü sürüyor; [PR #14](https://github.com/HodeTech/Yorunge/pull/14) draft.** D–w uygulama kartları, her kod diliminin iki farklı fresh review turu ve doğrulanmış düzeltmeleri tamamlandı. ADR-0024–0028 Accepted. Private create/proje bağı, bounded upload, kalıcı intent/receipt, aynı-ID salt okuma recovery ve ortak sekiz CLI/Python yüzeyi çalışma dalındadır. [Kullanım rehberi](../reference/upload-workflows.md), [paket planı](p02-2-delivery-plan.md) ve [kanonik kabul kaydı](../research/p02-2-implementation-validation.md) ayrıntıları taşır.
 
 - **Canlı r5:** iki farklı içerikli PNG/158 byte, 23 GET, tam 8 accepted aşama ve iki distinct item için exact ad/size/SHA metadata sonucu. Yetki, fiyat ve uzak byte doğrulaması üretilmedi. Önceki partial/unknown denemeler ayrı korundu.

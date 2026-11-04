@@ -4,6 +4,7 @@
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
+- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): doğrulanan kod/test/UX düzeltmeleri, kabul edilmiş sınırlar ve ayrı gizlilik kararı; son kaynak kabulü henüz yenilenmedi.
 - [P02-2 ilk private create gözlemi](p02-2-private-create-observations.md): create 201, detail GET 405 ve kontrollü durma; link/upload yok, kaynak/test/receipt hash bağı korunur.
 - [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): Accepted kararlar altında d–w kod/review, r5 canlı metadata ve 06 kaynak bağlı native kabulü; son CI/kurulum/saklama gerçek durumu.
 - [P02-2 hazırlık review’si](p02-2-readiness-review.md): mevcut code/contract sınırları, 13 credentialsız kamu kaynağı, create–project link ayrımı, Accepted ADR-0024/0025, tarihsel hazırlık ve gerçek dış kapılar; ürün/live kabulü değildir.

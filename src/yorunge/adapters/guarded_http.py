@@ -80,10 +80,13 @@ class GuardedHttpTransport(httpx.AsyncBaseTransport):
             or (backend is not None and not isinstance(backend, GuardedBackend))
         ):
             raise YorungeError("invalid_request")
+        # CPython accepts None; the bundled ssl typing stub declares only str.
+        context.keylog_filename = None  # type: ignore[assignment]
         self._pool = httpcore.AsyncConnectionPool(
             ssl_context=context,
             max_connections=2,
             max_keepalive_connections=2,
+            keepalive_expiry=5.0,
             http1=True,
             http2=False,
             retries=0,

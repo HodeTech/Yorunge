@@ -141,6 +141,38 @@ async def put(transport, request, *, seconds=3):
         return body, response.sent_bytes, response.sent_sha256
 
 
+@pytest.mark.parametrize("truncated", [False, True])
+def test_guarded_large_put_preserves_complete_response_when_peer_resets(
+    tmp_path, certificates, truncated
+):
+    key = credential()
+    payload = b"r" * (8 * 1024 * 1024)
+    reply = b'{"accepted":true}'
+    route = PROXY_PREFIX + "put?key=objects%2Ffixture"
+    with TlsServer(
+        certificates,
+        {route: Reply(body=reply, reset_after_body=True, truncate_at=4 if truncated else None)},
+    ) as server:
+        owned, network, instances = session(key, certificates, {"api.localhost": server})
+        body = source(tmp_path, payload)
+        exchange = partial(
+            owned.exchange, lambda transport: put(transport, proxy(body, key), seconds=10)
+        )
+        with owned:
+            if truncated:
+                with pytest.raises(YorungeError) as failure:
+                    exchange()
+                assert failure.value.code == "transport_failed"
+            else:
+                assert exchange() == (reply, len(payload), hashlib.sha256(payload).hexdigest())
+        assert len(server.requests) == 1
+        assert server.requests[0].body == payload
+        assert len(network.connections) == 1
+        assert instances[0]._responses == set()
+        assert body._file_fd is None
+        assert body._root_fd is None
+
+
 def test_actual_proxy_and_direct_share_client_but_never_auth_cookie_or_url_logs(
     tmp_path, certificates, caplog
 ):

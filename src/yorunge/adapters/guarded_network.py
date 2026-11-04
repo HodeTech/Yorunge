@@ -129,15 +129,26 @@ class GuardedStream(httpcore.AsyncNetworkStream):
     ) -> None:
         self._stream, self._host = stream, host
         self._approved, self._allowed = approved, allowed
+        self._verified_peer = False
 
     def peer_valid(self) -> bool:
         try:
             peer = self._stream.get_extra_info("server_addr")
+            if peer is None:
+                # A closed socket can lose getpeername() while TLS still owns
+                # buffered response bytes. It cannot become a different peer.
+                # The first TCP/TLS check must nevertheless observe a real IP.
+                return self._verified_peer
             if not isinstance(peer, tuple) or not peer or type(peer[0]) is not str:
+                self._verified_peer = False
                 return False
             ip = str(address(peer[0]))
-            return ip in self._approved and self._allowed(ip)
-        except (ValueError, OSError):
+            self._verified_peer = ip in self._approved and self._allowed(ip)
+            return self._verified_peer
+        except OSError:
+            return self._verified_peer
+        except ValueError:
+            self._verified_peer = False
             return False
 
     async def reject(self) -> NoReturn:
@@ -234,17 +245,40 @@ class GuardedBackend(httpcore.AsyncNetworkBackend):
                     raise YorungeError("invalid_service_target") from None
                 if not all(self._allowed(item) for item in pinned):
                     raise YorungeError("invalid_service_target")
-                # A numeric IP is passed to the backend, never the original hostname.
-                remaining = end - time.monotonic()
-                if remaining <= 0:
-                    raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED)
-                stream = await self._connect(pinned[0], port, remaining, socket_options, host)
-                guarded = GuardedStream(stream, host, frozenset({pinned[0]}), self._allowed)
-                if not guarded.peer_valid():
-                    await guarded.reject()
-                return guarded
+                return await self._connect_approved(pinned, port, end, socket_options, host)
         except TimeoutError:
             raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED) from None
+
+    async def _connect_approved(
+        self,
+        pinned: tuple[str, ...],
+        port: int,
+        end: float,
+        options: Iterable[SocketOption] | None,
+        original_host: str,
+    ) -> GuardedStream:
+        saved_options = tuple(options) if options is not None else None
+        failure: httpcore.ConnectError | httpcore.ConnectTimeout = httpcore.ConnectError(
+            "approved TCP addresses unavailable"
+        )
+        for candidate in dict.fromkeys(pinned):
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                raise httpcore.ConnectTimeout(_CONNECTION_DEADLINE_ELAPSED)
+            try:
+                # Address fallback happens before TLS or any HTTP byte, under
+                # one deadline and one resolution. It never replays a request.
+                stream = await self._connect(
+                    candidate, port, remaining, saved_options, original_host
+                )
+            except (httpcore.ConnectError, httpcore.ConnectTimeout) as error:
+                failure = error
+                continue
+            guarded = GuardedStream(stream, original_host, frozenset({candidate}), self._allowed)
+            if not guarded.peer_valid():
+                await guarded.reject()
+            return guarded
+        raise failure
 
     async def _connect(
         self,

@@ -226,13 +226,19 @@ class HttpxTransport:
             raise YorungeError("invalid_request")
         self._owner()
         try:
-            self._client = httpx.AsyncClient(
-                transport=self._transport
-                or httpx.AsyncHTTPTransport(
+            transport = self._transport
+            if transport is None:
+                context = httpx.create_ssl_context(trust_env=False)
+                # CPython accepts None; the bundled ssl typing stub declares only str.
+                context.keylog_filename = None  # type: ignore[assignment]
+                transport = httpx.AsyncHTTPTransport(
+                    verify=context,
                     retries=0,
                     trust_env=False,
                     limits=httpx.Limits(max_connections=2, max_keepalive_connections=2),
-                ),
+                )
+            self._client = httpx.AsyncClient(
+                transport=transport,
                 trust_env=False,
                 follow_redirects=False,
                 cookies=CookieJar(policy=_NoCookies()),
