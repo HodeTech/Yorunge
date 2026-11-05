@@ -4,12 +4,16 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Changed — 2026-11-06
+
+- P02-2 (private create, bounded upload ve aynı-ID salt okuma recovery) ve P02-2a/b/c verified; [PR #14](https://github.com/HodeTech/Yorunge/pull/14) kullanıcı tarafından `94aaaf0` merge commit’iyle development’a alındı. Master/release veya paket yayını değildir. Sıradaki epik P02-3 draft; ADR-0030 Proposed kalır.
+
 ### Added — 2026-11-04
 
-- Çalışma dalında upload state’i için SQL-only şema 6→7 migration; var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
+- Upload state’i için SQL-only şema 6→7 migration ([PR #14](https://github.com/HodeTech/Yorunge/pull/14) ile development’ta); var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
 
 - ADR-0028: ilk Platform upload yolu aynı SHA-256’lı farklı adları ağ/create öncesinde açık `upload_duplicate_content`/exit 2 ile reddeder. Yerel Manifest/inspect/verify ve geçmiş kayıtlar korunur; tekrarlı adları bulmak için salt yerel rehber örneği eklendi. Özgün çoklu-ad upload desteği P02-R2’de açık kalır.
-- Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
+- `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [PR #14](https://github.com/HodeTech/Yorunge/pull/14) ile development’a alındı; paket yayını değildir. [Kullanım rehberi](docs/reference/upload-workflows.md); native/kurulum/CI/canlı metadata kabulü ve kanıt saklama [kabul kaydında](docs/research/p02-2-implementation-validation.md#development-merge-kapanışı) izlenir.
 
 ### Fixed — 2026-11-04
 

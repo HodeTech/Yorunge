@@ -9,7 +9,7 @@
 | [Yapılandırma](configuration.md) | Profil/reçete, öncelik ve doğrulama |
 | [Context keşfi](context-discovery.md) | Accepted ADR-0020/0021/0022: uygulanmış dar LLM terms/Platform ID-liste-seçim gözlemi, kapalı wire/target/snapshot ve state sınırı; unknown/unverified/no-authority, PR/CI ayrı |
 | [Yerel veri manifesti](dataset-manifest.md) | Accepted ADR-0023’e bağlı inspect/verify, Manifest v1, bounded dosya ve no-clobber çıktı; PR #13 ile development’a teslim edildi, kabul durumu bağlı sözleşmede |
-| [Private dataset aktarımı](dataset-transfer.md) | Accepted ADR-0024–0028: çalışma dalında ortak upload uygulaması; provider consumer sözleşmesi ve kalan nihai kabul ayrı referanslarda |
+| [Private dataset aktarımı](dataset-transfer.md) | Accepted ADR-0024–0029: development’ta ortak upload uygulaması (PR #14); provider consumer sözleşmesi ve kabul sınırları ayrı referanslarda |
 | [Araç sağlayıcısı](tool-provider-contract.md) | Görev, plan, execution ve sonuç sınırı |
 | [Yetenek kaydı](capability-record.md) | Destek, kapsam, kanıt ve güncellik |
 | [CapabilityScopeV2](capability-scope-v2.md) | Uygulandı — ADR-0013'e bağlı kapalı wire, nullability, sıralama ve kanonik anahtar; P01-3 kabulü tamamlandı |
@@ -25,7 +25,7 @@
 | [Upload HTTP effect portu](dataset-upload-port.md) | P02-2q yerel verified effect/metadata, intent/quota/receipt ve cleanup sınırı |
 | [Upload original koordinatörü](dataset-upload-workflow.md) | P02-2r yerel verified original composition, current memo, worker, proof ve hata sınırı |
 | [Upload salt okuma uzlaştırması](dataset-upload-reconciliation.md) | P02-2s yerel verified preflight/current/read lease/proof ve source hata sınırı |
-| [Private aktarım kullanım rehberi](upload-workflows.md) | Plan/review/onay/start ve aynı-ID salt okuma; çalışma dalı kabul durumu bölüm başındadır |
+| [Private aktarım kullanım rehberi](upload-workflows.md) | Plan/review/onay/start ve aynı-ID salt okuma; development kabul durumu bölüm başındadır |
 | [Upload CLI/Python](dataset-upload-public.md) | Uygulanmış P02-2t dar public summary, requested-intent review ve ortak kullanım senaryoları |
 | [Upload HTTP bütçeleri](dataset-upload-http.md) | V2 work limitlerinin gerçek HTTP çağrı/deneme/gövde yoluna bağlanması ve kayıtlı service URI; uygulama/kabul ilgili kartta |
 

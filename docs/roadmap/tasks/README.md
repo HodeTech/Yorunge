@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-04. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-06. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -56,7 +56,7 @@
 
 [P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.
 
-[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-2a–c üst kartları [P02-2 planına](../p02-2-delivery-plan.md) bağlıdır; ADR-0024–0029 Accepted, kod/review ve kullanıcı düzeltmeleri tamamlandı. Son 08 dataset/raw/upload ve iki kurulum geçti; startup/jobs süre kabulü ve yeni kaynak CI/kurulum/Sonar/saklama açık olduğundan üst kartlar draft kalır. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
+[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-2a–c üst kartları ve d–w alt kartları [P02-2 planına](../p02-2-delivery-plan.md) bağlıdır; hepsi verified ve [PR #14](https://github.com/HodeTech/Yorunge/pull/14) / [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
 
 [P02-2t](p02-2t-public-upload-workflows.md), s salt okuma kabulünden sonra ortak CLI/Python ve dar public sonuç/niyet görünümünü iki fresh turla tamamladı; [kanonik yüzey](../../reference/dataset-upload-public.md) uygulanmıştır.
 

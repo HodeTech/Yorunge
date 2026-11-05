@@ -1,6 +1,6 @@
 # Private dataset aktarımı
 
-**Tarih:** 2026-11-03. **Durum:** P02-2t ortak CLI/Python akışı ve iki fresh review turu çalışma dalında yerel tamamlandı. R5 canlı metadata ve 06 önceki kaynak native kabulü geçti; üst c son üç ortam CI/altı kurulum ve kalıcı saklamayı bekler. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
+**Tarih:** 2026-11-03. **Durum:** P02-2t ortak CLI/Python akışı ve iki fresh review turu tamamlandı; üst P02-2c, son kaynak üç ortam CI/altı kurulum ve kalıcı saklamayla verified ve PR #14 / 94aaaf0 ile development’a teslim edildi. R5 canlı metadata kabulü yetki, fiyat veya uzak byte doğrulaması değildir. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
 
 Önce yerel dosyaları inceleyin, seçtiğiniz owner/projeyi kontrol edin ve planın tam digest’ini onaylayın. Aktarım bir kez gönderilir. Uzak metadata eşliği, dosyaların uzaktan indirilip hash’lendiği veya yetkinizin doğrulandığı anlamına gelmez.
 

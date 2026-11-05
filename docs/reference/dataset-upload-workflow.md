@@ -1,6 +1,6 @@
 # Upload original koordinatörü
 
-**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 ve r.2 ayrı commit/fix ve ikişer fresh kod turuyla yerel kapandı. R.3 initial proof/full koordinatör iki fresh tur ve son kill test teyitleriyle kapandı; P02-2r çalışma dalında yerel verified. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 ve r.2 ayrı commit/fix ve ikişer fresh kod turuyla yerel kapandı. R.3 initial proof/full koordinatör iki fresh tur ve son kill test teyitleriyle kapandı; P02-2r verified ve development’tadır. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
 
 ## Katman ve invocation
 
@@ -44,7 +44,7 @@ Yeni operation bilinmeden pre-admission hata mevcut güvenli kodudur. ID biliniy
 
 Proof COMMIT sonrası caller/session hatasında yerel tam kayıttan terminal sonuç görülebiliyorsa unknown marker yazılmaz; güvenli source error ve aynı ID korunur. Örneğin open-existing-store fazındaki OSError mevcut state_write_failed/2 olur. Kalıcı başarı bu cevap kaybıyla düşürülmez. Yerel kayıt artık okunamıyorsa terminal olduğuna dair yeni kesinlik iddia edilmez.
 
-Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Ayrı controller ve public summary/API/CLI çalışma dalında uygulandı; nihai paket kabulü güncel durum kaydında izlenir.
+Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Ayrı controller ve public summary/API/CLI uygulandı ve development’tadır; paket kabulü [güncel durum kaydında](../roadmap/current.md) izlenir.
 
 ## Dilimler ve kabul
 

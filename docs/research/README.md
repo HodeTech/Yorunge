@@ -1,12 +1,12 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-11-02. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-11-06. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
-- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): dört kaynak/review dilimi tamam; 08 dataset/raw/upload geçti, startup/jobs süre kabulü ile yeni CI/kurulum/Sonar/saklama açık.
+- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): dört kaynak/review dilimi, 11 reference kabulü, son kaynak CI/Sonar ve kanıt saklama tamam; PR 94aaaf0 ile development’a alındı.
 - [P02-2 ilk private create gözlemi](p02-2-private-create-observations.md): create 201, detail GET 405 ve kontrollü durma; link/upload yok, kaynak/test/receipt hash bağı korunur.
-- [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): r5 tarihsel canlı metadata, son 08 ölçümlerinin başarı/ret ayrımı ve kalan teslim kapıları.
+- [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): r5 tarihsel canlı metadata, ölçüm başarı/ret ayrımı ve [development merge kapanışı](p02-2-implementation-validation.md#development-merge-kapanışı).
 - [P02-2 hazırlık review’si](p02-2-readiness-review.md): mevcut code/contract sınırları, 13 credentialsız kamu kaynağı, create–project link ayrımı, Accepted ADR-0024/0025, tarihsel hazırlık ve gerçek dış kapılar; ürün/live kabulü değildir.
 - [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 development’a birleştirildi; [merge/kanıt kapanışı](p01-remaining-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Önceki retler korunur; son PR/iptal/merge kanıtlarıyla 149 arşiv ve gerçek merge CI doğrulandı.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.

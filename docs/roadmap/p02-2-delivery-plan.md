@@ -1,6 +1,6 @@
 # P02-2 — Private create ve doğrulanmış upload teslim planı
 
-**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-05. **Durum:** ADR-0024–0029 Accepted; d–w kod/review, r5 tarihsel canlı metadata ve kullanıcı review düzeltmeleri tamamlandı. Son 08 serisinde dataset/raw/upload geçti; startup/jobs süre kabulü açık. Yeni kaynak CI/altı kurulum/Sonar/saklama ayrıca beklenir; a/b/c/epik draft. **Dal:** `feat/p02-2-private-upload`, development `50d68b1` tabanı. Tek [PR #14](https://github.com/HodeTech/Yorunge/pull/14); merge/Master/release kullanıcıdadır.
+**Tarih:** 2026-11-02. **Güncellendi:** 2026-11-06. **Durum:** P02-2 ve P02-2a/b/c verified. ADR-0024–0029 Accepted; d–w kod/review, r5 tarihsel canlı metadata, kullanıcı review düzeltmeleri, son kaynak üç ortam CI/altı kurulum/Sonar ve kalıcı kanıt saklaması tamamlandı. Tek [PR #14](https://github.com/HodeTech/Yorunge/pull/14), kullanıcı tarafından 2026-11-06 01:07:58 Europe/Istanbul tarihinde [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) ile development’a alındı; [merge/CI ve kanıt kapanışı](../research/p02-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. **Dal (tarihsel):** `feat/p02-2-private-upload`, development `50d68b1` tabanı. Aşağıdaki adım/sıra ve ölçüm öncesi ifadeler teslim edilen paketin tarihsel çalışma planıdır. Master/release kullanıcıdadır.
 
 **ADR-0028 sınırı:** Tekrarlı SHA-256 upload’ı ağ/create öncesi açıkça reddedilir; yerel Manifest dosya kimliği korunur. Max128 kabulü 128 farklı hash/386 accepted aşamayla geçti. İki PNG/158-byte/8-graph runner ve iki fresh kod turu tamamlandı; r5 gerçek olumlu metadata kabulüdür. Önceki üç-PNG frozen helper/receipt ve r4 unknown korunur. Özgün çoklu-ad ihtiyacı P02-R2’de açık kalır.
 
@@ -17,7 +17,7 @@ Kullanıcı güncel yerel manifestle doğru owner/projede private dataset oluşt
 | Upload/verification consumer | Proxy presign/PUT/confirm ve sayfalı item metadata, exact ad/size/SHA eşliği uygulanmış. Genel direct port sentetik TLS’te testlidir; gerçek direct provider wire desteği iddia edilmez | İlk proxy yolu tamam |
 | Yetki ve fiyat | Verified-only tam grant/exact-work complete cost ister. Explicit/unpriced bilinmeyeni ayrı insan onayıyla risk olarak taşır; r5 authority/pricing/remote-bytes=false | Bilinmeyen görünür; doğrulanmış provider kaynağı gerekir |
 | Canlı kabul | Ayrı bounded r5 gerçek create/link/iki dosya upload/aynı-ID read proof geçti; kaynak private kaldı. Önceki denemeler yeni gönderim hakkı üretmez | Dar metadata kabulü tamam |
-| Son kaynak teslimi | 08 dataset/raw/upload ve iki temiz kurulum geçti; startup cache ve jobs normal yolları >200 ms. Yeni kaynak functional CI/altı kurulum/Sonar ve çıktılarının saklaması beklenir; önceki 06/07 sonuçları tarihsel kalır | Üst kartlar draft |
+| Son kaynak teslimi | 11 reference serisi dataset/raw/upload/startup/jobs hedeflerini geçti; son kaynak üç ortam CI/altı kurulum/Sonar geçti, çıktıları kalıcı arşivlendi; eski 06–10 sonuçları tarihsel kalır | Üst kartlar verified |
 
 [Kanonik consumer](../reference/platform-upload-consumer.md) endpoint ve typed oracle’ın, [v2 sözleşmesi](../reference/dataset-upload-v2.md) yetki/maliyet/onay kapısının sahibidir. Araştırma belgesi veya yerel OpenAPI örneği provider yetki/fiyat garantisi oluşturmaz. Yeni hesap çağrısı veya kapsam değişikliği bu teslim planından otomatik yetki çıkarmaz.
 
@@ -48,7 +48,7 @@ Sonuç yetki, fiyat veya indirilmiş uzak byte doğrulaması değildir. Explicit
 
 [Uygulama ve kabul kaydı](../research/p02-2-implementation-validation.md), her kod diliminin commit/iki fresh turunu, doğrulanmış bulgu kapanışını, testleri, kurulumları, canlı denemeleri ve bütün ilk ölçüm sonuçlarını taşır. 03 jobs, 04 upload ve 05 startup retleri korunur; 06 kaynak değişikliklerinden sonraki ilk seridir ve geçti. Aynı kaynaktan iyi örnek seçmek için tekrar yapılmadı. Yerel tam takım gerekçesiz yeniden çalıştırılmaz; yeni source CI tam takımı ve altı kurulumu ayrıca doğrular.
 
-Aşağıdaki bölümler tamamlanan uygulama sırasını özetler; kalan aktif iş [current](current.md#sıradaki-iş-ve-kalan-kapsam) ve üst P02-2c kartında izlenir. Nihai CI/saklama kapanmadan üst teslim verified sayılmaz.
+Aşağıdaki bölümler tamamlanan uygulama sırasını özetler; güncel durum [current](current.md#sıradaki-iş-ve-kalan-kapsam) ve üst P02-2c kartındadır. Nihai CI/saklama kapandı; üst teslim verified ve development’a alındı.
 
 ## Bağımsız yerel kart sırası
 
