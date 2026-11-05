@@ -1166,3 +1166,12 @@ Kullanıcı 18 çekirdekli makinede tek süreç CPU yüzdesinin toplam doygunluk
 [Koşul kaydı](evidence.md#p02-2-shared-load-conditions-10) kullanıcının açık shared-load yetkisini, 18 mantıksal CPU’yu ve aşama sınırlarında AC/termal/yük gözlemlerini taşır. Bu kayıt sürekli izolasyon veya önceki retlerin nedeni için kanıt değildir. Sayısal başarı, ADR-0019’un izole referans kabulünün veya bütün P02-2 tesliminin tamamlandığı diye sunulmaz. Workflow hâlâ 09 reference adlarını kullanır; eski referans değiştirilmedi. ADR-0030 Proposed kalır; bu koşu onun onayı değildir.
 
 Üç özgün rapor actual private üretim bağlamıyla gizlilik kontrolünden geçirilip kayıpsız arşivlendi; katalog **470** kayıt. Ürün kodu, bağımlılık, public wire veya CI politikası değişmedi. Yeni EVREN çağrısı yoktur.
+
+
+## 5 Kasım — Kullanıcı teyidi ve geçen ölçümlerin kabulü
+
+Kullanıcı, 10 koşusu sırasında ek bir yük olmadığını kontrol ettiğini bildirdi ve kriterleri karşılayan sonuçların kabul edilmesini açıkça istedi. Güncel kabul açıklaması bu operatör teyidini esas alır; önceki “shared-load” adlandırması tek başına ölçümü geçersiz kılan bir sonuç değildir. Özgün dosya adları, koşul gözlemleri, rapor baytları ve hash’ler tarihsel bütünlük için korunur; sıfır süreç etkinliği veya fiziksel izolasyon attestasyonu üretilmez.
+
+Startup10 ve jobs10 bütün mutlak hedefleri geçmiştir. Aynı güncel kaynak haritasındaki dataset09/upload09 olumlu kayıtlarıyla birlikte dört strict reference verifier ayrıca çalıştırıldı ve dördü de geçti; gerçek kaynak/kurulum/fixture/bütçe eşliği doğrulandı. Kullanıcı bu ölçümlerin kabulünü yetkilendirmiştir; ADR-0030 erteleme önerisi uygulanmaz.
+
+Bu karar eski 09 startup/jobs retlerini değiştirmez. CI workflow hâlâ bu eski iki raporu seçtiği için mevcut başarısız GitHub kontrolü başarılı ilan edilmez. Ölçümün kabulü ile CI referans seçiminin güncellenmesi ayrı işlemlerdir; son CI/kanıt saklama ve PR teslim işleri açık kalır.

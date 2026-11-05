@@ -80,3 +80,6 @@ EVREN workspace genel kullanıcı erişimi, haricî paket/araç kurulumu, kalıc
 
 
 **5 Kasım paylaşılan yük tanısı:** Kullanıcının açık devam talebiyle mevcut kaynakta yalnız startup/jobs birer kez çalıştı; tüm sayısal kapılar geçti (cache p95 125,669 ms; jobs 100,663–152,883 ms). [Özgün 10 tanısı ve sınırı](../research/p02-2-implementation-validation.md#5-kasım--kullanıcı-onaylı-paylaşılan-yük-süre-tanısı), 470 kayıtlı katalogda saklanır. Bu sonuç izole reference veya overall teslim kabulü sayılmaz; mevcut 09 CI referansları ve Proposed ADR-0030 değiştirilmedi.
+
+
+**5 Kasım son kullanıcı kararı:** Kullanıcı 10 süre koşusunda ek yük olmadığını teyit ederek hedefleri geçen ölçümlerin kabulünü istedi. Startup10/jobs10 sonuçları güncel kabul için benimsenir; önceki “shared-load” adları tarihsel dosya adı olarak korunur. Erteleme önerisi uygulanmadı. CI hâlâ eski 09 startup/jobs raporlarını seçmektedir; reference seçimi ve son CI/kanıt/PR kapanışı ayrıca tamamlanmalıdır.
