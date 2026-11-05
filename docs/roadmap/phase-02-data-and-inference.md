@@ -1,6 +1,6 @@
 # P02 — Veri, katalog ve çıkarım
 
-**Güncellendi:** 2026-11-02. **Durum:** [P02-0 paketi](p02-0-delivery-plan.md) ve bütün alt kartları verified; [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı tarafından [9f30fd2](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile development’a birleştirildi. [Merge/CI kapanışı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. ADR-0022 onaylı nihai dar gözlem, ayrı gerçek LLM/Platform consumer kabulleri, iki fresh review döngüleri, kaynak bağlı M5 ve üç ortam CI tamamlandı. Public kimlik/yetki unknown/unverified; özgün doğrulanmış kimlik/bağ P02-R1’de açık kalır. P01 PR #11/bc9532c ile development’a teslim edildi; P02-1 ve bütün alt kartları çalışma dalında verified; [PR #13](https://github.com/HodeTech/Yorunge/pull/13) kullanıcı review/merge’ünü bekler; kaynak bağlı native ve üç ortam CI/kanıt kabulü tamam. P02-2–7 henüz uygulanmadı. **Yetenekler:** C01/C02 uzak gözlem alt kümesi, C03–C07, C11 okuma, C12/C13 entegrasyon.
+**Güncellendi:** 2026-11-05. **Durum:** [P02-0 paketi](p02-0-delivery-plan.md) ve bütün alt kartları verified; [PR #12](https://github.com/HodeTech/Yorunge/pull/12) kullanıcı tarafından [9f30fd2](https://github.com/HodeTech/Yorunge/commit/9f30fd2bad7c3495120b127fefd588b4458d0f07) ile development’a birleştirildi. [Merge/CI kapanışı](../research/p02-0-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. ADR-0022 onaylı nihai dar gözlem, ayrı gerçek LLM/Platform consumer kabulleri, iki fresh review döngüleri, kaynak bağlı M5 ve üç ortam CI tamamlandı. Public kimlik/yetki unknown/unverified; özgün doğrulanmış kimlik/bağ P02-R1’de açık kalır. P01 PR #11/bc9532c ile development’a teslim edildi; P02-1 ve bütün alt kartları verified; [PR #13](https://github.com/HodeTech/Yorunge/pull/13), 2 Kasım’da [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Merge/CI ve kanıt kapanışı](../research/p02-1-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. P02-2d–w kod/review ve kullanıcı düzeltmeleri tamamlandı; son 09 dataset/raw/upload sayaçları ve iki kurulum olumlu, startup/jobs süre kapıları ret; sürekli dış test beyanıyla izole referans kabulü açık. Son kaynak CI/altı kurulum/Sonar/saklama kapanana kadar P02-2/a/b/c draft kalır. P02-3–7 planlandı. **Yetenekler:** C01/C02 uzak gözlem alt kümesi, C03–C07, C11 okuma, C12/C13 entegrasyon.
 
 ## Kullanıcı sonucu ve kapsam
 
@@ -18,8 +18,10 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-0c | Bağımsız LLM terms/context gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [LLM kartı](tasks/p02-0c-llm-context-discovery.md); kod/review/live ve kaynak bağlı referans, PR #12 source CI tamam; development’a teslim edildi | `verified` |
 | P02-0d | Platform reported ID/organizasyon/proje gözlemi | P02-0a; P01-2b/P01-3a/P01-5a/P01-5b | [Platform kartı](tasks/p02-0d-platform-context-discovery.md); ADR-0022 nihai consumer/live/review/kurulum/M5 ve üç ortam CI tamam; PR #12 ile development’a teslim edildi | `verified` |
 | P02-R1 | Doğrulanmış hizmet kimliği ve seçili context bağı için açık takip | P02-0a, P02-0d; yetkili auth/principal/ilişki kaynağı | [Takip kartı](tasks/p02-r1-verified-context-binding.md); identity-context sahibi, ready öncesi alt işlere bölünür; mevcut P02-0 paketinin yeni önkoşulu değildir | `draft` |
-| P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 kullanıcı incelemesinde | `verified` |
-| P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | P02-2a–c; create/presign/PUT/confirm ve ilk kesinti güvenliği | `draft` |
+| P02-R2 | Aynı hash/farklı dosya adının uzak item çokluğu | P02-2m/q; sağlayıcı çözümü ve ayrı canlı kabul | [Takip kartı](tasks/p02-r2-upload-content-cardinality.md); Accepted ADR-0028 ile özgün ihtiyaç ayrı takip edilir | `draft` |
+| P02-R3 | Son kaynakta izole yerel performans kabulü | P02-2v ve uygun referans ortam | [Takip kartı](tasks/p02-r3-isolated-performance-acceptance.md); ADR-0030 Proposed, mevcut reference/CI kapıları henüz değişmedi | `draft` |
+| P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 / 50d68b1 ile development’a teslim edildi | `verified` |
+| P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | [P02-2 planı](p02-2-delivery-plan.md); draft P02-2a–c/Accepted ADR-0024/0025, ayrı project link dahil create/upload ve ilk kesinti güvenliği | `draft` |
 | P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | Alt işe göre P02-2 veya P02-0b | P02-3a–c; ortak güvenli indirme bağımsız hazırlanabilir | `draft` |
 | P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b; indirme ayrıca P02-3b | `draft` |
 | P02-5 | Native LLM ve temel çıkarım | P02-4a’nın ilgili hizmet/model kabulü; P01-5b | P02-5a–e; her görev ayrı typed girdi/çıktı ve maliyet sınırı | `draft` |
@@ -40,9 +42,29 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-1b | Strict yerel Manifest v1 ve sabit byte/digest oracle’ı | P01-1a; ADR-0023 Accepted; [kart](tasks/p02-1b-manifest-contract.md) | `verified` |
 | P02-1c | Descriptor recursive scan ve güncel byte kümesi verify | P01-3b, P02-1b; [kart](tasks/p02-1c-descriptor-dataset-scan.md) | `verified` |
 | P02-1d | Atomik artifact, API/CLI ve kurulu/final kaynak kabulü | P02-1a, P02-1c; [kart](tasks/p02-1d-dataset-inspection-cli.md) | `verified` |
-| P02-2a | Private oluşturma planı, güncel onay ve kalıcı create/korelasyon kaydı | P02-0a, P02-0b Platform alt kabulü, P02-1 | `draft` |
-| P02-2b | Yetkili depolama hedefinde bounded byte upload ve doğrulanmış confirm | P02-2a; aşağıdaki aktarım kararları | `draft` |
-| P02-2c | İlk upload’ın kill/restart/kayıp cevap ve teslim kapanışı | P02-2b; belirsizlikte yeni create/PUT yok | `draft` |
+| P02-2a | Private oluşturma planı, güncel onay ve kalıcı create/korelasyon kaydı | P02-0a, P02-0d, P02-1; [kart](tasks/p02-2a-private-create.md) | `draft` |
+| P02-2b | Yetkili depolama hedefinde bounded byte upload ve doğrulanmış confirm | P02-2a; [kart](tasks/p02-2b-verified-upload.md)/aşağıdaki aktarım kararları | `draft` |
+| P02-2c | İlk upload’ın kill/restart/kayıp cevap ve teslim kapanışı | P02-2b; [kart](tasks/p02-2c-upload-recovery-acceptance.md); belirsizlikte yeni create/PUT yok | `draft` |
+| P02-2d | Ayrı upload plan/manifest/onay kapalı sözleşmesi | P02-1; [yerel kart](tasks/p02-2d-upload-plan-contract.md) | `verified` |
+| P02-2e | Kalıcı transfer stage/intent ve ortak state kapıları | P02-2d; [yerel kart](tasks/p02-2e-durable-transfer-journal.md) | `verified` |
+| P02-2f | İzole storage hedefi ve bounded stream portu | P02-2d; [yerel kart](tasks/p02-2f-bounded-storage-port.md) | `verified` |
+| P02-2g | Exact işe/döneme bağlı maliyet v2 | P02-2d; [kart](tasks/p02-2g-work-cost-v2.md) | `verified` |
+| P02-2h | Policy-aware v2 plan/onay/current sözleşmesi | P02-2g; [kart](tasks/p02-2h-plan-policy-v2.md) | `verified` |
+| P02-2i | V1/V2 journal union ve tam graph okuması | P02-2h, P02-2e; [kart](tasks/p02-2i-versioned-journal.md) | `verified` |
+| P02-2j | V2 admission/arm ve v1 weak-cost write kapanışı | P02-2i, P02-2f; [kart](tasks/p02-2j-write-gates-v2.md) | `verified` |
+| P02-2k | V2 explicit read/metadata/reset uyumu | P02-2j; [kart](tasks/p02-2k-read-recovery-v2.md) | `verified` |
+| P02-2l | Platform context/create/link strict codec'leri | P02-2k; [kart](tasks/p02-2l-platform-control-codecs.md) | `verified` |
+| P02-2m | Platform proxy upload/confirm/items codec'leri | P02-2l, P02-2f; [kart](tasks/p02-2m-platform-upload-codecs.md) | `verified` |
+| P02-2n | Kayıtlı service URI ve gerçek HTTP quota bağlantısı | P02-2g, P02-2f, P02-2k, P02-2l; [kart](tasks/p02-2n-upload-http-budgets.md) | `verified` |
+| P02-2o | Güncel input/current provider ve prepare/approve kompozisyonu | P02-2n, P02-2m, P02-2k; [kart](tasks/p02-2o-current-upload-preparation.md) | `verified` |
+| P02-2p | Kalıcı create baseline, receipt union ve legacy gate | P02-2o; [kart](tasks/p02-2p-created-dataset-context.md), ADR-0027 Accepted | `verified` |
+| P02-2q | Gerçek bütçeli Platform effect/metadata portu | P02-2p, P02-2n, P02-2o; [kart](tasks/p02-2q-platform-effect-port.md) | `verified` |
+| P02-2r | Original upload koordinatörü | P02-2q; [kart](tasks/p02-2r-original-upload-workflow.md) | `verified` |
+| P02-2s | Salt okuma upload uzlaştırması | P02-2r; [kart](tasks/p02-2s-readonly-upload-reconciliation.md) | `verified` |
+| P02-2t | Ortak upload CLI/Python ve dar sonuç/niyet incelemesi | P02-2s; [kart](tasks/p02-2t-public-upload-workflows.md) | `verified` |
+| P02-2u | Çevrimdışı upload süreç/azami envanter kabulü | P02-2t; [kart](tasks/p02-2u-offline-upload-acceptance.md) | `verified` |
+| P02-2v | Kurulu upload native ölçüm araçları | P02-2w; [kart](tasks/p02-2v-installed-upload-measurement.md); üç dilim/ikişer fresh tur ve saklama tamam | `verified` |
+| P02-2w | Upload kaynak bakım/refaktör sınırları | P02-2u; [kart](tasks/p02-2w-upload-maintainability.md) | `verified` |
 | P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme | P02-2c | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı | P02-3a, P02-3b; gerekirse açık sürüm oluşturma/freeze kararı | `draft` |

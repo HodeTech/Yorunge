@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import (
     AuthorizationScope,
@@ -117,6 +117,10 @@ def operation_status(
 
 
 class OperationModel(WireModel):
+    # Nested size checks serialize records while validating them. Reuse codecs
+    # built in definition order instead of rebuilding through a mock serializer.
+    model_config = ConfigDict(defer_build=False)
+
     @field_validator(
         "operation_id",
         "plan_id",

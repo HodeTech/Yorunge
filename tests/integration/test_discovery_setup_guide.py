@@ -80,7 +80,10 @@ def test_documented_first_use_carries_only_selected_key_and_profile_preferences(
     }
     children = []
     original_run = subprocess.run
-    with TlsServer(cert, replies) as server:
+    with (
+        loopback_sockets(socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo),
+        TlsServer(cert, replies) as server,
+    ):
 
         def run(command, *, env, check):
             assert command[:3] == [sys.executable, "-m", "yorunge"]
@@ -113,9 +116,8 @@ def test_documented_first_use_carries_only_selected_key_and_profile_preferences(
         monkeypatch.setattr(subprocess, "run", run)
         code = guide_blocks()[1].replace('service = "evren-llm"', f'service = "{service}"')
         compiled = compile(code, str(GUIDE), "exec")
-        with loopback_sockets(socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo):
-            with pytest.raises(SystemExit) as stopped:
-                exec(compiled, {})
+        with pytest.raises(SystemExit) as stopped:
+            exec(compiled, {})
     assert stopped.value.code == 0, children[0].stderr
     assert len(children) == 1
     child = children[0]

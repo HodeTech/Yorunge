@@ -65,6 +65,15 @@ def test_real_state_reopen_cli_and_pragmas(tmp_path, cli):
             "operation_attempts",
             "operation_events",
             "operation_outcomes",
+            "upload_namespaces",
+            "upload_manifests",
+            "upload_plans",
+            "upload_approvals",
+            "upload_operations",
+            "upload_stage_intents",
+            "upload_stage_receipts",
+            "upload_controls",
+            "upload_verifications",
         }
     result = cli("state", "init", "--state-dir", str(root), "--output", "json", state=True)
     assert result.returncode == 0

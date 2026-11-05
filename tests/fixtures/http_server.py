@@ -47,13 +47,15 @@ class Reply:
 Route = Reply | Callable[[RequestRecord, int], Reply]
 
 
-def certificate(directory: Path) -> tuple[Path, Path]:
+def certificate(directory: Path, *, names: tuple[str, ...] = ("localhost",)) -> tuple[Path, Path]:
     """Create an explicitly trusted, short-lived test CA/server certificate."""
     directory.mkdir(parents=True, exist_ok=True)
     config = directory / "openssl.cnf"
     config.write_text(
         "[req]\nprompt=no\ndistinguished_name=subject\nx509_extensions=server\n"
-        "[subject]\nCN=localhost\n[server]\nsubjectAltName=DNS:localhost\n"
+        "[subject]\nCN=localhost\n[server]\nsubjectAltName="
+        + ",".join("DNS:" + name for name in names)
+        + "\n"
         "basicConstraints=critical,CA:TRUE\n"
         "keyUsage=critical,digitalSignature,keyEncipherment,keyCertSign\n"
         "extendedKeyUsage=serverAuth\n",
@@ -218,11 +220,36 @@ class TlsServer:
                     owner.disconnected.set()
                     self.close_connection = True
 
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self._server.daemon_threads = True
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(*(str(path) for path in self.certificates))
-        self._server.socket = context.wrap_socket(self._server.socket, server_side=True)
+
+        class TlsHTTPServer(ThreadingHTTPServer):
+            def get_request(self):
+                connection, address = super().get_request()
+                try:
+                    return (
+                        context.wrap_socket(
+                            connection, server_side=True, do_handshake_on_connect=False
+                        ),
+                        address,
+                    )
+                except BaseException:
+                    connection.close()
+                    raise
+
+            def finish_request(self, request, client_address):
+                # Handshake in the request worker, never in the listening thread.
+                # A peer cancelled between TCP and TLS must not block shutdown().
+                try:
+                    request.settimeout(5)
+                    request.do_handshake()
+                    request.settimeout(None)
+                except (OSError, ValueError):
+                    return
+                super().finish_request(request, client_address)
+
+        self._server = TlsHTTPServer(("127.0.0.1", 0), Handler)
+        self._server.daemon_threads = True
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
         return self
@@ -243,6 +270,7 @@ def loopback_sockets(
 ) -> Iterator[None]:
     """Unused by product: allow actual loopback sockets inside this fixture only."""
     original = socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo
+    original_reverse = socket.gethostbyaddr
 
     def permitted(self: socket.socket, address: tuple[str, int]) -> object:
         assert address[0] in ("127.0.0.1", "::1"), "non-loopback connection forbidden"
@@ -259,7 +287,15 @@ def loopback_sockets(
     socket.socket.connect = permitted  # type: ignore[method-assign,assignment]
     socket.socket.connect_ex = permitted_ex  # type: ignore[method-assign,assignment]
     socket.getaddrinfo = resolve  # type: ignore[assignment]
+
+    def reverse(host: str) -> tuple[str, list[str], list[str]]:
+        assert host in ("127.0.0.1", "::1"), "non-loopback reverse DNS forbidden"
+        return "localhost", [], [host]
+
+    # HTTPServer asks getfqdn(); deterministic loopback metadata needs no DNS.
+    socket.gethostbyaddr = reverse
     try:
         yield
     finally:
         socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo = original
+        socket.gethostbyaddr = original_reverse

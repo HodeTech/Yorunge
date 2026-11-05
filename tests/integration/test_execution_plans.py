@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from datetime import timedelta
+from functools import partial
 
 import pytest
 from pydantic import ValidationError
@@ -236,8 +237,9 @@ def test_plan_corruption_is_rejected_before_epoch_reset(tmp_path, execution_fixt
         body = json.loads(damaged[-1])
         body["digest"] = "0" * 64
         damaged[-1] = json.dumps(body)
+        rejected_call = partial(decode_plan, tuple(damaged))
         with pytest.raises(YorungeError):
-            decode_plan(tuple(damaged))
+            rejected_call()
         store.connection.execute("UPDATE execution_plans SET payload=?", (damaged[-1],))
     with pytest.raises(YorungeError) as error:
         api.preview_identity_reset(state_dir=state)
@@ -253,7 +255,7 @@ def test_plan_changes_stale_maintenance_preview_but_cache_churn_does_not(
     state = tmp_path / "state"
     plan = api.prepare_execution_plan(task="llm.train", state_dir=state).data.plan
     preview = api.preview_identity_reset(state_dir=state).data
-    assert preview.schema_version == 3
+    assert preview.schema_version == 4
     assert preview.current.plan_count == 1
     api.query_capabilities(task="llm.train", state_dir=state, refresh=True)
     assert api.preview_identity_reset(state_dir=state).data.digest == preview.digest

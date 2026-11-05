@@ -108,7 +108,7 @@ def terminal_fixture(connection, record, attempt, event, *, failed=False):
 def test_operation_restart_snapshot_and_plan_restrict(admitted_operation):
     root, plan, record, attempt, _ = admitted_operation
     with open_store(root) as store:
-        assert store.verify().store_schema_version == 6
+        assert store.verify().store_schema_version == 7
         result = read_job(store.connection, record.summary.operation_id)
         assert result.plan == plan
         assert result.operation == record.summary
@@ -175,7 +175,7 @@ def test_transaction_rollback_preserves_operation_and_immutable_admission(admitt
             write_record(connection, forged, expected_revision=1)
         assert failure.value.code == "operation_conflict"
         connection.execute("ROLLBACK")
-        assert store.verify().store_schema_version == 6
+        assert store.verify().store_schema_version == 7
 
 
 @pytest.mark.parametrize("existing", [False, True])
@@ -245,7 +245,7 @@ def test_schema6_ddl_failure_rolls_back_tables_manifest_and_version(tmp_path, mo
             conn.execute("SELECT name FROM sqlite_schema WHERE name='operations'").fetchone()
             is None
         )
-    assert api.initialize_state(state_dir=root).data.store_schema_version == 6
+    assert api.initialize_state(state_dir=root).data.store_schema_version == 7
 
 
 @pytest.mark.parametrize("entry", ["warm", "full"])
@@ -491,7 +491,7 @@ def test_predispatch_takeover_is_a_control_change_without_normal_event(
                 read_job(store.connection, record.summary.operation_id).attempts[-1] == next_attempt
             )
         else:
-            assert store.verify().store_schema_version == 6
+            assert store.verify().store_schema_version == 7
         assert store.connection.execute("SELECT count(*) FROM operation_events").fetchone() == (1,)
 
 

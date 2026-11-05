@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "kind": "public_source_observation",
+  "observed_on": "2026-11-02",
+  "timezone": "Europe/Istanbul",
+  "account_requests": 0,
+  "effectful_requests": 0,
+  "public_get_requests": 13,
+  "response_bytes": 1329541,
+  "sources": [
+    {
+      "url": "https://evren.ssyz.org.tr/guide",
+      "file": "guide.html",
+      "status": 200,
+      "bytes": 10407,
+      "sha256": "df80e07c59f5aa3715c6eef37aad3e34cf07233a91f1c7083539143bcc7397cf"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/index-5Y8u_8U6.js",
+      "file": "main.js",
+      "status": 200,
+      "bytes": 729034,
+      "sha256": "c96fde964604a694db75aa84a8c5ff508dcb1f35d2c9ae6753b8d960516ed6e5"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/DatasetDetailPage-BPeje7FE.js",
+      "file": "DatasetDetailPage-BPeje7FE.js",
+      "status": 200,
+      "bytes": 293161,
+      "sha256": "78520394986cd1632497b2b555415993b8db27273f78a99067d7c4c84eeeba27"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/UserGuidePage-DTl0xmcl.js",
+      "file": "UserGuidePage-DTl0xmcl.js",
+      "status": 200,
+      "bytes": 96221,
+      "sha256": "5a2bcf31786af49faf9675f48f2cf6166557d2a2ba630e8fafc032432ce18fb3"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/datasetApi-CA1WYT2w.js",
+      "file": "datasetApi-CA1WYT2w.js",
+      "status": 200,
+      "bytes": 7005,
+      "sha256": "6dcbbc4331bd2082c2fb595d20aaa84486db9e8d16baea8c351be8ad105cb963"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/validation-DUUZp46a.js",
+      "file": "validation-DUUZp46a.js",
+      "status": 200,
+      "bytes": 54475,
+      "sha256": "ac2fff8e6962696718bda20f356f36ba7eca098dcdb941926fbe0179ea0d1cb1"
+    },
+    {
+      "url": "https://pypi.org/pypi/evren-sdk/json",
+      "file": "sdk-meta.json",
+      "status": 200,
+      "bytes": 57246,
+      "sha256": "525202fe9cb5cad08c4f19b09d3e4e2f4bc4f7c1b3b046ecbd169ff1b845c70e"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/speker/evren-sdk/f4eaa4a71f324e61058f24fb90c0aec7a58ae24f/evren_sdk/client.py",
+      "file": "sdk-client.py",
+      "status": 200,
+      "bytes": 32318,
+      "sha256": "c9bebcd0ae0a7566cd08d9ec288265d01013a3edc829421746563e0be2409f98"
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/DatasetListPage-0ZBmWGZj.js",
+      "bytes": 14960,
+      "sha256": "ca8ec4e93e922dd82dadd514100610a7f07a2b813b1cc26408c71c37434bc35d",
+      "status": 200,
+      "file": "DatasetListPage-0ZBmWGZj.js"
+    },
+    {
+      "file": "ProjectDetailPage-D6bgaZdI.js",
+      "url": "https://evren.ssyz.org.tr/assets/ProjectDetailPage-D6bgaZdI.js",
+      "bytes": 26698,
+      "sha256": "865e193f7907be0a8df1a1a382de6b96c4116970b36d9ff49fbeab79e327351f",
+      "status": 200
+    },
+    {
+      "file": "useDataset-Nb4F07ba.js",
+      "url": "https://evren.ssyz.org.tr/assets/useDataset-Nb4F07ba.js",
+      "bytes": 4587,
+      "sha256": "fdb54df19e4c1243a217d662ea97d12ac7ce6d20d90b009727d637b5e4d13285",
+      "status": 200
+    },
+    {
+      "file": "useDatasetRole-BLM7Tb7t.js",
+      "url": "https://evren.ssyz.org.tr/assets/useDatasetRole-BLM7Tb7t.js",
+      "bytes": 969,
+      "sha256": "d9c52f4135bf9e936437da90e7308f4ec5d412df9b32995ff893a8cd88f8f245",
+      "status": 200
+    },
+    {
+      "url": "https://evren.ssyz.org.tr/assets/useProject-C5SXBHgI.js",
+      "file": "useProject-C5SXBHgI.js",
+      "bytes": 2460,
+      "sha256": "00d70adddff6149fa8fc5383a3ce05fd2406db524812349d018d955681106097",
+      "status": 200
+    }
+  ],
+  "limits": "Credentialsiz HTTPS GET; redirect takip edilmedi; kaynaklar metin/metadata olarak okundu, calistirilmadi. Bu kaynak kimligi provider auth veya canli kabul kaniti degildir."
+}

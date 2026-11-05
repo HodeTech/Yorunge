@@ -32,6 +32,27 @@ def scan(root, budget=None):
         return tree.scan()
 
 
+def test_hash_reads_keep_small_allocations_and_exact_final_short_block(tmp_path, monkeypatch):
+    root = tmp_path / "source"
+    root.mkdir()
+    data = b"abcde" * 100_000 + b"tail"
+    (root / "payload.bin").write_bytes(data)
+    observed = []
+    original = os.read
+
+    def bounded_read(descriptor, size):
+        observed.append(size)
+        assert 0 < size <= 128 * 1024
+        return original(descriptor, size)
+
+    monkeypatch.setattr(module.os, "read", bounded_read)
+    manifest = scan(root)
+    assert sum(observed) == len(data)
+    assert observed[-1] == len(data) % (128 * 1024)
+    assert manifest.files[0].sha256 == hashlib.sha256(data).hexdigest()
+    assert manifest.files[0].size == len(data)
+
+
 def track_descriptors(monkeypatch):
     live = set()
     peak = [0]

@@ -4,6 +4,30 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-11-04
+
+- Çalışma dalında upload state’i için SQL-only şema 6→7 migration; var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
+
+- ADR-0028: ilk Platform upload yolu aynı SHA-256’lı farklı adları ağ/create öncesinde açık `upload_duplicate_content`/exit 2 ile reddeder. Yerel Manifest/inspect/verify ve geçmiş kayıtlar korunur; tekrarlı adları bulmak için salt yerel rehber örneği eklendi. Özgün çoklu-ad upload desteği P02-R2’de açık kalır.
+- Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
+
+### Fixed — 2026-11-04
+
+- Doğrulanmış TCP alternatifleri aynı bağlantı bütçesinde denenir; kapanan bağlantıdaki peer metadata kaybı tamponlu yanıtı gizlemez. Guarded keepalive 5 s ile sınırlanır, owned TLS context keylogging’i kapatılır; HTTP replay açılmaz.
+- Eşzamanlı PUT hatasında tamamlanmış başarılı sibling sonucu owner bırakılmadan bir receipt yayınlama denemesi alır. Upload risk kabul bayrakları önerilen onay komutuna hazır eklenmez; sınır ve aynı-ID toparlanma rehberi netleşti.
+
+### Changed — 2026-11-04
+
+- Accepted ADR-0029: 95 hash bağlı tarihsel nonsecret provenance kaydı korunur; yeni kanıt Git/CI artefakt yayımı öncesi zorunlu üretim bağlamı ve bounded kodlanmış ek kontrolünden geçer. Genel PII/sır temizliği garantisi değildir.
+
+### Fixed — 2026-11-03
+
+- Ortak `approval_required` mesajı işlemin gerektirdiği onay seçimine yönlendirir; plan digest’i dışındaki açık kabul yolları için yanlış toparlanma önermez. Kod ve exit 4 değişmez.
+
+### Changed — 2026-11-02
+
+- README genel EVREN kapsamı, mevcut/planlanan yetenek ayrımı, özgün kapak, isteğe bağlı erişilebilir CLI GIF’i, kısa başlangıç ve katkı bağlantılarıyla yenilendi; ayrıntılı mevcut CLI/Python örnekleri yerel kullanım rehberine taşındı.
+
 ### Fixed — 2026-11-02
 
 - `--` sonrasındaki `--output=json/ndjson` biçimli dosya adları kullanım hatasının çıktı biçimini değiştirmez; makine biçimi yalnız gerçek seçeneklerden belirlenir. Var olan text/JSON/NDJSON hata zarfı ve exit kodları korunur.
@@ -19,7 +43,7 @@ P01 tamamlandı; son P01-5a/b ve P01-6b paketi [PR #11](https://github.com/HodeT
 
 ### Added — 2026-11-01
 
-- P02-1 çalışma dalında yerel `datasets inspect/verify` ve ortak Python API: taşınabilir Manifest v1, descriptor ile yeniden hash, root dışında 0600/no-clobber yayın, küçük text/JSON/NDJSON özeti ve uyuşmazlık exit 7. Kod review’ları, üç temiz kurulum turu ve kaynak bağlı native/gerçek kanıt kabulü tamamlandı; üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti, PR #13 kullanıcı incelemesindedir; development teslimi veya yayın değildir. Upload ve veri formatı değerlendirmesi eklenmedi.
+- P02-1 ile yerel `datasets inspect/verify` ve ortak Python API: taşınabilir Manifest v1, descriptor ile yeniden hash, root dışında 0600/no-clobber yayın, küçük text/JSON/NDJSON özeti ve uyuşmazlık exit 7. Kod review’ları, üç temiz kurulum turu ve kaynak bağlı native/gerçek kanıt kabulü tamamlandı; üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti. [PR #13](https://github.com/HodeTech/Yorunge/pull/13), 2 Kasım’da [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi; paket yayını değildir. Upload ve veri formatı değerlendirmesi eklenmedi.
 
 - `context discover --service evren-platform`: kapalı ID/liste/proje gözlemi, profil veya açık proje detail seçimi ve ortak Python API. ADR-0022 ile nihai dar consumer sonucu daima unverified/unknown; strict tüketilen alan ve seçili literal denetimi sonrası metadata atılır. Gerçek üç uç/seçili-detail kabulü geçti; son kaynak/review/kurulum/M5 ve üç ortam PR CI kabulü tamam; PR #12 development teslimi tamam, doğrulanmış kimlik/bağ P02-R1’de açık. Ham metadata ve kişisel profil alanları yayımlanmaz; bildirilen ID’ler kişiye bağlanabilir.
 

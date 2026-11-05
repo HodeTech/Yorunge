@@ -13,11 +13,13 @@ import os
 import re
 import runpy
 import statistics
+import subprocess
 import sys
 import tempfile
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
+from runpy import run_path as load_privacy
 from typing import Any
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
@@ -28,6 +30,7 @@ MAX_TOTAL_REPORT_BYTES = 512 * 1024 * 1024
 MAX_REJECTED_STARTUP_BYTES = 2 * 1024 * 1024
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*\.json")
 COMMIT = re.compile(r"[0-9a-f]{40}")
+ORIGINAL_COMMIT_MISMATCH = "original commit is not the first exact archived bytes"
 CI_RUN_URL = re.compile(
     r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[1-9]\d*", re.ASCII
 )
@@ -47,6 +50,7 @@ INSTALL_CHECKS = (
     "execution_smoke",
     "jobs_smoke",
 )
+INSTALL_CHECKS_V3 = (*INSTALL_CHECKS, "upload_smoke")
 JOBS_REFERENCE = {
     "cpu": "Apple M5 Max",
     "disk_type": "internal SSD/APFS",
@@ -791,6 +795,54 @@ def installation_row(value: object) -> str:
     return kind
 
 
+def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        "schema_version report_kind source_commit environment results passed",
+        "installation v3",
+    )
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 3
+        or report["report_kind"] != "installation_v3"
+    ):
+        raise ValueError("unknown installation v3 schema")
+    pattern_value(report["source_commit"], COMMIT)
+    if not isinstance(report["environment"], dict):
+        raise ValueError("installation environment must be an object")
+    results = report["results"]
+    if not isinstance(results, list) or len(results) != 2:
+        raise ValueError("one wheel and one sdist installation are required")
+    kinds = [installation_row_v3(row) for row in results]
+    if set(kinds) != {"wheel", "sdist"}:
+        raise ValueError("installation artifacts must be unique wheel and sdist")
+    passed = all(
+        row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V3[1:])
+        for row in results
+    )
+    flag(report["passed"], passed)
+    return {
+        "kind": "installation_v3",
+        "cases": 2,
+        "passed": passed,
+        "checks": check_counts(results, INSTALL_CHECKS_V3),
+    }
+
+
+def installation_row_v3(value: object) -> str:
+    row = closed(
+        value, "archive sha256 members " + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
+    )
+    kind = installation_row({key: item for key, item in row.items() if key != "upload_smoke"})
+    if not isinstance(row["upload_smoke"], str) or row["upload_smoke"] not in {
+        "passed",
+        "failed",
+        "not_run_unsupported_platform",
+    }:
+        raise ValueError("unknown installation upload smoke status")
+    return kind
+
+
 def measurement(value: dict[str, Any], *, startup: bool, rounded: bool = False) -> dict[str, Any]:
     samples_key, p95_key = (
         ("warm_samples_ms", "warm_p95_ms") if startup else ("samples_ms", "p95_ms")
@@ -1091,12 +1143,20 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     if kind == "dataset_hash_budget_v1" and version == 1:
         dataset = runpy.run_path(str(Path(__file__).with_name("benchmark-datasets.py")))
         return dataset["summarize_report"](report)  # type: ignore[no-any-return]
+    if kind == "upload_budget_v1" and version == 1:
+        upload = runpy.run_path(str(Path(__file__).with_name("upload_evidence.py")))
+        return upload["summarize_report"](report)  # type: ignore[no-any-return]
+    if kind == "rejected_upload_evidence_v1" and version == 1:
+        diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
+        return diagnostic["summarize"](report)  # type: ignore[no-any-return]
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
     if kind == "raw_stream_budget_v2" and version == 2:
         return stream_summary_v2(report)
     if kind == "installation_v2" and version == 2:
         return installation_summary(report)
+    if kind == "installation_v3" and version == 3:
+        return installation_summary_v3(report)
     if kind == "startup_evidence_v1" and version == 1:
         startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
         return startup["validate"](report)  # type: ignore[no-any-return]
@@ -1245,7 +1305,7 @@ def index_text(entries: list[dict[str, Any]]) -> str:
                 "https://github.com/HodeTech/Yorunge/blob/"
                 f"{item['original_commit']}/docs/research/{name}"
             )
-            lines.append(f"[İlk kayıt baytları]({url}); yerel arşiv `raw/{name}.gz`.")
+            lines.append(f"[İlk eşleşen kayıt baytları]({url}); yerel arşiv `raw/{name}.gz`.")
         else:
             lines.append(f"**Yerel arşiv:** `raw/{name}.gz`.")
         lines.append("**Özet:** `" + json.dumps(summary, ensure_ascii=False, sort_keys=True) + "`.")
@@ -1578,6 +1638,36 @@ def verify_startup_reference(root: Path, name: str) -> dict[str, Any]:
     return startup["reference"](root, report)  # type: ignore[no-any-return]
 
 
+def verify_upload_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid upload reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown upload reference evidence name")
+    report = decode(unpack(directory, item))
+    helper = runpy.run_path(str(Path(__file__).with_name("upload_evidence.py")))
+    summary: dict[str, Any] = helper["summarize_report"](report)
+    if not summary["passed"]:
+        raise ValueError("upload reference requires twelve successful process measurements")
+    environment, runtime = report["environment"], report["runs"][0]["client"]["runtime"]
+    if (
+        environment != {name: JOBS_REFERENCE[name] for name in ("cpu", "disk_type")}
+        or runtime["machine"] != JOBS_REFERENCE["machine"]
+        or not runtime["os"].startswith(JOBS_REFERENCE["platform_prefix"])
+        or not runtime["python"].startswith(JOBS_REFERENCE["python_prefix"])
+    ):
+        raise ValueError("upload proof does not declare configured M5 reference runtime")
+    current = helper["source"](root)["source_sha256"]
+    for field in ("source_before", "source_after"):
+        if report["provenance"][field]["source_sha256"] != current:
+            raise ValueError("upload reference differs from complete current source/oracle bytes")
+    if report["provenance"]["locked_runtime"] != helper["STREAM"]["locked_runtime"](root):
+        raise ValueError("upload reference runtime differs from current frozen lock")
+    return {"name": name, "source_commit": report["source_commit"], **summary}
+
+
 def replace_metadata(path: Path, content: bytes) -> None:
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("metadata target must be a regular file")
@@ -1603,10 +1693,79 @@ def report_source(root: Path, source: Path) -> Path:
     return directory / source.name
 
 
-def archive_report(root: Path, source: Path, original_commit: str | None) -> None:
+def original_commit_for(root: Path, name: str, content: bytes, commit: str | None) -> str | None:
+    if commit is not None and COMMIT.fullmatch(commit) is None:
+        raise ValueError("invalid original commit")
+    if not (root / ".git").exists():
+        if commit is None:
+            return None
+        raise ValueError(ORIGINAL_COMMIT_MISMATCH)
+    shallow = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--is-shallow-repository"],
+        capture_output=True,
+        check=True,
+        timeout=5,
+    ).stdout.strip()
+    if shallow != b"false":
+        raise ValueError("full Git history required for original commit metadata")
+    path = "docs/research/" + name
+    history = (
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "log",
+                "--full-history",
+                "--reverse",
+                "--format=%H",
+                "--",
+                path,
+            ],
+            capture_output=True,
+            check=True,
+            timeout=30,
+        )
+        .stdout.decode("ascii")
+        .splitlines()
+    )
+    expected = hashlib.sha256(content).digest()
+    for revision in history:
+        blob = subprocess.run(
+            ["git", "-C", str(root), "show", f"{revision}:{path}"],
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+        if (
+            blob.returncode == 0
+            and len(blob.stdout) == len(content)
+            and (hashlib.sha256(blob.stdout).digest() == expected)
+        ):
+            if commit not in (None, revision):
+                raise ValueError(ORIGINAL_COMMIT_MISMATCH)
+            return revision
+    if commit is not None:
+        raise ValueError(ORIGINAL_COMMIT_MISMATCH)
+    return None
+
+
+def archive_report(
+    root: Path,
+    source: Path,
+    original_commit: str | None,
+    *,
+    privacy_context: dict[str, Any] | None = None,
+) -> None:
     directory = research_directory(root)
     source = report_source(root, source)
     content = read_bounded(source, MAX_REPORT_BYTES)
+    privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
+    if privacy_context is None:
+        context_path = os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
+        privacy_context = privacy["load_context"](Path(context_path) if context_path else None)
+    privacy["check"](content, source.name, privacy_context)
+    original_commit = original_commit_for(root, source.name, content, original_commit)
     archive = gzip.compress(content, mtime=0)
     if len(archive) > MAX_ARCHIVE_BYTES:
         raise ValueError("compressed evidence size limit exceeded")
@@ -1634,7 +1793,14 @@ def archive_report(root: Path, source: Path, original_commit: str | None) -> Non
 
 
 def archive_rejected_startup(
-    root: Path, source: Path, name: str, source_commit: str, run_url: str, reason: str
+    root: Path,
+    source: Path,
+    name: str,
+    source_commit: str,
+    run_url: str,
+    reason: str,
+    *,
+    privacy_context: dict[str, Any] | None = None,
 ) -> None:
     source = report_source(root, source)
     if NAME.fullmatch(name) is None:
@@ -1655,7 +1821,15 @@ def archive_rejected_startup(
     destination = root / "dist" / name
     with destination.open("xb") as stream:
         stream.write(encode(report))
-    archive_report(root, destination, None)
+    archive_report(root, destination, None, privacy_context=privacy_context)
+
+
+def publication_context(args: argparse.Namespace) -> dict[str, Any] | None:
+    if args.action not in {"archive", "archive-rejected-upload", "archive-rejected-startup"}:
+        return None
+    privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
+    declared = args.privacy_context or os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
+    return privacy["load_context"](Path(declared) if declared else None)  # type: ignore[no-any-return]
 
 
 def main() -> int:
@@ -1673,6 +1847,8 @@ def main() -> int:
     startup_reference.add_argument("name")
     dataset_reference = commands.add_parser("verify-dataset-reference")
     dataset_reference.add_argument("name")
+    upload_reference = commands.add_parser("verify-upload-reference")
+    upload_reference.add_argument("name")
     rejected = commands.add_parser("archive-rejected-startup")
     rejected.add_argument("source", type=Path)
     rejected.add_argument("--name", required=True)
@@ -1683,16 +1859,51 @@ def main() -> int:
         required=True,
         choices=("invalid_evidence", "interrupted_measurement", "unverified_measurement"),
     )
+    upload_rejected = commands.add_parser("archive-rejected-upload")
+    upload_rejected.add_argument("workspace", type=Path)
+    upload_rejected.add_argument("--name", required=True)
+    upload_rejected.add_argument("--source-commit", required=True)
+    upload_rejected.add_argument("--run-url")
+    upload_rejected.add_argument(
+        "--reason",
+        required=True,
+        choices=(
+            "invalid_evidence",
+            "interrupted_measurement",
+            "unverified_measurement",
+        ),
+    )
+    for command in (add, rejected, upload_rejected):
+        command.add_argument("--privacy-context", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
-        if args.action == "archive-rejected-startup":
+        privacy_context = publication_context(args)
+        if args.action == "archive-rejected-upload":
+            diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
+            diagnostic["retain"](
+                root,
+                args.workspace,
+                args.name,
+                args.source_commit,
+                args.reason,
+                args.run_url,
+                privacy_context=privacy_context,
+            )
+            print("Archived original synthetic upload diagnostics; not acceptance.")
+        elif args.action == "archive-rejected-startup":
             archive_rejected_startup(
-                root, args.source, args.name, args.source_commit, args.run_url, args.reason
+                root,
+                args.source,
+                args.name,
+                args.source_commit,
+                args.run_url,
+                args.reason,
+                privacy_context=privacy_context,
             )
             print("Archived rejected startup bytes as a diagnostic attachment; not acceptance.")
         elif args.action == "archive":
-            archive_report(root, args.source, args.original_commit)
+            archive_report(root, args.source, args.original_commit, privacy_context=privacy_context)
             print("Archived original bytes; the input file was preserved.")
         elif args.action == "show":
             directory = research_directory(root)
@@ -1712,10 +1923,23 @@ def main() -> int:
         elif args.action == "verify-dataset-reference":
             summary = verify_dataset_reference(root, args.name)
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
+        elif args.action == "verify-upload-reference":
+            summary = verify_upload_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
-    except (OSError, ValueError, KeyError, TypeError, EOFError) as error:
-        parser.exit(1, f"Evidence check failed: {error}\n")
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        EOFError,
+        RecursionError,
+        subprocess.SubprocessError,
+    ):
+        parser.exit(
+            1, "Evidence check failed; preserve originals privately and keep retention open.\n"
+        )
     return 0
 
 

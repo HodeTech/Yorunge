@@ -412,6 +412,29 @@ def test_literal_schema_word_field_names_do_not_look_like_custom_serializers(nes
     assert value.model_dump(mode="json") == data
 
 
+@pytest.mark.parametrize("custom_serializer", [False, True])
+def test_cold_nested_codec_uses_framework_rebuild_and_keeps_serializer_guard(custom_serializer):
+    class ColdChild(Model):
+        value: (
+            Annotated[str, PlainSerializer(unquote, return_type=str)] if custom_serializer else str
+        )
+
+        @classmethod
+        def model_rebuild(cls, **kwargs):
+            raise AssertionError("caller override must not rebuild the inspected codec")
+
+    parent = create_model("ColdParent", __base__=Model, child=(ColdChild, ...))
+    raw = b'{"child":{"value":"synthetic%2Dserializer%2Dcanary"}}'
+    secrets = (SecretValue("synthetic-serializer-canary"),)
+    if custom_serializer:
+        with pytest.raises(YorungeError) as failure:
+            decode_response(raw, parent, secrets=secrets)
+        assert failure.value.code == "invalid_response"
+    else:
+        value = decode_response(raw, parent, secrets=secrets)
+        assert value.child.value == "synthetic%2Dserializer%2Dcanary"
+
+
 def test_ordinary_default_json_data_is_not_core_schema_serialization_metadata():
     class WithDefault(Model):
         metadata: dict[str, str] = {"type": "ordinary", "serialization": "ordinary"}

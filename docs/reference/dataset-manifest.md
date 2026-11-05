@@ -1,6 +1,6 @@
 # Yerel veri manifesti ve doğrulama
 
-**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın çalışma dalında uygulandı; kod review’ları, üç temiz kurulum turu ve kaynak bağlı native kabulü tamam, üç ortam source/metadata CI ve kalıcı kanıt kabulü geçti; [PR #13](https://github.com/HodeTech/Yorunge/pull/13) kullanıcı incelemesindedir. **Güncellendi:** 2026-11-02. Bu belge implementasyonun kanonik sözleşmesidir; henüz development teslimi veya yayın kaydı değildir.
+**Durum:** [ADR-0023](../decisions/0023-local-dataset-manifests.md) Accepted; public CLI/Python ve atomik yayın [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. Kod review, kurulum/native ve üç ortam CI/kalıcı kanıt kabulü [merge kaydında](../research/p02-1-implementation-validation.md#development-merge-kapanışı). **Güncellendi:** 2026-11-02. Bu belge implementasyonun kanonik sözleşmesidir; paket yayını veya Master/release kaydı değildir.
 
 ## Public yüzey
 
@@ -48,7 +48,7 @@ Kardeş bileşen collision anahtarı `NFC(NFC(name).casefold())`’dur. Aynı ke
 
 Dosya kimliği path’tir. Hardlink’ler ve aynı hash farklı adlar ayrı sayılır/hash’lenir; her biri mantıksal byte tavanını tüketir. Hardlink’in root dışındaki diğer adını araştırma garantisi yoktur. Symlink, FIFO/socket/device ve root’tan farklı device girdisi reddedilir. Dizin sayısı root dahil ≤4.096; dosya sayısı ≤4.096; metadata enumeration bunları aşarak sınırsız ad toplamaz. İzin/okuma hatası boş dosya/listesi sayılmaz.
 
-No-follow root/ancestor/leaf, taze stat, hash öncesi/sonrası imza, son tüm dosya/dizin üyelik ve root zinciri denetimleri [ADR-0023](../decisions/0023-local-dataset-manifests.md#descriptor-üzerinden-tarama-ve-güncellik) ile zorunludur. Her file ≤1 GiB ve toplam mantıksal içerik ≤1 GiB; block ≤1 MiB; worker 1; scanner açık descriptor ≤64. Ağaç atomik snapshot değildir; gözlenen değişim `input_changed` olur. Upload veya execution bu raporu gelecekteki içerik izni sayamaz. Mevcut execution Plan v1/v2, recipe, 128 input ve 64 KiB body değişmez.
+No-follow root/ancestor/leaf, taze stat, hash öncesi/sonrası imza, son tüm dosya/dizin üyelik ve root zinciri denetimleri [ADR-0023](../decisions/0023-local-dataset-manifests.md#descriptor-üzerinden-tarama-ve-güncellik) ile zorunludur. Her file ≤1 GiB ve toplam mantıksal içerik ≤1 GiB; block ≤1 MiB (mevcut descriptor tarayıcı gerçek okumayı 128 KiB ile sınırlar); worker 1; scanner açık descriptor ≤64. Ağaç atomik snapshot değildir; gözlenen değişim `input_changed` olur. Upload veya execution bu raporu gelecekteki içerik izni sayamaz. Mevcut execution Plan v1/v2, recipe, 128 input ve 64 KiB body değişmez.
 
 ## Sonuçlar ve karşılaştırma
 
@@ -88,7 +88,7 @@ Girdi manifesti malformed ise tarama veya output oluşturulmaz. Tarama değişim
 
 ## Bağımsız kabul
 
-Golden vektörler elle sabit dosya baytları ve bağımsız beklenen SHA/canonical manifest byte/digest kullanır; üreticinin kendi çıktısını tek oracle yapmaz. Boş dosya/ağaç, Unicode, farklı root/sıra, same-hash ve hardlink isimleri korunur. Parser, tüm quota ve adversarial yarışlar, disk-full/kill/existing target ve API/CLI JSON/NDJSON/locale/pipe negatifleri [kartlara](../roadmap/p02-1-delivery-plan.md) dağılır. Uygulanmış kapsam, çalıştırılan kontroller ve kabul sınırları [güncel uygulama/CI kaydında](../research/p02-1-implementation-validation.md#pr-13-review-bulguları-ve-saklama-kapanışı) kaynaklarıyla belirtilir.
+Golden vektörler elle sabit dosya baytları ve bağımsız beklenen SHA/canonical manifest byte/digest kullanır; üreticinin kendi çıktısını tek oracle yapmaz. Boş dosya/ağaç, Unicode, farklı root/sıra, same-hash ve hardlink isimleri korunur. Parser, tüm quota ve adversarial yarışlar, disk-full/kill/existing target ve API/CLI JSON/NDJSON/locale/pipe negatifleri [kartlara](../roadmap/p02-1-delivery-plan.md) dağılır. Uygulanmış kapsam, çalıştırılan kontroller ve kabul sınırları [güncel development merge/CI kaydında](../research/p02-1-implementation-validation.md#development-merge-kapanışı) kaynaklarıyla belirtilir.
 
 ## Senkron API ve iptal ayrımı
 

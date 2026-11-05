@@ -60,6 +60,8 @@ from yorunge.domain.maintenance import (
     MaintenancePreview,
     Preview,
     Snapshot,
+    TransferIdentitySnapshot,
+    TransferMaintenancePreview,
 )
 from yorunge.domain.models import Model
 from yorunge.domain.state import StateInfo, canonical_uuid
@@ -157,6 +159,14 @@ def operation_runtime() -> bool:
     )
 
 
+def transfer_runtime() -> bool:
+    return any(
+        name == "upload_plans"
+        for kind, name, _, _ in schema.expected_schema(schema.MIGRATIONS)
+        if kind == "table"
+    )
+
+
 def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> Snapshot:
     version, value = validate(connection, schema.MIGRATIONS, full=True)
     digest = hashlib.sha256()
@@ -207,9 +217,14 @@ def snapshot(connection: sqlite3.Connection, deadline: Deadline) -> Snapshot:
         return base
     from yorunge.adapters.operation_maintenance import operation_snapshot
 
-    return IdentitySnapshot.model_validate(
-        {**base.model_dump(), **operation_snapshot(connection, deadline)}
-    )
+    payload = {**base.model_dump(), **operation_snapshot(connection, deadline)}
+    if transfer_runtime():
+        from yorunge.adapters.upload_maintenance import upload_snapshot
+
+        return TransferIdentitySnapshot.model_validate(
+            {**payload, **upload_snapshot(connection, deadline)}
+        )
+    return IdentitySnapshot.model_validate(payload)
 
 
 def make_preview(
@@ -218,8 +233,14 @@ def make_preview(
     source: Snapshot | None = None,
     announced_epoch: str | None = None,
 ) -> Preview:
+    if transfer_runtime():
+        schema_version = 4
+    elif operation_runtime():
+        schema_version = 3
+    else:
+        schema_version = 2
     payload = {
-        "schema_version": 3 if operation_runtime() else 2,
+        "schema_version": schema_version,
         "cache_invalidated": True,
         "action": action,
         "current": current.model_dump() if current else None,
@@ -237,6 +258,8 @@ def make_preview(
         ).encode()
     ).hexdigest()
     payload["digest"] = digest
+    if transfer_runtime():
+        return TransferMaintenancePreview.model_validate(payload)
     return (
         MaintenancePreview.model_validate(payload)
         if operation_runtime()
@@ -342,6 +365,13 @@ def _reset_rows(
         from yorunge.adapters.operation_maintenance import invalidate_operations
 
         invalidate_operations(connection, epoch, SystemClock().now(), deadline)
+    if connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE name='upload_operations' AND type='table'"
+    ).fetchone():
+        from yorunge.adapters.capability_cache import SystemClock
+        from yorunge.adapters.upload_maintenance import invalidate_uploads
+
+        invalidate_uploads(connection, old.store_id, epoch, SystemClock().now(), deadline)
     _, value = validate(connection, schema.MIGRATIONS, full=True)
     load_key(root, value)
     deadline.remaining()

@@ -30,6 +30,11 @@ if TYPE_CHECKING:
     from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
+    from yorunge.domain.upload_public import (
+        DatasetUploadsPage,
+        DatasetUploadSummary,
+        UploadIntentReview,
+    )
 
     CliResult: TypeAlias = (
         Result[Plan]
@@ -41,6 +46,9 @@ if TYPE_CHECKING:
         | Result[PlatformContextDiscovery]
         | Result[DatasetInspection]
         | Result[DatasetVerification]
+        | Result[DatasetUploadSummary]
+        | Result[UploadIntentReview]
+        | Result[DatasetUploadsPage]
         | Result[StateInfo]
         | Result[MaintenancePreview]
         | Result[ConfigUpdate]
@@ -156,7 +164,7 @@ def parser() -> Parser:
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
     add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
     add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
-    add("datasets", "Yerel dosyaları manifestle kaydet ve yeniden doğrula", _datasets_options)
+    add("datasets", "Yerel veri manifestleri ve private dataset aktarımı", _datasets_options)
     return root
 
 
@@ -177,6 +185,11 @@ def _datasets_options(datasets: Parser) -> None:
             "Unicode sürümü yeni ad çakışmalarını reddedebilir. "
             "Manifest kök dışında olmalıdır; gizli dosyalar dahil edilir, otomatik ignore yoktur."
         )
+
+    upload = actions.add_parser("upload", help="Private aktarımı planla, onayla ve izle")
+    from yorunge.cli.upload import configure
+
+    upload._configure = configure
 
 
 def _doctor_options(doctor: Parser) -> None:
@@ -247,6 +260,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         _jobs_singletons(arguments)
     elif args.command == "context" and args.action == "discover":
         _discovery_singletons(arguments)
+    elif args.command == "datasets" and args.action == "upload":
+        from yorunge.cli.upload import SINGLETONS
+
+        _reject_duplicates(arguments, SINGLETONS)
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
@@ -422,6 +439,10 @@ def discovery_text_result(data: Model) -> str:
 
 def _result_text(args: argparse.Namespace, data: Model) -> str:
     if args.command == "datasets":
+        if args.action == "upload":
+            from yorunge.cli.upload import text
+
+            return text(data)
         return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
@@ -498,7 +519,11 @@ def local_text_result(data: Model) -> str:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
-    from yorunge.domain.maintenance import LegacyMaintenancePreview, MaintenancePreview
+    from yorunge.domain.maintenance import (
+        LegacyMaintenancePreview,
+        MaintenancePreview,
+        TransferMaintenancePreview,
+    )
     from yorunge.domain.state import StateInfo
 
     execution = execution_text_result(data)
@@ -519,7 +544,7 @@ def local_text_result(data: Model) -> str:
         return "\n".join(("* " if item.active else "  ") + item.name for item in data.profiles)
     if isinstance(data, DoctorReport):
         return "\n".join(f"{item.name}: {item.status} ({item.code or '-'})" for item in data.checks)
-    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview)):
+    if isinstance(data, (MaintenancePreview, LegacyMaintenancePreview, TransferMaintenancePreview)):
         return maintenance_text(data)
     if isinstance(data, StateInfo):
         return f"Yerel durum hazır.\nKimlik alanı: {data.identity_epoch}"
@@ -597,7 +622,7 @@ def maintenance_text(data: MaintenancePreview) -> str:
     else:
         lines.append("Mevcut credential, plan ve onay geçmişi korunur.")
     lines.append("Yeni kimlik alanı açılır; eski kimlikler, planlar ve onaylar geçersizleşir.")
-    if data.schema_version == 3:
+    if data.schema_version in (3, 4):
         lines.extend(
             (
                 "Operation, attempt ve terminal sonuç geçmişi korunur.",
@@ -605,17 +630,27 @@ def maintenance_text(data: MaintenancePreview) -> str:
                 "Önceden arm edilmiş dış çağrının durduğu garanti edilmez.",
             )
         )
+    if data.schema_version == 4:
+        lines.append("Upload planı, transfer intent/receipt ve namespace geçmişi korunur.")
     return "\n".join(lines)
 
 
 def maintenance_counts(label: str, snapshot: IdentitySnapshot) -> tuple[str, ...]:
     from yorunge.domain.maintenance import IdentitySnapshot as OperationSnapshot
+    from yorunge.domain.maintenance import TransferIdentitySnapshot
 
-    common = (
+    common: tuple[str, ...] = (
         f"{label} credential bağı: {snapshot.binding_count}",
         f"{label} plan: {snapshot.plan_count}",
         f"{label} onay: {snapshot.approval_count}",
     )
+    if isinstance(snapshot, TransferIdentitySnapshot):
+        common += (
+            f"{label} upload planı: {snapshot.upload_plan_count}",
+            f"{label} transfer: {snapshot.transfer_operation_count}",
+            f"{label} terminal olmayan transfer: {snapshot.nonterminal_transfer_count}",
+            f"{label} unknown transfer: {snapshot.unknown_transfer_count}",
+        )
     if isinstance(snapshot, OperationSnapshot):
         return (
             *common,
@@ -658,7 +693,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from yorunge.domain.errors import YorungeError
 
-    renderer = OutputRenderer(vars(args).get("output", "text"))
+    upload_guidance = args.command == "datasets" and args.action == "upload"
+    renderer = OutputRenderer(vars(args).get("output", "text"), upload_guidance=upload_guidance)
     try:
         result = dispatch(args)
     except YorungeError as error:
@@ -669,6 +705,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return renderer.error(YorungeError("file_unreadable"))
 
     try:
+        if args.command == "datasets" and args.action == "upload":
+            from yorunge.cli.upload import operation_id
+
+            renderer = OutputRenderer(
+                renderer.output, operation_id=operation_id(result.data), upload_guidance=True
+            )
         text = _result_text(args, result.data) if renderer.output == "text" else None
         renderer.result(cast("Result[Model]", result), text=text)
         return 0
@@ -743,19 +785,29 @@ def context_result(args: argparse.Namespace) -> CliResult:
     return api.show_context(**context_options)
 
 
+def datasets_result(args: argparse.Namespace) -> CliResult:
+    from yorunge import api
+
+    if args.action == "upload":
+        from yorunge.cli.upload import dispatch as upload_result
+
+        return upload_result(args)
+    reject_context(args, ("config", "profile", "project"))
+    from yorunge.adapters.dataset_files import anchor_dataset_paths
+
+    artifact = args.manifest_out if args.action == "inspect" else args.manifest
+    args.root, artifact = anchor_dataset_paths(args.root, artifact)
+    if args.action == "inspect":
+        return api.inspect_dataset(args.root, manifest_out=artifact)
+    return api.verify_dataset(args.root, manifest=artifact)
+
+
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
     options = vars(args)
     if args.command == "datasets":
-        reject_context(args, ("config", "profile", "project"))
-        from yorunge.adapters.dataset_files import anchor_dataset_paths
-
-        artifact = args.manifest_out if args.action == "inspect" else args.manifest
-        args.root, artifact = anchor_dataset_paths(args.root, artifact)
-        if args.action == "inspect":
-            return api.inspect_dataset(args.root, manifest_out=artifact)
-        return api.verify_dataset(args.root, manifest=artifact)
+        return datasets_result(args)
     if args.command == "state":
         return state_result(args)
     if args.command == "jobs":

@@ -9,7 +9,7 @@ from yorunge.domain.capabilities import CapabilityRecord, instant
 from yorunge.domain.errors import YorungeError
 
 MAX_CACHE_EXPIRIES = 10
-MAX_STATE_EXPIRIES = 1024 * (MAX_CACHE_EXPIRIES + 3)
+MAX_STATE_EXPIRIES = 1024 * (MAX_CACHE_EXPIRIES + 3) + 128 * 3
 NEXT_EXPIRIES = (
     "SELECT expires_at FROM capability_expiries WHERE expires_at>? "
     "ORDER BY expires_at,cache_key LIMIT 1",
@@ -18,6 +18,11 @@ NEXT_EXPIRIES = (
     "ORDER BY expires_at,plan_id LIMIT 1",
     "SELECT lease_expires_at FROM operations WHERE lease_expires_at>? "
     "ORDER BY lease_expires_at,operation_id LIMIT 1",
+    "SELECT expires_at FROM upload_plans WHERE expires_at>? ORDER BY expires_at,plan_id LIMIT 1",
+    "SELECT expires_at FROM upload_approvals WHERE expires_at>? ORDER "
+    "BY expires_at,plan_id LIMIT 1",
+    "SELECT lease_expires_at FROM upload_operations WHERE "
+    "lease_expires_at>? ORDER BY lease_expires_at,operation_id LIMIT 1",
 )
 
 
@@ -53,15 +58,17 @@ def check_expiry_dates(connection: sqlite3.Connection, key: str, dates: tuple[st
 def next_expiry(connection: sqlite3.Connection, high: str) -> datetime | None:
     try:
         dates = []
+        consumers = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type='table' "
+                "AND name IN ('operations','upload_plans')"
+            )
+        }
         for query in NEXT_EXPIRIES:
-            # Historical schema-2..5 migration validation precedes the consumer.
-            if (
-                "FROM operations " in query
-                and connection.execute(
-                    "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='operations'"
-                ).fetchone()
-                is None
-            ):
+            if "FROM operations " in query and "operations" not in consumers:
+                continue
+            if "FROM upload_" in query and "upload_plans" not in consumers:
                 continue
             row = connection.execute(query, (high,)).fetchone()
             if row is not None:

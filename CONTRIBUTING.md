@@ -44,7 +44,7 @@ uv sync --frozen --python 3.11
 .venv/bin/python scripts/check-agent-guides.py
 .venv/bin/python scripts/research_evidence.py verify
 uv build
-.venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv > dist/verification.jsonl
+.venv/bin/python scripts/verify-distributions.py --uv .local/tooling/bin/uv --evidence-output dist/installation.json --upload-workspace .local/distribution-upload-check > dist/verification.jsonl
 mkdir -p .local
 startup_fixture=$(mktemp -d .local/yorunge-startup.XXXXXX)
 .venv/bin/python tests/fixtures/seed_capability_cache.py "$startup_fixture/state" examples/profile.toml
@@ -53,7 +53,7 @@ startup_fixture=$(mktemp -d .local/yorunge-startup.XXXXXX)
 
 `--uv` için gerçekten kullanılan uv executable yolunu verin. `uv.lock` geliştirme/runtime sürümleri ve hash'lerini sabitler; build backend'i `pyproject.toml` içinde sabittir. İlk kurulum/build paket indirmek için ağ kullanabilir; uygulama ve test senaryoları çevrimdışıdır. `uv build` wheel'i sdist'ten üretir. Dağıtım denetimi üyeleri izin listesiyle kontrol eder, her arşivi ayrı temiz ortama kurar, import kökenini ve konsol komutunu depo dışından doğrular. Build çıktısı `dist/` altında Git dışında kalır.
 
-Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye adı kök kırpılmadan denetlenir; mutlak/traversal/kanonik olmayan yol, yinelenen ad, dosya/dizin çakışması, link ve özel dosya reddedilir. Sdist'in tek kökü arşiv adıyla, wheel metadata dizini dağıtım/sürümle eşleşir. `dist/verification.jsonl` her başarılı temiz kurulum için arşiv adı/SHA-256/üye sayısı/köken ve basic/NDJSON/HTTP/stream/cache/execution/jobs smoke sonucunu taşır. HTTP/stream sınaması gerçek yerel TLS sunucusu ve ayrı `-I` runtime-only süreç kullanır; EVREN erişimi değildir. Komutun başarısı ve iki kayıt birlikte tam kabul kanıtıdır. Hatalı koşunun kısmi kaydı başarı sayılmaz. CI aynı kayıtları iş günlüğünde gösterir.
+Dağıtım denetimi bir wheel ve aynı sürümden bir sdist gerektirir. Ham üye adı kök kırpılmadan denetlenir; mutlak/traversal/kanonik olmayan yol, yinelenen ad, dosya/dizin çakışması, link ve özel dosya reddedilir. Sdist'in tek kökü arşiv adıyla, wheel metadata dizini dağıtım/sürümle eşleşir. `dist/verification.jsonl` her başarılı temiz kurulum için artifact kimliği/köken ve basic/NDJSON/HTTP/stream/cache/execution/jobs/upload sonuçlarını taşır. Kapalı `installation_v3` kaydı `dist/installation.json` altında bütün dokuz kontrolü ayrıca doğrular; eksik/failed/not-run upload başarı sayılmaz. HTTP/stream/upload gerçek yerel TLS ve ayrı `-I` runtime-only süreç kullanır; EVREN erişimi değildir. Upload tek 16 MiB/üç dosyalı functional smoke’tur, nihai 12 süreç/native kabulü değildir. Kısmi kayıt başarı sayılmaz. Tekrarda yeni evidence-output/workspace/JSONL adı seçin; mevcut kayıt ezilmez. Upload kaynak/sayaç/çıktıları geçici venv dışında belirtilen workspace’te kalır; hata tanısı kalıcı kanıt standardına göre saklanır. CI kayıtları gösterir ve kaynak gövdeleri/state/config/credential olmadan ilgili kanıtları artifact’a alır.
 
 ZIP adında Python'un NUL kırpmasından önceki özgün alan denetlenir. `uv` ile Python'un farklı ad seçmesine yol açan Unicode Path (`0x7075`) alternatif ad alanı ve bozuk extra metadata reddedilir; diğer düzgün metadata alanları korunur. Bu denetim bu deponun ürettiği paketler içindir, genel amaçlı arşiv çıkarıcı değildir.
 

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 CHECKS = runpy.run_path(str(Path(__file__).parents[2] / "scripts/research_evidence.py"))
 SMOKES = (
     "smoke",

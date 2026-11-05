@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy
 from types import TracebackType
+from typing import Protocol, TypeVar
 from urllib.request import Request
 
 import httpx
@@ -68,6 +69,11 @@ class _NoCookies(DefaultCookiePolicy):
         return False
 
 
+class _BodyLimit(Protocol):
+    @property
+    def max_bytes(self) -> int: ...
+
+
 def _remaining(deadline: float) -> float:
     valid = type(deadline) in (int, float)
     try:
@@ -111,7 +117,7 @@ def _tls_failure(error: BaseException) -> bool:
 
 
 class _Response:
-    def __init__(self, response: httpx.Response, request: HttpRequest) -> None:
+    def __init__(self, response: httpx.Response, request: _BodyLimit) -> None:
         self.status_code = response.status_code
         self.headers = tuple(response.headers.multi_items())
         self._raw_response, self._request = response, request
@@ -163,13 +169,16 @@ class _Chunks(AsyncIterator[bytes]):
         return chunk
 
 
-class _ResponseContext(AbstractAsyncContextManager[_Response]):
-    def __init__(self, context: AbstractAsyncContextManager[_Response]) -> None:
+_ResponseT = TypeVar("_ResponseT", bound=_Response)
+
+
+class _ResponseContext(AbstractAsyncContextManager[_ResponseT]):
+    def __init__(self, context: AbstractAsyncContextManager[_ResponseT]) -> None:
         self._context = context
         self._task: asyncio.Task[object] | None = None
         self._entered, self._closed = False, False
 
-    async def __aenter__(self) -> _Response:
+    async def __aenter__(self) -> _ResponseT:
         if self._entered or self._closed:
             raise YorungeError("invalid_request")
         self._task, self._entered = asyncio.current_task(), True
@@ -207,7 +216,7 @@ class HttpxTransport:
         self._transport = transport
         self._client: httpx.AsyncClient | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._thread, self._pid = threading.get_ident(), os.getpid()
+        self._thread, self._pid = threading.current_thread(), os.getpid()
         self._closed = False
         self._responses: set[httpx.Response] = set()
         self._slots = asyncio.Semaphore(2)
@@ -217,13 +226,19 @@ class HttpxTransport:
             raise YorungeError("invalid_request")
         self._owner()
         try:
-            self._client = httpx.AsyncClient(
-                transport=self._transport
-                or httpx.AsyncHTTPTransport(
+            transport = self._transport
+            if transport is None:
+                context = httpx.create_ssl_context(trust_env=False)
+                # CPython accepts None; the bundled ssl typing stub declares only str.
+                context.keylog_filename = None  # type: ignore[assignment]
+                transport = httpx.AsyncHTTPTransport(
+                    verify=context,
                     retries=0,
                     trust_env=False,
                     limits=httpx.Limits(max_connections=2, max_keepalive_connections=2),
-                ),
+                )
+            self._client = httpx.AsyncClient(
+                transport=transport,
                 trust_env=False,
                 follow_redirects=False,
                 cookies=CookieJar(policy=_NoCookies()),
@@ -238,7 +253,7 @@ class HttpxTransport:
         return self
 
     def _owner(self) -> None:
-        if self._thread != threading.get_ident() or self._pid != os.getpid():
+        if self._thread is not threading.current_thread() or self._pid != os.getpid():
             raise YorungeError("invalid_request")
         loop = asyncio.get_running_loop()
         if self._loop is None:
@@ -330,7 +345,7 @@ class HttpxTransport:
             return response
         raise AssertionError("bounded attempts exhausted")
 
-    def open(self, request: HttpRequest, *, deadline: float) -> _ResponseContext:
+    def open(self, request: HttpRequest, *, deadline: float) -> _ResponseContext[_Response]:
         return _ResponseContext(self._open(request, deadline=deadline))
 
     async def _release(
@@ -355,7 +370,7 @@ class HttpxTransport:
         return failed
 
     @staticmethod
-    def _view(response: httpx.Response, request: HttpRequest) -> _Response:
+    def _view(response: httpx.Response, request: _BodyLimit) -> _Response:
         if not 200 <= response.status_code < 300:
             raise HttpStatusFailure(response.status_code)
         if (

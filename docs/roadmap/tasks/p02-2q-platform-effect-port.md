@@ -1,0 +1,45 @@
+---
+id: P02-2q
+phase: P02
+status: verified
+size: M
+depends_on: [P02-2p, P02-2n, P02-2o]
+capabilities: [C03, C12, C13]
+---
+# P02-2q — Bütçeli gerçek Platform effect portu
+
+**Tarih:** 2026-11-03. Aynı dal, a/b/c üst teslimi, tek nihai PR.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+Strict codec/quota/receipt tek başına gerçek request producer değildir. Port exact current source ve tek committed intent/permit ile gerçek HTTP'yi bir kez yapar; fake grant/cost/başarı üretmez. DB/controller/public yüzey ayrı kalır.
+
+## Giren ve girmeyen kapsam
+
+1. Repository-issued immutable UploadArm (aynı intent/permit/deadline), tek claim ve aynı semantic request fonksiyonunu paylaşma; eski tuple unpack/index ve generic execution permit korunur.
+2. Intent öncesi private effect-call hazırlığı/quota; actual TLS create/link/presign/confirm ve typed receipt/descriptor.
+3. Aynı pool bounded descriptor PUT/byte hash, items pagination ve exact ordered metadata.
+
+Q.1/q.2/q.2a/q.3 yerel verified; numeric thread-ID yeniden kullanımının ortak kaynak guard’larındaki takip düzeltmesi de tamamlandı. Üç ana dilim ve bu dar düzeltmenin her biri commit ve iki fresh tur/fix ile kapanır. Controller/current memo/worker sırası, public API/CLI/summary sentinel, native/kurulum/source CI/live q kabulü değildir; r/public/c sonraki somut adımlardır. Provider direct wire açılmaz, generic direct mekanizması değişmez.
+
+## Bağımlılıklar ve kararlar
+
+P/n/o verified; Accepted ADR-0024/0025/0026/0027. [Port referansı](../../reference/dataset-upload-port.md) kod öncesi exact internal sınırı tanımlar; [provider](../../reference/platform-upload-consumer.md) ve [v2 receipt/current](../../reference/dataset-upload-v2.md) değişmez. Yeni temel karar/ADR yoktur.
+
+## Sözleşme ve uygulama sınırı
+
+Adapter aynı UploadHttpxTransport/UploadBudget üstünde gerçek I/O yapar; application/domain semantic kuralı ortak kullanılır. Port DB/lease/permit üretmez; caller raw proof/client/secret header dict'i alamaz. Private raw key/URL ephemeral ve output/receipt dışında kalır.
+
+## Kabul
+
+Pre-intent typed validation/quota; exact intent operation/kind/index/request digest, permit/call/budget/credential bağları ve zero-wire ret; tek physical effect/no retry; actual TLS receipt/descriptor/byte/source/status/raw/literal/encoding sınırı; cancel/partial/cleanup. Metadata total/cursor/item/path/size/hash bijeksiyonu/null/duplicate ve bounded pages; local binding ağda yok; raw key/URL serialization/receipt/log/exception'da yok. V1 golden semantic digest aynı kalır.
+
+## Doğrulama
+
+Dar codec/semantic/actual TLS port/source/HTTP quota testleri ve gerekli önceki regresyon; Ruff/strict mypy/doc/rehber/diff. Her dilim iki fresh tur. Controller/native/live sonucu burada iddia edilmez.
+
+## Teslim kaydı
+
+- PR/commit: [d179903](https://github.com/HodeTech/Yorunge/commit/d179903); tek nihai P02-2 PR’ı henüz açılmadı.
+- Sonuç: Q.1 immutable arm/semantic digest; q.2 gerçek control effect’leri; q.2a ortak owner düzeltmesi; q.3 gerçek bounded PUT/items, her dilimde commit ve iki farklı fresh review/fix teyidiyle yerel verified. [Kabul kaydı](../../research/p02-2-implementation-validation.md#p02-2q3--gerçek-descriptor-put-ve-exact-öğe-metadatası).
+- Kalan sınır: Controller/current memo/worker sırası, restart/kill/public summary/API/CLI, native/kurulum/source CI ve ayrı live kabulü tamamlanmadı. Üst a/b/c ve epik açık; grant/fiyat kanıtı üretilmez.

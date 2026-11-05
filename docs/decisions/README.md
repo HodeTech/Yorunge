@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-11-01. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-05. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -27,5 +27,13 @@
 | [0021](0021-platform-discovery-observations.md) | Platform unverified projeksiyon/başlangıç ve kesin seçim wire’ı; nihai tüketici/kabul hükmü ADR-0022 ile kısmen değişti | Accepted — 2026-11-01 revize karar kullanıcı tarafından onaylandı; uygulama yetkili; nihai dar gözlem/kabul için ADR-0022 geçerli |
 | [0022](0022-observed-platform-consumer-contract.md) | Gözleme dayalı sınırlı Platform consumer sözleşmesini nihai sınır yapmak; unknown yetki/kimlik ve seçili canlı proje kapısı korunur | Accepted — kullanıcı 2026-11-01 revize kararı onayladı; ADR-0020/0021’in yalnız Platform nihai tüketici/kabul hükmünü kısmen değiştirir |
 | [0023](0023-local-dataset-manifests.md) | Yerel normal dosya envanteri, taşınabilir Manifest v1 ve root dışı no-clobber artifact | Accepted — P02-1, 2026-11-01 kullanıcı review düzeltmeleri sonrası uygulamayı yetkilendirdi |
+| [0024](0024-durable-dataset-transfers.md) | P02-2 ayrı private transfer planı, aşama intent/receipt, proje bağı ve ilk recovery sınırı | Accepted — 2026-11-02 kullanıcı review düzeltmeleri sonrası uygulama yetkisi; dış otorite/wire kapıları korunur; ADR-0028 ile tekrarlı içerik kabulü kısmen değiştirildi |
+| [0025](0025-isolated-storage-streaming.md) | Ayrı storage hedef/auth politikası ve bounded descriptor request streaming | Accepted — 2026-11-02 kullanıcı review düzeltmeleri sonrası uygulama yetkisi; provider hedef/expiry/wire kapısı korunur |
+| [0026](0026-explicit-unverified-transfer-attempts.md) | Verified varsayılanını koruyan açık unverified/unpriced transfer deneme politikası; v2 plan/onay | Accepted — kullanıcı review revizyonu ve iki fresh tur kapandı; ADR-0024 authority/cost/read hükümlerini kısmen değiştirir |
+| [0027](0027-durable-created-dataset-context.md) | Create cevabının iki sahiplik alanını dar v2 receipt ile atomik korumak | Accepted — 3 Kasım kullanıcı review düzeltmeleri ve iki fresh tur kapandı; ADR-0026 receipt/legacy/new-success hükümlerini kısmen değiştirir |
+| [0028](0028-platform-upload-content-cardinality.md) | İlk Platform upload’ında tekrarlı içerik hash’ini erken reddetme ve özgün çoklu-ad ihtiyacını takip etme | Accepted — 4 Kasım kullanıcı review revizyonu ve iki fresh teyit sonrası uygulama yetkisi; ADR-0024/P02-2 kabulü kısmen değişir |
+| [0029](0029-evidence-provenance-privacy.md) | Kayıpsız kanıtta sınırlı tarihsel provenance ve yeni çıktı gizliliği | Accepted — 95 hash bağlı tarihsel kayıt; yeni Git/CI çıktılarında bounded gizlilik kapısı |
+
+| [0030](0030-development-performance-acceptance.md) | Yerel M5 kabulünü açık takipte tutarak geliştirme CI/teslimini sürdürmek | Proposed — kullanıcı kararı bekleniyor; mevcut reference kapıları değişmedi |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

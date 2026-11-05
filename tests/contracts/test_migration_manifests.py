@@ -48,6 +48,15 @@ def test_data_v2_and_sql_only_v2_have_distinct_closed_shapes():
     assert sql.checksum == "5cdeec3dc9ad8f0e0019a12502b942a1615fbdad0ee0dbe5a4b7089410023218"
 
 
+def test_upload_schema7_is_the_frozen_sql_only_v2_migration():
+    step = MIGRATIONS[6]
+    assert isinstance(step, MigrationV2)
+    assert (step.from_version, step.to_version) == (6, 7)
+    assert step.checksum == "8dba0105eee3ee33bc33a23b3a6d9399440116bb672b3b11b5d51d3392c10506"
+    assert "data_transform" not in step.manifest()
+    assert migration_from_manifest(step.manifest()) == step
+
+
 @pytest.mark.parametrize(
     "patch",
     [

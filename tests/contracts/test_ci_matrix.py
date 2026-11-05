@@ -4,12 +4,13 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github/workflows/checks.yml"
+ARTIFACT_PATHS = Path(__file__).resolve().parents[2] / "scripts/evidence-artifact-paths.txt"
 CELLS = {
     "linux311": ("ubuntu-24.04", "3.11", "true"),
     "linux314": ("ubuntu-24.04", "3.14", "false"),
@@ -86,7 +87,7 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
     job = workflow["jobs"][cell]
     runner, python, budgets = CELLS[cell]
     assert job["runs-on"] == runner
-    assert job["timeout-minutes"] == "25"
+    assert job["timeout-minutes"] == "45"
     assert job["env"] == {
         "PYTHON_VERSION": python,
         "RUN_BUDGETS": budgets,
@@ -123,11 +124,12 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         ".venv/bin/python scripts/check-agent-guides.py",
         ".venv/bin/python scripts/research_evidence.py verify",
     ]
-    assert steps["tests"]["run"] == ".venv/bin/pytest"
+    assert steps["tests"]["run"] == ".venv/bin/pytest -o faulthandler_timeout=60"
     assert steps["build"]["run"].splitlines() == [
         ".ci-tools/bin/uv build",
         ".venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv "
-        "> dist/verification.jsonl",
+        "--evidence-output dist/installation.json --upload-workspace "
+        ".local/distribution-upload-check > dist/verification.jsonl",
         "cat dist/verification.jsonl",
     ]
 
@@ -172,23 +174,37 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-1-review-reference-v3-startup.json > dist/startup-reference.txt",
+            "p02-2-reference-startup-11.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-1-review-reference-v3-jobs.json > dist/jobs-reference.txt",
+            "p02-2-reference-jobs-11.json > dist/jobs-reference.txt",
         ),
         (
             "dataset-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
-            "p02-1-review-reference-v3-datasets.json > dist/dataset-reference.txt",
+            "p02-2-reference-datasets-11.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
             ".venv/bin/python scripts/benchmark-stream.py "
             "--python .local/startup-check/candidate/env/bin/python "
             "--workspace .local/stream-check --output dist/stream.json --disk-type unknown",
+        ),
+        (
+            "upload-reference",
+            ".venv/bin/python scripts/research_evidence.py verify-upload-reference "
+            "p02-2-reference-upload-11.json > dist/upload-reference.txt",
+        ),
+        (
+            "upload-budgets",
+            ".venv/bin/python scripts/upload_ci.py "
+            "--python .local/startup-check/candidate/env/bin/python "
+            "--wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check "
+            "--output dist/upload.json --environment dist/ci-environment.json "
+            '--run-url "https://github.com/${{ github.repository }}'
+            '/actions/runs/${{ github.run_id }}"',
         ),
     ):
         step = steps[step_id]
@@ -201,17 +217,35 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
 
 def test_each_cell_preserves_evidence_even_after_failure(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
+    assert workflow["jobs"]["linux311"]["steps"][0]["with"]["fetch-depth"] == "0"
     upload = steps["upload-evidence"]
     assert upload is workflow["jobs"]["linux311"]["steps"][-1]
-    assert upload["if"] == "${{ always() }}"
+    assert upload["if"] == "${{ always() && steps.evidence-privacy.outcome == 'success' }}"
+    assert upload["with"]["path"] == ".local/evidence-publication/"
+    context, privacy = steps["evidence-context"], steps["evidence-privacy"]
+    assert context["if"] == privacy["if"] == "${{ always() }}"
+    assert "--producer-preflight" in context["run"]
+    assert "--child-root" in context["run"]
+    assert "TMPDIR" in context["run"]
+    assert (
+        'echo "YORUNGE_EVIDENCE_CONTEXT=$GITHUB_WORKSPACE/.local/evidence-privacy-context.json" '
+        '>> "$GITHUB_ENV"' in context["run"]
+    )
+    assert "stage-ci --context .local/evidence-privacy-context.json" in privacy["run"]
+    assert "--patterns scripts/evidence-artifact-paths.txt" in privacy["run"]
+    assert "--destination .local/evidence-publication" in privacy["run"]
+    assert list(steps).index("evidence-context") < list(steps).index("environment-report")
+    assert list(steps).index("evidence-privacy") < list(steps).index("upload-evidence")
     assert upload["uses"] == "actions/upload-artifact@v4"
     assert upload["with"]["name"] == "compatibility-${{ github.job }}"
     assert upload["with"]["if-no-files-found"] == "error"
     assert upload["with"]["retention-days"] == "90"
     assert upload["with"]["include-hidden-files"] == "true"
-    assert set(upload["with"]["path"].splitlines()) == {
+    assert set(ARTIFACT_PATHS.read_text().splitlines()) == {
         "dist/ci-environment.json",
         "dist/verification.jsonl",
+        "dist/installation.json",
+        "dist/installation-upload-*-rejected.json",
         "dist/startup.json",
         "dist/startup-diagnostic.json",
         "dist/startup-baseline-selection.json",
@@ -219,6 +253,9 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         "dist/jobs-reference.txt",
         "dist/dataset-reference.txt",
         "dist/stream.json",
+        "dist/upload.json",
+        "dist/upload-reference.txt",
+        "dist/upload*-rejected.json",
         "dist/cache-startup.prof",
         ".local/startup-check/source-manifest.json",
         ".local/startup-check/measurement.json",
@@ -230,7 +267,56 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         ".local/stream-check/*/client-stderr.txt",
         ".local/stream-check/*/server-stdout.txt",
         ".local/stream-check/*/server-stderr.txt",
+        ".local/upload-check/source-before.json",
+        ".local/upload-check/source-manifest.json",
+        ".local/upload-check/source-after.json",
+        ".local/upload-check/oracle.json",
+        ".local/upload-check/controller-error.json",
+        ".local/upload-check/stdout.json",
+        ".local/upload-check/stderr.txt",
+        ".local/upload-check-controller-stdout.txt",
+        ".local/upload-check-controller-stderr.txt",
+        ".local/upload-check/*/client-stdout.json",
+        ".local/upload-check/*/client-stderr.txt",
+        ".local/upload-check/*/*-server/*.json",
+        ".local/upload-check/*/*-server/*.txt",
+        ".local/distribution-upload-check/*/source-before.json",
+        ".local/distribution-upload-check/*/source-manifest.json",
+        ".local/distribution-upload-check/*/source-after.json",
+        ".local/distribution-upload-check/*/oracle.json",
+        ".local/distribution-upload-check/*/controller-error.json",
+        ".local/distribution-upload-check/*/metadata-stdout.json",
+        ".local/distribution-upload-check/*/metadata-stderr.txt",
+        ".local/distribution-upload-check/*/stdout.json",
+        ".local/distribution-upload-check/*/*/client-stdout.json",
+        ".local/distribution-upload-check/*/*/client-stderr.txt",
+        ".local/distribution-upload-check/*/*/*-server/*.json",
+        ".local/distribution-upload-check/*/*/*-server/*.txt",
     }
+
+
+def test_upload_artifacts_preserve_interrupted_logs_and_exclude_payloads_and_state(workflow):
+    upload = steps_by_id(workflow["jobs"]["linux311"])["upload-evidence"]
+    assert upload["with"]["path"] == ".local/evidence-publication/"
+    patterns = ARTIFACT_PATHS.read_text().splitlines()
+    selected = (
+        ".local/upload-check/16-1/client-stdout.json",
+        ".local/upload-check/16-1/measured-server/stderr.txt",
+        ".local/upload-check/source-before.json",
+        ".local/upload-check-controller-stderr.txt",
+        ".local/distribution-upload-check/wheel/metadata-stdout.json",
+        ".local/distribution-upload-check/sdist/16-1/warm-server/stdout.json",
+    )
+    excluded = (
+        ".local/upload-check/16-1/measured/source/file-000.bin",
+        ".local/upload-check/16-1/measured/state/state.sqlite3",
+        ".local/upload-check/16-1/measured/config.toml",
+        ".local/upload-check/cert/key.pem",
+        ".local/distribution-upload-check/wheel/16-1/warm/source/file-000.bin",
+        ".local/distribution-upload-check/sdist/16-1/measured/state/state.sqlite3",
+    )
+    assert all(any(PurePosixPath(name).match(pattern) for pattern in patterns) for name in selected)
+    assert not any(PurePosixPath(name).match(pattern) for pattern in patterns for name in excluded)
 
 
 def invoke_gate(workflow, tmp_path, content):
@@ -382,6 +468,9 @@ def test_actual_environment_report_records_source_runtime_and_scope(
         "reference_receipt_macos_m5max_py311" if budgets == "true" else "compatibility_only"
     )
     assert report["raw_stream_budget_scope"] == scope
+    assert report["upload_budget_scope"] == (
+        "native_linux311_and_source_bound_m5" if budgets == "true" else "compatibility_only"
+    )
     assert "do-not-record-ambient-values" not in encoded
 
 

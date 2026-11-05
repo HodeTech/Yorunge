@@ -33,7 +33,7 @@ class HttpSession:
 
     def __init__(self, *, transport_factory: Callable[[], HttpxTransport] = HttpxTransport) -> None:
         self._factory = transport_factory
-        self._thread, self._pid = threading.get_ident(), os.getpid()
+        self._thread, self._pid = threading.current_thread(), os.getpid()
         self._runner: asyncio.Runner | None = None
         self._transport: HttpxTransport | None = None
         self._entered, self._closed, self._busy = False, False, False
@@ -42,7 +42,7 @@ class HttpSession:
 
     def _owner(self) -> None:
         if (
-            self._thread != threading.get_ident()
+            self._thread is not threading.current_thread()
             or self._pid != os.getpid()
             or self._busy
             or _active_loop()

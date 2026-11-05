@@ -8,14 +8,14 @@ Veri setleri, modeller, çıkarım, eğitim, kaynaklar ve sonuçlar arasında da
 
 [**Denemeye başla**](#çalışan-başlangıç) · [Kullanım rehberi](docs/reference/local-workflows.md) · [Yol haritası](docs/roadmap/README.md) · [Katkı yap](#birlikte-geliştirelim)
 
-**Geliştirme sürümü · 2 Kasım 2026.** Henüz yayımlanmış paket yok; kurulum kaynaktan. [Güncel teslim durumu →](docs/roadmap/current.md)
+**Geliştirme sürümü · 5 Kasım 2026.** Henüz yayımlanmış paket yok; kurulum kaynaktan. [Güncel teslim durumu →](docs/roadmap/current.md)
 
 ## Genel bakış
 
 | Alan | Bugün ve sırada |
 |---|---|
 | **Hesap ve proje** | **Var:** yerel profil/doctor ve EVREN hizmetlerinden salt okuma gözlemleri. Doğrulanmış uzak kimlik/yetki çözümlemesi ayrı iş. |
-| **Veri setleri** | **Var:** yerel dosya envanteri, manifest ve içerik doğrulama. **Planlandı:** private yükleme, indirme ve veri sürümleri. |
+| **Veri setleri** | **Var:** yerel envanter, manifest ve içerik doğrulama. **Bu dalda:** farklı içerikli dosyalar için onaylı private yükleme ve aynı işi salt okumayla inceleme; [kabul durumu](docs/roadmap/current.md). **Planlandı:** indirme ve veri sürümleri. |
 | **Modeller ve çıkarım** | **Planlandı:** model kataloğu, LLM metin/akış, embedding, rerank ve görsel çıkarım. |
 | **Eğitim ve araçlar** | **Var:** yerel plan hazırlığı. **Planlandı:** yönetilen EVREN eğitimi, varsayılan ForgeLM ve seçilebilir araç adaptörleri. |
 | **Kaynaklar ve sonuçlar** | **Var:** yerel iş geçmişi. **Planlandı:** GPU/kota görünürlüğü, uzak iş izleme ve sonuç toplama. |

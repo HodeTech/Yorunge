@@ -1,9 +1,13 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-11-01. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-11-02. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
 [Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
 
+- [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): dört kaynak/review dilimi tamam; 08 dataset/raw/upload geçti, startup/jobs süre kabulü ile yeni CI/kurulum/Sonar/saklama açık.
+- [P02-2 ilk private create gözlemi](p02-2-private-create-observations.md): create 201, detail GET 405 ve kontrollü durma; link/upload yok, kaynak/test/receipt hash bağı korunur.
+- [P02-2 uygulama/kabul kaydı](p02-2-implementation-validation.md): r5 tarihsel canlı metadata, son 08 ölçümlerinin başarı/ret ayrımı ve kalan teslim kapıları.
+- [P02-2 hazırlık review’si](p02-2-readiness-review.md): mevcut code/contract sınırları, 13 credentialsız kamu kaynağı, create–project link ayrımı, Accepted ADR-0024/0025, tarihsel hazırlık ve gerçek dış kapılar; ürün/live kabulü değildir.
 - [Kalan P01 uygulama ve faz kabulü](p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı): ilk altı adım, ADR-0019/Sonar, ikişer fresh review ve güncel kaynak üç ortam/altı kurulum/M5/raw kabulü verified. PR #11 development’a birleştirildi; [merge/kanıt kapanışı](p01-remaining-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. Önceki retler korunur; son PR/iptal/merge kanıtlarıyla 149 arşiv ve gerçek merge CI doğrulandı.
 - [Kalan P01 hazırlık incelemesi](p01-remaining-readiness-review.md): HTTP/SDK kaynak karşılaştırması, stream/iptal ve faz kabulü; ADR-0017/0018 kullanıcı review düzeltmeleri sonrası Accepted; ürün kabulü ayrı.
 - [Kanıt ve referans kaydı](evidence-register.md): resmî EVREN kaynakları, ForgeLM, muadil araç belgeleri ve referans repo yapıları.
@@ -65,4 +69,8 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 **1 Kasım onay geçişi:** [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) kullanıcı tarafından onaylandı; Accepted. Yukarıdaki araştırma özetlerindeki Proposed/eski dış kapı ifadeleri tarihsel aşamadır; güncel nihai dar gözlem ve tamamlanan kaynak/PR CI kabulü [paket kapanışında](p02-0-implementation-validation.md#pr-12-son-kaynak-ci-ve-paket-kapanışı) kayıtlıdır; PR #12 sonradan development’a birleştirildi; [merge/CI kapanışı](p02-0-implementation-validation.md#development-merge-kapanışı) günceldir. [P02-R1](../roadmap/tasks/p02-r1-verified-context-binding.md) özgün doğrulanmış kimlik/bağ ihtiyacını açık tutar.
 
-[P02-1 hazırlık/uygulama kaydı](p02-1-implementation-validation.md): Accepted ADR-0023, B15/manifest/descriptor/yayın/API/CLI uygulaması, iki fresh kod review turları ve üç temiz kurulum ve kaynak bağlı native kabulü; [güncel ölçüm kapanışı](p02-1-implementation-validation.md#son-kaynak-native-kabulü) başarılı/başarısız özgün kayıtları korur, [nihai PR/CI kapanışı](p02-1-implementation-validation.md#nihai-pr-ve-ci-kapanışı) üç ortam source/metadata CI ve kalıcı kanıt kabulünü kapatır; PR #13 kullanıcı incelemesindedir. İlk Proposed metinleri tarihsel hazırlık aşamasıdır.
+[P02-1 hazırlık/uygulama kaydı](p02-1-implementation-validation.md): Accepted ADR-0023, B15/manifest/descriptor/yayın/API/CLI uygulaması, iki fresh kod review turları ve üç temiz kurulum ve kaynak bağlı native kabulü; [güncel v3 ölçüm kapanışı](p02-1-implementation-validation.md#aynı-kaynakla-v3-native-kapanışı) başarılı/başarısız özgün kayıtları korur, [nihai PR/CI kapanışı](p02-1-implementation-validation.md#nihai-pr-ve-ci-kapanışı) üç ortam source/metadata CI ve kalıcı kanıt kabulünü kapatır; PR #13 / 50d68b1 ile development’a teslim edildi; [merge/CI ve saklama kapanışı](p02-1-implementation-validation.md#development-merge-kapanışı) günceldir. İlk Proposed metinleri tarihsel hazırlık aşamasıdır.
+
+[P02-2 upload ölçüm planı](p02-2-upload-measurement-plan.md), kurulu native worker/sink/report kodundan ve gerçek ölçümden önce fixture/pencere/örnek/limitleri sabitler; bir kabul sonucu değildir.
+
+[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kayıt ile sonraki sekiz kaydı ayrı izler; source fix ve gerekçeli disposition durumları API’den doğrulandı. Önceki 7e5675c kaynağında açık kayıt 0 ve gate OK; son kaynak analizi beklenir; [kabul kaydı](p02-2-implementation-validation.md) kalan CI/kurulum/saklamanın sahibidir.

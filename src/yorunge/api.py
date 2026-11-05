@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
+    from yorunge.domain.dataset_upload import UploadOwner, UploadParameters
+    from yorunge.domain.dataset_upload_v2 import AdmissionPolicy, DatasetUploadPlanV2
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
@@ -50,6 +52,11 @@ if TYPE_CHECKING:
     from yorunge.domain.operations import JobsPage, JobView
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
     from yorunge.domain.state import StateInfo
+    from yorunge.domain.upload_public import (
+        DatasetUploadsPage,
+        DatasetUploadSummary,
+        UploadIntentReview,
+    )
 
 
 class Request(Model):
@@ -1193,3 +1200,162 @@ def forget_execution_plan(
             data=forget_plan(store, plan_id, confirmation),
             warnings=("local_forget_does_not_cancel_remote_work",),
         )
+
+
+def show_dataset_upload(
+    *,
+    plan_id: str | None = None,
+    operation_id: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Read one durable upload summary; no credentials or network are needed."""
+    from yorunge.adapters.upload_public import show_upload
+
+    return show_upload(state_dir, plan_id=plan_id, operation_id=operation_id)
+
+
+def review_dataset_upload(
+    plan_id: str,
+    *,
+    state_dir: Path | None = None,
+) -> Result[UploadIntentReview]:
+    """Review the selected plan intent before confirming its full digest."""
+    from yorunge.adapters.upload_public import review_upload
+
+    return review_upload(plan_id, state_dir)
+
+
+def list_dataset_uploads(
+    *,
+    plan_id: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadsPage]:
+    """Read a bounded keyset page without resolving configuration or secrets."""
+    from yorunge.adapters.upload_public import list_uploads
+
+    return list_uploads(state_dir, plan_id=plan_id, limit=limit, cursor=cursor)
+
+
+def revoke_dataset_upload(
+    plan_id: str,
+    *,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Revoke the saved approval locally; an issued permit is not recalled."""
+    from yorunge.adapters.upload_public import revoke_upload
+
+    return revoke_upload(plan_id, state_dir)
+
+
+def _upload_options(config: Path | None, profile: str | None) -> None:
+    from yorunge.adapters.upload_preparation import require_upload_sync_context
+    from yorunge.application.upload_inputs import revalidate_input
+
+    require_upload_sync_context()
+    if config is not None and not isinstance(config, Path):
+        raise YorungeError("invalid_request")
+    revalidate_input(Request, Request.model_construct(profile=profile))
+
+
+def _upload_context(
+    config: Path | None,
+    profile: str | None,
+    plan: DatasetUploadPlanV2,
+) -> tuple[Context, Profile]:
+    return _context(
+        config, Request(profile=profile or plan.scope.profile, project=plan.scope.project_id), None
+    )
+
+
+def prepare_dataset_upload(
+    root: Path,
+    *,
+    manifest: Path,
+    owner: UploadOwner,
+    parameters: UploadParameters,
+    project: str,
+    budget_cr: str | None = None,
+    unpriced: bool = False,
+    admission_policy: AdmissionPolicy = "verified_only",
+    storage_origin: str | None = None,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Freshly hash local files and save a scoped plan; never writes remotely."""
+    from yorunge.adapters.upload_api import prepare_upload
+
+    _upload_options(config, profile)
+    return prepare_upload(
+        root,
+        manifest,
+        owner,
+        parameters,
+        project,
+        lambda: _context(config, Request(profile=profile, project=project), None),
+        state_dir,
+        budget_cr=budget_cr,
+        unpriced=unpriced,
+        admission_policy=admission_policy,
+        storage_origin=storage_origin,
+    )
+
+
+def approve_dataset_upload(
+    plan_id: str,
+    confirmed_digest: str,
+    *,
+    accept_unverified_authority: bool = False,
+    accept_unpriced_cost: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Recheck current files/context before recording exact digest/risk consent."""
+    from yorunge.adapters.upload_api import approve_upload
+
+    _upload_options(config, profile)
+    return approve_upload(
+        plan_id,
+        confirmed_digest,
+        lambda plan: _upload_context(config, profile, plan),
+        state_dir,
+        authority=accept_unverified_authority,
+        unpriced=accept_unpriced_cost,
+    )
+
+
+def start_dataset_upload(
+    plan_id: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Run a new original workflow once; existing operations are local lookups."""
+    from yorunge.adapters.upload_api import start_upload
+
+    _upload_options(config, profile)
+    return start_upload(plan_id, lambda plan: _upload_context(config, profile, plan), state_dir)
+
+
+def reconcile_dataset_upload(
+    operation_id: str,
+    *,
+    accept_unverified_read: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadSummary]:
+    """Inspect the same resource through a new bounded read; never resumes writes."""
+    from yorunge.adapters.upload_api import recover_upload
+
+    _upload_options(config, profile)
+    return recover_upload(
+        operation_id,
+        lambda plan: _upload_context(config, profile, plan),
+        state_dir,
+        accepted=accept_unverified_read,
+    )

@@ -150,6 +150,9 @@ def source(project: Path) -> dict[str, Any]:
     paths = sorted(project.glob("*.py"))
     paths += sorted((project / "src").rglob("*.py"))
     paths += sorted((project / "scripts").glob("*.py"))
+    publication_paths = project / "scripts/evidence-artifact-paths.txt"
+    if publication_paths.exists():
+        paths.append(publication_paths)
     paths += sorted((project / "tests").rglob("*.py"))
     paths += [
         project / name

@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 2026-10-30 kullanıcı yetkisi; iki P2 belge düzeltmesi, üç uygulama adımı, Sonar bakımı, fresh referanslar ve gerçek CI kabulü [kapanış kaydında](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b.
 
+**2026-11-04 kısmi değişiklik:** [ADR-0029](0029-evidence-provenance-privacy.md), özgün baytları koruma kuralını değiştirmeden 95 hash bağlı tarihsel nonsecret provenance kaydını ve yeni Git/CI yayımı öncesi bounded gizlilik kapısını tanımlar. Gizlilik reddindeki özel yerel kopya kalıcı kabul kanıtı değildir; saklama takibi kapanmadan kabul/merge önerisi verilmez. Kaynak/ölçüm başarısızlığı başarıya çevrilmez.
+
 ## Bağlam
 
 [Performans standardı](../standards/performance.md) help/version için 500 ms, context/cache için 200 ms sıcak p95 hedefler; en az 30 ayrı süreç ve üç ısınma kullanır. Jobs kabulü zaten açık M5/SSD referansına ve CI'da güncel kaynakla eşleşen ölçüm kaydına bağlıdır. Karar öncesinde startup her GitHub Linux 3.11 host'unda mutlak kapıydı; ubuntu etiketi fiziksel CPU/VM yükünü sabitlemez.

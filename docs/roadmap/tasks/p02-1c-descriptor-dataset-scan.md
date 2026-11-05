@@ -8,7 +8,7 @@ capabilities: [C03, C04]
 ---
 # P02-1c — Descriptor envanteri ve güncel byte doğrulaması
 
-**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). Descriptor scan/verify yerelde ve iki fresh review turuyla tamamlandı; public API/CLI/yayın sonraki karttadır.
+**Tarih:** 2026-11-01. [Paket/adım 3](../p02-1-delivery-plan.md). Descriptor scan/verify ve iki fresh review turu tamamlandı; public API/CLI/yayın da P02-1d ile tamamlanıp PR #13’te development’a teslim edildi.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -41,6 +41,6 @@ Contract ve gerçek filesystem integration/process/race testleri, anlamlı byte/
 
 ## Teslim kaydı
 
-- PR/commit: [5695c62](https://github.com/HodeTech/Yorunge/commit/5695c62), [b489516](https://github.com/HodeTech/Yorunge/commit/b489516), [06223b9](https://github.com/HodeTech/Yorunge/commit/06223b9); [PR #13](https://github.com/HodeTech/Yorunge/pull/13) içindeki yerel teslim; kullanıcı review/merge’ünü bekler.
+- PR/commit: [5695c62](https://github.com/HodeTech/Yorunge/commit/5695c62), [b489516](https://github.com/HodeTech/Yorunge/commit/b489516), [06223b9](https://github.com/HodeTech/Yorunge/commit/06223b9); [PR #13](https://github.com/HodeTech/Yorunge/pull/13), **2026-11-02 12:33:51 Europe/Istanbul** tarihinde [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi; [merge/CI kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı).
 - Sonuç: [Adım 3 kapanışı](../../research/p02-1-implementation-validation.md#p02-1c--descriptor-envanteri-ve-verify-çekirdeği), iki fresh tur ve iki ek hedefli teyit tamamlandı. 901 geniş komşu test + ek yerel config/env/state bağımsızlık guard’ı geçti; 77 kaynakta strict mypy ve Ruff format/lint geçti. Gerçek FD takibi, 4.096 dosya/root dahil 4.096 dizin sınırları ve cancel/close/race retleri kanıtlıdır.
 - Kalan sınır: Public API/CLI, no-clobber artifact yayını, kurulu paket ve nihai performans/CI aynı pakette P02-1d kabulüyle ayrıca tamamlandı. Tarama atomik snapshot veya gelecekteki execution/upload izni değildir.

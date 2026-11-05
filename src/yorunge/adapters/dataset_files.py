@@ -31,6 +31,8 @@ from yorunge.domain.dataset_manifest import (
 from yorunge.domain.errors import ErrorCode, YorungeError
 
 Chain = tuple[tuple[int, int], ...]
+# Keep consecutive read allocations small; HASH_BLOCK_BYTES remains the public cap.
+_HASH_READ_BYTES = 128 * 1024
 
 
 def close_descriptor(
@@ -129,6 +131,13 @@ class DirectoryObservation:
     signature: tuple[int, ...]
     chain: Chain
     names: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TreeObservation:
+    chain: Chain
+    files: tuple[FileObservation, ...]
+    directories: tuple[DirectoryObservation, ...]
 
 
 @dataclass(frozen=True)
@@ -297,7 +306,10 @@ class DatasetTree:
             digest, count = hashlib.sha256(), 0
             while count < observed.st_size:
                 self.budget.check()
-                block = os.read(descriptor, min(policy.HASH_BLOCK_BYTES, observed.st_size - count))
+                block = os.read(
+                    descriptor,
+                    min(_HASH_READ_BYTES, policy.HASH_BLOCK_BYTES, observed.st_size - count),
+                )
                 if not block:
                     raise YorungeError("input_changed")
                 digest.update(block)
@@ -313,10 +325,24 @@ class DatasetTree:
         self.budget.check()
         if not self.scanned:
             raise YorungeError("invalid_request")
+        self.recheck_observation(self.observation())
+
+    def observation(self) -> TreeObservation:
+        self.budget.check()
+        if not self.scanned:
+            raise YorungeError("invalid_request")
+        return TreeObservation(self.chain, tuple(self.files), tuple(self.directories))
+
+    def recheck_observation(self, observation: TreeObservation) -> None:
+        self.budget.check()
+        if type(observation) is not TreeObservation:
+            raise YorungeError("invalid_request")
+        if observation.chain != self.chain:
+            raise YorungeError("input_changed")
         try:
-            for item in self.files:
+            for item in observation.files:
                 self._recheck_file(item)
-            for directory in self.directories:
+            for directory in observation.directories:
                 self._recheck_directory(directory)
             self.check_root()
         except OSError as error:
@@ -390,17 +416,21 @@ class DatasetTree:
 
 
 @contextmanager
-def open_dataset(root: Path, budget: DatasetBudget) -> Iterator[DatasetTree]:
+def open_dataset(
+    root: Path, budget: DatasetBudget, *, observed: bool = False
+) -> Iterator[DatasetTree]:
+    if type(observed) is not bool:
+        raise YorungeError("invalid_request")
     require_dataset_files()
     anchor = anchor_dataset_path(root)
     budget.check()
     try:
         descriptor, chain = directory_chain(str(anchor))
     except OSError as error:
-        raise _initial_io(error) from None
+        raise (_observed_io(error) if observed else _initial_io(error)) from None
     with owned_descriptor(descriptor):
         try:
             tree = DatasetTree(anchor, descriptor, chain, budget)
         except OSError as error:
-            raise _initial_io(error) from None
+            raise (_observed_io(error) if observed else _initial_io(error)) from None
         yield tree

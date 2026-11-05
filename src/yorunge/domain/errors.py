@@ -1,6 +1,11 @@
 from typing import Literal
 
 ErrorCode = Literal[
+    "upload_plan_not_found",
+    "upload_plan_not_valid",
+    "upload_capacity_exceeded",
+    "upload_limit_exceeded",
+    "upload_duplicate_content",
     "approval_required",
     "input_unsupported",
     "input_invalid",
@@ -64,6 +69,22 @@ ErrorCode = Literal[
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
+    "upload_plan_not_found": "Upload planı bulunamadı. Yerel upload listesini inceleyin.",
+    "upload_plan_not_valid": (
+        "Upload planının güncel içerik, yetki, tutar veya onay bağı geçersiz. Kaydı inceleyin."
+    ),
+    "upload_capacity_exceeded": (
+        "Kalıcı upload kapasitesi doldu. Geçmiş korunur; yeni gönderim başlatılmadı."
+    ),
+    "upload_limit_exceeded": (
+        "Upload çağrısının istek veya byte bütçesi doldu. "
+        "Kaydı inceleyin; otomatik tekrar yapmayın."
+    ),
+    "upload_duplicate_content": (
+        "Aynı içerikli farklı dosya adları bu Platform upload yolunda desteklenmiyor. "
+        "Uzak istek yapılmadı. Manifestteki sha256 değerlerinden tekrarlayan adları bulun; "
+        "istediğiniz dosyalar için ayrı bir klasör ve yeni manifest hazırlayın."
+    ),
     "dataset_limit_exceeded": (
         "Yerel veri taraması veya rapor boyutu sınırı aşıldı. Daha dar bir klasör seçin."
     ),
@@ -106,7 +127,7 @@ MESSAGES: dict[ErrorCode, str] = {
         "İş gönderilmiş olabilir; yerel kaydı ve aynı işi uzlaştırın, yeniden göndermeyin."
     ),
     "plan_in_use": "Plan bir operation geçmişine bağlı; unutulamaz ve işi iptal etmez.",
-    "approval_required": "Açık onay gerekli. Güncel plan digest'ini confirm ile verin.",
+    "approval_required": "Açık onay gerekli. İşlem için gereken onay seçimini verin.",
     "input_unsupported": (
         "Bu ortam güvenli yerel dosya erişimini desteklemiyor. "
         "Desteklenen macOS/Linux yerel disk ortamını kullanın."
@@ -117,8 +138,14 @@ MESSAGES: dict[ErrorCode, str] = {
     "input_changed": (
         "Dosya veya kök değişti. Etkin yazıcıları durdurun; güncel girdileri yeniden denetleyin."
     ),
-    "input_budget_exceeded": "Yerel girdi okuma sınırı 1 GiB. Daha dar bir girdi hazırlayın.",
-    "execution_timeout": "Execution hazırlığı veya doğrulaması 30 saniyelik bütçeyi aştı.",
+    "input_budget_exceeded": (
+        "Yerel girdi dosya sayısı, boyut veya okuma bütçesini aşıyor. "
+        "Komut sınırlarını inceleyip daha dar bir girdi hazırlayın."
+    ),
+    "execution_timeout": (
+        "Hazırlık, doğrulama veya aktarım süre bütçesi doldu. "
+        "Kaydı inceleyin; otomatik tekrar yapmayın."
+    ),
     "plan_not_found": "Kayıtlı plan bulunamadı. Plan listesini inceleyin.",
     "plan_not_valid": (
         "Execution planı güncel ve onaylanabilir değil. Engelleri ve bağları inceleyin."

@@ -1,6 +1,6 @@
 # Kullanıcı yolculukları
 
-**Güncellendi:** 2026-10-27. **Durum:** Uçtan uca hedef deneyimler. Bugün offline context/capability/plan, yerel config/profil/proje yönetimi, credential kimliği/state bakımı ve doctor alt kümeleri çalışır; [uygulanan CLI sınırı](reference/cli-contract.md#uygulanan-alt-küme). Uzak bağlantı ve aşağıdaki diğer uçtan uca adımlar planlandı.
+**Güncellendi:** 2026-11-02. **Durum:** Uçtan uca hedef deneyimler. Yerel context/capability/plan, config/profil/doctor, credential/state, execution hazırlığı/onayı ve jobs; ortak HTTP/NDJSON, sınırlı salt okunur hizmet keşfi ve yerel dataset inspect/verify development’a teslim edildi. Keşif uzak kimlik/yazma yetkisi üretmez. [Uygulanan CLI sınırı](reference/cli-contract.md#uygulanan-alt-küme) kanoniktir; aşağıdaki tam upload/çıkarım/eğitim yolculukları henüz uygulanmadı. [P02-2 planı](roadmap/p02-2-delivery-plan.md) private upload hazırlığını ve açık karar/otorite kapılarını gösterir.
 
 ## 1. İlk bağlantı
 
