@@ -1155,3 +1155,14 @@ Yedi özgün kayıt actual üretim bağlamıyla bounded gizlilik kapısından ge
 
 
 09 sonuç/kanıt snapshot’ı farklı fresh R1 Sol/high ve R2 Astra/high tarafından bulgusuz teyit edildi; reviewer’lar ölçüm veya geniş testleri tekrarlamadı. Sonradan gelen sürekli dış test beyanı ve ADR-0030 yeni önerisi bu snapshot review’sünün onayı sayılmaz; ayrı karar incelemesi yapılır.
+
+
+## 5 Kasım — Kullanıcı onaylı paylaşılan yük süre tanısı
+
+Kullanıcı 18 çekirdekli makinede tek süreç CPU yüzdesinin toplam doygunluk olmadığını belirterek mevcut yükte devam edilmesini açıkça istedi. `hw.logicalcpu=18` doğrulandı. Yeni kaynak/CI değişikliği yapılmadan, f180cb8 kişisiz checkout’u ile güncel 03fe448 checkout’unun tam runtime/test/script/workflow hash eşliği doğrulandı. HOME ve mevcut arşivler değiştirilmedi. Tek yeni shared-load tanı serisinde yalnız açık iki süre hattı çalıştı; daha önce geçen bellek serileri veya tam testler tekrarlanmadı.
+
+[Startup tanısı](evidence.md#p02-2-shared-load-startup-10) aday help/version/context/cache p95 **24,398/23,723/76,513/125,669 ms** ile dört mutlak kapıyı geçti. Taban cache **135,225 ms**; kaynak/kurulum/fixture ve typed çıktı denetimleri geçti. [Jobs tanısı](evidence.md#p02-2-shared-load-jobs-10) normal list/show **146,851/100,663 ms**, dense list/show **152,883/105,374 ms** ile dört 200 ms kapısını geçti. Bütün 30 örnek ve üç ısınma korundu; en iyi örnek seçimi, eşik değişimi veya otomatik tekrar yoktur.
+
+[Koşul kaydı](evidence.md#p02-2-shared-load-conditions-10) kullanıcının açık shared-load yetkisini, 18 mantıksal CPU’yu ve aşama sınırlarında AC/termal/yük gözlemlerini taşır. Bu kayıt sürekli izolasyon veya önceki retlerin nedeni için kanıt değildir. Sayısal başarı, ADR-0019’un izole referans kabulünün veya bütün P02-2 tesliminin tamamlandığı diye sunulmaz. Workflow hâlâ 09 reference adlarını kullanır; eski referans değiştirilmedi. ADR-0030 Proposed kalır; bu koşu onun onayı değildir.
+
+Üç özgün rapor actual private üretim bağlamıyla gizlilik kontrolünden geçirilip kayıpsız arşivlendi; katalog **470** kayıt. Ürün kodu, bağımlılık, public wire veya CI politikası değişmedi. Yeni EVREN çağrısı yoktur.

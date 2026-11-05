@@ -19674,6 +19674,133 @@
       }
     },
     {
+      "name": "p02-2-shared-load-conditions-10.json",
+      "archive": "raw/p02-2-shared-load-conditions-10.json.gz",
+      "original_commit": null,
+      "content_bytes": 2648,
+      "content_sha256": "b920ec6074fcccd186d0015e606e73ede4c59e15e8a28b5ec6d78aa479b7ecca",
+      "archive_bytes": 660,
+      "archive_sha256": "eefdeb9db3823c590e31deaa9463fc8eeac876ccd40df663db1ba609d1834142",
+      "summary": {
+        "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "explicit_shared_load_diagnostic"
+      }
+    },
+    {
+      "name": "p02-2-shared-load-jobs-10.json",
+      "archive": "raw/p02-2-shared-load-jobs-10.json.gz",
+      "original_commit": null,
+      "content_bytes": 188454,
+      "content_sha256": "2bdc9eb7aa3893a068ce582aff356a1aab3f6feff5e393e8d274e9595bf2644d",
+      "archive_bytes": 53820,
+      "archive_sha256": "323fec129023c06363126024a38ed98e13198b0791e08e5ff971448a49239609",
+      "summary": {
+        "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad",
+        "diagnostic_only": false,
+        "kind": "jobs",
+        "measurements": {
+          "normal/list": {
+            "samples": 30,
+            "p95_ms": 146.85133285820484,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "normal/show": {
+            "samples": 30,
+            "p95_ms": 100.66349990665913,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/list": {
+            "samples": 30,
+            "p95_ms": 152.88337506353855,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "dense/show": {
+            "samples": 30,
+            "p95_ms": 105.3735832683742,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        },
+        "source_unchanged_during_measurement": true,
+        "installed_unchanged_during_measurement": true,
+        "fixtures_unchanged_during_measurement": true,
+        "unchanged": true,
+        "isolated_python": true,
+        "passed": true
+      }
+    },
+    {
+      "name": "p02-2-shared-load-startup-10.json",
+      "archive": "raw/p02-2-shared-load-startup-10.json.gz",
+      "original_commit": null,
+      "content_bytes": 244531,
+      "content_sha256": "6f888110b12a2504e612b6cf892e518499a574ce496bd3898e56de1df3c5d786",
+      "archive_bytes": 73226,
+      "archive_sha256": "d5cfb08155703aac57afd3aa1ee331c2c6973b23b03592a7f81dced15b5a8838",
+      "summary": {
+        "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 24.398082867264748,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 23.723209276795387,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 76.51270925998688,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 125.66891638562083,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 26.361041702330112,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 22.671165876090527,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 75.90933376923203,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 135.22529182955623,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
       "name": "p02-2-storage-contract-different-20261104.json",
       "archive": "raw/p02-2-storage-contract-different-20261104.json.gz",
       "original_commit": null,

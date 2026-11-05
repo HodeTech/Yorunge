@@ -3190,6 +3190,27 @@ Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.
 **Yerel arşiv:** `raw/p02-2-review-final-installation-09.json.gz`.
 **Özet:** `{"cases": 2, "checks": {"cache_smoke": {"passed": 2}, "execution_smoke": {"passed": 2}, "http_smoke": {"passed": 2}, "jobs_smoke": {"passed": 2}, "ndjson_smoke": {"passed": 2}, "origin_verified": {"true": 2}, "smoke": {"passed": 2}, "stream_smoke": {"passed": 2}, "upload_smoke": {"passed": 2}}, "diagnostic_only": false, "kind": "installation_v3", "passed": true, "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad"}`.
 
+## p02-2-shared-load-conditions-10
+
+**Tür:** `diagnostic`.
+**Özgün JSON SHA-256:** `b920ec6074fcccd186d0015e606e73ede4c59e15e8a28b5ec6d78aa479b7ecca`.
+**Yerel arşiv:** `raw/p02-2-shared-load-conditions-10.json.gz`.
+**Özet:** `{"diagnostic_only": true, "kind": "diagnostic", "outcome": "explicit_shared_load_diagnostic", "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad"}`.
+
+## p02-2-shared-load-jobs-10
+
+**Tür:** `jobs`.
+**Özgün JSON SHA-256:** `2bdc9eb7aa3893a068ce582aff356a1aab3f6feff5e393e8d274e9595bf2644d`.
+**Yerel arşiv:** `raw/p02-2-shared-load-jobs-10.json.gz`.
+**Özet:** `{"diagnostic_only": false, "fixtures_unchanged_during_measurement": true, "installed_unchanged_during_measurement": true, "isolated_python": true, "kind": "jobs", "measurements": {"dense/list": {"budget_ms": 200.0, "p95_ms": 152.88337506353855, "passed": true, "samples": 30}, "dense/show": {"budget_ms": 200.0, "p95_ms": 105.3735832683742, "passed": true, "samples": 30}, "normal/list": {"budget_ms": 200.0, "p95_ms": 146.85133285820484, "passed": true, "samples": 30}, "normal/show": {"budget_ms": 200.0, "p95_ms": 100.66349990665913, "passed": true, "samples": 30}}, "passed": true, "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad", "source_unchanged_during_measurement": true, "unchanged": true}`.
+
+## p02-2-shared-load-startup-10
+
+**Tür:** `startup_evidence`.
+**Özgün JSON SHA-256:** `6f888110b12a2504e612b6cf892e518499a574ce496bd3898e56de1df3c5d786`.
+**Yerel arşiv:** `raw/p02-2-shared-load-startup-10.json.gz`.
+**Özet:** `{"diagnostic_only": false, "kind": "startup_evidence", "measurements": {"baseline/cache": {"budget_ms": 200.0, "p95_ms": 135.22529182955623, "passed": true, "samples": 30}, "baseline/context": {"budget_ms": 200.0, "p95_ms": 75.90933376923203, "passed": true, "samples": 30}, "baseline/help": {"budget_ms": 500.0, "p95_ms": 26.361041702330112, "passed": true, "samples": 30}, "baseline/version": {"budget_ms": 500.0, "p95_ms": 22.671165876090527, "passed": true, "samples": 30}, "candidate/cache": {"budget_ms": 200.0, "p95_ms": 125.66891638562083, "passed": true, "samples": 30}, "candidate/context": {"budget_ms": 200.0, "p95_ms": 76.51270925998688, "passed": true, "samples": 30}, "candidate/help": {"budget_ms": 500.0, "p95_ms": 24.398082867264748, "passed": true, "samples": 30}, "candidate/version": {"budget_ms": 500.0, "p95_ms": 23.723209276795387, "passed": true, "samples": 30}}, "outcome": "passed", "passed": true, "source_commit": "f180cb8ffc9004acc51b0264cb5e947e5d0564ad"}`.
+
 ## p02-2-storage-contract-different-20261104
 
 **Tür:** `diagnostic`.

@@ -77,3 +77,6 @@ EVREN workspace genel kullanıcı erişimi, haricî paket/araç kurulumu, kalıc
 
 
 **5 Kasım yeni karar önerisi:** Kullanıcı arka planda sürekli test çalıştığını bildirdi ve bu ölçümün diğer işleri engellememesini istedi. [ADR-0030](../decisions/0030-development-performance-acceptance.md) Proposed: yerel M5 kabulünü [P02-R3](tasks/p02-r3-isolated-performance-acceptance.md) üzerinden faz/ilk yayın öncesine ayırma; mandatory işlevsel/native Linux CI ve açık deferred durumu. Yeni yerel ölçüm yok; mevcut CI kapıları onaydan önce değişmedi.
+
+
+**5 Kasım paylaşılan yük tanısı:** Kullanıcının açık devam talebiyle mevcut kaynakta yalnız startup/jobs birer kez çalıştı; tüm sayısal kapılar geçti (cache p95 125,669 ms; jobs 100,663–152,883 ms). [Özgün 10 tanısı ve sınırı](../research/p02-2-implementation-validation.md#5-kasım--kullanıcı-onaylı-paylaşılan-yük-süre-tanısı), 470 kayıtlı katalogda saklanır. Bu sonuç izole reference veya overall teslim kabulü sayılmaz; mevcut 09 CI referansları ve Proposed ADR-0030 değiştirilmedi.
