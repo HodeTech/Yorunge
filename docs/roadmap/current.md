@@ -83,3 +83,6 @@ EVREN workspace genel kullanıcı erişimi, haricî paket/araç kurulumu, kalıc
 
 
 **5 Kasım son kullanıcı kararı:** Kullanıcı 10 süre koşusunda ek yük olmadığını teyit ederek hedefleri geçen ölçümlerin kabulünü istedi. Startup10/jobs10 sonuçları güncel kabul için benimsenir; önceki “shared-load” adları tarihsel dosya adı olarak korunur. Erteleme önerisi uygulanmadı. CI hâlâ eski 09 startup/jobs raporlarını seçmektedir; reference seçimi ve son CI/kanıt/PR kapanışı ayrıca tamamlanmalıdır.
+
+
+**5 Kasım CI bağlantısı:** Linux 3.11 eski startup09 referansında kalıyordu; 6.600 test ve build/kurulum başarılıydı. e0ca52b dört CI referansını ölçümden önce 11’e sabitledi; 61 dar test, actionlint ve iki fresh review geçti. Yeni tam kaynakla startup/jobs/dataset/raw/upload’ın ilk ölçümleri geçti; [11 kaydı](../research/p02-2-implementation-validation.md#5-kasım--ci-referans-bağlantısı-düzeltmesi-ve-11-kabulü) kanoniktir. Yeni CI sonucu ve 207/208 dahil üretilmiş CI çıktılarının kalıcı saklaması açıkken PR draft kalır. Ölçüm erteleme politikası uygulanmadı.

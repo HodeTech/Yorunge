@@ -1175,3 +1175,16 @@ Kullanıcı, 10 koşusu sırasında ek bir yük olmadığını kontrol ettiğini
 Startup10 ve jobs10 bütün mutlak hedefleri geçmiştir. Aynı güncel kaynak haritasındaki dataset09/upload09 olumlu kayıtlarıyla birlikte dört strict reference verifier ayrıca çalıştırıldı ve dördü de geçti; gerçek kaynak/kurulum/fixture/bütçe eşliği doğrulandı. Kullanıcı bu ölçümlerin kabulünü yetkilendirmiştir; ADR-0030 erteleme önerisi uygulanmaz.
 
 Bu karar eski 09 startup/jobs retlerini değiştirmez. CI workflow hâlâ bu eski iki raporu seçtiği için mevcut başarısız GitHub kontrolü başarılı ilan edilmez. Ölçümün kabulü ile CI referans seçiminin güncellenmesi ayrı işlemlerdir; son CI/kanıt saklama ve PR teslim işleri açık kalır.
+
+
+## 5 Kasım — CI referans bağlantısı düzeltmesi ve 11 kabulü
+
+42058897706 koşusunda üç ortam test/build/kurulum adımları başarılıydı; Linux 3.11’de 6.600 test geçti. Hata, workflow’un hâlâ başarısız startup09 kaydını seçmesiydi. Jobs/dataset/raw/upload sonraki adımları bu yüzden çalışmadı; offline-core da reddetti. Aynı eski koşuyu tekrar başlatmak bu bağlantıyı düzeltmez.
+
+e0ca52b yalnız dört workflow reference adını ve eşleşen test beklentisini 11’e taşır. 61 CI sözleşme testi ve actionlint geçti; farklı fresh R1/R2 Sol/medium incelemeleri bulgusuz kapandı. İsimler ölçümden önce commit edildi. Workflow da tam kaynak haritasında olduğundan eski 10 raporunun hash’i değiştirilmedi; yeni haritayla bir yeni seri alındı. Ürün kodu, eşikler, yöntem, verifier ve saklama kuralları değişmedi.
+
+Kişisiz fresh checkout/controller ve startup’ın fresh runtime kurulumlarıyla startup/jobs/dataset/raw/upload birer kez çalıştı; beşi de geçti. Kullanıcının 18 mantıksal CPU ve süreç yüzdesinin toplam doygunluk olmadığı yönündeki açık talimatına uygun olarak per-process CPU veto uygulanmadı. AC, güç/termal ve kaynak eşliği kontrolleri korundu; fiziksel izolasyon attestasyonu yoktur. Özgün koşul kaydı ve bütün ilk örnekler korunur. Daha önce geçen tam yerel testler tekrar edilmedi.
+
+[Startup11](evidence.md#p02-2-reference-startup-11), [jobs11](evidence.md#p02-2-reference-jobs-11), [dataset11](evidence.md#p02-2-reference-datasets-11), [raw11](evidence.md#p02-2-reference-raw-11), [upload11](evidence.md#p02-2-reference-upload-11) ve [koşul kaydı](evidence.md#p02-2-native11-conditions) actual private context ile seri arşivlendi. Katalog 476 kayda ulaştı; dört strict reference verifier da güncel kaynak eşliğiyle geçti. Eski retler veya 10’un kabul kararı değiştirilmez.
+
+Son kaynak yeni CI’a tek push ile gönderilir. Sonar’ın 03fe448 analizinde 12 FIXED/8 FALSE-POSITIVE ve sıfır açık kayıt doğrulanmıştı; yeni head analizi ayrıca beklenir. 41990771680 ve 42058897706’nın üretilmiş CI çıktılarının kalıcı saklaması henüz açıktır; bu arşivler tamamlanmadan merge önerisi verilmez. Yeni head’in full CI/native/aggregate sonucu da ayrıca doğrulanmalıdır. P02-2/a/b/c ve PR henüz hazır sayılmaz. ADR-0030 erteleme önerisi uygulanmadı; yeni EVREN çağrısı yapılmadı.
