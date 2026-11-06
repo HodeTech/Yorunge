@@ -85,7 +85,8 @@ def invalidate_uploads(
             continue
         if record.schema_version == 3:
             # Its recovery or terminal control is a v3 control: P02-3v writes it. Until then a
-            # continuation is refused here, before anything is changed, never reset as a v2.
+            # continuation is refused here, before it is changed, never reset as a v2. Rows this
+            # loop changed earlier are undone with the reset transaction every caller rolls back.
             raise YorungeError("state_invalid")
         armed = record.workflow_latched
         changed = record.model_copy(

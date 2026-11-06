@@ -1,6 +1,8 @@
 """Stored continuation rows are read as their own family; the unvalidated fail closed."""
 
+import hashlib
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -18,7 +20,7 @@ from yorunge.adapters.upload_store import (
     read_plan,
     write_record,
 )
-from yorunge.domain.capabilities import instant
+from yorunge.domain.capabilities import canonical, instant, timestamp
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_transfer_v3 import (
     TransferControlV3,
@@ -51,36 +53,36 @@ ANOTHER_DATASET = "00000000-0000-4000-8000-000000000999"
 RESERVATION = 16 * 1024 + 3 * 2 * 4096 + 20 * 1024 + 3 * 512
 
 
-def install(store, *, operation=True, record=RECORD):
+def install(store, *, operation=True, record=RECORD, plan=PLAN, approval=APPROVAL):
     """The rows a continuation would leave: the root's namespace and manifest, then its own."""
     connection = store.connection
     namespace = {
-        key: PLAN.scope.model_dump(mode="json")[key]
+        key: plan.scope.model_dump(mode="json")[key]
         for key in ("service_origin", "api_base_path", "owner", "project_id")
     }
-    namespace["name"] = PLAN.parameters.name
+    namespace["name"] = plan.parameters.name
     connection.execute(
         "INSERT INTO upload_namespaces VALUES(?,?,NULL)",
-        (PLAN.intent_digest(), encode(namespace).decode()),
+        (plan.intent_digest(), encode(namespace).decode()),
     )
     connection.execute(
         "INSERT INTO upload_manifests VALUES(?,?)",
-        (PLAN.manifest.digest, raw("dataset-manifest-v1.json").decode()),
+        (plan.manifest.digest, raw("dataset-manifest-v1.json").decode()),
     )
     connection.execute(
         "INSERT INTO upload_plans VALUES(?,?,?,?,?,?)",
         (
-            PLAN.plan_id,
-            PLAN.intent_digest(),
-            PLAN.manifest.digest,
-            PLAN.prepared_at,
-            PLAN.expires_at,
-            PLAN.encoded().decode(),
+            plan.plan_id,
+            plan.intent_digest(),
+            plan.manifest.digest,
+            plan.prepared_at,
+            plan.expires_at,
+            plan.encoded().decode(),
         ),
     )
     connection.execute(
         "INSERT INTO upload_approvals VALUES(?,?,?,?)",
-        (PLAN.plan_id, APPROVAL.approval_id, APPROVAL.expires_at, APPROVAL.encoded().decode()),
+        (plan.plan_id, approval.approval_id, approval.expires_at, approval.encoded().decode()),
     )
     if operation:
         connection.execute(
@@ -91,9 +93,49 @@ def install(store, *, operation=True, record=RECORD):
                 record.intent_digest,
                 record.revision,
                 record.lease.expires_at if record.lease else None,
-                RESERVATION,
+                graph_of(plan).operation_reservation(),
                 record.encoded().decode(),
             ),
+        )
+
+
+def reseal(source_operation_id):
+    """The same continuation, but of a source that is not its root (a continuation of one)."""
+    body = PLAN.model_dump(mode="json", exclude={"digest"})
+    body["continuation"]["source_operation_id"] = source_operation_id
+    plan = DatasetContinuationPlanV3.model_validate_json(
+        canonical({**body, "digest": hashlib.sha256(canonical(body)).hexdigest()})
+    )
+    approval = DatasetUploadApprovalV3.model_validate_json(
+        canonical(
+            {
+                **APPROVAL.model_dump(mode="json"),
+                "plan_digest": plan.digest,
+                "binding_digest": plan.binding_digest(),
+            }
+        )
+    )
+    record = TransferRecordV3.model_validate_json(
+        canonical(
+            {
+                **RUNNING.model_dump(mode="json"),
+                "plan_digest": plan.digest,
+                "approval": approval.model_dump(mode="json"),
+            }
+        )
+    )
+    return plan, approval, record
+
+
+def reset(store):
+    with store.connection:
+        store.connection.execute("BEGIN IMMEDIATE")
+        invalidate_uploads(
+            store.connection,
+            PLAN.scope.store_id,
+            PLAN.scope.identity_epoch,
+            instant("2026-11-03T11:00:00.000000Z"),
+            store.deadline,
         )
 
 
@@ -235,12 +277,26 @@ def test_a_continuations_control_and_proof_rows_are_read_as_their_own_family(tmp
         refuses(lambda: read_any_view(store.connection, PLAN.plan_id))
 
 
-@pytest.mark.parametrize(
-    "change",
-    [{"dataset_id": ANOTHER_DATASET}, {"verification_only": True}],
-    ids=["dataset", "mode"],
-)
-def test_the_dataset_and_mode_of_an_admitted_continuation_cannot_change(tmp_path, change):
+EARLIER = timestamp(instant(RECORD.created_at) - timedelta(seconds=1))
+FIXED = {
+    "dataset": {"dataset_id": ANOTHER_DATASET},
+    "mode": {"verification_only": True},
+    "plan": {"plan_id": ANOTHER_DATASET},
+    "plan_digest": {"plan_digest": "0" * 64},
+    "intent_digest": {"intent_digest": "0" * 64},
+    "approval": {"approval": RECORD.approval.model_copy(update={"approval_id": ANOTHER_DATASET})},
+    "created_at": {"created_at": EARLIER},
+    # The lease names the same owner, so both change together to be a valid record at all.
+    "write_owner": {
+        "write_owner_id": ANOTHER_DATASET,
+        "lease": RECORD.lease.model_copy(update={"owner_id": ANOTHER_DATASET}),
+    },
+    "write_access": {"write_access_digest": "b" * 64},
+}
+
+
+@pytest.mark.parametrize("change", FIXED.values(), ids=FIXED)
+def test_the_fixed_part_of_an_admitted_continuation_record_cannot_change(tmp_path, change):
     with open_store(tmp_path / "state") as store:
         install(store, operation=False)
         write_record(store.connection, RECORD, None)
@@ -312,20 +368,39 @@ def test_a_reset_refuses_a_stored_continuation_before_it_changes_anything(tmp_pa
     with open_store(tmp_path / "state") as store:
         install(store)
         before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
-        with pytest.raises(YorungeError) as error, store.connection:
-            store.connection.execute("BEGIN IMMEDIATE")
-            invalidate_uploads(
-                store.connection,
-                PLAN.scope.store_id,
-                PLAN.scope.identity_epoch,
-                instant("2026-11-03T11:00:00.000000Z"),
-                store.deadline,
-            )
+        with pytest.raises(YorungeError) as error:
+            reset(store)
         assert error.value.code == "state_invalid"
         # A rolled-back transaction would hide a write that came first: nothing was attempted.
         assert written == []
         assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
         assert store.connection.execute("SELECT count(*) FROM upload_controls").fetchone() == (0,)
+
+
+CHECK_ONLY_PLAN = DatasetContinuationPlanV3.model_validate_json(
+    raw("dataset-continuation-plan-v3-verification-only.json")
+)
+CHECK_ONLY_APPROVAL = DatasetUploadApprovalV3.model_validate_json(
+    raw("dataset-continuation-approval-v3-verification-only.json")
+)
+CHECK_ONLY_DONE = TransferRecordV3.model_validate_json(
+    raw("dataset-continuation-record-v3-verification-only-succeeded.json")
+)
+
+
+def test_a_reset_leaves_a_finished_continuation_as_it_is(tmp_path, monkeypatch):
+    # The guard is for what a reset would have to change; a terminal record is skipped before it.
+    written = []
+    monkeypatch.setattr(
+        "yorunge.adapters.upload_maintenance.write_record", lambda *args: written.append(args)
+    )
+    assert CHECK_ONLY_DONE.status == "succeeded"
+    with open_store(tmp_path / "state") as store:
+        install(store, record=CHECK_ONLY_DONE, plan=CHECK_ONLY_PLAN, approval=CHECK_ONLY_APPROVAL)
+        before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
+        reset(store)
+        assert written == []
+        assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
 
 
 def test_the_namespace_of_a_latched_continuation_belongs_to_its_baseline(tmp_path, monkeypatch):
@@ -370,3 +445,21 @@ def test_the_repository_reads_a_continuation_as_itself_and_will_not_revoke_it_as
         assert (
             store.connection.execute("SELECT payload FROM upload_approvals").fetchone() == approval
         )
+
+
+def test_the_namespace_of_a_continuations_continuation_is_still_the_roots(tmp_path, monkeypatch):
+    # The fixtures' source and baseline coincide; here the source is an earlier continuation.
+    monkeypatch.setattr("yorunge.adapters.upload_store.validate_graph", lambda view, manifest: None)
+    middle = "00000000-0000-4000-8000-0000000000a1"
+    plan, approval, record = reseal(middle)
+    root = plan.continuation.baseline_operation_id
+    assert plan.continuation.source_operation_id == middle != root
+    with open_store(tmp_path / "state") as store:
+        install(store, record=record, plan=plan, approval=approval)
+        store.connection.execute("PRAGMA foreign_keys=OFF")
+        for owner, accepted in ((root, True), (middle, False), (record.operation_id, False)):
+            store.connection.execute("UPDATE upload_namespaces SET create_operation_id=?", (owner,))
+            if accepted:
+                assert read_any_view(store.connection, plan.plan_id).operation == record
+            else:
+                refuses(lambda: read_any_view(store.connection, plan.plan_id))
