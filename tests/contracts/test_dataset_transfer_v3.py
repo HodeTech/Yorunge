@@ -174,6 +174,7 @@ def test_every_allowed_lifecycle_shape_is_accepted(name):
 REJECTED = {
     "no dataset": dict(dataset_id=None),
     "check-only latched": {**VALID["check-only admitted"], "workflow_latched": True},
+    "check-only latched success": {**VALID["check-only succeeded"], "workflow_latched": True},
     "check-only running": dict(verification_only=True, status="running"),
     "check-only unknown": {**VALID["unknown, no owner"], "verification_only": True},
     "check-only failed": {**VALID["failed"], "verification_only": True},
@@ -196,6 +197,10 @@ REJECTED = {
     "running with a reason": {**VALID["running"], "reason": "request_uncertain"},
     "running without an owner": {**VALID["running"], "lease": None},
     "read failure that is final": {**VALID["failed"], "reason": "read_unavailable"},
+    "cancellation by a failed read": {
+        **VALID["cancelled before any intent"],
+        "reason": "read_unavailable",
+    },
     "owner on a terminal record": {**VALID["succeeded after sending"], "lease": lease()},
     "owner fence differs": {**VALID["running"], "lease": lease(fence=2)},
     "owner epoch differs": {
@@ -225,6 +230,24 @@ REJECTED = {
 @pytest.mark.parametrize("name", REJECTED)
 def test_every_forbidden_lifecycle_shape_is_rejected(name):
     rejects(record_of(**REJECTED[name]))
+
+
+def test_the_mode_of_a_record_must_be_the_mode_of_its_plan_and_that_alone():
+    sending = data("dataset-continuation-record-v3-admitted.json")
+    validate_record_binding_v3(PLAN, accepts(sending))  # control: nothing else is wrong
+    with pytest.raises(ValueError, match="does not belong"):
+        validate_record_binding_v3(PLAN, accepts({**sending, "verification_only": True}))
+    check_only = {
+        **sending,
+        "plan_id": CHECK_ONLY.plan_id,
+        "plan_digest": CHECK_ONLY.digest,
+        "intent_digest": CHECK_ONLY.intent_digest(),
+        "dataset_id": CHECK_ONLY.continuation.dataset_id,
+        "approval": data("dataset-continuation-approval-v3-verification-only.json"),
+    }
+    validate_record_binding_v3(CHECK_ONLY, accepts({**check_only, "verification_only": True}))
+    with pytest.raises(ValueError, match="does not belong"):
+        validate_record_binding_v3(CHECK_ONLY, accepts({**check_only, "verification_only": False}))
 
 
 def test_a_check_only_record_that_sends_cannot_have_been_admitted_from_a_sending_plan():
@@ -369,6 +392,19 @@ def broken_files(mutate):
 def test_a_malformed_proof_is_rejected(changes):
     with pytest.raises((ValidationError, ValueError)):
         TransferVerificationV3.model_validate_json(canon(proof_of(**changes)))
+
+
+def test_an_explicit_read_cannot_carry_a_grant_while_a_verified_read_needs_a_current_one():
+    grant = data("dataset-continuation-plan-v3-evidenced.json")["grant"]
+    with pytest.raises(ValueError, match="manufacture a grant"):
+        TransferVerificationV3.model_validate_json(canon(proof_of(grant=grant)))
+    verified = proof_of(authorization_policy="verified_read", grant=grant)
+    assert TransferVerificationV3.model_validate_json(canon(verified)).grant is not None
+    stale = {**grant, "expires_at": "2026-11-02T11:00:00.000000Z"}  # not current at observed_at
+    with pytest.raises(ValueError, match="actual current grant"):
+        TransferVerificationV3.model_validate_json(
+            canon(proof_of(authorization_policy="verified_read", grant=stale))
+        )
 
 
 def test_a_proof_short_of_the_manifest_is_well_formed_but_does_not_belong_to_the_plan():

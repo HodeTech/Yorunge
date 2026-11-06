@@ -155,6 +155,24 @@ def accepts(value):
     return DatasetUploadResumeReport.model_validate_json(canon(value))
 
 
+def quiet(blockers, **changes):
+    """A report whose counts, examples and action agree with the blockers, so one rule can fail."""
+    values = {
+        "blockers": list(blockers),
+        "eligible": not blockers,
+        "class_counts": counts(confirmed=3),
+        "send_files": 0,
+        "send_bytes": 0,
+        "unconfirmed_ack_required": False,
+        "recommended_action": recommended_action(tuple(blockers)),
+        "related_operation_id": None,
+        "plan_id": None,
+        "plan_digest": None,
+        "examples": [],
+    }
+    return report_of(**{**values, **changes})
+
+
 @pytest.mark.parametrize("name", [BLOCKED, ELIGIBLE])
 def test_report_goldens_round_trip(name):
     raw = fixture(name)
@@ -185,14 +203,10 @@ NEGATIVES = {
     "blocked without the flag": report_of(ELIGIBLE, eligible=False),
     "action that ignores the blockers": report_of(recommended_action="prepare"),
     "wait where none applies": report_of(recommended_action="wait"),
-    "too large without unreliable": report_of(
-        blockers=["inventory_too_large"], class_counts=counts(confirmed=3)
-    ),
-    "drift class without its blocker": report_of(ELIGIBLE, class_counts=counts(drift_missing=3)),
-    "conflict class without its blocker": report_of(ELIGIBLE, class_counts=counts(conflict=3)),
-    "unreliable class without its blocker": report_of(
-        ELIGIBLE, class_counts=counts(inventory_unreliable=3)
-    ),
+    "too large without unreliable": quiet(["inventory_too_large"]),
+    "drift class without its blocker": quiet([], class_counts=counts(drift_missing=3)),
+    "conflict class without its blocker": quiet([], class_counts=counts(conflict=3)),
+    "unreliable class without its blocker": quiet([], class_counts=counts(inventory_unreliable=3)),
     "counts short of the manifest": report_of(class_counts=counts(confirmed=1, pending_clean=1)),
     "counts beyond the manifest": report_of(file_count=2),
     "quota differs from the manifest": report_of(quota_files=2),
@@ -208,9 +222,7 @@ NEGATIVES = {
     "plan digest without id": report_of(ELIGIBLE, plan_id=None),
     "plan while blocked": report_of(plan_id=PLAN_ID, plan_digest="a" * 64),
     "related operation without a descendant blocker": report_of(related_operation_id=OTHER),
-    "superseded without its successor": report_of(
-        blockers=["source_superseded"], recommended_action="none", related_operation_id=None
-    ),
+    "superseded without its successor": quiet(["source_superseded"]),
     "paths of an unlisted class": report_of(
         examples=[{"file_class": "conflict", "paths": ["a.txt"]}]
     ),
@@ -253,6 +265,20 @@ NEGATIVES = {
 @pytest.mark.parametrize("name", NEGATIVES)
 def test_every_closed_report_negative_is_rejected(name):
     rejects(NEGATIVES[name])
+
+
+def test_the_isolated_negatives_differ_from_valid_reports_by_the_one_rule_they_pin():
+    accepts(quiet([]))
+    accepts(quiet(["inventory_unreliable"], class_counts=counts(inventory_unreliable=3)))
+    accepts(
+        quiet(
+            ["inventory_unreliable", "inventory_too_large"],
+            class_counts=counts(inventory_unreliable=3),
+        )
+    )
+    for blocker in ("drift_missing", "conflict"):
+        accepts(quiet([blocker], class_counts=counts(**{blocker: 3})))
+    accepts(quiet(["source_superseded"], related_operation_id=OTHER))
 
 
 @pytest.mark.parametrize(
