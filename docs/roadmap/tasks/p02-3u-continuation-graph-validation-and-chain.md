@@ -1,7 +1,7 @@
 ---
 id: P02-3u
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-3g]
 capabilities: [C03, C12]
@@ -41,4 +41,4 @@ Gerçek SQLite integration/contract testleri, bağımsız oracle’lar, mevcut u
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+Hazır (`ready`): bağımlılıklar P02-3g ve P02-3e `verified`; uygulama, commit veya review kanıtı yoktur.
