@@ -256,10 +256,15 @@ def test_the_dataset_of_a_stage_comes_from_the_plan_only_in_a_continuation():
     assert (original.dataset_from_plan, continuation.dataset_from_plan) == (False, True)
 
 
+class ChosenFiles(tuple):
+    """Looks like the right selection in every comparison, but is not exactly a tuple."""
+
+
 @pytest.mark.parametrize(
     "selection",
     [
         None,  # a continuation always names its selection, even an empty one
+        ChosenFiles((0, 2)),
         [0],
         {0},
         range(1),

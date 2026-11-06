@@ -12,97 +12,161 @@
  "sites": [
   {
    "file": "src/yorunge/adapters/upload_chain.py",
-   "text": "if not isinstance(view.plan, DatasetUploadPlan | DatasetUploadPlanV2):",
+   "function": "operation_journal",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlan | DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3u",
    "note": "operation_journal reads only v1/v2 roots; the continuation branch with its parent link"
   },
   {
+   "file": "src/yorunge/adapters/upload_maintenance.py",
+   "function": "invalidate_uploads",
+   "kind": "version",
+   "text": "record.schema_version == 3",
+   "occurrence": 0,
+   "owner": "P02-3v",
+   "note": "reset of a continuation needs a v3 recovery or terminal control; until P02-3v writes it, this guard fails closed before anything is changed"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_maintenance.py",
+   "function": "invalidate_uploads",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(TransferControl, TransferControlV2)",
+   "occurrence": 0,
+   "owner": "P02-3v",
+   "note": "the reset control is decoded as a v1/v2 control; the v3 control is P02-3v's (the guard above refuses a continuation first)"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_maintenance.py",
+   "function": "invalidate_uploads",
+   "kind": "version",
+   "text": "'schema_version': record.schema_version",
+   "occurrence": 0,
+   "owner": "P02-3v",
+   "note": "the reset control copies the record's version into its payload, which picks the control family; P02-3v writes the v3 control"
+  },
+  {
    "file": "src/yorunge/adapters/upload_original.py",
-   "text": "if type(record) is not TransferRecordV2:",
+   "function": "_Environment.admit",
+   "kind": "type_is",
+   "text": "type(record) is not TransferRecordV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "the original upload workflow runs v2 plans only; a continuation has its own coordinator (P02-3h)"
   },
   {
    "file": "src/yorunge/adapters/upload_original.py",
-   "text": "assert type(current) is TransferRecordV2",
+   "function": "_Environment._renew_for_probe",
+   "kind": "type_is",
+   "text": "type(current) is TransferRecordV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "the original upload workflow runs v2 plans only; a continuation has its own coordinator (P02-3h)"
   },
   {
    "file": "src/yorunge/adapters/upload_original.py",
-   "text": "assert type(record) is TransferRecordV2",
+   "function": "_Environment.arm",
+   "kind": "type_is",
+   "text": "type(record) is TransferRecordV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "the original upload workflow runs v2 plans only; a continuation has its own coordinator (P02-3h)"
   },
   {
    "file": "src/yorunge/adapters/upload_original.py",
-   "text": "assert type(view.operation) is TransferRecordV2",
+   "function": "_Environment.publish",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "the original upload workflow runs v2 plans only; a continuation has its own coordinator (P02-3h)"
   },
   {
    "file": "src/yorunge/adapters/upload_original.py",
-   "text": "if type(plan) is not DatasetUploadPlanV2 or plan.status == \"draft\":",
+   "function": "_initial",
+   "kind": "type_is",
+   "text": "type(plan) is not DatasetUploadPlanV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "the original upload workflow runs v2 plans only; a continuation has its own coordinator (P02-3h)"
   },
   {
    "file": "src/yorunge/adapters/upload_original_read.py",
-   "text": "assert type(view.operation) is TransferRecordV2",
+   "function": "verify_original",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "the verify step of the original workflow; the v3 reconcile binding is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_preparation.py",
-   "text": "not isinstance(plan, DatasetUploadPlanV2)",
+   "function": "read_approval_input",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "the approval input reader returns v2 plans; the v3 approve gate is P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "text": "if not isinstance(plan, DatasetUploadPlanV2) or plan.cost_bound is None:",
+   "function": "_cost",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3v",
    "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "text": "if isinstance(plan, DatasetUploadPlanV2):",
+   "function": "_risks",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3v",
    "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "text": "if isinstance(plan, DatasetContinuationPlanV3):",
+   "function": "summary",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "P02-3v",
    "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "text": "modern = plan if isinstance(plan, DatasetUploadPlanV2) else None",
+   "function": "summary",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3v",
    "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "text": "request_limits=plan.request_limits if isinstance(plan, DatasetUploadPlanV2) else None,",
+   "function": "summary",
+   "kind": "version",
+   "text": "source_plan_schema=plan.schema_version",
+   "occurrence": 0,
+   "owner": "P02-3v",
+   "note": "the original summary names its source plan schema as 1 or 2; the v3 summary is P02-3v's (summary() refuses a continuation first)"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_projection.py",
+   "function": "review",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3v",
    "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
+   "function": "authorize_read",
+   "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
@@ -110,139 +174,233 @@
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
-   "text": "not isinstance(view.plan, DatasetUploadPlanV2)",
+   "function": "initial_read_consent",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "read-gate preconditions of a v2 operation; the v3 read gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
-   "text": "not isinstance(approval, DatasetUploadApprovalV2)",
+   "function": "_fallback_consent",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApprovalV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "read-gate preconditions of a v2 operation; the v3 read gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
-   "text": "explicit = type(plan) is DatasetUploadPlanV2 and plan.admission_policy == \"explicit_attempt\"",
+   "function": "read_policy",
+   "kind": "type_is",
+   "text": "type(plan) is DatasetUploadPlanV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
-   "text": "if baseline is None or type(view.plan) is not DatasetUploadPlanV2:",
+   "function": "load_read_input",
+   "kind": "type_is",
+   "text": "type(view.plan) is not DatasetUploadPlanV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
-   "text": "if type(record) is not TransferRecordV2:",
+   "function": "load_read_input",
+   "kind": "type_is",
+   "text": "type(record) is not TransferRecordV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconciliation.py",
-   "text": "assert type(record) is TransferRecordV2",
+   "function": "_ReadEnvironment.acquire",
+   "kind": "type_is",
+   "text": "type(record) is TransferRecordV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconciliation.py",
-   "text": "assert type(view.operation) is TransferRecordV2",
+   "function": "_ReadEnvironment.commit",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
    "owner": "P02-3h",
    "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3h's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if type(receipt) is CreateReceiptV2:",
+   "function": "_typed_receipt",
+   "kind": "type_is",
+   "text": "type(receipt) is CreateReceiptV2",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if type(receipt) is StageReceipt:",
+   "function": "_typed_receipt",
+   "kind": "type_is",
+   "text": "type(receipt) is StageReceipt",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "not isinstance(plan, DatasetUploadPlanV2)",
+   "function": "StateUploads._current",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if not isinstance(plan, DatasetUploadPlanV2):",
+   "function": "StateUploads._preparation_check",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if not isinstance(view.plan, DatasetUploadPlanV2):",
+   "function": "StateUploads.save",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "save re-decodes the plan as v1/v2 and so rejects a continuation plan; its own save path is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.approve",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if not isinstance(approval, DatasetUploadApprovalV2):",
+   "function": "StateUploads.revoke",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "revoke re-decodes the approval as v1/v2 and so rejects a continuation approval; the v3 revoke is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.admit",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApprovalV2)",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if not isinstance(view.plan, DatasetUploadPlanV2):",
+   "function": "StateUploads._change",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(TransferRecord, TransferRecordV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "every record change is re-decoded as v1/v2 and so rejects a continuation record; the v3 change is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._control",
+   "kind": "version",
+   "text": "'schema_version': record.schema_version",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "the control copies the record's version into its payload, which picks the control family; the v3 control is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._control",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(TransferControl, TransferControlV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "the control is decoded as v1/v2 and so rejects a v3 control; the v3 control is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.arm",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.receipt",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.receipt",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, CreateReceiptV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.receipt",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 1,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "function": "StateUploads.read_failed",
+   "kind": "version",
+   "text": "record.schema_version == 2",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "and not isinstance(receipt, CreateReceiptV2)",
+   "function": "StateUploads._verified",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(TransferVerification, TransferVerificationV2)",
+   "occurrence": 0,
+   "owner": "P02-3r",
+   "note": "the proof is re-decoded as v1/v2 and so rejects a continuation proof; the v3 proof is P02-3r's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._verified",
+   "kind": "version",
+   "text": "proof.schema_version != record.schema_version",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if isinstance(receipt, CreateReceiptV2):",
-   "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if record.schema_version == 2",
-   "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if proof.schema_version != record.schema_version:",
-   "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._verified",
+   "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV2)",
    "occurrence": 0,
    "owner": "P02-3r",
@@ -250,41 +408,161 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "if proof.schema_version == 2:",
+   "function": "StateUploads._verified",
+   "kind": "version",
+   "text": "proof.schema_version == 2",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "text": "reason=\"verified\" if record.schema_version == 1 else \"metadata_verified\",",
+   "function": "StateUploads._verified",
+   "kind": "version",
+   "text": "record.schema_version == 1",
    "occurrence": 0,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "if record.schema_version != plan.schema_version or row[:-1] != (",
+   "function": "decode_versioned",
+   "kind": "version",
+   "text": "type(body.get('schema_version')) is not int",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the dispatcher itself: it reads the payload's own version and lists only the types the caller allows"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "decode_versioned",
+   "kind": "version",
+   "text": "body['schema_version'] == 1",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the dispatcher itself: it reads the payload's own version and lists only the types the caller allows"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "decode_versioned",
+   "kind": "version",
+   "text": "body['schema_version'] == 2",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the dispatcher itself: it reads the payload's own version and lists only the types the caller allows"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "decode_versioned",
+   "kind": "version",
+   "text": "body['schema_version'] == 3",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the dispatcher itself: it reads the payload's own version and lists only the types the caller allows"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_plan",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "stored plans are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_approval",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2, DatasetUploadApprovalV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "stored approvals are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_any_record",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferRecord, TransferRecordV2, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "stored records are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_any_record",
+   "kind": "version",
+   "text": "record.schema_version != plan.schema_version",
    "occurrence": 0,
    "owner": "done",
    "note": "a record and its plan are of one version, whichever it is"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "if isinstance(receipt, CreateReceiptV2):",
+   "function": "bind_continuation_record",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's record is that plan's own admission; the two families never mix"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "bind_continuation_record",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's record is that plan's own admission; the two families never mix"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "bind_continuation_record",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 1,
+   "owner": "done",
+   "note": "a continuation's record is that plan's own admission; the two families never mix"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "bind_continuation_record",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 1,
+   "owner": "done",
+   "note": "a continuation's record is that plan's own admission; the two families never mix"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "namespace_owner",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation never holds the namespace's create right; its baseline does"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "created_dataset",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 0,
    "owner": "P02-3u",
    "note": "create receipts do not exist in a continuation; the dataset comes from the baseline resolver"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "if not isinstance(record, TransferRecordV2) or record.status in TERMINAL:",
+   "function": "legacy_create_without_baseline",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV2)",
    "occurrence": 0,
    "owner": "P02-3u",
    "note": "legacy_create_without_baseline; the v3 baseline rules"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
+   "function": "legacy_create_without_baseline",
+   "kind": "isinstance",
    "text": "isinstance(receipt, StageReceipt)",
    "occurrence": 0,
    "owner": "P02-3u",
@@ -292,27 +570,44 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "if not isinstance(record, TransferRecord):",
+   "function": "read_record",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecord)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "read_record is the legacy v1 view API"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "if isinstance(receipt, CreateReceiptV2):",
-   "occurrence": 1,
+   "function": "request_digest",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's requests bind the plan's own dataset, not a create receipt's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "_receipt",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, CreateReceiptV2)",
+   "occurrence": 0,
    "owner": "P02-3u",
    "note": "create receipts do not exist in a continuation; the dataset comes from the baseline resolver"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or proof.schema_version != record.schema_version",
+   "function": "_verify",
+   "kind": "version",
+   "text": "proof.schema_version != record.schema_version",
    "occurrence": 0,
    "owner": "done",
    "note": "a record and its proof are of one version, whichever it is"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
+   "function": "_verify",
+   "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV2)",
    "occurrence": 0,
    "owner": "P02-3u",
@@ -320,76 +615,179 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "not isinstance(view.plan, DatasetUploadPlanV2)",
+   "function": "_verify",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "P02-3u",
    "note": "explicit read proofs need an explicit plan: the v3 form of the rule"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or control.schema_version != record.schema_version",
+   "function": "_controls",
+   "kind": "version",
+   "text": "control.schema_version != record.schema_version",
    "occurrence": 0,
    "owner": "done",
    "note": "a record and its controls are of one version, whichever it is"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "not isinstance(view.plan, DatasetUploadPlan)",
+   "function": "read_any_view",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(StageReceipt, CreateReceiptV2)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "receipts are stage receipts or the v2 create receipt; a continuation's receipts are stage receipts"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_any_view",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferControl, TransferControlV2, TransferControlV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "stored controls and proofs are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_any_view",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferVerification, TransferVerificationV2, TransferVerificationV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "stored controls and proofs are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetUploadPlan)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "require_legacy_view: the legacy v1 view API"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or (view.approval is not None and not isinstance(view.approval, DatasetUploadApproval))",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(view.approval, DatasetUploadApproval)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "require_legacy_view: the legacy v1 view API"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or (view.operation is not None and not isinstance(view.operation, TransferRecord))",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(view.operation, TransferRecord)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "require_legacy_view: the legacy v1 view API"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or any(not isinstance(c, TransferControl) for c in view.controls)",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(c, TransferControl)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "require_legacy_view: the legacy v1 view API"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "text": "or any(not isinstance(receipt, StageReceipt) for receipt in view.receipts)",
-   "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "legacy_create_without_baseline; the v3 baseline rules"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_store.py",
-   "text": "and not isinstance(view.verification, TransferVerification)",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, StageReceipt)",
    "occurrence": 0,
    "owner": "v1-only",
    "note": "require_legacy_view: the legacy v1 view API"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "require_legacy_view",
+   "kind": "isinstance",
+   "text": "isinstance(view.verification, TransferVerification)",
+   "occurrence": 0,
+   "owner": "v1-only",
+   "note": "require_legacy_view: the legacy v1 view API"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "capacity",
+   "kind": "decode_versioned/2",
+   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "P02-3v",
+   "note": "counts the plans of the original families; a stored continuation fails closed until P02-3v counts it"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "write_record",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferRecord, TransferRecordV2, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a record is written as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "write_record",
+   "kind": "version",
+   "text": "value.schema_version == 3",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the dataset and the mode of a continuation's record are fixed at admission, like its plan and approval"
   },
   {
    "file": "src/yorunge/application/continuation_policy.py",
-   "text": "if type(plan) is not DatasetContinuationPlanV3:",
+   "function": "prepare_continuation_v3",
+   "kind": "direct_decode",
+   "text": "DatasetContinuationPlanV3.model_validate_json(...)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "builds the continuation's own plan"
+  },
+  {
+   "file": "src/yorunge/application/continuation_policy.py",
+   "function": "approve_upload_v3",
+   "kind": "type_is",
+   "text": "type(plan) is not DatasetContinuationPlanV3",
    "occurrence": 0,
    "owner": "done",
    "note": "the continuation's own exact-type guard"
   },
   {
+   "file": "src/yorunge/application/dataset_upload_plan.py",
+   "function": "prepare_upload_snapshot",
+   "kind": "direct_decode",
+   "text": "DatasetUploadPlan.model_validate_json(...)",
+   "occurrence": 0,
+   "owner": "v1-only",
+   "note": "builds the legacy v1 plan; new original plans are v2"
+  },
+  {
    "file": "src/yorunge/application/upload_policy.py",
-   "text": "if type(plan) is not DatasetUploadPlanV2:",
+   "function": "prepare_upload_v2",
+   "kind": "direct_decode",
+   "text": "DatasetUploadPlanV2.model_validate_json(...)",
+   "occurrence": 0,
+   "owner": "v2-only",
+   "note": "builds an original v2 plan; a continuation is prepared by prepare_continuation_v3"
+  },
+  {
+   "file": "src/yorunge/application/upload_policy.py",
+   "function": "approve_upload_v2",
+   "kind": "type_is",
+   "text": "type(plan) is not DatasetUploadPlanV2",
    "occurrence": 0,
    "owner": "v2-only",
    "note": "approve_upload_v2 guards its own family; approve_upload_v3 is the continuation's"
   },
   {
    "file": "src/yorunge/domain/upload_resume_report.py",
+   "function": "resume_report",
+   "kind": "type_is",
    "text": "type(plan) is not DatasetContinuationPlanV3",
    "occurrence": 0,
    "owner": "done",
@@ -397,52 +795,111 @@
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "if not isinstance(plan, DatasetUploadPlanV2) or intent.kind != \"create\":",
+   "function": "validate_create_receipt",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "if isinstance(plan, DatasetUploadPlan) and isinstance(approval, DatasetUploadApproval):",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlan)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "elif isinstance(plan, DatasetUploadPlanV2) and isinstance(approval, DatasetUploadApprovalV2):",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApproval)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "elif isinstance(plan, DatasetContinuationPlanV3) and isinstance(",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "if isinstance(proof, TransferVerification):",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApprovalV2)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "if isinstance(proof, TransferVerificationV2 | TransferVerificationV3):",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
   },
   {
    "file": "src/yorunge/domain/upload_versions.py",
-   "text": "if isinstance(plan, DatasetContinuationPlanV3):",
+   "function": "validate_versioned_approval",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApprovalV3)",
    "occurrence": 0,
    "owner": "done",
    "note": "the family dispatch helpers name each family"
+  },
+  {
+   "file": "src/yorunge/domain/upload_versions.py",
+   "function": "verification_scope",
+   "kind": "isinstance",
+   "text": "isinstance(proof, TransferVerification)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the family dispatch helpers name each family"
+  },
+  {
+   "file": "src/yorunge/domain/upload_versions.py",
+   "function": "verification_scope",
+   "kind": "isinstance",
+   "text": "isinstance(proof, TransferVerificationV2 | TransferVerificationV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the family dispatch helpers name each family"
+  },
+  {
+   "file": "src/yorunge/domain/upload_versions.py",
+   "function": "graph_of",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the family dispatch helpers name each family"
+  },
+  {
+   "file": "src/yorunge/domain/upload_versions.py",
+   "function": "graph_of",
+   "kind": "version",
+   "text": "return StageGraphSpec(plan.schema_version, plan.manifest.file_count, plan.continuation.file_indices)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "graph_of reads the plan's own version (and a continuation's selection)"
+  },
+  {
+   "file": "src/yorunge/domain/upload_versions.py",
+   "function": "graph_of",
+   "kind": "version",
+   "text": "return StageGraphSpec(plan.schema_version, plan.manifest.file_count)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "graph_of reads the plan's own version (and a continuation's selection)"
   }
  ]
 }

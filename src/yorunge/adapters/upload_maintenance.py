@@ -16,6 +16,7 @@ from yorunge.adapters.upload_store import (
 from yorunge.domain.capabilities import canonical, timestamp
 from yorunge.domain.dataset_transfer import TERMINAL, TransferControl
 from yorunge.domain.dataset_transfer_v2 import TransferControlV2
+from yorunge.domain.errors import YorungeError
 
 
 def _snapshot_body(view: VersionedTransferView) -> dict[str, object]:
@@ -82,6 +83,10 @@ def invalidate_uploads(
         record = read_any_record(connection, row[0])
         if record.status in TERMINAL:
             continue
+        if record.schema_version == 3:
+            # Its recovery or terminal control is a v3 control: P02-3v writes it. Until then a
+            # continuation is refused here, before anything is changed, never reset as a v2.
+            raise YorungeError("state_invalid")
         armed = record.workflow_latched
         changed = record.model_copy(
             update={

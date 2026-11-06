@@ -32,6 +32,7 @@ from yorunge.domain.dataset_transfer_v3 import (
     TransferControlV3,
     TransferRecordV3,
     TransferVerificationV3,
+    validate_record_binding_v3,
 )
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
@@ -203,7 +204,34 @@ def read_any_record(connection: sqlite3.Connection, identifier: str) -> UploadRe
         graph_of(plan).operation_reservation(),
     ):
         raise YorungeError("state_invalid")
+    try:
+        bind_continuation_record(plan, record)
+    except ValueError:
+        raise YorungeError("state_invalid") from None
     return record
+
+
+def bind_continuation_record(plan: UploadPlan, record: UploadRecord) -> None:
+    """A continuation's record is that plan's own admission; the older pairs are validate_graph's.
+
+    The two families never mix: a record of one family under a plan of the other is refused.
+    """
+    if not isinstance(plan, DatasetContinuationPlanV3) and not isinstance(record, TransferRecordV3):
+        return
+    if not isinstance(plan, DatasetContinuationPlanV3) or not isinstance(record, TransferRecordV3):
+        raise ValueError("mixed continuation plan/record versions")
+    validate_record_binding_v3(plan, record)
+
+
+def namespace_owner(plan: UploadPlan, record: UploadRecord) -> str:
+    """The operation that holds the namespace's one create right.
+
+    An original upload holds it itself. A continuation never gets a new one: its dataset, and so
+    the namespace, belongs to the baseline operation it continues.
+    """
+    if isinstance(plan, DatasetContinuationPlanV3):
+        return plan.continuation.baseline_operation_id
+    return record.operation_id
 
 
 P = TypeVar("P", bound=UploadWire, covariant=True)
@@ -277,12 +305,19 @@ def request_digest(
     graph = graph_of(plan)
     create = receipts.get(("create", None))
     previous = receipts.get(("presign", index)) if index is not None else None
+    dataset: str | None = None
+    if graph.takes_created_dataset(kind):
+        if isinstance(plan, DatasetContinuationPlanV3):
+            # A continuation has no create receipt: its requests bind the plan's own dataset.
+            dataset = plan.continuation.dataset_id
+        elif create is not None:
+            dataset = create.dataset_id
     return upload_request_digest(
         plan.digest,
         kind,
         index,
         manifest.files[index] if index is not None else None,
-        create.dataset_id if graph.takes_created_dataset(kind) and create else None,
+        dataset,
         previous.object_key if graph.takes_presign_key(kind) and previous else None,
     )
 
@@ -644,7 +679,7 @@ def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTran
     if record.workflow_latched and connection.execute(
         "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
         (record.intent_digest,),
-    ).fetchone() != (record.operation_id,):
+    ).fetchone() != (namespace_owner(plan, record),):
         raise YorungeError("state_invalid")
     validate_graph(view, manifest)
     return view
@@ -674,6 +709,9 @@ def require_legacy_view(view: VersionedTransferView) -> TransferView:
 
 
 def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
+    # The plan decode below deliberately names only the original families: a stored continuation
+    # makes it fail closed (state_invalid) until P02-3v counts continuations, rather than being
+    # skipped or read as an original plan.
     plans = connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
     operations, reserved = connection.execute(
         "SELECT count(*),coalesce(sum(reservation),0) FROM upload_operations"
@@ -760,6 +798,10 @@ def write_record(
     lease = value.lease.expires_at if value.lease else None
     if expected is None:
         plan = read_plan(connection, value.plan_id)
+        try:
+            bind_continuation_record(plan, value)
+        except ValueError:
+            raise YorungeError("state_invalid") from None
         connection.execute(
             "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
             (
@@ -774,7 +816,7 @@ def write_record(
         )
     else:
         old = read_any_record(connection, value.operation_id)
-        fixed = (
+        fixed: tuple[str, ...] = (
             "schema_version",
             "operation_id",
             "plan_id",
@@ -785,6 +827,9 @@ def write_record(
             "write_owner_id",
             "write_access_digest",
         )
+        if value.schema_version == 3:
+            # Fixed at admission and bound to the plan: the dataset it sends into and its mode.
+            fixed += ("dataset_id", "verification_only")
         if (
             old.revision != expected
             or old.status in TERMINAL

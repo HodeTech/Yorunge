@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 from yorunge.adapters.state import open_store
+from yorunge.adapters.upload_maintenance import invalidate_uploads
 from yorunge.adapters.upload_projection import review, summary
+from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
     capacity,
@@ -16,8 +18,13 @@ from yorunge.adapters.upload_store import (
     read_plan,
     write_record,
 )
+from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
-from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
+    TransferVerificationV3,
+)
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_versions import graph_of
 
@@ -35,12 +42,16 @@ def encode(value):
 PLAN = DatasetContinuationPlanV3.model_validate_json(raw("dataset-continuation-plan-v3.json"))
 APPROVAL = DatasetUploadApprovalV3.model_validate_json(raw("dataset-continuation-approval-v3.json"))
 RECORD = TransferRecordV3.model_validate_json(raw("dataset-continuation-record-v3-admitted.json"))
+RUNNING = TransferRecordV3.model_validate_json(raw("dataset-continuation-record-v3-running.json"))
+CONTROL = TransferControlV3.model_validate_json(raw("dataset-continuation-control-v3.json"))
+PROOF = TransferVerificationV3.model_validate_json(raw("dataset-continuation-verification-v3.json"))
+ANOTHER_DATASET = "00000000-0000-4000-8000-000000000999"
 # Two of three files are sent: 3 x 2 intents of 4 KiB, the 16 and 20 KiB fixed parts, and the
 # closing proof reads all three files (512 bytes each).
 RESERVATION = 16 * 1024 + 3 * 2 * 4096 + 20 * 1024 + 3 * 512
 
 
-def install(store, *, operation=True):
+def install(store, *, operation=True, record=RECORD):
     """The rows a continuation would leave: the root's namespace and manifest, then its own."""
     connection = store.connection
     namespace = {
@@ -75,13 +86,13 @@ def install(store, *, operation=True):
         connection.execute(
             "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
             (
-                RECORD.operation_id,
-                RECORD.plan_id,
-                RECORD.intent_digest,
-                RECORD.revision,
-                RECORD.lease.expires_at if RECORD.lease else None,
+                record.operation_id,
+                record.plan_id,
+                record.intent_digest,
+                record.revision,
+                record.lease.expires_at if record.lease else None,
                 RESERVATION,
-                RECORD.encoded().decode(),
+                record.encoded().decode(),
             ),
         )
 
@@ -197,3 +208,165 @@ def test_the_original_summary_projection_refuses_a_continuation_instead_of_calli
     view = VersionedTransferView(PLAN, APPROVAL, None)
     refuses(lambda: summary(view))
     refuses(lambda: review(view))
+
+
+def test_a_continuations_control_and_proof_rows_are_read_as_their_own_family(tmp_path, monkeypatch):
+    # validate_graph refuses every continuation until P02-3u, so the outcome of these reads would
+    # be the same whichever family they decoded; it is replaced here to see what they return.
+    monkeypatch.setattr("yorunge.adapters.upload_store.validate_graph", lambda view, manifest: None)
+    with open_store(tmp_path / "state") as store:
+        install(store)
+        store.connection.execute(
+            "INSERT INTO upload_controls VALUES(?,?,?)",
+            (RECORD.operation_id, CONTROL.kind, CONTROL.encoded().decode()),
+        )
+        store.connection.execute(
+            "INSERT INTO upload_verifications VALUES(?,?)",
+            (RECORD.operation_id, PROOF.encoded().decode()),
+        )
+        view = read_any_view(store.connection, PLAN.plan_id)
+        assert view.operation == RECORD
+        assert [type(c) for c in view.controls] == [TransferControlV3]
+        assert view.controls[0].encoded() == CONTROL.encoded()
+        assert type(view.verification) is TransferVerificationV3
+        assert view.verification.encoded() == PROOF.encoded()
+        # A control keyed under another kind than its payload says is a disagreeing row.
+        store.connection.execute("UPDATE upload_controls SET kind='recovery'")
+        refuses(lambda: read_any_view(store.connection, PLAN.plan_id))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"dataset_id": ANOTHER_DATASET}, {"verification_only": True}],
+    ids=["dataset", "mode"],
+)
+def test_the_dataset_and_mode_of_an_admitted_continuation_cannot_change(tmp_path, change):
+    with open_store(tmp_path / "state") as store:
+        install(store, operation=False)
+        write_record(store.connection, RECORD, None)
+        later = RECORD.model_copy(update={"revision": RECORD.revision + 1, **change})
+        with pytest.raises(YorungeError) as error:
+            write_record(store.connection, later, RECORD.revision)
+        assert error.value.code == "operation_conflict"
+        assert read_any_record(store.connection, RECORD.operation_id) == RECORD
+
+
+def test_a_latched_continuation_record_never_becomes_unlatched(tmp_path):
+    cancelled = RUNNING.model_copy(
+        update={
+            "revision": RUNNING.revision + 1,
+            "status": "cancelled",
+            "workflow_latched": False,
+            "reason": "identity_reset",
+            "lease": None,
+        }
+    )
+    assert (
+        cancelled.model_dump()
+        == TransferRecordV3.model_validate_json(cancelled.encoded()).model_dump()
+    )
+    with open_store(tmp_path / "state") as store:
+        install(store, operation=False)
+        write_record(store.connection, RUNNING, None)
+        with pytest.raises(YorungeError) as error:
+            write_record(store.connection, cancelled, RUNNING.revision)
+        assert error.value.code == "operation_conflict"
+        assert read_any_record(store.connection, RUNNING.operation_id) == RUNNING
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"dataset_id": ANOTHER_DATASET}, {"verification_only": True}, {"plan_digest": "0" * 64}],
+    ids=["dataset", "mode", "plan"],
+)
+def test_a_record_that_is_not_its_plans_admission_is_not_written(tmp_path, change):
+    with open_store(tmp_path / "state") as store:
+        install(store, operation=False)
+        with pytest.raises(YorungeError) as error:
+            write_record(store.connection, RECORD.model_copy(update=change), None)
+        assert error.value.code == "state_invalid"
+        assert store.connection.execute("SELECT count(*) FROM upload_operations").fetchone() == (0,)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"dataset_id": ANOTHER_DATASET}, {"verification_only": True}],
+    ids=["dataset", "mode"],
+)
+def test_a_stored_record_that_is_not_its_plans_admission_is_state_invalid(tmp_path, change):
+    with open_store(tmp_path / "state") as store:
+        install(store)
+        # Every index column still agrees with the payload; only the binding to the plan is wrong.
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=?",
+            (RECORD.model_copy(update=change).encoded().decode(),),
+        )
+        refuses(lambda: read_any_record(store.connection, RECORD.operation_id))
+
+
+def test_a_reset_refuses_a_stored_continuation_before_it_changes_anything(tmp_path, monkeypatch):
+    written = []
+    monkeypatch.setattr(
+        "yorunge.adapters.upload_maintenance.write_record", lambda *args: written.append(args)
+    )
+    with open_store(tmp_path / "state") as store:
+        install(store)
+        before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
+        with pytest.raises(YorungeError) as error, store.connection:
+            store.connection.execute("BEGIN IMMEDIATE")
+            invalidate_uploads(
+                store.connection,
+                PLAN.scope.store_id,
+                PLAN.scope.identity_epoch,
+                instant("2026-11-03T11:00:00.000000Z"),
+                store.deadline,
+            )
+        assert error.value.code == "state_invalid"
+        # A rolled-back transaction would hide a write that came first: nothing was attempted.
+        assert written == []
+        assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
+        assert store.connection.execute("SELECT count(*) FROM upload_controls").fetchone() == (0,)
+
+
+def test_the_namespace_of_a_latched_continuation_belongs_to_its_baseline(tmp_path, monkeypatch):
+    # validate_graph would refuse a continuation first (until P02-3u), hiding the namespace rule.
+    monkeypatch.setattr("yorunge.adapters.upload_store.validate_graph", lambda view, manifest: None)
+    baseline = PLAN.continuation.baseline_operation_id
+    assert baseline != RUNNING.operation_id
+    with open_store(tmp_path / "state") as store:
+        install(store, record=RUNNING)
+        # The baseline's own rows are not built here; the rule under test is the comparison.
+        store.connection.execute("PRAGMA foreign_keys=OFF")
+
+        def own(operation_id):
+            store.connection.execute(
+                "UPDATE upload_namespaces SET create_operation_id=?", (operation_id,)
+            )
+
+        own(baseline)
+        assert read_any_view(store.connection, PLAN.plan_id).operation == RUNNING
+        for other in (RUNNING.operation_id, PLAN.continuation.dataset_id, None):
+            own(other)
+            refuses(lambda: read_any_view(store.connection, PLAN.plan_id))
+    with open_store(tmp_path / "unlatched") as store:
+        install(store)  # an admitted record has sent nothing: it owes the namespace nothing yet
+        assert RECORD.workflow_latched is False
+        assert read_any_view(store.connection, PLAN.plan_id).operation == RECORD
+
+
+def test_the_repository_reads_a_continuation_as_itself_and_will_not_revoke_it_as_a_v2(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        install(store, operation=False)
+        uploads = StateUploads(store)
+        # Reading is family-agnostic: the view is the continuation's own, never a converted one.
+        view = uploads.show(plan_id=PLAN.plan_id)
+        assert type(view.plan) is DatasetContinuationPlanV3 and type(view.approval) is type(
+            APPROVAL
+        )
+        assert [entry.plan_id for entry in uploads.list()[0]] == [PLAN.plan_id]
+        # Revoking re-decodes the approval as v1/v2 until P02-3r gives the continuation its own.
+        approval = store.connection.execute("SELECT payload FROM upload_approvals").fetchone()
+        refuses(lambda: uploads.revoke(PLAN.plan_id, PLAN.digest))
+        assert (
+            store.connection.execute("SELECT payload FROM upload_approvals").fetchone() == approval
+        )

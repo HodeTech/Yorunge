@@ -1,5 +1,6 @@
 """A continuation is a family of its own: helpers name it, decoders list it, nothing guesses."""
 
+import hashlib
 import json
 from itertools import product
 from pathlib import Path
@@ -8,7 +9,14 @@ from typing import ClassVar, Literal, get_args
 
 import pytest
 
-from yorunge.adapters.upload_store import VersionedTransferView, decode_versioned, validate_graph
+from yorunge.adapters.upload_store import (
+    VersionedTransferView,
+    bind_continuation_record,
+    decode_versioned,
+    namespace_owner,
+    request_digest,
+    validate_graph,
+)
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
@@ -256,3 +264,108 @@ def test_the_size_bound_of_the_listed_third_type_counts_not_only_the_older_two()
         decode_versioned(
             Small, Small, canon({"schema_version": 3, "pad": "x" * 300}).decode(), Large
         )
+
+
+V1_RECORD = TransferRecord.model_validate_json(
+    canon(json.loads(fixture("dataset-transfer-journal-v1.json"))["record"])
+)
+V2_RECORD = TransferRecordV2.model_validate_json(canon(GRAPH["record"]))
+V3_RECORD = TransferRecordV3.model_validate_json(
+    fixture("dataset-continuation-record-v3-admitted.json")
+)
+OTHER_DATASET = "00000000-0000-4000-8000-000000000999"
+
+
+@pytest.mark.parametrize(
+    "plan_version,record", [(1, V3_RECORD), (2, V3_RECORD), (3, V1_RECORD), (3, V2_RECORD)]
+)
+def test_a_record_of_one_family_is_never_bound_to_a_plan_of_the_other(plan_version, record):
+    with pytest.raises(ValueError, match="mixed continuation plan/record versions"):
+        bind_continuation_record(PLANS[plan_version], record)
+
+
+def test_the_original_pairs_are_left_to_the_graph_validation_as_before():
+    # The v1/v2 record-to-plan rules are validate_graph's; the continuation binding adds nothing.
+    for plan_version, record in ((1, V1_RECORD), (2, V2_RECORD), (1, V2_RECORD)):
+        assert bind_continuation_record(PLANS[plan_version], record) is None
+
+
+def test_a_continuation_record_binds_to_its_own_plan_and_to_nothing_else():
+    assert bind_continuation_record(PLANS[3], V3_RECORD) is None
+    plan = PLANS[3]
+    for change in (
+        {"dataset_id": OTHER_DATASET},
+        {"verification_only": True},
+        {"plan_id": OTHER_DATASET},
+        {"plan_digest": "0" * 64},
+        {"intent_digest": "0" * 64},
+        {"operation_id": plan.continuation.source_operation_id},
+        {"operation_id": plan.continuation.baseline_operation_id},
+    ):
+        with pytest.raises(ValueError):
+            bind_continuation_record(plan, V3_RECORD.model_copy(update=change))
+
+
+def test_a_continuation_borrows_its_baselines_namespace_and_an_original_owns_its_own():
+    assert namespace_owner(PLANS[3], V3_RECORD) == PLANS[3].continuation.baseline_operation_id
+    assert namespace_owner(PLANS[3], V3_RECORD) != V3_RECORD.operation_id
+    assert namespace_owner(PLANS[2], V2_RECORD) == V2_RECORD.operation_id
+    assert namespace_owner(PLANS[1], V1_RECORD) == V1_RECORD.operation_id
+
+
+def expected_digest(plan, kind, index, dataset_id, key):
+    """The request binding recomputed from its definition, with nothing of the store's code."""
+    body = {
+        "plan_digest": plan.digest,
+        "kind": kind,
+        "file_index": index,
+        "file": MANIFEST.files[index].model_dump(mode="json") if index is not None else None,
+        "dataset_id": dataset_id,
+        "object_key": key,
+    }
+    text = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def receipt(dataset_id=None, key=None):
+    return SimpleNamespace(dataset_id=dataset_id, object_key=key)
+
+
+def test_a_continuations_requests_bind_the_plans_dataset_never_a_create_receipts():
+    plan = PLANS[3]
+    dataset = plan.continuation.dataset_id
+    presigned = {("presign", 2): receipt(dataset, "key-2")}
+    for kind, receipts, key in (
+        ("presign", {}, None),
+        ("put", presigned, "key-2"),
+        ("confirm", presigned, "key-2"),
+    ):
+        # Even a create receipt that should not exist cannot change what a request is bound to.
+        for given in (receipts, {**receipts, ("create", None): receipt(OTHER_DATASET)}):
+            assert request_digest(plan, MANIFEST, kind, 2, given) == expected_digest(
+                plan, kind, 2, dataset, key
+            )
+    assert expected_digest(plan, "presign", 2, dataset, None) != expected_digest(
+        plan, "presign", 2, OTHER_DATASET, None
+    )
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_an_original_uploads_requests_still_bind_the_create_receipts_dataset(version):
+    plan = PLANS[version]
+    create = {("create", None): receipt(OTHER_DATASET)}
+    for kind, index in (("project_link", None), ("presign", 0)):
+        assert request_digest(plan, MANIFEST, kind, index, create) == expected_digest(
+            plan, kind, index, OTHER_DATASET, None
+        )
+        assert request_digest(plan, MANIFEST, kind, index, {}) == expected_digest(
+            plan, kind, index, None, None
+        )
+    # The create request itself carries no dataset, whatever the receipts hold.
+    assert request_digest(plan, MANIFEST, "create", None, create) == expected_digest(
+        plan, "create", None, None, None
+    )
+    confirmed = {**create, ("presign", 1): receipt(OTHER_DATASET, "key-1")}
+    assert request_digest(plan, MANIFEST, "put", 1, confirmed) == expected_digest(
+        plan, "put", 1, OTHER_DATASET, "key-1"
+    )
