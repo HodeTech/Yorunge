@@ -139,8 +139,9 @@ class ResumeObservation(UploadWire):
 
 
 class DatasetUploadResumeReport(UploadWire):
-    # Four problem classes of eight paths each: a path is at most 1 KiB and escapes to at most
-    # three times that, so the worst case stays near 100 KiB.
+    # At most three problem classes stand together (an unreliable listing excludes two of them),
+    # each listing eight paths; a path is at most 1 KiB and escapes to at most three times that,
+    # so the worst case is near 75 KiB and the limit leaves room for the rest.
     max_wire_bytes: ClassVar[int] = 128 * 1024
     schema_version: Literal[1]
     kind: Literal["dataset_upload_resume_report"]
