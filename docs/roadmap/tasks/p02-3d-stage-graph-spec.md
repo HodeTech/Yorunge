@@ -40,4 +40,6 @@ Değişikliğe uygun hedefli upload contract/integration paketleri, yeni kill te
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+- Commit’ler: karakterizasyon testleri `a881aca` (refaktörden önce, ürün kodu değişmeden), refaktör `8308ae9`, R1 düzeltmeleri sonraki commit; kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-1--p02-3d-aşama-grafiği-tek-belirtimi).
+- Durum: R1 kapandı (P1 yok, doğrulanmış bulgular işlendi); R2 bekliyor. Kart `verified` değildir.
+- Bilinen sınır: v3 davranışı, yeni tip ve DDL kapsam dışıdır; plan sürümü taşımayan dört çağrı noktası (`CURRENT_PLAN_VERSION`) v3 kartlarında gözden geçirilir.

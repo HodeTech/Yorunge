@@ -19,6 +19,10 @@ StageKey = tuple[StageKind, int | None]
 
 # Plan versions whose graph is "create, project_link, then presign/put/confirm for every file".
 SUPPORTED_PLAN_VERSIONS: Final[tuple[int, ...]] = (1, 2)
+# Version new plans are written with. The v1 and v2 graphs are identical, so consumers that hold no
+# plan (request limits, cost/review validators, ``operation_reservation``) name it explicitly; a
+# continuation plan type must review those call sites instead of inheriting this graph.
+CURRENT_PLAN_VERSION: Final = 2
 STAGE_KINDS: Final[tuple[StageKind, ...]] = ("create", "project_link", "presign", "put", "confirm")
 # Stages that carry a file index and, once accepted, the provider object key.
 FILE_STAGE_KINDS: Final[tuple[StageKind, ...]] = ("presign", "put", "confirm")

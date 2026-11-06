@@ -18,7 +18,8 @@ from yorunge.domain.upload_graph import (
 from yorunge.domain.upload_versions import graph_of
 
 VERSIONS = (1, 2)
-COUNTS = range(1, MAX_UPLOAD_FILES + 1)
+# The oracle range is literal: the upload file limit is 128 and must not follow the constant.
+COUNTS = range(1, 129)
 
 
 # --- frozen copies of the pre-specification formulas (independent oracle) -----------------------
@@ -147,5 +148,6 @@ def test_derived_capacity_constants_agree_with_the_specification():
     assert f"CHECK(sequence BETWEEN 1 AND {largest.intent_count})" in ddl
     sequence = StageIntent.model_fields["sequence"]
     assert any(getattr(item, "le", None) == largest.intent_count for item in sequence.metadata)
-    assert operation_reservation(1) == StageGraphSpec(2, 1).operation_reservation()
-    assert operation_reservation(MAX_UPLOAD_FILES) == largest.operation_reservation()
+    assert MAX_UPLOAD_FILES == 128
+    for count in COUNTS:
+        assert operation_reservation(count) == frozen_reservation(count)

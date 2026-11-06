@@ -19,7 +19,7 @@ from yorunge.domain.dataset_upload import (
     provider_uuid,
 )
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_graph import FILE_STAGE_KINDS, StageGraphSpec
+from yorunge.domain.upload_graph import CURRENT_PLAN_VERSION, FILE_STAGE_KINDS, StageGraphSpec
 from yorunge.domain.upload_graph import StageKind as StageKind
 
 TransferStatus = Literal["admitted", "running", "unknown", "succeeded", "failed", "cancelled"]
@@ -330,4 +330,4 @@ def operation_reservation(file_count: int) -> int:
 
     The v1/v2 graphs share one reservation; the stage graph specification owns the arithmetic.
     """
-    return StageGraphSpec(2, file_count).operation_reservation()
+    return StageGraphSpec(CURRENT_PLAN_VERSION, file_count).operation_reservation()
