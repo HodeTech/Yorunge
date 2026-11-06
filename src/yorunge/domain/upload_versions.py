@@ -1,8 +1,18 @@
-"""Closed version pairs for transfer history; never upgrade stored payloads."""
+"""Closed version families for transfer history; never upgrade stored payloads.
+
+The v3 (continuation) types are not subclasses of the v2 ones, so a dispatch on "is it a v2
+type, else v1" would take a v3 value for v1. Every helper here names each family it supports and
+refuses any other value.
+"""
 
 import hashlib
 
 from yorunge.domain.create_receipt import CreateReceiptV2
+from yorunge.domain.dataset_continuation import (
+    DatasetContinuationPlanV3,
+    DatasetUploadApprovalV3,
+    validate_approval_binding_v3,
+)
 from yorunge.domain.dataset_transfer import (
     StageIntent,
     StageReceipt,
@@ -14,6 +24,11 @@ from yorunge.domain.dataset_transfer_v2 import (
     TransferControlV2,
     TransferRecordV2,
     TransferVerificationV2,
+)
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
+    TransferVerificationV3,
 )
 from yorunge.domain.dataset_upload import (
     DatasetUploadApproval,
@@ -28,11 +43,12 @@ from yorunge.domain.dataset_upload_v2 import (
 )
 from yorunge.domain.upload_graph import StageGraphSpec
 
-UploadPlan = DatasetUploadPlan | DatasetUploadPlanV2
-UploadApproval = DatasetUploadApproval | DatasetUploadApprovalV2
-UploadRecord = TransferRecord | TransferRecordV2
-UploadControl = TransferControl | TransferControlV2
-UploadVerification = TransferVerification | TransferVerificationV2
+UploadPlan = DatasetUploadPlan | DatasetUploadPlanV2 | DatasetContinuationPlanV3
+UploadApproval = DatasetUploadApproval | DatasetUploadApprovalV2 | DatasetUploadApprovalV3
+UploadRecord = TransferRecord | TransferRecordV2 | TransferRecordV3
+UploadControl = TransferControl | TransferControlV2 | TransferControlV3
+UploadVerification = TransferVerification | TransferVerificationV2 | TransferVerificationV3
+# A continuation sends no create, so its receipts are stage receipts only.
 UploadReceipt = StageReceipt | CreateReceiptV2
 
 
@@ -63,12 +79,20 @@ def validate_versioned_approval(plan: UploadPlan, approval: UploadApproval) -> N
         validate_approval_binding(plan, approval)
     elif isinstance(plan, DatasetUploadPlanV2) and isinstance(approval, DatasetUploadApprovalV2):
         validate_approval_binding_v2(plan, approval)
+    elif isinstance(plan, DatasetContinuationPlanV3) and isinstance(
+        approval, DatasetUploadApprovalV3
+    ):
+        validate_approval_binding_v3(plan, approval)
     else:
         raise ValueError("mixed upload plan/approval versions")
 
 
 def verification_scope(proof: UploadVerification) -> UploadScope:
-    return proof.scope if isinstance(proof, TransferVerificationV2) else proof.grant.scope
+    if isinstance(proof, TransferVerification):
+        return proof.grant.scope
+    if isinstance(proof, TransferVerificationV2 | TransferVerificationV3):
+        return proof.scope
+    raise ValueError("unsupported verification version")
 
 
 def proof_digest(proof: UploadVerification) -> str:
@@ -77,4 +101,8 @@ def proof_digest(proof: UploadVerification) -> str:
 
 def graph_of(plan: UploadPlan) -> StageGraphSpec:
     """The only stage graph of a stored plan; an unsupported version is rejected."""
+    if isinstance(plan, DatasetContinuationPlanV3):
+        return StageGraphSpec(
+            plan.schema_version, plan.manifest.file_count, plan.continuation.file_indices
+        )
     return StageGraphSpec(plan.schema_version, plan.manifest.file_count)

@@ -68,9 +68,11 @@ def revoke_upload_approval(plan_id: str, state_dir: Path | None) -> VersionedTra
 
 def _limits(manifest: DatasetManifest) -> UploadRequestLimits:
     counts = StageGraphSpec(ORIGINAL_PLAN_VERSION, manifest.file_count).request_counts()
+    if (counts.create, counts.project_link) != (1, 1):  # the limits type states exactly this
+        raise ValueError("an original upload creates and links once")
     return UploadRequestLimits(
-        max_create=counts.create,
-        max_project_link=counts.project_link,
+        max_create=1,
+        max_project_link=1,
         max_presign=counts.presign,
         max_put=counts.put,
         max_confirm=counts.confirm,

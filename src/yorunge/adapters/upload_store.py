@@ -5,12 +5,13 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, overload
 
 from yorunge.adapters.state import metadata
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_manifest import DatasetManifest, decode_manifest_json
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -26,6 +27,11 @@ from yorunge.domain.dataset_transfer_v2 import (
     TransferControlV2,
     TransferRecordV2,
     TransferVerificationV2,
+)
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
+    TransferVerificationV3,
 )
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
@@ -81,14 +87,27 @@ def _decode(cls: type[T], payload: object) -> T:
 
 
 U = TypeVar("U", bound=UploadWire)
+W = TypeVar("W", bound=UploadWire)
 
 
-def decode_versioned(v1: type[T], v2: type[U], payload: object) -> T | U:
+@overload
+def decode_versioned(v1: type[T], v2: type[U], payload: object) -> T | U: ...
+@overload
+def decode_versioned(v1: type[T], v2: type[U], payload: object, v3: type[W]) -> T | U | W: ...
+def decode_versioned(
+    v1: type[T], v2: type[U], payload: object, v3: type[W] | None = None
+) -> T | U | W:
+    """Decode a stored payload by its own version; a version the caller did not list is invalid.
+
+    A caller that names no v3 type still reads v1/v2 and rejects a continuation payload, which
+    is how a path that cannot yet handle a continuation fails closed instead of misreading it.
+    """
+    limit = max(v1.max_wire_bytes, v2.max_wire_bytes, v3.max_wire_bytes if v3 else 0)
     try:
-        if not isinstance(payload, str) or len(payload) > max(v1.max_wire_bytes, v2.max_wire_bytes):
+        if not isinstance(payload, str) or len(payload) > limit:
             raise ValueError("bounded versioned payload required")
         raw = payload.encode("utf-8")
-        if len(raw) > max(v1.max_wire_bytes, v2.max_wire_bytes):
+        if len(raw) > limit:
             raise ValueError("bounded versioned payload required")
         body = decode_manifest_json(raw)
         if not isinstance(body, dict) or type(body.get("schema_version")) is not int:
@@ -97,6 +116,8 @@ def decode_versioned(v1: type[T], v2: type[U], payload: object) -> T | U:
             return decode(v1, payload)
         if body["schema_version"] == 2:
             return decode(v2, payload)
+        if body["schema_version"] == 3 and v3 is not None:
+            return decode(v3, payload)
         raise ValueError("closed payload version required")
     except (ValueError, TypeError, RecursionError):
         raise YorungeError("state_invalid") from None
@@ -111,7 +132,9 @@ def read_plan(connection: sqlite3.Connection, identifier: str) -> UploadPlan:
     row = connection.execute("SELECT * FROM upload_plans WHERE plan_id=?", (identifier,)).fetchone()
     if row is None:
         raise YorungeError("upload_plan_not_found")
-    plan = decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, row[5])
+    plan = decode_versioned(
+        DatasetUploadPlan, DatasetUploadPlanV2, row[5], DatasetContinuationPlanV3
+    )
     if row[:5] != (
         plan.plan_id,
         plan.intent_digest(),
@@ -150,7 +173,9 @@ def read_approval(connection: sqlite3.Connection, plan: UploadPlan) -> UploadApp
     ).fetchone()
     if row is None:
         return None
-    value = decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2, row[2])
+    value = decode_versioned(
+        DatasetUploadApproval, DatasetUploadApprovalV2, row[2], DatasetUploadApprovalV3
+    )
     try:
         validate_versioned_approval(plan, value)
         if row[:2] != (value.approval_id, value.expires_at):
@@ -167,7 +192,7 @@ def read_any_record(connection: sqlite3.Connection, identifier: str) -> UploadRe
     ).fetchone()
     if row is None:
         raise YorungeError("operation_not_found")
-    record = decode_versioned(TransferRecord, TransferRecordV2, row[-1])
+    record = decode_versioned(TransferRecord, TransferRecordV2, row[-1], TransferRecordV3)
     plan = read_plan(connection, record.plan_id)
     if record.schema_version != plan.schema_version or row[:-1] != (
         record.operation_id,
@@ -542,6 +567,10 @@ def _controls(view: VersionedTransferView) -> None:
 def validate_graph(view: VersionedTransferView, manifest: DatasetManifest) -> None:
     if view.operation is None:
         return
+    if graph_of(view.plan).continuation:
+        # The v3 graph (no create, a file subset, a baseline from the chain) is validated by
+        # P02-3u. Until then a continuation's history is unreadable, never half-validated.
+        raise YorungeError("state_invalid")
     try:
         _operation_header(view)
         _stages(view, manifest)
@@ -591,7 +620,8 @@ def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTran
         (record.operation_id,),
     ).fetchall()
     controls = tuple(
-        decode_versioned(TransferControl, TransferControlV2, r[1]) for r in control_rows
+        decode_versioned(TransferControl, TransferControlV2, r[1], TransferControlV3)
+        for r in control_rows
     )
     if any(row[0] != control.kind for row, control in zip(control_rows, controls, strict=True)):
         raise YorungeError("state_invalid")
@@ -605,7 +635,11 @@ def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTran
         tuple(intents),
         receipts,
         controls,
-        decode_versioned(TransferVerification, TransferVerificationV2, proof[0]) if proof else None,
+        decode_versioned(
+            TransferVerification, TransferVerificationV2, proof[0], TransferVerificationV3
+        )
+        if proof
+        else None,
     )
     if record.workflow_latched and connection.execute(
         "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
@@ -720,7 +754,9 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
 def write_record(
     connection: sqlite3.Connection, record: UploadRecord, expected: int | None
 ) -> None:
-    value = decode_versioned(TransferRecord, TransferRecordV2, record.encoded().decode("ascii"))
+    value = decode_versioned(
+        TransferRecord, TransferRecordV2, record.encoded().decode("ascii"), TransferRecordV3
+    )
     lease = value.lease.expires_at if value.lease else None
     if expected is None:
         plan = read_plan(connection, value.plan_id)

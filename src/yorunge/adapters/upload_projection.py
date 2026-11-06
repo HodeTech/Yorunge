@@ -1,8 +1,10 @@
 """Project validated history explicitly; never serialize private repository views."""
 
 from yorunge.adapters.upload_store import VersionedTransferView
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_upload import REQUIRED_PERMISSIONS
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2, UploadRisk
+from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_public import (
     DatasetUploadSummary,
     UploadCostSummary,
@@ -41,6 +43,9 @@ def _risks(plan: UploadPlan, grant_complete: bool) -> tuple[UploadRisk, ...]:
 
 def summary(view: VersionedTransferView) -> DatasetUploadSummary:
     plan, record, approval = view.plan, view.operation, view.approval
+    if isinstance(plan, DatasetContinuationPlanV3):
+        # A continuation is not "legacy history": its projection is P02-3v's, until then it fails.
+        raise YorungeError("state_invalid")
     modern = plan if isinstance(plan, DatasetUploadPlanV2) else None
     current = modern is not None
     succeeded = record is not None and record.status == "succeeded"
