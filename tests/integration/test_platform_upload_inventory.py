@@ -387,7 +387,7 @@ def test_a_deadline_that_lapses_while_a_page_is_processed_stops_the_listing(
     error, count = refused(
         journal,
         certificates,
-        {ITEMS: page(item_rows(journal), cursor="later"), CURSOR: page([])},
+        {ITEMS: page(item_rows(journal))},
         deadline_in=deadline_in,
         budget_in=budget_in,
     )
