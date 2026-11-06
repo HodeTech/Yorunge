@@ -16,11 +16,11 @@ Devam için gereken plan/onay/kayıt/kontrol/doğrulama/özet/rapor tipleri bug�
 
 ## Giren ve girmeyen kapsam
 
-`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt v3 (plandan dolu `dataset_id`; latch ilk intent’te; `verification_only` bayrağı), kontrol v3, `TransferVerification v3` (v2 ile aynı alanlar), `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1`, `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, kökten kopyalanan saklı `intent_digest` (fazladan bağlama denetimi: türetim hedef/owner/proje/addandır ve scope’un credential alanlarını içermez; kökle eşitlik doğrulanır), `remote_present_count`, v3 için `request_digest` kuralı (dataset kimliği plan bağından) ve yeni `continuation_not_possible` (kapalı `blockers` ayrıntısı) ile `continuation_remote_changed` hata kodları (katalog, mesaj, exit) girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
+`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt v3 (plandan dolu `dataset_id`; latch ilk intent’te; `verification_only` bayrağı), kontrol v3, `TransferVerification v3` (v2 ile aynı alanlar), `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1` (nullable `related_operation_id` dahil), `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, kökten kopyalanan saklı `intent_digest` (fazladan bağlama denetimi: türetim hedef/owner/proje/addandır ve scope’un credential alanlarını içermez; kökle eşitlik doğrulanır), `remote_present_count`, v3 için `request_digest` kuralı (dataset kimliği plan bağından) ve yeni `continuation_not_possible` (kapalı `blockers` ayrıntısı) ile `continuation_remote_changed` hata kodları (katalog, mesaj, exit) girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
 
 ## Bağımlılıklar ve kararlar
 
-P02-3e sınıf ve özet tanımlarına bağlıdır. [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed). Tip alanlarının tam listesi bu kartta [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) taslağından kesinleşir; golden vektörler bağımsız elle hesaplanır.
+P02-3e sınıf ve özet tanımlarına bağlıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). Tip alanlarının tam listesi bu kartta [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) taslağından kesinleşir; golden vektörler bağımsız elle hesaplanır.
 
 ## Sözleşme ve uygulama sınırı
 

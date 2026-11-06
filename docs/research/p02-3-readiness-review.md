@@ -1,6 +1,6 @@
 # P02-3 uygulama öncesi belge, kod ve kaynak incelemesi
 
-**Tarih:** 2026-11-06 Europe/Istanbul. **Dal/taban:** `feat/p02-3-dataset-recovery`, development `94aaaf0`; hazırlık `9e9f3df` kapanış commit’inin üzerindedir. **Durum:** ADR-0031/0032/0033 Proposed, kullanıcı onayı bekleniyor; ürün kodu başlamadı. Bu kayıt uygulama veya canlı kabul değildir.
+**Tarih:** 2026-11-06 Europe/Istanbul. **Dal/taban:** `feat/p02-3-dataset-recovery`, development `94aaaf0`; hazırlık `9e9f3df` kapanış commit’inin üzerindedir. **Durum:** ADR-0031/0032/0033 kullanıcı 2026-11-06 talimatıyla Accepted (harici review bulgularının işlenmesinden sonra); ürün kodu henüz yok. Bu kayıt uygulama veya canlı kabul değildir.
 
 ## Yöntem ve incelenen belgeler
 
@@ -89,3 +89,15 @@ R2 düzeltme commit’i `9fad60a` üzerinde, R1/R2’yi görmemiş üç yeni ba�
 - **P3.** Başlık/tamamlanma checkpoint’leri, `fchmod`, `O_EXCL` yaratma yarışı, link sonrası artık stage, yayın adımlarının deadline dışı olması, `--page` kapsam sızıntısı, `class_labels_sha256` tür/kopya kuralı, gözlem etiketleri, `CR`/“Option V” jargonu, eski binary etki alanına `backup/restore/maintain/verify`, post-lease bekleme sınırı, `extra_remote`/`conflict` adı, `verified_only` kaynak engeli, adım numaraları.
 
 Reviewer sorularının hepsi karara bağlandı veya K kararlarına taşındı: R7/R8’in P02-3’e çekilmesi K4 seçeneğidir (varsayılan ertelenmiş); `bind` `is_partial=true` sürümü reddetmez (anlamı bilinmiyor, alan kaydedilir); tam indirilmiş stage ağsız yayımlanır, `--sha256` uyuşmazlığında stage silinir ve hata mesajları dosya adı taşımaz (ADR-0032); kanıt birleşimi dallanmasın diye kaynak zincirin ucu olmalıdır (ADR-0031 §2); resume kabulünün native ölçümü K1 sonucu olarak sunuldu. R3 de ürün testi veya gerçek hesap kabulü değildir. Kullanıcı ADR onayı bu üç tur tamamlandıktan sonra istenir.
+
+### Harici review ve kullanıcı onayı
+
+Kullanıcı üç iç belge turundan sonra, süreci bilmeyen ve yalnız belgeyi okuyan üç harici review sonucunu paylaştı; bulgular kodla ve belgelerle yeniden doğrulanıp ayıklandı (süreç bilgisi olmayan reviewer’ın yanlış anladığı noktalar düzeltilmek yerine açıklığa kavuşturuldu). Doğrulanan düzeltmeler:
+
+- **P1 — indirme kilidi.** Kilit stage fd’sinde tutuluyordu; atma ve sıfırlama yolları stage’i silip yeniden yarattığında iki süreç farklı inode’lar üzerinde aynı anda kilit alıp aynı adlı sidecar/tmp dosyalarını bozabilirdi (harici reviewer bunu yerel olarak da deneyle doğruladı). Kilit hedef başına kararlı bir kilit nesnesine (`.lock`) bağlandı; kilit sonrası kimlik doğrulaması, kilit altında hedef/artık-stage temizliği ve kilit nesnesinin en son silinmesi eklendi; kabul testlerine silme–yeniden yaratma, link sonrası canlı cleanup ve eski descriptor’ı bekleyen ikinci süreç senaryoları girdi.
+- **P1 — resume kimliği.** Kimlik anahtarı hizmet hedefini (normalize origin + API kökü) kapsamıyordu; başka ortamın baytları ağsız yayımlanabilirdi. Anahtara eklendi ve tam-stage dahil bütün resume yollarında zorunlu kılındı.
+- **P2 — indirme.** Chunked gövdede tamamlanma checkpoint’i `total_size`ı sabitler; temiz durma (SIGINT/iptal/hata) checkpoint’i adım listesine girdi ve “8 MiB altı ilerleme devam eder” iddiası SIGKILL (en çok son checkpoint’ten sonrası yeniden iner) ve temiz durma (devam eder) olarak düzeltildi; sidecar sahipliği stage’den bağımsız tanımlandı.
+- **P2 — sürüm.** `check` çıktısı: yalnız `unchanged` başarıdır, diğerleri hata zarfıdır; `missing` yalnız detay rotası 404’üdür (bölme 404 `remote_failed`); `state_changed` kanonik tabloya girdi; iki okumanın atomik olmadığı yazıldı. Açıklama alanı farkının exit 7 olması **bilinçli seçim** olarak kaydedildi (yanlış güvence yanlış alarmdan pahalı; `annotation_only` ayrıntısı eklendi; gevşetme ayrı ADR); harici reviewer’ın önerdiği (b) seçeneği Alternatifler’e işlendi.
+- **P2/P3 — resume ve süreç.** `source_superseded` iptal edilmemiş her torunu kapsar, eylem önceliği ve `related_operation_id` eklendi; `running` ⇒ latch’li açıklığı (reviewer’ın “intent’siz running” senaryosu mevcut doğrulayıcılarla zaten oluşamaz); sürüm `is_export_ready`’nin neden bağlanmadığı, digest’in kendi kendine hash olduğu, 1.024 item sınırının kullanıcıya söylenmesi, varsayım etiketi, v2 referansı notu, başlık sözleşmesi ve ADR indeks tarihi düzeltildi; ADR’lerdeki kanonik tablo ve adım listesi kopyaları kaldırıldı.
+
+Kullanıcı bu düzeltmelerden sonra ADR-0031/0032/0033’ün Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı; K4–K6 yanıtlanmadığından varsayılanlar geçerlidir (plan: [Kullanıcı kararları](../roadmap/p02-3-delivery-plan.md#kullanıcı-kararları)). Bu kayıt da ürün testi veya gerçek hesap kabulü değildir.

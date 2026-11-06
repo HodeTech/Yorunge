@@ -20,7 +20,7 @@ Kullanıcı bir model sürümünün ağırlığını (kesin sürüm kimliği ve 
 
 ## Bağımlılıklar ve kararlar
 
-P02-3m verified olmalıdır; Platform bağlamı P02-0d’dedir. [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md)’nin Accepted olması gerekir (bugün Proposed). Yoklama kapısı P02-3j öncesinde yapılır; kullanıcının erişebildiği bir model sürümü kimliği ve ayrı yetki gerekir, yoksa kapı “yoklama yapılmadı” olarak kayda geçer. CLI/API için yorunge-contract-change disiplini uygulanır.
+P02-3m verified olmalıdır; Platform bağlamı P02-0d’dedir. [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md) Accepted’dir (2026-11-06). Yoklama kapısı P02-3j öncesinde yapılır; kullanıcının erişebildiği bir model sürümü kimliği ve ayrı yetki gerekir, yoksa kapı “yoklama yapılmadı” olarak kayda geçer. CLI/API için yorunge-contract-change disiplini uygulanır.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -29,9 +29,9 @@ P02-3m verified olmalıdır; Platform bağlamı P02-0d’dedir. [ADR-0032](../..
 ## Kabul
 
 1. Loopback TLS: JSON çağrısı `X-API-Key` taşır, indirme taşımaz; yanlış origin, önek (başka bucket dahil), http, userinfo, fragment, `..`, aşırı URL, eksik/yanlış tipli alan, sağlayıcı filename’inin yol ayırıcı içermesi ve 401/403/404/429/5xx hepsi imzalı URL isteğine geçmeden kontrollü ret verir (`{api_base_path}/files/` dataset bucket yolu ve API tabanı olmayan `/files/evren-models/` dahil); `fold` verilirse iletilir ve kimlik anahtarına girer.
-2. `--sha256` eşleşirse `sha256_matched`/`user_supplied`, yoksa `transfer_complete`; uyuşmazlık exit 7 ve hedef yok; seviye çıktıda doğru ve fazla iddiasız; `--fold`, `--timeout`, `--sha256` değer alanları strict doğrulanır.
+2. `--sha256` eşleşirse `sha256_matched`/`user_supplied`, yoksa `transfer_complete`; uyuşmazlık exit 7 ve hedef yok; seviye çıktıda doğru ve fazla iddiasız; `--fold`, `--timeout`, `--sha256` değer alanları strict doğrulanır; yardım metni `--timeout` için 1 GiB’ın varsayılan 900 s’de ~9,5 Mbit/s payload gerektirdiğini gösterir.
 3. JSON/NDJSON saf, TTY ilerleme yalnız stderr, BrokenPipe/SIGINT/Task.cancel mevcut 6/1/6 ve ID önceliği; sentinel testleri imzalı URL/query/ETag/filename sızıntısı olmadığını gösterir.
-4. Kurulu CLI yolculuğu: yardım, yanlış format, var olan hedef, yarım indirme sonrası aynı komutla devam; tam-stage bırakılmışsa komut hiçbir ağ isteği (JSON çağrısı dahil) yapmadan yayımlar; yerel durum denetimi JSON çağrısından önce yapılır; `download_busy`/`download_partial_unverified` mesajları sabittir ve dosya adı taşımaz.
+4. Kurulu CLI yolculuğu: yardım, yanlış format, var olan hedef, yarım indirme sonrası aynı komutla devam; tam-stage bırakılmışsa komut hiçbir ağ isteği (JSON çağrısı dahil) yapmadan yayımlar; yerel durum denetimi JSON çağrısından önce yapılır; kimlik anahtarı kayıtlı Platform hedefini (normalize origin + API kökü), sürüm kimliğini, biçimi ve varsa `fold`u kapsar ve iki farklı profil/hizmet arasında aynı hedef adı/sürüm UUID’si ile kalan stage yeniden kullanılmaz; `download_busy`/`download_partial_unverified` mesajları sabittir ve dosya adı taşımaz.
 5. Canlı yoklama/kabul yalnız kullanıcının erişebildiği bir model sürümü ve ayrı yetkiyle; yapılmazsa açıkça yapılmadı olarak kalır.
 
 ## Doğrulama

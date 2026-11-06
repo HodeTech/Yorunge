@@ -28,8 +28,8 @@
 | [Private aktarım kullanım rehberi](upload-workflows.md) | Plan/review/onay/start ve aynı-ID salt okuma; development kabul durumu bölüm başındadır |
 | [Upload CLI/Python](dataset-upload-public.md) | Uygulanmış P02-2t dar public summary, requested-intent review ve ortak kullanım senaryoları |
 | [Upload HTTP bütçeleri](dataset-upload-http.md) | V2 work limitlerinin gerçek HTTP çağrı/deneme/gövde yoluna bağlanması ve kayıtlı service URI; uygulama/kabul ilgili kartta |
-| [Upload continuation](dataset-upload-continuation.md) | Taslak (ADR-0031 Proposed): kesintiden sonra kanıtlı, yeni onaylı devam; kapalı sınıflar ve v3 farkları, uygulama yok |
-| [Akışlı indirme motoru](download-engine.md) | Taslak (ADR-0032 Proposed): imzalı URL GET, no-clobber yayın, resume ve doğrulama seviyeleri; model ağırlığı yüzeyi, uygulama yok |
-| [Veri sürümü referansı](dataset-versions.md) | Taslak (ADR-0033 Proposed): salt okuma sürüm/bölme gözlemi, değişmez bağ ve sapma denetimi; uygulama yok |
+| [Upload continuation](dataset-upload-continuation.md) | Taslak (ADR-0031 Accepted): kesintiden sonra kanıtlı, yeni onaylı devam; kapalı sınıflar ve v3 farkları, uygulama yok |
+| [Akışlı indirme motoru](download-engine.md) | Taslak (ADR-0032 Accepted): imzalı URL GET, no-clobber yayın, resume ve doğrulama seviyeleri; model ağırlığı yüzeyi, uygulama yok |
+| [Veri sürümü referansı](dataset-versions.md) | Taslak (ADR-0033 Accepted): salt okuma sürüm/bölme gözlemi, değişmez bağ ve sapma denetimi; uygulama yok |
 
 Her belgenin başlangıcı uygulanmış alt kümeyi belirtir; kalan tasarımlar mevcut destek değildir. Çalışan başlangıç [README](../../README.md), tarihsel [ilk P01 kabulü](../research/p01-core-validation.md) ve [bf652f6 tarihsel kaynak kabulü](../research/p01-remaining-implementation-validation.md#kullanıcı-review-kapanışı) ile [ADR-0019/Sonar son kaynak kapanışı](../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) ayrı kayıtlardır.

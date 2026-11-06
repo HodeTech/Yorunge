@@ -2,7 +2,7 @@
 
 **Durum:** Accepted — 2026-11-02 kullanıcı, review bulguları giderildikten sonra uygulamayı açıkça yetkilendirdi; dış wire/yetki/live kabulü ayrıca kapatılır. **Tarih:** 2026-11-02. **İş:** P02-2b. [Araştırma](../research/p02-2-readiness-review.md), [transfer önerisi](0024-durable-dataset-transfers.md), [kanonik taslak](../reference/dataset-transfer.md). Uygulanmış signed URL/streaming upload desteği değildir.
 
-**2026-11-06 Proposed kısmi değişiklik:** [ADR-0032](0032-bounded-download-and-verification-levels.md) bu portun yalnız-PUT kapsamını private, tipli bir GET hedefiyle genişletmeyi ve GET için `expires_at` zorunluluğunu aramamayı önerir; PUT yolunun header/yanıt/expiry/120 s kuralları değişmez. Onaylanana kadar bu not yalnız öneridir.
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0032](0032-bounded-download-and-verification-levels.md) bu portun yalnız-PUT kapsamını private, tipli bir GET hedefiyle genişletir ve GET için `expires_at` zorunluluğunu aramaz; PUT yolunun header/yanıt/expiry/120 s kuralları değişmez.
 
 ## Bağlam
 

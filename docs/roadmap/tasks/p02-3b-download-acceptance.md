@@ -20,7 +20,7 @@ j–o alt kartlarının verified olması; ADR-0032 acceptance listesi; kurulu yo
 
 ## Bağımlılıklar ve kararlar
 
-Alt kartlar j–o; [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md)’nin Accepted olması gerekir (bugün Proposed). Canlı kabul için kullanıcının erişebildiği model sürümü kimliği ve kapsamlı yetki gerekir; verilmezse canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
+Alt kartlar j–o; [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md) Accepted’dir (2026-11-06). Canlı kabul için kullanıcının erişebildiği model sürümü kimliği ve kapsamlı yetki gerekir; verilmezse canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
 
 ## Sözleşme ve uygulama sınırı
 

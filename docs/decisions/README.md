@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-11-05. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-06. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -34,8 +34,8 @@
 | [0028](0028-platform-upload-content-cardinality.md) | İlk Platform upload’ında tekrarlı içerik hash’ini erken reddetme ve özgün çoklu-ad ihtiyacını takip etme | Accepted — 4 Kasım kullanıcı review revizyonu ve iki fresh teyit sonrası uygulama yetkisi; ADR-0024/P02-2 kabulü kısmen değişir |
 | [0029](0029-evidence-provenance-privacy.md) | Kayıpsız kanıtta sınırlı tarihsel provenance ve yeni çıktı gizliliği | Accepted — 95 hash bağlı tarihsel kayıt; yeni Git/CI çıktılarında bounded gizlilik kapısı |
 | [0030](0030-development-performance-acceptance.md) | Yerel M5 kabulünü açık takipte tutarak geliştirme CI/teslimini sürdürmek | Proposed — kullanıcı kararı bekleniyor; mevcut reference kapıları değişmedi |
-| [0031](0031-upload-continuation.md) | Kesintiye uğramış private transferin soy bağlı, kanıta dayalı ve yeni onaylı devamı (aynı operation canlandırılmaz) | Proposed — kullanıcı onayı bekleniyor; ADR-0024 “restart yalnız read” hükmünü kapalı yolda tamamlamayı, ADR-0026/0027/0028 başarı grafiğini yalnız v3 kayıtları için değiştirmeyi önerir |
-| [0032](0032-bounded-download-and-verification-levels.md) | Sınırlı akışlı indirme, no-clobber yayın, resume ve kapalı doğrulama seviyeleri; dataset baytı hariç | Proposed — kullanıcı onayı bekleniyor; ADR-0025 GET/expiry hükmünü kısmen değiştirmeyi önerir |
-| [0033](0033-dataset-version-references.md) | Veri sürümü ve bölme sayımlarının salt okuma, değişmez referansı; freeze ertelenir | Proposed — kullanıcı onayı bekleniyor |
+| [0031](0031-upload-continuation.md) | Kesintiye uğramış private transferin soy bağlı, kanıta dayalı ve yeni onaylı devamı (aynı operation canlandırılmaz) | Accepted — kullanıcı 2026-11-06 talimatıyla; ADR-0024 “restart yalnız read” hükmünü kapalı yolda tamamlar, ADR-0026/0027/0028 başarı grafiğini yalnız v3 kayıtları için değiştirir; uygulama bekliyor |
+| [0032](0032-bounded-download-and-verification-levels.md) | Sınırlı akışlı indirme, no-clobber yayın, resume ve kapalı doğrulama seviyeleri; dataset baytı hariç | Accepted — kullanıcı 2026-11-06 talimatıyla; ADR-0025 GET/expiry hükmünü kısmen değiştirir; uygulama bekliyor |
+| [0033](0033-dataset-version-references.md) | Veri sürümü ve bölme sayımlarının salt okuma, değişmez referansı; freeze ertelenir | Accepted — kullanıcı 2026-11-06 talimatıyla; uygulama bekliyor |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

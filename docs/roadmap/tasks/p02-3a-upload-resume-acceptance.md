@@ -20,7 +20,7 @@ d–i ve r alt kartlarının verified olması; kurulu paket yolculuğu; ADR-0031
 
 ## Bağımlılıklar ve kararlar
 
-Alt kartlar d–i ve r; [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed). Canlı kabul için kullanıcı yetkisi (hedef owner/proje, azami istek/byte, **kalan private veri setinin sahibi — silme yolu yoktur**) gerekir; yetki verilmezse canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
+Alt kartlar d–i ve r; [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). Canlı kabul için kullanıcı yetkisi (hedef owner/proje, azami istek/byte, **kalan private veri setinin sahibi — silme yolu yoktur**) gerekir; yetki verilmezse canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
 
 ## Sözleşme ve uygulama sınırı
 

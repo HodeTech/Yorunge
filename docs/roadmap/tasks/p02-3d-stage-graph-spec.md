@@ -1,7 +1,7 @@
 ---
 id: P02-3d
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-2c]
 capabilities: [C03, C12]
@@ -20,7 +20,7 @@ Girer: (a) `project_link` ve iki-worker PUT için gerçek SIGKILL karakterizasyo
 
 ## Bağımlılıklar ve kararlar
 
-P02-2c verified ve development’tadır. [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed); bu dilim davranışı değiştirmese de resume hattının ilk adımıdır ve K1 onayını bekler. Refaktör ayrı dilimdir, çünkü genişletilmiş regresyon ağı bunu davranışsız kanıtlayabilir.
+P02-2c verified ve development’tadır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06); bu dilim davranışı değiştirmese de resume hattının ilk adımıdır ve K1 onayını bekler. Refaktör ayrı dilimdir, çünkü genişletilmiş regresyon ağı bunu davranışsız kanıtlayabilir.
 
 ## Sözleşme ve uygulama sınırı
 

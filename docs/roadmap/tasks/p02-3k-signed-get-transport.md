@@ -20,7 +20,7 @@ Private `DownloadTarget` ve kapalı başlıklı `StorageGetRequest`; ortak `Tran
 
 ## Bağımlılıklar ve kararlar
 
-P02-3j tiplerine ve P02-2f storage portuna bağlıdır. [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md)’nin Accepted olması gerekir (bugün Proposed); ADR-0025’in PUT kuralları (expiry zorunluluğu, header/yanıt sınırı, 120 s) değişmez, yalnız GET hedefi için `expires_at` aranmaz.
+P02-3j tiplerine ve P02-2f storage portuna bağlıdır. [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md) Accepted’dir (2026-11-06); ADR-0025’in PUT kuralları (expiry zorunluluğu, header/yanıt sınırı, 120 s) değişmez, yalnız GET hedefi için `expires_at` aranmaz.
 
 ## Sözleşme ve uygulama sınırı
 

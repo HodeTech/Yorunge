@@ -4,7 +4,7 @@
 
 **Kısmi değişiklik:** [ADR-0027](0027-durable-created-dataset-context.md) accepted-create receipt, legacy nonterminal mutation kapısı ve yeni success baseline şartını değiştirir; aşağıdaki sürüm/success metni buna göre hizalıdır. Diğer yetki/maliyet/replay sınırları korunur.
 
-**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlamayı önerir; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez. Onaylanana kadar bu not yalnız öneridir.
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlar; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez.
 
 ## Bağlam
 

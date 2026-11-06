@@ -2,7 +2,7 @@
 
 **Durum:** Accepted — 3 Kasım kullanıcı review bulguları kapatıldı; iki farklı fresh belge turu temiz tamamlandı. Kullanıcının koşullu uygulama yetkisiyle benimsendi. **Tarih:** 2026-11-03. **İş:** P02-2 create/reconcile bütünlüğü. [ADR-0026](0026-explicit-unverified-transfer-attempts.md) aşağıdaki eşlemede kısmen değişir; authority, cost, tek gönderim, reset ve ayrı live kabulü korunur.
 
-**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlamayı önerir; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez. Onaylanana kadar bu not yalnız öneridir.
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlar; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez.
 
 ## Bağlam
 

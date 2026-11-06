@@ -1,6 +1,6 @@
 # P02-3 — Etkili resume, akışlı indirme ve veri sürüm bağları teslim planı
 
-**Tarih:** 2026-11-06. **Durum:** Hazırlık; ADR-0031/0032/0033 Proposed ve kullanıcı onayı bekliyor, kod başlamadı. **Dal:** `feat/p02-3-dataset-recovery`, development `94aaaf0` tabanı. Tek development PR; Master/release kullanıcıdadır. Kapsam kararı ve kanıtı [hazırlık incelemesindedir](../research/p02-3-readiness-review.md); adım sonuçları [uygulama ve kabul kaydında](../research/p02-3-implementation-validation.md) tutulur.
+**Tarih:** 2026-11-06. **Durum:** ADR-0031/0032/0033 kullanıcı 2026-11-06 talimatıyla Accepted; uygulama adım 1’den başlıyor (K4–K6 varsayılanları geçerli, aşağıda). **Dal:** `feat/p02-3-dataset-recovery`, development `94aaaf0` tabanı. Tek development PR; Master/release kullanıcıdadır. Kapsam kararı ve kanıtı [hazırlık incelemesindedir](../research/p02-3-readiness-review.md); adım sonuçları [uygulama ve kabul kaydında](../research/p02-3-implementation-validation.md) tutulur.
 
 ## Kullanıcı sonucu
 
@@ -35,7 +35,7 @@ datasets upload start   --plan-id PLAN_ID
 
 | Kapı | Durum |
 |---|---|
-| ADR-0031/0032/0033 kullanıcı onayı | Bekleniyor. Onay ADR metinlerini, taslak referansları ve adım bölümlemesi/kart kabullerini kapsar; onaylanmadan bağımlı ürün kodu yok (P02-3d dahil). Üç ADR bağımsız onaylanabilir (aşağıdaki “Kısmi onay”) |
+| ADR-0031/0032/0033 kullanıcı onayı | **Verildi (2026-11-06):** kullanıcı harici review bulgularının işlenmesinden sonra ADR’lerin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı; onay ADR metinlerini, taslak referansları ve adım bölümlemesi/kart kabullerini kapsar |
 | Model indirme yoklaması (adım 9 öncesi) | İmzalı URL’ye kimliksiz GET gerçek hesapta gözlenmedi. Kullanıcının erişebildiği bir model sürümü kimliği ve ayrı yetkiyle tek, sınırlı, salt okuma yoklama (JSON çağrısı + ilk bayt aralığı) yapılır ve kaydedilir; indirme sayımı/ücret/lisans etkisi bilinmiyor. Olumsuzsa (oturum isterse) P02-3n yüzeysiz iç tüketici olur, P02-3o ölçümü kütüphane girişini kullanır, P02-3b canlı maddesi “oturum gerekli” kaydıyla kapanır; yapılamazsa tüketici “canlı doğrulanmadı” teslim edilir |
 | Dataset baytı erişimi | Dış koşul (`blocked`); P02-3 bunu beklemez, boşluk P02-7’de `partial` olarak görünür |
 | Resume ve sürüm okuma canlı kabulleri | Ayrı kapsamlı yetki gerekir (aşağıda K6): resume kabulü **silme yolu olmayan yeni bir private veri seti ve kesintide yetim depolama nesneleri** bırakır |
@@ -81,6 +81,8 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 ## Kullanıcı kararları
 
 Her karar için öneri ve reddedilirse varsayılan aşağıdadır; onayın bilmeniz gereken sonuçları tablonun altında karar başına listelenir (ADR’lerin yalnız özeti; ayrıntı ADR’lerdedir).
+
+**Durum (2026-11-06):** Kullanıcı K1–K3 için, harici review bulgularının işlenmesinden sonra ADR’lerin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı. K4–K6 ayrıca yanıtlanmadı; **varsayılanlar geçerlidir:** R4–R8 ertelenmiş (açılma ölçütü ve hedef kartlarda), tek PR, canlı girdiler verilmedi (model yoklaması ile resume ve sürüm canlı kabulleri “yapılmadı” kaydı alır; üst kartlar bunu açıkça taşır). Kullanıcı bu varsayılanları istediği zaman değiştirebilir; değişiklik ilgili adımdan önce bildirilmelidir.
 
 | # | Karar | Öneri | Reddedilirse / varsayılan |
 |---|---|---|---|

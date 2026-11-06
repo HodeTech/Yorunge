@@ -1,6 +1,6 @@
 # Akışlı indirme motoru ve model ağırlığı indirme
 
-**Durum:** Taslak sözleşme — [ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Proposed; uygulama ve canlı kabul yok. **Tarih:** 2026-11-06. Komut, DTO ve hata adları onay sonrası uygulama kartlarında kesinleşir; bu belge çalışan örnek, sağlayıcı garantisi, ücret/lisans bilgisi veya dataset bayt erişimi değildir. Bu belge indirme hata kodlarının **kanonik** tablosudur; [CLI sözleşmesi](cli-contract.md) buraya bağlanır, kopyasını tutmaz.
+**Durum:** Taslak sözleşme — [ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Accepted (2026-11-06); uygulama ve canlı kabul yok. **Tarih:** 2026-11-06. Komut, DTO ve hata adları onay sonrası uygulama kartlarında kesinleşir; bu belge çalışan örnek, sağlayıcı garantisi, ücret/lisans bilgisi veya dataset bayt erişimi değildir. Bu belge indirme hata kodlarının **kanonik** tablosudur; [CLI sözleşmesi](cli-contract.md) buraya bağlanır, kopyasını tutmaz.
 
 ## Planlanan yüzey
 
@@ -32,7 +32,7 @@ Yerel durum (aşağıdaki başlangıç tablosu) **her ağ isteğinden önce, JSO
 
 | Durum | Sonuç |
 |---|---|
-| Sidecar+stage tamam (`committed_bytes == total_size`) ve ön ek özeti eşleşiyor | **Hiçbir ağ isteği yapılmaz (JSON çağrısı dahil)**; beklenti karşılaştırması ve yayın doğrudan (`resumed=true`, `resumed_from_bytes=T`). Sağlayıcıda nesnenin hâlâ aynı olduğunu iddia etmez |
+| Sidecar+stage tamam (`committed_bytes == total_size`), kimlik anahtarı (hizmet hedefi dahil) ve ön ek özeti eşleşiyor | **Hiçbir ağ isteği yapılmaz (JSON çağrısı dahil)**; beklenti karşılaştırması ve yayın doğrudan (`resumed=true`, `resumed_from_bytes=T`). Sağlayıcıda nesnenin hâlâ aynı olduğunu iddia etmez |
 | `200`, Range’siz istek | Tam gövde; `Content-Length` (veya chunked terminasyonu) zorunlu; ikisi de yoksa `invalid_response` |
 | `200`, Range’li istek | Sağlayıcı aralığı uygulamadı: `ftruncate(0)`, başlık checkpoint’i, aynı yanıttan baştan yazılır (ek istek yok) |
 | `206` + tam `Content-Range: bytes N-(T-1)/T`, N = fsync edilmiş ön ek, T = kayıtlı toplam, aynı güçlü ETag, `Content-Length = T-N` | Devam |
@@ -52,41 +52,44 @@ Yerel durum (aşağıdaki başlangıç tablosu) **her ağ isteğinden önce, JSO
 
 ## Stage ve sidecar protokolü
 
-Stage `.yorunge-download-<hedef adının hash’i>.part`, sidecar aynı önekle `.json` (tmp: `.json.tmp`)dir; hepsi hedefle aynı dizindedir ve bütün işlemler `dir_fd`’ye göredir. Stage sahipliği; normal dosya, uid, 0600, `nlink==1` ve device/inode’un sidecar’la eşleşmesiyle kanıtlanır. Denetimi geçmeyen dosya örtük silinmez veya değiştirilmez.
+Hedefle aynı dizinde, hedef adının hash’inden (`<h>`) türeyen sabit uzunluklu dört ad kullanılır: kilit nesnesi `.yorunge-download-<h>.lock`, stage `.yorunge-download-<h>.part`, sidecar `.yorunge-download-<h>.json` ve sidecar tmp `.yorunge-download-<h>.json.tmp`; bütün işlemler `dir_fd`’ye göredir. **Tek yazıcıyı kilit nesnesi sağlar, stage değil:** stage silinip yeniden yaratılsa da (atma ve sıfırlama yolları) kilit sahibi değişmez. Sahiplik denetimi (her mevcut dosya için): `lstat` (`follow_symlinks=False`) ile normal dosya, uid’i mevcut kullanıcı, kip 0600, `nlink==1`; açılış `O_NOFOLLOW|O_NONBLOCK`; açılış sonrası fstat aynı denetimden ve `lstat` ile device/inode eşleşmesinden geçer. Sidecar ek olarak ≤4 KiB ve şema çözümü ister; stage varsa sidecar’ın `stage_device/stage_inode` değeri stage’le eşleşmelidir. Denetimi geçmeyen dosya örtük silinmez veya değiştirilmez.
 
 **Kapalı sıra** (P02-3l kabulünün oracle’ıdır; her adımdaki kesinti bir sonraki koşuda elle silme gerektirmeden çözülür):
 
-1. Hedef denetimi: parent mevcut ve no-follow; hedef varsa `download_output_exists` (hedefle aynı device/inode’lu, `nlink==2`, sahipliği kanıtlı stage — link sonrası/unlink öncesi kesinti izi — varsa önce stage, sonra sidecar silinir).
-2. Stage `lstat` (`follow_symlinks=False`): yoksa `O_CREAT|O_EXCL|O_NOFOLLOW|O_RDWR` 0600 + `fchmod(0600)` (umask’tan bağımsız; `EEXIST` yarışı bu adımı “mevcut stage” koluyla yeniden çalıştırır); varsa normal dosya/uid/0600/`nlink==1` denetlenir, `O_RDWR|O_NOFOLLOW|O_NONBLOCK` (`O_CREAT` yok) açılır ve fstat aynı denetimden ve `lstat` eşleşmesinden geçer.
-3. `flock(LOCK_EX|LOCK_NB)`; meşgulse `download_busy`, hiçbir şey silinmez.
-4. **Kilit alındıktan sonra:** kalıntı sidecar tmp silinir, sidecar yüklenip denetlenir, başlangıç tablosu karar verir (kesme/atma bu adımdadır; `ENOENT` tolere edilir).
-5. Tam-stage ise 9. adıma geçilir (ağ yok); değilse JSON çağrısı ve imzalı GET.
-6. Kabul edilen `200`/`206` başlıkları: sıfırlama gerekiyorsa `ftruncate(0)`; **başlık checkpoint’i** (ETag, toplam, `committed_bytes`) ilk gövde baytından önce yazılır.
-7. Gövde: ≤1 MiB blok; her 8 MiB’da stage `os.fsync`, sonra hash `copy()` ile checkpoint (tmp `O_EXCL|O_NOFOLLOW` 0600 → fsync → `os.replace` → dizin fsync).
-8. Gövde bitince bayt eşliği, stage `os.fsync` ve **tamamlanma checkpoint’i** (`committed_bytes == total_size`); bundan sonraki I/O veya zaman aşımı hatası stage’i atmaz.
-9. Beklenti karşılaştırması: uyuşmazlıkta stage ve sidecar silinir (`download_integrity_mismatch`).
-10. `full_sync`, parent/stage kimliği son denetimi, exclusive `link()`; kesin `EEXIST` → stage ve sidecar silinir, `download_output_exists`; stage/parent kimliği değişmişse `download_write_failed`, link başladıktan sonraki belirsizlik `download_write_uncertain`.
-11. Stage `unlink` → sidecar `unlink` → varsa tmp → dizin `fsync` → hedef kimliği denetimi.
+1. Hedef parent’ı mevcut ve no-follow olmalı (aksi `download_target_invalid`).
+2. Kilit nesnesi `lstat`: yoksa `O_CREAT|O_EXCL|O_NOFOLLOW|O_RDWR` 0600 + `fchmod(0600)` (`EEXIST` yarışı bu adımı “mevcut” koluyla yeniden çalıştırır); varsa sahiplik denetimi + `O_RDWR|O_NOFOLLOW|O_NONBLOCK` açılışı.
+3. `flock(LOCK_EX|LOCK_NB)`: meşgulse `download_busy`, hiçbir şey silinmez. Kilit alınınca fstat–lstat kimlik eşleşmesi doğrulanır; eşleşmezse (bitirmekte olan süreç nesneyi silmiş) kilit bırakılır ve 2. adım en çok üç kez yeniden denenir, sonra `download_busy`.
+4. **Kilit altında:** hedef varsa `download_output_exists`; ondan önce hedefle aynı device/inode’lu (`nlink==2`) sahipliği kanıtlı stage — link sonrası/unlink öncesi kesinti izi — varsa stage, sidecar ve tmp sırasıyla silinir.
+5. Stage `lstat`: yoksa `O_CREAT|O_EXCL|O_NOFOLLOW|O_RDWR` 0600 + `fchmod(0600)` (kilit altında `EEXIST` yabancı dosya demektir → mevcut-stage koluna döner); varsa sahiplik denetimi + `O_RDWR|O_NOFOLLOW|O_NONBLOCK` açılışı + fstat yeniden denetimi.
+6. Kalıntı sidecar tmp silinir (sahiplik ✓), sidecar yüklenip sahiplik denetimine sokulur ve başlangıç tablosu karar verir (kesme/atma bu adımdadır; `ENOENT` tolere edilir).
+7. Tam-stage ise 11. adıma geçilir (ağ yok); değilse JSON çağrısı ve imzalı GET.
+8. Kabul edilen `200`/`206` başlıkları: sıfırlama gerekiyorsa `ftruncate(0)`; **başlık checkpoint’i** (ETag, toplam, `committed_bytes`) ilk gövde baytından önce yazılır.
+9. Gövde: ≤1 MiB blok; her 8 MiB’da stage `os.fsync`, sonra hash `copy()` ile checkpoint (tmp `O_EXCL|O_NOFOLLOW` 0600 → fsync → `os.replace` → dizin fsync). **Temiz durma** (SIGINT, Task iptali, taşıma veya zaman aşımı hatası) ve güçlü ETag + toplam biliniyorsa: stage `os.fsync` → checkpoint → çıkış (stage tutulur); bilinmiyorsa stage atılır. SIGKILL’de son checkpoint’ten sonraki baytlar (ilk 8 MiB’ta tüm ilerleme) yeniden indirilir.
+10. Gövde bitince bayt eşliği, stage `os.fsync` ve **tamamlanma checkpoint’i** (`committed_bytes == total_size`; chunked gövdede `total_size` burada kesinleşen bayt sayısına sabitlenir); bundan sonraki I/O veya zaman aşımı hatası stage’i atmaz.
+11. Beklenti karşılaştırması: uyuşmazlıkta stage, sidecar ve tmp silinir (`download_integrity_mismatch`).
+12. `full_sync`, parent/stage kimliği son denetimi, exclusive `link()`; kesin `EEXIST` → stage ve sidecar silinir, `download_output_exists`; kimlik değişmişse `download_write_failed`; link başladıktan sonraki belirsizlik `download_write_uncertain`.
+13. Stage `unlink` → sidecar `unlink` → varsa tmp → dizin `fsync` → hedef kimliği denetimi → **kilit nesnesi `unlink`** (en son dosya sistemi değişikliği) → kilit fd’si kapanır.
 
-Atma/silme sırası her yerde stage → sidecar → tmp → dizin `fsync`’tir; en kötü kesinti “stage yok, sidecar var” izi bırakır ve o iz bir sonraki koşuda atılır (kalıcı takılma yok). Yayın adımları (8–11) yerel I/O’dur ve indirme deadline’ından muaftır; iptal ve link sonrası belirsizlik kuralları manifest yayıncısıyla aynıdır. macOS’ta kalıcılık süreç öldürme dayanıklılığıdır, güç kesintisi değil. `prefix_sha256` tam olarak fsync edilen baytların özetidir (checkpoint anında hash `copy()`’si).
+Atma yolları (206 uyumsuz, 416, ETag/kimlik farkı) kilit altında stage → sidecar → tmp sırasıyla siler ve 5. adımdan temiz başlar; kilit nesnesi değişmez. Her çıkış yolu (başarı, hata, iptal) 13. adımın kilit nesnesi silmesini uygular (kalan yarım içerik yalnız stage/sidecar’dır); SIGKILL kilit nesnesini bırakabilir ve sonraki koşu onu yeniden kullanır. Yayın adımları (10–13) yerel I/O’dur ve indirme deadline’ından muaftır; iptal ve link sonrası belirsizlik kuralları manifest yayıncısıyla aynıdır. macOS’ta kalıcılık süreç öldürme dayanıklılığıdır, güç kesintisi değil. `prefix_sha256` tam olarak fsync edilen baytların özetidir (checkpoint anında hash `copy()`’si).
 
 | Başlangıç durumu | Karar |
 |---|---|
-| Hedef var | `download_output_exists`; yalnız hedefle aynı device/inode’lu (`nlink==2`) sahipliği kanıtlı stage varsa (link sonrası/unlink öncesi kesinti izi) stage ve sidecar önce silinir |
-| Stage yok, sidecar yok | Temiz başla (stage `O_EXCL` yaratılır; `EEXIST` yarışı “mevcut stage” koluna döner) |
-| Stage yok, sidecar var (sahiplik ✓) | Stage yaratılıp kilitlendikten sonra sidecar atılır, temiz başla |
-| Kalıntı sidecar tmp (sahiplik ✓) | Kilit alındıktan sonra silinir |
+| Kilit alınamadı | `download_busy` (hiçbir şey silinmez) |
+| Hedef var | `download_output_exists`; yalnız hedefle aynı device/inode’lu (`nlink==2`) sahipliği kanıtlı stage varsa stage ve sidecar önce silinir |
+| Stage yok, sidecar yok | Temiz başla (stage `O_EXCL` yaratılır) |
+| Stage yok, sidecar var — sidecar sahipliği ✓ (normal dosya, uid, 0600, `nlink==1`, ≤4 KiB, şema ✓) | Sidecar atılır, temiz başla |
+| Stage yok, sidecar var — sahiplik ✗ | `download_partial_unverified` (dokunulmaz) |
+| Kalıntı sidecar tmp (sahiplik ✓) | Silinir |
 | Stage boş + sahiplik ✓, sidecar yok | Yeniden kullan (stage açılışı–ilk sidecar penceresi) |
-| Stage dolu, sidecar yok/bozuk | `download_partial_unverified`; `--no-resume` yalnız sahiplik ✓ ve kilit alınabiliyorsa stage’i (ve varsa sidecar/tmp) siler |
-| Stage/sidecar/tmp sahiplik denetimini geçmiyor veya FIFO/aygıt/symlink | `download_partial_unverified` (hiçbir şey silinmez, `--no-resume` dahil) |
-| Stage kilitli (başka süreç) | `download_busy` (hiçbir şey silinmez) |
+| Stage dolu, sidecar yok/bozuk | `download_partial_unverified`; `--no-resume` yalnız sahiplik ✓ ise stage’i (ve varsa sidecar/tmp) siler |
+| Stage/sidecar/tmp/kilit nesnesi sahiplik denetimini geçmiyor veya FIFO/aygıt/symlink | `download_partial_unverified` (hiçbir şey silinmez, `--no-resume` dahil) |
 | Stage+sidecar ✓, resume koşulları sağlanıyor | Devam (ön ek yeniden hash’lenir ve `prefix_sha256` ile karşılaştırılır) veya tam-stage satırı |
-| Stage+sidecar ✓, koşullar sağlanmıyor (ETag yok/farklı, boyut farkı, ön ek özeti uyuşmuyor) | Yarım içerik atılır (stage, sonra sidecar), temiz başla |
+| Stage+sidecar ✓, koşullar sağlanmıyor (kimlik anahtarı, ETag, boyut, ön ek özeti) | Yarım içerik atılır (stage, sonra sidecar), temiz başla |
 | Yayında kesin EEXIST (`link`) | Sahipliği kanıtlı stage ve sidecar silinir (stage önce); `download_output_exists` |
 
-**Yarım dosya yalnız güçlü ETag ve toplam boyut ikisi de bilinirse tutulur**; aksi halde (sidecar `etag=null` veya `total_size=null`) hata/iptalde silinir. Beklenen özet uyuşmazlığında stage tutulmaz.
+**Yarım dosya yalnız güçlü ETag ve toplam boyut ikisi de bilinirse tutulur**; aksi halde (sidecar `etag=null` veya `total_size=null`) hata/iptalde silinir. **Tamamlanmış** stage (`committed_bytes == total_size`) ETag’siz ve chunked kaynaklı da olsa tutulur. Beklenen özet uyuşmazlığında stage tutulmaz.
 
-`DownloadPartial v1` alanları: `schema_version=1`, `kind=download_partial`, `identity_key` (tüketici tanımlı kararlı anahtar: model sürümü + biçim + isteğe bağlı `fold`), `target_hash`, `etag` (güçlü veya null), `total_size` (veya null), `committed_bytes` (fsync edilmiş), `prefix_sha256` (o bayt sayısına kadar ön ekin SHA-256’sı), `stage_device`, `stage_inode`, `created_at`, `updated_at`.
+`DownloadPartial v1` alanları: `schema_version=1`, `kind=download_partial`, `identity_key` (tüketici tanımlı kararlı anahtar: normalize edilmiş Platform origin’i + `api_base_path` + model sürümü kimliği + biçim + isteğe bağlı `fold`), `target_hash`, `etag` (güçlü veya null), `total_size` (null olabilir; chunked gövdede yalnız başarılı terminasyondan sonraki tamamlanma checkpoint’inde kesinleşen bayt sayısı), `committed_bytes` (fsync edilmiş), `prefix_sha256` (o bayt sayısına kadar ön ekin SHA-256’sı), `stage_device`, `stage_inode`, `created_at`, `updated_at`.
 
 ## Sonuç ve hatalar
 
@@ -96,8 +99,8 @@ Başarı DTO’su (taslak): `schema_version=1`, `kind=download_summary`, `output
 |---|---:|---|
 | `download_target_invalid` | 2 | Parent yok/no-follow değil/kontrol-bidi karakter/uzunluk, boş ad |
 | `download_output_exists` | 2 | Hedef var veya yayın yarışında oluştu; hedefe dokunulmaz (yalnız kendi yayınımızın artığı olan stage/sidecar temizlenir) |
-| `download_partial_unverified` | 2 | Yarım indirme izi doğrulanamadı; hiçbir dosyaya dokunulmadı. Mesaj sabittir: dosya adı taşımaz, hedef dizindeki `.yorunge-download-` dosyalarını incelemeyi veya başka hedef seçmeyi önerir |
-| `download_busy` | 2 | Aynı hedef için başka bir indirme sürüyor (stage kilidi alınamadı); hiçbir dosyaya dokunulmadı (`config_busy` emsali) |
+| `download_partial_unverified` | 2 | Yarım indirme izi (stage, sidecar, tmp veya kilit nesnesi) doğrulanamadı; hiçbir dosyaya dokunulmadı. Mesaj sabittir: dosya adı taşımaz, hedef dizindeki `.yorunge-download-` dosyalarını incelemeyi veya başka hedef seçmeyi önerir |
+| `download_busy` | 2 | Aynı hedef için başka bir indirme sürüyor (kilit nesnesinin kilidi alınamadı); hiçbir dosyaya dokunulmadı (`config_busy` emsali) |
 | `download_limit_exceeded` | 2 | Content-Length veya gövde 1 GiB’ı aştı |
 | `download_integrity_mismatch` | 7 | Beklenen özet eşleşmedi; hedef yok, stage ve sidecar silinir (yeniden çalıştırma baştan indirir). Kapalı ayrıntı: `computed_sha256`, `bytes` (`ManifestMismatch` emsali; düz kod `details={}` korur) |
 | `download_incomplete` | 1 | Gövde fazında çerçeve/Content-Length tamamlanmadan kesildi; yarım dosya koşula göre korunur |

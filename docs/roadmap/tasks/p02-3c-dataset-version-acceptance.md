@@ -20,7 +20,7 @@ p–q alt kartlarının verified olması; ADR-0033 acceptance listesi; kurulu yo
 
 ## Bağımlılıklar ve kararlar
 
-Alt kartlar p–q; [ADR-0033](../../decisions/0033-dataset-version-references.md)’ün Accepted olması gerekir (bugün Proposed). Canlı salt okuma kabulü için kullanıcının dondurulmuş sürümlü bir dataset kimliği ve sınırlı GET yetkisi gerekir; yoksa canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
+Alt kartlar p–q; [ADR-0033](../../decisions/0033-dataset-version-references.md) Accepted’dir (2026-11-06). Canlı salt okuma kabulü için kullanıcının dondurulmuş sürümlü bir dataset kimliği ve sınırlı GET yetkisi gerekir; yoksa canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
 
 ## Sözleşme ve uygulama sınırı
 

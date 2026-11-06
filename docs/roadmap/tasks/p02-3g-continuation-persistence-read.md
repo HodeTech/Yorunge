@@ -20,7 +20,7 @@ Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında;
 
 ## Bağımlılıklar ve kararlar
 
-P02-3f tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
+P02-3f tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
 
 ## Sözleşme ve uygulama sınırı
 

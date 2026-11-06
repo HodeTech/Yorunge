@@ -16,11 +16,11 @@ Uzak veri sürümü, bölme sayıları ve bir sürüme değişmez referans bugü
 
 ## Giren ve girmeyen kapsam
 
-`DatasetVersionObservation v1`, `DatasetVersionListItem v1` (sınıf-etiketi alanları olmadan), `DatasetVersionBinding v1`, bölme sayıları, `split_total_matches_item_count`, sınıf-etiketi özeti, Manifest v1 kodlayıcısıyla canonical kodlama/digest; sürüm listesi (tek sayfa)/detay/bölme için strict Platform codec’leri ve bütçeli salt okuma okuyucusu; sapma karşılaştırması (`unchanged|changed|missing|unavailable`, kapalı `changed_fields` ayrıntısı; `YorungeError` alt sınıfı kapalı ayrıntı tipi, düz kod `details={}` korur); bağdaki `service` hedefi etkin profille eşleşmiyorsa `state_changed`/2; yeni hata kodları (`dataset_version_not_found`, `dataset_version_not_frozen`, `dataset_version_changed`, `dataset_version_missing`, `binding_*`) girer. API/CLI, dosya yayını ve sürüm oluşturma girmez.
+`DatasetVersionObservation v1`, `DatasetVersionListItem v1` (sınıf-etiketi alanları olmadan), `DatasetVersionBinding v1`, bölme sayıları, `split_total_matches_item_count`, sınıf-etiketi özeti, Manifest v1 kodlayıcısıyla canonical kodlama/digest; sürüm listesi (tek sayfa)/detay/bölme için strict Platform codec’leri ve bütçeli salt okuma okuyucusu; sapma karşılaştırması (yalnız `unchanged` başarıdır ve `DatasetVersionCheck v1` döndürür; `changed`/`missing`/`unavailable` hata zarflarıdır; `changed` için kapalı `changed_fields` ve `annotation_only` ayrıntısı — `YorungeError` alt sınıfı kapalı ayrıntı tipi, düz kod `details={}` korur; `missing` yalnız detay rotası 404, detay başarılıyken bölme 404 `remote_failed`); bağdaki `service` hedefi etkin profille eşleşmiyorsa `state_changed`/2; yeni hata kodları (`dataset_version_not_found`, `dataset_version_not_frozen`, `dataset_version_changed`, `dataset_version_missing`, `binding_*`) girer. API/CLI, dosya yayını ve sürüm oluşturma girmez.
 
 ## Bağımlılıklar ve kararlar
 
-Platform bağlamı P02-0d’dedir; [ADR-0033](../../decisions/0033-dataset-version-references.md)’ün Accepted olması gerekir (bugün Proposed). Teknik olarak P02-3a/b’ye bağlı değildir; plan sırası gereği sonra yapılır.
+Platform bağlamı P02-0d’dedir; [ADR-0033](../../decisions/0033-dataset-version-references.md) Accepted’dir (2026-11-06). Teknik olarak P02-3a/b’ye bağlı değildir; plan sırası gereği sonra yapılır.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -31,7 +31,7 @@ Platform bağlamı P02-0d’dedir; [ADR-0033](../../decisions/0033-dataset-versi
 1. Binding için bağımsız elle hesaplanmış canonical byte/SHA-256 golden’ı; aynı sürüm ve aynı `--manifest` seçimi aynı digest’i verir, `observed_at` digest’e girmez, etiket/kimlik/sayı/sınıf özeti değişimi digest’i değiştirir.
 2. Codec negatifleri: eksik/yanlış tip alan, bool-as-int, kopya anahtar, 2xx mantıksal hata, detay↔splits uyuşmazlığı, `is_frozen=false` (bağ reddi), yanlış dataset/etiket, literal-secret, karışık türlü veya yinelenen sınıf `id` (`invalid_response`); `is_partial=true` sürüm bağlanır ve alan kaydedilir. `item_count`≠bölme toplamı bağı engellemez ve `split_total_matches_item_count=false` kaydedilir.
 3. Sayfalama: `meta.page` uyuşmazlığı, tekrarlı ID, `total` çelişkisi; tamlık iddiası ve çok sayfalı toplama yoktur.
-4. 404 → `dataset_version_not_found` (`show`/`bind`) ve `dataset_version_missing` (`check`), 401/403/429/5xx/timeout kodları; etiket karakter kümesi (`.` ve `..` hariç) ve yol kaçışı.
+4. 404 ayrımı ayrı fixture’larla: detay 404 → `dataset_version_not_found` (`show`/`bind`) ve `dataset_version_missing` (`check`); detay başarılı + bölme 404 → `remote_failed` (hiçbir zaman `missing` değil); iki okuma arası değişim (detay↔bölme çelişkisi) → `invalid_response`; 401/403/429/5xx/timeout kodları; etiket karakter kümesi (`.` ve `..` hariç) ve yol kaçışı.
 5. `DatasetVersionChanged` bir `YorungeError` alt sınıfıdır ve kapalı ayrıntı taşır; düz `YorungeError("dataset_version_changed")` `details={}` korur (mevcut zarf testi yeşil kalır). `changed_fields` ayrımı: `version_id` (etiket yeniden oluşturulmuş), `is_frozen` (bağlı sürüm sonradan çözülmüş: `unchanged` değil `changed`) ve `annotated_item_count` (açıklamalar oynamış) ayrı alanlarla bildirilir; `service` bu kümede yoktur (hedef uyuşmazlığı `state_changed`/2).
 6. Gerçek loopback TLS okuyucu testleri; created_by/description/URL canary’leri hiçbir çıktıda yoktur.
 

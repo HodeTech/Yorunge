@@ -28,7 +28,7 @@ P02-3p ve P02-3s (ortak artifact yayıncısı) verified olmalıdır. CLI/API iç
 
 ## Kabul
 
-1. `list` istenen sayfayı, `has_next` ve toplamı doğru gösterir; `show` detail+splits çapraz doğrulamasını; `bind` aynı sürüm ve aynı `--manifest` seçiminde aynı digest’i ve artifact’ı (0600, mevcut hedefi ezmeden) üretir; `check` unchanged=0, changed/missing=7, unavailable=mevcut kodlar.
+1. `list` istenen sayfayı, `has_next` ve toplamı doğru gösterir; `show` detail+splits çapraz doğrulamasını; `bind` aynı sürüm ve aynı `--manifest` seçiminde aynı digest’i ve artifact’ı (0600, mevcut hedefi ezmeden) üretir; `check` unchanged=0 (`DatasetVersionCheck v1`), changed/missing=7, hedef uyuşmazlığı `state_changed`/2, unavailable=mevcut kodlar; JSON/NDJSON’da `unchanged` dışındaki her sonuç `status=error` zarfıdır.
 2. Kısmi yayın sonrası belirsizlik `binding_write_uncertain`/5, kesin EEXIST `binding_output_exists`/2; parent/symlink yarışları ve hedef var senaryoları (P02-3s kapılarıyla).
 3. JSON/NDJSON saf, TTY dışında prompt yok, BrokenPipe/SIGINT/Task.cancel mevcut 6/1/6 öncelikleriyle; sentinel testleri.
 4. Kurulu CLI yolculuğu loopback üzerinde; belgeler çalışan komutlarla uyumlu.

@@ -2,7 +2,7 @@
 
 **Durum:** Accepted — 4 Kasım kullanıcı review düzeltmeleri sonrası uygulamayı yetkilendirdi; revizyonlar iki farklı fresh turda temiz teyit edildi. Ürün/kabul geçişi aşağıdaki adımlarla uygulanır. **Tarih:** 2026-11-04. **İş:** P02-2 canlı kabulü. Öneri, [ADR-0024](0024-durable-dataset-transfers.md) ve [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul) içindeki aynı hash/farklı ad olumlu upload beklentisini daraltır. Manifest v1, geçmiş kayıtlar ve tam başarı grafiği değişmez.
 
-**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlamayı önerir; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez. Onaylanana kadar bu not yalnız öneridir.
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlar; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez.
 
 ## Bağlam ve kanıt sınırı
 
