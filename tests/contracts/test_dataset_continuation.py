@@ -1030,3 +1030,93 @@ def test_the_selection_goldens_are_byte_exact_with_literal_digests(name, digest,
     plan = DatasetContinuationPlanV3.model_validate_json(raw)
     assert plan.encoded() == raw
     assert (plan.digest, plan.binding_digest()) == (digest, binding)
+
+
+# --- field-level rules the plan- and binding-level checks would otherwise mask -----------------
+# A plan or an approval rejects most malformed fields through a second, cross-field rule, so a
+# model checked only through them could lose its own field rule unnoticed. These tests build the
+# binding and both approval versions directly, then pin each rule on its own.
+APPROVALS = [
+    pytest.param(DatasetUploadApprovalV2, "dataset-upload-approval-v2.json", id="v2"),
+    pytest.param(DatasetUploadApprovalV3, "dataset-continuation-approval-v3.json", id="v3"),
+]
+BAD_DIGESTS = ["", "0" * 63, "0" * 65, "g" * 64, "A" * 64, "0" * 63 + "G"]
+
+
+def binding_of(**changes):
+    return ContinuationBinding.model_validate_json(canon({**body()["continuation"], **changes}))
+
+
+def approval_model(model, name, **changes):
+    return model.model_validate_json(canon({**json.loads(fixture(name)), **changes}))
+
+
+@pytest.mark.parametrize("value", BAD_DIGESTS)
+@pytest.mark.parametrize(
+    "field", ["baseline_digest", "intent_digest", "classification_digest", "inventory_digest"]
+)
+def test_the_binding_digests_are_lowercase_sha256_hex(field, value):
+    assert binding_of().model_dump(mode="json") == body()["continuation"]  # control
+    with pytest.raises(ValidationError):
+        binding_of(**{field: value})
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "tomorrow",
+        "2026-11-02T11:00:00Z",  # no microseconds
+        "2026-11-02T11:00:00.000000+00:00",  # not the Z form
+        "2026-11-02T11:00:00.000000z",
+        "2026-11-02 11:00:00.000000Z",
+    ],
+)
+def test_the_binding_observation_is_a_canonical_utc_instant_on_its_own(value):
+    with pytest.raises(ValidationError):
+        binding_of(observed_at=value)
+
+
+def test_the_remote_present_count_is_bounded_by_the_largest_upload():
+    binding_of(remote_present_count=0)
+    binding_of(remote_present_count=128)
+    for value in (129, -1, True, "1", 1.0):
+        with pytest.raises(ValidationError):
+            binding_of(remote_present_count=value)
+
+
+@pytest.mark.parametrize("model,name", APPROVALS)
+@pytest.mark.parametrize("value", [0, -1, 2**63, True, "1", 1.0])
+def test_the_approval_clock_generation_is_a_positive_signed_64_bit_integer(model, name, value):
+    approval_model(model, name, clock_generation=1)
+    approval_model(model, name, clock_generation=2**63 - 1)
+    with pytest.raises(ValidationError):
+        approval_model(model, name, clock_generation=value)
+
+
+@pytest.mark.parametrize("model,name", APPROVALS)
+@pytest.mark.parametrize("value", BAD_DIGESTS)
+@pytest.mark.parametrize("field", ["plan_digest", "binding_digest"])
+def test_the_approval_digests_are_lowercase_sha256_hex_on_their_own(model, name, field, value):
+    with pytest.raises(ValidationError):
+        approval_model(model, name, **{field: value})
+
+
+@pytest.mark.parametrize("model,name", APPROVALS)
+def test_an_approval_lives_for_at_most_exactly_fifteen_minutes(model, name):
+    approval_model(model, name, approved_at="2026-11-02T11:00:00.000000Z")  # exactly 900 s
+    for approved, expires in (
+        ("2026-11-02T10:59:59.999999Z", "2026-11-02T11:15:00.000000Z"),  # 900 s and one microsecond
+        ("2026-11-02T11:00:01.000000Z", "2026-11-02T11:00:01.000000Z"),  # no lifetime
+        ("2026-11-02T11:00:01.000000Z", "2026-11-02T11:00:00.999999Z"),  # a negative one
+    ):
+        with pytest.raises(ValidationError):
+            approval_model(model, name, approved_at=approved, expires_at=expires)
+
+
+@pytest.mark.parametrize("model,name", APPROVALS)
+def test_a_revocation_may_coincide_with_the_approval_but_never_precede_it(model, name):
+    approval_model(model, name, status="revoked", revoked_at="2026-11-02T11:00:01.000000Z")
+    approval_model(model, name, status="revoked", revoked_at="2026-11-02T11:00:01.000001Z")
+    with pytest.raises(ValidationError):
+        approval_model(model, name, status="revoked", revoked_at="2026-11-02T11:00:00.999999Z")
