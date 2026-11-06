@@ -26,6 +26,8 @@ P02-3e sınıflandırıcısı ve P02-3r yazma kapıları verified olmalıdır. D
 
 Mevcut presign/PUT/confirm codec’leri, bütçe sayaçları ve storage portu v2 yolunda değişmeden kalır; v3 yalnız confirm sayaç tabanını ekler. Taze envanter sınıf özeti kayıtlı plandan farklıysa admission öncesi `continuation_remote_changed`/2; PUT sırasında veya proof öncesinde uzak envanter beklenenden sapmışsa mevcut unknown kuralı (yeni etki yok). `created≠1`, kopya, fazladan item ve yanlış toplam başarı değildir.
 
+**P02-3d devir notu.** Orijinal koordinatör `graph.files` ve `graph.put_batches()` (demetler) üzerinden döner; continuation koordinatörü aynı iki-worker toplu PUT kalıbını `file_indices` alt kümesi için kullanır. `_Environment._context` ve `validate_uploads` bugün planın bütün dosya kümesiyle korunur (`graph_of(plan).files`); `validate_uploads` içindeki `range(len(self.contexts))` N tabanlıdır ve alt küme için seçili indekslerden türetilmelidir. Bu korumalar P02-3d R2’de testle kilitlenmiştir (`test_environment_*`); alt küme davranışı onları bilinçli günceller.
+
 ## Kabul
 
 1. Gerçek loopback TLS sunucusuyla: M>0 başarı (örn. 8 dosyadan 5’i); dolu veri setinde (N−M>0 mevcut item) **her confirm sayaç kontrolünden geçer** (sunucu fixture’ı hem kümülatif `taban+k+1` hem yalnız-işlem `k+1` anlamını ayrı koşularda yansıtır; ikisi dışındaki sayı → unknown); `M=0`; plan–start arası drift; PUT sırasında item ekleme/silme; confirm `created=0`; her aşamada 401/403/429/5xx ve kayıp cevap; her durumda sunucu sayacı create ve project_link isteği **sıfır**, effectful istek sayısı ≤ 3M.

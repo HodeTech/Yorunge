@@ -26,6 +26,8 @@ P02-3f tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-cont
 
 Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 geçmişleriyle sınanır (yazma kapısı bu dilimde yoktur). Restore/recover yasağı değişmez; upload tabloları geri yüklenebilir küme dışındadır.
 
+**P02-3d devir notu.** `StageGraphSpec` bugün yalnız v1/v2 grafiğini bilir; bu dilim v3 için aynı belirtimi genişletir ve plan sürümü taşımayan dört tüketiciyi (`upload_preparation._limits`, `UploadCostWork.quantities`, `UploadIntentReview`, test dışında çağrılmayan `dataset_transfer.operation_reservation`; hepsi `ORIGINAL_PLAN_VERSION` adını verir) gözden geçirir. Dataset kimliğinin kaynağı v3’te kabul edilmiş create makbuzu değil plan/baseline’dır: `request_digest`, `_receipt` ve `_receipt_key` bugün `takes_created_dataset`/`takes_presign_key` ile kabul edilmiş create makbuzundan okur; `acknowledged_stages`, `_stages` ve `_arm_predecessors` create-ilk ve N dosya varsayar. `files` ve `put_batches` demettir, alt küme indekslerini ifade eder. Bu noktalar P02-3d R2 mutasyon incelemesinde testlerle kilitlidir (`tests/contracts/test_upload_graph_wiring.py`, journal testleri); v3 davranışı o testleri bilinçli olarak günceller, sessizce geçmez.
+
 ## Kabul
 
 1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök+iki continuation zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer; çözümleyici baseline özeti uyuşmazlığını ve kopuk soyu `state_invalid` reddeder.
