@@ -23,9 +23,10 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-R4 | Veri sürümü oluşturma (freeze) etkisi | P02-3q; ayrı Proposed ADR | [Takip kartı](tasks/p02-r4-dataset-version-creation.md); ADR-0033 ile P02-3c dışında bırakıldı | `draft` |
 | P02-R5 | Dataset öğesi baytlarına programatik erişim | P02-3m; sağlayıcıda API-key erişimli yol | [Takip kartı](tasks/p02-r5-dataset-item-byte-access.md); API anahtarıyla `file_url` 401, açılma ölçütü dış koşul | `blocked` |
 | P02-R6 | Bilinmeyen create sonucunun açık dataset sahiplenmesi | P02-3h; ayrı Proposed ADR | [Takip kartı](tasks/p02-r6-adopt-unknown-create.md); ADR-0031 ile P02-3a dışında bırakıldı | `draft` |
+| P02-R7 | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu | P02-2c; ayrı Proposed ADR | [Takip kartı](tasks/p02-r7-persist-provider-denials.md); ADR-0031 incelemesinde bulunan belge–kod boşluğu | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 / 50d68b1 ile development’a teslim edildi | `verified` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | [P02-2 planı](p02-2-delivery-plan.md); P02-2a–c ve d–w verified, Accepted ADR-0024–0029; ayrı project link dahil create/upload ve ilk kesinti güvenliği PR #14 / 94aaaf0 ile development’a teslim edildi | `verified` |
-| P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | P02-2c (resume), P02-2f ve P02-0d (indirme/sürüm) | [Paket planı](p02-3-delivery-plan.md); üst kartlar P02-3a–c, adım kartları P02-3d–q; ADR-0031/0032/0033 Proposed; indirme ve sürüm hatları resume’dan bağımsız hazırlanabilir | `draft` |
+| P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | P02-2c (resume), P02-2f ve P02-0d (indirme/sürüm) | [Paket planı](p02-3-delivery-plan.md); üst kartlar P02-3a–c, adım kartları P02-3d–r (on beş adım); ADR-0031/0032/0033 Proposed; indirme ve sürüm hatları resume’dan bağımsız hazırlanabilir | `draft` |
 | P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b; indirme ayrıca P02-3b | `draft` |
 | P02-5 | Native LLM ve temel çıkarım | P02-4a’nın ilgili hizmet/model kabulü; P01-5b | P02-5a–e; her görev ayrı typed girdi/çıktı ve maliyet sınırı | `draft` |
 | P02-6 | GPU/kuyruk/rezervasyon bilgisi ve kota okuma | P02-0a; hesap verisi için ilgili P02-0b kabulü | P02-6a/b; yalnız okuma, tahsis/fatura garantisi yok | `draft` |
@@ -68,23 +69,24 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2u | Çevrimdışı upload süreç/azami envanter kabulü | P02-2t; [kart](tasks/p02-2u-offline-upload-acceptance.md) | `verified` |
 | P02-2v | Kurulu upload native ölçüm araçları | P02-2w; [kart](tasks/p02-2v-installed-upload-measurement.md); üç dilim/ikişer fresh tur ve saklama tamam | `verified` |
 | P02-2w | Upload kaynak bakım/refaktör sınırları | P02-2u; [kart](tasks/p02-2w-upload-maintainability.md) | `verified` |
-| P02-3a | Kayıtlı aynı aktarımı uzlaştırma ve yalnız güvenliği kanıtlı eksik adımı sürdürme (üst kabul) | P02-3i; [üst kart](tasks/p02-3a-upload-resume-acceptance.md), [ADR-0031](../decisions/0031-upload-continuation.md) Proposed | `draft` |
+| P02-3a | Kesintiye uğramış aktarımın kanıtlı, yeni onaylı devamı — continuation (üst kabul) | P02-3i; [üst kart](tasks/p02-3a-upload-resume-acceptance.md), [ADR-0031](../decisions/0031-upload-continuation.md) Proposed | `draft` |
 | P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi (üst kabul) | P02-3o; [üst kart](tasks/p02-3b-download-acceptance.md), [ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Proposed | `draft` |
-| P02-3c | Veri sürümü/bölme metadata’sı ve değişmez plan bağı (üst kabul) | P02-3q; [üst kart](tasks/p02-3c-dataset-version-acceptance.md), [ADR-0033](../decisions/0033-dataset-version-references.md) Proposed; teknik olarak P02-3a/b’ye bağlı değil, plan sırası sonradır; freeze P02-R4’te | `draft` |
-| P02-3d | Transfer aşama grafiği tek belirtimi (davranış korunur) | P02-2c; [kart](tasks/p02-3d-stage-graph-spec.md) | `draft` |
+| P02-3c | Veri sürümü/bölme metadata’sı ve değişmez referans; eğitim planı bağı P03-1’dedir (üst kabul) | P02-3q; [üst kart](tasks/p02-3c-dataset-version-acceptance.md), [ADR-0033](../decisions/0033-dataset-version-references.md) Proposed; teknik olarak P02-3a/b’ye bağlı değil, plan sırası sonradır; freeze P02-R4’te | `draft` |
+| P02-3d | Transfer aşama grafiği tek belirtimi ve v2 kill karakterizasyonu | P02-2c; [kart](tasks/p02-3d-stage-graph-spec.md) | `draft` |
 | P02-3e | Resume kanıt sınıflandırıcısı ve uzak envanter indirgeyicisi | P02-3d; [kart](tasks/p02-3e-resume-evidence-classifier.md) | `draft` |
 | P02-3f | Continuation v3 kapalı tipleri, politika ve golden’lar | P02-3e; [kart](tasks/p02-3f-continuation-domain-v3.md) | `draft` |
-| P02-3g | Continuation kalıcı journal, yaşam döngüsü kapıları ve kota | P02-3f; [kart](tasks/p02-3g-continuation-journal-gates.md) | `draft` |
-| P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3g; [kart](tasks/p02-3h-continuation-workflow.md) | `draft` |
+| P02-3g | Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım | P02-3f; [kart](tasks/p02-3g-continuation-persistence-read.md) | `draft` |
+| P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3g’den sonra, P02-3h’den önce) | P02-3g; [kart](tasks/p02-3r-continuation-write-gates.md) | `draft` |
+| P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `draft` |
 | P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3h; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |
-| P02-3j | İndirme sözleşme tipleri, doğrulama sözlüğü ve aralık sınıflandırıcısı | P02-2f; [kart](tasks/p02-3j-download-contract.md) | `draft` |
-| P02-3k | İmzalı URL için kimliksiz, akışlı GET taşıması | P02-3j; [kart](tasks/p02-3k-signed-get-transport.md) | `draft` |
-| P02-3l | Akışlı yerel yazıcı, yarım indirme sidecar’ı ve no-clobber yayın | P02-3j; [kart](tasks/p02-3l-download-sink-publisher.md) | `draft` |
+| P02-3j | İndirme sözleşme tipleri, doğrulama sözlüğü ve aralık sınıflandırıcısı | P02-2c; [kart](tasks/p02-3j-download-contract.md) | `draft` |
+| P02-3k | İmzalı URL için kimliksiz, akışlı GET taşıması | P02-3j, P02-2f; [kart](tasks/p02-3k-signed-get-transport.md) | `draft` |
+| P02-3l | Akışlı yerel yazıcı, sidecar protokolü ve ortak no-clobber yayın | P02-3j; [kart](tasks/p02-3l-download-sink-publisher.md) | `draft` |
 | P02-3m | İndirme motoru, resume kararı ve uçtan uca uyumluluk | P02-3k, P02-3l; [kart](tasks/p02-3m-download-engine-resume.md) | `draft` |
 | P02-3n | Model ağırlığı tüketicisi ve `models download` yüzeyi | P02-3m, P02-0d; [kart](tasks/p02-3n-model-weights-consumer.md) | `draft` |
 | P02-3o | İndirme native ölçümü, kanıt doğrulayıcısı ve kurulu smoke | P02-3n; [kart](tasks/p02-3o-download-native-acceptance.md) | `draft` |
 | P02-3p | Veri sürümü tipleri, strict codec ve salt okuma okuyucusu | P02-0d; [kart](tasks/p02-3p-version-domain-reader.md) | `draft` |
-| P02-3q | Public `datasets versions` yüzeyi ve bağ artifact’ı | P02-3p; [kart](tasks/p02-3q-public-version-surface.md) | `draft` |
+| P02-3q | Public `datasets versions` yüzeyi ve bağ artifact’ı | P02-3p, P02-3l; [kart](tasks/p02-3q-public-version-surface.md) | `draft` |
 | P02-4a | Sayfalı veri/model kataloğu ve göreve uygun sabit referans çözümü | P02-0a, ilgili P02-0b kabulü | `draft` |
 | P02-4b | Seçilmiş model ağırlığını ortak indirme portuyla teslim etme (P02-3n kesin sürüm kimliğiyle indirmeyi sağlar; bu iş katalog çözümlü seçimi bağlar) | P02-4a, P02-3b | `draft` |
 | P02-5a | Tek nonstream metin görevi ve typed yanıt/kullanım sonucu | P02-4a LLM alt kabulü | `draft` |

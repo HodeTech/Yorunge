@@ -47,7 +47,7 @@ Owner/fence/CAS ortak güvenlik mekanizmasıdır; transferin 150 s lease'i, tek 
 | Intent commit edildi, receipt yok | Gönderilmiş olabilir; read reconciliation dışında ilerleme yok |
 | Strict receipt durable | Yalnız doğru sonraki aşama, yeni son yetki/lease/onay kontrolüyle ilk kez açılabilir |
 | Owner/revoke/reset/deadline/yerel girdi değişti | Henüz arm edilmemiş aşamalar engellenir; intent COMMIT öncesi değişimde permit sıfır, sonrasında önceden arm edilmiş tek permit henüz HTTP başlamamış olsa da geri çekilmiş sayılamaz |
-| Restart/takeover | Aynı operation üzerinde yalnız read; eksik etkili aşamayı sürdürmek P02-3a'nın ayrı kabulüdür |
+| Restart/takeover | Aynı operation üzerinde yalnız read; eksik etkili aşamanın devamı aynı operation’ı canlandırmaz, soy bağlı ve yeni onaylı bir continuation’dır ([ADR-0031](../decisions/0031-upload-continuation.md) Proposed, P02-3a) |
 
 Create cevabı yoksa bilinen dataset ID olmayabilir. Yerel operation/correlation korunur; aynı adla bulunan ilk dataset kesin eşleşme değildir. Exact oracle yoksa unknown dürüst son durumdur, yeni create önerilmez. Bilinen dataset için project ilişki listesi ve item metadata observation'ları yalnız kanıtladıkları bağları günceller. `not_found`/401/403/boş liste/eksik page işlemin olmadığını veya tekrarın güvenliğini kanıtlamaz. Değişen sayfa/cursor/çelişkili metadata tamlık iddiasını bozar.
 

@@ -12,31 +12,31 @@ capabilities: [C03, C12]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Devam için gereken plan/onay/kayıt/kontrol/özet/rapor tipleri bugün yoktur; v2 tipleri kapalıdır ve alan eklenemez. Bu kart, v1/v2’yi değiştirmeden strict v3 tiplerini ve doğrulayıcılarını sabitler.
+Devam için gereken plan/onay/kayıt/kontrol/doğrulama/özet/rapor tipleri bugün yoktur; v2 tipleri kapalıdır ve alan eklenemez. Bu kart, v1/v2’yi değiştirmeden strict v3 tiplerini ve doğrulayıcılarını sabitler.
 
 ## Giren ve girmeyen kapsam
 
-`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt/kontrol v3, `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1`, `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, yeni `continuation_not_possible` hata kodu ve kataloğu girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
+`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt v3 (admission’da `workflow_latched=true` ve plandan dolu `dataset_id`), kontrol v3, `TransferVerification v3` (v2 ile aynı alanlar), `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1`, `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, `intent_digest`in kökle eşitliği, v3 için `request_digest` kuralı (dataset kimliği plan bağından) ve yeni `continuation_not_possible` hata kodu (katalog, mesaj, exit) girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
 
 ## Bağımlılıklar ve kararlar
 
-P02-3e sınıf ve özet tanımlarına bağlıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) onayı gerekir. Tip alanlarının tam listesi bu kartta [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) içindeki taslaktan kesinleşir; golden vektörler bağımsız elle hesaplanır.
+P02-3e sınıf ve özet tanımlarına bağlıdır. [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed). Tip alanlarının tam listesi bu kartta [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) taslağından kesinleşir; golden vektörler bağımsız elle hesaplanır.
 
 ## Sözleşme ve uygulama sınırı
 
-Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool≠int; canonical ASCII JSON ve byte sınırları v1/v2 ile aynı. Bağlama özeti (plan, onay, kayıt, maliyet işi) soy bağını, dataset kimliğini, baseline özetini, `file_indices`, `uncertain_indices`, sınıflandırma ve envanter özetlerini ve yeni istek bütçesini kapsar. v3 `decode` yalnız kendi tür/sürüm çiftlerini kabul eder; v1/v2 çiftleri aynı kalır.
+Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool≠int; canonical ASCII JSON ve byte sınırları v1/v2 ile aynı. Bağlama özeti (plan, onay, kayıt, maliyet işi) soy bağını, dataset kimliğini, baseline özetini, `file_indices`, `uncertain_indices`, sınıflandırma ve envanter özetlerini ve yeni istek bütçesini kapsar. v3 `decode` yalnız kendi tür/sürüm çiftlerini kabul eder; v1/v2 çiftleri aynı kalır; kayıt/kontrol/doğrulama sürüm eşitliği korunur.
 
 ## Kabul
 
 1. Her tip için literal canonical byte ve SHA-256 golden’ları; v1/v2 golden’ları değişmez.
-2. Doğrulayıcı negatifleri: sırasız/tekrarlı/aralık dışı indeks, `uncertain_indices ⊄ file_indices`, limit–M uyuşmazlığı, create/link ≠ 0, pencere ≤0 veya >900 s, sürüm eşleşmesi (plan v3+onay v2 vb.), bilinmeyen/eksik alan, bool-as-int, gereksiz/eksik `acknowledge_unconfirmed_effects`.
+2. Doğrulayıcı negatifleri: sırasız/tekrarlı/aralık dışı indeks, `uncertain_indices ⊄ file_indices`, limit–M uyuşmazlığı, create/link ≠ 0, pencere ≤0 veya >900 s, sürüm eşleşmesi (plan v3+onay v2; kayıt v3+doğrulama v2 vb.), bilinmeyen/eksik alan, bool-as-int, gereksiz/eksik `acknowledge_unconfirmed_effects`, v3 kaydında `dataset_id=null` veya `workflow_latched=false` admission.
 3. Bağlama özeti: her yeni alanın tek tek değiştirilmesi özeti değiştirir (mutasyon testi); `observed_at` hariç olanlar belgelenen şekilde dışarıdadır.
-4. v2 politika reducer matrisi (96 satır) continuation tipinde aynı sonucu verir; verified-only ve sağlayıcı oracle’sız yol continuation’a açılmaz.
-5. Yeni hata kodu için zarf, mesaj, exit 2 ve CLI hata kataloğu uyumu testlidir.
+4. v2 politika reducer matrisi (96 satır) continuation tipinde aynı sonucu verir; verified-only ve sağlayıcı oracle’sız yol continuation’a açılmaz. `M=0` plan geçerlidir ve ack kuralları değişmez.
+5. Yeni hata kodu için zarf, mesaj, exit 2 ve CLI hata kataloğu uyumu testlidir; v3 özet/rapor DTO’ları `created_dataset`, owner/org/ad ve receipt alanı taşımaz (sentinel).
 
 ## Doğrulama
 
-Contract/unit testleri, golden fixture’ları, Ruff ve strict mypy; CLI hata kataloğu belge kontrolü. Kalıcılık ve ağ davranışı iddia edilmez.
+Contract/unit testleri, golden fixture’ları, Ruff ve strict mypy; hata kataloğu belge kontrolü. Kalıcılık ve ağ davranışı iddia edilmez.
 
 ## Teslim kaydı
 

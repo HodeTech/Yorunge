@@ -21,6 +21,13 @@ AGENTS/ajan rehberi; current, roadmap, P02 fazı ve P02-2 teslim planı; ADR-001
 | Mevcut ağ/dosya ilkelleri indirme için yetersiz | Storage portu yalnız PUT/64 KiB yanıt; hizmet HTTP yolu imzalı query’yi yeniden kodlar ve guard’sızdır; akışlı yazıcı, sidecar, Range/ETag yorumu, doğrulama sonucu yok | ADR-0032: private `DownloadTarget`/GET taşıması, sink/publisher, doğrulama sözlüğü |
 | Sürüm/bölme için tip ve referans yok; üyelik listesi sağlayıcıda yok | Sürüm gövdesi yalnız sayı ve etiket anlık görüntüsü; `version_tag` ile adresleme; tag yeniden kullanımı farklı `id` | ADR-0033: salt okuma, sürüm kimliği + etiket + sayı bağı, üyelik iddiası yok; freeze P02-R4 |
 | P02-3c’nin P02-3a/b bağımlılığı teknik değil | Sürüm okuma ortak HTTP/credential altyapısıyla çalışır | Faz tablosunda teknik bağımlılık `P02-0d`; plan sırası sonradır |
+| Confirm sayaç tabanı dolu veri setinde yanlış reddeder | `confirm_ack` `actual_count == bu workflow’da kabul edilmiş confirm+1` ister; sağlayıcıda sayı veri seti düzeyinde kümülatiftir (taze veri setinde 1,2,…) | ADR-0031 §5: v3 oracle tabanı `N−M`; tüketici referansı düzeltildi; 3h kabulü dolu-veri-seti fixture’ı ister |
+| Kesin sağlayıcı retleri kalıcı `rejected` makbuz yazmıyor | `HttpStatusFailure` yayılır, `stop_local(request_uncertain)` ile `unknown`; `rejected` makbuz yalnız testlerde | ADR-0031 §2 dürüst sınır (taze current kontrol, en çok bir yeniden deneme) + [P02-R7](../roadmap/tasks/p02-r7-persist-provider-denials.md) |
+| `M=0` mevcut kayıt kurallarıyla yasal bir durum yoluna sahip değil | `succeeded/running/unknown/failed` kalıcı workflow latch ister; latch intent varlığına bağlı; `prepare_initial_read` yalnız `running` | ADR-0031 §5: v3 kaydı admission’da latched, `len(intents)≤3M`, initial read `admitted|running` |
+| Namespace kapısı continuation planını reddeder | `_namespace_available` kaydet/admit’te `operation_conflict`; hot/full latched kayıt için namespace→kendi operation’ı ister | ADR-0031 §5: kökün `intent_digest`i, kapı atlanır, v3 invariant’ı `baseline_operation_id`e bağlanır |
+| Kayıt/kontrol/kanıt sürüm eşitliği | `_verified` ve `_verify` `proof.schema_version != record.schema_version` reddeder | `TransferVerification v3` (v2 ile aynı alanlar) |
+| Deterministik stage adı sahiplik ve eşzamanlılık protokolü gerektirir | Manifest yayıncısı rastgele ad ve bilinmeyen kimliği silmeme ilkesini kullanır | ADR-0032 §3: flock, `O_NOFOLLOW` açılış, sahiplik denetimi, `download_partial_unverified` |
+| `--output` genel biçim seçeneğidir | `docs/reference/cli-contract.md` ortak seçenekleri | Hedef dosyalar `--weights-out`/`--binding-out` |
 | Belge/kod uyumsuzlukları | `http-transport.md` “streaming upload yoktur” der, oysa private storage portu PUT akıtır; ADR-0024 genel durum listesinde `planned` var, kodda yok | `http-transport.md` düzeltildi; ADR-0024’e düzeltme notu eklendi |
 
 ## Kod gözlemleri
@@ -46,8 +53,12 @@ AGENTS/ajan rehberi; current, roadmap, P02 fazı ve P02-2 teslim planı; ADR-001
 
 ## Kullanıcıya sunulan kararlar ve gereken dış bilgi
 
-[Teslim planı](../roadmap/p02-3-delivery-plan.md#kullanıcı-kararları) ADR-0031/0032/0033 onaylarını, ilk indirme tüketicisi ve dataset bayt erişimi kararını, freeze/sahiplenme ertelemelerini, tek PR sınırını ve canlı kabul yetkilerini listeler. Yeni ADR onayı olmadan bağımlı ürün kodu başlamaz; onay, sağlayıcı sözleşmesini, ücretini veya yetkisini kanıtlamaz.
+[Teslim planı](../roadmap/p02-3-delivery-plan.md#kullanıcı-kararları) ADR-0031/0032/0033 onaylarını (K1–K3), R4/R5/R6/R7 ertelemelerini (K4), tek PR sınırını (K5) ve canlı girdi/yetkileri (K6) öneri, sonuç ve varsayılanlarıyla listeler. Yeni ADR onayı olmadan bağımlı ürün kodu başlamaz; onay, sağlayıcı sözleşmesini, ücretini veya yetkisini kanıtlamaz.
 
 ## Review ve doğrulama kaydı
 
-Ana inceleme ve iki salt okunur keşif tamamlandı. Yeni yazılmış ADR/referans/kart/plan metinlerinin iki fresh belge review turu aşağıda gerçek sonuçlarıyla kaydedilir; bu tur tamamlanmadan kullanıcı onayına gidilmez.
+Ana inceleme ve iki salt okunur keşif tamamlandı. Yeni yazılmış ADR/referans/kart/plan metinleri iki fresh belge review turundan geçer; gerçek sonuçları aşağıda kaydedilir. Kullanıcı onayı bu iki tur tamamlandıktan sonra istenir.
+
+### Fresh belge review R1
+
+Hazırlık commit’i `33f5128` üç bağımsız reviewer’la incelendi: resume state/güvenlik (en güçlü model, yüksek effort), indirme/ağ/dosya/sürüm (en güçlü model, yüksek effort) ve çapraz tutarlılık/süreç/UX (yüksek effort). Doğrulanmış sonuçlar: **bir P1** (confirm sayaç tabanı dolu veri setinde yanlış reddeder), P1’e eşdeğer üç tasarım tutarsızlığı (soy zincirinin uygunluk kuralıyla çelişmesi, ADR yürütme bölümünde kalan `failed` kaynak ifadesi, M=0 durum yolunun olmaması) ve onlarca P2/P3 (namespace kapısı, sürüm eşitliği, reddedilen makbuzun üretimde yazılmaması, yarım indirme sahiplik/eşzamanlılık protokolü, 206/416 sonrası politika, close-delimited gövdede `transfer_complete`, yol öneki farkı, hata kataloğunun çift kaynağı, sayfalama ve `description` çelişkileri, ADR-0025/0026/0027/0028 geri işaretçileri, karar listesinin cevaplanabilirliği, süreç kodlaması). Hepsi güncel kodla doğrulanıp ADR-0031/0032/0033, referans taslakları, kartlar (resume hattında P02-3g okuma/P02-3r yazma ayrımı dahil), plan ve ilgili belgelere işlendi; yeni takip kartı P02-R7 açıldı. R1 ürün testi veya gerçek hesap kabulü değildir. İkinci fresh tur düzeltme commit’inden sonra farklı reviewer’larla yapılır ve sonucu buraya eklenir.

@@ -11,7 +11,7 @@ EVREN kullanıcılarının farklı hizmetler için doğru kimlik ve bağlamı se
 | Alan | Kapsanan işler | İlk değer |
 |---|---|---|
 | Hesap ve bağlam | Profil, hizmet anahtarı, organizasyon/proje seçimi, yetki tanılama | Yanlış hesaba/projeye işlem yapmamak |
-| Veri seti yaşam döngüsü | Yerel denetim, manifest, private oluşturma, yükleme, indirme, sürdürme, doğrulama, sürüm/bölme bilgisi | Güvenilir veri girişi ve çıkışı |
+| Veri seti yaşam döngüsü | Yerel denetim, manifest, private oluşturma, yükleme, indirme (dataset baytı sağlayıcı erişimine bağlı), sürdürme, doğrulama, sürüm/bölme bilgisi | Güvenilir veri girişi ve çıkışı |
 | Katalog ve modeller | Model/veri keşfi, görev-yetenek uyumu, model sürümü ve ağırlık indirme | Uygun kaynağı seçmek |
 | LLM ve çıkarım | Metin/akış, embedding, rerank, görsel çıkarım; sonraki aşamada OCR/ses gibi keşfedilmiş servisler | Uygulama kurmak ve çıktıyı kullanmak |
 | Eğitim/değerlendirme | Yönetilen EVREN eğitim işi; haricî araçla LLM veri hazırlama/denetim/üretim, kaynak uygunluğu, eğitim/değerlendirme, merge/export | Planlanmış ve izlenebilir model geliştirme |

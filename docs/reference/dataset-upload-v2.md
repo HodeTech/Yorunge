@@ -2,6 +2,8 @@
 
 **Durum:** ADR-0026/0027 Accepted; kanonik v2 hedef sözleşmesi. Yerel v1 d/e/f temeli verified; v2 exact-work maliyet modeli P02-2g ile yerel verified; plan/policy/current P02-2h yerel verified; journal/history/reset uyumu P02-2i yerel verified; yazma kapıları P02-2j yerel verified; explicit read/recovery P02-2k yerel verified; l/m provider codec sınırları yerel verified. Bu yerel kabuller public upload, native/kurulum/source CI veya canlı teslim değildir. **Tarih:** 2026-11-02. [Karar](../decisions/0026-explicit-unverified-transfer-attempts.md), [v1 geçmişi ve ortak storage/journal sınırları](dataset-transfer.md). Bu belge v2'nin kanonik alan/reducer/gate/acceptance kaynağıdır; v1 golden'ları yeniden tanımlamaz.
 
+**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](../decisions/0031-upload-continuation.md) / [continuation sözleşmesi](dataset-upload-continuation.md) yalnız v3 continuation kayıtları için başarı grafiğini ve doğrulama sürümünü ayrı tanımlamayı önerir; bu belgedeki v1/v2 kuralları ve “yeni producer yalnız v2 üretir” hükmü o kayıtlar dışında değişmez.
+
 ## Kapalı tipler ve sürümler
 
 Bütün DTO'lar strict/frozen/extra-forbid; nullable dahil alanlar zorunlu, bool integer değildir. Canonical ASCII JSON, duplicate/nonfinite/UTF-8/depth/node ve byte sınırları v1 ile aynıdır. Public API raw grant/quote/check/client/header dict'i almaz. Yeni producer yalnız v2 üretir. Üst Result v1 ve mevcut execution/jobs wire'ı değişmez.

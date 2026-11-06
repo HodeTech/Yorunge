@@ -8,7 +8,7 @@ capabilities: [C04, C13]
 ---
 # P02-3c — Veri sürümü referansı bütünleşik kabulü
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md). Üst kart: p–q alt kartlarının bütünleşik kabulü ve teslim kaydı. **Boyut notu:** özgün L tahmini alt kartlara bölündüğünden doğrulama aracı büyük kartın verified olmasını reddeder, üst kart yalnız kabul/teslim kaydı olarak M izlenir.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md). Üst kart: p–q alt kartlarının bütünleşik kabulü ve teslim kaydı. **Boyut notu:** özgün L tahmini alt kartlara bölündüğünden doğrulama aracı büyük (L) kartı ready/in_progress/in_review/verified yapmaz; bu üst kart yalnız bütünleşik kabul/teslim kaydı olarak M izlenir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ p–q alt kartlarının verified olması; ADR-0033 acceptance listesi; kurulu yo
 
 ## Bağımlılıklar ve kararlar
 
-Alt kartlar p–q; [ADR-0033](../../decisions/0033-dataset-version-references.md) Accepted. Canlı salt okuma kabulü için kullanıcının dondurulmuş sürümlü bir dataset kimliği ve sınırlı GET yetkisi gerekir; yoksa canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
+Alt kartlar p–q; [ADR-0033](../../decisions/0033-dataset-version-references.md)’ün Accepted olması gerekir (bugün Proposed). Canlı salt okuma kabulü için kullanıcının dondurulmuş sürümlü bir dataset kimliği ve sınırlı GET yetkisi gerekir; yoksa canlı kabul yapılmış gibi yazılmaz ve karar kayda geçer.
 
 ## Sözleşme ve uygulama sınırı
 

@@ -1,0 +1,43 @@
+---
+id: P02-3g
+phase: P02
+status: draft
+size: M
+depends_on: [P02-3f]
+capabilities: [C03, C12]
+---
+# P02-3g — Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım
+
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 4. Okuma/doğrulama yarısı; yazma kapıları P02-3r’dedir. Ayrım ölçülmüş: create-ilk varsayan doğrulayıcıların listesi tek başına bir review birimidir.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+v3 tipleri kalıcı geçmişte okunup doğrulanamadan kapasite hesabı, list/show, reset önizlemesi ve tam doğrulama çalışmaz: `decode_versioned` iki tip imzalıdır, graf doğrulayıcıları create-ilk ve 2+3N varsayar, rezervasyon formülü her kayıt okumasında doğrulanır ve her plan satırı kapasite/snapshot hesabında çözülür. Bu yarım yapılmadan herhangi bir v3 satırı store genelinde `state_invalid` üretir.
+
+## Giren ve girmeyen kapsam
+
+Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında; `validate_graph` v3 için `StageGraphSpec` ile (gerekli aşamalar, öncül, `request_digest` plan bağından, `_stage_outcome` dataset kimliği plandan, `_operation_header` latch kuralı: admission’da latched ve `len(intents) ≤ 3M`, v3 namespace invariant’ı `namespace.create_operation_id == baseline_operation_id`, `verification_after` boş makbuzla, `_verify` 3M makbuz + N dosya proof ve sürüm eşliği); `operation_reservation` ve `capacity()` plan türüne göre; summary/review projeksiyonunun v3’ü `legacy_history_only` saymaması; reset önizleme/`upload_snapshot` parmak izi ve global expiry hesabı; eski-binary etkisinin belgelenmesi. Girmez: save/approve/admit/arm/receipt/read/proof yazma kapıları, HTTP, public yüzey, DDL.
+
+## Bağımlılıklar ve kararlar
+
+P02-3f tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md)’in Accepted olması gerekir (bugün Proposed). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
+
+## Sözleşme ve uygulama sınırı
+
+Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 geçmişleriyle sınanır (yazma kapısı bu dilimde yoktur). Restore/recover yasağı değişmez; upload tabloları geri yüklenebilir küme dışındadır.
+
+## Kabul
+
+1. Sentetik v3 geçmişleri (admitted, running, unknown, succeeded; `M=0`; kök+iki continuation zinciri) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer.
+2. Geçersiz geçmişler `state_invalid` ile reddedilir: yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, yanlış sürüm eşleşmeleri, döngülü/kopuk zincir.
+3. Kapasite: continuation plan/operation 128/128, dosya 4.096, 16 MiB sınırlarına yeniden sayılır; v1/v2 rezervasyon doğrulaması ve golden’ları değişmez; v3 satırı varken `require_capacity`/list/reset önizlemesi çalışır.
+4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.
+5. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı değiştirilmeden geçer.
+
+## Doğrulama
+
+Gerçek SQLite integration/contract testleri, mevcut kota/maintenance/migration regresyonları, Ruff ve strict mypy. Ağ ve yazma kapısı iddiası yoktur.
+
+## Teslim kaydı
+
+Draft; uygulama, commit veya review kanıtı yoktur.

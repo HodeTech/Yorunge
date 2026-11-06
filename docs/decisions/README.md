@@ -33,7 +33,6 @@
 | [0027](0027-durable-created-dataset-context.md) | Create cevabının iki sahiplik alanını dar v2 receipt ile atomik korumak | Accepted — 3 Kasım kullanıcı review düzeltmeleri ve iki fresh tur kapandı; ADR-0026 receipt/legacy/new-success hükümlerini kısmen değiştirir |
 | [0028](0028-platform-upload-content-cardinality.md) | İlk Platform upload’ında tekrarlı içerik hash’ini erken reddetme ve özgün çoklu-ad ihtiyacını takip etme | Accepted — 4 Kasım kullanıcı review revizyonu ve iki fresh teyit sonrası uygulama yetkisi; ADR-0024/P02-2 kabulü kısmen değişir |
 | [0029](0029-evidence-provenance-privacy.md) | Kayıpsız kanıtta sınırlı tarihsel provenance ve yeni çıktı gizliliği | Accepted — 95 hash bağlı tarihsel kayıt; yeni Git/CI çıktılarında bounded gizlilik kapısı |
-
 | [0030](0030-development-performance-acceptance.md) | Yerel M5 kabulünü açık takipte tutarak geliştirme CI/teslimini sürdürmek | Proposed — kullanıcı kararı bekleniyor; mevcut reference kapıları değişmedi |
 | [0031](0031-upload-continuation.md) | Kesintiye uğramış private transferin soy bağlı, kanıta dayalı ve yeni onaylı devamı (aynı operation canlandırılmaz) | Proposed — kullanıcı onayı bekleniyor; ADR-0024 “restart yalnız read” hükmünü kapalı yolda tamamlar |
 | [0032](0032-bounded-download-and-verification-levels.md) | Sınırlı akışlı indirme, no-clobber yayın, resume ve kapalı doğrulama seviyeleri; dataset baytı hariç | Proposed — kullanıcı onayı bekleniyor; ADR-0025 GET/expiry hükmünü kısmen değiştirir |
