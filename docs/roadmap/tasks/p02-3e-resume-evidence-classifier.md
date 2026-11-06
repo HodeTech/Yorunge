@@ -1,7 +1,7 @@
 ---
 id: P02-3e
 phase: P02
-status: in_review
+status: verified
 size: M
 depends_on: [P02-3d]
 capabilities: [C03, C12]
@@ -43,7 +43,11 @@ Unit/contract/integration (gerçek SQLite journal fixture’ları + loopback TLS
 
 ## Teslim kaydı
 
-Uygulandı; R1 ve R2 işlendi; tam paket sonucu için [uygulama kaydına](../../research/p02-3-implementation-validation.md#adım-2--p02-3e-resume-kanıt-sınıflandırıcısı-ve-uzak-envanter-indirgeyicisi) bakın. Seçilen adlar ve yerleşim:
+- PR/commit: tek development PR’ı henüz açılmadı (P02-3 epik PR’ı adım 17’de); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: uygulama [a515a6a](https://github.com/HodeTech/Yorunge/commit/a515a6a6774176d0f8cddb41cb924c22fc4e4621), R1 düzeltmeleri `21b9473` ve `d672eca`, R2 düzeltmeleri [4e06140](https://github.com/HodeTech/Yorunge/commit/4e061405706f561dc7945c20f5661b8c6a54c0c9); kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-2--p02-3e-resume-kanıt-sınıflandırıcısı-ve-uzak-envanter-indirgeyicisi).
+- Sonuç: Kapalı kanıt tablosu (zincir journal birleşimi × uzak envanter → dosya sınıfı), kapalı sıralı plan düzeyi engeller, iki canonical özet, kaynak ve torun uygunluğu ile tek önerilen eylem saf ve bağımsız oracle’larla sınanmış işlevlerdir; journal olguları ve hata vermeyen envanter toplayıcı gerçek SQLite ve gerçek TLS ile doğrulanmıştır (276 yeni test; tam paket 7075 passed, 1 skipped; Ruff, strict mypy, check-docs ve check-agent-guides temiz). R1 ve R2’nin (karar tablosu/oracle, güvenlik/mutasyon, tüketici uyumu, düzeltme doğrulaması/kırılganlık) doğrulanmış bulguları işlendi; yeni testler her tur 31–47 mutantlık özdenetimlerde eşdeğer olmayan hiçbir mutantı hayatta bırakmadı.
+- Kalan sınır: Yalnız saf mantık ve salt okuma veri yoludur: plan/onay/kayıt tipleri (P02-3f/3t), zincirin depodan çözülmesi ve kaynak/torun olgularının tek okuma anlık görüntüsü (P02-3g), yazma kapıları (P02-3r), taze envanterin iş akışına bağlanması (P02-3h) ve public yüzey (P02-3i) sonraki dilimlerdedir; envanter toplayıcı henüz hiçbir ürün iş akışından çağrılmaz. Sağlayıcının tutarlı `total` bildirip bir item’ı sessizce atlaması tespit edilemez (kalıcı sınır). Yerel sözdizimini bozan yabancı item listeyi `invalid_response` hatasına çevirir (bilinçli). Canlı davranış iddiası yoktur.
+
+Seçilen adlar ve yerleşim:
 
 - Saf mantık `yorunge.domain.upload_resume`: kapalı sözlükler (`FILE_CLASSES`, `BLOCKERS`, `CHAIN_STATES`); `OperationJournal`/`StageFact` olguları; `merge_chain(journals, manifest)` (aynı manifest üzerinde sıralı soy zinciri; tutarsız veya yabancı zincir `state_invalid`) ve `ChainSummary` (kendini doğrular, manifest özetini taşır); `RemoteInventory`/`InventoryFold` (128 sayfa ve 1.024 item sınırı, cursor döngüsü, `total` tutarlılığı); `classify(manifest, chain, inventory)` ve doğrulanan `Classification` (sınıf vektörü, kapalı sıralı engeller, iki özet; `count`, `indices`, `with_blockers`, `plannable`); engel yokken `selection()` ile `ContinuationSelection` (`file_indices`, `uncertain_indices`, `remote_present_count`); `descendant_verdict`, `SourceFacts` ile `source_blockers` ve `recommended_action`; `ContinuationNotPossible` P02-3f’de eklenir.
 - Journal olguları `yorunge.adapters.upload_chain.operation_journal` ve `StateUploads.operation_journal(operation_id)` (salt okuma; makbuz içeriği, anahtar, URL veya `created_dataset` taşımaz; v1/v2 operation’ları zincir köküdür, başka plan türü `state_invalid`; hata operation kimliğini korur).
