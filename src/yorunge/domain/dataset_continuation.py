@@ -145,6 +145,8 @@ class DatasetContinuationPlanV3(UploadWire):
             or any(index >= count for index in binding.file_indices)
             or binding.remote_present_count != count - limits.files
             or binding.intent_digest != self.intent_digest()
+            # The observation is what the plan was prepared from, so it cannot come after it.
+            or instant(binding.observed_at) > instant(self.prepared_at)
         ):
             raise ValueError("continuation binding must match the plan manifest and limits")
         validate_plan_facts(self)
@@ -231,6 +233,8 @@ def validate_approval_binding_v3(
 ) -> None:
     if type(plan) is not DatasetContinuationPlanV3 or type(approval) is not DatasetUploadApprovalV3:
         raise ValueError("mixed upload plan/approval versions")
+    if plan.digest != plan.computed_digest():
+        raise ValueError("continuation plan digest mismatch")
     try:
         require_continuation_acknowledgements(
             plan,

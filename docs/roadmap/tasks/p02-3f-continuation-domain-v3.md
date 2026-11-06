@@ -31,8 +31,8 @@ Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool≠int; 
 1. Her tip için literal canonical byte ve SHA-256 golden’ları (bağımsız üretilmiş: plan, M=0 ve M=N planları, onay, iş özeti, baseline özeti ön görüntüsü); v1/v2 golden’ları değişmez.
 2. Doğrulayıcı negatifleri: sırasız/tekrarlı/aralık dışı indeks, `uncertain_indices ⊄ file_indices`, limit–M uyuşmazlığı, create/link ≠ 0, pencere ≤0 veya >900 s, sürüm eşleşmesi (plan v3+onay v2 vb.), bilinmeyen/eksik alan, bool-as-int, gereksiz/eksik `acknowledge_unconfirmed_effects`, `remote_present_count` ≠ N−M, kökten farklı `intent_digest`; seçilen bayt toplamı tam manifestle sınanır. `binding_matches` negatifleri: seçim, `uncertain_indices`, `remote_present_count` ve iki özetin her biri, değişen uzak durum/zincir durumu, geçici liste hatası ve çağıranın engeli.
 3. Bağlama özeti: her yeni alanın tek tek değiştirilmesi özeti değiştirir (mutasyon testi); `observed_at`, plan kimliği ve geçerlilik anları belgelenen şekilde dışarıdadır.
-4. v2 politika reducer matrisi (96 satır) continuation işinde aynı sonucu verir; verified-only ve sağlayıcı oracle’sız yol continuation’a açılmaz. `M=0` plan geçerlidir ve ack kuralları değişmez.
-5. Yeni hata kodları için zarf, mesaj, exit 2, kapalı sıralı `blockers` ayrıntısı ve operation kimliği testlidir.
+4. v2 politika reducer matrisi (96 satır) continuation işinde aynı sonucu verir; tip bunu bilinçle v2 ile aynı bırakır, verified-only veya sağlayıcı oracle’sız kaynağın devamını yasaklamak tip kuralı değil üretici ve uygunluk kuralıdır (`source_ineligible`, P02-3h/3i). `M=0` plan geçerlidir ve ack kuralları değişmez.
+5. Yeni hata kodları için istisnanın kendi zarfı (`ContinuationNotPossible.envelope()`: mesaj, exit 2, kapalı sıralı `blockers`, operation kimliği; `source_active` taşınamaz) testlidir. Akış `ErrorDetails` modeli ve üç yeniden sarma noktası (`streams.error_payload`, `stream_results._bound`, `cli.output._bound_error`) bugün `blockers` taşımaz; bunlar P02-3i’de genişletilir ve oradaki testlerle (JSON/NDJSON ve CLI stderr yolu) kanıtlanır.
 
 ## Doğrulama
 

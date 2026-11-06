@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import (
     ContinuationBinding,
@@ -26,6 +27,8 @@ from yorunge.domain.dataset_upload_v2 import (
     DatasetUploadApprovalV2,
     DatasetUploadPlanV2,
     reduce_upload_policy,
+    require_acknowledgements,
+    validate_approval_binding_v2,
 )
 from yorunge.domain.errors import MESSAGES, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
@@ -51,6 +54,12 @@ SOURCE = "00000000-0000-4000-8000-000000000009"
 PLAN_DIGEST = "6e1fea1f76cef3b16a34b4c7efe97e9380b787bd7a1886bef8ee0d2c2f29cd6c"
 BINDING_DIGEST = "7964b7a9538e7c57d4acf487d9536b6fe8cff1750eaf929afdac4e5df17aa641"
 WORK_DIGEST = "5e839a73a1f585283cd8d95ea3191151ed43ab90adcfe7fb56b1c6c538bc60ab"
+EVIDENCED_DIGEST = "85d76bfccc700c6397d0f485032e960e10ef35f64cebebb290c7d7fa3b38bb78"
+EVIDENCED_BINDING = "eac9d4908f666a1bb209d280466cac54b06b7706b65ab6957a132251db5017a9"
+CHECK_ONLY_DIGEST = "46df7fde4bd41fc8823c459025940f2c39c76ac7bbc3fa31fe20867371e4f783"
+CHECK_ONLY_BINDING = "02353c81fb51320a10dcdab2785afdc8bb15f1542c1241dc57cc46c6b3b86a8f"
+ALL_FILES_DIGEST = "8cfd514beccc9b5440e9524507d5ac657a3dcc93593e84fee294f8a6b36c1d51"
+ALL_FILES_BINDING = "a33191a81b56bcedab6ab210640279d067da01d1cc5e0e5b4e67cb44338f7c22"
 
 
 def canon(value):
@@ -185,7 +194,23 @@ def test_selected_bytes_are_checked_against_the_full_manifest_only_when_it_is_gi
 # --- closed negatives --------------------------------------------------------------------------
 NEGATIVES = {
     "unordered indices": changed(["continuation", "file_indices"], [2, 0]),
-    "repeated index": changed(["continuation", "file_indices"], [0, 0]),
+    "repeated index": changed(
+        ["continuation", "file_indices"],
+        [1, 1],
+        changed(
+            ["continuation", "uncertain_indices"],
+            [],
+            changed(
+                ["request_limits", "max_upload_bytes"],
+                0,
+                changed(["continuation", "remote_present_count"], 1),
+            ),
+        ),
+    ),
+    "non-canonical plan id": changed(["plan_id"], "00000000-0000-4000-8000-00000000000B"),
+    "foreign uuid version": changed(["plan_id"], "00000000-0000-1000-8000-00000000000b"),
+    "uppercase baseline digest": changed(["continuation", "baseline_digest"], "B" * 64),
+    "short baseline digest": changed(["continuation", "baseline_digest"], "b" * 63),
     "index past the manifest": changed(
         ["continuation", "file_indices"], [0, 3], changed(["continuation", "uncertain_indices"], [])
     ),
@@ -320,6 +345,9 @@ def limits(**changes):
         {"max_presign": True},
         {"max_read_requests": 511},
         {"max_read_attempts": 1025},
+        {"max_presign": 3},  # put and confirm differ from presign
+        {"max_control_request_bytes": 4194303},
+        {"max_control_response_bytes": 16777217},
         {"max_upload_bytes": 1024**3 + 1},
         {"max_upload_bytes": -1},
         {"extra": 1},
@@ -429,7 +457,8 @@ def test_flags_must_be_booleans_and_a_draft_cannot_be_approved():
             "acknowledge_unpriced_cost": False,
             "cost_policy": "bounded_required",
         },
-        {"approved_at": "2026-11-01T11:00:00.000000Z"},
+        # Approved a second before the plan existed, with a valid 15-minute lifetime.
+        {"approved_at": "2026-11-02T10:59:59.000000Z", "expires_at": "2026-11-02T11:14:59.000000Z"},
         {"expires_at": "2026-11-02T11:15:01.000000Z"},
         {"acknowledge_unconfirmed_effects": False},
         {"acknowledge_unverified_authority": False},
@@ -448,6 +477,7 @@ def test_an_approval_that_does_not_bind_this_plan_is_rejected(changes):
         {"revoked_at": "2026-11-02T11:00:02.000000Z"},
         {"approved_at": "2026-11-02T11:00:00.000000Z", "expires_at": "2026-11-02T11:15:01.000000Z"},
         {"approved_at": "2026-11-02T11:15:00.000000Z"},
+        {"approved_at": "2026-11-01T11:00:00.000000Z"},  # a day before: lifetime over 900 s
         {"acknowledge_unconfirmed_effects": 1},
         {"schema_version": 2},
         {"extra": 1},
@@ -497,15 +527,17 @@ def test_every_binding_field_changes_the_digest_but_observation_instants_do_not(
     uncertain["continuation"]["uncertain_indices"] = []
     assert plan_of(uncertain).binding_digest() != base
     # Not bound: when the observation was made, plan identity and validity instants.
-    moved = changed(["continuation", "observed_at"], "2026-11-02T11:00:01.000000Z")
+    moved = changed(["continuation", "observed_at"], "2026-11-02T10:59:30.000000Z")
     assert plan_of(moved).binding_digest() == base
     other = changed(["plan_id"], "00000000-0000-4000-8000-0000000000b0")
     assert plan_of(other).binding_digest() == base
     shorter = changed(["expires_at"], "2026-11-02T11:10:00.000000Z")
     assert plan_of(shorter).binding_digest() == base
-    # Bound: the request budget and every other plan field.
-    assert plan_of(changed(["budget_micros"], None)).binding_digest() == base
+    # Bound: every other plan field, including the request budget of a plan that has one.
     assert plan_of(changed(["parameters", "tags"], ["other"])).binding_digest() != base
+    evidenced = evidenced_plan()
+    budgeted = plan_of(evidenced).binding_digest()
+    assert plan_of({**evidenced, "budget_micros": 300_000_000}).binding_digest() != budgeted
 
 
 # --- the policy: the 96-row v2 matrix gives the same answers for a continuation ----------------
@@ -617,8 +649,14 @@ def test_continuation_not_possible_refuses_open_unordered_or_repeated_blockers(b
         ContinuationNotPossible(blockers)
 
 
-def test_every_blocker_name_can_be_carried_alone():
-    for blocker in BLOCKERS:
+def test_an_active_source_is_an_operation_conflict_never_a_continuation_refusal():
+    for blockers in (("source_active",), ("source_active", "drift_missing")):
+        with pytest.raises(ValueError, match="without source_active"):
+            ContinuationNotPossible(blockers)
+
+
+def test_every_other_blocker_name_can_be_carried_alone():
+    for blocker in (b for b in BLOCKERS if b != "source_active"):
         assert ContinuationNotPossible((blocker,)).envelope()["details"]["blockers"] == [blocker]
 
 
@@ -701,7 +739,7 @@ def test_a_changed_remote_or_chain_state_or_any_blocker_breaks_the_match():
     assert not binding_matches(binding, fresh_classification().with_blockers(("source_active",)))
 
 
-# --- evidence instants are observation time, not part of what an approval commits to ------------
+# --- evidence instants are observation time, not part of what an approval commits to -----------
 def evidenced_plan():
     prepared = next(row for row in MATRIX if row["status"] == "prepared")
     work = MAIN.cost_work()
@@ -742,3 +780,253 @@ def test_grant_and_cost_evidence_instants_do_not_change_the_binding_but_content_
         other = json.loads(json.dumps(data))
         other[evidence][field] = value
         assert plan_of(other).binding_digest() != base.binding_digest(), (evidence, field)
+
+
+# --- review round 1: consent entry points, isolated bindings, boundaries, extra goldens --------
+def approval_for(plan, **changes):
+    value = {
+        **approval_body(),
+        "plan_id": plan.plan_id,
+        "plan_digest": plan.digest,
+        "binding_digest": plan.binding_digest(),
+        **changes,
+    }
+    return DatasetUploadApprovalV3.model_validate_json(canon(value))
+
+
+def test_the_v2_consent_entry_points_refuse_a_v3_plan_and_a_v3_approval():
+    v2_approval = DatasetUploadApprovalV2.model_validate_json(
+        fixture("dataset-upload-approval-v2.json")
+    )
+    with pytest.raises(ValueError, match="mixed upload plan/approval versions"):
+        validate_approval_binding_v2(MAIN, v2_approval)
+    with failure("upload_plan_not_valid"):
+        require_acknowledgements(MAIN, authority=True, unpriced=True)
+    with failure("upload_plan_not_valid"):
+        approve_upload_v2(
+            MAIN,
+            approval_id="00000000-0000-4000-8000-000000000007",
+            confirmed_digest=MAIN.digest,
+            approved_at="2026-11-02T11:00:01.000000Z",
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+        )
+    v2_plan = DatasetUploadPlanV2.model_validate_json(fixture("dataset-upload-plan-v2.json"))
+    v3_approval = DatasetUploadApprovalV3.model_validate_json(
+        fixture("dataset-continuation-approval-v3.json")
+    )
+    with pytest.raises(ValueError, match="mixed upload plan/approval versions"):
+        validate_approval_binding_v2(v2_plan, v3_approval)
+
+
+def test_the_exact_type_rule_also_refuses_a_subclass():
+    class Derived(DatasetContinuationPlanV3):
+        pass
+
+    derived = Derived.model_validate_json(fixture("dataset-continuation-plan-v3.json"))
+    approval = DatasetUploadApprovalV3.model_validate_json(
+        fixture("dataset-continuation-approval-v3.json")
+    )
+    with pytest.raises(ValueError, match="mixed upload plan/approval versions"):
+        validate_approval_binding_v3(derived, approval)
+
+
+def test_an_approval_for_another_plan_id_is_rejected_even_with_matching_digests():
+    other = approval_for(MAIN, plan_id="00000000-0000-4000-8000-0000000000dd")
+    with pytest.raises(ValueError, match="binding mismatch"):
+        validate_approval_binding_v3(MAIN, other)
+
+
+def test_another_admission_policy_is_rejected_when_no_acknowledgement_can_mask_it():
+    plan = DatasetContinuationPlanV3.model_validate_json(
+        fixture("dataset-continuation-plan-v3-evidenced.json")
+    )
+    assert plan.status == "prepared" and plan.risks == ()
+    assert plan.admission_policy == "explicit_attempt"
+    clean = dict(
+        acknowledge_unverified_authority=False,
+        acknowledge_unpriced_cost=False,
+        acknowledge_unconfirmed_effects=False,
+        cost_policy="bounded_required",
+    )
+    validate_approval_binding_v3(
+        plan, approval_for(plan, admission_policy="explicit_attempt", **clean)
+    )
+    other = approval_for(plan, admission_policy="verified_only", **clean)
+    with pytest.raises(ValueError, match="binding mismatch"):
+        validate_approval_binding_v3(plan, other)
+
+
+def test_an_approval_may_start_with_the_plan_but_never_before_it():
+    short = plan_of(changed(["expires_at"], "2026-11-02T11:10:00.000000Z"))
+    on_time = approval_for(
+        short, approved_at="2026-11-02T11:00:00.000000Z", expires_at="2026-11-02T11:10:00.000000Z"
+    )
+    validate_approval_binding_v3(short, on_time)
+    early = approval_for(
+        short, approved_at="2026-11-02T10:59:59.000000Z", expires_at="2026-11-02T11:10:00.000000Z"
+    )
+    with pytest.raises(ValueError, match="binding mismatch"):
+        validate_approval_binding_v3(short, early)
+
+
+def test_binding_a_revoked_approval_is_valid_because_effectiveness_is_the_callers_check():
+    revoked = approval_for(MAIN, status="revoked", revoked_at="2026-11-02T11:00:02.000000Z")
+    validate_approval_binding_v3(MAIN, revoked)
+    assert revoked.status == "revoked"
+
+
+def test_a_plan_whose_digest_no_longer_matches_its_content_cannot_be_approved():
+    stale = MAIN.model_copy(update={"digest": "0" * 64})
+    approval = DatasetUploadApprovalV3.model_validate_json(
+        fixture("dataset-continuation-approval-v3.json")
+    )
+    with pytest.raises(ValueError, match="plan digest mismatch"):
+        validate_approval_binding_v3(stale, approval)
+
+
+@pytest.mark.parametrize("field", ["approval_id", "plan_id", "store_id", "identity_epoch"])
+def test_approval_identifiers_must_be_canonical(field):
+    with pytest.raises(ValidationError):
+        approval_of(**{field: "00000000-0000-4000-8000-00000000000B"})
+
+
+def test_approval_status_is_closed_and_verified_policy_cannot_acknowledge_unknown_risks():
+    for status in ("bogus", "approved "):
+        with pytest.raises(ValidationError):
+            approval_of(status=status)
+    with pytest.raises(ValidationError):
+        approval_of(
+            admission_policy="verified_only",
+            cost_policy="bounded_required",
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=False,
+        )
+
+
+def test_selected_bytes_below_the_limit_are_rejected_like_those_above_it():
+    data = body()
+    data["continuation"].update(file_indices=[0], uncertain_indices=[], remote_present_count=2)
+    data["request_limits"].update(max_presign=1, max_put=1, max_confirm=1, max_upload_bytes=5)
+    with pytest.raises(ValueError, match="selected file bytes"):
+        validate_continuation_selection(plan_of(data), MANIFEST)
+
+
+def test_observation_may_equal_but_never_follow_the_plan_preparation():
+    plan_of(changed(["continuation", "observed_at"], body()["prepared_at"]))
+    rejects(changed(["continuation", "observed_at"], "2026-11-02T11:00:00.000001Z"))
+
+
+def test_the_intent_digest_is_derived_from_the_exact_name():
+    data = body()
+    data["parameters"]["name"] = "Sample"
+    scope = data["scope"]
+    preimage = canon(
+        {
+            "service_origin": scope["service_origin"],
+            "api_base_path": scope["api_base_path"],
+            "owner": scope["owner"],
+            "project_id": scope["project_id"],
+            "name": "Sample",
+        }
+    )
+    data["continuation"]["intent_digest"] = sha(preimage)
+    plan_of(data)
+    data["continuation"]["intent_digest"] = sha(preimage.replace(b"Sample", b"sample"))
+    rejects(data)
+
+
+def test_cost_evidence_priced_for_other_work_is_rejected_for_a_v3_plan():
+    data = evidenced_plan()
+    plan_of(data)  # control: bound to this very work
+    data["cost_bound"] = {**data["cost_bound"], "work_digest": "0" * 64}
+    rejects(data)
+
+
+def test_plan_facts_hold_for_v3_at_their_evidence_and_window_boundaries():
+    data = evidenced_plan()
+
+    def altered(path, value):
+        copy = json.loads(json.dumps(data))
+        node = copy
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+        return copy
+
+    other_scope = {**data["scope"], "profile": "other"}
+    for evidence in ("grant", "cost_bound"):
+        rejects(altered([evidence, "scope"], other_scope))
+        rejects(altered([evidence, "checked_at"], "2026-11-02T11:00:00.000001Z"))
+        plan_of(altered([evidence, "checked_at"], "2026-11-02T11:00:00.000000Z"))
+        rejects(altered([evidence, "expires_at"], "2026-11-02T11:14:59.999999Z"))
+        plan_of(altered([evidence, "expires_at"], "2026-11-02T11:15:00.000000Z"))
+    rejects({**data, "budget_micros": None})  # a bounded policy needs its budget
+    rejects({**data, "expires_at": data["prepared_at"]})
+    rejects({**data, "prepared_at": "2026-11-02T10:59:59.000000Z"})
+    draft = altered(["status"], "draft")
+    draft["inputs_verified"] = False
+    draft["blockers"] = ["cost_unverified"]  # status and risks are right, the blocker set is not
+    rejects(draft)
+
+
+def test_a_plan_over_the_wire_limit_is_rejected_cleanly_even_when_only_its_canonical_form_is():
+    data = body()
+    data["root"]["anchor"] = "/" + "\U0001f600" * 1023
+    data["parameters"]["license"] = "\U0001f600" * 32
+    data["parameters"]["tags"] = sorted(f"t{n}" + "a" * 120 for n in range(10))
+    data["scope"]["profile"] = "p" * 128
+    data = seal(data)
+    raw = json.dumps(data, sort_keys=True, ensure_ascii=False).encode()
+    assert len(raw) < 16 * 1024 < len(canon(data))
+    with pytest.raises((ValidationError, ValueError)):
+        DatasetContinuationPlanV3.model_validate_json(raw)
+    with pytest.raises(ValueError, match="bounded upload wire"):
+        DatasetContinuationPlanV3.model_validate_json(canon(data) + b" " * 16384)
+
+
+def test_the_message_of_a_remote_change_is_a_fixed_instruction_to_prepare_again():
+    assert MESSAGES["continuation_remote_changed"] == (
+        "Uzak durum devam planı hazırlandıktan sonra değişti; "
+        "istek gönderilmedi. Yeniden hazırlayın."
+    )
+    assert MESSAGES["continuation_not_possible"] == (
+        "Devam bu işten şu an hazırlanamıyor. Nedenler için resume raporunu inceleyin."
+    )
+
+
+# --- the extra goldens: non-null evidence, fewer files and fewer bytes than the manifest ---------
+def test_the_evidenced_golden_pins_non_null_evidence_and_a_partial_selection():
+    raw = fixture("dataset-continuation-plan-v3-evidenced.json")
+    plan = DatasetContinuationPlanV3.model_validate_json(raw)
+    assert plan.encoded() == raw and plan.digest == EVIDENCED_DIGEST
+    assert plan.binding_digest() == EVIDENCED_BINDING
+    assert plan.grant is not None and plan.cost_bound is not None
+    assert plan.status == "prepared" and plan.risks == () and plan.blockers == ()
+    # Two of three files and 3 of the manifest's 8 bytes: M < N and fewer bytes than the total.
+    assert plan.continuation.file_indices == (0, 1) and plan.request_limits.max_upload_bytes == 3
+    approval = DatasetUploadApprovalV3.model_validate_json(
+        fixture("dataset-continuation-approval-v3-evidenced.json")
+    )
+    assert approval.encoded() == fixture("dataset-continuation-approval-v3-evidenced.json")
+    assert not (
+        approval.acknowledge_unverified_authority
+        or approval.acknowledge_unpriced_cost
+        or approval.acknowledge_unconfirmed_effects
+    )
+    validate_approval_binding_v3(plan, approval)
+    validate_continuation_selection(plan, MANIFEST)
+
+
+@pytest.mark.parametrize(
+    "name,digest,binding",
+    [
+        ("verification-only", CHECK_ONLY_DIGEST, CHECK_ONLY_BINDING),
+        ("all-files", ALL_FILES_DIGEST, ALL_FILES_BINDING),
+    ],
+)
+def test_the_selection_goldens_are_byte_exact_with_literal_digests(name, digest, binding):
+    raw = fixture(f"dataset-continuation-plan-v3-{name}.json")
+    plan = DatasetContinuationPlanV3.model_validate_json(raw)
+    assert plan.encoded() == raw
+    assert (plan.digest, plan.binding_digest()) == (digest, binding)

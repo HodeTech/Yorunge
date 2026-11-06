@@ -589,8 +589,9 @@ class ContinuationNotPossible(OperationError):
 
     def __init__(self, blockers: Sequence[Blocker], operation_id: str | None = None) -> None:
         ordered = tuple(blocker for blocker in BLOCKERS if blocker in set(blockers))
-        if not ordered or ordered != tuple(blockers):
-            raise ValueError("closed, ordered, distinct blockers required")
+        if not ordered or ordered != tuple(blockers) or "source_active" in ordered:
+            # An active source or descendant is ``operation_conflict`` with the successor named.
+            raise ValueError("closed, ordered, distinct blockers without source_active required")
         super().__init__("continuation_not_possible", operation_id)
         self.blockers = ordered
 

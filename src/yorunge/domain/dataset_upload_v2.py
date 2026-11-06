@@ -341,6 +341,8 @@ def check_acknowledgements(
 
 
 def require_acknowledgements(plan: DatasetUploadPlanV2, *, authority: bool, unpriced: bool) -> None:
+    if type(plan) is not DatasetUploadPlanV2:
+        raise YorungeError("upload_plan_not_valid")
     check_acknowledgements(
         plan.status,
         (authority, unpriced),
@@ -351,6 +353,8 @@ def require_acknowledgements(plan: DatasetUploadPlanV2, *, authority: bool, unpr
 def validate_approval_binding_v2(
     plan: DatasetUploadPlanV2, approval: DatasetUploadApprovalV2
 ) -> None:
+    if type(plan) is not DatasetUploadPlanV2 or type(approval) is not DatasetUploadApprovalV2:
+        raise ValueError("mixed upload plan/approval versions")
     try:
         require_acknowledgements(
             plan,

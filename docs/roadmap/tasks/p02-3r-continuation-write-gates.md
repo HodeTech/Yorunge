@@ -24,6 +24,8 @@ P02-3g verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation
 
 ## Sözleşme ve uygulama sınırı
 
+Admission, onayın bağını (`validate_approval_binding_v3`) ayrıca `status == approved` ve süresi içinde olma açısından denetler; bağ geçerli ama iptal edilmiş veya süresi dolmuş bir onay admission’ı açmaz.
+
 Mevcut clock, SQL transaction, lease/fence/CAS, kota ve hata öncelikleri yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. v3 kaydı v2 gibi ilk intent’te latch’lenir (admission’da latch yoktur); `verification_only` kayıt hiç latch’lenmez; intent ve makbuz kuralları 3M ile sınırlıdır. Başarı: 3M accepted makbuz, N dosyalık ordered metadata (`TransferVerification v3`) ve kök baseline eşliği.
 
 ## Kabul
