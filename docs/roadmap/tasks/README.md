@@ -49,8 +49,14 @@
 | [P02-2w](p02-2w-upload-maintainability.md) | Son kaynak öncesi upload doğrulama/transaction bakım sınırları |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 | [P02-R2](p02-r2-upload-content-cardinality.md) | Aynı hash/farklı adın ayrı uzak item olarak korunması; Accepted ADR-0028 ile ilk teslimden ayrılan özgün ihtiyacın açık takip sahibi |
-
 | [P02-R3](p02-r3-isolated-performance-acceptance.md) | Son kaynakta izole performans kabulü; ADR-0030 Proposed, mevcut kapılar henüz değişmedi |
+| [P02-R4](p02-r4-dataset-version-creation.md) | Veri sürümü oluşturma (freeze) etkisi; ADR-0033 ile P02-3c dışında bırakılan özgün ihtiyaç |
+| [P02-R5](p02-r5-dataset-item-byte-access.md) | Dataset öğesi baytlarına programatik erişim (`blocked`: API anahtarı kabul edilmiyor); uzak byte doğrulamasının açık sahibi |
+| [P02-R6](p02-r6-adopt-unknown-create.md) | Bilinmeyen create sonucunun açık dataset sahiplenmesi; ADR-0031 ile P02-3a dışında bırakılan özgün ihtiyaç |
+| [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Proposed); adımlar d–i |
+| [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Proposed); adımlar j–o |
+| [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Proposed); adımlar p–q |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3q](p02-3q-public-version-surface.md) | P02-3 adım kartları: [resume d–i](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o, sürüm p–q; hepsi `draft`, ADR onayına bağlı |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 

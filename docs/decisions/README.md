@@ -35,5 +35,8 @@
 | [0029](0029-evidence-provenance-privacy.md) | Kayıpsız kanıtta sınırlı tarihsel provenance ve yeni çıktı gizliliği | Accepted — 95 hash bağlı tarihsel kayıt; yeni Git/CI çıktılarında bounded gizlilik kapısı |
 
 | [0030](0030-development-performance-acceptance.md) | Yerel M5 kabulünü açık takipte tutarak geliştirme CI/teslimini sürdürmek | Proposed — kullanıcı kararı bekleniyor; mevcut reference kapıları değişmedi |
+| [0031](0031-upload-continuation.md) | Kesintiye uğramış private transferin soy bağlı, kanıta dayalı ve yeni onaylı devamı (aynı operation canlandırılmaz) | Proposed — kullanıcı onayı bekleniyor; ADR-0024 “restart yalnız read” hükmünü kapalı yolda tamamlar |
+| [0032](0032-bounded-download-and-verification-levels.md) | Sınırlı akışlı indirme, no-clobber yayın, resume ve kapalı doğrulama seviyeleri; dataset baytı hariç | Proposed — kullanıcı onayı bekleniyor; ADR-0025 GET/expiry hükmünü kısmen değiştirir |
+| [0033](0033-dataset-version-references.md) | Veri sürümü ve bölme sayımlarının salt okuma, değişmez referansı; freeze ertelenir | Proposed — kullanıcı onayı bekleniyor |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.

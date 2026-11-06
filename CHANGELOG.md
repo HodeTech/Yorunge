@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-11-06
+
+- P02-3 hazırlığı: [teslim planı](docs/roadmap/p02-3-delivery-plan.md), [hazırlık incelemesi](docs/research/p02-3-readiness-review.md), Proposed ADR-0031 (soy bağlı, yeni onaylı resume), ADR-0032 (akışlı indirme ve doğrulama seviyeleri) ve ADR-0033 (salt okuma veri sürümü referansı), üç taslak referans sözleşmesi, 14 adım ve üç üst kabul kartı ile P02-R4/R5/R6 takipleri. Ürün kodu veya uygulanmış davranış değişikliği yoktur; kararlar kullanıcı onayı bekler.
+
 ### Changed — 2026-11-06
 
 - P02-2 (private create, bounded upload ve aynı-ID salt okuma recovery) ve P02-2a/b/c verified; [PR #14](https://github.com/HodeTech/Yorunge/pull/14) kullanıcı tarafından `94aaaf0` merge commit’iyle development’a alındı. Master/release veya paket yayını değildir. Sıradaki epik P02-3 draft; ADR-0030 Proposed kalır.

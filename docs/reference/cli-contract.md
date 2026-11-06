@@ -48,9 +48,9 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**,
 | Aile | Planlanan işlemler | Aşama |
 |---|---|---|
 | `init`, `doctor`, `context`, `capabilities` | Başlangıç, profil/proje, tanılama, destek | P01 |
-| `datasets` | inspect, upload, download, verify, versions | P02/P03 |
+| `datasets` | inspect, upload (resume dahil), verify, versions; dataset öğesi `download` API anahtarıyla sunulmadığından yoktur ([P02-R5](../roadmap/tasks/p02-r5-dataset-item-byte-access.md)) | P02 |
 | `data` | LLM içeriği ingest, audit ve generate; görev bazlı tool seçimi | P03 |
-| `catalog`, `models` | Arama, çözümleme ve sürüm/detail; araçlı fit, merge/export | P02 temel / P03 araç görevleri |
+| `catalog`, `models` | Arama, çözümleme ve sürüm/detail; `models download` (kesin sürüm kimliği, P02-3n); araçlı fit, merge/export | P02 temel / P03 araç görevleri |
 | `llm` | models, chat, embed, rerank, quota | P02 |
 | `inference` | predict ve model/girdi uyumu | P02/P03 |
 | `resources` | status, quota, reservations ve quote | P02/P03; yazma ayrıca kapılı |
