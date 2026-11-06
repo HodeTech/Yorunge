@@ -1,7 +1,7 @@
 ---
 id: P02-3e
 phase: P02
-status: ready
+status: in_review
 size: M
 depends_on: [P02-3d]
 capabilities: [C03, C12]
@@ -16,7 +16,7 @@ Kesintiden sonra kullanıcı, hangi dosyanın gerçekten uzakta olduğunu, hangi
 
 ## Giren ve girmeyen kapsam
 
-Kaynağın soyunun (kök → kaynak; kaynak zincirin ucudur) bütün journal’larının dosya başına birleşik özetini (herhangi bir operation’da accepted confirm makbuzu var mı; yoksa confirm intent’i var mı; zincirde `rejected` makbuz var mı — makbuz içeriği dışarı çıkmaz) ve tam, sayfalı, kapalı sınırlı uzak envanteri alıp kapalı sınıflara (`confirmed`, `observed`, `pending_clean`, `pending_uncertain`, `drift_missing`, `conflict`, `inventory_unreliable`) ve [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) içindeki kapalı `blockers` kümesine indirgeyen saf mantık, canonical `classification_digest`/`inventory_digest` girer. Mevcut items okuyucusunun yanında non-raising bir indirgeyici ve repository’de salt okuma zincir özeti girer. Kaynak grafiğinin zaten tam olup olmadığının (reconcile önerisi) ve kaynağın zincirin ucu olup olmadığının (`source_superseded`: iptal edilmemiş torun var) hesabı da girer. Plan/onay tipi, kalıcı yazı, HTTP bileşimi, CLI/API ve continuation yürütmesi girmez.
+Kaynağın soyunun (kök → kaynak; kaynak zincirin ucudur) bütün journal’larının dosya başına birleşik özetini (herhangi bir operation’da accepted confirm makbuzu var mı; yoksa confirm intent’i var mı; zincirde `rejected` makbuz var mı — makbuz içeriği dışarı çıkmaz) ve tam, sayfalı, kapalı sınırlı uzak envanteri alıp kapalı sınıflara (`confirmed`, `observed`, `pending_clean`, `pending_uncertain`, `drift_missing`, `conflict`, `inventory_unreliable`) ve [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) içindeki kapalı `blockers` kümesine indirgeyen saf mantık, canonical `classification_digest`/`inventory_digest` girer. Mevcut items okuyucusunun yanında non-raising bir indirgeyici ve repository’de salt okuma zincir özeti girer. Kaynak grafiğinin zaten tam olup olmadığının (reconcile önerisi) ve kaynağın zincirin ucu olup olmadığının (`source_superseded`: iptal edilmemiş torun var; lease’i dolmamış torun `source_active`) hesabı da girer. Girdi olarak verilen sıralı zincirin tutarlılığı (tekrar eden kimlik/döngü, kök dışında ebeveynsiz kayıt, kopuk soy, farklı dataset kimliği) saf mantıkta doğrulanır; zinciri depodan yürüyen çözümleyici P02-3g’dedir. Plan/onay tipi, kalıcı yazı, HTTP bileşimi, CLI/API ve continuation yürütmesi girmez.
 
 ## Bağımlılıklar ve kararlar
 
@@ -24,14 +24,14 @@ P02-3d belirtimine bağlıdır. [ADR-0031](../../decisions/0031-upload-continuat
 
 ## Sözleşme ve uygulama sınırı
 
-Sınıflandırma, [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) içindeki kapalı karar tablosunun birebir uygulamasıdır. Giriş: manifest sırası, dosya başına birleşik zincir durumu, uzak item kümesi (ad, boyut, nullable sha256, tekil kimlik). Çıkış: dosya→sınıf vektörü, sayaçlar, plan düzeyi engeller, iki canonical özet. Öncelik: ad çakışması/kopya → `conflict`; yokluk → `drift_missing`; doğrulanamayan envanter → `inventory_unreliable`. Özetler item kimliği ve sağlayıcı zamanını içermez. Kaynak zincir tutarlılığı (döngü, farklı dataset kimliği, kopuk soy) `state_invalid`dir.
+Sınıflandırma, [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) içindeki kapalı karar tablosunun birebir uygulamasıdır. Giriş: manifest sırası, dosya başına birleşik zincir durumu, uzak item kümesi (ad, boyut, nullable sha256, tekil kimlik). Çıkış: dosya→sınıf vektörü, sayaçlar, plan düzeyi engeller, iki canonical özet. Öncelik ve güvenilirlik kuralı sözleşmededir: gözlenmiş çelişki her zaman `conflict`tır; envanter güvenilmezse çelişkisi olmayan her dosya `inventory_unreliable` olur ve yokluk/tekillik iddia edilmez. Özetler item kimliği ve sağlayıcı zamanını içermez. Kaynak zincir tutarlılığı (döngü, farklı dataset kimliği, kopuk soy) `state_invalid`dir.
 
 ## Kabul
 
 1. Tablonun bütün (zincir journal’ı × uzak envanter) hücreleri ayrı beklenen sonuçla sınanır; sınıf, sayaç ve özetler bağımsız elle hesaplanmış vektörlerle eşleşir (üreticinin kendi çıktısı tek oracle değildir).
 2. Kaynak journal şekilleri matrisi: yalnız presign; presign+PUT accepted; iki-worker PUT’ta biri unknown; confirm intent var/makbuz yok; accepted confirm. Hepsi doğru birleşik satıra (intent yok / intent var-makbuz yok / accepted) indirgenir; indirgeme varsayılmaz, test edilir.
 3. Zincir hücreleri: kök+bir veya iki continuation; confirm intent yalnız kökte; accepted makbuz bir atada; aynı dosya birden çok operation’da denenmiş; sıfır-intent’li bir v3 operation (yalnız `cancelled` torun olarak bulunabilir) birleşime bir şey katmaz ve kaynak olamaz; kaynağın iptal edilmemiş (intent’li veya başarıyla biten) torunu varsa `source_superseded` (kaynak değil o torun kullanılır; başarıyla bitmişse devam gerekmez); zincirde herhangi bir `rejected` makbuz (savunmacı engel); kaynak grafiği tam (kök 2+3N / v3 3M) iken `reconcile_available`.
-4. Saldırgan envanterler: kopya kimlik, aynı ad farklı boyut/SHA, aynı SHA başka ad, fazladan item, null sha256, `total` uyuşmazlığı, cursor döngüsü, 1.024 aşımı; hiçbiri `confirmed`/`observed`/`pending_clean` üretmez ve veri kesilmez.
+4. Saldırgan envanterler: kopya kimlik, aynı ad farklı boyut/SHA, aynı SHA başka ad, fazladan item, null sha256, `total` uyuşmazlığı, cursor döngüsü, 1.024 aşımı; hiçbiri plan hazırlanabilir sonuç vermez, etkilenen dosyalar güvenli sınıfa (`confirmed`, `observed`, `pending_*`) düşmez ve veri kesilmez (envanter kapıları: null hash, kopya kimlik, `total` uyuşmazlığı, cursor döngüsü, 128 sayfa, 1.024 item).
 5. Sıralama ve özet deterministiktir; item kimliği/sıra/zaman değişimi özeti değiştirmez, ad/boyut/SHA değişimi değiştirir.
 6. Zincir özeti makbuz içeriğini, anahtarı, URL’yi veya `created_dataset` alanlarını dışarı vermez; salt okuma hiçbir yazı/lease/permit üretmez.
 
@@ -41,4 +41,11 @@ Unit/contract/integration (gerçek SQLite journal fixture’ları + loopback TLS
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+Uygulandı, review bekliyor; `verified` değildir. Seçilen adlar ve yerleşim:
+
+- Saf mantık `yorunge.domain.upload_resume`: kapalı sözlükler (`FILE_CLASSES`, `BLOCKERS`), `merge_chain` (sıralı soy zincirinin tutarlılık denetimi ve birleşimi), `RemoteInventory`/`InventoryFold` (sayfa katlama; 128 sayfa ve 1.024 item sınırı, cursor döngüsü, `total` tutarlılığı), `classify` (dosya→sınıf vektörü, engeller, `file_indices`/`uncertain_indices`/`remote_present_count`, iki özet), `descendant_verdict` (`source_superseded`/`source_active`).
+- Journal olguları `yorunge.adapters.upload_chain.operation_journal` ve `StateUploads.operation_journal(operation_id)` (salt okuma; makbuz içeriği, anahtar, URL veya `created_dataset` taşımaz; v1/v2 operation’ları zincir köküdür).
+- Envanter toplayıcı `read_inventory` / `ObservedUploadPort.inventory` mevcut `read_items`ın yanındadır; manifest ile karşılaştırmaz, içerik tutarsızlığında hata vermez, biçimi bozuk sayfa/başka dataset/taşıma hatasında mevcut kodlarla hata verir. `ProviderItemsPage` gevşek sayfa modelidir; `ProviderItems` değişmedi.
+- Uygulama sırasında bulunan belirsizlik: referanstaki öncelik cümlesi `drift_missing`i `inventory_unreliable`dan üstün tutuyordu; güvenilmez listede yokluk iddia edilemeyeceğinden öncelik sözleşmede (referans ve bu kart) netleştirildi: gözlenmiş çelişki `conflict`, güvenilmez envanter çelişkisiz her dosya için `inventory_unreliable`, güvenilir envanterde tablo.
+
+Commit, kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-2--p02-3e-resume-kanıt-sınıflandırıcısı-ve-uzak-envanter-indirgeyicisi).

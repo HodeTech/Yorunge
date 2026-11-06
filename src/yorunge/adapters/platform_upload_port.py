@@ -37,6 +37,7 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_requests import upload_request_digest
+from yorunge.domain.upload_resume import RemoteInventory
 
 if TYPE_CHECKING:
     from yorunge.adapters.platform_upload_put import PreparedPutCall
@@ -399,3 +400,10 @@ class ObservedUploadPort(_Private):
         from yorunge.adapters.platform_upload_items import read_items
 
         return await read_items(self, client, dataset_id, deadline=deadline)
+
+    async def inventory(
+        self, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+    ) -> RemoteInventory:
+        from yorunge.adapters.platform_upload_items import read_inventory
+
+        return await read_inventory(self, client, dataset_id, deadline=deadline)
