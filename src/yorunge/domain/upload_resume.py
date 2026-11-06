@@ -14,12 +14,13 @@ that holds the source record, its lease, project membership and the local folder
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Final, Literal
 
 from yorunge.domain.capabilities import canonical
-from yorunge.domain.dataset_manifest import DatasetFile
+from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
 from yorunge.domain.dataset_upload import MAX_UPLOAD_FILES
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_graph import (
@@ -91,12 +92,23 @@ BLOCKERS: Final[tuple[Blocker, ...]] = (
 MAX_INVENTORY_ITEMS: Final = 1024
 MAX_INVENTORY_PAGES: Final = 128
 
+# "none" differs by vocabulary: a stage without a receipt versus a file without a confirm intent.
 ReceiptState = Literal["none", "accepted", "rejected"]
 ChainState = Literal["none", "intent", "accepted"]
 CHAIN_STATES: Final[tuple[ChainState, ...]] = ("none", "intent", "accepted")
+OperationStatus = Literal["admitted", "running", "unknown", "succeeded", "failed", "cancelled"]
+TERMINAL_STATUSES: Final[frozenset[OperationStatus]] = frozenset(
+    {"succeeded", "failed", "cancelled"}
+)
+Action = Literal["prepare", "reconcile", "wait", "none"]
+_DIGEST = re.compile(r"[0-9a-f]{64}")
 
 
-# --- journal facts and their chain union ---------------------------------------------------------
+def _is_digest(value: object) -> bool:
+    return type(value) is str and _DIGEST.fullmatch(value) is not None
+
+
+# --- journal facts and their chain union -------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class StageFact:
     """One stored stage intent and what became of its receipt; no receipt content."""
@@ -129,16 +141,18 @@ class ChainSummary:
     states: tuple[ChainState, ...]
     rejected_receipt: bool
     source_graph_complete: bool
-    operation_ids: tuple[str, ...]
+    manifest_digest: str
 
     def __post_init__(self) -> None:
         # ``merge_chain`` is the producer; a state outside the closed set must never read as
         # "no intent", because that would offer an unconfirmed file for a silent resend.
         if (
             type(self.states) is not tuple
+            or not 1 <= len(self.states) <= MAX_UPLOAD_FILES
             or any(state not in CHAIN_STATES for state in self.states)
             or type(self.rejected_receipt) is not bool
             or type(self.source_graph_complete) is not bool
+            or not _is_digest(self.manifest_digest)
         ):
             raise ValueError("invalid chain summary")
 
@@ -153,11 +167,9 @@ def _chain_is_consistent(journals: Sequence[OperationJournal]) -> bool:
             later.parent_operation_id == earlier.operation_id
             for earlier, later in zip(journals, journals[1:], strict=False)
         )
-        # A continuation exists only for a created dataset, and the whole lineage shares it and
-        # the manifest whose file indices the union is taken over.
+        # A continuation exists only for a created dataset, and the whole lineage shares it.
         and all(journal.dataset_id == root.dataset_id for journal in journals[1:])
         and (root.dataset_id is not None or len(journals) == 1)
-        and all(journal.manifest_digest == root.manifest_digest for journal in journals[1:])
     )
 
 
@@ -180,15 +192,24 @@ def _journal_is_valid(journal: OperationJournal, file_count: int, *, root: bool)
     )
 
 
-def merge_chain(journals: Sequence[OperationJournal], file_count: int) -> ChainSummary:
-    """Union of a lineage's journals, root first. A malformed chain is ``state_invalid``."""
-    if type(file_count) is not int or not 1 <= file_count <= MAX_UPLOAD_FILES:
+def merge_chain(journals: Sequence[OperationJournal], manifest: DatasetManifest) -> ChainSummary:
+    """Union of a lineage's journals over one manifest, root first.
+
+    Every journal must have been recorded over that manifest, so file indices mean the same file in
+    all of them; a malformed or foreign chain is ``state_invalid``.
+    """
+    file_count = manifest.file_count
+    if not 1 <= file_count <= MAX_UPLOAD_FILES:
         raise ValueError("unsupported upload file count")
     if not journals:
         raise ValueError("a chain holds at least its source")
-    if not _chain_is_consistent(journals) or not all(
-        _journal_is_valid(journal, file_count, root=position == 0)
-        for position, journal in enumerate(journals)
+    if (
+        not _chain_is_consistent(journals)
+        or any(journal.manifest_digest != manifest.digest for journal in journals)
+        or not all(
+            _journal_is_valid(journal, file_count, root=position == 0)
+            for position, journal in enumerate(journals)
+        )
     ):
         raise YorungeError("state_invalid")
     states: list[ChainState] = ["none"] * file_count
@@ -206,11 +227,11 @@ def merge_chain(journals: Sequence[OperationJournal], file_count: int) -> ChainS
             stage.receipt == "rejected" for journal in journals for stage in journal.stages
         ),
         source_graph_complete=journals[-1].graph_complete,
-        operation_ids=tuple(journal.operation_id for journal in journals),
+        manifest_digest=manifest.digest,
     )
 
 
-# --- remote inventory ----------------------------------------------------------------------------
+# --- remote inventory --------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class RemoteItem:
     """One listed remote item. ``repr`` hides name and identity: remote data stays out of logs."""
@@ -233,7 +254,11 @@ class RemoteInventory:
 
 
 class InventoryFold:
-    """Folds listing pages and stops at the first sign the listing cannot be trusted."""
+    """Folds listing pages and stops at the first sign the listing cannot be trusted.
+
+    The cap is checked per page: the page that crosses it is kept whole as evidence, so a too-large
+    listing holds at most one page more than ``MAX_INVENTORY_ITEMS``.
+    """
 
     def __init__(self) -> None:
         self._items: list[RemoteItem] = []
@@ -275,14 +300,30 @@ class InventoryFold:
         return RemoteInventory(tuple(self._items), frozenset(self._faults))
 
 
-# --- classification ------------------------------------------------------------------------------
+# --- classification ----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
-class Selection:
+class ContinuationSelection:
     """What a continuation plan would carry: every file that needs a transfer, never a subset."""
 
     file_indices: tuple[int, ...]
     uncertain_indices: tuple[int, ...]
     remote_present_count: int
+
+    def __post_init__(self) -> None:
+        files, uncertain = self.file_indices, self.uncertain_indices
+        if (
+            type(files) is not tuple
+            or type(uncertain) is not tuple
+            or any(
+                type(i) is not int or not 0 <= i < MAX_UPLOAD_FILES for i in (*files, *uncertain)
+            )
+            or list(files) != sorted(set(files))
+            or list(uncertain) != sorted(set(uncertain))
+            or not set(uncertain) <= set(files)
+            or type(self.remote_present_count) is not int
+            or not 0 <= self.remote_present_count <= MAX_UPLOAD_FILES
+        ):
+            raise ValueError("invalid continuation selection")
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,27 +333,53 @@ class Classification:
     classification_digest: str
     inventory_digest: str
 
+    def __post_init__(self) -> None:
+        if (
+            type(self.classes) is not tuple
+            or not 1 <= len(self.classes) <= MAX_UPLOAD_FILES
+            or any(name not in FILE_CLASSES for name in self.classes)
+            or type(self.blockers) is not tuple
+            or tuple(b for b in BLOCKERS if b in self.blockers) != self.blockers
+            or not _is_digest(self.classification_digest)
+            or not _is_digest(self.inventory_digest)
+            # A blocking class always stands behind its blocker.
+            or any(
+                name in self.classes and name not in self.blockers
+                for name in ("drift_missing", "conflict", "inventory_unreliable")
+            )
+        ):
+            raise ValueError("invalid classification")
+
     def count(self, file_class: FileClass) -> int:
         return self.classes.count(file_class)
 
+    def indices(self, file_class: FileClass) -> tuple[int, ...]:
+        """Manifest indices of one class, for reports; never a plan's selection."""
+        return tuple(i for i, name in enumerate(self.classes) if name == file_class)
+
+    def with_blockers(self, extra: Sequence[Blocker]) -> Classification:
+        """The same evidence with the blockers a caller derived from the source record merged in.
+
+        Report and ``--prepare`` plan only from the result, so ``plannable`` and ``selection()``
+        then answer for every blocker, not just the ones the evidence produced.
+        """
+        if any(name not in BLOCKERS for name in extra):
+            raise ValueError("closed blockers required")
+        merged = {*self.blockers, *extra}
+        return replace(self, blockers=tuple(b for b in BLOCKERS if b in merged))
+
     @property
     def plannable(self) -> bool:
-        """No blocker derived from journals, inventory or the source graph stands.
-
-        The caller that holds the source record, its lease, project membership and the local
-        folder adds its own blockers before a plan is prepared.
-        """
+        """No blocker is held. Evidence yields some; callers add theirs via ``with_blockers``."""
         return not self.blockers
 
-    def selection(self) -> Selection | None:
+    def selection(self) -> ContinuationSelection | None:
         """The transfer selection, or None while any blocker stands (it must not be read then)."""
         if self.blockers:
             return None
-        return Selection(
+        return ContinuationSelection(
             file_indices=tuple(i for i, c in enumerate(self.classes) if c in SEND_CLASSES),
-            uncertain_indices=tuple(
-                i for i, c in enumerate(self.classes) if c == "pending_uncertain"
-            ),
+            uncertain_indices=self.indices("pending_uncertain"),
             remote_present_count=sum(c in PRESENT_CLASSES for c in self.classes),
         )
 
@@ -338,7 +405,7 @@ def classification_digest(classes: Sequence[FileClass], chain: ChainSummary) -> 
 
 
 def _conflicts(file: DatasetFile, same_name: Sequence[RemoteItem], other_sha: bool) -> bool:
-    """Positive evidence that the remote holds a different thing under this file's name or hash."""
+    """Positive evidence that the remote holds something else under this file's name or hash."""
     return (
         len({item.item_id for item in same_name}) > 1
         or any(item.size != file.size for item in same_name)
@@ -360,20 +427,20 @@ def _by_chain_state(state: ChainState, exact: bool) -> FileClass:
 
 
 def classify(
-    files: Sequence[DatasetFile], chain: ChainSummary, inventory: RemoteInventory
+    manifest: DatasetManifest, chain: ChainSummary, inventory: RemoteInventory
 ) -> Classification:
     """Closed class per manifest file, blockers and digests.
 
-    Names are compared exactly (no case or Unicode folding). A manifest that repeats a path or a
-    hash cannot come from a v2 plan (duplicate content is refused at preparation) and is
-    ``state_invalid``.
+    Names are compared exactly (no case or Unicode folding). The table is applied as written even
+    for a manifest that repeats a hash (older history): the file whose content already sits under
+    another name is a ``conflict``, and ``--prepare`` refuses such content through the existing
+    producer eligibility check before any plan exists.
     """
+    files = manifest.files
+    if chain.manifest_digest != manifest.digest:
+        raise ValueError("chain summary belongs to another manifest")
     if len(chain.states) != len(files):
         raise ValueError("chain summary does not cover the manifest")
-    if len({file.path for file in files}) != len(files) or len(
-        {file.sha256 for file in files}
-    ) != len(files):
-        raise YorungeError("state_invalid")
     items = inventory.items
     by_name: dict[str, list[RemoteItem]] = {}
     by_sha: dict[str, list[RemoteItem]] = {}
@@ -421,14 +488,13 @@ def classify(
     )
 
 
-# --- descendants of the source -------------------------------------------------------------------
-DescendantStatus = Literal["admitted", "running", "unknown", "succeeded", "failed", "cancelled"]
+# --- descendants of the source -----------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
 class DescendantFact:
     operation_id: str
-    status: DescendantStatus
+    status: OperationStatus
     lease_active: bool
 
 
@@ -456,3 +522,63 @@ def descendant_verdict(descendants: Sequence[DescendantFact]) -> DescendantVerdi
     return DescendantVerdict(
         "source_active" if live else "source_superseded", descendant.operation_id
     )
+
+
+# --- the source itself and the action to recommend ---------------------------------------------
+@dataclass(frozen=True, slots=True)
+class SourceFacts:
+    """What the stored source record says; callers derive it from a validated record."""
+
+    status: OperationStatus
+    lease_active: bool
+    policy: Literal["verified_only", "explicit_attempt"]
+    has_created_dataset: bool
+
+
+def source_blockers(source: SourceFacts, descendants: DescendantVerdict) -> tuple[Blocker, ...]:
+    """The reference's eligibility table for the source and its descendants, in reporting order.
+
+    Project membership and the local folder need other evidence; they stay with their callers.
+    """
+    raised: set[Blocker] = set()
+    if source.status in TERMINAL_STATUSES:
+        raised.add("source_terminal")
+    if source.status == "admitted" or source.policy == "verified_only":
+        raised.add("source_ineligible")
+    if source.lease_active or descendants.blocker == "source_active":
+        raised.add("source_active")
+    if descendants.blocker == "source_superseded":
+        raised.add("source_superseded")
+    if not source.has_created_dataset:
+        raised.add("create_unknown")
+    return tuple(b for b in BLOCKERS if b in raised)
+
+
+# The single recommended action is the first of these whose blocker stands.
+_ACTIONS: Final[tuple[tuple[Blocker, Action], ...]] = (
+    ("source_terminal", "none"),
+    ("source_active", "wait"),
+    ("source_superseded", "none"),
+    ("source_ineligible", "none"),
+    ("create_unknown", "none"),
+    ("membership_unobserved", "none"),
+    ("known_negative", "none"),
+    ("reconcile_available", "reconcile"),
+    ("local_changed", "none"),
+    ("drift_missing", "none"),
+    ("conflict", "none"),
+    ("extra_remote", "none"),
+    ("inventory_unreliable", "none"),
+    ("inventory_too_large", "none"),
+)
+
+
+def recommended_action(blockers: Sequence[Blocker]) -> Action:
+    """``prepare`` only without blockers; otherwise the reference's priority picks one action."""
+    if any(name not in BLOCKERS for name in blockers):
+        raise ValueError("closed blockers required")
+    held = set(blockers)
+    for blocker, action in _ACTIONS:
+        if blocker in held:
+            return action
+    return "prepare"

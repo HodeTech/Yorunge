@@ -49,8 +49,8 @@ def list_inventory(journal, certificates, routes, *, seconds=10):
 
 
 def classes_of(journal, inventory):
-    chain = ChainSummary(("none", "none", "none"), False, False, ("op",))
-    return classify(journal.manifest.files, chain, inventory)
+    chain = ChainSummary(("none", "none", "none"), False, False, journal.manifest.digest)
+    return classify(journal.manifest, chain, inventory)
 
 
 def test_a_complete_two_page_listing_is_returned_in_listing_order_with_no_fault(

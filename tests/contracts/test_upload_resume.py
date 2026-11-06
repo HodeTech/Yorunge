@@ -9,7 +9,7 @@ from typing import get_args
 
 import pytest
 
-from yorunge.domain.dataset_manifest import DatasetFile
+from yorunge.domain.dataset_manifest import DatasetFile, build_manifest
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import (
     BLOCKERS,
@@ -19,18 +19,23 @@ from yorunge.domain.upload_resume import (
     MAX_INVENTORY_PAGES,
     Blocker,
     ChainSummary,
+    Classification,
+    ContinuationSelection,
     DescendantFact,
+    DescendantVerdict,
     FileClass,
     InventoryFold,
     OperationJournal,
     RemoteInventory,
     RemoteItem,
-    Selection,
+    SourceFacts,
     StageFact,
     classify,
     descendant_verdict,
     inventory_digest,
     merge_chain,
+    recommended_action,
+    source_blockers,
 )
 
 REFERENCE = Path(__file__).parents[2] / "docs" / "reference" / "dataset-upload-continuation.md"
@@ -44,6 +49,9 @@ A = DatasetFile(path="a.bin", size=3, sha256=sha("a"))
 B = DatasetFile(path="b.bin", size=0, sha256=sha("b"))
 C = DatasetFile(path="c.bin", size=5, sha256=sha("c"))
 FILES = (A, B, C)
+MANIFEST_A = build_manifest((A,))
+MANIFEST = build_manifest(FILES)
+MANIFESTS = {1: MANIFEST_A, 3: MANIFEST}
 IDS = {"a.bin": "id-a", "b.bin": "id-b", "c.bin": "id-c"}
 
 
@@ -57,7 +65,8 @@ def item(file, *, path=None, size=None, digest="same", item_id=None):
 
 
 def chain(*states, rejected=False, complete=False):
-    return ChainSummary(tuple(states), rejected, complete, ("op",))
+    digest = MANIFESTS[len(states)].digest if len(states) in MANIFESTS else sha("other manifest")
+    return ChainSummary(tuple(states), rejected, complete, digest)
 
 
 def inventory(*items, faults=()):
@@ -66,7 +75,7 @@ def inventory(*items, faults=()):
 
 def one(state, items, faults=()):
     """Class of a single-file manifest: the decision-table cell for (state, items)."""
-    return classify((A,), chain(state), inventory(*items, faults=faults)).classes[0]
+    return classify(MANIFEST_A, chain(state), inventory(*items, faults=faults)).classes[0]
 
 
 # --- the closed decision table ------------------------------------------------------------------
@@ -119,7 +128,7 @@ ATTACKS = {
 @pytest.mark.parametrize("name", ATTACKS)
 def test_hostile_or_unverifiable_inventories_never_leave_a_safe_class(state, name):
     items, faults, expected = ATTACKS[name]
-    result = classify((A,), chain(state), inventory(*items, faults=faults))
+    result = classify(MANIFEST_A, chain(state), inventory(*items, faults=faults))
     assert result.classes == (expected,)
     assert not result.plannable
     assert expected in result.blockers
@@ -136,7 +145,7 @@ def test_unreliable_listing_hides_absence_so_drift_is_never_claimed():
 
 def test_a_positive_conflict_outranks_an_unreliable_listing_and_other_files_stay_unreliable():
     result = classify(
-        FILES,
+        MANIFEST,
         chain("accepted", "none", "none"),
         inventory(item(A, size=4), item(B), faults=("cursor_loop",)),
     )
@@ -147,7 +156,7 @@ def test_a_positive_conflict_outranks_an_unreliable_listing_and_other_files_stay
 def test_blockers_follow_the_closed_order_and_only_what_was_observed():
     extra = item(A, path="extra.bin", digest=sha("e"), item_id="id-extra")
     result = classify(
-        FILES,
+        MANIFEST,
         chain("accepted", "accepted", "none", rejected=True, complete=True),
         inventory(item(A), extra, faults=("too_large",)),
     )
@@ -165,7 +174,7 @@ def test_blockers_follow_the_closed_order_and_only_what_was_observed():
 
 def test_extra_remote_item_blocks_without_changing_the_files_classes():
     extra = item(A, path="extra.bin", digest=sha("e"), item_id="id-extra")
-    result = classify(FILES, chain("accepted", "none", "none"), inventory(item(A), extra))
+    result = classify(MANIFEST, chain("accepted", "none", "none"), inventory(item(A), extra))
     assert result.classes == ("confirmed", "pending_clean", "pending_clean")
     assert result.blockers == ("extra_remote",)
     assert not result.plannable
@@ -173,30 +182,30 @@ def test_extra_remote_item_blocks_without_changing_the_files_classes():
 
 def test_selection_counters_and_the_remote_present_count():
     result = classify(
-        FILES,
+        MANIFEST,
         chain("accepted", "intent", "none"),
         inventory(item(A)),
     )
     assert result.classes == ("confirmed", "pending_uncertain", "pending_clean")
     # The whole pending set, never a partial selection; present + sent covers the manifest.
-    assert result.selection() == Selection((1, 2), (1,), 1)
+    assert result.selection() == ContinuationSelection((1, 2), (1,), 1)
     assert [result.count(c) for c in FILE_CLASSES] == [1, 0, 1, 1, 0, 0, 0]
     assert result.blockers == () and result.plannable
 
 
 def test_a_fully_present_folder_is_a_valid_verification_only_selection():
     result = classify(
-        FILES, chain("accepted", "none", "intent"), inventory(item(A), item(B), item(C))
+        MANIFEST, chain("accepted", "none", "intent"), inventory(item(A), item(B), item(C))
     )
     assert result.classes == ("confirmed", "observed", "observed")
-    assert result.selection() == Selection((), (), 3)
+    assert result.selection() == ContinuationSelection((), (), 3)
     assert result.plannable
 
 
 def test_one_blocking_file_makes_the_whole_classification_unplannable():
     for bad in ("drift_missing", "conflict"):
         items = [item(B)] if bad == "drift_missing" else [item(A, size=9), item(B)]
-        result = classify(FILES, chain("accepted", "none", "none"), inventory(*items))
+        result = classify(MANIFEST, chain("accepted", "none", "none"), inventory(*items))
         assert bad in result.blockers and not result.plannable
 
 
@@ -205,15 +214,15 @@ def stage(kind, index=None, receipt="accepted"):
     return StageFact(kind, index, receipt)
 
 
-def op(name, parent, stages, *, dataset="ds", manifest="m", complete=False):
+def op(name, parent, stages, *, dataset="ds", manifest=MANIFEST.digest, complete=False):
     return OperationJournal(name, parent, dataset, manifest, tuple(stages), complete)
 
 
 ROOT_PREFIX = [stage("create"), stage("project_link")]
 
 
-def states(*journals, count=3):
-    return merge_chain(journals, count).states
+def states(*journals):
+    return merge_chain(journals, MANIFEST).states
 
 
 def test_only_confirm_facts_change_the_state_never_presign_or_put():
@@ -250,21 +259,22 @@ def test_a_continuation_without_intents_adds_nothing():
 
 def test_a_rejected_receipt_anywhere_in_the_lineage_is_remembered():
     root = op("r", None, [stage("presign", 0, "rejected")])
-    assert merge_chain([root], 3).rejected_receipt
+    assert merge_chain([root], MANIFEST).rejected_receipt
     later = [op("r", None, []), op("c", "r", [stage("put", 1, "rejected")])]
-    assert merge_chain(later, 3).rejected_receipt
-    assert not merge_chain([op("r", None, [stage("confirm", 0, "none")])], 3).rejected_receipt
+    assert merge_chain(later, MANIFEST).rejected_receipt
+    assert not merge_chain(
+        [op("r", None, [stage("confirm", 0, "none")])], MANIFEST
+    ).rejected_receipt
 
 
 def test_only_the_source_decides_whether_its_own_graph_is_already_complete():
     root = op("r", None, [], complete=True)
     child = op("c", "r", [], complete=False)
-    assert merge_chain([root], 3).source_graph_complete
-    assert not merge_chain([root, child], 3).source_graph_complete
+    assert merge_chain([root], MANIFEST).source_graph_complete
+    assert not merge_chain([root, child], MANIFEST).source_graph_complete
     assert merge_chain(
-        [op("r", None, []), op("c", "r", [], complete=True)], 3
+        [op("r", None, []), op("c", "r", [], complete=True)], MANIFEST
     ).source_graph_complete
-    assert merge_chain([root, child], 3).operation_ids == ("r", "c")
 
 
 @pytest.mark.parametrize(
@@ -293,33 +303,55 @@ def test_only_the_source_decides_whether_its_own_graph_is_already_complete():
 )
 def test_an_inconsistent_chain_or_stage_is_state_invalid(journals):
     with pytest.raises(YorungeError) as raised:
-        merge_chain(journals, 3)
+        merge_chain(journals, MANIFEST)
     assert raised.value.code == "state_invalid"
 
 
-@pytest.mark.parametrize("count", [0, 129, -1, True, None, 1.0])
-def test_merge_chain_rejects_programming_errors(count):
+def numbered_manifest(count):
+    return build_manifest(
+        tuple(DatasetFile(path=f"f{n:03}.bin", size=1, sha256=sha(str(n))) for n in range(count))
+    )
+
+
+def test_merge_chain_takes_the_largest_upload_manifest_and_refuses_larger_or_empty_input():
+    largest, larger = numbered_manifest(128), numbered_manifest(129)
+    summary = merge_chain([op("r", None, [], manifest=largest.digest)], largest)
+    assert len(summary.states) == 128
     with pytest.raises(ValueError, match="unsupported upload file count"):
-        merge_chain([op("r", None, [])], count)
+        merge_chain([op("r", None, [], manifest=larger.digest)], larger)
     with pytest.raises(ValueError, match="at least its source"):
-        merge_chain([], 3)
+        merge_chain([], MANIFEST)
+
+
+def test_a_journal_recorded_over_another_manifest_is_state_invalid():
+    for journals in (
+        [op("r", None, [], manifest=sha("elsewhere"))],
+        [op("r", None, []), op("c", "r", [], manifest=sha("elsewhere"))],
+    ):
+        with pytest.raises(YorungeError) as raised:
+            merge_chain(journals, MANIFEST)
+        assert raised.value.code == "state_invalid"
 
 
 def test_classify_requires_a_summary_for_exactly_the_manifest():
+    with pytest.raises(ValueError, match="belongs to another manifest"):
+        classify(MANIFEST, chain("none", "none"), inventory())
+    short = ChainSummary(("none", "none"), False, False, MANIFEST.digest)
     with pytest.raises(ValueError, match="does not cover the manifest"):
-        classify(FILES, chain("none", "none"), inventory())
+        classify(MANIFEST, short, inventory())
 
 
 # --- digests ------------------------------------------------------------------------------------
 def test_digests_equal_hand_written_preimages():
     a = DatasetFile(path="a.bin", size=3, sha256="a" * 64)
     b = DatasetFile(path="b.bin", size=0, sha256="b" * 64)
-    summary = ChainSummary(("accepted", "intent"), True, False, ("op",))
+    manifest = build_manifest((a, b))
+    summary = ChainSummary(("accepted", "intent"), True, False, manifest.digest)
     items = [
         RemoteItem("b.bin", 0, "b" * 64, "id-2"),
         RemoteItem("a.bin", 3, "a" * 64, "id-1"),
     ]
-    result = classify((a, b), summary, RemoteInventory(tuple(items)))
+    result = classify(manifest, summary, RemoteInventory(tuple(items)))
     assert result.classes == ("confirmed", "observed")
     inventory_preimage = (
         '{"items":[["a.bin",3,"' + "a" * 64 + '"],["b.bin",0,"' + "b" * 64 + '"]],'
@@ -339,22 +371,22 @@ def test_a_null_hash_stays_null_in_the_inventory_preimage():
     only = RemoteItem("a.bin", 3, None, "id-1")
     preimage = '{"items":[["a.bin",3,null]],"kind":"upload_inventory"}'
     assert (
-        classify((A,), chain("none"), RemoteInventory((only,))).inventory_digest
+        classify(MANIFEST_A, chain("none"), RemoteInventory((only,))).inventory_digest
         == hashlib.sha256(preimage.encode()).hexdigest()
     )
 
 
 def test_digests_ignore_item_identity_order_and_provider_time_but_follow_content():
-    base = classify(FILES, chain("accepted", "none", "intent"), inventory(item(A), item(C)))
+    base = classify(MANIFEST, chain("accepted", "none", "intent"), inventory(item(A), item(C)))
     shuffled = classify(
-        FILES,
+        MANIFEST,
         chain("accepted", "none", "intent"),
         inventory(item(C, item_id="other-c"), item(A, item_id="other-a")),
     )
     assert shuffled.inventory_digest == base.inventory_digest
     assert shuffled.classification_digest == base.classification_digest
     renamed = classify(
-        FILES, chain("accepted", "none", "intent"), inventory(item(A), item(C, size=6))
+        MANIFEST, chain("accepted", "none", "intent"), inventory(item(A), item(C, size=6))
     )
     assert renamed.inventory_digest != base.inventory_digest
     for changed in (
@@ -362,21 +394,21 @@ def test_digests_ignore_item_identity_order_and_provider_time_but_follow_content
         item(A, digest=sha("q")),
         item(A, size=8),
     ):
-        other = classify(FILES, chain("accepted", "none", "intent"), inventory(changed, item(C)))
+        other = classify(MANIFEST, chain("accepted", "none", "intent"), inventory(changed, item(C)))
         assert other.inventory_digest != base.inventory_digest
 
 
 def test_classification_digest_follows_the_lineage_summary_not_only_the_classes():
     # An exact item makes both journal states 'observed', yet the lineages differ.
     present = inventory(item(A))
-    never = classify((A,), chain("none"), present)
-    attempted = classify((A,), chain("intent"), present)
+    never = classify(MANIFEST_A, chain("none"), present)
+    attempted = classify(MANIFEST_A, chain("intent"), present)
     assert never.classes == attempted.classes == ("observed",)
     assert never.classification_digest != attempted.classification_digest
-    rejected = classify((A,), chain("none", rejected=True), present)
+    rejected = classify(MANIFEST_A, chain("none", rejected=True), present)
     assert rejected.classification_digest != never.classification_digest
     # Completeness of the source graph is not part of the digest: it is a blocker, not a class.
-    complete = classify((A,), chain("none", complete=True), present)
+    complete = classify(MANIFEST_A, chain("none", complete=True), present)
     assert complete.classification_digest == never.classification_digest
 
 
@@ -548,7 +580,7 @@ def test_facts_and_summaries_carry_no_receipt_key_url_or_dataset_content():
         "states",
         "rejected_receipt",
         "source_graph_complete",
-        "operation_ids",
+        "manifest_digest",
     }
 
 
@@ -567,20 +599,24 @@ def test_every_class_is_reachable_from_some_state_and_inventory():
 def test_each_evidence_blocker_alone_blocks_planning_and_withholds_the_selection():
     extra = item(A, path="extra.bin", digest=sha("e"), item_id="id-extra")
     alone = {
-        "reconcile_available": classify((A,), chain("accepted", complete=True), inventory(item(A))),
-        "known_negative": classify((A,), chain("accepted", rejected=True), inventory(item(A))),
-        "drift_missing": classify((A,), chain("accepted"), inventory()),
-        "conflict": classify((A,), chain("none"), inventory(item(A, size=9))),
-        "extra_remote": classify((A,), chain("accepted"), inventory(item(A), extra)),
+        "reconcile_available": classify(
+            MANIFEST_A, chain("accepted", complete=True), inventory(item(A))
+        ),
+        "known_negative": classify(
+            MANIFEST_A, chain("accepted", rejected=True), inventory(item(A))
+        ),
+        "drift_missing": classify(MANIFEST_A, chain("accepted"), inventory()),
+        "conflict": classify(MANIFEST_A, chain("none"), inventory(item(A, size=9))),
+        "extra_remote": classify(MANIFEST_A, chain("accepted"), inventory(item(A), extra)),
         "inventory_unreliable": classify(
-            (A,), chain("none"), inventory(item(A), faults=("cursor_loop",))
+            MANIFEST_A, chain("none"), inventory(item(A), faults=("cursor_loop",))
         ),
     }
     for blocker, result in alone.items():
         assert result.blockers == (blocker,), blocker
         assert not result.plannable and result.selection() is None
     # Too many items is always also an untrustworthy listing.
-    huge = classify((A,), chain("none"), inventory(item(A), faults=("too_large",)))
+    huge = classify(MANIFEST_A, chain("none"), inventory(item(A), faults=("too_large",)))
     assert huge.blockers == ("inventory_unreliable", "inventory_too_large")
     assert huge.selection() is None
 
@@ -589,22 +625,26 @@ def test_each_evidence_blocker_alone_blocks_planning_and_withholds_the_selection
 def test_names_are_compared_exactly_without_case_or_unicode_folding(name):
     path = "a.bin" if name == "A.BIN" else unicodedata.normalize("NFC", "ä.bin")
     file = DatasetFile(path=path, size=3, sha256=sha("a"))
-    other = classify((file,), chain("none"), inventory(RemoteItem(name, 3, sha("z"), "x")))
+    manifest = build_manifest((file,))
+    unsent = ChainSummary(("none",), False, False, manifest.digest)
+    other = classify(manifest, unsent, inventory(RemoteItem(name, 3, sha("z"), "x")))
     # A look-alike name is a foreign item, not the file; the file itself is not on the remote.
     assert other.classes == ("pending_clean",)
     assert other.blockers == ("extra_remote",) and other.selection() is None
-    same = classify((file,), chain("none"), inventory(RemoteItem(name, 3, file.sha256, "x")))
+    same = classify(manifest, unsent, inventory(RemoteItem(name, 3, file.sha256, "x")))
     # The same content under a look-alike name is a copy of this file.
     assert same.classes == ("conflict",) and not same.plannable
 
 
-def test_a_manifest_that_repeats_a_path_or_a_hash_is_state_invalid():
+def test_a_manifest_that_repeats_a_hash_follows_the_table_and_marks_the_twin_a_conflict():
     twin = DatasetFile(path="twin.bin", size=3, sha256=A.sha256)
-    again = DatasetFile(path=A.path, size=4, sha256=sha("other"))
-    for files in ((A, twin), (A, again)):
-        with pytest.raises(YorungeError) as raised:
-            classify(files, chain("none", "none"), inventory())
-        assert raised.value.code == "state_invalid"
+    manifest = build_manifest((A, twin))
+    summary = ChainSummary(("none", "none"), False, False, manifest.digest)
+    # Nothing remote: both look unsent (`--prepare` refuses duplicate content before any plan).
+    assert classify(manifest, summary, inventory()).classes == ("pending_clean", "pending_clean")
+    # Once one of them is there, the other is a copy of it.
+    present = classify(manifest, summary, inventory(item(A)))
+    assert present.classes == ("observed", "conflict") and not present.plannable
 
 
 @pytest.mark.parametrize(
@@ -612,12 +652,12 @@ def test_a_manifest_that_repeats_a_path_or_a_hash_is_state_invalid():
 )
 def test_a_chain_summary_refuses_states_outside_the_closed_set(states):
     with pytest.raises(ValueError, match="invalid chain summary"):
-        ChainSummary(states, False, False, ("op",))
+        ChainSummary(states, False, False, MANIFEST.digest)
     with pytest.raises(ValueError, match="invalid chain summary"):
-        ChainSummary(["none"], False, False, ("op",))
+        ChainSummary(["none"], False, False, MANIFEST.digest)
     for flags in ((1, False), (False, 1), ("no", False)):
         with pytest.raises(ValueError, match="invalid chain summary"):
-            ChainSummary(("none",), *flags, ("op",))
+            ChainSummary(("none",), *flags, MANIFEST.digest)
 
 
 def test_a_root_may_create_and_link_while_its_continuation_sends_files():
@@ -655,3 +695,173 @@ def test_remote_names_and_identities_stay_out_of_reprs():
 def test_the_page_limit_and_item_cap_hold_their_documented_values():
     # The fold's own tests import these constants, so only a literal pins the contract.
     assert MAX_INVENTORY_ITEMS == 1024 and MAX_INVENTORY_PAGES == 128
+
+
+# --- review round 2: rejected receipts, blocker merging, source eligibility, actions ------------
+def test_a_rejected_receipt_is_found_in_any_journal_not_only_when_all_stages_are_rejected():
+    base = [stage("presign", 0), stage("put", 0, "none")]
+    early = op("r", None, [stage("presign", 0, "rejected"), stage("put", 0, "none")])
+    late = op("c", "r", [stage("presign", 0, "none")])
+    clean_root = op("r", None, base)
+    flagged_child = op("c", "r", [stage("put", 0, "rejected")])
+    assert merge_chain([early], MANIFEST).rejected_receipt
+    assert merge_chain([early, late], MANIFEST).rejected_receipt  # only an ancestor rejected
+    assert merge_chain([clean_root, flagged_child], MANIFEST).rejected_receipt  # only the source
+    assert not merge_chain([clean_root, late], MANIFEST).rejected_receipt
+
+
+def test_with_blockers_merges_caller_blockers_in_the_closed_order_and_closes_the_selection():
+    clear = classify(MANIFEST_A, chain("none"), inventory())
+    assert clear.plannable and clear.selection() is not None
+    held = clear.with_blockers(("local_changed", "source_active", "source_active"))
+    assert held.blockers == ("source_active", "local_changed")
+    assert not held.plannable and held.selection() is None
+    assert held.classes == clear.classes and held.inventory_digest == clear.inventory_digest
+    mixed = classify(MANIFEST_A, chain("accepted", rejected=True), inventory(item(A)))
+    assert mixed.with_blockers(("source_terminal", "known_negative")).blockers == (
+        "source_terminal",
+        "known_negative",
+    )
+    assert clear.with_blockers(()) == clear
+    with pytest.raises(ValueError, match="closed blockers"):
+        clear.with_blockers(("bogus",))
+
+
+def test_indices_report_one_class_without_being_a_selection():
+    result = classify(MANIFEST, chain("accepted", "intent", "none"), inventory(item(A), item(B)))
+    assert result.classes == ("confirmed", "observed", "pending_clean")
+    assert [result.indices(name) for name in FILE_CLASSES] == [(0,), (1,), (2,), (), (), (), ()]
+    blocked = classify(MANIFEST, chain("accepted", "none", "none"), inventory())
+    assert blocked.indices("drift_missing") == (0,) and blocked.selection() is None
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"classes": ()},
+        {"classes": ("bogus",)},
+        {"classes": ["conflict"]},
+        {"blockers": ("extra_remote", "conflict")},  # not in the closed order
+        {"blockers": ("conflict", "conflict")},
+        {"blockers": ("bogus",)},
+        {"blockers": ["conflict"]},
+        {"classification_digest": "C" * 64},
+        {"inventory_digest": "short"},
+        {"classes": ("conflict",), "blockers": ()},  # a blocking class without its blocker
+        {"classes": ("drift_missing",), "blockers": ("conflict",)},
+        {"classes": ("inventory_unreliable",), "blockers": ("conflict",)},
+        {"classes": ("confirmed",) * 129},
+    ],
+)
+def test_a_classification_refuses_inconsistent_parts(changes):
+    good = classify(MANIFEST_A, chain("none"), inventory())
+    fields_of = {
+        "classes": good.classes,
+        "blockers": good.blockers,
+        "classification_digest": good.classification_digest,
+        "inventory_digest": good.inventory_digest,
+    }
+    with pytest.raises(ValueError, match="invalid classification"):
+        Classification(**{**fields_of, **changes})
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ((1, 0), (), 0),
+        ((0, 0), (), 0),
+        ((0,), (1,), 0),
+        ((0,), (0, 0), 0),
+        ((True,), (), 0),
+        ((128,), (), 0),
+        ((0,), (), -1),
+        ((0,), (), 129),
+        ([0], (), 0),
+        ((0,), (), True),
+    ],
+)
+def test_a_continuation_selection_refuses_unordered_or_open_parts(arguments):
+    with pytest.raises(ValueError, match="invalid continuation selection"):
+        ContinuationSelection(*arguments)
+
+
+def test_a_chain_summary_refuses_empty_or_oversized_state_vectors():
+    for states in ((), ("none",) * 129):
+        with pytest.raises(ValueError, match="invalid chain summary"):
+            ChainSummary(states, False, False, MANIFEST.digest)
+    with pytest.raises(ValueError, match="invalid chain summary"):
+        ChainSummary(("none",), False, False, "not a digest")
+
+
+NO_DESCENDANT = DescendantVerdict(None, None)
+
+
+def facts(status="unknown", lease=False, policy="explicit_attempt", dataset=True):
+    return SourceFacts(status, lease, policy, dataset)
+
+
+@pytest.mark.parametrize(
+    "source,verdict,expected",
+    [
+        # the eligible shapes: a lapsed running source and an unknown one
+        (facts("running"), NO_DESCENDANT, ()),
+        (facts("unknown"), NO_DESCENDANT, ()),
+        (facts("succeeded"), NO_DESCENDANT, ("source_terminal",)),
+        (facts("failed"), NO_DESCENDANT, ("source_terminal",)),
+        (facts("cancelled"), NO_DESCENDANT, ("source_terminal",)),
+        (facts("admitted"), NO_DESCENDANT, ("source_ineligible",)),
+        (facts("admitted", lease=True), NO_DESCENDANT, ("source_ineligible", "source_active")),
+        (facts("unknown", policy="verified_only"), NO_DESCENDANT, ("source_ineligible",)),
+        (facts("running", lease=True), NO_DESCENDANT, ("source_active",)),
+        (facts("unknown", lease=True), NO_DESCENDANT, ("source_active",)),
+        (facts("unknown", dataset=False), NO_DESCENDANT, ("create_unknown",)),
+        (facts("unknown"), DescendantVerdict("source_active", "d"), ("source_active",)),
+        (facts("unknown"), DescendantVerdict("source_superseded", "d"), ("source_superseded",)),
+        (
+            facts("succeeded", policy="verified_only", dataset=False),
+            DescendantVerdict("source_superseded", "d"),
+            ("source_ineligible", "source_superseded", "source_terminal", "create_unknown"),
+        ),
+    ],
+)
+def test_source_blockers_follow_the_eligibility_table_in_reporting_order(source, verdict, expected):
+    result = source_blockers(source, verdict)
+    assert result == tuple(b for b in BLOCKERS if b in expected)
+    assert set(result) == set(expected)
+
+
+@pytest.mark.parametrize(
+    "blockers,expected",
+    [
+        ((), "prepare"),
+        (("source_terminal",), "none"),
+        (("source_active",), "wait"),
+        (("source_superseded",), "none"),
+        (("source_ineligible",), "none"),
+        (("create_unknown",), "none"),
+        (("membership_unobserved",), "none"),
+        (("known_negative",), "none"),
+        (("reconcile_available",), "reconcile"),
+        (("local_changed",), "none"),
+        (("drift_missing",), "none"),
+        (("conflict",), "none"),
+        (("extra_remote",), "none"),
+        (("inventory_unreliable",), "none"),
+        (("inventory_unreliable", "inventory_too_large"), "none"),
+        # the first match in the reference's order wins
+        (("source_terminal", "source_active"), "none"),
+        (("source_active", "source_superseded"), "wait"),
+        (("source_active", "reconcile_available"), "wait"),
+        (("reconcile_available", "known_negative"), "none"),
+        (("reconcile_available", "local_changed"), "reconcile"),
+        (("reconcile_available", "drift_missing", "conflict"), "reconcile"),
+    ],
+)
+def test_the_recommended_action_follows_the_reference_priority(blockers, expected):
+    assert recommended_action(blockers) == expected
+
+
+def test_recommended_action_refuses_open_names_and_answers_for_every_blocker():
+    with pytest.raises(ValueError, match="closed blockers"):
+        recommended_action(("bogus",))
+    assert {b: recommended_action((b,)) for b in BLOCKERS}.keys() == set(BLOCKERS)

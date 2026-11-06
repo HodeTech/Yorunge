@@ -488,7 +488,8 @@ class StateUploads:
 
     def operation_journal(self, operation_id: str) -> OperationJournal:
         """Read-only stage facts for the resume classifier; writes nothing and grants nothing."""
-        return stored_journal(self.show(operation_id=operation_id))
+        with self.phase(operation_id):
+            return stored_journal(self.show(operation_id=operation_id))
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None

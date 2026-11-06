@@ -15,7 +15,12 @@ from yorunge.domain.dataset_transfer import VerifiedFile
 from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.platform_upload_items import ProviderItems
 from yorunge.domain.upload_checks import mandatory_http_failure
-from yorunge.domain.upload_resume import InventoryFold, RemoteInventory, RemoteItem
+from yorunge.domain.upload_resume import (
+    MAX_INVENTORY_PAGES,
+    InventoryFold,
+    RemoteInventory,
+    RemoteItem,
+)
 
 
 async def _page(
@@ -86,7 +91,7 @@ async def read_items(
     ids: set[str] = set()
     cursors: set[str] = set()
     cursor = None
-    for _ in range(128):
+    for _ in range(MAX_INVENTORY_PAGES):
         page = metadata.items(
             await _page(port, client, dataset_id, cursor, deadline),
             dataset_id,
@@ -129,7 +134,7 @@ async def read_inventory(
             dataset_id,
             port._credential.secret,
         )
-        _remaining(min(deadline, port._budget.end))
+        _remaining(deadline)
         cursor = fold.add(
             [
                 RemoteItem(item.original_filename, item.file_size_bytes, item.sha256_hash, item.id)

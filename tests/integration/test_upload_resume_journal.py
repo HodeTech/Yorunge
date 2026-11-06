@@ -10,9 +10,9 @@ from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_chain import operation_journal
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import (
+    ContinuationSelection,
     RemoteInventory,
     RemoteItem,
-    Selection,
     classify,
     merge_chain,
 )
@@ -99,7 +99,7 @@ def test_every_stored_shape_reduces_to_the_expected_facts_and_state(journal, nam
     facts = facts_of(journal, record)
     assert facts.operation_id == record.operation_id and facts.parent_operation_id is None
     assert receipts(facts) == expected
-    summary = merge_chain([facts], 3)
+    summary = merge_chain([facts], journal.manifest)
     assert summary.states == states
     assert summary.rejected_receipt == bool(rejected)
     assert not summary.source_graph_complete
@@ -109,7 +109,7 @@ def test_a_complete_graph_marks_the_source_graph_complete(journal):
     record = advance(journal, EVERY_STAGE)
     facts = facts_of(journal, record)
     assert facts.graph_complete and len(facts.stages) == 11
-    summary = merge_chain([facts], 3)
+    summary = merge_chain([facts], journal.manifest)
     assert summary.states == ("accepted", "accepted", "accepted")
     assert summary.source_graph_complete
 
@@ -153,14 +153,14 @@ def inventory_of(journal, *indices):
 
 
 def test_stored_shapes_classify_end_to_end_against_a_remote_inventory(journal):
-    files = journal.manifest.files
+    manifest = journal.manifest
     record = advance(journal, [*CONFIRMABLE, ("confirm", 0)])
-    summary = merge_chain([facts_of(journal, record)], 3)
-    healthy = classify(files, summary, inventory_of(journal, 0))
+    summary = merge_chain([facts_of(journal, record)], journal.manifest)
+    healthy = classify(manifest, summary, inventory_of(journal, 0))
     assert healthy.classes == ("confirmed", "pending_clean", "pending_clean")
-    assert healthy.selection() == Selection((1, 2), (), 1)
+    assert healthy.selection() == ContinuationSelection((1, 2), (), 1)
     assert healthy.plannable
-    drifted = classify(files, summary, inventory_of(journal))
+    drifted = classify(manifest, summary, inventory_of(journal))
     assert drifted.classes[0] == "drift_missing" and "drift_missing" in drifted.blockers
 
 
@@ -169,12 +169,14 @@ def test_an_unreceipted_confirm_needs_the_remote_to_tell_whether_it_landed(
     journal, present, expected
 ):
     record = advance(journal, [*CONFIRMABLE, ("confirm", 0)], unanswered=(("confirm", 0),))
-    summary = merge_chain([facts_of(journal, record)], 3)
-    result = classify(
-        journal.manifest.files, summary, inventory_of(journal, *((0,) if present else ()))
-    )
+    summary = merge_chain([facts_of(journal, record)], journal.manifest)
+    result = classify(journal.manifest, summary, inventory_of(journal, *((0,) if present else ())))
     assert result.classes[0] == expected
-    expected_selection = Selection((1, 2), (), 1) if present else Selection((0, 1, 2), (0,), 0)
+    expected_selection = (
+        ContinuationSelection((1, 2), (), 1)
+        if present
+        else ContinuationSelection((0, 1, 2), (0,), 0)
+    )
     assert result.selection() == expected_selection
 
 
@@ -197,3 +199,38 @@ def test_a_plan_of_another_type_is_refused_instead_of_read_as_a_chain_root():
     with pytest.raises(YorungeError) as raised:
         operation_journal(SimpleNamespace(operation=record, plan=object()))
     assert raised.value.code == "state_invalid"
+
+
+def test_a_stored_v1_plan_is_a_valid_chain_root_and_a_wrong_one_is_refused():
+    import json
+    from pathlib import Path
+
+    from yorunge.domain.capabilities import canonical
+    from yorunge.domain.dataset_upload import DatasetUploadPlan as V1Plan
+
+    fixtures = Path(__file__).parents[1] / "fixtures"
+    legacy = V1Plan.model_validate_json(
+        canonical(json.loads((fixtures / "dataset-upload-approved-v1.json").read_bytes())["plan"])
+    )
+    record = SimpleNamespace(operation_id=str(uuid4()), dataset_id=None)
+    facts = operation_journal(
+        SimpleNamespace(plan=legacy, operation=record, intents=(), receipts=())
+    )
+    assert facts.manifest_digest == legacy.manifest.digest and facts.parent_operation_id is None
+    assert facts.stages == () and facts.graph_complete is False
+
+
+def test_a_refused_plan_type_keeps_the_operation_identity_in_the_error(journal, monkeypatch):
+    from yorunge.adapters import upload_repository
+
+    record = advance(journal, FIRST_FILE)
+
+    def refuse(view):
+        raise YorungeError("state_invalid")
+
+    monkeypatch.setattr(upload_repository, "stored_journal", refuse)
+    with open_store(journal.root) as store:
+        with pytest.raises(YorungeError) as raised:
+            journal.repository(store).operation_journal(record.operation_id)
+    assert raised.value.code == "state_invalid"
+    assert raised.value.operation_id == record.operation_id
