@@ -419,19 +419,27 @@ NEGATIVES = {
     "an unreliable listing beside observed files without the class": observed(
         ["inventory_unreliable"], counts(observed=3)
     ),
+    # Only conflicts may stand beside the listing's blocker, so each negative below is one class
+    # on top of conflicts and nothing else.
     "an unreliable listing beside unsent files without the class": inside(
-        observed(["inventory_unreliable"], counts(confirmed=2, pending_clean=1)),
+        observed(["conflict", "inventory_unreliable"], counts(pending_clean=1, conflict=2)),
         send_files=1,
         send_bytes=1,
     ),
     "an unreliable listing beside unconfirmed files without the class": inside(
-        observed(["inventory_unreliable"], counts(confirmed=2, pending_uncertain=1)),
+        observed(["conflict", "inventory_unreliable"], counts(pending_uncertain=1, conflict=2)),
         send_files=1,
         send_bytes=1,
         unconfirmed_ack_required=True,
     ),
     "an unreliable listing beside missing files without the class": observed(
-        ["drift_missing", "inventory_unreliable"], counts(confirmed=2, drift_missing=1)
+        ["drift_missing", "conflict", "inventory_unreliable"], counts(drift_missing=1, conflict=2)
+    ),
+    "an unreliable listing beside confirmed files and conflicts": observed(
+        ["conflict", "inventory_unreliable"], counts(confirmed=1, conflict=2)
+    ),
+    "an unreliable listing beside observed files and conflicts": observed(
+        ["conflict", "inventory_unreliable"], counts(observed=1, conflict=2)
     ),
     # plain fields
     "malformed observation instant": observed([], observed_at="yesterday"),
