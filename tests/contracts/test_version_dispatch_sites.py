@@ -373,17 +373,32 @@ def test_a_keyword_third_type_is_read_into_the_site_and_the_pairing_check():
     assert [ast.unparse(t) for t in _decode_types(call)] == ["A", "B", "C"]
 
 
-def test_no_family_type_or_decoder_is_imported_under_another_name():
-    # An alias is the usual way a name escapes a reader that matches names (``X as Y``).
+def renamed_imports(source: str) -> list[str]:
+    """Family types and the versioned decoder imported under another name (``X as Y``)."""
     watched = FAMILY_TYPES | {"decode_versioned"}
-    for path in sorted(SOURCE.rglob("*.py")):
-        for node in ast.walk(ast.parse(path.read_text())):
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                for alias in node.names:
-                    assert not (alias.asname and alias.name.split(".")[-1] in watched), (
-                        path,
-                        alias.name,
-                    )
+    return [
+        alias.name
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Import | ast.ImportFrom)
+        for alias in node.names
+        if alias.asname and alias.name.split(".")[-1] in watched
+    ]
+
+
+def test_the_guard_against_renamed_imports_sees_a_rename_and_only_a_rename():
+    assert renamed_imports("from a import TransferRecordV2 as R2\n") == ["TransferRecordV2"]
+    assert renamed_imports("from a import decode_versioned as dv\n") == ["decode_versioned"]
+    assert renamed_imports("import a.TransferRecordV2 as R2\n") == ["a.TransferRecordV2"]
+    assert renamed_imports("from a import TransferRecordV2\nfrom b import thing as other\n") == []
+
+
+def test_no_family_type_or_decoder_is_imported_under_another_name():
+    # An alias is the usual way a name escapes a reader that matches names.
+    assert {
+        str(path): found
+        for path in sorted(SOURCE.rglob("*.py"))
+        if (found := renamed_imports(path.read_text()))
+    } == {}
 
 
 def test_formatting_and_position_do_not_change_a_site():
