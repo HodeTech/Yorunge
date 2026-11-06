@@ -1,7 +1,7 @@
 ---
 id: P02-3g
 phase: P02
-status: ready
+status: in_review
 size: M
 depends_on: [P02-3t]
 capabilities: [C03, C12]
@@ -47,4 +47,10 @@ Contract testleri (`StageGraphSpec` bağımsız formüller, birleşik tipler), g
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+Uygulandı, review bekliyor; `verified` değildir. Commit’ler `feat/p02-3-dataset-recovery` dalındadır: uygulama [3bf6f19](https://github.com/HodeTech/Yorunge/commit/3bf6f19), mutasyon özdenetimi sonrası düzeltme; kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-5--p02-3g-continuation-sürüm-donanımı). Seçilen adlar ve yerleşim:
+
+- `yorunge.domain.upload_graph`: `CONTINUATION_PLAN_VERSION`, `ORIGINAL_PLAN_VERSIONS` ve `StageGraphSpec(plan_version, file_count, selection)`; v3 için `continuation`, `dataset_from_plan`, alt küme `files`, `intent_count = 3M`, create/link’siz `required_stages`, öncülsüz presign (`predecessor` create/link’te `ValueError`), N dosyalık proof payını koruyan `operation_reservation`, create/link=0 `request_counts`; `RequestCounts.create/project_link` 0 veya 1 olabilir. v1/v2 vektörleri değişmez; v1/v2 seçim almaz.
+- `yorunge.domain.upload_versions`: üç ailenin birleşik tipleri (plan, onay, kayıt, kontrol, kanıt), `validate_versioned_approval` v3 dalı, aileleri adıyla sayan ve tanımadığını reddeden `verification_scope` ve `graph_of` v3 (`StageGraphSpec`e planın `file_indices`ini verir). Makbuzlar `StageReceipt | CreateReceiptV2` kalır: devam create göndermez.
+- `yorunge.adapters.upload_store`: `decode_versioned(v1, v2, payload, v3=None)` (üçüncü sürüm yalnız onu listeleyen çağıranda okunur, listelemeyen çağıran v3 payload’ını `state_invalid` ile reddeder); `read_plan`, `read_approval`, `read_any_record`, `read_any_view`in kontrol/kanıt okumaları ve `write_record` v3’ü okur/yazar. **Kapalı başarısızlıklar (bilinçli):** `validate_graph` (P02-3u), `capacity()` (P02-3v) ve `upload_projection.summary` (P02-3v) bir devamı yanlış okumak yerine `state_invalid` verir.
+- `tests/fixtures/version-dispatch-sites.json` ve `tests/contracts/test_version_dispatch_sites.py`: plan/kayıt/kanıt ailelerini ayıran 62 gönderim noktası (`isinstance`, `type(...) is`, `schema_version` karşılaştırmaları) sahipleriyle (done, v1-only, v2-only, P02-3u, P02-3v, P02-3r, P02-3h) listelenir; yeni nokta atanana kadar test başarısız olur.
+- Bilinçli ayrım: v3 kontrol ve doğrulama kanıtı v2 ile aynı alanlara sahip olduğundan yalnız `schema_version` etiketiyle ayrılır; kayıtla sürüm eşitliği depo kuralıdır (P02-3u). `adapters/upload_preparation._limits` v2 sınır tipini daraltmak için create/link=1’i açıkça doğrular.
