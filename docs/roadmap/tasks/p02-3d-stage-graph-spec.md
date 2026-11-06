@@ -1,7 +1,7 @@
 ---
 id: P02-3d
 phase: P02
-status: ready
+status: in_progress
 size: M
 depends_on: [P02-2c]
 capabilities: [C03, C12]

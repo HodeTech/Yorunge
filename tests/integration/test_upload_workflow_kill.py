@@ -18,9 +18,18 @@ from tests.integration.test_upload_file_workflow import certificates as certific
 from tests.integration.test_upload_file_workflow import loopback_only as loopback_only
 from tests.integration.test_upload_original import approved, denied, factory
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
+from yorunge.adapters.dataset_files import open_dataset
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_original import run_upload_original
 from yorunge.adapters.upload_repository import StateUploads
+from yorunge.application.datasets import DatasetBudget
+
+
+def _two_files(data):
+    (data[1] / "two.bin").write_bytes(b"distinct")
+    with open_dataset(data[1], DatasetBudget()) as tree:
+        manifest = tree.scan()
+    return (*data[:2], manifest, *data[3:])
 
 
 def _child(state, plan_id, context, profile, port, certificate, boundary, connection):
@@ -49,19 +58,29 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
 
     def publish(environment, outcome):
         create = isinstance(outcome.receipt, CreateReceiptV2)
-        if (boundary == "create_response" and create) or (
-            boundary == "put_response" and outcome.receipt.sent_bytes is not None
+        link = not create and outcome.receipt.object_key is None
+        if (
+            (boundary == "create_response" and create)
+            or (boundary == "link_response" and link)
+            or (
+                boundary in {"put_response", "two_put_response"}
+                and outcome.receipt.sent_bytes is not None
+            )
         ):
             pause()
         original_publish(environment, outcome)
-        if (boundary == "create_commit" and create) or (
-            boundary == "confirm_commit" and environment.confirmed_count == 1
+        if (
+            (boundary == "create_commit" and create)
+            or (boundary == "link_commit" and link)
+            or (boundary == "confirm_commit" and environment.confirmed_count == 1)
         ):
             pause()
 
     def arm(environment, check, kind, index=None):
         result = original_arm(environment, check, kind, index)
-        if boundary == "create_intent" and kind == "create":
+        if (boundary == "create_intent" and kind == "create") or (
+            boundary == "link_intent" and kind == "project_link"
+        ):
             pause()
         return result
 
@@ -94,7 +113,14 @@ def _child(state, plan_id, context, profile, port, certificate, boundary, connec
         ("create_intent", 1, 0, 0, False),
         ("create_response", 1, 0, 1, False),
         ("create_commit", 1, 1, 1, False),
+        ("link_intent", 2, 1, 1, False),
+        ("link_response", 2, 1, 2, False),
+        ("link_commit", 2, 2, 2, False),
         ("put_response", 4, 3, 4, False),
+        # Two files arm both PUT intents before either response is published;
+        # the second PUT request may or may not be on the wire when the first
+        # response is paused, so the effect count is a range.
+        ("two_put_response", 6, 4, range(5, 7), False),
         ("confirm_commit", 5, 5, 5, False),
         ("proof_before_commit", 5, 5, 5, False),
         ("proof_commit", 5, 5, 5, True),
@@ -104,6 +130,8 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
     prepared_input, certificates, monkeypatch, boundary, intents, receipts, writes, terminal
 ):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2]))
+    if boundary == "two_put_response":
+        prepared_input = _two_files(prepared_input)
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
     with TlsServer(certificates, provider.routes()) as server:
         plan = approved(prepared_input, server)
@@ -145,7 +173,8 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
         if terminal:
             expected_status = "succeeded"
         assert result.record.status == expected_status
-        assert sum(r.method in {"POST", "PUT"} for r in server.requests) == writes
+        allowed = writes if isinstance(writes, range) else range(writes, writes + 1)
+        assert sum(r.method in {"POST", "PUT"} for r in server.requests) in allowed
         with open_existing_store(prepared_input[0]) as store:
             repository = StateUploads(store)
             view = repository.show(plan_id=plan.plan_id)
