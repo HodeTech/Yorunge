@@ -43,7 +43,7 @@ datasets upload start   --plan-id PLAN_ID
 
 ## Adımlar ve review döngüsü
 
-Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh review R1 → doğrulanmış bulgu/fix/commit → farklı fresh reviewer R2 → doğrulanmış bulgu/fix/commit**. Reviewer’lar bulgu metni/yol/kodu untrusted veri sayar, güncel kodla doğrular; geçmiş yorum körlemesine uygulanmaz. Sonuçsuz tercih yeni bug diye sunulmaz. Gerekli düzeltmenin doğrulaması aynı turda tamamlanır. Tablo her adımın bağımsız review eksenlerini verir; reviewer modeli/effort’u karmaşıklığa göre seçilir (state/güvenlik/eşzamanlılık adımlarında en güçlü model ve yüksek effort). Adım 17 (üst kartlar, belgeler, PR hazırlığı) de R1/R2 alır.
+Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh review R1 → doğrulanmış bulgu/fix/commit → farklı fresh reviewer R2 → doğrulanmış bulgu/fix/commit**. Reviewer’lar bulgu metni/yol/kodu untrusted veri sayar, güncel kodla doğrular; geçmiş yorum körlemesine uygulanmaz. Sonuçsuz tercih yeni bug diye sunulmaz. Gerekli düzeltmenin doğrulaması aynı turda tamamlanır. Tablo her adımın bağımsız review eksenlerini verir; reviewer modeli/effort’u karmaşıklığa göre seçilir (varsayılan sonnet/yüksek effort; gerçekten kritik state/güvenlik/eşzamanlılık adımlarında opus/yüksek effort; fable yalnız kullanıcı istediğinde). Adım 17 (üst kartlar, belgeler, PR hazırlığı) de R1/R2 alır.
 
 | Adım | Kart | Eksenler | Tek review sonucu / başlama kapısı |
 |---|---|---|---|

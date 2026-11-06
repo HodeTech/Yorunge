@@ -15,9 +15,10 @@ from pydantic import ValidationError
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_costs import UploadRequestLimits
+from yorunge.domain.upload_graph import STAGE_KINDS
 
 CallKind = StageKind | Literal["read"]
-_EFFECTS = ("create", "project_link", "presign", "put", "confirm")
+_EFFECTS = STAGE_KINDS
 _KINDS = (*_EFFECTS, "read")
 
 

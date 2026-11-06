@@ -52,6 +52,7 @@ from yorunge.domain.dataset_upload_v2 import (
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context, Profile
 from yorunge.domain.upload_costs import UploadCostWork, UploadExecutionWindow, UploadRequestLimits
+from yorunge.domain.upload_graph import StageGraphSpec
 
 SessionFactory = Callable[[HttpCredential, UploadBudget], UploadSession]
 
@@ -66,12 +67,13 @@ def revoke_upload_approval(plan_id: str, state_dir: Path | None) -> VersionedTra
 
 
 def _limits(manifest: DatasetManifest) -> UploadRequestLimits:
+    counts = StageGraphSpec(2, manifest.file_count).request_counts()
     return UploadRequestLimits(
-        max_create=1,
-        max_project_link=1,
-        max_presign=manifest.file_count,
-        max_put=manifest.file_count,
-        max_confirm=manifest.file_count,
+        max_create=counts.create,
+        max_project_link=counts.project_link,
+        max_presign=counts.presign,
+        max_put=counts.put,
+        max_confirm=counts.confirm,
         max_read_requests=512,
         max_read_attempts=1024,
         max_control_request_bytes=4194304,

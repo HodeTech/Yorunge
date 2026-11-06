@@ -25,7 +25,6 @@ from yorunge.adapters.upload_store import (
     decode_versioned,
     legacy_create_without_baseline,
     namespace,
-    predecessor,
     read_manifest,
     read_plan,
     request_digest,
@@ -84,12 +83,14 @@ from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
+from yorunge.domain.upload_graph import FILE_STAGE_KINDS, STAGE_KINDS
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
     UploadReceipt,
     UploadRecord,
     UploadVerification,
+    graph_of,
     validate_create_receipt,
     verification_scope,
 )
@@ -101,8 +102,8 @@ from yorunge.domain.upload_versions import (
 def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> None:
     if (
         type(kind) is not str
-        or kind not in {"create", "project_link", "presign", "put", "confirm"}
-        or (kind in {"create", "project_link"}) != (file_index is None)
+        or kind not in STAGE_KINDS
+        or (kind in FILE_STAGE_KINDS) == (file_index is None)
     ):
         raise YorungeError("invalid_request")
     finite = False
@@ -134,12 +135,11 @@ def _arm_predecessors(
     }
     if any((i.kind, i.file_index) == (kind, file_index) for i in view.intents):
         raise YorungeError("operation_conflict")
-    required = predecessor(kind, file_index)
+    graph = graph_of(view.plan)
+    required = graph.predecessor(kind, file_index)
     if required is not None and required not in accepted:
         raise YorungeError("operation_conflict")
-    if file_index is not None and (
-        type(file_index) is not int or not 0 <= file_index < view.plan.manifest.file_count
-    ):
+    if file_index is not None and (type(file_index) is not int or file_index not in graph.files):
         raise YorungeError("invalid_request")
     return accepted
 

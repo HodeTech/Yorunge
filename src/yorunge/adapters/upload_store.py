@@ -20,7 +20,6 @@ from yorunge.domain.dataset_transfer import (
     TransferControl,
     TransferRecord,
     TransferVerification,
-    operation_reservation,
     scope_target,
 )
 from yorunge.domain.dataset_transfer_v2 import (
@@ -43,6 +42,7 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUpl
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_graph import FILE_STAGE_KINDS, StageGraphSpec
 from yorunge.domain.upload_requests import upload_request_digest
 from yorunge.domain.upload_versions import (
     UploadApproval,
@@ -51,7 +51,7 @@ from yorunge.domain.upload_versions import (
     UploadReceipt,
     UploadRecord,
     UploadVerification,
-    required_stages,
+    graph_of,
     validate_create_receipt,
     validate_versioned_approval,
     verification_scope,
@@ -175,7 +175,7 @@ def read_any_record(connection: sqlite3.Connection, identifier: str) -> UploadRe
         record.intent_digest,
         record.revision,
         record.lease.expires_at if record.lease else None,
-        operation_reservation(plan.manifest.file_count),
+        graph_of(plan).operation_reservation(),
     ):
         raise YorungeError("state_invalid")
     return record
@@ -249,6 +249,7 @@ def request_digest(
     receipts: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> str:
     """Secret-free semantic request binding; never hashes a signed URL/header."""
+    graph = graph_of(plan)
     create = receipts.get(("create", None))
     previous = receipts.get(("presign", index)) if index is not None else None
     return upload_request_digest(
@@ -256,29 +257,22 @@ def request_digest(
         kind,
         index,
         manifest.files[index] if index is not None else None,
-        create.dataset_id if kind != "create" and create else None,
-        previous.object_key if kind in {"put", "confirm"} and previous else None,
+        create.dataset_id if graph.takes_created_dataset(kind) and create else None,
+        previous.object_key if graph.takes_presign_key(kind) and previous else None,
     )
 
 
-def predecessor(kind: StageKind, index: int | None) -> tuple[StageKind, int | None] | None:
-    if kind == "create":
-        return None
-    if kind == "project_link":
-        return "create", None
-    if kind == "presign":
-        return "project_link", None
-    return ("presign" if kind == "put" else "put"), index
-
-
 def _receipt_key(
+    graph: StageGraphSpec,
     kind: StageKind,
     index: int | None,
     receipt: UploadReceipt,
     accepted: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> None:
-    expected_key = accepted[("presign", index)].object_key if kind in {"put", "confirm"} else None
-    if kind in {"presign", "put", "confirm"}:
+    expected_key = (
+        accepted[("presign", index)].object_key if graph.takes_presign_key(kind) else None
+    )
+    if kind in FILE_STAGE_KINDS:
         if receipt.object_key is None or (
             expected_key is not None and receipt.object_key != expected_key
         ):
@@ -300,10 +294,14 @@ def _receipt(
         raise ValueError("receipt outside issuing authority")
     if receipt.result == "rejected":
         return
+    graph = graph_of(plan)
     kind, index = intent.kind, intent.file_index
-    if kind != "create" and receipt.dataset_id != accepted[("create", None)].dataset_id:
+    if (
+        graph.takes_created_dataset(kind)
+        and receipt.dataset_id != accepted[("create", None)].dataset_id
+    ):
         raise ValueError("receipt dataset mismatch")
-    _receipt_key(kind, index, receipt, accepted)
+    _receipt_key(graph, kind, index, receipt, accepted)
     if kind == "put":
         assert index is not None
         file = manifest.files[index]
@@ -340,10 +338,10 @@ def verification_after(view: VersionedTransferView, proof: UploadVerification) -
 
 
 def acknowledged_stages(view: VersionedTransferView) -> bool:
-    count = view.plan.manifest.file_count
+    graph = graph_of(view.plan)
     return (
-        {(i.kind, i.file_index) for i in view.intents} == required_stages(count)
-        and len(view.intents) == 2 + 3 * count
+        {(i.kind, i.file_index) for i in view.intents} == graph.required_stages()
+        and len(view.intents) == graph.intent_count
         and len(view.receipts) == len(view.intents)
         and all(r.result == "accepted" for r in view.receipts)
     )
@@ -421,12 +419,13 @@ def _intent_binding(
     accepted: dict[tuple[StageKind, int | None], UploadReceipt],
 ) -> None:
     record, plan = view.operation, view.plan
+    graph = graph_of(plan)
     assert record is not None
     if (
         (intent.kind, intent.file_index) in keys
         or intent.sequence != sequence
         or intent.operation_id != record.operation_id
-        or (intent.file_index is not None and intent.file_index >= manifest.file_count)
+        or (intent.file_index is not None and intent.file_index not in graph.files)
         or intent.owner.identity_epoch != plan.scope.identity_epoch
         or intent.owner.clock_generation != plan.scope.clock_generation
         or intent.owner.fence != 1
@@ -435,7 +434,7 @@ def _intent_binding(
         or instant(intent.expires_at) > instant(record.approval.expires_at)
     ):
         raise ValueError("invalid stage binding")
-    required = predecessor(intent.kind, intent.file_index)
+    required = graph.predecessor(intent.kind, intent.file_index)
     if required is not None:
         if required not in accepted:
             raise ValueError("stage predecessor not accepted")
@@ -733,7 +732,7 @@ def write_record(
                 value.intent_digest,
                 value.revision,
                 lease,
-                operation_reservation(plan.manifest.file_count),
+                graph_of(plan).operation_reservation(),
                 value.encoded().decode("ascii"),
             ),
         )

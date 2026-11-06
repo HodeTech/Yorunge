@@ -5,7 +5,6 @@ import hashlib
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_transfer import (
     StageIntent,
-    StageKind,
     StageReceipt,
     TransferControl,
     TransferRecord,
@@ -27,6 +26,7 @@ from yorunge.domain.dataset_upload_v2 import (
     DatasetUploadPlanV2,
     validate_approval_binding_v2,
 )
+from yorunge.domain.upload_graph import StageGraphSpec
 
 UploadPlan = DatasetUploadPlan | DatasetUploadPlanV2
 UploadApproval = DatasetUploadApproval | DatasetUploadApprovalV2
@@ -75,8 +75,6 @@ def proof_digest(proof: UploadVerification) -> str:
     return hashlib.sha256(proof.encoded()).hexdigest()
 
 
-def required_stages(file_count: int) -> frozenset[tuple[StageKind, int | None]]:
-    result: set[tuple[StageKind, int | None]] = {("create", None), ("project_link", None)}
-    per_file: tuple[StageKind, ...] = ("presign", "put", "confirm")
-    result.update((kind, i) for i in range(file_count) for kind in per_file)
-    return frozenset(result)
+def graph_of(plan: UploadPlan) -> StageGraphSpec:
+    """The only stage graph of a stored plan; an unsupported version is rejected."""
+    return StageGraphSpec(plan.schema_version, plan.manifest.file_count)

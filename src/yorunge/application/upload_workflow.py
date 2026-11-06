@@ -13,7 +13,7 @@ from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_checks import UploadCurrentCheck
-from yorunge.domain.upload_versions import UploadReceipt
+from yorunge.domain.upload_versions import UploadReceipt, graph_of
 
 
 class EffectOutcome(Protocol):
@@ -217,12 +217,11 @@ async def _upload_files(environment: OriginalEnvironment) -> TransferRecordV2:
     record = await _create_link(environment)
     if not environment.write_owned:
         return record
-    count = environment.plan.manifest.file_count
-    for index in range(count):
+    graph = graph_of(environment.plan)
+    for index in graph.files:
         await _effect(environment, "presign", index)
     environment.validate_uploads()
-    for start in range(0, count, 2):
-        indices = range(start, min(count, start + 2))
+    for indices in graph.put_batches():
         await _put_batch(environment, indices)
         for index in indices:
             await _effect(environment, "confirm", index)

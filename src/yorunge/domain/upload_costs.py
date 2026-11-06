@@ -23,6 +23,7 @@ from yorunge.domain.dataset_upload import (
     UploadWire,
 )
 from yorunge.domain.models import Identifier
+from yorunge.domain.upload_graph import StageGraphSpec
 
 ChargeCategory = Literal["create", "project_link", "control", "transfer", "confirm", "storage"]
 ALL_CHARGE_CATEGORIES: tuple[ChargeCategory, ...] = (
@@ -83,9 +84,12 @@ class UploadCostWork(UploadWire):
     @model_validator(mode="after")
     def quantities(self) -> Self:
         limits = self.request_limits
+        counts = StageGraphSpec(2, self.manifest.file_count).request_counts()
         if (limits.max_presign, limits.max_put, limits.max_confirm) != (
-            self.manifest.file_count,
-        ) * 3 or limits.max_upload_bytes != self.manifest.total_bytes:
+            counts.presign,
+            counts.put,
+            counts.confirm,
+        ) or limits.max_upload_bytes != self.manifest.total_bytes:
             raise ValueError("request limits must match exact upload manifest")
         self.encoded()
         return self

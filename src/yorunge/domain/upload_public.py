@@ -30,6 +30,7 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Identifier
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_costs import ChargeCategory, UploadRequestLimits
+from yorunge.domain.upload_graph import StageGraphSpec
 
 
 class UploadCostSummary(UploadWire):
@@ -201,16 +202,15 @@ class UploadIntentReview(UploadWire):
             raise ValueError("request limits must match source family")
         if instant(self.prepared_at) >= instant(self.expires_at):
             raise ValueError("positive plan interval required")
-        if self.request_limits is not None and (
-            (
-                self.request_limits.max_presign,
-                self.request_limits.max_put,
-                self.request_limits.max_confirm,
-            )
-            != (self.manifest.file_count,) * 3
-            or self.request_limits.max_upload_bytes != self.manifest.total_bytes
-        ):
-            raise ValueError("request quantities must match manifest")
+        limits = self.request_limits
+        if limits is not None:
+            counts = StageGraphSpec(2, self.manifest.file_count).request_counts()
+            if (limits.max_presign, limits.max_put, limits.max_confirm) != (
+                counts.presign,
+                counts.put,
+                counts.confirm,
+            ) or limits.max_upload_bytes != self.manifest.total_bytes:
+                raise ValueError("request quantities must match manifest")
         self.encoded()
         return self
 

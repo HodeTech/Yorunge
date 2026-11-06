@@ -52,7 +52,7 @@ from yorunge.domain.models import Context, Profile
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import UploadCurrentCheck
-from yorunge.domain.upload_versions import UploadPlan, UploadRecord
+from yorunge.domain.upload_versions import UploadPlan, UploadRecord, graph_of
 
 ContextLoader = Callable[[DatasetUploadPlanV2], tuple[Context, Profile]]
 
@@ -207,7 +207,7 @@ class _Environment:
 
     def _context(self, index: int | None) -> descriptors.FileContext:
         assert self.record is not None and self.record.dataset_id is not None
-        if type(index) is not int or not 0 <= index < self.plan.manifest.file_count:
+        if type(index) is not int or index not in graph_of(self.plan).files:
             raise YorungeError("invalid_request")
         if not self.contexts:
             self.contexts = self.port.files(self.record.operation_id, self.record.dataset_id)
@@ -236,7 +236,7 @@ class _Environment:
         return _Call(call, self.client)
 
     def validate_uploads(self) -> None:
-        if set(self.uploads) != set(range(self.plan.manifest.file_count)):
+        if set(self.uploads) != set(graph_of(self.plan).files):
             raise YorungeError("invalid_response")
         descriptors.distinct_uploads(
             tuple(self.uploads[index] for index in range(len(self.contexts))), self.contexts
