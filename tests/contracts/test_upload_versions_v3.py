@@ -4,7 +4,7 @@ import json
 from itertools import product
 from pathlib import Path
 from types import SimpleNamespace
-from typing import get_args
+from typing import ClassVar, Literal, get_args
 
 import pytest
 
@@ -27,7 +27,7 @@ from yorunge.domain.dataset_transfer_v3 import (
     TransferRecordV3,
     TransferVerificationV3,
 )
-from yorunge.domain.dataset_upload import DatasetUploadApproval, DatasetUploadPlan
+from yorunge.domain.dataset_upload import DatasetUploadApproval, DatasetUploadPlan, UploadWire
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_graph import StageGraphSpec
@@ -232,3 +232,27 @@ def test_a_continuations_history_is_unreadable_until_its_graph_is_validated():
     assert error.value.code == "state_invalid"
     # A plan with no operation has no graph to validate, as before.
     validate_graph(VersionedTransferView(plan, approval, None), MANIFEST)
+
+
+class Small(UploadWire):
+    max_wire_bytes: ClassVar[int] = 64
+    schema_version: Literal[1, 2]
+    pad: str
+
+
+class Large(UploadWire):
+    max_wire_bytes: ClassVar[int] = 256
+    schema_version: Literal[3]
+    pad: str
+
+
+def test_the_size_bound_of_the_listed_third_type_counts_not_only_the_older_two():
+    body = canon({"schema_version": 3, "pad": "x" * 100}).decode()
+    assert 64 < len(body) <= 256
+    assert type(decode_versioned(Small, Small, body, Large)) is Large
+    with pytest.raises(YorungeError):  # no third type listed: the payload is simply too big
+        decode_versioned(Small, Small, body)
+    with pytest.raises(YorungeError):
+        decode_versioned(
+            Small, Small, canon({"schema_version": 3, "pad": "x" * 300}).decode(), Large
+        )
