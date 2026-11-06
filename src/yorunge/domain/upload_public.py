@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Protocol, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -55,6 +55,50 @@ class UploadCostSummary(UploadWire):
         if instant(self.checked_at) >= instant(self.expires_at):
             raise ValueError("positive cost evidence lifetime required")
         return self
+
+
+class SummaryFacts(Protocol):
+    """What the approval and evidence rules of every summary version read."""
+
+    @property
+    def approval_status(self) -> Literal["approved", "revoked"] | None: ...
+    @property
+    def approval_expires_at(self) -> str | None: ...
+    @property
+    def operation_status(self) -> TransferStatus | None: ...
+    @property
+    def verification_level(self) -> Literal["none", "metadata"]: ...
+    @property
+    def authority_verified(self) -> bool: ...
+    @property
+    def risks(self) -> tuple[UploadRisk, ...]: ...
+    @property
+    def blockers(self) -> tuple[UploadBlocker, ...]: ...
+    @property
+    def cost_policy(self) -> CostPolicy: ...
+    @property
+    def budget_micros(self) -> int | None: ...
+
+
+def validate_summary_approval(summary: SummaryFacts) -> None:
+    if (summary.approval_status is None) != (summary.approval_expires_at is None):
+        raise ValueError("approval state and expiry must be paired")
+    if summary.approval_expires_at is not None:
+        instant(summary.approval_expires_at)
+
+
+def validate_summary_evidence(summary: SummaryFacts) -> None:
+    succeeded = summary.operation_status == "succeeded"
+    if (summary.verification_level == "metadata") != succeeded or (
+        summary.authority_verified and not succeeded
+    ):
+        raise ValueError("success evidence required")
+    if summary.risks != tuple(sorted(set(summary.risks))) or summary.blockers != tuple(
+        sorted(set(summary.blockers))
+    ):
+        raise ValueError("canonical risk and blocker sets required")
+    if (summary.cost_policy == "bounded_required") != (summary.budget_micros is not None):
+        raise ValueError("cost policy and budget mismatch")
 
 
 class DatasetUploadSummary(UploadWire):
@@ -132,23 +176,79 @@ class DatasetUploadSummary(UploadWire):
             raise ValueError("dataset identity requires an operation")
 
     def _approval_binding(self) -> None:
-        if (self.approval_status is None) != (self.approval_expires_at is None):
-            raise ValueError("approval state and expiry must be paired")
-        if self.approval_expires_at is not None:
-            instant(self.approval_expires_at)
+        validate_summary_approval(self)
 
     def _evidence_binding(self) -> None:
-        succeeded = self.operation_status == "succeeded"
-        if (self.verification_level == "metadata") != succeeded or (
-            self.authority_verified and not succeeded
+        validate_summary_evidence(self)
+
+
+class DatasetUploadSummaryV3(UploadWire):
+    """User view of a continuation: counts and identities only, never paths or provider payloads."""
+
+    schema_version: Literal[3]
+    kind: Literal["dataset_upload_summary"]
+    source_plan_schema: Literal[3]
+    legacy_history_only: Literal[False]
+    plan_id: str
+    plan_digest: Sha256
+    plan_status: UploadPlanStatus
+    admission_policy: AdmissionPolicy
+    cost_policy: CostPolicy
+    risks: tuple[UploadRisk, ...]
+    blockers: tuple[UploadBlocker, ...]
+    approval_status: Literal["approved", "revoked"] | None
+    approval_expires_at: str | None
+    operation_id: str | None
+    operation_status: TransferStatus | None
+    dataset_id: str
+    verification_level: Literal["none", "metadata"]
+    remote_bytes_verified: Literal[False]
+    authority_verified: bool
+    cost_bound: UploadCostSummary | None
+    budget_micros: NonnegativeInt64 | None
+    cost_scope: Literal["continuation_start_invocation"]
+    continuation_of: str
+    continuation_files: Annotated[int, Field(ge=0, le=128)]
+    remote_present_files: Annotated[int, Field(ge=0, le=128)]
+    uncertain_files: Annotated[int, Field(ge=0, le=128)]
+
+    @field_validator("source_plan_schema", mode="before")
+    @classmethod
+    def source_version(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer source version required")
+        return value
+
+    @field_validator("legacy_history_only", "remote_bytes_verified", mode="before")
+    @classmethod
+    def exact_flags(cls, value: object) -> object:
+        if type(value) is not bool:
+            raise ValueError("boolean flag required")
+        return value
+
+    @field_validator("plan_id", "operation_id", "continuation_of")
+    @classmethod
+    def identifiers(cls, value: str | None) -> str | None:
+        return canonical_uuid(value) if value is not None else None
+
+    @field_validator("dataset_id")
+    @classmethod
+    def dataset(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @model_validator(mode="after")
+    def relationships(self) -> Self:
+        if (self.operation_id is None) != (self.operation_status is None):
+            raise ValueError("operation identity and state must be paired")
+        if (
+            self.uncertain_files > self.continuation_files
+            or self.continuation_files + self.remote_present_files > 128
         ):
-            raise ValueError("success evidence required")
-        if self.risks != tuple(sorted(set(self.risks))) or self.blockers != tuple(
-            sorted(set(self.blockers))
-        ):
-            raise ValueError("canonical risk and blocker sets required")
-        if (self.cost_policy == "bounded_required") != (self.budget_micros is not None):
-            raise ValueError("cost policy and budget mismatch")
+            raise ValueError("continuation file counts must fit one manifest")
+        validate_summary_approval(self)
+        validate_summary_evidence(self)
+        self.encoded()
+        return self
 
 
 class UploadReviewTarget(UploadWire):
