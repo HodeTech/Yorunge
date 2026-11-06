@@ -7,9 +7,28 @@
   "P02-3v",
   "P02-3r",
   "P02-3h",
-  "P02-3i"
+  "P02-3i",
+  "unrelated"
  ],
  "sites": [
+  {
+   "file": "src/yorunge/adapters/migration_capability_expiries_v1.py",
+   "function": "record_expiries",
+   "kind": "version",
+   "text": "type(raw.get('schema_version')) is not int",
+   "occurrence": 0,
+   "owner": "unrelated",
+   "note": "a capability-expiry state migration reads its own source version, not an upload family's"
+  },
+  {
+   "file": "src/yorunge/adapters/migration_capability_expiries_v1.py",
+   "function": "record_expiries",
+   "kind": "version",
+   "text": "raw['schema_version'] != 2",
+   "occurrence": 0,
+   "owner": "unrelated",
+   "note": "a capability-expiry state migration reads its own source version, not an upload family's"
+  },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
    "function": "operation_journal",
@@ -377,7 +396,7 @@
    "text": "record.schema_version == 2",
    "occurrence": 0,
    "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "note": "the unknown-state reason is picked by version; a v3 record would fall into the else branch and get the v1 reason request_uncertain instead of read_unavailable: P02-3r names v3 here"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -413,7 +432,7 @@
    "text": "proof.schema_version == 2",
    "occurrence": 0,
    "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "note": "the 30-second freshness window of a proof is applied for v2 only; a v3 proof (same observed_at) would skip it silently once the two-typed decode above is widened: P02-3r applies it to v3"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -422,7 +441,7 @@
    "text": "record.schema_version == 1",
    "occurrence": 0,
    "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "note": "the success reason is verified for v1 and metadata_verified otherwise; v3 correctly takes the else branch (its record requires metadata_verified), but the else-is-not-v1 reading is listed so P02-3r confirms it"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -783,6 +802,24 @@
    "occurrence": 0,
    "owner": "v2-only",
    "note": "approve_upload_v2 guards its own family; approve_upload_v3 is the continuation's"
+  },
+  {
+   "file": "src/yorunge/cli/__init__.py",
+   "function": "maintenance_text",
+   "kind": "version",
+   "text": "data.schema_version in (3, 4)",
+   "occurrence": 0,
+   "owner": "unrelated",
+   "note": "reads the identity-reset preview data's own schema version, not an upload family's"
+  },
+  {
+   "file": "src/yorunge/cli/__init__.py",
+   "function": "maintenance_text",
+   "kind": "version",
+   "text": "data.schema_version == 4",
+   "occurrence": 0,
+   "owner": "unrelated",
+   "note": "reads the identity-reset preview data's own schema version, not an upload family's"
   },
   {
    "file": "src/yorunge/domain/upload_resume_report.py",

@@ -10,10 +10,17 @@ same commit.
 
 Kinds: ``isinstance`` (isinstance or issubclass naming a family type), ``type_is`` (``type(x)`` or
 ``x.__class__`` compared with a family type), ``match`` (a class pattern naming one), ``version``
-(a read of a stored value's ``schema_version`` in a module that knows the families),
-``decode_versioned/2`` and ``/3`` (a decode naming two types rejects a continuation payload, so
-it fails closed; one naming three reads it), and ``direct_decode`` (a family type validating
-JSON itself).
+(any read of a ``schema_version``, wherever it stands: a module that reads another schema's own
+version is listed as ``unrelated`` rather than guessed at), ``decode_versioned/2`` and ``/3`` (a
+decode naming two types rejects a continuation payload, so it fails closed; one naming three reads
+it), and ``direct_decode`` (a family type validating JSON itself).
+
+What a syntax-tree reader cannot see, and why that is accepted: a family type reached through a
+variable (``FAMILIES = (A, B)`` then ``isinstance(x, FAMILIES)``, ``t = A``, a dict keyed on
+``type(x)``), through ``type(x).__name__``, or through ``hasattr``/``getattr`` of a field only some
+families have. None of these exists in the source today; the one cheap, mechanical defence is
+``test_no_family_type_or_decoder_is_imported_under_another_name``, which stops the usual way to
+hide a name. Anything else is for review to catch, and the owner of the change to list.
 """
 
 import ast
@@ -53,21 +60,6 @@ DEFINING_MODULES = {
     "dataset_continuation.py",
     "create_receipt.py",
 }
-# A module that imports from one of these (or any family type) can hold a family value.
-FAMILY_MODULES = frozenset(
-    {
-        "yorunge.domain.upload_versions",
-        "yorunge.adapters.upload_store",
-        "yorunge.domain.dataset_transfer",
-        "yorunge.domain.dataset_transfer_v2",
-        "yorunge.domain.dataset_transfer_v3",
-        "yorunge.domain.dataset_upload",
-        "yorunge.domain.dataset_upload_v2",
-        "yorunge.domain.dataset_continuation",
-        "yorunge.domain.create_receipt",
-    }
-)
-
 Site = tuple[str, str, str, str, int]  # file, function, kind, expression, occurrence
 
 
@@ -109,17 +101,6 @@ def _reads_version(node: ast.AST) -> bool:
         if isinstance(node.func, ast.Name) and node.func.id == "getattr" and len(node.args) > 1:
             return _version_key(node.args[1])
     return False
-
-
-def _knows_families(tree: ast.Module) -> bool:
-    return any(
-        isinstance(node, ast.ImportFrom)
-        and (
-            (node.module or "") in FAMILY_MODULES
-            or any(alias.name in FAMILY_TYPES for alias in node.names)
-        )
-        for node in ast.walk(tree)
-    )
 
 
 def _function(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> str:
@@ -187,7 +168,6 @@ def scan(source: str) -> list[Found]:
     """Where a module's source tells the families apart, in source order."""
     tree = ast.parse(source)
     parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
-    aware = _knows_families(tree)
     found: list[Found] = []
     covered: set[int] = set()
     for node in ast.walk(tree):
@@ -203,7 +183,7 @@ def scan(source: str) -> list[Found]:
                 kind, text = "type_is", ast.unparse(node)
         elif isinstance(node, ast.MatchClass) and _mentions(node.cls):
             kind, text = "match", ast.unparse(node)
-        if kind is None and aware and _reads_version(node):
+        if kind is None and _reads_version(node):
             anchor, text = _around(node, parents)
             if id(anchor) not in covered:  # one site per comparison or entry, not per read
                 covered.add(id(anchor))
@@ -270,8 +250,10 @@ def test_every_site_has_a_known_owner_and_says_why():
 
 
 def test_only_the_slices_still_to_come_own_open_sites():
-    # P02-3g has handled its own; v1-only and v2-only are deliberate, permanent families.
-    open_owners = {site["owner"] for site in LIST["sites"]} - {"done", "v1-only", "v2-only"}
+    # P02-3g has handled its own; v1-only and v2-only are deliberate, permanent families, and an
+    # unrelated site reads the version of something that is not a family.
+    closed = {"done", "v1-only", "v2-only", "unrelated"}
+    open_owners = {site["owner"] for site in LIST["sites"]} - closed
     assert open_owners <= {"P02-3u", "P02-3v", "P02-3r", "P02-3h", "P02-3i"}
     assert "P02-3g" not in open_owners
 
@@ -373,15 +355,35 @@ def test_the_finder_ignores_what_does_not_tell_the_families_apart(expression):
     assert kinds(f"def f(x, y):\n    return {expression}\n") == []
 
 
-def test_a_version_read_counts_only_where_the_module_knows_the_families():
+def test_a_version_read_counts_wherever_it_stands():
     source = "def f(x):\n    return x.schema_version == 2\n"
-    assert kinds(source) == ["version"]
-    assert kinds(source, OTHER) == []  # a state migration's own version is not a family's
-    # What makes a module aware is importing a family type or the modules that hold the families.
-    for module in ("yorunge.adapters.upload_store", "yorunge.domain.upload_versions"):
-        assert kinds(source, f"from {module} import anything\n") == ["version"]
-    # An explicit mention of a family type is a site wherever it stands.
+    # No import of anything is needed: a module that gets a family value through a call (a
+    # repository, a view) never has to name a family type to read its version.
+    for header in (OTHER, AWARE, "", "import yorunge.adapters.upload_store as store\n"):
+        assert kinds(source, header) == ["version"]
     assert kinds("def f(x):\n    return isinstance(x, TransferRecordV2)\n", OTHER) == ["isinstance"]
+
+
+def test_a_keyword_third_type_is_read_into_the_site_and_the_pairing_check():
+    source = AWARE + "def f(x):\n    return decode_versioned(A, B, x, v3=C)\n"
+    assert [(s[2], s[3]) for s in sites_in(source, "m.py")] == [
+        ("decode_versioned/3", "decode_versioned(A, B, C)")
+    ]
+    call = ast.parse("decode_versioned(A, B, payload, v3=C)").body[0].value  # type: ignore[attr-defined]
+    assert [ast.unparse(t) for t in _decode_types(call)] == ["A", "B", "C"]
+
+
+def test_no_family_type_or_decoder_is_imported_under_another_name():
+    # An alias is the usual way a name escapes a reader that matches names (``X as Y``).
+    watched = FAMILY_TYPES | {"decode_versioned"}
+    for path in sorted(SOURCE.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                for alias in node.names:
+                    assert not (alias.asname and alias.name.split(".")[-1] in watched), (
+                        path,
+                        alias.name,
+                    )
 
 
 def test_formatting_and_position_do_not_change_a_site():

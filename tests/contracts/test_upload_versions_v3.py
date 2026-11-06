@@ -319,6 +319,16 @@ def test_a_continuation_record_binds_to_its_own_plan_and_to_nothing_else():
 def test_a_continuation_borrows_its_baselines_namespace_and_an_original_owns_its_own():
     assert namespace_owner(PLANS[3], V3_RECORD) == PLANS[3].continuation.baseline_operation_id
     assert namespace_owner(PLANS[3], V3_RECORD) != V3_RECORD.operation_id
+    # A continuation of a continuation has a source that is not the root: the namespace is still
+    # the root's (the fixtures' source and baseline coincide, which hides the difference).
+    middle = "00000000-0000-4000-8000-0000000000a1"
+    chained = PLANS[3].model_copy(
+        update={
+            "continuation": PLANS[3].continuation.model_copy(update={"source_operation_id": middle})
+        }
+    )
+    assert chained.continuation.source_operation_id != chained.continuation.baseline_operation_id
+    assert namespace_owner(chained, V3_RECORD) == PLANS[3].continuation.baseline_operation_id
     assert namespace_owner(PLANS[2], V2_RECORD) == V2_RECORD.operation_id
     assert namespace_owner(PLANS[1], V1_RECORD) == V1_RECORD.operation_id
 
