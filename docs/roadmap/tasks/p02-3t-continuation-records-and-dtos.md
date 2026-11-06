@@ -1,7 +1,7 @@
 ---
 id: P02-3t
 phase: P02
-status: in_review
+status: verified
 size: M
 depends_on: [P02-3f]
 capabilities: [C03, C12]
@@ -39,7 +39,11 @@ Contract/unit testleri, golden fixture’ları, Ruff ve strict mypy; belge kontr
 
 ## Teslim kaydı
 
-Uygulandı, review bekliyor; `verified` değildir. Commit’ler `feat/p02-3-dataset-recovery` dalındadır: uygulama [0179462](https://github.com/HodeTech/Yorunge/commit/0179462d5e698a1ebc78678fedf18c99ddc59318), mutasyon özdenetimi `17e344f`, R1 düzeltmeleri [e44416f](https://github.com/HodeTech/Yorunge/commit/e44416f59d23f103fc5d5a147019b993fe163197) ve sonrası, R2 düzeltmeleri `b3cf50f` ve sonrası; kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-4--p02-3t-continuation-v3-kayıt-kontrol-doğrulama-ve-kullanıcı-dto-tipleri). Seçilen adlar ve yerleşim:
+- PR/commit: tek development PR’ı henüz açılmadı (P02-3 epik PR’ı adım 19’da); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: uygulama [0179462](https://github.com/HodeTech/Yorunge/commit/0179462d5e698a1ebc78678fedf18c99ddc59318), mutasyon özdenetimi `17e344f`, R1 düzeltmeleri [e44416f](https://github.com/HodeTech/Yorunge/commit/e44416f59d23f103fc5d5a147019b993fe163197) ve sonrası (`4d02546`, `dd6e482`, `64ca6f1`), R2 düzeltmeleri [b3cf50f](https://github.com/HodeTech/Yorunge/commit/b3cf50fa8ce3cc7e36a30fa97e6b81a4c7e0ded7) ve sonrası (`c206c2f`, `3e85e6b`), kapanış [aeb240f](https://github.com/HodeTech/Yorunge/commit/aeb240f5a46756652c2f5fe1d93fefe31523fa62); kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-4--p02-3t-continuation-v3-kayıt-kontrol-doğrulama-ve-kullanıcı-dto-tipleri).
+- Sonuç: Strict v3 kayıt, kontrol ve N dosyalık doğrulama kanıtı tipleri, kayıt–plan ve kanıt–plan eşleşme doğrulayıcıları, kullanıcı özeti v3, gözlem yapılamayan kaynakları da kapsayan resume raporu (kota kullanımı/eklenen, 128 KiB tel sınırı) ve raporu gerçek `classify` çıktısından kuran saf `resume_report` bağımsız üretilmiş golden’larla (rapor golden’ları referanstaki ön görüntülerden hesaplanan gerçek özetlerle ve üretici çıktısına bayt bayt eşit) sınanmıştır (144 + 162 test; tam paket 7776 passed, 1 skipped; Ruff, strict mypy, check-docs ve check-agent-guides temiz). R1 (sözleşme/golden/gizlilik/aşağı akış ve yaşam döngüsü/tel sağlamlığı/gerilemesizlik) ve R2 (rapor tasarımı/üretici/belge sadakati ve bağımsız oracle’lar/gerilemesizlik) reviewer’larının doğrulanmış bulguları işlendi; v1/v2 refaktörü eski ve yeni ağaçta 161.012 ve 25.000 olguluk fark testlerinde özdeş bulundu (tek kasıtlı fark etkisiz iptalin `request_uncertain`/`provider_rejected` taşıyamaması); 30.000 + 192.000 rastgele rapor ve 258.048 + 400.000 özet kombinasyonu bağımsız oracle’larla uyuştu; 65 + 70 + 64 özdenetim mutantı ile reviewer mutantlarından eşdeğersiz hiçbiri hayatta kalmadı.
+- Kalan sınır: Yalnız saf tipler ve işlevlerdir: kalıcılık/okuma doğrulaması — kanıt girdilerinin Manifest’le eşitliği, kayıt/kanıt sürüm ve saat eşleşmesi, `len(intents) ≤ 3M`, zincir döngüsüzlüğü — (P02-3u), kapasite/bakım/projeksiyon (P02-3v), yazma kapıları (P02-3r), üreticinin okuma sırası ve manifest/sınıflandırma okuması (P02-3h) ile CLI/API, v2 kullanıcı kapsayıcıları ve rapor kota hesabı (P02-3i/3v) sonraki dilimlerdedir. Raporun örnek yollarının literal-secret taraması üreticinindir. Canlı davranış iddiası yoktur.
+
+Seçilen adlar ve yerleşim:
 
 - `yorunge.domain.dataset_transfer_v3`: `TransferRecordV3`, `TransferControlV3`, `TransferVerificationV3`, `validate_record_binding_v3` ve `validate_verification_binding_v3`.
 - `yorunge.domain.dataset_transfer_v2`: v2 davranışı, iletisi ve baytı değişmeden ortak `validate_lease_binding`, `validate_control_facts` ve `validate_verification_facts` (v2 ve v3 kayıt/kontrol/kanıt aynı kuralları paylaşır; `LeaseFacts`, `ControlFacts`, `VerificationFacts` protokolleri).
