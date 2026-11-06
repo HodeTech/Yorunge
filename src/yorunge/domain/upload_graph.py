@@ -19,15 +19,21 @@ StageKey = tuple[StageKind, int | None]
 
 # Plan versions whose graph is "create, project_link, then presign/put/confirm for every file".
 SUPPORTED_PLAN_VERSIONS: Final[tuple[int, ...]] = (1, 2)
-# Version new plans are written with. The v1 and v2 graphs are identical, so consumers that hold no
-# plan (request limits, cost/review validators, ``operation_reservation``) name it explicitly; a
-# continuation plan type must review those call sites instead of inheriting this graph.
-CURRENT_PLAN_VERSION: Final = 2
+# Version new original-upload plans are written with. The v1 and v2 graphs are identical, so
+# consumers that hold no plan (request limits, cost/review validators, ``operation_reservation``)
+# name it explicitly. A continuation plan type has a different graph (a file subset and an existing
+# dataset) and must review those call sites instead of inheriting this one.
+ORIGINAL_PLAN_VERSION: Final = 2
 STAGE_KINDS: Final[tuple[StageKind, ...]] = ("create", "project_link", "presign", "put", "confirm")
 # Stages that carry a file index and, once accepted, the provider object key.
 FILE_STAGE_KINDS: Final[tuple[StageKind, ...]] = ("presign", "put", "confirm")
 # The original workflow runs at most this many PUT streams at once.
 PUT_WORKERS: Final = 2
+
+
+def file_index_matches(kind: StageKind, index: int | None) -> bool:
+    """Whether ``index`` is present exactly for the stage kinds that act on one file."""
+    return (kind in FILE_STAGE_KINDS) == (index is not None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,8 +65,9 @@ class StageGraphSpec:
             raise ValueError("unsupported upload file count")
 
     @property
-    def files(self) -> range:
-        return range(self.file_count)
+    def files(self) -> tuple[int, ...]:
+        """File indices of this graph, in upload order (a tuple: later graphs name subsets)."""
+        return tuple(range(self.file_count))
 
     @property
     def intent_count(self) -> int:
@@ -95,11 +102,11 @@ class StageGraphSpec:
             confirm=self.file_count,
         )
 
-    def put_batches(self) -> tuple[range, ...]:
+    def put_batches(self) -> tuple[tuple[int, ...], ...]:
         """File indices whose PUT streams run together, each batch followed by its confirms."""
+        files = self.files
         return tuple(
-            range(start, min(self.file_count, start + PUT_WORKERS))
-            for start in range(0, self.file_count, PUT_WORKERS)
+            files[start : start + PUT_WORKERS] for start in range(0, len(files), PUT_WORKERS)
         )
 
     def takes_presign_key(self, kind: StageKind) -> bool:

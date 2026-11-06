@@ -30,7 +30,7 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Identifier
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_costs import ChargeCategory, UploadRequestLimits
-from yorunge.domain.upload_graph import CURRENT_PLAN_VERSION, StageGraphSpec
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 
 class UploadCostSummary(UploadWire):
@@ -204,7 +204,9 @@ class UploadIntentReview(UploadWire):
             raise ValueError("positive plan interval required")
         limits = self.request_limits
         if limits is not None:
-            counts = StageGraphSpec(CURRENT_PLAN_VERSION, self.manifest.file_count).request_counts()
+            counts = StageGraphSpec(
+                ORIGINAL_PLAN_VERSION, self.manifest.file_count
+            ).request_counts()
             if (limits.max_presign, limits.max_put, limits.max_confirm) != (
                 counts.presign,
                 counts.put,

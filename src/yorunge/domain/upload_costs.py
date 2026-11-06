@@ -23,7 +23,7 @@ from yorunge.domain.dataset_upload import (
     UploadWire,
 )
 from yorunge.domain.models import Identifier
-from yorunge.domain.upload_graph import CURRENT_PLAN_VERSION, StageGraphSpec
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 ChargeCategory = Literal["create", "project_link", "control", "transfer", "confirm", "storage"]
 ALL_CHARGE_CATEGORIES: tuple[ChargeCategory, ...] = (
@@ -84,7 +84,7 @@ class UploadCostWork(UploadWire):
     @model_validator(mode="after")
     def quantities(self) -> Self:
         limits = self.request_limits
-        counts = StageGraphSpec(CURRENT_PLAN_VERSION, self.manifest.file_count).request_counts()
+        counts = StageGraphSpec(ORIGINAL_PLAN_VERSION, self.manifest.file_count).request_counts()
         if (limits.max_presign, limits.max_put, limits.max_confirm) != (
             counts.presign,
             counts.put,

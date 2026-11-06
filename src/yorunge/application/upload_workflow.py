@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Protocol
 
 from yorunge.application.upload_arms import UploadArm
@@ -189,7 +189,7 @@ async def _cleanup_batch(
     return failure
 
 
-async def _put_batch(environment: OriginalEnvironment, indices: range) -> None:
+async def _put_batch(environment: OriginalEnvironment, indices: Sequence[int]) -> None:
     calls: list[PreparedEffect] = []
     tasks: list[asyncio.Task[EffectOutcome]] = []
     attempted: set[asyncio.Task[EffectOutcome]] = set()

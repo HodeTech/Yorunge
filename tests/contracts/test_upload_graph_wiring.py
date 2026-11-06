@@ -6,12 +6,19 @@ from types import SimpleNamespace
 
 import pytest
 
+from yorunge.adapters import upload_original
+from yorunge.adapters.upload_original import _Environment
 from yorunge.adapters.upload_preparation import _limits
 from yorunge.adapters.upload_repository import _arm_input
-from yorunge.adapters.upload_store import _receipt_key, request_digest
+from yorunge.adapters.upload_store import (
+    _receipt,
+    _receipt_key,
+    acknowledged_stages,
+    request_digest,
+)
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.dataset_manifest import DatasetManifest
-from yorunge.domain.dataset_transfer import StageIntent
+from yorunge.domain.dataset_transfer import StageIntent, StageReceipt
 from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
@@ -146,3 +153,136 @@ def test_receipt_object_key_binding_equals_the_frozen_rule(kind, key):
             _receipt_key(graph, kind, index, receipt, accepted)
     else:
         _receipt_key(graph, kind, index, receipt, accepted)
+
+
+# --- receipt dataset binding and journal completeness ------------------------------------------
+DATASET = "00000000-0000-4000-8000-000000000909"
+OTHER_DATASET = "00000000-0000-4000-8000-000000000808"
+OBJECT_KEY = "objects/blob-1"
+
+
+def stage_receipt(intent, dataset_id):
+    file = MANIFEST.files[0] if intent.kind == "put" else None
+    return StageReceipt(
+        schema_version=1,
+        intent_id=intent.intent_id,
+        recorded_at=intent.intended_at,
+        result="accepted",
+        dataset_id=dataset_id,
+        object_key=OBJECT_KEY if intent.kind in {"presign", "put", "confirm"} else None,
+        sent_bytes=file.size if file else None,
+        sent_sha256=file.sha256 if file else None,
+    )
+
+
+@pytest.mark.parametrize("plan", [V1_PLAN, V2_PLAN])
+@pytest.mark.parametrize("kind", STAGE_KINDS)
+def test_receipt_dataset_binding_equals_the_frozen_rule(plan, kind):
+    index = None if kind in {"create", "project_link"} else 0
+    intent = StageIntent.model_validate({**INTENT, "kind": kind, "file_index": index})
+    accepted = {
+        ("create", None): SimpleNamespace(dataset_id=DATASET),
+        ("presign", 0): SimpleNamespace(object_key=OBJECT_KEY),
+    }
+    _receipt(plan, MANIFEST, intent, stage_receipt(intent, DATASET), accepted)
+    mismatch = stage_receipt(intent, OTHER_DATASET)
+    if kind == "create":
+        # The create receipt defines the dataset id; there is no earlier receipt to compare with.
+        _receipt(plan, MANIFEST, intent, mismatch, {})
+    else:
+        with pytest.raises(ValueError, match="receipt dataset mismatch"):
+            _receipt(plan, MANIFEST, intent, mismatch, accepted)
+
+
+def frozen_acknowledged(plan, view):
+    count = plan.manifest.file_count
+    return (
+        {(i.kind, i.file_index) for i in view.intents} == frozen_required_stages(count)
+        and len(view.intents) == 2 + 3 * count
+        and len(view.receipts) == len(view.intents)
+        and all(r.result == "accepted" for r in view.receipts)
+    )
+
+
+def frozen_required_stages(count):
+    stages = {("create", None), ("project_link", None)}
+    stages.update((kind, i) for i in range(count) for kind in ("presign", "put", "confirm"))
+    return stages
+
+
+def journal_view(plan, stages, results=None):
+    results = results or {}
+    return SimpleNamespace(
+        plan=plan,
+        intents=[SimpleNamespace(kind=kind, file_index=index) for kind, index in stages],
+        receipts=[
+            SimpleNamespace(result=results.get(position, "accepted"))
+            for position in range(len(stages))
+        ],
+    )
+
+
+@pytest.mark.parametrize("plan", [V1_PLAN, V2_PLAN])
+def test_acknowledged_stages_needs_exactly_the_required_set_with_every_receipt_accepted(plan):
+    count = plan.manifest.file_count
+    full = [
+        ("create", None),
+        ("project_link", None),
+        *[(kind, i) for i in range(count) for kind in ("presign", "put", "confirm")],
+    ]
+    duplicate_replaces_stage = [*full[:-1], full[-2]]
+    unknown_file_replaces_stage = [*full[:-1], ("confirm", count)]
+    cases = [
+        (journal_view(plan, full), True),
+        (journal_view(plan, full[:-1]), False),
+        # Same intent count, different stage set: only the set comparison can tell them apart.
+        (journal_view(plan, duplicate_replaces_stage), False),
+        (journal_view(plan, unknown_file_replaces_stage), False),
+        # Same stage set, one intent too many: only the intent count can tell them apart.
+        (journal_view(plan, [*full, full[-1]]), False),
+        (
+            SimpleNamespace(
+                plan=plan,
+                intents=journal_view(plan, full).intents,
+                receipts=journal_view(plan, full).receipts[:-1],
+            ),
+            False,
+        ),
+        (journal_view(plan, full, {3: "rejected"}), False),
+    ]
+    for view, expected in cases:
+        assert acknowledged_stages(view) is expected
+        assert frozen_acknowledged(plan, view) is expected
+
+
+# --- upload environment index guards -----------------------------------------------------------
+def environment(uploads=None):
+    env = _Environment(None, V2_PLAN, None, None, None, None, None, 0.0)
+    env.record = SimpleNamespace(operation_id="op", dataset_id=DATASET)
+    env.contexts = ("file-0", "file-1", "file-2")
+    env.uploads = uploads or {}
+    return env
+
+
+def test_environment_context_only_serves_indices_of_the_plan():
+    env = environment()
+    assert V2_PLAN.manifest.file_count == 3
+    assert [env._context(i) for i in range(3)] == ["file-0", "file-1", "file-2"]
+    for index in (None, 3, 127, -1, True, "0"):
+        with pytest.raises(YorungeError) as raised:
+            env._context(index)
+        assert raised.value.code == "invalid_request"
+
+
+def test_environment_requires_exactly_one_presigned_upload_per_plan_file(monkeypatch):
+    seen = []
+    monkeypatch.setattr(
+        upload_original.descriptors, "distinct_uploads", lambda *args: seen.append(args)
+    )
+    environment({0: "a", 1: "b", 2: "c"}).validate_uploads()
+    assert len(seen) == 1
+    for uploads in ({0: "a", 1: "b"}, {0: "a", 1: "b", 2: "c", 3: "d"}, {1: "a", 2: "b", 3: "c"}):
+        with pytest.raises(YorungeError) as raised:
+            environment(uploads).validate_uploads()
+        assert raised.value.code == "invalid_response"
+    assert len(seen) == 1

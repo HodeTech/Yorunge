@@ -1,9 +1,11 @@
 """Actual spawned original workflow is SIGKILLed at the journal boundaries of the v2 path.
 
-These are characterization tests: they record what the shipped path leaves behind (same operation
-ID, a latched ``running`` record, no request on restart, ``unknown`` after the lease expires and no
-second effect) so later changes to the stage graph or to resume classification cannot silently
-change the journal shapes those depend on.
+These are characterization tests: they record what the shipped path leaves behind so later changes
+to the stage graph or to resume classification cannot silently change the journal shapes those
+depend on. Every case keeps the same operation ID and sends no request on restart. Before the first
+intent the record is an unlatched ``admitted`` one that a lapsed lease cancels; from the first
+intent on it is a latched ``running`` one that a lapsed lease turns ``unknown``; once the metadata
+proof has committed it is ``succeeded`` and needs no expiry. No case issues a second effect.
 """
 
 import multiprocessing

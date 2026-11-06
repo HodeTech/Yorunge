@@ -19,7 +19,7 @@ from yorunge.domain.dataset_upload import (
     provider_uuid,
 )
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_graph import CURRENT_PLAN_VERSION, FILE_STAGE_KINDS, StageGraphSpec
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec, file_index_matches
 from yorunge.domain.upload_graph import StageKind as StageKind
 
 TransferStatus = Literal["admitted", "running", "unknown", "succeeded", "failed", "cancelled"]
@@ -170,7 +170,7 @@ class StageIntent(UploadWire):
 
     @model_validator(mode="after")
     def binding(self) -> Self:
-        if (self.kind in FILE_STAGE_KINDS) == (self.file_index is None):
+        if not file_index_matches(self.kind, self.file_index):
             raise ValueError("stage file index mismatch")
         if self.owner.mode != "write" or not (
             instant(self.owner.renewed_at)
@@ -330,4 +330,4 @@ def operation_reservation(file_count: int) -> int:
 
     The v1/v2 graphs share one reservation; the stage graph specification owns the arithmetic.
     """
-    return StageGraphSpec(CURRENT_PLAN_VERSION, file_count).operation_reservation()
+    return StageGraphSpec(ORIGINAL_PLAN_VERSION, file_count).operation_reservation()

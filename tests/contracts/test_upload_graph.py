@@ -10,10 +10,12 @@ from yorunge.domain.dataset_transfer import StageIntent, operation_reservation
 from yorunge.domain.dataset_upload import MAX_EFFECT_INTENTS, MAX_UPLOAD_FILES
 from yorunge.domain.upload_graph import (
     FILE_STAGE_KINDS,
+    ORIGINAL_PLAN_VERSION,
     STAGE_KINDS,
     SUPPORTED_PLAN_VERSIONS,
     StageGraphSpec,
     StageKind,
+    file_index_matches,
 )
 from yorunge.domain.upload_versions import graph_of
 
@@ -59,7 +61,7 @@ def frozen_limits(file_count):
 
 
 def frozen_batches(count):
-    return [range(start, min(count, start + 2)) for start in range(0, count, 2)]
+    return [tuple(range(start, min(count, start + 2))) for start in range(0, count, 2)]
 
 
 @pytest.mark.parametrize("version", VERSIONS)
@@ -78,8 +80,10 @@ def test_every_derived_fact_matches_the_frozen_formulas_for_all_file_counts(vers
             "confirm": counts.confirm,
         } == frozen_limits(count)
         assert counts.total == spec.intent_count
-        assert list(spec.files) == list(range(count))
+        # Tuples, not ranges: later graphs name file subsets that a range cannot express.
+        assert spec.files == tuple(range(count))
         assert list(spec.put_batches()) == frozen_batches(count)
+        assert all(type(batch) is tuple for batch in spec.put_batches())
 
 
 @pytest.mark.parametrize("version", VERSIONS)
@@ -102,6 +106,13 @@ def test_put_batches_cover_each_file_once_in_order_with_at_most_two_workers(coun
     assert [i for batch in batches for i in batch] == list(range(count))
     assert all(1 <= len(batch) <= 2 for batch in batches)
     assert all(len(batch) == 2 for batch in batches[:-1])
+
+
+@pytest.mark.parametrize("kind", STAGE_KINDS)
+@pytest.mark.parametrize("index", [None, 0, 5, 127])
+def test_file_index_pairing_equals_the_frozen_rule(kind, index):
+    frozen_valid = (kind in {"presign", "put", "confirm"}) == (index is not None)
+    assert file_index_matches(kind, index) is frozen_valid
 
 
 def test_request_dependencies_name_the_same_sources_as_before():
@@ -139,6 +150,14 @@ def test_stage_kind_vocabulary_has_one_closed_order():
 
 def test_supported_versions_are_exactly_the_stored_plan_versions():
     assert SUPPORTED_PLAN_VERSIONS == VERSIONS
+    assert ORIGINAL_PLAN_VERSION in SUPPORTED_PLAN_VERSIONS
+
+
+@pytest.mark.parametrize("count", [0, 129, -1])
+def test_reservation_wrapper_rejects_counts_outside_the_original_graph(count):
+    # Plan manifests are limited to 1..128 files, so no stored plan reaches this error.
+    with pytest.raises(ValueError, match="unsupported upload file count"):
+        operation_reservation(count)
 
 
 def test_derived_capacity_constants_agree_with_the_specification():

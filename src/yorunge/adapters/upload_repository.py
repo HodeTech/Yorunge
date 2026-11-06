@@ -83,7 +83,7 @@ from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
-from yorunge.domain.upload_graph import FILE_STAGE_KINDS, STAGE_KINDS
+from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -100,11 +100,7 @@ from yorunge.domain.upload_versions import (
 
 
 def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> None:
-    if (
-        type(kind) is not str
-        or kind not in STAGE_KINDS
-        or (kind in FILE_STAGE_KINDS) == (file_index is None)
-    ):
+    if type(kind) is not str or kind not in STAGE_KINDS or not file_index_matches(kind, file_index):
         raise YorungeError("invalid_request")
     finite = False
     if type(total_end) in (int, float):
