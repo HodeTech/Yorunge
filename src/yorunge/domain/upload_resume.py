@@ -15,14 +15,19 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final, Literal
 
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.dataset_upload import MAX_UPLOAD_FILES
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.upload_graph import STAGE_KINDS, StageKind, file_index_matches
+from yorunge.domain.upload_graph import (
+    FILE_STAGE_KINDS,
+    STAGE_KINDS,
+    StageKind,
+    file_index_matches,
+)
 
 FileClass = Literal[
     "confirmed",
@@ -88,6 +93,7 @@ MAX_INVENTORY_PAGES: Final = 128
 
 ReceiptState = Literal["none", "accepted", "rejected"]
 ChainState = Literal["none", "intent", "accepted"]
+CHAIN_STATES: Final[tuple[ChainState, ...]] = ("none", "intent", "accepted")
 
 
 # --- journal facts and their chain union ---------------------------------------------------------
@@ -102,11 +108,16 @@ class StageFact:
 
 @dataclass(frozen=True, slots=True)
 class OperationJournal:
-    """Facts of one stored operation. ``parent_operation_id`` is None for a chain root."""
+    """Facts of one stored operation. ``parent_operation_id`` is None for a chain root.
+
+    The facts come from validated stored records: a cancelled operation holds no intent and a
+    failed one holds some, so the descendant and chain rules do not re-derive that.
+    """
 
     operation_id: str
     parent_operation_id: str | None
     dataset_id: str | None
+    manifest_digest: str
     stages: tuple[StageFact, ...]
     graph_complete: bool
 
@@ -120,6 +131,17 @@ class ChainSummary:
     source_graph_complete: bool
     operation_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        # ``merge_chain`` is the producer; a state outside the closed set must never read as
+        # "no intent", because that would offer an unconfirmed file for a silent resend.
+        if (
+            type(self.states) is not tuple
+            or any(state not in CHAIN_STATES for state in self.states)
+            or type(self.rejected_receipt) is not bool
+            or type(self.source_graph_complete) is not bool
+        ):
+            raise ValueError("invalid chain summary")
+
 
 def _chain_is_consistent(journals: Sequence[OperationJournal]) -> bool:
     root = journals[0]
@@ -131,9 +153,11 @@ def _chain_is_consistent(journals: Sequence[OperationJournal]) -> bool:
             later.parent_operation_id == earlier.operation_id
             for earlier, later in zip(journals, journals[1:], strict=False)
         )
-        # A continuation exists only for a created dataset, and the whole lineage shares it.
+        # A continuation exists only for a created dataset, and the whole lineage shares it and
+        # the manifest whose file indices the union is taken over.
         and all(journal.dataset_id == root.dataset_id for journal in journals[1:])
         and (root.dataset_id is not None or len(journals) == 1)
+        and all(journal.manifest_digest == root.manifest_digest for journal in journals[1:])
     )
 
 
@@ -146,6 +170,16 @@ def _stage_is_valid(stage: StageFact, file_count: int) -> bool:
     return index is None or (type(index) is int and 0 <= index < file_count)
 
 
+def _journal_is_valid(journal: OperationJournal, file_count: int, *, root: bool) -> bool:
+    keys = [(stage.kind, stage.file_index) for stage in journal.stages]
+    return (
+        len(set(keys)) == len(keys)
+        and all(_stage_is_valid(stage, file_count) for stage in journal.stages)
+        # Only the root creates and links; a continuation works inside the existing dataset.
+        and (root or all(stage.kind in FILE_STAGE_KINDS for stage in journal.stages))
+    )
+
+
 def merge_chain(journals: Sequence[OperationJournal], file_count: int) -> ChainSummary:
     """Union of a lineage's journals, root first. A malformed chain is ``state_invalid``."""
     if type(file_count) is not int or not 1 <= file_count <= MAX_UPLOAD_FILES:
@@ -153,7 +187,8 @@ def merge_chain(journals: Sequence[OperationJournal], file_count: int) -> ChainS
     if not journals:
         raise ValueError("a chain holds at least its source")
     if not _chain_is_consistent(journals) or not all(
-        _stage_is_valid(stage, file_count) for journal in journals for stage in journal.stages
+        _journal_is_valid(journal, file_count, root=position == 0)
+        for position, journal in enumerate(journals)
     ):
         raise YorungeError("state_invalid")
     states: list[ChainState] = ["none"] * file_count
@@ -178,10 +213,12 @@ def merge_chain(journals: Sequence[OperationJournal], file_count: int) -> ChainS
 # --- remote inventory ----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class RemoteItem:
-    path: str
+    """One listed remote item. ``repr`` hides name and identity: remote data stays out of logs."""
+
+    path: str = field(repr=False)
     size: int
     sha256: str | None
-    item_id: str
+    item_id: str = field(repr=False)
 
 
 ListingFault = Literal["total_mismatch", "cursor_loop", "page_limit", "too_large"]
@@ -191,7 +228,7 @@ ListingFault = Literal["total_mismatch", "cursor_loop", "page_limit", "too_large
 class RemoteInventory:
     """Items observed while listing, and the reasons the listing itself cannot be trusted."""
 
-    items: tuple[RemoteItem, ...]
+    items: tuple[RemoteItem, ...] = field(repr=False)
     faults: frozenset[ListingFault] = frozenset()
 
 
@@ -240,6 +277,15 @@ class InventoryFold:
 
 # --- classification ------------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
+class Selection:
+    """What a continuation plan would carry: every file that needs a transfer, never a subset."""
+
+    file_indices: tuple[int, ...]
+    uncertain_indices: tuple[int, ...]
+    remote_present_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class Classification:
     classes: tuple[FileClass, ...]
     blockers: tuple[Blocker, ...]
@@ -250,21 +296,25 @@ class Classification:
         return self.classes.count(file_class)
 
     @property
-    def file_indices(self) -> tuple[int, ...]:
-        """Every file that needs a transfer, never a partial selection."""
-        return tuple(i for i, c in enumerate(self.classes) if c in SEND_CLASSES)
-
-    @property
-    def uncertain_indices(self) -> tuple[int, ...]:
-        return tuple(i for i, c in enumerate(self.classes) if c == "pending_uncertain")
-
-    @property
-    def remote_present_count(self) -> int:
-        return sum(c in PRESENT_CLASSES for c in self.classes)
-
-    @property
     def plannable(self) -> bool:
+        """No blocker derived from journals, inventory or the source graph stands.
+
+        The caller that holds the source record, its lease, project membership and the local
+        folder adds its own blockers before a plan is prepared.
+        """
         return not self.blockers
+
+    def selection(self) -> Selection | None:
+        """The transfer selection, or None while any blocker stands (it must not be read then)."""
+        if self.blockers:
+            return None
+        return Selection(
+            file_indices=tuple(i for i, c in enumerate(self.classes) if c in SEND_CLASSES),
+            uncertain_indices=tuple(
+                i for i, c in enumerate(self.classes) if c == "pending_uncertain"
+            ),
+            remote_present_count=sum(c in PRESENT_CLASSES for c in self.classes),
+        )
 
 
 def inventory_digest(items: Sequence[RemoteItem]) -> str:
@@ -302,14 +352,28 @@ def _by_chain_state(state: ChainState, exact: bool) -> FileClass:
         return "confirmed" if exact else "drift_missing"
     if exact:
         return "observed"
-    return "pending_uncertain" if state == "intent" else "pending_clean"
+    if state == "intent":
+        return "pending_uncertain"
+    if state == "none":
+        return "pending_clean"
+    raise ValueError("invalid chain state")
 
 
 def classify(
     files: Sequence[DatasetFile], chain: ChainSummary, inventory: RemoteInventory
 ) -> Classification:
+    """Closed class per manifest file, blockers and digests.
+
+    Names are compared exactly (no case or Unicode folding). A manifest that repeats a path or a
+    hash cannot come from a v2 plan (duplicate content is refused at preparation) and is
+    ``state_invalid``.
+    """
     if len(chain.states) != len(files):
         raise ValueError("chain summary does not cover the manifest")
+    if len({file.path for file in files}) != len(files) or len(
+        {file.sha256 for file in files}
+    ) != len(files):
+        raise YorungeError("state_invalid")
     items = inventory.items
     by_name: dict[str, list[RemoteItem]] = {}
     by_sha: dict[str, list[RemoteItem]] = {}

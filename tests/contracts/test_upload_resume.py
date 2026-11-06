@@ -1,6 +1,7 @@
 """Resume classification equals its closed decision table cell by cell, by hand-made vectors."""
 
 import hashlib
+import unicodedata
 from dataclasses import fields
 from itertools import product
 from pathlib import Path
@@ -12,6 +13,7 @@ from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import (
     BLOCKERS,
+    CHAIN_STATES,
     FILE_CLASSES,
     MAX_INVENTORY_ITEMS,
     MAX_INVENTORY_PAGES,
@@ -23,9 +25,11 @@ from yorunge.domain.upload_resume import (
     OperationJournal,
     RemoteInventory,
     RemoteItem,
+    Selection,
     StageFact,
     classify,
     descendant_verdict,
+    inventory_digest,
     merge_chain,
 )
 
@@ -174,9 +178,8 @@ def test_selection_counters_and_the_remote_present_count():
         inventory(item(A)),
     )
     assert result.classes == ("confirmed", "pending_uncertain", "pending_clean")
-    assert result.file_indices == (1, 2)  # the whole pending set, never a partial selection
-    assert result.uncertain_indices == (1,)
-    assert result.remote_present_count == 1
+    # The whole pending set, never a partial selection; present + sent covers the manifest.
+    assert result.selection() == Selection((1, 2), (1,), 1)
     assert [result.count(c) for c in FILE_CLASSES] == [1, 0, 1, 1, 0, 0, 0]
     assert result.blockers == () and result.plannable
 
@@ -186,8 +189,8 @@ def test_a_fully_present_folder_is_a_valid_verification_only_selection():
         FILES, chain("accepted", "none", "intent"), inventory(item(A), item(B), item(C))
     )
     assert result.classes == ("confirmed", "observed", "observed")
-    assert result.file_indices == () and result.uncertain_indices == ()
-    assert result.remote_present_count == 3 and result.plannable
+    assert result.selection() == Selection((), (), 3)
+    assert result.plannable
 
 
 def test_one_blocking_file_makes_the_whole_classification_unplannable():
@@ -202,8 +205,8 @@ def stage(kind, index=None, receipt="accepted"):
     return StageFact(kind, index, receipt)
 
 
-def op(name, parent, stages, *, dataset="ds", complete=False):
-    return OperationJournal(name, parent, dataset, tuple(stages), complete)
+def op(name, parent, stages, *, dataset="ds", manifest="m", complete=False):
+    return OperationJournal(name, parent, dataset, manifest, tuple(stages), complete)
 
 
 ROOT_PREFIX = [stage("create"), stage("project_link")]
@@ -280,6 +283,10 @@ def test_only_the_source_decides_whether_its_own_graph_is_already_complete():
         [op("r", None, [stage("create", 0)])],  # create carries no file index
         [op("r", None, [stage("put", None)])],  # a file stage needs its index
         [op("r", None, [stage("confirm", True)])],
+        [op("r", None, []), op("c", "r", [], manifest="other")],  # another manifest
+        [op("r", None, []), op("c", "r", [stage("create")])],  # a continuation never creates
+        [op("r", None, []), op("c", "r", [stage("project_link")])],  # nor links
+        [op("r", None, [stage("presign", 0), stage("presign", 0, "none")])],  # a stage twice
         [op("r", None, [stage("bogus", None)])],  # outside the closed stage kinds
         [op("r", None, [stage("confirm", 0, "maybe")])],  # outside the closed receipt states
     ],
@@ -490,6 +497,33 @@ def test_two_relevant_descendants_are_a_branch_and_state_invalid():
 def test_closed_vocabularies_and_the_reference_agree():
     assert get_args(FileClass) == FILE_CLASSES
     assert get_args(Blocker) == BLOCKERS
+    assert FILE_CLASSES == (
+        "confirmed",
+        "observed",
+        "pending_clean",
+        "pending_uncertain",
+        "drift_missing",
+        "conflict",
+        "inventory_unreliable",
+    )
+    assert BLOCKERS == (
+        "source_active",
+        "source_ineligible",
+        "source_superseded",
+        "source_terminal",
+        "reconcile_available",
+        "create_unknown",
+        "membership_unobserved",
+        "known_negative",
+        "drift_missing",
+        "conflict",
+        "extra_remote",
+        "inventory_unreliable",
+        "inventory_too_large",
+        "local_changed",
+    )
+    assert CHAIN_STATES == ("none", "intent", "accepted")
+    assert (MAX_INVENTORY_ITEMS, MAX_INVENTORY_PAGES) == (1024, 128)
     text = REFERENCE.read_text()
     start = text.index("Kapalı `blockers`")
     section = text[start : text.index("**Eylem önceliği.**", start)]
@@ -506,6 +540,7 @@ def test_facts_and_summaries_carry_no_receipt_key_url_or_dataset_content():
         "operation_id",
         "parent_operation_id",
         "dataset_id",
+        "manifest_digest",
         "stages",
         "graph_complete",
     }
@@ -526,3 +561,97 @@ def test_every_class_is_reachable_from_some_state_and_inventory():
         )
     }
     assert reached == set(FILE_CLASSES)
+
+
+# --- review hardening: single blockers, exact names, ties, self-defence -------------------------
+def test_each_evidence_blocker_alone_blocks_planning_and_withholds_the_selection():
+    extra = item(A, path="extra.bin", digest=sha("e"), item_id="id-extra")
+    alone = {
+        "reconcile_available": classify((A,), chain("accepted", complete=True), inventory(item(A))),
+        "known_negative": classify((A,), chain("accepted", rejected=True), inventory(item(A))),
+        "drift_missing": classify((A,), chain("accepted"), inventory()),
+        "conflict": classify((A,), chain("none"), inventory(item(A, size=9))),
+        "extra_remote": classify((A,), chain("accepted"), inventory(item(A), extra)),
+        "inventory_unreliable": classify(
+            (A,), chain("none"), inventory(item(A), faults=("cursor_loop",))
+        ),
+    }
+    for blocker, result in alone.items():
+        assert result.blockers == (blocker,), blocker
+        assert not result.plannable and result.selection() is None
+    # Too many items is always also an untrustworthy listing.
+    huge = classify((A,), chain("none"), inventory(item(A), faults=("too_large",)))
+    assert huge.blockers == ("inventory_unreliable", "inventory_too_large")
+    assert huge.selection() is None
+
+
+@pytest.mark.parametrize("name", ["A.BIN", unicodedata.normalize("NFD", "ä.bin")])
+def test_names_are_compared_exactly_without_case_or_unicode_folding(name):
+    path = "a.bin" if name == "A.BIN" else unicodedata.normalize("NFC", "ä.bin")
+    file = DatasetFile(path=path, size=3, sha256=sha("a"))
+    other = classify((file,), chain("none"), inventory(RemoteItem(name, 3, sha("z"), "x")))
+    # A look-alike name is a foreign item, not the file; the file itself is not on the remote.
+    assert other.classes == ("pending_clean",)
+    assert other.blockers == ("extra_remote",) and other.selection() is None
+    same = classify((file,), chain("none"), inventory(RemoteItem(name, 3, file.sha256, "x")))
+    # The same content under a look-alike name is a copy of this file.
+    assert same.classes == ("conflict",) and not same.plannable
+
+
+def test_a_manifest_that_repeats_a_path_or_a_hash_is_state_invalid():
+    twin = DatasetFile(path="twin.bin", size=3, sha256=A.sha256)
+    again = DatasetFile(path=A.path, size=4, sha256=sha("other"))
+    for files in ((A, twin), (A, again)):
+        with pytest.raises(YorungeError) as raised:
+            classify(files, chain("none", "none"), inventory())
+        assert raised.value.code == "state_invalid"
+
+
+@pytest.mark.parametrize(
+    "states", [("Accepted",), ("accepted ",), ("rejected",), ("bogus",), (None,), ("none", 1)]
+)
+def test_a_chain_summary_refuses_states_outside_the_closed_set(states):
+    with pytest.raises(ValueError, match="invalid chain summary"):
+        ChainSummary(states, False, False, ("op",))
+    with pytest.raises(ValueError, match="invalid chain summary"):
+        ChainSummary(["none"], False, False, ("op",))
+    for flags in ((1, False), (False, 1), ("no", False)):
+        with pytest.raises(ValueError, match="invalid chain summary"):
+            ChainSummary(("none",), *flags, ("op",))
+
+
+def test_a_root_may_create_and_link_while_its_continuation_sends_files():
+    root = op("r", None, [*ROOT_PREFIX, stage("presign", 0), stage("confirm", 0, "none")])
+    child = op("c", "r", [stage("presign", 0), stage("put", 0), stage("confirm", 0)])
+    assert states(root, child) == ("accepted", "none", "none")
+
+
+def test_the_digest_orders_ties_by_size_then_hash_with_a_null_hash_first():
+    unhashed = RemoteItem("a.bin", 3, None, "i1")
+    hashed = RemoteItem("a.bin", 3, sha("a"), "i2")
+    larger = RemoteItem("a.bin", 4, sha("a"), "i3")
+    expected = (
+        '{"items":[["a.bin",3,null],["a.bin",3,"' + sha("a") + '"],["a.bin",4,"' + sha("a") + '"]],'
+        '"kind":"upload_inventory"}'
+    )
+    for order in (
+        [unhashed, hashed, larger],
+        [larger, hashed, unhashed],
+        [hashed, unhashed, larger],
+    ):
+        assert inventory_digest(order) == hashlib.sha256(expected.encode()).hexdigest()
+    one, two = RemoteItem("a.bin", 3, sha("a"), "i1"), RemoteItem("a.bin", 3, sha("b"), "i2")
+    assert inventory_digest([one, two]) == inventory_digest([two, one])
+    short, long = RemoteItem("a.bin", 3, sha("a"), "i1"), RemoteItem("a.bin", 5, sha("a"), "i2")
+    assert inventory_digest([short, long]) == inventory_digest([long, short])
+
+
+def test_remote_names_and_identities_stay_out_of_reprs():
+    listing = inventory(item(A))
+    text = repr(listing) + repr(listing.items[0])
+    assert "a.bin" not in text and "id-a" not in text
+
+
+def test_the_page_limit_and_item_cap_hold_their_documented_values():
+    # The fold's own tests import these constants, so only a literal pins the contract.
+    assert MAX_INVENTORY_ITEMS == 1024 and MAX_INVENTORY_PAGES == 128

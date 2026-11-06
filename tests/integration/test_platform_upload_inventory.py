@@ -20,6 +20,8 @@ from tests.integration.test_platform_upload_port import setup
 from tests.integration.test_upload_http_budget import session
 from tests.integration.test_upload_journal import DATASET
 from tests.integration.test_upload_journal import journal as journal
+from yorunge.adapters import platform_upload_items as items_module
+from yorunge.application.upload_budget import UploadBudget
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import (
     MAX_INVENTORY_ITEMS,
@@ -306,3 +308,87 @@ def test_status_failures_keep_the_mandatory_read_error_without_effect(
             assert raised.value.code == code
             assert raised.value.__cause__ is raised.value.__context__ is None
     assert value.snapshot().effect_attempts == value.snapshot().response_pending == 0
+
+
+def test_exactly_the_item_cap_over_eight_full_pages_is_a_clean_listing(journal, certificates):
+    routes = {ITEMS: page(inventory_rows(128), total=MAX_INVENTORY_ITEMS, cursor="p1")}
+    for number in range(1, MAX_INVENTORY_ITEMS // 128):
+        last = number == MAX_INVENTORY_ITEMS // 128 - 1
+        routes[ITEMS + f"&cursor=p{number}"] = page(
+            inventory_rows(128, number * 128),
+            total=MAX_INVENTORY_ITEMS,
+            cursor=None if last else f"p{number + 1}",
+        )
+    inventory, paths, _ = list_inventory(journal, certificates, routes, seconds=20)
+    assert inventory.faults == frozenset()
+    assert len(inventory.items) == MAX_INVENTORY_ITEMS
+    assert len(paths) == MAX_INVENTORY_ITEMS // 128
+
+
+def refused(journal, certificates, routes, *, dataset=DATASET, deadline_in=5, budget_in=60, **kw):
+    """Error code and request count of a listing that must fail."""
+    value = UploadBudget(
+        journal.plan.request_limits, end=time.monotonic() + budget_in, read_only=True
+    )
+    port, key, value = setup(journal, readonly=True, value=value)
+    if kw.get("foreign_client"):
+        _, key, value = setup(journal, readonly=True)
+    with TlsServer(certificates, routes) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            with pytest.raises(YorungeError) as raised:
+                owned.exchange(
+                    lambda client: port.inventory(
+                        client, dataset, deadline=time.monotonic() + deadline_in
+                    )
+                )
+        count = len(server.requests)
+    return raised.value, count
+
+
+@pytest.mark.parametrize("dataset", ["../x", "a/b", "", "x" * 129])
+def test_a_malformed_dataset_segment_is_refused_before_any_request(journal, certificates, dataset):
+    error, count = refused(journal, certificates, {}, dataset=dataset)
+    assert error.code == "invalid_request" and count == 0
+
+
+def test_a_client_that_belongs_to_another_budget_is_refused(journal, certificates):
+    error, count = refused(
+        journal, certificates, {ITEMS: page(item_rows(journal))}, foreign_client=True
+    )
+    assert error.code == "invalid_request" and count == 0
+
+
+def test_an_expired_deadline_is_refused_before_any_request(journal, certificates):
+    error, count = refused(journal, certificates, {ITEMS: page(item_rows(journal))}, deadline_in=-1)
+    assert (error.code, count) == ("transport_timeout", 0)
+
+
+def test_the_shorter_budget_end_bounds_the_whole_listing(journal, certificates):
+    routes = {ITEMS: Reply(header_delay=3.0, body=page(item_rows(journal)).body)}
+    started = time.monotonic()
+    error, _ = refused(journal, certificates, routes, deadline_in=30, budget_in=1.0)
+    assert error.code in ("transport_timeout", "execution_timeout")
+    assert time.monotonic() - started < 2.9
+
+
+@pytest.mark.parametrize("budget_in,deadline_in", [(60, 1.0), (1.0, 30)])
+def test_a_deadline_that_lapses_while_a_page_is_processed_stops_the_listing(
+    journal, certificates, monkeypatch, budget_in, deadline_in
+):
+    decode = items_module.metadata.item_page
+
+    def slow(*args):
+        result = decode(*args)
+        time.sleep(1.3)
+        return result
+
+    monkeypatch.setattr(items_module.metadata, "item_page", slow)
+    error, count = refused(
+        journal,
+        certificates,
+        {ITEMS: page(item_rows(journal), cursor="later"), CURSOR: page([])},
+        deadline_in=deadline_in,
+        budget_in=budget_in,
+    )
+    assert error.code in ("transport_timeout", "execution_timeout") and count == 1

@@ -9,7 +9,13 @@ from tests.integration.test_upload_journal import journal as journal
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_chain import operation_journal
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.upload_resume import RemoteInventory, RemoteItem, classify, merge_chain
+from yorunge.domain.upload_resume import (
+    RemoteInventory,
+    RemoteItem,
+    Selection,
+    classify,
+    merge_chain,
+)
 
 CREATE = ("create", None)
 LINK = ("project_link", None)
@@ -152,7 +158,7 @@ def test_stored_shapes_classify_end_to_end_against_a_remote_inventory(journal):
     summary = merge_chain([facts_of(journal, record)], 3)
     healthy = classify(files, summary, inventory_of(journal, 0))
     assert healthy.classes == ("confirmed", "pending_clean", "pending_clean")
-    assert healthy.file_indices == (1, 2) and healthy.remote_present_count == 1
+    assert healthy.selection() == Selection((1, 2), (), 1)
     assert healthy.plannable
     drifted = classify(files, summary, inventory_of(journal))
     assert drifted.classes[0] == "drift_missing" and "drift_missing" in drifted.blockers
@@ -168,4 +174,26 @@ def test_an_unreceipted_confirm_needs_the_remote_to_tell_whether_it_landed(
         journal.manifest.files, summary, inventory_of(journal, *((0,) if present else ()))
     )
     assert result.classes[0] == expected
-    assert result.uncertain_indices == (() if present else (0,))
+    expected_selection = Selection((1, 2), (), 1) if present else Selection((0, 1, 2), (0,), 0)
+    assert result.selection() == expected_selection
+
+
+def test_facts_carry_the_stored_dataset_and_manifest_identity(journal):
+    record = advance(journal, CONFIRMABLE)
+    facts = facts_of(journal, record)
+    assert record.dataset_id is not None and facts.dataset_id == record.dataset_id
+    assert facts.manifest_digest == journal.plan.manifest.digest
+
+
+def test_a_malformed_operation_id_is_invalid_request(journal):
+    with open_store(journal.root) as store:
+        with pytest.raises(YorungeError) as raised:
+            journal.repository(store).operation_journal("not-a-uuid")
+        assert raised.value.code == "invalid_request"
+
+
+def test_a_plan_of_another_type_is_refused_instead_of_read_as_a_chain_root():
+    record = SimpleNamespace(operation_id=str(uuid4()), dataset_id=None)
+    with pytest.raises(YorungeError) as raised:
+        operation_journal(SimpleNamespace(operation=record, plan=object()))
+    assert raised.value.code == "state_invalid"
