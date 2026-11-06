@@ -10,7 +10,6 @@ import pytest
 from pydantic import ValidationError
 
 from yorunge.application.upload_policy import approve_upload_v2
-from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import (
     ContinuationBinding,
     DatasetContinuationPlanV3,
@@ -30,7 +29,7 @@ from yorunge.domain.dataset_upload_v2 import (
     require_acknowledgements,
     validate_approval_binding_v2,
 )
-from yorunge.domain.errors import MESSAGES, YorungeError
+from yorunge.domain.errors import MESSAGES, OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.upload_costs import (
     ContinuationCostWork,
@@ -239,6 +238,9 @@ NEGATIVES = {
     "index past the file limit": changed(["continuation", "file_indices"], [0, 128]),
     "negative index": changed(["continuation", "file_indices"], [-1, 2]),
     "uncertain outside the selection": changed(["continuation", "uncertain_indices"], [1]),
+    "uncertain partly outside the selection": changed(
+        ["continuation", "uncertain_indices"], [1, 2]
+    ),
     "uncertain unordered": changed(["continuation", "uncertain_indices"], [2, 0]),
     "uncertain repeated": changed(["continuation", "uncertain_indices"], [2, 2]),
     "present count too low": changed(["continuation", "remote_present_count"], 0),
@@ -344,9 +346,14 @@ def limits(**changes):
         {"max_presign": 129, "max_put": 129, "max_confirm": 129},
         {"max_presign": True},
         {"max_read_requests": 511},
+        {"max_read_requests": 513},
+        {"max_read_attempts": 1023},
         {"max_read_attempts": 1025},
+        {"max_read_attempts": 2048},
         {"max_presign": 3},  # put and confirm differ from presign
         {"max_control_request_bytes": 4194303},
+        {"max_control_request_bytes": 4194305},
+        {"max_control_response_bytes": 16777215},
         {"max_control_response_bytes": 16777217},
         {"max_upload_bytes": 1024**3 + 1},
         {"max_upload_bytes": -1},
@@ -356,6 +363,45 @@ def limits(**changes):
 def test_continuation_limits_reject_what_they_cannot_state(changes):
     with pytest.raises(ValidationError):
         ContinuationRequestLimits.model_validate_json(canon(limits(**changes)))
+
+
+ZERO_FILES = dict(
+    max_create=0,
+    max_project_link=0,
+    max_presign=0,
+    max_put=0,
+    max_confirm=0,
+    max_read_requests=512,
+    max_read_attempts=1024,
+    max_control_request_bytes=4194304,
+    max_control_response_bytes=16777216,
+    max_upload_bytes=0,
+)
+ONE_FILE = {**ZERO_FILES, "max_presign": 1, "max_put": 1, "max_confirm": 1, "max_upload_bytes": 1}
+
+
+@pytest.mark.parametrize("base", [ZERO_FILES, ONE_FILE], ids=["no files", "one file"])
+def test_limits_built_in_python_refuse_every_non_integer_even_one_equal_to_the_value(base):
+    ContinuationRequestLimits(**base)  # control
+    for field, value in base.items():
+        impostors = [float(value), str(value), None]
+        if value in (0, 1):
+            impostors.append(bool(value))
+        for impostor in impostors:
+            with pytest.raises(ValidationError):
+                ContinuationRequestLimits(**{**base, field: impostor})
+
+
+def test_limits_accept_their_edges_and_nothing_beyond():
+    largest = {**ZERO_FILES, "max_presign": 128, "max_put": 128, "max_confirm": 128}
+    assert ContinuationRequestLimits(**{**largest, "max_upload_bytes": 1024**3}).files == 128
+    for beyond in (
+        {"max_presign": 129, "max_put": 129, "max_confirm": 129},
+        {"max_upload_bytes": 1024**3 + 1},
+    ):
+        with pytest.raises(ValidationError):
+            ContinuationRequestLimits(**{**largest, **beyond})
+    assert ContinuationRequestLimits(**ZERO_FILES).files == 0
 
 
 def test_cost_work_requires_a_selection_that_fits_the_manifest():
@@ -662,10 +708,10 @@ def test_every_other_blocker_name_can_be_carried_alone():
 
 def test_continuation_remote_changed_is_a_plain_exit_two_error_with_a_fixed_message():
     error = YorungeError("continuation_remote_changed")
+    assert type(error) is YorungeError and not isinstance(error, OperationError)
     assert error.exit_code == 2
     assert error.message == MESSAGES["continuation_remote_changed"]
-    assert "http" not in error.message and instant("2026-11-02T11:00:00.000000Z")
-    assert timestamp(instant("2026-11-02T11:00:00.000000Z")).endswith("Z")
+    assert "http" not in error.message
 
 
 def test_the_plan_wire_carries_no_created_dataset_owner_or_receipt_fields():
@@ -1120,3 +1166,22 @@ def test_a_revocation_may_coincide_with_the_approval_but_never_precede_it(model,
     approval_model(model, name, status="revoked", revoked_at="2026-11-02T11:00:01.000001Z")
     with pytest.raises(ValidationError):
         approval_model(model, name, status="revoked", revoked_at="2026-11-02T11:00:00.999999Z")
+
+
+def test_the_acknowledgement_and_selection_checks_accept_only_a_genuine_v3_plan():
+    v2_plan = DatasetUploadPlanV2.model_validate_json(fixture("dataset-upload-plan-v2.json"))
+
+    class Imitation(DatasetContinuationPlanV3):
+        pass
+
+    imitation = Imitation.model_construct(**dict(MAIN))
+    for impostor in (v2_plan, imitation, None, {"continuation": 1}, object()):
+        with failure("upload_plan_not_valid"):
+            require_continuation_acknowledgements(
+                impostor, authority=True, unpriced=True, unconfirmed=True
+            )
+        with pytest.raises(ValueError, match="continuation plan is required"):
+            validate_continuation_selection(impostor, MANIFEST)
+    # The genuine plan still passes both.
+    require_continuation_acknowledgements(MAIN, authority=True, unpriced=True, unconfirmed=True)
+    validate_continuation_selection(MAIN, MANIFEST)

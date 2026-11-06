@@ -176,6 +176,8 @@ def validate_continuation_selection(
     plan: DatasetContinuationPlanV3, manifest: DatasetManifest
 ) -> None:
     """The check that needs the full manifest: the plan carries only its reference."""
+    if type(plan) is not DatasetContinuationPlanV3:
+        raise ValueError("a continuation plan is required")
     if manifest_reference(manifest) != plan.manifest:
         raise ValueError("manifest does not match the continuation plan")
     selected = sum(manifest.files[i].size for i in plan.continuation.file_indices)
@@ -217,6 +219,8 @@ def require_continuation_acknowledgements(
     plan: DatasetContinuationPlanV3, *, authority: bool, unpriced: bool, unconfirmed: bool
 ) -> None:
     """The v2 acknowledgements, plus one for files whose last confirm may or may not have landed."""
+    if type(plan) is not DatasetContinuationPlanV3:
+        raise YorungeError("upload_plan_not_valid")
     check_acknowledgements(
         plan.status,
         (authority, unpriced, unconfirmed),
