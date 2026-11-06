@@ -26,6 +26,8 @@ P02-3u (v3 graf doğrulaması) verified olmalıdır. [ADR-0031](../../decisions/
 
 v1/v2 yolları ve golden’lar değişmez; v1/v2 rezervasyon doğrulaması aynı kalır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 geçmişleriyle yapılır.
 
+**P02-3g devir notu.** Bu dilim şu kapalı başarısızlıkları gerçek davranışla değiştirir: `capacity()` yalnız iki tipli plan decode eder (saklı devam `state_invalid`; nedeni kodda yorumdur) ve devamı kota sayımına katar; `upload_maintenance.invalidate_uploads` bir v3 kaydını, v3 recovery/terminal kontrolü yazılana dek, değişiklik yapmadan `state_invalid` ile reddeder (kontrol iki tipli decode edilir ve payload’a kaydın `schema_version`ını kopyalar); `upload_projection.summary` v3 planı reddeder, `source_plan_schema`, `_cost` ve `_risks` v1/v2’ye göre yazılmıştır. Hepsi sahibi P02-3v olan noktalar olarak `tests/fixtures/version-dispatch-sites.json`dadır.
+
 ## Kabul
 
 1. v3 satırı varken `require_capacity`, list/show okuması ve reset önizlemesi çalışır; kapasite continuation plan/operation 128/128, dosya 4.096 ve 16 MiB sınırlarına yeniden sayılır (bağımsız oracle ile); sınırı aşan v3 geçmişi `upload_capacity_exceeded`/bozuk durumda `state_invalid` verir.

@@ -28,6 +28,8 @@ Admission, onayın bağını (`validate_approval_binding_v3`) ayrıca `status ==
 
 Mevcut clock, SQL transaction, lease/fence/CAS, kota ve hata öncelikleri yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. v3 kaydı v2 gibi ilk intent’te latch’lenir (admission’da latch yoktur); `verification_only` kayıt hiç latch’lenmez; intent ve makbuz kuralları 3M ile sınırlıdır. Başarı: 3M accepted makbuz, N dosyalık ordered metadata (`TransferVerification v3`) ve kök baseline eşliği.
 
+**P02-3g devir notu.** `StageGraphSpec.predecessor` v3’te create/link için `ValueError` verir: `arm` kapısı create/link intent’ini `predecessor` çağrısından önce ve `YorungeError` ile reddetmelidir. Depo yazıcıları (`save`, `revoke`, `_change`, `_control`, `_verified`) plan, onay, kayıt, kontrol ve kanıtı iki tiple yeniden decode eder ve bu yüzden bir devamı `state_invalid` ile reddeder; bu kapılar v3’ü adıyla ele alır (bu noktalar `tests/fixtures/version-dispatch-sites.json`da sahibi P02-3r olarak listelidir). `write_record` v3’te `dataset_id` ve `verification_only`yi sabit alan sayar ve ekleme sırasında kaydı planına bağlar; admission kaydı plan bağından kurar.
+
 ## Kabul
 
 1. Gerçek SQLite ile her geçiş ve ret: draft/expired/revoked, ack kuralları, kaynak donmamış (etkin lease) → `operation_conflict`, aynı dataset’te zincir dışı veya kaynağın torununda non-terminal operation, kaynak terminal/`admitted`, kök baseline yok; admission’da kaynağın hâlâ non-terminal ve lease’siz olması (`--prepare` ile admission arasında `reconcile` kaynağı `succeeded` yaparsa admission reddedilir); iki süreç eşzamanlı admit → tam bir kazanan; zincirde ikinci hop admission.
