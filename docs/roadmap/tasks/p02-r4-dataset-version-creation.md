@@ -22,6 +22,8 @@ Plan/onay/tek gönderim/kayıp cevap uzlaştırması olan açık bir sürüm olu
 
 P02-3q’nun sürüm okuma ve değişmez referans temeline bağlıdır. Koddan önce ayrı bir Proposed ADR (etki sözleşmesi, etiket politikası, çakışma/500 sınıflandırması, unknown uzlaştırma) kullanıcı onayına sunulur; sağlayıcı sözleşmesi çözülmeden ready değildir.
 
+**Açılma ölçütü ve hedef:** (a) kullanıcı sürüm oluşturmayı istediğini bildirir veya P03-1 eğitim planı sürüm bağını üretim yolunda gerektirir, (b) sağlayıcı çakışma/idempotency/maliyet sözleşmesi (ADR) çözülür. Hedef: ADR onayından sonra bir sonraki P02/P03 dilimi; P02-3 kapsamında değildir ve P02-7 bunu `partial` kaydeder.
+
 ## Sözleşme ve uygulama sınırı
 
 Mevcut `DatasetVersionBinding v1` ve `check` değişmez. Etki, upload gibi kalıcı niyet ve tek deneme modeline mi, daha hafif bir yola mı oturacağı ADR’de seçilir; yeni durum ailesi gerekiyorsa koddan önce kullanıcı kararı alınır.

@@ -29,10 +29,10 @@ Platform bağlamı P02-0d’dedir; [ADR-0033](../../decisions/0033-dataset-versi
 ## Kabul
 
 1. Binding için bağımsız elle hesaplanmış canonical byte/SHA-256 golden’ı; aynı sürüm ve aynı `--manifest` seçimi aynı digest’i verir, `observed_at` digest’e girmez, etiket/kimlik/sayı/sınıf özeti değişimi digest’i değiştirir.
-2. Codec negatifleri: eksik/yanlış tip alan, bool-as-int, kopya anahtar, 2xx mantıksal hata, detay↔splits uyuşmazlığı, `is_frozen=false` (bağ reddi), yanlış dataset/etiket, literal-secret. `item_count`≠bölme toplamı bağı engellemez ve `split_total_matches_item_count=false` kaydedilir.
+2. Codec negatifleri: eksik/yanlış tip alan, bool-as-int, kopya anahtar, 2xx mantıksal hata, detay↔splits uyuşmazlığı, `is_frozen=false` (bağ reddi), yanlış dataset/etiket, literal-secret, karışık türlü veya yinelenen sınıf `id` (`invalid_response`); `is_partial=true` sürüm bağlanır ve alan kaydedilir. `item_count`≠bölme toplamı bağı engellemez ve `split_total_matches_item_count=false` kaydedilir.
 3. Sayfalama: `meta.page` uyuşmazlığı, tekrarlı ID, `total` çelişkisi; tamlık iddiası ve çok sayfalı toplama yoktur.
 4. 404 → `dataset_version_not_found` (`show`/`bind`) ve `dataset_version_missing` (`check`), 401/403/429/5xx/timeout kodları; etiket karakter kümesi (`.` ve `..` hariç) ve yol kaçışı.
-5. `DatasetVersionChanged` bir `YorungeError` alt sınıfıdır ve kapalı ayrıntı taşır; düz `YorungeError("dataset_version_changed")` `details={}` korur (mevcut zarf testi yeşil kalır). `changed_fields` ayrımı: `version_id` (etiket yeniden oluşturulmuş) ile `annotated_item_count` (açıklamalar oynamış) ayrı alanlarla bildirilir.
+5. `DatasetVersionChanged` bir `YorungeError` alt sınıfıdır ve kapalı ayrıntı taşır; düz `YorungeError("dataset_version_changed")` `details={}` korur (mevcut zarf testi yeşil kalır). `changed_fields` ayrımı: `version_id` (etiket yeniden oluşturulmuş), `is_frozen` (bağlı sürüm sonradan çözülmüş: `unchanged` değil `changed`) ve `annotated_item_count` (açıklamalar oynamış) ayrı alanlarla bildirilir; `service` bu kümede yoktur (hedef uyuşmazlığı `state_changed`/2).
 6. Gerçek loopback TLS okuyucu testleri; created_by/description/URL canary’leri hiçbir çıktıda yoktur.
 
 ## Doğrulama

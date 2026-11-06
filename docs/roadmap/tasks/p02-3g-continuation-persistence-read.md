@@ -28,8 +28,8 @@ Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal 
 
 ## Kabul
 
-1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök+iki continuation zinciri; sıfır-intent’li kaynak) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer; çözümleyici baseline özeti uyuşmazlığını ve kopuk soyu `state_invalid` reddeder.
-2. Geçersiz geçmişler `state_invalid` ile reddedilir: yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, yanlış sürüm eşleşmeleri, döngülü/kopuk zincir.
+1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök+iki continuation zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer; çözümleyici baseline özeti uyuşmazlığını ve kopuk soyu `state_invalid` reddeder.
+2. Geçersiz geçmişler `state_invalid` ile reddedilir: intent’siz ama latch’li kayıt, `verification_only` olmayan latch’siz `succeeded`/`unknown`, yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, yanlış sürüm eşleşmeleri, döngülü/kopuk zincir.
 3. Kapasite: continuation plan/operation 128/128, dosya 4.096, 16 MiB sınırlarına yeniden sayılır; v1/v2 rezervasyon doğrulaması ve golden’ları değişmez; v3 satırı varken `require_capacity`/list/reset önizlemesi çalışır.
 4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.
 5. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı değiştirilmeden geçer.

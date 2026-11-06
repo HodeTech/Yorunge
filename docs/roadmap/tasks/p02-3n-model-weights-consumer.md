@@ -31,7 +31,7 @@ P02-3m verified olmalıdır; Platform bağlamı P02-0d’dedir. [ADR-0032](../..
 1. Loopback TLS: JSON çağrısı `X-API-Key` taşır, indirme taşımaz; yanlış origin, önek (başka bucket dahil), http, userinfo, fragment, `..`, aşırı URL, eksik/yanlış tipli alan, sağlayıcı filename’inin yol ayırıcı içermesi ve 401/403/404/429/5xx hepsi imzalı URL isteğine geçmeden kontrollü ret verir (`{api_base_path}/files/` dataset bucket yolu ve API tabanı olmayan `/files/evren-models/` dahil); `fold` verilirse iletilir ve kimlik anahtarına girer.
 2. `--sha256` eşleşirse `sha256_matched`/`user_supplied`, yoksa `transfer_complete`; uyuşmazlık exit 7 ve hedef yok; seviye çıktıda doğru ve fazla iddiasız; `--fold`, `--timeout`, `--sha256` değer alanları strict doğrulanır.
 3. JSON/NDJSON saf, TTY ilerleme yalnız stderr, BrokenPipe/SIGINT/Task.cancel mevcut 6/1/6 ve ID önceliği; sentinel testleri imzalı URL/query/ETag/filename sızıntısı olmadığını gösterir.
-4. Kurulu CLI yolculuğu: yardım, yanlış format, var olan hedef, yarım indirme sonrası aynı komutla devam.
+4. Kurulu CLI yolculuğu: yardım, yanlış format, var olan hedef, yarım indirme sonrası aynı komutla devam; tam-stage bırakılmışsa komut hiçbir ağ isteği (JSON çağrısı dahil) yapmadan yayımlar; yerel durum denetimi JSON çağrısından önce yapılır; `download_busy`/`download_partial_unverified` mesajları sabittir ve dosya adı taşımaz.
 5. Canlı yoklama/kabul yalnız kullanıcının erişebildiği bir model sürümü ve ayrı yetkiyle; yapılmazsa açıkça yapılmadı olarak kalır.
 
 ## Doğrulama

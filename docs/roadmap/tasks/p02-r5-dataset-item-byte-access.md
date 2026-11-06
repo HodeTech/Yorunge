@@ -6,7 +6,7 @@ size: M
 depends_on: [P02-3m]
 capabilities: [C03]
 ---
-# P02-R5 — Dataset öğesi baytlarına programatik erişim
+# P02-R5 — Dataset öğesi (ve oturum isteyen model ağırlığı) baytlarına programatik erişim
 
 **Tarih:** 2026-11-06. **Sahip:** P02 / datasets modülü. [ADR-0032](../../decisions/0032-bounded-download-and-verification-levels.md) dataset öğesi indirmeyi kurmadı; bu kart özgün ihtiyacın (uzak byte doğrulaması) açık sahibidir.
 
@@ -24,7 +24,7 @@ Açılma ölçütü (dış koşul veya ürün kararı): (a) sağlayıcının res
 
 ## Sözleşme ve uygulama sınırı
 
-Sağlayıcı yolu kanıtlanana kadar sözleşme tanımlanmaz. Doğrulama P02-3b seviyelerini (`local_manifest` kaynaklı `sha256_matched`) kullanır; upload kayıtlarının `remote_bytes_verified` alanı bu kartla otomatik değişmez, ayrı kontrat değişikliği ister.
+**Model ağırlığı kapsamı:** model indirme yoklaması (ADR-0032 §1) imzalı URL’nin oturum istediğini gösterirse aynı açılma ölçütleri model ağırlığı baytları için de bu kartta aranır (yeni kart açılmaz). Sağlayıcı yolu kanıtlanana kadar sözleşme tanımlanmaz. Doğrulama P02-3b seviyelerini (`local_manifest` kaynaklı `sha256_matched`) kullanır; upload kayıtlarının `remote_bytes_verified` alanı bu kartla otomatik değişmez, ayrı kontrat değişikliği ister.
 
 ## Kabul
 

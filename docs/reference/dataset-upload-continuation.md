@@ -22,8 +22,11 @@ Kaynak, kök operation’ın (`baseline_operation_id`) accepted CreateReceiptV2�
 | Kaynak yok | `operation_not_found` (rapor dahil hata) |
 | Kaynak terminal (`succeeded`, `failed`, `cancelled`) | `source_terminal` engeli; devam yok (başarı için gerek yok; `failed` kesin bir sağlayıcı reddi içerir; iptal edilmiş iş için yeni plan) |
 | Kaynak `admitted` (intent’siz; latch yok) | `source_ineligible`; lease dolunca mevcut yerel yol onu `cancelled` yapar ve zincire bir şey katmaz |
-| Etkin write/read owner (lease dolmamış) veya non-terminal torun | `source_active`; lease bitince tekrar. `--prepare`: `operation_conflict` (torunun kimliği ve `resume --operation-id <torun>` önerisi) |
-| Lease dolmuş `running` | Rapor yerel durumu değiştirmez; `--prepare` mevcut execution izni üretmeyen `cleanup_expired` yoluyla kaynağı `unknown`/`request_uncertain` yapar (fence+1) ve lease’i dolmuş `admitted` torunları `cancelled` yapar |
+| Kaynak politikası `verified_only` (sağlayıcı oracle’ı/yetki yok; `--accept-unverified-read` kabul edilmez) | `source_ineligible`; devam yok |
+| Kaynağın intent’li (latched) torunu var (terminal olsun olmasın) | `source_superseded`; rapor torunun kimliğini ve `resume --operation-id <torun>` önerisini verir (torun `unknown` ise). Intent’siz `cancelled` torun kaynağı bloke etmez |
+| Etkin write/read owner (lease dolmamış) veya lease’i dolmamış non-terminal torun | `source_active`; eylem `wait`, lease bitince tekrar. `--prepare`: `operation_conflict` (torunun kimliği ve `resume --operation-id <torun>` önerisi) |
+| Lease’i dolmuş `admitted` torun | Engel değil: rapor eylemi `prepare`; `--prepare` torunu `cancelled/lease_expired` yapar ve devam eder |
+| Lease dolmuş `running` | Rapor yerel durumu değiştirmez; `--prepare` mevcut execution izni üretmeyen `cleanup_expired` yoluyla kaynağı `unknown`/`request_uncertain` yapar (fence+1) ve lease’i dolmuş `admitted` torunları `cancelled` yapar. Zaten `unknown` kaynağa dokunulmaz (neden alanı korunur, fence/revision artmaz) |
 | `unknown` (reset, rotasyon veya `identity_reset` dahil), kök CreateReceiptV2 var, zincirde `rejected` makbuz yok | Uygun; plan **güncel** scope ile kurulur |
 | Kaynağın kendi grafiği zaten tam (tam 2+3N veya v3 için 3M makbuz), yalnız kanıt eksik | `reconcile_available`: `resume` M=0 yerine mevcut `reconcile`ı önerir |
 | Zincirde herhangi bir `rejected` makbuz | `known_negative` (bilinen olumsuz sonuç; not: üretim yolu bugün bunu yazmaz, [ADR-0031 §2](../decisions/0031-upload-continuation.md#2-uygunluk-yalnız-dosya-aktarım-fazının-kalanı)) |
@@ -36,7 +39,7 @@ Donma yerel CAS’tır; eski sürecin zaten gönderilmiş isteğini geri çekmez
 
 ## Kanıt sınıfları ve karar tablosu
 
-Girdi: **zincirin bütün journal’larının birleşimi** (dosya başına: herhangi bir operation’da accepted confirm makbuzu var mı; yoksa herhangi birinde confirm intent’i var mı; sıfır-intent’li operation hiçbir şey katmaz) ve taze, tam, sayfalı uzak envanter. “Exact item” = Manifest’teki (ad, boyut, SHA-256) üçlüsüyle aynı, tekil ve başka kimlikle çakışmayan tek item. Tablo tam ve kapalıdır:
+Girdi: **kaynağın soyunun (kök → kaynak) journal’larının birleşimi** — kaynak zincirin ucu olduğundan bu, dataset’in bütün intent’li geçmişidir (dosya başına: herhangi bir operation’da accepted confirm makbuzu var mı; yoksa herhangi birinde confirm intent’i var mı; sıfır-intent’li operation hiçbir şey katmaz; intent’li dal dışı makbuz olamaz çünkü kaynağın intent’li torunu varsa kaynak `source_superseded` olur) ve taze, tam, sayfalı uzak envanter. “Exact item” = Manifest’teki (ad, boyut, SHA-256) üçlüsüyle aynı, tekil ve başka kimlikle çakışmayan tek item. Tablo tam ve kapalıdır:
 
 | Zincir journal’ı (confirm) | Uzak envanter | Sınıf |
 |---|---|---|
@@ -48,7 +51,7 @@ Girdi: **zincirin bütün journal’larının birleşimi** (dosya başına: herh
 | intent yok | yok | `pending_clean` |
 | herhangi | aynı adda farklı boyut/SHA, kopya, aynı SHA başka ad | `conflict` |
 | herhangi | null `sha256_hash`, `total` uyuşmazlığı, cursor döngüsü, kopya kimlik | `inventory_unreliable` |
-| envanter düzeyi | Manifest dışı fazladan item | `conflict` (plan düzeyi sayaç) |
+| envanter düzeyi | Manifest dışı fazladan item | (dosya sınıfı yok) plan düzeyi `extra_remote` engeli |
 
 Öncelik: ad çakışması/kopya → `conflict`; yokluk → `drift_missing`; doğrulanamayan envanter → `inventory_unreliable` (sonra yeniden denenir). Presign/PUT durumu sınıfı değiştirmez (confirm intent’i yoksa dosya `pending_clean`dır). `file_indices` her zaman `pending_clean ∪ pending_uncertain` kümesinin tamamıdır ve `uncertain_indices` tam olarak `pending_uncertain` kümesidir; kısmi seçim yoktur. `remote_present_count` = `confirmed`+`observed` sayısıdır (= N−M). Tek `drift_missing`/`conflict`/`inventory_unreliable` veya fazladan item plan hazırlamaz. `M=0` geçerlidir (yalnız doğrulama). Envanter üst sınırı **1.024 item**’dır; aşılırsa `inventory_unreliable` sınıfı ve `inventory_too_large` engeli oluşur (plan hazırlanmaz, veri sessizce kesilmez).
 
@@ -58,7 +61,7 @@ Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool sayı d
 
 | Tip | Alanlar ve kural |
 |---|---|
-| `ContinuationBinding` | `source_operation_id`, `baseline_operation_id` (UUIDv4; accepted CreateReceiptV2’yi taşıyan kök), `dataset_id` (provider UUID), `baseline_digest` (immutable `created_dataset` DTO’sunun canonical SHA-256’sı; DTO’nun kendisi planda yok), `intent_digest` (kökün kayıtlı değerinin kopyası; scope’tan türetilmez), `file_indices` (sıralı, tekil, 0..N−1), `uncertain_indices` (= `pending_uncertain` kümesi, ⊆ `file_indices`), `remote_present_count` (= N−M), `classification_digest`, `inventory_digest`, `observed_at`. Tekrarlı/aralık dışı indeks ret |
+| `ContinuationBinding` | `source_operation_id`, `baseline_operation_id` (UUIDv4; accepted CreateReceiptV2’yi taşıyan kök), `dataset_id` (provider UUID), `baseline_digest` (immutable `created_dataset` DTO’sunun canonical SHA-256’sı; DTO’nun kendisi planda yok), `intent_digest` (kökün değerinin kopyası ve kökle eşitliği doğrulanan fazladan bağlama denetimi; türetim hedef/owner/proje/addandır, scope’un credential alanlarını içermez), `file_indices` (sıralı, tekil, 0..N−1), `uncertain_indices` (= `pending_uncertain` kümesi, ⊆ `file_indices`), `remote_present_count` (= N−M), `classification_digest`, `inventory_digest`, `observed_at`. Tekrarlı/aralık dışı indeks ret |
 | `DatasetContinuationPlan v3` | v2’nin bütün alanları (kök, Manifest ref’i, parametreler kaynakla **birebir**), `schema_version=3`, `policy_version=3`, `kind=dataset_upload_continuation_plan`, `continuation: ContinuationBinding`, `request_limits` (create=0, project_link=0, presign=PUT=confirm=M, bayt tavanı = seçilen dosyaların toplamı), yeni 0<aralık≤900 s `execution_window`. Politika/risk reducer’ı v2 ile aynıdır; politika kaynaktan devralınır |
 | `DatasetUploadApproval v3` | v2 alanları + `acknowledge_unconfirmed_effects` (strict bool); plan/binding özeti bütün continuation alanlarını kapsar. true yalnız `uncertain_indices` boş değilse geçerli; gerekli ve eksik → `approval_required`, gereksiz true → `invalid_request` |
 | `TransferRecord v3` | v2 alanları; `dataset_id` admission’da plandan doludur; ek strict `verification_only` (true ⇔ `file_indices` boş); `len(intents) ≤ 3M`; latch ilk intent’te kurulur (v2 ile aynı); `verification_only` kayıt hiç intent üretmez, latch’lenmez ve `unknown` olamaz; write owner/fence/access digest kuralları v2 ile aynı; durum yolu aşağıda |
@@ -71,15 +74,25 @@ Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool sayı d
 
 ## Rapor ve hata ayrımı
 
-Kapalı `blockers` (rapor modunda exit 0): `source_active`, `source_ineligible`, `source_terminal`, `reconcile_available`, `create_unknown`, `membership_unobserved`, `known_negative`, `drift_missing`, `conflict`, `extra_remote`, `inventory_unreliable`, `inventory_too_large`, `local_changed`. Hatalar yalnız şunlardır: `operation_not_found`, `state_invalid`, bayrak/ack hataları (`invalid_request`, `approval_required`), taşıma/erişim (`remote_access_denied`/`transport_*`) ve yerel girdi bozulması. Kapalı mesaj/eylem eşlemesi uygulama kartında bu tablonun kolonu olarak kesinleşir (her engel için tek cümle neden + tek sonraki adım).
+Kapalı `blockers` (rapor modunda exit 0): `source_active`, `source_ineligible`, `source_superseded`, `source_terminal`, `reconcile_available`, `create_unknown`, `membership_unobserved`, `known_negative`, `drift_missing`, `conflict`, `extra_remote`, `inventory_unreliable`, `inventory_too_large`, `local_changed`. Hatalar yalnız şunlardır: `operation_not_found`, `state_invalid`, bayrak/ack hataları (`invalid_request`, `approval_required`), taşıma/erişim (`remote_access_denied`/`transport_*`) ve yerel girdi bozulması. Kapalı mesaj/eylem eşlemesi uygulama kartında bu tablonun kolonu olarak kesinleşir (her engel için tek cümle neden + tek sonraki adım).
 
 ## Stage grafiği, durum yolu ve kapılar
 
-Graf yalnız `{(presign,i),(put,i),(confirm,i): i ∈ file_indices}` kümesidir (3M intent, her biri tek accepted makbuz). Presign’ın öncülü yoktur; PUT/confirm öncülleri v2’deki gibidir. Create/link intent’i bu operation’da hiçbir zaman oluşmaz (arm kapısı reddeder). `request_digest` dataset kimliğini plan bağından alır; create makbuzuna bakmaz. Namespace: plan kökün saklı `intent_digest`ini kullanır, `_namespace_available` bu tür için atlanır, hot/full invariant “`namespace.create_operation_id == baseline_operation_id`”dir; yeni create hakkı doğmaz. Kök baseline, kök görünümünden salt okuma **zincir çözümleyicisiyle** okunur (kaynak → kök görünümü → CreateReceiptV2; özeti `baseline_digest` ile eşit olmalı); arm, renew, acquire_read, read_failed, prepare_initial_read, verified ve original producer’ın detail↔baseline karşılaştırması bu çözümleyiciyi kullanır. Reservation ve kapasite formülü plan türüne göre sürümlüdür; v1/v2 satırlarının doğrulaması değişmez.
+Graf yalnız `{(presign,i),(put,i),(confirm,i): i ∈ file_indices}` kümesidir (3M intent, her biri tek accepted makbuz). Presign’ın öncülü yoktur; PUT/confirm öncülleri v2’deki gibidir. Create/link intent’i bu operation’da hiçbir zaman oluşmaz (arm kapısı reddeder). `request_digest` dataset kimliğini plan bağından alır; create makbuzuna bakmaz. Namespace: plan kökün `intent_digest`ini kullanır (kopya; türetimle aynı değer, `read_plan`’ın namespace payload eşitliği değişmez), `_namespace_available` bu tür için atlanır, hot/full invariant “`namespace.create_operation_id == baseline_operation_id`”dir; yeni create hakkı doğmaz. Kök baseline, kök görünümünden salt okuma **zincir çözümleyicisiyle** okunur (kaynak → kök görünümü → CreateReceiptV2; özeti `baseline_digest` ile eşit olmalı); arm, renew, acquire_read, read_failed, prepare_initial_read, verified ve original producer’ın detail↔baseline karşılaştırması bu çözümleyiciyi kullanır. Reservation ve kapasite formülü plan türüne göre sürümlüdür; v1/v2 satırlarının doğrulaması değişmez.
 
-**Durum yolu.** Latch ilk intent’te kurulur (v2 ile aynı). İlk intent’ten önce kesinti, yerel iptal veya süre dolumu kaydı `cancelled` yapar; kaynak değişmeden kalır ve aynı kaynaktan yeni plan hazırlanabilir. İntent’ten sonrası `unknown`/`request_uncertain` (okuma hatasında `unknown`/`read_unavailable`, yalnız v3 için açık dal) olur. `verification_only` kayıt: admission → okuma → proof → `succeeded`/`metadata_verified`; okuma hatası/kesinti/süre dolumu `unknown` değil hata veya `cancelled`dır. Mevcut `reconcile`, 3M makbuzu tam ama proof’u eksik v3 unknown kaydı için aynı operation’da çalışır.
+**Durum yolu.** Latch ilk intent’te kurulur (v2 ile aynı). Kayıt ilk intent’ten önce etkisizdir; kapalı uç-durum tablosu ([ADR-0031 §5](../decisions/0031-upload-continuation.md#5-yürütme)):
 
-**Confirm oracle.** `created=1`, `batch_duplicates=0` ve varsa `actual_count == remote_present_count + bu operation’da kabul edilmiş confirm sayısı + 1` (sağlayıcıda sayı veri seti düzeyinde kümülatiftir). v2 yolunun tabanı 0’dır ve değişmez.
+| Olay | Sonuç | Kalıcı kayıt |
+|---|---|---|
+| `M=0` okuma ve proof başarılı | `metadata_verified` | `succeeded` |
+| Okuma/proof hatası (ilk intent öncesi) | kaynağın kendi kodu (exit 1/3); `operation_uncertain` değil | `cancelled`/`local_cancelled` |
+| SIGINT/Task iptali (ilk intent öncesi) | `request_cancelled`/6 | `cancelled`/`local_cancelled` |
+| Lease kaybı/SIGKILL (ilk intent öncesi) | sonraki `resume --prepare`/`cleanup_expired` | `cancelled`/`lease_expired` |
+| İlk intent’ten sonra kesinti | mevcut v2 kodları | `unknown`/`request_uncertain` (okuma hatasında `read_unavailable`, yalnız v3 için açık dal) |
+
+`verification_only` kayıt: admission → okuma → proof → `succeeded`/`metadata_verified`; hiçbir zaman `unknown` olmaz. v3 için açık yazılacak dallar: `prepare_initial_read` (`admitted` ⇔ `verification_only`), `read_failed`, `_uncertain_verification`, `stop_local` nedeni. Mevcut `reconcile`, 3M makbuzu tam ama proof’u eksik v3 unknown kaydı için aynı operation’da çalışır.
+
+**Confirm oracle.** `created=1`, `batch_duplicates=0` ve varsa `actual_count ∈ {remote_present_count + k + 1, k + 1}` (k = bu operation’da kabul edilmiş confirm sayısı). Dolu veri setindeki anlam **gözlenmemiştir** (yalnız taze veri setinde 1, 2 gözlendi): kümülatif (`taban+k+1`) ve yalnız-işlem (`k+1`) anlamlarının ikisi de kabul edilir, kümenin dışı reddedilir; taban 0 iken tek değerdir. v2 yolunun tabanı 0’dır ve değişmez; resume canlı kabulü hangi anlamın gerçekleştiğini kayda geçirir.
 
 | İşlem | v3 farkı |
 |---|---|

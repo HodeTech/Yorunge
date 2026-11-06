@@ -16,7 +16,7 @@ Taşıma ve yerel yazıcı hazır olsa bile hangi durumda devam edileceği, ne z
 
 ## Giren ve girmeyen kapsam
 
-Uygulama katmanı `run_download`: ön kontrol, tam-stage kısa devresi (GET’siz yayın), istek, kapalı yanıt tablosunun uygulanması, yazma, resume kararı (kimlik/ETag/boyut/ön ek özeti), tek protokol dönüşü, beklenti karşılaştırması ve yayın; bounded ilerleme sayacı; iptal/deadline önceliği girer. Model tüketicisi, CLI ve ölçüm araçları girmez.
+Uygulama katmanı: iki aşamalı giriş — (1) **yerel durum** (hedef/stage/kilit/sidecar kararı, ağsız; tam-stage ise hiçbir ağ isteği olmadan yayın) ve (2) ağ koşusu (JSON çağrısından sonra imzalı GET), istek, kapalı yanıt tablosunun uygulanması, yazma, resume kararı (kimlik/ETag/boyut/ön ek özeti), tek protokol dönüşü, başlık ve tamamlanma checkpoint’lerinin sırası, beklenti karşılaştırması (uyuşmazlıkta stage/sidecar silme) ve yayın; bounded ilerleme sayacı; iptal/deadline önceliği (yayın adımları deadline dışı) girer. Model tüketicisi, CLI ve ölçüm araçları girmez.
 
 ## Bağımlılıklar ve kararlar
 
@@ -28,7 +28,7 @@ Motor tek akışlıdır; devam yalnız çağrı yeniden başlatıldığında ve 
 
 ## Kabul
 
-Gerçek loopback TLS sunucusunda (Range/ETag/206/416 betiklenebilir) şu matris, her satır için hedefin son durumu ve istek sayısıyla birlikte: tam indirme; kesik → aynı komutla 206 devam; ETag değişti → baştan; Range’i yok sayan 200 → baştan (ek istek yok); `206` ETag/Content-Range/Content-Length uyumsuz → yarım içerik atılır + bir Range’siz istek, döngü yok; `416` → aynı; Range göndermeyen isteğe 206 → ret; güçlü ETag yok → yarım dosya tutulmaz; toplam değişti; gövde fazında erken kapanış ve kesik chunked (`download_incomplete`; zaman aşımı önceliği); tam-stage (GET yok); Content-Length uyuşmazlığı; kapanışla sınırlanan gövde reddi; beklenen boyut/SHA uyuşmazlığı → hedef yok; hedef var; `--no-resume` benzeri politika; farklı süreçte kill sonrası devam. Her başarıda bağımsız hashlib oracle’ı eşleşir, devam başarısında ön ek yeniden hash’lenir, bellek sınırlı ve ilerleme birleştirilir.
+Gerçek loopback TLS sunucusunda (Range/ETag/206/416 betiklenebilir) şu matris, her satır için hedefin son durumu ve istek sayısıyla birlikte: tam indirme; kesik → aynı komutla 206 devam; ETag değişti → baştan; Range’i yok sayan 200 → baştan (ek istek yok); `206` ETag/Content-Range/Content-Length uyumsuz → yarım içerik atılır + bir Range’siz istek, döngü yok; `416` → aynı; Range göndermeyen isteğe 206 → ret; güçlü ETag yok → yarım dosya tutulmaz; toplam değişti; gövde fazında erken kapanış ve kesik chunked (`download_incomplete`; zaman aşımı önceliği); tam-stage (hiçbir ağ isteği yok, JSON çağrısı dahil; revoke edilmiş anahtar yayını engellemez); Content-Length uyuşmazlığı; kapanışla sınırlanan gövde reddi; beklenen boyut/SHA uyuşmazlığı → hedef yok ve stage/sidecar silinir (yeniden çalıştırma baştan indirir, ağsız exit-7 döngüsü yok); hedef var; `--no-resume` (sahiplik ✓ stage silinir, ✗ dokunulmaz); gövde bittikten sonra deadline aşımı → stage korunur ve sonraki koşu tam-stage satırıyla yayımlar; farklı süreçte kill sonrası devam. Her başarıda bağımsız hashlib oracle’ı eşleşir, devam başarısında ön ek yeniden hash’lenir, bellek sınırlı ve ilerleme birleştirilir.
 
 ## Doğrulama
 

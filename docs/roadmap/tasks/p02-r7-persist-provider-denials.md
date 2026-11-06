@@ -22,6 +22,8 @@ Her etkili aşama (create, link, presign, PUT, confirm) için hangi HTTP/mantık
 
 Kabul edilmiş v2 hata yolunu ve ADR-0024/0026 hükümlerinin uygulanışını değiştirdiğinden koddan önce kısa bir Proposed ADR (veya kısmi değişiklik notu) ve kullanıcı onayı gerekir. P02-3a continuation bu işi beklemez; dürüst sınırı ADR-0031 §2’dedir. Bu iş tamamlanınca continuation’ın savunmacı `rejected` kapısı gerçek veriye bağlanır.
 
+**Açılma ölçütü ve hedef:** kesin-ret tablosunun (hangi sonucun “işlenmedi” sayıldığı, aşama başına) kullanıcı onaylı kısa Proposed ADR’si. ADR-0024 `rejected` makbuz ve `failed/provider_rejected` terminalini zaten tanımlar ama hangi sağlayıcı sonuçlarının kesin ret sayılacağını aşama başına belirlemez; bu tablo sağlayıcı oracle’ına dayandığından (tek hesap gözlemleri) ADR gerekir. Hedef: P02-7 faz kabulünden önce; K4’te kullanıcı isterse P02-3h öncesine çekilir (v2 hata yolunu değiştirdiğinden ek review turu ister).
+
 ## Sözleşme ve uygulama sınırı
 
 Kesin ret tablosu sağlayıcı oracle’ına dayanır: yalnız “isteğin işlenmediği” sağlayıcı sözleşmesiyle açık olan sonuçlar girer; belirsiz her durum unknown kalır. Receipt şeması ve wire değişmez (mevcut `rejected` türü kullanılır).

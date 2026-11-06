@@ -22,6 +22,8 @@ Kullanıcının dataset kimliğini **açıkça** vermesi; salt okuma ile sahip/p
 
 P02-3h’nin continuation temeline ve ayrı bir Proposed ADR’ye bağlıdır (insan onaylı sahiplenme kaydı ADR-0027 baseline’ının yerini tutamayacağı için yeni makbuz/baseline türü gerekebilir). Karar onaylanmadan ready değildir.
 
+**Açılma ölçütü ve hedef:** (a) kullanıcı insan onaylı sahiplenme kaydını (yeni “bildirilen baseline” türü) ADR ile onaylar, (b) P02-3h verified olur. Hedef: P02-3 sonrası ilk P02 dilimi veya kullanıcı istediğinde (K4 ile P02-3’e çekilirse 3h sonrası ek adım).
+
 ## Sözleşme ve uygulama sınırı
 
 Sahiplenme, mevcut değişmez CreateReceiptV2 baseline’ını sahte üretmez; ayrı, insan onaylı ve açıkça “bildirilen” baseline türü olarak tanımlanır. Authority/pricing/remote-byte iddiası yükseltilmez.

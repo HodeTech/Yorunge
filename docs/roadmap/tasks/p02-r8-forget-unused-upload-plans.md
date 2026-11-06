@@ -22,6 +22,8 @@ Hiç operation’ı olmayan upload planlarını (ve onaylarını) açık, tek ka
 
 Saklama politikası kararıdır: koddan önce kısa bir Proposed ADR (veya ADR-0024 kısmi değişiklik notu) ve kullanıcı onayı gerekir. Mevcut “geçmiş otomatik silinmez” ilkesi operation’lı kayıtlar için aynen korunur; yalnız operation’sız planlar için açık kullanıcı eylemi eklenir. P02-3 bu işi beklemez; sınır ADR-0031 §6’da görünür.
 
+**Açılma ölçütü ve hedef:** operation’sız planlar için saklama politikası (açık kullanıcı eylemiyle unutma) kullanıcı onaylı kısa Proposed ADR’si. Hedef: P02-7 faz kabulünden önce; gerçek kullanımda continuation kotayı beklenenden erken doldurursa öne alınır; K4’te kullanıcı isterse P02-3i öncesine çekilir.
+
 ## Sözleşme ve uygulama sınırı
 
 Plan yaşam döngüsü kuralları (`plan_in_use` benzeri bir ret operation’lı planı korur), kapasite hesabı ve namespace satırı davranışı kartta kapatılır; namespace’in create intent’i hiç oluşmamış satırlarının serbest bırakılması gerekip gerekmediği karar konusudur.
