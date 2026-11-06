@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
+from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer import TransferControl, TransferRecord, TransferVerification
 from yorunge.domain.dataset_transfer_v2 import (
@@ -142,6 +144,18 @@ VALID = {
     "cancelled before any intent": dict(
         status="cancelled", lease=None, workflow_latched=False, reason="local_cancelled"
     ),
+    **{
+        f"cancelled by {reason}": dict(
+            status="cancelled", lease=None, workflow_latched=False, reason=reason
+        )
+        for reason in (
+            "identity_reset",
+            "lease_expired",
+            "clock_changed",
+            "approval_revoked",
+            "approval_expired",
+        )
+    },
     "check-only admitted": dict(
         status="admitted",
         lease=lease(),
@@ -161,6 +175,13 @@ VALID = {
         lease=None,
         workflow_latched=False,
         reason="lease_expired",
+        verification_only=True,
+    ),
+    "check-only cancelled by a reset": dict(
+        status="cancelled",
+        lease=None,
+        workflow_latched=False,
+        reason="identity_reset",
         verification_only=True,
     ),
 }
@@ -191,12 +212,27 @@ REJECTED = {
     "unlatched failure": {**VALID["failed"], "workflow_latched": False},
     "latched cancellation": {**VALID["cancelled before any intent"], "workflow_latched": True},
     "stopped without a reason": {**VALID["cancelled before any intent"], "reason": None},
-    "success without the proof reason": {**VALID["succeeded after sending"], "reason": "verified"},
+    "success by another reason": {**VALID["succeeded after sending"], "reason": "local_cancelled"},
+    "unknown without a reason": {**VALID["unknown, no owner"], "reason": None},
+    "no-send cancellation by an uncertain request": {
+        **VALID["cancelled before any intent"],
+        "reason": "request_uncertain",
+    },
+    "no-send cancellation by a provider rejection": {
+        **VALID["cancelled before any intent"],
+        "reason": "provider_rejected",
+    },
+    "check-only cancellation by an uncertain request": {
+        **VALID["check-only cancelled"],
+        "reason": "request_uncertain",
+    },
+    "dataset that is no provider id": dict(dataset_id="x"),
+    "dataset id in capitals": dict(dataset_id="00000000-0000-4000-8000-0000000009AB"),
     "proof reason without success": {**VALID["unknown, no owner"], "reason": "metadata_verified"},
     "failure by something else": {**VALID["failed"], "reason": "request_uncertain"},
     "running with a reason": {**VALID["running"], "reason": "request_uncertain"},
     "running without an owner": {**VALID["running"], "lease": None},
-    "read failure that is final": {**VALID["failed"], "reason": "read_unavailable"},
+    "failure by a failed read": {**VALID["failed"], "reason": "read_unavailable"},
     "cancellation by a failed read": {
         **VALID["cancelled before any intent"],
         "reason": "read_unavailable",
@@ -366,6 +402,15 @@ def proof_of(**changes):
     return {**data("dataset-continuation-verification-v3.json"), **changes}
 
 
+def entries(count):
+    """Well-formed ordered proof entries of any number: the count is the only thing that varies."""
+    template = data("dataset-continuation-verification-v3.json")["files"][0]
+    return [
+        {**template, "file_index": n, "item_id": f"00000000-0000-4000-8000-{n + 0x100:012x}"}
+        for n in range(count)
+    ]
+
+
 def broken_files(mutate):
     files = data("dataset-continuation-verification-v3.json")["files"]
     mutate(files)
@@ -379,7 +424,7 @@ def broken_files(mutate):
         {"files": list(reversed(data("dataset-continuation-verification-v3.json")["files"]))},
         {"files": broken_files(lambda f: f[1].update(item_id=f[0]["item_id"]))},
         {"files": broken_files(lambda f: f[1].update(file_index=5))},
-        {"files": data("dataset-continuation-verification-v3.json")["files"] * 43},
+        {"files": entries(129)},  # one more than a proof may hold
         {"project_id": "00000000-0000-4000-8000-0000000000ee"},
         {"authorization_policy": "verified_read"},  # no grant
         {"grant": {"unexpected": 1}},
@@ -440,3 +485,152 @@ def test_a_proof_from_another_target_does_not_belong_to_the_plan():
     proof = TransferVerificationV3.model_validate_json(canon(proof_of(scope=scope)))
     with pytest.raises(ValueError, match="does not belong"):
         validate_verification_binding_v3(PLAN, proof)
+
+
+def test_a_proof_holds_up_to_one_hundred_and_twenty_eight_entries_and_the_plan_wants_exactly_n():
+    big = TransferVerificationV3.model_validate_json(canon(proof_of(files=entries(128))))
+    assert len(big.files) == 128
+    four = TransferVerificationV3.model_validate_json(canon(proof_of(files=entries(4))))
+    for proof in (big, four):  # more than the plan's three files is as foreign as fewer
+        with pytest.raises(ValueError, match="does not belong"):
+            validate_verification_binding_v3(PLAN, proof)
+    three = TransferVerificationV3.model_validate_json(canon(proof_of(files=entries(3))))
+    validate_verification_binding_v3(PLAN, three)
+
+
+def test_an_explicit_read_proof_needs_a_plan_that_allows_an_explicit_attempt():
+    proof = TransferVerificationV3.model_validate_json(
+        fixture("dataset-continuation-verification-v3.json")
+    )
+    assert proof.authorization_policy == "explicit_read_attempt"
+    validate_verification_binding_v3(PLAN, proof)
+    strict = PLAN.model_copy(update={"admission_policy": "verified_only"})
+    with pytest.raises(ValueError, match="does not belong"):
+        validate_verification_binding_v3(strict, proof)
+
+
+# --- the grant rules every proof version shares ---------------------------------------------------
+GRANT = data("dataset-continuation-plan-v3-evidenced.json")["grant"]
+PROOFS = [
+    pytest.param(
+        TransferVerificationV3, data("dataset-continuation-verification-v3.json"), id="v3"
+    ),
+    pytest.param(
+        TransferVerificationV2, data("dataset-transfer-graph-v2.json")["verification"], id="v2"
+    ),
+]
+
+
+def verified(proof, **grant_changes):
+    """The proof read under a verified policy with a grant for its own scope and instant."""
+    grant = {**GRANT, "scope": proof["scope"], **grant_changes}
+    return {**proof, "authorization_policy": "verified_read", "grant": grant}
+
+
+def around(proof, delta_seconds=0, micro=0):
+    moment = instant(proof["observed_at"]) + timedelta(seconds=delta_seconds, microseconds=micro)
+    return timestamp(moment)
+
+
+@pytest.mark.parametrize("model,proof", PROOFS)
+def test_a_verified_read_needs_a_grant_for_its_scope_with_the_read_permission_current_now(
+    model, proof
+):
+    model.model_validate_json(canon(verified(proof)))  # the control: every rule holds
+    permissions = ["create_private_dataset", "link_project", "upload_created_dataset"]
+    other_scope = {**proof["scope"], "profile": "somebody-else"}
+    for changes in (
+        {"scope": other_scope},
+        {"permissions": permissions},
+        {"checked_at": around(proof, micro=1), "expires_at": around(proof, 60)},
+        {"checked_at": around(proof, -60), "expires_at": around(proof)},
+    ):
+        with pytest.raises(ValueError, match="actual current grant"):
+            model.model_validate_json(canon(verified(proof, **changes)))
+    edge = {"checked_at": around(proof), "expires_at": around(proof, micro=1)}
+    model.model_validate_json(canon(verified(proof, **edge)))  # from now until the next microsecond
+
+
+@pytest.mark.parametrize("model,proof", PROOFS)
+def test_an_explicit_read_never_manufactures_a_grant(model, proof):
+    model.model_validate_json(canon(proof))
+    with pytest.raises(ValueError, match="manufacture a grant"):
+        model.model_validate_json(canon({**proof, "grant": {**GRANT, "scope": proof["scope"]}}))
+
+
+def test_the_binding_validators_accept_only_genuine_values():
+    class ImitationRecord(TransferRecordV3):
+        pass
+
+    class ImitationProof(TransferVerificationV3):
+        pass
+
+    record = TransferRecordV3.model_validate_json(
+        fixture("dataset-continuation-record-v3-admitted.json")
+    )
+    proof = TransferVerificationV3.model_validate_json(
+        fixture("dataset-continuation-verification-v3.json")
+    )
+    v2 = data("dataset-transfer-graph-v2.json")
+    foreign = {
+        "record": [
+            ImitationRecord.model_construct(**dict(record)),
+            TransferRecordV2.model_validate_json(canon(v2["record"])),
+            None,
+            {"plan_id": record.plan_id},
+            object(),
+        ],
+        "proof": [
+            ImitationProof.model_construct(**dict(proof)),
+            TransferVerificationV2.model_validate_json(canon(v2["verification"])),
+            None,
+            {"dataset_id": proof.dataset_id},
+            object(),
+        ],
+    }
+    for impostor in foreign["record"]:
+        with pytest.raises(ValueError, match="mixed continuation plan/record versions"):
+            validate_record_binding_v3(PLAN, impostor)
+    for impostor in foreign["proof"]:
+        with pytest.raises(ValueError, match="mixed continuation plan/proof versions"):
+            validate_verification_binding_v3(PLAN, impostor)
+    for impostor in (PLAN.model_dump(mode="json"), None, record):
+        with pytest.raises(ValueError, match="mixed continuation plan/record versions"):
+            validate_record_binding_v3(impostor, record)
+        with pytest.raises(ValueError, match="mixed continuation plan/proof versions"):
+            validate_verification_binding_v3(impostor, proof)
+
+
+def test_a_continuation_is_never_its_own_source_or_baseline():
+    admitted = data("dataset-continuation-record-v3-admitted.json")
+    source = PLAN.continuation.source_operation_id
+    assert accepts(admitted).operation_id not in {source, PLAN.continuation.baseline_operation_id}
+    validate_record_binding_v3(PLAN, accepts(admitted))
+    with pytest.raises(ValueError, match="own source"):
+        validate_record_binding_v3(PLAN, accepts({**admitted, "operation_id": source}))
+    other_baseline = "00000000-0000-4000-8000-0000000000b1"
+    rebased = PLAN.model_copy(
+        update={
+            "continuation": PLAN.continuation.model_copy(
+                update={"baseline_operation_id": other_baseline}
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="own source"):
+        validate_record_binding_v3(rebased, accepts({**admitted, "operation_id": other_baseline}))
+
+
+@pytest.mark.parametrize(
+    "model,name,limit",
+    [
+        (TransferRecordV3, "dataset-continuation-record-v3-running.json", 16 * 1024),
+        (TransferControlV3, "dataset-continuation-control-v3.json", 2048),
+        (TransferVerificationV3, "dataset-continuation-verification-v3.json", 128 * 1024),
+    ],
+)
+def test_each_wire_type_holds_exactly_its_limit_and_not_a_byte_more(model, name, limit):
+    assert model.max_wire_bytes == limit
+    raw = fixture(name)
+    model.model_validate_json(raw + b" " * (limit - len(raw)))
+    with pytest.raises(ValueError, match="bounded upload wire"):
+        model.model_validate_json(raw + b" " * (limit - len(raw) + 1))

@@ -242,9 +242,11 @@ class DatasetUploadSummaryV3(UploadWire):
             raise ValueError("operation identity and state must be paired")
         if (
             self.uncertain_files > self.continuation_files
-            or self.continuation_files + self.remote_present_files > 128
+            or not 1 <= self.continuation_files + self.remote_present_files <= 128
         ):
             raise ValueError("continuation file counts must fit one manifest")
+        if self.operation_id == self.continuation_of:
+            raise ValueError("a continuation cannot be its own source")
         validate_summary_approval(self)
         validate_summary_evidence(self)
         self.encoded()

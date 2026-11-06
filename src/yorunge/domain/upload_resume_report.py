@@ -2,31 +2,57 @@
 
 The report carries counts, closed blocker names, digests and a few relative example paths of
 problematic files. It never carries owner, name, created-dataset or receipt content, keys, URLs or
-the paths of extra remote items. Report mode answers with it whatever the classification is;
-preparing a plan is a separate step that happens only without blockers.
+the paths of extra remote items. Report mode answers with it whatever the classification is, even
+when nothing could be observed (an unknown create, a source that may not be read): everything that
+comes from the remote observation then sits in ``observation``, which is absent. Preparing a plan is
+a separate step that happens only without blockers.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar, Literal, Self
+from collections.abc import Sequence
+from typing import Annotated, ClassVar, Final, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import instant
-from yorunge.domain.dataset_manifest import Sha256, file_parts
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, binding_matches
+from yorunge.domain.dataset_manifest import DatasetManifest, Sha256, file_parts
 from yorunge.domain.dataset_upload import (
+    MAX_TRANSFER_FILES,
+    MAX_TRANSFER_OPERATIONS,
+    MAX_TRANSFER_PAYLOAD_BYTES,
+    MAX_TRANSFER_PLANS,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_FILES,
     UploadWire,
+    manifest_reference,
     provider_uuid,
 )
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_resume import BLOCKERS, Action, Blocker, recommended_action
+from yorunge.domain.upload_resume import (
+    BLOCKERS,
+    FILE_CLASSES,
+    SEND_CLASSES,
+    Action,
+    Blocker,
+    Classification,
+    recommended_action,
+)
 
 # Classes a user has to act on; their relative paths may be listed (never more than a handful).
-PROBLEM_CLASSES = ("pending_uncertain", "drift_missing", "conflict", "inventory_unreliable")
+ProblemClass = Literal["pending_uncertain", "drift_missing", "conflict", "inventory_unreliable"]
+PROBLEM_CLASSES: Final[tuple[ProblemClass, ...]] = (
+    "pending_uncertain",
+    "drift_missing",
+    "conflict",
+    "inventory_unreliable",
+)
 MAX_EXAMPLES = 8
-MAX_QUOTA_PAYLOAD_BYTES = 16 * 1024 * 1024
+# Blockers that only a remote observation can establish; without one they cannot stand.
+OBSERVED_BLOCKERS = frozenset(
+    {"drift_missing", "conflict", "extra_remote", "inventory_unreliable", "inventory_too_large"}
+)
 Count = Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
 
 
@@ -52,7 +78,7 @@ class ResumeClassCounts(UploadWire):
 
 
 class ResumeExamples(UploadWire):
-    file_class: Literal["pending_uncertain", "drift_missing", "conflict", "inventory_unreliable"]
+    file_class: ProblemClass
     paths: Annotated[tuple[str, ...], Field(min_length=1, max_length=MAX_EXAMPLES)]
 
     @field_validator("paths")
@@ -66,29 +92,71 @@ class ResumeExamples(UploadWire):
         return value
 
 
+class QuotaCounters(UploadWire):
+    """The four store-wide counters the capacity check bounds: plans, operations, files, payload."""
+
+    plans: Annotated[int, Field(ge=0, le=MAX_TRANSFER_PLANS)]
+    operations: Annotated[int, Field(ge=0, le=MAX_TRANSFER_OPERATIONS)]
+    files: Annotated[int, Field(ge=0, le=MAX_TRANSFER_FILES)]
+    payload_bytes: Annotated[int, Field(ge=0, le=MAX_TRANSFER_PAYLOAD_BYTES)]
+
+
+class ResumeObservation(UploadWire):
+    """What one remote observation established: classes, the send selection and the examples."""
+
+    class_counts: ResumeClassCounts
+    send_files: Count
+    send_bytes: Annotated[int, Field(ge=0, le=MAX_UPLOAD_BYTES)]
+    unconfirmed_ack_required: bool
+    classification_digest: Sha256
+    inventory_digest: Sha256
+    examples: Annotated[tuple[ResumeExamples, ...], Field(max_length=len(PROBLEM_CLASSES))]
+
+    @model_validator(mode="after")
+    def consistent(self) -> Self:
+        counts = self.class_counts
+        if self.send_files != counts.pending_clean + counts.pending_uncertain:
+            raise ValueError("files to send are the unsent and unconfirmed ones")
+        if self.unconfirmed_ack_required != bool(counts.pending_uncertain):
+            raise ValueError("acknowledgement is needed exactly for unconfirmed files")
+        if not self.send_files and self.send_bytes:
+            raise ValueError("no files to send, no bytes to send")
+        if counts.inventory_unreliable and (
+            counts.confirmed
+            or counts.observed
+            or counts.pending_clean
+            or counts.pending_uncertain
+            or counts.drift_missing
+        ):
+            raise ValueError("an unreliable listing leaves no other non-conflicting class")
+        classes = [example.file_class for example in self.examples]
+        if classes != [name for name in PROBLEM_CLASSES if name in classes]:
+            raise ValueError("ordered distinct example classes required")
+        for example in self.examples:
+            if len(example.paths) > getattr(counts, example.file_class):
+                raise ValueError("examples cannot outnumber their class")
+        return self
+
+
 class DatasetUploadResumeReport(UploadWire):
-    max_wire_bytes: ClassVar[int] = 64 * 1024
+    # Four problem classes of eight paths each: a path is at most 1 KiB and escapes to at most
+    # three times that, so the worst case stays near 100 KiB.
+    max_wire_bytes: ClassVar[int] = 128 * 1024
     schema_version: Literal[1]
     kind: Literal["dataset_upload_resume_report"]
     source_operation_id: str
     dataset_id: str | None
     eligible: bool
     blockers: tuple[Blocker, ...]
-    class_counts: ResumeClassCounts
-    file_count: Annotated[int, Field(ge=1, le=MAX_UPLOAD_FILES)]
-    send_files: Count
-    send_bytes: Annotated[int, Field(ge=0, le=MAX_UPLOAD_BYTES)]
-    unconfirmed_ack_required: bool
     recommended_action: Action
     related_operation_id: str | None
-    quota_files: Annotated[int, Field(ge=1, le=MAX_UPLOAD_FILES)]
-    quota_payload_bytes: Annotated[int, Field(ge=0, le=MAX_QUOTA_PAYLOAD_BYTES)]
-    classification_digest: Sha256
-    inventory_digest: Sha256
+    file_count: Annotated[int, Field(ge=1, le=MAX_UPLOAD_FILES)]
+    observation: ResumeObservation | None
+    quota_used: QuotaCounters
+    quota_added: QuotaCounters
     observed_at: str
     plan_id: str | None
     plan_digest: Sha256 | None
-    examples: Annotated[tuple[ResumeExamples, ...], Field(max_length=len(PROBLEM_CLASSES))]
 
     @field_validator("source_operation_id", "related_operation_id", "plan_id")
     @classmethod
@@ -104,9 +172,9 @@ class DatasetUploadResumeReport(UploadWire):
     def consistent(self) -> Self:
         instant(self.observed_at)
         self._blockers_and_action()
-        self._counts()
+        self._observation()
+        self._quota()
         self._plan_and_related()
-        self._examples()
         self.encoded()
         return self
 
@@ -119,21 +187,26 @@ class DatasetUploadResumeReport(UploadWire):
             raise ValueError("eligibility and action must follow the blockers")
         if "inventory_too_large" in self.blockers and "inventory_unreliable" not in self.blockers:
             raise ValueError("a too large listing is also an unreliable one")
-        counts = self.class_counts
+        if (self.dataset_id is None) != ("create_unknown" in self.blockers):
+            raise ValueError("a dataset is unknown exactly when its create is")
+
+    def _observation(self) -> None:
+        observation = self.observation
+        if observation is None:
+            if not self.blockers or OBSERVED_BLOCKERS & set(self.blockers):
+                raise ValueError("without an observation the blockers must come from the source")
+            return
+        counts = observation.class_counts
+        if counts.total() != self.file_count:
+            raise ValueError("class counts must cover the manifest")
         for name in ("drift_missing", "conflict", "inventory_unreliable"):
             if getattr(counts, name) and name not in self.blockers:
                 raise ValueError("a blocking class needs its blocker")
 
-    def _counts(self) -> None:
-        counts = self.class_counts
-        if counts.total() != self.file_count or self.quota_files != self.file_count:
-            raise ValueError("class counts must cover the manifest")
-        if self.send_files != counts.pending_clean + counts.pending_uncertain:
-            raise ValueError("files to send are the unsent and unconfirmed ones")
-        if self.unconfirmed_ack_required != bool(counts.pending_uncertain):
-            raise ValueError("acknowledgement is needed exactly for unconfirmed files")
-        if not self.send_files and self.send_bytes:
-            raise ValueError("no files to send, no bytes to send")
+    def _quota(self) -> None:
+        added = self.quota_added
+        if (added.plans, added.operations, added.files) != (1, 1, self.file_count):
+            raise ValueError("an attempt adds one plan, one operation and the manifest's files")
 
     def _plan_and_related(self) -> None:
         if (self.plan_id is None) != (self.plan_digest is None):
@@ -145,11 +218,90 @@ class DatasetUploadResumeReport(UploadWire):
             raise ValueError("a related operation needs a descendant blocker")
         if "source_superseded" in self.blockers and self.related_operation_id is None:
             raise ValueError("a superseded source names its successor")
+        if self.related_operation_id == self.source_operation_id:
+            raise ValueError("a source is not its own successor")
 
-    def _examples(self) -> None:
-        classes = [example.file_class for example in self.examples]
-        if classes != [name for name in PROBLEM_CLASSES if name in classes]:
-            raise ValueError("ordered distinct example classes required")
-        for example in self.examples:
-            if len(example.paths) > getattr(self.class_counts, example.file_class):
-                raise ValueError("examples cannot outnumber their class")
+
+def resume_report(
+    *,
+    source_operation_id: str,
+    dataset_id: str | None,
+    manifest: DatasetManifest,
+    classification: Classification | None,
+    blockers: Sequence[Blocker] = (),
+    related_operation_id: str | None = None,
+    quota_used: QuotaCounters,
+    added_payload_bytes: int,
+    observed_at: str,
+    plan: DatasetContinuationPlanV3 | None = None,
+) -> DatasetUploadResumeReport:
+    """The report of one observation, or of none; every derived field comes from the evidence.
+
+    ``classification`` already carries every blocker (source and caller ones merged with
+    ``with_blockers``); without one, ``blockers`` are the source-level reasons nothing was observed.
+    A ``plan`` is the continuation prepared from exactly this observation.
+    """
+    count = len(manifest.files)
+    observation: ResumeObservation | None = None
+    if classification is None:
+        merged = tuple(blockers)
+    else:
+        if blockers:
+            raise ValueError("a classification already carries every blocker")
+        if len(classification.classes) != count:
+            raise ValueError("the classification does not cover the manifest")
+        merged = classification.blockers
+        counts = ResumeClassCounts(**{name: classification.count(name) for name in FILE_CLASSES})
+        sending = [i for i, name in enumerate(classification.classes) if name in SEND_CLASSES]
+        observation = ResumeObservation(
+            class_counts=counts,
+            send_files=len(sending),
+            send_bytes=sum(manifest.files[i].size for i in sending),
+            unconfirmed_ack_required=bool(counts.pending_uncertain),
+            classification_digest=classification.classification_digest,
+            inventory_digest=classification.inventory_digest,
+            examples=tuple(
+                ResumeExamples(
+                    file_class=name,
+                    paths=tuple(
+                        sorted(
+                            (
+                                manifest.files[i].path
+                                for i in classification.indices(name)[:MAX_EXAMPLES]
+                            ),
+                            key=lambda path: path.encode("utf-8"),
+                        )
+                    ),
+                )
+                for name in PROBLEM_CLASSES
+                if classification.count(name)
+            ),
+        )
+    if plan is not None and (
+        type(plan) is not DatasetContinuationPlanV3
+        or classification is None
+        or manifest_reference(manifest) != plan.manifest
+        or plan.continuation.source_operation_id != source_operation_id
+        or plan.continuation.dataset_id != dataset_id
+        or not binding_matches(plan.continuation, classification)
+    ):
+        raise ValueError("the plan was not prepared from this observation")
+    return DatasetUploadResumeReport(
+        schema_version=1,
+        kind="dataset_upload_resume_report",
+        source_operation_id=source_operation_id,
+        dataset_id=dataset_id,
+        eligible=not merged,
+        blockers=merged,
+        recommended_action=recommended_action(merged),
+        related_operation_id=related_operation_id,
+        file_count=count,
+        observation=observation,
+        quota_used=quota_used,
+        quota_added=QuotaCounters(
+            plans=1, operations=1, files=count, payload_bytes=added_payload_bytes
+        ),
+        observed_at=observed_at,
+        plan_id=plan.plan_id if plan is not None else None,
+        plan_digest=plan.digest if plan is not None else None,
+    )

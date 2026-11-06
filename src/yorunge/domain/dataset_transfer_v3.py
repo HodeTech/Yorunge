@@ -97,6 +97,9 @@ class TransferRecordV3(UploadWire):
             raise ValueError("stopped state requires reason")
         if (self.status == "succeeded") != (self.reason == "metadata_verified"):
             raise ValueError("success requires metadata verification")
+        if self.status == "cancelled" and self.reason in {"request_uncertain", "provider_rejected"}:
+            # Nothing was sent, so there is nothing to be uncertain about or to have been refused.
+            raise ValueError("an effect-free cancellation cannot be uncertain or rejected")
         if self.status == "failed" and self.reason != "provider_rejected":
             raise ValueError("only definitive rejection is failure")
         if self.status == "running" and (self.lease is None or self.reason is not None):
@@ -151,9 +154,18 @@ class TransferVerificationV3(UploadWire):
 
 
 def validate_record_binding_v3(plan: DatasetContinuationPlanV3, record: TransferRecordV3) -> None:
-    """The record is this plan's admission: same identity, digests, dataset, mode and approval."""
+    """The record is this plan's admission: same identity, digests, dataset, mode and approval.
+
+    Both arguments must be genuine, already validated values (this does not re-validate them), and
+    the continuation is its own operation: it is neither the source nor the baseline root.
+    """
     if type(plan) is not DatasetContinuationPlanV3 or type(record) is not TransferRecordV3:
         raise ValueError("mixed continuation plan/record versions")
+    if record.operation_id in {
+        plan.continuation.source_operation_id,
+        plan.continuation.baseline_operation_id,
+    }:
+        raise ValueError("a continuation cannot be its own source")
     if (
         record.plan_id,
         record.plan_digest,
@@ -174,7 +186,12 @@ def validate_record_binding_v3(plan: DatasetContinuationPlanV3, record: Transfer
 def validate_verification_binding_v3(
     plan: DatasetContinuationPlanV3, proof: TransferVerificationV3
 ) -> None:
-    """The proof covers this plan's dataset, project and every manifest file, not only sent ones."""
+    """The proof is of this plan's dataset, target and file count, read under a policy it allows.
+
+    The proof covers all N manifest files, not only the sent ones, so the count must be N. Whether
+    each entry equals the manifest's is a read-time check (it needs the stored manifest), as is the
+    pairing with the record's clock and version. Both arguments must be genuine, validated values.
+    """
     if type(plan) is not DatasetContinuationPlanV3 or type(proof) is not TransferVerificationV3:
         raise ValueError("mixed continuation plan/proof versions")
     if (
@@ -182,5 +199,9 @@ def validate_verification_binding_v3(
         or proof.project_id != plan.scope.project_id
         or scope_target(proof.scope) != scope_target(plan.scope)
         or len(proof.files) != plan.manifest.file_count
+        or (
+            proof.authorization_policy == "explicit_read_attempt"
+            and plan.admission_policy != "explicit_attempt"
+        )
     ):
         raise ValueError("continuation proof does not belong to its plan")
