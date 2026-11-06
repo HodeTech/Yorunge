@@ -16,6 +16,8 @@ from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
+from yorunge.adapters.upload_chain import ChainSnapshot
+from yorunge.adapters.upload_chain import chain_snapshot as stored_snapshot
 from yorunge.adapters.upload_chain import operation_journal as stored_journal
 from yorunge.adapters.upload_read_access import ReadAccess, authorize_read, initial_read_consent
 from yorunge.adapters.upload_store import (
@@ -28,6 +30,7 @@ from yorunge.adapters.upload_store import (
     namespace,
     read_manifest,
     read_plan,
+    read_view_and_lineage,
     request_digest,
     require_capacity,
     verification_after,
@@ -48,6 +51,7 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -490,6 +494,15 @@ class StateUploads:
         """Read-only stage facts for the resume classifier; writes nothing and grants nothing."""
         with self.phase(operation_id):
             return stored_journal(self.show(operation_id=operation_id))
+
+    def chain_snapshot(self, operation_id: str, stamp: Stamp) -> ChainSnapshot:
+        """The journals of a source's lineage, its facts and its descendants, from one snapshot.
+
+        Separate reads would let a continuation appear between the journals and the descendants.
+        ``stamp`` is the caller's clock point for lease activity; nothing is written or granted.
+        """
+        with self.phase(operation_id), read_snapshot(self.connection):
+            return stored_snapshot(self.connection, operation_id, stamp)
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None
@@ -1124,6 +1137,11 @@ class StateUploads:
         """Local pre-HTTP gate; an unsuccessful marker never claims a new permission."""
         with self.phase(operation_id):
             view = self._nonterminal(operation_id)
+            if isinstance(view.plan, DatasetContinuationPlanV3):
+                # A continuation's baseline is its root's, found by walking its validated lineage.
+                _, lineage = read_view_and_lineage(self.connection, view.plan.plan_id)
+                assert lineage is not None
+                return lineage.baseline
             if not legacy_create_without_baseline(view):
                 return created_dataset(view)
             record = view.operation

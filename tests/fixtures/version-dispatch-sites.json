@@ -33,10 +33,64 @@
    "file": "src/yorunge/adapters/upload_chain.py",
    "function": "operation_journal",
    "kind": "isinstance",
-   "text": "isinstance(view.plan, DatasetUploadPlan | DatasetUploadPlanV2)",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "operation_journal reads only v1/v2 roots; the continuation branch with its parent link"
+   "owner": "done",
+   "note": "a continuation's parent in the chain is its source, and a graph that sent nothing is not complete"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_chain.py",
+   "function": "operation_journal",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlan | DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "v1/v2 operations are chain roots; any other plan is refused instead of read as a root"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_chain.py",
+   "function": "_descendants",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a v3 record can be a descendant of a source"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_chain.py",
+   "function": "_descendants",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the descendants of a source are the v3 operations whose plan names it as source"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_chain.py",
+   "function": "chain_snapshot",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the admission policy of the source's plan: a v1 plan has none (verified only), v2 and v3 name theirs"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_lineage.py",
+   "function": "resolve_lineage",
+   "kind": "isinstance",
+   "text": "isinstance(parent, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a source that is itself a continuation is followed, and must agree about the baseline"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_lineage.py",
+   "function": "resolve_lineage",
+   "kind": "isinstance",
+   "text": "isinstance(parent, DatasetUploadPlan | DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a v1/v2 plan is the root; anything else is refused"
   },
   {
    "file": "src/yorunge/adapters/upload_maintenance.py",
@@ -391,6 +445,15 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.require_created_baseline",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's baseline is its root's, found through its validated lineage"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.read_failed",
    "kind": "version",
    "text": "record.schema_version == 2",
@@ -564,10 +627,19 @@
    "file": "src/yorunge/adapters/upload_store.py",
    "function": "created_dataset",
    "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "created_dataset refuses a continuation: its baseline comes from its lineage, never from its own receipts"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "created_dataset",
+   "kind": "isinstance",
    "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "create receipts do not exist in a continuation; the dataset comes from the baseline resolver"
+   "owner": "done",
+   "note": "the strict create receipt of an original upload; a continuation's baseline is its root's (see above)"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -575,8 +647,8 @@
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV2)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "legacy_create_without_baseline; the v3 baseline rules"
+   "owner": "done",
+   "note": "only a v2 operation can be a create that left no strict receipt; a continuation has no create at all"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -584,8 +656,8 @@
    "kind": "isinstance",
    "text": "isinstance(receipt, StageReceipt)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "legacy_create_without_baseline; the v3 baseline rules"
+   "owner": "done",
+   "note": "only a v2 operation can be a create that left no strict receipt; a continuation has no create at all"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -607,12 +679,21 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
+   "function": "_stage_dataset",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's plan fixes the dataset every stage receipt must name"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
    "function": "_receipt",
    "kind": "isinstance",
    "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "create receipts do not exist in a continuation; the dataset comes from the baseline resolver"
+   "owner": "done",
+   "note": "validate_create_receipt refuses a create receipt in a continuation"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -629,8 +710,8 @@
    "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV2)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "explicit read proofs need an explicit plan: the v3 form of the rule"
+   "owner": "done",
+   "note": "the v2 explicit-read rule; the v3 form is validate_verification_binding_v3 next to it"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -638,8 +719,26 @@
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3u",
-   "note": "explicit read proofs need an explicit plan: the v3 form of the rule"
+   "owner": "done",
+   "note": "the v2 explicit-read rule; the v3 form is validate_verification_binding_v3 next to it"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "_verify",
+   "kind": "isinstance",
+   "text": "isinstance(proof, TransferVerificationV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a v3 proof is bound to its continuation plan (dataset, project, target, file count, policy)"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "_verify",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a v3 proof under any other plan is refused"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -652,7 +751,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "read_any_view",
+   "function": "_read_view",
    "kind": "decode_versioned/2",
    "text": "decode_versioned(StageReceipt, CreateReceiptV2)",
    "occurrence": 0,
@@ -661,7 +760,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "read_any_view",
+   "function": "_read_view",
    "kind": "decode_versioned/3",
    "text": "decode_versioned(TransferControl, TransferControlV2, TransferControlV3)",
    "occurrence": 0,
@@ -670,12 +769,21 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "read_any_view",
+   "function": "_read_view",
    "kind": "decode_versioned/3",
    "text": "decode_versioned(TransferVerification, TransferVerificationV2, TransferVerificationV3)",
    "occurrence": 0,
    "owner": "done",
    "note": "stored controls and proofs are read as any of the three families"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "read_view_and_lineage",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a continuation has a lineage to walk"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",

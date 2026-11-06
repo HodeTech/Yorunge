@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar, overload
 
 from yorunge.adapters.state import metadata
+from yorunge.adapters.upload_lineage import Lineage, resolve_lineage
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
@@ -33,6 +34,7 @@ from yorunge.domain.dataset_transfer_v3 import (
     TransferRecordV3,
     TransferVerificationV3,
     validate_record_binding_v3,
+    validate_verification_binding_v3,
 )
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
@@ -268,6 +270,9 @@ VersionedTransferView = _TransferView[
 
 def created_dataset(view: VersionedTransferView) -> ProviderDataset | None:
     """Read only the immutable strict receipt, never infer it from current remote data."""
+    if isinstance(view.plan, DatasetContinuationPlanV3):
+        # A continuation sends no create; its baseline is its root's, found through its lineage.
+        raise ValueError("a continuation's baseline comes from its lineage")
     for receipt in view.receipts:
         if isinstance(receipt, CreateReceiptV2):
             return receipt.created_dataset
@@ -276,6 +281,8 @@ def created_dataset(view: VersionedTransferView) -> ProviderDataset | None:
 
 def legacy_create_without_baseline(view: VersionedTransferView) -> bool:
     record = view.operation
+    # Only a v2 operation can be a create that left no strict receipt; a continuation has no
+    # create at all, and a v1 record is read-only history.
     if not isinstance(record, TransferRecordV2) or record.status in TERMINAL:
         return False
     create_ids = {intent.intent_id for intent in view.intents if intent.kind == "create"}
@@ -341,6 +348,17 @@ def _receipt_key(
         raise ValueError("unexpected receipt key")
 
 
+def _stage_dataset(
+    plan: UploadPlan, accepted: dict[tuple[StageKind, int | None], UploadReceipt]
+) -> str | None:
+    """The dataset every later stage names: a continuation's plan fixes it, an original upload's
+    is the one its accepted create receipt made."""
+    if isinstance(plan, DatasetContinuationPlanV3):
+        return plan.continuation.dataset_id
+    created = accepted.get(("create", None))
+    return created.dataset_id if created is not None else None
+
+
 def _receipt(
     plan: UploadPlan,
     manifest: DatasetManifest,
@@ -356,9 +374,8 @@ def _receipt(
         return
     graph = graph_of(plan)
     kind, index = intent.kind, intent.file_index
-    if (
-        graph.takes_created_dataset(kind)
-        and receipt.dataset_id != accepted[("create", None)].dataset_id
+    if graph.takes_created_dataset(kind) and (
+        receipt.dataset_id is None or receipt.dataset_id != _stage_dataset(plan, accepted)
     ):
         raise ValueError("receipt dataset mismatch")
     _receipt_key(graph, kind, index, receipt, accepted)
@@ -436,6 +453,10 @@ def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
         )
     ):
         raise ValueError("explicit read proof requires explicit v2 plan")
+    if isinstance(proof, TransferVerificationV3):
+        if not isinstance(view.plan, DatasetContinuationPlanV3):
+            raise ValueError("a continuation proof requires a continuation plan")
+        validate_verification_binding_v3(view.plan, proof)
     verification_after(view, proof)
     for expected, actual in zip(manifest.files, proof.files, strict=True):
         if (
@@ -466,6 +487,8 @@ def _operation_header(view: VersionedTransferView) -> None:
         record.created_at
     ) < instant(record.approval.expires_at):
         raise ValueError("admission without effective approval")
+    if len(view.intents) > graph_of(plan).intent_count:
+        raise ValueError("more intents than the graph has")
     if bool(view.intents) != record.workflow_latched:
         raise ValueError("workflow latch mismatch")
 
@@ -538,8 +561,7 @@ def _stage_outcome(
         i.intent_id for i in view.intents
     }:
         raise ValueError("orphan receipt")
-    created = accepted.get(("create", None))
-    if record.dataset_id != (created.dataset_id if created else None):
+    if record.dataset_id != _stage_dataset(view.plan, accepted):
         raise ValueError("dataset receipt mismatch; no name-based ID recovery")
     if rejected and record.status not in {"unknown", "failed"}:
         raise ValueError("definitive rejection mismatch")
@@ -602,10 +624,6 @@ def _controls(view: VersionedTransferView) -> None:
 def validate_graph(view: VersionedTransferView, manifest: DatasetManifest) -> None:
     if view.operation is None:
         return
-    if graph_of(view.plan).continuation:
-        # The v3 graph (no create, a file subset, a baseline from the chain) is validated by
-        # P02-3u. Until then a continuation's history is unreadable, never half-validated.
-        raise YorungeError("state_invalid")
     try:
         _operation_header(view)
         _stages(view, manifest)
@@ -615,7 +633,8 @@ def validate_graph(view: VersionedTransferView, manifest: DatasetManifest) -> No
         raise YorungeError("state_invalid") from None
 
 
-def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransferView:
+def _read_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransferView:
+    """One plan's own view: its rows checked against each other, and its graph validated."""
     plan = read_plan(connection, plan_id)
     manifest = read_manifest(connection, plan)
     approval = read_approval(connection, plan)
@@ -683,6 +702,49 @@ def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTran
         raise YorungeError("state_invalid")
     validate_graph(view, manifest)
     return view
+
+
+def _operation_view(connection: sqlite3.Connection, operation_id: str) -> VersionedTransferView:
+    """One operation's own view, without its lineage: the walk reads each source this way."""
+    return _read_view(connection, read_any_record(connection, operation_id).plan_id)
+
+
+def read_view_and_lineage(
+    connection: sqlite3.Connection, plan_id: str
+) -> tuple[VersionedTransferView, Lineage | None]:
+    """A view and, for a continuation, the validated lineage it was prepared from.
+
+    A lineage that cannot be walked to the root that made the dataset (a missing source, a loop,
+    another manifest or baseline, a namespace the root does not hold) is a corrupt history.
+    """
+    view = _read_view(connection, plan_id)
+    plan = view.plan
+    if not isinstance(plan, DatasetContinuationPlanV3):
+        return view, None
+    try:
+        lineage = resolve_lineage(
+            plan,
+            lambda operation_id: _operation_view(connection, operation_id),
+            created_dataset,
+            own_operation_id=view.operation.operation_id if view.operation else None,
+        )
+        # The namespace belongs to the root that created the dataset, whatever the record's state.
+        if connection.execute(
+            "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
+            (plan.continuation.intent_digest,),
+        ).fetchone() != (plan.continuation.baseline_operation_id,):
+            raise ValueError("namespace is not the baseline's")
+    except YorungeError as error:
+        if error.code in ("operation_not_found", "upload_plan_not_found"):
+            raise YorungeError("state_invalid") from None
+        raise
+    except (ValueError, KeyError, IndexError, TypeError):
+        raise YorungeError("state_invalid") from None
+    return view, lineage
+
+
+def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransferView:
+    return read_view_and_lineage(connection, plan_id)[0]
 
 
 def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:

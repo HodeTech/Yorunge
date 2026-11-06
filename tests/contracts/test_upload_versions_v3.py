@@ -239,17 +239,21 @@ def test_the_decoder_keeps_its_closed_version_and_size_rules_with_three_types(fi
         decode_versioned(v1, v2, canon(value).decode() + " " * (limit + 1), v3)
 
 
-def test_a_continuations_history_is_unreadable_until_its_graph_is_validated():
+def test_the_graph_of_a_continuation_is_validated_like_any_other_not_refused():
     plan, approval = PLANS[3], APPROVALS[3]
-    record = TransferRecordV3.model_validate_json(
+    admitted = TransferRecordV3.model_validate_json(
         fixture("dataset-continuation-record-v3-admitted.json")
     )
-    view = VersionedTransferView(plan, approval, record)
-    with pytest.raises(YorungeError) as error:
-        validate_graph(view, MANIFEST)
-    assert error.value.code == "state_invalid"
-    # A plan with no operation has no graph to validate, as before.
+    running = TransferRecordV3.model_validate_json(
+        fixture("dataset-continuation-record-v3-running.json")
+    )
+    # An admitted record sent nothing and a plan with no operation has no graph to validate.
+    validate_graph(VersionedTransferView(plan, approval, admitted), MANIFEST)
     validate_graph(VersionedTransferView(plan, approval, None), MANIFEST)
+    # A running record claims a latch that no stage intent supports.
+    with pytest.raises(YorungeError) as error:
+        validate_graph(VersionedTransferView(plan, approval, running), MANIFEST)
+    assert error.value.code == "state_invalid"
 
 
 class Small(UploadWire):
