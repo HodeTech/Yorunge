@@ -76,7 +76,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3d | Transfer aşama grafiği tek belirtimi ve v2 kill karakterizasyonu | P02-2c; [kart](tasks/p02-3d-stage-graph-spec.md) | `verified` |
 | P02-3e | Resume kanıt sınıflandırıcısı ve uzak envanter indirgeyicisi | P02-3d; [kart](tasks/p02-3e-resume-evidence-classifier.md) | `verified` |
 | P02-3f | Continuation v3 plan tarafı: bağlama, plan, onay, limit/maliyet işi ve politika | P02-3e; [kart](tasks/p02-3f-continuation-domain-v3.md) | `verified` |
-| P02-3t | Continuation v3 kayıt, kontrol, doğrulama ve kullanıcı DTO tipleri (P02-3f’den ayrıştırıldı) | P02-3f; [kart](tasks/p02-3t-continuation-records-and-dtos.md) | `ready` |
+| P02-3t | Continuation v3 kayıt, kontrol, doğrulama ve kullanıcı DTO tipleri (P02-3f’den ayrıştırıldı) | P02-3f; [kart](tasks/p02-3t-continuation-records-and-dtos.md) | `in_review` |
 | P02-3g | Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım | P02-3t; [kart](tasks/p02-3g-continuation-persistence-read.md) | `draft` |
 | P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3g’den sonra, P02-3h’den önce) | P02-3g; [kart](tasks/p02-3r-continuation-write-gates.md) | `draft` |
 | P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `draft` |
