@@ -618,6 +618,17 @@ def test_a_continuation_is_never_its_own_source_or_baseline():
     )
     with pytest.raises(ValueError, match="own source"):
         validate_record_binding_v3(rebased, accepts({**admitted, "operation_id": other_baseline}))
+    # In a chain the source (the previous continuation) is not the baseline root.
+    other_source = "00000000-0000-4000-8000-0000000000b2"
+    chained = PLAN.model_copy(
+        update={
+            "continuation": PLAN.continuation.model_copy(
+                update={"source_operation_id": other_source}
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="own source"):
+        validate_record_binding_v3(chained, accepts({**admitted, "operation_id": other_source}))
 
 
 @pytest.mark.parametrize(

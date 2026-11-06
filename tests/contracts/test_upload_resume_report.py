@@ -1,5 +1,6 @@
 """The v3 summary and the resume report: goldens, closed relationships and no private content."""
 
+import hashlib
 import itertools
 import json
 from pathlib import Path
@@ -14,7 +15,7 @@ from yorunge.application.continuation_policy import (
     prepare_continuation_v3,
 )
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
-from yorunge.domain.dataset_manifest import DatasetManifest
+from yorunge.domain.dataset_manifest import DatasetManifest, canonical_manifest
 from yorunge.domain.upload_costs import ContinuationCostWork
 from yorunge.domain.upload_public import DatasetUploadSummary, DatasetUploadSummaryV3
 from yorunge.domain.upload_resume import (
@@ -311,6 +312,20 @@ NEGATIVES = {
     "unreliable class without its blocker": observed([], counts(inventory_unreliable=3)),
     "unreliable listing beside confirmed files": observed(
         ["inventory_unreliable"], counts(confirmed=2, inventory_unreliable=1)
+    ),
+    "unreliable listing beside observed files": observed(
+        ["inventory_unreliable"], counts(observed=1, inventory_unreliable=2)
+    ),
+    "unreliable listing beside unsent files": inside(
+        observed(["inventory_unreliable"], counts(pending_clean=1, inventory_unreliable=2)),
+        send_files=1,
+        send_bytes=3,
+    ),
+    "unreliable listing beside unconfirmed files": inside(
+        observed(["inventory_unreliable"], counts(pending_uncertain=1, inventory_unreliable=2)),
+        send_files=1,
+        send_bytes=3,
+        unconfirmed_ack_required=True,
     ),
     "unreliable listing beside missing files": observed(
         ["drift_missing", "inventory_unreliable"], counts(drift_missing=1, inventory_unreliable=2)
@@ -661,6 +676,19 @@ def test_a_report_of_nothing_observed_is_the_golden_and_cannot_hide_remote_block
             )
 
 
+class Imitation(DatasetContinuationPlanV3):
+    pass
+
+
+def changed_manifest():
+    data_ = json.loads(fixture("dataset-manifest-v1.json"))
+    del data_["digest"]
+    data_["files"][0]["size"] += 1  # file 0 is unsent in the scenario, so evidence stays equal
+    data_["total_bytes"] += 1
+    digest = hashlib.sha256(canonical_manifest(data_)).hexdigest()
+    return DatasetManifest.model_validate_json(canon({**data_, "digest": digest}))
+
+
 def prepared_from(classification):
     binding = continuation_binding(
         classification,
@@ -708,13 +736,38 @@ def test_the_plan_a_report_names_is_the_one_prepared_from_that_very_observation(
         {"plan": prepared_from(other)},  # prepared from another observation
         {"source_operation_id": OTHER},
         {"dataset_id": "00000000-0000-4000-8000-0000000009aa"},
-        {"classification": None, "blockers": ("create_unknown",), "dataset_id": None},
+        # Nothing observed, yet a plan: the dataset and the source agree, only the plan is foreign.
+        {"classification": None, "blockers": ("source_terminal",)},
+        {"manifest": changed_manifest()},  # same file count, another manifest
+        {"plan": PLAN.model_dump(mode="json")},
+        {"plan": Imitation.model_construct(**dict(plan))},
         {"classification": classification.with_blockers(("local_changed",))},
         {"plan": PLAN},  # the golden plan binds placeholder digests, not this evidence
     ):
         values = {"classification": classification, "plan": plan, **changes}
         with pytest.raises((ValidationError, ValueError)):
             build(values.pop("classification"), **values)
+
+
+def test_examples_are_the_first_eight_paths_of_each_problem_class():
+    data_ = json.loads(fixture("dataset-manifest-v1.json"))
+    del data_["digest"]
+    data_["files"] = [
+        {"path": f"f{n:02d}.bin", "sha256": hashlib.sha256(b"%d" % n).hexdigest(), "size": 2}
+        for n in range(12)
+    ]
+    data_["file_count"], data_["total_bytes"] = 12, 24
+    digest = hashlib.sha256(canonical_manifest(data_)).hexdigest()
+    manifest = DatasetManifest.model_validate_json(canon({**data_, "digest": digest}))
+    chain = ChainSummary(("intent",) * 12, False, False, manifest.digest)
+    classification = classify(manifest, chain, RemoteInventory((), frozenset()))
+    assert classification.count("pending_uncertain") == 12
+    report = build(classification, manifest=manifest)
+    (example,) = report.observation.examples
+    assert example.file_class == "pending_uncertain"
+    assert list(example.paths) == [f"f{n:02d}.bin" for n in range(8)]
+    assert report.observation.send_files == 12 and report.observation.send_bytes == 24
+    assert report.file_count == report.quota_added.files == 12
 
 
 def test_a_report_builder_refuses_evidence_that_does_not_belong_together():
