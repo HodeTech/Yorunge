@@ -126,7 +126,17 @@ def test_a_family_never_validates_against_a_stranger_even_with_matching_fields()
             validate_versioned_approval(plan, approval)
 
 
+def legacy_proof():
+    """A genuine v1 proof: the v2 body without its own scope, carrying the plan's grant."""
+    data = {**GRAPH["verification"], "schema_version": 1, "grant": V1_PAIR["plan"]["grant"]}
+    data.pop("scope")
+    data.pop("authorization_policy")
+    return TransferVerification.model_validate_json(canon(data))
+
+
 def test_the_scope_of_a_proof_comes_from_the_family_that_wrote_it_never_by_elimination():
+    v1 = legacy_proof()
+    assert verification_scope(v1) == v1.grant.scope  # the oldest family still takes its grant's
     v2 = TransferVerificationV2.model_validate_json(canon(GRAPH["verification"]))
     v3 = TransferVerificationV3.model_validate_json(
         fixture("dataset-continuation-verification-v3.json")
@@ -134,9 +144,9 @@ def test_the_scope_of_a_proof_comes_from_the_family_that_wrote_it_never_by_elimi
     assert verification_scope(v2) == v2.scope
     assert verification_scope(v3) == v3.scope  # not v1's grant.scope, which a v3 proof has none of
     assert v3.grant is None
-    v1 = SimpleNamespace(grant=SimpleNamespace(scope="legacy"))
+    imitation = SimpleNamespace(grant=SimpleNamespace(scope="legacy"))
     # Anything that is not one of the three families is refused, not read as the oldest.
-    for stranger in (None, {}, object(), v1):
+    for stranger in (None, {}, object(), imitation):
         with pytest.raises(ValueError, match="unsupported verification version"):
             verification_scope(stranger)
 
