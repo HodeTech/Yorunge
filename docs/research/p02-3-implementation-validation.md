@@ -7,7 +7,7 @@
 | Adım | Kart | Durum |
 |---|---|---|
 | 0 | Hazırlık (ADR/referans/kart/plan) | Belge turları R1/R2/R3 ve üç harici review işlendi; ADR-0031/0032/0033 Accepted (2026-11-06) |
-| 1–7 | P02-3d, e, f, t, g, r, h, i (resume; P02-3t, P02-3f’den bölünen ikinci yarıdır) | Adım 1 (P02-3d) `verified`: karakterizasyon, refaktör, R1 ve R2 kapandı, tam paket yeşil; adım 2 (P02-3e) `verified` (R1, R2 ve tam paket); adım 3 (P02-3f) `verified` (R1, R2, üreticiler için R3 ve tam paket); adım 4 (P02-3t) `verified` (R1, R2 ve tam paket); adım 5 (P02-3g) sırada; sonraki adımlar başlamadı |
+| 1–7 | P02-3d, e, f, t, g, u, v, r, h, i (resume; P02-3t, P02-3f’den; P02-3u ve P02-3v, P02-3g’den bölünen yarılardır) | Adım 1 (P02-3d) `verified`: karakterizasyon, refaktör, R1 ve R2 kapandı, tam paket yeşil; adım 2 (P02-3e) `verified` (R1, R2 ve tam paket); adım 3 (P02-3f) `verified` (R1, R2, üreticiler için R3 ve tam paket); adım 4 (P02-3t) `verified` (R1, R2 ve tam paket); adım 5 (P02-3g) sırada; sonraki adımlar başlamadı |
 | 8 | P02-3s (ortak no-clobber artifact yayıncısı) | Başlamadı; plan sırasıyla adım 8 |
 | 9–14 | P02-3j–o (indirme) | Başlamadı; model yoklama kapısı K6a girdisi verilmediğinden “yapılmadı” kaydıyla geçilir |
 | 15–16 | P02-3p–q (sürüm) | Başlamadı |

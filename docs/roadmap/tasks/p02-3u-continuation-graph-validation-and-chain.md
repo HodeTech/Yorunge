@@ -1,0 +1,42 @@
+---
+id: P02-3u
+phase: P02
+status: draft
+size: M
+depends_on: [P02-3g]
+capabilities: [C03, C12]
+---
+# P02-3u — Continuation v3 graf doğrulaması, zincir/baseline çözümleyici ve tek okuma anlık görüntüsü
+
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 6. [P02-3g](p02-3g-continuation-persistence-read.md)’den ayrıştırılan ikinci okuma dilimi: depodaki v3 geçmişinin **doğru** olduğunu kanıtlayan doğrulama ve zincirin salt okuma çözümü. Kapasite/bakım/projeksiyon [P02-3v](p02-3v-continuation-capacity-and-projection.md)’dedir; yazma kapıları [P02-3r](p02-3r-continuation-write-gates.md)’dedir.
+
+## Kullanıcı sonucu ve mevcut eksik
+
+`validate_graph` ve yardımcıları create-ilk ve 2+3N makbuz varsayar, dataset kimliğini kabul edilmiş create makbuzundan okur ve kayıt başına tek kök görünümü bilir; bir v3 satırı bu doğrulayıcılardan geçemez, yanlış bir v3 satırı da doğrulayıcıyı geçmemelidir. Zincir (kaynak → kök) hiçbir yerde depodan çözülmez; `merge_chain`e verilecek sıralı journal listesi, kaynağın kayıt olguları ve torun olguları bugün tek okuma anlık görüntüsünde alınmaz.
+
+## Giren ve girmeyen kapsam
+
+Girer: **salt okuma zincir/baseline çözümleyicisi** (kaynak → kök görünümü; döngü ve derinlik koruması; kök v1/v2 operation’ı ve doğrulanmış `CreateReceiptV2`; `baseline_digest(created_dataset)` plandaki `continuation.baseline_digest` ile ve `baseline_operation_id`/`dataset_id` ile eşit; uyuşmazlık veya kopukluk `state_invalid`) ve ona geçirilecek çağrı noktalarının kontrol listesi (`created_dataset`/`legacy_create_without_baseline`, `require_created_baseline`, `_baseline_in_view` bu dilimde; arm, acquire_read, read_failed, prepare_initial_read, `_verified` ve original producer’ın detail↔baseline karşılaştırması P02-3r/P02-3h’ye atanır); `validate_graph` v3 dalları: `_operation_header` (`intent_digest` saklı alan olarak kökle eşit, latch kuralı v2 ile aynı — `bool(intents)==latched`, `verification_only` kayıt unlatched `succeeded` olabilir —, `len(intents) ≤ 3M`, v3 namespace invariant’ı `namespace.create_operation_id == baseline_operation_id`, kayıt `operation_id`sinin zincirdeki kaynak ve kökten farklılığı), `_stages` (`request_digest` dataset kimliğini plandan alır, create makbuzu aranmaz, `_receipt`/`_receipt_key`/`_stage_outcome`/`_intent_binding` v3), `_controls` ve `_verify` (3M makbuz + N dosyalık kanıt, kanıt girdilerinin saklı Manifest’le eşitliği, kayıt ve kanıt sürüm eşitliği, kanıtın kimlik dönemi/saat nesli ile kaydınki, `verification_after` boş makbuzla, açık okuma kanıtının açık admission ilkeli plan istemesi, `acknowledged_stages` v3); `operation_journal`ın v3 dalı (v1/v2 dışı plan bugün `state_invalid` verir; ebeveyn bağı `continuation.source_operation_id`den okunur, `graph_complete` boşluk gereği doğru çıkan intent’siz `verification_only` kayıt için `reconcile_available` üretmez); `merge_chain`e verilecek kökten başlayan sıralı listenin depodan kurulması ve yürüyüşte döngü koruması; kaynağın kayıt olguları (`SourceFacts`: durum, lease etkinliği, politika, kök create makbuzu var mı) ve torun olguları (`DescendantFact` listesi) ile zincir journal’larını **tek okuma anlık görüntüsünde** veren bir yöntem (ayrı okumalar journal ile torunlar arasında yarışa açıktır). Girmez: kapasite/bakım/reset/projeksiyon (P02-3v), save/approve/admit/arm/receipt/read/proof yazma kapıları (P02-3r), HTTP, public yüzey, DDL.
+
+## Bağımlılıklar ve kararlar
+
+P02-3g (sürüm donanımı, `graph_of` v3) ve P02-3e (sınıflandırıcı olguları) verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir. DDL gerekirse koddan önce kullanıcı kararı alınır.
+
+## Sözleşme ve uygulama sınırı
+
+v1/v2 doğrulaması davranışsal olarak aynı kalır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 geçmişleriyle sınanır (kök + iki devam zinciri dahil); bağımsız oracle’lar plain `hashlib`/`json` ile istek özetlerini ve baseline özetini hesaplar. Hata eşlemesi: depo okumasında v3 doğrulayıcılarının `ValueError`ı `state_invalid` olur.
+
+## Kabul
+
+1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök + iki devam zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot ve full doğrulamadan geçer; çözümleyici baseline özeti uyuşmazlığını, kopuk soyu ve döngüyü `state_invalid` reddeder.
+2. Geçersiz geçmişler `state_invalid` ile reddedilir: intent’siz ama latch’li kayıt, `verification_only` olmayan latch’siz `succeeded`/`unknown`, yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, devamın kendi kaynağı olması, yanlış sürüm eşleşmeleri, kanıt girdisinin Manifest’ten farkı, kanıt–kayıt sürüm/saat uyuşmazlığı.
+3. `operation_journal` v3 zincirinde kökten başlayan sıralı journal’ları, `SourceFacts` ve `DescendantFact`leri **tek anlık görüntüde** verir; yarışta (journal okunduktan sonra eklenen torun) tutarsız küme dönmez; intent’siz `verification_only` kayıt `reconcile_available` üretmez.
+4. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı (kill dahil) değiştirilmeden geçer.
+
+## Doğrulama
+
+Gerçek SQLite integration/contract testleri, bağımsız oracle’lar, mevcut upload regresyonları, Ruff ve strict mypy. Ağ ve yazma kapısı iddiası yoktur.
+
+## Teslim kaydı
+
+Draft; uygulama, commit veya review kanıtı yoktur.

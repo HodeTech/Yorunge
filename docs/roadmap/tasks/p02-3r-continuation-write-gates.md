@@ -3,12 +3,12 @@ id: P02-3r
 phase: P02
 status: draft
 size: M
-depends_on: [P02-3g]
+depends_on: [P02-3v]
 capabilities: [C03, C12]
 ---
 # P02-3r — Continuation yazma kapıları, soy bağı ve M=0 geçişleri
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 5. Yaşam döngüsü ve yazma kapıları; HTTP/koordinatör P02-3h’dedir. Kimlik sırası: bu kart P02-3g’den ayrıştırıldığı için alfabetik olarak sondadır, yürütme sırası planda gösterilir.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 5. Yaşam döngüsü ve yazma kapıları; HTTP/koordinatör P02-3h’dedir. Kimlik sırası: bu kart P02-3g’den ayrıştırıldığı için alfabetik olarak sondadır, yürütme sırası planda gösterilir (okuma yarısı P02-3g, P02-3u ve P02-3v’dir).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -20,7 +20,7 @@ Girer: save/approve/revoke/admit/arm/renew/receipt/stop_local/acquire_read/read_
 
 ## Bağımlılıklar ve kararlar
 
-P02-3g verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). Davranış [ADR-0031](../../decisions/0031-upload-continuation.md) §2/§5 ve [continuation sözleşmesi](../../reference/dataset-upload-continuation.md); yeni replay, politika veya TTL yoktur.
+P02-3v verified olmalıdır (okuma yarısının üç dilimi: P02-3g, P02-3u, P02-3v). [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). Davranış [ADR-0031](../../decisions/0031-upload-continuation.md) §2/§5 ve [continuation sözleşmesi](../../reference/dataset-upload-continuation.md); yeni replay, politika veya TTL yoktur.
 
 ## Sözleşme ve uygulama sınırı
 

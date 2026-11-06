@@ -1,50 +1,49 @@
 ---
 id: P02-3g
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-3t]
 capabilities: [C03, C12]
 ---
-# P02-3g — Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım
+# P02-3g — Continuation sürüm donanımı: 3 tipli decode, birleşik tipler ve v3 graf belirtimi
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 4. Okuma/doğrulama yarısı; yazma kapıları P02-3r’dedir. Ayrım ölçülmüş: create-ilk varsayan doğrulayıcıların listesi tek başına bir review birimidir.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 5. Okuma yarısının ilk dilimi: v3 tiplerinin depoda **okunabilmesi** için gereken sürüm donanımı. Ölçülen büyüklük bu kartı L yaptığından büyüme kuralı gereği üçe bölündü: bu kart sürüm donanımını ve graf belirtimini, [P02-3u](p02-3u-continuation-graph-validation-and-chain.md) v3 graf doğrulamasını ve zincir/baseline çözümleyicisini, [P02-3v](p02-3v-continuation-capacity-and-projection.md) kapasite, bakım, reset önizlemesi ve projeksiyonları kapsar. Yazma kapıları [P02-3r](p02-3r-continuation-write-gates.md)’dedir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-v3 tipleri kalıcı geçmişte okunup doğrulanamadan kapasite hesabı, list/show, reset önizlemesi ve tam doğrulama çalışmaz: `decode_versioned` iki tip imzalıdır, graf doğrulayıcıları create-ilk ve 2+3N varsayar, rezervasyon formülü her kayıt okumasında doğrulanır ve her plan satırı kapasite/snapshot hesabında çözülür. Bu yarım yapılmadan herhangi bir v3 satırı store genelinde `state_invalid` üretir.
+v3 payload’ları depo katmanında bugün çözülemez: `decode_versioned` iki tip imzalıdır, `upload_versions` birleşik tipleri ve gönderim yardımcıları (`validate_versioned_approval`, `verification_scope`, `graph_of`) yalnız v1/v2’yi tanır ve `verification_scope` bir v3 kanıtını sessizce “v1” sayıp `grant.scope`a düşerdi; `StageGraphSpec` v3 grafiğini (create’siz, `file_indices` alt kümesi, 3M intent) bilmez. Bu yapılmadan hiçbir v3 satırı store genelinde okunamaz.
 
 ## Giren ve girmeyen kapsam
 
-Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında; **salt okuma zincir/baseline çözümleyicisi** (kaynak → kök görünümü, 3 tipli doğrulanmış → CreateReceiptV2; özeti `baseline_digest` ile eşit; uyuşmazlık/kopukluk `state_invalid`) ve ona geçirilecek çağrı noktalarının kontrol listesi (`created_dataset`/`legacy_create_without_baseline`, `require_created_baseline`, `_baseline_in_view`, arm, acquire_read, read_failed, prepare_initial_read, `_verified`, original producer’ın detail↔baseline karşılaştırması); `validate_graph` v3 için `StageGraphSpec` ile (gerekli aşamalar, öncül, `request_digest` plan bağından, `_stage_outcome` dataset kimliği plandan, `_operation_header`: `intent_digest` saklı alan olarak kökle eşit, latch kuralı v2 ile aynı (`bool(intents)==latched`; `verification_only` kayıt unlatched succeeded olabilir) ve `len(intents) ≤ 3M`, v3 namespace invariant’ı `namespace.create_operation_id == baseline_operation_id`, `verification_after` boş makbuzla, `_verify` 3M makbuz + N dosya proof ve sürüm eşliği); `operation_reservation` ve `capacity()` plan türüne göre; summary/review projeksiyonunun v3’ü `legacy_history_only` saymaması; reset önizleme/`upload_snapshot` parmak izi ve global expiry hesabı; eski-binary etkisinin belgelenmesi. Ayrıca P02-3e’nin adaptörünün zorladığı işler girer: `operation_journal`ın v3 dalı (v1/v2 dışı plan bugün `state_invalid` verir; ebeveyn bağı `continuation.source_operation_id`den okunur), `merge_chain`e verilecek kökten başlayan sıralı listenin depodan kurulması ve yürüyüşte döngü koruması (`merge_chain` yalnız verilen listedeki tekrarı yakalar), kaynağın kayıt olguları (`SourceFacts`: durum, lease etkinliği, politika, kök create makbuzu var mı), torun olguları (`DescendantFact` listesi) ve zincir journal’larını **tek okuma anlık görüntüsünde** veren bir yöntem (ayrı okumalar journal ile torunlar arasında yarışa açıktır) ve intent’siz `verification_only` kaydın `graph_complete` değerinin boşluk gereği doğru çıkıp `reconcile_available` üretmemesi. Girmez: save/approve/admit/arm/receipt/read/proof yazma kapıları, HTTP, public yüzey, DDL.
+Girer: `StageGraphSpec`in v3 sürümü (`SUPPORTED_PLAN_VERSIONS`, alt küme `files`, `intent_count = 3M`, create/link’siz `required_stages`, öncülsüz presign, 3M ve N’e göre `operation_reservation`, create/link=0 `request_counts`, alt küme `put_batches`; `RequestCounts`ın create/link alanlarının 0’ı alabilmesi; v1/v2 davranışı ve `ORIGINAL_PLAN_VERSION` tüketicileri değişmez); `domain/upload_versions.py`nin v3 üyeleri (birleşik tipler, `validate_versioned_approval` v3 dalı, `verification_scope`un v3’ü açıkça tanıması, `graph_of` v3, `validate_create_receipt`ın v3’ü reddetmesi; v3 hiçbir yerde “v1’in kalanı” sayılmaz); `decode_versioned`in üçüncü sürümü (mevcut iki tipli çağrılar v3 payload’ını `state_invalid` ile reddetmeye devam eder; v3’ü okuyan çağrı noktaları: `read_plan`, `read_approval`, `read_any_record`, denetim ve kanıt okumaları, `write_record`ın doğrulaması) ve `read_plan`/`read_any_record`ın v3 satırı (namespace payload eşitliği, `operation_reservation` formülü); **v2’ye özgü gönderim noktalarının kontrol listesi** (`isinstance`/`schema_version == 2`/`TransferRecordV2` kullanan her nokta, hangi dilime ait olduğuyla: P02-3u, P02-3v, P02-3r veya P02-3h) bu kartın çıktısı olarak belgelenir ve testle kilitlenir. Girmez: v3 graf doğrulaması, zincir/baseline çözümleyicisi, kapasite/bakım/projeksiyon, yazma kapıları, HTTP, public yüzey, DDL.
 
 ## Bağımlılıklar ve kararlar
 
-P02-3f ve P02-3t tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
+P02-3f ve P02-3t tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir. DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu ADR-0031 §6’daki kontrollü `state_invalid` retidir.
 
 ## Sözleşme ve uygulama sınırı
 
-Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 geçmişleriyle sınanır (yazma kapısı bu dilimde yoktur). Restore/recover yasağı değişmez; upload tabloları geri yüklenebilir küme dışındadır.
+Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal olarak aynı kalır. v3 tipleri v2 sınıflarının alt sınıfı değildir; bu yüzden her `isinstance(…, V2)` gönderimi v3 için açık bir dal ister ve atlanan dal sessiz yanlış davranış değil test edilmiş bir ret olmalıdır. Doğrulama doğrudan SQLite satırlarına yazılmış sentetik v3 satırlarıyla sınanır (yazma kapısı bu dilimde yoktur). Restore/recover yasağı değişmez.
 
-**Hata eşlemesi.** Depo okumasında v3 plan, onay, kayıt ve doğrulayıcılarının (`validate_continuation_selection`, `validate_approval_binding_v3`, `validate_record_binding_v3`, tel boyutu) `ValueError`ı `state_invalid` olur (üretici yolundaki `invalid_request`/`input_changed` eşlemesinden ayrıdır; tip katmanı düz `ValueError` verir).
+**P02-3t devir notu.** Kayıt ve kanıt tipleri tek başlarına denetlemez, depo okuması (P02-3u) denetler: kanıt girdilerinin saklı Manifest’le eşitliği; kayıt ve kanıt sürüm eşitliği; kanıtın kimlik dönemi ve saat nesli ile kaydınki; `len(intents) ≤ 3M` ve intent başına tek makbuz; kayıt `operation_id`sinin zincirdeki kaynak ve kök operation’dan farklı olması ve zincirin döngüsüzlüğü.
 
-**P02-3t devir notu.** Kayıt ve kanıt tipleri tek başlarına şunları denetlemez, depo okuması denetler (v2 `upload_store._verify`/`_operation_header` karşılıkları, v3 için açıkça): kanıt girdilerinin (yol özeti, boyut, SHA-256) saklı Manifest’le eşitliği; kayıt ve kanıt sürüm eşitliği; kanıtın kapsamındaki kimlik dönemi ve saat nesli ile kaydınki; `len(intents) ≤ 3M` ve intent başına tek makbuz; kayıt `operation_id`sinin zincirdeki kaynak ve kök operation’dan farklı olması ve zincirin döngüsüzlüğü; kayıt zamanlarının onayla uyumu. Bu depo okuması `validate_record_binding_v3` ve `validate_verification_binding_v3`ü çağırır, yerine geçmez.
+**Hata eşlemesi.** Depo okumasında v3 plan, onay, kayıt ve doğrulayıcılarının `ValueError`ı `state_invalid` olur (üretici yolundaki `invalid_request`/`input_changed` eşlemesinden ayrıdır; tip katmanı düz `ValueError` verir).
 
-**P02-3f devir notu.** `intent_digest`in kökün değerine eşitliği ve `max_upload_bytes`in seçilen dosyaların gerçek toplamına eşitliği (`validate_continuation_selection`) tip düzeyinde değil depo okumasında doğrulanır; `validate_approval_binding_v3` onayın `approved` olmasını veya süresini denetlemez.
-
-**P02-3d devir notu.** `StageGraphSpec` bugün yalnız v1/v2 grafiğini bilir; bu dilim v3 için aynı belirtimi genişletir ve plan sürümü taşımayan dört tüketiciyi (`upload_preparation._limits`, `UploadCostWork.quantities`, `UploadIntentReview`, test dışında çağrılmayan `dataset_transfer.operation_reservation`; hepsi `ORIGINAL_PLAN_VERSION` adını verir) gözden geçirir. Dataset kimliğinin kaynağı v3’te kabul edilmiş create makbuzu değil plan/baseline’dır: `request_digest`, `_receipt` ve `_receipt_key` bugün `takes_created_dataset`/`takes_presign_key` ile kabul edilmiş create makbuzundan okur; `acknowledged_stages`, `_stages` ve `_arm_predecessors` create-ilk ve N dosya varsayar. `files` ve `put_batches` demettir, alt küme indekslerini ifade eder. Bu noktalar P02-3d R2 mutasyon incelemesinde testlerle kilitlidir (`tests/contracts/test_upload_graph_wiring.py`, journal testleri); v3 davranışı o testleri bilinçli olarak günceller, sessizce geçmez.
+**P02-3d devir notu.** `StageGraphSpec` bugün yalnız v1/v2 grafiğini bilir; plan sürümü taşımayan dört tüketici (`upload_preparation._limits`, `UploadCostWork.quantities`, `UploadIntentReview`, test dışında çağrılmayan `dataset_transfer.operation_reservation`; hepsi `ORIGINAL_PLAN_VERSION` adını verir) gözden geçirilir. Dataset kimliğinin kaynağı v3’te kabul edilmiş create makbuzu değil plan/baseline’dır: `files` ve `put_batches` demettir ve alt küme indekslerini ifade eder. Bu noktalar P02-3d R2 mutasyon incelemesinde testlerle kilitlidir (`tests/contracts/test_upload_graph_wiring.py`, journal testleri); v3 davranışı o testleri bilinçli olarak günceller, sessizce geçmez.
 
 ## Kabul
 
-1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök+iki continuation zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer; çözümleyici baseline özeti uyuşmazlığını ve kopuk soyu `state_invalid` reddeder.
-2. Geçersiz geçmişler `state_invalid` ile reddedilir: intent’siz ama latch’li kayıt, `verification_only` olmayan latch’siz `succeeded`/`unknown`, yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, yanlış sürüm eşleşmeleri, döngülü/kopuk zincir.
-3. Kapasite: continuation plan/operation 128/128, dosya 4.096, 16 MiB sınırlarına yeniden sayılır; v1/v2 rezervasyon doğrulaması ve golden’ları değişmez; v3 satırı varken `require_capacity`/list/reset önizlemesi çalışır.
-4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.
-5. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı değiştirilmeden geçer.
+1. `StageGraphSpec` v3: alt küme `files`, `intent_count = 3M`, `required_stages` yalnız seçilen dosyaların presign/put/confirm’ü, presign’ın öncülü yok, put/confirm öncülleri v2 gibi, `operation_reservation` 3M intent ve N dosyalık proof için bağımsız formülle, create/link isteği 0, `put_batches` en çok iki dosyalı gruplar; M=0 geçerli ve boştur; geçersiz alt küme (sırasız, tekrarlı, aralık dışı) reddedilir; v1/v2 vektörleri ve golden’lar değişmez.
+2. Birleşik tipler ve gönderim yardımcıları v3’ü açıkça tanır: yanlış sürüm eşleşmeleri (plan v3+onay v2 vb.) reddedilir; `verification_scope` v3 kanıtında kanıtın kendi kapsamını verir (v1’in `grant.scope`una düşmez); `validate_create_receipt` v3’te reddeder.
+3. `decode_versioned` üç sürümü ayırır: v3 payload’ı mevcut iki tipli çağrılarda `state_invalid`, üç tipli çağrıda doğru tip; kapalı sürüm, bayt sınırı ve canonical payload kuralları v1/v2 ile aynıdır.
+4. Sentetik v3 plan/onay/kayıt satırları `read_plan`, `read_approval`, `read_any_record` ile okunur; indeks/namespace/rezervasyon uyuşmazlığı `state_invalid`dir; `operation_reservation` v3 için kayıt yazımında ve okumasında aynı formüldür.
+5. v2’ye özgü gönderim noktaları kontrol listesi eksiksizdir (kodda `grep` ile üretilir, test listeyle kodu karşılaştırır) ve her nokta bir sonraki dilime atanmıştır.
+6. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı değiştirilmeden geçer.
 
 ## Doğrulama
 
-Gerçek SQLite integration/contract testleri, mevcut kota/maintenance/migration regresyonları, Ruff ve strict mypy. Ağ ve yazma kapısı iddiası yoktur.
+Contract testleri (`StageGraphSpec` bağımsız formüller, birleşik tipler), gerçek SQLite integration testleri (sentetik v3 satırları), mevcut upload regresyonları, Ruff ve strict mypy. Ağ ve yazma kapısı iddiası yoktur.
 
 ## Teslim kaydı
 

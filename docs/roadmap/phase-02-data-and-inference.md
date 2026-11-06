@@ -27,7 +27,7 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-R8 | Operation’sız upload planlarını unutma (kota yeniden kazanımı) | P02-2c; ayrı karar | [Takip kartı](tasks/p02-r8-forget-unused-upload-plans.md); ADR-0031 incelemesinde bulunan kota etkisi | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 / 50d68b1 ile development’a teslim edildi | `verified` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | [P02-2 planı](p02-2-delivery-plan.md); P02-2a–c ve d–w verified, Accepted ADR-0024–0029; ayrı project link dahil create/upload ve ilk kesinti güvenliği PR #14 / 94aaaf0 ile development’a teslim edildi | `verified` |
-| P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | P02-2c (resume), P02-2f ve P02-0d (indirme/sürüm) | [Paket planı](p02-3-delivery-plan.md); üst kartlar P02-3a–c, adım kartları P02-3d–t (on yedi adım); ADR-0031/0032/0033 Accepted (2026-11-06); indirme ve sürüm hatları resume’dan bağımsız hazırlanabilir | `draft` |
+| P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | P02-2c (resume), P02-2f ve P02-0d (indirme/sürüm) | [Paket planı](p02-3-delivery-plan.md); üst kartlar P02-3a–c, adım kartları P02-3d–v (on dokuz kart); ADR-0031/0032/0033 Accepted (2026-11-06); indirme ve sürüm hatları resume’dan bağımsız hazırlanabilir | `draft` |
 | P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b; indirme ayrıca P02-3b | `draft` |
 | P02-5 | Native LLM ve temel çıkarım | P02-4a’nın ilgili hizmet/model kabulü; P01-5b | P02-5a–e; her görev ayrı typed girdi/çıktı ve maliyet sınırı | `draft` |
 | P02-6 | GPU/kuyruk/rezervasyon bilgisi ve kota okuma | P02-0a; hesap verisi için ilgili P02-0b kabulü | P02-6a/b; yalnız okuma, tahsis/fatura garantisi yok | `draft` |
@@ -77,8 +77,10 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3e | Resume kanıt sınıflandırıcısı ve uzak envanter indirgeyicisi | P02-3d; [kart](tasks/p02-3e-resume-evidence-classifier.md) | `verified` |
 | P02-3f | Continuation v3 plan tarafı: bağlama, plan, onay, limit/maliyet işi ve politika | P02-3e; [kart](tasks/p02-3f-continuation-domain-v3.md) | `verified` |
 | P02-3t | Continuation v3 kayıt, kontrol, doğrulama ve kullanıcı DTO tipleri (P02-3f’den ayrıştırıldı) | P02-3f; [kart](tasks/p02-3t-continuation-records-and-dtos.md) | `verified` |
-| P02-3g | Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım | P02-3t; [kart](tasks/p02-3g-continuation-persistence-read.md) | `draft` |
-| P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3g’den sonra, P02-3h’den önce) | P02-3g; [kart](tasks/p02-3r-continuation-write-gates.md) | `draft` |
+| P02-3g | Continuation sürüm donanımı: 3 tipli decode, birleşik tipler ve v3 graf belirtimi | P02-3t; [kart](tasks/p02-3g-continuation-persistence-read.md) | `ready` |
+| P02-3u | Continuation v3 graf doğrulaması, zincir/baseline çözümleyici ve tek okuma anlık görüntüsü (P02-3g’den ayrıştırıldı) | P02-3g; [kart](tasks/p02-3u-continuation-graph-validation-and-chain.md) | `draft` |
+| P02-3v | Continuation kapasite, bakım, reset önizlemesi ve projeksiyonlar (P02-3g’den ayrıştırıldı) | P02-3u; [kart](tasks/p02-3v-continuation-capacity-and-projection.md) | `draft` |
+| P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3v’den sonra, P02-3h’den önce) | P02-3v; [kart](tasks/p02-3r-continuation-write-gates.md) | `draft` |
 | P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `draft` |
 | P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3h; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |
 | P02-3j | İndirme sözleşme tipleri, doğrulama sözlüğü ve aralık sınıflandırıcısı | P02-2c; [kart](tasks/p02-3j-download-contract.md) | `draft` |
