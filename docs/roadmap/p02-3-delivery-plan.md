@@ -50,7 +50,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 | 0 | Hazırlık | state/güvenlik · taşıma/indirme/sürüm · tutarlılık/UX | Mevcut belge/kod/kaynak incelemesi, üç Proposed ADR, referans taslakları, kartlar; üç fresh belge turu (R1/R2/R3), kullanıcı ADR onayı |
 | 1 | [P02-3d](tasks/p02-3d-stage-graph-spec.md) | regresyon/eşdeğerlik · sözleşme/test | v2 kill karakterizasyonu (link, iki-worker PUT) + davranış korunarak aşama grafiği tek belirtimi; golden’lar değişmez |
 | 2 | [P02-3e](tasks/p02-3e-resume-evidence-classifier.md) | doğruluk/oracle · güvenlik/gizlilik | Kapalı kanıt sınıfları (zincir birleşimi), uzak envanter indirgeyicisi, özetler |
-| 3 | [P02-3f](tasks/p02-3f-continuation-domain-v3.md) | sözleşme/golden · state/politika | Strict v3 plan/onay/limit/maliyet işi/bağlama tipleri, politika (96 satır), golden’lar, hata kodları |
+| 3 | [P02-3f](tasks/p02-3f-continuation-domain-v3.md) | sözleşme/golden · state/politika | Strict v3 plan/onay/limit/maliyet işi/bağlama tipleri, saf plan/onay üreticileri, politika (96 satır), golden’lar, hata kodları |
 | 3 (devam) | [P02-3t](tasks/p02-3t-continuation-records-and-dtos.md) | sözleşme/golden · state/gizlilik | Strict v3 kayıt/kontrol/doğrulama ve kullanıcı özet/rapor DTO’ları, golden’lar, sentinel’lar (P02-3f’den bölündü) |
 | 4 | [P02-3g](tasks/p02-3g-continuation-persistence-read.md) | state/kalıcılık · güvenlik/gizlilik · test/oracle | 3 tipli decode, zincir/baseline çözümleyici, v3 graf doğrulama, kapasite/rezerv, reset/bakım |
 | 5 | [P02-3r](tasks/p02-3r-continuation-write-gates.md) | state/atomiklik · güvenlik/eşzamanlılık · test/kill | Yazma kapıları, soy bağı/donma, dataset tekilliği, namespace, M=0, kill |

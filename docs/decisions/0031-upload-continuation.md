@@ -46,7 +46,7 @@ Plan v2 politika/maliyet/ack yapısını korur ve **tam Manifest’i, kökü ve 
 - **Bütçe ve doğrulama:** `create=0`, `project_link=0`, presign/PUT/confirm=M, bayt tavanı seçilen dosyaların toplamıdır. Her prepare/approve/start yerel klasörün **bütün** Manifest dosya kümesini yeniden hash’ler (mevcut kapı; yalnız M dosyası değil).
 - **Politika:** kaynaktan devralınır; continuation `verified_only`a yükseltilemez; `explicit_attempt` + `unpriced` bilinmeyen yetki/fiyatı aynı insan onaylarıyla taşır. `M=0` planda yazma yoktur ama okuma fallback’i aynı yetki/fiyat insan onaylarına dayandığından o ack kuralları değişmez.
 
-Plan/onay bağlama özeti bu alanların hepsini kapsar.
+Plan/onay bağlama özeti bu alanların hepsini kapsar; yalnız gözlem zamanı (`observed_at`), plan kimliği ve geçerlilik anları dışarıda kalır — aynı kanıtın yeniden gözlenmesi onayı geçersiz kılmaz, plan özeti ise bunların hepsini kapsar (kesin kural [continuation sözleşmesindedir](../reference/dataset-upload-continuation.md)).
 
 ### 5. Yürütme
 
