@@ -332,6 +332,8 @@ class Classification:
     blockers: tuple[Blocker, ...]
     classification_digest: str
     inventory_digest: str
+    # The manifest the classes are indexed by; reports and plans must not be built on another one.
+    manifest_digest: str
 
     def __post_init__(self) -> None:
         if (
@@ -342,6 +344,7 @@ class Classification:
             or tuple(b for b in BLOCKERS if b in self.blockers) != self.blockers
             or not _is_digest(self.classification_digest)
             or not _is_digest(self.inventory_digest)
+            or not _is_digest(self.manifest_digest)
             # A blocking class always stands behind its blocker.
             or any(
                 name in self.classes and name not in self.blockers
@@ -426,6 +429,16 @@ def _by_chain_state(state: ChainState, exact: bool) -> FileClass:
     raise ValueError("invalid chain state")
 
 
+def chain_blockers(chain: ChainSummary) -> tuple[Blocker, ...]:
+    """Blockers the lineage's own journal establishes, before anything remote is read."""
+    raised: set[Blocker] = set()
+    if chain.source_graph_complete:
+        raised.add("reconcile_available")
+    if chain.rejected_receipt:
+        raised.add("known_negative")
+    return tuple(b for b in BLOCKERS if b in raised)
+
+
 def classify(
     manifest: DatasetManifest, chain: ChainSummary, inventory: RemoteInventory
 ) -> Classification:
@@ -465,11 +478,7 @@ def classify(
         else:
             classes.append(_by_chain_state(state, bool(same_name)))
     names = {file.path for file in files}
-    raised: set[Blocker] = set()
-    if chain.source_graph_complete:
-        raised.add("reconcile_available")
-    if chain.rejected_receipt:
-        raised.add("known_negative")
+    raised: set[Blocker] = set(chain_blockers(chain))
     if "drift_missing" in classes:
         raised.add("drift_missing")
     if "conflict" in classes:
@@ -485,6 +494,7 @@ def classify(
         blockers=tuple(b for b in BLOCKERS if b in raised),
         classification_digest=classification_digest(classes, chain),
         inventory_digest=inventory_digest(items),
+        manifest_digest=manifest.digest,
     )
 
 

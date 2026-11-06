@@ -214,6 +214,10 @@ REJECTED = {
     "stopped without a reason": {**VALID["cancelled before any intent"], "reason": None},
     "success by another reason": {**VALID["succeeded after sending"], "reason": "local_cancelled"},
     "unknown without a reason": {**VALID["unknown, no owner"], "reason": None},
+    "cancellation that still holds an owner": {
+        **VALID["cancelled before any intent"],
+        "lease": lease(),
+    },
     "no-send cancellation by an uncertain request": {
         **VALID["cancelled before any intent"],
         "reason": "request_uncertain",
@@ -383,6 +387,11 @@ def control_of(**changes):
         {"schema_version": 2},
         {"extra": 1},
         {"operation_id": "x"},
+        {"kind": "x"},
+        {"revision": 0},
+        {"revision": 2**63},
+        {"clock_generation": 0},
+        {"clock_generation": 2**63},
     ],
 )
 def test_a_malformed_control_is_rejected(changes):
@@ -645,3 +654,78 @@ def test_each_wire_type_holds_exactly_its_limit_and_not_a_byte_more(model, name,
     model.model_validate_json(raw + b" " * (limit - len(raw)))
     with pytest.raises(ValueError, match="bounded upload wire"):
         model.model_validate_json(raw + b" " * (limit - len(raw) + 1))
+
+
+# --- the shape: required keys, identifiers, integers and the one allowed time reversal -----------
+def deletions(value, path=()):
+    """Every way to drop one key of one object, anywhere inside a JSON value."""
+    if isinstance(value, dict):
+        for key in value:
+            yield (*path, key)
+            yield from deletions(value[key], (*path, key))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from deletions(item, (*path, index))
+
+
+def without(value, path):
+    copy = json.loads(json.dumps(value))
+    node = copy
+    for key in path[:-1]:
+        node = node[key]
+    del node[path[-1]]
+    return copy
+
+
+@pytest.mark.parametrize(
+    "model,name",
+    [
+        (TransferRecordV3, "dataset-continuation-record-v3-admitted.json"),
+        (TransferRecordV3, "dataset-continuation-record-v3-running.json"),
+        (TransferRecordV3, "dataset-continuation-record-v3-verification-only-succeeded.json"),
+        (TransferControlV3, "dataset-continuation-control-v3.json"),
+        (TransferVerificationV3, "dataset-continuation-verification-v3.json"),
+    ],
+)
+def test_no_key_may_be_left_out_not_even_a_nullable_one(model, name):
+    value = data(name)
+    paths = list(deletions(value))
+    assert len(paths) >= 8
+    for path in paths:
+        with pytest.raises((ValidationError, ValueError)):
+            model.model_validate_json(canon(without(value, path)))
+
+
+UPPER = "00000000-0000-4000-8000-0000000000AB"
+
+
+@pytest.mark.parametrize(
+    "field", ["operation_id", "plan_id", "write_owner_id", "observed_identity_epoch"]
+)
+def test_record_identifiers_are_canonical_lowercase_uuids(field):
+    def with_id(value):
+        changes = {field: value}
+        if field == "write_owner_id":  # the owner of the lease is the recorded one
+            changes["lease"] = lease(owner_id=value)
+        if field == "observed_identity_epoch":
+            changes["lease"] = lease(identity_epoch=value)
+        return record_of(**changes)
+
+    accepts(with_id(UPPER.lower()))
+    rejects(with_id(UPPER))
+
+
+@pytest.mark.parametrize("field", ["revision", "fence", "observed_clock_generation"])
+@pytest.mark.parametrize("value", [0, -1, 2**63, True, "1"])
+def test_record_counters_are_positive_signed_sixty_four_bit_integers(field, value):
+    unowned = VALID["unknown, no owner"]  # no lease, so no other rule reads these counters
+    accepts(record_of(**unowned, **{field: 1}))
+    accepts(record_of(**unowned, **{field: 2**63 - 1}))
+    rejects(record_of(**unowned, **{field: value}))
+
+
+def test_time_may_run_backwards_only_under_a_clock_marker():
+    earlier = dict(updated_at="2026-11-02T11:00:01.000000Z")  # the record was created at 11:00:02
+    accepts(record_of(**earlier, clock_anomaly=True))
+    rejects(record_of(**earlier, clock_anomaly=False))
+    accepts(record_of(updated_at="2026-11-02T11:00:02.000000Z", clock_anomaly=False))

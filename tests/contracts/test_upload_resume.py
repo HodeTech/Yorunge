@@ -30,6 +30,7 @@ from yorunge.domain.upload_resume import (
     RemoteItem,
     SourceFacts,
     StageFact,
+    chain_blockers,
     classify,
     descendant_verdict,
     inventory_digest,
@@ -747,6 +748,8 @@ def test_indices_report_one_class_without_being_a_selection():
         {"blockers": ["conflict"]},
         {"classification_digest": "C" * 64},
         {"inventory_digest": "short"},
+        {"manifest_digest": "short"},
+        {"manifest_digest": "C" * 64},
         {"classes": ("conflict",), "blockers": ()},  # a blocking class without its blocker
         {"classes": ("drift_missing",), "blockers": ("conflict",)},
         {"classes": ("inventory_unreliable",), "blockers": ("conflict",)},
@@ -760,6 +763,7 @@ def test_a_classification_refuses_inconsistent_parts(changes):
         "blockers": good.blockers,
         "classification_digest": good.classification_digest,
         "inventory_digest": good.inventory_digest,
+        "manifest_digest": good.manifest_digest,
     }
     with pytest.raises(ValueError, match="invalid classification"):
         Classification(**{**fields_of, **changes})
@@ -865,3 +869,31 @@ def test_recommended_action_refuses_open_names_and_answers_for_every_blocker():
     with pytest.raises(ValueError, match="closed blockers"):
         recommended_action(("bogus",))
     assert {b: recommended_action((b,)) for b in BLOCKERS}.keys() == set(BLOCKERS)
+
+
+def test_a_classification_names_the_manifest_it_indexes_and_keeps_it_when_blockers_are_merged():
+    good = classify(MANIFEST, chain("none", "none", "none"), inventory())
+    assert good.manifest_digest == MANIFEST.digest
+    assert good.with_blockers(("local_changed",)).manifest_digest == MANIFEST.digest
+    assert classify(MANIFEST_A, chain("none"), inventory()).manifest_digest == MANIFEST_A.digest
+
+
+@pytest.mark.parametrize(
+    "complete,rejected,expected",
+    [
+        (False, False, ()),
+        (True, False, ("reconcile_available",)),
+        (False, True, ("known_negative",)),
+        (True, True, ("reconcile_available", "known_negative")),
+    ],
+)
+def test_the_journal_alone_establishes_the_reconcile_and_known_negative_blockers(
+    complete, rejected, expected
+):
+    summary = chain("none", "none", "none", rejected=rejected, complete=complete)
+    assert chain_blockers(summary) == expected
+    # classify raises exactly these before it looks at any item, whatever the inventory holds.
+    for found in (inventory(), inventory(item(A), item(B), item(C))):
+        assert set(expected) <= set(classify(MANIFEST, summary, found).blockers)
+    plain = classify(MANIFEST, chain("none", "none", "none"), inventory())
+    assert not set(plain.blockers) & {"reconcile_available", "known_negative"}

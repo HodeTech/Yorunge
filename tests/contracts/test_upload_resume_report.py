@@ -174,13 +174,23 @@ UNOBSERVED = "dataset-continuation-resume-report-v1-unobserved.json"
 MANIFEST = DatasetManifest.model_validate_json(fixture("dataset-manifest-v1.json"))
 PLAN = DatasetContinuationPlanV3.model_validate_json(fixture("dataset-continuation-plan-v3.json"))
 QUOTA = QuotaCounters(plans=2, operations=1, files=6, payload_bytes=98304)
-REMOTE = {
+INVENTORY = {
     "drift_missing",
     "conflict",
     "extra_remote",
     "inventory_unreliable",
     "inventory_too_large",
 }
+JOURNAL = {
+    "source_active",
+    "source_ineligible",
+    "source_superseded",
+    "source_terminal",
+    "reconcile_available",
+    "create_unknown",
+    "known_negative",
+}
+WAITING = ("source_superseded", "source_active")
 
 
 def report_of(name=BLOCKED, **changes):
@@ -277,7 +287,7 @@ def test_the_goldens_name_blockers_a_plan_and_a_source_nothing_was_observed_of()
     assert eligible.blockers == () and eligible.eligible
     assert eligible.recommended_action == "prepare"
     assert eligible.observation.unconfirmed_ack_required
-    assert eligible.plan_id == PLAN_ID and eligible.observation.send_files == 2
+    assert eligible.plan_id is None and eligible.observation.send_files == 2
     assert eligible.observation.class_counts.total() == eligible.file_count == 3
     nothing = DatasetUploadResumeReport.model_validate_json(fixture(UNOBSERVED))
     assert nothing.observation is None and nothing.dataset_id is None
@@ -393,9 +403,18 @@ NEGATIVES = {
     ),
     # the related operation
     "related operation without a descendant blocker": observed([], related_operation_id=OTHER),
-    "superseded without its successor": observed(["source_superseded"]),
-    "a source that succeeds itself": observed(
+    "superseded without its successor": unobserved(["source_superseded"]),
+    "a source that succeeds itself": unobserved(
         ["source_superseded"], related_operation_id=OPERATION
+    ),
+    "a payload below the per-plan allowance": observed(
+        [], quota_added=quota("quota_added", payload_bytes=16 * 1024 - 1)
+    ),
+    "an unreliable listing beside confirmed files without the class": observed(
+        ["inventory_unreliable"], counts(confirmed=3)
+    ),
+    "an unreliable and too large listing beside confirmed files": observed(
+        ["inventory_unreliable", "inventory_too_large"], counts(confirmed=3)
     ),
     # plain fields
     "malformed observation instant": observed([], observed_at="yesterday"),
@@ -432,7 +451,8 @@ def test_the_isolated_negatives_differ_from_valid_reports_by_the_one_rule_they_p
     )
     accepts(observed(["drift_missing"], counts(drift_missing=3)))
     accepts(observed(["conflict"], counts(conflict=3)))
-    accepts(observed(["source_superseded"], related_operation_id=OTHER))
+    accepts(observed(["membership_unobserved", "local_changed"]))
+    accepts(observed([], quota_added=quota("quota_added", payload_bytes=16 * 1024)))
     accepts(unobserved())
     accepts(unobserved(["source_terminal"]))
     accepts(unobserved(["source_superseded"], related_operation_id=OTHER))
@@ -468,9 +488,9 @@ def test_the_isolated_negatives_differ_from_valid_reports_by_the_one_rule_they_p
 
 def test_nothing_observed_is_a_report_too_for_every_blocker_that_needs_no_inventory():
     for blocker in BLOCKERS:
-        related = OTHER if blocker in ("source_superseded", "source_active") else None
+        related = OTHER if blocker in WAITING else None
         value = unobserved([blocker], related_operation_id=related)
-        if blocker in REMOTE:
+        if blocker in INVENTORY:
             rejects(value)
         else:
             assert accepts(value).observation is None
@@ -517,13 +537,11 @@ def test_every_single_blocker_yields_the_reference_action(blocker):
         "inventory_unreliable": counts(inventory_unreliable=3),
         "inventory_too_large": counts(inventory_unreliable=3),
     }.get(blocker, counts(confirmed=3))
-    related = OTHER if blocker in ("source_superseded", "source_active") else None
-    value = observed(
-        names,
-        classes,
-        related_operation_id=related,
-        dataset_id=None if blocker == "create_unknown" else DATASET,
-    )
+    related = OTHER if blocker in WAITING else None
+    if blocker in JOURNAL:  # nothing is read for these, so there is nothing to observe
+        value = unobserved(names, related_operation_id=related)
+    else:
+        value = observed(names, classes, related_operation_id=related, dataset_id=DATASET)
     report = accepts(value)
     assert report.recommended_action == recommended_action(tuple(names)) and not report.eligible
 
@@ -641,13 +659,20 @@ def test_a_report_can_be_built_from_every_classification_the_classifier_can_give
 def test_blockers_the_caller_merged_in_are_reported_and_withdraw_the_plan():
     classification = classified(states=("none", "none", "intent"), present=(1,))
     assert build(classification).eligible
-    merged = classification.with_blockers(("local_changed", "source_superseded"))
-    report = build(merged, related_operation_id=OTHER)
-    assert report.blockers == ("source_superseded", "local_changed") == merged.blockers
+    merged = classification.with_blockers(("local_changed", "membership_unobserved"))
+    report = build(merged)
+    assert report.blockers == ("membership_unobserved", "local_changed") == merged.blockers
     assert not report.eligible and report.recommended_action == recommended_action(merged.blockers)
     assert report.observation.send_files == 2  # informational while blocked
-    with pytest.raises(ValueError, match="successor"):
-        build(merged)
+    # A blocker the journal alone establishes means nothing was read: it cannot ride on evidence.
+    for blocker in sorted(JOURNAL):
+        held = classification.with_blockers((blocker,))
+        with pytest.raises(ValueError, match="journal-level blocker"):
+            build(
+                held,
+                related_operation_id=OTHER if blocker in WAITING else None,
+                dataset_id=None if blocker == "create_unknown" else DATASET,
+            )
 
 
 def test_a_report_of_nothing_observed_is_the_golden_and_cannot_hide_remote_blockers():
@@ -805,3 +830,166 @@ def test_the_report_wire_carries_no_private_field():
     text = (fixture(BLOCKED) + fixture(ELIGIBLE) + fixture(UNOBSERVED)).decode()
     for needle in ("created_dataset", "object_key", "receipt", "http", "owner"):
         assert needle not in text
+
+
+# --- the shape: every key is required, every bound is a bound ------------------------------------
+def deletions(value, path=()):
+    """Every way to drop one key of one object, anywhere inside a JSON value."""
+    if isinstance(value, dict):
+        for key in value:
+            yield (*path, key)
+            yield from deletions(value[key], (*path, key))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from deletions(item, (*path, index))
+
+
+def without(value, path):
+    copy = json.loads(json.dumps(value))
+    node = copy
+    for key in path[:-1]:
+        node = node[key]
+    del node[path[-1]]
+    return copy
+
+
+@pytest.mark.parametrize("name", [BLOCKED, ELIGIBLE, UNOBSERVED])
+def test_no_key_of_a_report_may_be_left_out_not_even_a_nullable_one(name):
+    value = data(name)
+    paths = list(deletions(value))
+    assert len(paths) >= 20  # a nothing-observed report has the fewest keys
+    for path in paths:
+        rejects(without(value, path))
+
+
+def test_no_key_of_the_summary_may_be_left_out_not_even_a_nullable_one():
+    value = data(SUMMARY)
+    for path in deletions(value):
+        with pytest.raises((ValidationError, ValueError)):
+            DatasetUploadSummaryV3.model_validate_json(canon(without(value, path)))
+
+
+def test_a_summary_may_leave_every_sent_file_uncertain_and_names_its_own_plan_schema():
+    summary = DatasetUploadSummaryV3.model_validate_json(
+        canon(summary_of(continuation_files=2, uncertain_files=2))
+    )
+    assert summary.uncertain_files == summary.continuation_files == 2
+    with pytest.raises((ValidationError, ValueError)):
+        DatasetUploadSummaryV3.model_validate_json(canon(summary_of(source_plan_schema=1)))
+
+
+def test_every_count_of_the_report_starts_at_zero_and_never_goes_below():
+    for which in ("quota_used", "quota_added"):
+        for field in ("plans", "operations", "files", "payload_bytes"):
+            low = {**data(BLOCKED)[which], field: -1}
+            rejects(observed([], **{which: low}))
+    zero = {"plans": 0, "operations": 0, "files": 0, "payload_bytes": 0}
+    accepts(observed([], quota_used=zero))
+    for name in FILE_CLASSES:
+        rejects(observed([], {**counts(confirmed=3), name: -1}))
+    rejects(inside(observed(), send_bytes=-1))
+    rejects(inside(observed(), send_files=-1))
+
+
+def test_the_send_selection_is_exactly_the_unsent_and_the_unconfirmed():
+    unsent = counts(confirmed=2, pending_clean=1)
+    accepts(inside(observed([], unsent), send_files=1, send_bytes=1))
+    rejects(inside(observed([], unsent), send_files=0, send_bytes=0))  # one file is not counted
+    rejects(inside(observed([], unsent), send_files=2, send_bytes=1))
+    rejects(inside(observed(), send_bytes=1))  # a byte with no file to carry it
+    rejects(inside(observed([], unsent), send_files=1, send_bytes=1, unconfirmed_ack_required=True))
+
+
+def test_the_manifest_size_of_a_report_is_one_to_one_hundred_and_twenty_eight_files():
+    def sized(count, classes):
+        value = observed([], classes, file_count=count)
+        value["quota_added"] = quota("quota_added", files=count)
+        return value
+
+    accepts(sized(1, counts(confirmed=1)))
+    accepts(sized(128, counts(confirmed=128)))
+    rejects(sized(0, counts()))  # every other rule holds for an empty manifest
+    rejects(sized(129, counts(confirmed=128, observed=1)))
+
+
+def test_identifiers_digests_and_the_nothing_observed_blocker_are_checked_on_their_own():
+    rejects(
+        observed(["source_superseded"], related_operation_id=OTHER.upper()) | {"observation": None}
+    )
+    rejects(observed([], plan_id=OTHER.upper(), plan_digest="a" * 64))
+    rejects(observed([], plan_id=PLAN_ID, plan_digest="X" * 64))
+    rejects(observed([], plan_id=PLAN_ID, plan_digest="a" * 63))
+    rejects(unobserved(["extra_remote"], dataset_id=DATASET))  # extra remote items need a listing
+    rejects(unobserved(["inventory_too_large"]))
+
+
+def test_the_instant_a_report_is_built_at_passes_through():
+    classification = classified(states=("none", "none", "intent"), present=(1,))
+    moment = "2026-11-02T11:00:01.000000Z"
+    assert build(classification, observed_at=moment).observed_at == moment
+    assert build(classification, quota_used=QUOTA).quota_used == QUOTA
+    assert build(classification, added_payload_bytes=20000).quota_added.payload_bytes == 20000
+
+
+# --- the golden reports are what the builder gives for their scenarios ---------------------------
+def test_the_observed_goldens_are_what_the_builder_gives_for_their_scenarios():
+    # The goldens carry digests the independent generator computed from the reference's preimages.
+    scenarios = {
+        BLOCKED: dict(states=("accepted", "accepted", "none"), present=(1,)),
+        ELIGIBLE: dict(states=("none", "none", "intent"), present=(1,)),
+    }
+    for name, scenario in scenarios.items():
+        classification = classified(**scenario)
+        assert build(classification).encoded() == fixture(name)
+        digests = data(name)["observation"]
+        assert digests["classification_digest"] == classification.classification_digest
+        assert digests["inventory_digest"] == classification.inventory_digest
+
+
+def test_remote_names_ids_and_hashes_never_reach_the_report():
+    foreign = RemoteItem("SECRET/EXTRA.bin", 987654321, "ab" * 32, "SECRETITEM-1")
+    first = MANIFEST.files[0]
+    clash = RemoteItem(first.path, first.size + 1, first.sha256, "SECRETITEM-2")
+    chain = ChainSummary(("none", "none", "none"), False, False, MANIFEST.digest)
+    classification = classify(MANIFEST, chain, RemoteInventory((foreign, clash), frozenset()))
+    assert {"conflict", "extra_remote"} <= set(classification.blockers)
+    text = build(classification).encoded().decode()
+    for needle in ("SECRET", "987654321", "ab" * 32, "item-", "ITEM"):
+        assert needle not in text
+    assert "extra_remote" in text  # the blocker's name is all a foreign item leaves behind
+
+
+def test_the_builder_refuses_what_is_not_the_evidence_it_asks_for():
+    classification = classified(states=("none", "none", "intent"), present=(1,))
+    for changes in (
+        {"manifest": None},
+        {"manifest": {}},
+        {"classification": {}},
+        {"blockers": None},
+        {"blockers": "create_unknown"},
+    ):
+        values = {"classification": classification, **changes}
+        with pytest.raises(ValueError, match="manifest, a classification or none"):
+            build(values.pop("classification"), **values)
+    # Same file count, another manifest: only the identity inside the classification can tell.
+    other = changed_manifest()
+    assert len(other.files) == len(MANIFEST.files) and other.digest != MANIFEST.digest
+    with pytest.raises(ValueError, match="another manifest"):
+        build(classification, manifest=other)
+
+
+def test_a_plan_is_named_only_by_the_report_of_the_very_instant_it_was_prepared_from():
+    classification = classified(states=("none", "none", "intent"), present=(1,))
+    plan = prepared_from(classification)
+    assert plan.continuation.observed_at == "2026-11-02T11:00:00.000000Z"
+    assert build(classification, plan=plan).plan_id == plan.plan_id
+    with pytest.raises(ValueError, match="not prepared from this observation"):
+        build(classification, plan=plan, observed_at="2026-11-02T11:00:01.000000Z")
+
+
+@pytest.mark.parametrize("blocker", sorted(JOURNAL))
+def test_a_journal_level_blocker_means_nothing_was_read(blocker):
+    related = OTHER if blocker in WAITING else None
+    dataset = None if blocker == "create_unknown" else DATASET
+    accepts(unobserved([blocker], related_operation_id=related))
+    rejects(observed([blocker], related_operation_id=related, dataset_id=dataset))

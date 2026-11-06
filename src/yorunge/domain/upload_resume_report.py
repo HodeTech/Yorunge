@@ -49,10 +49,25 @@ PROBLEM_CLASSES: Final[tuple[ProblemClass, ...]] = (
     "inventory_unreliable",
 )
 MAX_EXAMPLES = 8
-# Blockers that only a remote observation can establish; without one they cannot stand.
-OBSERVED_BLOCKERS = frozenset(
+# Blockers the local journal alone establishes. While one holds nothing remote is read, so the
+# report has no observation (and no dataset to read when the create itself is unknown).
+JOURNAL_BLOCKERS = frozenset(
+    {
+        "source_active",
+        "source_ineligible",
+        "source_superseded",
+        "source_terminal",
+        "reconcile_available",
+        "create_unknown",
+        "known_negative",
+    }
+)
+# Blockers only a remote inventory read can establish; without an observation they cannot stand.
+INVENTORY_BLOCKERS = frozenset(
     {"drift_missing", "conflict", "extra_remote", "inventory_unreliable", "inventory_too_large"}
 )
+# Every plan adds at least the flat allowance the capacity check counts per plan.
+PLAN_ALLOWANCE_BYTES = 16 * 1024
 Count = Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
 
 
@@ -193,21 +208,34 @@ class DatasetUploadResumeReport(UploadWire):
 
     def _observation(self) -> None:
         observation = self.observation
+        held = set(self.blockers)
         if observation is None:
-            if not self.blockers or OBSERVED_BLOCKERS & set(self.blockers):
-                raise ValueError("without an observation the blockers must come from the source")
+            if not held or INVENTORY_BLOCKERS & held:
+                raise ValueError("without an observation the blockers must come from the journal")
             return
+        if JOURNAL_BLOCKERS & held:
+            raise ValueError("a journal-level blocker means nothing was read")
         counts = observation.class_counts
         if counts.total() != self.file_count:
             raise ValueError("class counts must cover the manifest")
         for name in ("drift_missing", "conflict", "inventory_unreliable"):
             if getattr(counts, name) and name not in self.blockers:
                 raise ValueError("a blocking class needs its blocker")
+        if "inventory_unreliable" in held and (
+            counts.confirmed
+            or counts.observed
+            or counts.pending_clean
+            or counts.pending_uncertain
+            or counts.drift_missing
+        ):
+            raise ValueError("an unreliable listing leaves no other non-conflicting class")
 
     def _quota(self) -> None:
         added = self.quota_added
         if (added.plans, added.operations, added.files) != (1, 1, self.file_count):
             raise ValueError("an attempt adds one plan, one operation and the manifest's files")
+        if added.payload_bytes < PLAN_ALLOWANCE_BYTES:
+            raise ValueError("an attempt adds at least the per-plan allowance")
 
     def _plan_and_related(self) -> None:
         if (self.plan_id is None) != (self.plan_digest is None):
@@ -242,6 +270,12 @@ def resume_report(
     ``with_blockers``); without one, ``blockers`` are the source-level reasons nothing was observed.
     A ``plan`` is the continuation prepared from exactly this observation.
     """
+    if (
+        type(manifest) is not DatasetManifest
+        or (classification is not None and type(classification) is not Classification)
+        or type(blockers) not in (tuple, list)
+    ):
+        raise ValueError("a manifest, a classification or none, and listed blockers are required")
     count = len(manifest.files)
     observation: ResumeObservation | None = None
     if classification is None:
@@ -249,6 +283,8 @@ def resume_report(
     else:
         if blockers:
             raise ValueError("a classification already carries every blocker")
+        if classification.manifest_digest != manifest.digest:
+            raise ValueError("the classification belongs to another manifest")
         if len(classification.classes) != count:
             raise ValueError("the classification does not cover the manifest")
         merged = classification.blockers
@@ -264,14 +300,9 @@ def resume_report(
             examples=tuple(
                 ResumeExamples(
                     file_class=name,
+                    # A manifest lists its paths in UTF-8 byte order, so these already are.
                     paths=tuple(
-                        sorted(
-                            (
-                                manifest.files[i].path
-                                for i in classification.indices(name)[:MAX_EXAMPLES]
-                            ),
-                            key=lambda path: path.encode("utf-8"),
-                        )
+                        manifest.files[i].path for i in classification.indices(name)[:MAX_EXAMPLES]
                     ),
                 )
                 for name in PROBLEM_CLASSES
@@ -284,6 +315,7 @@ def resume_report(
         or manifest_reference(manifest) != plan.manifest
         or plan.continuation.source_operation_id != source_operation_id
         or plan.continuation.dataset_id != dataset_id
+        or plan.continuation.observed_at != observed_at
         or not binding_matches(plan.continuation, classification)
     ):
         raise ValueError("the plan was not prepared from this observation")
