@@ -50,7 +50,8 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 | 0 | Hazırlık | state/güvenlik · taşıma/indirme/sürüm · tutarlılık/UX | Mevcut belge/kod/kaynak incelemesi, üç Proposed ADR, referans taslakları, kartlar; üç fresh belge turu (R1/R2/R3), kullanıcı ADR onayı |
 | 1 | [P02-3d](tasks/p02-3d-stage-graph-spec.md) | regresyon/eşdeğerlik · sözleşme/test | v2 kill karakterizasyonu (link, iki-worker PUT) + davranış korunarak aşama grafiği tek belirtimi; golden’lar değişmez |
 | 2 | [P02-3e](tasks/p02-3e-resume-evidence-classifier.md) | doğruluk/oracle · güvenlik/gizlilik | Kapalı kanıt sınıfları (zincir birleşimi), uzak envanter indirgeyicisi, özetler |
-| 3 | [P02-3f](tasks/p02-3f-continuation-domain-v3.md) | sözleşme/golden · state/politika | Strict v3 tipleri, politika, golden’lar, hata kodları |
+| 3 | [P02-3f](tasks/p02-3f-continuation-domain-v3.md) | sözleşme/golden · state/politika | Strict v3 plan/onay/limit/maliyet işi/bağlama tipleri, politika (96 satır), golden’lar, hata kodları |
+| 3 (devam) | [P02-3t](tasks/p02-3t-continuation-records-and-dtos.md) | sözleşme/golden · state/gizlilik | Strict v3 kayıt/kontrol/doğrulama ve kullanıcı özet/rapor DTO’ları, golden’lar, sentinel’lar (P02-3f’den bölündü) |
 | 4 | [P02-3g](tasks/p02-3g-continuation-persistence-read.md) | state/kalıcılık · güvenlik/gizlilik · test/oracle | 3 tipli decode, zincir/baseline çözümleyici, v3 graf doğrulama, kapasite/rezerv, reset/bakım |
 | 5 | [P02-3r](tasks/p02-3r-continuation-write-gates.md) | state/atomiklik · güvenlik/eşzamanlılık · test/kill | Yazma kapıları, soy bağı/donma, dataset tekilliği, namespace, M=0, kill |
 | 6 | [P02-3h](tasks/p02-3h-continuation-workflow.md) | state/protokol · ağ/güvenlik · test/kill | Taze envanter, confirm sayaç tabanı, alt küme koordinatörü, N-dosya proof, v3 reconcile, TLS/kill |
@@ -66,11 +67,11 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 | 16 | [P02-3q](tasks/p02-3q-public-version-surface.md) | UX/CLI sözleşmesi · yayın/regresyon | `datasets versions list/show/bind/check`, artifact |
 | 17 | [P02-3a](tasks/p02-3a-upload-resume-acceptance.md), [P02-3b](tasks/p02-3b-download-acceptance.md), [P02-3c](tasks/p02-3c-dataset-version-acceptance.md) | belge tutarlılığı · uçtan uca kabul | Üst kartlar: kurulu yolculuk, belge/matris/current, **son kaynak M5 referans serisi (startup/jobs/dataset/upload/download; onaylanan hatların kaynağı için) ve üç ortam CI/altı kurulum/Sonar**, kalıcı kanıt, yetkili canlı kabuller, tek development PR |
 
-**Büyüme kuralı.** Ölçülen büyüklük bir kartı L yaparsa iş sessizce küçültülmez; kart s–z harfleriyle (s kullanıldı; t–z kalır) bölünür ve burada kaydedilir. P02-3l, P02-3m ve P02-3o için bu kural önceden ilan edilmiştir (yazıcı/race ile sidecar/resume; ölçüm/doğrulayıcı/CI ayrı birimler olabilir).
+**Büyüme kuralı.** Ölçülen büyüklük bir kartı L yaparsa iş sessizce küçültülmez; kart s–z harfleriyle (s ve t kullanıldı; u–z kalır; P02-3t, P02-3f’nin ölçülen büyüklüğü L’ye çıkınca plan tarafı 3f, kayıt/kanıt/DTO tarafı 3t olarak bölündü) bölünür ve burada kaydedilir. P02-3l, P02-3m ve P02-3o için bu kural önceden ilan edilmiştir (yazıcı/race ile sidecar/resume; ölçüm/doğrulayıcı/CI ayrı birimler olabilir).
 
 **Otomatik ilerleme ve durma.** Bir adım R2 sonrası temiz kapandığında kullanıcıya dönmeden sonraki adıma geçilir. Dururum ve sorarım: (a) yeni veya değişen ADR, DDL/migration ya da kapsam küçültme gerektiren yeni bir bilinmez çıkarsa; (b) K6’da önceden verilmemiş veya kapsamı aşan canlı yetki gerekiyorsa; (c) giderilemeyen engelleyici hata varsa. Kart bölünmesi durma sebebi değil, kayıt ve bildirimdir.
 
-**Hat bağımlılıkları.** Resume: 3d → 3e → 3f → 3g → 3r → 3h → 3i → 3a. Ortak yayıncı: 3s (yalnız P02-2c’ye dayanır). İndirme: 3j → 3k ve 3j + 3s → 3l; 3k + 3l → 3m → 3n → 3o → 3b. Sürüm: 3p → 3q (3p + 3s) → 3c. Üç hat bu graftaki kollar kadar bağımsızdır; yalnız yayıncı 3s, indirme ve sürüm hatlarının ortak önkoşuludur ve hiçbir ADR’ye bağlı değildir.
+**Hat bağımlılıkları.** Resume: 3d → 3e → 3f → 3t → 3g → 3r → 3h → 3i → 3a. Ortak yayıncı: 3s (yalnız P02-2c’ye dayanır). İndirme: 3j → 3k ve 3j + 3s → 3l; 3k + 3l → 3m → 3n → 3o → 3b. Sürüm: 3p → 3q (3p + 3s) → 3c. Üç hat bu graftaki kollar kadar bağımsızdır; yalnız yayıncı 3s, indirme ve sürüm hatlarının ortak önkoşuludur ve hiçbir ADR’ye bağlı değildir.
 
 **Sıra gerekçesi.** Resume en riskli ve kararlı olması gereken hattır; en önce yapılır. Adım 1 salt refaktördür ve v1/v2 geçmişini koruyan, önceden genişletilmiş regresyon ağıyla kanıtlanır. İndirme (9–14) ve sürüm (15–16) resume’dan teknik olarak bağımsızdır; P02-3c’nin eski P02-3a/b bağımlılığı kullanıcı akışı sırasıdır, kod bağımlılığı değildir.
 

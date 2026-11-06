@@ -22,7 +22,7 @@ from typing import Final, Literal
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
 from yorunge.domain.dataset_upload import MAX_UPLOAD_FILES
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.upload_graph import (
     FILE_STAGE_KINDS,
     STAGE_KINDS,
@@ -582,3 +582,21 @@ def recommended_action(blockers: Sequence[Blocker]) -> Action:
         if blocker in held:
             return action
     return "prepare"
+
+
+class ContinuationNotPossible(OperationError):
+    """``--prepare`` refused: the closed blockers say why; the resume report shows the detail."""
+
+    def __init__(self, blockers: Sequence[Blocker], operation_id: str | None = None) -> None:
+        ordered = tuple(blocker for blocker in BLOCKERS if blocker in set(blockers))
+        if not ordered or ordered != tuple(blockers):
+            raise ValueError("closed, ordered, distinct blockers required")
+        super().__init__("continuation_not_possible", operation_id)
+        self.blockers = ordered
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        details = value["details"]
+        assert isinstance(details, dict)
+        details["blockers"] = list(self.blockers)
+        return value

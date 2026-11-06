@@ -3,7 +3,7 @@ id: P02-3g
 phase: P02
 status: draft
 size: M
-depends_on: [P02-3f]
+depends_on: [P02-3t]
 capabilities: [C03, C12]
 ---
 # P02-3g — Continuation kalıcı okuma tarafı: 3 tipli decode, v3 graf doğrulama, kapasite ve bakım
@@ -20,7 +20,7 @@ Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında;
 
 ## Bağımlılıklar ve kararlar
 
-P02-3f tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
+P02-3f ve P02-3t tipleri verified olmalıdır. [ADR-0031](../../decisions/0031-upload-continuation.md) Accepted’dir (2026-11-06). DDL gerekirse koddan önce kullanıcı kararı alınır. Eski binary uyumu [ADR-0031](../../decisions/0031-upload-continuation.md) §6’daki kontrollü `state_invalid` retidir; etki alanı (aynı state dizinini paylaşan eski binary’nin upload komutlarını ve reset önizlemesini yitirmesi) belgelenir.
 
 ## Sözleşme ve uygulama sınırı
 

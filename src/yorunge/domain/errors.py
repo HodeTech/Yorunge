@@ -48,6 +48,8 @@ ErrorCode = Literal[
     "operation_fence_exhausted",
     "operation_capacity_exceeded",
     "operation_uncertain",
+    "continuation_not_possible",
+    "continuation_remote_changed",
     "plan_in_use",
     "transport_timeout",
     "transport_failed",
@@ -116,6 +118,13 @@ MESSAGES: dict[ErrorCode, str] = {
     "output_write_failed": "Sonuç çıktısı teslim edilemedi. Kayıtlı sonucu inceleyin.",
     "operation_not_found": "Kayıtlı iş bulunamadı. Yerel iş listesini inceleyin.",
     "operation_conflict": "İşin mevcut durumu bu geçişe izin vermiyor; yeniden gönderim yok.",
+    "continuation_not_possible": (
+        "Devam bu işten şu an hazırlanamıyor. Nedenler için resume raporunu inceleyin."
+    ),
+    "continuation_remote_changed": (
+        "Uzak durum devam planı hazırlandıktan sonra değişti; istek gönderilmedi. "
+        "Yeniden hazırlayın."
+    ),
     "operation_lease_lost": (
         "İşin sahipliği veya lease geçerliliği kaybedildi; yeniden göndermeyin."
     ),
