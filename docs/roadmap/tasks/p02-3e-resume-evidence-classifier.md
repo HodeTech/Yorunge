@@ -35,6 +35,8 @@ Sınıflandırma, [continuation sözleşmesi](../../reference/dataset-upload-con
 5. Sıralama ve özet deterministiktir; item kimliği/sıra/zaman değişimi özeti değiştirmez, ad/boyut/SHA değişimi değiştirir.
 6. Zincir özeti makbuz içeriğini, anahtarı, URL’yi veya `created_dataset` alanlarını dışarı vermez; salt okuma hiçbir yazı/lease/permit üretmez.
 
+**Kabul kapsamı.** Bu adımda zincir hücreleri (kök+bir/iki continuation, yalnız kökte intent, çok operation’da denenen dosya, sıfır-intent’li operation, torun karar tablosu) saf `merge_chain`/`descendant_verdict` ile sınanır; gerçek SQLite journal’ları bugün yalnız v1/v2 köklerdir. Çok-operation’lı gerçek geçmiş ve zincirin depodan çözülmesi P02-3g’de, “sıfır-intent’li v3 operation kaynak olamaz” ve `source_active`/`source_ineligible` uygunluğu P02-3r/3h’de sınanır.
+
 ## Doğrulama
 
 Unit/contract/integration (gerçek SQLite journal fixture’ları + loopback TLS items sunucusu), Ruff ve strict mypy. HTTP bileşimi sonraki dilimlerdedir; burada ağ bütçesi iddiası yoktur.
