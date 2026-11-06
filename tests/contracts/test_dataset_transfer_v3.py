@@ -387,7 +387,7 @@ def control_of(**changes):
         {"schema_version": 2},
         {"extra": 1},
         {"operation_id": "x"},
-        {"kind": "x"},
+        {"kind": "x", "reason": "request_uncertain", "verification_digest": None},
         {"revision": 0},
         {"revision": 2**63},
         {"clock_generation": 0},
@@ -694,6 +694,15 @@ def test_no_key_may_be_left_out_not_even_a_nullable_one(model, name):
     for path in paths:
         with pytest.raises((ValidationError, ValueError)):
             model.model_validate_json(canon(without(value, path)))
+
+
+def test_no_key_of_a_recovery_control_may_be_left_out_either():
+    # The success golden needs its digest anyway; here the digest is the null that must be spelled.
+    value = control_of(kind="recovery", reason="request_uncertain", verification_digest=None)
+    TransferControlV3.model_validate_json(canon(value))
+    for path in deletions(value):
+        with pytest.raises((ValidationError, ValueError)):
+            TransferControlV3.model_validate_json(canon(without(value, path)))
 
 
 UPPER = "00000000-0000-4000-8000-0000000000AB"

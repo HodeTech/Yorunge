@@ -416,6 +416,23 @@ NEGATIVES = {
     "an unreliable and too large listing beside confirmed files": observed(
         ["inventory_unreliable", "inventory_too_large"], counts(confirmed=3)
     ),
+    "an unreliable listing beside observed files without the class": observed(
+        ["inventory_unreliable"], counts(observed=3)
+    ),
+    "an unreliable listing beside unsent files without the class": inside(
+        observed(["inventory_unreliable"], counts(confirmed=2, pending_clean=1)),
+        send_files=1,
+        send_bytes=1,
+    ),
+    "an unreliable listing beside unconfirmed files without the class": inside(
+        observed(["inventory_unreliable"], counts(confirmed=2, pending_uncertain=1)),
+        send_files=1,
+        send_bytes=1,
+        unconfirmed_ack_required=True,
+    ),
+    "an unreliable listing beside missing files without the class": observed(
+        ["drift_missing", "inventory_unreliable"], counts(confirmed=2, drift_missing=1)
+    ),
     # plain fields
     "malformed observation instant": observed([], observed_at="yesterday"),
     "uppercase digest": inside(observed(), classification_digest="C" * 64),
@@ -886,8 +903,19 @@ def test_every_count_of_the_report_starts_at_zero_and_never_goes_below():
     zero = {"plans": 0, "operations": 0, "files": 0, "payload_bytes": 0}
     accepts(observed([], quota_used=zero))
     for name in FILE_CLASSES:
-        rejects(observed([], {**counts(confirmed=3), name: -1}))
-    rejects(inside(observed(), send_bytes=-1))
+        # Another class makes up the difference, so that the total still is the manifest's.
+        make_up = "confirmed" if name != "confirmed" else "observed"
+        classes = {**counts(), make_up: 4, name: -1}
+        if name in ("drift_missing", "conflict", "inventory_unreliable"):
+            blocker = [name]
+            rejects(observed(blocker, classes))
+        elif name in ("pending_clean", "pending_uncertain"):
+            rejects(inside(observed([], classes), send_files=-1, send_bytes=0))
+        else:
+            rejects(observed([], classes))
+    unsent = counts(confirmed=2, pending_clean=1)
+    accepts(inside(observed([], unsent), send_files=1, send_bytes=0))
+    rejects(inside(observed([], unsent), send_files=1, send_bytes=-1))
     rejects(inside(observed(), send_files=-1))
 
 
