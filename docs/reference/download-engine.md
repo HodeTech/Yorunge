@@ -5,12 +5,12 @@
 ## Planlanan yüzey
 
 ```text
-yorunge models download --version-id UUID --format onnx|pt|tflite --output FILE
+yorunge models download --version-id UUID --format onnx|pt|tflite --weights-out FILE
     [--sha256 HEX64] [--timeout SECONDS] [--no-resume]
     [--config FILE] [--profile NAME] [--state-dir PATH]
 ```
 
-Python karşılığı aynı kullanım senaryosuna bağlı tek API’dir. `--version-id` kesin model sürümü kimliğidir; ilk sürüm otomatik seçilmez, ad/slug çözülmez. `--format` zorunludur (sağlayıcı varsayılanı tahmin edilmez). `--output` açık, mevcut parent içinde yeni bir dosya adıdır. `--sha256` kullanıcının bağımsız beklenen özetidir. Anahtar argüman değildir; yalnız JSON bağlantı çağrısında Platform kimliği kullanılır.
+Python karşılığı aynı kullanım senaryosuna bağlı tek API’dir. `--version-id` kesin model sürümü kimliğidir; ilk sürüm otomatik seçilmez, ad/slug çözülmez. `--format` zorunludur (sağlayıcı varsayılanı tahmin edilmez). `--weights-out` açık, mevcut parent içinde yeni bir dosya adıdır (genel `--output text|json|ndjson` yalnız çıktı biçimini seçer; hedef dosya için kullanılmaz). `--sha256` kullanıcının bağımsız beklenen özetidir. Anahtar argüman değildir; yalnız JSON bağlantı çağrısında Platform kimliği kullanılır.
 
 ## Motor sınırı
 

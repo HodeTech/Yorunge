@@ -7,7 +7,7 @@
 ```text
 yorunge datasets versions list  --dataset-id UUID [--page N] [--config FILE] [--profile NAME] [--state-dir PATH]
 yorunge datasets versions show  --dataset-id UUID --version-tag TAG [--config FILE] [--profile NAME] [--state-dir PATH]
-yorunge datasets versions bind  --dataset-id UUID --version-tag TAG --out FILE [--manifest FILE] [...bağlam]
+yorunge datasets versions bind  --dataset-id UUID --version-tag TAG --binding-out FILE [--manifest FILE] [...bağlam]
 yorunge datasets versions check --binding FILE [...bağlam]
 ```
 
@@ -48,4 +48,4 @@ Yerel hata kodları (taslak): `dataset_version_not_found` (exit 2, `show`/`bind`
 
 ## Dosya yayını ve kabul sınırı
 
-`bind --out` hedefi root-dışı, parent’ı mevcut, no-follow, 0600, O_EXCL stage ve exclusive hardlink politikasıyla yayımlanır; mevcut hedef ezilmez. Artifact sır, ham gövde, `created_by`, `description` veya URL taşımaz. Kabul listesi [ADR-0033](../decisions/0033-dataset-version-references.md#sonuçlar-ve-kabul)’tedir; çevrimdışı fixture yeşili canlı destek sayılmaz.
+`bind --binding-out` hedefi root-dışı, parent’ı mevcut, no-follow, 0600, O_EXCL stage ve exclusive hardlink politikasıyla yayımlanır; mevcut hedef ezilmez. Artifact sır, ham gövde, `created_by`, `description` veya URL taşımaz. Kabul listesi [ADR-0033](../decisions/0033-dataset-version-references.md#sonuçlar-ve-kabul)’tedir; çevrimdışı fixture yeşili canlı destek sayılmaz.
