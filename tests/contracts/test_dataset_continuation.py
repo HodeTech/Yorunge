@@ -186,7 +186,31 @@ def test_selected_bytes_are_checked_against_the_full_manifest_only_when_it_is_gi
 NEGATIVES = {
     "unordered indices": changed(["continuation", "file_indices"], [2, 0]),
     "repeated index": changed(["continuation", "file_indices"], [0, 0]),
-    "index past the manifest": changed(["continuation", "file_indices"], [0, 3]),
+    "index past the manifest": changed(
+        ["continuation", "file_indices"], [0, 3], changed(["continuation", "uncertain_indices"], [])
+    ),
+    "selection longer than the limits": changed(
+        ["request_limits", "max_presign"],
+        1,
+        changed(
+            ["request_limits", "max_put"],
+            1,
+            changed(
+                ["request_limits", "max_confirm"],
+                1,
+                changed(["continuation", "remote_present_count"], 2),
+            ),
+        ),
+    ),
+    "selection shorter than the limits": changed(
+        ["continuation", "file_indices"],
+        [0],
+        changed(
+            ["continuation", "uncertain_indices"],
+            [],
+            changed(["continuation", "remote_present_count"], 1),
+        ),
+    ),
     "index past the file limit": changed(["continuation", "file_indices"], [0, 128]),
     "negative index": changed(["continuation", "file_indices"], [-1, 2]),
     "uncertain outside the selection": changed(["continuation", "uncertain_indices"], [1]),
@@ -675,3 +699,46 @@ def test_a_changed_remote_or_chain_state_or_any_blocker_breaks_the_match():
     assert not binding_matches(binding, fresh_classification(faults=("cursor_loop",)))
     # A blocker the caller merged in withdraws the selection.
     assert not binding_matches(binding, fresh_classification().with_blockers(("source_active",)))
+
+
+# --- evidence instants are observation time, not part of what an approval commits to ------------
+def evidenced_plan():
+    prepared = next(row for row in MATRIX if row["status"] == "prepared")
+    work = MAIN.cost_work()
+    data = body()
+    grant = grant_for(work, prepared["grant"])
+    cost = cost_for(prepared["cost"], work)
+    data.update(
+        admission_policy=prepared["admission_policy"],
+        cost_policy=prepared["cost_policy"],
+        budget_micros=200_000_000,
+        inputs_verified=prepared["inputs"],
+        grant=grant.model_dump(mode="json"),
+        cost_bound=cost.model_dump(mode="json"),
+        risks=prepared["risks"],
+        blockers=prepared["blockers"],
+        status=prepared["status"],
+    )
+    return data
+
+
+def test_grant_and_cost_evidence_instants_do_not_change_the_binding_but_content_does():
+    data = evidenced_plan()
+    base = plan_of(data)
+    assert base.grant is not None and base.cost_bound is not None
+    earlier_and_longer = json.loads(json.dumps(data))
+    earlier_and_longer["grant"].update(
+        checked_at="2026-11-02T10:59:00.000000Z", expires_at="2026-11-02T11:20:00.000000Z"
+    )
+    earlier_and_longer["cost_bound"].update(
+        checked_at="2026-11-02T10:58:00.000000Z", expires_at="2026-11-02T11:20:00.000000Z"
+    )
+    moved = plan_of(earlier_and_longer)
+    assert moved.digest != base.digest and moved.binding_digest() == base.binding_digest()
+    for evidence, field, value in (
+        ("grant", "producer_version", "9"),
+        ("cost_bound", "maximum_micros", 2_000_000),
+    ):
+        other = json.loads(json.dumps(data))
+        other[evidence][field] = value
+        assert plan_of(other).binding_digest() != base.binding_digest(), (evidence, field)
