@@ -357,6 +357,15 @@ def test_a_policy_choice_the_policy_cannot_state_is_an_invalid_request():
         )
 
 
+def test_the_observation_instant_is_kept_as_observed_when_the_plan_is_prepared_later():
+    later = prepare_continuation_v3(
+        request_from("plan-v3", prepared_at="2026-11-02T11:00:02.000000Z")
+    )
+    assert later.prepared_at == "2026-11-02T11:00:02.000000Z"
+    assert later.continuation.observed_at == "2026-11-02T11:00:00.000000Z"
+    assert later.binding_digest() == MAIN.binding_digest()  # a later preparation binds the same
+
+
 def test_sealing_is_deterministic_and_the_identity_stays_out_of_the_binding():
     first, second = (prepare_continuation_v3(request_from("plan-v3")) for _ in range(2))
     assert first.encoded() == second.encoded() and first == second
