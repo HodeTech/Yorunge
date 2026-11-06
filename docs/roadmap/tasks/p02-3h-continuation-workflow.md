@@ -16,7 +16,7 @@ Kalıcı v3 kapıları olsa bile sınıflandırmayı taze uzak durumla doğrulay
 
 ## Giren ve girmeyen kapsam
 
-Pre-admission taze envanter ve yeniden sınıflandırma; kaynak donma çağrısı; mevcut current producer’ın create/link’siz kullanımı (context, detail↔baseline, üyelik, my-role); alt küme koordinatörü (hepsi presign → en çok iki PUT → seri confirm, tek deneme, tek permit); confirm kodlayıcısına taban parametresi (`N−M`) ve v3 oracle’ı (`created=1`, `batch_duplicates=0`, `actual_count == (N−M) + kabul edilen confirm + 1`); `M=0` yalnız doğrulama yolu; N-dosya proof; hata/iptal/belirsizlik eşlemesi; [tüketici referansının](../../reference/platform-upload-consumer.md) `actual_count` tanımının düzeltilmesi girer. Public API/CLI, native ölçüm ve canlı kabul girmez.
+Pre-admission taze envanter ve yeniden sınıflandırma; kaynak donma çağrısı; mevcut current producer’ın create/link’siz kullanımı (context, detail↔baseline, üyelik, my-role); alt küme koordinatörü (hepsi presign → en çok iki PUT → seri confirm, tek deneme, tek permit); confirm kodlayıcısına taban parametresi (plandaki `remote_present_count`) ve v3 oracle’ı (`created=1`, `batch_duplicates=0`, `actual_count == remote_present_count + kabul edilen confirm + 1`); v3 için mevcut `reconcile` bağlaması (`load_read_input`/`verify_original` kök baseline çözümleyicisi ve 3M graf ile; 3M makbuzu tam ama proof’u eksik unknown kayıt aynı operation’da kapanır); `M=0` yalnız doğrulama yolu; N-dosya proof; hata/iptal/belirsizlik eşlemesi; [tüketici referansının](../../reference/platform-upload-consumer.md) `actual_count` tanımının düzeltilmesi girer. Public API/CLI, native ölçüm ve canlı kabul girmez.
 
 ## Bağımlılıklar ve kararlar
 
@@ -32,7 +32,7 @@ Mevcut presign/PUT/confirm codec’leri, bütçe sayaçları ve storage portu v2
 2. Gerçek SIGKILL sınırları (admission, her aşama intent/receipt, iki-worker PUT, proof) v3’te de ikinci etkisiz ve aynı-ID kalır; devam yine bir sonraki continuation veya `reconcile` iledir.
 3. Başarılı sonuç yalnız metadata seviyesi ve `remote_bytes_verified=false`; authority/pricing yükseltilmez.
 4. Signed URL, ham anahtar, `created_dataset` ve literal credential canary’leri DB/log/exception/çıktıda yoktur; bütçe ve deadline kuralları v2 ile aynıdır.
-5. v2 original yolu ve `reconcile` mevcut testlerle değişmeden geçer.
+5. v3 `reconcile`: 3M makbuz tam + proof eksik unknown kayıt → `reconcile` → `succeeded`; eksik graf → `operation_uncertain` (unknown); v2 original yolu ve v2 `reconcile` mevcut testlerle değişmeden geçer. Taze envanter sınıf özeti farklıysa `continuation_remote_changed`.
 
 ## Doğrulama
 

@@ -8,7 +8,7 @@ capabilities: [C03, C13]
 ---
 # P02-3o — İndirme native ölçümü, kanıt doğrulayıcısı ve kurulu smoke
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 13. Aktarım kabulü gerçek indirme yolunda 16/256/1.024 MiB ölçülür ([performans standardı](../../standards/performance.md)).
+**Tarih:** 2026-11-06. Büyüme kuralı P02-3l/3m ile aynıdır (ölçüm/doğrulayıcı/CI ayrı birimlere bölünebilir; s–z harfleri). [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 14. Aktarım kabulü gerçek indirme yolunda 16/256/1.024 MiB ölçülür ([performans standardı](../../standards/performance.md)).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
@@ -16,7 +16,7 @@ Mevcut ham akış ölçümü diske yazmaz ve upload ölçümü indirmeyi kapsama
 
 ## Giren ve girmeyen kapsam
 
-`benchmark-download.py`, Range/ETag destekli ölçüm sunucusu fixture’ı, native RSS B/H0/H1 yöntemi (disk yazımı, checkpoint `os.fsync` ve yayın `full_sync` pencere içinde; süreleri ayrı kaydedilir), indirme kanıt özeti/rapor türü ve `research_evidence.py verify-download-reference`, M5 çalışma zamanı kapısı ve kaynak-haritası eşliği, `evidence_privacy` bağlam eklemeleri, kalıcı arşiv girişi, kurulu smoke (installation kaydının genişletilmesi), CI iş akışı adımı ve performans standardı/CONTRIBUTING güncellemeleri girer. Upload veya raw stream ölçümlerinin değiştirilmesi girmez.
+`benchmark-download.py`, Range/ETag destekli ölçüm sunucusu fixture’ı (P02-3n yüzeysizse kütüphane girişini ölçer), native RSS B/H0/H1 yöntemi (disk yazımı, checkpoint `os.fsync` sayısı/süresi ve yayın `full_sync` süresi pencere içinde ve ayrı kaydedilir), indirme kanıt özeti/rapor türü ve `research_evidence.py verify-download-reference`, M5 çalışma zamanı kapısı ve kaynak-haritası eşliği, `evidence_privacy` bağlam eklemeleri, kalıcı arşiv girişi, kurulu smoke (installation kaydının genişletilmesi), CI iş akışı adımı ve performans standardı/CONTRIBUTING güncellemeleri girer. Upload veya raw stream ölçümlerinin değiştirilmesi girmez.
 
 ## Bağımlılıklar ve kararlar
 

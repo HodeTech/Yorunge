@@ -11,7 +11,7 @@ yorunge datasets versions bind  --dataset-id UUID --version-tag TAG --binding-ou
 yorunge datasets versions check --binding FILE [...bağlam]
 ```
 
-Python karşılıkları aynı kullanım senaryolarına bağlı dört API’dir. Hepsi Platform hizmetine bağlı, salt okunur ve tek credential snapshot’ıyla çalışır; yazma, onay veya operation kaydı üretmez. `--manifest` yalnız yerel Manifest v1 dosyasını okur. Dataset kimliği açıkça verilir; ilk dataset otomatik seçilmez. Genel `--output text|json|ndjson` yalnız çıktı biçimidir; hedef dosya `--binding-out`tur.
+Python karşılıkları aynı kullanım senaryolarına bağlı dört API’dir. Hepsi Platform hizmetine bağlı, salt okunur ve tek credential snapshot’ıyla çalışır; yazma, onay veya operation kaydı üretmez. `--manifest` yalnız yerel Manifest v1 dosyasını okur. Dataset kimliği açıkça verilir; ilk dataset otomatik seçilmez. Genel `--output text|json|ndjson` yalnız çıktı biçimidir; hedef dosya `--binding-out`tur. `--page` 1–10 000 kesin tamsayıdır.
 
 ## Tüketilen sağlayıcı yüzeyi
 
@@ -19,7 +19,7 @@ Hepsi `GET`’tir ve ADR-0017 salt okuma politikasına (en çok iki attempt, tek
 
 | Çağrı | Tüketilen alanlar |
 |---|---|
-| `datasets/{id}/versions?page=N` | Çağrı başına tek sayfa: `data[]` (≤20), `meta.{page,page_size,total,has_next}`; her kayıt `id`, `version_tag`, `is_frozen`, `is_partial`, `is_export_ready`, `item_count`, `split_config.{train,val,test,unassigned}`, `annotated_item_count`, `total_annotation_count`, `created_at` |
+| `datasets/{id}/versions?page=N` | Çağrı başına tek sayfa: `data[]` (1 MiB yanıt ve en çok 100 kayıt), `meta.{page,page_size,total,has_next}`; her kayıt `id`, `version_tag`, `is_frozen`, `is_partial`, `is_export_ready`, `item_count`, `split_config.{train,val,test,unassigned}`, `annotated_item_count`, `total_annotation_count`, `created_at` |
 | `datasets/{id}/versions/{tag}` | Yukarıdakilere ek `dataset_id`, `class_labels_snapshot[]` (`id`, `name`, `sort_order`, `annotation_count`); `description`, `created_by`, `export_zip_url`, renk/kısayol alanları atılır |
 | `datasets/{id}/versions/{tag}/splits` | `data.{train,val,test,unassigned}` |
 
@@ -27,7 +27,7 @@ Yanıt zarfı `success=true` ve `data` ister; mantıksal başarısızlık, eksik
 
 ## Gözlem, bağ ve digest
 
-`DatasetVersionObservation v1` (`show`/`list` öğesi) alanları: `schema_version=1`, `kind=dataset_version_observation`, `dataset_id`, `version_id`, `version_tag`, `is_frozen`, `is_partial`, `is_export_ready`, `item_count`, `split_counts{train,val,test,unassigned}`, `split_total_matches_item_count`, `annotated_item_count`, `total_annotation_count`, `class_count`, `class_labels_sha256`, `created_at`, `observed_at`. Hepsi strict/frozen/extra-forbid, zorunlu (nullable yok), sayılar `bool` olmayan nonnegative int64; kimlikler canonical UUID; zaman canonical altı haneli UTC. `list` öğeleri sınıf-etiketi bilgisini taşımayan listeden geldiğinden `class_count`/`class_labels_sha256` yalnız `show`/`bind`/`check` gözleminde bulunur.
+`DatasetVersionObservation v1` (`show`/`list` öğesi) alanları: `schema_version=1`, `kind=dataset_version_observation`, `dataset_id`, `version_id`, `version_tag`, `is_frozen`, `is_partial`, `is_export_ready`, `item_count`, `split_counts{train,val,test,unassigned}`, `split_total_matches_item_count`, `annotated_item_count`, `total_annotation_count`, `class_count`, `class_labels_sha256`, `created_at`, `observed_at`. Hepsi strict/frozen/extra-forbid, zorunlu (nullable yok), sayılar `bool` olmayan nonnegative int64; kimlikler canonical UUID; zaman canonical altı haneli UTC. `list` sınıf-etiketi bilgisini taşımayan listeden geldiğinden ayrı bir `DatasetVersionListItem v1` (aynı alanlardan `class_count` ve `class_labels_sha256` hariç) döndürür; `show`/`bind`/`check` tam gözlemi kullanır. Sınıf adları hiçbir çıktıya girmez, yalnız hash’lenir.
 
 `class_labels_sha256`: `class_labels_snapshot` öğelerinin `{annotation_count,id,name,sort_order}` nesneleri `id`’ye göre sıralanıp Manifest v1 ile aynı kanonik kodlayıcının UTF-8 baytlarının SHA-256’sıdır; renk/kısayol dışarıdadır.
 
@@ -35,13 +35,13 @@ Yanıt zarfı `success=true` ve `data` ister; mantıksal başarısızlık, eksik
 
 ## Karşılaştırma ve hata sınıfları
 
-`check` bağdaki değişmez alanları yeniden gözlenenle alan alan karşılaştırır (`observed_at` ve manifest ilişkisi hariç). Sonuçlar:
+`check` önce bağdaki `service` hedefini etkin profilin hedefiyle karşılaştırır; eşleşmiyorsa alan karşılaştırması yapmadan `state_changed`/2 verir. Sonra bağdaki değişmez alanları yeniden gözlenenle alan alan karşılaştırır (`observed_at` ve manifest ilişkisi hariç). Sonuçlar:
 
 | Sonuç | Anlam | Çıkış |
 |---|---|---|
 | `unchanged` | Değişmez alanlar eşit | 0 |
 | `changed` | Bir veya daha fazla alan farklı; kapalı ayrıntı `changed_field_count` ve sıralı `changed_fields` | 7 `dataset_version_changed` |
-| `missing` | Etiket bulunamadı (404); içerik değişimi sayılmaz | 7 `dataset_version_missing` |
+| `missing` | Etiket bulunamadı (404); içerik değişimi sayılmaz. Exit 7 bilinçli: referans geçerliliğini yitirdi | 7 `dataset_version_missing` |
 | `unavailable` | 401/403/429/5xx/zaman aşımı/taşıma | mevcut `remote_*`/`transport_*` kodları |
 
 `changed_fields` kapalı kümesi: `service`, `version_id`, `version_tag`, `created_at`, `is_partial`, `item_count`, `split_counts`, `split_total_matches_item_count`, `annotated_item_count`, `total_annotation_count`, `class_count`, `class_labels_sha256`. Bağlı alanların bir kısmı (`is_partial`, annotation sayıları) sağlayıcıda dondurulmuş sürümde bile oynayabilir; `check` bunları değişim diye bildirir ve üyelik değişmemiş olabilir.
@@ -50,7 +50,7 @@ Yanıt zarfı `success=true` ve `data` ister; mantıksal başarısızlık, eksik
 |---|---:|---|
 | `dataset_version_not_found` | 2 | `show`/`bind` etiketi yok |
 | `dataset_version_not_frozen` | 2 | Sürüm `is_frozen=false`; bağ üretilmez |
-| `dataset_version_changed` | 7 | `check` değişmez alan farkı (kapalı ayrıntı) |
+| `dataset_version_changed` | 7 | `check` değişmez alan farkı; `ManifestMismatch` emsali kapalı ayrıntı tipi (`YorungeError` alt sınıfı; düz `YorungeError("dataset_version_changed")` `details={}` korur) |
 | `dataset_version_missing` | 7 | `check` etiket bulunamadı |
 | `binding_invalid` | 2 | Yerel dosya katı ayrıştırma/digest doğrulamasını geçmiyor |
 | `binding_output_exists` | 2 | Hedef var veya yarışta oluştu; dokunulmaz |
@@ -61,4 +61,4 @@ Başarılı `check` yalnız sağlayıcı metadata’sının değişmediğini sö
 
 ## Dosya yayını ve kabul sınırı
 
-`bind --binding-out` hedefi [P02-3l](../roadmap/tasks/p02-3l-download-sink-publisher.md)’in ortak no-clobber yayın ilkesiyle yayımlanır: parent mevcut ve no-follow, 0600, O_EXCL stage ve exclusive hardlink; mevcut hedef ezilmez. Artifact sır, ham gövde, `created_by`, `description` veya URL taşımaz. Kabul listesi [ADR-0033](../decisions/0033-dataset-version-references.md#sonuçlar-ve-kabul)’tedir; çevrimdışı fixture yeşili canlı destek sayılmaz.
+`bind --binding-out` hedefi [P02-3s](../roadmap/tasks/p02-3s-common-artifact-publisher.md)’in ortak no-clobber artifact yayıncısıyla (rastgele adlı stage) yayımlanır: parent mevcut ve no-follow, 0600, O_EXCL stage ve exclusive hardlink; mevcut hedef ezilmez. Artifact sır, ham gövde, `created_by`, `description` veya URL taşımaz. Kabul listesi [ADR-0033](../decisions/0033-dataset-version-references.md#sonuçlar-ve-kabul)’tedir; çevrimdışı fixture yeşili canlı destek sayılmaz.

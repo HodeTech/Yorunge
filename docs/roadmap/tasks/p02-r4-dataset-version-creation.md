@@ -8,7 +8,7 @@ capabilities: [C04, C12]
 ---
 # P02-R4 — Veri sürümü oluşturma (freeze) etkisi
 
-**Tarih:** 2026-11-06. **Sahip:** P02 / datasets modülü. [ADR-0033](../../decisions/0033-dataset-version-references.md) sürüm oluşturmayı bilinçli olarak P02-3c dışında bıraktı; bu kart özgün ihtiyacın açık sahibidir, kendisi uygulama veya ready yetkisi değildir.
+**Tarih:** 2026-11-06. **Boyut notu:** L; doğrulama aracı L kartı ready yapmaz, ADR sonrası S/M alt kartlara bölünür. **Sahip:** P02 / datasets modülü. [ADR-0033](../../decisions/0033-dataset-version-references.md) sürüm oluşturmayı bilinçli olarak P02-3c dışında bıraktı; bu kart özgün ihtiyacın açık sahibidir, kendisi uygulama veya ready yetkisi değildir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

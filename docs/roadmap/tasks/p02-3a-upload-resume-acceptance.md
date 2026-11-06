@@ -29,7 +29,7 @@ Kanonik sözleşme [continuation sözleşmesi](../../reference/dataset-upload-co
 ## Kabul
 
 1. Alt kartlar verified; her biri ikişer fresh review turuyla kapanmış.
-2. Kurulu wheel/sdist ve altı temiz kurulumda `resume`/`approve` yardımı ve ağsız/yerel kapıları çalışır; upload native ölçümü continuation yolunu aynı kod yolu olarak kapsar (ek ölçüm gereksinimi gerekçeyle belgelenir).
+2. Kurulu wheel/sdist ve altı temiz kurulumda `resume`/`approve` yardımı ve ağsız/yerel kapıları çalışır. Karar: continuation için **ek native ölçüm yapılmaz**; PUT akışı aynı koddur ve ek yükler (tam kök hash’i, ≤1.024 item envanter okuması) mevcut dataset hash ölçümü ve items okuma bütçeleriyle kapsanır, gerekçe kabul kaydına yazılır. Epik sonunda son kaynak M5 referans serisi (startup/jobs/dataset/upload/download) yenilenir ve üç ortam CI ile doğrulanır (plan adım 17).
 3. Yetkili küçük canlı kabul: gerçek kesintiden sonra aynı dataset’te devam, N-dosya metadata proof, iki distinct SHA-256; ikinci create yok; authority/pricing/remote-bytes iddiası yok. Yapılmazsa kullanıcı kararı ve kısıt kayıtlıdır.
 4. Belge kontrolü, rehber kontrolü ve kanıt arşivi doğrulaması temiz; v1/v2 geçmişi ve golden’ları değişmemiş.
 

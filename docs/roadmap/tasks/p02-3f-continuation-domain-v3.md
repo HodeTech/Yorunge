@@ -16,7 +16,7 @@ Devam için gereken plan/onay/kayıt/kontrol/doğrulama/özet/rapor tipleri bug�
 
 ## Giren ve girmeyen kapsam
 
-`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt v3 (admission’da `workflow_latched=true` ve plandan dolu `dataset_id`), kontrol v3, `TransferVerification v3` (v2 ile aynı alanlar), `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1`, `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, `intent_digest`in kökle eşitliği, v3 için `request_digest` kuralı (dataset kimliği plan bağından) ve yeni `continuation_not_possible` hata kodu (katalog, mesaj, exit) girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
+`DatasetContinuationPlan v3`, `ContinuationBinding`, onay v3 (`acknowledge_unconfirmed_effects`), kayıt v3 (plandan dolu `dataset_id`; latch ilk intent’te; `verification_only` bayrağı), kontrol v3, `TransferVerification v3` (v2 ile aynı alanlar), `DatasetUploadSummary v3`, `DatasetUploadResumeReport v1`, `UploadRequestLimits`/maliyet iş özeti v3 (create=0, link=0, M dosya), canonical kodlama ve özetler, politika reducer’ının continuation için kullanımı, kökten kopyalanan saklı `intent_digest` (scope’tan türetilmez; kökle eşitlik doğrulanır), `remote_present_count`, v3 için `request_digest` kuralı (dataset kimliği plan bağından) ve yeni `continuation_not_possible` (kapalı `blockers` ayrıntısı) ile `continuation_remote_changed` hata kodları (katalog, mesaj, exit) girer. Repository/DDL, HTTP, koordinatör, CLI/API yüzeyi girmez.
 
 ## Bağımlılıklar ve kararlar
 
@@ -29,10 +29,10 @@ Hepsi strict/frozen/extra-forbid, zorunlu alanlı (nullable dahil), bool≠int; 
 ## Kabul
 
 1. Her tip için literal canonical byte ve SHA-256 golden’ları; v1/v2 golden’ları değişmez.
-2. Doğrulayıcı negatifleri: sırasız/tekrarlı/aralık dışı indeks, `uncertain_indices ⊄ file_indices`, limit–M uyuşmazlığı, create/link ≠ 0, pencere ≤0 veya >900 s, sürüm eşleşmesi (plan v3+onay v2; kayıt v3+doğrulama v2 vb.), bilinmeyen/eksik alan, bool-as-int, gereksiz/eksik `acknowledge_unconfirmed_effects`, v3 kaydında `dataset_id=null` veya `workflow_latched=false` admission.
+2. Doğrulayıcı negatifleri: sırasız/tekrarlı/aralık dışı indeks, `uncertain_indices ⊄ file_indices`, limit–M uyuşmazlığı, create/link ≠ 0, pencere ≤0 veya >900 s, sürüm eşleşmesi (plan v3+onay v2; kayıt v3+doğrulama v2 vb.), bilinmeyen/eksik alan, bool-as-int, gereksiz/eksik `acknowledge_unconfirmed_effects`, v3 kaydında `dataset_id=null`, `verification_only` ile `file_indices` boşluğunun eşleşmemesi, `verification_only` olmayan unlatched `succeeded`, `uncertain_indices` ≠ sınıflandırmadaki `pending_uncertain` kümesi, `file_indices` ≠ `pending_clean ∪ pending_uncertain`, `remote_present_count` ≠ N−M, kökten farklı `intent_digest`.
 3. Bağlama özeti: her yeni alanın tek tek değiştirilmesi özeti değiştirir (mutasyon testi); `observed_at` hariç olanlar belgelenen şekilde dışarıdadır.
 4. v2 politika reducer matrisi (96 satır) continuation tipinde aynı sonucu verir; verified-only ve sağlayıcı oracle’sız yol continuation’a açılmaz. `M=0` plan geçerlidir ve ack kuralları değişmez.
-5. Yeni hata kodu için zarf, mesaj, exit 2 ve CLI hata kataloğu uyumu testlidir; v3 özet/rapor DTO’ları `created_dataset`, owner/org/ad ve receipt alanı taşımaz (sentinel).
+5. Yeni hata kodları için zarf, mesaj, exit 2, kapalı `blockers` ayrıntısı ve CLI hata kataloğu uyumu testlidir; v3 özet/rapor DTO’ları `created_dataset`, owner/org/ad ve receipt alanı taşımaz (sentinel).
 
 ## Doğrulama
 

@@ -30,7 +30,7 @@ Kanonik sözleşme [indirme motoru sözleşmesi](../../reference/download-engine
 
 1. Alt kartlar verified ve her biri ikişer fresh turla kapanmış.
 2. Üç ortam CI’da indirme testleri ve kurulu smoke geçer; native referans kayıtlı ve doğrulanmıştır.
-3. Yetkili model indirme kabulü: kimlikli JSON çağrısı + kimliksiz imzalı GET, hedef yayını, seviye çıktısı; yapılmadıysa kısıt kayıtlı.
+3. Yetkili model indirme kabulü: kimlikli JSON çağrısı + kimliksiz imzalı GET, hedef yayını, seviye çıktısı; yapılmadıysa kısıt kayıtlı. Model yoklaması olumsuzsa (oturum gerekli) bu madde “oturum gerekli” kaydıyla kapanır, yüzeysiz iç tüketici ve kütüphane ölçümü teslim edilir.
 4. Upload’ın `remote_bytes_verified=false` sınırı ve P02-R5 görünür kalır; P02-7 faz kabulü bu boşluğu `partial` olarak taşır.
 
 ## Doğrulama

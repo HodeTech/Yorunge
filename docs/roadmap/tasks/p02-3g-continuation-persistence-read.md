@@ -16,7 +16,7 @@ v3 tipleri kalıcı geçmişte okunup doğrulanamadan kapasite hesabı, list/sho
 
 ## Giren ve girmeyen kapsam
 
-Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında; `validate_graph` v3 için `StageGraphSpec` ile (gerekli aşamalar, öncül, `request_digest` plan bağından, `_stage_outcome` dataset kimliği plandan, `_operation_header` latch kuralı: admission’da latched ve `len(intents) ≤ 3M`, v3 namespace invariant’ı `namespace.create_operation_id == baseline_operation_id`, `verification_after` boş makbuzla, `_verify` 3M makbuz + N dosya proof ve sürüm eşliği); `operation_reservation` ve `capacity()` plan türüne göre; summary/review projeksiyonunun v3’ü `legacy_history_only` saymaması; reset önizleme/`upload_snapshot` parmak izi ve global expiry hesabı; eski-binary etkisinin belgelenmesi. Girmez: save/approve/admit/arm/receipt/read/proof yazma kapıları, HTTP, public yüzey, DDL.
+Girer: `decode_versioned`in üçüncü sürümü bütün çağrı noktalarında; **salt okuma zincir/baseline çözümleyicisi** (kaynak → kök görünümü, 3 tipli doğrulanmış → CreateReceiptV2; özeti `baseline_digest` ile eşit; uyuşmazlık/kopukluk `state_invalid`) ve ona geçirilecek çağrı noktalarının kontrol listesi (`created_dataset`/`legacy_create_without_baseline`, `require_created_baseline`, `_baseline_in_view`, arm, acquire_read, read_failed, prepare_initial_read, `_verified`, original producer’ın detail↔baseline karşılaştırması); `validate_graph` v3 için `StageGraphSpec` ile (gerekli aşamalar, öncül, `request_digest` plan bağından, `_stage_outcome` dataset kimliği plandan, `_operation_header`: `intent_digest` saklı alan olarak kökle eşit, latch kuralı v2 ile aynı (`bool(intents)==latched`; `verification_only` kayıt unlatched succeeded olabilir) ve `len(intents) ≤ 3M`, v3 namespace invariant’ı `namespace.create_operation_id == baseline_operation_id`, `verification_after` boş makbuzla, `_verify` 3M makbuz + N dosya proof ve sürüm eşliği); `operation_reservation` ve `capacity()` plan türüne göre; summary/review projeksiyonunun v3’ü `legacy_history_only` saymaması; reset önizleme/`upload_snapshot` parmak izi ve global expiry hesabı; eski-binary etkisinin belgelenmesi. Girmez: save/approve/admit/arm/receipt/read/proof yazma kapıları, HTTP, public yüzey, DDL.
 
 ## Bağımlılıklar ve kararlar
 
@@ -28,7 +28,7 @@ Mevcut ortak primitive’ler yeniden kullanılır; v1/v2 yolları davranışsal 
 
 ## Kabul
 
-1. Sentetik v3 geçmişleri (admitted, running, unknown, succeeded; `M=0`; kök+iki continuation zinciri) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer.
+1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök+iki continuation zinciri; sıfır-intent’li kaynak) hot ve full doğrulamadan, list/show’dan ve reset önizlemesinden geçer; çözümleyici baseline özeti uyuşmazlığını ve kopuk soyu `state_invalid` reddeder.
 2. Geçersiz geçmişler `state_invalid` ile reddedilir: yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, yanlış sürüm eşleşmeleri, döngülü/kopuk zincir.
 3. Kapasite: continuation plan/operation 128/128, dosya 4.096, 16 MiB sınırlarına yeniden sayılır; v1/v2 rezervasyon doğrulaması ve golden’ları değişmez; v3 satırı varken `require_capacity`/list/reset önizlemesi çalışır.
 4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.

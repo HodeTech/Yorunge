@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-11-03. **Durum:** P02-2s.1 local/current/mandatory probe iki fresh kod turu/fix teyidiyle yerel kapandı. S.2 read lease/items/proof ve gerçek TLS/process-kill regresyonları iki fresh kod turuyla kapandı; P02-2s verified ve development’tadır. [V2 read/terminal/proof matrisi](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği), [ADR-0027](../decisions/0027-durable-created-dataset-context.md) baseline/history ve [original workflow](dataset-upload-workflow.md) kanoniktir. Bu belge yeni auth/fiyat/receipt/success veya retry hakkı tanımlamaz.
 
+**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](../decisions/0031-upload-continuation.md) / [continuation sözleşmesi](dataset-upload-continuation.md) yalnız v3 continuation kayıtları için başarı grafiği, baseline kaynağı ve unlatched/cleanup davranışını ayrı tanımlamayı önerir; bu belgedeki v1/v2 kuralları o kayıtlar dışında değişmez.
+
 ## Yerel preflight ve öncelik
 
 Sync/ID/state-dir/flag türü denetlenir; open_existing_store ile exact operation+plan+manifest+receipt grafiği yalnız DB’den okunur. Root veya manifest dosyası açılmaz, config/env henüz çözülmez. Yerel anlam sırası:

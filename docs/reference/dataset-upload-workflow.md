@@ -2,6 +2,8 @@
 
 **Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 ve r.2 ayrı commit/fix ve ikişer fresh kod turuyla yerel kapandı. R.3 initial proof/full koordinatör iki fresh tur ve son kill test teyitleriyle kapandı; P02-2r verified ve development’tadır. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
 
+**2026-11-06 Proposed kısmi değişiklik:** [ADR-0031](../decisions/0031-upload-continuation.md) / [continuation sözleşmesi](dataset-upload-continuation.md) yalnız v3 continuation kayıtları için başarı grafiği, baseline kaynağı ve unlatched/cleanup davranışını ayrı tanımlamayı önerir; bu belgedeki v1/v2 kuralları o kayıtlar dışında değişmez.
+
 ## Katman ve invocation
 
 Application algoritması private typed environment protokolünü kullanır; somut SQLite, dosya, config/env ve HTTP session outer composition’dadır. Application adapter import etmez. Tek private owned session/loop/pool, aynı captured credential ve aynı original UploadBudget kullanılır. Source full hash/recheck ve ağ await sırasında SQLite store/transaction açık tutulmaz; her yerel faz open_existing_store/owner/fence/CAS/final scope/clock kapısını yeniden uygular. Örtük state init/migration yoktur.

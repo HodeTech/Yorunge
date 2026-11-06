@@ -20,7 +20,7 @@ Sağlayıcının API anahtarıyla veya başka kapsamlı resmî programatik kimli
 
 ## Bağımlılıklar ve kararlar
 
-Açılma ölçütü (dış koşul): sağlayıcının resmî bir API-key erişimli öğe indirme/imzalı URL yolu sunması veya kullanıcının ayrı bir kimlik yöntemini ve saklama/yetki modelini ADR ile onaylaması; bunlardan hiçbiri bugün yoktur. P02-3b motoru ve doğrulama sözlüğü hazır olduğundan koşul gerçekleşince tüketici dar bir iştir. Faz kabulü 1. madde (indirme/verify) dataset baytları için bu karta bağlıdır; kapalıysa P02-7 bunu `partial` ve açılma koşuluyla kaydeder, kapsamı sessizce küçültmez.
+Açılma ölçütü (dış koşul veya ürün kararı): (a) sağlayıcının resmî bir API-key erişimli öğe indirme/imzalı URL yolu sunması, (b) kullanıcının ayrı bir kimlik yöntemini ve saklama/yetki modelini ADR ile onaylaması veya (c) kullanıcı onaylı, ücreti önceden gösterilen export tabanlı doğrulamanın (sürüm gerektirir; `export/download` ZIP, biçim/ad eşlemesi ve arşiv güvenliği için ayrı araştırma/ADR) kabul edilmesi; üçü de bugün yoktur. (c) ürün kararıdır ve P02-3 planındaki K4’te sorulur. P02-3b motoru ve doğrulama sözlüğü hazır olduğundan koşul gerçekleşince tüketici dar bir iştir. Faz kabulü 1. madde (indirme/verify) dataset baytları için bu karta bağlıdır; kapalıysa P02-7 bunu `partial` ve açılma koşuluyla kaydeder, kapsamı sessizce küçültmez.
 
 ## Sözleşme ve uygulama sınırı
 

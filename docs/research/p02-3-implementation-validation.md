@@ -6,9 +6,10 @@
 
 | Adım | Kart | Durum |
 |---|---|---|
-| 1–6 | P02-3d–i (resume) | Başlamadı; ADR-0031 onayı bekleniyor |
-| 7–12 | P02-3j–o (indirme) | Başlamadı; ADR-0032 onayı bekleniyor |
-| 13–14 | P02-3p–q (sürüm) | Başlamadı; ADR-0033 onayı bekleniyor |
-| 15 | P02-3a/b/c üst kartlar | Başlamadı |
+| 1–7 | P02-3d, e, f, g, r, h, i (resume) | Başlamadı; ADR-0031 onayı bekleniyor |
+| 8 | P02-3s (ortak no-clobber artifact yayıncısı) | Başlamadı; ADR beklemez, ilk onaylanan indirme/sürüm hattıyla öne alınır |
+| 9–14 | P02-3j–o (indirme) | Başlamadı; ADR-0032 onayı ve model yoklama kapısı bekleniyor |
+| 15–16 | P02-3p–q (sürüm) | Başlamadı; ADR-0033 onayı bekleniyor |
+| 17 | P02-3a/b/c üst kartlar, son kaynak referans serisi, PR | Başlamadı |
 
 Her adım için commit, kontrol çıktıları, R1/R2 reviewer eksenleri ve doğrulanmış bulguların kapanışı burada kendi başlığıyla kaydedilir.

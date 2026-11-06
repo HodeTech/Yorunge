@@ -6,7 +6,7 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-11-06
 
-- P02-3 hazırlığı: [teslim planı](docs/roadmap/p02-3-delivery-plan.md), [hazırlık incelemesi](docs/research/p02-3-readiness-review.md), Proposed ADR-0031 (soy bağlı, yeni onaylı resume), ADR-0032 (akışlı indirme ve doğrulama seviyeleri) ve ADR-0033 (salt okuma veri sürümü referansı), üç taslak referans sözleşmesi, 15 adım ve üç üst kabul kartı ile P02-R4/R5/R6/R7 takipleri. Ürün kodu veya uygulanmış davranış değişikliği yoktur; kararlar kullanıcı onayı bekler.
+- P02-3 hazırlığı: [teslim planı](docs/roadmap/p02-3-delivery-plan.md), [hazırlık incelemesi](docs/research/p02-3-readiness-review.md), Proposed ADR-0031 (soy bağlı, yeni onaylı resume), ADR-0032 (akışlı indirme ve doğrulama seviyeleri) ve ADR-0033 (salt okuma veri sürümü referansı), üç taslak referans sözleşmesi, 16 adım ve üç üst kabul kartı ile P02-R4–R8 takipleri. Ürün kodu veya uygulanmış davranış değişikliği yoktur; kararlar kullanıcı onayı bekler.
 
 ### Changed — 2026-11-06
 

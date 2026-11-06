@@ -54,10 +54,11 @@
 | [P02-R5](p02-r5-dataset-item-byte-access.md) | Dataset öğesi baytlarına programatik erişim (`blocked`: API anahtarı kabul edilmiyor); uzak byte doğrulamasının açık sahibi |
 | [P02-R6](p02-r6-adopt-unknown-create.md) | Bilinmeyen create sonucunun açık dataset sahiplenmesi; ADR-0031 ile P02-3a dışında bırakılan özgün ihtiyaç |
 | [P02-R7](p02-r7-persist-provider-denials.md) | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu; ADR-0031 incelemesinde bulunan belge–kod boşluğu |
+| [P02-R8](p02-r8-forget-unused-upload-plans.md) | Operation’sız upload planlarını unutma (kota yeniden kazanımı); continuation’ın N dosyayı yeniden saymasının açık sahibi |
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Proposed); adımlar d–i ve r |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Proposed); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Proposed); adımlar p–q |
-| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3r](p02-3r-continuation-write-gates.md) | P02-3 adım kartları: [resume d–i ve r](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o, sürüm p–q; hepsi `draft`, ADR onayına bağlı |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3s](p02-3s-common-artifact-publisher.md) | P02-3 adım kartları: [resume d–i ve r, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o, sürüm p–q; hepsi `draft`, ilgili ADR onayına bağlı (s hariç) |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
