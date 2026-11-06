@@ -28,7 +28,7 @@ Mevcut ortak primitive’ler (clock, SQL transaction, lease/fence/CAS, kota) yen
 
 ## Kabul
 
-1. Gerçek SQLite ile her geçiş ve ret: draft/expired/revoked, ack kuralları, kaynak donmamış (etkin lease) → `operation_conflict`, aynı dataset’te başka non-terminal operation, kaynak terminal, baseline yok; iki süreç eşzamanlı admit → tam bir kazanan.
+1. Gerçek SQLite ile her geçiş ve ret: draft/expired/revoked, ack kuralları, kaynak donmamış (etkin lease) → `operation_conflict`, aynı dataset’te başka non-terminal operation, kaynak terminal (succeeded/failed/cancelled), journal’da rejected makbuz, baseline yok; iki süreç eşzamanlı admit → tam bir kazanan.
 2. Arm create/link ve `file_indices` dışı indeksi reddeder; presign öncülsüz; PUT/confirm sırası, kronoloji ve tazelik v2 kuralıyla aynı; başarı eksik/fazla makbuz, eksik baseline veya N-dosya proof uyuşmazlığında yazılmaz (unknown).
 3. Kota: continuation plan/operation 128/128, dosya 4.096, 16 MiB sınırlarına yeniden sayılır; rezervasyon 3M için doğru; v1/v2 satırları yeniden doğrulanır.
 4. Reset önizleme/uygulama, yedek (continuation tabloları allowlist’te), restore/recover yasağı, global expiry frontier ve hot/full doğrulama v3’ü kapsar.

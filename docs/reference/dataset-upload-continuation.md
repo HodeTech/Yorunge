@@ -17,10 +17,11 @@ yorunge datasets upload resume        --operation-id UUID --accept-unverified-re
 | Koşul | Sonuç |
 |---|---|
 | Kaynak yok | `operation_not_found` |
-| Kaynak `succeeded` veya `cancelled` | `operation_conflict`; devam yok (başarı için gerek yok, iptal edilmiş iş için yeni plan) |
+| Kaynak terminal (`succeeded`, `failed`, `cancelled`) | `operation_conflict`; devam yok (başarı için gerek yok; `failed` kesin bir sağlayıcı reddi içerir; iptal edilmiş iş için yeni plan) |
 | Etkin write/read owner (lease dolmamış) | `operation_conflict`; lease bitince tekrar |
 | Lease dolmuş `running` | Mevcut execution izni üretmeyen `cleanup_expired` yolu kaynağı `unknown`/`request_uncertain` yapar (fence+1); sonra devam |
-| `unknown` veya `failed`, accepted CreateReceiptV2 var | Uygun |
+| `unknown`, accepted CreateReceiptV2 var ve journal’da **rejected** makbuz yok | Uygun |
+| Journal’da herhangi bir rejected makbuz | `continuation_not_possible` (bilinen olumsuz sonuç ADR-0026/v2 gereği yeni plan, bayrak veya revision ile aşılmaz) |
 | Create receipt/dataset ID yok | `continuation_not_possible` (create unknown; sahiplenme yok) |
 | Başka non-terminal transfer operation aynı dataset’te | `operation_conflict` (mevcut kimlik gösterilir) |
 | Proje üyeliği exact bir kez gözlenmedi veya detail↔baseline uyuşmuyor | `continuation_not_possible` |
