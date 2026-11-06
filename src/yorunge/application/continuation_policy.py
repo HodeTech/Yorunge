@@ -35,6 +35,8 @@ def continuation_limits(
     manifest: DatasetManifest, file_indices: Sequence[int]
 ) -> ContinuationRequestLimits:
     """Request ceilings of a continuation that sends exactly these manifest files (M may be 0)."""
+    if type(manifest) is not DatasetManifest or type(file_indices) not in (tuple, list):
+        raise ValueError("a manifest and a tuple or list of file indices are required")
     indices = tuple(file_indices)
     if (
         any(type(i) is not int for i in indices)

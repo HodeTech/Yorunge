@@ -26,7 +26,7 @@ from yorunge.domain.dataset_continuation import (
     validate_approval_binding_v3,
 )
 from yorunge.domain.dataset_manifest import DatasetManifest, canonical_manifest
-from yorunge.domain.dataset_upload import UploadGrant
+from yorunge.domain.dataset_upload import UploadGrant, manifest_reference
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_costs import ContinuationCostWork, UploadCostBoundV2
@@ -139,6 +139,26 @@ def test_limits_count_the_selected_files_and_their_exact_bytes(indices, size):
     assert limits.max_control_request_bytes == 4 * 1024 * 1024
     assert limits.max_control_response_bytes == 16 * 1024 * 1024
     assert limits == continuation_limits(MANIFEST, list(indices))
+
+
+@pytest.mark.parametrize(
+    "manifest,indices",
+    [
+        (None, ()),
+        ("manifest", ()),
+        (MANIFEST.model_dump(mode="json"), ()),
+        (MANIFEST, None),
+        (MANIFEST, 0),
+        (MANIFEST, {0}),
+        (MANIFEST, frozenset()),
+        (MANIFEST, {0: 1}),
+        (MANIFEST, b"\x00"),
+        (MANIFEST, range(2)),
+    ],
+)
+def test_limits_need_a_real_manifest_and_a_tuple_or_list_of_indices(manifest, indices):
+    with pytest.raises(ValueError, match="manifest and a tuple or list"):
+        continuation_limits(manifest, indices)
 
 
 @pytest.mark.parametrize(
@@ -315,13 +335,26 @@ def test_the_plan_lives_as_long_as_its_window_and_its_shortest_evidence_allow():
 def test_a_plan_needs_a_moment_inside_its_window_and_inside_its_evidence():
     request = request_from("plan-v3-evidenced")
     spent = expiring(request.grant, "2026-11-02T11:00:00.000000Z")  # as the plan is prepared
+    # The observation must precede the preparation, so it moves with the earlier instant: only
+    # the window rule may be left to refuse the first case.
+    early = request.binding.model_copy(update={"observed_at": "2026-11-02T10:59:59.000000Z"})
     for changes in (
-        {"prepared_at": "2026-11-02T10:59:59.999999Z"},  # before the window opens
+        {"prepared_at": "2026-11-02T10:59:59.999999Z", "binding": early},  # before it opens
         {"prepared_at": "2026-11-02T11:15:00.000000Z"},  # when it closes: no lifetime left
-        {"grant": spent},
+        {"grant": spent},  # the evidence ends the moment the plan starts
     ):
-        with pytest.raises((ValidationError, ValueError)):
+        with pytest.raises(ValidationError, match="fit fixed execution window"):
             prepare_continuation_v3(request_from("plan-v3-evidenced", **changes))
+    # The control for the first case: the same early observation with a moment inside the window.
+    prepare_continuation_v3(
+        request_from("plan-v3-evidenced", prepared_at="2026-11-02T11:00:00.000000Z", binding=early)
+    )
+
+
+def test_a_budget_of_zero_is_a_budget_and_exceeded_by_any_priced_work():
+    plan = prepare_continuation_v3(request_from("plan-v3-evidenced", budget_micros=0))
+    assert plan.budget_micros == 0
+    assert (plan.status, plan.blockers) == ("draft", ("cost_exceeds_budget",))
 
 
 def test_the_policy_decides_status_risks_and_blockers_like_it_does_for_v2():
@@ -521,6 +554,16 @@ def test_only_a_genuine_v3_plan_is_approved_by_the_v3_builder_and_never_by_the_v
                 acknowledge_unpriced_cost=True,
                 acknowledge_unconfirmed_effects=True,
             )
+    with failure("upload_plan_not_valid"):  # the type is judged before anything is parsed
+        approve_upload_v3(
+            imitation,
+            approval_id=APPROVAL_ID,
+            confirmed_digest=MAIN.digest,
+            approved_at="not an instant",
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+            acknowledge_unconfirmed_effects=True,
+        )
     for impostor in (MAIN, imitation, None, {"digest": MAIN.digest}):
         with failure("upload_plan_not_valid"):
             approve_upload_v2(
@@ -537,3 +580,136 @@ def test_a_plan_changed_after_sealing_cannot_be_approved_even_when_its_old_diges
     stale = MAIN.model_copy(update={"budget_micros": 1})
     with pytest.raises(ValueError, match="plan digest mismatch"):
         approve(stale, confirmed_digest=stale.digest)
+
+
+def test_each_acknowledgement_belongs_to_its_own_risk():
+    authority_only = prepare_continuation_v3(request_from("plan-v3-evidenced", grant=None))
+    assert (authority_only.risks, authority_only.status) == (
+        ("authority_unverified",),
+        "attempt_ready",
+    )
+    unpriced_only = prepare_continuation_v3(
+        request_from(
+            "plan-v3-evidenced",
+            cost_bound=None,
+            cost_policy="unpriced_accepted",
+            budget_micros=None,
+        )
+    )
+    assert (unpriced_only.risks, unpriced_only.status) == (("cost_unverified",), "attempt_ready")
+    uncertain_only = prepare_continuation_v3(
+        request_from(
+            "plan-v3-evidenced",
+            binding=request_from("plan-v3-evidenced").binding.model_copy(
+                update={"uncertain_indices": (1,)}
+            ),
+        )
+    )
+    assert (uncertain_only.risks, uncertain_only.continuation.uncertain_indices) == ((), (1,))
+    needed = {
+        "authority": (authority_only, (True, False, False)),
+        "unpriced": (unpriced_only, (False, True, False)),
+        "unconfirmed": (uncertain_only, (False, False, True)),
+    }
+    names = (
+        "acknowledge_unverified_authority",
+        "acknowledge_unpriced_cost",
+        "acknowledge_unconfirmed_effects",
+    )
+    for plan, required in needed.values():
+        approve(plan, **dict(zip(names, required, strict=True)))
+        with failure("approval_required"):
+            approve(plan, **dict.fromkeys(names, False))
+        for position in range(3):
+            # One flag too many is invalid; the same flag in place of the right one is invalid too.
+            extra = tuple(flag or i == position for i, flag in enumerate(required))
+            if extra != required:
+                with failure("invalid_request"):
+                    approve(plan, **dict(zip(names, extra, strict=True)))
+            swapped = tuple(i == position and not flag for i, flag in enumerate(required))
+            if swapped != required and any(swapped):
+                with failure("invalid_request"):
+                    approve(plan, **dict(zip(names, swapped, strict=True)))
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        {"acknowledge_unverified_authority": False},
+        {"acknowledge_unconfirmed_effects": False},
+        {"acknowledge_unpriced_cost": True, "acknowledge_unverified_authority": None},
+        {"acknowledge_unconfirmed_effects": 1},
+    ],
+)
+def test_a_wrong_digest_or_moment_is_judged_before_any_acknowledgement(flags):
+    with failure("upload_plan_not_valid"):
+        approve(confirmed_digest="0" * 64, **flags)
+    with failure("upload_plan_not_valid"):
+        approve(approved_at=MAIN.expires_at, **flags)
+    with failure("upload_plan_not_valid"):
+        approve(approved_at="2026-11-02T10:59:59.999999Z", confirmed_digest="0" * 64, **flags)
+    with failure("upload_plan_not_valid"):
+        approve(
+            prepare_continuation_v3(request_from("plan-v3", inputs_verified=False)),
+            **flags,
+        )
+
+
+def manifest_of(count):
+    data = json.loads((FIXTURES / "dataset-manifest-v1.json").read_bytes())
+    del data["digest"]
+    data["files"] = [
+        {"path": f"f{i:03d}.txt", "sha256": hashlib.sha256(b"%d" % i).hexdigest(), "size": 1}
+        for i in range(count)
+    ]
+    data["file_count"], data["total_bytes"] = count, count
+    digest = hashlib.sha256(canonical_manifest(data)).hexdigest()
+    return DatasetManifest.model_validate_json(canon({**data, "digest": digest}))
+
+
+def pipeline(manifest, classification):
+    binding = bound(classification)
+    work = ContinuationCostWork(
+        scope=MAIN.scope,
+        root=MAIN.root,
+        manifest=manifest_reference(manifest),
+        parameters=MAIN.parameters,
+        storage=MAIN.storage,
+        request_limits=continuation_limits(manifest, binding.file_indices),
+        execution_window=MAIN.execution_window,
+    )
+    return prepare_continuation_v3(
+        request_from("plan-v3", work=work, binding=binding, manifest=manifest)
+    )
+
+
+def test_the_largest_continuations_build_limits_bindings_plans_and_approvals():
+    manifest = manifest_of(128)
+    items = tuple(
+        RemoteItem(f.path, f.size, f.sha256, f"item-{i}") for i, f in enumerate(manifest.files)
+    )
+    everything = classify(
+        manifest,
+        ChainSummary(("intent",) * 128, False, False, manifest.digest),
+        RemoteInventory((), frozenset()),
+    )
+    plan = pipeline(manifest, everything)  # 128 files to send, every one of them unconfirmed
+    assert plan.request_limits.files == 128 and plan.request_limits.max_upload_bytes == 128
+    assert plan.continuation.file_indices == tuple(range(128))
+    assert plan.continuation.uncertain_indices == tuple(range(128))
+    assert len(plan.encoded()) < 16 * 1024
+    assert approve(plan).plan_digest == plan.digest
+    assert continuation_limits(manifest, list(range(127))).max_upload_bytes == 127
+    confirmed = classify(
+        manifest,
+        ChainSummary(("accepted",) * 128, False, False, manifest.digest),
+        RemoteInventory(items, frozenset()),
+    )
+    check_only = pipeline(manifest, confirmed)  # nothing to send, 128 files verified
+    assert check_only.request_limits.files == 0 and check_only.request_limits.max_upload_bytes == 0
+    assert check_only.continuation.remote_present_count == 128
+    approval = approve(
+        check_only,
+        **{**NO_ACKS, "acknowledge_unverified_authority": True, "acknowledge_unpriced_cost": True},
+    )
+    assert approval.acknowledge_unconfirmed_effects is False  # nothing is unconfirmed to accept
