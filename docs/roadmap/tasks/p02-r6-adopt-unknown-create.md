@@ -3,7 +3,7 @@ id: P02-R6
 phase: P02
 status: draft
 size: M
-depends_on: [P02-3h]
+depends_on: [P02-3x]
 capabilities: [C03, C12]
 ---
 # P02-R6 — Bilinmeyen create sonucunun açık dataset sahiplenmesi
@@ -20,9 +20,9 @@ Kullanıcının dataset kimliğini **açıkça** vermesi; salt okuma ile sahip/p
 
 ## Bağımlılıklar ve kararlar
 
-P02-3h’nin continuation temeline ve ayrı bir Proposed ADR’ye bağlıdır (insan onaylı sahiplenme kaydı ADR-0027 baseline’ının yerini tutamayacağı için yeni makbuz/baseline türü gerekebilir). Karar onaylanmadan ready değildir.
+P02-3x’in tamamladığı continuation temeline (P02-3h–3x) ve ayrı bir Proposed ADR’ye bağlıdır (insan onaylı sahiplenme kaydı ADR-0027 baseline’ının yerini tutamayacağı için yeni makbuz/baseline türü gerekebilir). Karar onaylanmadan ready değildir.
 
-**Açılma ölçütü ve hedef:** (a) kullanıcı insan onaylı sahiplenme kaydını (yeni “bildirilen baseline” türü) ADR ile onaylar, (b) P02-3h verified olur. Hedef: P02-3 sonrası ilk P02 dilimi veya kullanıcı istediğinde (K4 ile P02-3’e çekilirse 3h sonrası ek adım).
+**Açılma ölçütü ve hedef:** (a) kullanıcı insan onaylı sahiplenme kaydını (yeni “bildirilen baseline” türü) ADR ile onaylar, (b) P02-3x verified olur. Hedef: P02-3 sonrası ilk P02 dilimi veya kullanıcı istediğinde (K4 ile P02-3’e çekilirse 3x sonrası ek adım).
 
 ## Sözleşme ve uygulama sınırı
 

@@ -22,7 +22,7 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-R3 | Son kaynakta izole yerel performans kabulü | P02-2v ve uygun referans ortam | [Takip kartı](tasks/p02-r3-isolated-performance-acceptance.md); ADR-0030 Proposed, mevcut reference/CI kapıları henüz değişmedi | `draft` |
 | P02-R4 | Veri sürümü oluşturma (freeze) etkisi | P02-3q; ayrı Proposed ADR | [Takip kartı](tasks/p02-r4-dataset-version-creation.md); ADR-0033 ile P02-3c dışında bırakıldı | `draft` |
 | P02-R5 | Dataset öğesi baytlarına programatik erişim | P02-3m; sağlayıcıda API-key erişimli yol | [Takip kartı](tasks/p02-r5-dataset-item-byte-access.md); API anahtarıyla `file_url` 401, açılma ölçütü dış koşul | `blocked` |
-| P02-R6 | Bilinmeyen create sonucunun açık dataset sahiplenmesi | P02-3h; ayrı Proposed ADR | [Takip kartı](tasks/p02-r6-adopt-unknown-create.md); ADR-0031 ile P02-3a dışında bırakıldı | `draft` |
+| P02-R6 | Bilinmeyen create sonucunun açık dataset sahiplenmesi | P02-3x; ayrı Proposed ADR | [Takip kartı](tasks/p02-r6-adopt-unknown-create.md); ADR-0031 ile P02-3a dışında bırakıldı | `draft` |
 | P02-R7 | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu | P02-2c; ayrı Proposed ADR | [Takip kartı](tasks/p02-r7-persist-provider-denials.md); ADR-0031 incelemesinde bulunan belge–kod boşluğu | `draft` |
 | P02-R8 | Operation’sız upload planlarını unutma (kota yeniden kazanımı) | P02-2c; ayrı karar | [Takip kartı](tasks/p02-r8-forget-unused-upload-plans.md); ADR-0031 incelemesinde bulunan kota etkisi | `draft` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 / 50d68b1 ile development’a teslim edildi | `verified` |
@@ -81,8 +81,11 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3u | Continuation v3 graf doğrulaması, zincir/baseline çözümleyici ve tek okuma anlık görüntüsü (P02-3g’den ayrıştırıldı) | P02-3g; [kart](tasks/p02-3u-continuation-graph-validation-and-chain.md) | `verified` |
 | P02-3v | Continuation kapasite, bakım, reset önizlemesi ve projeksiyonlar (P02-3g’den ayrıştırıldı) | P02-3u; [kart](tasks/p02-3v-continuation-capacity-and-projection.md) | `verified` |
 | P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3v’den sonra, P02-3h’den önce) | P02-3v; [kart](tasks/p02-3r-continuation-write-gates.md) | `verified` |
-| P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `ready` |
-| P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3h; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |
+| P02-3h | Continuation üreticisi: `resume` raporu ve `--prepare` (ilk kapsamı P02-3w/3y/3x ile dörde bölündü) | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `ready` |
+| P02-3w | Continuation aşama yürütücüsü: v3 port/okuyucu, alt küme koordinatörü ve confirm sayaç tabanı (P02-3h’den ayrıştırıldı) | P02-3h; [kart](tasks/p02-3w-continuation-stage-executor.md) | `draft` |
+| P02-3y | Continuation başlatma: taze envanter, `M=0` ve N-dosya proof, hata eşlemesi (P02-3h’den ayrıştırıldı) | P02-3w; [kart](tasks/p02-3y-continuation-start.md) | `draft` |
+| P02-3x | Continuation `reconcile` bağlaması (P02-3h’den ayrıştırıldı) | P02-3y; [kart](tasks/p02-3x-continuation-reconcile.md) | `draft` |
+| P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3x; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |
 | P02-3j | İndirme sözleşme tipleri, doğrulama sözlüğü ve aralık sınıflandırıcısı | P02-2c; [kart](tasks/p02-3j-download-contract.md) | `draft` |
 | P02-3k | İmzalı URL için kimliksiz, akışlı GET taşıması | P02-3j, P02-2f; [kart](tasks/p02-3k-signed-get-transport.md) | `draft` |
 | P02-3l | Akışlı yerel yazıcı, sidecar protokolü ve resume doğrulaması | P02-3j, P02-3s; [kart](tasks/p02-3l-download-sink-publisher.md) | `draft` |

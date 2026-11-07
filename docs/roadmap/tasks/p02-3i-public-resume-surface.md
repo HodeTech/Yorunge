@@ -3,7 +3,7 @@ id: P02-3i
 phase: P02
 status: draft
 size: M
-depends_on: [P02-3h]
+depends_on: [P02-3x]
 capabilities: [C03, C12, C13]
 ---
 # P02-3i — Public resume API/CLI ve uçtan uca kesinti yolculukları
@@ -20,7 +20,7 @@ Kullanıcı kesintiden sonra yalnız mevcut komutlarla kalan işi güvenle bitir
 
 ## Bağımlılıklar ve kararlar
 
-P02-3h verified olmalıdır. Yüzey adları [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) belgesinden; CLI/API değişikliği için yorunge-contract-change disiplini uygulanır (şema–tüketici–hata–belge uyumu). Karar gerekmez.
+P02-3x verified olmalıdır (üretici P02-3h, aşama yürütücüsü P02-3w, başlatma P02-3y, reconcile P02-3x). Yüzey adları [continuation sözleşmesi](../../reference/dataset-upload-continuation.md) belgesinden; CLI/API değişikliği için yorunge-contract-change disiplini uygulanır (şema–tüketici–hata–belge uyumu). Karar gerekmez.
 
 ## Sözleşme ve uygulama sınırı
 
