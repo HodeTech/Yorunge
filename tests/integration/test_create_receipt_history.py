@@ -5,7 +5,7 @@ import sqlite3
 import pytest
 
 from tests.contracts.test_create_receipt import GOLDEN, receipt
-from tests.integration.test_upload_versioned_history import install_fixture
+from tests.fixtures.upload_history import install_fixture
 from yorunge import api
 from yorunge.adapters.local_files import Deadline
 from yorunge.adapters.state import DB_NAME, backup, open_store

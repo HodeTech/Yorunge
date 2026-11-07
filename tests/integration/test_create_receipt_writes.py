@@ -12,10 +12,10 @@ from uuid import uuid4
 import pytest
 
 from tests.contracts.test_upload_versions import graph
+from tests.fixtures.upload_history import install_fixture
 from tests.fixtures.upload_receipts import accepted_create
 from tests.integration.test_upload_journal import DATASET
 from tests.integration.test_upload_journal import journal as journal
-from tests.integration.test_upload_versioned_history import install_fixture
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads

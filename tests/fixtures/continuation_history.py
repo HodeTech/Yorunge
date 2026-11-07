@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tests.integration.test_upload_versioned_history import install_fixture
+from tests.fixtures.upload_history import install_fixture
 
 FIXTURES = Path(__file__).parent
 
