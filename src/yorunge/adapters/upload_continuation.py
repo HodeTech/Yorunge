@@ -32,11 +32,7 @@ from yorunge.application.http_transport import HttpCredential
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_budget import UploadBudget
-from yorunge.application.upload_workflow import (
-    ContinuationEnvironment,
-    EffectOutcome,
-    PreparedEffect,
-)
+from yorunge.application.upload_workflow import EffectOutcome, PreparedEffect
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
@@ -271,10 +267,14 @@ def run_stages(
     inputs: UploadInputObservation,
     baseline: ProviderDataset,
     end: float,
-    algorithm: Callable[[ContinuationEnvironment], Awaitable[TransferRecordV3]],
+    algorithm: Callable[[ContinuationStages], Awaitable[TransferRecordV3]],
 ) -> TransferRecordV3:
     """One session with the continuation's own budget (no create, no link, M files), one
-    environment and ``algorithm`` over it; a failure is the operation's own error."""
+    environment and ``algorithm`` over it; a failure is the operation's own error.
+
+    The algorithm gets the whole environment (its reader, port and client too), as the start of a
+    continuation needs them for the fresh look before admission and the closing read after the
+    stages; the stages themselves ask only what ``ContinuationEnvironment`` names."""
     if baseline.id != plan.continuation.dataset_id:
         raise YorungeError("invalid_request")  # what is extended is the plan's dataset, no other
     key = HttpCredential(
