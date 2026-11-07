@@ -77,6 +77,22 @@ def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lif
         assert rows(store) == before  # the savepoint of the transaction took the plan row back
 
 
+def test_a_plan_whose_root_made_no_dataset_is_not_saved(lifecycle):
+    root = lifecycle.root["record"]["operation_id"]
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        # The root's create was never answered: there is no baseline a continuation could extend.
+        store.connection.execute(
+            "DELETE FROM upload_stage_receipts WHERE intent_id IN "
+            "(SELECT intent_id FROM upload_stage_intents WHERE operation_id=? AND kind='create')",
+            (root,),
+        )
+        before = rows(store)
+        repository = lifecycle.repository(store)
+        plan = lifecycle.plan(1)
+        assert code_of(lambda: repository.save(plan, lifecycle.manifest)) == "state_invalid"
+        assert rows(store) == before
+
+
 def test_a_continuation_is_saved_without_a_preparation_check_and_not_outside_its_window(lifecycle):
     from yorunge.domain.capabilities import instant
 

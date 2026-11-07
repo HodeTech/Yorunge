@@ -3,11 +3,14 @@
 import hashlib
 import json
 from datetime import timedelta
+from functools import partial
 
 import pytest
 
 from tests.fixtures.continuation_history import CREATE_RECEIPT, DATASET_ID, FILES, canon
 from yorunge.adapters.state import open_store
+from yorunge.adapters.upload_maintenance import invalidate_uploads
+from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import acknowledged_stages, read_any_view, validate_uploads
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
@@ -211,7 +214,7 @@ def test_a_rejection_with_another_request_in_flight_leaves_the_operation_unknown
 # --- stopping, expiring and renewing ----------------------------------------------------------
 
 
-def test_stopping_before_the_first_intent_cancels_and_after_it_leaves_the_operation_unknown(
+def test_stopping_before_the_first_intent_cancels_even_with_the_reason_that_says_uncertain(
     lifecycle,
 ):
     plan, record = lifecycle.admitted()
@@ -310,3 +313,78 @@ def test_the_lease_of_a_continuation_is_renewed_by_its_own_write_owner(lifecycle
         assert instant(renewed.expires_at) > instant(record.lease.expires_at)
         now = read_any_view(store.connection, plan.plan_id).operation
         assert now.lease == renewed and json.loads(now.encoded())["lease"]["owner_id"]
+
+
+# --- the current check each stage is armed on -------------------------------------------------
+
+
+def test_a_stage_is_not_armed_on_a_stale_a_foreign_or_a_wrong_current_check(lifecycle):
+    plan, record = lifecycle.admitted()
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        stale = repository.capture(plan, "upload_created_dataset", DATASET_ID)
+        tick(lifecycle, 31)  # older than the thirty seconds a check may be
+        elsewhere = "00000000-0000-4000-8000-000000000777"
+        refused = {
+            "stale": (stale, "upload_plan_not_valid"),
+            "of another dataset": (
+                repository.capture(plan, "upload_created_dataset", elsewhere),
+                "state_changed",
+            ),
+            "for another action": (
+                repository.capture(plan, "read_created_dataset", DATASET_ID),
+                "state_changed",
+            ),
+        }
+        before = dump(store)
+        total_end = lifecycle.clock.monotonic() + 900
+        for name, (check, code) in refused.items():
+            arm = partial(
+                StateUploads.arm,
+                repository,
+                record.operation_id,
+                record.lease,
+                check,
+                "presign",
+                1,
+                total_end=total_end,
+            )
+            assert code_of(arm) == code, name
+        assert dump(store) == before
+
+
+# --- an identity reset over what the gates wrote ----------------------------------------------
+
+NEW_EPOCH = "00000000-0000-4000-8000-0000000000e9"
+RESET_CASES = {
+    "after the first intent": ({}, True, ("unknown", "identity_reset", "recovery")),
+    "check-only": (
+        {"indices": (), "uncertain": ()},
+        False,
+        ("cancelled", "identity_reset", "terminal"),
+    ),
+}
+
+
+@pytest.mark.parametrize("case", RESET_CASES.values(), ids=RESET_CASES)
+def test_an_identity_reset_closes_a_record_the_gates_wrote_like_any_other_history(lifecycle, case):
+    spec, sends, (status, reason, kind) = case
+    plan, record = lifecycle.admitted(**spec)
+    if sends:
+        run(lifecycle, plan, record, "presign", 1)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        scope = lifecycle.root["plan"]["scope"]
+        with store.connection:
+            store.connection.execute("BEGIN IMMEDIATE")
+            invalidate_uploads(
+                store.connection,
+                scope["store_id"],
+                NEW_EPOCH,
+                instant("2026-11-03T11:00:00.000000Z"),
+                store.deadline,
+            )
+        view = read_any_view(store.connection, plan.plan_id)
+        assert (view.operation.status, view.operation.reason) == (status, reason)
+        assert [(c.kind, type(c)) for c in view.controls] == [(kind, TransferControlV3)]
+        assert view.operation.lease is None
+        validate_uploads(store.connection)

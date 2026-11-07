@@ -8,7 +8,7 @@ from tests.fixtures.continuation_history import FIRST, build, canon, install
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import capacity, read_any_view, validate_uploads
-from yorunge.domain.capabilities import instant
+from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferRecordV3
 from yorunge.domain.errors import OperationError, YorungeError
 
@@ -76,6 +76,9 @@ def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(
         assert record.approval == repository.show(plan_id=plan.plan_id).approval
         # Its journal is empty, its namespace is its root's and no create right was taken.
         assert repository.show(operation_id=record.operation_id).intents == ()
+        # The base of the confirm counter, N-M, is read from the plan the record is bound to.
+        stored = repository.show(operation_id=record.operation_id).plan
+        assert stored.continuation.remote_present_count == 3 - len(plan.continuation.file_indices)
         assert store.connection.execute("SELECT * FROM upload_namespaces").fetchall() == namespaces
         assert capacity(store.connection)[1] == before[1] + 1
         # The same admission again is the same record, found without a new permit.
@@ -184,10 +187,12 @@ def test_a_source_that_already_has_a_continuation_that_was_not_cancelled_is_not_
         # The root already continues into an unknown one: the new plan would be a second branch.
         install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
         plan, repository = ready(lifecycle, store, 2)
+        before = dump(store)
         assert related_of(lambda: repository.admit(plan.plan_id, plan)) == (
             "operation_conflict",
             FIRST,
         )
+        assert dump(store) == before
 
 
 def test_a_cancelled_continuation_of_the_source_is_no_obstacle(lifecycle):
@@ -222,6 +227,8 @@ def test_a_descendant_that_lapsed_before_it_sent_anything_is_cancelled_by_the_ne
 
 
 def test_nothing_else_may_run_against_the_dataset_outside_the_chain(lifecycle):
+    # A second line of defence: full validation already refuses a store with two live branches off
+    # one source, so this store is one that only a fault could leave behind.
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
         # A second, admitted branch off the root: not part of the chain that continues FIRST.
@@ -230,36 +237,50 @@ def test_nothing_else_may_run_against_the_dataset_outside_the_chain(lifecycle):
             lifecycle, store, 2, source=FIRST, indices=(2,), uncertain=(), intents=0
         )
         outsider = "00000000-0000-4000-8000-000000000303"
+        before = dump(store)
         assert related_of(lambda: repository.admit(plan.plan_id, plan)) == (
             "operation_conflict",
             outsider,
         )
+        assert dump(store) == before
+
+
+def last_event_of_the_root(store, lifecycle, when):
+    """Move the last thing the root (the source of the default plan) did to ``when``."""
+    root = lifecycle.root["record"]["operation_id"]
+    row = store.connection.execute(
+        "SELECT payload FROM upload_operations WHERE operation_id=?", (root,)
+    ).fetchone()[0]
+    control = json.loads(
+        store.connection.execute(
+            "SELECT payload FROM upload_controls WHERE operation_id=?", (root,)
+        ).fetchone()[0]
+    )
+    store.connection.execute(
+        "UPDATE upload_operations SET payload=? WHERE operation_id=?",
+        (canon({**json.loads(row), "updated_at": when}).decode(), root),
+    )
+    store.connection.execute(
+        "UPDATE upload_controls SET payload=? WHERE operation_id=?",
+        (canon({**control, "observed_at": when}).decode(), root),
+    )
 
 
 def test_an_operation_is_never_born_before_the_last_thing_its_source_did(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store)
-        later = "2026-11-02T11:10:00.000000Z"  # after the clock of the test, within the plan window
-        root = lifecycle.root["record"]["operation_id"]
-        row = store.connection.execute(
-            "SELECT payload FROM upload_operations WHERE operation_id=?", (root,)
-        ).fetchone()[0]
-        record = {**json.loads(row), "updated_at": later}
-        control = json.loads(
-            store.connection.execute(
-                "SELECT payload FROM upload_controls WHERE operation_id=?", (root,)
-            ).fetchone()[0]
-        )
-        store.connection.execute(
-            "UPDATE upload_operations SET payload=? WHERE operation_id=?",
-            (canon(record).decode(), root),
-        )
-        store.connection.execute(
-            "UPDATE upload_controls SET payload=? WHERE operation_id=?",
-            (canon({**control, "observed_at": later}).decode(), root),
-        )
+        # After the clock of the test, within the plan window.
+        last_event_of_the_root(store, lifecycle, "2026-11-02T11:10:00.000000Z")
         assert read_any_view(store.connection, plan.plan_id).operation is None  # still readable
         refused_untouched(lifecycle, store, plan, repository, "operation_conflict")
+
+
+def test_an_operation_may_be_born_in_the_very_instant_its_source_last_did_something(lifecycle):
+    with open_chain(lifecycle) as store:
+        plan, repository = ready(lifecycle, store)
+        last_event_of_the_root(store, lifecycle, timestamp(lifecycle.clock.value))
+        record = repository.admit(plan.plan_id, plan)
+        assert record.created_at == timestamp(lifecycle.clock.value)
 
 
 def test_a_descendant_whose_approval_was_revoked_is_cancelled_for_that_reason(lifecycle):
@@ -281,3 +302,160 @@ def test_a_descendant_whose_approval_was_revoked_is_cancelled_for_that_reason(li
         stale = repository.show(operation_id=FIRST)
         assert (stale.operation.status, stale.operation.reason) == ("cancelled", "approval_revoked")
         validate_uploads(store.connection)
+
+
+# --- the closed rule, state by state --------------------------------------------------------------
+
+
+def stopped_first(lifecycle, store):
+    """The first continuation of the root, stopped unknown: file 2's put was never answered."""
+    install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
+
+
+def second_plan(lifecycle, store):
+    """The plan that continues it: file 2 only."""
+    return ready(lifecycle, store, 2, source=FIRST, indices=(2,), uncertain=(), intents=0)
+
+
+def test_a_second_continuation_is_admitted_from_the_first_that_stopped(lifecycle):
+    with open_chain(lifecycle) as store:
+        # An earlier attempt off the root was cancelled and is over; it must not hold the chain.
+        install(store, build(lifecycle.root, 3, status="cancelled"))
+        stopped_first(lifecycle, store)
+        plan, repository = second_plan(lifecycle, store)
+        record = repository.admit(plan.plan_id, plan)
+        assert (record.status, record.verification_only, record.workflow_latched) == (
+            "admitted",
+            False,
+            False,
+        )
+        stored = repository.show(operation_id=record.operation_id).plan
+        assert stored.continuation.source_operation_id == FIRST
+        assert stored.continuation.baseline_operation_id == lifecycle.root["record"]["operation_id"]
+        assert stored.continuation.remote_present_count == 2
+        validate_uploads(store.connection)
+
+
+def give_a_read_lease(store, operation_id, until):
+    """What a reader that took the unknown source leaves: a live read lease, one fence higher."""
+    record = json.loads(
+        store.connection.execute(
+            "SELECT payload FROM upload_operations WHERE operation_id=?", (operation_id,)
+        ).fetchone()[0]
+    )
+    lease = {
+        "owner_id": "00000000-0000-4000-8000-0000000000aa",
+        "fence": record["fence"] + 1,
+        "identity_epoch": record["observed_identity_epoch"],
+        "clock_generation": record["observed_clock_generation"],
+        "mode": "read",
+        "renewed_at": record["updated_at"],
+        "expires_at": until,
+    }
+    changed = {
+        **record,
+        "lease": lease,
+        "fence": lease["fence"],
+        "revision": record["revision"] + 1,
+    }
+    store.connection.execute(
+        "UPDATE upload_operations SET payload=?, revision=?, lease_expires_at=? "
+        "WHERE operation_id=?",
+        (canon(changed).decode(), changed["revision"], until, operation_id),
+    )
+    control = json.loads(
+        store.connection.execute(
+            "SELECT payload FROM upload_controls WHERE operation_id=? AND kind='recovery'",
+            (operation_id,),
+        ).fetchone()[0]
+    )
+    store.connection.execute(
+        "UPDATE upload_controls SET payload=? WHERE operation_id=? AND kind='recovery'",
+        (canon({**control, "revision": changed["revision"]}).decode(), operation_id),
+    )
+
+
+def test_an_unknown_source_that_a_reader_holds_is_not_continued_until_the_lease_is_over(lifecycle):
+    with open_chain(lifecycle) as store:
+        stopped_first(lifecycle, store)
+        give_a_read_lease(store, FIRST, until="2026-11-02T11:02:30.000000Z")
+        plan, repository = second_plan(lifecycle, store)
+        validate_uploads(store.connection)  # a store that production can leave behind
+        before = dump(store)
+        assert related_of(lambda: repository.admit(plan.plan_id, plan)) == (
+            "operation_conflict",
+            FIRST,
+        )
+        assert dump(store) == before
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")  # the reader's lease is over
+        assert repository.admit(plan.plan_id, plan).status == "admitted"
+
+
+def test_work_on_another_dataset_does_not_hold_this_one_back(lifecycle):
+    elsewhere = "00000000-0000-4000-8000-000000000777"
+    with open_chain(lifecycle) as store:
+        stopped_first(lifecycle, store)
+        # Somebody else's upload, still admitted, against another dataset of the same store (a
+        # stand-in: its lineage is not a valid one, but only the record is read by the scan).
+        stand_in = build(lifecycle.root, 4, status="admitted", binding={"dataset_id": elsewhere})
+        stand_in.record = {**stand_in.record, "dataset_id": elsewhere}
+        install(store, stand_in)
+        plan, repository = second_plan(lifecycle, store)
+        assert repository.admit(plan.plan_id, plan).status == "admitted"
+
+
+def test_a_descendant_whose_approval_ran_out_is_cancelled_for_that_reason(lifecycle):
+    with open_chain(lifecycle) as store:
+        sibling = build(lifecycle.root, 1, status="admitted")
+        over = "2026-11-02T11:03:00.000000Z"  # before the second admission, after the first lease
+        sibling.approval = {**sibling.approval, "expires_at": over}
+        sibling.record = {**sibling.record, "approval": sibling.approval}
+        install(store, sibling)
+        plan, repository = ready(lifecycle, store, 2)
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+        repository.admit(plan.plan_id, plan)
+        stale = repository.show(operation_id=FIRST)
+        assert (stale.operation.status, stale.operation.reason) == ("cancelled", "approval_expired")
+        validate_uploads(store.connection)
+
+
+def test_an_admission_that_fails_after_it_cancelled_a_stale_descendant_takes_that_back(
+    lifecycle, monkeypatch
+):
+    def full(connection):
+        raise YorungeError("upload_capacity_exceeded")
+
+    with open_chain(lifecycle) as store:
+        install(store, build(lifecycle.root, 1, status="admitted"))
+        plan, repository = ready(lifecycle, store, 2)
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+        before = dump(store)
+        monkeypatch.setattr("yorunge.adapters.upload_repository.require_capacity", full)
+        assert code_of(lambda: repository.admit(plan.plan_id, plan)) == "upload_capacity_exceeded"
+        assert dump(store) == before  # the cancellation of FIRST was part of the same transaction
+        assert repository.show(operation_id=FIRST).operation.status == "admitted"
+
+
+def replace_source(store, item):
+    """The first continuation as it would be had it ended differently (same plan row stays)."""
+    c = store.connection
+    c.execute(
+        "DELETE FROM upload_stage_receipts WHERE intent_id IN "
+        "(SELECT intent_id FROM upload_stage_intents WHERE operation_id=?)",
+        (FIRST,),
+    )
+    for table in ("upload_stage_intents", "upload_controls", "upload_verifications"):
+        c.execute(f"DELETE FROM {table} WHERE operation_id=?", (FIRST,))
+    c.execute("DELETE FROM upload_operations WHERE operation_id=?", (FIRST,))
+    install(store, item, plan=False, approval=False)
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "cancelled", "admitted"])
+def test_a_plan_whose_source_ended_after_it_was_saved_cannot_be_admitted(lifecycle, status):
+    with open_chain(lifecycle) as store:
+        stopped_first(lifecycle, store)
+        plan, repository = second_plan(lifecycle, store)
+        replace_source(store, build(lifecycle.root, 1, status=status))
+        # The lineage no longer holds (a source that is over, or sent nothing, is not continued):
+        # the stored plan is read as an invalid history, before any gate looks at the source.
+        refused_untouched(lifecycle, store, plan, repository, "state_invalid")

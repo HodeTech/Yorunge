@@ -54,11 +54,7 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.dataset_continuation import (
-    DatasetContinuationPlanV3,
-    DatasetUploadApprovalV3,
-    validate_approval_binding_v3,
-)
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -744,14 +740,11 @@ class StateUploads:
 
         The source must be frozen and alone at the end of its chain; a descendant of it that was
         admitted but let its lease lapse is cancelled here, in the same transaction, because the
-        store never holds two descendants of one source that are not cancelled.
+        store never holds two descendants of one source that are not cancelled. The approval is
+        bound to the plan when the view is read and the record is bound to both when it is written.
         """
         if not isinstance(approval, DatasetUploadApprovalV3):
             raise YorungeError("upload_plan_not_valid")
-        try:
-            validate_approval_binding_v3(plan, approval)
-        except ValueError:
-            raise YorungeError("upload_plan_not_valid") from None
         for lapsed in continuation_admission(self.connection, plan, stamp):
             self._cancel_unlatched(read_record(self.connection, lapsed), stamp)
         return TransferRecordV3(
@@ -983,9 +976,8 @@ class StateUploads:
                 if owner.mode != "write" or record.status not in {"admitted", "running"}:
                     raise YorungeError("operation_conflict")
                 if isinstance(record, TransferRecordV3) and record.verification_only:
-                    raise YorungeError(
-                        "operation_conflict"
-                    )  # a check-only continuation sends nothing
+                    # A check-only continuation sends nothing, so it has no stage to arm.
+                    raise YorungeError("operation_conflict")
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
                 action = _arm_permission(kind)
@@ -1571,6 +1563,12 @@ class StateUploads:
                 try:
                     cancelled = self._uncertain_verification(operation_id, owner)
                 except YorungeError as marker_error:
+                    if self._sent_nothing(operation_id):
+                        # Nothing is uncertain: the marker did not land (the lease is gone) and
+                        # the lease cleanup will cancel the operation. This was a late proof.
+                        raise OperationError(
+                            "execution_timeout", operation_id, reason_code=marker_error.code
+                        ) from None
                     raise OperationError(
                         "operation_uncertain", operation_id, reason_code=marker_error.code
                     ) from None
@@ -1578,6 +1576,14 @@ class StateUploads:
                     # A check-only continuation sent nothing: the proof came too late, no more.
                     raise OperationError("execution_timeout", operation_id) from None
             raise
+
+    def _sent_nothing(self, operation_id: str) -> bool:
+        """Whether this is a continuation record that never wrote an intent."""
+        try:
+            record = self.show(operation_id=operation_id).operation
+        except YorungeError:
+            return False
+        return isinstance(record, TransferRecordV3) and not record.workflow_latched
 
     def _proof_deadline(self, deadline: float | None) -> None:
         if deadline is None:
@@ -1666,6 +1672,13 @@ class StateUploads:
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)
+                if (
+                    isinstance(record, TransferRecordV3)
+                    and not record.workflow_latched
+                    and not record.verification_only
+                ):
+                    # It has sent nothing yet, so there is nothing to close: the proof is early.
+                    raise YorungeError("operation_conflict")
                 if proof.schema_version != record.schema_version:
                     raise YorungeError("upload_plan_not_valid")
                 access = authorize_read(

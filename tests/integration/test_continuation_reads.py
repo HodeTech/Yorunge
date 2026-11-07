@@ -4,10 +4,11 @@ from datetime import timedelta
 
 import pytest
 
-from tests.fixtures.continuation_history import DATASET_ID
+from tests.fixtures.continuation_history import DATASET_ID, FIRST, build, install
 from tests.fixtures.continuation_lifecycle import proof_of, read_check
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_projection import summary
+from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view, validate_uploads
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
@@ -33,8 +34,8 @@ def tick(lifecycle, seconds=1):
     lifecycle.clock.value += timedelta(seconds=seconds)
 
 
-def all_stages(lifecycle, plan, record):
-    for kind, index in STAGES:
+def all_stages(lifecycle, plan, record, stages=STAGES):
+    for kind, index in stages:
         lifecycle.arm(plan, record, kind, index)
         tick(lifecycle)
         with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -78,6 +79,40 @@ def test_a_continuation_that_sent_its_files_is_verified_by_reading_the_whole_dat
         found = summary(read_any_view(store.connection, plan.plan_id))
         assert found.operation_status == "succeeded" and found.verification_level == "metadata"
         assert found.authority_verified is False  # nothing proved the authority: a bare attempt
+
+
+def test_a_second_continuation_runs_from_the_first_that_stopped_to_a_verified_dataset(lifecycle):
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        install(store, build(lifecycle.root, 3, status="cancelled"))  # an attempt that is over
+        install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
+    plan, record = lifecycle.admitted(2, source=FIRST, indices=(2,), uncertain=(), intents=0)
+    all_stages(lifecycle, plan, record, [(kind, 2) for kind in ("presign", "put", "confirm")])
+    _, proof, view = close(lifecycle, plan, record)
+    assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
+    assert len(view.intents) == len(view.receipts) == 3 and view.verification == proof
+    assert view.plan.continuation.source_operation_id == FIRST
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        validate_uploads(store.connection)
+        assert summary(read_any_view(store.connection, plan.plan_id)).continuation_of == FIRST
+
+
+def test_a_proof_before_anything_was_sent_is_early_and_leaves_the_operation_alone(lifecycle):
+    plan, record = lifecycle.admitted()
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        before = dump(store)
+        proof = proof_of(plan, timestamp(lifecycle.clock.value))
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, proof, authorization=check
+                )
+            )
+            == "operation_conflict"
+        )
+        assert dump(store) == before  # nothing was cancelled or marked: it is still admitted
+        assert repository.show(operation_id=record.operation_id).operation.status == "admitted"
 
 
 def test_a_continuation_with_an_unanswered_stage_is_not_verified_and_becomes_unknown(lifecycle):
@@ -226,6 +261,80 @@ def test_a_proof_that_comes_too_late_cancels_a_check_only_continuation_without_u
         view = repository.show(operation_id=record.operation_id)
         assert (view.operation.status, view.operation.reason) == ("cancelled", "local_cancelled")
         assert view.verification is None and view.intents == ()
+
+
+def test_a_failed_read_of_a_check_only_continuation_is_reported_by_its_owner_only(lifecycle):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    failure = read_check(plan, lifecycle.clock, error="remote_failed")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        before = dump(store)
+        assert (
+            code_of(lambda: repository.read_failed(record.operation_id, None, failure))
+            == "operation_conflict"
+        )
+        assert dump(store) == before  # a caller without the lease cannot cancel the operation
+
+
+def test_a_late_proof_whose_marker_cannot_be_written_is_a_timeout_and_never_uncertain(
+    lifecycle, monkeypatch
+):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    observed = timestamp(lifecycle.clock.value + timedelta(seconds=5))
+    tick(lifecycle, 50)  # the observation is older than the thirty seconds a proof may be
+    check = read_check(plan, lifecycle.clock)
+    original = StateUploads._uncertain_verification
+
+    def after_the_lease_is_over(self, operation_id, owner):
+        lifecycle.clock.value = instant("2026-11-02T11:04:00.000000Z")
+        return original(self, operation_id, owner)
+
+    monkeypatch.setattr(StateUploads, "_uncertain_verification", after_the_lease_is_over)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        with pytest.raises(OperationError) as error:
+            repository.verified(
+                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+            )
+        # The marker could not land, but nothing was sent: no uncertainty, only a late proof.
+        assert (error.value.code, error.value.reason_code) == (
+            "execution_timeout",
+            "operation_lease_lost",
+        )
+        assert repository.show(operation_id=record.operation_id).operation.status == "admitted"
+        cleaned = repository.cleanup_expired(record.operation_id)  # the lease cleanup finishes it
+        assert (cleaned.operation.status, cleaned.operation.reason) == (
+            "cancelled",
+            "lease_expired",
+        )
+
+
+def test_a_late_proof_of_a_continuation_that_sent_something_stays_uncertain_without_a_marker(
+    lifecycle, monkeypatch
+):
+    plan, record = lifecycle.admitted()
+    all_stages(lifecycle, plan, record)
+    observed = timestamp(lifecycle.clock.value + timedelta(seconds=5))
+    tick(lifecycle, 50)  # the observation is older than the thirty seconds a proof may be
+    check = read_check(plan, lifecycle.clock)
+    original = StateUploads._uncertain_verification
+
+    def after_the_lease_is_over(self, operation_id, owner):
+        lifecycle.clock.value = instant("2026-11-02T11:09:00.000000Z")
+        return original(self, operation_id, owner)
+
+    monkeypatch.setattr(StateUploads, "_uncertain_verification", after_the_lease_is_over)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        with pytest.raises(OperationError) as error:
+            repository.verified(
+                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+            )
+        # Something was sent, so what the late proof means is not known, marker or no marker.
+        assert (error.value.code, error.value.reason_code) == (
+            "operation_uncertain",
+            "operation_lease_lost",
+        )
 
 
 def test_a_check_only_continuation_that_lost_its_lease_is_cancelled_and_not_taken_over(

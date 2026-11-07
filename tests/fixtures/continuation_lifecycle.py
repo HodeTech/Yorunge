@@ -54,9 +54,8 @@ def first_action(plan):
     return action, plan.continuation.dataset_id
 
 
-def stage_action(kind):
-    """The permission a stage of a continuation needs (a continuation has no create or link)."""
-    return "upload_created_dataset"
+# The permission every stage of a continuation needs (it has no create and no link).
+STAGE_ACTION = "upload_created_dataset"
 
 
 class FixtureContinuations(StateUploads):
@@ -122,7 +121,7 @@ class FixtureContinuations(StateUploads):
         return super().arm(
             operation_id,
             owner,
-            self.capture(fresh, stage_action(kind), record.dataset_id),
+            self.capture(fresh, STAGE_ACTION, record.dataset_id),
             kind,
             file_index,
             **kwargs,
@@ -180,11 +179,6 @@ class Lifecycle:
     def plan(self, number=1, **spec) -> DatasetContinuationPlanV3:
         """A sealed continuation plan of the root (or of ``source``), as the producer would save."""
         return plan_of(build(self.root, number, **spec))
-
-    def prepared(self, number=1, **spec):
-        """The builder's data and its plan; the rows stay out of the store until saved."""
-        item = build(self.root, number, **spec)
-        return item, plan_of(item)
 
 
 def receipt_for(intent, clock, rejected=False) -> StageReceipt:
