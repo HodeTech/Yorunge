@@ -151,7 +151,7 @@ Bu bölüm **uygulanan kapalı kod/mesaj/exit kataloğudur; P01-5b review ve kab
 | Kod | Exit | Kesin tetik |
 |---|---:|---|
 | transport_timeout | 1 | Shared total veya HTTP phase/pool timeout; arm sonrası aşağıdaki unknown öncelikli |
-| transport_failed | 1 | TLS/bağlantı/protokol taşıma hatası; ham URL/exception yok |
+| transport_failed | 1 | TLS/bağlantı/protokol taşıma hatası; ham URL/exception yok. DNS, bağlantı reddi ve sertifika doğrulama ayrılmaz; ortam proxy/özel CA kullanılmaz ([kurumsal ağ sınırı](http-transport.md#kurumsal-ağ-ve-ortam-proxysi)) |
 | remote_access_denied | 3 | HTTP 401/403; retry yok, hesabın hangi yetkisinin eksik olduğu uydurulmaz |
 | remote_rate_limited | 1 | 429 ve izinli retry/bütçe sonrası ret; sınırsız bekleme yok |
 | remote_failed | 1 | Redirect dahil kabul edilmeyen diğer HTTP status veya endpoint'in doğrulanmış mantıksal başarısızlığı |

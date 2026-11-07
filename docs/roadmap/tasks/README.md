@@ -55,6 +55,8 @@
 | [P02-R6](p02-r6-adopt-unknown-create.md) | Bilinmeyen create sonucunun açık dataset sahiplenmesi; ADR-0031 ile P02-3a dışında bırakılan özgün ihtiyaç |
 | [P02-R7](p02-r7-persist-provider-denials.md) | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu; ADR-0031 incelemesinde bulunan belge–kod boşluğu |
 | [P02-R8](p02-r8-forget-unused-upload-plans.md) | Operation’sız upload planlarını unutma (kota yeniden kazanımı); continuation’ın N dosyayı yeniden saymasının açık sahibi |
+| [P02-R9](p02-r9-network-diagnosis-and-trust-paths.md) | Kullanıcıya dönük ağ/TLS tanısı ve açık kurumsal CA/proxy yolu; kullanıcı kararı (B16) ve ADR kapılı |
+| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart |
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i, r ve t–y |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |

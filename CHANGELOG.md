@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-11-08
+
+- Yalnız belge/roadmap: LLM OpenAPI yeniden sabitlendi (53.649 byte) ve üç dış inceleme iddiası [araştırma kaydında](docs/research/p02-llm-gateway-schema-review.md) doğrulandı. Kullanıcı belgesine ortam proxy/özel CA kullanılmadığı ve kurumsal ağlardaki sınır yazıldı ([HTTP taşıma](docs/reference/http-transport.md#kurumsal-ağ-ve-ortam-proxysi)). Takip kartları P02-R9 (ağ tanısı ve açık CA/proxy yolu, `draft`, karar B16) ve P02-R10 (şart durumu yönlendirmesi, `ready`). Ürün kodu, CLI davranışı ve sözleşmeler değişmedi.
+
 ### Added — 2026-11-06
 
 - P02-3 hazırlığı: [teslim planı](docs/roadmap/p02-3-delivery-plan.md), [hazırlık incelemesi](docs/research/p02-3-readiness-review.md), ADR-0031 (soy bağlı, yeni onaylı resume; Accepted), ADR-0032 (akışlı indirme ve doğrulama seviyeleri) ve ADR-0033 (salt okuma veri sürümü referansı) — üçü de kullanıcı 2026-11-06 talimatıyla Accepted —, üç taslak referans sözleşmesi, 16 adım ve üç üst kabul kartı ile P02-R4–R8 takipleri. Ürün kodu veya uygulanmış davranış değişikliği henüz yoktur; uygulama adım adım sürer.

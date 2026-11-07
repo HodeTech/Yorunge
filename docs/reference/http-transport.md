@@ -16,6 +16,12 @@ Başlıklar ASCII isim ve güvenli değerlerle sınırlıdır; CR/LF/NUL/control
 
 Redirect kapalıdır, hiçbir 3xx takip edilmez. `trust_env=False`, transport retries=0, HTTP/2 kapalıdır. `trust_env=False` cookie jar'ını kapatmaz. DefaultCookiePolicy'nin kabul/gönderim yollarını reddeden private CookieJar kullanılır; her response ve finally kapanışında client cookie jar'ı temizlenir. İstek explicit HTTPX Request ile oluşturulur; build_request/cookie/auth default merge yapılmaz. Set-Cookie aynı origin'de farklı path/hizmet veya retry'da sonraki isteğe Cookie üretmez. Ham URL/header/exception repr veya provider body public hata/log değildir. Test CA ve loopback ephemeral port yönlendirmesi yalnız fixture composition'ındadır; production policy bypass'ı sunulmaz.
 
+## Kurumsal ağ ve ortam proxysi
+
+Kullanıcı etkisi. Servis ve depolama taşıması `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY`, `SSL_CERT_FILE`/`SSL_CERT_DIR` ve `.netrc` değerlerini **okumaz ve kullanmaz** ([ADR-0017](../decisions/0017-bounded-http-transport.md)); sertifika doğrulaması paketle gelen certifi kökleriyle yapılır ve kapatılamaz. Bu bilinçli bir güvenlik sınırıdır: ortamdaki bir değişken anahtarın gideceği hedefi veya güven kaynağını sessizce değiştiremez. Testler `HTTPS_PROXY`, `ALL_PROXY` ve `SSL_CERT_FILE` değerlerinin yok sayıldığını korur.
+
+Sonuç: ağ çıkışı zorunlu proxy'den geçen, TLS denetimi yapan veya özel kurum CA'sı kullanan ortamlarda uzak komutlar (keşif, upload) şimdilik bağlanamayabilir ve desteklenmez. Hata kararlı kodla gelir: `transport_failed` (bugün DNS, bağlantı reddi, sertifika doğrulama ve protokol hatasını ayırmaz) veya `transport_timeout`; mesaj proxy/CA nedenini söylemez, ham URL ve exception göstermez. Ortam değişkeni ayarlamak işe yaramaz. Dosya denetimi, manifest ve diğer yerel komutlar ağ gerektirmez, etkilenmez. Açık bir kurum CA'sı/proxy seçeneği ve daha ayrıntılı ağ tanısı yoktur; karar [B16](../roadmap/backlog.md) ve takip kartı [P02-R9](../roadmap/tasks/p02-r9-network-diagnosis-and-trust-paths.md)’dadır.
+
 ## Boyut ve süre
 
 | Sınır | İlk uygulama |

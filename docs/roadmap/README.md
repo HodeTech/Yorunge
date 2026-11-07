@@ -41,7 +41,7 @@ Kullanıcının 2026-10-27 tercihiyle P01-2 → P01-3 → P01-4 → P01-5 → P0
 
 Aynı PR'daki sonraki alt iş, öncekinin gerçek kod/test/review kanıtı oluşunca başlayabilir; bağımlılığın ayrı PR'da merge edilmesi gerekmez. Yerel `verified` alt iş kaydı gerçek commit'e dayanır ve paket/PR durumunu olduğundan ileride göstermez. Epik, bütün alt işler ve bütünleşik kabul tamamlanmadan kapanmaz. Karar bekleyen alt iş taslak kalır; paket büyüklüğü hazır olma kontrolünü veya kullanıcı ADR onayını kaldırmaz.
 
-Gerekli ortak temel, ihtiyaç duyan ilk epik PR'ında teslim edilir ve özgün ID'sinde işaretlenir: P01-4a P01-2 PR'ına dahildir; operation/lease/jobs P01-4'te kalır. Yerel doctor P01-2, HTTP tanılaması P01-5, gerçek hesap/proje keşfi P02-0b kapsamıdır. Epik numarası bütün altyapının ilk kez o PR'da yazılacağı anlamına gelmez.
+Gerekli ortak temel, ihtiyaç duyan ilk epik PR'ında teslim edilir ve özgün ID'sinde işaretlenir: P01-4a P01-2 PR'ına dahildir; operation/lease/jobs P01-4'te kalır. Yerel doctor P01-2, ortak HTTP taşıması P01-5 (kullanıcıya dönük ağ tanısı değildir; karar kapılı takip [P02-R9](tasks/p02-r9-network-diagnosis-and-trust-paths.md)), gerçek hesap/proje keşfi P02-0b kapsamıdır. Epik numarası bütün altyapının ilk kez o PR'da yazılacağı anlamına gelmez.
 
 ## P02 paket akışı
 
