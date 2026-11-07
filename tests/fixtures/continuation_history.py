@@ -64,15 +64,16 @@ def stamp(seconds):
     return f"2026-11-02T11:{whole // 60:02d}:{whole % 60:02d}.{fraction:03d}000Z"
 
 
-def install_root(store, *, terminal=False, partial=True, strict=True):
+def install_root(store, *, terminal=False, partial=True, strict=True, scope=None):
     """The root upload, ``unknown`` unless ``terminal``, as a continuation would find it.
 
     ``partial`` (the default) stops it where an interrupted upload stops: the first file is
     confirmed, the second has a confirm intent nothing answered, the third was never reached. A
     complete root (``partial=False``) is one to reconcile, not to continue. ``strict`` gives its
     create intent the strict create receipt; without it the root made no dataset it can prove.
+    ``scope`` re-addresses the root's scope (see ``install_fixture``).
     """
-    data = install_fixture(store, terminal=terminal)
+    data = install_fixture(store, terminal=terminal, scope=scope)
     connection = store.connection
     if strict:
         connection.execute(

@@ -95,8 +95,11 @@ def revoke_upload(plan_id: str, state_dir: Path | None) -> Result[DatasetUploadS
     def revoke(store: Store) -> DatasetUploadSummary:
         repository = StateUploads(store)
         with repository.phase():
-            plan = repository.show(plan_id=plan_id).plan
-            return original_summary(repository.revoke(plan_id, plan.digest))
+            view = repository.show(plan_id=plan_id)
+            # The result types name no continuation yet: refuse one before anything is written, not
+            # after its approval has been revoked.
+            original_summary(view)
+            return original_summary(repository.revoke(plan_id, view.plan.digest))
 
     return Result[DatasetUploadSummary](data=_safe_local(state_dir, None, revoke))
 

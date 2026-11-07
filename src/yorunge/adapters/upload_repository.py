@@ -44,6 +44,7 @@ from yorunge.adapters.upload_store import (
     read_any_view as read_view,
 )
 from yorunge.adapters.validation_memo import validation_session
+from yorunge.application.continuation_policy import approve_upload_v3
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm, _issue_upload_arm
@@ -52,6 +53,7 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -69,6 +71,10 @@ from yorunge.domain.dataset_transfer_v2 import (
     TransferControlV2,
     TransferRecordV2,
     TransferVerificationV2,
+)
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
 )
 from yorunge.domain.dataset_upload import (
     COMMIT_MARGIN_SECONDS,
@@ -103,6 +109,15 @@ from yorunge.domain.upload_versions import (
 from yorunge.domain.upload_versions import (
     proof_digest as verification_digest,
 )
+
+
+def continuation_action(plan: DatasetContinuationPlanV3) -> tuple[UploadPermission, str]:
+    """What a continuation needs first: to upload into its dataset, or (sending nothing) to read."""
+    binding = plan.continuation
+    action: UploadPermission = (
+        "upload_created_dataset" if binding.file_indices else "read_created_dataset"
+    )
+    return action, binding.dataset_id
 
 
 def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> None:
@@ -302,7 +317,7 @@ class StateUploads:
         dataset_id: str | None = None,
     ) -> tuple[str, ...]:
         if (
-            not isinstance(plan, DatasetUploadPlanV2)
+            not isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
             or not isinstance(fresh, UploadCurrentCheck)
             or plan.status == "draft"
         ):
@@ -321,7 +336,7 @@ class StateUploads:
 
     @staticmethod
     def _current_ranges(
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         fresh: UploadCurrentCheck,
         gate: TimeGate,
         *,
@@ -429,7 +444,10 @@ class StateUploads:
     ) -> VersionedTransferView:
         with self.phase():
             plan = decode_versioned(
-                DatasetUploadPlan, DatasetUploadPlanV2, plan.encoded().decode("ascii")
+                DatasetUploadPlan,
+                DatasetUploadPlanV2,
+                plan.encoded().decode("ascii"),
+                DatasetContinuationPlanV3,
             )
             if manifest_reference(manifest) != plan.manifest:
                 raise YorungeError("input_changed")
@@ -454,7 +472,9 @@ class StateUploads:
                     if read_plan(self.connection, plan.plan_id) != plan:
                         raise YorungeError("operation_conflict")
                 else:
-                    self._namespace_available(plan.intent_digest())
+                    if not isinstance(plan, DatasetContinuationPlanV3):
+                        # A continuation shares its root's namespace and makes no create right.
+                        self._namespace_available(plan.intent_digest())
                     self.connection.execute(
                         "INSERT OR IGNORE INTO upload_namespaces VALUES(?,?,NULL)",
                         (plan.intent_digest(), namespace(plan).decode("ascii")),
@@ -545,7 +565,7 @@ class StateUploads:
             with self.cache.transaction(stamp, clock_error="state_changed") as gate:
                 view = read_view(self.connection, plan_id)
                 if not isinstance(view.plan, DatasetUploadPlanV2):
-                    raise YorungeError("upload_plan_not_valid")
+                    raise YorungeError("upload_plan_not_valid")  # a continuation has its own
                 self._current(view.plan, fresh, stamp, gate)
                 if view.operation is not None or view.approval is not None:
                     raise YorungeError("operation_conflict")
@@ -556,6 +576,50 @@ class StateUploads:
                     approved_at=timestamp(stamp.now),
                     acknowledge_unverified_authority=acknowledge_unverified_authority,
                     acknowledge_unpriced_cost=acknowledge_unpriced_cost,
+                )
+                self.connection.execute(
+                    "INSERT INTO upload_approvals VALUES(?,?,?,?)",
+                    (
+                        plan_id,
+                        approval.approval_id,
+                        approval.expires_at,
+                        approval.encoded().decode("ascii"),
+                    ),
+                )
+                require_capacity(self.connection)
+            self._finish(stamp, gate, scope=view.plan.scope)
+            return approval
+
+    def approve_continuation(
+        self,
+        plan_id: str,
+        digest: str,
+        fresh: UploadCurrentCheck | UploadPlan,
+        *,
+        acknowledge_unverified_authority: bool = False,
+        acknowledge_unpriced_cost: bool = False,
+        acknowledge_unconfirmed_effects: bool = False,
+    ) -> DatasetUploadApprovalV3:
+        """Approve a saved continuation plan: the v2 rules and one more acknowledgement."""
+        with self.phase():
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="state_changed") as gate:
+                view = read_view(self.connection, plan_id)
+                if not isinstance(view.plan, DatasetContinuationPlanV3):
+                    raise YorungeError("upload_plan_not_valid")
+                # The fresh check must show what the continuation does first.
+                action, dataset_id = continuation_action(view.plan)
+                self._current(view.plan, fresh, stamp, gate, action=action, dataset_id=dataset_id)
+                if view.operation is not None or view.approval is not None:
+                    raise YorungeError("operation_conflict")
+                approval = approve_upload_v3(
+                    view.plan,
+                    approval_id=str(uuid4()),
+                    confirmed_digest=digest,
+                    approved_at=timestamp(stamp.now),
+                    acknowledge_unverified_authority=acknowledge_unverified_authority,
+                    acknowledge_unpriced_cost=acknowledge_unpriced_cost,
+                    acknowledge_unconfirmed_effects=acknowledge_unconfirmed_effects,
                 )
                 self.connection.execute(
                     "INSERT INTO upload_approvals VALUES(?,?,?,?)",
@@ -585,6 +649,7 @@ class StateUploads:
                         DatasetUploadApproval,
                         DatasetUploadApprovalV2,
                         changed.encoded().decode("ascii"),
+                        DatasetUploadApprovalV3,
                     )
                     self.connection.execute(
                         "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
@@ -711,7 +776,7 @@ class StateUploads:
             }
         )
         updated = decode_versioned(
-            TransferRecord, TransferRecordV2, updated.encoded().decode("ascii")
+            TransferRecord, TransferRecordV2, updated.encoded().decode("ascii"), TransferRecordV3
         )
         write_record(self.connection, updated, record.revision)
         return updated
@@ -739,7 +804,10 @@ class StateUploads:
         from yorunge.domain.capabilities import canonical
 
         value = decode_versioned(
-            TransferControl, TransferControlV2, canonical(body).decode("ascii")
+            TransferControl,
+            TransferControlV2,
+            canonical(body).decode("ascii"),
+            TransferControlV3,
         )
         if terminal:
             self.connection.execute(

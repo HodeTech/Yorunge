@@ -328,10 +328,10 @@
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._current",
    "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlanV2)",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a v2 or v3 plan holds the evidence a fresh current check is compared with"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -339,17 +339,26 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "v2-only",
+   "note": "the create preparation check belongs to original uploads; a continuation is saved without one"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.save",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "save re-decodes the plan as v1/v2 and so rejects a continuation plan; its own save path is P02-3r's"
+   "owner": "done",
+   "note": "a plan of any family is saved; a continuation's lineage is validated when the stored view is read back"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.save",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation shares its root's namespace and makes no create right, so the namespace is not claimed"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -357,17 +366,26 @@
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "v2-only",
+   "note": "approve is the original upload's approval; a continuation is approved through approve_continuation"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.approve_continuation",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a continuation plan is approved here, with the third acknowledgement"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.revoke",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(DatasetUploadApproval, DatasetUploadApprovalV2, DatasetUploadApprovalV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "revoke re-decodes the approval as v1/v2 and so rejects a continuation approval; the v3 revoke is P02-3r's"
+   "owner": "done",
+   "note": "a revoked approval is written in its own family"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -381,11 +399,11 @@
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._change",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(TransferRecord, TransferRecordV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferRecord, TransferRecordV2, TransferRecordV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "every record change is re-decoded as v1/v2 and so rejects a continuation record; the v3 change is P02-3r's"
+   "owner": "done",
+   "note": "a changed record is written in its own family: v1, v2 or v3"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -393,17 +411,17 @@
    "kind": "version",
    "text": "'schema_version': record.schema_version",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the control copies the record's version into its payload, which picks the control family; the v3 control is P02-3r's"
+   "owner": "done",
+   "note": "the control copies the record's version into its payload, which picks its family (a continuation's control is v3)"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._control",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(TransferControl, TransferControlV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferControl, TransferControlV2, TransferControlV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the control is decoded as v1/v2 and so rejects a v3 control; the v3 control is P02-3r's"
+   "owner": "done",
+   "note": "a control is written in the family of the record it describes"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",

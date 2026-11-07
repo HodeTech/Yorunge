@@ -25,13 +25,22 @@ def digest(value):
     return hashlib.sha256(encode(value)).hexdigest()
 
 
-def install_fixture(store, *, terminal=True):
+def install_fixture(store, *, terminal=True, scope=None):
+    """Install the history re-addressed to ``store``; ``scope`` re-addresses it further.
+
+    ``scope`` overrides fields of the plan's scope (the credential a real repository will check, the
+    clock generation of the store's stamp) before anything is sealed; the stage owners and the
+    record follow the scope's clock generation.
+    """
     data = json.loads((FIXTURES / "dataset-transfer-graph-v2.json").read_bytes())
     meta = metadata(store.connection)
     plan, approval, record, proof = (
         data[key] for key in ("plan", "approval", "record", "verification")
     )
     plan["scope"].update(store_id=meta.store_id, identity_epoch=meta.identity_epoch)
+    plan["scope"].update(scope or {})
+    generation = plan["scope"]["clock_generation"]
+    record["observed_clock_generation"] = generation
     body = {k: v for k, v in plan.items() if k != "digest"}
     plan["digest"] = digest(body)
     binding = {
@@ -40,6 +49,7 @@ def install_fixture(store, *, terminal=True):
     approval.update(
         store_id=meta.store_id,
         identity_epoch=meta.identity_epoch,
+        clock_generation=generation,
         plan_digest=plan["digest"],
         binding_digest=digest(binding),
     )
@@ -49,6 +59,7 @@ def install_fixture(store, *, terminal=True):
     proof["scope"] = plan["scope"]
     for intent in data["intents"]:
         intent["owner"]["identity_epoch"] = meta.identity_epoch
+        intent["owner"]["clock_generation"] = generation
         kind, index = intent["kind"], intent["file_index"]
         mf = json.loads((FIXTURES / "dataset-manifest-v1.json").read_bytes())
         request = {
@@ -61,7 +72,11 @@ def install_fixture(store, *, terminal=True):
         }
         intent["request_digest"] = digest(request)
     control = data["controls"][0]
-    control.update(identity_epoch=meta.identity_epoch, verification_digest=digest(proof))
+    control.update(
+        identity_epoch=meta.identity_epoch,
+        clock_generation=generation,
+        verification_digest=digest(proof),
+    )
     if not terminal:
         record.update(status="unknown", reason="request_uncertain")
         control.update(kind="recovery", reason="request_uncertain", verification_digest=None)

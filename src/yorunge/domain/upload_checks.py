@@ -8,6 +8,7 @@ from typing import Literal, Self
 from pydantic import field_validator, model_validator
 
 from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import Sha256
 from yorunge.domain.dataset_upload import (
     REQUIRED_PERMISSIONS,
@@ -183,7 +184,7 @@ class UploadCurrentCheck(UploadWire):
 
     def require_current(
         self,
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         *,
         now: str,
         action: UploadPermission,
@@ -213,7 +214,9 @@ class UploadCurrentCheck(UploadWire):
             self.upload_observation.require_current(plan.scope, dataset_id, now)
         return expiries
 
-    def _evidence(self, plan: DatasetUploadPlanV2, now: str) -> tuple[str, ...]:
+    def _evidence(
+        self, plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3, now: str
+    ) -> tuple[str, ...]:
         saved = (plan.grant, plan.cost_bound)
         baseline = (self.baseline_grant, self.baseline_cost_bound)
         for original, current in zip(saved, baseline, strict=True):

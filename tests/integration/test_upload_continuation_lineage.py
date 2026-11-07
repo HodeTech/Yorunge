@@ -522,26 +522,17 @@ def test_a_succeeded_continuation_reads_back_with_its_own_control_and_proof_fami
         refused(store, item)
 
 
-def test_the_repository_reads_a_continuation_as_itself_and_will_not_revoke_it_as_a_v2(tmp_path):
+def test_the_repository_reads_a_continuation_as_itself_and_revokes_it_as_a_v3(tmp_path):
     with world(tmp_path, {"status": "admitted", "plan_only": True}) as (store, _, (item,)):
         uploads = StateUploads(store)
         view = uploads.show(plan_id=item.plan["plan_id"])
         assert type(view.plan) is DatasetContinuationPlanV3
         assert type(view.approval) is DatasetUploadApprovalV3
         assert item.plan["plan_id"] in [entry.plan_id for entry in uploads.list()[0]]
-        # Revoking re-decodes the approval as v1/v2 until P02-3r gives the continuation its own.
-        approval = store.connection.execute(
-            "SELECT payload FROM upload_approvals WHERE plan_id=?", (item.plan["plan_id"],)
-        ).fetchone()
-        with pytest.raises(YorungeError) as error:
-            uploads.revoke(item.plan["plan_id"], item.plan["digest"])
-        assert error.value.code == "state_invalid"
-        assert (
-            store.connection.execute(
-                "SELECT payload FROM upload_approvals WHERE plan_id=?", (item.plan["plan_id"],)
-            ).fetchone()
-            == approval
-        )
+        # The approval is revoked in its own family, never re-decoded as a v1/v2 one.
+        revoked = uploads.revoke(item.plan["plan_id"], item.plan["digest"]).approval
+        assert type(revoked) is DatasetUploadApprovalV3 and revoked.status == "revoked"
+        assert revoked.approval_id == view.approval.approval_id
 
 
 def test_the_snapshot_a_reset_is_previewed_from_reads_every_plan_with_its_lineage(tmp_path):
