@@ -9,7 +9,7 @@ import pytest
 
 from yorunge.application.upload_workflow import continue_files
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
-from yorunge.domain.errors import OperationError
+from yorunge.domain.errors import OperationError, YorungeError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 
@@ -98,6 +98,15 @@ def test_a_continuation_that_sends_nothing_asks_for_nothing():
     environment = Environment(NO_FILE)
     assert run(environment) is environment.record
     assert environment.calls == []
+
+
+def test_a_continuation_that_was_never_admitted_is_a_conflict_not_an_assertion():
+    environment = Environment(SELECTED)
+    environment.record = None
+    with pytest.raises(YorungeError) as error:
+        run(environment)
+    assert error.value.code == "operation_conflict"
+    assert [call[0] for call in environment.calls] == ["failure"]  # and nothing was asked
 
 
 def test_a_process_that_does_not_own_the_operation_asks_for_nothing():

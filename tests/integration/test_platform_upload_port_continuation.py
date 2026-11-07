@@ -68,7 +68,7 @@ def reply(value, **changes):
     return Reply(body=json.dumps(value).encode(), **changes)
 
 
-def presigned(context):
+def presigned(context, key=RAW_KEY):
     return {
         "presigned_urls": [
             {
@@ -76,8 +76,8 @@ def presigned(context):
                 "sha256_hash": context.file.sha256,
                 "file_size": context.file.size,
                 "client_uid": context.client_uid,
-                "object_key": RAW_KEY,
-                "upload_url": f"/datasets/{DATASET_ID}/upload/put?key={quote(RAW_KEY, safe='')}",
+                "object_key": key,
+                "upload_url": f"/datasets/{DATASET_ID}/upload/put?key={quote(key, safe='')}",
             }
         ],
         "duplicates": [],
@@ -286,3 +286,76 @@ def test_a_confirm_that_reports_neither_count_is_not_an_accepted_receipt(
     assert len(confirm) == 1  # the intent was committed, so the effect is uncertain...
     accepted_ids = {r.intent_id for r in view.receipts if r.result == "accepted"}
     assert confirm[0].intent_id not in accepted_ids  # ...and no receipt claims it took effect
+
+
+# --- the meaning of the count is settled by the first confirm and kept --------------------------
+
+
+def confirm_of(owned, port, upload, place, arm):
+    """The outcome of one confirm sent with ``arm`` (arguments, so that a loop binds nothing)."""
+    return owned.exchange(
+        lambda client: port.prepare_confirm(upload, confirmed_count=place).execute(client, arm)
+    )
+
+
+def two_confirms(lifecycle, certificates, first, second):
+    """Files 1 and 2 of three (the dataset held one) confirmed, the provider counting ``first``
+    and ``second``; the outcomes of the confirms, the second being an error when it is refused."""
+    plan, record = lifecycle.admitted()
+    assert plan.continuation.remote_present_count == 1
+    port, key, value = port_of(lifecycle, plan)
+    by_name = {c.file.path: c for c in port.files(record.operation_id, DATASET_ID)}
+    answers = iter([first, second])
+
+    def presign(request, count):
+        context = by_name[json.loads(request.body)["files"][0]["filename"]]
+        return reply(presigned(context, f"{RAW_KEY}-{context.file_index}"))
+
+    routes = {
+        API + "presign": presign,
+        API + "confirm": lambda request, count: reply(confirmed(next(answers))),
+    }
+    outcomes = []
+    with TlsServer(certificates, routes) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            for index, place in ((1, 1), (2, 2)):
+                upload = presigned_and_put(lifecycle, plan, record, port, owned, index)
+                arm = lifecycle.arm(plan, record, "confirm", index)
+                try:
+                    outcome = confirm_of(owned, port, upload, place, arm)
+                except YorungeError as error:
+                    outcomes.append(error)
+                    break
+                saved(lifecycle, record, outcome)
+                tick(lifecycle)
+                outcomes.append(outcome)
+    return outcomes
+
+
+@pytest.mark.parametrize(
+    "first,second",
+    [(1, 2), (2, 3)],
+    ids=["the operation's counts", "the dataset's counts"],
+)
+def test_a_provider_that_counts_one_way_throughout_is_accepted(
+    lifecycle, certificates, first, second
+):
+    outcomes = two_confirms(lifecycle, certificates, first, second)
+    assert [o.receipt.result for o in outcomes] == ["accepted", "accepted"]
+
+
+@pytest.mark.parametrize(
+    "first,second",
+    [(1, 3), (2, 2)],
+    ids=["an item came in between", "the total did not move"],
+)
+def test_a_count_that_changes_its_meaning_in_the_middle_of_an_operation_is_refused(
+    lifecycle, certificates, first, second
+):
+    # The first confirm settles whether the provider counts the operation's or the dataset's items;
+    # the second reports a number that is right for the other way (base 1: 3 after the operation's
+    # 1, or 2 after the dataset's 2) and is the sign of an item added or a confirm lost.
+    outcomes = two_confirms(lifecycle, certificates, first, second)
+    assert len(outcomes) == 2 and outcomes[0].receipt.result == "accepted"
+    assert isinstance(outcomes[1], YorungeError) and outcomes[1].code == "invalid_response"

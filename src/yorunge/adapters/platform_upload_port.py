@@ -176,7 +176,11 @@ class PreparedUploadCall(_Private):
             upload = descriptors.presigned(raw, self._context, secret)
         else:
             assert self._count is not None
-            metadata.confirm_ack(raw, self._count, secret, base=port._base)
+            shown = metadata.confirm_ack(
+                raw, self._count, secret, base=port._base, meaning=port._meaning
+            )
+            if port._meaning is None:
+                port._meaning = shown  # the first confirm settles what the provider's count means
         return ControlOutcome(
             StageReceipt(
                 schema_version=1,
@@ -215,6 +219,7 @@ class ObservedUploadPort(_Private):
         else:
             checked = revalidate_input(DatasetUploadPlanV2, plan)
             self._base = 0
+        self._meaning: metadata.Meaning | None = None  # what the provider's confirm count means
         self._plan, self._graph = checked, graph_of(checked)
         self._manifest = revalidate_input(DatasetManifest, manifest)
         self._scope = revalidate_input(UploadScope, scope)

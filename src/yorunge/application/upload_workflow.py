@@ -13,7 +13,7 @@ from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
 from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
-from yorunge.domain.errors import OperationError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.upload_checks import UploadCurrentCheck
 from yorunge.domain.upload_versions import UploadReceipt, graph_of
 
@@ -268,7 +268,8 @@ async def complete_original(environment: OriginalEnvironment) -> TransferRecordV
 
 async def _send_selected(environment: ContinuationEnvironment) -> TransferRecordV3:
     record = environment.record
-    assert record is not None
+    if record is None:
+        raise YorungeError("operation_conflict")  # nothing was admitted: nothing to send for
     if not environment.write_owned:
         return record
     graph = graph_of(environment.plan)

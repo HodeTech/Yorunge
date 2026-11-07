@@ -8,14 +8,16 @@ the test: it takes the stage's fresh check, approves and admits with it, and sen
 
 import asyncio
 import logging
+import time
 import traceback
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from tests.contracts.test_platform_upload_codec import SCOPE
 from tests.fixtures.http_server import Reply, TlsServer
-from tests.fixtures.upload_provider import DATASET, UploadProvider
+from tests.fixtures.upload_provider import DATASET, UploadProvider, reply
 from tests.integration.test_upload_http_budget import SECRET
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
@@ -33,14 +35,16 @@ from tests.integration.test_upload_resume_observation import world as three_file
 from tests.integration.test_upload_resume_prepare import prepared, saved
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.dataset_files import open_dataset
+from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_existing_store
-from yorunge.adapters.upload_continuation import run_stages
+from yorunge.adapters.upload_continuation import ContinuationStages, run_stages
 from yorunge.adapters.upload_input_files import capture_upload_input
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.adapters.upload_store import read_manifest, validate_uploads
 from yorunge.application.datasets import DatasetBudget
 from yorunge.application.upload_workflow import continue_files
+from yorunge.domain.credentials import ResolvedCredential, SecretValue
 from yorunge.domain.errors import OperationError, YorungeError
 
 PRESIGN = f"/api/v1/datasets/{DATASET}/upload/presign"
@@ -89,8 +93,13 @@ def start(
     clock=None,
     algorithm=approve_admit_continue,
     baseline=None,
+    window=None,
+    ends=None,
 ):
-    """The stages of a saved continuation plan over TLS; the operation's record at the end."""
+    """The stages of a saved continuation plan over TLS; the operation's record at the end.
+
+    ``window`` gives the stages that many seconds instead of the invocation's, ``ends`` collects
+    the end they were given."""
     state, _, _, context, profile = data
     runtime = UploadResumeRuntime(
         context, profile, state, session_factory=factory(server, budgets), clock=clock
@@ -111,7 +120,10 @@ def start(
             expected_root=plan.root,
         )
         wanted = source.baseline if baseline is None else baseline
-        return run_stages(runtime, plan, bound, inputs, wanted, end, algorithm)
+        stages_end = end if window is None else time.monotonic() + window
+        if ends is not None:
+            ends.append(stages_end)
+        return run_stages(runtime, plan, bound, inputs, wanted, stages_end, algorithm)
 
 
 def planned(data, server, provider, **flags):
@@ -587,3 +599,225 @@ def test_the_dataset_a_continuation_extends_is_its_plans_and_no_other(prepared_i
             start(data, server, report.plan_id, baseline=other)
         assert error.value.code == "invalid_request"
         assert len(server.requests) == before and operation_of(data, report.plan_id) is None
+
+
+# --- the count a confirm reports keeps its meaning through the operation ------------------------
+
+
+def count_by(provider, answers):
+    """The provider takes each item as usual but reports the counts of ``answers`` in turn."""
+    real, given = provider.route_table[CONFIRM], iter(answers)
+
+    def confirm(request, count):
+        real(request, count)
+        return reply({"created": 1, "actual_count": next(given), "batch_duplicates": 0})
+
+    provider.route_table[CONFIRM] = confirm
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [[1, 5], [4, 2]],
+    ids=["an item came in after the first", "the total did not move after the first"],
+)
+def test_a_count_that_changes_its_meaning_stops_the_continuation_and_sends_no_more(
+    prepared_input, certificates, answers
+):
+    # Five of eight files remain; the dataset held three. The first confirm reports 1 (the
+    # operation's own) or 4 (the dataset's); the second reports a number of the other kind.
+    data, provider = five_of_eight(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        confirms = provider.confirm_calls
+        count_by(provider, answers)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "invalid_response"
+        assert provider.confirm_calls == confirms + 2  # the second was sent, none after it
+        record = operation_of(data, report.plan_id)
+        assert (record.status, record.reason) == ("unknown", "request_uncertain")
+        view = journal(data, report.plan_id)
+        done = {r.intent_id for r in view.receipts if r.result == "accepted"}
+        confirm = [i for i in view.intents if i.kind == "confirm"]
+        assert [i.intent_id in done for i in confirm] == [True, False]
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+
+
+# --- time, deadlines and what changes between two stages ----------------------------------------
+
+
+class Skewed:
+    """A clock a test moves forward: the wall clock and the monotonic clock together."""
+
+    def __init__(self):
+        self.skew = 0.0
+
+    def now(self):
+        return datetime.now(UTC) + timedelta(seconds=self.skew)
+
+    def monotonic(self):
+        return time.monotonic() + self.skew
+
+
+def after_presign(monkeypatch, act):
+    """Run ``act(environment)`` once the first presign of the continuation has been published."""
+    original = ContinuationStages.publish
+
+    def publish(environment, outcome):
+        original(environment, outcome)
+        if outcome.upload is not None:
+            act(environment)
+
+    monkeypatch.setattr(ContinuationStages, "publish", publish)
+
+
+@pytest.mark.parametrize(
+    "seconds,reads",
+    [(20, 6), (28, 12)],
+    ids=["a check of 20 s serves the next stages", "a check of 28 s is looked at again"],
+)
+def test_one_fresh_check_serves_twenty_five_seconds_of_stages(
+    prepared_input, certificates, monkeypatch, seconds, reads
+):
+    data, provider = three_files(prepared_input)
+    clock, budgets = Skewed(), []
+
+    def later(_):
+        clock.skew += seconds
+
+    after_presign(monkeypatch, later)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        record = start(data, server, report.plan_id, clock=clock, budgets=budgets)
+        assert record.status == "running"
+        # A look at the dataset is six reads: the context, the dataset, its membership and its role.
+        assert budgets[0].snapshot().read_requests == reads
+
+
+def test_every_permit_is_armed_within_the_end_of_the_run(prepared_input, certificates, monkeypatch):
+    data, provider = three_files(prepared_input)
+    seen, ends = [], []
+    original = StateUploads.arm
+
+    def arm(repository, *arguments, **keywords):
+        seen.append(keywords["total_end"])
+        return original(repository, *arguments, **keywords)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)  # the original upload armed its own permits
+        monkeypatch.setattr(StateUploads, "arm", arm)
+        start(data, server, report.plan_id, window=300, ends=ends)
+    assert len(ends) == 1 and seen == ends * 3  # presign, put and confirm of the one file
+
+
+def test_a_run_given_more_than_fifteen_minutes_is_held_to_fifteen(prepared_input, certificates):
+    data, provider = three_files(prepared_input)
+
+    async def nothing(environment):
+        return "the budget was built"
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        answer = start(data, server, report.plan_id, window=1000, algorithm=nothing)
+    assert answer == "the budget was built"
+
+
+def test_a_lease_close_to_its_end_is_renewed_before_a_slow_look_at_the_dataset(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+
+    async def aged_lease(environment):
+        check = await environment.current("presign")
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+        environment.admit(check)
+        clock.skew += 128  # the 150 s lease has 22 s left, and the check is old
+        slow = [True]
+
+        def one_slow_request():
+            if slow:
+                slow.clear()
+                clock.skew += 27  # the dataset is looked at for 27 s: longer than the lease had
+
+        provider.on_request = one_slow_request
+        return await continue_files(environment)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        record = start(data, server, report.plan_id, clock=clock, algorithm=aged_lease)
+        assert record.status == "running"
+        assert provider.events[sends:] == ["presign", "put", "confirm"]
+
+
+@pytest.mark.parametrize("skew", [200, -10], ids=["the lease ran out", "the clock went back"])
+def test_a_lease_that_is_lost_between_two_stages_stops_the_continuation_unsent(
+    prepared_input, certificates, monkeypatch, skew
+):
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+
+    def move(_):
+        clock.skew += skew
+
+    after_presign(monkeypatch, move)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id, clock=clock)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "operation_lease_lost"
+        assert provider.events[sends:] == ["presign"]  # no put, no confirm
+
+
+def test_a_key_rotated_between_two_stages_stops_the_continuation_before_the_next_send(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = three_files(prepared_input)
+
+    def rotate(environment):
+        old = environment.bound.credential  # another process has seen the key change
+        new = ResolvedCredential(old.reference, old.target, SecretValue("a-rotated-key-canary"))
+        with open_existing_store(data[0]) as store:
+            StateCredentialRegistry(store).observe(new)
+
+    after_presign(monkeypatch, rotate)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "state_changed"
+        assert provider.events[sends:] == ["presign"]
+
+
+def test_a_folder_that_changes_between_two_stages_stops_the_continuation_before_the_next_send(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = three_files(prepared_input)
+
+    def change(_):
+        (data[1] / "ölçüm.bin").write_bytes(b"changed after it was presigned")
+
+    after_presign(monkeypatch, change)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "input_changed"
+        assert provider.events[sends:] == ["presign"]
