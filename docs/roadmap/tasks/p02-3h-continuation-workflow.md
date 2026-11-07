@@ -1,7 +1,7 @@
 ---
 id: P02-3h
 phase: P02
-status: draft
+status: ready
 size: M
 depends_on: [P02-3r]
 capabilities: [C03, C12]

@@ -58,7 +58,7 @@
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i ve r |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |
-| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3v](p02-3v-continuation-capacity-and-projection.md) | P02-3 adım kartları: [resume d–i, r, t, u ve v, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o, sürüm p–q; ADR’ler Accepted; kartlar doğrudan bağımlılıkları `verified` olunca sırayla `ready` olur (P02-3d, P02-3e, P02-3f, P02-3t, P02-3g, P02-3u ve P02-3v `verified`, P02-3r `in_review`) |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3v](p02-3v-continuation-capacity-and-projection.md) | P02-3 adım kartları: [resume d–i, r, t, u ve v, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o, sürüm p–q; ADR’ler Accepted; kartlar doğrudan bağımlılıkları `verified` olunca sırayla `ready` olur (P02-3d, P02-3e, P02-3f, P02-3t, P02-3g, P02-3u, P02-3v ve P02-3r `verified`, P02-3h `ready`) |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
