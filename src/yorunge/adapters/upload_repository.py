@@ -17,9 +17,10 @@ from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.adapters.upload_admission import continuation_admission
-from yorunge.adapters.upload_chain import ChainSnapshot
+from yorunge.adapters.upload_chain import ChainSnapshot, ResumeSource
 from yorunge.adapters.upload_chain import chain_snapshot as stored_snapshot
 from yorunge.adapters.upload_chain import operation_journal as stored_journal
+from yorunge.adapters.upload_chain import resume_source as stored_resume_source
 from yorunge.adapters.upload_lineage import Lineage
 from yorunge.adapters.upload_read_access import ReadAccess, authorize_read, initial_read_consent
 from yorunge.adapters.upload_store import (
@@ -30,6 +31,7 @@ from yorunge.adapters.upload_store import (
     decode_versioned,
     legacy_create_without_baseline,
     namespace,
+    quota_used,
     read_manifest,
     read_plan,
     read_view_and_lineage,
@@ -98,6 +100,7 @@ from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
 from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
 from yorunge.domain.upload_resume import OperationJournal
+from yorunge.domain.upload_resume_report import QuotaCounters
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -535,6 +538,16 @@ class StateUploads:
         """
         with self.phase(operation_id), read_snapshot(self.connection):
             return stored_snapshot(self.connection, operation_id, stamp)
+
+    def resume_source(self, operation_id: str, stamp: Stamp) -> ResumeSource:
+        """The chain facts and the immutable facts of one source operation, from one snapshot."""
+        with self.phase(operation_id), read_snapshot(self.connection):
+            return stored_resume_source(self.connection, operation_id, stamp)
+
+    def quota(self) -> QuotaCounters:
+        """The four counters the store's quota bounds, from one snapshot (see ``quota_used``)."""
+        with self.phase():
+            return quota_used(self.connection)
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None

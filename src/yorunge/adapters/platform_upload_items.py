@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+from typing import Protocol
 
 from yorunge.adapters.http_transport import _remaining
 from yorunge.adapters.platform_upload_port import ObservedUploadPort
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.application import platform_upload_codec as codec
 from yorunge.application import upload_metadata_codec as metadata
-from yorunge.application.http_transport import HttpRequest, HttpStatusFailure
+from yorunge.application.http_transport import HttpCredential, HttpRequest, HttpStatusFailure
+from yorunge.application.upload_budget import UploadBudget
 from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.dataset_transfer import VerifiedFile
 from yorunge.domain.errors import ErrorCode, YorungeError
@@ -23,8 +25,20 @@ from yorunge.domain.upload_resume import (
 )
 
 
+class ItemSource(Protocol):
+    """What listing a dataset's items needs of its owner: a checked client, a key and a budget.
+
+    The port of a plan has them, and so has the reader of an observation that has no plan yet.
+    """
+
+    _credential: HttpCredential
+    _budget: UploadBudget
+
+    def _client(self, client: UploadHttpxTransport) -> None: ...
+
+
 async def _page(
-    port: ObservedUploadPort,
+    port: ItemSource,
     client: UploadHttpxTransport,
     dataset_id: str,
     cursor: str | None,
@@ -113,7 +127,7 @@ async def read_items(
 
 
 async def read_inventory(
-    port: ObservedUploadPort, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+    port: ItemSource, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
 ) -> RemoteInventory:
     """The dataset's item listing as observed, for the resume classifier.
 

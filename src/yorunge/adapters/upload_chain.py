@@ -6,22 +6,25 @@ import sqlite3
 from dataclasses import dataclass
 
 from yorunge.adapters.capability_cache import Stamp
-from yorunge.adapters.upload_lineage import journal_of
+from yorunge.adapters.upload_lineage import Lineage, journal_of
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
     acknowledged_stages,
     created_dataset,
     read_any_record,
+    read_manifest,
     read_plan,
     read_view_and_lineage,
 )
 from yorunge.domain.capabilities import instant
-from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, baseline_digest
+from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
-from yorunge.domain.upload_versions import UploadRecord
+from yorunge.domain.upload_versions import UploadPlan, UploadRecord
 
 
 def operation_journal(view: VersionedTransferView) -> OperationJournal:
@@ -86,16 +89,13 @@ def _descendants(
     return tuple(found)
 
 
-def chain_snapshot(
-    connection: sqlite3.Connection, operation_id: str, stamp: Stamp
+def _snapshot(
+    connection: sqlite3.Connection,
+    record: UploadRecord,
+    view: VersionedTransferView,
+    lineage: Lineage | None,
+    stamp: Stamp,
 ) -> ChainSnapshot:
-    """Journals, source facts and descendants of one stored operation.
-
-    The caller owns the read transaction and the clock point ``stamp``; nothing is written.
-    A broken lineage (missing source, loop, another manifest or baseline) is ``state_invalid``.
-    """
-    record = read_any_record(connection, operation_id)
-    view, lineage = read_view_and_lineage(connection, record.plan_id)
     chain = (*lineage.sources, view) if lineage is not None else (view,)
     root = chain[0]
     plan = view.plan
@@ -111,5 +111,54 @@ def chain_snapshot(
             ),
             has_created_dataset=created_dataset(root) is not None,  # the root: never a continuation
         ),
-        descendants=_descendants(connection, operation_id, stamp),
+        descendants=_descendants(connection, record.operation_id, stamp),
+    )
+
+
+def chain_snapshot(
+    connection: sqlite3.Connection, operation_id: str, stamp: Stamp
+) -> ChainSnapshot:
+    """Journals, source facts and descendants of one stored operation.
+
+    The caller owns the read transaction and the clock point ``stamp``; nothing is written.
+    A broken lineage (missing source, loop, another manifest or baseline) is ``state_invalid``.
+    """
+    record = read_any_record(connection, operation_id)
+    view, lineage = read_view_and_lineage(connection, record.plan_id)
+    return _snapshot(connection, record, view, lineage, stamp)
+
+
+@dataclass(frozen=True, slots=True)
+class ResumeSource:
+    """What a resume report and a continuation plan need of one source operation.
+
+    ``chain`` is what changes (status, leases, descendants); the rest is immutable once stored: the
+    source's own plan and manifest, and the root that made the dataset (``baseline`` is None while
+    that create is unknown). All of it is read in the one database snapshot that ``chain`` is.
+    """
+
+    chain: ChainSnapshot
+    plan: UploadPlan
+    manifest: DatasetManifest
+    baseline: ProviderDataset | None
+    baseline_operation_id: str
+    baseline_digest: str | None
+    intent_digest: str
+
+
+def resume_source(connection: sqlite3.Connection, operation_id: str, stamp: Stamp) -> ResumeSource:
+    """The chain facts and the immutable facts of one source, from one snapshot (read only)."""
+    record = read_any_record(connection, operation_id)
+    view, lineage = read_view_and_lineage(connection, record.plan_id)
+    root = lineage.sources[0] if lineage is not None else view
+    assert root.operation is not None
+    baseline = lineage.baseline if lineage is not None else created_dataset(view)
+    return ResumeSource(
+        chain=_snapshot(connection, record, view, lineage, stamp),
+        plan=view.plan,
+        manifest=read_manifest(connection, view.plan),
+        baseline=baseline,
+        baseline_operation_id=root.operation.operation_id,
+        baseline_digest=None if baseline is None else baseline_digest(baseline),
+        intent_digest=root.operation.intent_digest,
     )

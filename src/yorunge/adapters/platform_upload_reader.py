@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from yorunge.adapters.platform_upload_items import read_inventory
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.adapters.upload_input_files import UploadInputObservation
 from yorunge.application import platform_upload_codec as codec
@@ -38,6 +40,7 @@ from yorunge.domain.upload_checks import (
     mandatory_http_failure,
     require_fresh,
 )
+from yorunge.domain.upload_resume import RemoteInventory
 
 _PROFILE: ConsumerProfile = "evren-platform-observed-upload-v2"
 _ACTIONS = {
@@ -46,6 +49,19 @@ _ACTIONS = {
     "upload_created_dataset",
     "read_created_dataset",
 }
+
+
+@dataclass(frozen=True, slots=True)
+class BaselineCheck:
+    """What a create-free reading observed of the baseline dataset of a lineage.
+
+    ``authorization`` is the check for uploading to it; ``dataset_observed`` is whether the project
+    lists it and its detail is the baseline's. A well-formed answer that does not say so is not an
+    error: the caller reports the dataset as unobserved and nothing is planned on it.
+    """
+
+    authorization: AuthorizationCheck
+    dataset_observed: bool
 
 
 def _failure(error: YorungeError) -> tuple[AuthorizationOutcome, ErrorCode]:
@@ -324,6 +340,80 @@ class ObservedUploadReader:
             inputs_verified=True,
             upload_observation=observation,
         )
+
+    async def _baseline_dataset(
+        self,
+        client: UploadHttpxTransport,
+        expected: ProviderDataset,
+        parameters: UploadParameters,
+        end: float,
+    ) -> bool:
+        """Whether the project holds the dataset the baseline names, as it describes it."""
+        secret = self._credential.secret
+        try:
+            await self._dataset(client, expected, parameters, end)
+            project_id = codec.segment(self.scope.project_id, secret)
+            member = await self._get(client, "membership", f"projects/{project_id}/datasets", end)
+            return codec.membership(member, expected.id, secret)
+        except HttpStatusFailure as error:
+            if mandatory_http_failure(error.status_code)[1] != "invalid_response":
+                raise
+        except YorungeError as error:
+            if error.code != "invalid_response":
+                raise
+        return False
+
+    async def baseline(
+        self,
+        client: UploadHttpxTransport,
+        expected: ProviderDataset,
+        parameters: UploadParameters,
+    ) -> BaselineCheck:
+        """Context, the baseline's detail and project membership, then the caller's role.
+
+        Reads only and plans nothing: it is the observation a resume report and a continuation plan
+        stand on, without a plan to check it against. Access and transport failures are recorded
+        in the check as everywhere; an absent or different dataset is ``dataset_observed=False``.
+        """
+        self._client(client)
+        expected = revalidate_input(ProviderDataset, expected)
+        parameters = revalidate_input(UploadParameters, parameters)
+        valid = True
+        try:
+            codec._owner(expected, self.scope, parameters)
+        except YorungeError:
+            valid = False
+        if not valid:
+            raise YorungeError("invalid_request")
+        at, end = self._now(), min(self._budget.end, time.monotonic() + 30.0)
+        outcome: AuthorizationOutcome = "not_exposed"
+        code: ErrorCode | None = None
+        observed = False
+        try:
+            await self._context(client, end)
+            observed = await self._baseline_dataset(client, expected, parameters, end)
+            if observed:
+                path = codec.segment(expected.id, self._credential.secret)
+                codec.role(
+                    await self._get(client, "role", f"datasets/{path}/my-role", end),
+                    self._credential.secret,
+                )
+        except HttpStatusFailure as error:
+            outcome, code = mandatory_http_failure(error.status_code)
+            at = self._now()
+        except YorungeError as error:
+            outcome, code = _failure(error)
+            at = self._now()
+        require_fresh(at, self._now())
+        return BaselineCheck(
+            self._check("upload_created_dataset", expected.id, at, outcome, code), observed
+        )
+
+    async def inventory(
+        self, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+    ) -> RemoteInventory:
+        """The dataset's item listing as observed (see ``read_inventory``)."""
+        return await read_inventory(self, client, dataset_id, deadline=deadline)
 
     async def read_authorization(
         self,
