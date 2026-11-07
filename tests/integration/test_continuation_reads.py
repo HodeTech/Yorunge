@@ -289,3 +289,23 @@ def test_an_unknown_continuation_is_verified_later_by_a_read_owner(lifecycle):
         )
         assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
         validate_uploads(store.connection)
+
+
+def test_a_proof_that_contradicts_its_own_policy_is_refused_before_anything_is_written(lifecycle):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        repository.prepare_initial_read(record.operation_id, record.lease, authorization=check)
+        before = dump(store)
+        proof = proof_of(plan, timestamp(lifecycle.clock.value))
+        verified_read = proof.model_copy(update={"authorization_policy": "verified_read"})
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, verified_read, authorization=check
+                )
+            )
+            == "state_invalid"  # it claims a verified read and holds no grant
+        )
+        assert dump(store) == before

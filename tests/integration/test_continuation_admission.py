@@ -260,3 +260,24 @@ def test_an_operation_is_never_born_before_the_last_thing_its_source_did(lifecyc
         )
         assert read_any_view(store.connection, plan.plan_id).operation is None  # still readable
         refused_untouched(lifecycle, store, plan, repository, "operation_conflict")
+
+
+def test_a_descendant_whose_approval_was_revoked_is_cancelled_for_that_reason(lifecycle):
+    with open_chain(lifecycle) as store:
+        sibling = build(lifecycle.root, 1, status="admitted")
+        install(store, sibling)
+        revoked = {
+            **sibling.approval,
+            "status": "revoked",
+            "revoked_at": "2026-11-02T11:00:30.000000Z",
+        }
+        store.connection.execute(
+            "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
+            (canon(revoked).decode(), sibling.plan["plan_id"]),
+        )
+        plan, repository = ready(lifecycle, store, 2)
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+        repository.admit(plan.plan_id, plan)
+        stale = repository.show(operation_id=FIRST)
+        assert (stale.operation.status, stale.operation.reason) == ("cancelled", "approval_revoked")
+        validate_uploads(store.connection)
