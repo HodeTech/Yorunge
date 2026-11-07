@@ -105,6 +105,24 @@ def test_capacity_counts_a_continuation_as_a_plan_an_operation_its_files_and_its
         assert capacity(store.connection)[1] == base[1]
 
 
+def test_the_payload_counter_counts_the_bytes_of_every_stored_row_not_their_characters(tmp_path):
+    with world(tmp_path, UNKNOWN) as (store, _, _):
+        connection = store.connection
+        # One character that takes two bytes: only a counter of bytes sees it.
+        connection.execute("UPDATE upload_manifests SET payload = payload || ?", (" \u00e9",))
+        tables = ("upload_namespaces", "upload_manifests", "upload_plans")
+        by_hand = sum(
+            len(payload.encode("utf-8"))
+            for table in tables
+            for (payload,) in connection.execute(f"SELECT payload FROM {table}")
+        )
+        reserved = sum(
+            row[0] for row in connection.execute("SELECT reservation FROM upload_operations")
+        )
+        plans = connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
+        assert capacity(connection)[3] == by_hand + reserved + plans * 16 * KIB
+
+
 @pytest.mark.parametrize("bound", range(4), ids=[name.lower() for name in BOUNDS])
 def test_each_bound_holds_a_continuation_to_the_exact_figure_of_the_counters(
     tmp_path, monkeypatch, bound
@@ -302,6 +320,34 @@ def test_the_one_continuation_a_source_may_have_is_counted_per_source(tmp_path):
         assert code_of(lambda: validate_uploads(store.connection)) == "state_invalid"
 
 
+def test_the_full_validation_refuses_a_row_of_another_store_or_of_another_epoch(
+    tmp_path, monkeypatch
+):
+    with world(tmp_path, live()) as (store, _, _):
+        validate_uploads(store.connection)  # the control
+        real = store_module.metadata
+        for field in ("store_id", "identity_epoch"):
+            monkeypatch.setattr(
+                store_module,
+                "metadata",
+                lambda connection, field=field: replace(real(connection), **{field: OTHER}),
+            )
+            # The plan names another store, or the running record's lease belongs to another epoch.
+            assert code_of(lambda: validate_uploads(store.connection)) == "state_invalid", field
+
+
+@pytest.mark.parametrize("table", ["upload_namespaces", "upload_manifests"])
+def test_the_full_validation_refuses_a_namespace_or_manifest_no_plan_uses(tmp_path, table):
+    with world(tmp_path, live()) as (store, _, _):
+        payload = store.connection.execute(f"SELECT payload FROM {table}").fetchone()[0]
+        if table == "upload_namespaces":
+            row = ("INSERT INTO upload_namespaces VALUES(?,?,NULL)", ("f" * 64, payload))
+        else:
+            row = ("INSERT INTO upload_manifests VALUES(?,?)", ("e" * 64, payload))
+        store.connection.execute(*row)
+        assert code_of(lambda: validate_uploads(store.connection)) == "state_invalid"
+
+
 def test_a_fault_of_an_earlier_continuation_is_found_by_the_full_validation(tmp_path):
     flawed = {
         **UNKNOWN,
@@ -385,6 +431,44 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
         assert after.approval.encoded() == before.approval.encoded()
         assert after.intents == before.intents and after.receipts == before.receipts
         validate_uploads(store.connection)
+
+
+def test_a_reset_keeps_an_anomaly_the_record_already_noted(tmp_path):
+    with world(tmp_path, live()) as (store, root, (item,)):
+        noted = {**item.record, "clock_anomaly": True}
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=? WHERE operation_id=?",
+            (canon(noted).decode(), item.record["operation_id"]),
+        )
+        assert read_any_view(store.connection, item.plan["plan_id"]).operation.clock_anomaly
+        reset(
+            store, root
+        )  # a reset clock ahead of the record finds nothing new, and forgets nothing
+        after = read_any_view(store.connection, item.plan["plan_id"]).operation
+        assert after.clock_anomaly is True and after.status == "unknown"
+
+
+def test_a_reset_at_the_very_instant_of_the_records_last_update_is_no_anomaly(tmp_path):
+    with world(tmp_path, live()) as (store, root, (item,)):
+        reset(store, root, now=item.record["updated_at"])
+        after = read_any_view(store.connection, item.plan["plan_id"]).operation
+        assert after.updated_at == item.record["updated_at"] and after.clock_anomaly is False
+
+
+def test_a_reset_runs_inside_the_transaction_of_its_caller_or_not_at_all(tmp_path):
+    with world(tmp_path, live()) as (store, root, _):
+        scope = root["plan"]["scope"]
+        assert not store.connection.in_transaction
+        before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
+        with pytest.raises(ValueError):
+            invalidate_uploads(
+                store.connection,
+                scope["store_id"],
+                scope["identity_epoch"],
+                instant(NOW),
+                store.deadline,
+            )
+        assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
 
 
 def test_a_reset_returns_the_clock_generation_of_a_record_to_the_first_of_the_new_identity(
@@ -931,6 +1015,34 @@ def test_a_plan_that_was_never_admitted_is_summarized_without_an_operation(tmp_p
         assert (found.operation_id, found.operation_status) == (None, None)
         assert found.dataset_id == DATASET_ID  # the plan names the dataset, whatever happens
         assert json.loads(found.encoded()) == expected_summary(item)
+
+
+def test_the_blockers_of_a_draft_continuation_show_in_its_summary(tmp_path):
+    with world(tmp_path, {"status": "admitted", "plan_only": True}) as (store, _, (item,)):
+        view = read_any_view(store.connection, item.plan["plan_id"])
+        draft = view.plan.model_copy(update={"status": "draft", "blockers": ("cost_unverified",)})
+        found = summary(replace(view, plan=draft))
+        assert found.plan_status == "draft" and found.blockers == ("cost_unverified",)
+        assert summary(view).blockers == ()
+
+
+def test_a_v1_summary_derives_its_risks_from_the_grant_the_plan_holds():
+    from yorunge.domain.dataset_upload import REQUIRED_PERMISSIONS, DatasetUploadPlan, UploadGrant
+
+    plan = DatasetUploadPlan.model_validate_json(canon(raw("dataset-upload-plan-v1.json")))
+    grant = UploadGrant.model_validate_json(
+        canon(raw("dataset-upload-approved-v2.json")["plan"]["grant"])
+    )
+    assert grant.permissions == REQUIRED_PERMISSIONS and plan.grant is None
+    nothing = VersionedTransferView(plan, None, None)
+    complete = plan.model_copy(update={"grant": grant})
+    partial = plan.model_copy(
+        update={"grant": grant.model_copy(update={"permissions": REQUIRED_PERMISSIONS[:-1]})}
+    )
+    assert original_summary(replace(nothing, plan=complete)).risks == ("cost_unverified",)
+    both = ("authority_unverified", "cost_unverified")
+    assert original_summary(replace(nothing, plan=partial)).risks == both
+    assert original_summary(nothing).risks == both
 
 
 def test_a_revoked_approval_shows_in_the_summary_of_a_plan_that_was_never_admitted(tmp_path):

@@ -86,5 +86,5 @@ def test_the_plan_ceiling_is_the_wire_ceiling_of_a_plan():
 def test_what_is_not_a_manifest_a_selection_within_it_or_a_plan_within_its_ceiling_is_refused(
     arguments,
 ):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="a manifest size, a selection within it"):
         continuation_added_payload_bytes(*arguments)
