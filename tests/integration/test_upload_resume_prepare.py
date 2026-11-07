@@ -38,6 +38,7 @@ from tests.integration.test_upload_resume_observation import (
 from tests.integration.test_upload_workflow_kill import _child, _files, _settle
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_repository import StateUploads
+from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.adapters.upload_store import validate_uploads
 from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
@@ -353,3 +354,100 @@ def test_prepare_freezes_a_source_that_was_killed_while_running(
             None,
         )
         assert frozen.fence == record.fence + 1 and done.plan_id is not None
+
+
+CAPACITIES = {
+    "plans": ("MAX_TRANSFER_PLANS", 1),
+    "operations": ("MAX_TRANSFER_OPERATIONS", 1),
+    "files": ("MAX_TRANSFER_FILES", 5),  # the root's three and the three this attempt counts
+    "payload": ("MAX_TRANSFER_PAYLOAD_BYTES", 40_000),
+}
+
+
+@pytest.mark.parametrize("limit", CAPACITIES.values(), ids=CAPACITIES)
+def test_each_bound_of_the_store_refuses_an_attempt_before_a_source_is_frozen(
+    prepared_input, certificates, monkeypatch, limit
+):
+    name, value = limit
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
+        monkeypatch.setattr(f"yorunge.adapters.upload_resume.{name}", value)
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=Later()).resume(
+                source,
+                accept_unverified_read=True,
+                prepare=True,
+                accept_unconfirmed_effects=True,
+            )
+        assert error.value.code == "upload_capacity_exceeded"
+        assert rows(data[0]) == stored  # the source is still the running one it was
+
+
+def test_content_that_cannot_be_uploaded_stops_prepare_before_it_freezes_anything(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+
+        def duplicated(manifest):
+            raise YorungeError("upload_duplicate_content")
+
+        monkeypatch.setattr(
+            "yorunge.adapters.upload_resume.require_distinct_upload_content", duplicated
+        )
+        refused(data, server, source, "upload_duplicate_content")
+
+
+def test_a_folder_that_changes_while_the_source_is_frozen_is_not_planned(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        original = StateUploads.freeze_source
+
+        def freeze_and_change(repository, operation_id):
+            (data[1] / "one.bin").write_bytes(b"changed while the plan was being saved")
+            return original(repository, operation_id)
+
+        monkeypatch.setattr(StateUploads, "freeze_source", freeze_and_change)
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            prepared(data, server, source)
+        assert error.value.code == "input_changed"
+        assert rows(data[0]) == stored  # no plan was saved
+
+
+def test_a_credential_rotated_during_the_observation_stops_prepare_before_the_freeze(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        frozen = []
+        original = StateUploads.freeze_source
+        monkeypatch.setattr(
+            StateUploads,
+            "freeze_source",
+            lambda repository, operation_id: (
+                frozen.append(operation_id) or original(repository, operation_id)
+            ),
+        )
+
+        def rotate():
+            if server.requests and server.requests[-1].path.endswith("/items?limit=128"):
+                monkeypatch.setenv(ENV, "a-key-that-was-rotated-during-the-observation")
+                state, _, _, context, profile = data
+                UploadResumeRuntime(context, profile, state)._bind(SCOPE.owner)
+
+        provider.on_request = rotate
+        stored = rows(data[0])
+        # The new key is registered once the listing was asked for; the plan is for the old one.
+        with pytest.raises(YorungeError) as error:
+            prepared(data, server, source)
+        assert error.value.code == "state_changed" and not frozen
+        assert rows(data[0]) == stored

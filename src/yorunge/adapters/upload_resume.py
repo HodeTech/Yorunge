@@ -245,7 +245,6 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         assert baseline is not None and source.baseline_digest is not None
         start = self.clock.now()
         bound, scope = self._bind(plan.scope.owner)
-        self._check_scope(bound, scope)
         inputs, changed = self._locally(plan, source, bound.credential.secret, end)
         if changed is not None and prepare:
             raise changed  # nothing is planned on a folder that is not the one that was uploaded
@@ -315,10 +314,11 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             observed_at,
         )
         self._fits(used, count, selected, sealed)
+        # The observation took a while: the credential and the clock must still be the scope's.
+        self._check_scope(bound, scope)
         with open_existing_store(self.state_dir) as store:
             StateUploads(store, bound, clock=self.clock).freeze_source(operation_id)
         inputs.recheck()
-        self._check_scope(bound, scope)
         with open_existing_store(self.state_dir) as store:
             StateUploads(store, bound, clock=self.clock).save(sealed, inputs.manifest)
         return reported(sealed)

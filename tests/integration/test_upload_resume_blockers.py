@@ -7,9 +7,11 @@ continued is reported (exit 0) and refused by ``--prepare``, without a single re
 
 import pytest
 
-from tests.fixtures.continuation_history import FIRST, build, install
+from tests.fixtures.continuation_history import BASELINE_DIGEST, FIRST, build, install
 from tests.fixtures.continuation_lifecycle import dump
+from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.state import open_store
+from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.domain.capabilities import instant
 from yorunge.domain.errors import OperationError, YorungeError
@@ -168,3 +170,25 @@ def test_a_call_that_is_not_well_formed_is_refused_before_anything_is_read(
     with pytest.raises(YorungeError) as error:
         resume(lifecycle, source, **flags)
     assert error.value.code == "invalid_request"
+
+
+def test_what_a_report_needs_of_a_source_is_read_from_one_snapshot_of_its_lineage(lifecycle):
+    install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
+    root = root_of(lifecycle)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = StateUploads(store, clock=lifecycle.clock)
+        stamp = StateCache(store, lifecycle.clock).stamp()
+        found = repository.resume_source(FIRST, stamp)
+        # A continuation's baseline is its root's: the root's operation, dataset and intent digest.
+        assert found.baseline_operation_id == root
+        assert found.baseline is not None and found.baseline_digest == BASELINE_DIGEST
+        assert found.intent_digest == lifecycle.root["record"]["intent_digest"]
+        assert [j for j in found.chain.journals] == list(found.chain.journals) and (
+            len(found.chain.journals) == 2
+        )
+        assert found.plan.plan_id == build(lifecycle.root, 1).plan["plan_id"]
+        assert found.manifest.digest == lifecycle.manifest.digest
+        # A root is its own baseline.
+        top = repository.resume_source(root, stamp)
+        assert top.baseline_operation_id == root and len(top.chain.journals) == 1
+        assert top.baseline == found.baseline and top.chain.descendants[0].operation_id == FIRST

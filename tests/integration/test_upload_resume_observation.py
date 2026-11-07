@@ -324,3 +324,51 @@ def test_the_unverified_read_must_be_chosen_before_the_provider_is_read(
         with pytest.raises(YorungeError) as error:
             resume_runtime(data, server).resume(source, accept_unverified_read=False)
         assert error.value.code == "approval_required" and len(server.requests) == before
+
+
+DETAIL = "/api/v1/datasets/test-user/test-dataset"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda provider: setattr(provider, "wrong_detail_owner", True),  # another owner's dataset
+        lambda provider: provider.route_table.update({DETAIL: Reply(status=404, body=b"{}")}),
+    ],
+    ids=["detail of another owner", "detail gone"],
+)
+def test_a_dataset_that_is_not_the_baseline_is_unobserved_and_never_listed(
+    prepared_input, certificates, change
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        change(provider)
+        before = len(server.requests)
+        report = reported(data, server, source)
+        assert report.blockers == ("membership_unobserved",) and report.observation is None
+        assert not any(r.path.endswith("/items?limit=128") for r in server.requests[before:])
+
+
+def test_a_provider_that_fails_while_describing_the_dataset_is_an_error_not_a_blocker(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        provider.route_table[DETAIL] = Reply(status=503, body=b"{}")
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "remote_failed"
+
+
+def test_a_key_that_may_not_upload_to_the_dataset_is_refused_by_the_report(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        provider.upload_allowed = False  # the role no longer lists the upload permission
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "remote_access_denied"
