@@ -92,8 +92,13 @@ def test_a_valid_lineage_runs_from_the_root_and_names_the_baseline():
     assert [v.operation.operation_id for v in lineage.sources] == [ROOT_OPERATION, FIRST]
     assert lineage.baseline == CREATED
     assert lineage.baseline.id == DATASET_ID
+    # The continuations among the sources keep their bindings, in the same order; the root has none.
+    assert [b.source_operation_id for b in lineage.bindings] == [ROOT_OPERATION]
+    assert lineage.bindings[0] == view(first).plan.continuation
     # The first continuation's own lineage is the root alone.
-    assert [v.operation.operation_id for v in resolve(first, []).sources] == [ROOT_OPERATION]
+    alone = resolve(first, [])
+    assert [v.operation.operation_id for v in alone.sources] == [ROOT_OPERATION]
+    assert alone.bindings == ()
 
 
 def refuses(target, views, **how):

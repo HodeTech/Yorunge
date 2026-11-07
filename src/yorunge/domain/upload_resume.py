@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Final, Literal
 
@@ -192,12 +192,8 @@ def _journal_is_valid(journal: OperationJournal, file_count: int, *, root: bool)
     )
 
 
-def merge_chain(journals: Sequence[OperationJournal], manifest: DatasetManifest) -> ChainSummary:
-    """Union of a lineage's journals over one manifest, root first.
-
-    Every journal must have been recorded over that manifest, so file indices mean the same file in
-    all of them; a malformed or foreign chain is ``state_invalid``.
-    """
+def _require_chain(journals: Sequence[OperationJournal], manifest: DatasetManifest) -> int:
+    """The manifest's file count, once ``journals`` are known to be one well-formed lineage."""
     file_count = manifest.file_count
     if not 1 <= file_count <= MAX_UPLOAD_FILES:
         raise ValueError("unsupported upload file count")
@@ -212,23 +208,58 @@ def merge_chain(journals: Sequence[OperationJournal], manifest: DatasetManifest)
         )
     ):
         raise YorungeError("state_invalid")
-    states: list[ChainState] = ["none"] * file_count
+    return file_count
+
+
+def _fold(states: list[ChainState], journal: OperationJournal) -> bool:
+    """Add one journal to the per-file states; whether it holds a rejected receipt."""
+    for stage in journal.stages:
+        if stage.kind != "confirm" or stage.file_index is None:
+            continue
+        if stage.receipt == "accepted":
+            states[stage.file_index] = "accepted"
+        elif states[stage.file_index] == "none":
+            states[stage.file_index] = "intent"
+    return any(stage.receipt == "rejected" for stage in journal.stages)
+
+
+def merge_chain(journals: Sequence[OperationJournal], manifest: DatasetManifest) -> ChainSummary:
+    """Union of a lineage's journals over one manifest, root first.
+
+    Every journal must have been recorded over that manifest, so file indices mean the same file in
+    all of them; a malformed or foreign chain is ``state_invalid``.
+    """
+    states: list[ChainState] = ["none"] * _require_chain(journals, manifest)
+    rejected = False
     for journal in journals:
-        for stage in journal.stages:
-            if stage.kind != "confirm" or stage.file_index is None:
-                continue
-            if stage.receipt == "accepted":
-                states[stage.file_index] = "accepted"
-            elif states[stage.file_index] == "none":
-                states[stage.file_index] = "intent"
+        rejected = _fold(states, journal) or rejected
     return ChainSummary(
         states=tuple(states),
-        rejected_receipt=any(
-            stage.receipt == "rejected" for journal in journals for stage in journal.stages
-        ),
+        rejected_receipt=rejected,
         source_graph_complete=journals[-1].graph_complete,
         manifest_digest=manifest.digest,
     )
+
+
+def merge_chain_steps(
+    journals: Sequence[OperationJournal], manifest: DatasetManifest
+) -> Iterator[ChainSummary]:
+    """The union after each journal, root first: step ``n`` is ``merge_chain(journals[:n + 1])``.
+
+    A lineage is checked once and folded once, so a caller that needs to know what every member of
+    a chain started from does not merge the whole chain again for each of them. Like
+    ``merge_chain`` it refuses a malformed chain, but only when the first step is taken.
+    """
+    states: list[ChainState] = ["none"] * _require_chain(journals, manifest)
+    rejected = False
+    for journal in journals:
+        rejected = _fold(states, journal) or rejected
+        yield ChainSummary(
+            states=tuple(states),
+            rejected_receipt=rejected,
+            source_graph_complete=journal.graph_complete,
+            manifest_digest=manifest.digest,
+        )
 
 
 # --- remote inventory --------------------------------------------------------------------------

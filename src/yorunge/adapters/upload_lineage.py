@@ -26,7 +26,7 @@ from yorunge.domain.upload_resume import (
     OperationJournal,
     StageFact,
     chain_blockers,
-    merge_chain,
+    merge_chain_steps,
 )
 
 if TYPE_CHECKING:
@@ -42,10 +42,15 @@ GraphComplete = Callable[["VersionedTransferView"], bool]
 
 @dataclass(frozen=True, slots=True)
 class Lineage:
-    """The validated sources of a continuation, root first, and the dataset the root created."""
+    """The validated sources of a continuation, root first, and the dataset the root created.
+
+    ``bindings`` are those of the sources that are continuations themselves, in the same order (the
+    root has none): what each of them chose to send, to be held against what came before it.
+    """
 
     sources: tuple[VersionedTransferView, ...]
     baseline: ProviderDataset
+    bindings: tuple[ContinuationBinding, ...]
 
 
 def _source_is_consistent(view: VersionedTransferView, plan: DatasetContinuationPlanV3) -> None:
@@ -89,6 +94,7 @@ def resolve_lineage(
         # not eligible: the only lineage such a plan could have starts at an ineligible source.
         raise ValueError("a verified_only upload has no continuation")
     sources: list[VersionedTransferView] = []
+    bindings: list[ContinuationBinding] = []
     seen: set[str] = set()
     source_id = binding.source_operation_id
     while True:
@@ -107,6 +113,7 @@ def resolve_lineage(
                 binding.dataset_id,
             ):
                 raise ValueError("lineage disagrees about its baseline")
+            bindings.append(other)
             source_id = other.source_operation_id
             continue
         break  # a v2 plan, the one root family a source can be besides a continuation
@@ -120,7 +127,7 @@ def resolve_lineage(
         or baseline_digest(dataset) != binding.baseline_digest
     ):
         raise ValueError("the root is not the baseline this continuation was prepared from")
-    return Lineage(tuple(reversed(sources)), dataset)
+    return Lineage(tuple(reversed(sources)), dataset, tuple(reversed(bindings)))
 
 
 def journal_of(view: VersionedTransferView, *, complete: bool) -> OperationJournal:
@@ -156,11 +163,12 @@ def journal_of(view: VersionedTransferView, *, complete: bool) -> OperationJourn
 
 
 def check_selection(binding: ContinuationBinding, states: tuple[ChainState, ...]) -> None:
-    """A continuation sends exactly the files its lineage has not confirmed.
+    """A continuation sends only files its lineage has not confirmed.
 
     ``states`` is the lineage's combined confirm state per file. A file an accepted confirm
     already covers is never sent again, and a selected file is uncertain exactly when some member
-    wrote a confirm intent for it that no accepted receipt answers.
+    wrote a confirm intent for it that no accepted receipt answers. A file the inventory shows
+    present may be left out of the selection, so the selection need not cover every open file.
     """
     if any(states[index] == "accepted" for index in binding.file_indices):
         raise ValueError("a file the lineage already confirmed is not sent again")
@@ -176,19 +184,19 @@ def validate_selection(
     manifest: DatasetManifest,
     complete: GraphComplete,
 ) -> None:
-    """The plan's file selection and the lineage's own blockers, as the lineage's journals say.
+    """Every continuation of the lineage, the plan included, against what came before it.
 
     A continuation is never prepared past a known rejection or a source whose graph is already
-    complete (that is a reconcile), so neither can stand in a stored history.
+    complete (that is a reconcile), and it sends only what its own predecessors left unconfirmed.
+    A source's journal cannot grow once it has a continuation, so what the journals say now is what
+    they said when that continuation was prepared: one pass over the chain holds each member to
+    its own predecessors, and an earlier member's fault is found whichever descendant is read.
     """
-    last = len(lineage.sources) - 1
-    summary = merge_chain(
-        [
-            journal_of(view, complete=index == last and complete(view))
-            for index, view in enumerate(lineage.sources)
-        ],
-        manifest,
-    )
-    if chain_blockers(summary):
-        raise ValueError("a lineage with a known rejection or a finished graph is not continued")
-    check_selection(plan.continuation, summary.states)
+    journals = [journal_of(view, complete=complete(view)) for view in lineage.sources]
+    steps = merge_chain_steps(journals, manifest)
+    for binding, before in zip((*lineage.bindings, plan.continuation), steps, strict=True):
+        if chain_blockers(before):
+            raise ValueError(
+                "a lineage with a known rejection or a finished graph is not continued"
+            )
+        check_selection(binding, before.states)

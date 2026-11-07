@@ -39,10 +39,7 @@ def operation_journal(view: VersionedTransferView) -> OperationJournal:
         view.plan, DatasetUploadPlan | DatasetUploadPlanV2 | DatasetContinuationPlanV3
     ):
         raise YorungeError("state_invalid")  # refused before anything of it is read
-    try:
-        return journal_of(view, complete=bool(view.intents) and acknowledged_stages(view))
-    except ValueError:
-        raise YorungeError("state_invalid") from None
+    return journal_of(view, complete=bool(view.intents) and acknowledged_stages(view))
 
 
 @dataclass(frozen=True, slots=True)

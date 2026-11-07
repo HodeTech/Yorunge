@@ -887,3 +887,76 @@ def test_a_continuation_and_its_lineage_are_read_in_one_snapshot_no_writer_can_s
         finally:
             other.close()
         assert refusals == [True]
+
+
+# --- every member of a lineage is held to what came before it ----------------------------------
+
+SECOND_AFTER_FIRST = {
+    "status": "running",
+    "source": FIRST,
+    "indices": (2,),
+    "uncertain": (),
+    "intents": 2,
+    "acknowledged": 2,
+}
+EARLIER_FAULTS = {
+    "an unanswered confirm that is not marked": {**UNKNOWN, "uncertain": ()},
+    "a file the root already confirmed": {
+        "status": "unknown",
+        "indices": (0, 1, 2),
+        "uncertain": (1,),
+        "intents": 5,
+        "acknowledged": 4,
+    },
+}
+
+
+@pytest.mark.parametrize("first", EARLIER_FAULTS.values(), ids=EARLIER_FAULTS)
+def test_a_fault_in_an_earlier_continuation_is_found_from_the_continuation_after_it(
+    tmp_path, first
+):
+    with world(tmp_path / "ok", UNKNOWN, SECOND_AFTER_FIRST) as (store, _, (_, item)):
+        assert read(store, item).operation.status == "running"  # the control
+    with world(tmp_path / "bad", first, SECOND_AFTER_FIRST) as (store, _, (earlier, item)):
+        # The second continuation chooses right for what it follows; the first does not, and a
+        # lineage that holds it is as corrupt as the first is alone.
+        refused(store, earlier)
+        refused(store, item)
+
+
+def test_a_continuation_prepared_over_a_source_that_was_already_complete_is_found_later(tmp_path):
+    whole = {"status": "unknown", "indices": (1,), "uncertain": (1,), "intents": 3}
+    check_only = {"status": "admitted", "source": SECOND, "indices": ()}
+    with world(tmp_path / "ok", {**whole, "intents": 2}, SECOND_AFTER_FIRST, check_only) as (
+        store,
+        _,
+        (_, _, last),
+    ):
+        assert read(store, last).operation.status == "admitted"  # the control: a stage in flight
+    with world(tmp_path / "bad", whole, SECOND_AFTER_FIRST, check_only) as (
+        store,
+        _,
+        (first, second, last),
+    ):
+        assert read(store, first).operation.status == "unknown"  # the first is valid alone
+        refused(store, second)  # the second was prepared over a source with nothing left to send
+        refused(store, last)  # and the third follows the second, whose own fault is found
+
+
+def test_a_cache_handed_in_empty_is_filled_by_the_first_walk_and_used_by_the_next(
+    tmp_path, monkeypatch
+):
+    import yorunge.adapters.upload_store as store_module
+
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
+    with world(tmp_path, UNKNOWN, later) as (store, _, (_, item)):
+        view = store_module._read_view(store.connection, item.plan["plan_id"])
+        reads, cache = [], {}
+        real = store_module._read_view
+        monkeypatch.setattr(
+            store_module, "_read_view", lambda *args: (reads.append(args[1]), real(*args))[1]
+        )
+        assert len(store_module.lineage_of(store.connection, view, cache).sources) == 2
+        assert len(reads) == 2 and len(cache) == 2  # both sources, each read once
+        store_module.lineage_of(store.connection, view, cache)
+        assert len(reads) == 2  # the empty dict that was handed in is the one that was filled

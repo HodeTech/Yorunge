@@ -35,6 +35,7 @@ from yorunge.domain.upload_resume import (
     descendant_verdict,
     inventory_digest,
     merge_chain,
+    merge_chain_steps,
     recommended_action,
     source_blockers,
 )
@@ -276,6 +277,34 @@ def test_only_the_source_decides_whether_its_own_graph_is_already_complete():
     assert merge_chain(
         [op("r", None, []), op("c", "r", [], complete=True)], MANIFEST
     ).source_graph_complete
+
+
+def test_the_steps_of_a_chain_are_its_prefixes_merged_one_by_one():
+    root = op("r", None, [stage("confirm", 0, "none"), stage("confirm", 1)], complete=False)
+    child = op(
+        "c1", "r", [stage("confirm", 0), stage("put", 2, "rejected"), stage("confirm", 2, "none")]
+    )
+    grand = op("c2", "c1", [stage("confirm", 1)], complete=True)
+    journals = [root, child, grand]
+    steps = list(merge_chain_steps(journals, MANIFEST))
+    assert steps == [merge_chain(journals[: n + 1], MANIFEST) for n in range(3)]
+    # What each step says: a later member never changes an earlier summary.
+    assert [step.states for step in steps] == [
+        ("intent", "accepted", "none"),
+        ("accepted", "accepted", "intent"),
+        ("accepted", "accepted", "intent"),
+    ]
+    assert [step.rejected_receipt for step in steps] == [False, True, True]
+    assert [step.source_graph_complete for step in steps] == [False, False, True]
+
+
+def test_the_steps_of_a_chain_refuse_what_the_whole_chain_refuses_at_the_first_step():
+    steps = merge_chain_steps([op("r", None, []), op("c", "r", [stage("create")])], MANIFEST)
+    with pytest.raises(YorungeError) as raised:
+        next(steps)  # the chain is checked as a whole, before any prefix is answered
+    assert raised.value.code == "state_invalid"
+    with pytest.raises(ValueError, match="at least its source"):
+        next(merge_chain_steps([], MANIFEST))
 
 
 @pytest.mark.parametrize(
