@@ -42,6 +42,8 @@ from yorunge.domain.upload_checks import (
 )
 from yorunge.domain.upload_resume import RemoteInventory
 
+# What one phase of reads (the mandatory ones, or the baseline's context and dataset) may take.
+PHASE_SECONDS = 30.0
 _PROFILE: ConsumerProfile = "evren-platform-observed-upload-v2"
 _ACTIONS = {
     "create_private_dataset",
@@ -299,7 +301,7 @@ class ObservedUploadReader:
                 valid = False
             if not valid:
                 raise YorungeError("invalid_request")
-        at, end = self._now(), min(self._budget.end, time.monotonic() + 30.0)
+        at, end = self._now(), min(self._budget.end, time.monotonic() + PHASE_SECONDS)
         dataset_id = None if expected is None else expected.id
         outcome: AuthorizationOutcome = "not_exposed"
         code: ErrorCode | None = None
@@ -398,7 +400,7 @@ class ObservedUploadReader:
             valid = False
         if not valid:
             raise YorungeError("invalid_request")
-        at, end = self._now(), min(self._budget.end, time.monotonic() + 30.0)
+        at, end = self._now(), min(self._budget.end, time.monotonic() + PHASE_SECONDS)
         outcome: AuthorizationOutcome = "not_exposed"
         code: ErrorCode | None = None
         observed = False

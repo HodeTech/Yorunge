@@ -125,6 +125,19 @@ def item(name, *, size=1, sha=None):
     }
 
 
+DETAIL = "/api/v1/datasets/test-user/test-dataset"
+MEMBERS = f"/api/v1/projects/{SCOPE.project_id}/datasets"
+READS = {
+    "me": "/api/v1/auth/me",
+    "project": f"/api/v1/projects/{SCOPE.project_id}",
+    "owned": "/api/v1/datasets?page=1&page_size=20&scope=owned",
+    "detail": DETAIL,
+    "membership": MEMBERS,
+    "role": f"/api/v1/datasets/{DATASET}/my-role",
+    "items": f"/api/v1/datasets/{DATASET}/items?limit=128",
+}
+
+
 def serve_items(provider, items, *, page=128, total=None):
     """The provider lists ``items`` in pages: one route per cursor, as the product follows them."""
     base = f"/api/v1/datasets/{DATASET}/items?limit=128"
@@ -247,7 +260,8 @@ def test_a_dataset_the_project_does_not_list_is_unobserved_and_nothing_is_classi
         report = reported(data, server, source)
         assert report.blockers == ("membership_unobserved",) and report.observation is None
         assert report.dataset_id == DATASET and report.recommended_action == "none"
-        assert not any(r.path.endswith("/items?limit=128") for r in server.requests[before:])
+        asked = [r.path for r in server.requests[before:]]
+        assert not any(path.endswith(("/items?limit=128", "/my-role")) for path in asked)
 
 
 def test_a_folder_that_changed_is_a_blocker_beside_an_observation(prepared_input, certificates):
@@ -260,30 +274,38 @@ def test_a_folder_that_changed_is_a_blocker_beside_an_observation(prepared_input
         assert report.recommended_action == "none"
 
 
-@pytest.mark.parametrize(
-    "route,status,code",
-    [
-        ("my-role", 403, "remote_access_denied"),
-        ("my-role", 503, "remote_failed"),
-        ("my-role", 429, "remote_rate_limited"),
-        ("items", 503, "remote_failed"),
-        ("items", 429, "remote_rate_limited"),
-    ],
-)
+FAILURES = {
+    401: "remote_access_denied",
+    403: "remote_access_denied",
+    429: "remote_rate_limited",
+    500: "remote_failed",
+    503: "remote_failed",
+}
+
+
+@pytest.mark.parametrize("read", READS)
 def test_a_provider_that_refuses_or_fails_is_an_error_of_the_report_not_a_blocker(
-    prepared_input, certificates, route, status, code
+    prepared_input, certificates, read
 ):
     data, provider = world(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
         source = interrupted(data, server)
-        failing = {
-            "my-role": f"/api/v1/datasets/{DATASET}/my-role",
-            "items": f"/api/v1/datasets/{DATASET}/items?limit=128",
-        }[route]
-        provider.route_table[failing] = Reply(status=status, body=b"{}")
+        for status, code in FAILURES.items():
+            provider.route_table[READS[read]] = Reply(status=status, body=b"{}")
+            with pytest.raises(YorungeError) as error:
+                reported(data, server, source)
+            assert error.value.code == code, (read, status)
+
+
+def test_a_key_of_another_account_is_an_error_not_a_report(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        other = {"id": "00000000-0000-4000-8000-000000000999"}
+        provider.route_table[READS["me"]] = reply(other)
         with pytest.raises(YorungeError) as error:
             reported(data, server, source)
-        assert error.value.code == code
+        assert error.value.code == "invalid_response"
 
 
 # --- what a report does and does not do ---------------------------------------------------------
@@ -326,9 +348,6 @@ def test_the_unverified_read_must_be_chosen_before_the_provider_is_read(
         assert error.value.code == "approval_required" and len(server.requests) == before
 
 
-DETAIL = "/api/v1/datasets/test-user/test-dataset"
-
-
 @pytest.mark.parametrize(
     "change",
     [
@@ -348,18 +367,6 @@ def test_a_dataset_that_is_not_the_baseline_is_unobserved_and_never_listed(
         report = reported(data, server, source)
         assert report.blockers == ("membership_unobserved",) and report.observation is None
         assert not any(r.path.endswith("/items?limit=128") for r in server.requests[before:])
-
-
-def test_a_provider_that_fails_while_describing_the_dataset_is_an_error_not_a_blocker(
-    prepared_input, certificates
-):
-    data, provider = world(prepared_input)
-    with TlsServer(certificates, provider.routes()) as server:
-        source = interrupted(data, server)
-        provider.route_table[DETAIL] = Reply(status=503, body=b"{}")
-        with pytest.raises(YorungeError) as error:
-            reported(data, server, source)
-        assert error.value.code == "remote_failed"
 
 
 def test_a_key_that_may_not_upload_to_the_dataset_is_refused_by_the_report(
@@ -386,7 +393,6 @@ def test_a_transport_that_breaks_while_describing_the_dataset_is_an_error_not_a_
         assert error.value.code == "transport_failed"
 
 
-MEMBERS = f"/api/v1/projects/{SCOPE.project_id}/datasets"
 MALFORMED = {
     "an html page instead of the dataset": (DETAIL, Reply(status=200, body=b"<html>portal</html>")),
     "an empty body instead of the dataset": (DETAIL, Reply(status=200, body=b"")),

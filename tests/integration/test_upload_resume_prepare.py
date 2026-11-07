@@ -9,6 +9,7 @@ source frozen.
 
 import multiprocessing
 import os
+import shutil
 import signal
 import time
 from datetime import UTC, datetime, timedelta
@@ -31,6 +32,7 @@ from tests.integration.test_upload_resume_observation import (
     interrupted,
     item,
     lose_confirm_of,
+    reported,
     resume_runtime,
     rows,
     world,
@@ -658,3 +660,115 @@ def test_two_prepares_at_once_freeze_a_source_once_and_each_save_a_plan(
             frozen = StateUploads(store).show(operation_id=source).operation
             assert (frozen.status, frozen.fence) == ("unknown", before.fence + 1)  # frozen once
             validate_uploads(store.connection)
+
+
+# --- the folder and the clock, as they are found ------------------------------------------------
+
+
+def test_a_folder_replaced_by_an_identical_copy_is_a_changed_folder(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        folder = data[1]
+        copy = folder.with_name("copy-of-the-source")
+        shutil.copytree(folder, copy)
+        shutil.rmtree(folder)
+        copy.rename(folder)  # the same path and bytes, but not the folder that was planned
+        assert "local_changed" in reported(data, server, source).blockers
+        refused(data, server, source, "input_changed")
+
+
+def test_a_symlink_in_the_folder_is_a_changed_folder_not_an_error_of_the_report(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        (data[1] / "one.bin").unlink()
+        (data[1] / "one.bin").symlink_to(data[1] / "two.bin")
+        assert "local_changed" in reported(data, server, source).blockers
+        refused(data, server, source, "input_invalid")
+
+
+class Stepping:
+    """The real clock whose wall time can be stepped; the monotonic clock never steps."""
+
+    def __init__(self):
+        self.offset = 0.0
+
+    def now(self):
+        return datetime.now(UTC) + timedelta(seconds=self.offset)
+
+    def monotonic(self):
+        return time.monotonic()
+
+    @property
+    def value(self):
+        return self.now()
+
+
+def step_after_the_listing(server, provider, clock, seconds):
+    """Step the clock once the provider has been asked for the items: while nothing is sealed."""
+    listing = f"/api/v1/datasets/{DATASET}/items?limit=128"
+
+    def step():
+        if server.requests and server.requests[-1].path == listing:
+            clock.offset = seconds
+
+    provider.on_request = step
+
+
+@pytest.mark.parametrize("seconds", [-2.0, -3600.0, 3600.0])
+def test_a_clock_that_stepped_while_the_dataset_was_read_is_not_planned_on(
+    prepared_input, certificates, seconds
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        clock = Stepping()
+        step_after_the_listing(server, provider, clock, seconds)
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=clock).resume(
+                source, accept_unverified_read=True, prepare=True
+            )
+        assert error.value.code == "upload_plan_not_valid"  # as for an original plan
+        assert rows(data[0]) == stored  # nothing was frozen or saved
+
+
+def test_a_clock_that_stepped_back_after_the_dataset_was_read_is_not_planned_on(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        clock = Stepping()
+        step_after_the_listing(server, provider, clock, 10.0)  # the provider took ten seconds
+
+        def step_back(manifest):
+            clock.offset -= 5.0  # still after the window opened, but before the observation
+
+        import yorunge.adapters.upload_resume as module
+
+        monkeypatch.setattr(module, "require_distinct_upload_content", step_back)
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=clock).resume(
+                source, accept_unverified_read=True, prepare=True
+            )
+        assert error.value.code == "upload_plan_not_valid"
+        assert rows(data[0]) == stored
+
+
+def test_a_clock_that_stepped_a_little_does_not_stop_the_plan(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        clock = Stepping()
+        step_after_the_listing(server, provider, clock, 200.0)
+        done = resume_runtime(data, server, clock=clock).resume(
+            source, accept_unverified_read=True, prepare=True
+        )
+        plan = saved(data, done.plan_id).plan
+        assert instant(plan.continuation.observed_at) <= instant(plan.prepared_at)
+        assert instant(plan.prepared_at) < instant(plan.expires_at)

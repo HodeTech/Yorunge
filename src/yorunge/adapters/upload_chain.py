@@ -11,6 +11,7 @@ from yorunge.adapters.upload_store import (
     VersionedTransferView,
     acknowledged_stages,
     created_dataset,
+    quota_used,
     read_any_record,
     read_manifest,
     read_plan,
@@ -24,6 +25,7 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
+from yorunge.domain.upload_resume_report import QuotaCounters
 from yorunge.domain.upload_versions import UploadPlan, UploadRecord
 
 
@@ -134,7 +136,8 @@ class ResumeSource:
 
     ``chain`` is what changes (status, leases, descendants); the rest is immutable once stored: the
     source's own plan and manifest, and the root that made the dataset (``baseline`` is None while
-    that create is unknown). All of it is read in the one database snapshot that ``chain`` is.
+    that create is unknown). ``quota`` is what the store holds, as its bounds count it. All of it
+    is read in the one database snapshot that ``chain`` is.
     """
 
     chain: ChainSnapshot
@@ -144,6 +147,7 @@ class ResumeSource:
     baseline_operation_id: str
     baseline_digest: str | None
     intent_digest: str
+    quota: QuotaCounters
 
 
 def resume_source(connection: sqlite3.Connection, operation_id: str, stamp: Stamp) -> ResumeSource:
@@ -161,4 +165,5 @@ def resume_source(connection: sqlite3.Connection, operation_id: str, stamp: Stam
         baseline_operation_id=root.operation.operation_id,
         baseline_digest=None if baseline is None else baseline_digest(baseline),
         intent_digest=root.operation.intent_digest,
+        quota=quota_used(connection),
     )

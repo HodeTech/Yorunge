@@ -5,18 +5,22 @@ runtime is given a session factory that fails the test if it is ever called. A s
 continued is reported (exit 0) and refused by ``--prepare``, without a single request.
 """
 
+import sqlite3
+
 import pytest
 
 from tests.fixtures.continuation_history import BASELINE_DIGEST, FIRST, build, install
 from tests.fixtures.continuation_lifecycle import dump
 from yorunge.adapters.capability_cache import StateCache
-from yorunge.adapters.state import open_store
+from yorunge.adapters.state import DB_NAME, open_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
+from yorunge.adapters.upload_store import quota_used
 from yorunge.domain.capabilities import instant
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Profile
 from yorunge.domain.upload_resume import ContinuationNotPossible
+from yorunge.domain.upload_resume_report import continuation_added_payload_bytes
 
 
 def root_of(lifecycle):
@@ -156,19 +160,28 @@ def test_an_unknown_operation_is_not_found(lifecycle):
     assert error.value.code == "operation_not_found"
 
 
-@pytest.mark.parametrize(
-    "source,flags",
-    [
-        ("not-an-id", {}),
-        ("root", {"accept_unconfirmed_effects": True}),  # only with --prepare
-    ],
-)
-def test_a_call_that_is_not_well_formed_is_refused_before_anything_is_read(
-    lifecycle, source, flags
-):
-    source = root_of(lifecycle) if source == "root" else source
+def test_an_operation_id_that_is_not_one_is_refused_before_anything_is_read(lifecycle):
     with pytest.raises(YorungeError) as error:
-        resume(lifecycle, source, **flags)
+        resume(lifecycle, "not-an-id")
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        {"accept_unverified_read": 1},
+        {"accept_unverified_read": None},
+        {"prepare": "yes"},
+        {"prepare": True, "accept_unconfirmed_effects": 1},
+        {"accept_unconfirmed_effects": True},  # belongs to --prepare alone
+    ],
+    ids=["int", "none", "string", "int acknowledgement", "acknowledgement without prepare"],
+)
+def test_the_flags_are_booleans_and_the_acknowledgement_belongs_to_prepare(lifecycle, flags):
+    # A source the journal rules out would be reported (or refused) if the call were accepted.
+    install_first(lifecycle, status="succeeded")
+    with pytest.raises(YorungeError) as error:
+        runtime(lifecycle).resume(FIRST, **{"accept_unverified_read": True, **flags})
     assert error.value.code == "invalid_request"
 
 
@@ -186,17 +199,73 @@ def test_what_a_report_needs_of_a_source_is_read_from_one_snapshot_of_its_lineag
         assert len(found.chain.journals) == 2  # the root's journal, then the source's own
         assert found.plan.plan_id == build(lifecycle.root, 1).plan["plan_id"]
         assert found.manifest.digest == lifecycle.manifest.digest
+        # What the store holds is read with them: the root's and the source's plan and operation.
+        assert found.quota == quota_used(store.connection)
+        assert (found.quota.plans, found.quota.operations) == (2, 2)
         # A root is its own baseline.
         top = repository.resume_source(root, stamp)
         assert top.baseline_operation_id == root and len(top.chain.journals) == 1
         assert top.baseline == found.baseline and top.chain.descendants[0].operation_id == FIRST
 
 
+def test_the_chain_and_the_quota_are_read_from_one_snapshot(lifecycle):
+    install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
+    tried: list[tuple[str, str]] = []
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = StateUploads(store, clock=lifecycle.clock)
+        stamp = StateCache(store, lifecycle.clock).stamp()
+
+        def competing_writer(statement):
+            """Try to commit when the chain is first read and when the quota is first counted."""
+            moment = "quota" if statement == "SELECT count(*) FROM upload_plans" else None
+            if moment is None and "upload_plans" in statement and not tried:
+                moment = "chain"
+            if moment is None:
+                return
+            other = sqlite3.connect(lifecycle.root_dir / DB_NAME, timeout=0)
+            try:
+                other.execute("BEGIN IMMEDIATE")
+                other.execute("UPDATE upload_plans SET prepared_at=prepared_at")
+                other.execute("COMMIT")
+                tried.append((moment, "committed"))
+            except sqlite3.OperationalError:
+                tried.append((moment, "blocked"))
+            finally:
+                other.close()
+
+        store.connection.set_trace_callback(competing_writer)
+        try:
+            repository.resume_source(FIRST, stamp)
+        finally:
+            store.connection.set_trace_callback(None)
+    assert tried == [("chain", "blocked"), ("quota", "blocked")]
+
+
+def test_a_busy_store_is_a_closed_error_not_a_raw_sqlite_one(lifecycle):
+    install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
+    with open_store(lifecycle.root_dir, timeout=0.2) as store:
+        repository = StateUploads(store, clock=lifecycle.clock)
+        stamp = StateCache(store, lifecycle.clock).stamp()
+        other = sqlite3.connect(lifecycle.root_dir / DB_NAME, timeout=0)
+        other.execute("BEGIN EXCLUSIVE")
+        try:
+            with pytest.raises(YorungeError) as error:
+                repository.resume_source(FIRST, stamp)
+        finally:
+            other.execute("ROLLBACK")
+            other.close()
+    assert error.value.code == "state_busy"
+
+
 def test_the_unverified_read_is_not_asked_for_when_nothing_would_be_read(lifecycle):
     install_first(lifecycle, status="succeeded")
     # The journal rules the source out: no provider read is made, so no choice about one is needed.
     report = runtime(lifecycle).resume(FIRST, accept_unverified_read=False)
-    assert "source_terminal" in report.blockers
+    assert "source_terminal" in report.blockers and report.observation is None
+    # What the store would hold after an attempt is stated even then: for all N files.
+    assert report.quota_added.payload_bytes == continuation_added_payload_bytes(
+        lifecycle.manifest.file_count
+    )
     with pytest.raises(OperationError) as error:
         runtime(lifecycle).resume(FIRST, accept_unverified_read=False, prepare=True)
     assert error.value.code == "continuation_not_possible"

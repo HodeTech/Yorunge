@@ -229,7 +229,13 @@ class UploadPreparationRuntime:
             StateUploads(store, bound, clock=self.clock).check_scope(scope, name=name)
 
     def _http(
-        self, bound: BoundCredential, scope: UploadScope, limits: UploadRequestLimits, end: float
+        self,
+        bound: BoundCredential,
+        scope: UploadScope,
+        limits: UploadRequestLimits,
+        end: float,
+        *,
+        seconds: float = 30.0,
     ) -> tuple[UploadSession, ObservedUploadReader]:
         credential = HttpCredential(
             "X-API-Key",
@@ -237,7 +243,7 @@ class UploadPreparationRuntime:
             target=bound.credential.target,
             service_id="evren-platform",
         )
-        budget = UploadBudget(limits, end=min(end, time.monotonic() + 30), read_only=True)
+        budget = UploadBudget(limits, end=min(end, time.monotonic() + seconds), read_only=True)
         return self._session(credential, budget), ObservedUploadReader(
             scope, credential, budget, utc_clock=self.clock.now
         )

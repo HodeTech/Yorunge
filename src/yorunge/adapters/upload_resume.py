@@ -14,7 +14,10 @@ from pathlib import Path
 from uuid import uuid4
 
 from yorunge.adapters.capability_cache import StateCache
-from yorunge.adapters.platform_upload_reader import BaselineCheck, ObservedUploadReader
+from yorunge.adapters.platform_upload_reader import (
+    PHASE_SECONDS,
+    BaselineCheck,
+)
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_chain import ResumeSource
 from yorunge.adapters.upload_http import UploadHttpxTransport
@@ -27,12 +30,11 @@ from yorunge.application.continuation_policy import (
     continuation_limits,
     prepare_continuation_v3,
 )
-from yorunge.application.http_transport import HttpCredential
-from yorunge.application.upload_budget import UploadBudget
 from yorunge.application.upload_inputs import require_distinct_upload_content
-from yorunge.domain.capabilities import timestamp
+from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential, SecretValue
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import scope_target
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
@@ -44,6 +46,7 @@ from yorunge.domain.dataset_upload import (
 )
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_costs import ContinuationCostWork, UploadExecutionWindow
 from yorunge.domain.upload_resume import (
@@ -66,10 +69,10 @@ from yorunge.domain.upload_resume_report import (
     resume_report,
 )
 
-# One read budget for the whole observation: the context and the dataset (each at most thirty
-# seconds, as everywhere) and then the listing of its items.
-OBSERVATION_SECONDS = 75.0
+# One read budget for the whole observation: the context and the dataset (one phase, at most thirty
+# seconds, as everywhere) and then the listing of its items (at most thirty more).
 LISTING_SECONDS = 30.0
+OBSERVATION_SECONDS = PHASE_SECONDS + LISTING_SECONDS
 # The window a prepared plan may be approved and started in, as for an original plan.
 PLAN_WINDOW_SECONDS = 900
 # What the folder can answer when it is not the one that was uploaded (moved, changed, unreadable).
@@ -122,12 +125,11 @@ class UploadResumeRuntime(UploadPreparationRuntime):
                 operation_id, accept_unverified_read, prepare, accept_unconfirmed_effects, end
             )
 
-    def _read_source(self, operation_id: str) -> tuple[ResumeSource, QuotaCounters, str]:
+    def _read_source(self, operation_id: str) -> tuple[ResumeSource, str]:
         with open_existing_store(self.state_dir) as store:
-            repository = StateUploads(store, clock=self.clock)
             stamp = StateCache(store, self.clock).stamp()
-            source = repository.resume_source(operation_id, stamp)
-            return source, repository.quota(), timestamp(stamp.now)
+            source = StateUploads(store, clock=self.clock).resume_source(operation_id, stamp)
+            return source, timestamp(stamp.now)
 
     def _resume(
         self,
@@ -137,7 +139,8 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         accept_unconfirmed_effects: bool,
         end: float,
     ) -> DatasetUploadResumeReport:
-        source, used, now = self._read_source(operation_id)
+        source, now = self._read_source(operation_id)
+        used = source.quota
         try:
             chain = merge_chain(source.chain.journals, source.manifest)
         except ValueError:
@@ -164,7 +167,6 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             return report
         if not accept_unverified_read:
             raise YorungeError("approval_required")
-        assert source.baseline is not None and source.baseline_digest is not None
         plan = source.plan
         if not isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
             raise YorungeError("state_invalid")
@@ -199,25 +201,15 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         self,
         bound: BoundCredential,
         scope: UploadScope,
-        source: ResumeSource,
+        baseline: ProviderDataset,
         plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
+        manifest: DatasetManifest,
         end: float,
     ) -> tuple[BaselineCheck, RemoteInventory | None]:
         """The dataset as the provider shows it: observed, then listed when it is the baseline."""
-        baseline = source.baseline
-        assert baseline is not None
-        credential = HttpCredential(
-            "X-API-Key",
-            bound.credential.secret,
-            target=bound.credential.target,
-            service_id="evren-platform",
+        session, reader = self._http(
+            bound, scope, _limits(manifest), end, seconds=OBSERVATION_SECONDS
         )
-        budget = UploadBudget(
-            _limits(source.manifest),
-            end=min(end, time.monotonic() + OBSERVATION_SECONDS),
-            read_only=True,
-        )
-        reader = ObservedUploadReader(scope, credential, budget, utc_clock=self.clock.now)
 
         async def observe(
             client: UploadHttpxTransport,
@@ -229,10 +221,10 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             )
             if not found.dataset_observed:
                 return found, None
-            deadline = min(budget.end, time.monotonic() + LISTING_SECONDS)
+            # The reader holds the listing within the observation budget as well.
+            deadline = time.monotonic() + LISTING_SECONDS
             return found, await reader.inventory(client, baseline.id, deadline=deadline)
 
-        session = self._session(credential, budget)
         with session:
             return session.exchange(observe)
 
@@ -259,7 +251,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             raise changed  # nothing is planned on a folder that is not the one that was uploaded
         # The plan's window starts once the folder was hashed, as an original plan's does.
         start = self.clock.now()
-        found, inventory = self._read_remote(bound, scope, source, plan, end)
+        found, inventory = self._read_remote(bound, scope, baseline, plan, source.manifest, end)
         observed_at = timestamp(self.clock.now())
         extra: set[Blocker] = set()
         if changed is not None:
@@ -349,6 +341,11 @@ class UploadResumeRuntime(UploadPreparationRuntime):
     ) -> DatasetContinuationPlanV3:
         """The plan of exactly this observation: the source's parameters, the current scope."""
         assert source.baseline is not None and source.baseline_digest is not None
+        prepared = self.clock.now()
+        window_end = start + timedelta(seconds=PLAN_WINDOW_SECONDS)
+        if not max(start, instant(observed_at)) <= prepared < window_end:
+            # The clock moved (back, or far ahead) while the folder and the dataset were read.
+            raise YorungeError("upload_plan_not_valid")
         sealed: DatasetContinuationPlanV3 | None = None
         try:
             work = ContinuationCostWork(
@@ -360,7 +357,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
                 request_limits=continuation_limits(inputs.manifest, file_indices),
                 execution_window=UploadExecutionWindow(
                     not_before=timestamp(start),
-                    not_after=timestamp(start + timedelta(seconds=PLAN_WINDOW_SECONDS)),
+                    not_after=timestamp(window_end),
                 ),
             )
             sealed = prepare_continuation_v3(
@@ -383,7 +380,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
                     inputs_verified=True,
                     grant=None,
                     cost_bound=None,
-                    prepared_at=timestamp(self.clock.now()),
+                    prepared_at=timestamp(prepared),
                 )
             )
         except ValueError:

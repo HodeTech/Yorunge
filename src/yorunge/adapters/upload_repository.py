@@ -31,7 +31,6 @@ from yorunge.adapters.upload_store import (
     decode_versioned,
     legacy_create_without_baseline,
     namespace,
-    quota_used,
     read_manifest,
     read_plan,
     read_view_and_lineage,
@@ -100,7 +99,6 @@ from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
 from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
 from yorunge.domain.upload_resume import OperationJournal
-from yorunge.domain.upload_resume_report import QuotaCounters
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -543,11 +541,6 @@ class StateUploads:
         """The chain facts and the immutable facts of one source operation, from one snapshot."""
         with self.phase(operation_id), read_snapshot(self.connection):
             return stored_resume_source(self.connection, operation_id, stamp)
-
-    def quota(self) -> QuotaCounters:
-        """The four counters the store's quota bounds, from one snapshot (see ``quota_used``)."""
-        with self.phase():
-            return quota_used(self.connection)
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None
