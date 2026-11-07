@@ -45,6 +45,7 @@ from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.adapters.upload_store import read_manifest, validate_uploads
 from yorunge.application.datasets import DatasetBudget
 from yorunge.application.upload_workflow import continue_files
+from yorunge.domain.capabilities import instant
 from yorunge.domain.credentials import ResolvedCredential, SecretValue
 from yorunge.domain.errors import OperationError, YorungeError
 
@@ -401,6 +402,16 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
                 environment.plan,
                 environment.inputs,
                 action="read_created_dataset",
+                expected_dataset=environment.baseline,
+            )
+        assert error.value.code == "invalid_request"
+        forged = environment.plan.model_copy(update={"digest": "0" * 64})  # never validated again
+        with pytest.raises(YorungeError) as error:  # and only the plan that validates is looked at
+            await environment.reader.current(
+                environment.client,
+                forged,
+                environment.inputs,
+                action="upload_created_dataset",
                 expected_dataset=environment.baseline,
             )
         assert error.value.code == "invalid_request"
@@ -852,3 +863,176 @@ def test_a_continuation_that_sends_nothing_is_admitted_on_the_permission_to_read
         assert provider.events[sends:] == []  # nothing was created, linked, presigned or put
         assert all(r.method == "GET" for r in server.requests[before:])
         assert journal(data, report.plan_id).intents == ()
+
+
+# --- what the environment says of a failure, and whose lease it renews: one branch at a time ----
+
+
+async def approved(environment):
+    """What ``approve_admit_continue`` does before it sends: the check the approval is made on."""
+    check = await environment.admission()
+    with environment.repository() as repository:
+        repository.approve_continuation(
+            environment.plan.plan_id,
+            environment.plan.digest,
+            check,
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+            acknowledge_unconfirmed_effects=bool(environment.plan.continuation.uncertain_indices),
+        )
+    return check
+
+
+async def admitted(environment):
+    assert environment.admit(await approved(environment))
+    return environment.record
+
+
+async def lost_the_race(environment):
+    """Another process admits first: this one holds the operation's record and no access to it."""
+    check = await approved(environment)
+    with environment.repository() as repository:
+        repository.admit(environment.plan.plan_id, check)
+    assert environment.admit(check) is False
+    return environment.record
+
+
+def stored(environment, operation_id):
+    with environment.repository() as repository:
+        return repository.show(operation_id=operation_id).operation
+
+
+def test_a_failure_that_names_the_operation_of_another_plan_is_not_this_continuations_to_stop(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+
+    async def foreign(environment):
+        record = await admitted(environment)
+        source = environment.plan.continuation.source_operation_id
+        assert source != record.operation_id
+        before = stored(environment, source)
+        named = OperationError("operation_uncertain", source)
+        assert environment.failure(named) is named  # said as it came: that plan is not this one
+        assert (
+            stored(environment, source) == before
+            and stored(environment, record.operation_id) == record
+        )
+        return record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        record = start(data, server, report.plan_id, algorithm=foreign)
+        assert record.status == "admitted"
+
+
+def test_a_failure_of_an_operation_that_has_already_ended_is_a_conflict_not_an_uncertainty(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+
+    async def ended(environment):
+        record = await admitted(environment)
+        with environment.repository() as repository:
+            repository.stop_local(record.operation_id, record.lease, "local_cancelled")
+        assert stored(environment, record.operation_id).status == "cancelled"
+        uncertain = environment.failure(
+            OperationError("operation_uncertain", record.operation_id, reason_code="state_changed")
+        )
+        assert (uncertain.code, uncertain.operation_id, uncertain.reason_code) == (
+            "operation_conflict",
+            record.operation_id,
+            "state_changed",
+        )
+        plain = environment.failure(YorungeError("remote_failed"))
+        assert (plain.code, plain.operation_id) == ("remote_failed", record.operation_id)
+        return stored(environment, record.operation_id)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        record = start(data, server, report.plan_id, algorithm=ended)
+        assert (record.status, record.reason) == ("cancelled", "local_cancelled")
+        assert len(provider.events) == sends
+
+
+def test_a_process_that_does_not_own_the_operation_stops_nothing_when_it_fails(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+
+    async def watcher(environment):
+        record = await lost_the_race(environment)
+        failure = environment.failure(YorungeError("remote_failed"))
+        assert (failure.code, failure.operation_id) == ("remote_failed", record.operation_id)
+        assert stored(environment, record.operation_id) == record  # not cancelled by a watcher
+        return record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        record = start(data, server, report.plan_id, algorithm=watcher)
+        assert record.status == "admitted" and journal(data, report.plan_id).intents == ()
+
+
+@pytest.mark.parametrize("reason", ["state_changed", None], ids=["its own reason", "no reason"])
+def test_an_uncertain_failure_before_anything_was_armed_stays_uncertain_and_keeps_its_reason(
+    prepared_input, certificates, reason
+):
+    data, provider = three_files(prepared_input)
+
+    async def uncertain_early(environment):
+        record = await admitted(environment)
+        said = environment.failure(
+            OperationError("operation_uncertain", record.operation_id, reason_code=reason)
+        )
+        # What was said is the lower layer's own word; what is stored is that nothing was armed.
+        assert (said.code, said.operation_id) == ("operation_uncertain", record.operation_id)
+        assert said.reason_code == (reason or "operation_uncertain")
+        ended = stored(environment, record.operation_id)
+        assert (ended.status, ended.reason) == ("cancelled", "local_cancelled")
+        return record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        start(data, server, report.plan_id, algorithm=uncertain_early)
+
+
+def test_a_lease_close_to_its_end_is_renewed_and_the_environment_holds_the_renewed_one(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+
+    async def aged(environment):
+        record = await admitted(environment)
+        before = record.lease.expires_at
+        clock.skew += 128  # the 150 s lease has 22 s left
+        environment.memo = None  # the next stage looks again, and renews first
+        await environment.current("presign")
+        renewed = stored(environment, record.operation_id).lease.expires_at
+        assert instant(renewed) > instant(before)
+        assert environment.record.lease.expires_at == renewed  # the lease it holds from now on
+        return environment.record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        start(data, server, report.plan_id, clock=clock, algorithm=aged)
+
+
+def test_a_process_that_does_not_own_the_operation_renews_no_lease(prepared_input, certificates):
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+
+    async def watcher(environment):
+        record = await lost_the_race(environment)
+        held = record.lease.expires_at
+        clock.skew += 128  # the other process's lease has 22 s left
+        environment.memo = None
+        await environment.current("presign")
+        assert stored(environment, record.operation_id).lease.expires_at == held
+        assert environment.record.lease.expires_at == held
+        return environment.record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        start(data, server, report.plan_id, clock=clock, algorithm=watcher)

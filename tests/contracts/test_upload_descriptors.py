@@ -345,6 +345,40 @@ def test_confirm_requires_exact_created_integer(created):
 
 
 @pytest.mark.parametrize(
+    "shape",
+    [{}, {"actual_count": 1}, {"batch_duplicates": 0}, {"actual_count": 1, "batch_duplicates": 0}],
+    ids=["nothing", "the count alone", "the duplicates alone", "both counters"],
+)
+@pytest.mark.parametrize("base", [0, 3], ids=["an original upload", "a continuation"])
+def test_confirm_cannot_leave_created_out_whatever_else_it_says(shape, base):
+    # The two counters are checked only when present; ``created`` is what says the confirm took
+    # effect once, so an answer without it is not an acknowledgement.
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(encoded(shape), 1, SECRET, base=base)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("place", [0, -1, 129, True, 1.0, "1", None])
+def test_a_confirm_has_a_place_among_one_to_128_confirms_of_the_operation(place):
+    # A place outside the operation, or not an integer, is the caller's mistake: not a provider's
+    # answer to judge and not a request that should have been sent.
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(confirmed(1), place, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize(
+    "base,place",
+    [(-1, 1), (128, 1), (127, 2), (True, 1), (1.0, 1), ("1", 1), (None, 1)],
+)
+def test_a_base_the_dataset_cannot_have_had_is_the_callers_mistake(base, place):
+    # The dataset holds at most 128 items: what it held before, and this operation's confirms.
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(confirmed(place), place, SECRET, base=base)
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize(
     "field,value",
     [
         ("actual_count", True),
@@ -374,7 +408,7 @@ def test_an_original_confirm_has_one_meaning_its_place_in_the_operation(place):
         assert error.value.code == "invalid_response"
 
 
-@pytest.mark.parametrize("base,place", [(1, 1), (5, 2), (126, 2), (63, 64)])
+@pytest.mark.parametrize("base,place", [(1, 1), (5, 2), (126, 2), (127, 1), (63, 64)])
 def test_a_confirm_into_a_dataset_that_was_not_empty_may_mean_either_count(base, place):
     # The operation's own count, or the dataset's (what was there before, and this operation's).
     for meant in (place, base + place):

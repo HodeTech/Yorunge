@@ -193,6 +193,40 @@ def test_the_budget_of_a_port_is_the_plans_own_limits(lifecycle):
     assert error.value.code == "invalid_request"
 
 
+def test_a_continuation_plan_that_does_not_validate_again_is_refused_before_any_port_exists(
+    lifecycle,
+):
+    plan, _ = lifecycle.admitted()
+    # An instance whose digest no longer matches its body: a copy that was never validated.
+    forged = plan.model_copy(update={"digest": "0" * 64})
+    with pytest.raises(YorungeError) as error:
+        port_of(lifecycle, forged)
+    assert error.value.code == "invalid_request"
+    port_of(lifecycle, plan)  # and the plan itself is fine
+
+
+def test_a_confirm_is_numbered_among_the_files_the_operation_sends_not_the_manifests(
+    lifecycle, certificates
+):
+    plan, record = lifecycle.admitted()  # files 1 and 2 of three: two confirms, not three
+    sent, manifest = len(plan.continuation.file_indices), plan.manifest.file_count
+    assert (sent, manifest) == (2, 3)
+    port, key, value = port_of(lifecycle, plan)
+    context = port.files(record.operation_id, DATASET_ID)[0]
+    with TlsServer(certificates, {API + "presign": reply(presigned(context))}) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            upload = presigned_and_put(lifecycle, plan, record, port, owned, 1)
+    before = value.snapshot()
+    for place in (0, -1, sent + 1, 128, True, 1.0, "1", None):
+        with pytest.raises(YorungeError) as error:
+            port.prepare_confirm(upload, confirmed_count=place)
+        assert error.value.code == "invalid_request", place
+    assert value.snapshot() == before  # nothing was reserved for a confirm that was refused
+    for place in range(1, sent + 1):
+        port.prepare_confirm(upload, confirmed_count=place)
+
+
 def test_a_file_context_of_another_port_is_not_one_of_this_ones(lifecycle):
     plan, record = lifecycle.admitted()
     port, _, _ = port_of(lifecycle, plan)

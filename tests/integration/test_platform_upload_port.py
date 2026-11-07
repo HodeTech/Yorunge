@@ -558,6 +558,23 @@ def test_file_batch_is_bounded_and_foreign_or_nested_mutated_context_is_rejected
     assert value.snapshot().presign_requests == value.snapshot().effect_attempts == 0
 
 
+def test_a_confirm_is_numbered_among_the_files_of_the_upload(journal):
+    from yorunge.application.upload_descriptors import presigned
+
+    record = journal.approved()
+    port, key, value = setup(journal)
+    context = port.files(record.operation_id, DATASET)[0]
+    upload = presigned(json.dumps(presign_response(context)).encode(), context, key.secret)
+    files = len(journal.manifest.files)
+    before = value.snapshot()
+    for place in (0, -1, files + 1, 128, True, 1.0, "1", None):
+        with pytest.raises(YorungeError) as raised:
+            port.prepare_confirm(upload, confirmed_count=place)
+        assert raised.value.code == "invalid_request", place
+    assert value.snapshot() == before
+    port.prepare_confirm(upload, confirmed_count=files)  # the last of them is the edge
+
+
 @pytest.mark.parametrize("field", ["owner", "project", "name"])
 def test_selected_literal_in_local_plan_is_rejected_before_reservation(journal, field):
     secret = {

@@ -393,7 +393,9 @@ class ObservedUploadPort(_Private):
             raise YorungeError("invalid_request")
         context = upload.context
         self._file(context)
-        if type(confirmed_count) is not int or not 1 <= confirmed_count <= context.file_count:
+        # An operation holds one confirm per file it sends: all the files of an original upload,
+        # the selected ones of a continuation (not the manifest's, whose other files are not sent).
+        if type(confirmed_count) is not int or not 1 <= confirmed_count <= len(self._graph.files):
             raise YorungeError("invalid_request")
         path = codec.segment(context.dataset_id, self._credential.secret)
         return self._prepare(
