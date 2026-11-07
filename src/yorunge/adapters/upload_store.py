@@ -7,6 +7,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Generic, TypeVar, overload
 
+from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import metadata
 from yorunge.adapters.upload_lineage import Lineage, resolve_lineage, validate_selection
 from yorunge.adapters.validation_memo import validated
@@ -839,9 +840,11 @@ def quota_used(connection: sqlite3.Connection) -> QuotaCounters:
     """The four counters the capacity check bounds, as a resume report states what is used.
 
     A store over its bounds cannot be written, so one that is found over them is corrupt: that is
-    a state error, never a report.
+    a state error, never a report. The counters come from one read snapshot, so a writer cannot
+    commit between the statements that count them.
     """
-    found = capacity(connection)
+    with read_snapshot(connection):
+        found = capacity(connection)
     if _over_capacity(found):
         raise YorungeError("state_invalid")
     plans, operations, files, payload_bytes = found

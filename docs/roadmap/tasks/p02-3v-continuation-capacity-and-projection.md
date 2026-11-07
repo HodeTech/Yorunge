@@ -32,9 +32,9 @@ v1/v2 yolları ve golden’lar değişmez; v1/v2 rezervasyon doğrulaması aynı
 
 ## Kabul
 
-1. v3 satırı varken `require_capacity`, list/show okuması ve reset önizlemesi çalışır; kapasite continuation plan/operation 128/128, dosya 4.096 ve 16 MiB sınırlarına yeniden sayılır (bağımsız oracle ile); sınırı aşan v3 geçmişi `upload_capacity_exceeded`/bozuk durumda `state_invalid` verir.
+1. v3 satırı varken `require_capacity`, repository düzeyinde `show`/`list` okuması (`StateUploads`) ve reset önizlemesi çalışır (genel `show`/`list`/`review`/`revoke` yüzeyleri devamı adlandıran sonuç tipleri P02-3i’de gelene dek `state_invalid` ile kapalı başarısız olur); kapasite continuation plan/operation 128/128, dosya 4.096 ve 16 MiB sınırlarına yeniden sayılır (bağımsız oracle ile); sınırı aşan v3 geçmişi `upload_capacity_exceeded`/bozuk durumda `state_invalid` verir.
 2. Reset (`invalidate_uploads`) latch’li v3 kaydı `unknown/identity_reset`, latch’siz olanı `cancelled/identity_reset` yapar ve v3 kontrol kaydını yazar; önizleme parmak izi v3 satırının her alanındaki değişimde değişir, lease yenilemesinde değişmez.
-3. `summary` v3 plan/operasyon için `legacy_history_only=false` ve doğru M/N−M/belirsiz sayılarıyla `DatasetUploadSummaryV3` üretir; `show`/`list` v3’ü kaybetmez.
+3. `summary` v3 plan/operasyon için `legacy_history_only=false` ve doğru M/N−M/belirsiz sayılarıyla `DatasetUploadSummaryV3` üretir; repository `show`/`list` v3’ü kaybetmez (genel yüzeyin kapalı başarısızlığı P02-3i’ye kadardır).
 4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.
 5. `quota_used` `capacity()`yle eşit sayaçlardan gelir; `quota_added.payload_bytes` üst sınırı v3 rezervasyon formülünden türetilir ve en az 16 KiB’dır.
 6. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı (kota/maintenance/migration dahil) değiştirilmeden geçer.

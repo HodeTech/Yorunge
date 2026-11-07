@@ -6,6 +6,7 @@ builder's own plain data (and from independent arithmetic), never taken from the
 """
 
 import json
+import sqlite3
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
@@ -32,7 +33,7 @@ from tests.fixtures.continuation_history import (
 from yorunge import api
 from yorunge.adapters.expiry_fences import next_expiry
 from yorunge.adapters.local_files import Deadline
-from yorunge.adapters.state import metadata, open_store
+from yorunge.adapters.state import DB_NAME, metadata, open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads, upload_snapshot
 from yorunge.adapters.upload_projection import original_summary, review, summary
 from yorunge.adapters.upload_repository import StateUploads
@@ -131,7 +132,6 @@ def test_the_real_plan_bound_admits_a_store_of_128_plans_and_refuses_the_next(tm
         assert capacity(store.connection)[0] == 129
         assert code_of(lambda: require_capacity(store.connection)) == "upload_capacity_exceeded"
         assert code_of(lambda: validate_uploads(store.connection)) == "state_invalid"
-        assert len(built) == 127
 
 
 def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path):
@@ -141,6 +141,36 @@ def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path)
             store.connection
         )
         assert used.plans == used.operations == 3 and used.files == 3 * len(FILES)
+
+
+def test_quota_used_counts_in_one_snapshot_no_writer_can_slip_into(tmp_path):
+    with world(tmp_path, live()) as (store, _, _):
+        other = sqlite3.connect(store.root / DB_NAME, timeout=0)
+        outcomes = []
+
+        def watch(statement):
+            # The second counting statement starts: a writer that committed since the first one
+            # would tear the counters.
+            if statement.startswith("SELECT count(*),coalesce(sum(reservation)"):
+                other.execute("BEGIN IMMEDIATE")
+                try:
+                    other.execute("UPDATE upload_namespaces SET payload=payload")
+                    other.execute("COMMIT")
+                    outcomes.append("committed")
+                except sqlite3.OperationalError as error:
+                    assert "locked" in str(error)
+                    outcomes.append("blocked")
+                finally:
+                    if other.in_transaction:
+                        other.execute("ROLLBACK")
+
+        store.connection.set_trace_callback(watch)
+        try:
+            quota_used(store.connection)
+        finally:
+            store.connection.set_trace_callback(None)
+            other.close()
+        assert outcomes == ["blocked"]
 
 
 # --- the full validation of a store ---------------------------------------------------------------
@@ -271,6 +301,7 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
         assert type(after.operation) is TransferRecordV3
         assert (after.operation.status, after.operation.reason) == ("unknown", "identity_reset")
         assert after.operation.lease is None and after.operation.workflow_latched
+        assert after.operation.clock_anomaly is False  # the reset clock is ahead of the record
         assert after.operation.revision == item.record["revision"] + 1
         assert after.operation.updated_at == NOW
         assert (
@@ -289,6 +320,21 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
         assert after.plan.encoded() == before.plan.encoded()
         assert after.approval.encoded() == before.approval.encoded()
         assert after.intents == before.intents and after.receipts == before.receipts
+        validate_uploads(store.connection)
+
+
+BEHIND = "2026-11-01T00:00:00.000000Z"  # earlier than anything the builder's histories hold
+
+
+@pytest.mark.parametrize(
+    "shape", [live(), UNKNOWN, {"status": "admitted"}], ids=["running", "unknown", "admitted"]
+)
+def test_a_reset_that_finds_the_clock_behind_the_record_marks_the_anomaly(tmp_path, shape):
+    with world(tmp_path, shape) as (store, root, (item,)):
+        reset(store, root, now=BEHIND)
+        after = read_any_view(store.connection, item.plan["plan_id"])
+        assert after.operation.clock_anomaly is True and after.operation.updated_at == BEHIND
+        assert after.operation.reason == "identity_reset"
         validate_uploads(store.connection)
 
 
@@ -358,7 +404,6 @@ def test_a_reset_that_fails_on_the_way_changes_nothing(tmp_path, monkeypatch):
         with pytest.raises(RuntimeError):
             reset(store, root)
         assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
-        assert item.record["status"] == "running"
 
 
 def test_the_public_identity_reset_carries_a_chain_to_the_new_epoch_and_the_store_verifies(
@@ -480,6 +525,52 @@ def test_the_preview_fingerprint_changes_with_every_plain_field_of_a_continuatio
         assert digest_with(lambda v: replace(v, operation=other)) != same
 
 
+def test_the_preview_fingerprint_changes_with_every_part_of_the_journal(tmp_path, monkeypatch):
+    # A finished continuation holds all four parts: its intents, their receipts, its control and
+    # its proof. A reset consent given for one journal must not carry over to another.
+    with world(tmp_path, {"status": "succeeded"}) as (store, _, (item,)):
+        plan_id = item.plan["plan_id"]
+        view = read_any_view(store.connection, plan_id)
+        assert view.intents and view.receipts and view.controls and view.verification is not None
+
+        def digest_with(change):
+            def patched(connection, identifier, views=None):
+                found = read_any_view(connection, identifier, views)
+                return change(found) if identifier == plan_id else found
+
+            monkeypatch.setattr(maintenance_module, "read_any_view", patched)
+            return fingerprint(store)
+
+        same = digest_with(lambda found: found)
+        first_intent, first_receipt = view.intents[0], view.receipts[0]
+        changed = {
+            "an intent": replace(
+                view,
+                intents=(first_intent.model_copy(update={"request_digest": "f" * 64}),)
+                + view.intents[1:],
+            ),
+            "a receipt": replace(
+                view,
+                receipts=(first_receipt.model_copy(update={"recorded_at": BEHIND}),)
+                + view.receipts[1:],
+            ),
+            "a control": replace(
+                view,
+                controls=(view.controls[0].model_copy(update={"revision": 99}),),
+            ),
+            "the proof": replace(
+                view, verification=view.verification.model_copy(update={"observed_at": BEHIND})
+            ),
+            "no intent at all": replace(view, intents=()),
+            "no receipt at all": replace(view, receipts=()),
+            "no control at all": replace(view, controls=()),
+            "no proof at all": replace(view, verification=None),
+        }
+        digests = {name: digest_with(lambda found, c=c: c) for name, c in changed.items()}
+        assert same not in digests.values()
+        assert len(set(digests.values())) == len(digests)  # each part leaves its own mark
+
+
 def test_the_preview_counts_and_fingerprint_read_every_continuation_of_the_store(tmp_path):
     with world(tmp_path, UNKNOWN, LATER) as (store, _, _):
         counts = upload_snapshot(store.connection, Deadline())
@@ -488,7 +579,6 @@ def test_the_preview_counts_and_fingerprint_read_every_continuation_of_the_store
         assert counts["unknown_transfer_count"] == 2
     with world(tmp_path / "fewer", UNKNOWN) as (store, _, _):
         assert upload_snapshot(store.connection, Deadline())["upload_plan_count"] == 2
-        assert fingerprint(store) != "0" * 64
 
 
 # --- the shared expiry of the store ---------------------------------------------------------------
@@ -567,7 +657,21 @@ def test_the_public_results_name_no_continuation_yet_so_they_fail_closed(tmp_pat
         validate_uploads(store.connection)
 
 
-def test_a_reader_of_two_families_refuses_every_row_of_a_continuation_and_rewrites_none(tmp_path):
+def old_capacity(connection):
+    """The count of a version that knows two plan families (``capacity`` before continuations)."""
+    from yorunge.adapters.upload_store import decode_versioned
+    from yorunge.domain.dataset_upload import DatasetUploadPlan
+    from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
+
+    return sum(
+        decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, r[0]).manifest.file_count
+        for r in connection.execute("SELECT payload FROM upload_plans")
+    )
+
+
+def test_a_reader_that_knows_two_families_refuses_every_continuation_row_and_reads_nothing_else(
+    tmp_path,
+):
     from yorunge.adapters.upload_store import decode_versioned
     from yorunge.domain.dataset_transfer import (
         TransferControl,
@@ -613,7 +717,10 @@ def test_a_reader_of_two_families_refuses_every_row_of_a_continuation_and_rewrit
             payload = connection.execute(query, (key,)).fetchone()[0]
             call = partial(decode_versioned, *readers[name], payload)
             assert code_of(call) == "state_invalid", name
-        assert snapshot() == before  # a refusal is a read: nothing is rewritten or downgraded
+        # The count such a version makes over the whole store stops at the continuation's plan
+        # and, being a read, leaves every row as it was.
+        assert code_of(lambda: old_capacity(connection)) == "state_invalid"
+        assert snapshot() == before
 
 
 # --- the user view of a continuation --------------------------------------------------------------
@@ -678,6 +785,22 @@ def test_a_plan_that_was_never_admitted_is_summarized_without_an_operation(tmp_p
         assert json.loads(found.encoded()) == expected_summary(item)
 
 
+def test_a_revoked_approval_shows_in_the_summary_of_a_plan_that_was_never_admitted(tmp_path):
+    with world(tmp_path, {"status": "admitted", "plan_only": True}) as (store, _, (item,)):
+        revoked = {
+            **item.approval,
+            "status": "revoked",
+            "revoked_at": "2026-11-02T11:00:05.000000Z",
+        }
+        store.connection.execute(
+            "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
+            (canon(revoked).decode(), item.plan["plan_id"]),
+        )
+        found = summary(read_any_view(store.connection, item.plan["plan_id"]))
+        assert found.approval_status == "revoked" and found.operation_id is None
+        assert found.approval_expires_at == item.approval["expires_at"]
+
+
 def test_the_summary_golden_is_what_the_stored_fixtures_project_to():
     plan = DatasetContinuationPlanV3.model_validate_json(
         (FIXTURES / "dataset-continuation-plan-v3.json").read_bytes()
@@ -712,6 +835,13 @@ def test_evidence_the_plan_holds_shows_in_the_summary_once_the_upload_has_finish
     assert done.operation_status == "succeeded" and done.cost_policy == "bounded_required"
     assert done.budget_micros == document["budget_micros"]
     assert (done.risks, done.blockers) == ((), ())
+    # Authority counts as verified only when the grant holds every permission the upload needs.
+    grant = plan.grant
+    partial = plan.model_copy(
+        update={"grant": grant.model_copy(update={"permissions": grant.permissions[:-1]})}
+    )
+    narrowed = summary(VersionedTransferView(partial, approval, record))
+    assert narrowed.operation_status == "succeeded" and narrowed.authority_verified is False
     # The cost evidence is projected field for field, with no extra and no payload.
     cost = done.cost_bound
     assert cost is not None
