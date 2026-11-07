@@ -63,20 +63,40 @@ def _put_controls(root: dict[str, object], size: int, key: str) -> None:
             raise YorungeError("invalid_response")
 
 
-def _count(root: dict[str, object], key: str, expected: int, *, required: bool = False) -> None:
+def _count(
+    root: dict[str, object],
+    key: str,
+    expected: int,
+    *,
+    required: bool = False,
+    also: tuple[int, ...] = (),
+) -> None:
     if key not in root and not required:
         return
     value = root.get(key)
-    if type(value) is not int or value != expected:
+    if type(value) is not int or value not in (expected, *also):
         raise YorungeError("invalid_response")
 
 
-def confirm_ack(data: bytes, confirmed_count: int, secret: SecretValue) -> None:
-    if type(confirmed_count) is not int or not 1 <= confirmed_count <= 128:
+def confirm_ack(data: bytes, confirmed_count: int, secret: SecretValue, *, base: int = 0) -> None:
+    """One confirm took effect, once, and the count it reports is one of the two it may mean.
+
+    ``confirmed_count`` is the confirm's place in its own operation (k + 1). ``actual_count`` is
+    that, or, when the dataset already held ``base`` items before the operation (a continuation:
+    ``plan.continuation.remote_present_count``), the dataset's own count (``base`` + k + 1): the
+    provider's meaning is not documented for a dataset that is not new, so either is accepted and
+    nothing else is. Without a base there is a single value, as for an original upload.
+    """
+    if (
+        type(confirmed_count) is not int
+        or not 1 <= confirmed_count <= 128
+        or type(base) is not int
+        or not 0 <= base <= 128 - confirmed_count
+    ):
         raise YorungeError("invalid_request")
     root = control._object(control.raw(data, "confirm", secret))
     _count(root, "created", 1, required=True)
-    _count(root, "actual_count", confirmed_count)
+    _count(root, "actual_count", confirmed_count, also=(base + confirmed_count,))
     _count(root, "batch_duplicates", 0)
 
 

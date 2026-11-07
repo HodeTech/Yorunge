@@ -1054,6 +1054,15 @@
    "note": "builds the legacy v1 plan; new original plans are v2"
   },
   {
+   "file": "src/yorunge/application/upload_descriptors.py",
+   "function": "contexts",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "an original upload has a context for every file, a continuation only for its selection and for the plan's own dataset"
+  },
+  {
    "file": "src/yorunge/application/upload_policy.py",
    "function": "prepare_upload_v2",
    "kind": "direct_decode",

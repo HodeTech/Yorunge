@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.upload_costs import UploadRequestLimits
+from yorunge.domain.upload_costs import ContinuationRequestLimits, UploadRequestLimits
 from yorunge.domain.upload_graph import STAGE_KINDS
 
 CallKind = StageKind | Literal["read"]
@@ -69,12 +69,19 @@ class _PrivateQuota:
 
 
 class UploadBudget(_PrivateQuota):
-    def __init__(self, limits: UploadRequestLimits, *, end: float, read_only: bool) -> None:
-        valid_limits = None
-        if type(limits) is UploadRequestLimits:
+    def __init__(
+        self,
+        limits: UploadRequestLimits | ContinuationRequestLimits,
+        *,
+        end: float,
+        read_only: bool,
+    ) -> None:
+        """An original upload's ceilings, or a continuation's (no create or link, M files)."""
+        valid_limits: UploadRequestLimits | ContinuationRequestLimits | None = None
+        if type(limits) in (UploadRequestLimits, ContinuationRequestLimits):
             try:
                 # Do not serialize untrusted/copied values: Pydantic warnings include input repr.
-                valid_limits = UploadRequestLimits.model_validate(limits.__dict__)
+                valid_limits = type(limits).model_validate(limits.__dict__)
             except ValidationError:
                 pass
         if valid_limits is None or type(read_only) is not bool:

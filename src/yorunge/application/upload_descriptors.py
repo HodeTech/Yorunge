@@ -12,11 +12,13 @@ from yorunge.application.response_json import parse_json
 from yorunge.application.storage import StorageTarget, validate_object_key
 from yorunge.domain.capabilities import canonical
 from yorunge.domain.credentials import SecretValue, ServiceTarget, normalize_target
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
 from yorunge.domain.dataset_upload import manifest_reference
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_versions import graph_of
 
 _PROXY_TARGET = normalize_target("https://api.ssyz.org.tr/api/v1")
 _MEDIA = re.compile(r"[\w!#$&^.+-]+/[\w!#$&^.+-]+", flags=re.ASCII)
@@ -166,13 +168,21 @@ class PresignedUpload(_Ephemeral):
 
 
 def contexts(
-    plan: DatasetUploadPlanV2,
+    plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
     manifest: DatasetManifest,
     operation_id: str,
     dataset_id: str,
     secret: SecretValue,
 ) -> tuple[FileContext, ...]:
-    plan = control._request_input(DatasetUploadPlanV2, plan)
+    """The file contexts of a plan, in index order: every file of an original upload, and only
+    the selected ones (possibly none) of a continuation, whose dataset is the plan's own."""
+    dataset_id = control._identifier(dataset_id, error="invalid_request")
+    if isinstance(plan, DatasetContinuationPlanV3):
+        plan = control._request_input(DatasetContinuationPlanV3, plan)
+        if dataset_id != plan.continuation.dataset_id:
+            raise YorungeError("invalid_request")
+    else:
+        plan = control._request_input(DatasetUploadPlanV2, plan)
     manifest = control._request_input(DatasetManifest, manifest)
     try:
         canonical_uuid(operation_id)
@@ -180,14 +190,14 @@ def contexts(
             raise ValueError("manifest binding mismatch")
     except (ValueError, TypeError, AttributeError):
         raise YorungeError("invalid_request") from None
-    dataset_id = control._identifier(dataset_id, error="invalid_request")
     target = normalize_target(plan.scope.service_origin + plan.scope.api_base_path)
     if plan.storage.mode != "proxy" or target != _PROXY_TARGET:
         raise YorungeError("unsupported_combination")
     control.segment(dataset_id, secret)
     result = []
     minted: set[str] = set()
-    for index, file in enumerate(manifest.files):
+    for index in graph_of(plan).files:
+        file = manifest.files[index]
         binding, client_uid = str(uuid4()), str(uuid4())
         if binding == client_uid or binding in minted or client_uid in minted:
             raise YorungeError("invalid_request")
@@ -323,19 +333,32 @@ def _file_match(row: dict[str, object], context: FileContext) -> None:
 
 
 def distinct_uploads(
-    uploads: tuple[PresignedUpload, ...], expected: tuple[FileContext, ...]
+    uploads: tuple[PresignedUpload, ...],
+    expected: tuple[FileContext, ...],
+    selection: tuple[int, ...] | None = None,
 ) -> None:
+    """The presigned uploads are one per expected file and share nothing between files.
+
+    ``expected`` is every file of an original upload; a continuation names the ``selection`` of
+    files it sends, and the uploads are those files' alone.
+    """
     if type(uploads) is not tuple or type(expected) is not tuple:
         raise YorungeError("invalid_request")
     if any(type(u) is not PresignedUpload for u in uploads):
         raise YorungeError("invalid_request")
     for context in expected:
         _require_context(context)
-    if not expected or len(uploads) != len(expected) or len(expected) != expected[0].file_count:
+    if not expected or len(uploads) != len(expected):
         raise YorungeError("invalid_response")
+    if selection is None:
+        indices, whole = tuple(range(len(expected))), len(expected) == expected[0].file_count
+    else:
+        indices, whole = selection, len(expected) <= expected[0].file_count
     first = expected[0]
-    if tuple(c.file_index for c in expected) != tuple(range(len(expected))) or any(
-        _batch_identity(c) != _batch_identity(first) for c in expected
+    if (
+        not whole
+        or tuple(c.file_index for c in expected) != indices
+        or any(_batch_identity(c) != _batch_identity(first) for c in expected)
     ):
         raise YorungeError("invalid_response")
     for upload, context in zip(uploads, expected, strict=True):
