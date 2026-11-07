@@ -30,6 +30,8 @@ Mevcut presign/PUT/confirm codec’leri, bütçe sayaçları ve storage portu v2
 
 **P02-3g devir notu.** Depodaki `request_digest` v3’te dataset kimliğini plan bağından alır; port tarafındaki `upload_request_digest` çağıranları (`platform_upload_port.py`deki istek sarmalayıcısı ve `platform_upload_put.py`) dataset kimliğini üreticiden alır. v3 koordinatörü bu değeri `plan.continuation.dataset_id` olarak vermelidir; aksi halde port özeti ile depo doğrulaması ayrışır ve geçmiş `state_invalid` olur. Bir test, v3 plan için port özetini depodakiyle bağımsız olarak eşitler.
 
+**P02-3u devir notu.** Resume raporu ve `--prepare` kaynak journal’larını, `SourceFacts`i ve torun olgularını tek çağrıda `StateUploads.chain_snapshot(operation_id, stamp)` ile alır (`stamp` raporun kendi saat noktasıdır); ardından `merge_chain`, `descendant_verdict`, `source_blockers` ve `chain_blockers` saf işlevleri çağrılır. Journal listesi kökten kaynağa sıralıdır; hiçbir şey göndermeyen operation `graph_complete` sayılmaz.
+
 ## Kabul
 
 1. Gerçek loopback TLS sunucusuyla: M>0 başarı (örn. 8 dosyadan 5’i); dolu veri setinde (N−M>0 mevcut item) **her confirm sayaç kontrolünden geçer** (sunucu fixture’ı hem kümülatif `taban+k+1` hem yalnız-işlem `k+1` anlamını ayrı koşularda yansıtır; ikisi dışındaki sayı → unknown); `M=0`; plan–start arası drift; PUT sırasında item ekleme/silme; confirm `created=0`; her aşamada 401/403/429/5xx ve kayıp cevap; her durumda sunucu sayacı create ve project_link isteği **sıfır**, effectful istek sayısı ≤ 3M.

@@ -55,8 +55,6 @@ def resolve_lineage(
     plan: DatasetContinuationPlanV3,
     read: OperationViewReader,
     created: CreatedDataset,
-    *,
-    own_operation_id: str | None = None,
 ) -> Lineage:
     """Walk ``plan``'s sources to the root and check each link and the baseline.
 
@@ -66,7 +64,7 @@ def resolve_lineage(
     """
     binding = plan.continuation
     sources: list[VersionedTransferView] = []
-    seen = {own_operation_id} if own_operation_id is not None else set()
+    seen: set[str] = set()
     source_id = binding.source_operation_id
     while True:
         if source_id in seen or len(sources) >= MAX_LINEAGE:

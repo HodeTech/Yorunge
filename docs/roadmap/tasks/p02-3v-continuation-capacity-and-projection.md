@@ -28,6 +28,8 @@ v1/v2 yolları ve golden’lar değişmez; v1/v2 rezervasyon doğrulaması aynı
 
 **P02-3g devir notu.** Bu dilim şu kapalı başarısızlıkları gerçek davranışla değiştirir: `capacity()` yalnız iki tipli plan decode eder (saklı devam `state_invalid`; nedeni kodda yorumdur) ve devamı kota sayımına katar; `upload_maintenance.invalidate_uploads` bir v3 kaydını, v3 recovery/terminal kontrolü yazılana dek, değişiklik yapmadan `state_invalid` ile reddeder (kontrol iki tipli decode edilir ve payload’a kaydın `schema_version`ını kopyalar); `upload_projection.summary` v3 planı reddeder, `source_plan_schema`, `_cost` ve `_risks` v1/v2’ye göre yazılmıştır. Hepsi sahibi P02-3v olan noktalar olarak `tests/fixtures/version-dispatch-sites.json`dadır.
 
+**P02-3u devir notu.** `read_any_view` artık her v3 planı için soyunu da çözer (plan başına kaynak yürüyüşü; en çok 128 plan × soy uzunluğu) ve `upload_snapshot` bunu zaten kullanır; `capacity()` kalktığında `validate_uploads` aynı okumayı yapar. Bir kaynağın birden çok canlı torunu saklı geçmiş olarak bugün yalnız rapor zamanında yakalanır: tam doğrulama bunu da denetlemelidir.
+
 ## Kabul
 
 1. v3 satırı varken `require_capacity`, list/show okuması ve reset önizlemesi çalışır; kapasite continuation plan/operation 128/128, dosya 4.096 ve 16 MiB sınırlarına yeniden sayılır (bağımsız oracle ile); sınırı aşan v3 geçmişi `upload_capacity_exceeded`/bozuk durumda `state_invalid` verir.
@@ -36,6 +38,7 @@ v1/v2 yolları ve golden’lar değişmez; v1/v2 rezervasyon doğrulaması aynı
 4. Eski-binary benzeri 2 tipli decode v3 satırını mutasyonsuz `state_invalid` reddeder; restore/recover yasağı değişmez.
 5. `quota_used` `capacity()`yle eşit sayaçlardan gelir; `quota_added.payload_bytes` üst sınırı v3 rezervasyon formülünden türetilir ve en az 16 KiB’dır.
 6. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı (kota/maintenance/migration dahil) değiştirilmeden geçer.
+7. Full doğrulama (`validate_uploads`) kök + zincirli v3 geçmişlerini geçirir (`tests/fixtures/continuation_history.py` kurucusuyla); bir kaynağın canlı (`cancelled` olmayan) en çok bir torun operation’ı vardır, fazlası `state_invalid`dir (`descendant_verdict` bunu yalnız rapor zamanında kontrol eder).
 
 ## Doğrulama
 

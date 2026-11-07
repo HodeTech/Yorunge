@@ -372,6 +372,24 @@ def test_a_proof_that_is_not_this_continuations_is_a_corrupt_history(tmp_path, f
         refused(store, item)
 
 
+def test_the_store_asks_the_continuations_own_rule_about_its_proof(tmp_path, monkeypatch):
+    # Its checks overlap with the store's other ones (dataset, project, scope, file count); the
+    # policy rule does not, and a verified-only plan cannot be built here: the call is observed.
+    asked = []
+
+    def refuse(plan, proof):
+        asked.append((plan.plan_id, proof.dataset_id))
+        raise ValueError("this proof is not this continuation's")
+
+    with world(tmp_path, {"status": "succeeded"}) as (store, _, (item,)):
+        assert read(store, item).verification is not None and asked == []
+        monkeypatch.setattr(
+            "yorunge.adapters.upload_store.validate_verification_binding_v3", refuse
+        )
+        refused(store, item)
+        assert asked == [(item.plan["plan_id"], DATASET_ID)]
+
+
 def test_a_proof_with_every_manifest_file_and_the_plans_dataset_is_accepted(tmp_path):
     with world(tmp_path, {"status": "succeeded"}) as (store, _, (item,)):
         view = read(store, item)

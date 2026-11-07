@@ -487,8 +487,6 @@ def _operation_header(view: VersionedTransferView) -> None:
         record.created_at
     ) < instant(record.approval.expires_at):
         raise ValueError("admission without effective approval")
-    if len(view.intents) > graph_of(plan).intent_count:
-        raise ValueError("more intents than the graph has")
     if bool(view.intents) != record.workflow_latched:
         raise ValueError("workflow latch mismatch")
 
@@ -722,18 +720,11 @@ def read_view_and_lineage(
     if not isinstance(plan, DatasetContinuationPlanV3):
         return view, None
     try:
+        # The namespace is the root's, whatever this record's state: the walk reads the root as
+        # its last source, and a latched root's own view requires the namespace to name it.
         lineage = resolve_lineage(
-            plan,
-            lambda operation_id: _operation_view(connection, operation_id),
-            created_dataset,
-            own_operation_id=view.operation.operation_id if view.operation else None,
+            plan, lambda operation_id: _operation_view(connection, operation_id), created_dataset
         )
-        # The namespace belongs to the root that created the dataset, whatever the record's state.
-        if connection.execute(
-            "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
-            (plan.continuation.intent_digest,),
-        ).fetchone() != (plan.continuation.baseline_operation_id,):
-            raise ValueError("namespace is not the baseline's")
     except YorungeError as error:
         if error.code in ("operation_not_found", "upload_plan_not_found"):
             raise YorungeError("state_invalid") from None

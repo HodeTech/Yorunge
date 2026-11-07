@@ -16,6 +16,7 @@ from tests.fixtures.continuation_history import (
     GRAPH,
     build,
     canon,
+    sha,
     uuid,
 )
 from yorunge.adapters.upload_lineage import MAX_LINEAGE, resolve_lineage
@@ -57,21 +58,17 @@ def view(item, *, plan=None, operation=True, **changes):
     )
 
 
-def resolve(target, views, *, root=ROOT_VIEW, created=lambda _: CREATED, own=True):
-    by_operation = {ROOT_OPERATION: root, **{v.key: v for v in views}}
+def resolve(target, views, *, root=ROOT_VIEW, created=lambda _: CREATED):
+    # The store can read the continuation's own operation too, so a walk may come back to it.
+    by_operation = {ROOT_OPERATION: root, target.record["operation_id"]: view(target)}
+    by_operation |= {v.key: v for v in views}
 
     def read(operation_id):
         if operation_id not in by_operation:
             raise YorungeError("operation_not_found")
         return by_operation[operation_id]
 
-    plan = view(target).plan
-    return resolve_lineage(
-        plan,
-        read,
-        created,
-        own_operation_id=target.record["operation_id"] if own else None,
-    )
+    return resolve_lineage(view(target).plan, read, created)
 
 
 def chain(**binding):
@@ -168,6 +165,23 @@ def test_a_root_that_created_another_dataset_is_refused():
     refuses(first, [], created=lambda _: CREATED.model_copy(update={"id": OTHER}))
 
 
+def test_a_root_that_made_a_dataset_the_plan_does_not_name_is_refused():
+    # The plan's digest is of that other dataset, so only its id disagrees with the plan's.
+    other = {**CREATED.model_dump(mode="json"), "id": OTHER}
+    first, _ = chain()
+    named = build(
+        ROOT,
+        1,
+        status="unknown",
+        intents=5,
+        acknowledged=4,
+        binding={"baseline_digest": sha({"kind": "upload_baseline", "dataset": other})},
+    )
+    made = CREATED.model_copy(update={"id": OTHER})
+    assert resolve(first, [])
+    refuses(named, [], created=lambda _: made)
+
+
 def test_a_root_whose_baseline_digest_differs_is_refused():
     first, _ = chain()
     refuses(first, [], created=lambda _: CREATED.model_copy(update={"name": "renamed"}))
@@ -196,7 +210,7 @@ def test_a_lineage_that_loops_without_touching_the_continuation_is_refused():
     a = build(ROOT, 1, status="running", source=SECOND)
     b = build(ROOT, 2, status="running", source=FIRST, indices=(1,))
     target = build(ROOT, 3, status="running", source=FIRST, indices=(0,))
-    refuses(target, [view(a), view(b)], own=False)
+    refuses(target, [view(a), view(b)])
 
 
 def test_a_lineage_longer_than_the_store_can_hold_is_refused():

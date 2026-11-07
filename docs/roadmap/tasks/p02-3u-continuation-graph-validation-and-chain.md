@@ -1,7 +1,7 @@
 ---
 id: P02-3u
 phase: P02
-status: ready
+status: in_review
 size: M
 depends_on: [P02-3g]
 capabilities: [C03, C12]
@@ -30,7 +30,7 @@ v1/v2 doğrulaması davranışsal olarak aynı kalır. Doğrulama doğrudan SQLi
 
 ## Kabul
 
-1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök + iki devam zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot ve full doğrulamadan geçer; çözümleyici baseline özeti uyuşmazlığını, kopuk soyu ve döngüyü `state_invalid` reddeder.
+1. Sentetik v3 geçmişleri (admitted, running, unknown, cancelled, succeeded; `verification_only` M=0; kök + iki devam zinciri; kök + intent’siz `cancelled` torun — zincire katkısız ve kaynak olamaz) hot doğrulamadan (`read_any_view`, `upload_snapshot` okuması) geçer — full `validate_uploads` `capacity()` kapısı kalkınca [P02-3v](p02-3v-continuation-capacity-and-projection.md) kabulündedir; çözümleyici baseline özeti uyuşmazlığını, kopuk soyu ve döngüyü `state_invalid` reddeder.
 2. Geçersiz geçmişler `state_invalid` ile reddedilir: intent’siz ama latch’li kayıt, `verification_only` olmayan latch’siz `succeeded`/`unknown`, yetim makbuz, yanlış namespace, `len(intents)>3M`, v3 içinde create/link intent’i, `file_indices` dışı indeks, baseline uyuşmazlığı, devamın kendi kaynağı olması, yanlış sürüm eşleşmeleri, kanıt girdisinin Manifest’ten farkı, kanıt–kayıt sürüm/saat uyuşmazlığı.
 3. `operation_journal` v3 zincirinde kökten başlayan sıralı journal’ları, `SourceFacts` ve `DescendantFact`leri **tek anlık görüntüde** verir; yarışta (journal okunduktan sonra eklenen torun) tutarsız küme dönmez; intent’siz `verification_only` kayıt `reconcile_available` üretmez.
 4. v1/v2 geçmişi, golden’lar ve mevcut regresyon ağı (kill dahil) değiştirilmeden geçer.
@@ -41,4 +41,11 @@ Gerçek SQLite integration/contract testleri, bağımsız oracle’lar, mevcut u
 
 ## Teslim kaydı
 
-Hazır (`ready`): bağımlılıklar P02-3g ve P02-3e `verified`; uygulama, commit veya review kanıtı yoktur.
+Uygulandı, review bekliyor; `verified` değildir. Commit’ler `feat/p02-3-dataset-recovery` dalındadır: uygulama [42378a7](https://github.com/HodeTech/Yorunge/commit/42378a70b5f6e707071b26fe97103457c79760c9); kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-6--p02-3u-continuation-v3-graf-doğrulaması-zincirbaseline-çözümleyici-ve-tek-okuma-anlık-görüntüsü). Seçilen adlar ve yerleşim:
+
+- `yorunge.adapters.upload_lineage` (yeni): `resolve_lineage(plan, read, created, own_operation_id=…)` ve `Lineage(sources, baseline)`; görünümleri okuyucu/`created` işlevleriyle alan saf mantık (doğrudan satır okumaz). Kurallar: kaynak bir operation’dır ve bir şey göndermiştir (latch’li; `admitted`, `cancelled` ve `verification_only` bir operation kaynak olamaz), kaynak aynı manifest, namespace ve dataset üzerindedir, kaynak devamlar baseline operation/özet/dataset’inde anlaşır, soy kökte biter (v1/v2 kök, `baseline_operation_id`, strict CreateReceiptV2’nin dataset kimliği ve özeti planla eşit), döngü ve 128’den uzun soy yoktur. `MAX_LINEAGE` = `MAX_TRANSFER_OPERATIONS`.
+- `yorunge.adapters.upload_store`: `read_any_view`, tek plan görünümü `_read_view` ve v3 için soy `read_view_and_lineage` olarak ikiye bölündü (v3 plan-only dahil soy çözülür; kayıp kaynak/plan `state_invalid` olur); namespace sahibi v3’te kayıt durumundan bağımsız olarak köktür. `validate_graph` v3’ü reddetmez, doğrular: `_stage_dataset` (devamın makbuzları ve kaydı planın dataset’ini, orijinalin kabul edilmiş create makbuzunun dataset’ini taşır), v3 kanıtı `validate_verification_binding_v3` ile planına bağlanır, intent sayısı grafı aşamaz. `created_dataset` bir devam için hata verir (baseline’ı kendi makbuzlarından vermez).
+- `yorunge.adapters.upload_chain`: `operation_journal` v3 dalı (ebeveyn = kaynak; hiçbir şey göndermeyen operation `graph_complete` sayılmaz: boş grafın boşluktan gelen doğruluğu `reconcile_available` üretmez) ve `ChainSnapshot`/`chain_snapshot(connection, operation_id, stamp)`: kökten kaynağa journal’lar, `SourceFacts` ve torun olguları (aynı kaynaktan bağlı devam operation’ları).
+- `StateUploads.chain_snapshot(operation_id, stamp)`: yukarıdakini tek `read_snapshot` read transaction’ında verir; `require_created_baseline` v3’te kökün baseline’ını döner (soyu doğrulayarak).
+- `tests/fixtures/continuation_history.py`: gerçek kök (strict create makbuzlu) ve zincirli devam geçmişlerini düz `hashlib`/`json` ile kuran bağımsız kurucu (yeni sürümler P02-3v/r/h testlerinde de kullanılır); `tests/integration/test_upload_continuation_lineage.py` (gerçek SQLite satırlarında geçerli şekiller, zincir, tek hata geçmişleri, grafik/kanıt hataları, namespace, snapshot izolasyonu) ve `tests/contracts/test_upload_lineage.py` (çözümleyici kuralları, her biri tek başına bozulur). `tests/fixtures/version-dispatch-sites.json` 115 noktaya yeniden üretildi; sahibi P02-3u olan bütün noktalar çözüldü.
+- Bilinçli sınır: full `validate_uploads` `capacity()` kapısı yüzünden v3 içeren depoda hâlâ kapalı başarısızlık verir (P02-3v); hot okuma ve reset önizlemesinin `upload_snapshot` okuması v3 soyunu doğrular.
