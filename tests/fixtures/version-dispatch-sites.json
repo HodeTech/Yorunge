@@ -525,6 +525,15 @@
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._verified",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a proof for a continuation that has sent nothing and reads nothing is early, whatever it holds: refused, the record untouched"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._verified",
    "kind": "version",
    "text": "proof.schema_version != record.schema_version",
    "occurrence": 0,
@@ -548,6 +557,15 @@
    "occurrence": 0,
    "owner": "done",
    "note": "a v2 or v3 proof is fresh for thirty seconds; the oldest family's carries no such clock"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._verified",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 1,
+   "owner": "done",
+   "note": "an observation that precedes a continuation that sent nothing proves nothing about it: refused as a conflict, not uncertain"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -578,6 +596,15 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.read_failed",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 1,
+   "owner": "done",
+   "note": "a failed read of a continuation that sent nothing and is no check-only one has started no read: a conflict, the record untouched"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.receipt",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
@@ -602,6 +629,15 @@
    "occurrence": 0,
    "owner": "done",
    "note": "a continuation that sent nothing is stopped as cancelled with the reason local_cancelled"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._sent_nothing",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a continuation record that never wrote an intent has nothing uncertain: its failed marker is a late proof, not an unknown outcome"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",

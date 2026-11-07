@@ -27,6 +27,7 @@ from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
+from yorunge.adapters.upload_store import read_any_view
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import (
     BoundCredential,
@@ -80,6 +81,21 @@ def related_of(call):
 
 def tick(lifecycle, seconds=1):
     lifecycle.clock.value += timedelta(seconds=seconds)
+
+
+# The stages of the default continuation: files 1 and 2, each presigned, put and confirmed.
+STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
+
+
+def send_all(lifecycle, plan, record, stages=STAGES):
+    """Arm each stage in turn and answer it as the provider would."""
+    for kind, index in stages:
+        lifecycle.arm(plan, record, kind, index)
+        tick(lifecycle)
+        with open_store(lifecycle.root_dir, timeout=60) as store:
+            intent = read_any_view(store.connection, plan.plan_id).intents[-1]
+        lifecycle.accept(record, intent)
+        tick(lifecycle)
 
 
 ACKNOWLEDGE_ALL = {

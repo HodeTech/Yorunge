@@ -49,8 +49,13 @@ def sweep(lifecycle, tmp_path, act, outcome):
     log = CONTEXT.Queue()
     counting = CONTEXT.Process(target=run_traced, args=(act, None, log))
     counting.start()
-    statements = log.get(timeout=60)
-    counting.join(60)
+    try:
+        statements = log.get(timeout=60)
+    finally:
+        counting.join(60)
+        if counting.is_alive():
+            counting.kill()
+            counting.join()
     points = [i for i, text in enumerate(statements, 1) if text.split()[0].upper() in WRITES]
     assert len(points) >= 10  # a gate that writes more than one row issues many of them
     seen = set()
@@ -60,6 +65,9 @@ def sweep(lifecycle, tmp_path, act, outcome):
         child = CONTEXT.Process(target=run_traced, args=(act, point, None))
         child.start()
         child.join(60)
+        if child.is_alive():  # a hang is a failure, and must not outlive the test
+            child.kill()
+            child.join()
         assert child.exitcode == -signal.SIGKILL, (point, child.exitcode)
         with open_store(lifecycle.root_dir, timeout=60) as store:
             validate_uploads(store.connection)

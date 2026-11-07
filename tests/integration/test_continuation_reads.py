@@ -6,7 +6,14 @@ from datetime import timedelta
 import pytest
 
 from tests.fixtures.continuation_history import DATASET_ID, FIRST, build, canon, install
-from tests.fixtures.continuation_lifecycle import code_of, dump, proof_of, read_check, tick
+from tests.fixtures.continuation_lifecycle import (
+    code_of,
+    dump,
+    proof_of,
+    read_check,
+    send_all,
+    tick,
+)
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_projection import summary
 from yorunge.adapters.upload_repository import StateUploads
@@ -16,18 +23,6 @@ from yorunge.domain.dataset_transfer_v2 import TransferVerificationV2
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
 from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_versions import proof_digest
-
-STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
-
-
-def all_stages(lifecycle, plan, record, stages=STAGES):
-    for kind, index in stages:
-        lifecycle.arm(plan, record, kind, index)
-        tick(lifecycle)
-        with open_store(lifecycle.root_dir, timeout=60) as store:
-            intent = read_any_view(store.connection, plan.plan_id).intents[-1]
-        lifecycle.accept(record, intent)
-        tick(lifecycle)
 
 
 def close(lifecycle, plan, record, **flags):
@@ -50,7 +45,7 @@ def close(lifecycle, plan, record, **flags):
 
 def test_a_continuation_that_sent_its_files_is_verified_by_reading_the_whole_dataset(lifecycle):
     plan, record = lifecycle.admitted()
-    all_stages(lifecycle, plan, record)
+    send_all(lifecycle, plan, record)
     access, proof, view = close(lifecycle, plan, record)
     assert access.policy == "explicit_read_attempt" and access.grant is None
     operation = view.operation
@@ -72,7 +67,7 @@ def test_a_second_continuation_runs_from_the_first_that_stopped_to_a_verified_da
         install(store, build(lifecycle.root, 3, status="cancelled"))  # an attempt that is over
         install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
     plan, record = lifecycle.admitted(2, source=FIRST, indices=(2,), uncertain=(), intents=0)
-    all_stages(lifecycle, plan, record, [(kind, 2) for kind in ("presign", "put", "confirm")])
+    send_all(lifecycle, plan, record, [(kind, 2) for kind in ("presign", "put", "confirm")])
     _, proof, view = close(lifecycle, plan, record)
     assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
     assert len(view.intents) == len(view.receipts) == 3 and view.verification == proof
@@ -166,7 +161,7 @@ def test_a_proof_of_another_family_than_the_record_is_refused_before_anything_is
 
 def test_the_proof_must_be_of_the_plans_dataset_and_cover_the_whole_manifest(lifecycle):
     plan, record = lifecycle.admitted()
-    all_stages(lifecycle, plan, record)
+    send_all(lifecycle, plan, record)
     check = read_check(plan, lifecycle.clock)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
@@ -393,7 +388,7 @@ def test_a_late_proof_of_a_continuation_that_sent_something_stays_uncertain_with
     lifecycle, monkeypatch
 ):
     plan, record = lifecycle.admitted()
-    all_stages(lifecycle, plan, record)
+    send_all(lifecycle, plan, record)
     observed = timestamp(lifecycle.clock.value + timedelta(seconds=5))
     tick(lifecycle, 50)  # the observation is older than the thirty seconds a proof may be
     check = read_check(plan, lifecycle.clock)
@@ -446,7 +441,7 @@ def test_a_failed_read_after_the_first_intent_leaves_the_operation_unknown_and_u
     lifecycle,
 ):
     plan, record = lifecycle.admitted()
-    all_stages(lifecycle, plan, record)
+    send_all(lifecycle, plan, record)
     failure = read_check(plan, lifecycle.clock, error="transport_timeout")
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
@@ -463,7 +458,7 @@ def test_a_failed_read_after_the_first_intent_leaves_the_operation_unknown_and_u
 
 def test_an_unknown_continuation_is_verified_later_by_a_read_owner(lifecycle):
     plan, record = lifecycle.admitted()
-    all_stages(lifecycle, plan, record)
+    send_all(lifecycle, plan, record)
     lifecycle.clock.value = instant("2026-11-02T11:09:00.000000Z")  # the writer's lease is over
     check = read_check(plan, lifecycle.clock)
     with open_store(lifecycle.root_dir, timeout=60) as store:

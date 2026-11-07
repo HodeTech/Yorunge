@@ -7,7 +7,7 @@ from functools import partial
 import pytest
 
 from tests.fixtures.continuation_history import CREATE_RECEIPT, DATASET_ID, FILES, canon
-from tests.fixtures.continuation_lifecycle import code_of, dump, tick
+from tests.fixtures.continuation_lifecycle import STAGES, code_of, dump, tick
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads
 from yorunge.adapters.upload_repository import StateUploads
@@ -15,8 +15,6 @@ from yorunge.adapters.upload_store import acknowledged_stages, read_any_view, va
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferRecordV3
-
-STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
 
 
 def view_of(lifecycle, record):
