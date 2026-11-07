@@ -17,6 +17,7 @@ from yorunge.adapters.upload_store import (
 )
 from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
@@ -34,6 +35,10 @@ def operation_journal(view: VersionedTransferView) -> OperationJournal:
     """
     if view.operation is None:
         raise YorungeError("operation_not_found")
+    if not isinstance(
+        view.plan, DatasetUploadPlan | DatasetUploadPlanV2 | DatasetContinuationPlanV3
+    ):
+        raise YorungeError("state_invalid")  # refused before anything of it is read
     try:
         return journal_of(view, complete=bool(view.intents) and acknowledged_stages(view))
     except ValueError:

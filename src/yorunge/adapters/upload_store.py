@@ -733,9 +733,7 @@ def lineage_of(
 
     try:
         lineage = resolve_lineage(plan, source, created_dataset)
-        validate_selection(
-            plan, lineage, read_manifest(connection, plan), lambda item: acknowledged_stages(item)
-        )
+        validate_selection(plan, lineage, read_manifest(connection, plan), acknowledged_stages)
     except YorungeError as error:
         if error.code in ("operation_not_found", "upload_plan_not_found"):
             raise YorungeError("state_invalid") from None

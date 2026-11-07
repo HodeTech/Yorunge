@@ -31,12 +31,12 @@
   },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
-   "function": "_descendants",
+   "function": "operation_journal",
    "kind": "isinstance",
-   "text": "isinstance(record, TransferRecordV3)",
+   "text": "isinstance(view.plan, DatasetUploadPlan | DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "done",
-   "note": "only a v3 record can be a descendant of a source"
+   "note": "a plan of no known family is refused before anything of it is read, never taken for a root"
   },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
