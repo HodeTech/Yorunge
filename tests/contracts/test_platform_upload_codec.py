@@ -282,12 +282,76 @@ def test_owned_contribution_policy_is_never_invented_or_used_as_detail_proof(pre
     assert error.value.code == "invalid_response"
 
 
-@pytest.mark.parametrize("value", [None, True, 0, 1, "false"])
+@pytest.mark.parametrize("value", [None, 0, 1, "false"])
 def test_present_owned_contribution_policy_stays_strict_false(value):
     raw = encoded([located(contributions_enabled=value)])
     with pytest.raises(YorungeError) as error:
         codec.owned_match(raw, DATASET, SCOPE, PARAMETERS, SECRET)
     assert error.value.code == "invalid_response"
+    assert not isinstance(error.value, codec.DatasetMismatch)  # a malformed answer, not another one
+
+
+# A dataset that was made private and closed, and is since shared or open to contributions, is a
+# well-formed answer about a dataset that is no longer the one made; a value the Platform does not
+# document is a malformed answer. Both are ``invalid_response``; only the first is a mismatch.
+DRIFT = [("visibility", "public"), ("visibility", "unlisted"), ("contributions_enabled", True)]
+MALFORMED_POLICY = [
+    ("visibility", "secret"),
+    ("visibility", 7),
+    ("visibility", None),
+    ("visibility", ["public"]),
+    ("contributions_enabled", 1),
+    ("contributions_enabled", "true"),
+    ("contributions_enabled", None),
+]
+
+
+def read_detail(**updates):
+    return codec.created(encoded(dataset(**updates)), SCOPE, PARAMETERS, SECRET)
+
+
+def read_listed(**updates):
+    return codec.owned_page(encoded([located(**updates)]), DATASET, SCOPE, PARAMETERS, SECRET)
+
+
+READERS = pytest.mark.parametrize("read", [read_detail, read_listed], ids=["detail", "list"])
+
+
+@READERS
+@pytest.mark.parametrize("field,value", DRIFT)
+def test_an_answer_that_says_the_dataset_is_shared_or_open_is_another_dataset(read, field, value):
+    with pytest.raises(codec.DatasetMismatch) as error:
+        read(**{field: value})
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("field,value", DRIFT)
+def test_a_detail_of_a_shared_or_open_dataset_is_not_the_expected_one(field, value):
+    expected = read_detail()
+    with pytest.raises(codec.DatasetMismatch):
+        codec.detail(encoded(dataset(**{field: value})), expected, SCOPE, PARAMETERS, SECRET)
+
+
+@READERS
+@pytest.mark.parametrize("field,value", MALFORMED_POLICY)
+def test_a_visibility_or_policy_the_platform_does_not_document_is_a_malformed_answer(
+    read, field, value
+):
+    with pytest.raises(YorungeError) as error:
+        read(**{field: value})
+    assert error.value.code == "invalid_response"
+    assert not isinstance(error.value, codec.DatasetMismatch)
+
+
+@READERS
+@pytest.mark.parametrize("field,value", DRIFT)
+def test_a_shared_or_open_dataset_is_another_one_only_if_the_rest_of_the_answer_is_well_formed(
+    read, field, value
+):
+    with pytest.raises(YorungeError) as error:
+        read(**{field: value, "owner_id": "not-a-uuid"})
+    assert error.value.code == "invalid_response"
+    assert not isinstance(error.value, codec.DatasetMismatch)
 
 
 @pytest.mark.parametrize("field", ["id", "owner_id", "org_id", "name", "modality", "visibility"])

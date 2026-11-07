@@ -7,7 +7,9 @@ provider's items are then changed to make each class and each blocker of the rep
 
 import hashlib
 import json
+import logging
 import socket
+import traceback
 from uuid import uuid4
 
 import pytest
@@ -18,11 +20,16 @@ from tests.fixtures.upload_provider import DATASET, UploadProvider, reply
 from tests.integration.test_upload_file_workflow import many
 from tests.integration.test_upload_http_budget import SECRET, session
 from tests.integration.test_upload_original import approved, factory, loader
+from tests.integration.test_upload_preparation import ENV
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_original import upload_files_original
 from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.upload_resume_report import (
+    ResumeClassCounts,
+    continuation_added_payload_bytes,
+)
 
 CONNECT, CONNECT_EX, GETADDRINFO = (
     socket.socket.connect,
@@ -177,33 +184,57 @@ def test_a_confirm_that_took_no_effect_is_uncertain_and_asks_for_the_acknowledge
         assert [e.paths for e in report.observation.examples] == [("two.bin",)]
 
 
+def classes(**counted):
+    """The class counts of a report: the ones named, and nothing in the others."""
+    return ResumeClassCounts(
+        **{name: counted.get(name, 0) for name in ResumeClassCounts.model_fields}
+    )
+
+
+# What each problem of the remote state makes of the three files (``one.bin`` confirmed, ``two.bin``
+# kept by the provider though its answer was lost, the third not sent): the blockers in their closed
+# order, the class counts, and the paths the report names. An item no file of the manifest is never
+# named or counted. Under an unreliable listing no file is claimed, so every file is that class.
 PROBLEMS = {
     "a confirmed file the provider no longer has": (
         lambda provider: provider.confirmed.pop("one.bin"),
-        "drift_missing",
-        ("one.bin",),
+        ("drift_missing",),
+        classes(observed=1, pending_clean=1, drift_missing=1),
+        [("drift_missing", ("one.bin",))],
     ),
     "a file the provider holds with other content": (
         lambda provider: provider.confirmed["one.bin"].update(file_size_bytes=999),
-        "conflict",
-        ("one.bin",),
+        ("conflict",),
+        classes(observed=1, pending_clean=1, conflict=1),
+        [("conflict", ("one.bin",))],
     ),
     "a file whose content sits under another name": (
         lambda provider: provider.confirmed.update(
             {"copy.bin": item("copy.bin", size=8, sha=provider.confirmed["one.bin"]["sha256_hash"])}
         ),
-        "conflict",
-        ("one.bin",),
+        ("conflict", "extra_remote"),
+        classes(observed=1, pending_clean=1, conflict=1),
+        [("conflict", ("one.bin",))],
     ),
     "an item the manifest does not list": (
         lambda provider: provider.confirmed.update({"stray.bin": item("stray.bin")}),
-        "extra_remote",
-        None,
+        ("extra_remote",),
+        classes(confirmed=1, observed=1, pending_clean=1),
+        [],
     ),
     "an item without a hash": (
         lambda provider: provider.confirmed["two.bin"].update(sha256_hash=None),
-        "inventory_unreliable",
-        None,
+        ("inventory_unreliable",),
+        classes(inventory_unreliable=3),
+        [("inventory_unreliable", ("one.bin", "two.bin", "ölçüm.bin"))],
+    ),
+    "an identity listed under two names": (
+        lambda provider: provider.confirmed["two.bin"].update(
+            id=provider.confirmed["one.bin"]["id"]
+        ),
+        ("inventory_unreliable",),
+        classes(inventory_unreliable=3),
+        [("inventory_unreliable", ("one.bin", "two.bin", "ölçüm.bin"))],
     ),
 }
 
@@ -212,17 +243,24 @@ PROBLEMS = {
 def test_each_problem_of_the_remote_state_is_a_blocker_with_its_class(
     prepared_input, certificates, problem
 ):
-    change, blocker, example = problem
+    change, blockers, counts, examples = problem
     data, provider = world(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
         source = interrupted(data, server)
         change(provider)
         report = reported(data, server, source)
-        assert blocker in report.blockers and not report.eligible
-        assert report.recommended_action == "none" and report.observation is not None
-        if example is not None:
-            assert example in [e.paths for e in report.observation.examples]
-        assert report.plan_id is None
+        assert report.blockers == blockers and not report.eligible
+        assert report.recommended_action == "none" and report.plan_id is None
+        found = report.observation
+        assert found.class_counts == counts
+        assert [(e.file_class, e.paths) for e in found.examples] == examples
+        # What would be sent is what the provider does not hold: the one file left (nine bytes).
+        assert (found.send_files, found.send_bytes) == (
+            (1, len(b"different")) if counts.pending_clean else (0, 0)
+        )
+        assert not found.unconfirmed_ack_required
+        encoded = report.encoded().decode()
+        assert "stray.bin" not in encoded and "copy.bin" not in encoded  # never named
 
 
 def test_a_listing_of_more_than_a_thousand_items_is_too_large_and_unreliable(
@@ -235,6 +273,22 @@ def test_a_listing_of_more_than_a_thousand_items_is_too_large_and_unreliable(
         report = reported(data, server, source)
         assert {"inventory_too_large", "inventory_unreliable"} <= set(report.blockers)
         assert report.observation.class_counts.confirmed == 0  # nothing is claimed of a cut listing
+
+
+def test_a_listing_whose_cursor_comes_back_is_unreliable(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        base = READS["items"]
+        have = list(provider.confirmed.values())
+        again = {"items": [], "total": len(have), "next_cursor": "c1"}
+        provider.route_table[base] = lambda request, count: reply({**again, "items": have})
+        provider.route_table[base + "&cursor=c1"] = lambda request, count: reply(again)
+        before = len(server.requests)
+        report = reported(data, server, source)
+        assert "inventory_unreliable" in report.blockers and not report.eligible
+        # The loop is cut at the second visit of the cursor, not followed.
+        assert sum(r.path.startswith(base) for r in server.requests[before:]) == 2
 
 
 def test_a_listing_whose_total_moves_is_unreliable(prepared_input, certificates):
@@ -323,7 +377,7 @@ def test_a_report_writes_nothing_locally_and_asks_the_provider_only_to_read(
         report = reported(data, server, source)
         assert report.eligible and rows(data[0]) == stored
         found = server.requests[before:]
-        assert all(r.method == "GET" for r in found) and 5 <= len(found) <= 512
+        assert all(r.method == "GET" for r in found) and len(found) == len(READS)
         assert counters == (
             provider.create_calls,
             provider.link_calls,
@@ -348,14 +402,46 @@ def test_the_unverified_read_must_be_chosen_before_the_provider_is_read(
         assert error.value.code == "approval_required" and len(server.requests) == before
 
 
-@pytest.mark.parametrize(
-    "change",
-    [
-        lambda provider: setattr(provider, "wrong_detail_owner", True),  # another owner's dataset
-        lambda provider: provider.route_table.update({DETAIL: Reply(status=404, body=b"{}")}),
-    ],
-    ids=["detail of another owner", "detail gone"],
-)
+def drifted(**changes):
+    """The provider shows the dataset with ``changes``, in its detail and in the owned list."""
+
+    def change(provider):
+        provider.route_table[DETAIL] = reply({**provider.dataset(), **changes})
+        listed = {**provider.dataset(), "owner_username": "test-user", "slug": "test-dataset"}
+        listed.pop("contributions_enabled")
+        provider.route_table[READS["owned"]] = reply([{**listed, **changes}])
+
+    return change
+
+
+def drifted_detail(**changes):
+    """... only in its detail (the owned list still shows it as it was)."""
+
+    def change(provider):
+        provider.route_table[DETAIL] = reply({**provider.dataset(), **changes})
+
+    return change
+
+
+NOT_THE_BASELINE = {
+    "a detail of another owner": lambda provider: setattr(provider, "wrong_detail_owner", True),
+    "a detail that is gone": lambda provider: provider.route_table.update(
+        {DETAIL: Reply(status=404, body=b"{}")}
+    ),
+    "a detail that is gone for good": lambda provider: provider.route_table.update(
+        {DETAIL: Reply(status=410, body=b"{}")}
+    ),
+    "an owned list that no longer shows the dataset": lambda provider: provider.route_table.update(
+        {READS["owned"]: reply([])}
+    ),
+    "a dataset that was renamed": drifted(name="renamed-since"),
+    "a dataset that was shared": drifted(visibility="public"),
+    "a dataset that became unlisted": drifted(visibility="unlisted"),
+    "a dataset that now takes contributions": drifted_detail(contributions_enabled=True),
+}
+
+
+@pytest.mark.parametrize("change", NOT_THE_BASELINE.values(), ids=NOT_THE_BASELINE)
 def test_a_dataset_that_is_not_the_baseline_is_unobserved_and_never_listed(
     prepared_input, certificates, change
 ):
@@ -366,7 +452,104 @@ def test_a_dataset_that_is_not_the_baseline_is_unobserved_and_never_listed(
         before = len(server.requests)
         report = reported(data, server, source)
         assert report.blockers == ("membership_unobserved",) and report.observation is None
-        assert not any(r.path.endswith("/items?limit=128") for r in server.requests[before:])
+        assert report.recommended_action == "none" and report.dataset_id == DATASET
+        asked = [r.path for r in server.requests[before:]]
+        assert not any(path.endswith(("/items?limit=128", "/my-role")) for path in asked)
+
+
+MALFORMED_DATASET = {
+    "a visibility the platform does not document": drifted(visibility="secret"),
+    "a visibility that is not text": drifted(visibility=7),
+    "a contribution flag that is not a boolean": drifted_detail(contributions_enabled="true"),
+}
+
+
+@pytest.mark.parametrize("change", MALFORMED_DATASET.values(), ids=MALFORMED_DATASET)
+def test_a_dataset_the_platform_describes_in_words_it_does_not_have_is_an_error(
+    prepared_input, certificates, change
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        change(provider)
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "invalid_response"
+
+
+def test_a_dataset_not_shown_to_be_the_baseline_still_reports_all_the_report_knows(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        (data[1] / "one.bin").write_bytes(b"changed after the interruption")
+        provider.linked = False
+        report = reported(data, server, source)
+        # Both stand together, in the closed order of the blockers.
+        assert report.blockers == ("membership_unobserved", "local_changed")
+        assert report.observation is None and report.dataset_id == DATASET
+        # The store's counters and what an attempt would add (for all three files: none is chosen).
+        assert (report.quota_used.plans, report.quota_used.operations) == (1, 1)
+        assert report.quota_added.payload_bytes == continuation_added_payload_bytes(3)
+        assert report.quota_added.plans == report.quota_added.operations == 1
+
+
+def test_an_error_that_is_not_about_the_folder_is_never_reported_as_a_changed_folder(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+
+        def timed_out(*arguments, **keywords):
+            raise YorungeError("execution_timeout")
+
+        monkeypatch.setattr("yorunge.adapters.upload_resume.capture_upload_input", timed_out)
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "execution_timeout"
+
+
+def test_a_key_that_reads_like_a_path_of_the_manifest_is_refused_though_the_folder_is_gone(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        # The folder is not there, so its capture stops before the manifest is read against the key.
+        data[1].rename(data[1].parent / "moved-away")
+        monkeypatch.setenv(ENV, "one.bin")
+        before = len(server.requests)
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "invalid_request" and len(server.requests) == before
+        assert "one.bin" not in str(error.value) + repr(error.value)
+
+
+CANARY = "PRIVATE-PROVIDER-CANARY"
+SAYS = {
+    "an html page for the dataset": (DETAIL, 200),
+    "an html page for the project's datasets": (MEMBERS, 200),
+    "an html page for the items": (READS["items"], 200),
+    "a failure of the role": (READS["role"], 500),
+    "a failure of the dataset": (DETAIL, 500),
+}
+
+
+@pytest.mark.parametrize("route,status", SAYS.values(), ids=SAYS)
+def test_nothing_the_provider_says_reaches_the_error_the_traceback_or_the_log(
+    prepared_input, certificates, caplog, route, status
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        body = f"<html>{CANARY} {SECRET}</html>".encode()
+        provider.route_table[route] = Reply(status=status, body=body)
+        with caplog.at_level(logging.DEBUG), pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+    shown = "".join(traceback.format_exception(error.value)) + repr(error.value) + caplog.text
+    assert CANARY not in shown and SECRET not in shown
 
 
 def test_a_key_that_may_not_upload_to_the_dataset_is_refused_by_the_report(

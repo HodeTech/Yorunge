@@ -30,6 +30,7 @@ from yorunge.application.continuation_policy import (
     continuation_limits,
     prepare_continuation_v3,
 )
+from yorunge.application.response_json import check_response_secrets
 from yorunge.application.upload_inputs import require_distinct_upload_content
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential, SecretValue
@@ -75,8 +76,28 @@ LISTING_SECONDS = 30.0
 OBSERVATION_SECONDS = PHASE_SECONDS + LISTING_SECONDS
 # The window a prepared plan may be approved and started in, as for an original plan.
 PLAN_WINDOW_SECONDS = 900
-# What the folder can answer when it is not the one that was uploaded (moved, changed, unreadable).
-LOCAL_CHANGES = frozenset({"input_changed", "input_invalid", "file_unreadable"})
+# What the folder can answer when it is not the one that was uploaded: moved or unreadable, changed,
+# or grown past what the product accepts (too many files, too many bytes).
+LOCAL_CHANGES = frozenset(
+    {
+        "input_changed",
+        "input_invalid",
+        "file_unreadable",
+        "dataset_limit_exceeded",
+        "input_budget_exceeded",
+    }
+)
+
+
+def _keyless(manifest: DatasetManifest, secret: SecretValue) -> None:
+    """No path a report may show is the key in use, whatever the state of the folder."""
+    leaked = False
+    try:
+        check_response_secrets(manifest, (secret,))
+    except YorungeError:
+        leaked = True  # not chained: the error must not carry the paths
+    if leaked:
+        raise YorungeError("invalid_request")
 
 
 def _ordered(blockers: set[Blocker]) -> tuple[Blocker, ...]:
@@ -141,12 +162,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
     ) -> DatasetUploadResumeReport:
         source, now = self._read_source(operation_id)
         used = source.quota
-        try:
-            chain = merge_chain(source.chain.journals, source.manifest)
-        except ValueError:
-            raise YorungeError("state_invalid") from None
-        verdict = descendant_verdict(source.chain.descendants)
-        journal = _ordered({*source_blockers(source.chain.source, verdict), *chain_blockers(chain)})
+        chain, journal, related = self._journal(source)
         count = len(source.manifest.files)
         dataset_id = None if source.baseline is None else source.baseline.id
         if journal:
@@ -157,13 +173,13 @@ class UploadResumeRuntime(UploadPreparationRuntime):
                 manifest=source.manifest,
                 classification=None,
                 blockers=journal,
-                related_operation_id=verdict.related_operation_id,
+                related_operation_id=related,
                 quota_used=used,
                 added_payload_bytes=continuation_added_payload_bytes(count),
                 observed_at=now,
             )
             if prepare:
-                raise _refuse(journal, operation_id, verdict.related_operation_id)
+                raise _refuse(journal, operation_id, related)
             return report
         if not accept_unverified_read:
             raise YorungeError("approval_required")
@@ -173,6 +189,26 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         return self._observed(
             operation_id, source, plan, chain, used, prepare, accept_unconfirmed_effects, end
         )
+
+    @staticmethod
+    def _journal(source: ResumeSource) -> tuple[ChainSummary, tuple[Blocker, ...], str | None]:
+        """What the journal alone says: the lineage, what rules the source out, the successor."""
+        try:
+            chain = merge_chain(source.chain.journals, source.manifest)
+        except ValueError:
+            raise YorungeError("state_invalid") from None
+        verdict = descendant_verdict(source.chain.descendants)
+        blockers = _ordered(
+            {*source_blockers(source.chain.source, verdict), *chain_blockers(chain)}
+        )
+        return chain, blockers, verdict.related_operation_id
+
+    def _still_open(self, operation_id: str) -> None:
+        """Nothing was admitted or begun on the source while the dataset was being read."""
+        source, _ = self._read_source(operation_id)
+        _, blockers, related = self._journal(source)
+        if blockers:
+            raise _refuse(blockers, operation_id, related)
 
     def _check_scope(self, bound: BoundCredential, scope: UploadScope) -> None:
         """The credential and the clock are still those the scope was taken under (no name)."""
@@ -246,6 +282,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             # The context names another project, owner or service than the source was uploaded
             # under: what a continuation would be planned on is not this dataset's project.
             raise YorungeError("state_changed")
+        _keyless(source.manifest, bound.credential.secret)
         inputs, changed = self._locally(plan, source, bound.credential.secret, end)
         if changed is not None and prepare:
             raise changed  # nothing is planned on a folder that is not the one that was uploaded
@@ -317,9 +354,14 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             observed_at,
         )
         self._fits(used, count, selected, sealed)
-        # The observation took a while: the credential and the clock must still be the scope's.
+        # The observation took a while: the credential and the clock must still be the scope's, the
+        # plan inside its window, the folder what it was, and nothing begun on the source. A prepare
+        # refused for any of it freezes nothing; one that fails after the freeze leaves it frozen.
         self._check_scope(bound, scope)
-        inputs.recheck()  # a refused prepare must not freeze; one that fails later leaves it frozen
+        if self.clock.now() >= instant(sealed.expires_at):
+            raise YorungeError("upload_plan_not_valid")
+        inputs.recheck()
+        self._still_open(operation_id)
         with open_existing_store(self.state_dir) as store:
             StateUploads(store, bound, clock=self.clock).freeze_source(operation_id)
         inputs.recheck()

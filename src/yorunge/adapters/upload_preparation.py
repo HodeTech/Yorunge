@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Clock, StateCache, SystemClock
 from yorunge.adapters.identity import StateCredentialRegistry
-from yorunge.adapters.platform_upload_reader import ObservedUploadReader
+from yorunge.adapters.platform_upload_reader import PHASE_SECONDS, ObservedUploadReader
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_http import UploadSession
@@ -235,7 +235,7 @@ class UploadPreparationRuntime:
         limits: UploadRequestLimits,
         end: float,
         *,
-        seconds: float = 30.0,
+        seconds: float = PHASE_SECONDS,
     ) -> tuple[UploadSession, ObservedUploadReader]:
         credential = HttpCredential(
             "X-API-Key",

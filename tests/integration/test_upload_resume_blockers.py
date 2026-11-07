@@ -9,7 +9,13 @@ import sqlite3
 
 import pytest
 
-from tests.fixtures.continuation_history import BASELINE_DIGEST, FIRST, build, install
+from tests.fixtures.continuation_history import (
+    BASELINE_DIGEST,
+    DATASET_ID,
+    FIRST,
+    build,
+    install,
+)
 from tests.fixtures.continuation_lifecycle import dump
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.state import DB_NAME, open_store
@@ -100,7 +106,7 @@ def test_a_source_the_journal_rules_out_is_reported_without_asking_the_provider(
     stored = state(lifecycle)
     report = resume(lifecycle, FIRST)
     assert report.blockers == blockers and not report.eligible and report.observation is None
-    assert report.recommended_action == action
+    assert report.recommended_action == action and report.dataset_id == DATASET_ID
     assert report.related_operation_id is None and report.plan_id is None
     assert state(lifecycle) == stored  # a report writes nothing
 
@@ -110,6 +116,16 @@ def test_a_root_that_continued_into_an_unknown_one_is_superseded_by_it(lifecycle
     report = resume(lifecycle, root_of(lifecycle))
     assert report.blockers == ("source_superseded",) and report.related_operation_id == FIRST
     assert report.recommended_action == "none"
+
+
+def test_prepare_refuses_a_superseded_root_and_names_the_root_it_was_asked_about(lifecycle):
+    install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
+    root = root_of(lifecycle)
+    stored = state(lifecycle)
+    with pytest.raises(ContinuationNotPossible) as error:
+        resume(lifecycle, root, prepare=True)
+    assert error.value.blockers == ("source_superseded",) and error.value.operation_id == root
+    assert state(lifecycle) == stored
 
 
 def test_a_root_whose_continuation_still_runs_is_active_and_names_it(lifecycle):
@@ -154,15 +170,39 @@ def test_prepare_names_the_descendant_that_keeps_a_source_active(lifecycle):
     assert (error.value.code, error.value.operation_id) == ("operation_conflict", FIRST)
 
 
+def test_a_lineage_that_cannot_be_merged_is_a_state_that_is_not_valid(lifecycle, monkeypatch):
+    install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
+
+    def foreign(journals, manifest):
+        raise ValueError("the journals of two lineages")
+
+    monkeypatch.setattr("yorunge.adapters.upload_resume.merge_chain", foreign)
+    for flags in ({}, {"prepare": True}):
+        with pytest.raises(YorungeError) as error:
+            resume(lifecycle, root_of(lifecycle), **flags)
+        assert error.value.code == "state_invalid"
+
+
 def test_an_unknown_operation_is_not_found(lifecycle):
     with pytest.raises(YorungeError) as error:
         resume(lifecycle, "00000000-0000-4000-8000-0000000000ee")
     assert error.value.code == "operation_not_found"
 
 
-def test_an_operation_id_that_is_not_one_is_refused_before_anything_is_read(lifecycle):
+def test_an_operation_id_that_is_not_one_is_refused_before_anything_is_read(lifecycle, tmp_path):
     with pytest.raises(YorungeError) as error:
         resume(lifecycle, "not-an-id")
+    assert error.value.code == "invalid_request"
+    # Before the store is opened: a state directory that does not exist is not what is reported.
+    missing = UploadResumeRuntime(
+        lifecycle.bound.context,
+        Profile(platform_key_env="TEST_PLATFORM_KEY"),
+        tmp_path / "no-such-state",
+        session_factory=forbidden,
+        clock=lifecycle.clock,
+    )
+    with pytest.raises(YorungeError) as error:
+        missing.resume("not-an-id", accept_unverified_read=True)
     assert error.value.code == "invalid_request"
 
 

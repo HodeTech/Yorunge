@@ -26,7 +26,7 @@ from tests.integration.test_upload_resume_observation import (
 from tests.integration.test_upload_resume_observation import (
     loopback_only as loopback_only,
 )
-from yorunge.adapters.platform_upload_reader import PHASE_SECONDS
+from yorunge.adapters.platform_upload_reader import PHASE_SECONDS, ObservedUploadReader
 from yorunge.adapters.upload_resume import (
     LISTING_SECONDS,
     OBSERVATION_SECONDS,
@@ -71,6 +71,48 @@ def test_a_body_that_is_dripped_is_cut_where_the_budget_ends(
         assert time.monotonic() - began < 10  # the body alone would have taken over twenty seconds
 
 
+def test_each_time_bound_of_the_observation_is_its_named_constant(
+    prepared_input, certificates, monkeypatch
+):
+    """The bounds are the constants, not numbers near them: seen at the three places they are used.
+
+    A bound twice as long would still cut a body dripped for over twenty seconds, so this asks the
+    deadlines themselves, without waiting for anything.
+    """
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)  # the upload itself keeps its own bounds
+        monkeypatch.setattr(PHASE, 7.0)
+        monkeypatch.setattr(DRIP + "LISTING_SECONDS", 11.0)
+        monkeypatch.setattr(DRIP + "OBSERVATION_SECONDS", 18.0)
+        seen = {}
+        original_get = ObservedUploadReader._get
+        original_inventory = ObservedUploadReader.inventory
+
+        async def get(self, client, kind, endpoint, end, query=()):
+            seen.setdefault("phase", end - time.monotonic())
+            return await original_get(self, client, kind, endpoint, end, query)
+
+        async def inventory(self, client, dataset_id, *, deadline):
+            seen["listing"] = deadline - time.monotonic()
+            return await original_inventory(self, client, dataset_id, deadline=deadline)
+
+        monkeypatch.setattr(ObservedUploadReader, "_get", get)
+        monkeypatch.setattr(ObservedUploadReader, "inventory", inventory)
+
+        def build(key, budget):
+            seen["budget"] = budget.end - time.monotonic()
+            return session(server, key, budget)[0]
+
+        state, _, _, context, profile = data
+        UploadResumeRuntime(context, profile, state, session_factory=build).resume(
+            source, accept_unverified_read=True
+        )
+        assert 5.5 < seen["phase"] <= 7.0, seen
+        assert 9.5 < seen["listing"] <= 11.0, seen
+        assert 16.5 < seen["budget"] <= 18.0, seen
+
+
 def test_the_observation_is_made_under_a_read_only_budget(prepared_input, certificates):
     data, provider = world(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
@@ -83,8 +125,16 @@ def test_the_observation_is_made_under_a_read_only_budget(prepared_input, certif
 
         state, _, _, context, profile = data
         runtime = UploadResumeRuntime(context, profile, state, session_factory=build)
+        before = len(server.requests)
         runtime.resume(source, accept_unverified_read=True)
         assert len(budgets) == 1
+        # Every request the server saw is a read the budget counted once (no retry was needed), and
+        # none of the effects was asked for: the counters stand well inside the read-only limits.
+        counters, asked = budgets[0].snapshot(), len(server.requests) - before
+        assert counters.read_requests == counters.read_attempts == asked
+        assert asked == len(READS) and counters.effect_attempts == 0  # each read, once
+        assert counters.create_requests == counters.project_link_requests == 0
+        assert counters.presign_requests == counters.put_requests == counters.confirm_requests == 0
         with pytest.raises(YorungeError) as error:
             budgets[0].reserve("create")  # a request that is not a read is not admitted at all
         assert error.value.code == "invalid_request"

@@ -273,6 +273,26 @@ class DatasetMismatch(YorungeError):
         super().__init__("invalid_response")
 
 
+# The dataset was made private and closed to contributions. The Platform may since have shared or
+# opened it: that is a well-formed answer about a dataset that is no longer the one made, where any
+# other value (a visibility it does not document, a contribution flag that is not a boolean) is a
+# malformed one.
+_SHARED = ("public", "unlisted")
+
+
+def _as_made(source: dict[str, object]) -> dict[str, object]:
+    """``source`` with a shared visibility and open contributions read as the dataset that was made.
+
+    What is left of the answer is then checked as strictly as ever; the caller says the difference.
+    """
+    fixed = dict(source)
+    if fixed.get("visibility") in _SHARED:
+        fixed["visibility"] = "private"
+    if fixed.get("contributions_enabled") is True:
+        fixed["contributions_enabled"] = False
+    return fixed
+
+
 def _owner(
     result: ProviderDatasetMetadata, scope: UploadScope, parameters: UploadParameters
 ) -> None:
@@ -288,8 +308,12 @@ def _owner(
 def created(
     data: bytes, scope: UploadScope, parameters: UploadParameters, secret: SecretValue
 ) -> ProviderDataset:
-    result = _validate(ProviderDataset, _projection(raw(data, "dataset", secret), _DATASET))
+    source = _projection(raw(data, "dataset", secret), _DATASET)
+    fixed = _as_made(source)
+    result = _validate(ProviderDataset, fixed)
     _owner(result, scope, parameters)
+    if fixed != source:
+        raise DatasetMismatch()
     return result
 
 
@@ -336,10 +360,15 @@ def owned_page(
     selected = next((row for row in rows if row["id"] == dataset_id), None)
     if selected is None:
         return OwnedPage(ids, None)
-    if "contributions_enabled" in selected and selected["contributions_enabled"] is not False:
+    policy = selected.get("contributions_enabled", False)  # a list locator may omit it
+    if type(policy) is not bool:
         raise YorungeError("invalid_response")
-    result = _validate(LocatedDataset, _projection(selected, _LOCATED - {"contributions_enabled"}))
+    source = _projection(selected, _LOCATED - {"contributions_enabled"})
+    fixed = _as_made(source)
+    result = _validate(LocatedDataset, fixed)
     _owner(result, scope, parameters)
+    if policy or fixed != source:
+        raise DatasetMismatch()
     return OwnedPage(ids, result)
 
 

@@ -12,23 +12,24 @@ import os
 import shutil
 import signal
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+import yorunge.adapters.upload_resume as resume_module
 from tests.contracts.test_platform_upload_codec import SCOPE
 from tests.fixtures.continuation_lifecycle import FixtureContinuations
-from tests.fixtures.http_server import TlsServer
+from tests.fixtures.http_server import Reply, TlsServer
 from tests.fixtures.upload_provider import DATASET, UploadProvider
+from tests.integration.test_upload_file_workflow import many
 from tests.integration.test_upload_http_budget import SECRET
 from tests.integration.test_upload_original import approved
 from tests.integration.test_upload_preparation import ENV
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
 from tests.integration.test_upload_resume_observation import (
-    certificates as certificates,
-)
-from tests.integration.test_upload_resume_observation import (
+    READS,
     interrupted,
     item,
     lose_confirm_of,
@@ -38,6 +39,9 @@ from tests.integration.test_upload_resume_observation import (
     world,
 )
 from tests.integration.test_upload_resume_observation import (
+    certificates as certificates,
+)
+from tests.integration.test_upload_resume_observation import (
     loopback_only as loopback_only,
 )
 from tests.integration.test_upload_workflow_kill import _child, _files, _settle
@@ -45,17 +49,19 @@ from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
 from yorunge.adapters.upload_store import read_any_view, read_manifest, validate_uploads
+from yorunge.domain import dataset_manifest as limits
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer import StageReceipt
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.dataset_upload import TRANSFER_LEASE_SECONDS
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.upload_resume import ContinuationNotPossible
 
 
 class Later:
     """A clock a little ahead of the real one: leases taken a moment ago have lapsed."""
 
-    def __init__(self, seconds=151):
+    def __init__(self, seconds=TRANSFER_LEASE_SECONDS + 1):
         self.seconds = seconds
 
     def now(self):
@@ -132,9 +138,13 @@ def test_prepare_saves_the_plan_the_report_describes(prepared_input, certificate
     data, provider = world(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
         source = interrupted(data, server)
+        described = reported(data, server, source)
         before = len(server.requests)
         report = prepared(data, server, source)
         assert report.eligible and report.plan_id is not None
+        # The report and the prepare that follows it observe the same: one computation.
+        assert report.observation == described.observation
+        assert (report.blockers, report.quota_used) == (described.blockers, described.quota_used)
         view = saved(data, report.plan_id)
         plan = view.plan
         assert isinstance(plan, DatasetContinuationPlanV3) and plan.digest == report.plan_digest
@@ -235,10 +245,7 @@ def test_a_plan_the_wire_cannot_carry_is_an_invalid_request_and_nothing_is_writt
 def test_unconfirmed_effects_must_be_acknowledged_before_anything_is_written(
     prepared_input, certificates
 ):
-    data = prepared_input
-    from tests.integration.test_upload_file_workflow import many
-
-    data = many(data)
+    data = many(prepared_input)
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
     lose_confirm_of(
         provider, "two.bin", remembered=False
@@ -252,6 +259,9 @@ def test_unconfirmed_effects_must_be_acknowledged_before_anything_is_written(
             1,
             2,
         )
+        # It asks the provider for exactly the two files it will send, and for their bytes.
+        sent = sum((data[1] / name).stat().st_size for name in ("two.bin", "ölçüm.bin"))
+        assert (plan.request_limits.files, plan.request_limits.max_upload_bytes) == (2, sent)
 
 
 def test_an_acknowledgement_nothing_needs_is_refused(prepared_input, certificates):
@@ -369,6 +379,26 @@ def test_prepare_freezes_a_source_that_was_killed_while_running(
             None,
         )
         assert frozen.fence == record.fence + 1 and done.plan_id is not None
+
+
+@pytest.mark.parametrize("read", ["me", "owned", "detail", "role", "items"])
+def test_a_provider_that_fails_during_prepare_leaves_a_running_source_unfrozen(
+    prepared_input, certificates, monkeypatch, read
+):
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
+        provider.route_table[READS[read]] = Reply(status=500, body=b"{}")
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=Later()).resume(
+                source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
+            )
+        assert error.value.code == "remote_failed"
+        assert rows(data[0]) == stored  # nothing was frozen or saved
+        with open_existing_store(data[0]) as store:
+            assert StateUploads(store).show(operation_id=source).operation.status == "running"
 
 
 # Each bound is set where what is used still fits and the attempt added to it does not.
@@ -547,10 +577,8 @@ def test_the_plan_window_begins_once_the_folder_was_hashed(
             clock.seconds += 600
             return found
 
-        import yorunge.adapters.upload_resume as module
-
-        original = module.capture_upload_input  # the slow part: ten minutes here
-        monkeypatch.setattr(module, "capture_upload_input", slow)
+        original = resume_module.capture_upload_input  # the slow part: ten minutes here
+        monkeypatch.setattr(resume_module, "capture_upload_input", slow)
         report = resume_runtime(data, server, clock=clock).resume(
             source, accept_unverified_read=True, prepare=True
         )
@@ -639,8 +667,6 @@ def test_the_plan_of_a_second_hop_extends_the_root_and_passes_the_next_gates(
 def test_two_prepares_at_once_freeze_a_source_once_and_each_save_a_plan(
     prepared_input, certificates, monkeypatch
 ):
-    from concurrent.futures import ThreadPoolExecutor
-
     data = _files(prepared_input, 3)
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
     with TlsServer(certificates, provider.routes()) as server:
@@ -748,9 +774,7 @@ def test_a_clock_that_stepped_back_after_the_dataset_was_read_is_not_planned_on(
         def step_back(manifest):
             clock.offset -= 5.0  # still after the window opened, but before the observation
 
-        import yorunge.adapters.upload_resume as module
-
-        monkeypatch.setattr(module, "require_distinct_upload_content", step_back)
+        monkeypatch.setattr(resume_module, "require_distinct_upload_content", step_back)
         stored = rows(data[0])
         with pytest.raises(YorungeError) as error:
             resume_runtime(data, server, clock=clock).resume(
@@ -772,3 +796,104 @@ def test_a_clock_that_stepped_a_little_does_not_stop_the_plan(prepared_input, ce
         plan = saved(data, done.plan_id).plan
         assert instant(plan.continuation.observed_at) <= instant(plan.prepared_at)
         assert instant(plan.prepared_at) < instant(plan.expires_at)
+
+
+def grown_by_files(folder):
+    for number in range(limits.MAX_FILES + 4):
+        (folder / f"extra-{number:05d}.txt").write_bytes(b"x")
+
+
+def grown_by_bytes(folder):
+    with (folder / "huge.bin").open("wb") as handle:
+        handle.truncate(limits.MAX_CONTENT_BYTES + 1)  # sparse: the size alone is refused
+
+
+@pytest.mark.parametrize(
+    "grow,code",
+    [(grown_by_files, "dataset_limit_exceeded"), (grown_by_bytes, "input_budget_exceeded")],
+    ids=["more files than a dataset may hold", "more bytes than an upload may hold"],
+)
+def test_a_folder_that_grew_past_the_limits_is_a_changed_folder_to_the_report(
+    prepared_input, certificates, grow, code
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        grow(data[1])
+        assert "local_changed" in reported(data, server, source).blockers
+        refused(data, server, source, code)  # the honest code, before the provider is asked
+
+
+def approved_and_admitted(data, runtime, plan, clock):
+    """The next two gates, driven as the user would: the approval, then the admission."""
+    bound, _ = runtime._bind(plan.scope.owner)
+    with open_existing_store(data[0]) as store:
+        gates = FixtureContinuations(store, bound, clock=clock)
+        gates.approve_continuation(
+            plan.plan_id,
+            plan.digest,
+            plan,
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+            acknowledge_unconfirmed_effects=bool(plan.continuation.uncertain_indices),
+        )
+        return gates.admit(plan.plan_id, plan)
+
+
+def test_a_continuation_admitted_while_the_dataset_is_read_stops_the_next_prepare(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        runtime = resume_runtime(data, server)
+        first = saved(
+            data, runtime.resume(source, accept_unverified_read=True, prepare=True).plan_id
+        )
+        listing = f"/api/v1/datasets/{DATASET}/items?limit=128"
+        admitted = []
+
+        def another_process_admits():
+            if server.requests and server.requests[-1].path == listing and not admitted:
+                admitted.append(approved_and_admitted(data, runtime, first.plan, Later(0)))
+
+        provider.on_request = another_process_admits
+        with pytest.raises(OperationError) as error:
+            runtime.resume(source, accept_unverified_read=True, prepare=True)
+        provider.on_request = None
+        # The command says what is true now: the source has a live continuation, which it names.
+        assert error.value.code == "operation_conflict"
+        assert error.value.operation_id == admitted[0].operation_id
+        with open_existing_store(data[0]) as store:
+            count = store.connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
+            assert count == 2  # the root's plan and the first one: no second plan was saved
+            validate_uploads(store.connection)
+        assert (
+            "source_active"
+            in resume_runtime(data, server).resume(source, accept_unverified_read=True).blockers
+        )
+
+
+def test_a_clock_that_stepped_past_the_window_after_the_seal_freezes_nothing(
+    prepared_input, certificates, monkeypatch
+):
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
+        clock = Stepping()
+        clock.offset = TRANSFER_LEASE_SECONDS + 1.0  # the killed process's lease has lapsed
+        fits = UploadResumeRuntime._fits
+
+        def fits_then_step(used, count, selected, sealed):
+            fits(used, count, selected, sealed)
+            clock.offset += 1000.0  # a suspend, or a clock set far ahead, once the plan is sealed
+
+        monkeypatch.setattr(UploadResumeRuntime, "_fits", staticmethod(fits_then_step))
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=clock).resume(
+                source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
+            )
+        assert error.value.code == "upload_plan_not_valid"
+        assert rows(data[0]) == stored  # the source is still running: nothing was frozen
