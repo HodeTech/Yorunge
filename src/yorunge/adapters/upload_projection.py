@@ -37,7 +37,7 @@ def _cost(plan: UploadPlan) -> UploadCostSummary | None:
 
 
 def _risks(plan: UploadPlan, grant_complete: bool) -> tuple[UploadRisk, ...]:
-    if isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
+    if isinstance(plan, DatasetUploadPlanV2):
         return plan.risks
     if grant_complete:
         return ("cost_unverified",)

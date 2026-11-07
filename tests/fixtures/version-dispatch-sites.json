@@ -186,10 +186,10 @@
    "file": "src/yorunge/adapters/upload_projection.py",
    "function": "_risks",
    "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
    "owner": "done",
-   "note": "a v2 or v3 plan carries its risks; a v1 plan's are derived from its grant"
+   "note": "the original summary only: a v2 plan carries its risks, a v1 plan's are derived from its grant (a continuation has its own summary and takes its plan's)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
