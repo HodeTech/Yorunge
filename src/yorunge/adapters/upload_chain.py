@@ -17,7 +17,6 @@ from yorunge.adapters.upload_store import (
 )
 from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
-from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
@@ -74,8 +73,6 @@ def _descendants(
         "SELECT operation_id FROM upload_operations ORDER BY operation_id"
     ).fetchall():
         record = read_any_record(connection, operation_id)
-        if not isinstance(record, TransferRecordV3):
-            continue
         plan = read_plan(connection, record.plan_id)
         if (
             isinstance(plan, DatasetContinuationPlanV3)
@@ -110,7 +107,7 @@ def chain_snapshot(
                 if isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
                 else "verified_only"
             ),
-            has_created_dataset=lineage is not None or created_dataset(root) is not None,
+            has_created_dataset=created_dataset(root) is not None,  # the root: never a continuation
         ),
         descendants=_descendants(connection, operation_id, stamp),
     )

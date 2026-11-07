@@ -7,7 +7,7 @@ back through the store. A negative test breaks exactly one thing in an otherwise
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -26,6 +26,7 @@ from tests.fixtures.continuation_history import (
     uuid,
 )
 from tests.fixtures.continuation_history import stamp as builder_stamp
+from tests.fixtures.upload_history import install_legacy_running
 from yorunge.adapters.capability_cache import Stamp
 from yorunge.adapters.local_files import Deadline
 from yorunge.adapters.state import DB_NAME, open_store
@@ -64,7 +65,7 @@ UNKNOWN = SHAPES["unknown"]
 
 
 @contextmanager
-def world(tmp_path, *specs, timeout=5.0):
+def world(tmp_path, *specs, timeout=60.0):
     """A store with the root and the continuations ``specs`` describe.
 
     A spec is ``build`` keywords, plus ``tweak`` (a function that breaks one thing of the built
@@ -712,3 +713,70 @@ def test_reading_every_plan_of_a_long_lineage_reads_each_operation_once(tmp_path
         calls.clear()
         entries, _ = StateUploads(store).list(limit=100)
         assert len(entries) == count + 1 and len(calls) <= 2 * (count + 1)
+
+
+# --- the facts of a chain, in the places a mutant could hide ------------------------------------
+
+
+def test_the_facts_of_a_deeper_chain_name_each_operations_own_status_parent_and_lease(tmp_path):
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
+    with world(tmp_path, UNKNOWN, later) as (store, root, _):
+        uploads = StateUploads(store)
+        at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
+        deep = uploads.chain_snapshot(SECOND, at)
+        root_operation = root["record"]["operation_id"]
+        # Each journal's parent is the operation before it; the facts are the source's own.
+        assert [j.parent_operation_id for j in deep.journals] == [None, root_operation, FIRST]
+        assert deep.source.status == "running" and deep.source.lease_active is True
+        assert uploads.chain_snapshot(FIRST, at).source.status == "unknown"
+        assert deep.descendants == ()
+        # A lease is over at the very instant it expires, not a moment later.
+        expires = datetime(2026, 11, 2, 11, 2, 32, tzinfo=UTC)
+        for now, active in ((expires - timedelta(microseconds=1), True), (expires, False)):
+            facts = uploads.chain_snapshot(FIRST, stamp(store, root, now=now)).descendants[0]
+            assert facts.lease_active is active
+
+
+def test_the_descendants_of_a_source_come_in_operation_order_whatever_their_state(tmp_path):
+    with world(tmp_path, {"status": "cancelled"}, {"status": "running"}) as (store, root, _):
+        at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
+        snapshot = StateUploads(store).chain_snapshot(root["record"]["operation_id"], at)
+        assert [(d.operation_id, d.status, d.lease_active) for d in snapshot.descendants] == [
+            (FIRST, "cancelled", False),
+            (SECOND, "running", True),
+        ]
+
+
+def test_a_v1_operation_is_a_root_with_no_explicit_policy_and_no_dataset_of_its_own(tmp_path):
+    with open_store(tmp_path / "state", timeout=60) as store:
+        plan, record = install_legacy_running(store, history=True)
+        view = read_any_view(store.connection, plan.plan_id)
+        assert view.operation.schema_version == 1 and len(view.intents) == 1
+        at = Stamp(
+            plan.scope.store_id,
+            plan.scope.identity_epoch,
+            1,
+            datetime(2026, 11, 2, 11, 1, tzinfo=UTC),
+            False,
+        )
+        snapshot = StateUploads(store).chain_snapshot(record.operation_id, at)
+        assert [j.operation_id for j in snapshot.journals] == [record.operation_id]
+        assert snapshot.journals[0].parent_operation_id is None
+        # The oldest family never granted an explicit read, and its create left no strict receipt.
+        assert snapshot.source.policy == "verified_only"
+        assert snapshot.source.has_created_dataset is False
+        assert snapshot.source.status == "running" and snapshot.descendants == ()
+
+
+def test_a_source_whose_plan_row_is_gone_is_a_corrupt_history(tmp_path):
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
+    with world(tmp_path, UNKNOWN, later) as (store, _, (first, item)):
+        assert read(store, item).operation.status == "running"  # the control
+        store.connection.execute("PRAGMA foreign_keys=OFF")  # the operation row stays, dangling
+        store.connection.execute(
+            "DELETE FROM upload_approvals WHERE plan_id=?", (first.plan["plan_id"],)
+        )
+        store.connection.execute(
+            "DELETE FROM upload_plans WHERE plan_id=?", (first.plan["plan_id"],)
+        )
+        refused(store, item)

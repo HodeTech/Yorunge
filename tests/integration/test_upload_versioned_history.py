@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.fixtures.upload_history import encode, install_fixture
+from tests.fixtures.upload_history import (
+    encode,
+    install_fixture,
+    install_legacy_running,
+    legacy_record,
+)
 from yorunge import api
 from yorunge.adapters.state import metadata, open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads
@@ -18,59 +23,9 @@ from yorunge.adapters.upload_store import (
     validate_uploads,
 )
 from yorunge.domain.capabilities import instant
-from yorunge.domain.dataset_transfer import TransferRecord, operation_reservation
-from yorunge.domain.dataset_upload import DatasetUploadPlan, upload_namespace
 from yorunge.domain.errors import YorungeError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
-
-
-def legacy_record(**changes):
-    """The golden running v1 record, re-addressed with ``changes`` (it is valid on its own)."""
-    data = json.loads((FIXTURES / "dataset-transfer-journal-v1.json").read_bytes())["record"]
-    return TransferRecord.model_validate_json(encode({**data, **changes}))
-
-
-def install_legacy_running(store):
-    """A v1 plan with the golden running v1 record: the oldest family, on real rows."""
-    pair = json.loads((FIXTURES / "dataset-upload-approved-v1.json").read_bytes())
-    plan = DatasetUploadPlan.model_validate_json(encode(pair["plan"]))
-    record = legacy_record(
-        plan_id=plan.plan_id, plan_digest=plan.digest, intent_digest=plan.intent_digest()
-    )
-    c = store.connection
-    c.execute(
-        "INSERT INTO upload_namespaces VALUES(?,?,NULL)",
-        (plan.intent_digest(), upload_namespace(plan.scope, plan.parameters.name).decode()),
-    )
-    c.execute(
-        "INSERT INTO upload_manifests VALUES(?,?)",
-        (plan.manifest.digest, (FIXTURES / "dataset-manifest-v1.json").read_text()),
-    )
-    c.execute(
-        "INSERT INTO upload_plans VALUES(?,?,?,?,?,?)",
-        (
-            plan.plan_id,
-            plan.intent_digest(),
-            plan.manifest.digest,
-            plan.prepared_at,
-            plan.expires_at,
-            plan.encoded().decode(),
-        ),
-    )
-    c.execute(
-        "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
-        (
-            record.operation_id,
-            record.plan_id,
-            record.intent_digest,
-            record.revision,
-            record.lease.expires_at if record.lease else None,
-            operation_reservation(3),
-            record.encoded().decode(),
-        ),
-    )
-    return plan, record
 
 
 def test_reset_makes_a_running_v1_operation_unknown_with_a_v1_recovery_control(tmp_path):

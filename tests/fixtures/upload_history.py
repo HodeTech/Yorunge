@@ -11,7 +11,8 @@ import json
 from pathlib import Path
 
 from yorunge.adapters.state import metadata
-from yorunge.domain.dataset_transfer import operation_reservation
+from yorunge.domain.dataset_transfer import TransferRecord, operation_reservation
+from yorunge.domain.dataset_upload import DatasetUploadPlan, upload_namespace
 
 FIXTURES = Path(__file__).parent
 
@@ -140,3 +141,97 @@ def install_fixture(store, *, terminal=True):
             (record["operation_id"], encode(proof).decode()),
         )
     return data
+
+
+def legacy_record(**changes):
+    """The golden running v1 record, re-addressed with ``changes`` (it is valid on its own)."""
+    data = json.loads((FIXTURES / "dataset-transfer-journal-v1.json").read_bytes())["record"]
+    return TransferRecord.model_validate_json(encode({**data, **changes}))
+
+
+def install_legacy_running(store, *, history=False):
+    """A v1 plan with the golden running v1 record: the oldest family, on real rows.
+
+    ``history`` completes it into a history that reads back: its approval and the create intent
+    the record's latch stands on (nothing answered it, so the operation made no dataset).
+    """
+    pair = json.loads((FIXTURES / "dataset-upload-approved-v1.json").read_bytes())
+    plan = DatasetUploadPlan.model_validate_json(encode(pair["plan"]))
+    changes = {"approval": pair["approval"]} if history else {}
+    record = legacy_record(
+        plan_id=plan.plan_id,
+        plan_digest=plan.digest,
+        intent_digest=plan.intent_digest(),
+        **changes,
+    )
+    c = store.connection
+    c.execute(
+        "INSERT INTO upload_namespaces VALUES(?,?,NULL)",
+        (plan.intent_digest(), upload_namespace(plan.scope, plan.parameters.name).decode()),
+    )
+    c.execute(
+        "INSERT INTO upload_manifests VALUES(?,?)",
+        (plan.manifest.digest, (FIXTURES / "dataset-manifest-v1.json").read_text()),
+    )
+    c.execute(
+        "INSERT INTO upload_plans VALUES(?,?,?,?,?,?)",
+        (
+            plan.plan_id,
+            plan.intent_digest(),
+            plan.manifest.digest,
+            plan.prepared_at,
+            plan.expires_at,
+            plan.encoded().decode(),
+        ),
+    )
+    if history:
+        approval = pair["approval"]
+        c.execute(
+            "INSERT INTO upload_approvals VALUES(?,?,?,?)",
+            (
+                plan.plan_id,
+                approval["approval_id"],
+                approval["expires_at"],
+                encode(approval).decode(),
+            ),
+        )
+    c.execute(
+        "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
+        (
+            record.operation_id,
+            record.plan_id,
+            record.intent_digest,
+            record.revision,
+            record.lease.expires_at if record.lease else None,
+            operation_reservation(3),
+            record.encoded().decode(),
+        ),
+    )
+    if history:
+        c.execute(
+            "UPDATE upload_namespaces SET create_operation_id=? WHERE intent_digest=?",
+            (record.operation_id, record.intent_digest),
+        )
+        create = json.loads((FIXTURES / "dataset-transfer-journal-v1.json").read_bytes())["intent"]
+        create["request_digest"] = digest(
+            {
+                "plan_digest": plan.digest,
+                "kind": "create",
+                "file_index": None,
+                "file": None,
+                "dataset_id": None,
+                "object_key": None,
+            }
+        )
+        c.execute(
+            "INSERT INTO upload_stage_intents VALUES(?,?,?,?,?,?)",
+            (
+                create["intent_id"],
+                create["operation_id"],
+                create["sequence"],
+                "create",
+                -1,
+                encode(create).decode(),
+            ),
+        )
+    return plan, record

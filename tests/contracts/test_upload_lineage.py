@@ -18,7 +18,13 @@ from tests.fixtures.continuation_history import (
     sha,
     uuid,
 )
-from yorunge.adapters.upload_lineage import MAX_LINEAGE, check_selection, resolve_lineage
+from yorunge.adapters.upload_chain import operation_journal
+from yorunge.adapters.upload_lineage import (
+    MAX_LINEAGE,
+    check_selection,
+    journal_of,
+    resolve_lineage,
+)
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
@@ -52,6 +58,7 @@ def view(item, *, plan=None, operation=True, **changes):
     return SimpleNamespace(
         plan=plan or model,
         operation=record if operation else None,
+        intents=(),
         receipts=(),
         key=item.record["operation_id"],  # which operation this stands for, even as a plan only
     )
@@ -304,3 +311,31 @@ def test_a_lineage_longer_than_the_store_can_hold_is_refused():
     with pytest.raises(ValueError):
         resolve_lineage(plan, read, lambda _: CREATED)
     assert MAX_LINEAGE == 128
+
+
+def test_the_length_bound_admits_exactly_that_many_sources(monkeypatch):
+    monkeypatch.setattr("yorunge.adapters.upload_lineage.MAX_LINEAGE", 3)
+    items = [build(ROOT, 1, status="running")]
+    for number in (2, 3, 4):
+        items.append(
+            build(ROOT, number, status="running", source=uuid(0x300 + number - 1), indices=(2,))
+        )
+    views = [view(item) for item in items]
+    assert len(resolve(items[2], views[:2]).sources) == 3  # two continuations and the root
+    refuses(items[3], views[:3])  # a fourth source is one too many
+
+
+def test_a_journal_is_refused_for_a_plan_of_no_known_family_and_for_no_operation():
+    first, _ = chain()
+    known = view(first)
+    odd = SimpleNamespace(
+        plan=SimpleNamespace(), operation=known.operation, intents=(), receipts=()
+    )
+    with pytest.raises(ValueError):
+        journal_of(odd, complete=False)
+    with pytest.raises(ValueError):
+        journal_of(view(first, operation=False), complete=False)
+    with pytest.raises(YorungeError) as error:
+        operation_journal(odd)
+    assert error.value.code == "state_invalid"
+    assert journal_of(known, complete=True).graph_complete is True
