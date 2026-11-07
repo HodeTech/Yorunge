@@ -165,6 +165,15 @@ def test_a_selection_is_what_the_lineage_has_not_confirmed_and_what_it_left_unan
 def test_a_source_in_another_namespace_is_refused():
     first, second = chain()
     source = view(first)
+    assert resolve(second, [view(first)])
+    # Same parameters, another project: only the namespace digest (target, owner, project, name)
+    # tells; the copied fields alone would pass.
+    moved = source.plan.scope.model_copy(update={"project_id": OTHER})
+    assert source.plan.model_copy(update={"scope": moved}).intent_digest() != (
+        source.plan.intent_digest()
+    )
+    refuses(second, [view(first, plan=source.plan.model_copy(update={"scope": moved}))])
+    # Another name is a namespace change too (and a parameter change: either is enough).
     renamed = source.plan.parameters.model_copy(update={"name": "other"})
     refuses(second, [view(first, plan=source.plan.model_copy(update={"parameters": renamed}))])
 
