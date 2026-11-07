@@ -372,3 +372,15 @@ def test_a_key_that_may_not_upload_to_the_dataset_is_refused_by_the_report(
         with pytest.raises(YorungeError) as error:
             reported(data, server, source)
         assert error.value.code == "remote_access_denied"
+
+
+def test_a_transport_that_breaks_while_describing_the_dataset_is_an_error_not_a_blocker(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        provider.route_table[DETAIL] = Reply(status=200, body=b'{"id":"x"}', truncate_at=3)
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code.startswith("transport_") or error.value.code == "invalid_response"

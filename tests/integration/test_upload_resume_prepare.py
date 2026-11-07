@@ -138,11 +138,11 @@ def test_prepare_saves_the_plan_the_report_describes(prepared_input, certificate
         assert binding.remote_present_count == 2 and binding.observed_at == report.observed_at
         assert plan.request_limits.files == 1 and plan.status == "attempt_ready"
         assert plan.request_limits.max_upload_bytes == len(b"different")
-        assert (plan.admission_policy, plan.grant, plan.cost_bound) == (
+        assert (plan.admission_policy, plan.cost_policy) == (
             "explicit_attempt",
-            None,
-            None,
+            "unpriced_accepted",
         )
+        assert plan.grant is None and plan.cost_bound is None and plan.inputs_verified
         assert view.operation is None and view.approval is None  # nothing is admitted or approved
         assert all(r.method == "GET" for r in server.requests[before:])
         with open_existing_store(data[0]) as store:
