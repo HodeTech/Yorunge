@@ -1,7 +1,7 @@
 ---
 id: P02-3v
 phase: P02
-status: ready
+status: in_review
 size: M
 depends_on: [P02-3u]
 capabilities: [C03, C12]
@@ -46,4 +46,10 @@ Gerçek SQLite integration/contract testleri, mevcut kota/maintenance/migration 
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+Uygulandı, review bekliyor; `verified` değildir. Commit’ler `feat/p02-3-dataset-recovery` dalındadır: uygulama [661ff81](https://github.com/HodeTech/Yorunge/commit/661ff814de2ceeedcc171c2890bb129d10552518) ve [b442f37](https://github.com/HodeTech/Yorunge/commit/b442f37c8dbcac108486f13dc35429cad2019d37); kontrol çıktıları ve review kaydı [uygulama kaydındadır](../../research/p02-3-implementation-validation.md#adım-7--p02-3v-continuation-v3-kapasite-kimlik-sıfırlama-ve-kullanıcı-özeti). Seçilen adlar ve yerleşim:
+
+- `yorunge.adapters.upload_store`: `capacity()` her plan ailesini kendi Manifest’iyle sayar (üç tipli decode); `quota_used(connection)` aynı dört sayacı `QuotaCounters` olarak verir ve sınırı aşmış store’u `state_invalid` sayar (`_over_capacity` `require_capacity` ile ortaktır); `validate_uploads` devam geçmişlerini kapsar ve kaynak başına en çok bir iptal edilmemiş torun operation’ı sınar (`successors`: kaynak operation → onun tek torunu; `cancelled` ve operation’sız planlar sayılmaz).
+- `yorunge.domain.upload_resume_report.continuation_added_payload_bytes(file_count, selected=None, plan_bytes=None)`: plan satırı (yazılmışsa boyutu, yoksa 16 KiB tavanı) + `operation_reservation` (M bilinmiyorsa M=N) + plan başına 16 KiB pay; üretici (P02-3h) bunu rapor `quota_added` değerine verir.
+- `yorunge.adapters.upload_maintenance.invalidate_uploads`: v3 koruması kalktı; kontrol kaydın kendi ailesinde (`TransferControlV3`) yazılır. `upload_snapshot` ve ortak son-kullanma (`next_expiry`) v3 satırlarını zaten sürümden bağımsız görür; testler bunu sabitler.
+- `yorunge.adapters.upload_projection`: `summary(view)` tüm aileler için (devam → `DatasetUploadSummaryV3`), `original_summary(view)` yalnız v1/v2 içindir ve devamı `state_invalid` ile reddeder, `review` onu kullandığından devam için kapalı kalır. `adapters/upload_public` `original_summary`yi çağırır: genel sonuç tipleri devamı henüz adlandırmadığından `show`/`list`/`review`/`revoke` store’da devam satırı varken kapalı başarısız olur ve tipleri genişletmek P02-3i’nindir.
+- `tests/fixtures/continuation_history.py`: `world`, `SHAPES`, `UNKNOWN`, `FIRST`/`SECOND`/`OTHER` ortak kuruculara taşındı; `tests/integration/test_upload_continuation_store_wide.py` (kapasite, kota, tam doğrulama ve torun değişmezi, sıfırlama, önizleme parmak izi, ortak son-kullanma, özet) ve `tests/contracts/test_continuation_quota.py` (bağımsız aritmetik) yeni; `tests/fixtures/version-dispatch-sites.json` 115 noktaya yeniden üretildi (P02-3v noktalarının hepsi çözüldü; `original_summary` ve `review` P02-3i’ye atandı).
