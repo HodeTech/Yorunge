@@ -12,17 +12,17 @@ capabilities: [C01, C02]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-`yorunge context discover --service evren-llm`, şartlar kabul edilmemişse text çıktısında yalnız "Sunucunun şart durumu: kabul edilmemiş (sürüm N)" der (`discovery_text_result`, [cli/__init__.py](../../../src/yorunge/cli/__init__.py)). Kullanıcıya ne yapması gerektiğini ve Yörünge'nin bunu kendisinin yapmayacağını söylemez. [Kullanıcı yolculuğu 1](../../user-journeys.md) sonucun "düzeltilecek tek sonraki adımı" göstermesini ister. JSON/NDJSON'da `terms_not_accepted` nedeni zaten vardır; eksik olan insan okuyan metindir.
+`yorunge context discover --service evren-llm`, şartlar kabul edilmemişse text çıktısında yalnız "Sunucunun şart durumu: kabul edilmemiş (sürüm N)" der (`discovery_text_result`, [cli/__init__.py](../../../src/yorunge/cli/__init__.py)). Kullanıcıya bunun ne anlama geldiğini ve Yörünge'nin şart kabul etmediğini söylemez. [Kullanıcı yolculuğu 1](../../user-journeys.md) sonucun "düzeltilecek tek sonraki adımı" göstermesini ister. JSON/NDJSON'da `terms_not_accepted` nedeni zaten vardır; eksik olan insan okuyan metindir.
 
 ## Giren ve girmeyen kapsam
 
-Girer: `terms.accepted=false` iken **text** çıktısına tek satırlık sabit yönlendirme: şartların kullanıcı tarafından kendi EVREN hesabında kabul edilmesi gerektiği ve Yörünge'nin şart kabul etmediği. `accepted=true` iken satır yoktur. [Context discovery referansı](../../reference/context-discovery.md) ve text çıktı testi güncellenir.
+Girer: `terms.accepted=false` iken **text** çıktısına tek satırlık sabit, **gözlem** biçiminde yönlendirme. Önerilen metin: "Sunucu şartları kabul edilmemiş bildiriyor. Yörünge şart kabul etmez; karar kendi EVREN hesabınızda size aittir." (kesin metin review'de kapanır). Satır bir zorunluluk veya erişim sonucu iddia etmez. `accepted=true` iken satır yoktur. [Context discovery referansı](../../reference/context-discovery.md) ve text çıktı testi güncellenir.
 
 Girmez: JSON/NDJSON alanı veya neden kümesi değişikliği; `doc_path`/URL gösterme ya da takip; şart metnini gösterme ([B17](../backlog.md) kararıdır); şart kabulü; yönlendirmeye komut, URL veya sürüm-kabul örneği ekleme; diğer hizmet çıktıları.
 
 ## Bağımlılıklar ve kararlar
 
-P02-0c verified ve PR #12 ile development'a teslim edildi. Yeni karar gerekmez: davranış [AGENTS.md](../../../AGENTS.md) ("hesap şartlarını kullanıcı adına kabul etme") ve [ADR-0020](../../decisions/0020-service-bound-context-discovery.md) (`accepted=false` otomatik şart kabulü üretmez; `doc_path` ve URL takip edilmez) ile uyumludur. Kabulün hangi yoldan yapılacağı (portal, API) doğrulanmış kaynak olmadan yazılmaz; yalnız kullanıcının kendi hesabında kabul edeceği söylenir.
+P02-0c verified ve PR #12 ile development'a teslim edildi. Yeni karar gerekmez: davranış [AGENTS.md](../../../AGENTS.md) ("hesap şartlarını kullanıcı adına kabul etme") ve [ADR-0020](../../decisions/0020-service-bound-context-discovery.md) (`accepted=false` otomatik şart kabulü üretmez; `doc_path` ve URL takip edilmez) ile uyumludur. Kabulün hangi yoldan yapılacağı (portal, API) doğrulanmış kaynak olmadan yazılmaz. **Zorunluluk iddiası kurulmaz:** şema `accepted` alanını "anahtar sahibi güncel *material* sürümü kabul etti mi" diye tanımlar; `is_material` Yörünge'de çözülür ama hiçbir yerde kullanılmaz ve metin üretimine de girmez. `accepted=false` iken `is_material=false` ise "şart kabulü gerekir" cümlesi yanlış olabilir; ayrıca kabul edilmemiş bir anahtarın hangi uçlara erişebildiği canlı doğrulanmadı ([araştırma kaydı](../../research/p02-llm-gateway-schema-review.md#kararlar)). Bu yüzden satır yalnız sunucunun bildirdiğini ve Yörünge'nin kabul etmediğini söyler; zorunluluk, erişim kaybı veya sonraki komutların başarısızlığı iddiası, canlı doğrulama ve karar olmadan eklenmez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -33,7 +33,8 @@ Yalnız text biçimlendirici ve belge değişir. Domain modeli, Result/ContextDi
 1. `accepted=false` text çıktısı tek yönlendirme satırı içerir; satır sır, host, URL, `doc_path` veya çalıştırılabilir komut içermez. Mevcut "kimlik doğrulaması: doğrulanmadı" ve "yürütme izni vermez" satırları korunur.
 2. `accepted=true` text çıktısı değişmez. İki durumda da JSON ve NDJSON çıktıları önceki golden'larla aynıdır.
 3. Gerçek CLI girişi ve ortak API sonucuyla iki durum sınanır; negatif: yönlendirme metni `--yes`, `terms accept` ve `http(s)://` içermez, Yörünge'nin kabul ettiğini ima etmez.
-4. En az bir fresh review; güvenlik sınırı (kabul/komut/URL yok) review'in açık maddesidir.
+4. `is_material` değerine bağlı dallanma yoktur: `accepted=false` için `is_material` true ve false iken metin aynıdır (test). Metin "gerekir", "zorunlu", "erişemezsiniz" gibi zorunluluk veya erişim iddiası taşımaz (negatif test).
+5. En az bir fresh review; güvenlik sınırı (kabul/komut/URL yok) ve gözlem dili (zorunluluk iddiası yok) review'in açık maddesidir.
 
 ## Doğrulama
 

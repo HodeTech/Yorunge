@@ -1,0 +1,1197 @@
+{
+ "operations": {
+  "DELETE /v1/responses/{response_id}": {
+   "parameters": [
+    "response_id:path:req:string"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:DeletedResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "a2c13d1f938a"
+  },
+  "GET /healthz": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:HealthResponse"
+    }
+   },
+   "security_declared": false,
+   "text": "d05ed8e8a441"
+  },
+  "GET /readyz": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:HealthResponse"
+    }
+   },
+   "security_declared": false,
+   "text": "fc3e19e2637a"
+  },
+  "GET /v1/media/{media_id}": {
+   "parameters": [
+    "media_id:path:req:string:uuid"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:MediaStatusResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "c87aab1a2734"
+  },
+  "GET /v1/models": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:ModelListResponse"
+    }
+   },
+   "security_declared": false,
+   "text": "8c6e91a448a1"
+  },
+  "GET /v1/models/{model_id}": {
+   "parameters": [
+    "model_id:path:req:string"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:ModelInfo"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "3c354eafe100"
+  },
+  "GET /v1/quota": {
+   "parameters": [
+    "model:query:opt:null|string"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:QuotaStatus"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "fe9cf75c0ec8"
+  },
+  "GET /v1/requests/{request_id}": {
+   "parameters": [
+    "request_id:path:req:string:uuid"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:RequestStatusResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "7c7bae8fda98"
+  },
+  "GET /v1/responses/{response_id}": {
+   "parameters": [
+    "response_id:path:req:string"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "1822bf70c192"
+  },
+  "GET /v1/responses/{response_id}/input_items": {
+   "parameters": [
+    "after:query:opt:null|string",
+    "limit:query:opt:integer",
+    "order:query:opt:string{\"asc\",\"desc\"}",
+    "response_id:path:req:string"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:InputItemsPage"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "9fc035013d57"
+  },
+  "GET /v1/terms/status": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:TermsStatus"
+    }
+   },
+   "security_declared": false,
+   "text": "a5c394fc96f1"
+  },
+  "GET /v1/terms/text": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:TermsTextResponse"
+    }
+   },
+   "security_declared": false,
+   "text": "b544e35df540"
+  },
+  "POST /internal/audio/speech": {
+   "parameters": [
+    "X-Delegation-Token:header:req:string",
+    "authorization:header:req:string"
+   ],
+   "request_body": {
+    "application/json": "ref:InternalSpeechRequest"
+   },
+   "responses": {
+    "200": {},
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "5fa0dd5564e3"
+  },
+  "POST /internal/audio/transcriptions": {
+   "parameters": [
+    "X-Delegation-Token:header:req:string",
+    "authorization:header:req:string"
+   ],
+   "request_body": {
+    "application/json": "ref:InternalTranscriptionRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "object"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "bf15b0c3847d"
+  },
+  "POST /internal/chat/completions": {
+   "parameters": [
+    "X-Delegation-Token:header:req:string",
+    "authorization:header:req:string"
+   ],
+   "request_body": {
+    "application/json": "ref:InternalChatRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "04bb01004a4c"
+  },
+  "POST /v1/audio/speech": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:SpeechBody"
+   },
+   "responses": {
+    "200": {},
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "752ab87f4831"
+  },
+  "POST /v1/audio/transcriptions": {
+   "parameters": [],
+   "request_body": {
+    "multipart/form-data": "ref:Body_audio_transcriptions_v1_audio_transcriptions_post"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "0d0de3c395bf"
+  },
+  "POST /v1/chat/completions": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:ChatCompletionRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "40a45d671e1f"
+  },
+  "POST /v1/completions": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:CompletionRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "4a3c7cc3c641"
+  },
+  "POST /v1/embeddings": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:EmbeddingsRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "80a7482e1d5f"
+  },
+  "POST /v1/media": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:InitiateUploadRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:InitiateUploadResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "ab2e9c6736b4"
+  },
+  "POST /v1/media/{media_id}/abort": {
+   "parameters": [
+    "media_id:path:req:string:uuid"
+   ],
+   "request_body": {},
+   "responses": {
+    "204": {},
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "8c72b0f2bb76"
+  },
+  "POST /v1/media/{media_id}/complete": {
+   "parameters": [
+    "media_id:path:req:string:uuid"
+   ],
+   "request_body": {
+    "application/json": "ref:CompleteUploadRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:MediaStateResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "20de18c70133"
+  },
+  "POST /v1/media/{media_id}/finalize": {
+   "parameters": [
+    "media_id:path:req:string:uuid"
+   ],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:FinalizeMediaResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "35e0bf6cbeb5"
+  },
+  "POST /v1/messages": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "?"
+    }
+   },
+   "security_declared": false,
+   "text": "b203b03b2593"
+  },
+  "POST /v1/messages/count_tokens": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "?"
+    }
+   },
+   "security_declared": false,
+   "text": "4f0b1bd7dcfc"
+  },
+  "POST /v1/moderations": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:ModerationRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:ModerationResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "276a214323c7"
+  },
+  "POST /v1/ocr": {
+   "parameters": [],
+   "request_body": {},
+   "responses": {
+    "200": {
+     "application/json": "ref:OcrResponse"
+    }
+   },
+   "security_declared": false,
+   "text": "a379cf0a2c47"
+  },
+  "POST /v1/rerank": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:RerankRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "9b299ebbf53c"
+  },
+  "POST /v1/responses": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:ResponsesRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "?"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "0afb5d7a9194"
+  },
+  "POST /v1/responses/input_tokens": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:InputTokensRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:InputTokensResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "2ba0206e0643"
+  },
+  "POST /v1/systemone": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:SystemOneRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:SystemOneResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "d596b004975f"
+  },
+  "POST /v1/systemone/batch": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:SystemOneBatchRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:SystemOneBatchResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "fc8e68c20719"
+  },
+  "POST /v1/terms/accept": {
+   "parameters": [],
+   "request_body": {
+    "application/json": "ref:TermsAcceptRequest"
+   },
+   "responses": {
+    "200": {
+     "application/json": "ref:TermsAcceptResponse"
+    },
+    "422": {
+     "application/json": "ref:HTTPValidationError"
+    }
+   },
+   "security_declared": false,
+   "text": "a772598b855a"
+  }
+ },
+ "schemas": {
+  "Body_audio_transcriptions_v1_audio_transcriptions_post": {
+   "properties": {
+    "file": "string:binary#46106d53d4a8",
+    "language": "null|string#960c2a352b26",
+    "model": "string#efb5a5456e86",
+    "prompt": "string#14916990e1fe",
+    "response_format": "string{\"diarized_json\",\"json\",\"srt\",\"text\",\"verbose_json\"}#276060889880",
+    "temperature": "number#80a32296cf93"
+   },
+   "required": [
+    "file",
+    "model"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ChatCompletionRequest": {
+   "properties": {
+    "evren_tools": "boolean#d0b343da95cb",
+    "max_tokens": "integer|null#761e48f3a882",
+    "messages": "array<object>#78dd30d6bfa1",
+    "model": "string#d596fcad778a",
+    "stream": "boolean#e2a15d1e38d1"
+   },
+   "required": [
+    "messages",
+    "model"
+   ],
+   "text": "d7c3f3cd2da0",
+   "type": "object"
+  },
+  "CompleteUploadRequest": {
+   "properties": {
+    "parts": "array<ref:CompletedPart>|null#81cd3f506227"
+   },
+   "text": "-",
+   "type": "object"
+  },
+  "CompletedPart": {
+   "properties": {
+    "etag": "string#3973c0dda5bf",
+    "part_number": "integer#0547b5a7968b"
+   },
+   "required": [
+    "etag",
+    "part_number"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "CompletionRequest": {
+   "properties": {
+    "max_tokens": "integer|null#761e48f3a882",
+    "model": "string#acf507af312e",
+    "prompt": "array<string>|string#e033da1e8d0a",
+    "stream": "boolean#f8c68ff4f313"
+   },
+   "required": [
+    "model",
+    "prompt"
+   ],
+   "text": "cbfb27f2e206",
+   "type": "object"
+  },
+  "DeletedResponse": {
+   "properties": {
+    "deleted": "boolean#-",
+    "id": "string#-",
+    "object": "string#-"
+   },
+   "required": [
+    "id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "EmbeddingsRequest": {
+   "properties": {
+    "input": "array<string>|string#f9b3d54c958d",
+    "model": "string#d1cba0e5041e"
+   },
+   "required": [
+    "input",
+    "model"
+   ],
+   "text": "2ca6b81d9765",
+   "type": "object"
+  },
+  "FinalizeMediaResponse": {
+   "properties": {
+    "finalized_key": "null|string#695641c96946",
+    "media_id": "string#d9ef952b7e47",
+    "state": "string#5fea64f0ccbb"
+   },
+   "required": [
+    "media_id",
+    "state"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "HTTPValidationError": {
+   "properties": {
+    "detail": "array<ref:ValidationError>#-"
+   },
+   "text": "-",
+   "type": "object"
+  },
+  "HealthResponse": {
+   "properties": {
+    "status": "string#6c0476057b86"
+   },
+   "required": [
+    "status"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InitiateUploadRequest": {
+   "properties": {
+    "content_type": "string#ad3e5151a22c",
+    "size_bytes": "integer#54eff38523fa"
+   },
+   "required": [
+    "content_type",
+    "size_bytes"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InitiateUploadResponse": {
+   "properties": {
+    "media_id": "string#cda876175745",
+    "part_size_bytes": "integer|null#892b59d32888",
+    "part_urls": "array<string>|null#63a2a91c4689",
+    "upload_url": "null|string#cf0b08b5a935"
+   },
+   "required": [
+    "media_id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InputItemsPage": {
+   "properties": {
+    "data": "array<object>#-",
+    "first_id": "null|string#-",
+    "has_more": "boolean#-",
+    "last_id": "null|string#-",
+    "object": "string#-"
+   },
+   "required": [
+    "data",
+    "first_id",
+    "has_more",
+    "last_id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InputTokensRequest": {
+   "properties": {
+    "input": "array<object>|null|string#cf078442d97a",
+    "instructions": "null|string#40e63c20d451",
+    "model": "string#735467fa388d",
+    "previous_response_id": "null|string#9be2525a4687",
+    "tools": "array<object>|null#962db240954c"
+   },
+   "required": [
+    "model"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InputTokensResponse": {
+   "properties": {
+    "input_tokens": "integer#-",
+    "object": "string#-"
+   },
+   "required": [
+    "input_tokens"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InternalChatRequest": {
+   "properties": {
+    "credit_org_id": "null|string:uuid#02f81928ce72",
+    "evren_tools": "boolean#-",
+    "max_tokens": "integer|null#-",
+    "messages": "array<object>#-",
+    "model": "string#-",
+    "reasoning_effort": "null|string#-",
+    "response_format": "null|object#-",
+    "stream": "boolean#-",
+    "subject_user_id": "string:uuid#fefa375b1a1d",
+    "temperature": "null|number#-",
+    "thinking": "boolean|null#-",
+    "tool_choice": "null|object|string#-",
+    "tools": "array<object>|null#-",
+    "top_k": "integer|null#-",
+    "top_p": "null|number#-"
+   },
+   "required": [
+    "messages",
+    "model",
+    "subject_user_id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InternalSpeechRequest": {
+   "properties": {
+    "api_name": "string#-",
+    "input": "string#-",
+    "instructions": "null|string#-",
+    "response_format": "string{\"flac\",\"mp3\",\"opus\",\"pcm\",\"wav\"}#-",
+    "speed": "number#-",
+    "stream": "boolean#-",
+    "subject_user_id": "string:uuid#fefa375b1a1d",
+    "voice": "string#-"
+   },
+   "required": [
+    "api_name",
+    "input",
+    "subject_user_id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "InternalTranscriptionRequest": {
+   "properties": {
+    "api_name": "string#-",
+    "content_type": "string#-",
+    "filename": "string#-",
+    "finalized_key": "string#-",
+    "form_fields": "object#-",
+    "subject_user_id": "string:uuid#fefa375b1a1d"
+   },
+   "required": [
+    "api_name",
+    "content_type",
+    "filename",
+    "finalized_key",
+    "subject_user_id"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "MediaStateResponse": {
+   "properties": {
+    "media_id": "string#d9ef952b7e47",
+    "state": "string#2adeca19aa03"
+   },
+   "required": [
+    "media_id",
+    "state"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "MediaStatusResponse": {
+   "properties": {
+    "content_type": "string#b51e370650d2",
+    "created_at": "string#df5d403f5038",
+    "declared_size_bytes": "integer#fd48e7ccaa09",
+    "media_id": "string#d9ef952b7e47",
+    "state": "string#2adeca19aa03"
+   },
+   "required": [
+    "content_type",
+    "created_at",
+    "declared_size_bytes",
+    "media_id",
+    "state"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ModelCapabilities": {
+   "properties": {
+    "max_images_per_request": "integer|null#e7cce314c989",
+    "reasoning_effort": "boolean#dbc98939db6e",
+    "reasoning_effort_aliases": "null|object#28d6a22952fa",
+    "reasoning_effort_values": "array<string>|null#ec04d14de3a1",
+    "response_format": "boolean#b3ac139391e8",
+    "seed": "boolean#caafbd89578a",
+    "stop": "boolean#bba40cbc7182",
+    "thinking": "boolean#4bba45196412",
+    "tools": "boolean#a8cacbb1e933",
+    "top_k": "boolean#1fbdbb080cf0",
+    "vision": "boolean#f04943cf5f3e"
+   },
+   "text": "e5fb60480966",
+   "type": "object"
+  },
+  "ModelInfo": {
+   "properties": {
+    "capabilities": "null|ref:ModelCapabilities#9821f1f31c1b",
+    "context_length": "integer|null#74d51afab7e7",
+    "created": "integer#8386ef70bcac",
+    "default_max_output_tokens": "integer|null#dbd808b429dc",
+    "id": "string#c2f84e1aeb3f",
+    "modalities": "array<string>#ceaa69b0b106",
+    "object": "string#ce23888e9c0a",
+    "owned_by": "string#1c11e2835fee",
+    "precision": "null|string#7c83f0f8ca54",
+    "pricing": "null|ref:ModelPricing#0af968b11a9c",
+    "task": "string#cd839f1fe29d"
+   },
+   "required": [
+    "created",
+    "id",
+    "task"
+   ],
+   "text": "1ab7a2b0dad1",
+   "type": "object"
+  },
+  "ModelListResponse": {
+   "properties": {
+    "data": "array<ref:ModelInfo>#62fb6c764e9c",
+    "object": "string#4d3e2153a599"
+   },
+   "required": [
+    "data"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ModelPricing": {
+   "properties": {
+    "completion_token_price": "number#-",
+    "currency": "string#781d994b1725",
+    "free_until": "null|string#6a5497427d5a",
+    "prompt_token_price": "number#-"
+   },
+   "required": [
+    "completion_token_price",
+    "prompt_token_price"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ModerationRequest": {
+   "properties": {
+    "input": "array<object>|array<string>|string#502c825e2cea",
+    "model": "null|string#4c79e094e353"
+   },
+   "required": [
+    "input"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ModerationResponse": {
+   "properties": {
+    "id": "string#-",
+    "model": "string#-",
+    "results": "array<ref:ModerationResult>#-"
+   },
+   "required": [
+    "id",
+    "model",
+    "results"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ModerationResult": {
+   "properties": {
+    "categories": "object#-",
+    "category_applied_input_types": "object#-",
+    "category_scores": "object#a3b4f79345fd",
+    "evren": "object#79be70deb24e",
+    "flagged": "boolean#-"
+   },
+   "required": [
+    "categories",
+    "category_applied_input_types",
+    "category_scores",
+    "evren",
+    "flagged"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "OcrBlock": {
+   "properties": {
+    "bbox": "array<integer>#e92276bc2776",
+    "category": "null|string#f6d388488aa5",
+    "text": "string#e32672577a44"
+   },
+   "required": [
+    "bbox",
+    "text"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "OcrPage": {
+   "properties": {
+    "blocks": "array<ref:OcrBlock>|null#4825669ab6f9",
+    "height": "integer#5aacc19145bb",
+    "page": "integer#648dfe7a5697",
+    "text": "string#51e003e9171a",
+    "width": "integer#def8a8ceacae"
+   },
+   "required": [
+    "height",
+    "page",
+    "text",
+    "width"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "OcrResponse": {
+   "properties": {
+    "model": "string#653859908ff5",
+    "pages": "array<ref:OcrPage>|null#d422635449ef",
+    "text": "string#5d30cc4dfa4c"
+   },
+   "required": [
+    "model",
+    "text"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "QuotaStatus": {
+   "properties": {
+    "cap": "integer|null#9e59f6e61860",
+    "concurrency_limit": "integer|null#d58c91227f2e",
+    "concurrent_requests": "integer|null#0e27ba803f70",
+    "daily_limit_tokens": "integer|null#ffc4e798b550",
+    "daily_remaining_tokens": "integer|null#d48c76983c7f",
+    "daily_reset_at": "null|string#a173a7e014d4",
+    "daily_used_tokens": "integer|null#61de4ccb1b17",
+    "fair_share_active": "boolean|null#1c2e1489d7c2",
+    "held_cr": "string#0992e85329bd",
+    "level": "string#cef02ee256c1",
+    "model": "null|string#d7d09141e6ab",
+    "model_concurrency_limit": "integer|null#1a54b475d356",
+    "model_concurrent_requests": "integer|null#1a6063559427",
+    "remaining_cr": "string#ceaf380c5118",
+    "reset_at": "null|string#8fbf155e7dea",
+    "usage_ratio": "null|number#cce7b0b2a941",
+    "used_tokens": "integer|null#2bc5619abd8c",
+    "window_minutes": "integer|null#7be94ebd2e21"
+   },
+   "required": [
+    "held_cr",
+    "remaining_cr"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "RequestStatusResponse": {
+   "properties": {
+    "charge_terminal": "boolean#-",
+    "collected_cr": "null|string#-",
+    "collection_state": "null|string#-",
+    "execution_terminal": "string#-",
+    "is_billing_pending": "boolean#-",
+    "outstanding_cr": "null|string#-",
+    "request_id": "string:uuid#-",
+    "state_version": "integer#-"
+   },
+   "required": [
+    "charge_terminal",
+    "collected_cr",
+    "collection_state",
+    "execution_terminal",
+    "is_billing_pending",
+    "outstanding_cr",
+    "request_id",
+    "state_version"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "RerankRequest": {
+   "properties": {
+    "documents": "array<string>#63f40a6bebc4",
+    "model": "string#871a619e1051",
+    "query": "string#340541a41b08"
+   },
+   "required": [
+    "documents",
+    "model",
+    "query"
+   ],
+   "text": "2cfe39dc5971",
+   "type": "object"
+  },
+  "ResponsesRequest": {
+   "properties": {
+    "input": "array<object>|string#f0e69279f868",
+    "max_output_tokens": "integer|null#aea0b7adc91a",
+    "model": "string#acf507af312e",
+    "stream": "boolean#bbdc264c01d1"
+   },
+   "required": [
+    "input",
+    "model"
+   ],
+   "text": "95badcae511e",
+   "type": "object"
+  },
+  "SpeechBody": {
+   "properties": {
+    "input": "string#90d0dc9160ae",
+    "instructions": "null|string#3621e077e6a9",
+    "model": "string#441146dea6a4",
+    "response_format": "string{\"flac\",\"mp3\",\"opus\",\"pcm\",\"wav\"}#f89a76c78884",
+    "speed": "number#a75f99c1491f",
+    "stream": "boolean#5a4acda9bbf6",
+    "voice": "string#3f7c489ee046"
+   },
+   "required": [
+    "input",
+    "model"
+   ],
+   "text": "6ade103641ef",
+   "type": "object"
+  },
+  "SystemOneBatchRequest": {
+   "properties": {
+    "batch_size": "integer|null#a9a9d8518921",
+    "head_max_len": "integer|null#eaee5ddf96b9",
+    "lang": "null|string#dc8c44eb1e0f",
+    "lang_guess": "null|string#08d68fc82d48",
+    "max_len": "integer|null#3765ea5a2f80",
+    "min_confidence": "null|number|object#6a4fd47f8cf0",
+    "model": "string#d6ffd6474cf8",
+    "questions": "object#aa63d3248f62",
+    "sort_by_length": "boolean|null#159d995e80d0",
+    "states": "array<array<?>|object|string>#-",
+    "task": "null|string#add184a23f39"
+   },
+   "required": [
+    "model",
+    "questions",
+    "states"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "SystemOneBatchResponse": {
+   "properties": {
+    "id": "string#-",
+    "model": "string#-",
+    "results": "array<object>#-",
+    "total_usage": "object#-",
+    "usage": "object#-"
+   },
+   "required": [
+    "id",
+    "model",
+    "results",
+    "total_usage",
+    "usage"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "SystemOneRequest": {
+   "properties": {
+    "head_max_len": "integer|null#eaee5ddf96b9",
+    "images": "array<string>|null#d4a2a188bbc1",
+    "lang": "null|string#dc8c44eb1e0f",
+    "lang_guess": "null|string#08d68fc82d48",
+    "max_len": "integer|null#3765ea5a2f80",
+    "min_confidence": "null|number|object#6a4fd47f8cf0",
+    "model": "string#d6ffd6474cf8",
+    "questions": "object#aa63d3248f62",
+    "state": "array<?>|object|string#3db6a0d43e57",
+    "task": "null|string#add184a23f39"
+   },
+   "required": [
+    "model",
+    "questions",
+    "state"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "SystemOneResponse": {
+   "properties": {
+    "answers": "object#-",
+    "id": "string#-",
+    "model": "string#-",
+    "routing": "null|object#-",
+    "usage": "object#-"
+   },
+   "required": [
+    "answers",
+    "id",
+    "model",
+    "usage"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "TermsAcceptRequest": {
+   "properties": {
+    "version": "integer#94396d8cad12"
+   },
+   "required": [
+    "version"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "TermsAcceptResponse": {
+   "properties": {
+    "accepted_at": "string#-",
+    "accepted_version": "integer#-"
+   },
+   "required": [
+    "accepted_at",
+    "accepted_version"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "TermsStatus": {
+   "properties": {
+    "accepted": "boolean#839b9b85d0d6",
+    "current_version": "integer#8a8a36623814",
+    "doc_path": "string#285f08cb83f0",
+    "is_material": "boolean#9c7fdce16a13"
+   },
+   "required": [
+    "accepted",
+    "current_version",
+    "doc_path",
+    "is_material"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "TermsTextResponse": {
+   "properties": {
+    "content": "string#999ecd4150c5",
+    "doc_path": "string#238e8c8a8c9f",
+    "version": "integer#d7142d072824"
+   },
+   "required": [
+    "content",
+    "doc_path",
+    "version"
+   ],
+   "text": "-",
+   "type": "object"
+  },
+  "ValidationError": {
+   "properties": {
+    "loc": "array<integer|string>#-",
+    "msg": "string#-",
+    "type": "string#-"
+   },
+   "required": [
+    "loc",
+    "msg",
+    "type"
+   ],
+   "text": "-",
+   "type": "object"
+  }
+ },
+ "source": {
+  "bytes": 53649,
+  "info_title": "EVREN LLM API",
+  "info_version": "0.1.0",
+  "openapi": "3.1.0",
+  "path_count": 33,
+  "security_schemes_declared": false,
+  "sha256": "e2254a302d6108dcd715151f8f2310195b86439ac7f1686959df908a0f2a700e"
+ }
+}

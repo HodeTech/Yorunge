@@ -6,7 +6,7 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-11-08
 
-- Yalnız belge/roadmap: LLM OpenAPI yeniden sabitlendi (53.649 byte) ve üç dış inceleme iddiası [araştırma kaydında](docs/research/p02-llm-gateway-schema-review.md) doğrulandı. Kullanıcı belgesine ortam proxy/özel CA kullanılmadığı ve kurumsal ağlardaki sınır yazıldı ([HTTP taşıma](docs/reference/http-transport.md#kurumsal-ağ-ve-ortam-proxysi)). Takip kartları P02-R9 (ağ tanısı ve açık CA/proxy yolu, `draft`, karar B16) ve P02-R10 (şart durumu yönlendirmesi, `ready`). Ürün kodu, CLI davranışı ve sözleşmeler değişmedi.
+- Yalnız belge/roadmap: LLM OpenAPI yeniden sabitlendi (53.649 byte) ve üç dış inceleme iddiası [araştırma kaydında](docs/research/p02-llm-gateway-schema-review.md) doğrulandı. Kullanıcı belgesine ortam proxy/özel CA kullanılmadığı ve kurumsal ağlardaki sınır yazıldı ([HTTP taşıma](docs/reference/http-transport.md#kurumsal-ağ-ve-ortam-proxysi)). Takip kartları P02-R9 (ağ tanısı ve açık CA/proxy yolu, `draft`, karar B16) ve P02-R10 (şart durumu yönlendirmesi, `ready`). Ürün davranışı değişmedi; referans belgeleri mevcut davranışı (ortam proxy/CA'nın yok sayılması, upload adres politikası) açıkladı. Sonraki yeniden okumalarda diff için LLM OpenAPI yapısal özeti ve betiği [araştırma aracı](docs/research/probes/llm-openapi-structure-20261108/README.md) olarak eklendi.
 
 ### Added — 2026-11-06
 
