@@ -20,7 +20,7 @@ Yerel hazırlık veya arm reddinde henüz başlamamış reservation açıkça ka
 | project_link | codec link body → tek POST projects/{id}/datasets; strict boş/success veya exact project/dataset ilişki ack’i → accepted StageReceipt v1; [consumer bağı](platform-upload-consumer.md#context-create-ve-proje-bağlantısı) ve ayrı membership okuması korunur |
 | presign | dosya başına codec body → tek POST datasets/{id}/upload/presign; strict private descriptor → accepted StageReceipt v1 içinde yalnız local_binding. Raw key/URL descriptor'da ephemeral kalır |
 | PUT | lazy bounded descriptor kaynağıyla tek PUT; StorageResponse ve source EOF exact byte/SHA eşliği + strict 64 KiB ack → accepted StageReceipt v1 sent bytes/hash/local binding |
-| confirm | exact descriptor/context body, skip_dedup=true → tek POST confirm; created=1, mevcut accepted confirm sayısı+1 (bir devamda dolu veri setinin tabanıyla iki anlamlı: [Confirm oracle](dataset-upload-continuation.md#stage-grafiği-durum-yolu-ve-kapılar)) ve duplicate=0 oracle → accepted StageReceipt v1 local binding |
+| confirm | exact descriptor/context body, skip_dedup=true → tek POST confirm; created=1, mevcut accepted confirm sayısı+1 (1 ile işlemin gönderdiği dosya sayısı arasında; bir devamda dolu veri setinin tabanıyla iki anlamlı: [Confirm oracle](dataset-upload-continuation.md#stage-grafiği-durum-yolu-ve-kapılar)) ve duplicate=0 oracle → accepted StageReceipt v1 local binding |
 
 Receipt recorded_at gerçek gözlem anıdır; intent/lease bitmişse geçmişe clamp edilmez. Repository aynı intent/owner/time/credential/plan bağını tekrar kontrol ederek receipt'i kaydeder. Port DB açmaz veya permit üretmez. New create V1 receipt veya raw key receipt'e konmaz.
 
