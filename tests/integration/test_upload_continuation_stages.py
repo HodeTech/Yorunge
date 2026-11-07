@@ -782,26 +782,35 @@ def test_a_lease_that_is_lost_between_two_stages_stops_the_continuation_unsent(
         assert provider.events[sends:] == ["presign"]  # no put, no confirm
 
 
-def test_a_key_rotated_between_two_stages_stops_the_continuation_before_the_next_send(
-    prepared_input, certificates, monkeypatch
+@pytest.mark.parametrize(
+    "stale", [False, True], ids=["the fresh check is still good", "the fresh check is stale"]
+)
+def test_a_key_rotated_between_two_stages_stops_the_continuation_before_anything_more_is_asked(
+    prepared_input, certificates, monkeypatch, stale
 ):
     data, provider = three_files(prepared_input)
+    clock, asked = Skewed(), []
 
     def rotate(environment):
         old = environment.bound.credential  # another process has seen the key change
         new = ResolvedCredential(old.reference, old.target, SecretValue("a-rotated-key-canary"))
         with open_existing_store(data[0]) as store:
             StateCredentialRegistry(store).observe(new)
+        if stale:
+            clock.skew += 28  # the look at the dataset would be taken again, with the old key
+        asked.append(len(server.requests))
 
     after_presign(monkeypatch, rotate)
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
         sends = len(provider.events)
         with pytest.raises(OperationError) as error:
-            start(data, server, report.plan_id)
+            start(data, server, report.plan_id, clock=clock)
         assert error.value.code == "operation_uncertain"
         assert error.value.reason_code == "state_changed"
         assert provider.events[sends:] == ["presign"]
+        # Not a single request more once the key had changed: not even a read with the old key.
+        assert len(server.requests) == asked[0]
 
 
 def test_a_folder_that_changes_between_two_stages_stops_the_continuation_before_the_next_send(
