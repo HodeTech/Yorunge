@@ -254,7 +254,7 @@ def test_only_the_slices_still_to_come_own_open_sites():
     # unrelated site reads the version of something that is not a family.
     closed = {"done", "v1-only", "v2-only", "unrelated"}
     open_owners = {site["owner"] for site in LIST["sites"]} - closed
-    assert open_owners <= {"P02-3h", "P02-3i"}
+    assert open_owners <= {"P02-3x", "P02-3y", "P02-3i"}
     assert "P02-3g" not in open_owners
 
 
@@ -265,7 +265,7 @@ def test_the_dispatch_helpers_of_the_versions_module_name_every_family():
         assert name in text
 
 
-@pytest.mark.parametrize("owner", ["P02-3h", "P02-3i"])
+@pytest.mark.parametrize("owner", ["P02-3x", "P02-3y", "P02-3i"])
 def test_each_open_owner_names_a_card_that_exists(owner):
     cards = list((ROOT / "docs" / "roadmap" / "tasks").glob(f"{owner.lower()}-*.md"))
     assert len(cards) == 1, owner

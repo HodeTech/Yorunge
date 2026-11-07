@@ -3,7 +3,8 @@
   "done",
   "v1-only",
   "v2-only",
-  "P02-3h",
+  "P02-3x",
+  "P02-3y",
   "P02-3i",
   "unrelated"
  ],
@@ -158,8 +159,8 @@
    "kind": "type_is",
    "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "the verify step of the original workflow; the v3 reconcile binding is P02-3h's"
+   "owner": "P02-3y",
+   "note": "the verify step of the original workflow; the closing read of a continuation (items, proof) is P02-3y's"
   },
   {
    "file": "src/yorunge/adapters/upload_preparation.py",
@@ -167,8 +168,8 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "the approval input reader is the original upload producer's and returns v2 plans; a continuation's producer reads its own plan"
+   "owner": "P02-3i",
+   "note": "the approval input reader is the original upload producer's and returns v2 plans; the continuation producer (UploadResumeRuntime) reads its own plan, and approving a continuation plan is the public surface's (P02-3i)"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
@@ -266,8 +267,8 @@
    "kind": "type_is",
    "text": "type(plan) is DatasetUploadPlanV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
+   "owner": "P02-3x",
+   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
@@ -275,8 +276,8 @@
    "kind": "type_is",
    "text": "type(view.plan) is not DatasetUploadPlanV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
+   "owner": "P02-3x",
+   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
@@ -284,8 +285,8 @@
    "kind": "type_is",
    "text": "type(record) is not TransferRecordV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3h's"
+   "owner": "P02-3x",
+   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconciliation.py",
@@ -293,8 +294,8 @@
    "kind": "type_is",
    "text": "type(record) is TransferRecordV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3h's"
+   "owner": "P02-3x",
+   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3x's"
   },
   {
    "file": "src/yorunge/adapters/upload_reconciliation.py",
@@ -302,8 +303,8 @@
    "kind": "type_is",
    "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
-   "owner": "P02-3h",
-   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3h's"
+   "owner": "P02-3x",
+   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3x's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",

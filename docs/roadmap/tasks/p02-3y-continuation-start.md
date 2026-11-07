@@ -26,6 +26,8 @@ P02-3w verified olmalıdır. Davranış [ADR-0031](../../decisions/0031-upload-c
 
 Başarılı sonuç yalnız metadata seviyesidir ve `remote_bytes_verified=false`; authority/pricing yükseltilmez. Taze envanter sınıf özeti kayıtlı plandan farklıysa admission öncesi `continuation_remote_changed`/2; PUT sırasında veya proof öncesinde uzak envanter beklenenden sapmışsa mevcut unknown kuralı (yeni etki yok).
 
+**P02-3h devri (sürüm dağıtım listesi).** [`tests/fixtures/version-dispatch-sites.json`](../../../tests/fixtures/version-dispatch-sites.json) bu karta v2-yalnız `upload_original_read.verify_original` noktasını atar (özgün iş akışının kapanış okuması). Kapanış okuması (öğe okuması, proof) bir devam için kendi yolunu kurar ya da bu işlevi v3’ü tanıyacak biçimde genişletir; liste yeşil kalmadan kart kapanmaz.
+
 **P02-3r devir notu (başlatma sırası).** `admit(plan_id, fresh)` mevcut operation’ı kontrolsüz döndürür (iptal edilmiş olabilir); depo admission retleri nedenleri ayırmaz. Check-only akışta okuma hatası `read_failed` ile `cancelled/local_cancelled` yapar ve okumanın kendi kodu döner; reddedilen geç proof `execution_timeout` ile iptal eder (işaretçi yazılamazsa kayıt `admitted` kalır, hata yine `execution_timeout` ve lease temizliği iptal eder); gönderilmemiş kayıtta `verified`/`read_failed` `operation_conflict` verir. Confirm sayaç tabanı `show(operation_id=…).plan.continuation.remote_present_count` alanındadır.
 
 ## Kabul

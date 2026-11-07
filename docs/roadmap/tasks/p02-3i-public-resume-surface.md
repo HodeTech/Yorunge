@@ -26,6 +26,8 @@ P02-3x verified olmalıdır (üretici P02-3h, aşama yürütücüsü P02-3w, ba�
 
 Yeni fiil mevcut `datasets upload` ailesindedir; ortak config/profile/state-dir seçenekleri aynıdır. Python karşılığı senkron köprü kapılarını (aktif loop/PID/thread) mevcut upload API’leriyle aynı uygular. v1/v2 çıktıları, Result v1 ve mevcut sekiz komutun davranışı değişmez. Çıktı sır, provider gövdesi, `created_dataset`, baseline ve tam yol listesi taşımaz; bounded örnek yollar (sorunlu sınıf başına ≤8, göreli, literal-secret taramalı) yalnız `resume` raporundadır. `continuation_not_possible` operation kimliğini korur ve sabit mesajla `resume` raporuna yönlendirir.
 
+**P02-3h devri (sürüm dağıtım listesi).** [`tests/fixtures/version-dispatch-sites.json`](../../../tests/fixtures/version-dispatch-sites.json) bu karta üç nokta atar: `upload_projection.original_summary` ve `review` ile `upload_preparation.read_approval_input` (özgün üreticinin onay girdisi okuyucusu v2 plan döndürür; bir devam planını onaylamak `approve_continuation` ile bu kartın yüzeyindedir). Kart bunları v3’ü tanıyacak biçimde günceller; liste yeşil kalmadan kapanmaz.
+
 ## Kabul
 
 1. Gerçek subprocess yolculuğu: plan → start → farklı noktalarda SIGKILL → `show` (yön satırı) → `resume` (rapor) → `resume --prepare` → `review` → `approve` → `start` → `show`; kullanıcı DB düzenlemeden ve yalnız komut çıktılarıyla tamamlar; non-TTY prompt yok; JSON/NDJSON saf; hata ID’yi korur. Zincir yolculuğu: ikinci kesintiden sonra ikinci `resume`.

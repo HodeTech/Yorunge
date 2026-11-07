@@ -81,8 +81,8 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3u | Continuation v3 graf doğrulaması, zincir/baseline çözümleyici ve tek okuma anlık görüntüsü (P02-3g’den ayrıştırıldı) | P02-3g; [kart](tasks/p02-3u-continuation-graph-validation-and-chain.md) | `verified` |
 | P02-3v | Continuation kapasite, bakım, reset önizlemesi ve projeksiyonlar (P02-3g’den ayrıştırıldı) | P02-3u; [kart](tasks/p02-3v-continuation-capacity-and-projection.md) | `verified` |
 | P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3v’den sonra, P02-3h’den önce) | P02-3v; [kart](tasks/p02-3r-continuation-write-gates.md) | `verified` |
-| P02-3h | Continuation üreticisi: `resume` raporu ve `--prepare` (ilk kapsamı P02-3w/3y/3x ile dörde bölündü) | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `ready` |
-| P02-3w | Continuation aşama yürütücüsü: v3 port/okuyucu, alt küme koordinatörü ve confirm sayaç tabanı (P02-3h’den ayrıştırıldı) | P02-3h; [kart](tasks/p02-3w-continuation-stage-executor.md) | `draft` |
+| P02-3h | Continuation üreticisi: `resume` raporu ve `--prepare` (ilk kapsamı P02-3w/3y/3x ile dörde bölündü) | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `verified` |
+| P02-3w | Continuation aşama yürütücüsü: v3 port/okuyucu, alt küme koordinatörü ve confirm sayaç tabanı (P02-3h’den ayrıştırıldı) | P02-3h; [kart](tasks/p02-3w-continuation-stage-executor.md) | `ready` |
 | P02-3y | Continuation başlatma: taze envanter, `M=0` ve N-dosya proof, hata eşlemesi (P02-3h’den ayrıştırıldı) | P02-3w; [kart](tasks/p02-3y-continuation-start.md) | `draft` |
 | P02-3x | Continuation `reconcile` bağlaması (P02-3h’den ayrıştırıldı) | P02-3y; [kart](tasks/p02-3x-continuation-reconcile.md) | `draft` |
 | P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3x; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |

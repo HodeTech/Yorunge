@@ -26,6 +26,8 @@ P02-3y verified olmalıdır (kapanış okuması ve proof kurucusu orada yazılı
 
 v2 `reconcile` ve v2 original yolu davranışsal olarak aynı kalır; torunu olmayan v1/v2 kaynaklarda `acquire_read` ve `cleanup_expired` byte-byte aynıdır. Kök baseline çözümleyicisi `require_created_baseline` ile paylaşılır; `created_dataset` bir devam için hata verir.
 
+**P02-3h devri (sürüm dağıtım listesi).** [`tests/fixtures/version-dispatch-sites.json`](../../../tests/fixtures/version-dispatch-sites.json) bu karta beş v2-yalnız noktayı atar: `upload_reconcile_local.read_policy` ve `load_read_input` (üç nokta) ile `upload_reconciliation._ReadEnvironment.acquire` ve `commit`. Kart bunları v3’ü tanıyacak ya da bilinçli reddedecek biçimde günceller ve listedeki sahibini `done` (ya da gerekçeyle `v2-only`) yapar; liste yeşil kalmadan kart kapanmaz.
+
 **P02-3r R2 devri.** `acquire_read` bir devam admit edildikten sonra kaynakta okuma lease’i alabilir ve yerel `reconcile`ın `cleanup_expired` çağrısı kaynağın fence/revision’ını artırıp nedenini ezebilir; tam grafli bir kaynağa devam edilemediğinden ve eksik grafli kaynak `reconcile` ile `succeeded` olamadığından bu geçerliliği bozmaz (R2-A/R2-B probları). Karar bu kartta verilir.
 
 ## Kabul
