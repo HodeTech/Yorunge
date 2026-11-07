@@ -13,6 +13,8 @@ from pathlib import Path
 import pytest
 
 from tests.fixtures.continuation_history import (
+    BASE_PROOF,
+    DATASET_ID,
     FILES,
     MANIFEST,
     Continuation,
@@ -34,6 +36,8 @@ from yorunge.domain.credentials import (
 )
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetManifest
+from yorunge.domain.dataset_transfer import StageReceipt
+from yorunge.domain.dataset_transfer_v3 import TransferVerificationV3
 from yorunge.domain.models import Context
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, UploadObservation
 
@@ -137,6 +141,42 @@ class Lifecycle:
     def repository(self, store):
         return FixtureContinuations(store, self.bound, clock=self.clock, write_access=self.access)
 
+    def admitted(self, number=1, **spec):
+        """Save, approve and admit a continuation; its repository keeps the write access."""
+        plan = self.plan(number, **spec)
+        with open_store(self.root_dir, timeout=60) as store:
+            repository = self.repository(store)
+            repository.save(plan, self.manifest)
+            repository.approve_continuation(
+                plan.plan_id,
+                plan.digest,
+                plan,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=bool(plan.continuation.uncertain_indices),
+            )
+            record = repository.admit(plan.plan_id, plan)
+            self.access = repository.write_access
+        return plan, record
+
+    def arm(self, plan, record, kind, index=None):
+        with open_store(self.root_dir, timeout=60) as store:
+            return self.repository(store).arm(
+                record.operation_id,
+                record.lease,
+                plan,
+                kind,
+                index,
+                total_end=self.clock.monotonic() + 900,
+            )
+
+    def accept(self, record, intent, *, rejected=False):
+        """The receipt a provider answer would give for ``intent``."""
+        with open_store(self.root_dir, timeout=60) as store:
+            return self.repository(store).receipt(
+                record.operation_id, record.lease, receipt_for(intent, self.clock, rejected)
+            )
+
     def plan(self, number=1, **spec) -> DatasetContinuationPlanV3:
         """A sealed continuation plan of the root (or of ``source``), as the producer would save."""
         return plan_of(build(self.root, number, **spec))
@@ -145,6 +185,51 @@ class Lifecycle:
         """The builder's data and its plan; the rows stay out of the store until saved."""
         item = build(self.root, number, **spec)
         return item, plan_of(item)
+
+
+def receipt_for(intent, clock, rejected=False) -> StageReceipt:
+    file = FILES[intent.file_index]
+    return StageReceipt(
+        schema_version=1,
+        intent_id=intent.intent_id,
+        recorded_at=timestamp(clock.value),
+        result="rejected" if rejected else "accepted",
+        dataset_id=None if rejected else DATASET_ID,
+        object_key=None if rejected else f"objects/{intent.file_index}",
+        sent_bytes=file["size"] if not rejected and intent.kind == "put" else None,
+        sent_sha256=file["sha256"] if not rejected and intent.kind == "put" else None,
+    )
+
+
+def read_check(plan, clock, *, error=None) -> AuthorizationCheck:
+    """The current read authorization: not exposed by the provider, or a failed read."""
+    return AuthorizationCheck(
+        consumer_profile="evren-platform-observed-upload-v2",
+        policy_version=2,
+        action="read_created_dataset",
+        scope=plan.scope,
+        dataset_id=plan.continuation.dataset_id,
+        producer_id="fixture_only",
+        producer_version="3",
+        checked_at=timestamp(clock.value),
+        outcome="not_exposed" if error is None else "unavailable",
+        grant=None,
+        error_code=error,
+    )
+
+
+def proof_of(plan, observed_at) -> TransferVerificationV3:
+    """What a closing read of the whole dataset observed (explicit attempt, no grant)."""
+    return TransferVerificationV3.model_validate_json(
+        canon(
+            {
+                **BASE_PROOF,
+                "dataset_id": plan.continuation.dataset_id,
+                "scope": plan.scope.model_dump(mode="json"),
+                "observed_at": observed_at,
+            }
+        )
+    )
 
 
 def plan_of(item: Continuation) -> DatasetContinuationPlanV3:

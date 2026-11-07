@@ -1,0 +1,291 @@
+"""The closing read of a continuation: success, the check-only path and every way it can fail."""
+
+from datetime import timedelta
+
+import pytest
+
+from tests.fixtures.continuation_history import DATASET_ID
+from tests.fixtures.continuation_lifecycle import proof_of, read_check
+from yorunge.adapters.state import open_store
+from yorunge.adapters.upload_projection import summary
+from yorunge.adapters.upload_store import read_any_view, validate_uploads
+from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
+from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.upload_versions import proof_digest
+
+TABLES = ("upload_operations", "upload_controls", "upload_stage_intents", "upload_stage_receipts")
+TABLES += ("upload_verifications",)
+STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
+
+
+def dump(store):
+    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in TABLES]
+
+
+def code_of(call):
+    with pytest.raises((YorungeError, OperationError)) as error:
+        call()
+    return error.value.code
+
+
+def tick(lifecycle, seconds=1):
+    lifecycle.clock.value += timedelta(seconds=seconds)
+
+
+def all_stages(lifecycle, plan, record):
+    for kind, index in STAGES:
+        lifecycle.arm(plan, record, kind, index)
+        tick(lifecycle)
+        with open_store(lifecycle.root_dir, timeout=60) as store:
+            intent = read_any_view(store.connection, plan.plan_id).intents[-1]
+        lifecycle.accept(record, intent)
+        tick(lifecycle)
+
+
+def close(lifecycle, plan, record, **flags):
+    """The closing read: the initial gate, then the proof of the whole dataset."""
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        access = repository.prepare_initial_read(
+            record.operation_id, record.lease, authorization=check
+        )
+        proof = proof_of(plan, timestamp(lifecycle.clock.value))
+        view = repository.verified(
+            record.operation_id, record.lease, proof, authorization=check, **flags
+        )
+        return access, proof, view
+
+
+# --- success ----------------------------------------------------------------------------------
+
+
+def test_a_continuation_that_sent_its_files_is_verified_by_reading_the_whole_dataset(lifecycle):
+    plan, record = lifecycle.admitted()
+    all_stages(lifecycle, plan, record)
+    access, proof, view = close(lifecycle, plan, record)
+    assert access.policy == "explicit_read_attempt" and access.grant is None
+    operation = view.operation
+    assert (operation.status, operation.reason) == ("succeeded", "metadata_verified")
+    assert operation.lease is None and operation.workflow_latched is True
+    assert type(view.verification) is TransferVerificationV3 and view.verification == proof
+    assert len(view.verification.files) == 3  # the whole manifest, though two files were sent
+    assert [(c.kind, type(c)) for c in view.controls] == [("terminal", TransferControlV3)]
+    assert view.controls[0].verification_digest == proof_digest(proof)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        validate_uploads(store.connection)
+        found = summary(read_any_view(store.connection, plan.plan_id))
+        assert found.operation_status == "succeeded" and found.verification_level == "metadata"
+        assert found.authority_verified is False  # nothing proved the authority: a bare attempt
+
+
+def test_a_continuation_with_an_unanswered_stage_is_not_verified_and_becomes_unknown(lifecycle):
+    plan, record = lifecycle.admitted()
+    lifecycle.arm(plan, record, "presign", 1)  # armed, never answered
+    tick(lifecycle)
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        assert (
+            code_of(
+                lambda: repository.prepare_initial_read(
+                    record.operation_id, record.lease, authorization=check
+                )
+            )
+            == "operation_uncertain"
+        )
+        proof = proof_of(plan, timestamp(lifecycle.clock.value))
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, proof, authorization=check
+                )
+            )
+            == "operation_uncertain"
+        )
+        view = repository.show(operation_id=record.operation_id)
+        assert (view.operation.status, view.operation.reason) == ("unknown", "request_uncertain")
+        assert view.verification is None
+
+
+def test_the_proof_must_be_of_the_plans_dataset_and_cover_the_whole_manifest(lifecycle):
+    plan, record = lifecycle.admitted()
+    all_stages(lifecycle, plan, record)
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        before = dump(store)
+        right = proof_of(plan, timestamp(lifecycle.clock.value))
+        elsewhere = right.model_copy(update={"dataset_id": "00000000-0000-4000-8000-000000000777"})
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, elsewhere, authorization=check
+                )
+            )
+            == "operation_conflict"
+        )
+        short = right.model_copy(update={"files": right.files[:2]})
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, short, authorization=check
+                )
+            )
+            == "state_invalid"
+        )
+        assert dump(store) == before  # the savepoint took every attempt back
+        assert right.dataset_id == DATASET_ID
+
+
+# --- the check-only continuation --------------------------------------------------------------
+
+
+def test_a_check_only_continuation_reads_and_is_verified_without_sending_or_a_latch(lifecycle):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    assert record.verification_only and record.status == "admitted"
+    access, proof, view = close(lifecycle, plan, record)
+    operation = view.operation
+    assert access.policy == "explicit_read_attempt"
+    assert (operation.status, operation.reason) == ("succeeded", "metadata_verified")
+    assert operation.workflow_latched is False and operation.verification_only is True
+    assert view.intents == () and view.receipts == () and view.verification == proof
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        validate_uploads(store.connection)
+
+
+def test_a_finished_check_only_continuation_supersedes_its_source(lifecycle):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    close(lifecycle, plan, record)
+    tick(lifecycle)
+    # The root already continues into a verified, finished operation: another is refused.
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        other = lifecycle.plan(2)
+        repository.save(other, lifecycle.manifest)
+        repository.approve_continuation(
+            other.plan_id, other.digest, other,
+            acknowledge_unverified_authority=True, acknowledge_unpriced_cost=True,
+            acknowledge_unconfirmed_effects=True,
+        )  # fmt: skip
+        with pytest.raises(OperationError) as error:
+            repository.admit(other.plan_id, other)
+        assert (error.value.code, error.value.operation_id) == (
+            "operation_conflict",
+            record.operation_id,
+        )
+
+
+def test_a_failed_read_cancels_a_check_only_continuation_and_reports_the_reads_own_error(lifecycle):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    failure = read_check(plan, lifecycle.clock, error="remote_failed")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        with pytest.raises(OperationError) as error:
+            repository.read_failed(record.operation_id, record.lease, failure)
+        # The read's own code, never "operation_uncertain": nothing was sent.
+        assert error.value.code == "remote_failed" and error.value.reason_code == "remote_failed"
+        view = repository.show(operation_id=record.operation_id)
+        assert (view.operation.status, view.operation.reason) == ("cancelled", "local_cancelled")
+        assert view.operation.workflow_latched is False and view.intents == ()
+        assert [(c.kind, type(c)) for c in view.controls] == [("terminal", TransferControlV3)]
+        # The same plan cannot be started again: its operation is over (a new prepare is needed).
+        assert repository.admit(plan.plan_id, plan).status == "cancelled"
+        assert (
+            code_of(
+                lambda: repository.prepare_initial_read(
+                    record.operation_id,
+                    record.lease,
+                    authorization=read_check(plan, lifecycle.clock),
+                )
+            )
+            == "operation_conflict"
+        )
+        validate_uploads(store.connection)
+
+
+def test_a_proof_that_comes_too_late_cancels_a_check_only_continuation_without_uncertainty(
+    lifecycle,
+):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    observed = timestamp(lifecycle.clock.value + timedelta(seconds=5))
+    tick(lifecycle, 50)  # the observation is older than the thirty seconds a proof may be
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        proof = proof_of(plan, observed)
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, proof, authorization=check
+                )
+            )
+            == "execution_timeout"
+        )
+        view = repository.show(operation_id=record.operation_id)
+        assert (view.operation.status, view.operation.reason) == ("cancelled", "local_cancelled")
+        assert view.verification is None and view.intents == ()
+
+
+def test_a_check_only_continuation_that_lost_its_lease_is_cancelled_and_not_taken_over(
+    lifecycle,
+):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        # There is nothing sent to recover: taking a read lease over it cleans it up instead.
+        assert (
+            code_of(
+                lambda: repository.acquire_read(
+                    record.operation_id, authorization=check, accept_unverified_read=True
+                )
+            )
+            == "operation_conflict"
+        )
+        view = repository.show(operation_id=record.operation_id)
+        assert (view.operation.status, view.operation.reason) == ("cancelled", "lease_expired")
+        validate_uploads(store.connection)
+
+
+# --- a read that failed after something was sent ----------------------------------------------
+
+
+def test_a_failed_read_after_the_first_intent_leaves_the_operation_unknown_and_unavailable(
+    lifecycle,
+):
+    plan, record = lifecycle.admitted()
+    all_stages(lifecycle, plan, record)
+    failure = read_check(plan, lifecycle.clock, error="transport_timeout")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        with pytest.raises(OperationError) as error:
+            repository.read_failed(record.operation_id, record.lease, failure)
+        # The writer was still active: the outcome of the whole attempt is not known.
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "transport_timeout"
+        view = repository.show(operation_id=record.operation_id)
+        assert (view.operation.status, view.operation.reason) == ("unknown", "read_unavailable")
+        assert [(c.kind, type(c)) for c in view.controls] == [("recovery", TransferControlV3)]
+        validate_uploads(store.connection)
+
+
+def test_an_unknown_continuation_is_verified_later_by_a_read_owner(lifecycle):
+    plan, record = lifecycle.admitted()
+    all_stages(lifecycle, plan, record)
+    lifecycle.clock.value = instant("2026-11-02T11:09:00.000000Z")  # the writer's lease is over
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        lease = repository.acquire_read(
+            record.operation_id, authorization=check, accept_unverified_read=True
+        )
+        assert lease.mode == "read" and lease.fence == 2
+        proof = proof_of(plan, timestamp(lifecycle.clock.value))
+        view = repository.verified(
+            record.operation_id, lease, proof, authorization=check, accept_unverified_read=True
+        )
+        assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
+        validate_uploads(store.connection)

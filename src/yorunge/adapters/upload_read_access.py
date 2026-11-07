@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from yorunge.adapters.capability_cache import Stamp, TimeGate
 from yorunge.adapters.upload_store import VersionedTransferView, decode
 from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_upload import UploadGrant, UploadScope
 from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
@@ -39,7 +40,7 @@ def authorize_read(
     record = view.operation
     assert record is not None
     explicit = (
-        isinstance(view.plan, DatasetUploadPlanV2)
+        isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
         and view.plan.admission_policy == "explicit_attempt"
     )
     _flags(explicit, initial_owner, accept_unverified_read)
@@ -86,7 +87,7 @@ def initial_read_consent(view: VersionedTransferView, stamp: Stamp, gate: TimeGa
         )
         return
     if (
-        not isinstance(view.plan, DatasetUploadPlanV2)
+        not isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
         or view.plan.admission_policy != "explicit_attempt"
     ):
         raise YorungeError("upload_plan_not_valid")
@@ -109,7 +110,7 @@ def _fallback_consent(view: VersionedTransferView, initial: bool, accepted: bool
     if initial:
         approval = record.approval
         if (
-            not isinstance(approval, DatasetUploadApprovalV2)
+            not isinstance(approval, DatasetUploadApprovalV2 | DatasetUploadApprovalV3)
             or not approval.acknowledge_unverified_authority
         ):
             raise YorungeError("approval_required")

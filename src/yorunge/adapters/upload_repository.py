@@ -80,6 +80,7 @@ from yorunge.domain.dataset_transfer_v2 import (
 from yorunge.domain.dataset_transfer_v3 import (
     TransferControlV3,
     TransferRecordV3,
+    TransferVerificationV3,
 )
 from yorunge.domain.dataset_upload import (
     COMMIT_MARGIN_SECONDS,
@@ -967,14 +968,24 @@ class StateUploads:
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
-                if not isinstance(view.plan, DatasetUploadPlanV2):
+                if not isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
                     raise YorungeError("upload_plan_not_valid")
                 record = view.operation
                 assert record is not None
+                if isinstance(view.plan, DatasetContinuationPlanV3) and kind in {
+                    "create",
+                    "project_link",
+                }:
+                    # The dataset exists: a continuation has no create and no link to arm.
+                    raise YorungeError("invalid_request")
                 self._baseline_in_view(view)
                 owner = self._owner(record, owner, stamp, gate)
                 if owner.mode != "write" or record.status not in {"admitted", "running"}:
                     raise YorungeError("operation_conflict")
+                if isinstance(record, TransferRecordV3) and record.verification_only:
+                    raise YorungeError(
+                        "operation_conflict"
+                    )  # a check-only continuation sends nothing
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
                 action = _arm_permission(kind)
@@ -1102,7 +1113,10 @@ class StateUploads:
                         raise YorungeError("operation_conflict")
                     return view
                 self._baseline_in_view(view)
-                if (
+                if isinstance(view.plan, DatasetContinuationPlanV3):
+                    if isinstance(receipt, CreateReceiptV2):  # it makes no dataset to receipt
+                        raise YorungeError("invalid_request")
+                elif (
                     isinstance(view.plan, DatasetUploadPlanV2)
                     and intent.kind == "create"
                     and receipt.result == "accepted"
@@ -1138,6 +1152,9 @@ class StateUploads:
                 owner = self._owner(record, owner, stamp, gate)
                 if reason not in {"request_uncertain", "local_cancelled"}:
                     raise YorungeError("invalid_request")
+                if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+                    # Before its first intent nothing is uncertain: the operation is cancelled.
+                    reason = "local_cancelled"
                 changed = self._change(
                     record,
                     stamp,
@@ -1264,6 +1281,43 @@ class StateUploads:
                 raise YorungeError("state_busy")
             return self.show(operation_id=operation_id)
 
+    def freeze_source(self, operation_id: str) -> VersionedTransferView:
+        """Freeze the source a continuation is prepared from: what ``--prepare`` writes first.
+
+        A source that was running when its lease lapsed becomes unknown, exactly as the cleanup of
+        an expired operation does; a source that is already unknown is left as it is (its reason
+        and its fence stay, so two processes preparing at once freeze it once); a source with a live
+        lease is active and nothing is changed. Descendants that were admitted, sent nothing and let
+        their lease lapse are cancelled in the same transaction.
+        """
+        with self.phase(operation_id):
+            self._nonterminal(operation_id)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                if not record.workflow_latched:
+                    raise YorungeError("operation_conflict")  # nothing was sent: not a source
+                for descendant in stored_snapshot(self.connection, operation_id, stamp).descendants:
+                    if descendant.status == "admitted" and not descendant.lease_active:
+                        self._cancel_unlatched(
+                            read_record(self.connection, descendant.operation_id), stamp
+                        )
+                if record.status != "unknown":
+                    self._takeover_allowed(record, stamp)  # a live lease is someone else's
+                    changed = self._change(
+                        record,
+                        stamp,
+                        lease=None,
+                        fence=record.fence + 1,
+                        status="unknown",
+                        reason="request_uncertain",
+                    )
+                    self._control(changed, stamp, terminal=False)
+            self._finish(stamp, gate, scope=view.plan.scope)
+            return self.show(operation_id=operation_id)
+
     def _read_grant(
         self, view: VersionedTransferView, grant: UploadGrant, stamp: Stamp, gate: TimeGate
     ) -> None:
@@ -1359,7 +1413,8 @@ class StateUploads:
                 record = view.operation
                 assert record is not None
                 self._baseline_in_view(view)
-                if not record.workflow_latched or record.dataset_id is None:
+                check_only = isinstance(record, TransferRecordV3) and record.verification_only
+                if not check_only and (not record.workflow_latched or record.dataset_id is None):
                     raise YorungeError("operation_uncertain")
                 self._credential(check.scope, stamp)
                 if (
@@ -1377,23 +1432,34 @@ class StateUploads:
                 )
                 active_write = False
                 fence = record.fence
-                if owner is None:
-                    self._takeover_allowed(record, stamp)
-                    fence += 1
+                if check_only:
+                    # Nothing was sent, so nothing is uncertain: it is cancelled, and the caller
+                    # gets the read's own error rather than "operation_uncertain".
+                    if owner is None:
+                        raise YorungeError("operation_conflict")
+                    self._owner(record, owner, stamp, gate)
+                    changed = self._change(
+                        record, stamp, lease=None, status="cancelled", reason="local_cancelled"
+                    )
+                    self._control(changed, stamp, terminal=True)
                 else:
-                    current = self._owner(record, owner, stamp, gate)
-                    active_write = current.mode == "write"
-                changed = self._change(
-                    record,
-                    stamp,
-                    lease=None,
-                    fence=fence,
-                    status="unknown",
-                    reason="read_unavailable"
-                    if record.schema_version == 2
-                    else "request_uncertain",
-                )
-                self._control(changed, stamp, terminal=False)
+                    if owner is None:
+                        self._takeover_allowed(record, stamp)
+                        fence += 1
+                    else:
+                        current = self._owner(record, owner, stamp, gate)
+                        active_write = current.mode == "write"
+                    changed = self._change(
+                        record,
+                        stamp,
+                        lease=None,
+                        fence=fence,
+                        status="unknown",
+                        reason="read_unavailable"
+                        if record.schema_version in (2, 3)
+                        else "request_uncertain",
+                    )
+                    self._control(changed, stamp, terminal=False)
             self._finish(stamp, gate, scope=check.scope)
             if active_write:
                 raise OperationError("operation_uncertain", operation_id, reason_code=code)
@@ -1416,7 +1482,11 @@ class StateUploads:
                 assert record is not None
                 self._baseline_in_view(view)
                 current = self._owner(record, owner, stamp, gate)
-                if current.mode != "write" or record.status != "running":
+                # A check-only continuation never sends, so it never runs: it reads as admitted.
+                check_only = isinstance(record, TransferRecordV3) and record.verification_only
+                if current.mode != "write" or record.status != (
+                    "admitted" if check_only else "running"
+                ):
                     raise YorungeError("operation_conflict")
                 self._credential(view.plan.scope, stamp)
                 if self._approved(view, gate) != record.approval:
@@ -1499,11 +1569,14 @@ class StateUploads:
         except OperationError as error:
             if error.code == "operation_uncertain":
                 try:
-                    self._uncertain_verification(operation_id, owner)
+                    cancelled = self._uncertain_verification(operation_id, owner)
                 except YorungeError as marker_error:
                     raise OperationError(
                         "operation_uncertain", operation_id, reason_code=marker_error.code
                     ) from None
+                if cancelled:
+                    # A check-only continuation sent nothing: the proof came too late, no more.
+                    raise OperationError("execution_timeout", operation_id) from None
             raise
 
     def _proof_deadline(self, deadline: float | None) -> None:
@@ -1519,15 +1592,17 @@ class StateUploads:
         if self.clock.monotonic() >= deadline:
             raise YorungeError("execution_timeout")
 
-    def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> None:
+    def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> bool:
+        """Mark a verification whose outcome is unknown; whether it was a plain local cancel."""
         with self.phase(operation_id):
             view = self.show(operation_id=operation_id)
             assert view.operation is not None
             if view.operation.status in TERMINAL or (
                 view.operation.status == "unknown" and view.operation.reason == "request_uncertain"
             ):
-                return
+                return False
             stamp = self.cache.stamp()
+            cancelled = False
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
@@ -1535,12 +1610,20 @@ class StateUploads:
                 if record.status in TERMINAL or (
                     record.status == "unknown" and record.reason == "request_uncertain"
                 ):
-                    return
+                    return False
                 current = self._owner(record, owner, stamp, gate)
-                changed = self._change(
-                    record, stamp, status="unknown", lease=current, reason="request_uncertain"
-                )
-                self._control(changed, stamp, terminal=False)
+                if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+                    # No intent was ever written: nothing is uncertain, the operation is cancelled.
+                    cancelled = True
+                    changed = self._change(
+                        record, stamp, status="cancelled", lease=None, reason="local_cancelled"
+                    )
+                    self._control(changed, stamp, terminal=True)
+                else:
+                    changed = self._change(
+                        record, stamp, status="unknown", lease=current, reason="request_uncertain"
+                    )
+                    self._control(changed, stamp, terminal=False)
             # This local marker grants no new read or write authority.
             final, within = self.cache._finish(
                 stamp,
@@ -1551,6 +1634,7 @@ class StateUploads:
             gate.check(final.now)
             if not within:
                 raise YorungeError("state_busy")
+            return cancelled
 
     def _verified(
         self,
@@ -1567,7 +1651,10 @@ class StateUploads:
             self._nonterminal(operation_id)
             self.require_created_baseline(operation_id, owner)
             proof = decode_versioned(
-                TransferVerification, TransferVerificationV2, proof.encoded().decode("ascii")
+                TransferVerification,
+                TransferVerificationV2,
+                proof.encoded().decode("ascii"),
+                TransferVerificationV3,
             )
             self._secret(proof)
             stamp = self.cache.stamp()
@@ -1592,7 +1679,7 @@ class StateUploads:
                     initial_owner=owner.mode == "write",
                 )
                 if verification_scope(proof) != access.scope or (
-                    isinstance(proof, TransferVerificationV2)
+                    isinstance(proof, TransferVerificationV2 | TransferVerificationV3)
                     and proof.authorization_policy != access.policy
                 ):
                     raise YorungeError("upload_plan_not_valid")
@@ -1602,7 +1689,7 @@ class StateUploads:
                     or instant(proof.observed_at) > stamp.now
                 ):
                     raise YorungeError("operation_conflict")
-                if proof.schema_version == 2:
+                if proof.schema_version in (2, 3):
                     observed = instant(proof.observed_at)
                     gate.require_range(
                         observed,

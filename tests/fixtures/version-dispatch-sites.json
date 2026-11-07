@@ -168,8 +168,8 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the approval input reader returns v2 plans; the v3 approve gate is P02-3r's"
+   "owner": "P02-3h",
+   "note": "the approval input reader is the original upload producer's and returns v2 plans; a continuation's producer reads its own plan"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
@@ -238,28 +238,28 @@
    "file": "src/yorunge/adapters/upload_read_access.py",
    "function": "authorize_read",
    "kind": "isinstance",
-   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "read-gate preconditions of a v2 operation; the v3 read gates are P02-3r's"
+   "owner": "done",
+   "note": "an explicit read attempt needs an explicit-attempt plan of either family"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
    "function": "initial_read_consent",
    "kind": "isinstance",
-   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "read-gate preconditions of a v2 operation; the v3 read gates are P02-3r's"
+   "owner": "done",
+   "note": "the initial fallback consent is the explicit-attempt plan's, of either family"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
    "function": "_fallback_consent",
    "kind": "isinstance",
-   "text": "isinstance(approval, DatasetUploadApprovalV2)",
+   "text": "isinstance(approval, DatasetUploadApprovalV2 | DatasetUploadApprovalV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "read-gate preconditions of a v2 operation; the v3 read gates are P02-3r's"
+   "owner": "done",
+   "note": "the unverified-authority acknowledgement is read from a v2 or v3 approval"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
@@ -312,8 +312,8 @@
    "kind": "type_is",
    "text": "type(receipt) is CreateReceiptV2",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a receipt is revalidated as its own type; a continuation's refusal of a create receipt is in receipt()"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -321,8 +321,8 @@
    "kind": "type_is",
    "text": "type(receipt) is StageReceipt",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a stage receipt is revalidated as such, whatever the plan family"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -454,10 +454,28 @@
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.arm",
    "kind": "isinstance",
-   "text": "isinstance(view.plan, DatasetUploadPlanV2)",
+   "text": "isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a stage is armed for an original upload or for a continuation, never for the oldest family"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.arm",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation has no create and no link to arm: refused before its predecessor is asked"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.arm",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a check-only continuation sends nothing, so it arms nothing"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -465,8 +483,8 @@
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "an accepted create of a v2 plan must be answered with a strict create receipt; a continuation has no create"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -474,8 +492,8 @@
    "kind": "isinstance",
    "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a create receipt is no receipt of a continuation: it makes no dataset"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -483,26 +501,26 @@
    "kind": "isinstance",
    "text": "isinstance(receipt, CreateReceiptV2)",
    "occurrence": 1,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "the strict-create rule of a v2 plan applies to an accepted create"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.read_failed",
    "kind": "version",
-   "text": "record.schema_version == 2",
+   "text": "record.schema_version in (2, 3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the unknown-state reason is picked by version; a v3 record would fall into the else branch and get the v1 reason request_uncertain instead of read_unavailable: P02-3r names v3 here"
+   "owner": "done",
+   "note": "a failed read leaves a v2 or v3 operation unavailable to read; the oldest family stays uncertain"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._verified",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(TransferVerification, TransferVerificationV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferVerification, TransferVerificationV2, TransferVerificationV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the proof is re-decoded as v1/v2 and so rejects a continuation proof; the v3 proof is P02-3r's"
+   "owner": "done",
+   "note": "a proof is decoded in any of its three families; the record's must equal it"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -510,26 +528,26 @@
    "kind": "version",
    "text": "proof.schema_version != record.schema_version",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a proof is of the family of the record it closes"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._verified",
    "kind": "isinstance",
-   "text": "isinstance(proof, TransferVerificationV2)",
+   "text": "isinstance(proof, TransferVerificationV2 | TransferVerificationV3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "a v2 or v3 proof names the authorization policy it was read under, which must be the one granted"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads._verified",
    "kind": "version",
-   "text": "proof.schema_version == 2",
+   "text": "proof.schema_version in (2, 3)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the 30-second freshness window of a proof is applied for v2 only; a v3 proof (same observed_at) would skip it silently once the two-typed decode above is widened: P02-3r applies it to v3"
+   "owner": "done",
+   "note": "a v2 or v3 proof is fresh for thirty seconds; the oldest family's carries no such clock"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -537,8 +555,62 @@
    "kind": "version",
    "text": "record.schema_version == 1",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "the success reason is verified for v1 and metadata_verified otherwise; v3 correctly takes the else branch (its record requires metadata_verified), but the else-is-not-v1 reading is listed so P02-3r confirms it"
+   "owner": "done",
+   "note": "the success reason is verified for the oldest family and metadata_verified for v2 and v3"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.prepare_initial_read",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a check-only continuation reads as admitted, because it never runs"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.read_failed",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a failed read of a check-only continuation cancels it: nothing was sent, nothing is uncertain"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.receipt",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation makes no dataset, so a create receipt is not one of its receipts"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.receipt",
+   "kind": "isinstance",
+   "text": "isinstance(receipt, CreateReceiptV2)",
+   "occurrence": 2,
+   "owner": "done",
+   "note": "a strict create receipt is validated against its create intent"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.stop_local",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation that sent nothing is stopped as cancelled with the reason local_cancelled"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._uncertain_verification",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "an uncertain verification of a continuation that never sent is a local cancel, not unknown"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",

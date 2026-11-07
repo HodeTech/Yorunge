@@ -5,7 +5,6 @@ import json
 import pytest
 
 from tests.fixtures.continuation_history import FIRST, build, canon, install
-from tests.fixtures.continuation_lifecycle import lifecycle  # noqa: F401
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import capacity, read_any_view, validate_uploads
@@ -33,7 +32,7 @@ def related_of(call):
     return error.value.code, error.value.operation_id
 
 
-def ready(lifecycle, store, number=1, **spec):  # noqa: F811
+def ready(lifecycle, store, number=1, **spec):
     """Save and approve a continuation plan with exactly the acknowledgements it needs."""
     plan = lifecycle.plan(number, **spec)
     repository = lifecycle.repository(store)
@@ -49,14 +48,14 @@ def ready(lifecycle, store, number=1, **spec):  # noqa: F811
     return plan, repository
 
 
-def open_chain(lifecycle):  # noqa: F811
+def open_chain(lifecycle):
     return open_store(lifecycle.root_dir, timeout=60)
 
 
 # --- the record that admission writes -----------------------------------------------------------
 
 
-def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(lifecycle):  # noqa: F811
+def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store)
         namespaces = store.connection.execute("SELECT * FROM upload_namespaces").fetchall()
@@ -85,7 +84,7 @@ def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(
         validate_uploads(store.connection)
 
 
-def test_a_continuation_that_sends_nothing_is_admitted_as_a_check_only_record(lifecycle):  # noqa: F811
+def test_a_continuation_that_sends_nothing_is_admitted_as_a_check_only_record(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store, indices=(), uncertain=())
         record = repository.admit(plan.plan_id, plan)
@@ -94,7 +93,7 @@ def test_a_continuation_that_sends_nothing_is_admitted_as_a_check_only_record(li
         validate_uploads(store.connection)
 
 
-def test_the_baseline_of_an_admitted_continuation_is_its_roots(lifecycle):  # noqa: F811
+def test_the_baseline_of_an_admitted_continuation_is_its_roots(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store)
         record = repository.admit(plan.plan_id, plan)
@@ -111,13 +110,13 @@ def test_the_baseline_of_an_admitted_continuation_is_its_roots(lifecycle):  # no
 # --- what it refuses -----------------------------------------------------------------------------
 
 
-def refused_untouched(lifecycle, store, plan, repository, code):  # noqa: F811
+def refused_untouched(lifecycle, store, plan, repository, code):
     before = dump(store)
     assert code_of(lambda: repository.admit(plan.plan_id, plan)) == code
     assert dump(store) == before  # nothing was written, not even a cancellation
 
 
-def test_a_plan_without_an_effective_approval_is_not_admitted(lifecycle):  # noqa: F811
+def test_a_plan_without_an_effective_approval_is_not_admitted(lifecycle):
     with open_chain(lifecycle) as store:
         repository = lifecycle.repository(store)
         plan = lifecycle.plan(1)
@@ -132,14 +131,14 @@ def test_a_plan_without_an_effective_approval_is_not_admitted(lifecycle):  # noq
         refused_untouched(lifecycle, store, plan, repository, "approval_required")  # revoked
 
 
-def test_an_approval_or_plan_past_its_window_is_not_admitted(lifecycle):  # noqa: F811
+def test_an_approval_or_plan_past_its_window_is_not_admitted(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store)
         lifecycle.clock.value = instant("2026-11-02T11:15:00.000000Z")
         refused_untouched(lifecycle, store, plan, repository, "upload_plan_not_valid")
 
 
-def test_a_stale_or_foreign_current_check_is_not_admitted(lifecycle):  # noqa: F811
+def test_a_stale_or_foreign_current_check_is_not_admitted(lifecycle):
     from datetime import timedelta
 
     with open_chain(lifecycle) as store:
@@ -158,7 +157,7 @@ def test_a_stale_or_foreign_current_check_is_not_admitted(lifecycle):  # noqa: F
         assert dump(store) == before
 
 
-def test_a_source_that_still_runs_with_a_live_lease_is_not_continued(lifecycle):  # noqa: F811
+def test_a_source_that_still_runs_with_a_live_lease_is_not_continued(lifecycle):
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="running"))  # lease until 11:02:32
         plan, repository = ready(lifecycle, store, 2, source=FIRST, indices=(2,), uncertain=())
@@ -170,7 +169,7 @@ def test_a_source_that_still_runs_with_a_live_lease_is_not_continued(lifecycle):
         assert dump(store) == before
 
 
-def test_a_source_whose_lease_lapsed_but_was_never_frozen_is_not_continued(lifecycle):  # noqa: F811
+def test_a_source_whose_lease_lapsed_but_was_never_frozen_is_not_continued(lifecycle):
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="running"))
         plan, repository = ready(lifecycle, store, 2, source=FIRST, indices=(2,), uncertain=())
@@ -179,7 +178,7 @@ def test_a_source_whose_lease_lapsed_but_was_never_frozen_is_not_continued(lifec
 
 
 def test_a_source_that_already_has_a_continuation_that_was_not_cancelled_is_not_continued(
-    lifecycle,  # noqa: F811
+    lifecycle,
 ):
     with open_chain(lifecycle) as store:
         # The root already continues into an unknown one: the new plan would be a second branch.
@@ -191,7 +190,7 @@ def test_a_source_that_already_has_a_continuation_that_was_not_cancelled_is_not_
         )
 
 
-def test_a_cancelled_continuation_of_the_source_is_no_obstacle(lifecycle):  # noqa: F811
+def test_a_cancelled_continuation_of_the_source_is_no_obstacle(lifecycle):
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="cancelled"))
         plan, repository = ready(lifecycle, store, 2)
@@ -200,7 +199,7 @@ def test_a_cancelled_continuation_of_the_source_is_no_obstacle(lifecycle):  # no
 
 
 def test_a_descendant_that_lapsed_before_it_sent_anything_is_cancelled_by_the_next_admission(
-    lifecycle,  # noqa: F811
+    lifecycle,
 ):
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="admitted"))  # lease until 11:02:32
@@ -222,7 +221,7 @@ def test_a_descendant_that_lapsed_before_it_sent_anything_is_cancelled_by_the_ne
         validate_uploads(store.connection)
 
 
-def test_nothing_else_may_run_against_the_dataset_outside_the_chain(lifecycle):  # noqa: F811
+def test_nothing_else_may_run_against_the_dataset_outside_the_chain(lifecycle):
     with open_chain(lifecycle) as store:
         install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
         # A second, admitted branch off the root: not part of the chain that continues FIRST.
@@ -237,7 +236,7 @@ def test_nothing_else_may_run_against_the_dataset_outside_the_chain(lifecycle): 
         )
 
 
-def test_an_operation_is_never_born_before_the_last_thing_its_source_did(lifecycle):  # noqa: F811
+def test_an_operation_is_never_born_before_the_last_thing_its_source_did(lifecycle):
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store)
         later = "2026-11-02T11:10:00.000000Z"  # after the clock of the test, within the plan window

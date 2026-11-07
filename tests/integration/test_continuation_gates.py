@@ -7,7 +7,7 @@ built from it with plain hashlib/json; nothing here talks to a network.
 
 import pytest
 
-from tests.fixtures.continuation_lifecycle import ACKNOWLEDGE_ALL, lifecycle  # noqa: F401
+from tests.fixtures.continuation_lifecycle import ACKNOWLEDGE_ALL
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_store import capacity
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
@@ -29,7 +29,7 @@ def rows(store):
 # --- save ----------------------------------------------------------------------------------------
 
 
-def test_a_continuation_plan_is_saved_beside_its_root_and_makes_no_create_right(lifecycle):  # noqa: F811
+def test_a_continuation_plan_is_saved_beside_its_root_and_makes_no_create_right(lifecycle):
     plan = lifecycle.plan(1)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         before = capacity(store.connection)
@@ -43,7 +43,7 @@ def test_a_continuation_plan_is_saved_beside_its_root_and_makes_no_create_right(
         assert (after[0], after[1]) == (before[0] + 1, before[1])
 
 
-def test_saving_the_same_plan_again_is_the_same_plan_and_a_different_one_is_a_conflict(lifecycle):  # noqa: F811
+def test_saving_the_same_plan_again_is_the_same_plan_and_a_different_one_is_a_conflict(lifecycle):
     plan = lifecycle.plan(1)
     other = lifecycle.plan(1, indices=(2,), uncertain=())  # same id, other content
     with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -55,7 +55,7 @@ def test_saving_the_same_plan_again_is_the_same_plan_and_a_different_one_is_a_co
         assert capacity(store.connection)[0] == 2  # the root and the one continuation plan
 
 
-def saved(lifecycle, store, number=1, **spec):  # noqa: F811
+def saved(lifecycle, store, number=1, **spec):
     plan = lifecycle.plan(number, **spec)
     return plan, lifecycle.repository(store).save(plan, lifecycle.manifest)
 
@@ -68,7 +68,7 @@ SAVE_REFUSALS = {
 
 
 @pytest.mark.parametrize("spec", SAVE_REFUSALS.values(), ids=SAVE_REFUSALS)
-def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lifecycle, spec):  # noqa: F811
+def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lifecycle, spec):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         before = rows(store)
         repository = lifecycle.repository(store)
@@ -77,7 +77,7 @@ def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lif
         assert rows(store) == before  # the savepoint of the transaction took the plan row back
 
 
-def test_a_continuation_is_saved_without_a_preparation_check_and_not_outside_its_window(lifecycle):  # noqa: F811
+def test_a_continuation_is_saved_without_a_preparation_check_and_not_outside_its_window(lifecycle):
     from yorunge.domain.capabilities import instant
 
     with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -96,7 +96,7 @@ def test_a_continuation_is_saved_without_a_preparation_check_and_not_outside_its
         assert capacity(store.connection)[0] == 1  # only the root
 
 
-def test_a_plan_of_another_credential_is_not_saved(lifecycle):  # noqa: F811
+def test_a_plan_of_another_credential_is_not_saved(lifecycle):
     scope = dict(lifecycle.root["plan"]["scope"], credential_revision=2)
     other = lifecycle.plan(1, plan_changes={"scope": scope})
     with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -107,7 +107,7 @@ def test_a_plan_of_another_credential_is_not_saved(lifecycle):  # noqa: F811
 # --- approve and revoke ---------------------------------------------------------------------------
 
 
-def test_a_saved_continuation_is_approved_once_with_the_acknowledgements_it_needs(lifecycle):  # noqa: F811
+def test_a_saved_continuation_is_approved_once_with_the_acknowledgements_it_needs(lifecycle):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         plan, _ = saved(lifecycle, store)
         repository = lifecycle.repository(store)
@@ -139,7 +139,7 @@ NEEDED = (
 
 
 @pytest.mark.parametrize("missing", NEEDED)
-def test_an_approval_needs_each_acknowledgement_the_plan_requires(lifecycle, missing):  # noqa: F811
+def test_an_approval_needs_each_acknowledgement_the_plan_requires(lifecycle, missing):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         plan, _ = saved(lifecycle, store)
         repository = lifecycle.repository(store)
@@ -154,7 +154,7 @@ def test_an_approval_needs_each_acknowledgement_the_plan_requires(lifecycle, mis
         assert rows(store) == before
 
 
-def test_an_acknowledgement_the_plan_does_not_need_is_refused(lifecycle):  # noqa: F811
+def test_an_acknowledgement_the_plan_does_not_need_is_refused(lifecycle):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         # Nothing of this plan is unconfirmed: the root's open confirm is left out of the selection.
         plan, _ = saved(lifecycle, store, indices=(2,), uncertain=())
@@ -169,7 +169,7 @@ def test_an_acknowledgement_the_plan_does_not_need_is_refused(lifecycle):  # noq
         assert approval.acknowledge_unconfirmed_effects is False
 
 
-def test_an_approval_confirms_exactly_the_plan_digest_and_a_plan_that_is_still_valid(lifecycle):  # noqa: F811
+def test_an_approval_confirms_exactly_the_plan_digest_and_a_plan_that_is_still_valid(lifecycle):
     from yorunge.domain.capabilities import instant
 
     with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -200,7 +200,7 @@ def test_an_approval_confirms_exactly_the_plan_digest_and_a_plan_that_is_still_v
         assert repository.show(plan_id=plan.plan_id).approval is None
 
 
-def test_an_approval_is_revoked_locally_and_a_revoked_one_stays_revoked(lifecycle):  # noqa: F811
+def test_an_approval_is_revoked_locally_and_a_revoked_one_stays_revoked(lifecycle):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         plan, _ = saved(lifecycle, store)
         repository = lifecycle.repository(store)
