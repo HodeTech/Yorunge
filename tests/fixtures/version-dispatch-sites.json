@@ -58,21 +58,21 @@
   },
   {
    "file": "src/yorunge/adapters/upload_lineage.py",
+   "function": "_source_is_consistent",
+   "kind": "isinstance",
+   "text": "isinstance(source, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a source holds an explicit policy to inherit: a v1 plan (and any unknown family) is never a source"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_lineage.py",
    "function": "resolve_lineage",
    "kind": "isinstance",
    "text": "isinstance(parent, DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "done",
    "note": "a source that is itself a continuation is followed, and must agree about the baseline"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_lineage.py",
-   "function": "resolve_lineage",
-   "kind": "isinstance",
-   "text": "isinstance(parent, DatasetUploadPlan | DatasetUploadPlanV2)",
-   "occurrence": 0,
-   "owner": "done",
-   "note": "a v1/v2 plan is the root; anything else is refused"
   },
   {
    "file": "src/yorunge/adapters/upload_lineage.py",
@@ -442,15 +442,6 @@
    "occurrence": 1,
    "owner": "P02-3r",
    "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.require_created_baseline",
-   "kind": "isinstance",
-   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
-   "occurrence": 0,
-   "owner": "done",
-   "note": "a continuation's baseline is its root's, found through its validated lineage"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",

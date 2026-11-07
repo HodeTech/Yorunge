@@ -204,7 +204,7 @@ def test_a_source_that_is_only_a_plan_is_not_a_source(tmp_path):
 
 
 def test_a_continuation_whose_root_rows_are_gone_is_a_corrupt_history(tmp_path):
-    with open_store(tmp_path / "state") as store:
+    with open_store(tmp_path / "state", timeout=60) as store:
         root = install_root(store)
         item = build(root, 1, status="running")
         store.connection.execute("PRAGMA foreign_keys=OFF")  # the root is deleted below
@@ -444,7 +444,8 @@ def test_the_journals_of_a_chain_run_from_the_root_to_the_source(tmp_path):
         assert [j.parent_operation_id for j in snapshot.journals] == [None, root_operation]
         assert {j.dataset_id for j in snapshot.journals} == {DATASET_ID}
         assert {j.manifest_digest for j in snapshot.journals} == {MANIFEST["digest"]}
-        # The combined lineage is what merge_chain takes: the root confirmed all three files.
+        # The combined lineage is what merge_chain takes: the root confirmed the first file, the
+        # first continuation the second, and nothing has reached the third.
         manifest = DatasetManifest.model_validate_json(canon_manifest())
         assert merge_chain(snapshot.journals, manifest).states == ("accepted", "accepted", "none")
         assert snapshot.source.status == "unknown" and snapshot.source.lease_active is False
@@ -629,7 +630,7 @@ def test_a_selection_its_lineage_does_not_allow_is_a_corrupt_history(tmp_path, s
 
 
 def test_a_continuation_of_a_lineage_with_a_known_rejection_is_a_corrupt_history(tmp_path):
-    with open_store(tmp_path / "state") as store:
+    with open_store(tmp_path / "state", timeout=60) as store:
         root = install_root(store)
         item = build(root, 1, status="running")
         install(store, item)
@@ -645,7 +646,7 @@ def test_a_continuation_of_a_lineage_with_a_known_rejection_is_a_corrupt_history
 
 def test_a_source_whose_graph_is_already_complete_is_reconciled_not_continued(tmp_path):
     check_only = {"status": "admitted", "indices": ()}
-    with open_store(tmp_path / "bad") as store:
+    with open_store(tmp_path / "bad", timeout=60) as store:
         root = install_root(store, partial=False)
         item = build(root, 1, **check_only)
         install(store, item)
@@ -655,7 +656,7 @@ def test_a_source_whose_graph_is_already_complete_is_reconciled_not_continued(tm
 
 
 def test_a_root_that_made_no_dataset_it_can_prove_is_no_baseline(tmp_path):
-    with open_store(tmp_path / "state") as store:
+    with open_store(tmp_path / "state", timeout=60) as store:
         root = install_root(store, strict=False)  # its create left only the plain receipt
         item = build(root, 1, status="running")
         install(store, item)
@@ -781,3 +782,108 @@ def test_a_source_whose_plan_row_is_gone_is_a_corrupt_history(tmp_path):
             "DELETE FROM upload_plans WHERE plan_id=?", (first.plan["plan_id"],)
         )
         refused(store, item)
+
+
+# --- what only a continuation as a source can show ---------------------------------------------
+
+
+def test_a_continuation_source_whose_graph_is_complete_is_reconciled_not_continued(tmp_path):
+    check_only = {"status": "admitted", "source": FIRST, "indices": ()}
+    complete = {"status": "unknown", "intents": 6, "acknowledged": 6}  # every stage answered
+    with world(tmp_path / "bad", complete, check_only) as (store, _, (source, later)):
+        assert read(store, source).operation.status == "unknown"  # a valid history on its own
+        refused(store, later)
+    # The control: the same chain over a source that still has a stage in flight reads back.
+    with world(tmp_path / "ok", UNKNOWN, check_only) as (store, _, (_, later)):
+        assert read(store, later).operation.status == "admitted"
+
+
+def test_a_continuation_of_a_source_that_holds_a_known_rejection_is_a_corrupt_history(tmp_path):
+    held = {"status": "unknown", "intents": 2, "acknowledged": 2}  # a presign and a put, answered
+    follow = {"status": "running", "source": FIRST}  # sends the second and third files again
+    with world(tmp_path / "ok", held, follow) as (store, _, (_, later)):
+        assert read(store, later).operation.status == "running"  # the control
+    with world(tmp_path / "bad", held, follow) as (store, _, (source, later)):
+        put = source.receipts[1]  # the source's put, answered with a rejection after all
+        rejected = {
+            **put,
+            "result": "rejected",
+            "dataset_id": None,
+            "object_key": None,
+            "sent_bytes": None,
+            "sent_sha256": None,
+        }
+        store.connection.execute(
+            "UPDATE upload_stage_receipts SET payload=? WHERE intent_id=?",
+            (canon(rejected).decode(), put["intent_id"]),
+        )
+        assert read(store, source).operation.status == "unknown"  # the source alone still reads
+        refused(store, later)
+
+
+def test_the_descendants_of_a_source_come_in_operation_order_not_in_storing_order(tmp_path):
+    with open_store(tmp_path / "state", timeout=60) as store:
+        root = install_root(store)
+        stored_first = build(root, 2, status="running")
+        stored_last = build(root, 1, status="cancelled")
+        install(store, stored_first)
+        install(store, stored_last)
+        at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
+        snapshot = StateUploads(store).chain_snapshot(root["record"]["operation_id"], at)
+        assert [d.operation_id for d in snapshot.descendants] == [FIRST, SECOND]
+
+
+def test_the_baseline_gate_of_a_continuation_reads_and_walks_its_lineage_once(
+    tmp_path, monkeypatch
+):
+    import yorunge.adapters.upload_store as store_module
+
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
+    with world(tmp_path, UNKNOWN, later) as (store, _, _):
+        walks, reads = [], []
+        real_walk, real_read = store_module.resolve_lineage, store_module._read_view
+        monkeypatch.setattr(
+            store_module,
+            "resolve_lineage",
+            lambda *args: (walks.append(args[0]), real_walk(*args))[1],
+        )
+        monkeypatch.setattr(
+            store_module, "_read_view", lambda *args: (reads.append(args[1]), real_read(*args))[1]
+        )
+        baseline = StateUploads(store).require_created_baseline(SECOND)
+        assert baseline.id == DATASET_ID
+        # The continuation, its source and the root are each read once, in one walk.
+        assert len(walks) == 1 and len(reads) == 3
+
+
+def test_a_continuation_and_its_lineage_are_read_in_one_snapshot_no_writer_can_slip_into(
+    tmp_path, monkeypatch
+):
+    import yorunge.adapters.upload_store as store_module
+
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
+    with world(tmp_path, UNKNOWN, later) as (store, _, _):
+        other = sqlite3.connect(store.root / DB_NAME, timeout=0)
+        refusals = []
+        real = store_module.resolve_lineage
+
+        def watched(*args):
+            # The continuation's own view is read; a writer that wants to commit now is kept out.
+            other.execute("BEGIN IMMEDIATE")
+            try:
+                other.execute("UPDATE upload_namespaces SET payload=payload")
+                other.execute("COMMIT")
+            except sqlite3.OperationalError as error:
+                assert "locked" in str(error)
+                refusals.append(True)
+            finally:
+                if other.in_transaction:
+                    other.execute("ROLLBACK")
+            return real(*args)
+
+        monkeypatch.setattr(store_module, "resolve_lineage", watched)
+        try:
+            assert StateUploads(store).show(operation_id=SECOND).operation.status == "running"
+        finally:
+            other.close()
+        assert refusals == [True]

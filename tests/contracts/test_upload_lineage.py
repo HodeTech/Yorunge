@@ -15,6 +15,7 @@ from tests.fixtures.continuation_history import (
     GRAPH,
     build,
     canon,
+    fixture,
     sha,
     uuid,
 )
@@ -29,6 +30,7 @@ from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
 from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
+from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 
@@ -246,6 +248,49 @@ def test_a_root_whose_baseline_digest_differs_is_refused():
     first, _ = chain()
     assert resolve(first, [])
     refuses(first, [], created=lambda _: CREATED.model_copy(update={"name": "renamed"}))
+
+
+def test_a_v1_root_is_no_source_and_is_refused_as_a_value_error_not_a_crash():
+    first, _ = chain()
+    v1 = DatasetUploadPlan.model_validate_json(canon(fixture("dataset-upload-plan-v1.json")))
+    v2 = ROOT_VIEW.plan
+    # The same scope, root, manifest and parameters as the v2 root: only the family differs, and
+    # it holds no policy to compare, so the walk must say so instead of failing on the attribute.
+    same = v1.model_copy(
+        update={
+            "scope": v2.scope,
+            "root": v2.root,
+            "manifest": v2.manifest,
+            "parameters": v2.parameters,
+        }
+    )
+    root = SimpleNamespace(plan=same, operation=ROOT_VIEW.operation, receipts=())
+    assert resolve(first, [])
+    refuses(first, [], root=root)
+
+
+def test_a_lineage_that_is_verified_only_throughout_is_refused():
+    # Every source agrees with the plan, so the comparison of policies alone lets it through; but
+    # the policy is inherited, never raised to verified_only, and a verified_only source is not
+    # eligible (ADR-0031), so no stored continuation can belong to such a lineage.
+    first, second = chain()
+    strict = {"admission_policy": "verified_only"}
+    root = SimpleNamespace(
+        plan=ROOT_VIEW.plan.model_copy(update=strict),
+        operation=ROOT_VIEW.operation,
+        receipts=(),
+    )
+    source = view(first)
+    sources = {
+        ROOT_OPERATION: root,
+        FIRST: view(first, plan=source.plan.model_copy(update=strict)),
+    }
+    plan = view(second).plan.model_copy(update=strict)
+    with pytest.raises(ValueError):
+        resolve_lineage(plan, sources.__getitem__, lambda _: CREATED)
+    # The control: the same walk under the policy the lineage really has resolves.
+    ok = {ROOT_OPERATION: ROOT_VIEW, FIRST: source}
+    assert resolve_lineage(view(second).plan, ok.__getitem__, lambda _: CREATED)
 
 
 def test_a_root_of_an_unsupported_plan_type_is_refused():

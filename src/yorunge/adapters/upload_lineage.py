@@ -53,6 +53,9 @@ def _source_is_consistent(view: VersionedTransferView, plan: DatasetContinuation
     if record is None:
         raise ValueError("a source is an operation, not a plan")
     binding, source = plan.continuation, view.plan
+    if not isinstance(source, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
+        # A v1 plan holds no policy to inherit and its create left no baseline to continue from.
+        raise ValueError("a source holds an explicit policy")
     if (
         # A source has sent something: an admitted, cancelled or check-only operation never
         # becomes eligible, and what it never did cannot be continued.
@@ -60,10 +63,10 @@ def _source_is_consistent(view: VersionedTransferView, plan: DatasetContinuation
         or source.intent_digest() != binding.intent_digest
         or record.dataset_id != binding.dataset_id
         # The plan copies the root, the manifest and the parameters of its source as they are and
-        # inherits its policy; a v1 plan has no policy, so it is never a source.
+        # inherits its policy.
         or (source.root, source.manifest, source.parameters)
         != (plan.root, plan.manifest, plan.parameters)
-        or (getattr(source, "admission_policy", None), getattr(source, "cost_policy", None))
+        or (source.admission_policy, source.cost_policy)
         != (plan.admission_policy, plan.cost_policy)
     ):
         raise ValueError("source does not belong to this continuation")
@@ -81,6 +84,10 @@ def resolve_lineage(
     ``ValueError``: a broken lineage is a corrupt history, never a partial answer.
     """
     binding = plan.continuation
+    if plan.admission_policy != "explicit_attempt":
+        # The policy is inherited and never raised to verified_only, and a verified_only source is
+        # not eligible: the only lineage such a plan could have starts at an ineligible source.
+        raise ValueError("a verified_only upload has no continuation")
     sources: list[VersionedTransferView] = []
     seen: set[str] = set()
     source_id = binding.source_operation_id
@@ -102,9 +109,7 @@ def resolve_lineage(
                 raise ValueError("lineage disagrees about its baseline")
             source_id = other.source_operation_id
             continue
-        if not isinstance(parent, DatasetUploadPlan | DatasetUploadPlanV2):
-            raise ValueError("unsupported root plan")
-        break
+        break  # a v2 plan, the one root family a source can be besides a continuation
     root = sources[-1]
     dataset = created(root)
     assert root.operation is not None

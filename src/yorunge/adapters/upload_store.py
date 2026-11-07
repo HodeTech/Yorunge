@@ -374,9 +374,7 @@ def _receipt(
         return
     graph = graph_of(plan)
     kind, index = intent.kind, intent.file_index
-    if graph.takes_created_dataset(kind) and (
-        receipt.dataset_id is None or receipt.dataset_id != _stage_dataset(plan, accepted)
-    ):
+    if graph.takes_created_dataset(kind) and receipt.dataset_id != _stage_dataset(plan, accepted):
         raise ValueError("receipt dataset mismatch")
     _receipt_key(graph, kind, index, receipt, accepted)
     if kind == "put":

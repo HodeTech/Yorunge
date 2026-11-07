@@ -571,16 +571,16 @@ def test_terminal_entry_and_terminal_race_never_downgrade_history(tmp_path, monk
             ),
             verification=None,
         )
-        original, used = repo._nonterminal, False
+        original, used = repo._nonterminal_with_lineage, False
 
         def observed_once(operation_id):
             nonlocal used
             if not used:
                 used = True
-                return stale
+                return stale, None  # a legacy create has no lineage
             return original(operation_id)
 
-        monkeypatch.setattr(repo, "_nonterminal", observed_once)
+        monkeypatch.setattr(repo, "_nonterminal_with_lineage", observed_once)
         with pytest.raises(OperationError) as raised:
             repo.require_created_baseline(identifier)
         assert raised.value.code == "operation_uncertain"

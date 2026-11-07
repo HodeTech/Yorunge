@@ -19,6 +19,7 @@ from yorunge.adapters.state import Store, sqlite_error_code
 from yorunge.adapters.upload_chain import ChainSnapshot
 from yorunge.adapters.upload_chain import chain_snapshot as stored_snapshot
 from yorunge.adapters.upload_chain import operation_journal as stored_journal
+from yorunge.adapters.upload_lineage import Lineage
 from yorunge.adapters.upload_read_access import ReadAccess, authorize_read, initial_read_consent
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
@@ -27,10 +28,10 @@ from yorunge.adapters.upload_store import (
     decode,
     decode_versioned,
     legacy_create_without_baseline,
-    lineage_of,
     namespace,
     read_manifest,
     read_plan,
+    read_view_and_lineage,
     request_digest,
     require_capacity,
     verification_after,
@@ -51,7 +52,6 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -482,13 +482,23 @@ class StateUploads:
     def show(
         self, *, plan_id: str | None = None, operation_id: str | None = None
     ) -> VersionedTransferView:
+        return self._show(plan_id, operation_id)[0]
+
+    def _show(
+        self, plan_id: str | None, operation_id: str | None
+    ) -> tuple[VersionedTransferView, Lineage | None]:
+        """A stored view and, for a continuation, the lineage it was validated with.
+
+        Both come from one read transaction, so a caller that needs the baseline does not walk the
+        lineage a second time, nor from another state than the one its status was read in.
+        """
         if (plan_id is None) == (operation_id is None):
             raise YorungeError("invalid_request")
         with self.phase(operation_id), read_snapshot(self.connection):
             if operation_id is not None:
                 plan_id = read_record(self.connection, operation_id).plan_id
             assert plan_id is not None
-            return read_view(self.connection, plan_id)
+            return read_view_and_lineage(self.connection, plan_id)
 
     def operation_journal(self, operation_id: str) -> OperationJournal:
         """Read-only stage facts for the resume classifier; writes nothing and grants nothing."""
@@ -1119,11 +1129,16 @@ class StateUploads:
         )
 
     def _nonterminal(self, operation_id: str) -> VersionedTransferView:
-        view = self.show(operation_id=operation_id)
+        return self._nonterminal_with_lineage(operation_id)[0]
+
+    def _nonterminal_with_lineage(
+        self, operation_id: str
+    ) -> tuple[VersionedTransferView, Lineage | None]:
+        view, lineage = self._show(None, operation_id)
         assert view.operation is not None
         if view.operation.status in TERMINAL:
             raise YorungeError("operation_conflict")
-        return view
+        return view, lineage
 
     @staticmethod
     def _baseline_in_view(view: VersionedTransferView) -> None:
@@ -1137,11 +1152,9 @@ class StateUploads:
     ) -> ProviderDataset | None:
         """Local pre-HTTP gate; an unsuccessful marker never claims a new permission."""
         with self.phase(operation_id):
-            view = self._nonterminal(operation_id)
-            if isinstance(view.plan, DatasetContinuationPlanV3):
-                # A continuation's baseline is its root's, found by walking its validated lineage.
-                lineage = lineage_of(self.connection, view)
-                assert lineage is not None
+            view, lineage = self._nonterminal_with_lineage(operation_id)
+            if lineage is not None:
+                # A continuation's baseline is its root's, found as its lineage was validated.
                 return lineage.baseline
             if not legacy_create_without_baseline(view):
                 return created_dataset(view)

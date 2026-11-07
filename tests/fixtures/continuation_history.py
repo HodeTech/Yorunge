@@ -5,6 +5,10 @@ The root is the v2 history of ``dataset-transfer-graph-v2.json`` whose create re
 plain ``hashlib``/``json``: no digest, formula or validator of the product is used to build it, so
 a test can tell a right binding from a wrong one. Dictionaries stay plain until ``install``, so a
 test can break exactly one thing first.
+
+The histories are right in everything the read side checks and wrong in time: a continuation is
+prepared before its root was created, shares the root's ``created_at`` and sends while the root
+still does. The chronology rule is the write gate's (P02-3r); when it lands these must be re-timed.
 """
 
 import copy
