@@ -1,10 +1,11 @@
 """The closing read of a continuation: success, the check-only path and every way it can fail."""
 
+import json
 from datetime import timedelta
 
 import pytest
 
-from tests.fixtures.continuation_history import DATASET_ID, FIRST, GRAPH, build, canon, install
+from tests.fixtures.continuation_history import DATASET_ID, FIRST, build, canon, install
 from tests.fixtures.continuation_lifecycle import proof_of, read_check
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_projection import summary
@@ -164,7 +165,10 @@ def test_a_proof_of_another_family_than_the_record_is_refused_before_anything_is
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
         before = dump(store)
-        old_family = TransferVerificationV2.model_validate_json(canon(GRAPH["verification"]))
+        right = proof_of(plan, timestamp(lifecycle.clock.value))
+        # The same observation, of the plan's own scope and dataset, in the older family.
+        older = {**json.loads(right.encoded()), "schema_version": 2}
+        old_family = TransferVerificationV2.model_validate_json(canon(older))
         assert (
             code_of(
                 lambda: repository.verified(
