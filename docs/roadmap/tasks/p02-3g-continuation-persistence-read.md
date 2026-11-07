@@ -8,7 +8,7 @@ capabilities: [C03, C12]
 ---
 # P02-3g — Continuation sürüm donanımı: 3 tipli decode, birleşik tipler ve v3 graf belirtimi
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 5. Okuma yarısının ilk dilimi: v3 tiplerinin depoda **okunabilmesi** için gereken sürüm donanımı. Ölçülen büyüklük bu kartı L yaptığından büyüme kuralı gereği üçe bölündü: bu kart sürüm donanımını ve graf belirtimini, [P02-3u](p02-3u-continuation-graph-validation-and-chain.md) v3 graf doğrulamasını ve zincir/baseline çözümleyicisini, [P02-3v](p02-3v-continuation-capacity-and-projection.md) kapasite, bakım, reset önizlemesi ve projeksiyonları kapsar. Yazma kapıları [P02-3r](p02-3r-continuation-write-gates.md)’dedir.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 4. Okuma yarısının ilk dilimi: v3 tiplerinin depoda **okunabilmesi** için gereken sürüm donanımı. Ölçülen büyüklük bu kartı L yaptığından büyüme kuralı gereği üçe bölündü: bu kart sürüm donanımını ve graf belirtimini, [P02-3u](p02-3u-continuation-graph-validation-and-chain.md) v3 graf doğrulamasını ve zincir/baseline çözümleyicisini, [P02-3v](p02-3v-continuation-capacity-and-projection.md) kapasite, bakım, reset önizlemesi ve projeksiyonları kapsar. Yazma kapıları [P02-3r](p02-3r-continuation-write-gates.md)’dedir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

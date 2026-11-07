@@ -8,7 +8,7 @@ capabilities: [C03, C12]
 ---
 # P02-3v — Continuation v3 kapasite, bakım, reset önizlemesi ve projeksiyonlar
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 7. [P02-3g](p02-3g-continuation-persistence-read.md)’den ayrıştırılan üçüncü okuma dilimi: v3 geçmişi var iken store genelindeki hesapların (kapasite, bakım, reset önizlemesi) ve kullanıcıya dönük okuma projeksiyonlarının doğru çalışması.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md) adım 4 (devam). [P02-3g](p02-3g-continuation-persistence-read.md)’den ayrıştırılan üçüncü okuma dilimi: v3 geçmişi var iken store genelindeki hesapların (kapasite, bakım, reset önizlemesi) ve kullanıcıya dönük okuma projeksiyonlarının doğru çalışması.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
