@@ -6,6 +6,9 @@ What the start of P02-3y will do around them (approve, admit) is done here by a 
 the test: it takes the stage's fresh check, approves and admits with it, and sends the files.
 """
 
+import asyncio
+import logging
+import traceback
 from pathlib import Path
 
 import pytest
@@ -13,6 +16,7 @@ import pytest
 from tests.contracts.test_platform_upload_codec import SCOPE
 from tests.fixtures.http_server import Reply, TlsServer
 from tests.fixtures.upload_provider import DATASET, UploadProvider
+from tests.integration.test_upload_http_budget import SECRET
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
 from tests.integration.test_upload_resume_observation import (
@@ -148,6 +152,8 @@ def test_a_continuation_sends_the_file_that_was_left_and_creates_and_links_nothi
             1,
         )
         assert counters.upload_bytes == len(b"different") and counters.response_pending == 0
+        # One fresh look at the dataset (context, dataset, membership, role) served all the stages.
+        assert counters.read_requests == counters.read_attempts == 6
         view = journal(data, report.plan_id)
         assert len(view.intents) == len(view.receipts) == 3
         assert all(receipt.result == "accepted" for receipt in view.receipts)
@@ -393,3 +399,160 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
         sends = len(provider.events)
         record = start(data, server, report.plan_id, algorithm=probe)
         assert record.status == "admitted" and len(provider.events) == sends
+
+
+# --- what must never be written down or said ----------------------------------------------------
+
+VOLATILE = ("objects/blob", "upload/put?key=", "created_dataset")
+
+
+def stored_bytes(state):
+    return b"".join(p.read_bytes() for p in sorted(Path(state).rglob("*")) if p.is_file())
+
+
+def test_no_key_and_no_volatile_provider_value_reaches_the_journal_the_log_or_the_result(
+    prepared_input, certificates, caplog
+):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        with caplog.at_level(logging.DEBUG):
+            record = start(data, server, report.plan_id)
+        view = journal(data, report.plan_id)
+        # The continuation's own journal: intents and receipts name neither a provider's object
+        # key, nor a signed URL, nor the dataset it was created as, nor the key it is sent with.
+        own = b"".join(x.encoded() for x in (*view.intents, *view.receipts)).decode()
+        assert not any(marker in own for marker in VOLATILE)
+        shown = own + repr(record) + record.model_dump_json() + caplog.text
+        assert SECRET not in shown and not any(marker in shown for marker in VOLATILE[:2])
+        # The whole state directory: the key is never stored, and no provider object key is.
+        everything = stored_bytes(data[0])
+        assert SECRET.encode() not in everything
+        assert b"objects/blob" not in everything and b"upload/put?key=" not in everything
+
+
+@pytest.mark.parametrize("stage", ["presign", "put", "confirm"])
+def test_a_failure_says_nothing_of_what_the_provider_answered(prepared_input, certificates, stage):
+    data, provider = three_files(prepared_input)
+    canary = "PRIVATE-PROVIDER-ANSWER-CANARY"
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        break_stage(
+            provider, stage, Reply(status=500, body=f'{{"detail":"{canary} {SECRET}"}}'.encode())
+        )
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        shown = "".join(traceback.format_exception(error.value)) + repr(error.value)
+        assert canary not in shown and SECRET not in shown
+        assert error.value.__cause__ is None and error.value.__context__ is None
+        assert canary.encode() not in stored_bytes(data[0])
+
+
+# --- when it is cancelled -----------------------------------------------------------------------
+
+
+def test_a_cancellation_before_anything_was_armed_cancels_the_operation_locally(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+
+    async def cancelled_after_admission(environment):
+        check = await environment.current("presign")
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+        environment.admit(check)
+        raise asyncio.CancelledError
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(asyncio.CancelledError):  # a cancelled task stays cancelled
+            start(data, server, report.plan_id, algorithm=cancelled_after_admission)
+        record = operation_of(data, report.plan_id)
+        assert (record.status, record.reason) == ("cancelled", "local_cancelled")
+        assert len(provider.events) == sends and journal(data, report.plan_id).intents == ()
+
+
+@pytest.mark.parametrize(
+    "interruption,seen",
+    [(asyncio.CancelledError, asyncio.CancelledError), (KeyboardInterrupt, OperationError)],
+    ids=["a cancelled task", "an interrupt"],
+)
+def test_a_cancellation_after_a_permit_was_committed_leaves_the_operation_uncertain(
+    prepared_input, certificates, monkeypatch, interruption, seen
+):
+    from yorunge.adapters.upload_continuation import ContinuationStages
+
+    data, provider = three_files(prepared_input)
+    original = ContinuationStages.arm
+
+    def arm_then_stop(environment, check, kind, index=None):
+        result = original(environment, check, kind, index)
+        if kind == "presign":
+            raise interruption  # the intent is durable; nothing has been sent
+        return result
+
+    monkeypatch.setattr(ContinuationStages, "arm", arm_then_stop)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(seen) as error:
+            start(data, server, report.plan_id)
+        if seen is OperationError:  # the interrupt is reported as the operation's uncertainty
+            assert error.value.code == "operation_uncertain"
+            assert error.value.operation_id == operation_of(data, report.plan_id).operation_id
+        record = operation_of(data, report.plan_id)
+        assert (record.status, record.reason) == ("unknown", "request_uncertain")
+        assert len(provider.events) == sends  # the permit was never used: and never will be
+        view = journal(data, report.plan_id)
+        assert len(view.intents) == 1 and not view.receipts
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+
+
+# --- when the provider misbehaves around the stages ---------------------------------------------
+
+
+def test_a_put_that_fails_ends_the_continuation_before_any_confirm_or_later_batch(
+    prepared_input, certificates
+):
+    data, provider = five_of_eight(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        before = len(provider.events)
+        provider.fail_put_name = "f04.bin"  # the first file of the first batch: 503 after storing
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        events = provider.events[before:]
+        assert events[:5] == ["presign"] * 5 and set(events[5:]) <= {"put"}
+        assert 1 <= events.count("put") <= 2  # the batch's two workers, never a later batch
+        assert "confirm" not in events
+        record = operation_of(data, report.plan_id)
+        assert (record.status, record.reason) == ("unknown", "request_uncertain")
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+
+
+def test_presigns_that_share_an_object_key_are_refused_before_any_put(prepared_input, certificates):
+    data = three_files(prepared_input)[0]
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    lose_confirm_of(provider, "one.bin")  # the second and the third file remain
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        before = len(provider.events)
+        provider.duplicate_keys = True  # two files presigned onto one object key
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        assert error.value.reason_code == "invalid_response"
+        assert provider.events[before:] == ["presign", "presign"]  # nothing was put
+        record = operation_of(data, report.plan_id)
+        assert (record.status, record.reason) == ("unknown", "request_uncertain")
