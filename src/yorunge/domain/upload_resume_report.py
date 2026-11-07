@@ -25,11 +25,13 @@ from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_PLANS,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_FILES,
+    MAX_UPLOAD_PLAN_BYTES,
     UploadWire,
     manifest_reference,
     provider_uuid,
 )
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_graph import CONTINUATION_PLAN_VERSION, StageGraphSpec
 from yorunge.domain.upload_resume import (
     BLOCKERS,
     FILE_CLASSES,
@@ -68,6 +70,40 @@ INVENTORY_BLOCKERS = frozenset(
 )
 # Every plan adds at least the flat allowance the capacity check counts per plan.
 PLAN_ALLOWANCE_BYTES = 16 * 1024
+
+
+def continuation_added_payload_bytes(
+    file_count: int, selected: int | None = None, plan_bytes: int | None = None
+) -> int:
+    """Upper bound of the payload bytes one continuation attempt adds to the store's quota.
+
+    The capacity check counts a plan's stored bytes, the journal reservation of its operation and
+    the flat allowance per plan. The root's namespace and manifest rows are shared, so they add
+    nothing. ``selected`` is the number of files the attempt sends (every file while it is not
+    known) and ``plan_bytes`` the size of a plan that already exists (the wire ceiling otherwise).
+    The closing proof reads the whole manifest, so the reservation grows with ``file_count``.
+    """
+    if (
+        type(file_count) is not int
+        or not 1 <= file_count <= MAX_UPLOAD_FILES
+        or (selected is not None and (type(selected) is not int or not 0 <= selected <= file_count))
+        or (
+            plan_bytes is not None
+            and (type(plan_bytes) is not int or not 1 <= plan_bytes <= MAX_UPLOAD_PLAN_BYTES)
+        )
+    ):
+        raise ValueError("a manifest size, a selection within it and a plan within its ceiling")
+    sending = file_count if selected is None else selected
+    reservation = StageGraphSpec(
+        CONTINUATION_PLAN_VERSION, file_count, tuple(range(sending))
+    ).operation_reservation()
+    return (
+        PLAN_ALLOWANCE_BYTES
+        + (MAX_UPLOAD_PLAN_BYTES if plan_bytes is None else plan_bytes)
+        + reservation
+    )
+
+
 Count = Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
 
 

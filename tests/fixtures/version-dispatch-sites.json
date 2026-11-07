@@ -95,20 +95,11 @@
   {
    "file": "src/yorunge/adapters/upload_maintenance.py",
    "function": "invalidate_uploads",
-   "kind": "version",
-   "text": "record.schema_version == 3",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(TransferControl, TransferControlV2, TransferControlV3)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "reset of a continuation needs a v3 recovery or terminal control; until P02-3v writes it, this guard fails closed before anything is changed"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_maintenance.py",
-   "function": "invalidate_uploads",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(TransferControl, TransferControlV2)",
-   "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "the reset control is decoded as a v1/v2 control; the v3 control is P02-3v's (the guard above refuses a continuation first)"
+   "owner": "done",
+   "note": "the reset control is decoded in the family of the record it describes: its schema_version picks v1, v2 or v3"
   },
   {
    "file": "src/yorunge/adapters/upload_maintenance.py",
@@ -116,8 +107,8 @@
    "kind": "version",
    "text": "'schema_version': record.schema_version",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "the reset control copies the record's version into its payload, which picks the control family; P02-3v writes the v3 control"
+   "owner": "done",
+   "note": "the reset control copies the record's version into its payload, which picks the control family (a continuation gets a v3 recovery or terminal control)"
   },
   {
    "file": "src/yorunge/adapters/upload_original.py",
@@ -186,46 +177,55 @@
    "file": "src/yorunge/adapters/upload_projection.py",
    "function": "_cost",
    "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlanV2)",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
+   "owner": "done",
+   "note": "a v2 or v3 plan carries a cost bound to summarize; a v1 plan never does"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
    "function": "_risks",
    "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlanV2)",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
+   "owner": "done",
+   "note": "a v2 or v3 plan carries its risks; a v1 plan's are derived from its grant"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
    "function": "summary",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation has its own summary type (named continuation, file counts and dataset from the plan); every other plan is the original summary"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_projection.py",
+   "function": "original_summary",
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
+   "owner": "P02-3i",
+   "note": "the public result types name no continuation yet: the original summary refuses one (state_invalid) until P02-3i widens them to summary()"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "function": "summary",
+   "function": "original_summary",
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
+   "owner": "done",
+   "note": "a v2 plan names its policy and cost scope; a v1 plan is legacy history"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
-   "function": "summary",
+   "function": "original_summary",
    "kind": "version",
    "text": "source_plan_schema=plan.schema_version",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "the original summary names its source plan schema as 1 or 2; the v3 summary is P02-3v's (summary() refuses a continuation first)"
+   "owner": "done",
+   "note": "the original summary names its source plan schema as 1 or 2; the continuation's is the constant 3"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
@@ -233,8 +233,8 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "summary and review projections; the v3 branch is P02-3v's (until then a continuation fails closed)"
+   "owner": "P02-3i",
+   "note": "the review type carries a v2 summary and v2 request limits (a continuation is refused through original_summary); its own review type and limits are P02-3i's"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
@@ -833,11 +833,20 @@
   {
    "file": "src/yorunge/adapters/upload_store.py",
    "function": "capacity",
-   "kind": "decode_versioned/2",
-   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2)",
+   "kind": "decode_versioned/3",
+   "text": "decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3v",
-   "note": "counts the plans of the original families; a stored continuation fails closed until P02-3v counts it"
+   "owner": "done",
+   "note": "counts the plans of every family by their own manifests"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_store.py",
+   "function": "validate_uploads",
+   "kind": "isinstance",
+   "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a source has at most one continuation that is not cancelled"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",

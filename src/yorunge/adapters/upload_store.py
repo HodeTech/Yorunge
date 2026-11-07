@@ -53,6 +53,7 @@ from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_graph import FILE_STAGE_KINDS, StageGraphSpec
 from yorunge.domain.upload_requests import upload_request_digest
+from yorunge.domain.upload_resume_report import QuotaCounters
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadControl,
@@ -781,15 +782,19 @@ def require_legacy_view(view: VersionedTransferView) -> TransferView:
 
 
 def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
-    # The plan decode below deliberately names only the original families: a stored continuation
-    # makes it fail closed (state_invalid) until P02-3v counts continuations, rather than being
-    # skipped or read as an original plan.
+    """Plans, operations, files and payload bytes the store holds, as the bounds count them.
+
+    Every plan family is counted by its own manifest: a continuation re-counts the files of the
+    manifest it shares with its root, because each plan row stands for one reviewed upload.
+    """
     plans = connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
     operations, reserved = connection.execute(
         "SELECT count(*),coalesce(sum(reservation),0) FROM upload_operations"
     ).fetchone()
     files = sum(
-        decode_versioned(DatasetUploadPlan, DatasetUploadPlanV2, r[0]).manifest.file_count
+        decode_versioned(
+            DatasetUploadPlan, DatasetUploadPlanV2, r[0], DatasetContinuationPlanV3
+        ).manifest.file_count
         for r in connection.execute("SELECT payload FROM upload_plans")
     )
     used = (
@@ -809,9 +814,8 @@ def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
     return plans, operations, files, used
 
 
-def require_capacity(connection: sqlite3.Connection, *, corrupt: bool = False) -> None:
-    found = capacity(connection)
-    if any(
+def _over_capacity(found: tuple[int, int, int, int]) -> bool:
+    return any(
         n > maximum
         for n, maximum in zip(
             found,
@@ -823,14 +827,34 @@ def require_capacity(connection: sqlite3.Connection, *, corrupt: bool = False) -
             ),
             strict=True,
         )
-    ):
+    )
+
+
+def require_capacity(connection: sqlite3.Connection, *, corrupt: bool = False) -> None:
+    if _over_capacity(capacity(connection)):
         raise YorungeError("state_invalid" if corrupt else "upload_capacity_exceeded")
+
+
+def quota_used(connection: sqlite3.Connection) -> QuotaCounters:
+    """The four counters the capacity check bounds, as a resume report states what is used.
+
+    A store over its bounds cannot be written, so one that is found over them is corrupt: that is
+    a state error, never a report.
+    """
+    found = capacity(connection)
+    if _over_capacity(found):
+        raise YorungeError("state_invalid")
+    plans, operations, files, payload_bytes = found
+    return QuotaCounters(
+        plans=plans, operations=operations, files=files, payload_bytes=payload_bytes
+    )
 
 
 def validate_uploads(connection: sqlite3.Connection) -> None:
     require_capacity(connection, corrupt=True)
     store = metadata(connection)
     views: ViewCache = {}  # a source is read once for the whole pass, not once per continuation
+    successors: dict[str, str] = {}  # source operation -> its one descendant that is not cancelled
     for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
         view = read_any_view(connection, row[0], views)
         record = view.operation
@@ -841,6 +865,18 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
         ):
             raise YorungeError("state_invalid")
         if view.plan.scope.store_id != store.store_id:
+            raise YorungeError("state_invalid")
+        # A source has at most one continuation that has not been cancelled: admission refuses a
+        # second while the first lives, and a cancelled one never sent anything.
+        if (
+            record is not None
+            and record.status != "cancelled"
+            and isinstance(view.plan, DatasetContinuationPlanV3)
+            and successors.setdefault(
+                view.plan.continuation.source_operation_id, record.operation_id
+            )
+            != record.operation_id
+        ):
             raise YorungeError("state_invalid")
     for table, key, child, foreign in (
         ("upload_namespaces", "intent_digest", "upload_plans", "intent_digest"),

@@ -14,10 +14,12 @@ still does. The chronology rule is the write gate's (P02-3r); when it lands thes
 import copy
 import hashlib
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from tests.fixtures.upload_history import install_fixture
+from yorunge.adapters.state import open_store
 
 FIXTURES = Path(__file__).parent
 
@@ -375,3 +377,44 @@ def install(store, c, *, plan=True, approval=True):
             "INSERT INTO upload_verifications VALUES(?,?)",
             (record["operation_id"], canon(c.proof).decode()),
         )
+
+
+OTHER = uuid(0x999)
+FIRST, SECOND = uuid(0x301), uuid(0x302)  # the operations of continuations numbered 1 and 2
+
+SHAPES = {
+    "admitted": {"status": "admitted"},
+    "running, one stage sent": {"status": "running", "intents": 1, "acknowledged": 1},
+    "running, a stage in flight": {"status": "running", "intents": 4, "acknowledged": 3},
+    "unknown": {"status": "unknown", "intents": 5, "acknowledged": 4},
+    "succeeded": {"status": "succeeded"},
+    "cancelled": {"status": "cancelled"},
+    "check-only admitted": {"status": "admitted", "indices": ()},
+    "check-only succeeded": {"status": "succeeded", "indices": ()},
+    "check-only cancelled": {"status": "cancelled", "indices": ()},
+}
+UNKNOWN = SHAPES["unknown"]
+
+
+@contextmanager
+def world(tmp_path, *specs, timeout=60.0):
+    """A store with the root and the continuations ``specs`` describe.
+
+    A spec is ``build`` keywords, plus ``tweak`` (a function that breaks one thing of the built
+    continuation before it is stored) and ``plan_only`` (store its plan and approval, no operation).
+    """
+    with open_store(tmp_path / "state", timeout=timeout) as store:
+        root = install_root(store)
+        built = []
+        for number, spec in enumerate(specs, 1):
+            spec = dict(spec)
+            tweak = spec.pop("tweak", None)
+            plan_only = spec.pop("plan_only", False)
+            item = build(root, number, **spec)
+            if tweak is not None:
+                tweak(item)
+            if plan_only:
+                item.record = None
+            install(store, item)
+            built.append(item)
+        yield store, root, built

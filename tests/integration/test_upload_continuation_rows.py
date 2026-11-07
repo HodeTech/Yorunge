@@ -8,7 +8,7 @@ import pytest
 
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads
-from yorunge.adapters.upload_projection import review, summary
+from yorunge.adapters.upload_projection import original_summary, review, summary
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
     capacity,
@@ -22,6 +22,7 @@ from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.errors import YorungeError
+from yorunge.domain.upload_public import DatasetUploadSummaryV3
 from yorunge.domain.upload_versions import graph_of
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
@@ -179,12 +180,13 @@ def test_a_continuation_read_without_its_root_is_a_corrupt_history(tmp_path):
             refuses(lambda: read_any_view(store.connection, PLAN.plan_id))
 
 
-def test_capacity_fails_closed_for_a_stored_continuation_until_it_counts_one(tmp_path):
+def test_capacity_counts_a_stored_continuation_as_a_plan_with_the_files_of_its_manifest(tmp_path):
     with open_store(tmp_path / "state") as store:
-        before = capacity(store.connection)
+        assert capacity(store.connection) == (0, 0, 0, 0)
         install(store, operation=False)
-        refuses(lambda: capacity(store.connection))
-        assert before == (0, 0, 0, 0)
+        plans, operations, files, payload = capacity(store.connection)
+        assert (plans, operations, files) == (1, 0, 3)
+        assert payload >= 16 * 1024 + len(PLAN.encoded())  # the allowance and the plan row
 
 
 def test_a_record_of_a_continuation_is_written_with_its_own_reservation_and_rules(tmp_path):
@@ -209,10 +211,11 @@ def test_a_record_of_a_continuation_is_written_with_its_own_reservation_and_rule
         assert error.value.code == "operation_conflict"
 
 
-def test_the_original_summary_projection_refuses_a_continuation_instead_of_calling_it_legacy():
+def test_the_original_projections_refuse_a_continuation_instead_of_calling_it_legacy():
     view = VersionedTransferView(PLAN, APPROVAL, None)
-    refuses(lambda: summary(view))
+    refuses(lambda: original_summary(view))
     refuses(lambda: review(view))
+    assert type(summary(view)) is DatasetUploadSummaryV3  # its own summary is the other function
 
 
 EARLIER = timestamp(instant(RECORD.created_at) - timedelta(seconds=1))
@@ -296,23 +299,6 @@ def test_a_stored_record_that_is_not_its_plans_admission_is_state_invalid(tmp_pa
             (RECORD.model_copy(update=change).encoded().decode(),),
         )
         refuses(lambda: read_any_record(store.connection, RECORD.operation_id))
-
-
-def test_a_reset_refuses_a_stored_continuation_before_it_changes_anything(tmp_path, monkeypatch):
-    written = []
-    monkeypatch.setattr(
-        "yorunge.adapters.upload_maintenance.write_record", lambda *args: written.append(args)
-    )
-    with open_store(tmp_path / "state") as store:
-        install(store)
-        before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
-        with pytest.raises(YorungeError) as error:
-            reset(store)
-        assert error.value.code == "state_invalid"
-        # A rolled-back transaction would hide a write that came first: nothing was attempted.
-        assert written == []
-        assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
-        assert store.connection.execute("SELECT count(*) FROM upload_controls").fetchone() == (0,)
 
 
 CHECK_ONLY_PLAN = DatasetContinuationPlanV3.model_validate_json(

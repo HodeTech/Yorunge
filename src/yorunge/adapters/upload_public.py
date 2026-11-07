@@ -7,7 +7,7 @@ from typing import TypeVar
 from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, open_existing_store
-from yorunge.adapters.upload_projection import review, summary
+from yorunge.adapters.upload_projection import original_summary, review
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view
 from yorunge.adapters.upload_sync import require_upload_sync_context
@@ -69,7 +69,7 @@ def show_upload(
     def read(store: Store) -> DatasetUploadSummary:
         repository = StateUploads(store)
         with repository.phase(operation_id):
-            return summary(repository.show(plan_id=plan_id, operation_id=operation_id))
+            return original_summary(repository.show(plan_id=plan_id, operation_id=operation_id))
 
     return Result[DatasetUploadSummary](data=_safe_local(state_dir, operation_id, read))
 
@@ -96,7 +96,7 @@ def revoke_upload(plan_id: str, state_dir: Path | None) -> Result[DatasetUploadS
         repository = StateUploads(store)
         with repository.phase():
             plan = repository.show(plan_id=plan_id).plan
-            return summary(repository.revoke(plan_id, plan.digest))
+            return original_summary(repository.revoke(plan_id, plan.digest))
 
     return Result[DatasetUploadSummary](data=_safe_local(state_dir, None, revoke))
 
@@ -115,7 +115,7 @@ def _page(
         included: list[DatasetUploadSummary] = []
         cursor = None
         for index, row in enumerate(rows[:limit]):
-            item = summary(read_any_view(store.connection, row[1]))
+            item = original_summary(read_any_view(store.connection, row[1]))
             pending_cursor = encode_cursor(*row) if index + 1 < len(rows) else None
             candidate = DatasetUploadsPage(
                 schema_version=1, uploads=(*included, item), next_cursor=pending_cursor

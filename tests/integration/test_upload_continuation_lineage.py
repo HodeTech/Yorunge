@@ -6,7 +6,6 @@ back through the store. A negative test breaks exactly one thing in an otherwise
 """
 
 import sqlite3
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -16,14 +15,20 @@ from tests.fixtures.continuation_history import (
     CREATE_RECEIPT,
     DATASET_ID,
     FILES,
+    FIRST,
     INTENT_SHAPE,
     MANIFEST,
+    OTHER,
+    SECOND,
+    SHAPES,
+    UNKNOWN,
     build,
     canon,
     install,
     install_root,
     sha,
     uuid,
+    world,
 )
 from tests.fixtures.continuation_history import stamp as builder_stamp
 from tests.fixtures.upload_history import install_legacy_running
@@ -46,46 +51,6 @@ from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import merge_chain
-
-OTHER = uuid(0x999)
-FIRST, SECOND = uuid(0x301), uuid(0x302)  # the operations of continuations numbered 1 and 2
-
-SHAPES = {
-    "admitted": {"status": "admitted"},
-    "running, one stage sent": {"status": "running", "intents": 1, "acknowledged": 1},
-    "running, a stage in flight": {"status": "running", "intents": 4, "acknowledged": 3},
-    "unknown": {"status": "unknown", "intents": 5, "acknowledged": 4},
-    "succeeded": {"status": "succeeded"},
-    "cancelled": {"status": "cancelled"},
-    "check-only admitted": {"status": "admitted", "indices": ()},
-    "check-only succeeded": {"status": "succeeded", "indices": ()},
-    "check-only cancelled": {"status": "cancelled", "indices": ()},
-}
-UNKNOWN = SHAPES["unknown"]
-
-
-@contextmanager
-def world(tmp_path, *specs, timeout=60.0):
-    """A store with the root and the continuations ``specs`` describe.
-
-    A spec is ``build`` keywords, plus ``tweak`` (a function that breaks one thing of the built
-    continuation before it is stored) and ``plan_only`` (store its plan and approval, no operation).
-    """
-    with open_store(tmp_path / "state", timeout=timeout) as store:
-        root = install_root(store)
-        built = []
-        for number, spec in enumerate(specs, 1):
-            spec = dict(spec)
-            tweak = spec.pop("tweak", None)
-            plan_only = spec.pop("plan_only", False)
-            item = build(root, number, **spec)
-            if tweak is not None:
-                tweak(item)
-            if plan_only:
-                item.record = None
-            install(store, item)
-            built.append(item)
-        yield store, root, built
 
 
 def read(store, item):
