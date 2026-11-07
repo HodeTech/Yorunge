@@ -125,10 +125,11 @@ def build(
 ):
     """A continuation of ``root`` (the data ``install_root`` returned) from ``source``.
 
-    ``status`` is admitted, running, unknown, succeeded or cancelled. ``intents`` stages have been
-    written (all of them for a succeeded one) and the first ``acknowledged`` have an accepted
-    receipt. An empty ``indices`` is the check-only continuation. ``binding`` overrides fields of
-    the plan's continuation binding and ``plan_changes`` those of the plan itself, before it is
+    ``status`` is admitted, running, unknown, succeeded, failed or cancelled. ``intents`` stages
+    have been written (all of them for a succeeded one, the first two for a failed one) and the
+    first ``acknowledged`` have an accepted receipt; the last receipt of a failed one is a
+    rejection. An empty ``indices`` is the check-only continuation. ``binding`` overrides fields
+    of the plan's continuation binding and ``plan_changes`` those of the plan itself, before it is
     sealed (a wrong baseline or other parameters, say). ``reset`` (succeeded only) puts an
     identity reset between the sending and the proof: the proof is read under a new epoch and
     clock generation.
@@ -139,6 +140,7 @@ def build(
     if intents is None:
         intents = len(stages) if status in ("succeeded", "unknown") else 0
         intents = 1 if status == "running" and intents == 0 else intents
+        intents = 2 if status == "failed" else intents
     if acknowledged is None:
         acknowledged = intents
     if status == "succeeded":
@@ -264,13 +266,25 @@ def build(
         "reason": None,
     }
     controls, proof = [], None
-    if status in ("unknown", "succeeded", "cancelled"):
+    if status in ("unknown", "succeeded", "cancelled", "failed"):
         record.update(lease=None, revision=record["revision"] + 1, updated_at=stamp(last + 3))
     if status == "unknown":
         record.update(status="unknown", reason="request_uncertain")
         controls = [_control(record, "recovery", None)]
     elif status == "cancelled":
         record.update(status="cancelled", reason="lease_expired")
+        controls = [_control(record, "terminal", None)]
+    elif status == "failed":
+        # The last answered stage was refused for good, with nothing left in flight.
+        receipts[-1] = {
+            **receipts[-1],
+            "result": "rejected",
+            "dataset_id": None,
+            "object_key": None,
+            "sent_bytes": None,
+            "sent_sha256": None,
+        }
+        record.update(status="failed", reason="provider_rejected")
         controls = [_control(record, "terminal", None)]
     elif status == "succeeded":
         proof = _proof(plan, stamp(last + 2))
@@ -389,6 +403,7 @@ SHAPES = {
     "unknown": {"status": "unknown", "intents": 5, "acknowledged": 4},
     "succeeded": {"status": "succeeded"},
     "cancelled": {"status": "cancelled"},
+    "failed": {"status": "failed"},
     "check-only admitted": {"status": "admitted", "indices": ()},
     "check-only succeeded": {"status": "succeeded", "indices": ()},
     "check-only cancelled": {"status": "cancelled", "indices": ()},

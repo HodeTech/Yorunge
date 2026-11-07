@@ -51,6 +51,7 @@ from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, Datas
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferRecordV3
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_public import DatasetUploadSummaryV3
+from yorunge.domain.upload_resume_report import continuation_added_payload_bytes
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 LATER = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
@@ -133,6 +134,35 @@ def test_the_real_plan_bound_admits_a_store_of_128_plans_and_refuses_the_next(tm
         assert capacity(store.connection)[0] == 129
         assert code_of(lambda: require_capacity(store.connection)) == "upload_capacity_exceeded"
         assert code_of(lambda: validate_uploads(store.connection)) == "state_invalid"
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [{"status": "running"}, UNKNOWN, SHAPES["succeeded"], SHAPES["failed"]]
+    + [SHAPES["check-only admitted"]],
+    ids=["running", "unknown", "succeeded", "failed", "check-only"],
+)
+def test_the_added_payload_bound_is_exactly_what_the_capacity_check_then_counts(tmp_path, shape):
+    before = root_counters(tmp_path)[3]
+    with world(tmp_path / "chain", shape) as (store, _, (item,)):
+        delta = capacity(store.connection)[3] - before
+        written = len(canon(item.plan))
+        assert delta == continuation_added_payload_bytes(len(FILES), item.selected, written)
+        # Before the plan exists its size is the wire ceiling: never below the real figure.
+        assert continuation_added_payload_bytes(len(FILES), item.selected) >= delta
+        assert continuation_added_payload_bytes(len(FILES)) >= delta  # nor with every file sent
+
+
+def test_a_plan_that_was_never_admitted_adds_everything_but_its_reservation(tmp_path):
+    before = root_counters(tmp_path)[3]
+    with world(tmp_path / "chain", {"status": "admitted", "plan_only": True}) as (
+        store,
+        _,
+        (item,),
+    ):
+        delta = capacity(store.connection)[3] - before
+        bound = continuation_added_payload_bytes(len(FILES), item.selected, len(canon(item.plan)))
+        assert delta == bound - reservation(item.selected)
 
 
 def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path):
@@ -230,6 +260,7 @@ SIBLINGS = {
     "a running and an admitted one": (live(), {"status": "admitted"}),
     "an unknown and a running one": (UNKNOWN, live()),
     "a finished check-only one and a running one": (SHAPES["check-only succeeded"], live()),
+    "a failed one and a running one": (SHAPES["failed"], live()),
 }
 
 
@@ -736,23 +767,41 @@ def test_the_repository_shows_and_lists_a_continuation_next_to_its_root(tmp_path
 
 def test_the_public_results_name_no_continuation_yet_so_they_fail_closed(tmp_path):
     root_dir = tmp_path / "state"
+    tables = ("upload_plans", "upload_approvals", "upload_operations", "upload_controls")
+    tables += ("upload_stage_intents", "upload_stage_receipts", "upload_verifications")
     with open_store(root_dir, timeout=60) as store:
         root = install_root(store)
         item = build(root, 1, status="running")
         install(store, item)
     plan_id, operation_id = item.plan["plan_id"], item.record["operation_id"]
+
+    def dump():
+        with open_store(root_dir, timeout=60) as store:
+            return [
+                store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in tables
+            ]
+
+    before = dump()
     calls = (
         lambda: api.show_dataset_upload(plan_id=plan_id, state_dir=root_dir),
         lambda: api.show_dataset_upload(operation_id=operation_id, state_dir=root_dir),
         lambda: api.review_dataset_upload(plan_id, state_dir=root_dir),
+        lambda: api.list_dataset_uploads(plan_id=plan_id, state_dir=root_dir),
         lambda: api.list_dataset_uploads(state_dir=root_dir),
         lambda: api.revoke_dataset_upload(plan_id, state_dir=root_dir),
     )
     for call in calls:
         assert code_of(call) == "state_invalid"
-    # The refusal is a read: nothing about the stored continuation moved.
+    assert dump() == before  # every refusal is a read: not one row of the store moved
+    # Only what touches the continuation is closed: its root is an ordinary plan of the same store.
+    root_plan = root["plan"]["plan_id"]
+    assert api.show_dataset_upload(plan_id=root_plan, state_dir=root_dir).data.plan_id == root_plan
+    assert (
+        api.review_dataset_upload(root_plan, state_dir=root_dir).data.summary.plan_id == root_plan
+    )
+    page = api.list_dataset_uploads(plan_id=root_plan, state_dir=root_dir).data
+    assert [entry.plan_id for entry in page.uploads] == [root_plan]
     with open_store(root_dir, timeout=60) as store:
-        assert read_any_view(store.connection, plan_id).operation.status == "running"
         validate_uploads(store.connection)
 
 
@@ -816,8 +865,8 @@ def test_a_reader_that_knows_two_families_refuses_every_continuation_row_and_rea
             payload = connection.execute(query, (key,)).fetchone()[0]
             call = partial(decode_versioned, *readers[name], payload)
             assert code_of(call) == "state_invalid", name
-        # The count such a version makes over the whole store stops at the continuation's plan
-        # and, being a read, leaves every row as it was.
+        # The count such a version makes over the whole store stops at the continuation's plan.
+        # It is a plain read, so the unchanged rows document the claim rather than detect a rewrite.
         assert code_of(lambda: old_capacity(connection)) == "state_invalid"
         assert snapshot() == before
 
