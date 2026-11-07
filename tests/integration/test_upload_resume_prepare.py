@@ -356,11 +356,12 @@ def test_prepare_freezes_a_source_that_was_killed_while_running(
         assert frozen.fence == record.fence + 1 and done.plan_id is not None
 
 
+# Each bound is set where what is used still fits and the attempt added to it does not.
 CAPACITIES = {
-    "plans": ("MAX_TRANSFER_PLANS", 1),
-    "operations": ("MAX_TRANSFER_OPERATIONS", 1),
-    "files": ("MAX_TRANSFER_FILES", 5),  # the root's three and the three this attempt counts
-    "payload": ("MAX_TRANSFER_PAYLOAD_BYTES", 40_000),
+    "plans": ("MAX_TRANSFER_PLANS", lambda report: report.quota_used.plans),
+    "operations": ("MAX_TRANSFER_OPERATIONS", lambda report: report.quota_used.operations),
+    "files": ("MAX_TRANSFER_FILES", lambda report: report.quota_used.files + 2),
+    "payload": ("MAX_TRANSFER_PAYLOAD_BYTES", lambda report: report.quota_used.payload_bytes + 1),
 }
 
 
@@ -368,12 +369,15 @@ CAPACITIES = {
 def test_each_bound_of_the_store_refuses_an_attempt_before_a_source_is_frozen(
     prepared_input, certificates, monkeypatch, limit
 ):
-    name, value = limit
+    name, bound = limit
     data = _files(prepared_input, 3)
     provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
     with TlsServer(certificates, provider.routes()) as server:
         source = killed_while_running(data, server, provider, certificates, monkeypatch)
-        monkeypatch.setattr(f"yorunge.adapters.upload_resume.{name}", value)
+        report = resume_runtime(data, server, clock=Later()).resume(
+            source, accept_unverified_read=True
+        )
+        monkeypatch.setattr(f"yorunge.adapters.upload_resume.{name}", bound(report))
         stored = rows(data[0])
         with pytest.raises(YorungeError) as error:
             resume_runtime(data, server, clock=Later()).resume(
