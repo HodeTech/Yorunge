@@ -80,7 +80,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3g | Continuation sürüm donanımı: 3 tipli decode, birleşik tipler ve v3 graf belirtimi | P02-3t; [kart](tasks/p02-3g-continuation-persistence-read.md) | `verified` |
 | P02-3u | Continuation v3 graf doğrulaması, zincir/baseline çözümleyici ve tek okuma anlık görüntüsü (P02-3g’den ayrıştırıldı) | P02-3g; [kart](tasks/p02-3u-continuation-graph-validation-and-chain.md) | `verified` |
 | P02-3v | Continuation kapasite, bakım, reset önizlemesi ve projeksiyonlar (P02-3g’den ayrıştırıldı) | P02-3u; [kart](tasks/p02-3v-continuation-capacity-and-projection.md) | `verified` |
-| P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3v’den sonra, P02-3h’den önce) | P02-3v; [kart](tasks/p02-3r-continuation-write-gates.md) | `ready` |
+| P02-3r | Continuation yazma kapıları, soy bağı ve M=0 geçişleri (P02-3g’den ayrıştırıldı; yürütme P02-3v’den sonra, P02-3h’den önce) | P02-3v; [kart](tasks/p02-3r-continuation-write-gates.md) | `in_review` |
 | P02-3h | Continuation üreticisi, alt küme koordinatörü ve proof | P02-3r; [kart](tasks/p02-3h-continuation-workflow.md) | `draft` |
 | P02-3i | Public resume API/CLI ve uçtan uca kesinti yolculukları | P02-3h; [kart](tasks/p02-3i-public-resume-surface.md) | `draft` |
 | P02-3j | İndirme sözleşme tipleri, doğrulama sözlüğü ve aralık sınıflandırıcısı | P02-2c; [kart](tasks/p02-3j-download-contract.md) | `draft` |

@@ -94,6 +94,17 @@ def test_a_source_that_sent_nothing_or_is_over_is_not_a_source_to_freeze(lifecyc
         assert dump(store) == before
 
 
+def test_a_source_that_sent_nothing_is_not_frozen_even_when_its_lease_lapsed(lifecycle):
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        install(store, build(lifecycle.root, 1, status="admitted"))  # lease until 11:02:32
+        repository = lifecycle.repository(store)
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+        before = dump(store)
+        # Nothing was sent, so there is nothing to continue: it is cleaned up, never frozen.
+        assert code_of(partial(repository.freeze_source, FIRST)) == "operation_conflict"
+        assert dump(store) == before
+
+
 def test_freezing_cancels_the_descendants_that_lapsed_before_they_sent_anything(lifecycle):
     with open_store(lifecycle.root_dir, timeout=60) as store:
         # The root is the source: one descendant admitted and lapsed, one cancelled already.
