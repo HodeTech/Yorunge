@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 
 from tests.fixtures.continuation_history import (
-    BASELINE_DIGEST,
     CREATE_RECEIPT,
     DATASET_ID,
     GRAPH,
@@ -19,7 +18,7 @@ from tests.fixtures.continuation_history import (
     sha,
     uuid,
 )
-from yorunge.adapters.upload_lineage import MAX_LINEAGE, resolve_lineage
+from yorunge.adapters.upload_lineage import MAX_LINEAGE, check_selection, resolve_lineage
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
@@ -111,6 +110,51 @@ def test_a_source_over_another_manifest_is_refused():
     refuses(second, [view(first, plan=source.plan.model_copy(update={"manifest": other}))])
 
 
+COPIED = {
+    "parameters": lambda plan: {
+        "parameters": plan.parameters.model_copy(update={"modality": "AUDIO"})
+    },
+    "root": lambda plan: {"root": plan.root.model_copy(update={"anchor": "/elsewhere"})},
+    "manifest reference": lambda plan: {
+        "manifest": plan.manifest.model_copy(update={"total_bytes": plan.manifest.total_bytes + 1})
+    },
+    "admission policy": lambda plan: {"admission_policy": "verified_only"},
+    "cost policy": lambda plan: {"cost_policy": "bounded_required"},
+}
+
+
+@pytest.mark.parametrize("change", COPIED.values(), ids=COPIED)
+def test_a_source_that_differs_in_what_the_plan_copies_or_inherits_is_refused(change):
+    first, second = chain()
+    source = view(first)
+    assert resolve(second, [view(first)])
+    refuses(second, [view(first, plan=source.plan.model_copy(update=change(source.plan)))])
+
+
+@pytest.mark.parametrize(
+    "states,files,uncertain,allowed",
+    [
+        (("accepted", "intent", "none"), (1, 2), (1,), True),
+        (("accepted", "accepted", "none"), (2,), (), True),
+        (("none", "none", "none"), (0, 1, 2), (), True),
+        (("accepted", "accepted", "accepted"), (), (), True),
+        (("accepted", "intent", "none"), (0, 2), (), False),  # a confirmed file again
+        (("accepted", "intent", "none"), (1, 2), (), False),  # an unanswered confirm unmarked
+        (("accepted", "intent", "none"), (1, 2), (1, 2), False),  # a clean file marked
+        (("accepted", "intent", "none"), (1, 2), (2,), False),  # the wrong file marked
+    ],
+)
+def test_a_selection_is_what_the_lineage_has_not_confirmed_and_what_it_left_unanswered(
+    states, files, uncertain, allowed
+):
+    binding = SimpleNamespace(file_indices=files, uncertain_indices=uncertain)
+    if allowed:
+        check_selection(binding, states)
+    else:
+        with pytest.raises(ValueError):
+            check_selection(binding, states)
+
+
 def test_a_source_in_another_namespace_is_refused():
     first, second = chain()
     source = view(first)
@@ -184,14 +228,21 @@ def test_a_root_that_made_a_dataset_the_plan_does_not_name_is_refused():
 
 def test_a_root_whose_baseline_digest_differs_is_refused():
     first, _ = chain()
+    assert resolve(first, [])
     refuses(first, [], created=lambda _: CREATED.model_copy(update={"name": "renamed"}))
-    assert BASELINE_DIGEST  # the oracle digest is what the control above matched
 
 
 def test_a_root_of_an_unsupported_plan_type_is_refused():
     first, _ = chain()
     plan = ROOT_VIEW.plan
-    imitation = SimpleNamespace(manifest=plan.manifest, intent_digest=plan.intent_digest)
+    imitation = SimpleNamespace(
+        manifest=plan.manifest,
+        intent_digest=plan.intent_digest,
+        root=plan.root,
+        parameters=plan.parameters,
+        admission_policy=plan.admission_policy,
+        cost_policy=plan.cost_policy,
+    )
     root = SimpleNamespace(plan=imitation, operation=ROOT_VIEW.operation, receipts=())
     refuses(first, [], root=root)
 

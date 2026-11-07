@@ -27,10 +27,10 @@ from yorunge.adapters.upload_store import (
     decode,
     decode_versioned,
     legacy_create_without_baseline,
+    lineage_of,
     namespace,
     read_manifest,
     read_plan,
-    read_view_and_lineage,
     request_digest,
     require_capacity,
     verification_after,
@@ -516,8 +516,9 @@ class StateUploads:
                 "(prepared_at,plan_id)>(?,?) ORDER BY prepared_at,plan_id LIMIT ?",
                 (*after, limit + 1),
             ).fetchall()
+            views: dict[str, VersionedTransferView] = {}  # a source is read once for the page
             return tuple(
-                list_entry(read_view(self.connection, r[1])) for r in rows[:limit]
+                list_entry(read_view(self.connection, r[1], views)) for r in rows[:limit]
             ), encode_cursor(*rows[limit - 1]) if len(rows) > limit else None
 
     def approve(
@@ -1139,7 +1140,7 @@ class StateUploads:
             view = self._nonterminal(operation_id)
             if isinstance(view.plan, DatasetContinuationPlanV3):
                 # A continuation's baseline is its root's, found by walking its validated lineage.
-                _, lineage = read_view_and_lineage(self.connection, view.plan.plan_id)
+                lineage = lineage_of(self.connection, view)
                 assert lineage is not None
                 return lineage.baseline
             if not legacy_create_without_baseline(view):

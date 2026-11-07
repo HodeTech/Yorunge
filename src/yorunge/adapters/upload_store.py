@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar, overload
 
 from yorunge.adapters.state import metadata
-from yorunge.adapters.upload_lineage import Lineage, resolve_lineage
+from yorunge.adapters.upload_lineage import Lineage, resolve_lineage, validate_selection
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
@@ -707,23 +707,34 @@ def _operation_view(connection: sqlite3.Connection, operation_id: str) -> Versio
     return _read_view(connection, read_any_record(connection, operation_id).plan_id)
 
 
-def read_view_and_lineage(
-    connection: sqlite3.Connection, plan_id: str
-) -> tuple[VersionedTransferView, Lineage | None]:
-    """A view and, for a continuation, the validated lineage it was prepared from.
+ViewCache = dict[str, VersionedTransferView]
+
+
+def lineage_of(
+    connection: sqlite3.Connection, view: VersionedTransferView, views: ViewCache | None = None
+) -> Lineage | None:
+    """The validated lineage a continuation view was prepared from, None for an original upload.
 
     A lineage that cannot be walked to the root that made the dataset (a missing source, a loop,
-    another manifest or baseline, a namespace the root does not hold) is a corrupt history.
+    another manifest, baseline or parameters, a selection its sources do not allow) is a corrupt
+    history. ``views`` holds the sources already read, so a pass over many plans reads each
+    operation once; the namespace is the root's whatever this record's state: the walk reads the
+    root as its last source, and a latched root's own view requires the namespace to name it.
     """
-    view = _read_view(connection, plan_id)
     plan = view.plan
     if not isinstance(plan, DatasetContinuationPlanV3):
-        return view, None
+        return None
+    seen: ViewCache = {} if views is None else views
+
+    def source(operation_id: str) -> VersionedTransferView:
+        if operation_id not in seen:
+            seen[operation_id] = _operation_view(connection, operation_id)
+        return seen[operation_id]
+
     try:
-        # The namespace is the root's, whatever this record's state: the walk reads the root as
-        # its last source, and a latched root's own view requires the namespace to name it.
-        lineage = resolve_lineage(
-            plan, lambda operation_id: _operation_view(connection, operation_id), created_dataset
+        lineage = resolve_lineage(plan, source, created_dataset)
+        validate_selection(
+            plan, lineage, read_manifest(connection, plan), lambda item: acknowledged_stages(item)
         )
     except YorungeError as error:
         if error.code in ("operation_not_found", "upload_plan_not_found"):
@@ -731,11 +742,23 @@ def read_view_and_lineage(
         raise
     except (ValueError, KeyError, IndexError, TypeError):
         raise YorungeError("state_invalid") from None
-    return view, lineage
+    return lineage
 
 
-def read_any_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransferView:
-    return read_view_and_lineage(connection, plan_id)[0]
+def read_view_and_lineage(
+    connection: sqlite3.Connection, plan_id: str, views: ViewCache | None = None
+) -> tuple[VersionedTransferView, Lineage | None]:
+    """A view and, for a continuation, the validated lineage it was prepared from."""
+    view = _read_view(connection, plan_id)
+    if views is not None and view.operation is not None:
+        views.setdefault(view.operation.operation_id, view)
+    return view, lineage_of(connection, view, views)
+
+
+def read_any_view(
+    connection: sqlite3.Connection, plan_id: str, views: ViewCache | None = None
+) -> VersionedTransferView:
+    return read_view_and_lineage(connection, plan_id, views)[0]
 
 
 def read_view(connection: sqlite3.Connection, plan_id: str) -> TransferView:
@@ -811,8 +834,9 @@ def require_capacity(connection: sqlite3.Connection, *, corrupt: bool = False) -
 def validate_uploads(connection: sqlite3.Connection) -> None:
     require_capacity(connection, corrupt=True)
     store = metadata(connection)
+    views: ViewCache = {}  # a source is read once for the whole pass, not once per continuation
     for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
-        view = read_any_view(connection, row[0])
+        view = read_any_view(connection, row[0], views)
         record = view.operation
         if (
             record is not None

@@ -31,24 +31,6 @@
   },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
-   "function": "operation_journal",
-   "kind": "isinstance",
-   "text": "isinstance(plan, DatasetContinuationPlanV3)",
-   "occurrence": 0,
-   "owner": "done",
-   "note": "a continuation's parent in the chain is its source, and a graph that sent nothing is not complete"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_chain.py",
-   "function": "operation_journal",
-   "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlan | DatasetUploadPlanV2)",
-   "occurrence": 0,
-   "owner": "done",
-   "note": "v1/v2 operations are chain roots; any other plan is refused instead of read as a root"
-  },
-  {
-   "file": "src/yorunge/adapters/upload_chain.py",
    "function": "_descendants",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
@@ -91,6 +73,24 @@
    "occurrence": 0,
    "owner": "done",
    "note": "a v1/v2 plan is the root; anything else is refused"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_lineage.py",
+   "function": "journal_of",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation's parent in the chain is its source; the caller says whether its graph is complete"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_lineage.py",
+   "function": "journal_of",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlan | DatasetUploadPlanV2)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "v1/v2 operations are chain roots; any other plan is refused instead of read as a root"
   },
   {
    "file": "src/yorunge/adapters/upload_maintenance.py",
@@ -778,7 +778,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "read_view_and_lineage",
+   "function": "lineage_of",
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,

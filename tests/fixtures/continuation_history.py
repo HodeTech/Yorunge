@@ -58,13 +58,28 @@ def stamp(seconds):
     return f"2026-11-02T11:{whole // 60:02d}:{whole % 60:02d}.{fraction:03d}000Z"
 
 
-def install_root(store, *, terminal=False):
-    """The root upload with its strict create receipt; ``terminal=False`` leaves it ``unknown``."""
+def install_root(store, *, terminal=False, partial=True, strict=True):
+    """The root upload, ``unknown`` unless ``terminal``, as a continuation would find it.
+
+    ``partial`` (the default) stops it where an interrupted upload stops: the first file is
+    confirmed, the second has a confirm intent nothing answered, the third was never reached. A
+    complete root (``partial=False``) is one to reconcile, not to continue. ``strict`` gives its
+    create intent the strict create receipt; without it the root made no dataset it can prove.
+    """
     data = install_fixture(store, terminal=terminal)
-    store.connection.execute(
-        "UPDATE upload_stage_receipts SET payload=? WHERE intent_id=?",
-        (CREATE_RECEIPT.decode(), data["receipts"][0]["intent_id"]),
-    )
+    connection = store.connection
+    if strict:
+        connection.execute(
+            "UPDATE upload_stage_receipts SET payload=? WHERE intent_id=?",
+            (CREATE_RECEIPT.decode(), data["receipts"][0]["intent_id"]),
+        )
+    if partial and not terminal:
+        dropped = [intent["intent_id"] for intent in data["intents"][8:]]
+        answered = [data["receipts"][7]["intent_id"], *dropped]
+        for intent_id in answered:
+            connection.execute("DELETE FROM upload_stage_receipts WHERE intent_id=?", (intent_id,))
+        for intent_id in dropped:
+            connection.execute("DELETE FROM upload_stage_intents WHERE intent_id=?", (intent_id,))
     return data
 
 
@@ -93,19 +108,24 @@ def build(
     number,
     *,
     source=None,
-    indices=(0, 2),
+    indices=(1, 2),
     uncertain=None,
     status="running",
     intents=None,
     acknowledged=None,
     binding=None,
+    plan_changes=None,
+    reset=False,
 ):
     """A continuation of ``root`` (the data ``install_root`` returned) from ``source``.
 
     ``status`` is admitted, running, unknown, succeeded or cancelled. ``intents`` stages have been
     written (all of them for a succeeded one) and the first ``acknowledged`` have an accepted
     receipt. An empty ``indices`` is the check-only continuation. ``binding`` overrides fields of
-    the plan's continuation binding before the plan is sealed (a wrong baseline, say).
+    the plan's continuation binding and ``plan_changes`` those of the plan itself, before it is
+    sealed (a wrong baseline or other parameters, say). ``reset`` (succeeded only) puts an
+    identity reset between the sending and the proof: the proof is read under a new epoch and
+    clock generation.
     """
     root_scope = root["plan"]["scope"]
     root_operation = root["record"]["operation_id"]
@@ -119,7 +139,8 @@ def build(
         intents = acknowledged = len(stages)
 
     plan = copy.deepcopy(CHECK_ONLY_PLAN if not indices else BASE_PLAN)
-    uncertain = tuple(i for i in (2,) if i in indices) if uncertain is None else uncertain
+    # Against the default root: the second file has an unanswered confirm, the third none at all.
+    uncertain = tuple(i for i in (1,) if i in indices) if uncertain is None else uncertain
     plan.update(
         plan_id=uuid(0x100 + number),
         scope=copy.deepcopy(root_scope),
@@ -142,6 +163,7 @@ def build(
         remote_present_count=len(FILES) - len(indices),
     )
     plan["continuation"].update(binding or {})
+    plan.update(plan_changes or {})
     plan["digest"] = sha({k: v for k, v in plan.items() if k != "digest"})
 
     binding = {
@@ -247,7 +269,15 @@ def build(
     elif status == "succeeded":
         proof = _proof(plan, stamp(last + 2))
         record.update(status="succeeded", reason="metadata_verified")
+        if reset:
+            new_epoch = uuid(0xE2)
+            record.update(observed_identity_epoch=new_epoch, observed_clock_generation=2)
+            proof["scope"].update(identity_epoch=new_epoch, clock_generation=2)
         controls = [_control(record, "terminal", sha(proof))]
+        if reset:
+            recovery = _control({**record, "revision": record["revision"] - 1}, "recovery", None)
+            recovery.update(reason="identity_reset", observed_at=stamp(last + 1))
+            controls.append(recovery)
     return Continuation(plan, approval, record, written, receipts, controls, proof)
 
 

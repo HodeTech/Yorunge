@@ -57,9 +57,10 @@ def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[
     if connection.execute(
         "SELECT 1 FROM sqlite_schema WHERE name='upload_plans' AND type='table'"
     ).fetchone():
+        views: dict[str, VersionedTransferView] = {}  # a source is read once for the whole pass
         for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
             deadline.remaining()
-            view = read_any_view(connection, row[0])
+            view = read_any_view(connection, row[0], views)
             record = view.operation
             digest.update(canonical(_snapshot_body(view)) + b"\n")
             counts["upload_plan_count"] += 1

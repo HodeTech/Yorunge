@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
 
 from yorunge.adapters.capability_cache import Stamp
+from yorunge.adapters.upload_lineage import journal_of
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
     acknowledged_stages,
@@ -19,23 +18,10 @@ from yorunge.adapters.upload_store import (
 from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
-from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.upload_resume import (
-    DescendantFact,
-    OperationJournal,
-    ReceiptState,
-    SourceFacts,
-    StageFact,
-)
+from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
 from yorunge.domain.upload_versions import UploadRecord
-
-
-def _receipt_state(
-    results: Mapping[str, Literal["accepted", "rejected"]], intent_id: str
-) -> ReceiptState:
-    return results[intent_id] if intent_id in results else "none"
 
 
 def operation_journal(view: VersionedTransferView) -> OperationJournal:
@@ -47,29 +33,12 @@ def operation_journal(view: VersionedTransferView) -> OperationJournal:
     ``acknowledged_stages`` rule, except that an operation which sent nothing is not "complete": a
     graph with no stages is vacuously acknowledged, and no reconcile can finish what never began.
     """
-    record = view.operation
-    if record is None:
+    if view.operation is None:
         raise YorungeError("operation_not_found")
-    plan = view.plan
-    if isinstance(plan, DatasetContinuationPlanV3):
-        parent: str | None = plan.continuation.source_operation_id
-        complete = bool(view.intents) and acknowledged_stages(view)
-    elif isinstance(plan, DatasetUploadPlan | DatasetUploadPlanV2):
-        parent, complete = None, acknowledged_stages(view)
-    else:
-        raise YorungeError("state_invalid")
-    results = {receipt.intent_id: receipt.result for receipt in view.receipts}
-    return OperationJournal(
-        operation_id=record.operation_id,
-        parent_operation_id=parent,
-        dataset_id=record.dataset_id,
-        manifest_digest=plan.manifest.digest,
-        stages=tuple(
-            StageFact(intent.kind, intent.file_index, _receipt_state(results, intent.intent_id))
-            for intent in view.intents
-        ),
-        graph_complete=complete,
-    )
+    try:
+        return journal_of(view, complete=bool(view.intents) and acknowledged_stages(view))
+    except ValueError:
+        raise YorungeError("state_invalid") from None
 
 
 @dataclass(frozen=True, slots=True)

@@ -12,25 +12,31 @@ from datetime import UTC, datetime
 import pytest
 
 from tests.fixtures.continuation_history import (
+    BASE_PLAN,
     CREATE_RECEIPT,
     DATASET_ID,
     FILES,
     INTENT_SHAPE,
     MANIFEST,
     build,
+    canon,
     install,
     install_root,
     sha,
     uuid,
 )
+from tests.fixtures.continuation_history import stamp as builder_stamp
 from yorunge.adapters.capability_cache import Stamp
+from yorunge.adapters.local_files import Deadline
 from yorunge.adapters.state import DB_NAME, open_store
 from yorunge.adapters.upload_chain import operation_journal
+from yorunge.adapters.upload_maintenance import upload_snapshot
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import (
     created_dataset,
     legacy_create_without_baseline,
     read_any_view,
+    read_plan,
     read_view_and_lineage,
 )
 from yorunge.domain.create_receipt import CreateReceiptV2
@@ -58,13 +64,13 @@ UNKNOWN = SHAPES["unknown"]
 
 
 @contextmanager
-def world(tmp_path, *specs):
+def world(tmp_path, *specs, timeout=5.0):
     """A store with the root and the continuations ``specs`` describe.
 
     A spec is ``build`` keywords, plus ``tweak`` (a function that breaks one thing of the built
     continuation before it is stored) and ``plan_only`` (store its plan and approval, no operation).
     """
-    with open_store(tmp_path / "state") as store:
+    with open_store(tmp_path / "state", timeout=timeout) as store:
         root = install_root(store)
         built = []
         for number, spec in enumerate(specs, 1):
@@ -116,7 +122,8 @@ def test_a_continuation_of_a_continuation_reads_back_with_both_sources_root_firs
     second = {
         "status": "running",
         "source": FIRST,
-        "indices": (1,),
+        "indices": (2,),
+        "uncertain": (),
         "intents": 2,
         "acknowledged": 2,
     }
@@ -141,7 +148,7 @@ def test_a_cancelled_continuation_beside_a_live_one_changes_nothing_about_either
 
 @pytest.mark.parametrize("shape", ["admitted", "cancelled", "check-only succeeded"])
 def test_a_source_that_never_sent_anything_cannot_be_continued(tmp_path, shape):
-    follow = {"status": "running", "source": FIRST, "indices": (1,)}
+    follow = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path / "bad", SHAPES[shape], follow) as (store, _, (source, later)):
         assert read(store, source).operation.status == SHAPES[shape]["status"]
         refused(store, later)
@@ -178,7 +185,7 @@ def test_a_continuation_of_a_dataset_the_root_did_not_make_is_a_corrupt_history(
 
 def test_a_lineage_that_loops_is_a_corrupt_history(tmp_path):
     first = {"status": "running", "source": SECOND}
-    second = {"status": "running", "source": FIRST, "indices": (1,)}
+    second = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path, first, second) as (store, _, (a, b)):
         refused(store, a)
         refused(store, b)
@@ -190,7 +197,7 @@ def test_a_continuation_cannot_be_its_own_source(tmp_path):
 
 
 def test_a_source_that_is_only_a_plan_is_not_a_source(tmp_path):
-    later = {"status": "running", "source": FIRST, "indices": (1,)}
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path, {**UNKNOWN, "plan_only": True}, later) as (store, _, (_, item)):
         refused(store, item)
 
@@ -226,7 +233,7 @@ def test_the_namespace_of_a_continuation_is_its_roots_whatever_its_own_state(tmp
 
 
 def test_the_namespace_of_a_continuations_continuation_is_still_the_roots(tmp_path):
-    later = {"status": "running", "source": FIRST, "indices": (1,)}
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path, UNKNOWN, later) as (store, _, (_, item)):
         assert read(store, item).operation.operation_id == SECOND
         store.connection.execute("PRAGMA foreign_keys=OFF")
@@ -290,7 +297,7 @@ GRAPH_FAULTS = {
     ),
     "a file outside the selection": (
         sent(),
-        lambda c: c.intents.append(extra_intent(c, kind="presign", file_index=1)),
+        lambda c: c.intents.append(extra_intent(c, kind="presign", file_index=0)),
     ),
     "more intents than the graph has": (
         {"status": "unknown", "intents": 6, "acknowledged": 5},
@@ -419,7 +426,14 @@ def stamp(store, root, *, now):
 
 
 def test_the_journals_of_a_chain_run_from_the_root_to_the_source(tmp_path):
-    later = {"status": "running", "source": FIRST, "indices": (1,), "intents": 2, "acknowledged": 2}
+    later = {
+        "status": "running",
+        "source": FIRST,
+        "indices": (2,),
+        "uncertain": (),
+        "intents": 2,
+        "acknowledged": 2,
+    }
     with world(tmp_path, UNKNOWN, later) as (store, root, (first, _)):
         uploads = StateUploads(store)
         at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
@@ -431,7 +445,7 @@ def test_the_journals_of_a_chain_run_from_the_root_to_the_source(tmp_path):
         assert {j.manifest_digest for j in snapshot.journals} == {MANIFEST["digest"]}
         # The combined lineage is what merge_chain takes: the root confirmed all three files.
         manifest = DatasetManifest.model_validate_json(canon_manifest())
-        assert merge_chain(snapshot.journals, manifest).states == ("accepted",) * 3
+        assert merge_chain(snapshot.journals, manifest).states == ("accepted", "accepted", "none")
         assert snapshot.source.status == "unknown" and snapshot.source.lease_active is False
         assert snapshot.source.policy == "explicit_attempt" and snapshot.source.has_created_dataset
         # Its one descendant is the running continuation, whose lease is still live at this stamp.
@@ -475,34 +489,45 @@ def test_an_operation_that_sent_nothing_is_not_a_complete_graph(tmp_path):
 def test_the_facts_of_a_chain_are_read_in_one_snapshot_no_writer_can_slip_into(
     tmp_path, monkeypatch
 ):
-    later = {"status": "running", "source": FIRST, "indices": (1,)}
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path, UNKNOWN, later) as (store, root, _):
         uploads = StateUploads(store)
         other = sqlite3.connect(store.root / DB_NAME, timeout=0)
-        refusals = []
-        real = operation_journal
+        refusals = set()
 
-        def spy(view):
-            # While the journals are being read, another connection cannot add a descendant: it
-            # may start writing, but its commit needs the lock the reader's snapshot holds.
+        def try_to_add_a_descendant(phase):
+            # It may start writing, but its commit needs the lock the reader's snapshot holds.
             other.execute("BEGIN IMMEDIATE")
             try:
                 other.execute("UPDATE upload_namespaces SET payload=payload")
                 other.execute("COMMIT")
             except sqlite3.OperationalError as error:
-                refusals.append(str(error))
+                assert "locked" in str(error)
+                refusals.add(phase)
             finally:
                 if other.in_transaction:
                     other.execute("ROLLBACK")
-            return real(view)
 
-        monkeypatch.setattr("yorunge.adapters.upload_chain.operation_journal", spy)
+        def spy(real, phase):
+            def watched(*args):
+                try_to_add_a_descendant(phase)
+                return real(*args)
+
+            return watched
+
+        monkeypatch.setattr(
+            "yorunge.adapters.upload_chain.operation_journal",
+            spy(operation_journal, "journals"),
+        )
+        monkeypatch.setattr(
+            "yorunge.adapters.upload_chain.read_plan", spy(read_plan, "descendants")
+        )
         try:
             at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
             uploads.chain_snapshot(FIRST, at)
         finally:
             other.close()
-        assert refusals and all("locked" in message for message in refusals)
+        assert refusals == {"journals", "descendants"}
 
 
 def test_a_missing_operation_is_not_found_and_a_broken_lineage_is_invalid(tmp_path):
@@ -556,7 +581,7 @@ def test_the_snapshot_a_reset_is_previewed_from_reads_every_plan_with_its_lineag
     from yorunge.adapters.local_files import Deadline
     from yorunge.adapters.upload_maintenance import upload_snapshot
 
-    later = {"status": "running", "source": FIRST, "indices": (1,)}
+    later = {"status": "running", "source": FIRST, "indices": (2,), "uncertain": ()}
     with world(tmp_path, UNKNOWN, later) as (store, _, _):
         counts = upload_snapshot(store.connection, Deadline())
         assert counts["upload_plan_count"] == 3  # the root and the two continuations
@@ -567,3 +592,123 @@ def test_the_snapshot_a_reset_is_previewed_from_reads_every_plan_with_its_lineag
         with pytest.raises(YorungeError) as error:
             upload_snapshot(store.connection, Deadline())
         assert error.value.code == "state_invalid"
+
+
+# --- what a plan copies from its source, and what its lineage allows it to send ----------------
+
+COPIES = {
+    "other parameters": {"parameters": {**BASE_PLAN["parameters"], "modality": "AUDIO"}},
+    "another root folder": {"root": {**BASE_PLAN["root"], "anchor": "/elsewhere"}},
+}
+
+
+@pytest.mark.parametrize("change", COPIES.values(), ids=COPIES)
+def test_a_plan_that_differs_from_its_source_in_what_it_copies_is_a_corrupt_history(
+    tmp_path, change
+):
+    with world(tmp_path / "bad", {"status": "running", "plan_changes": change}) as (store, _, (a,)):
+        refused(store, a)
+    with world(tmp_path / "ok", {"status": "running"}) as (store, _, (a,)):  # the control
+        assert read(store, a).operation.status == "running"
+
+
+SELECTIONS = {
+    "a file the root already confirmed": {"indices": (0, 2), "uncertain": ()},
+    "an unanswered confirm that is not marked": {"indices": (1, 2), "uncertain": ()},
+    "a clean file that is marked uncertain": {"indices": (1, 2), "uncertain": (1, 2)},
+}
+
+
+@pytest.mark.parametrize("selection", SELECTIONS.values(), ids=SELECTIONS)
+def test_a_selection_its_lineage_does_not_allow_is_a_corrupt_history(tmp_path, selection):
+    with world(tmp_path / "bad", {"status": "running", **selection}) as (store, _, (a,)):
+        refused(store, a)
+    with world(tmp_path / "ok", {"status": "running"}) as (store, _, (a,)):
+        assert read(store, a).operation.status == "running"
+
+
+def test_a_continuation_of_a_lineage_with_a_known_rejection_is_a_corrupt_history(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        root = install_root(store)
+        item = build(root, 1, status="running")
+        install(store, item)
+        assert read(store, item).operation.status == "running"  # the control
+        confirm = root["receipts"][4]  # the first file's confirm, answered with a rejection
+        rejected = {**confirm, "result": "rejected", "object_key": None, "dataset_id": None}
+        store.connection.execute(
+            "UPDATE upload_stage_receipts SET payload=? WHERE intent_id=?",
+            (canon(rejected).decode(), confirm["intent_id"]),
+        )
+        refused(store, item)
+
+
+def test_a_source_whose_graph_is_already_complete_is_reconciled_not_continued(tmp_path):
+    check_only = {"status": "admitted", "indices": ()}
+    with open_store(tmp_path / "bad") as store:
+        root = install_root(store, partial=False)
+        item = build(root, 1, **check_only)
+        install(store, item)
+        refused(store, item)
+    with world(tmp_path / "ok", check_only) as (store, _, (item,)):  # a partial root: the control
+        assert read(store, item).operation.status == "admitted"
+
+
+def test_a_root_that_made_no_dataset_it_can_prove_is_no_baseline(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        root = install_root(store, strict=False)  # its create left only the plain receipt
+        item = build(root, 1, status="running")
+        install(store, item)
+        refused(store, item)
+
+
+def test_a_proof_read_after_an_identity_reset_needs_the_recovery_that_followed_it(tmp_path):
+    reset = {"status": "succeeded", "reset": True}
+    with world(tmp_path / "ok", reset) as (store, _, (item,)):
+        assert read(store, item).operation.status == "succeeded"
+        assert {c.kind for c in read(store, item).controls} == {"terminal", "recovery"}
+    with world(tmp_path / "none", {**reset, "tweak": lambda c: c.controls.pop()}) as (
+        store,
+        _,
+        (item,),
+    ):
+        refused(store, item)
+    with world(
+        tmp_path / "late",
+        {**reset, "tweak": lambda c: c.controls[1].update(observed_at=builder_stamp(100))},
+    ) as (
+        store,
+        _,
+        (item,),
+    ):
+        refused(store, item)
+
+
+def test_reading_every_plan_of_a_long_lineage_reads_each_operation_once(tmp_path, monkeypatch):
+    import yorunge.adapters.upload_store as store_module
+
+    count = 30
+    specs = [
+        {
+            "status": "unknown",
+            "indices": (2,),
+            "uncertain": () if number == 1 else (2,),
+            "intents": 3,
+            "acknowledged": 2,
+            **({"source": uuid(0x300 + number - 1)} if number > 1 else {}),
+        }
+        for number in range(1, count + 1)
+    ]
+    # Building thirty histories takes longer than the store's usual budget for one operation.
+    with world(tmp_path, *specs, timeout=120) as (store, _, built):
+        assert len(built) == count
+        calls = []
+        real = store_module._read_view
+        monkeypatch.setattr(
+            store_module, "_read_view", lambda *args: (calls.append(args[1]), real(*args))[1]
+        )
+        assert upload_snapshot(store.connection, Deadline())["upload_plan_count"] == count + 1
+        passes = len(calls)
+        assert passes <= 2 * (count + 1)  # without the shared views it is about a quarter of n²
+        calls.clear()
+        entries, _ = StateUploads(store).list(limit=100)
+        assert len(entries) == count + 1 and len(calls) <= 2 * (count + 1)
