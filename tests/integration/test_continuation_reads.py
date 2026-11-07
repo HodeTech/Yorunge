@@ -299,6 +299,55 @@ def test_a_proof_that_comes_too_late_cancels_a_check_only_continuation_without_u
         assert view.verification is None and view.intents == ()
 
 
+def test_a_failed_read_before_anything_was_sent_is_a_conflict_and_leaves_the_operation_alone(
+    lifecycle,
+):
+    plan, record = lifecycle.admitted()
+    failure = read_check(plan, lifecycle.clock, error="remote_failed")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        before = dump(store)
+        # No stage was armed, so no read can have been started: nothing is uncertain.
+        for owner in (record.lease, None):
+            assert (
+                code_of(
+                    lambda owner=owner: repository.read_failed(record.operation_id, owner, failure)
+                )
+                == "operation_conflict"
+            )
+        assert dump(store) == before
+        assert repository.show(operation_id=record.operation_id).operation.status == "admitted"
+
+
+def test_a_proof_observed_before_a_check_only_operation_began_is_refused_and_leaves_it_alone(
+    lifecycle,
+):
+    tick(lifecycle, 10)
+    before_admission = timestamp(lifecycle.clock.value - timedelta(seconds=3))
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    tick(lifecycle)
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        repository.prepare_initial_read(record.operation_id, record.lease, authorization=check)
+        before = dump(store)
+        # What `--prepare` read to classify the files cannot be the closing proof of the operation
+        # that came after it: the operation is not at fault, so it stays and can read again.
+        early = proof_of(plan, before_admission)
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, early, authorization=check
+                )
+            )
+            == "operation_conflict"
+        )
+        assert dump(store) == before
+        again = proof_of(plan, timestamp(lifecycle.clock.value))
+        view = repository.verified(record.operation_id, record.lease, again, authorization=check)
+        assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
+
+
 def test_a_failed_read_of_a_check_only_continuation_is_reported_by_its_owner_only(lifecycle):
     plan, record = lifecycle.admitted(indices=(), uncertain=())
     failure = read_check(plan, lifecycle.clock, error="remote_failed")

@@ -9,7 +9,7 @@ import pytest
 
 from tests.fixtures.continuation_lifecycle import ACKNOWLEDGE_ALL
 from yorunge.adapters.state import open_store
-from yorunge.adapters.upload_store import capacity
+from yorunge.adapters.upload_store import capacity, validate_uploads
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.errors import YorungeError
 
@@ -77,15 +77,11 @@ def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lif
         assert rows(store) == before  # the savepoint of the transaction took the plan row back
 
 
-def test_a_plan_whose_root_made_no_dataset_is_not_saved(lifecycle):
-    root = lifecycle.root["record"]["operation_id"]
+def test_a_plan_whose_root_made_no_dataset_it_can_prove_is_not_saved(lifecycle_without_baseline):
+    lifecycle = lifecycle_without_baseline
     with open_store(lifecycle.root_dir, timeout=60) as store:
-        # The root's create was never answered: there is no baseline a continuation could extend.
-        store.connection.execute(
-            "DELETE FROM upload_stage_receipts WHERE intent_id IN "
-            "(SELECT intent_id FROM upload_stage_intents WHERE operation_id=? AND kind='create')",
-            (root,),
-        )
+        # A valid history: the root only has nothing a continuation could extend.
+        validate_uploads(store.connection)
         before = rows(store)
         repository = lifecycle.repository(store)
         plan = lifecycle.plan(1)

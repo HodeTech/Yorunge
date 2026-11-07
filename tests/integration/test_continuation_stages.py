@@ -351,6 +351,9 @@ def test_a_stage_is_not_armed_on_a_stale_a_foreign_or_a_wrong_current_check(life
             )
             assert code_of(arm) == code, name
         assert dump(store) == before
+    # A check of the right dataset and action, taken now, is what arms the very same stage.
+    _, intent, view = run(lifecycle, plan, record, "presign", 1)
+    assert view.operation.status == "running" and intent.file_index == 1
 
 
 # --- an identity reset over what the gates wrote ----------------------------------------------

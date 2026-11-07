@@ -131,6 +131,9 @@ class FixtureContinuations(StateUploads):
         )
 
 
+_SAME = object()  # "the credential this world was made with"
+
+
 @dataclass
 class Lifecycle:
     root_dir: Path
@@ -140,8 +143,17 @@ class Lifecycle:
     manifest: DatasetManifest
     access: object = None
 
-    def repository(self, store):
-        return FixtureContinuations(store, self.bound, clock=self.clock, write_access=self.access)
+    def repository(self, store, bound=_SAME):
+        """A repository over ``store`` (``bound``: another credential, ``None`` for none)."""
+        bound = self.bound if bound is _SAME else bound
+        return FixtureContinuations(store, bound, clock=self.clock, write_access=self.access)
+
+    def rotated(self, store) -> BoundCredential:
+        """The credential after its key was rotated: ``store`` has observed the new revision."""
+        old = self.bound.credential
+        key = SecretValue("synthetic-ROTATED-key-DO-NOT-PUBLISH")
+        new = ResolvedCredential(old.reference, old.target, key)
+        return BoundCredential(self.bound.context, new, StateCredentialRegistry(store).observe(new))
 
     def admitted(self, number=1, **spec):
         """Save, approve and admit a continuation; its repository keeps the write access."""
@@ -233,8 +245,9 @@ def plan_of(item: Continuation) -> DatasetContinuationPlanV3:
     return DatasetContinuationPlanV3.model_validate_json(canon(item.plan))
 
 
-@pytest.fixture
-def lifecycle(tmp_path, execution_clock):
+def world(tmp_path, execution_clock, *, strict=True) -> Lifecycle:
+    """The store, the credential and the interrupted root; ``strict=False``: a root that made no
+    dataset it can prove (nothing a continuation could extend)."""
     clock = execution_clock
     clock.value = instant("2026-11-02T11:01:00.000000Z")  # after the root's last event
     root_dir = tmp_path / "state"
@@ -260,9 +273,20 @@ def lifecycle(tmp_path, execution_clock):
                 "credential_revision": identity.credential_revision,
                 "clock_generation": stamp.generation,
             },
+            strict=strict,
         )
     manifest = DatasetManifest.model_validate_json(canon(MANIFEST))
     assert len(manifest.files) == len(FILES)
     return Lifecycle(
         root_dir, BoundCredential(context, credential, identity), clock, root, manifest
     )
+
+
+@pytest.fixture
+def lifecycle(tmp_path, execution_clock):
+    return world(tmp_path, execution_clock)
+
+
+@pytest.fixture
+def lifecycle_without_baseline(tmp_path, execution_clock):
+    return world(tmp_path, execution_clock, strict=False)

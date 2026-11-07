@@ -180,13 +180,28 @@ def test_a_source_whose_lease_lapsed_but_was_never_frozen_is_not_continued(lifec
         refused_untouched(lifecycle, store, plan, repository, "operation_conflict")
 
 
+# What the source's other continuation can be, for it to stand in the way: anything but cancelled.
+BRANCHES = {
+    "unknown": ({"status": "unknown", "intents": 5, "acknowledged": 4}, False),
+    "admitted with a live lease": ({"status": "admitted"}, False),
+    "running with a live lease": ({"status": "running"}, False),
+    "running whose lease lapsed": ({"status": "running"}, True),
+    "failed": ({"status": "failed"}, False),
+    "succeeded": ({"status": "succeeded"}, False),
+}
+
+
+@pytest.mark.parametrize("branch", BRANCHES.values(), ids=BRANCHES)
 def test_a_source_that_already_has_a_continuation_that_was_not_cancelled_is_not_continued(
-    lifecycle,
+    lifecycle, branch
 ):
+    spec, lapsed = branch
     with open_chain(lifecycle) as store:
-        # The root already continues into an unknown one: the new plan would be a second branch.
-        install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
+        # The root already continues into another one: the new plan would be a second branch.
+        install(store, build(lifecycle.root, 1, **spec))
         plan, repository = ready(lifecycle, store, 2)
+        if lapsed:
+            lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
         before = dump(store)
         assert related_of(lambda: repository.admit(plan.plan_id, plan)) == (
             "operation_conflict",

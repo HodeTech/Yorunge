@@ -1307,7 +1307,17 @@ class StateUploads:
                         reason="request_uncertain",
                     )
                     self._control(changed, stamp, terminal=False)
-            self._finish(stamp, gate, scope=view.plan.scope)
+            # Like the cleanup of an expired operation, freezing needs no credential: a source is
+            # frozen after a rotation too, and never reports an error for what it has committed.
+            final, within = self.cache._finish(
+                stamp,
+                expires=tuple(end for _, end, _ in gate.intervals),
+                checkpoint=gate.checkpoint,
+            )
+            gate.check_clock(final)
+            gate.check(final.now)
+            if not within:
+                raise YorungeError("state_busy")
             return self.show(operation_id=operation_id)
 
     def _read_grant(
@@ -1406,6 +1416,14 @@ class StateUploads:
                 assert record is not None
                 self._baseline_in_view(view)
                 check_only = isinstance(record, TransferRecordV3) and record.verification_only
+                if (
+                    isinstance(record, TransferRecordV3)
+                    and not record.workflow_latched
+                    and not check_only
+                ):
+                    # Nothing was sent and nothing is read yet: there is nothing to be uncertain
+                    # about, and nothing for this call to report.
+                    raise YorungeError("operation_conflict")
                 if not check_only and (not record.workflow_latched or record.dataset_id is None):
                     raise YorungeError("operation_uncertain")
                 self._credential(check.scope, stamp)
@@ -1718,6 +1736,10 @@ class StateUploads:
                 try:
                     verification_after(view, proof)
                 except ValueError:
+                    if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+                        # An observation that precedes the operation proves nothing about it, and
+                        # one that sent nothing has nothing uncertain: the proof is refused.
+                        raise YorungeError("operation_conflict") from None
                     raise YorungeError("operation_uncertain") from None
                 changed = self._change(
                     record,

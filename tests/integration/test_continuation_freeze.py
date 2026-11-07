@@ -62,7 +62,7 @@ def test_a_source_that_is_already_unknown_is_left_exactly_as_it_is(lifecycle, re
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
         before = dump(store)
         first = repository.freeze_source(FIRST)
-        second = repository.freeze_source(FIRST)  # a second prepare at the same time
+        second = repository.freeze_source(FIRST)  # a second prepare, after the first
         assert first == second and first.operation.reason == reason
         assert (
             first.operation.fence == record["fence"]
@@ -147,4 +147,19 @@ def test_freezing_leaves_a_descendant_that_sent_something_alone_whatever_its_lea
         # something is not an admitted one that never will, so it is not cancelled.
         lifecycle.repository(store).freeze_source(FIRST)
         assert dump(store) == before
+        validate_uploads(store.connection)
+
+
+@pytest.mark.parametrize("credential", ["rotated", "none"])
+def test_a_source_is_frozen_without_the_credential_it_was_planned_with(lifecycle, credential):
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        install(store, build(lifecycle.root, 1, status="running"))
+        bound = lifecycle.rotated(store) if credential == "rotated" else None
+    lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        # Like the cleanup of an expired operation: no credential check, and no error after the
+        # commit. (Planning, approving and admitting are what need the current credential.)
+        view = lifecycle.repository(store, bound).freeze_source(FIRST)
+        assert (view.operation.status, view.operation.reason) == ("unknown", "request_uncertain")
+        assert view.operation.lease is None and view.operation.fence == 2
         validate_uploads(store.connection)
