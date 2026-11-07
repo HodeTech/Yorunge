@@ -708,11 +708,12 @@ def test_reading_every_plan_of_a_long_lineage_reads_each_operation_once(tmp_path
             store_module, "_read_view", lambda *args: (calls.append(args[1]), real(*args))[1]
         )
         assert upload_snapshot(store.connection, Deadline())["upload_plan_count"] == count + 1
-        passes = len(calls)
-        assert passes <= 2 * (count + 1)  # without the shared views it is about a quarter of n²
+        # The plans come in plan-id order, a source before its continuation, so each operation's
+        # view is read once as itself and never again as a source; unshared it is about n²/2.
+        assert len(calls) == count + 1
         calls.clear()
         entries, _ = StateUploads(store).list(limit=100)
-        assert len(entries) == count + 1 and len(calls) <= 2 * (count + 1)
+        assert len(entries) == count + 1 and len(calls) <= count + 2
 
 
 # --- the facts of a chain, in the places a mutant could hide ------------------------------------
