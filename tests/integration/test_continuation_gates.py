@@ -7,24 +7,10 @@ built from it with plain hashlib/json; nothing here talks to a network.
 
 import pytest
 
-from tests.fixtures.continuation_lifecycle import ACKNOWLEDGE_ALL
+from tests.fixtures.continuation_lifecycle import ACKNOWLEDGE_ALL, code_of, dump
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_store import capacity, validate_uploads
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
-from yorunge.domain.errors import YorungeError
-
-
-def code_of(call):
-    with pytest.raises(YorungeError) as error:
-        call()
-    return error.value.code
-
-
-def rows(store):
-    tables = ("upload_namespaces", "upload_manifests", "upload_plans", "upload_approvals")
-    tables += ("upload_operations", "upload_controls", "upload_stage_intents")
-    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in tables]
-
 
 # --- save ----------------------------------------------------------------------------------------
 
@@ -70,11 +56,11 @@ SAVE_REFUSALS = {
 @pytest.mark.parametrize("spec", SAVE_REFUSALS.values(), ids=SAVE_REFUSALS)
 def test_a_plan_whose_lineage_does_not_hold_is_not_saved_and_leaves_no_trace(lifecycle, spec):
     with open_store(lifecycle.root_dir, timeout=60) as store:
-        before = rows(store)
+        before = dump(store)
         repository = lifecycle.repository(store)
         refused = lifecycle.plan(1, **spec)
         assert code_of(lambda: repository.save(refused, lifecycle.manifest)) == "state_invalid"
-        assert rows(store) == before  # the savepoint of the transaction took the plan row back
+        assert dump(store) == before  # the savepoint of the transaction took the plan row back
 
 
 def test_a_plan_whose_root_made_no_dataset_it_can_prove_is_not_saved(lifecycle_without_baseline):
@@ -82,11 +68,11 @@ def test_a_plan_whose_root_made_no_dataset_it_can_prove_is_not_saved(lifecycle_w
     with open_store(lifecycle.root_dir, timeout=60) as store:
         # A valid history: the root only has nothing a continuation could extend.
         validate_uploads(store.connection)
-        before = rows(store)
+        before = dump(store)
         repository = lifecycle.repository(store)
         plan = lifecycle.plan(1)
         assert code_of(lambda: repository.save(plan, lifecycle.manifest)) == "state_invalid"
-        assert rows(store) == before
+        assert dump(store) == before
 
 
 def test_a_continuation_is_saved_without_a_preparation_check_and_not_outside_its_window(lifecycle):
@@ -153,7 +139,7 @@ NEEDED = (
 def test_an_original_plan_is_not_approved_as_a_continuation(lifecycle):
     root_plan = lifecycle.root["plan"]
     with open_store(lifecycle.root_dir, timeout=60) as store:
-        before = rows(store)
+        before = dump(store)
         repository = lifecycle.repository(store)
         plan = lifecycle.plan(1)
         assert (
@@ -164,7 +150,7 @@ def test_an_original_plan_is_not_approved_as_a_continuation(lifecycle):
             )
             == "upload_plan_not_valid"
         )
-        assert rows(store) == before
+        assert dump(store) == before
 
 
 @pytest.mark.parametrize("missing", NEEDED)
@@ -173,14 +159,14 @@ def test_an_approval_needs_each_acknowledgement_the_plan_requires(lifecycle, mis
         plan, _ = saved(lifecycle, store)
         repository = lifecycle.repository(store)
         flags = {**ACKNOWLEDGE_ALL, missing: False}
-        before = rows(store)
+        before = dump(store)
         assert (
             code_of(
                 lambda: repository.approve_continuation(plan.plan_id, plan.digest, plan, **flags)
             )
             == "approval_required"
         )
-        assert rows(store) == before
+        assert dump(store) == before
 
 
 def test_an_acknowledgement_the_plan_does_not_need_is_refused(lifecycle):

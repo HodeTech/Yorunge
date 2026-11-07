@@ -5,23 +5,11 @@ from functools import partial
 import pytest
 
 from tests.fixtures.continuation_history import FIRST, build, install
+from tests.fixtures.continuation_lifecycle import code_of, dump
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_store import validate_uploads
 from yorunge.domain.capabilities import instant
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3
-from yorunge.domain.errors import YorungeError
-
-TABLES = ("upload_operations", "upload_controls", "upload_stage_intents", "upload_stage_receipts")
-
-
-def dump(store):
-    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in TABLES]
-
-
-def code_of(call):
-    with pytest.raises(YorungeError) as error:
-        call()
-    return error.value.code
 
 
 def source_running(lifecycle, store, **spec):

@@ -6,7 +6,7 @@ from datetime import timedelta
 import pytest
 
 from tests.fixtures.continuation_history import DATASET_ID, FIRST, build, canon, install
-from tests.fixtures.continuation_lifecycle import proof_of, read_check
+from tests.fixtures.continuation_lifecycle import code_of, dump, proof_of, read_check, tick
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_projection import summary
 from yorunge.adapters.upload_repository import StateUploads
@@ -14,26 +14,10 @@ from yorunge.adapters.upload_store import read_any_view, validate_uploads
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_transfer_v2 import TransferVerificationV2
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
-from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_versions import proof_digest
 
-TABLES = ("upload_operations", "upload_controls", "upload_stage_intents", "upload_stage_receipts")
-TABLES += ("upload_verifications",)
 STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
-
-
-def dump(store):
-    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in TABLES]
-
-
-def code_of(call):
-    with pytest.raises((YorungeError, OperationError)) as error:
-        call()
-    return error.value.code
-
-
-def tick(lifecycle, seconds=1):
-    lifecycle.clock.value += timedelta(seconds=seconds)
 
 
 def all_stages(lifecycle, plan, record, stages=STAGES):

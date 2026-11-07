@@ -5,31 +5,13 @@ import json
 import pytest
 
 from tests.fixtures.continuation_history import FIRST, build, canon, install
+from tests.fixtures.continuation_lifecycle import code_of, dump, related_of
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import capacity, read_any_view, validate_uploads
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferRecordV3
-from yorunge.domain.errors import OperationError, YorungeError
-
-TABLES = ("upload_namespaces", "upload_plans", "upload_approvals", "upload_operations")
-TABLES += ("upload_controls", "upload_stage_intents", "upload_stage_receipts")
-
-
-def dump(store):
-    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in TABLES]
-
-
-def code_of(call):
-    with pytest.raises(YorungeError) as error:
-        call()
-    return error.value.code
-
-
-def related_of(call):
-    with pytest.raises(OperationError) as error:
-        call()
-    return error.value.code, error.value.operation_id
+from yorunge.domain.errors import YorungeError
 
 
 def ready(lifecycle, store, number=1, **spec):

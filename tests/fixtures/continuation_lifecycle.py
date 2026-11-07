@@ -8,6 +8,7 @@ product's producer will later bring (``capture``); it is never a product produce
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -38,8 +39,48 @@ from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import StageReceipt
 from yorunge.domain.dataset_transfer_v3 import TransferVerificationV3
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Context
 from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, UploadObservation
+
+STATE_TABLES = (
+    "upload_namespaces",
+    "upload_manifests",
+    "upload_plans",
+    "upload_approvals",
+    "upload_operations",
+    "upload_controls",
+    "upload_stage_intents",
+    "upload_stage_receipts",
+    "upload_verifications",
+)
+
+
+def dump(store):
+    """Every row of the upload tables: what a refused call must leave exactly as it found it."""
+    return [
+        store.connection.execute(f"SELECT * FROM {table} ORDER BY 1,2").fetchall()
+        for table in STATE_TABLES
+    ]
+
+
+def code_of(call):
+    """The code of the error ``call`` raises (it must raise one)."""
+    with pytest.raises(YorungeError) as error:
+        call()
+    return error.value.code
+
+
+def related_of(call):
+    """The code and the operation a refusal names."""
+    with pytest.raises(OperationError) as error:
+        call()
+    return error.value.code, error.value.operation_id
+
+
+def tick(lifecycle, seconds=1):
+    lifecycle.clock.value += timedelta(seconds=seconds)
+
 
 ACKNOWLEDGE_ALL = {
     "acknowledge_unverified_authority": True,

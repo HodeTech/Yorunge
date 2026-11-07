@@ -2,12 +2,12 @@
 
 import hashlib
 import json
-from datetime import timedelta
 from functools import partial
 
 import pytest
 
 from tests.fixtures.continuation_history import CREATE_RECEIPT, DATASET_ID, FILES, canon
+from tests.fixtures.continuation_lifecycle import code_of, dump, tick
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads
 from yorunge.adapters.upload_repository import StateUploads
@@ -15,24 +15,8 @@ from yorunge.adapters.upload_store import acknowledged_stages, read_any_view, va
 from yorunge.domain.capabilities import instant
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferRecordV3
-from yorunge.domain.errors import YorungeError
 
-TABLES = ("upload_operations", "upload_controls", "upload_stage_intents", "upload_stage_receipts")
 STAGES = [(kind, index) for index in (1, 2) for kind in ("presign", "put", "confirm")]
-
-
-def dump(store):
-    return [store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in TABLES]
-
-
-def code_of(call):
-    with pytest.raises(YorungeError) as error:
-        call()
-    return error.value.code
-
-
-def tick(lifecycle, seconds=1):
-    lifecycle.clock.value += timedelta(seconds=seconds)
 
 
 def view_of(lifecycle, record):
