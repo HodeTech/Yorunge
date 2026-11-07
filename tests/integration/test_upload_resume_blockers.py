@@ -183,12 +183,20 @@ def test_what_a_report_needs_of_a_source_is_read_from_one_snapshot_of_its_lineag
         assert found.baseline_operation_id == root
         assert found.baseline is not None and found.baseline_digest == BASELINE_DIGEST
         assert found.intent_digest == lifecycle.root["record"]["intent_digest"]
-        assert [j for j in found.chain.journals] == list(found.chain.journals) and (
-            len(found.chain.journals) == 2
-        )
+        assert len(found.chain.journals) == 2  # the root's journal, then the source's own
         assert found.plan.plan_id == build(lifecycle.root, 1).plan["plan_id"]
         assert found.manifest.digest == lifecycle.manifest.digest
         # A root is its own baseline.
         top = repository.resume_source(root, stamp)
         assert top.baseline_operation_id == root and len(top.chain.journals) == 1
         assert top.baseline == found.baseline and top.chain.descendants[0].operation_id == FIRST
+
+
+def test_the_unverified_read_is_not_asked_for_when_nothing_would_be_read(lifecycle):
+    install_first(lifecycle, status="succeeded")
+    # The journal rules the source out: no provider read is made, so no choice about one is needed.
+    report = runtime(lifecycle).resume(FIRST, accept_unverified_read=False)
+    assert "source_terminal" in report.blockers
+    with pytest.raises(OperationError) as error:
+        runtime(lifecycle).resume(FIRST, accept_unverified_read=False, prepare=True)
+    assert error.value.code == "continuation_not_possible"

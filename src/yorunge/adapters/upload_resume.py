@@ -33,6 +33,7 @@ from yorunge.application.upload_inputs import require_distinct_upload_content
 from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import BoundCredential, SecretValue
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_transfer import scope_target
 from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_FILES,
     MAX_TRANSFER_OPERATIONS,
@@ -71,6 +72,8 @@ OBSERVATION_SECONDS = 75.0
 LISTING_SECONDS = 30.0
 # The window a prepared plan may be approved and started in, as for an original plan.
 PLAN_WINDOW_SECONDS = 900
+# What the folder can answer when it is not the one that was uploaded (moved, changed, unreadable).
+LOCAL_CHANGES = frozenset({"input_changed", "input_invalid", "file_unreadable"})
 
 
 def _ordered(blockers: set[Blocker]) -> tuple[Blocker, ...]:
@@ -85,7 +88,10 @@ def _refuse(blockers: tuple[Blocker, ...], source_id: str, related: str | None) 
 
 
 class UploadResumeRuntime(UploadPreparationRuntime):
-    """Report and prepare over the seams of the original prepare: state, clock and session."""
+    """Report and prepare over the seams of the original prepare: state, clock and session.
+
+    Only the seams are inherited; ``prepare`` and ``approve`` of the original upload are not used.
+    """
 
     def resume(
         self,
@@ -184,7 +190,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
                 Path(plan.root.anchor), source.manifest, secret, end=end, expected_root=plan.root
             )
         except YorungeError as error:
-            if error.code not in {"input_changed", "input_invalid"}:
+            if error.code not in LOCAL_CHANGES:
                 raise
             return None, error
         return observed, None
@@ -243,11 +249,16 @@ class UploadResumeRuntime(UploadPreparationRuntime):
     ) -> DatasetUploadResumeReport:
         baseline = source.baseline
         assert baseline is not None and source.baseline_digest is not None
-        start = self.clock.now()
         bound, scope = self._bind(plan.scope.owner)
+        if scope_target(scope) != scope_target(plan.scope):
+            # The context names another project, owner or service than the source was uploaded
+            # under: what a continuation would be planned on is not this dataset's project.
+            raise YorungeError("state_changed")
         inputs, changed = self._locally(plan, source, bound.credential.secret, end)
         if changed is not None and prepare:
             raise changed  # nothing is planned on a folder that is not the one that was uploaded
+        # The plan's window starts once the folder was hashed, as an original plan's does.
+        start = self.clock.now()
         found, inventory = self._read_remote(bound, scope, source, plan, end)
         observed_at = timestamp(self.clock.now())
         extra: set[Blocker] = set()
@@ -316,6 +327,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         self._fits(used, count, selected, sealed)
         # The observation took a while: the credential and the clock must still be the scope's.
         self._check_scope(bound, scope)
+        inputs.recheck()  # a refused prepare must not freeze; one that fails later leaves it frozen
         with open_existing_store(self.state_dir) as store:
             StateUploads(store, bound, clock=self.clock).freeze_source(operation_id)
         inputs.recheck()

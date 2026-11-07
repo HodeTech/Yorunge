@@ -159,6 +159,53 @@ class ObservedUploadReader:
         )
         codec.context(me, project, self.scope)
 
+    async def _located(
+        self,
+        client: UploadHttpxTransport,
+        expected: ProviderDataset,
+        parameters: UploadParameters,
+        end: float,
+    ) -> bool:
+        """Whether the owned list shows the dataset and its detail is the expected one.
+
+        ``False`` is the one well-formed answer that it is not: it is not listed, it is listed
+        under another owner or name, its detail is another one, or its detail is gone (404/410).
+        Anything malformed, any other status and any transport failure still raises.
+        """
+        secret = self._credential.secret
+        seen: set[str] = set()
+        located: LocatedDataset | None = None
+        try:
+            for page in range(1, OWNED_MAX_PAGES + 1):
+                raw = await self._get(
+                    client,
+                    "owned",
+                    "datasets",
+                    end,
+                    (("page", str(page)), ("page_size", str(OWNED_PAGE_SIZE)), ("scope", "owned")),
+                )
+                owned = codec.owned_page(raw, expected.id, self.scope, parameters, secret)
+                if seen.intersection(owned.ids):
+                    raise YorungeError("invalid_response")
+                seen.update(owned.ids)
+                if owned.selected is not None:
+                    located = owned.selected
+                    break
+                if len(owned.ids) < OWNED_PAGE_SIZE:
+                    break
+            if located is None:
+                return False
+            try:
+                detail = await self._get(client, "detail", codec.detail_path(located, secret), end)
+            except HttpStatusFailure as error:
+                if error.status_code in (404, 410):
+                    return False
+                raise
+            codec.detail(detail, expected, self.scope, parameters, secret)
+        except codec.DatasetMismatch:
+            return False
+        return True
+
     async def _dataset(
         self,
         client: UploadHttpxTransport,
@@ -166,35 +213,8 @@ class ObservedUploadReader:
         parameters: UploadParameters,
         end: float,
     ) -> None:
-        secret = self._credential.secret
-        seen: set[str] = set()
-        located: LocatedDataset | None = None
-        for page in range(1, OWNED_MAX_PAGES + 1):
-            raw = await self._get(
-                client,
-                "owned",
-                "datasets",
-                end,
-                (("page", str(page)), ("page_size", str(OWNED_PAGE_SIZE)), ("scope", "owned")),
-            )
-            owned = codec.owned_page(raw, expected.id, self.scope, parameters, secret)
-            if seen.intersection(owned.ids):
-                raise YorungeError("invalid_response")
-            seen.update(owned.ids)
-            if owned.selected is not None:
-                located = owned.selected
-                break
-            if len(owned.ids) < OWNED_PAGE_SIZE:
-                break
-        if located is None:
+        if not await self._located(client, expected, parameters, end):
             raise YorungeError("invalid_response")
-        codec.detail(
-            await self._get(client, "detail", codec.detail_path(located, secret), end),
-            expected,
-            self.scope,
-            parameters,
-            secret,
-        )
 
     def _check(
         self,
@@ -349,19 +369,12 @@ class ObservedUploadReader:
         end: float,
     ) -> bool:
         """Whether the project holds the dataset the baseline names, as it describes it."""
+        if not await self._located(client, expected, parameters, end):
+            return False
         secret = self._credential.secret
-        try:
-            await self._dataset(client, expected, parameters, end)
-            project_id = codec.segment(self.scope.project_id, secret)
-            member = await self._get(client, "membership", f"projects/{project_id}/datasets", end)
-            return codec.membership(member, expected.id, secret)
-        except HttpStatusFailure as error:
-            if mandatory_http_failure(error.status_code)[1] != "invalid_response":
-                raise
-        except YorungeError as error:
-            if error.code != "invalid_response":
-                raise
-        return False
+        project_id = codec.segment(self.scope.project_id, secret)
+        member = await self._get(client, "membership", f"projects/{project_id}/datasets", end)
+        return codec.membership(member, expected.id, secret)
 
     async def baseline(
         self,

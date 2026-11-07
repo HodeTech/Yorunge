@@ -2,7 +2,9 @@
 
 Like the report tests, the source is made by the product itself. A source SIGKILLed while it ran is
 the one a freeze is for: its lease has to lapse (a clock a little ahead of the real one) before it
-is found frozen. Whatever prepare refuses, it refuses before it freezes or writes.
+is found frozen. A prepare refused for what it finds refuses before it freezes or writes; one
+that fails after the freeze (the folder changed again, the store refused the plan) leaves the
+source frozen.
 """
 
 import multiprocessing
@@ -15,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from tests.contracts.test_platform_upload_codec import SCOPE
+from tests.fixtures.continuation_lifecycle import FixtureContinuations
 from tests.fixtures.http_server import TlsServer
 from tests.fixtures.upload_provider import DATASET, UploadProvider
 from tests.integration.test_upload_http_budget import SECRET
@@ -39,9 +42,10 @@ from tests.integration.test_upload_workflow_kill import _child, _files, _settle
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
-from yorunge.adapters.upload_store import validate_uploads
-from yorunge.domain.capabilities import instant
+from yorunge.adapters.upload_store import read_any_view, read_manifest, validate_uploads
+from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_transfer import StageReceipt
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_resume import ContinuationNotPossible
 
@@ -57,6 +61,10 @@ class Later:
 
     def monotonic(self):
         return time.monotonic() + self.seconds
+
+    @property
+    def value(self):  # what the lifecycle fixtures ask a clock for
+        return self.now()
 
 
 def killed_while_running(data, server, provider, certificates, monkeypatch):
@@ -194,10 +202,15 @@ def test_a_source_that_is_frozen_already_is_not_touched_and_the_plan_holds_no_se
             assert StateUploads(store).show(operation_id=source).operation == before
         plan = saved(data, report.plan_id).plan
         assert SECRET not in plan.encoded().decode()
-        # The plan may be approved and started for a quarter of an hour from its preparation.
-        prepared_at, expires_at = instant(plan.prepared_at), instant(plan.expires_at)
-        assert timedelta(0) < expires_at - prepared_at <= timedelta(seconds=900)
-        assert instant(plan.continuation.observed_at) <= prepared_at
+        # The plan may be approved and started for a quarter of an hour from the moment the folder
+        # was hashed; the dataset was observed after that and before the plan was sealed.
+        window = plan.execution_window
+        not_before, not_after = instant(window.not_before), instant(window.not_after)
+        assert (
+            not_after - not_before == timedelta(seconds=900) and plan.expires_at == window.not_after
+        )
+        observed_at, prepared_at = instant(plan.continuation.observed_at), instant(plan.prepared_at)
+        assert not_before < observed_at <= prepared_at < not_after
 
 
 def test_a_plan_the_wire_cannot_carry_is_an_invalid_request_and_nothing_is_written(
@@ -406,24 +419,57 @@ def test_content_that_cannot_be_uploaded_stops_prepare_before_it_freezes_anythin
         refused(data, server, source, "upload_duplicate_content")
 
 
-def test_a_folder_that_changes_while_the_source_is_frozen_is_not_planned(
+def test_a_folder_that_changes_just_before_the_freeze_is_not_planned_and_freezes_nothing(
     prepared_input, certificates, monkeypatch
 ):
-    data, provider = world(prepared_input)
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
     with TlsServer(certificates, provider.routes()) as server:
-        source = interrupted(data, server)
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
+        original = UploadResumeRuntime._check_scope
+
+        def check_and_change(runtime, bound, scope):
+            original(runtime, bound, scope)  # the last look before the freeze ...
+            (data[1] / "one.bin").write_bytes(b"changed right after it")
+
+        monkeypatch.setattr(UploadResumeRuntime, "_check_scope", check_and_change)
+        stored = rows(data[0])
+        with pytest.raises(YorungeError) as error:
+            resume_runtime(data, server, clock=Later()).resume(
+                source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
+            )
+        assert error.value.code == "input_changed"
+        assert rows(data[0]) == stored  # ... so the source is still the running one it was
+
+
+def test_a_folder_that_changes_after_the_freeze_leaves_the_source_frozen_and_saves_no_plan(
+    prepared_input, certificates, monkeypatch
+):
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
         original = StateUploads.freeze_source
 
         def freeze_and_change(repository, operation_id):
-            (data[1] / "one.bin").write_bytes(b"changed while the plan was being saved")
-            return original(repository, operation_id)
+            found = original(repository, operation_id)
+            (data[1] / "one.bin").write_bytes(b"changed once the source was frozen")
+            return found
 
         monkeypatch.setattr(StateUploads, "freeze_source", freeze_and_change)
-        stored = rows(data[0])
+        with open_existing_store(data[0]) as store:
+            plans = store.connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
         with pytest.raises(YorungeError) as error:
-            prepared(data, server, source)
+            resume_runtime(data, server, clock=Later()).resume(
+                source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
+            )
         assert error.value.code == "input_changed"
-        assert rows(data[0]) == stored  # no plan was saved
+        with open_existing_store(data[0]) as store:
+            frozen = StateUploads(store).show(operation_id=source).operation
+            assert (frozen.status, frozen.reason) == ("unknown", "request_uncertain")
+            assert (
+                store.connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0] == plans
+            )
 
 
 def test_a_credential_rotated_during_the_observation_stops_prepare_before_the_freeze(
@@ -455,3 +501,160 @@ def test_a_credential_rotated_during_the_observation_stops_prepare_before_the_fr
             prepared(data, server, source)
         assert error.value.code == "state_changed" and not frozen
         assert rows(data[0]) == stored
+
+
+# --- a context that is not the source's, a slow hash, a second hop, two prepares at once ---------
+
+
+def test_a_context_of_another_project_is_not_the_source_s_and_nothing_is_asked(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        state, folder, manifest, context, profile = data
+        elsewhere = (
+            state,
+            folder,
+            manifest,
+            context.model_copy(update={"project_id": "00000000-0000-4000-8000-0000000000aa"}),
+            profile,
+        )
+        before, stored = len(server.requests), rows(state)
+        for prepare in (False, True):
+            with pytest.raises(YorungeError) as error:
+                resume_runtime(elsewhere, server).resume(
+                    source, accept_unverified_read=True, prepare=prepare
+                )
+            assert error.value.code == "state_changed"  # the report and prepare say the same
+        assert len(server.requests) == before and rows(state) == stored
+
+
+def test_the_plan_window_begins_once_the_folder_was_hashed(
+    prepared_input, certificates, monkeypatch
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        clock = Later(0)
+        hashed = []
+
+        def slow(*arguments, **keywords):
+            found = original(*arguments, **keywords)
+            hashed.append(instant(timestamp(clock.now())))
+            clock.seconds += 600
+            return found
+
+        import yorunge.adapters.upload_resume as module
+
+        original = module.capture_upload_input  # the slow part: ten minutes here
+        monkeypatch.setattr(module, "capture_upload_input", slow)
+        report = resume_runtime(data, server, clock=clock).resume(
+            source, accept_unverified_read=True, prepare=True
+        )
+        plan = saved(data, report.plan_id).plan
+        assert instant(plan.execution_window.not_before) >= hashed[0] + timedelta(seconds=600)
+        assert instant(plan.expires_at) - instant(plan.prepared_at) > timedelta(seconds=850)
+
+
+def test_the_plan_of_a_second_hop_extends_the_root_and_passes_the_next_gates(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        root = interrupted(data, server)
+        runtime = resume_runtime(data, server)
+        first = saved(data, runtime.resume(root, accept_unverified_read=True, prepare=True).plan_id)
+        plan = first.plan
+        bound, _ = runtime._bind(plan.scope.owner)
+        now = Later(0)
+        with open_existing_store(data[0]) as store:
+            repository = FixtureContinuations(store, bound, clock=now)
+            repository.approve_continuation(
+                plan.plan_id,
+                plan.digest,
+                plan,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+            )
+            record = repository.admit(plan.plan_id, plan)
+            manifest = read_manifest(store.connection, plan)
+            for kind in ("presign", "put"):  # the continuation sends the third file, then stops
+                repository.arm(
+                    record.operation_id,
+                    record.lease,
+                    plan,
+                    kind,
+                    2,
+                    total_end=time.monotonic() + 900,
+                )
+                intent = read_any_view(store.connection, plan.plan_id).intents[-1]
+                sent = manifest.files[2]
+                repository.receipt(
+                    record.operation_id,
+                    record.lease,
+                    StageReceipt(
+                        schema_version=1,
+                        intent_id=intent.intent_id,
+                        recorded_at=timestamp(now.now()),
+                        result="accepted",
+                        dataset_id=plan.continuation.dataset_id,
+                        object_key="objects/2",
+                        sent_bytes=sent.size if kind == "put" else None,
+                        sent_sha256=sent.sha256 if kind == "put" else None,
+                    ),
+                )
+        continuation = record.operation_id
+        later = resume_runtime(data, server, clock=Later())
+        report = later.resume(continuation, accept_unverified_read=True)
+        assert report.eligible and report.observation.class_counts.pending_clean == 1
+        made = later.resume(continuation, accept_unverified_read=True, prepare=True)
+        second = saved(data, made.plan_id).plan
+        binding, base = second.continuation, plan.continuation
+        # The source is the continuation; the baseline is still what the root made.
+        assert binding.source_operation_id == continuation
+        assert binding.baseline_operation_id == root
+        assert (binding.baseline_digest, binding.intent_digest) == (
+            base.baseline_digest,
+            base.intent_digest,
+        )
+        assert binding.file_indices == (2,) and binding.remote_present_count == 2
+        with open_existing_store(data[0]) as store:
+            frozen = StateUploads(store).show(operation_id=continuation).operation
+            assert (frozen.status, frozen.reason) == ("unknown", "request_uncertain")
+            gates = FixtureContinuations(store, bound, clock=Later())
+            gates.approve_continuation(
+                second.plan_id,
+                second.digest,
+                second,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+            )
+            assert gates.admit(second.plan_id, second).status == "admitted"
+            validate_uploads(store.connection)
+
+
+def test_two_prepares_at_once_freeze_a_source_once_and_each_save_a_plan(
+    prepared_input, certificates, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    data = _files(prepared_input, 3)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = killed_while_running(data, server, provider, certificates, monkeypatch)
+        with open_existing_store(data[0]) as store:
+            before = StateUploads(store).show(operation_id=source).operation
+
+        def prepare(_):
+            return resume_runtime(data, server, clock=Later()).resume(
+                source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first, second = pool.map(prepare, range(2))
+        assert first.plan_id != second.plan_id
+        with open_existing_store(data[0]) as store:
+            frozen = StateUploads(store).show(operation_id=source).operation
+            assert (frozen.status, frozen.fence) == ("unknown", before.fence + 1)  # frozen once
+            validate_uploads(store.connection)

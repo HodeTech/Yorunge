@@ -383,4 +383,73 @@ def test_a_transport_that_breaks_while_describing_the_dataset_is_an_error_not_a_
         provider.route_table[DETAIL] = Reply(status=200, body=b'{"id":"x"}', truncate_at=3)
         with pytest.raises(YorungeError) as error:
             reported(data, server, source)
-        assert error.value.code.startswith("transport_") or error.value.code == "invalid_response"
+        assert error.value.code == "transport_failed"
+
+
+MEMBERS = f"/api/v1/projects/{SCOPE.project_id}/datasets"
+MALFORMED = {
+    "an html page instead of the dataset": (DETAIL, Reply(status=200, body=b"<html>portal</html>")),
+    "an empty body instead of the dataset": (DETAIL, Reply(status=200, body=b"")),
+    "an array instead of the dataset": (DETAIL, Reply(status=200, body=b"[[],[]]")),
+    "a redirect instead of the dataset": (
+        DETAIL,
+        Reply(status=302, body=b"", headers=(("Location", "/elsewhere"),)),
+    ),
+    "an html page instead of the project's datasets": (MEMBERS, Reply(body=b"<html>portal</html>")),
+    "more datasets than a project's list may hold": (
+        MEMBERS,
+        reply([{"id": str(uuid4())} for _ in range(129)]),
+    ),
+}
+
+
+@pytest.mark.parametrize("answer", MALFORMED.values(), ids=MALFORMED)
+def test_a_malformed_answer_about_the_dataset_is_an_error_not_a_missing_dataset(
+    prepared_input, certificates, answer
+):
+    route, found = answer
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        provider.route_table[route] = found
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        assert error.value.code == "invalid_response"
+
+
+def test_a_well_formed_answer_about_another_dataset_is_a_missing_one(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        other = {**provider.dataset(), "id": "00000000-0000-4000-8000-0000000000bb"}
+        provider.route_table[DETAIL] = reply(other)
+        report = reported(data, server, source)
+        assert report.blockers == ("membership_unobserved",) and report.observation is None
+
+
+def test_a_read_that_fails_for_a_moment_is_asked_again_once(prepared_input, certificates):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        items = f"/api/v1/datasets/{DATASET}/items?limit=128"
+        provider.route_table[items] = Reply(status=503, body=b"{}")
+        before = sum(r.path == items for r in server.requests)
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source)
+        # A transient answer is retried once by the transport; the report is then the error.
+        assert error.value.code == "remote_failed"
+        assert sum(r.path == items for r in server.requests) - before == 2
+
+
+def test_a_folder_that_was_moved_away_is_a_changed_folder_to_the_report_and_unreadable_to_prepare(
+    prepared_input, certificates
+):
+    data, provider = world(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        source = interrupted(data, server)
+        data[1].rename(data[1].parent / "moved-away")
+        report = reported(data, server, source)
+        assert "local_changed" in report.blockers and report.observation is not None
+        with pytest.raises(YorungeError) as error:
+            reported(data, server, source, prepare=True)
+        assert error.value.code == "file_unreadable"

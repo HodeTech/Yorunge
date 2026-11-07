@@ -262,6 +262,17 @@ def context(me_id: str, selected: ProviderProject, scope: UploadScope) -> None:
         raise YorungeError("invalid_response")
 
 
+class DatasetMismatch(YorungeError):
+    """A well-formed answer about another dataset than the one asked for (``invalid_response``).
+
+    Callers that must tell "this is not the dataset" from "this answer is malformed" catch it; to
+    everyone else it is the same closed error as before.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("invalid_response")
+
+
 def _owner(
     result: ProviderDatasetMetadata, scope: UploadScope, parameters: UploadParameters
 ) -> None:
@@ -271,7 +282,7 @@ def _owner(
         or result.name != parameters.name
         or result.modality != parameters.modality
     ):
-        raise YorungeError("invalid_response")
+        raise DatasetMismatch()
 
 
 def created(
@@ -291,7 +302,7 @@ def detail(
 ) -> ProviderDataset:
     result = created(data, scope, parameters, secret)
     if result != expected:
-        raise YorungeError("invalid_response")
+        raise DatasetMismatch()
     return result
 
 
