@@ -110,6 +110,33 @@
    "note": "the stage environment of a continuation: v3 records only, as the original upload's environment is v2's alone"
   },
   {
+   "file": "src/yorunge/adapters/upload_continuation_read.py",
+   "function": "verify_continuation",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the closing read of a continuation writes a v3 proof: v3 records only"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation_start.py",
+   "function": "_initial",
+   "kind": "type_is",
+   "text": "type(plan) is not DatasetContinuationPlanV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the start of a continuation takes a continuation plan alone: any other plan is not its to start"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation_start.py",
+   "function": "_initial",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the operation of a continuation plan is a v3 record"
+  },
+  {
    "file": "src/yorunge/adapters/upload_lineage.py",
    "function": "_source_is_consistent",
    "kind": "isinstance",
@@ -214,8 +241,8 @@
    "kind": "type_is",
    "text": "type(view.operation) is TransferRecordV2",
    "occurrence": 0,
-   "owner": "P02-3y",
-   "note": "the verify step of the original workflow; the closing read of a continuation (items, proof) is P02-3y's"
+   "owner": "v2-only",
+   "note": "the verify step of the original workflow; a continuation's closing read is upload_continuation_read.verify_continuation"
   },
   {
    "file": "src/yorunge/adapters/upload_preparation.py",

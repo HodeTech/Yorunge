@@ -229,6 +229,12 @@ class ContinuationStages:
             if outcome.upload is not None:
                 self.uploads[outcome.upload.context.file_index] = outcome.upload
 
+    async def verify(self) -> TransferRecordV3:
+        """The closing read: the proof of the whole dataset (N files), sent or already there."""
+        from yorunge.adapters.upload_continuation_read import verify_continuation
+
+        return await verify_continuation(self)
+
     def _stop(self, operation_id: str) -> Literal["terminal", "latched", "unlatched"] | None:
         with self.repository() as repository:
             view = repository.show(operation_id=operation_id)

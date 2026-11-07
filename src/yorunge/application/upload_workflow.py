@@ -74,6 +74,14 @@ class ContinuationEnvironment(StageEnvironment, Protocol):
     def validate_uploads(self) -> None: ...
 
 
+class StartEnvironment(ContinuationEnvironment, Protocol):
+    """What the start of a continuation needs beyond its stages: the look it is admitted on and
+    the closing read."""
+
+    async def admission(self) -> UploadCurrentCheck: ...
+    async def verify(self) -> TransferRecordV3: ...
+
+
 Record = TypeVar("Record", TransferRecordV2, TransferRecordV3)
 
 
@@ -283,6 +291,25 @@ async def _send_selected(environment: ContinuationEnvironment) -> TransferRecord
             await _effect(environment, "confirm", index)
     assert environment.record is not None
     return environment.record
+
+
+async def complete_continuation(environment: StartEnvironment) -> TransferRecordV3:
+    """Admit an approved continuation, send its selected files and prove the whole dataset.
+
+    The plan, its approval and the fresh look at the dataset are the caller's; here the operation
+    is admitted on the look the environment takes for its kind of plan (the permission to upload
+    when files are sent, the permission to read when only the dataset is checked), the selected
+    files are sent as ``continue_files`` sends them and the dataset is read once more for the
+    proof. A process that does not own the operation (it exists already, or another admitted it
+    first) sends and proves nothing and returns the record as it stands.
+    """
+
+    async def steps() -> TransferRecordV3:
+        environment.admit(await environment.admission())
+        record = await _send_selected(environment)
+        return await environment.verify() if environment.write_owned else record
+
+    return await _guarded(environment, steps)
 
 
 async def continue_files(environment: ContinuationEnvironment) -> TransferRecordV3:
