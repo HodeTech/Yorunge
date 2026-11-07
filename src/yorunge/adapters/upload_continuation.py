@@ -118,6 +118,28 @@ class ContinuationStages:
         self.memo = check
         return check
 
+    async def admission(self) -> UploadCurrentCheck:
+        """The fresh check a continuation is admitted on: the permission to upload when it sends
+        files, the permission to read the dataset when it sends none and only checks it."""
+        if graph_of(self.plan).files:
+            return await self.current("presign")
+        self.scope()
+        check = await self.reader.current(
+            self.client,
+            self.plan,
+            self.inputs,
+            action="read_created_dataset",
+            expected_dataset=self.baseline,
+        )
+        self.scope()
+        check.require_current(
+            self.plan,
+            now=timestamp(self.runtime.clock.now()),
+            action="read_created_dataset",
+            dataset_id=self.baseline.id,
+        )
+        return check
+
     def admit(self, check: UploadCurrentCheck) -> bool:
         with self.repository() as repository:
             record = repository.admit(self.plan.plan_id, check)

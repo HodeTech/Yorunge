@@ -386,48 +386,21 @@ def test_a_confirm_into_a_dataset_that_was_not_empty_may_mean_either_count(base,
         assert error.value.code == "invalid_response", (base, place, other)
 
 
-@pytest.mark.parametrize("base,place", [(1, 1), (5, 2), (126, 2), (63, 64)])
-def test_the_first_confirm_shows_which_count_the_provider_means(base, place):
-    assert metadata.confirm_ack(confirmed(place), place, SECRET, base=base) == "operation"
-    assert metadata.confirm_ack(confirmed(base + place), place, SECRET, base=base) == "dataset"
-
-
-@pytest.mark.parametrize("base,place", [(1, 2), (5, 2), (3, 64)])
-def test_once_the_meaning_is_known_it_is_the_only_one_accepted(base, place):
+@pytest.mark.parametrize("base,place", [(1, 2), (5, 2), (126, 2), (3, 64)])
+def test_each_confirm_is_judged_on_its_own_not_by_the_meaning_an_earlier_one_showed(base, place):
+    # The count is a secondary alarm and the meaning of a provider's count is unobserved: a confirm
+    # is accepted for either, whatever the one before it reported (the check keeps no state). A
+    # latch on the first confirm's meaning was tried and dropped: it adds nothing the set does not
+    # already refuse, except when the two counts are neighbours (base 1).
     own, total = place, base + place
-    assert metadata.confirm_ack(confirmed(own), place, SECRET, base=base, meaning="operation") == (
-        "operation"
-    )
-    assert metadata.confirm_ack(confirmed(total), place, SECRET, base=base, meaning="dataset") == (
-        "dataset"
-    )
-    # An operation's count followed by the dataset's (someone added an item), and a dataset's count
-    # followed by one that did not move (a confirm that took no effect): neither is accepted.
-    for meaning, reported in (("operation", total), ("dataset", own)):
+    metadata.confirm_ack(confirmed(own), place, SECRET, base=base)
+    metadata.confirm_ack(confirmed(total), place, SECRET, base=base)
+    for neither in (0, own - 1, total + 1, own + total + 1):
+        if neither in (own, total):
+            continue
         with pytest.raises(YorungeError) as error:
-            metadata.confirm_ack(confirmed(reported), place, SECRET, base=base, meaning=meaning)
-        assert error.value.code == "invalid_response", (base, place, meaning, reported)
-
-
-def test_a_confirm_without_a_count_shows_no_meaning_and_settles_none():
-    body = encoded({"created": 1})
-    for meaning in (None, "operation", "dataset"):
-        assert metadata.confirm_ack(body, 2, SECRET, base=5, meaning=meaning) is None
-
-
-@pytest.mark.parametrize("meaning", [None, "operation", "dataset"])
-def test_without_a_base_there_is_one_count_and_no_meaning_to_show(meaning):
-    assert metadata.confirm_ack(confirmed(3), 3, SECRET, meaning=meaning) is None
-    with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(confirmed(4), 3, SECRET, meaning=meaning)
-    assert error.value.code == "invalid_response"
-
-
-@pytest.mark.parametrize("meaning", ["both", "", "Operation", 1, True, ["operation"]])
-def test_a_meaning_the_codec_does_not_know_is_an_invalid_request(meaning):
-    with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(confirmed(2), 2, SECRET, base=5, meaning=meaning)
-    assert error.value.code == "invalid_request"
+            metadata.confirm_ack(confirmed(neither), place, SECRET, base=base)
+        assert error.value.code == "invalid_response"
 
 
 def test_a_base_leaves_everything_else_of_the_confirm_as_strict():

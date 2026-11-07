@@ -331,12 +331,27 @@ class ObservedUploadReader:
         action: UploadPermission,
         expected_dataset: ProviderDataset | None = None,
     ) -> UploadCurrentCheck:
-        """A fresh check for one stage of a plan: an original upload's or a continuation's."""
+        """A fresh check for one stage of a plan: an original upload's or a continuation's.
+
+        A continuation needs one permission and no other: to upload when it sends files, to read
+        the dataset when it sends none and only checks it. An original upload never reads here.
+        """
+        wanted: UploadPermission | None
         if isinstance(plan, DatasetContinuationPlanV3):
             plan = revalidate_input(DatasetContinuationPlanV3, plan)
+            wanted = (
+                "upload_created_dataset"
+                if plan.continuation.file_indices
+                else "read_created_dataset"
+            )
         else:
             plan = revalidate_input(DatasetUploadPlanV2, plan)
-        if type(inputs) is not UploadInputObservation or action == "read_created_dataset":
+            wanted = None
+        if (
+            type(inputs) is not UploadInputObservation
+            or (wanted is None and action == "read_created_dataset")
+            or (wanted is not None and action != wanted)
+        ):
             raise YorungeError("invalid_request")
         if (
             plan.scope != self.scope

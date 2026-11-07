@@ -16,10 +16,11 @@ import pytest
 from yorunge.adapters.upload_continuation import ContinuationStages
 from yorunge.adapters.upload_original import _Environment
 
-SHARED = ("repository", "scope", "_renew_for_probe", "_stop", "failure")
+SHARED = ("repository", "scope", "write_owned", "_renew_for_probe", "arm", "_stop", "failure")
 
 
 def normalised(method) -> str:
+    method = method.fget if isinstance(method, property) else method
     node = ast.parse(textwrap.dedent(inspect.getsource(method))).body[0]
     assert isinstance(node, ast.FunctionDef)
     first = node.body[0]

@@ -1,6 +1,6 @@
 """Closed acknowledgements and item pages; no write replay or remote-byte claims."""
 
-from typing import Literal, TypeVar
+from typing import TypeVar
 
 from yorunge.application import platform_upload_codec as control
 from yorunge.application.storage import validate_object_key
@@ -9,7 +9,6 @@ from yorunge.domain.dataset_manifest import safe_text
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload_items import ProviderItems, ProviderItemsPage
 
-Meaning = Literal["operation", "dataset"]
 _Page = TypeVar("_Page", bound=ProviderItemsPage)
 _ITEM_FIELDS = frozenset(
     {"id", "dataset_id", "original_filename", "file_size_bytes", "sha256_hash"}
@@ -64,59 +63,41 @@ def _put_controls(root: dict[str, object], size: int, key: str) -> None:
             raise YorungeError("invalid_response")
 
 
-def _count(root: dict[str, object], key: str, expected: int, *, required: bool = False) -> None:
+def _count(
+    root: dict[str, object],
+    key: str,
+    expected: int,
+    *,
+    required: bool = False,
+    also: tuple[int, ...] = (),
+) -> None:
     if key not in root and not required:
         return
     value = root.get(key)
-    if type(value) is not int or value != expected:
+    if type(value) is not int or value not in (expected, *also):
         raise YorungeError("invalid_response")
 
 
-def confirm_ack(
-    data: bytes,
-    confirmed_count: int,
-    secret: SecretValue,
-    *,
-    base: int = 0,
-    meaning: Meaning | None = None,
-) -> Meaning | None:
-    """One confirm took effect, once, and the count it reports means what the provider's means.
+def confirm_ack(data: bytes, confirmed_count: int, secret: SecretValue, *, base: int = 0) -> None:
+    """One confirm took effect, once, and the count it reports is one of the two it may mean.
 
     ``confirmed_count`` is the confirm's place in its own operation (k + 1). ``actual_count`` is
-    that (the ``operation`` meaning) or, when the dataset already held ``base`` items before the
-    operation (a continuation: ``plan.continuation.remote_present_count``), the dataset's own
-    count (the ``dataset`` meaning: ``base`` + k + 1). Which one a provider means is not
-    documented for a dataset that is not new, so either is accepted for the first confirm and
-    nothing else is; the meaning it showed is returned and, given back as ``meaning``, it is the
-    only one accepted from then on: a provider counts one way, and a count that changes its
-    meaning in the middle of an operation is the sign of something else (an item added or
-    removed by someone else). Without a base there is a single value, as for an original upload,
-    and nothing to return.
+    that, or, when the dataset already held ``base`` items before the operation (a continuation:
+    ``plan.continuation.remote_present_count``), the dataset's own count (``base`` + k + 1): the
+    provider's meaning is not documented for a dataset that is not new, so either is accepted and
+    nothing else is. Without a base there is a single value, as for an original upload.
     """
     if (
         type(confirmed_count) is not int
         or not 1 <= confirmed_count <= 128
         or type(base) is not int
         or not 0 <= base <= 128 - confirmed_count
-        or meaning not in (None, "operation", "dataset")
     ):
         raise YorungeError("invalid_request")
     root = control._object(control.raw(data, "confirm", secret))
     _count(root, "created", 1, required=True)
-    counts: dict[Meaning, int] = {"operation": confirmed_count, "dataset": base + confirmed_count}
-    if meaning is not None:
-        counts = {meaning: counts[meaning]}
-    shown: Meaning | None = None
-    if "actual_count" in root:
-        value = root["actual_count"]
-        found = [
-            name for name, expected in counts.items() if type(value) is int and value == expected
-        ]
-        if not found:
-            raise YorungeError("invalid_response")
-        shown = None if base == 0 else found[0]
+    _count(root, "actual_count", confirmed_count, also=(base + confirmed_count,))
     _count(root, "batch_duplicates", 0)
-    return shown
 
 
 def _items_page(data: bytes, dataset_id: str, secret: SecretValue, model: type[_Page]) -> _Page:

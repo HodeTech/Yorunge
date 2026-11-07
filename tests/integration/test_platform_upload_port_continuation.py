@@ -288,7 +288,7 @@ def test_a_confirm_that_reports_neither_count_is_not_an_accepted_receipt(
     assert confirm[0].intent_id not in accepted_ids  # ...and no receipt claims it took effect
 
 
-# --- the meaning of the count is settled by the first confirm and kept --------------------------
+# --- each count is judged on its own ------------------------------------------------------------
 
 
 def confirm_of(owned, port, upload, place, arm):
@@ -335,27 +335,27 @@ def two_confirms(lifecycle, certificates, first, second):
 
 @pytest.mark.parametrize(
     "first,second",
-    [(1, 2), (2, 3)],
-    ids=["the operation's counts", "the dataset's counts"],
+    [(1, 2), (2, 3), (1, 3), (2, 2)],
+    ids=[
+        "the operation's counts",
+        "the dataset's counts",
+        "the operation's, then the dataset's",
+        "the dataset's, then the operation's",
+    ],
 )
-def test_a_provider_that_counts_one_way_throughout_is_accepted(
+def test_each_confirm_is_accepted_for_either_count_whatever_the_one_before_reported(
     lifecycle, certificates, first, second
 ):
+    # Base 1: the first confirm may report 1 or 2, the second 2 or 3. The count is a secondary
+    # alarm and what a provider's count means is unobserved, so the two are not tied together.
     outcomes = two_confirms(lifecycle, certificates, first, second)
     assert [o.receipt.result for o in outcomes] == ["accepted", "accepted"]
 
 
-@pytest.mark.parametrize(
-    "first,second",
-    [(1, 3), (2, 2)],
-    ids=["an item came in between", "the total did not move"],
-)
-def test_a_count_that_changes_its_meaning_in_the_middle_of_an_operation_is_refused(
+@pytest.mark.parametrize("first,second", [(1, 1), (2, 4), (1, 0), (2, 128)])
+def test_a_second_count_that_is_neither_of_its_two_is_refused(
     lifecycle, certificates, first, second
 ):
-    # The first confirm settles whether the provider counts the operation's or the dataset's items;
-    # the second reports a number that is right for the other way (base 1: 3 after the operation's
-    # 1, or 2 after the dataset's 2) and is the sign of an item added or a confirm lost.
     outcomes = two_confirms(lifecycle, certificates, first, second)
     assert len(outcomes) == 2 and outcomes[0].receipt.result == "accepted"
     assert isinstance(outcomes[1], YorungeError) and outcomes[1].code == "invalid_response"

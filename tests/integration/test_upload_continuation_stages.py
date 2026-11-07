@@ -17,7 +17,7 @@ import pytest
 
 from tests.contracts.test_platform_upload_codec import SCOPE
 from tests.fixtures.http_server import Reply, TlsServer
-from tests.fixtures.upload_provider import DATASET, UploadProvider, reply
+from tests.fixtures.upload_provider import DATASET, UploadProvider
 from tests.integration.test_upload_http_budget import SECRET
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
@@ -33,6 +33,7 @@ from tests.integration.test_upload_resume_observation import (
 )
 from tests.integration.test_upload_resume_observation import world as three_files
 from tests.integration.test_upload_resume_prepare import prepared, saved
+from tests.integration.test_upload_workflow_kill import _files
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.dataset_files import open_dataset
 from yorunge.adapters.identity import StateCredentialRegistry
@@ -388,11 +389,21 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
     data, provider = three_files(prepared_input)
 
     async def probe(environment):
-        check = await environment.current("presign")
+        check = await environment.admission()  # it sends files: the permission to upload
+        assert check.authorization.action == "upload_created_dataset" and check.upload_observation
         for kind in ("create", "project_link"):
             with pytest.raises(YorungeError) as error:
                 await environment.current(kind)
             assert error.value.code == "invalid_request"
+        with pytest.raises(YorungeError) as error:  # and no other permission is asked for
+            await environment.reader.current(
+                environment.client,
+                environment.plan,
+                environment.inputs,
+                action="read_created_dataset",
+                expected_dataset=environment.baseline,
+            )
+        assert error.value.code == "invalid_request"
         with environment.repository() as repository:
             repository.approve_continuation(
                 environment.plan.plan_id,
@@ -476,12 +487,17 @@ def test_a_failure_says_nothing_of_what_the_provider_answered(prepared_input, ce
 # --- when it is cancelled -----------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "interruption,seen",
+    [(asyncio.CancelledError, asyncio.CancelledError), (KeyboardInterrupt, OperationError)],
+    ids=["a cancelled task", "an interrupt"],
+)
 def test_a_cancellation_before_anything_was_armed_cancels_the_operation_locally(
-    prepared_input, certificates
+    prepared_input, certificates, interruption, seen
 ):
     data, provider = three_files(prepared_input)
 
-    async def cancelled_after_admission(environment):
+    async def interrupted_after_admission(environment):
         check = await environment.current("presign")
         with environment.repository() as repository:
             repository.approve_continuation(
@@ -493,14 +509,17 @@ def test_a_cancellation_before_anything_was_armed_cancels_the_operation_locally(
                 acknowledge_unconfirmed_effects=False,
             )
         environment.admit(check)
-        raise asyncio.CancelledError
+        raise interruption
 
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
         sends = len(provider.events)
-        with pytest.raises(asyncio.CancelledError):  # a cancelled task stays cancelled
-            start(data, server, report.plan_id, algorithm=cancelled_after_admission)
+        with pytest.raises(seen) as error:  # a cancelled task stays cancelled
+            start(data, server, report.plan_id, algorithm=interrupted_after_admission)
         record = operation_of(data, report.plan_id)
+        if seen is OperationError:  # nothing had been sent: cancelled, not uncertain
+            assert error.value.code == "request_cancelled"
+            assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
         assert len(provider.events) == sends and journal(data, report.plan_id).intents == ()
 
@@ -599,50 +618,6 @@ def test_the_dataset_a_continuation_extends_is_its_plans_and_no_other(prepared_i
             start(data, server, report.plan_id, baseline=other)
         assert error.value.code == "invalid_request"
         assert len(server.requests) == before and operation_of(data, report.plan_id) is None
-
-
-# --- the count a confirm reports keeps its meaning through the operation ------------------------
-
-
-def count_by(provider, answers):
-    """The provider takes each item as usual but reports the counts of ``answers`` in turn."""
-    real, given = provider.route_table[CONFIRM], iter(answers)
-
-    def confirm(request, count):
-        real(request, count)
-        return reply({"created": 1, "actual_count": next(given), "batch_duplicates": 0})
-
-    provider.route_table[CONFIRM] = confirm
-
-
-@pytest.mark.parametrize(
-    "answers",
-    [[1, 5], [4, 2]],
-    ids=["an item came in after the first", "the total did not move after the first"],
-)
-def test_a_count_that_changes_its_meaning_stops_the_continuation_and_sends_no_more(
-    prepared_input, certificates, answers
-):
-    # Five of eight files remain; the dataset held three. The first confirm reports 1 (the
-    # operation's own) or 4 (the dataset's); the second reports a number of the other kind.
-    data, provider = five_of_eight(prepared_input)
-    with TlsServer(certificates, provider.routes()) as server:
-        report = planned(data, server, provider)
-        confirms = provider.confirm_calls
-        count_by(provider, answers)
-        with pytest.raises(OperationError) as error:
-            start(data, server, report.plan_id)
-        assert error.value.code == "operation_uncertain"
-        assert error.value.reason_code == "invalid_response"
-        assert provider.confirm_calls == confirms + 2  # the second was sent, none after it
-        record = operation_of(data, report.plan_id)
-        assert (record.status, record.reason) == ("unknown", "request_uncertain")
-        view = journal(data, report.plan_id)
-        done = {r.intent_id for r in view.receipts if r.result == "accepted"}
-        confirm = [i for i in view.intents if i.kind == "confirm"]
-        assert [i.intent_id in done for i in confirm] == [True, False]
-        with open_existing_store(data[0]) as store:
-            validate_uploads(store.connection)
 
 
 # --- time, deadlines and what changes between two stages ----------------------------------------
@@ -830,3 +805,50 @@ def test_a_folder_that_changes_between_two_stages_stops_the_continuation_before_
         assert error.value.code == "operation_uncertain"
         assert error.value.reason_code == "input_changed"
         assert provider.events[sends:] == ["presign"]
+
+
+# --- a continuation that sends nothing only checks the dataset ----------------------------------
+
+
+def test_a_continuation_that_sends_nothing_is_admitted_on_the_permission_to_read(
+    prepared_input, certificates
+):
+    data = _files(prepared_input, 2)  # both files are on the provider: nothing is left to send
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    lose_confirm_of(provider, "two.bin")
+
+    async def check_only(environment):
+        check = await environment.admission()
+        assert check.authorization.action == "read_created_dataset"
+        assert check.upload_observation is None
+        for wrong in ("upload_created_dataset", "create_private_dataset", "link_project"):
+            with pytest.raises(YorungeError) as error:  # the plan needs the one permission only
+                await environment.reader.current(
+                    environment.client,
+                    environment.plan,
+                    environment.inputs,
+                    action=wrong,
+                    expected_dataset=environment.baseline,
+                )
+            assert error.value.code == "invalid_request"
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+        assert environment.admit(check)
+        return await continue_files(environment)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        assert saved(data, report.plan_id).plan.continuation.file_indices == ()
+        sends, before = len(provider.events), len(server.requests)
+        record = start(data, server, report.plan_id, algorithm=check_only)
+        assert record.status == "admitted" and record.dataset_id == DATASET
+        assert provider.events[sends:] == []  # nothing was created, linked, presigned or put
+        assert all(r.method == "GET" for r in server.requests[before:])
+        assert journal(data, report.plan_id).intents == ()
