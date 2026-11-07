@@ -250,9 +250,10 @@ def test_every_site_has_a_known_owner_and_says_why():
 
 
 def test_only_the_slices_still_to_come_own_open_sites():
-    # P02-3g has handled its own; v1-only and v2-only are deliberate, permanent families, and an
-    # unrelated site reads the version of something that is not a family.
-    closed = {"done", "v1-only", "v2-only", "unrelated"}
+    # P02-3g has handled its own; v1-only, v2-only and v3-only are deliberate, permanent families
+    # (a module that serves one family alone), and an unrelated site reads the version of
+    # something that is not a family.
+    closed = {"done", "v1-only", "v2-only", "v3-only", "unrelated"}
     open_owners = {site["owner"] for site in LIST["sites"]} - closed
     assert open_owners <= {"P02-3x", "P02-3y", "P02-3i"}
     assert "P02-3g" not in open_owners

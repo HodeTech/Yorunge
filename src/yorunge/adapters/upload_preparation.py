@@ -51,7 +51,12 @@ from yorunge.domain.dataset_upload_v2 import (
 )
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context, Profile
-from yorunge.domain.upload_costs import UploadCostWork, UploadExecutionWindow, UploadRequestLimits
+from yorunge.domain.upload_costs import (
+    ContinuationRequestLimits,
+    UploadCostWork,
+    UploadExecutionWindow,
+    UploadRequestLimits,
+)
 from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 SessionFactory = Callable[[HttpCredential, UploadBudget], UploadSession]
@@ -232,7 +237,7 @@ class UploadPreparationRuntime:
         self,
         bound: BoundCredential,
         scope: UploadScope,
-        limits: UploadRequestLimits,
+        limits: UploadRequestLimits | ContinuationRequestLimits,
         end: float,
         *,
         seconds: float = PHASE_SECONDS,

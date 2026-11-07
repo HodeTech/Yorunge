@@ -21,6 +21,7 @@ from yorunge.application.response_json import check_response_secrets
 from yorunge.application.upload_budget import UploadBudget
 from yorunge.application.upload_inputs import revalidate_input
 from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_upload import (
     UploadParameters,
     UploadPermission,
@@ -324,13 +325,17 @@ class ObservedUploadReader:
     async def current(
         self,
         client: UploadHttpxTransport,
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         inputs: UploadInputObservation,
         *,
         action: UploadPermission,
         expected_dataset: ProviderDataset | None = None,
     ) -> UploadCurrentCheck:
-        plan = revalidate_input(DatasetUploadPlanV2, plan)
+        """A fresh check for one stage of a plan: an original upload's or a continuation's."""
+        if isinstance(plan, DatasetContinuationPlanV3):
+            plan = revalidate_input(DatasetContinuationPlanV3, plan)
+        else:
+            plan = revalidate_input(DatasetUploadPlanV2, plan)
         if type(inputs) is not UploadInputObservation or action == "read_created_dataset":
             raise YorungeError("invalid_request")
         if (

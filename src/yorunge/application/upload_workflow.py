@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_descriptors import PresignedUpload
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
+from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError
 from yorunge.domain.upload_checks import UploadCurrentCheck
@@ -29,7 +31,19 @@ class PreparedEffect(Protocol):
     async def aclose(self) -> None: ...
 
 
-class OriginalEnvironment(Protocol):
+class StageEnvironment(Protocol):
+    """What one effectful stage needs, whichever family of plan it belongs to."""
+
+    async def current(self, kind: StageKind) -> UploadCurrentCheck: ...
+    def prepare(self, kind: StageKind, index: int | None = None) -> PreparedEffect: ...
+    def arm(
+        self, check: UploadCurrentCheck, kind: StageKind, index: int | None = None
+    ) -> UploadArm: ...
+    def publish(self, outcome: EffectOutcome) -> None: ...
+    def failure(self, error: BaseException) -> OperationError | None: ...
+
+
+class OriginalEnvironment(StageEnvironment, Protocol):
     @property
     def plan(self) -> DatasetUploadPlanV2: ...
 
@@ -39,22 +53,34 @@ class OriginalEnvironment(Protocol):
     @property
     def write_owned(self) -> bool: ...
 
-    async def current(self, kind: StageKind) -> UploadCurrentCheck: ...
     def admit(self, check: UploadCurrentCheck) -> bool: ...
-    def prepare(self, kind: StageKind, index: int | None = None) -> PreparedEffect: ...
-    def arm(
-        self, check: UploadCurrentCheck, kind: StageKind, index: int | None = None
-    ) -> UploadArm: ...
-    def publish(self, outcome: EffectOutcome) -> None: ...
     def validate_uploads(self) -> None: ...
     async def verify(self) -> TransferRecordV2: ...
-    def failure(self, error: BaseException) -> OperationError | None: ...
+
+
+class ContinuationEnvironment(StageEnvironment, Protocol):
+    """An admitted continuation: its selected files only, never a create or a link."""
+
+    @property
+    def plan(self) -> DatasetContinuationPlanV3: ...
+
+    @property
+    def record(self) -> TransferRecordV3 | None: ...
+
+    @property
+    def write_owned(self) -> bool: ...
+
+    def admit(self, check: UploadCurrentCheck) -> bool: ...
+    def validate_uploads(self) -> None: ...
+
+
+Record = TypeVar("Record", TransferRecordV2, TransferRecordV3)
 
 
 async def _guarded(
-    environment: OriginalEnvironment,
-    steps: Callable[[], Awaitable[TransferRecordV2]],
-) -> TransferRecordV2:
+    environment: StageEnvironment,
+    steps: Callable[[], Awaitable[Record]],
+) -> Record:
     failure: OperationError | None = None
     try:
         return await steps()
@@ -70,9 +96,7 @@ async def _guarded(
     raise failure
 
 
-async def _effect(
-    environment: OriginalEnvironment, kind: StageKind, index: int | None = None
-) -> None:
+async def _effect(environment: StageEnvironment, kind: StageKind, index: int | None = None) -> None:
     check = await environment.current(kind)
     call = environment.prepare(kind, index)
     try:
@@ -128,7 +152,7 @@ def _prefer_failure(
 
 
 def _publish_completed(
-    environment: OriginalEnvironment,
+    environment: StageEnvironment,
     tasks: list[asyncio.Task[EffectOutcome]],
     attempted: set[asyncio.Task[EffectOutcome]],
 ) -> BaseException | None:
@@ -147,7 +171,7 @@ def _publish_completed(
 
 
 async def _drain(
-    environment: OriginalEnvironment,
+    environment: StageEnvironment,
     tasks: list[asyncio.Task[EffectOutcome]],
     attempted: set[asyncio.Task[EffectOutcome]] | None = None,
 ) -> None:
@@ -164,7 +188,7 @@ async def _drain(
 
 
 async def _cleanup_batch(
-    environment: OriginalEnvironment,
+    environment: StageEnvironment,
     calls: list[PreparedEffect],
     tasks: list[asyncio.Task[EffectOutcome]],
     attempted: set[asyncio.Task[EffectOutcome]],
@@ -189,7 +213,7 @@ async def _cleanup_batch(
     return failure
 
 
-async def _put_batch(environment: OriginalEnvironment, indices: Sequence[int]) -> None:
+async def _put_batch(environment: StageEnvironment, indices: Sequence[int]) -> None:
     calls: list[PreparedEffect] = []
     tasks: list[asyncio.Task[EffectOutcome]] = []
     attempted: set[asyncio.Task[EffectOutcome]] = set()
@@ -240,3 +264,31 @@ async def complete_original(environment: OriginalEnvironment) -> TransferRecordV
         return await environment.verify() if environment.write_owned else record
 
     return await _guarded(environment, steps)
+
+
+async def _send_selected(environment: ContinuationEnvironment) -> TransferRecordV3:
+    record = environment.record
+    assert record is not None
+    if not environment.write_owned:
+        return record
+    graph = graph_of(environment.plan)
+    for index in graph.files:
+        await _effect(environment, "presign", index)
+    if graph.files:  # a continuation that sends nothing has nothing to validate
+        environment.validate_uploads()
+    for indices in graph.put_batches():
+        await _put_batch(environment, indices)
+        for index in indices:
+            await _effect(environment, "confirm", index)
+    assert environment.record is not None
+    return environment.record
+
+
+async def continue_files(environment: ContinuationEnvironment) -> TransferRecordV3:
+    """Send what an admitted continuation selected, the way an original upload sends its files.
+
+    Every selected file is presigned, then put two at a time and confirmed one by one, each stage
+    once and under its own committed permit; nothing is created or linked, and a continuation that
+    selected no file sends nothing. Admission and the closing read belong to the caller.
+    """
+    return await _guarded(environment, lambda: _send_selected(environment))

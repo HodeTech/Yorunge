@@ -3,6 +3,7 @@
   "done",
   "v1-only",
   "v2-only",
+  "v3-only",
   "P02-3x",
   "P02-3y",
   "P02-3i",
@@ -26,6 +27,24 @@
    "occurrence": 0,
    "owner": "unrelated",
    "note": "a capability-expiry state migration reads its own source version, not an upload family's"
+  },
+  {
+   "file": "src/yorunge/adapters/platform_upload_port.py",
+   "function": "ObservedUploadPort.__init__",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the port sends an original upload's effects or a continuation's selected files; a continuation has no create or link, and its confirm counts from what the dataset already held"
+  },
+  {
+   "file": "src/yorunge/adapters/platform_upload_reader.py",
+   "function": "ObservedUploadReader.current",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the fresh check of a stage is taken for either family of plan"
   },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
@@ -53,6 +72,42 @@
    "occurrence": 0,
    "owner": "done",
    "note": "the admission policy of the source's plan: a v1 plan has none (verified only), v2 and v3 name theirs"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation.py",
+   "function": "ContinuationStages._renew_for_probe",
+   "kind": "type_is",
+   "text": "type(current) is TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the stage environment of a continuation: v3 records only, as the original upload's environment is v2's alone"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation.py",
+   "function": "ContinuationStages.admit",
+   "kind": "type_is",
+   "text": "type(record) is not TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the stage environment of a continuation: v3 records only, as the original upload's environment is v2's alone"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation.py",
+   "function": "ContinuationStages.arm",
+   "kind": "type_is",
+   "text": "type(record) is TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the stage environment of a continuation: v3 records only, as the original upload's environment is v2's alone"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation.py",
+   "function": "ContinuationStages.publish",
+   "kind": "type_is",
+   "text": "type(view.operation) is TransferRecordV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the stage environment of a continuation: v3 records only, as the original upload's environment is v2's alone"
   },
   {
    "file": "src/yorunge/adapters/upload_lineage.py",

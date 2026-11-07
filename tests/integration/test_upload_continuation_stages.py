@@ -1,0 +1,395 @@
+"""A continuation's stages over a real interrupted upload: real files, store, TLS provider.
+
+The source is made by the product itself (the original workflow stops at the provider's lost
+answer), the plan by the producer of P02-3h, and the stages are run by the environment of P02-3w.
+What the start of P02-3y will do around them (approve, admit) is done here by a small algorithm of
+the test: it takes the stage's fresh check, approves and admits with it, and sends the files.
+"""
+
+from pathlib import Path
+
+import pytest
+
+from tests.contracts.test_platform_upload_codec import SCOPE
+from tests.fixtures.http_server import Reply, TlsServer
+from tests.fixtures.upload_provider import DATASET, UploadProvider
+from tests.integration.test_upload_original import factory
+from tests.integration.test_upload_preparation import prepared_input as prepared_input
+from tests.integration.test_upload_resume_observation import (
+    certificates as certificates,
+)
+from tests.integration.test_upload_resume_observation import (
+    interrupted,
+    lose_confirm_of,
+)
+from tests.integration.test_upload_resume_observation import (
+    loopback_only as loopback_only,
+)
+from tests.integration.test_upload_resume_observation import world as three_files
+from tests.integration.test_upload_resume_prepare import prepared, saved
+from yorunge.adapters.capability_cache import StateCache
+from yorunge.adapters.dataset_files import open_dataset
+from yorunge.adapters.state import open_existing_store
+from yorunge.adapters.upload_continuation import run_stages
+from yorunge.adapters.upload_input_files import capture_upload_input
+from yorunge.adapters.upload_repository import StateUploads
+from yorunge.adapters.upload_resume import UploadResumeRuntime
+from yorunge.adapters.upload_store import read_manifest, validate_uploads
+from yorunge.application.datasets import DatasetBudget
+from yorunge.application.upload_workflow import continue_files
+from yorunge.domain.errors import OperationError, YorungeError
+
+PRESIGN = f"/api/v1/datasets/{DATASET}/upload/presign"
+CONFIRM = f"/api/v1/datasets/{DATASET}/upload/confirm"
+
+
+def eight_files(data):
+    """Eight files of distinct content: ``f01.bin`` to ``f07.bin`` and the fixture's ``one.bin``."""
+    for number in range(1, 8):
+        (data[1] / f"f{number:02d}.bin").write_bytes(f"distinct content of file {number}".encode())
+    with open_dataset(data[1], DatasetBudget()) as tree:
+        manifest = tree.scan()
+    return (*data[:2], manifest, *data[3:])
+
+
+def five_of_eight(prepared_input):
+    """Files 0 and 1 are confirmed, file 2 took its confirm without an answer: 3 to 7 remain."""
+    data = eight_files(prepared_input)
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id, represign=True)
+    lose_confirm_of(provider, "f03.bin")
+    return data, provider
+
+
+async def approve_admit_continue(environment):
+    """The start of a continuation, as P02-3y will compose it, reduced to what the stages need."""
+    check = await environment.current("presign")
+    with environment.repository() as repository:
+        repository.approve_continuation(
+            environment.plan.plan_id,
+            environment.plan.digest,
+            check,
+            acknowledge_unverified_authority=True,
+            acknowledge_unpriced_cost=True,
+            acknowledge_unconfirmed_effects=bool(environment.plan.continuation.uncertain_indices),
+        )
+    environment.admit(check)
+    return await continue_files(environment)
+
+
+def start(data, server, plan_id, *, budgets=None, clock=None, algorithm=approve_admit_continue):
+    """The stages of a saved continuation plan over TLS; the operation's record at the end."""
+    state, _, _, context, profile = data
+    runtime = UploadResumeRuntime(
+        context, profile, state, session_factory=factory(server, budgets), clock=clock
+    )
+    with open_existing_store(state) as store:
+        plan = StateUploads(store).show(plan_id=plan_id).plan
+        manifest = read_manifest(store.connection, plan)
+        stamp = StateCache(store, runtime.clock).stamp()
+        source = StateUploads(store).resume_source(plan.continuation.source_operation_id, stamp)
+    with runtime._invocation() as end:
+        bound, scope = runtime._bind(plan.scope.owner)
+        assert scope == plan.scope
+        inputs = capture_upload_input(
+            Path(plan.root.anchor),
+            manifest,
+            bound.credential.secret,
+            end=end,
+            expected_root=plan.root,
+        )
+        return run_stages(runtime, plan, bound, inputs, source.baseline, end, algorithm)
+
+
+def planned(data, server, provider, **flags):
+    """An interrupted upload and the plan that continues it; the provider will presign again.
+
+    The original upload presigned every file before it stopped, so a continuation presigns the
+    files it sends a second time, as a new operation: the fixture provider must allow it.
+    """
+    source = interrupted(data, server)
+    report = prepared(data, server, source, **flags)
+    provider.represign = True
+    return report
+
+
+def operation_of(data, plan_id):
+    with open_existing_store(data[0]) as store:
+        return StateUploads(store).show(plan_id=plan_id).operation
+
+
+def journal(data, plan_id):
+    with open_existing_store(data[0]) as store:
+        return StateUploads(store).show(plan_id=plan_id)
+
+
+# --- what it sends ------------------------------------------------------------------------------
+
+
+def test_a_continuation_sends_the_file_that_was_left_and_creates_and_links_nothing(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        events, created = list(provider.events), (provider.create_calls, provider.link_calls)
+        before, budgets = len(server.requests), []
+        record = start(data, server, report.plan_id, budgets=budgets)
+        assert record.status == "running" and record.dataset_id == DATASET
+        assert provider.events[len(events) :] == ["presign", "put", "confirm"]
+        assert (provider.create_calls, provider.link_calls) == created  # the original's alone
+        sent = [r for r in server.requests[before:] if r.method != "GET"]
+        assert [r.method for r in sent] == ["POST", "PUT", "POST"]
+        counters = budgets[0].snapshot()
+        assert counters.effect_attempts == 3  # three per file, none for create or link
+        assert (counters.create_requests, counters.project_link_requests) == (0, 0)
+        assert (counters.presign_requests, counters.put_requests, counters.confirm_requests) == (
+            1,
+            1,
+            1,
+        )
+        assert counters.upload_bytes == len(b"different") and counters.response_pending == 0
+        view = journal(data, report.plan_id)
+        assert len(view.intents) == len(view.receipts) == 3
+        assert all(receipt.result == "accepted" for receipt in view.receipts)
+        assert view.verification is None  # the closing read is another card's
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+        assert set(provider.confirmed) == {f.path for f in data[2].files}
+
+
+@pytest.mark.parametrize("counts", ["the dataset", "the operation"])
+def test_five_of_eight_files_are_presigned_first_put_two_at_a_time_and_confirmed_in_order(
+    prepared_input, certificates, counts
+):
+    data, provider = five_of_eight(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        plan = saved(data, report.plan_id).plan
+        assert plan.continuation.file_indices == (3, 4, 5, 6, 7)
+        assert plan.continuation.remote_present_count == 3
+        events, budgets = len(provider.events), []
+        if counts == "the operation":
+            provider.count_origin = provider.confirm_calls  # each confirm reports k + 1
+        before = len(server.requests)
+        record = start(data, server, report.plan_id, budgets=budgets)
+        assert record.status == "running"
+        assert provider.events[events:] == [
+            *["presign"] * 5,
+            *["put", "put", "confirm", "confirm"],
+            *["put", "put", "confirm", "confirm"],
+            *["put", "confirm"],
+        ]
+        names = [f.path for f in data[2].files]
+        assert list(provider.confirmed)[3:] == [names[i] for i in (3, 4, 5, 6, 7)]  # in order
+        counters = budgets[0].snapshot()
+        assert counters.effect_attempts == 15 == 3 * len(plan.continuation.file_indices)
+        assert counters.upload_bytes == sum(data[2].files[i].size for i in (3, 4, 5, 6, 7))
+        assert (counters.create_requests, counters.project_link_requests) == (0, 0)
+        sent = [r for r in server.requests[before:] if r.method != "GET"]
+        assert len(sent) == 15 and not any(r.path.endswith("/datasets") for r in sent)
+        view = journal(data, report.plan_id)
+        assert len(view.intents) == len(view.receipts) == 15
+
+
+def test_a_confirm_that_counts_neither_way_makes_the_operation_uncertain_and_is_not_repeated(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        provider.wrong_confirm_count = True
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        assert provider.confirm_calls == 3  # the two of the original and this one: no replay
+        record = operation_of(data, report.plan_id)
+        assert error.value.operation_id == record.operation_id
+        assert (record.status, record.reason) == ("unknown", "request_uncertain")
+        view = journal(data, report.plan_id)
+        confirm = [i for i in view.intents if i.kind == "confirm"]
+        done = {r.intent_id for r in view.receipts if r.result == "accepted"}
+        assert len(confirm) == 1 and confirm[0].intent_id not in done
+
+
+def test_a_file_whose_confirm_had_no_answer_is_sent_again_and_presigned_again(
+    prepared_input, certificates
+):
+    data = three_files(prepared_input)[0]
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    answering = provider.confirm
+    lose_confirm_of(provider, "two.bin", remembered=False)  # the confirm never took effect
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider, accept_unconfirmed_effects=True)
+        provider.route_table[CONFIRM] = answering  # the provider answers again
+        plan = saved(data, report.plan_id).plan
+        assert plan.continuation.uncertain_indices == (1,) and plan.continuation.file_indices == (
+            1,
+            2,
+        )
+        presigns = provider.presign_calls
+        record = start(data, server, report.plan_id)
+        assert record.status == "running"
+        assert provider.presign_calls == presigns + 2  # two.bin presigned a second time
+        assert set(provider.confirmed) == {f.path for f in data[2].files}
+        assert provider.confirm_calls == 3  # one.bin of the original, then two.bin and the last
+
+
+# --- when a stage fails -------------------------------------------------------------------------
+
+FAILURES = {
+    "unauthorized": (401, "remote_access_denied"),
+    "forbidden": (403, "remote_access_denied"),
+    "rate limited": (429, "remote_rate_limited"),
+    "server error": (500, "remote_failed"),
+}
+
+
+def break_stage(provider, stage, reply):
+    """Make the provider answer ``stage`` of the last file with ``reply`` (its first request)."""
+    if stage == "presign":
+        provider.route_table[PRESIGN] = reply
+    elif stage == "confirm":
+        provider.route_table[CONFIRM] = reply
+    else:
+
+        def after(name):
+            row = provider.presigns[name]
+            provider.route_table["/api/v1" + row["upload_url"]] = reply
+
+        provider.after_presign = after
+
+
+@pytest.mark.parametrize("failure", [*FAILURES, "lost answer"])
+@pytest.mark.parametrize("stage", ["presign", "put", "confirm"])
+def test_a_stage_that_fails_leaves_the_operation_uncertain_and_is_sent_once(
+    prepared_input, certificates, stage, failure
+):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        if failure == "lost answer":
+            reply = Reply(status=200, body=b'{"ok":true}', truncate_at=3)
+        else:
+            reply = Reply(status=FAILURES[failure][0], body=b"{}")
+        break_stage(provider, stage, reply)
+        before = len(server.requests)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id)
+        assert error.value.code == "operation_uncertain"
+        record = operation_of(data, report.plan_id)
+        assert error.value.operation_id == record.operation_id
+        state = (record.status, record.reason, record.lease)
+        assert state == ("unknown", "request_uncertain", None)
+        kinds = [f"{r.method} {r.path.split('?')[0].rsplit('/', 1)[-1]}" for r in server.requests]
+        sent = [k for k in kinds[before:] if k.split()[0] != "GET"]
+        wanted = {"presign": ["POST presign"], "put": ["POST presign", "PUT put"]}
+        assert sent == wanted.get(stage, ["POST presign", "PUT put", "POST confirm"])
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+        view = journal(data, report.plan_id)
+        accepted = {r.intent_id for r in view.receipts if r.result == "accepted"}
+        last = view.intents[-1]
+        assert last.kind == stage and last.intent_id not in accepted  # armed, never claimed done
+
+
+def test_a_fresh_check_that_fails_before_any_stage_is_a_local_cancellation_not_an_uncertainty(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+    reads = "/api/v1/auth/me"
+
+    async def admit_then_lose_the_provider(environment):
+        check = await environment.current("presign")
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+        environment.admit(check)
+        environment.memo = None  # the next stage must look again
+        provider.route_table[reads] = Reply(status=503, body=b"{}")
+        return await continue_files(environment)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        with pytest.raises(OperationError) as error:
+            start(data, server, report.plan_id, algorithm=admit_then_lose_the_provider)
+        assert error.value.code == "remote_failed"  # the read's own code, not an uncertainty
+        record = operation_of(data, report.plan_id)
+        assert error.value.operation_id == record.operation_id
+        assert (record.status, record.reason) == ("cancelled", "local_cancelled")
+        assert len(provider.events) == sends  # nothing was sent
+        assert journal(data, report.plan_id).intents == ()
+
+
+def test_a_process_that_does_not_own_the_admission_sends_nothing(prepared_input, certificates):
+    data, provider = three_files(prepared_input)
+
+    async def lost_the_race(environment):
+        check = await environment.current("presign")
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+            repository.admit(environment.plan.plan_id, check)  # another process admits first
+        assert environment.admit(check) is False  # its owner ids cannot make this one's access
+        assert not environment.write_owned
+        return await continue_files(environment)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        record = start(data, server, report.plan_id, algorithm=lost_the_race)
+        assert record.status == "admitted" and len(provider.events) == sends
+        assert journal(data, report.plan_id).intents == ()
+
+
+def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_not_given(
+    prepared_input, certificates
+):
+    data, provider = three_files(prepared_input)
+
+    async def probe(environment):
+        check = await environment.current("presign")
+        for kind in ("create", "project_link"):
+            with pytest.raises(YorungeError) as error:
+                await environment.current(kind)
+            assert error.value.code == "invalid_request"
+        with environment.repository() as repository:
+            repository.approve_continuation(
+                environment.plan.plan_id,
+                environment.plan.digest,
+                check,
+                acknowledge_unverified_authority=True,
+                acknowledge_unpriced_cost=True,
+                acknowledge_unconfirmed_effects=False,
+            )
+        environment.admit(check)
+        for kind in ("create", "project_link"):
+            with pytest.raises(YorungeError) as error:
+                environment.prepare(kind)
+            assert error.value.code == "invalid_request"
+        for index in (0, 1, 7, None):  # only file 2 was selected
+            with pytest.raises(YorungeError) as error:
+                environment.prepare("presign", index)
+            assert error.value.code == "invalid_request"
+        with pytest.raises(YorungeError) as error:  # a put before its presign has no upload
+            environment.prepare("put", 2)
+        assert error.value.code == "invalid_response"
+        return environment.record
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        sends = len(provider.events)
+        record = start(data, server, report.plan_id, algorithm=probe)
+        assert record.status == "admitted" and len(provider.events) == sends

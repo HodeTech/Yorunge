@@ -35,6 +35,11 @@ class UploadProvider:
     upload_allowed: bool = True
     fail_put_name: str | None = None
     wrong_confirm_count: bool = False
+    # Confirms handled before the count starts: the confirm reports the dataset's own count when 0
+    # (what every confirm counts so far), and the operation's own count from this origin on.
+    count_origin: int = 0
+    # A file may be presigned again by a later operation (a continuation of an unconfirmed one).
+    represign: bool = False
     after_put: Callable[[str], None] | None = None
     after_presign: Callable[[str], None] | None = None
     presign_calls: int = 0
@@ -117,7 +122,7 @@ class UploadProvider:
             self.on_request()
         assert request.method == "POST" and self.created and self.linked
         rows = json.loads(request.body)["files"]
-        assert len(rows) == 1 and rows[0]["filename"] not in self.presigns
+        assert len(rows) == 1 and (self.represign or rows[0]["filename"] not in self.presigns)
         self.presign_calls += 1
         self.events.append("presign")
         row = dict(rows[0])
@@ -178,7 +183,7 @@ class UploadProvider:
             "file_size_bytes": item["file_size"],
             "sha256_hash": item["sha256_hash"],
         }
-        actual = self.confirm_calls + int(self.wrong_confirm_count)
+        actual = self.confirm_calls - self.count_origin + int(self.wrong_confirm_count)
         return reply({"created": 1, "actual_count": actual, "batch_duplicates": 0})
 
     def role(self, request, count):

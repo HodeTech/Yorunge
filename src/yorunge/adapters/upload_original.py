@@ -45,6 +45,7 @@ from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
+from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload import COMMIT_MARGIN_SECONDS, UploadPermission
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
@@ -99,7 +100,9 @@ def _confirmed_indices(view: VersionedTransferView) -> tuple[int, ...]:
     return tuple(indices)
 
 
-def _failure_identity(record: TransferRecordV2 | None, error: BaseException) -> str | None:
+def _failure_identity(
+    record: TransferRecordV2 | TransferRecordV3 | None, error: BaseException
+) -> str | None:
     operation_id = record.operation_id if record is not None else None
     if isinstance(error, OperationError) and error.operation_id is not None:
         operation_id = error.operation_id
