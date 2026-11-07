@@ -154,6 +154,23 @@ NEEDED = (
 )
 
 
+def test_an_original_plan_is_not_approved_as_a_continuation(lifecycle):
+    root_plan = lifecycle.root["plan"]
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        before = rows(store)
+        repository = lifecycle.repository(store)
+        plan = lifecycle.plan(1)
+        assert (
+            code_of(
+                lambda: repository.approve_continuation(
+                    root_plan["plan_id"], root_plan["digest"], plan, **ACKNOWLEDGE_ALL
+                )
+            )
+            == "upload_plan_not_valid"
+        )
+        assert rows(store) == before
+
+
 @pytest.mark.parametrize("missing", NEEDED)
 def test_an_approval_needs_each_acknowledgement_the_plan_requires(lifecycle, missing):
     with open_store(lifecycle.root_dir, timeout=60) as store:

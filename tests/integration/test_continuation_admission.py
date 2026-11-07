@@ -64,7 +64,7 @@ def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(
         assert type(record) is TransferRecordV3
         assert (record.status, record.revision, record.fence) == ("admitted", 1, 1)
         assert record.workflow_latched is False and record.reason is None
-        assert record.verification_only is False
+        assert record.verification_only is False and record.clock_anomaly is False
         assert record.dataset_id == plan.continuation.dataset_id
         assert (
             record.intent_digest
@@ -412,7 +412,7 @@ def test_a_descendant_whose_approval_ran_out_is_cancelled_for_that_reason(lifecy
         sibling.record = {**sibling.record, "approval": sibling.approval}
         install(store, sibling)
         plan, repository = ready(lifecycle, store, 2)
-        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+        lifecycle.clock.value = instant(over)  # the very instant the approval runs out
         repository.admit(plan.plan_id, plan)
         stale = repository.show(operation_id=FIRST)
         assert (stale.operation.status, stale.operation.reason) == ("cancelled", "approval_expired")

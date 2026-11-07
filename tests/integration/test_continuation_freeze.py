@@ -126,3 +126,25 @@ def test_freezing_leaves_a_descendant_whose_lease_lives(lifecycle):
         before = dump(store)
         repository.freeze_source(lifecycle.root["record"]["operation_id"])
         assert dump(store) == before
+
+
+@pytest.mark.parametrize("status", ["running", "unknown"])
+def test_freezing_leaves_a_descendant_that_sent_something_alone_whatever_its_lease(
+    lifecycle, status
+):
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        install(store, build(lifecycle.root, 1, status="unknown", intents=5, acknowledged=4))
+        install(
+            store,
+            build(
+                lifecycle.root, 2, source=FIRST, status=status,
+                indices=(2,), uncertain=(), intents=3, acknowledged=2,
+            ),
+        )  # fmt: skip
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")  # every lease is over
+        before = dump(store)
+        # The source is unknown already: nothing is frozen, and a descendant that has sent
+        # something is not an admitted one that never will, so it is not cancelled.
+        lifecycle.repository(store).freeze_source(FIRST)
+        assert dump(store) == before
+        validate_uploads(store.connection)

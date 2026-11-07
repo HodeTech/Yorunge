@@ -4,13 +4,14 @@ from datetime import timedelta
 
 import pytest
 
-from tests.fixtures.continuation_history import DATASET_ID, FIRST, build, install
+from tests.fixtures.continuation_history import DATASET_ID, FIRST, GRAPH, build, canon, install
 from tests.fixtures.continuation_lifecycle import proof_of, read_check
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_projection import summary
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view, validate_uploads
 from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.dataset_transfer_v2 import TransferVerificationV2
 from yorunge.domain.dataset_transfer_v3 import TransferControlV3, TransferVerificationV3
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.upload_versions import proof_digest
@@ -142,6 +143,37 @@ def test_a_continuation_with_an_unanswered_stage_is_not_verified_and_becomes_unk
         view = repository.show(operation_id=record.operation_id)
         assert (view.operation.status, view.operation.reason) == ("unknown", "request_uncertain")
         assert view.verification is None
+        # Asked again, it is no more and no less uncertain: no timeout, and nothing is written.
+        before = dump(store)
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, proof, authorization=check
+                )
+            )
+            == "operation_uncertain"
+        )
+        assert dump(store) == before
+
+
+def test_a_proof_of_another_family_than_the_record_is_refused_before_anything_is_written(
+    lifecycle,
+):
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    check = read_check(plan, lifecycle.clock)
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
+        before = dump(store)
+        old_family = TransferVerificationV2.model_validate_json(canon(GRAPH["verification"]))
+        assert (
+            code_of(
+                lambda: repository.verified(
+                    record.operation_id, record.lease, old_family, authorization=check
+                )
+            )
+            == "upload_plan_not_valid"
+        )
+        assert dump(store) == before
 
 
 def test_the_proof_must_be_of_the_plans_dataset_and_cover_the_whole_manifest(lifecycle):
@@ -266,14 +298,25 @@ def test_a_proof_that_comes_too_late_cancels_a_check_only_continuation_without_u
 def test_a_failed_read_of_a_check_only_continuation_is_reported_by_its_owner_only(lifecycle):
     plan, record = lifecycle.admitted(indices=(), uncertain=())
     failure = read_check(plan, lifecycle.clock, error="remote_failed")
+    stranger = record.lease.model_copy(update={"owner_id": "00000000-0000-4000-8000-0000000000aa"})
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
         before = dump(store)
+        for owner, code in ((None, "operation_conflict"), (stranger, "operation_lease_lost")):
+            assert (
+                code_of(
+                    lambda owner=owner: repository.read_failed(record.operation_id, owner, failure)
+                )
+                == code
+            )
+            assert dump(store) == before  # a caller without the lease cannot cancel the operation
+        lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")  # its own lease is over
+        late = read_check(plan, lifecycle.clock, error="remote_failed")
         assert (
-            code_of(lambda: repository.read_failed(record.operation_id, None, failure))
-            == "operation_conflict"
+            code_of(lambda: repository.read_failed(record.operation_id, record.lease, late))
+            == "operation_lease_lost"
         )
-        assert dump(store) == before  # a caller without the lease cannot cancel the operation
+        assert dump(store) == before  # the lease cleanup, not this caller, cancels it
 
 
 def test_a_late_proof_whose_marker_cannot_be_written_is_a_timeout_and_never_uncertain(

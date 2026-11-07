@@ -49,7 +49,10 @@ ACKNOWLEDGE_ALL = {
 
 
 def first_action(plan):
-    """What a continuation needs first: to upload, or (sending nothing) to read the dataset."""
+    """What a continuation needs first: to upload, or (sending nothing) to read the dataset.
+
+    Deliberately not the product's ``continuation_action``: the oracle must not share its code.
+    """
     action = "upload_created_dataset" if plan.continuation.file_indices else "read_created_dataset"
     return action, plan.continuation.dataset_id
 
