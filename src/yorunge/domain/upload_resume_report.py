@@ -26,6 +26,7 @@ from yorunge.domain.dataset_upload import (
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_FILES,
     MAX_UPLOAD_PLAN_BYTES,
+    PLAN_ALLOWANCE_BYTES,
     UploadWire,
     manifest_reference,
     provider_uuid,
@@ -68,8 +69,6 @@ JOURNAL_BLOCKERS = frozenset(
 INVENTORY_BLOCKERS = frozenset(
     {"drift_missing", "conflict", "extra_remote", "inventory_unreliable", "inventory_too_large"}
 )
-# Every plan adds at least the flat allowance the capacity check counts per plan.
-PLAN_ALLOWANCE_BYTES = 16 * 1024
 
 
 def continuation_added_payload_bytes(

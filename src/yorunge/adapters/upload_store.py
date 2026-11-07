@@ -42,6 +42,7 @@ from yorunge.domain.dataset_upload import (
     MAX_TRANSFER_OPERATIONS,
     MAX_TRANSFER_PAYLOAD_BYTES,
     MAX_TRANSFER_PLANS,
+    PLAN_ALLOWANCE_BYTES,
     DatasetUploadApproval,
     DatasetUploadPlan,
     UploadWire,
@@ -810,7 +811,7 @@ def capacity(connection: sqlite3.Connection) -> tuple[int, int, int, int]:
             )
         )
         + reserved
-        + plans * 16 * 1024
+        + plans * PLAN_ALLOWANCE_BYTES
     )
     return plans, operations, files, used
 

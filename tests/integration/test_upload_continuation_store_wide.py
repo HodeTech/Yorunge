@@ -28,6 +28,7 @@ from tests.fixtures.continuation_history import (
     install,
     install_root,
     reservation,
+    uuid,
     world,
 )
 from yorunge import api
@@ -141,6 +142,11 @@ def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path)
             store.connection
         )
         assert used.plans == used.operations == 3 and used.files == 3 * len(FILES)
+    # A plan that was never admitted is a plan and no operation: the two counters part.
+    prepared = {"status": "admitted", "plan_only": True}
+    with world(tmp_path / "apart", live(), prepared) as (store, _, _):
+        used = quota_used(store.connection)
+        assert (used.plans, used.operations, used.files) == (3, 2, 3 * len(FILES))
 
 
 def test_quota_used_counts_in_one_snapshot_no_writer_can_slip_into(tmp_path):
@@ -186,6 +192,33 @@ def test_a_store_holding_any_shape_of_continuation_passes_the_full_validation(tm
 def test_a_store_holding_a_chain_passes_the_full_validation(tmp_path):
     with world(tmp_path, UNKNOWN, LATER) as (store, _, _):
         validate_uploads(store.connection)
+
+
+def test_the_full_validation_reads_each_operation_once_not_once_per_descendant(
+    tmp_path, monkeypatch
+):
+    count = 20
+    specs = [
+        {
+            "status": "unknown",
+            "indices": (2,),
+            "uncertain": () if number == 1 else (2,),
+            "intents": 3,
+            "acknowledged": 2,
+            **({"source": uuid(0x300 + number - 1)} if number > 1 else {}),
+        }
+        for number in range(1, count + 1)
+    ]
+    with world(tmp_path, *specs, timeout=120) as (store, _, _):
+        reads = []
+        real = store_module._read_view
+        monkeypatch.setattr(
+            store_module, "_read_view", lambda *args: (reads.append(args[1]), real(*args))[1]
+        )
+        validate_uploads(store.connection)
+        # Each plan is read as itself and, at worst, once more as a source; unshared the walk of a
+        # chain of this length reads about (n + 1) * n / 2.
+        assert len(reads) <= 2 * (count + 1)
 
 
 def live(**changes):
@@ -323,6 +356,24 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
         validate_uploads(store.connection)
 
 
+def test_a_reset_returns_the_clock_generation_of_a_record_to_the_first_of_the_new_identity(
+    tmp_path,
+):
+    with world(tmp_path, {"status": "admitted"}) as (store, root, (item,)):
+        later = {**item.record, "observed_clock_generation": 2}
+        later["lease"] = {**item.record["lease"], "clock_generation": 2}
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=? WHERE operation_id=?",
+            (canon(later).decode(), item.record["operation_id"]),
+        )
+        found = read_any_view(store.connection, item.plan["plan_id"]).operation
+        assert found.observed_clock_generation == 2
+        reset(store, root)
+        after = read_any_view(store.connection, item.plan["plan_id"]).operation
+        assert after.observed_clock_generation == 1
+        assert control_rows(store, item.record["operation_id"])["terminal"]["clock_generation"] == 1
+
+
 BEHIND = "2026-11-01T00:00:00.000000Z"  # earlier than anything the builder's histories hold
 
 
@@ -393,17 +444,65 @@ def test_a_reset_resets_a_whole_chain_and_leaves_what_is_finished_alone(tmp_path
         validate_uploads(store.connection)
 
 
-def test_a_reset_that_fails_on_the_way_changes_nothing(tmp_path, monkeypatch):
-    with world(tmp_path, live()) as (store, root, (item,)):
-        before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
+def fail_when_a_continuation_control_is_written(monkeypatch):
+    """Make the reset fail right after a continuation's record row was written."""
+    real = maintenance_module.decode_versioned
 
-        def fail(*args):
-            raise RuntimeError("synthetic failure after the first write")
+    def failing(*args):
+        if '"schema_version":3' in args[2]:  # the payload of the continuation's own control
+            raise RuntimeError("synthetic failure after the continuation's record was written")
+        return real(*args)
 
-        monkeypatch.setattr(maintenance_module, "decode_versioned", fail)
+    monkeypatch.setattr(maintenance_module, "decode_versioned", failing)
+
+
+def test_a_reset_that_fails_between_a_continuations_record_and_its_control_changes_nothing(
+    tmp_path, monkeypatch
+):
+    with world(tmp_path, UNKNOWN, live(source=FIRST)) as (store, root, _):
+        tables = ("upload_operations", "upload_controls")
+
+        def dump():
+            return [
+                store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in tables
+            ]
+
+        before = dump()
+        fail_when_a_continuation_control_is_written(monkeypatch)
+        # The root (a v2 operation) is reset first, so this failure comes after real writes.
         with pytest.raises(RuntimeError):
             reset(store, root)
-        assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before
+        assert dump() == before
+
+
+def test_a_failed_public_reset_leaves_the_whole_chain_and_the_identity_as_they_were(
+    tmp_path, monkeypatch
+):
+    root_dir = tmp_path / "state"
+    with open_store(root_dir, timeout=60) as store:
+        root = install_root(store)
+        for number, spec in enumerate((UNKNOWN, LATER), 1):
+            install(store, build(root, number, **spec))
+    preview = api.preview_identity_reset(state_dir=root_dir).data
+    tables = ("upload_operations", "upload_controls", "upload_plans", "upload_approvals")
+
+    def dump():
+        with open_store(root_dir, timeout=60) as store:
+            rows = [
+                store.connection.execute(f"SELECT * FROM {t} ORDER BY 1").fetchall() for t in tables
+            ]
+            return rows, metadata(store.connection).identity_epoch
+
+    before = dump()
+    fail_when_a_continuation_control_is_written(monkeypatch)
+    with pytest.raises(RuntimeError):
+        api.reset_identity(preview.digest, state_dir=root_dir)
+    monkeypatch.undo()
+    assert dump() == before
+    # Nothing was half done: the same consent still resets the chain once the fault is gone.
+    api.reset_identity(preview.digest, state_dir=root_dir)
+    after, epoch = dump()
+    assert epoch != before[1] and after != before[0]
 
 
 def test_the_public_identity_reset_carries_a_chain_to_the_new_epoch_and_the_store_verifies(
