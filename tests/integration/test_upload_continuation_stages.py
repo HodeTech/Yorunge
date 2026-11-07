@@ -402,6 +402,9 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
         with pytest.raises(YorungeError) as error:  # a put before its presign has no upload
             environment.prepare("put", 2)
         assert error.value.code == "invalid_response"
+        with pytest.raises(YorungeError) as error:  # nothing was presigned: nothing to validate
+            environment.validate_uploads()
+        assert error.value.code == "invalid_response"
         return environment.record
 
     with TlsServer(certificates, provider.routes()) as server:
