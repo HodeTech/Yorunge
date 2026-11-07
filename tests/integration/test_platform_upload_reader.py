@@ -618,6 +618,23 @@ def test_wrong_client_budget_and_local_secret_are_rejected_without_reads():
     assert value.snapshot().read_requests == 0
 
 
+def test_a_mandatory_read_that_is_dripped_is_cut_at_the_phase_budget(certificates, monkeypatch):
+    monkeypatch.setattr("yorunge.adapters.platform_upload_reader.PHASE_SECONDS", 1.0)
+    key, value, values = credential(), budget(readonly=True), routes()
+    values["/api/v1/auth/me"] = json_reply(
+        {"success": True, "data": {"id": SCOPE.owner.id}}, chunk_size=1, chunk_delay=0.5
+    )
+    source = reader(key, value)
+    with TlsServer(certificates, values) as server:
+        owned, _ = session(server, key, value)
+        began = time.monotonic()
+        with owned:
+            check = owned.exchange(source.preparation)
+    # The body alone would take half a minute; the phase (one second here) ends it first.
+    assert check.outcome == "unavailable" and check.error_code == "transport_timeout"
+    assert time.monotonic() - began < 10
+
+
 def test_new_negative_keeps_source_timeout_code_without_refreshing_a_positive():
     key, value, times = (
         credential(),
