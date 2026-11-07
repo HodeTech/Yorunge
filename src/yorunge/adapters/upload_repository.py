@@ -16,6 +16,7 @@ from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
+from yorunge.adapters.upload_admission import continuation_admission
 from yorunge.adapters.upload_chain import ChainSnapshot
 from yorunge.adapters.upload_chain import chain_snapshot as stored_snapshot
 from yorunge.adapters.upload_chain import operation_journal as stored_journal
@@ -53,7 +54,11 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
-from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
+from yorunge.domain.dataset_continuation import (
+    DatasetContinuationPlanV3,
+    DatasetUploadApprovalV3,
+    validate_approval_binding_v3,
+)
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -670,11 +675,13 @@ class StateUploads:
                 view = read_view(self.connection, plan_id)
                 if view.operation is not None:
                     return view.operation
-                self._current(view.plan, fresh, stamp, gate)
+                plan = view.plan
+                if isinstance(plan, DatasetContinuationPlanV3):
+                    action, dataset_id = continuation_action(plan)
+                    self._current(plan, fresh, stamp, gate, action=action, dataset_id=dataset_id)
+                else:
+                    self._current(plan, fresh, stamp, gate)
                 approval = self._approved(view, gate)
-                if not isinstance(approval, DatasetUploadApprovalV2):
-                    raise YorungeError("upload_plan_not_valid")
-                self._namespace_available(view.plan.intent_digest())
                 lease = self._lease(stamp, fence=1, mode="write")
                 operation_id = str(uuid4())
                 access = TransferWriteAccess(
@@ -682,37 +689,112 @@ class StateUploads:
                     lease.owner_id,
                     before
                     + (
-                        min(instant(view.plan.expires_at), instant(approval.expires_at)) - stamp.now
+                        min(instant(plan.expires_at), instant(approval.expires_at)) - stamp.now
                     ).total_seconds(),
                 )
-                record = TransferRecordV2(
-                    schema_version=2,
-                    operation_id=operation_id,
-                    plan_id=plan_id,
-                    plan_digest=view.plan.digest,
-                    intent_digest=view.plan.intent_digest(),
-                    approval=approval,
-                    write_owner_id=lease.owner_id,
-                    write_access_digest=access.digest,
-                    created_at=timestamp(stamp.now),
-                    updated_at=timestamp(stamp.now),
-                    status="admitted",
-                    revision=1,
-                    fence=1,
-                    observed_identity_epoch=stamp.identity_epoch,
-                    observed_clock_generation=stamp.generation,
-                    clock_anomaly=False,
-                    lease=lease,
-                    workflow_latched=False,
-                    dataset_id=None,
-                    reason=None,
-                )
+                record: UploadRecord
+                if isinstance(plan, DatasetContinuationPlanV3):
+                    record = self._continuation_record(
+                        plan, approval, operation_id, lease, access, stamp
+                    )
+                else:
+                    if not isinstance(approval, DatasetUploadApprovalV2):
+                        raise YorungeError("upload_plan_not_valid")
+                    self._namespace_available(plan.intent_digest())
+                    record = TransferRecordV2(
+                        schema_version=2,
+                        operation_id=operation_id,
+                        plan_id=plan_id,
+                        plan_digest=plan.digest,
+                        intent_digest=plan.intent_digest(),
+                        approval=approval,
+                        write_owner_id=lease.owner_id,
+                        write_access_digest=access.digest,
+                        created_at=timestamp(stamp.now),
+                        updated_at=timestamp(stamp.now),
+                        status="admitted",
+                        revision=1,
+                        fence=1,
+                        observed_identity_epoch=stamp.identity_epoch,
+                        observed_clock_generation=stamp.generation,
+                        clock_anomaly=False,
+                        lease=lease,
+                        workflow_latched=False,
+                        dataset_id=None,
+                        reason=None,
+                    )
                 write_record(self.connection, record, None)
                 require_capacity(self.connection)
             with self.phase(record.operation_id):
-                self._finish(stamp, gate, scope=view.plan.scope)
+                self._finish(stamp, gate, scope=plan.scope)
             self.write_access = access
             return record
+
+    def _continuation_record(
+        self,
+        plan: DatasetContinuationPlanV3,
+        approval: UploadApproval,
+        operation_id: str,
+        lease: TransferLease,
+        access: TransferWriteAccess,
+        stamp: Stamp,
+    ) -> TransferRecordV3:
+        """The admitted record of a continuation, once the chain it extends allows one more link.
+
+        The source must be frozen and alone at the end of its chain; a descendant of it that was
+        admitted but let its lease lapse is cancelled here, in the same transaction, because the
+        store never holds two descendants of one source that are not cancelled.
+        """
+        if not isinstance(approval, DatasetUploadApprovalV3):
+            raise YorungeError("upload_plan_not_valid")
+        try:
+            validate_approval_binding_v3(plan, approval)
+        except ValueError:
+            raise YorungeError("upload_plan_not_valid") from None
+        for lapsed in continuation_admission(self.connection, plan, stamp):
+            self._cancel_unlatched(read_record(self.connection, lapsed), stamp)
+        return TransferRecordV3(
+            schema_version=3,
+            operation_id=operation_id,
+            plan_id=plan.plan_id,
+            plan_digest=plan.digest,
+            intent_digest=plan.intent_digest(),
+            approval=approval,
+            write_owner_id=lease.owner_id,
+            write_access_digest=access.digest,
+            created_at=timestamp(stamp.now),
+            updated_at=timestamp(stamp.now),
+            status="admitted",
+            revision=1,
+            fence=1,
+            observed_identity_epoch=stamp.identity_epoch,
+            observed_clock_generation=stamp.generation,
+            clock_anomaly=False,
+            lease=lease,
+            workflow_latched=False,
+            verification_only=not plan.continuation.file_indices,
+            dataset_id=plan.continuation.dataset_id,
+            reason=None,
+        )
+
+    def _cancel_unlatched(self, record: UploadRecord, stamp: Stamp) -> UploadRecord:
+        """Close an admitted operation that sent nothing: its approval and its lease say why."""
+        view = read_view(self.connection, record.plan_id)
+        reason: TransferReason = "lease_expired"
+        if view.approval is not None and view.approval.status == "revoked":
+            reason = "approval_revoked"
+        elif stamp.now >= instant(record.approval.expires_at):
+            reason = "approval_expired"
+        changed = self._change(
+            record,
+            stamp,
+            lease=None,
+            fence=record.fence + 1,
+            status="cancelled",
+            reason=reason,
+        )
+        self._control(changed, stamp, terminal=True)
+        return changed
 
     def _lease(self, stamp: Stamp, *, fence: int, mode: str) -> TransferLease:
         return TransferLease.model_validate(

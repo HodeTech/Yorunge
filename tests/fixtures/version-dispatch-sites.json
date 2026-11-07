@@ -391,10 +391,37 @@
    "file": "src/yorunge/adapters/upload_repository.py",
    "function": "StateUploads.admit",
    "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the fresh check of a continuation shows what it does first: upload into its dataset, or read it"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.admit",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
+   "occurrence": 1,
+   "owner": "done",
+   "note": "a continuation's record is built from the plan after the chain allows one more link"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads.admit",
+   "kind": "isinstance",
    "text": "isinstance(approval, DatasetUploadApprovalV2)",
    "occurrence": 0,
-   "owner": "P02-3r",
-   "note": "write gates (save, approve, admit, arm, receipt, read, proof, stop); the v3 gates are P02-3r's"
+   "owner": "done",
+   "note": "an original upload is admitted with its v2 approval; a continuation's v3 approval is bound in _continuation_record"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_repository.py",
+   "function": "StateUploads._continuation_record",
+   "kind": "isinstance",
+   "text": "isinstance(approval, DatasetUploadApprovalV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a v3 approval admits a continuation"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
