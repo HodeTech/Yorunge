@@ -248,6 +248,23 @@ def test_a_record_of_another_family_than_its_plan_is_never_read_as_its_own(tmp_p
         assert error.value.code == "state_invalid"
 
 
+def test_a_v2_record_of_a_dataset_its_create_receipt_did_not_make_is_invalid(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        data = install_fixture(store, terminal=False)
+        plan_id = data["plan"]["plan_id"]
+        assert read_any_view(store.connection, plan_id).operation.dataset_id is not None
+        stored = json.loads(
+            store.connection.execute("SELECT payload FROM upload_operations").fetchone()[0]
+        )
+        stored["dataset_id"] = "00000000-0000-4000-8000-000000000777"
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=?", (encode(stored).decode(),)
+        )
+        with pytest.raises(YorungeError) as error:
+            read_any_view(store.connection, plan_id)
+        assert error.value.code == "state_invalid"
+
+
 def test_v2_full_history_show_list_and_validation_never_rewrite_payload(tmp_path):
     with open_store(tmp_path / "state") as store:
         data = install_fixture(store)

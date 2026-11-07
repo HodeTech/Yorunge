@@ -205,6 +205,21 @@ def test_a_lineage_that_returns_to_the_continuation_itself_loops():
     assert resolve(second, [view(first)])
 
 
+def test_a_loop_is_found_at_its_first_repetition_not_at_the_length_bound():
+    first = build(ROOT, 1, status="running", source=SECOND)
+    second = build(ROOT, 2, status="running", source=FIRST, indices=(1,))
+    reads = []
+    by_operation = {FIRST: view(first), SECOND: view(second), ROOT_OPERATION: ROOT_VIEW}
+
+    def read(operation_id):
+        reads.append(operation_id)
+        return by_operation[operation_id]
+
+    with pytest.raises(ValueError):
+        resolve_lineage(view(first).plan, read, lambda _: CREATED)
+    assert reads == [SECOND, FIRST]  # the second visit of the first is the repetition
+
+
 def test_a_lineage_that_loops_without_touching_the_continuation_is_refused():
     # The continuation is a plan only (nothing to find in the walk): two sources chase each other.
     a = build(ROOT, 1, status="running", source=SECOND)
