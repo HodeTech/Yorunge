@@ -80,7 +80,16 @@ async def approve_admit_continue(environment):
     return await continue_files(environment)
 
 
-def start(data, server, plan_id, *, budgets=None, clock=None, algorithm=approve_admit_continue):
+def start(
+    data,
+    server,
+    plan_id,
+    *,
+    budgets=None,
+    clock=None,
+    algorithm=approve_admit_continue,
+    baseline=None,
+):
     """The stages of a saved continuation plan over TLS; the operation's record at the end."""
     state, _, _, context, profile = data
     runtime = UploadResumeRuntime(
@@ -101,7 +110,8 @@ def start(data, server, plan_id, *, budgets=None, clock=None, algorithm=approve_
             end=end,
             expected_root=plan.root,
         )
-        return run_stages(runtime, plan, bound, inputs, source.baseline, end, algorithm)
+        wanted = source.baseline if baseline is None else baseline
+        return run_stages(runtime, plan, bound, inputs, wanted, end, algorithm)
 
 
 def planned(data, server, provider, **flags):
@@ -556,3 +566,21 @@ def test_presigns_that_share_an_object_key_are_refused_before_any_put(prepared_i
         assert provider.events[before:] == ["presign", "presign"]  # nothing was put
         record = operation_of(data, report.plan_id)
         assert (record.status, record.reason) == ("unknown", "request_uncertain")
+
+
+def test_the_dataset_a_continuation_extends_is_its_plans_and_no_other(prepared_input, certificates):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        view = saved(data, report.plan_id)
+        with open_existing_store(data[0]) as store:
+            stamp = StateCache(store, UploadResumeRuntime(*data[3:5], data[0]).clock).stamp()
+            source = StateUploads(store).resume_source(
+                view.plan.continuation.source_operation_id, stamp
+            )
+        other = source.baseline.model_copy(update={"id": "00000000-0000-4000-8000-0000000000bb"})
+        before = len(server.requests)
+        with pytest.raises(YorungeError) as error:
+            start(data, server, report.plan_id, baseline=other)
+        assert error.value.code == "invalid_request"
+        assert len(server.requests) == before and operation_of(data, report.plan_id) is None

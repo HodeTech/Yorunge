@@ -275,6 +275,8 @@ def run_stages(
 ) -> TransferRecordV3:
     """One session with the continuation's own budget (no create, no link, M files), one
     environment and ``algorithm`` over it; a failure is the operation's own error."""
+    if baseline.id != plan.continuation.dataset_id:
+        raise YorungeError("invalid_request")  # what is extended is the plan's dataset, no other
     key = HttpCredential(
         "X-API-Key",
         bound.credential.secret,
