@@ -92,7 +92,7 @@ class ContinuationStages:
             repository.check_scope(self.plan.scope)
 
     async def current(self, kind: StageKind) -> UploadCurrentCheck:
-        """A fresh check that the key may still upload to the baseline, taken at most every 20 s."""
+        """A fresh check that the key may still upload to the baseline (reused for 25 s)."""
         if kind not in ("presign", "put", "confirm"):
             raise YorungeError("invalid_request")  # a continuation has neither create nor link
         self.scope()
