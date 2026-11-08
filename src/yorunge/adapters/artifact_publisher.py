@@ -7,7 +7,7 @@ verified; the stage is hard-linked to the target (``link()`` is exclusive: a tak
 definite failure, nothing of the caller's is published); the link, the stage's removal and the
 target are verified again by identity; the directory and the file are synced. From the moment the
 link is attempted a failure is *uncertain* (the target may or may not exist); before it, a failure
-is definite and the stage is removed again by identity, whatever else happens.
+is definite and the stage is removed again by identity, unless the caller's ``_discard`` keeps it.
 
 What an artifact answers with is its own: the error family (:class:`ArtifactCodes`) is the
 caller's, as is the stage name prefix. The steps that the families' tests inject faults into stay
@@ -17,7 +17,9 @@ overridable methods of the publisher (``_check_stage``, ``_publish_link``, ``_ch
 Two entries: :meth:`ArtifactPublisher.publish_bytes` for content held in memory, and
 :meth:`ArtifactPublisher.publish_stage` for a stage the caller opened, wrote (a stream) and synced
 itself: the publisher then owns only the order *verify, link, clean up, sync* and the identity
-checks around it.
+checks around it. What becomes of a stage when publication fails is the one policy a stream must
+own (:meth:`ArtifactPublisher._discard`): bytes in memory can be written again, but a finished
+stage may be the only copy of what took a long download.
 """
 
 from __future__ import annotations
@@ -30,8 +32,7 @@ from dataclasses import dataclass
 from typing import NoReturn, Protocol
 from uuid import uuid4
 
-from yorunge.adapters.dataset_files import owned_descriptor
-from yorunge.adapters.input_files import identity, signature
+from yorunge.adapters.input_files import Budget, identity, owned_descriptor, signature
 from yorunge.adapters.local_files import full_sync
 from yorunge.domain.errors import MESSAGES, ErrorCode, YorungeError
 
@@ -46,9 +47,13 @@ class ArtifactCodes:
     changed: ErrorCode  # the stage, the target or the place is not what was written
     unreadable: ErrorCode  # the operating system refused something before the link
 
-
-class PublishBudget(Protocol):
-    def check(self) -> None: ...
+    def __post_init__(self) -> None:
+        # Every code is a closed one, and the doubt after a link exits 5 in every family: it is
+        # what a script acts on, and the publisher cannot choose it.
+        for code in (self.failed, self.exists, self.changed, self.unreadable):
+            YorungeError(code)
+        if YorungeError(self.uncertain).exit_code != 5:
+            raise ValueError("the uncertain code of a family must exit 5")
 
 
 class PublishLocation(Protocol):
@@ -61,7 +66,7 @@ class PublishLocation(Protocol):
     def name(self) -> str: ...
 
     @property
-    def budget(self) -> PublishBudget: ...
+    def budget(self) -> Budget: ...
 
     def recheck(self) -> None: ...
 
@@ -95,10 +100,12 @@ class ArtifactPublisher:
         self,
         location: PublishLocation,
         state: PublicationState,
-        check_source: Callable[[], None],
+        check_source: Callable[[], None] = lambda: None,
         *,
-        prefix: str,
+        prefix: str = "",
     ) -> None:
+        """``check_source`` re-checks what the artifact was made from (a stream has none);
+        ``prefix`` starts the stage names ``publish_bytes`` makes (a stream names its own)."""
         self.location, self.state, self.check_source = location, state, check_source
         self.codes, self.prefix = state.codes, prefix
         self.stage: str | None = None
@@ -117,6 +124,8 @@ class ArtifactPublisher:
 
     def publish_bytes(self, content: bytes) -> None:
         """Publish ``content`` as the target, or fail without having replaced anything."""
+        if not self.prefix:
+            raise ValueError("a stage name prefix is required to publish bytes")
         self.ensure_absent()
         stage = f"{self.prefix}{uuid4().hex}.tmp"
 
@@ -137,25 +146,42 @@ class ArtifactPublisher:
     def publish_stage(self, stage: str, descriptor: int, size: int) -> None:
         """Publish a stage the caller opened, filled with ``size`` bytes and synced itself.
 
-        The stage is ``stage`` in the target's directory and ``descriptor`` is open on it. Until
-        this returns or fails it is the publisher's to remove again, by identity; the caller does
-        not touch it. Everything after the write is the publisher's: verify, link, clean up, sync.
+        The stage is the one name ``stage`` in the target's directory and ``descriptor`` is open
+        on it. Until this returns or fails the stage is the publisher's, which removes it again by
+        identity when publication fails, unless ``_discard`` keeps it; the caller does not touch it
+        meanwhile. Everything after the write is the publisher's: verify, link, clean up, sync.
         """
-        self.stage = stage
-        self.stage_identity = identity(os.fstat(descriptor))
-        self._guarded(lambda: self._finalize(descriptor, size, os.fstat(descriptor)))
+        if not stage or "/" in stage or stage in (".", ".."):
+            raise ValueError("a stage is one name in the target's directory")
+
+        def adopted() -> None:
+            self.stage = stage
+            self.stage_identity = identity(os.fstat(descriptor))
+            self._finalize(descriptor, size, os.fstat(descriptor))
+
+        self._guarded(adopted)
 
     def _guarded(self, action: Callable[[], None]) -> None:
         try:
             action()
         except BaseException as error:
             try:
-                self._remove_stage()
+                self._discard(error)
             except (OSError, YorungeError):
                 BaseException.add_note(error, MESSAGES[self.codes.failed])
             if isinstance(error, OSError) and not self.state.attempted:
                 raise YorungeError(self.codes.failed) from None
             self.state.reraise(error)
+
+    def _discard(self, error: BaseException) -> None:
+        """What becomes of the stage when publication failed with ``error``.
+
+        By default it is removed again by identity: content in memory can be written again. A
+        streaming sink overrides this where the finished stage is the only copy of a download and
+        the failure says nothing against it (an I/O error, a deadline, an interrupt): it keeps the
+        stage and removes it only for a definite refusal. The success path removes it itself.
+        """
+        self._remove_stage()
 
     def _publish_staged(self, descriptor: int, content: bytes) -> None:
         self.stage_identity = identity(os.fstat(descriptor))
@@ -165,10 +191,10 @@ class ArtifactPublisher:
         self._finalize(descriptor, len(content), os.fstat(descriptor))
 
     def _finalize(self, descriptor: int, size: int, written: os.stat_result) -> None:
-        if written.st_size != size:
-            raise YorungeError(self.codes.changed)  # not the bytes the caller says it wrote
         self.check_source()
         self.location.recheck()
+        if written.st_size != size:
+            raise YorungeError(self.codes.changed)  # not the bytes the caller says it wrote
         self._check_stage(written)
         self.location.budget.check()
         self._publish_link()

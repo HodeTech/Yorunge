@@ -400,6 +400,195 @@ def test_a_staged_stream_failing_after_the_link_is_uncertain_and_the_target_stay
     assert place.target.read_bytes() == CONTENT
 
 
+# --- what becomes of a finished stage (the sink's policy) ---------------------------------------
+
+
+class Keeping(ArtifactPublisher):
+    """What a streaming sink does: a finished stage may be the only copy of a long download.
+
+    Only a definite refusal discards it (the name is taken, or the stage is not what was written);
+    an I/O error, a deadline or an interrupt says nothing against it, and the next run publishes it.
+    """
+
+    def _discard(self, error):
+        if isinstance(error, YorungeError) and error.code in (
+            self.codes.exists,
+            self.codes.changed,
+        ):
+            self._remove_stage()
+
+
+def eio(*arguments):
+    raise OSError(errno.EIO, "PRIVATE")
+
+
+def deadline(place, pub, monkeypatch):
+    place.budget.fail_after = 0
+
+
+def interrupt(place, pub, monkeypatch):
+    pub._check_stage = lambda written: (_ for _ in ()).throw(KeyboardInterrupt())
+
+
+def cancellation(place, pub, monkeypatch):
+    pub._check_stage = lambda written: (_ for _ in ()).throw(asyncio.CancelledError())
+
+
+def io_error(place, pub, monkeypatch):
+    pub._check_stage = eio
+
+
+def link_io_error(place, pub, monkeypatch):
+    monkeypatch.setattr(os, "link", eio)  # the entry is not created, but nobody can tell
+
+
+FAULTS = [
+    (io_error, CODES.failed, False),
+    (deadline, "execution_timeout", False),
+    (interrupt, KeyboardInterrupt, False),
+    (cancellation, asyncio.CancelledError, False),
+    (link_io_error, CODES.uncertain, True),
+]
+
+
+def fault_outcome(error, expected):
+    if isinstance(expected, str):
+        return isinstance(error, YorungeError) and error.code == expected
+    return isinstance(error, expected)
+
+
+@pytest.mark.parametrize(
+    "fault,expected,attempted", FAULTS, ids=lambda item: getattr(item, "__name__", None)
+)
+def test_a_publisher_removes_a_finished_stage_by_default_for_any_failure(
+    place, monkeypatch, fault, expected, attempted
+):
+    pub, state = publisher(place)
+    fault(place, pub, monkeypatch)
+    assert fault_outcome(failure(lambda: publish_stage(place, pub)), expected)
+    assert state.attempted is attempted and not place.target.exists()
+    assert place.leftovers() == []
+
+
+@pytest.mark.parametrize(
+    "fault,expected,attempted", FAULTS, ids=lambda item: getattr(item, "__name__", None)
+)
+def test_a_keeping_publisher_keeps_a_finished_stage_that_nothing_speaks_against(
+    place, monkeypatch, fault, expected, attempted
+):
+    state = PublicationState(CODES)
+    pub = Keeping(place, state, prefix=PREFIX)
+    fault(place, pub, monkeypatch)
+    assert fault_outcome(failure(lambda: publish_stage(place, pub)), expected)
+    assert state.attempted is attempted and not place.target.exists()
+    (kept,) = place.leftovers()  # the only copy is still whole
+    assert (place.directory / kept).read_bytes() == CONTENT
+    monkeypatch.undo()
+    # The next run publishes the very stage it finds, without the bytes being written again.
+    descriptor = os.open(kept, os.O_RDWR | os.O_NOFOLLOW, dir_fd=place.descriptor)
+    try:
+        Keeping(Place(place.directory), PublicationState(CODES)).publish_stage(
+            kept, descriptor, len(CONTENT)
+        )
+    finally:
+        os.close(descriptor)
+    assert place.target.read_bytes() == CONTENT and place.leftovers() == []
+
+
+def test_a_keeping_publisher_still_removes_the_stage_of_a_definite_refusal(place):
+    place.target.write_bytes(b"someone else's")
+    pub = Keeping(place, PublicationState(CODES))
+    assert failure(lambda: publish_stage(place, pub)).code == CODES.exists
+    assert place.target.read_bytes() == b"someone else's" and place.leftovers() == []
+
+
+def test_a_keeping_publisher_removes_a_stage_that_is_not_what_was_written(place):
+    pub = Keeping(place, PublicationState(CODES))
+    name, descriptor = staged(place)
+    try:
+        os.write(descriptor, b"more after the sync")
+        error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
+    finally:
+        os.close(descriptor)
+    assert error.code == CODES.changed and place.leftovers() == []
+
+
+@pytest.mark.parametrize("stage", ["", ".", "..", "a/b", "/elsewhere/stage"])
+def test_a_stage_is_one_name_in_the_targets_directory(place, stage):
+    pub, state = publisher(place)
+    with pytest.raises(ValueError):
+        pub.publish_stage(stage, 0, 1)
+    assert state.attempted is False and place.leftovers() == []
+
+
+def test_a_stage_whose_identity_cannot_be_read_is_the_familys_failed_and_is_left_alone(place):
+    pub, state = publisher(place)
+    name, descriptor = staged(place)
+    os.close(descriptor)  # the stream's descriptor is gone
+    error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
+    assert error.code == CODES.failed and state.attempted is False
+    assert place.leftovers() == [name]  # its identity is unknown: not the publisher's to remove
+
+
+def test_bytes_cannot_be_published_without_a_stage_name_prefix(place):
+    pub = ArtifactPublisher(place, PublicationState(CODES))
+    with pytest.raises(ValueError):
+        pub.publish_bytes(CONTENT)
+    assert not place.target.exists() and place.leftovers() == []
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"uncertain": "transport_failed"}, {"failed": "no_such_code"}],
+    ids=["uncertain does not exit 5", "unknown code"],
+)
+def test_a_family_must_be_closed_and_its_doubt_must_exit_5(changes):
+    fields = {**CODES.__dict__, **changes}
+    with pytest.raises((ValueError, KeyError)):
+        ArtifactCodes(**fields)
+
+
+# --- the manifest path keeps its behaviour, except for one safer case ---------------------------
+
+
+def test_a_manifest_stage_that_a_racer_truncates_after_the_sync_is_not_published(
+    tmp_path, monkeypatch
+):
+    from yorunge import api
+    from yorunge.adapters import dataset_reports
+
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "a.txt").write_bytes(b"abc")
+    out = tmp_path / "reports"
+    out.mkdir()
+    target = out / "manifest.json"
+    real, calls = dataset_reports.full_sync, []
+
+    def racing(descriptor):
+        real(descriptor)
+        calls.append(1)
+        if len(calls) == 1:
+            os.ftruncate(descriptor, 0)  # a racer of the same user, between the sync and the look
+
+    monkeypatch.setattr(dataset_reports, "full_sync", racing)
+    with pytest.raises(YorungeError) as error:
+        api.inspect_dataset(root, manifest_out=target)
+    # Not the bytes that were written: a definite failure before the link, nothing published. (A
+    # damaged manifest was once linked and then reported as uncertain.)
+    assert error.value.code == "input_changed" and error.value.exit_code == 2
+    assert not target.exists() and sorted(p.name for p in out.iterdir()) == []
+
+
+def test_the_manifests_publication_state_keeps_the_base_positional_order():
+    from yorunge.adapters.dataset_reports import MANIFEST_CODES
+    from yorunge.adapters.dataset_reports import PublicationState as Manifest
+
+    state = Manifest(True)
+    assert state.attempted is True and state.codes == MANIFEST_CODES
+    assert Manifest().attempted is False and Manifest(codes=MANIFEST_CODES).attempted is False
+
+
 # --- real SIGKILL at each step ------------------------------------------------------------------
 
 KILL = textwrap.dedent(

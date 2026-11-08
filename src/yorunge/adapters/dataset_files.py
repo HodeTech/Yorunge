@@ -12,9 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from yorunge.adapters.input_files import (
-    close_input_descriptor,
+    close_descriptor,
     directory_chain,
     identity,
+    owned_descriptor,
     relative_file,
     require_input_files,
     signature,
@@ -33,32 +34,6 @@ from yorunge.domain.errors import ErrorCode, YorungeError
 Chain = tuple[tuple[int, int], ...]
 # Keep consecutive read allocations small; HASH_BLOCK_BYTES remains the public cap.
 _HASH_READ_BYTES = 128 * 1024
-
-
-def close_descriptor(
-    descriptor: int,
-    primary: BaseException | None = None,
-    *,
-    code: ErrorCode = "file_unreadable",
-) -> None:
-    try:
-        close_input_descriptor(descriptor, primary)
-    except OSError:
-        raise YorungeError(code) from None
-
-
-@contextmanager
-def owned_descriptor(
-    descriptor: int, *, close_code: ErrorCode = "file_unreadable"
-) -> Iterator[int]:
-    primary: BaseException | None = None
-    try:
-        yield descriptor
-    except BaseException as error:
-        primary = error
-        raise
-    finally:
-        close_descriptor(descriptor, primary, code=close_code)
 
 
 def require_dataset_files() -> None:

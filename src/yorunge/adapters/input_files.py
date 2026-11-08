@@ -6,11 +6,12 @@ import hashlib
 import os
 import stat
 import sys
-from contextlib import ExitStack
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Protocol
 
-from yorunge.domain.errors import MESSAGES, YorungeError
+from yorunge.domain.errors import MESSAGES, ErrorCode, YorungeError
 from yorunge.domain.execution import InputBinding, InputRoot
 from yorunge.domain.models import has_control_characters
 
@@ -46,6 +47,34 @@ def close_input_descriptor(descriptor: int, primary: BaseException | None = None
         if primary is None:
             raise
         BaseException.add_note(primary, MESSAGES["file_unreadable"])
+
+
+def close_descriptor(
+    descriptor: int,
+    primary: BaseException | None = None,
+    *,
+    code: ErrorCode = "file_unreadable",
+) -> None:
+    """Close ``descriptor``; a failure to close is ``code`` unless another error is in flight."""
+    try:
+        close_input_descriptor(descriptor, primary)
+    except OSError:
+        raise YorungeError(code) from None
+
+
+@contextmanager
+def owned_descriptor(
+    descriptor: int, *, close_code: ErrorCode = "file_unreadable"
+) -> Iterator[int]:
+    """Hold ``descriptor`` for the block and close it, whatever happens in the block."""
+    primary: BaseException | None = None
+    try:
+        yield descriptor
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        close_descriptor(descriptor, primary, code=close_code)
 
 
 def anchor_input_root(root: Path) -> Path:

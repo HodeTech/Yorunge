@@ -1,14 +1,14 @@
 """Private staged manifest publication with an exclusive hardlink, never overwrite.
 
 The publication itself is the common artifact publisher's; this module is the manifest's side of
-it: its error family, its stage name and the seams its tests inject faults into
-(``_check_stage``, ``_publish_link``, ``_check_target`` and this module's ``full_sync``).
+it: its error family, its stage name prefix and the file sync (``full_sync``, which its tests
+replace). The steps the tests inject faults into are the publisher's overridable methods.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from yorunge.adapters import artifact_publisher
 from yorunge.adapters.artifact_publisher import ArtifactCodes, ArtifactPublisher
@@ -27,7 +27,9 @@ MANIFEST_CODES = ArtifactCodes(
 
 @dataclass
 class PublicationState(artifact_publisher.PublicationState):
-    codes: ArtifactCodes = MANIFEST_CODES
+    # Keyword-only, so that the positional order stays the base's (``PublicationState(True)``
+    # still means that the link was attempted).
+    codes: ArtifactCodes = field(default=MANIFEST_CODES, kw_only=True)
 
 
 class DatasetManifestWriter(ArtifactPublisher):
