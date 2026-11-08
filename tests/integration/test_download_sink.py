@@ -206,6 +206,22 @@ def test_a_clean_stop_without_a_tag_or_a_total_drops_everything(place, answer):
     assert left(place) == []
 
 
+def test_a_stop_after_every_byte_of_a_body_of_known_length_keeps_it_even_without_a_tag(place):
+    # the engine can be cancelled in the one loop turn between the last record and ``complete``
+    stopped_after(place, len(DATA), response=full(etag=None))
+    assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
+    record = sidecar_of(place)
+    assert (record.committed_bytes, record.total_size, record.etag) == (len(DATA), len(DATA), None)
+    published, plan = download(place)
+    assert plan.action == "publish" and published.resumed_from_bytes == len(DATA)
+    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+
+
+def test_a_stop_after_every_byte_of_a_chunked_body_drops_it_the_end_was_not_seen(place):
+    stopped_after(place, len(DATA), response=chunked())
+    assert left(place) == []
+
+
 def test_a_clean_stop_before_any_byte_drops_the_empty_stage(place):
     stopped_after(place, 0)
     assert left(place) == []
@@ -253,7 +269,9 @@ def test_a_stage_whose_committed_prefix_is_not_what_was_hashed_starts_clean(plac
     stopped_after(place, 100_000)
     with (place / NAMES.stage).open("r+b") as stage:
         stage.seek(500)
-        stage.write(b"\xff")  # local corruption inside the committed prefix
+        stage.write(
+            bytes([DATA[500] ^ 0xFF])
+        )  # corruption inside the committed prefix: always a change
     published, plan = download(place)
     assert (plan.ask, plan.resumed_from) == (None, 0) and published.resumed_from_bytes == 0
     assert target(place).read_bytes() == DATA and left(place) == [NAME]
@@ -624,7 +642,8 @@ def test_a_trace_that_is_not_provably_ours_stops_the_command_and_nothing_is_chan
     before = {p.name: p.lstat().st_mode for p in place.iterdir()}
     outcome = []
     runner = threading.Thread(
-        target=lambda: outcome.append(code_of(lambda: download(place, no_resume=no_resume)))
+        target=lambda: outcome.append(code_of(lambda: download(place, no_resume=no_resume))),
+        daemon=True,  # a regression that blocks must not keep the interpreter from exiting
     )
     runner.start()
     runner.join(10)  # a FIFO must not block the command

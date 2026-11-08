@@ -855,7 +855,10 @@ def test_a_second_run_that_took_the_stage_is_not_overwritten_by_the_first(place)
         sink, plan = second.__enter__()
         try:
             assert plan.action == "download"
-            first.write(DATA[60_000:])  # writes are not checked one by one: the checkpoint is
+            held = (place / NAMES.stage).read_bytes()
+            # the lock is looked at before every block: the first run writes nothing more
+            assert code_of(lambda: first.write(DATA[60_000:])) == "download_busy"
+            assert (place / NAMES.stage).read_bytes() == held
             assert code_of(lambda: first.complete(terminated=True)) == "download_busy"
         finally:
             second.__exit__(None, None, None)

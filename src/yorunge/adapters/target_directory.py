@@ -80,8 +80,11 @@ def open_target_directory(
         or not is_reportable_path(str(target))
     ):
         raise YorungeError(invalid)
+    opened: tuple[int, Chain] | None = None
     try:
-        descriptor, chain = directory_chain(str(target.parent))
+        opened = directory_chain(str(target.parent))
     except (YorungeError, OSError):
-        raise YorungeError(invalid) from None
-    return TargetDirectory(target, descriptor, chain, failed=failed)
+        pass
+    if opened is None:
+        raise YorungeError(invalid)  # outside the handler: nothing of the OS error is carried
+    return TargetDirectory(target, opened[0], opened[1], failed=failed)

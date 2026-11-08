@@ -58,12 +58,35 @@ from yorunge.domain.errors import YorungeError
         {"max_bytes": True},  # V7: a bool is not an int here
         {"max_bytes": 1.5},  # V7
         {"max_bytes": MAX_DOWNLOAD_BYTES + 1},  # V8: above the contract's own limit
+        {"timeout": "900"},  # a digit string parses as a timeout but is not a number of seconds
+        {"timeout": 900.0},
+        {"timeout": True},
+        {"timeout": 29},
+        {"timeout": 3601},
     ],
-    ids=["target-str", "source-dict", "max-bool", "max-float", "max-over-limit"],
+    ids=[
+        "target-str",
+        "source-dict",
+        "max-bool",
+        "max-float",
+        "max-over-limit",
+        "timeout-str",
+        "timeout-float",
+        "timeout-bool",
+        "timeout-low",
+        "timeout-high",
+    ],
 )
 def test_each_value_of_a_job_is_refused_on_its_own(world, changes):
     assert code_of(lambda: world.job(**changes)) == "invalid_request"
     assert world.server.requests == [] and world.names() == []
+
+
+@pytest.mark.parametrize("credential", [None, "a-key", object(), b"x"])
+def test_a_session_of_something_that_is_not_a_credential_is_refused_when_it_is_built(credential):
+    from yorunge.adapters.storage_transport import TransferSession
+
+    assert code_of(lambda: TransferSession(credential)) == "invalid_credential"  # type: ignore[arg-type]
 
 
 def test_a_job_is_frozen_and_its_defaults_are_the_contracts(world):
@@ -306,8 +329,13 @@ class Boom(Exception):
 @pytest.mark.parametrize("framing", ["length with a tag", "length without a tag", "chunked"])
 @pytest.mark.parametrize("raising", [Boom, BrokenPipeError, KeyboardInterrupt])
 def test_a_report_that_raises_after_the_last_byte_keeps_a_whole_stage_and_the_next_call_publishes(
-    world, framing, raising
+    world, framing, raising, monkeypatch
 ):
+    from yorunge.adapters import download_engine
+
+    # every record is reported (no throttle), so that a report made AFTER the record is written
+    # would raise before the completion mark is: the order, not the clock, is what is pinned
+    monkeypatch.setattr(download_engine, "PROGRESS_SECONDS", 0.0)
     _framings(world, framing)
 
     def last_report_fails(held, total):
@@ -428,6 +456,26 @@ def test_a_resolver_that_never_answers_is_ended_at_its_budget_not_by_a_signal(wo
     assert time.monotonic() - began < 3
     assert world.names() == [] and world.server.requests == []
     assert_whole(world, world.run())  # and the session serves the next call
+
+
+def test_a_resolver_that_swallows_its_cancellation_and_answers_late_is_ended_all_the_same(
+    world, monkeypatch
+):
+    from yorunge.adapters import download_engine
+
+    monkeypatch.setattr(download_engine, "JSON_BUDGET_SECONDS", 0.4)
+    monkeypatch.setattr(download_engine, "RESOLVE_GRACE_SECONDS", 0.2)
+
+    async def stubborn(transport, deadline):
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            pass  # the budget's cancellation is swallowed ...
+        return DownloadTarget(ORIGIN + SIGNED, origin=ORIGIN, prefix=PREFIX)  # ... and it answers
+
+    assert code_of(lambda: world.run(resolve=stubborn)) == "transport_timeout"
+    assert world.names() == [] and world.provider.seen == []  # no signed GET followed it
+    assert_whole(world, world.run())
 
 
 def test_the_json_calls_refund_is_its_budget_at_most_whatever_the_resolver_took(world, monkeypatch):

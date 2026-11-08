@@ -65,12 +65,16 @@ class DownloadJob:
     ``resolve`` makes the one JSON call that yields the signed address; it is given the open
     transport and the absolute deadline of the call (its 30-second budget), and is called once per
     run and only if the network is needed; the engine ends it at its budget (and one second more)
-    whatever it does with the deadline it is handed. ``identity_key`` is the stable key of what is
+    whatever it does with the deadline it is handed (cooperatively: it is cancelled at that point
+    and, if it swallows the cancellation and returns an address after all, it is ended with
+    ``transport_timeout`` all the same; one that never yields to the event loop cannot be
+    interrupted). ``identity_key`` is the stable key of what is
     downloaded (``domain.download.identity_key``): a stage left by another service, version, format
     or fold is never resumed or published. ``progress`` receives (bytes held, total or None) and
     never a name, path, address or tag; it runs on the event loop's thread and must be quick and
-    must not raise (what it raises leaves the engine as it is, the stage is kept and the next call
-    continues; mapping an output that has closed is the consumer's). ``max_bytes`` is the most one
+    must not raise (what it raises leaves the engine as it is, and the stage is kept if it can be
+    resumed — a strong tag and a known total — or is whole, else it is dropped; mapping an output
+    that has closed is the consumer's). ``max_bytes`` is the most one
     answer's body may carry (the contract's limit unless a caller asks for less; with a resume ask
     keep it at the contract's). The target is also judged as a path a summary can hold (no control
     or bidirectional character, UTF-8, at most 4096 bytes) when its directory is opened, before
@@ -92,6 +96,7 @@ class DownloadJob:
             not isinstance(self.target, Path)
             or type(self.source) is not DownloadSource
             or type(self.no_resume) is not bool
+            or type(self.timeout) is not int
             or not callable(self.resolve)
             or (self.progress is not None and not callable(self.progress))
             or type(self.max_bytes) is not int
@@ -207,10 +212,12 @@ async def _network(
     try:
         # The resolver is handed its deadline and is expected to keep it; the engine does not take
         # that on trust, so the budget is a bound and not a request.
-        async with asyncio.timeout_at(began + JSON_BUDGET_SECONDS + RESOLVE_GRACE_SECONDS):
+        async with asyncio.timeout(JSON_BUDGET_SECONDS + RESOLVE_GRACE_SECONDS) as window:
             address = await job.resolve(transport, began + JSON_BUDGET_SECONDS)
     except TimeoutError:
         raise YorungeError("transport_timeout") from None
+    if window.expired():
+        raise YorungeError("transport_timeout")  # it swallowed the cancellation and went on
     limit.refund(min(time.monotonic() - began, JSON_BUDGET_SECONDS))  # its own budget, not more
     ask = plan.ask
     # One conditional request if a verified prefix is held, and, if the answer does not fit it,

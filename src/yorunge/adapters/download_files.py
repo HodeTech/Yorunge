@@ -103,9 +103,11 @@ def _owner_only_creation() -> Iterator[None]:
     """Files created inside have no group or world access and keep the owner's, whatever the umask.
 
     A umask that clears owner bits (0277) would make a new file 0400 until its ``fchmod``; a kill
-    between the two would leave a file the next run cannot call ours. The process umask is only
-    ever made stricter here (never looser), and the lock keeps two threads from restoring each
-    other's value.
+    between the two would leave a file the next run cannot call ours. The process umask is set to
+    0077 while a file is created: group and world closed, the owner's bits open (also for a umask
+    like 0277, whose owner bits are thereby opened for the moment), and the lock keeps two threads
+    from restoring each other's value. A signal that runs its Python handler between ``os.umask``
+    returning and the ``try`` below leaves 0077 in the process (documented: the CLI exits).
     """
     with _umask:
         previous = os.umask(0o077)
@@ -266,6 +268,8 @@ def acquire_lock(directory: int, name: str) -> LockObject:
             except FileExistsError:
                 continue
         else:
+            if seen.nlink == 0:
+                continue  # unlinked right now by the run that finished: not a foreign file
             if not seen.owned:
                 raise YorungeError("download_partial_unverified")
             try:
@@ -273,8 +277,9 @@ def acquire_lock(directory: int, name: str) -> LockObject:
             except FileNotFoundError:
                 continue  # the process that finished removed it between the look and the open
             except YorungeError:
-                if entry_of(directory, name) is None:
-                    continue  # ... or between the open and the second look: nothing foreign
+                now = entry_of(directory, name)
+                if now is None or now.nlink == 0 or (now.owned and not same_file(seen, now)):
+                    continue  # ... or removed (perhaps made anew) between the open and the look
                 raise
         try:
             step("lock:opened")

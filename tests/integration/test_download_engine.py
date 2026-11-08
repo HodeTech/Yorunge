@@ -410,8 +410,10 @@ def test_without_a_strong_tag_a_cut_download_keeps_nothing(world):
     world.provider.script = [Reply(body=DATA, truncate_at=CUT)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []  # nothing to resume against: not kept
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
     assert_whole(world, world.run())
     assert world.provider.seen[-1] == (None, None)
+    assert len(world.signed()) == 2 and len(world.service_calls()) == 2  # one GET per run
 
 
 def test_a_weak_tag_is_no_tag(world):
@@ -419,6 +421,7 @@ def test_a_weak_tag_is_no_tag(world):
     world.provider.script = [Reply(body=DATA, headers=(("ETag", 'W/"weak"'),), truncate_at=CUT)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
 
 
 def test_a_chunked_answer_is_whole_when_terminated_and_is_not_resumed_when_cut(world):
@@ -427,9 +430,12 @@ def test_a_chunked_answer_is_whole_when_terminated_and_is_not_resumed_when_cut(w
     world.provider.script = [Reply(body=body, headers=chunked, truncate_at=len(body) // 2)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []  # no total until it ends: not resumable
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
     world.provider.script = [Reply(body=body, headers=chunked)]
     summary = world.run()
     assert_whole(world, summary)
+    assert len(world.signed()) == 2 and len(world.service_calls()) == 2  # no ranged request
+    assert world.provider.seen == [(None, None), (None, None)]
     assert world.reports[-1][1] is None or world.reports[-1] == (len(DATA), len(DATA))
     assert all(total is None for _, total in world.reports[-3:])  # chunked: no total to report
 
@@ -438,6 +444,7 @@ def test_a_body_delimited_by_the_connection_is_refused(world):
     world.provider.script = [Reply(body=DATA, omit_length=True)]
     assert code_of(world.run) == "invalid_response"
     assert world.names() == []
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1  # no second try
 
 
 def test_a_body_longer_than_the_callers_cap_is_refused_before_a_byte_is_written(world):
@@ -450,6 +457,7 @@ def test_a_chunked_body_past_the_callers_cap_is_cut_and_not_kept(world):
     world.provider.script = [Reply(body=framed(DATA), headers=chunked)]
     assert code_of(lambda: world.run(max_bytes=len(DATA) // 2)) == "download_limit_exceeded"
     assert world.names() == []
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
 
 
 # --- what the directory says before anything is asked of the network ------------------------------
@@ -472,6 +480,16 @@ def test_a_target_the_summary_could_not_report_is_refused_before_any_request(wor
     code = code_of(lambda: world.run(target=world.directory / name))
     assert code == "download_target_invalid"
     assert world.server.requests == [] and world.resolver.calls == 0 and world.names() == []
+
+
+@pytest.mark.parametrize("parent", ["bidi\u202eevil", "new\nline", "tab\there", "bell\x07"])
+def test_a_parent_the_summary_could_not_report_is_refused_before_any_request(world, parent):
+    directory = world.directory / parent
+    directory.mkdir()
+    code = code_of(lambda: world.run(target=directory / NAME))
+    assert code == "download_target_invalid"
+    assert world.server.requests == [] and world.resolver.calls == 0
+    assert list(directory.iterdir()) == []  # nothing was made there
 
 
 def broken_publication(patch):
@@ -652,8 +670,11 @@ def test_an_interrupt_keeps_what_can_be_resumed_and_the_next_call_continues(worl
     assert world.names() == sorted([world.stage().name, world.sidecar().name])
     kept = world.stage().stat().st_size
     assert kept >= 1024 * 1024
+    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
     summary = world.run()
     assert_whole(world, summary, resumed=True, resumed_from=kept)
+    assert len(world.signed()) == 2 and len(world.service_calls()) == 2
+    assert world.provider.seen[-1] == (f"bytes={kept}-", TAG)
 
 
 def test_a_local_write_failure_is_reported_before_a_remote_one(world, monkeypatch):
@@ -671,6 +692,9 @@ def test_a_local_write_failure_is_reported_before_a_remote_one(world, monkeypatc
         # the disk fails first; the cut that would be reported next never gets the chance
         assert code_of(world.run) == "download_write_failed"
     assert world.target.exists() is False
+    assert (
+        len(world.signed()) == 1 and len(world.service_calls()) == 1
+    )  # no retry after a disk fault
 
 
 def test_a_bad_digest_is_refused_before_the_job_exists():

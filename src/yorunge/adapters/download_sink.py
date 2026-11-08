@@ -123,7 +123,9 @@ def _closed(
     """An OS error from any syscall of the sink is a closed ``download_write_failed``.
 
     It carries the OS text, which names the derived file, and is no closed code. The closed error
-    is raised outside the handler, so it carries nothing of the OS error (no context, no cause).
+    is raised outside the handler, so it carries nothing of the OS error; one the method raised
+    itself from inside a handler (``from None`` only hides the context) is cleared here: a closed
+    error of the sink has no context and no cause.
     """
 
     def guarded(sink: DownloadSink, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
@@ -131,6 +133,9 @@ def _closed(
             return method(sink, *args, **kwargs)
         except OSError:
             pass
+        except YorungeError as error:
+            error.__context__ = error.__cause__ = None
+            raise
         raise _write_failed()
 
     guarded.__name__, guarded.__doc__ = method.__name__, method.__doc__
@@ -209,6 +214,7 @@ class DownloadSink:
         self._kept_sidecar = False  # a resume plan: the sidecar of an earlier run stands
         self._whole_stage = False  # the plan was to publish a complete stage of an earlier run
         self._unsettled = False  # the digest and the count of what was written may disagree
+        self._completing = False  # the completion checkpoint may already be on disk
 
     # --- steps 2-6: the lock, the look, the decision, its removals, the stage ---------------------
 
@@ -368,8 +374,8 @@ class DownloadSink:
         the sink is half reset: only :meth:`stop` (or leaving :func:`open_sink`) is legal.
         """
         self._require("ready")
-        if action == "discard_and_retry":
-            raise YorungeError("invalid_request")
+        if action not in ("full", "restart", "continue"):
+            raise YorungeError("invalid_request")  # discard_and_retry is :meth:`discard`'s
         stage = self._open_stage()
         self._lock_held()
         if action == "continue":
@@ -429,7 +435,13 @@ class DownloadSink:
         """Append ``data`` (any size) to the stage in blocks of at most 1 MiB."""
         self._require("body")
         stage = self._open_stage()
-        view = memoryview(data)
+        view: memoryview | None = None
+        try:
+            view = memoryview(data)
+        except TypeError:
+            pass  # not a buffer at all (text, None, a number)
+        if view is None:
+            raise YorungeError("invalid_request")
         if view.ndim != 1 or view.format != "B":
             try:
                 view = view.cast("B")  # bytes, whatever the item size of the buffer
@@ -438,6 +450,7 @@ class DownloadSink:
         for offset in range(0, len(view), BLOCK_BYTES):
             block = view[offset : offset + BLOCK_BYTES]
             self._guard()
+            self._lock_held()  # a stale writer must not touch a stage another run has taken over
             if self._total is not None and self.written + len(block) > self._total:
                 raise YorungeError("invalid_response")  # more than the answer promised
             self._write_block(stage, block)
@@ -487,19 +500,27 @@ class DownloadSink:
         if self._phase in ("complete", "published", "stopped") or self._stage is None:
             return
         previous, self._phase = self._phase, "stopped"
+        if self._completing:
+            return  # the disk may already say "whole": what it holds is the next run's to judge
         try:
             self._lock_held()  # without the exclusion, what stands there may be another run's
             if previous == "ready":
                 if self._kept_sidecar:
                     return  # nothing changed this run: the earlier run's stage and sidecar stand
                 self._drop()
-            elif resumable(etag=self._etag, total_size=self._total, committed_bytes=self.written):
+            elif self._whole() or resumable(
+                etag=self._etag, total_size=self._total, committed_bytes=self.written
+            ):
                 if not self._unsettled:  # else the record before stands and the tail is cut back
                     self._checkpoint()
             else:
                 self._drop()
         except Exception:  # noqa: BLE001  (stopping never raises: it must not hide why it stops)
             pass
+
+    def _whole(self) -> bool:
+        """Every byte of a body of known length is written: it needs no tag to be worth keeping."""
+        return self._total is not None and self.written == self._total
 
     def _drop(self) -> None:
         self._close_stage()
@@ -529,6 +550,7 @@ class DownloadSink:
             raise _write_failed() from None
         step("complete:stage_synced")
         self._total = self.written
+        self._completing = True  # from here the record on disk may already say "complete"
         self._write_sidecar(committed=self.written)
         self.committed = self.written
         self._phase = "complete"
@@ -548,7 +570,10 @@ class DownloadSink:
         except DownloadIntegrityMismatch:
             # A kept complete stage would make every rerun an offline loop of the same mismatch.
             held = describe(os.fstat(stage))
-            self._close_stage()
+            try:
+                self._close_stage()
+            except YorungeError:
+                pass  # the verdict is decided; the cleanup below must still run
             self._remove_owned(REMOVE_AFTER_MISMATCH, held)
             raise
         step("compared")
@@ -658,6 +683,8 @@ class DownloadSink:
         """Let go: the stage's descriptor, then the lock object (removed last), then the lock."""
         try:
             self._close_stage()
+        except YorungeError:
+            pass  # what is decided stays decided; the descriptor goes with the process
         finally:
             lock, self._lock = self._lock, None
             if lock is not None:
@@ -710,4 +737,7 @@ def open_sink(
         finally:
             sink.close()
     finally:
-        directory.close()
+        try:
+            directory.close()
+        except YorungeError:
+            pass  # the outcome is decided (a published target, a verdict, an interrupt)

@@ -10,6 +10,7 @@ one trace that may stay is the orphan sidecar of a publication that was cut afte
 """
 
 import os
+import re
 import signal
 import stat
 import subprocess
@@ -37,6 +38,8 @@ SCENARIOS = {
     "discard": ("discard", "stopped", {}),
     "mismatch": ("fresh", "unpublished", {"SINK_EXPECTED": "00" * 32}),
     "no_resume": ("fresh", "stopped", {"SINK_NO_RESUME": "1"}),
+    "stale_tmp": ("fresh", "stopped_with_tmp", {}),
+    "overrun": ("fresh", "stopped_overrun", {}),
 }
 
 
@@ -127,6 +130,32 @@ def test_a_kill_at_every_boundary_is_finished_by_the_next_run(tmp_path, name):
         except AssertionError as error:
             problems.append((label, str(error)[:300]))
     assert not problems, problems
+
+
+def documented_boundaries():
+    """The names the reference lists under "Sınır adları (`step`)", alternatives expanded."""
+    text = (REPOSITORY / "docs/reference/download-engine.md").read_text(encoding="utf-8")
+    paragraph = next(p for p in text.split("\n\n") if p.startswith("**Sınır adları (`step`).**"))
+    names = set()
+    for token in re.findall(r"`([^`]+)`", paragraph)[1:]:  # the first is the function's own name
+        head, colon, tail = token.partition(":")
+        if colon:
+            names.update(f"{head}:{alternative}" for alternative in tail.split("|"))
+        elif re.fullmatch(r"[a-z_]+", token):
+            names.add(token)
+    return names
+
+
+def test_the_boundary_names_of_the_reference_are_the_ones_the_scenarios_announce(tmp_path):
+    announced = set()
+    for name, (scenario, preparation, extra) in SCENARIOS.items():
+        record = tmp_path / f"{name}.txt"
+        run = child(prepared(tmp_path, name, preparation), scenario, extra, record=record)
+        assert run.returncode == 0, (name, run.stderr.decode()[-300:])
+        announced |= {label.split("#")[0] for label in record.read_text().split()}
+    documented = documented_boundaries()
+    assert documented - announced == set(), "documented, never announced"
+    assert announced - documented == set(), "announced, never documented"
 
 
 def test_the_boundaries_come_in_the_order_the_reference_closes(tmp_path):

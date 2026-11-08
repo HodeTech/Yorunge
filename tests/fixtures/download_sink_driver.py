@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from yorunge.adapters import download_files, download_sink
+from yorunge.domain.download import download_names
 from yorunge.domain.download_response import ContentRange, DownloadResponse
 from yorunge.domain.errors import YorungeError
 
@@ -67,11 +68,18 @@ def engine_run(directory, *, scenario="fresh", no_resume=False, expected=None):
 
 
 def prepare(directory, kind):
-    """A directory as an earlier run left it: stopped cleanly, or complete but unpublished."""
+    """A directory as an earlier run left it: stopped cleanly, or complete but unpublished.
+
+    ``stopped_with_tmp`` is a stop that left the temporary copy of a checkpoint behind (the run
+    died between creating it and renaming it); ``stopped_overrun`` is a stop whose stage holds
+    bytes past its last checkpoint (the run died after a block and before the next record).
+    """
     download_sink.CHECKPOINT_BYTES = SMALL_CHECKPOINT
+    names = download_names(NAME)
+    stopped = kind in ("stopped", "stopped_with_tmp", "stopped_overrun")
     with download_sink.open_sink(Path(directory) / NAME, identity_key=IDENTITY) as (sink, _):
         sink.begin(full(), "full")
-        if kind == "stopped":
+        if stopped:
             for piece in pieces(DATA[:9000], SMALL_CHECKPOINT):
                 sink.write(piece)
             sink.stop()
@@ -81,6 +89,13 @@ def prepare(directory, kind):
             sink.complete(terminated=True)
         else:
             raise ValueError(kind)
+    if kind == "stopped_with_tmp":
+        tmp = Path(directory) / names.sidecar_tmp
+        tmp.write_bytes(b"{")
+        tmp.chmod(0o600)
+    if kind == "stopped_overrun":
+        with open(Path(directory) / names.stage, "ab") as stage:
+            stage.write(DATA[9000:9100])  # the true continuation, never checkpointed
 
 
 def main():

@@ -132,7 +132,8 @@ MESSAGES: dict[ErrorCode, str] = {
     ),
     "download_partial_unverified": (
         "Hedef dizinde doğrulanamayan bir yarım indirme izi var. Hiçbir dosyaya dokunulmadı; "
-        "dizindeki .yorunge-download- dosyalarını inceleyin veya başka bir hedef seçin."
+        "dizindeki .yorunge-download- dosyalarını inceleyin, başka bir hedef seçin ya da iz "
+        "bu aracın kendi yarım dosyasıysa --no-resume ile yeniden çalıştırın."
     ),
     "download_busy": (
         "Aynı hedef için başka bir indirme sürüyor. Hiçbir dosyaya dokunulmadı; bitmesini bekleyin."

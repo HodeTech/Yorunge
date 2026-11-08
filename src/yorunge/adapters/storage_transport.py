@@ -474,6 +474,8 @@ class TransferSession(HttpSession):
         transport_factory: Callable[[], TransferHttpxTransport] | None = None,
         storage_origins: tuple[str, ...] = (),
     ) -> None:
+        if type(credential) is not HttpCredential:
+            raise YorungeError("invalid_credential")
         self._storage_origins = _origins(storage_origins)
         self._secret = credential.secret
         super().__init__(

@@ -257,14 +257,26 @@ def test_the_cleanup_order_is_stage_then_sidecar_then_tmp_then_the_lock_object_l
     observe, apply = steps()[4][1], steps()[5][1]
     assert "bu koşu henüz hiçbirini yaratmaz" in observe
     assert "kararın silmeleri" in apply or "Silme listesi" in apply
+    # the prefix is hashed and confirmed BEFORE the removals the decision lists are carried out
+    assert apply.index("confirm_prefix") < apply.index("Silme listesi")
 
 
 def test_the_engine_section_states_the_constants_and_the_order_of_the_engine():
-    from yorunge.adapters.download_engine import JSON_BUDGET_SECONDS, PROGRESS_SECONDS
+    from yorunge.adapters.download_engine import (
+        JSON_BUDGET_SECONDS,
+        PROGRESS_SECONDS,
+        RESOLVE_GRACE_SECONDS,
+    )
+    from yorunge.domain.models import MAX_REPORTED_PATH_BYTES
 
     section = table("Motor (P02-3m)")
     assert JSON_BUDGET_SECONDS == 30.0 and "30 sn" in section and "düşülmez" in section
+    assert RESOLVE_GRACE_SECONDS == 1.0 and "bütçe + 1 sn" in section
     assert PROGRESS_SECONDS == 0.1 and "saniyede en çok on" in section
     assert "en çok iki GET" in section and "tamponlamaz" in section
     assert "yerel durumu her istekten önce" in section and "`complete(terminated=True)`" in section
     assert section.index("Tam-stage ise ağ koşusu yoktur") < section.index("en çok iki GET")
+    # the framing ends, the whole-body mark is written, THEN the last report
+    assert section.index("`complete(terminated=True)` yazılır") < section.index("sonra son rapor")
+    assert MAX_REPORTED_PATH_BYTES == 4096 and "4096 bayt" in section
+    assert "≤16 KiB" in section  # the size of one TLS record, which is what is written at a time
