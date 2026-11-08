@@ -21,11 +21,17 @@ import pytest
 
 from tests.fixtures.http_server import TlsServer
 from tests.fixtures.upload_provider import DATASET
-from tests.integration.test_upload_continuation_stages import Skewed, journal, planned
+from tests.integration.test_upload_continuation_stages import (
+    Skewed,
+    journal,
+    operation_of,
+    planned,
+)
 from tests.integration.test_upload_continuation_start import (
     approve,
     check_only_world,
     no_context,
+    two_plans,
 )
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
@@ -290,5 +296,52 @@ def test_two_processes_starting_the_same_plan_send_its_files_once(
         view = journal(data, report.plan_id)
         assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
         assert len(view.intents) == len(view.receipts) == 3
+        with open_existing_store(data[0]) as store:
+            validate_uploads(store.connection)
+
+
+def test_two_processes_starting_two_plans_of_one_source_send_one_plans_files_once(
+    prepared_input, certificates, monkeypatch
+):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2]))
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        first, second = two_plans(data, server, provider)
+        sends = len(provider.events)
+        context = multiprocessing.get_context("spawn")
+        barrier, results = context.Barrier(2), context.Queue()
+        processes = [
+            context.Process(
+                target=_racer,
+                args=(
+                    str(data[0]),
+                    plan.plan_id,
+                    data[3].model_dump(mode="json"),
+                    data[4].model_dump(mode="json"),
+                    server.port,
+                    str(certificates[0]),
+                    barrier,
+                    results,
+                ),
+            )
+            for plan in (first, second)
+        ]
+        for process in processes:
+            process.start()
+        try:
+            answers = [results.get(timeout=120) for _ in processes]
+        finally:
+            for process in processes:
+                process.join(30)
+                if process.is_alive():
+                    process.kill()
+        # One plan owns the source's continuation; the other is refused for it, by name.
+        returned = [answer for answer in answers if answer[0] == "returned"]
+        raised = [answer for answer in answers if answer[0] == "raised"]
+        assert returned == [("returned", False, "succeeded")], answers
+        assert raised == [("raised", "OperationError", "operation_conflict")], answers
+        assert provider.events[sends:] == list(STAGES)
+        operations = [operation_of(data, plan.plan_id) for plan in (first, second)]
+        assert sorted(operation is None for operation in operations) == [False, True]
         with open_existing_store(data[0]) as store:
             validate_uploads(store.connection)

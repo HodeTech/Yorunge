@@ -174,6 +174,25 @@ def _admitted_meanwhile(
     return found if isinstance(found, ContinuationPhase) else None
 
 
+def _explained(
+    runtime: UploadResumeRuntime, plan: DatasetContinuationPlanV3, refusal: YorungeError
+) -> YorungeError:
+    """The refusal of a look, or the sibling operation that is the reason for it.
+
+    The look takes a while, and a sibling plan of the same source may have been admitted and have
+    sent its files meanwhile: the dataset then differs from what this plan was approved on, and the
+    cause is that operation, which the journal names. Neither the folder nor the provider is asked.
+    """
+    try:
+        _journal_clear(runtime, plan)
+    except OperationError as conflict:
+        if conflict.code == "operation_conflict":
+            return conflict
+    except YorungeError:
+        pass
+    return refusal
+
+
 def run_upload_continuation(
     plan_id: str,
     state_dir: Path | None,
@@ -215,14 +234,15 @@ def run_upload_continuation(
         end = min(started + 900, invocation_end)
         try:
             bound, inputs, baseline = _looked_at(runtime, plan, manifest, end)
-        except YorungeError:
+        except YorungeError as refusal:
             # The look takes a while (the folder is hashed, the dataset listed), and another
             # invocation may have admitted this very plan meanwhile: its operation is the answer,
             # found without a request, whatever the look has to say of a journal or a dataset that
-            # operation changed. A refusal stands only while the plan has no operation of its own.
+            # operation changed. A refusal stands only while the plan has no operation of its own;
+            # if a sibling plan of the source has one, that conflict is what is reported.
             found = _admitted_meanwhile(plan_id, state_dir, clock)
             if found is None:
-                raise
+                raise _explained(runtime, plan, refusal) from None
             return found
         record = run_stages(runtime, plan, bound, inputs, baseline, end, start)
     return ContinuationPhase(plan, record, not owned)
