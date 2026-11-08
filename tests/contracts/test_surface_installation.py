@@ -157,7 +157,10 @@ def test_no_credential_reaches_a_smoke_command_even_when_the_caller_holds_one(bo
 
 def test_the_guard_refuses_connections_and_lookups_but_not_sockets_that_stay_local(tmp_path):
     body = """
+import os
 import socket
+import subprocess
+import sys
 
 local, other = socket.socketpair()  # the event loop's own wakeup pair stays possible
 local.close()
@@ -172,6 +175,13 @@ attempts = (
     lambda: socket.gethostbyaddr("127.0.0.1"),
     lambda: socket.getnameinfo(("127.0.0.1", 9), 0),
     lambda: plain.sendto(b"x", ("127.0.0.1", 9)),
+    lambda: plain.sendmsg([b"x"], [], 0, ("127.0.0.1", 9)),
+    # a child process could reach the network on the command's behalf: it is refused as well
+    lambda: subprocess.run([sys.executable, "-c", "pass"]),
+    lambda: os.system("true"),
+    lambda: os.fork(),
+    lambda: os.posix_spawn("/usr/bin/true", ["true"], {}),
+    lambda: os.execv("/usr/bin/true", ["true"]),
 )
 for attempt in attempts:
     try:
@@ -190,7 +200,7 @@ print("refused")
         timeout=30,
     )
     assert (result.returncode, result.stdout.strip()) == (0, "refused")
-    assert result.stderr.count("attempted") == 8  # every refusal leaves its trace on stderr
+    assert result.stderr.count("attempted") == 14  # every refusal leaves its trace on stderr
 
 
 def test_an_attempt_the_command_swallows_still_fails_the_smoke(tmp_path):

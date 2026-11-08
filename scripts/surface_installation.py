@@ -32,6 +32,14 @@ DENIED = frozenset(
         "socket.gethostbyaddr",
         "socket.getnameinfo",
         "socket.sendto",
+        "socket.sendmsg",
+        "subprocess.Popen",
+        "os.system",
+        "os.exec",
+        "os.spawn",
+        "os.posix_spawn",
+        "os.fork",
+        "os.forkpty",
     )
 )
 

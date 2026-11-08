@@ -351,3 +351,124 @@ def test_the_wrappers_find_the_download_retention_and_the_shared_helpers_on_the_
     assert driver["STREAM"] is driver["EVIDENCE"]["STREAM"]
     for name in ("HTTP", "CONTROL", "WHEEL", "DATA"):
         assert name in driver
+
+
+# --- what the controller hands back, and how it can be stopped ---------------------------------
+
+
+def assembled(driver, cpu):
+    from tests.contracts.test_download_evidence import proof, scoped_runs
+
+    base = proof()
+    wheel_before = {
+        "sha256": base["wheel_before"],
+        "product_sha256": base["wheel_product_sha256"],
+        "metadata_sha256": base["wheel_metadata_sha256"],
+    }
+    return driver["assemble"](
+        base["source_before"],
+        base["source_after"],
+        wheel_before,
+        {"sha256": base["wheel_after"]},
+        base["locked_runtime"],
+        scoped_runs(LABELS, 3),
+        cpu=cpu,
+        disk="synthetic",
+        labels=list(LABELS),
+        samples=3,
+    )
+
+
+def test_a_report_that_does_not_validate_is_never_handed_back(driver):
+    report = assembled(driver, "synthetic")
+    assert (
+        report["report_kind"] == "download_budget_v1"
+        and report["environment"]["cpu"] == "synthetic"
+    )
+    with pytest.raises(ValueError):
+        assembled(driver, "")  # an empty label: judged by the closed report itself, not by the runs
+
+
+@pytest.mark.parametrize("name", ["SIGTERM", "SIGHUP"])
+def test_a_terminated_controller_is_stopped_like_a_ctrl_c_and_the_handlers_come_back(driver, name):
+    import signal
+    import time
+
+    number = getattr(signal, name)
+    before = {n: signal.getsignal(n) for n in (signal.SIGTERM, signal.SIGHUP)}
+    with pytest.raises(SystemExit) as stopped:
+        with driver["termination_signals"]():
+            os.kill(os.getpid(), number)
+            time.sleep(1)  # the handler raises at the next bytecode; this is never reached
+    assert stopped.value.code == 128 + number
+    assert {n: signal.getsignal(n) for n in before} == before
+
+
+def test_main_runs_the_measurement_under_those_handlers(driver, monkeypatch):
+    import signal
+
+    seen = {}
+
+    def check(args):
+        seen["term"] = signal.getsignal(signal.SIGTERM)
+        seen["hup"] = signal.getsignal(signal.SIGHUP)
+        return 0
+
+    monkeypatch.setitem(driver["main"].__globals__, "check", check)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark-download.py",
+            "--python",
+            "p",
+            "--wheel",
+            "w",
+            "--workspace",
+            "x",
+            "--output",
+            "o",
+            "--cpu",
+            "c",
+            "--disk-type",
+            "d",
+        ],
+    )
+    # the handlers are the driver's own while check() runs, and the previous ones afterwards
+    before = signal.getsignal(signal.SIGTERM)
+    assert driver["main"]() == 0
+    assert seen["term"] not in (before, signal.SIG_DFL, signal.SIG_IGN) and callable(seen["term"])
+    assert seen["hup"] == seen["term"] or callable(seen["hup"])
+    assert signal.getsignal(signal.SIGTERM) == before
+
+
+def test_a_report_too_deep_to_read_is_a_closed_failure_of_the_controller(
+    driver, monkeypatch, capsys
+):
+    def check(args):
+        raise RecursionError("deep")
+
+    monkeypatch.setitem(driver["main"].__globals__, "check", check)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark-download.py",
+            "--python",
+            "p",
+            "--wheel",
+            "w",
+            "--workspace",
+            "x",
+            "--output",
+            "o",
+            "--cpu",
+            "c",
+            "--disk-type",
+            "d",
+        ],
+    )
+    with pytest.raises(SystemExit) as stopped:
+        driver["main"]()
+    assert stopped.value.code == 1
+    assert "Download measurement failed" in capsys.readouterr().err

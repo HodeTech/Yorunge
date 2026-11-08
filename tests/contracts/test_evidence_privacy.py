@@ -616,3 +616,10 @@ def test_original_commit_means_first_matching_bytes_not_first_path_or_later_copy
     (tmp_path / ".git/shallow").write_text(later + "\n")
     with pytest.raises(ValueError, match="full Git history"):
         verify(tmp_path, "missing.json", raw, None)
+
+
+def test_the_member_limit_leaves_room_for_the_worst_failed_ci_shape():
+    # A failed Linux job that retains both download diagnostics (the controller's and the wrapper's,
+    # 100 and 102 attachments) together with its other files needs 512 members, and one more file
+    # (the startup profile) would block the whole artifact: the limit is twice that.
+    assert GUARD["MAX_MEMBERS"] >= 1024

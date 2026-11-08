@@ -21,6 +21,7 @@ FAILURES = [
     "source_unreadable",
     "metadata_exit",
     "metadata_utf8",
+    "metadata_stderr",
     "surface",
     "measure",
     "judged",
@@ -30,6 +31,7 @@ STAGES = {
     "source_unreadable": "source",
     "metadata_exit": "metadata",
     "metadata_utf8": "metadata",
+    "metadata_stderr": "metadata",
     "surface": "surface",
     "measure": "measurement",
     "judged": "judgement",
@@ -79,6 +81,8 @@ def test_installed_smoke_surface_source_and_metadata_failures_cannot_be_hidden(
         if failure == "metadata_exit":
             kwargs["stderr"].write(b"metadata failed")
             raise subprocess.CalledProcessError(1, command)
+        if failure == "metadata_stderr":
+            kwargs["stderr"].write(b"a warning the probe printed while exiting 0")
         return SimpleNamespace(returncode=0)
 
     def surface(*arguments):

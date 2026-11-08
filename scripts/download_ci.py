@@ -259,7 +259,14 @@ def main() -> int:
     args = parser.parse_args()
     try:
         return check(args)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RecursionError,
+        subprocess.SubprocessError,
+    ) as error:
         parser.exit(1, f"Download CI failed: {error}; retained files are not acceptance.\n")
 
 

@@ -5,10 +5,11 @@ download through the product's public API from a separate-process server; the re
 to a new canonical path directly in ``dist``. ``--labels`` and ``--samples`` select a smoke subset:
 its report says it is partial and is never accepted.
 
-A complete report that did not pass is archived as it is. An interrupted complete run leaves a
-``controller-error.json`` marker in its workspace and retains the original files that exist as a
-rejected-download attachment; nothing is retried, deleted or rewritten. A smoke subset is a tool:
-its originals stay in the workspace and it never writes the evidence archive.
+A complete report that did not pass is archived as it is. An interrupted complete run (an error,
+Ctrl-C, SIGTERM or SIGHUP; SIGKILL cannot be caught) leaves a ``controller-error.json`` marker in
+its workspace and retains the original files that exist as a rejected-download attachment; nothing
+is retried, deleted or rewritten. A smoke subset is a tool: its originals stay in the workspace and
+it never writes the evidence archive.
 """
 
 from __future__ import annotations
@@ -17,7 +18,10 @@ import argparse
 import json
 import os
 import runpy
+import signal
 import subprocess
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,6 +36,33 @@ WHEEL = runpy.run_path(str(ROOT / "scripts/dataset_wheel.py"))
 DIAGNOSTIC = runpy.run_path(str(ROOT / "scripts/download_diagnostic.py"))
 # Longest a worker may take: warm, oracle, one 900 s product budget per call, and the verification.
 WORKER_SECONDS = {"16": 1200, "256": 1200, "1024": 1500, "resume": 2100}
+
+
+@contextmanager
+def termination_signals() -> Iterator[None]:
+    """SIGTERM and SIGHUP stop the controller the way Ctrl-C does.
+
+    They become ``SystemExit`` so that the ``BaseException`` path of ``check`` runs (the marker, the
+    retained diagnostics), the worker that is running is killed and both servers stop; without this
+    a ``kill`` of the controller would leave all three alive. A second signal during that cleanup is
+    ignored. SIGKILL cannot be caught: nothing here can help with it (``download_ci.py`` owns a
+    process group for that).
+    """
+    numbers = (signal.SIGTERM, signal.SIGHUP)
+    previous = {number: signal.getsignal(number) for number in numbers}
+
+    def interrupted(number: int, frame: object) -> None:
+        for other in numbers:
+            signal.signal(other, signal.SIG_IGN)
+        raise SystemExit(128 + number)
+
+    for number in numbers:
+        signal.signal(number, interrupted)
+    try:
+        yield
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
 
 
 def decode_output(path: Path) -> dict[str, Any]:
@@ -309,8 +340,16 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
-        return check(args)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        with termination_signals():
+            return check(args)
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RecursionError,
+        subprocess.SubprocessError,
+    ) as error:
         parser.exit(
             1, f"Download measurement failed: {error}; original files remain in workspace.\n"
         )
