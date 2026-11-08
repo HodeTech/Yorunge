@@ -39,3 +39,39 @@ def test_the_wire_table_names_only_codes_that_exist():
         "remote_rate_limited",
     } <= codes
     assert "download_incomplete" in codes
+    # Every code the table writes with an exit status is that code with that status.
+    for code, status in re.findall(r"`([a-z]+(?:_[a-z]+)+)`/(\d)", wire):
+        assert code in MESSAGES, code
+        assert YorungeError(code).exit_code == int(status), code  # type: ignore[arg-type]
+
+
+def test_the_wire_table_sends_each_status_where_the_parser_sends_it():
+    from yorunge.domain.download_response import parse_response
+
+    wire = table("Yanıt işleme (kapalı tablo)")
+    rows = {
+        cells[0].strip(): cells[1]
+        for cells in (
+            line.strip("| ").split("|", 1) for line in wire.splitlines() if line.startswith("| ")
+        )
+        if len(cells) == 2
+    }
+    for label, status in {"3xx": 302, "401/403": 401, "429": 429, "5xx": 503}.items():
+        code = re.search(r"`([a-z_]+)`", next(v for k, v in rows.items() if k.startswith(label)))
+        assert code is not None, label
+        try:
+            parse_response(status, [("Content-Length", "0")])
+        except YorungeError as error:
+            assert error.code == code.group(1), (label, error.code)
+        else:
+            raise AssertionError(f"{status} is not refused")
+    other_4xx = next(v for k, v in rows.items() if k.startswith("404 ve diğer 4xx"))
+    try:
+        parse_response(404, [("Content-Length", "0")])
+    except YorungeError as error:
+        assert f"`{error.code}`" in other_4xx
+    other_2xx = next(v for k, v in rows.items() if k.startswith("Diğer 2xx"))
+    try:
+        parse_response(201, [("Content-Length", "0")])
+    except YorungeError as error:
+        assert f"`{error.code}`" in other_2xx

@@ -161,7 +161,10 @@ class DownloadSummary(Model):
         if level_source not in {("transfer_complete", "none"), ("sha256_matched", "user_supplied")}:
             raise ValueError("a level is earned against its own kind of expectation")
         if self.resumed:
-            if not 0 < self.resumed_from_bytes <= self.bytes:
+            # From part of its bytes, or all of them: a complete stage is published without a
+            # request. A complete stage of no bytes is the one case of nothing from nothing.
+            empty = self.bytes == self.resumed_from_bytes == 0
+            if not (0 < self.resumed_from_bytes <= self.bytes or empty):
                 raise ValueError("a resumed download resumes from part of its bytes")
         elif self.resumed_from_bytes != 0:
             raise ValueError("a download that did not resume resumed from nothing")
@@ -187,7 +190,10 @@ class DownloadWire(JsonWireModel):
         """The record a stored copy says: nothing but the exact canonical bytes of a valid one."""
         if type(data) is not bytes or len(data) > cls.max_wire_bytes:
             raise ValueError("bounded download wire required")
-        record = cls.model_validate_json(data)
+        try:
+            record = cls.model_validate_json(data)
+        except RecursionError:
+            raise ValueError("bounded download wire required") from None  # deep nesting, <4 KiB
         if record.encoded() != data:
             raise ValueError("canonical download wire required")
         return record
@@ -259,6 +265,10 @@ def identity_key(
     for value in parts.values():
         if type(value) is not str or not value or has_control_characters(value):
             raise YorungeError("invalid_request")
+        try:
+            value.encode("utf-8")  # lone surrogates would collide with the character they spell
+        except UnicodeError:
+            raise YorungeError("invalid_request") from None
     if fold is not None and parse_fold(fold) != fold:
         raise YorungeError("invalid_request")
     body = {"kind": "download_identity", "parts": parts, "fold": fold}
@@ -269,7 +279,14 @@ _REFUSED_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp", "Cn"})
 
 
 def validate_target_name(name: object) -> str:
-    """The final component of the target: one printable name that is not the protocol's own."""
+    """The final component of the target: one printable name that is not the protocol's own.
+
+    Refused: an empty name, ``.`` and ``..``, ``/`` and NUL, more than 255 UTF-8 bytes, a name that
+    does not encode, control, format, surrogate, line and paragraph separator characters and
+    characters the Unicode database of the running interpreter does not assign (so a very new
+    character is accepted by a newer Python than an older one), and the protocol's own prefix in
+    any letter case.
+    """
     if type(name) is not str or not name or name in {".", ".."} or "/" in name or "\x00" in name:
         raise YorungeError("download_target_invalid")
     try:
@@ -280,7 +297,7 @@ def validate_target_name(name: object) -> str:
         size > MAX_TARGET_NAME_BYTES
         or has_control_characters(name)
         or any(unicodedata.category(char) in _REFUSED_CATEGORIES for char in name)
-        or name.startswith(RESERVED_PREFIX)
+        or name.lower().startswith(RESERVED_PREFIX)  # a case-insensitive filesystem aliases it
     ):
         raise YorungeError("download_target_invalid")
     return name

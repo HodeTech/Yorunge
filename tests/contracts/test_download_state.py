@@ -20,6 +20,7 @@ from yorunge.domain.download_state import (
     StartDecision,
     confirm_prefix,
     decide_start,
+    resumable,
 )
 
 IDENTITY, TARGET = "ab" * 32, "cd" * 32
@@ -193,6 +194,25 @@ def test_a_full_stage_without_a_sidecar_or_with_one_that_cannot_be_read_is_unver
     assert decide(stage=stage(), sidecar=sidecar(rec=None)).action == "unverified"
 
 
+def test_a_full_stage_whose_sidecar_cannot_be_read_is_unverified_but_an_empty_one_is_not_reused():
+    # An empty stage is reused only when there is no sidecar at all.
+    assert decide(stage=stage(size=0), sidecar=sidecar(rec=None)).action == "unverified"
+
+
+def test_no_resume_removes_an_owned_sidecar_that_cannot_be_read_when_no_stage_is_left():
+    # The trace an interrupted --no-resume removal itself leaves (the stage is gone, the sidecar
+    # is not) must not be a permanent stop for the very flag that asks for the removal.
+    found = decide(sidecar=sidecar(rec=None), no_resume=True)
+    assert (found.action, found.remove) == ("start_clean", ("sidecar",))
+    both = decide(sidecar=sidecar(rec=None), sidecar_tmp=entry(), no_resume=True)
+    assert both.remove == ("sidecar", "sidecar_tmp")
+    # Without the flag the trace is still not discarded on its own say-so, and a sidecar that is
+    # not even provably ours is never removed.
+    assert decide(sidecar=sidecar(rec=None)).action == "unverified"
+    foreign = decide(sidecar=sidecar(rec=None, nlink=2), no_resume=True)
+    assert (foreign.action, foreign.remove) == ("unverified", ())
+
+
 def test_no_resume_removes_what_is_provably_ours_and_starts_clean():
     assert decide(stage=stage(), no_resume=True).remove == ("stage",)
     assert decide(stage=stage(), sidecar=sidecar(rec=None), no_resume=True).remove == (
@@ -346,10 +366,28 @@ def test_a_stage_shorter_than_a_complete_sidecar_is_discarded():
 
 def test_a_prefix_that_hashes_as_recorded_confirms_the_decision():
     found = decide(stage=stage(), sidecar=sidecar())
-    assert confirm_prefix(found, "ef" * 32) is found
+    assert found.prefix_checked is False  # a plan, until the prefix was hashed
+    assert confirm_prefix(found, "ef" * 32) == replace(found, prefix_checked=True)
     complete = record(committed_bytes=1000, prefix_sha256="12" * 32)
     publish = decide(stage=stage(size=1000), sidecar=sidecar(rec=complete))
-    assert confirm_prefix(publish, "12" * 32) is publish
+    assert publish.prefix_checked is False
+    assert confirm_prefix(publish, "12" * 32) == replace(publish, prefix_checked=True)
+
+
+def test_a_decision_that_resumes_or_publishes_without_its_record_is_refused():
+    for action in ("resume", "publish_complete"):
+        with pytest.raises(ValueError):
+            confirm_prefix(StartDecision(action), "ef" * 32)
+
+
+@pytest.mark.parametrize("observed", ["00" * 32, None])
+def test_a_discarded_prefix_still_removes_the_leftover_copy_after_the_stage_and_the_sidecar(
+    observed,
+):
+    found = decide(stage=stage(), sidecar=sidecar(), sidecar_tmp=entry())
+    assert found.remove == ("sidecar_tmp",)
+    again = confirm_prefix(found, observed)
+    assert (again.action, again.remove) == ("start_clean", ("stage", "sidecar", "sidecar_tmp"))
 
 
 @pytest.mark.parametrize("observed", ["00" * 32, "EF" * 32, "", None])
@@ -420,7 +458,93 @@ def random_record(rng):
     )
 
 
+COMBOS = [(0, None), (0, 1000), (400, 1000), (400, None), (1000, 1000), (1000, None), (0, 0)]
+
+
+def coherent_directory(rng):
+    """What an interrupted download really leaves, then damaged here and there at random.
+
+    A uniformly random directory almost never has a stage that fits its sidecar, so the rows that
+    resume and publish would hardly be reached. This one starts from a directory that fits.
+    """
+    committed, total = rng.choice(COMBOS)
+    kept = record(
+        etag=rng.choice([TAG, TAG, TAG, None]),
+        total_size=total,
+        committed_bytes=committed,
+        prefix_sha256=EMPTY_SHA256 if committed == 0 else "ef" * 32,
+    )
+    directory = {
+        "lock": "held",
+        "target": None,
+        "stage": entry(
+            size=rng.choice([committed, committed, committed + 50, max(committed - 50, 0)])
+        ),
+        "sidecar": SidecarState(entry(inode=7, size=300), kept),
+        "sidecar_tmp": None,
+        "identity_key": IDENTITY,
+        "target_hash": TARGET,
+        "no_resume": rng.random() < 0.15,
+    }
+
+    def damaged(item):
+        return replace(
+            item,
+            **rng.choice(
+                [
+                    {"regular": False},
+                    {"ours": False},
+                    {"private": False},
+                    {"nlink": 2},
+                    {"inode": 9},
+                ]
+            ),
+        )
+
+    if rng.random() < 0.15:
+        directory["lock"] = rng.choice(["busy", "unowned"])
+    if rng.random() < 0.15:
+        directory["target"] = entry(inode=rng.choice([INODE, 8]), nlink=rng.choice([1, 2]))
+    if rng.random() < 0.1:
+        directory["stage"] = None
+    elif rng.random() < 0.15:
+        directory["stage"] = damaged(directory["stage"])
+    if rng.random() < 0.1:
+        directory["sidecar"] = None
+    elif rng.random() < 0.15:
+        other = rng.choice(
+            [
+                {"identity_key": "12" * 32},
+                {"target_hash": "34" * 32},
+                {"stage_inode": INODE + 1},
+                {"stage_device": DEVICE + 1},
+            ]
+        )
+        directory["sidecar"] = SidecarState(
+            directory["sidecar"].entry,
+            record(
+                **{
+                    "etag": kept.etag,
+                    "total_size": total,
+                    "committed_bytes": committed,
+                    "prefix_sha256": kept.prefix_sha256,
+                    **other,
+                }
+            ),
+        )
+    elif rng.random() < 0.15:
+        directory["sidecar"] = SidecarState(directory["sidecar"].entry, None)
+    elif rng.random() < 0.15:
+        directory["sidecar"] = SidecarState(damaged(directory["sidecar"].entry), kept)
+    if rng.random() < 0.25:
+        tmp = entry(inode=8)
+        directory["sidecar_tmp"] = damaged(tmp) if rng.random() < 0.2 else tmp
+    return directory
+
+
 def random_directory(rng):
+    if rng.random() < 0.65:
+        return coherent_directory(rng)
     sidecar_state = None
     if rng.random() < 0.6:
         sidecar_state = SidecarState(
@@ -437,6 +561,24 @@ def random_directory(rng):
         "target_hash": TARGET,
         "no_resume": rng.random() < 0.3,
     }
+
+
+def really_ours(item):
+    """The four properties of a file that is this download's own, written out once more."""
+    return item.regular and item.ours and item.private and item.nlink == 1
+
+
+def present_and_ours(directory):
+    """Which of the stage, the sidecar and the temporary copy stand there and are ours."""
+    side = directory["sidecar"]
+    names = set()
+    if directory["stage"] is not None and really_ours(directory["stage"]):
+        names.add("stage")
+    if side is not None and really_ours(side.entry) and side.entry.size <= MAX_SIDECAR_BYTES:
+        names.add("sidecar")
+    if directory["sidecar_tmp"] is not None and really_ours(directory["sidecar_tmp"]):
+        names.add("sidecar_tmp")
+    return names
 
 
 def provably_ours_to_remove(found, directory):
@@ -464,12 +606,13 @@ def provably_ours_to_remove(found, directory):
 
 def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
     rng = random.Random(20261108)
-    actions = set()
-    for _ in range(6000):
+    actions, counts = set(), {}
+    for _ in range(8000):
         directory = random_directory(rng)
         found = decide_start(**directory)
         assert found == decide_start(**directory)  # a decision is a function of what was seen
         actions.add(found.action)
+        counts[found.action] = counts.get(found.action, 0) + 1
         # The lock comes first: unless it is held, nothing is removed or rewritten.
         if directory["lock"] != "held":
             assert found.remove == () and found.action in {"busy", "unverified"}
@@ -509,6 +652,24 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
             assert found.ask is None and found.record.complete
         if found.action not in {"resume", "publish_complete"}:
             assert found.ask is None and found.record is None and found.truncate_to is None
+        # Nothing of ours is left behind by a clean start; a resume or a reuse removes only a
+        # leftover temporary copy.
+        owned_here = present_and_ours(directory)
+        if found.action == "start_clean":
+            assert set(found.remove) == owned_here, (directory, found)
+        if found.action in {"resume", "publish_complete", "reuse_empty_stage"}:
+            assert set(found.remove) == owned_here & {"sidecar_tmp"}
+        # The second phase: a prefix that hashes as recorded confirms the plan, one that does not
+        # (or could not be read) discards everything of ours, stage first.
+        if found.action in {"resume", "publish_complete"}:
+            assert found.prefix_checked is False
+            assert confirm_prefix(found, found.record.prefix_sha256) == replace(
+                found, prefix_checked=True
+            )
+            missed = confirm_prefix(found, rng.choice(["00" * 32, None]))
+            assert (missed.action, missed.record, missed.ask) == ("start_clean", None, None)
+            assert set(missed.remove) == owned_here
+            assert list(missed.remove) == [n for n in REMOVAL_ORDER if n in missed.remove]
         # The decision names an error exactly when the command stops.
         assert (found.error is not None) == (found.action in ERRORS)
         # An existing target is never reported as anything else, and never touched.
@@ -523,6 +684,66 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
         "resume",
         "publish_complete",
     }  # the sweep reached every row
+    assert counts["resume"] > 100 and counts["publish_complete"] > 100  # and the rows that matter
+
+
+@pytest.mark.parametrize(
+    "etag,total,committed,kept",
+    [
+        (TAG, 1000, 400, True),
+        (None, 1000, 400, False),  # no strong tag
+        (TAG, None, 400, False),  # no total yet (a chunked body)
+        (TAG, 1000, 0, False),  # nothing committed to resume from
+    ],
+)
+def test_a_partial_download_is_worth_keeping_only_with_a_tag_a_total_and_progress(
+    etag, total, committed, kept
+):
+    assert resumable(etag=etag, total_size=total, committed_bytes=committed) is kept
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["ab" * 16, "AB" * 32, "", "zz" * 32, None, b"ab" * 32],
+    ids=["32 hex", "uppercase", "empty", "not hex", "none", "bytes"],
+)
+@pytest.mark.parametrize("which", ["identity_key", "target_hash"])
+def test_the_identity_key_and_the_target_hash_must_be_digests(which, bad):
+    # A wrong value would make every record a mismatch and order the stage deleted on every run.
+    with pytest.raises(ValueError):
+        decide(**{which: bad})
+
+
+def test_a_removal_is_ordered_before_the_error_it_accompanies():
+    linked = stage(nlink=2, inode=9)
+    found = decide(target=entry(inode=9, nlink=2), stage=linked, sidecar=sidecar())
+    # The command stops with the error, but only after this cleanup: both are in one decision.
+    assert found.error == "download_output_exists" and found.remove == ("stage", "sidecar")
+
+
+def test_an_interruption_inside_any_removal_leaves_a_directory_the_same_command_continues_from():
+    """No kill between two unlinks leaves a stop that only a manual deletion could end."""
+    rng = random.Random(20261109)
+    interrupted = 0
+    for _ in range(12000):
+        directory = random_directory(rng)
+        directory["lock"] = "held"
+        found = decide_start(**directory)
+        if found.action in ("busy", "unverified"):
+            continue
+        # The plan, and the plan after a prefix that did not hash (which removes more).
+        plans = [found]
+        if found.action in ("resume", "publish_complete"):
+            plans.append(confirm_prefix(found, None))
+        for plan in plans:
+            for done in range(len(plan.remove)):
+                after = dict(directory)
+                for name in plan.remove[:done]:
+                    after[name] = None
+                again = decide_start(**after)
+                interrupted += 1
+                assert again.action != "unverified", (directory, plan.remove, done, again)
+    assert interrupted > 5000  # the sweep really cut removals in the middle
 
 
 def test_a_decision_is_a_frozen_value():

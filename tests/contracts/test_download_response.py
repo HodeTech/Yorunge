@@ -239,32 +239,44 @@ def test_an_identity_encoding_is_no_encoding(encoding):
     assert parse_response(200, fields).status == 200
 
 
-@pytest.mark.parametrize(
-    "fields",
-    [
-        [],  # a body closed by the connection
-        [("Content-Length", "")],
-        [("Content-Length", "abc")],
-        [("Content-Length", "-1")],
-        [("Content-Length", "+10")],
-        [("Content-Length", "10.0")],
-        [("Content-Length", "010")],
-        [("Content-Length", "1 0")],
-        [("Content-Length", "1" + "0" * 64)],  # not a length: 65 digits
-        [("Content-Length", "10"), ("Content-Length", "10")],  # a repeated field is not accepted
-        [("Content-Length", "10, 10")],
-        [("Transfer-Encoding", "gzip")],
-        [("Transfer-Encoding", "gzip, chunked")],
-        [("Transfer-Encoding", "chunked, chunked")],
-        [("Transfer-Encoding", "chunked"), ("Transfer-Encoding", "chunked")],
-        [("Transfer-Encoding", "chunked"), ("Content-Length", "10")],  # smuggling-shaped
-        [("Transfer-Encoding", "identity")],
-        [("Transfer-Encoding", "")],
-    ],
-)
-@pytest.mark.parametrize("status", [200, 206])
-def test_a_body_without_exactly_one_framing_is_invalid(status, fields):
-    assert code_of(lambda: parse_response(status, fields)) == "invalid_response"
+UNFRAMED = [
+    [],  # a body closed by the connection
+    [("Content-Length", "")],
+    [("Content-Length", "abc")],
+    [("Content-Length", "-1")],
+    [("Content-Length", "+10")],
+    [("Content-Length", "10.0")],
+    [("Content-Length", "010")],
+    [("Content-Length", "1 0")],
+    [("Content-Length", "1" + "0" * 64)],  # not a length: 65 digits
+    [("Content-Length", "10"), ("Content-Length", "10")],  # a repeated field is not accepted
+    [("Content-Length", "10, 10")],
+    [("Transfer-Encoding", "gzip")],
+    [("Transfer-Encoding", "gzip, chunked")],
+    [("Transfer-Encoding", "chunked, chunked")],
+    [("Transfer-Encoding", "chunked"), ("Transfer-Encoding", "chunked")],
+    [("Transfer-Encoding", "chunked"), ("Content-Length", "10")],  # smuggling-shaped
+    [("Transfer-Encoding", "identity")],
+    [("Transfer-Encoding", "")],
+]
+
+
+@pytest.mark.parametrize("fields", UNFRAMED)
+def test_a_full_body_without_exactly_one_framing_is_invalid(fields):
+    assert code_of(lambda: parse_response(200, fields)) == "invalid_response"
+
+
+@pytest.mark.parametrize("fields", UNFRAMED)
+def test_a_partial_body_that_cannot_be_framed_is_not_a_continuation_and_the_stage_is_dropped(
+    fields,
+):
+    # "206 ... Content-Length uyumsuz veya eksik": like any other unusable partial answer, it
+    # calls for the stage to go and one Range-less request, not for a stop that repeats forever.
+    found = parse_response(206, fields)
+    assert (found.status, found.framing, found.content_length) == (206, None, None)
+    ask = ResumeAsk(400, 1000, '"v1"')
+    assert disposition(found, ask) == "discard_and_retry"
+    assert code_of(lambda: disposition(found, None)) == "invalid_response"  # nobody asked for it
 
 
 def test_a_length_past_the_limit_is_refused_before_a_byte_is_written():

@@ -4,17 +4,28 @@
 the writer (a later step) observes the directory with ``lstat`` and ``fstat`` and describes what
 it found in the types below; this module decides. It never sees a path, a descriptor or a clock.
 
-Three rules hold for every row. The lock is an input: unless it is held, no decision removes,
+The table is evaluated on the directory *as found*, before this run creates or opens its stage:
+``stage=None`` means that nothing stood at the stage's name when it was looked at. (A stage this
+run has just created is empty and new; handed to the table beside the sidecar of an interrupted
+run it would be the trace of another file, and that trace would be permanent.)
+
+Four rules hold for every row. The lock is an input: unless it is held, no decision removes,
 truncates or rewrites anything. A file that is not provably the download's own (a regular file of
 this user, mode 0600, one link, and for the sidecar small and well-formed) is never deleted or
-altered, ``--no-resume`` included: the answer is ``download_partial_unverified``. And the order in
-which things are removed is always the stage, then the sidecar, then the sidecar's temporary copy,
-so that the worst interruption leaves a trace the next run discards.
+altered: the answer is ``download_partial_unverified``. The two things that look like exceptions
+are not: a stage hard-linked to the target (two links, the target's own inode) is the trace of this
+download's interrupted publication and is cleaned before the target is reported, and an *owned*
+sidecar whose content cannot be read is removed when the user said ``--no-resume`` (it is owned;
+only its content is unusable). The order in which things are removed is always the stage, then the
+sidecar, then the sidecar's temporary copy, so that the worst interruption leaves a trace the
+next run discards. And a decision's removals come before its error: ``output_exists`` carries the
+cleanup of a publication trace and is raised after it is done.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from typing import Final, Literal
 
 from yorunge.domain.download import MAX_SIDECAR_BYTES, DownloadPartial
@@ -44,6 +55,17 @@ REMOVE_AFTER_EXISTING_TARGET: Final[tuple[Removal, ...]] = ("stage", "sidecar")
 # After an expected digest did not match: nothing of this download is kept (a kept complete stage
 # would make every rerun an offline exit-7 loop).
 REMOVE_AFTER_MISMATCH: Final[tuple[Removal, ...]] = ("stage", "sidecar", "sidecar_tmp")
+_SHA256 = re.compile(r"[a-f0-9]{64}", re.ASCII)
+
+
+def resumable(*, etag: str | None, total_size: int | None, committed_bytes: int) -> bool:
+    """Whether a partial download is worth keeping: a strong tag, a known total, something done.
+
+    One rule for the start (a record that fails it is discarded) and for the stop (a clean stop
+    keeps the stage only if it holds; otherwise the stage goes). A body of unknown length has no
+    total until it ends, so it is never resumed.
+    """
+    return etag is not None and total_size is not None and committed_bytes > 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +105,9 @@ class StartDecision:
     record: DownloadPartial | None = None  # the sidecar's, for resume and publish_complete
     truncate_to: int | None = None  # a stage longer than its last checkpoint is cut back to it
     ask: ResumeAsk | None = None  # the conditional request of a resume
+    # ``resume`` and ``publish_complete`` are acted on only once the stage's prefix was re-hashed
+    # and found to be the sidecar's (:func:`confirm_prefix` sets this); before that they are plans.
+    prefix_checked: bool = False
 
     @property
     def error(self) -> ErrorCode | None:
@@ -121,10 +146,15 @@ def decide_start(
     """The row of the start table that this directory is in.
 
     ``target`` is whatever stands at the target's name (``None`` when nothing does);
-    ``identity_key`` and ``target_hash`` are the download's own. A decision that resumes or
-    publishes a complete stage still has to pass :func:`confirm_prefix` once the caller has
-    re-hashed the prefix.
+    ``identity_key`` and ``target_hash`` are the download's own and must be digests (a wrong value
+    would discard every record). A decision that resumes or publishes a complete stage is a plan
+    until it has passed :func:`confirm_prefix`, once the caller has re-hashed the prefix.
     """
+    if any(
+        type(value) is not str or _SHA256.fullmatch(value) is None
+        for value in (identity_key, target_hash)
+    ):
+        raise ValueError("the identity key and the target hash are lowercase SHA-256 digests")
     if lock == "busy":
         return StartDecision("busy")
     if lock != "held":
@@ -158,8 +188,11 @@ def decide_start(
     if stage is None:
         if sidecar is None:
             return StartDecision("start_clean", _owned_removals(None, None, sidecar_tmp))
-        if sidecar.record is None:
-            return StartDecision("unverified")  # a sidecar that cannot be read is not discarded
+        if sidecar.record is None and not no_resume:
+            # A sidecar that cannot be read is not discarded on its own say-so. With --no-resume
+            # the user asks for it, and that is also the way out of the trace an interrupted
+            # --no-resume removal leaves (the stage is gone, the unreadable sidecar is not).
+            return StartDecision("unverified")
         return StartDecision("start_clean", _owned_removals(None, sidecar, sidecar_tmp))
     record = None if sidecar is None else sidecar.record
     if no_resume:
@@ -182,9 +215,15 @@ def decide_start(
     cut = record.committed_bytes if stage.size > record.committed_bytes else None
     if record.complete:
         return StartDecision("publish_complete", keep, record, cut)
-    if record.etag is None or record.total_size is None or record.committed_bytes == 0:
-        # Kept only while a strong tag and the total are both known, and only if something is
-        # committed to resume from.
+    if (
+        record.etag is None
+        or record.total_size is None
+        or not resumable(
+            etag=record.etag,
+            total_size=record.total_size,
+            committed_bytes=record.committed_bytes,
+        )
+    ):
         return discard
     ask = ResumeAsk(record.committed_bytes, record.total_size, record.etag)
     return StartDecision("resume", keep, record, cut, ask)
@@ -194,11 +233,16 @@ def confirm_prefix(decision: StartDecision, observed_sha256: str | None) -> Star
     """The decision once the stage's committed prefix has been re-read and hashed.
 
     A prefix that is not what the sidecar says (local corruption or tampering) is discarded, stage
-    first, and the download starts clean. ``None`` means the prefix could not be read.
+    first, and the download starts clean; whatever else the plan removed (a leftover temporary
+    copy) is still removed, after them. ``None`` means the prefix could not be read (a local read
+    error). A deadline or a cancellation while hashing is not an observation: it propagates and
+    is never passed here, because this answer orders the stage, up to 1 GiB, deleted.
     """
     if decision.action not in ("resume", "publish_complete"):
         return decision
-    assert decision.record is not None
+    if decision.record is None:
+        raise ValueError("a decision that resumes or publishes carries its record")
     if observed_sha256 == decision.record.prefix_sha256:
-        return decision
-    return StartDecision("start_clean", ("stage", "sidecar"))
+        return replace(decision, prefix_checked=True)
+    planned = {"stage", "sidecar", *decision.remove}
+    return StartDecision("start_clean", tuple(name for name in REMOVAL_ORDER if name in planned))

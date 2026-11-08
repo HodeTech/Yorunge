@@ -43,7 +43,9 @@ class DownloadResponse:
     status: Literal[200, 206, 416]
     content_range: ContentRange | None  # 206 only; None when absent, unusable or of another form
     etag: StrongEtag | None  # a strong tag, or None (absent, weak, empty, ambiguous)
-    framing: Framing | None  # None for 416: its body is not read
+    # None for a 416 (its body is not read) and for a 206 whose body cannot be framed (it is
+    # not an exact continuation: the stage is dropped and one Range-less request follows).
+    framing: Framing | None
     content_length: int | None  # the length, when framing == "length"
 
 
@@ -106,6 +108,22 @@ def parse_etag(values: Sequence[str]) -> StrongEtag | None:
     return candidate if _STRONG_ETAG.fullmatch(candidate) is not None else None
 
 
+def _fields(headers: object) -> tuple[tuple[str, str], ...]:
+    """The raw header fields as pairs of text; anything else is not an answer."""
+    if not isinstance(headers, (list, tuple)):
+        raise YorungeError("invalid_response")
+    fields = tuple(headers)
+    for item in fields:
+        if (
+            not isinstance(item, tuple)
+            or len(item) != 2
+            or type(item[0]) is not str
+            or type(item[1]) is not str
+        ):
+            raise YorungeError("invalid_response")
+    return fields
+
+
 def _values(headers: Headers, name: str) -> list[str]:
     return [value for key, value in headers if key.lower() == name]
 
@@ -136,6 +154,7 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     """
     if type(status) is not int or not 100 <= status <= 599:
         raise YorungeError("invalid_response")
+    headers = _fields(headers)
     if status in (401, 403):
         raise YorungeError("remote_access_denied")
     if status == 429:
@@ -149,7 +168,16 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     encodings = _values(headers, "content-encoding")
     if any(value.strip(" \t").lower() not in ("", "identity") for value in encodings):
         raise YorungeError("invalid_response")
-    framing, length = _framing(headers)
+    framing: Framing | None
+    length: int | None
+    try:
+        framing, length = _framing(headers)
+    except YorungeError as error:
+        if status != 206 or error.code != "invalid_response":
+            raise
+        # A partial answer that cannot be framed is not an exact continuation ("Content-Length
+        # uyumsuz veya eksik"): it is dropped like any other, and one Range-less request follows.
+        framing, length = None, None
     ranges = _values(headers, "content-range")
     content_range = parse_content_range(ranges[0]) if status == 206 and len(ranges) == 1 else None
     return DownloadResponse(
@@ -216,12 +244,18 @@ def check_body_end(
             raise YorungeError("invalid_response")
         if written < content_length:
             raise YorungeError("download_incomplete")
-    elif not terminated:
-        raise YorungeError("download_incomplete")
+    elif framing == "chunked":
+        if not terminated:
+            raise YorungeError("download_incomplete")
+    else:
+        raise ValueError("a body has a length or is chunked")
 
 
 def body_failure(code: ErrorCode) -> ErrorCode:
     """The code of a failure in the body phase, as the download sees it.
+
+    For the errors the transport raises while it reads a body; not for ``check_body_end``'s own
+    (a body longer than its framing promised is ``invalid_response`` and stays one).
 
     A cut connection is ``download_incomplete``; the common transport's body-phase
     ``invalid_response`` is its size cap, which the download calls ``download_limit_exceeded``;

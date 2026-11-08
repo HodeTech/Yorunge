@@ -460,14 +460,14 @@ def test_spellings_that_a_filesystem_may_fold_are_different_names_here():
         "a\x85b",
         "x" * 256,
         "é" * 128,
-        "a‮b",
-        "a‏b",
-        "a⁦b",
-        "a​b",
-        "a﻿b",
-        "a b",
+        "a\u202eb",
+        "a\u200fb",
+        "a\u2066b",
+        "a\u200bb",
+        "a\ufeffb",
+        "a\u2028b",
         "a\ud800b",
-        "".replace("", "͸"),
+        "\u0378",  # unassigned in every Unicode version this project can run on
         ".yorunge-download-abc.part",
         ".yorunge-download-",
         None,
@@ -561,3 +561,45 @@ def test_the_mismatch_detail_is_closed_and_refuses_what_is_not_a_digest_and_a_co
         with pytest.raises(ValueError):
             DownloadIntegrityMismatch(digest, size)
     assert set(DownloadIntegrityMismatch(HELLO, 0).details) == {"computed_sha256", "bytes"}
+
+
+def test_a_download_limit_is_the_transports_raw_limit():
+    # ``body_failure`` reads the transport's size cap as the download's limit on this premise.
+    from yorunge.application.http_transport import RAW_LIMIT
+
+    assert MAX_DOWNLOAD_BYTES == RAW_LIMIT
+
+
+def test_a_complete_stage_of_no_bytes_publishes_as_a_resumed_download_of_no_bytes():
+    summary = {
+        "schema_version": 1,
+        "kind": "download_summary",
+        "output_path": "/tmp/weights.onnx",
+        "bytes": 0,
+        "sha256": EMPTY_SHA256,
+        "verification_level": "transfer_complete",
+        "expectation_source": "none",
+        "resumed": True,
+        "resumed_from_bytes": 0,
+        "source": {
+            "kind": "model_version",
+            "version_id": "11111111-1111-4111-8111-111111111111",
+            "format": "onnx",
+            "fold": None,
+        },
+    }
+    assert DownloadSummary.model_validate(summary).resumed is True
+    # Resuming from nothing is still not resuming a download that has bytes.
+    with pytest.raises(ValueError):
+        DownloadSummary.model_validate({**summary, "bytes": 10})
+
+
+@pytest.mark.parametrize(
+    "wire",
+    [b"[" * 4000, b"[" * 2000 + b"]" * 2000, b'{"a":' * 700, b"[" * 600 + b"]" * 600],
+    ids=["open brackets", "balanced brackets", "nested objects", "moderate nesting"],
+)
+def test_a_deeply_nested_stored_record_is_a_value_error_and_never_a_crash(wire):
+    # The sidecar is read from a directory the user can write: it is "unverified", not a traceback.
+    with pytest.raises(ValueError):
+        DownloadPartial.decode(wire)
