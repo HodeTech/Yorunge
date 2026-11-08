@@ -95,3 +95,32 @@ def test_the_stderr_of_the_cli_download_is_kept_as_it_was_even_when_it_fails_the
         helper["surface"](python, console, scratch, run, certificates, environment)
     assert (run / "client-stderr.txt").read_bytes() == b"warning: noise"
     assert json.loads((run / "client-stdout.json").read_bytes())  # the console's output is kept
+
+
+def test_a_failed_cli_download_keeps_its_stderr_and_no_empty_stdout_original(
+    development, helper, monkeypatch
+):
+    """A failed ``models download`` prints nothing on stdout: an empty ``client-stdout.json``
+    would be refused by the privacy scan and hide the real cause, so that file is not kept."""
+    from types import SimpleNamespace
+
+    console, python, scratch, certificates, environment, run = development
+    namespace = helper["surface"].__globals__
+    real_run = namespace["subprocess"].run
+    envelope = b'{"schema_version":1,"code":"download_write_failed"}'
+
+    def failing(command, **keywords):
+        result = real_run(command, **keywords)
+        if "--sha256" in command:
+            return subprocess.CompletedProcess(result.args, 2, b"", envelope)
+        return result
+
+    shim = SimpleNamespace(
+        **{name: getattr(subprocess, name) for name in dir(subprocess) if not name.startswith("_")}
+    )
+    shim.run = failing
+    monkeypatch.setitem(namespace, "subprocess", shim)
+    with pytest.raises(ValueError, match="installed download failed: exit 2"):
+        helper["surface"](python, console, scratch, run, certificates, environment)
+    assert (run / "client-stderr.txt").read_bytes() == envelope
+    assert not (run / "client-stdout.json").exists()

@@ -80,8 +80,9 @@ VERSION_OPTIONS = {
 
 def offline_environment(environment: dict[str, str]) -> dict[str, str]:
     """The caller's environment minus every credential variable a gate could be mistaken to use."""
-    withheld = {*AMBIENT_SECRETS, UNSET_KEY}
-    return {name: value for name, value in environment.items() if name not in withheld}
+    withheld = {*AMBIENT_SECRETS, UNSET_KEY, "FORCE_COLOR", "NO_COLOR"}
+    kept = {name: value for name, value in environment.items() if name not in withheld}
+    return kept | {"NO_COLOR": "1"}  # argparse colours its help on some Pythons: rows must be plain
 
 
 def execute(
@@ -103,10 +104,10 @@ def defined_options(text: str) -> set[str]:
     """The options a help DEFINES: the rows of its option list, never a mention in prose.
 
     An option that was renamed or dropped can still be named by the usage line, the epilog or the
-    help of another option; only a row of the list (two-space indent, an optional short form) is a
-    definition.
+    help of another option; only a row of the list (two-space indent, an optional short form that
+    may carry its own metavar, ``-o OUTPUT, --output OUTPUT``) is a definition.
     """
-    return set(re.findall(r"^  (?:-\w, )?(--[\w-]+)", text, flags=re.MULTILINE))
+    return set(re.findall(r"^  (?:-\w(?: [\w.]+)?, )?(--[\w-]+)", text, flags=re.MULTILINE))
 
 
 def mentions(text: str, name: str) -> bool:

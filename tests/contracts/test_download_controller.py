@@ -149,19 +149,53 @@ def test_a_smoke_subset_that_stops_keeps_its_originals_in_the_workspace_only(
     assert list((tmp_path / "docs/research").iterdir()) == []
 
 
-def test_a_failed_retention_replaces_the_cause_but_never_the_originals(
-    tmp_path, driver, monkeypatch
+def test_a_refused_retention_never_replaces_the_cause_or_the_originals(
+    tmp_path, driver, monkeypatch, capsys
 ):
-    """With no declared privacy context the gate refuses: the report stays private in dist."""
+    """With no declared privacy context the gate refuses: the report stays private in dist, the
+    refusal is said on stderr, and the error that ended the run is still the one that is raised."""
     written = interrupt(driver, monkeypatch, tmp_path, ValueError("synthetic interrupted worker"))
     monkeypatch.delenv("YORUNGE_EVIDENCE_CONTEXT")
     args = controller_args(tmp_path, list(LABELS), 3)
-    with pytest.raises(ValueError, match="missing_context"):
+    with pytest.raises(ValueError, match="synthetic interrupted worker"):
         driver["check"](args)
+    assert "Retention of the original files failed" in capsys.readouterr().err
     assert (args.workspace / "16-1/client-stderr.txt").read_bytes() == b"worker output\n"
     assert (tmp_path / "dist/report-rejected.json").exists()
     assert list((tmp_path / "docs/research").iterdir()) == []
     assert written
+
+
+@pytest.mark.parametrize("error", [KeyboardInterrupt(), SystemExit(143)], ids=["interrupt", "term"])
+def test_a_worker_killed_before_it_wrote_anything_still_has_its_empty_stdout_retained(
+    tmp_path, driver, monkeypatch, capsys, error
+):
+    """What a real interruption leaves: the worker writes its stdout only at the very end, so the
+    file the controller opened for it is empty. An empty original is an original like any other:
+    it is retained as it was left, no retention failure is reported, and the interruption (and
+    its exit status) is what the caller sees."""
+    globals_ = patch_controller(driver, monkeypatch, tmp_path, [])
+    written = {}
+
+    def stop(python, workspace, *rest):
+        written.update(write_run(workspace))
+        (workspace / "16-1/client-stdout.json").write_bytes(b"")
+        raise error
+
+    monkeypatch.setitem(globals_, "run_measurements", stop)
+    args = controller_args(tmp_path, list(LABELS), 3, run_url=RUN_URL)
+    with pytest.raises(type(error)) as raised:
+        driver["check"](args)
+    assert raised.value is error
+    assert "Retention of the original files failed" not in capsys.readouterr().err
+    assert (args.workspace / "controller-error.json").read_bytes() == MARKER
+    value, files = retained(tmp_path / "dist/report-rejected.json")
+    assert value["rejection_reason"] == "interrupted_measurement"
+    assert files["16-1/client-stdout.json"] == b""  # as it was left
+    others = {name: raw for name, raw in written.items() if name != "16-1/client-stdout.json"}
+    assert {name: files[name] for name in others} == others
+    assert driver["CHECKS"]["verify"](tmp_path) == 1
+    assert (tmp_path / "docs/research/raw/report-rejected.json.gz").exists()  # and archived
 
 
 def test_the_run_url_is_validated_before_anything_is_created(tmp_path, driver, monkeypatch):
@@ -395,6 +429,8 @@ def test_a_terminated_controller_is_stopped_like_a_ctrl_c_and_the_handlers_come_
     import time
 
     number = getattr(signal, name)
+    if signal.getsignal(number) is signal.SIG_IGN:
+        pytest.skip(f"{name} is ignored on entry (nohup): the controller leaves that choice alone")
     before = {n: signal.getsignal(n) for n in (signal.SIGTERM, signal.SIGHUP)}
     with pytest.raises(SystemExit) as stopped:
         with driver["termination_signals"]():
@@ -436,9 +472,10 @@ def test_main_runs_the_measurement_under_those_handlers(driver, monkeypatch):
     )
     # the handlers are the driver's own while check() runs, and the previous ones afterwards
     before = signal.getsignal(signal.SIGTERM)
+    hangup_ignored = signal.getsignal(signal.SIGHUP) is signal.SIG_IGN  # started with nohup
     assert driver["main"]() == 0
     assert seen["term"] not in (before, signal.SIG_DFL, signal.SIG_IGN) and callable(seen["term"])
-    assert seen["hup"] == seen["term"] or callable(seen["hup"])
+    assert (seen["hup"] is signal.SIG_IGN) if hangup_ignored else callable(seen["hup"])
     assert signal.getsignal(signal.SIGTERM) == before
 
 
@@ -472,3 +509,19 @@ def test_a_report_too_deep_to_read_is_a_closed_failure_of_the_controller(
         driver["main"]()
     assert stopped.value.code == 1
     assert "Download measurement failed" in capsys.readouterr().err
+
+
+def test_a_second_signal_during_the_cleanup_is_ignored_and_the_handlers_come_back(driver):
+    import signal
+    import time
+
+    before = {n: signal.getsignal(n) for n in (signal.SIGTERM, signal.SIGHUP)}
+    with driver["termination_signals"]():
+        with pytest.raises(SystemExit) as first:
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(1)
+        assert first.value.code == 128 + signal.SIGTERM
+        os.kill(os.getpid(), signal.SIGHUP)  # the cleanup is under way: this one changes nothing
+        os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(0.2)
+    assert {n: signal.getsignal(n) for n in before} == before

@@ -430,6 +430,13 @@ CASES = [
         set(),
     ),
     (
+        "before the cut",
+        RESUME,
+        [(("client", "public", "resumed_from_bytes"), CUT - 1)],
+        {"result_resume", "server_ranges"},
+        set(),
+    ),
+    (
         "from zero",
         RESUME,
         [(("client", "public", "resumed_from_bytes"), 0)],

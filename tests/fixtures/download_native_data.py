@@ -49,10 +49,12 @@ JSON_TARGET = f"{JSON_PATH}?format={FORMAT}"
 KEY_ENV = "YORUNGE_SYNTHETIC_DOWNLOAD_MEASUREMENT_KEY"
 KEY = "synthetic-download-measurement-selected-key"
 
-# The first signed GET of ``resume`` is cut after 3 * 8 MiB (the engine's three body checkpoints)
-# plus a ragged 1_000_003 bytes: a clean stop then checkpoints that exact offset, so the second GET
-# is a ``Range`` request at an offset that is no multiple of a block, a record or a checkpoint.
-RESUME_CUT_AT = 3 * 8 * MIB + 1_000_003
+# The first signed GET of ``resume`` is cut after 24 * 8 MiB (the engine's body checkpoints) plus
+# a ragged 1_000_003 bytes: a clean stop then checkpoints that exact offset, so the second GET is
+# a ``Range`` request at an offset that is no multiple of a block, a record or a checkpoint. The
+# prefix (about 193 MiB) is far above the 64 MiB memory limit: a regression that held the resumed
+# prefix in memory could not hide inside it.
+RESUME_CUT_AT = 24 * 8 * MIB + 1_000_003
 WARM_CUT_AT = 524_289  # the 1 MiB warm object of the resume label is cut once, a byte past 512 KiB
 
 

@@ -374,6 +374,8 @@ class Scanner:
             reject("publication_limit")
         self.literal(raw)
         self.literal(name.encode("utf-8", "strict"))
+        if not raw:
+            return  # nothing in it to leak: a process that died before it wrote leaves this
         if raw.startswith(b"\x1f\x8b"):
             with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
                 decoded = stream.read(MAX_FILE + 1)

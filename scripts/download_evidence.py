@@ -36,7 +36,7 @@ OBJECTS: dict[str, tuple[int, int | None]] = {
     "16": (16 * MIB, None),
     "256": (256 * MIB, None),
     "1024": (1024 * MIB, None),
-    "resume": (256 * MIB, 3 * 8 * MIB + 1_000_003),
+    "resume": (256 * MIB, 24 * 8 * MIB + 1_000_003),
 }
 LIMITS = {
     "rss_upper_bytes": 67_108_864,
@@ -417,7 +417,7 @@ def settled(label: str, result: dict[str, Any]) -> dict[str, bool]:
     else:
         resume_state = (
             result["resumed"] is True
-            and 0 < resumed_from <= cut_at
+            and resumed_from == cut_at  # a clean stop checkpoints exactly what was written
             and result["first_error"] == "download_incomplete"
         )
     return {

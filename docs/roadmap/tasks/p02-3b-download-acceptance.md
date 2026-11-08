@@ -3,12 +3,12 @@ id: P02-3b
 phase: P02
 status: draft
 size: M
-depends_on: [P02-3o]
+depends_on: [P02-3o, P02-3z]
 capabilities: [C03, C05, C13]
 ---
 # P02-3b — Ortak indirme bütünleşik kabulü
 
-**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md). Üst kart: j–o alt kartlarının bütünleşik kabulü ve teslim kaydı. **Boyut notu:** özgün L tahmini alt kartlara bölündüğünden doğrulama aracı büyük (L) kartı ready/in_progress/in_review/verified yapmaz; bu üst kart yalnız bütünleşik kabul/teslim kaydı olarak M izlenir.
+**Tarih:** 2026-11-06. [P02-3 teslim planı](../p02-3-delivery-plan.md). Üst kart: j–o ve z alt kartlarının bütünleşik kabulü ve teslim kaydı. **Boyut notu:** özgün L tahmini alt kartlara bölündüğünden doğrulama aracı büyük (L) kartı ready/in_progress/in_review/verified yapmaz; bu üst kart yalnız bütünleşik kabul/teslim kaydı olarak M izlenir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 

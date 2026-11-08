@@ -73,7 +73,7 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-2v | Kurulu upload native ölçüm araçları | P02-2w; [kart](tasks/p02-2v-installed-upload-measurement.md); üç dilim/ikişer fresh tur ve saklama tamam | `verified` |
 | P02-2w | Upload kaynak bakım/refaktör sınırları | P02-2u; [kart](tasks/p02-2w-upload-maintainability.md) | `verified` |
 | P02-3a | Kesintiye uğramış aktarımın kanıtlı, yeni onaylı devamı — continuation (üst kabul) | P02-3i; [üst kart](tasks/p02-3a-upload-resume-acceptance.md), [ADR-0031](../decisions/0031-upload-continuation.md) Accepted | `draft` |
-| P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi (üst kabul) | P02-3o; [üst kart](tasks/p02-3b-download-acceptance.md), [ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Accepted | `draft` |
+| P02-3b | Ortak akışlı indirme, no-clobber yayın ve açık verify seviyesi (üst kabul) | P02-3o, P02-3z; [üst kart](tasks/p02-3b-download-acceptance.md), [ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Accepted | `draft` |
 | P02-3c | Veri sürümü/bölme metadata’sı ve değişmez referans; eğitim planı bağı P03-1’dedir (üst kabul) | P02-3q; [üst kart](tasks/p02-3c-dataset-version-acceptance.md), [ADR-0033](../decisions/0033-dataset-version-references.md) Accepted; teknik olarak P02-3a/b’ye bağlı değil, plan sırası sonradır; freeze P02-R4’te | `draft` |
 | P02-3d | Transfer aşama grafiği tek belirtimi ve v2 kill karakterizasyonu | P02-2c; [kart](tasks/p02-3d-stage-graph-spec.md) | `verified` |
 | P02-3e | Resume kanıt sınıflandırıcısı ve uzak envanter indirgeyicisi | P02-3d; [kart](tasks/p02-3e-resume-evidence-classifier.md) | `verified` |

@@ -92,7 +92,7 @@ def test_the_labels_sizes_and_cuts_are_the_documented_fixture(evidence):
     }
     assert FIXTURES["resume"].cut_at == RESUME_CUT_AT
     # More than three 8 MiB checkpoints precede the cut, fewer than four, and the end is ragged.
-    assert 3 * 8 * MIB < RESUME_CUT_AT < 4 * 8 * MIB and RESUME_CUT_AT % 4096 != 0
+    assert 24 * 8 * MIB < RESUME_CUT_AT < 25 * 8 * MIB and RESUME_CUT_AT % 4096 != 0
     assert 0 < WARM_CUT_AT < MIB
     assert [label for label in FIXTURES if FIXTURES[label].cut_at is not None] == [
         "warm-resume",

@@ -150,6 +150,7 @@ def test_every_name_of_the_layout_is_allowed_and_nothing_else_is(helper):
     refused = [
         *DECOYS,
         "",
+        ".",  # no parts at all: the only name that reaches the run-directory test without one
         "/",
         "/stdout.json",
         "./stdout.json",

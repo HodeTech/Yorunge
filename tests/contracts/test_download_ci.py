@@ -325,6 +325,10 @@ def test_malformed_controller_output_stays_private_and_is_never_accepted(
         messages.append(str(error))
         error = error.__context__
     assert any(reason in message for message in messages), messages
+    if exit_code:  # the cause the job log would otherwise lack: the exit code and the stderr tail
+        assert messages[0].startswith(
+            f"download CI controller failed (exit {exit_code}): synthetic error;"
+        ), messages
     assert not args.output.exists()
     assert (args.workspace / "stdout.json").read_bytes() == b"\xffpartial controller"
     diagnostic = namespace["CHECKS"]["decode"](

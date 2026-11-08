@@ -48,7 +48,12 @@ def termination_signals() -> Iterator[None]:
     ignored. SIGKILL cannot be caught: nothing here can help with it (``download_ci.py`` owns a
     process group for that).
     """
-    numbers = (signal.SIGTERM, signal.SIGHUP)
+    # a signal that was ignored on entry (a hangup under ``nohup``) stays ignored
+    numbers = tuple(
+        number
+        for number in (signal.SIGTERM, signal.SIGHUP)
+        if signal.getsignal(number) is not signal.SIG_IGN
+    )
     previous = {number: signal.getsignal(number) for number in numbers}
 
     def interrupted(number: int, frame: object) -> None:
@@ -300,7 +305,7 @@ def check(args: argparse.Namespace) -> int:
             b'{"outcome":"incomplete_download_measurement"}\n'
         )
         if not partial:  # a smoke subset is a tool: its originals stay in the workspace
-            DIAGNOSTIC["retain"](
+            DIAGNOSTIC["retain_beside"](
                 ROOT,
                 workspace,
                 output.stem + "-rejected.json",

@@ -180,6 +180,7 @@ attempts = (
     lambda: subprocess.run([sys.executable, "-c", "pass"]),
     lambda: os.system("true"),
     lambda: os.fork(),
+    lambda: os.forkpty(),
     lambda: os.posix_spawn("/usr/bin/true", ["true"], {}),
     lambda: os.execv("/usr/bin/true", ["true"]),
 )
@@ -200,7 +201,7 @@ print("refused")
         timeout=30,
     )
     assert (result.returncode, result.stdout.strip()) == (0, "refused")
-    assert result.stderr.count("attempted") == 14  # every refusal leaves its trace on stderr
+    assert result.stderr.count("attempted") == 15  # every refusal leaves its trace on stderr
 
 
 def test_an_attempt_the_command_swallows_still_fails_the_smoke(tmp_path):
@@ -277,6 +278,8 @@ ROWS = "usage: x [--one] [--two]\n\noptions:\n  -h, --help  show this\n  --one O
             completed(0, ROWS + "  -t, --two TWO\n  --three-way\n"),
             ("--one", "--two", "--three-way"),
         ),
+        # argparse prints the metavar after the short form too
+        (completed(0, ROWS + "  -t TWO, --two TWO\n"), ("--one", "--two")),
     ],
 )
 def test_a_help_that_defines_every_option_passes(result, names):
@@ -413,7 +416,11 @@ def test_the_environment_loses_exactly_the_credential_variables():
         HELPER["UNSET_KEY"]: "c",
         "EVREN_OTHER": "kept",
     }
-    assert HELPER["offline_environment"](environment) == {"PATH": "/bin", "EVREN_OTHER": "kept"}
+    assert HELPER["offline_environment"](environment) == {
+        "PATH": "/bin",
+        "EVREN_OTHER": "kept",
+        "NO_COLOR": "1",  # the one thing it adds: plain help rows on every Python
+    }
     assert "EVREN_PLATFORM_API_KEY" in environment  # the caller's own mapping is untouched
 
 
@@ -481,3 +488,17 @@ def test_the_gate_codes_of_the_real_cli_are_what_the_smokes_pin(installed, monke
     altered(monkeypatch, edit)
     with pytest.raises(ValueError, match="operation_not_found/2"):
         HELPER["verify_resume"](*installed)
+
+
+def test_the_offline_environment_has_no_secret_and_no_colour():
+    environment = HELPER["offline_environment"](
+        {
+            "PATH": "/bin",
+            "EVREN_PLATFORM_API_KEY": "secret",
+            "EVREN_LLM_API_KEY": "secret",
+            HELPER["UNSET_KEY"]: "x",
+            "FORCE_COLOR": "1",
+            "NO_COLOR": "0",
+        }
+    )
+    assert environment == {"PATH": "/bin", "NO_COLOR": "1"}  # plain help rows on every Python

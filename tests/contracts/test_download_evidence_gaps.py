@@ -94,3 +94,34 @@ def test_gap_the_smallest_smoke_is_one_run(evidence):
     smoke = build(evidence, labels=("16",), samples=1)
     summary = evidence["summarize_report"](smoke)
     assert summary["cases"] == 1 and summary["partial"] is True and summary["accepted"] is False
+
+
+@pytest.mark.parametrize(
+    "offset",
+    [1, 16_777_216, 201_326_592, 202_244_096, 202_326_528, 202_326_594],
+    ids=["one", "16 MiB", "24x8 MiB checkpoint", "64 KiB multiple", "256 multiple", "one short"],
+)
+def test_a_resume_from_anywhere_but_the_cut_is_not_the_resume_the_harness_measures(
+    evidence, offset
+):
+    """A clean stop checkpoints exactly what was written: the second GET starts at the cut.
+
+    A product that went back to the last 8 MiB checkpoint (or to a 64 KiB or 16 MiB boundary,
+    where the pattern repeats) would still deliver the right bytes, but not this property.
+    """
+    cut = 24 * 8 * 1_048_576 + 1_000_003
+    result = {
+        "bytes": 256 * 1_048_576,
+        "sha256": evidence["object_sha256"](256 * 1_048_576),
+        "verification_level": "sha256_matched",
+        "expectation_source": "user_supplied",
+        "resumed": True,
+        "first_error": "download_incomplete",
+    }
+    assert evidence["settled"]("resume", {**result, "resumed_from_bytes": cut})["resume_state"]
+    assert not evidence["settled"]("resume", {**result, "resumed_from_bytes": offset})[
+        "resume_state"
+    ]
+    assert not evidence["settled"]("resume", {**result, "resumed_from_bytes": cut + 1})[
+        "resume_state"
+    ]

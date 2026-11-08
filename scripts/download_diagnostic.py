@@ -6,6 +6,7 @@ import base64
 import hashlib
 import re
 import runpy
+import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -169,3 +170,19 @@ def retain(
         stream.write(CHECKS["encode"](report))
     CHECKS["archive_report"](root, destination, None, privacy_context=privacy_context)
     return destination
+
+
+def retain_beside(*arguments: Any, **keywords: Any) -> Path | None:
+    """``retain`` for a run that is already ending with an error of its own.
+
+    A retention that is refused (a privacy refusal, an original that cannot be read) is said on
+    stderr; it never replaces the error that ended the run, so the caller still sees the real
+    cause and its exit status. The private report that ``retain`` wrote before it was refused
+    stays in ``dist``. An empty original (a worker killed before it wrote anything) is not a
+    refusal: it is retained as it was left.
+    """
+    try:
+        return retain(*arguments, **keywords)
+    except Exception as failure:
+        print(f"Retention of the original files failed: {failure}", file=sys.stderr)
+        return None

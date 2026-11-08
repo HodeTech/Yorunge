@@ -199,6 +199,18 @@ def validate_output(path: Path, root: Path, environment: dict[str, Any]) -> None
         raise ValueError("download CI report differs from frozen runtime")
 
 
+def log_tail(path: Path, limit: int = 600) -> str:
+    """The end of a controller log on one line: the cause the job log would otherwise lack."""
+    try:
+        with path.open("rb") as source:
+            source.seek(0, os.SEEK_END)
+            source.seek(max(0, source.tell() - limit))
+            data = source.read(limit)
+    except OSError:
+        return "no log"
+    return " | ".join(data.decode("utf-8", "replace").strip().splitlines()) or "no output"
+
+
 def check(args: argparse.Namespace) -> int:
     with termination_signals():
         return _check(args)
@@ -231,11 +243,14 @@ def _check(args: argparse.Namespace) -> int:
         code = execute(command, stdout, stderr)
         copy_logs(workspace, stdout, stderr)
         if code != 0:
-            raise ValueError("download CI controller failed; original diagnostics retained")
+            raise ValueError(
+                f"download CI controller failed (exit {code}): {log_tail(stderr)}; "
+                "original diagnostics retained"
+            )
         validate_output(args.output, ROOT, environment)
     except BaseException:
         copy_logs(workspace, stdout, stderr)
-        DIAGNOSTIC["retain"](
+        DIAGNOSTIC["retain_beside"](
             ROOT,
             workspace,
             args.output.stem + "-ci-rejected.json",

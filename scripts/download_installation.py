@@ -141,7 +141,7 @@ def verify(
         (workspace / "controller-error.json").write_bytes(
             CHECKS["encode"]({"outcome": "incomplete_installation_download", "stage": stage})
         )
-        DIAGNOSTIC["retain"](
+        DIAGNOSTIC["retain_beside"](
             root,
             workspace,
             f"installation-download-{artifact_kind}-rejected.json",
@@ -248,12 +248,11 @@ def surface(
             timeout=300,
             check=False,
         )
-    with (
-        (run / "client-stdout.json").open("xb") as stdout,
-        (run / "client-stderr.txt").open("xb") as stderr,
-    ):
-        stdout.write(fetched.stdout)
+    with (run / "client-stderr.txt").open("xb") as stderr:
         stderr.write(fetched.stderr)
+    if fetched.stdout:  # a failed download prints nothing here: no empty original is kept as JSON
+        with (run / "client-stdout.json").open("xb") as stdout:
+            stdout.write(fetched.stdout)
     settle(fetched, layout, occupied, run, size, oracle)
 
 

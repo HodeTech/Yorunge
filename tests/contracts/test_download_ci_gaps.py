@@ -114,3 +114,15 @@ def test_gap_the_script_as_a_process_fails_red_when_the_environment_file_is_miss
     )
     assert result.returncode == 1
     assert "Download CI failed" in result.stderr and "Traceback" not in result.stderr
+
+
+def test_a_report_too_deep_to_read_is_a_closed_failure_of_the_wrapper(helper, monkeypatch, capsys):
+    def check(args):
+        raise RecursionError("deep")
+
+    monkeypatch.setitem(helper["main"].__globals__, "check", check)
+    monkeypatch.setattr(sys, "argv", argv())
+    with pytest.raises(SystemExit) as stopped:
+        helper["main"]()
+    assert stopped.value.code == 1
+    assert "Download CI failed" in capsys.readouterr().err
