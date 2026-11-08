@@ -24,7 +24,7 @@ P02-3y verified olmalıdır (kapanış okuması ve proof kurucusu orada yazılı
 
 ## Sözleşme ve uygulama sınırı
 
-v2 `reconcile` ve v2 original yolu davranışsal olarak aynı kalır; torunu olmayan v1/v2 kaynaklarda `acquire_read` ve `cleanup_expired` byte-byte aynıdır. Kök baseline çözümleyicisi `require_created_baseline` ile paylaşılır; `created_dataset` bir devam için hata verir.
+v2 `reconcile` ve v2 original yolu davranışsal olarak aynı kalır; torunu olmayan v1/v2 kaynaklarda `acquire_read` ve `cleanup_expired` aynı kararı, kaydı ve hata kodunu verir (torun taraması deponun bütün operation/plan satırlarını çözer: çözülemeyen ilgisiz bir satır `state_invalid` verir, değişmezlik kapısı güvenli tarafta kapanır). Kök baseline çözümleyicisi `require_created_baseline` ile paylaşılır; `created_dataset` bir devam için hata verir.
 
 **P02-3h devri (sürüm dağıtım listesi).** [`tests/fixtures/version-dispatch-sites.json`](../../../tests/fixtures/version-dispatch-sites.json) bu karta beş v2-yalnız noktayı atar: `upload_reconcile_local.read_policy` ve `load_read_input` (üç nokta) ile `upload_reconciliation._ReadEnvironment.acquire` ve `commit`. Kart bunları v3’ü tanıyacak ya da bilinçli reddedecek biçimde günceller ve listedeki sahibini `done` (ya da gerekçeyle `v2-only`) yapar; liste yeşil kalmadan kart kapanmaz.
 
