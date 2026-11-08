@@ -22,6 +22,7 @@ from yorunge.adapters.http_transport import (
     _Response,
     _ResponseContext,
 )
+from yorunge.application.download_transport import DownloadRequest, DownloadTransport
 from yorunge.application.http_transport import HttpCredential, HttpRequest, HttpTransport
 from yorunge.application.storage import (
     STORAGE_CHUNK_BYTES,
@@ -31,6 +32,14 @@ from yorunge.application.storage import (
 from yorunge.application.upload_progress import source_chunk
 from yorunge.domain.capabilities import instant
 from yorunge.domain.credentials import normalize_target
+from yorunge.domain.download_response import (
+    Disposition,
+    DownloadResponse,
+    body_failure,
+    check_body_end,
+    disposition,
+    parse_response,
+)
 from yorunge.domain.errors import ErrorCode, YorungeError
 
 T = TypeVar("T")
@@ -102,6 +111,51 @@ class _StorageResponse(_Response):
         self.sent_bytes, self.sent_sha256 = body.count, body.digest.hexdigest()
 
 
+class _DownloadChunks(AsyncIterator[bytes]):
+    """The body of an accepted answer, by the closed rules of the download.
+
+    A cut connection is ``download_incomplete``, the body-phase size cap is
+    ``download_limit_exceeded`` and a timeout keeps its code; the end of the body must be the whole
+    of what the framing promised (``Content-Length`` reached, or the chunked terminator seen).
+    """
+
+    def __init__(self, view: _DownloadView, inner: AsyncIterator[bytes]) -> None:
+        self._view, self._inner = view, inner
+
+    async def __anext__(self) -> bytes:
+        view = self._view
+        try:
+            chunk = await anext(self._inner)
+        except StopAsyncIteration:
+            response = view.response
+            assert response.framing is not None
+            check_body_end(
+                response.framing, response.content_length, view.received, terminated=True
+            )
+            raise
+        except YorungeError as error:
+            raise YorungeError(body_failure(error.code)) from None
+        view.received += len(chunk)
+        return chunk
+
+
+class _DownloadView(_Response):
+    def __init__(
+        self,
+        response: httpx.Response,
+        request: DownloadRequest,
+        typed: DownloadResponse,
+        action: Disposition,
+    ) -> None:
+        super().__init__(response, request)
+        self.response, self.disposition, self.received = typed, action, 0
+
+    def chunks(self) -> AsyncIterator[bytes]:
+        if self.response.framing is None:  # a 416 has no body the engine may read
+            raise YorungeError("invalid_request")
+        return _DownloadChunks(self, super().chunks())
+
+
 class TransferHttpxTransport(HttpxTransport):
     def __init__(
         self,
@@ -137,6 +191,111 @@ class TransferHttpxTransport(HttpxTransport):
         self, request: StorageRequest, *, deadline: float
     ) -> _ResponseContext[_StorageResponse]:
         return _ResponseContext(self._open_storage(request, deadline=deadline))
+
+    def open_download(
+        self, request: DownloadRequest, *, deadline: float
+    ) -> _ResponseContext[_DownloadView]:
+        return _ResponseContext(self._open_download(request, deadline=deadline))
+
+    def _download_window(self, request: DownloadRequest, deadline: float) -> float:
+        """The GET's own window: the caller's whole deadline, not the PUT's 120 s."""
+        remaining = _remaining(deadline)
+        if (
+            type(request) is not DownloadRequest
+            or request.selected_secret is not self._credential.secret
+            or request.target.origin not in self._storage_origins
+        ):
+            raise YorungeError("invalid_service_target")
+        return time.monotonic() + remaining
+
+    @staticmethod
+    def _wire_download(request: DownloadRequest, deadline: float) -> httpx.Request:
+        remaining = _remaining(deadline)
+        wire = httpx.Request(
+            "GET",
+            request.target.wire_url,
+            headers=request.wire_headers(),
+            extensions={
+                "timeout": httpx.Timeout(min(5.0, remaining), pool=min(1.0, remaining)).as_dict()
+            },
+        )
+        if str(wire.url) != request.target.wire_url:
+            raise YorungeError("invalid_service_target")
+        # The wire must be the described request and nothing more: a signed address is sent no
+        # credential, so what is described and what is sent are one list.
+        expected = {name.lower(): value for name, value in request.public_headers()}
+        actual = {
+            name.lower(): value
+            for name, value in wire.headers.multi_items()
+            if name.lower() != "host"
+        }
+        if (
+            expected != actual
+            or len(wire.headers) != len(expected) + 1
+            or wire.headers.get_list("host") != [request.target.origin[8:]]
+        ):
+            raise YorungeError("invalid_service_target")
+        return wire
+
+    @staticmethod
+    def _download_headers(response: httpx.Response) -> None:
+        if (
+            len(response.headers) > 64
+            or sum(len(k) + len(v) for k, v in response.headers.raw) > 65536
+            or any(len(k) > 128 or len(v) > 16384 for k, v in response.headers.raw)
+        ):
+            raise YorungeError("invalid_response")
+
+    @asynccontextmanager
+    async def _open_download(
+        self, request: DownloadRequest, *, deadline: float
+    ) -> AsyncIterator[_DownloadView]:
+        self._owner()
+        if self._closed or self._client is None or type(request) is not DownloadRequest:
+            raise YorungeError("invalid_request")
+        response: httpx.Response | None = None
+        view: _DownloadView | None = None
+        acquired = False
+        failure: ErrorCode | None = None
+        public_error: YorungeError | None = None
+        with _private_logs():
+            try:
+                deadline = self._download_window(request, deadline)
+                async with asyncio.timeout(_remaining(deadline)) as window:
+                    async with asyncio.timeout(min(1.0, _remaining(deadline))):
+                        await self._slots.acquire()
+                    acquired = True
+                    deadline = min(deadline, self._download_window(request, deadline))
+                    window.reschedule(asyncio.get_running_loop().time() + _remaining(deadline))
+                    wire = self._wire_download(request, deadline)
+                    # One physical GET: no retry, no redirect, no credential, whatever the answer.
+                    response = await self._client.send(
+                        wire, stream=True, auth=None, follow_redirects=False
+                    )
+                    self._responses.add(response)
+                    self._download_headers(response)
+                    typed = parse_response(response.status_code, response.headers.multi_items())
+                    view = _DownloadView(response, request, typed, disposition(typed, request.ask))
+                    yield view
+                    _remaining(deadline)
+            except (TimeoutError, httpx.TimeoutException):
+                failure = "transport_timeout"
+            except httpx.InvalidURL:
+                failure = "invalid_request"
+            except httpx.HTTPError:
+                failure = "transport_failed"
+            except YorungeError as error:
+                public_error = error
+            finally:
+                pending = sys.exc_info()[0] is not None
+                close_failed = await self._release(response, view, acquired)
+                if close_failed and not pending and failure is None and public_error is None:
+                    failure = "transport_failed"
+        if public_error is not None:
+            public_error.__context__ = public_error.__cause__ = None
+            raise public_error
+        if failure is not None:
+            raise YorungeError(failure)
 
     def _window(self, request: StorageRequest, deadline: float) -> float:
         remaining = _remaining(deadline)
@@ -275,6 +434,19 @@ class TransferSession(HttpSession):
         )
 
     def exchange(self, consumer: Callable[[StorageTransport], Awaitable[T]]) -> T:
+        def consume(transport: HttpTransport) -> Awaitable[T]:
+            if (
+                not isinstance(transport, TransferHttpxTransport)
+                or transport._storage_origins != self._storage_origins
+            ):
+                raise YorungeError("invalid_request")
+            return consumer(transport)
+
+        return self.call(consume)
+
+    def download(self, consumer: Callable[[DownloadTransport], Awaitable[T]]) -> T:
+        """The same one client and pool, for the signed GET."""
+
         def consume(transport: HttpTransport) -> Awaitable[T]:
             if (
                 not isinstance(transport, TransferHttpxTransport)

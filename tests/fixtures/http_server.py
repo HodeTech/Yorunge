@@ -42,6 +42,9 @@ class Reply:
     truncate_at: int | None = None
     after_first_chunk: Callable[[], None] | None = None
     reset_after_body: bool = False
+    # No Content-Length of its own (the body is delimited by the connection closing, or by headers
+    # the reply names itself).
+    omit_length: bool = False
 
 
 Route = Reply | Callable[[RequestRecord, int], Reply]
@@ -174,7 +177,8 @@ class TlsServer:
                 reply = owner._reply(record)
                 length = (
                     ()
-                    if any(name.lower() == "transfer-encoding" for name, _ in reply.headers)
+                    if reply.omit_length
+                    or any(name.lower() == "transfer-encoding" for name, _ in reply.headers)
                     else (("Content-Length", str(len(reply.body))),)
                 )
                 fields = (
@@ -206,7 +210,7 @@ class TlsServer:
                                 reply.after_first_chunk()
                             if reply.chunk_delay:
                                 time.sleep(reply.chunk_delay)
-                    if reply.truncate_at is not None:
+                    if reply.truncate_at is not None or reply.omit_length:
                         self.close_connection = True
                     if reply.reset_after_body:
                         self.connection.setsockopt(
