@@ -719,3 +719,249 @@ def test_repeated_identity_content_encoding_fields_are_accepted_as_separate_fiel
         owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
         with owned:
             assert fetch(owned, request(key))[2] == CONTENT
+
+
+# --- the head phase, the release, thread ownership, the slot wait, the short keys ----------------
+
+
+@pytest.mark.parametrize(
+    "raised",
+    [
+        ssl.SSLError(1, "[SSL] record layer failure PRIVATE-URL-CANARY"),
+        ConnectionResetError(54, "Connection reset by peer"),
+        OSError(5, "Input/output error"),
+    ],
+    ids=["record layer", "reset", "oserror"],
+)
+def test_an_oserror_the_stack_leaves_unmapped_in_the_head_phase_is_transport_failed(
+    certificates, monkeypatch, raised
+):
+    key = credential()
+    with serve(certificates, Reply(body=CONTENT)) as api:
+        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def raising(self, *args, **kwargs):
+            raise raised
+
+        monkeypatch.setattr(httpx.AsyncClient, "send", raising)
+        with owned:
+            assert failure(lambda: fetch(owned, request(key))) == "transport_failed"
+            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+
+
+def test_a_cancel_inside_the_release_of_an_unfinished_body_leaves_no_pool_connection(certificates):
+    key = credential()
+    slow = Reply(body=b"z" * 200_000, chunk_size=1024, chunk_delay=0.02)
+    with serve(certificates, slow) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def interrupted(transport):
+            started = asyncio.Event()
+
+            async def consumer():
+                async with transport.open_download(
+                    request(key), deadline=time.monotonic() + 30
+                ) as view:
+                    await anext(view.chunks())
+                    started.set()  # leave the block with the body unread
+
+            task = asyncio.create_task(consumer())
+            await started.wait()
+            task.cancel()  # one cancel, landing in the release
+            await asyncio.gather(task, return_exceptions=True)
+            pool = transport._client._transport._pool
+            for _ in range(60):  # the connection may take a few loop turns to close
+                if not pool.connections:
+                    break
+                await asyncio.sleep(0.05)
+            return transport._slots._value, [c.info() for c in pool.connections]
+
+        with owned:
+            slots, connections = owned.download(interrupted)
+        assert slots == 2 and connections == []  # an ACTIVE connection stays in the pool otherwise
+
+
+def test_open_download_from_another_thread_is_refused_before_anything_happens(certificates):
+    key = credential()
+    with serve(certificates, Reply(body=CONTENT)) as api:
+        owned, network, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def grab(transport):
+            return transport
+
+        with owned:
+            transport = owned.download(grab)
+            outcome = []
+
+            def elsewhere():
+                async def go():
+                    try:
+                        async with transport.open_download(
+                            request(key), deadline=time.monotonic() + 3
+                        ):
+                            outcome.append("opened")
+                    except YorungeError as error:
+                        outcome.append(error.code)
+
+                asyncio.run(go())
+
+            worker = threading.Thread(target=elsewhere)
+            worker.start()
+            worker.join(10)
+        assert outcome == ["invalid_request"]
+        assert api.requests == [] and network.connections == []
+
+
+def test_a_caller_that_stays_busy_past_the_deadline_with_the_body_unread_is_timed_out(certificates):
+    key = credential()
+    with serve(certificates, Reply(body=CONTENT)) as api:
+        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def run(transport):
+            async with transport.open_download(request(key), deadline=time.monotonic() + 0.4):
+                end = time.monotonic() + 0.8
+                while time.monotonic() < end:  # no await: only the check after the block can see it
+                    pass
+
+        with owned:
+            assert failure(lambda: owned.download(run)) == "transport_timeout"
+            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+
+
+def test_a_cap_of_one_byte_is_a_valid_request():
+    key = credential()
+    assert DownloadRequest(target(), key.secret, None, max_bytes=1).max_bytes == 1
+
+
+def test_a_request_the_gates_refuse_is_refused_at_once_even_when_both_slots_are_busy(certificates):
+    key = credential()
+    slow = Reply(body=b"h" * 200_000, chunk_size=1000, chunk_delay=0.05)
+    with TlsServer(certificates, {PATH + QUERY: slow}) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def run(transport):
+            async def hold():
+                async with transport.open_download(
+                    request(key), deadline=time.monotonic() + 30
+                ) as view:
+                    async for _ in view.chunks():
+                        pass
+
+            holders = [asyncio.create_task(hold()) for _ in range(2)]
+            await asyncio.sleep(0.5)
+            started = time.monotonic()
+            stranger = DownloadRequest(
+                DownloadTarget(
+                    "https://storage.localhost" + PATH + QUERY,
+                    origin="https://storage.localhost",
+                    prefix=PREFIX,
+                ),
+                key.secret,
+            )
+            try:
+                async with transport.open_download(stranger, deadline=time.monotonic() + 10):
+                    outcome = "opened"
+            except YorungeError as error:
+                outcome = error.code
+            waited = time.monotonic() - started
+            for holder in holders:
+                holder.cancel()
+            await asyncio.gather(*holders, return_exceptions=True)
+            return outcome, waited
+
+        with owned:
+            outcome, waited = owned.download(run)
+        assert outcome == "invalid_service_target" and waited < 0.5
+
+
+def test_the_wait_for_a_slot_is_exactly_one_second(certificates, monkeypatch):
+    key = credential()
+    delays = []
+    real = asyncio.timeout
+
+    def spy(delay):
+        delays.append(delay)
+        return real(delay)
+
+    with serve(certificates, Reply(body=CONTENT)) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        monkeypatch.setattr(asyncio, "timeout", spy)
+        with owned:
+            fetch(owned, request(key), seconds=30)
+    assert 1.0 in delays  # min(1.0, remaining) at a 30 s deadline: the pool wait, not the window
+
+
+def test_a_body_is_never_handed_over_in_pieces_larger_than_a_tls_record(certificates):
+    key = credential()
+    with serve(certificates, Reply(body=BIG)) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def sizes(transport):
+            async with transport.open_download(
+                request(key), deadline=time.monotonic() + 10
+            ) as view:
+                return [len(chunk) async for chunk in view.chunks()]
+
+        with owned:
+            pieces = owned.download(sizes)
+    assert sum(pieces) == len(BIG) and max(pieces) <= 16_384  # the reference promises "16 KiB"
+
+
+@pytest.mark.parametrize(
+    "tail",
+    [
+        "/tok1234/x?s=1",  # a whole path segment
+        "/x?tok1234=1",  # a query key
+        "/x?a=tok1234&b=2",  # a query value followed by another pair
+        "/x?a=1&b=tok1234",  # the last query value
+        "/x?a=%74ok1234&b=2",  # percent-encoded
+    ],
+)
+def test_a_short_key_is_refused_where_only_equality_can_find_it(tail):
+    # Below eight bytes a key is matched by equality with a whole part, so how the address is cut
+    # into parts is the whole check.
+    wanted = DownloadTarget(ORIGIN + PREFIX + tail.lstrip("/"), origin=ORIGIN, prefix=PREFIX)
+    assert (
+        failure(lambda: DownloadRequest(wanted, SecretValue("tok1234"))) == "invalid_service_target"
+    )
+
+
+@pytest.mark.parametrize(
+    "url,origin,prefix",
+    [
+        (b"https://api.localhost/v1/files/evren-models/w", ORIGIN, PREFIX),
+        (ORIGIN + PATH, None, PREFIX),
+        (ORIGIN + PATH, ORIGIN, b"/v1/files/evren-models/"),
+        (None, ORIGIN, PREFIX),
+    ],
+    ids=["bytes url", "no origin", "bytes prefix", "no url"],
+)
+def test_an_address_of_the_wrong_type_is_not_a_target(url, origin, prefix):
+    assert failure(lambda: DownloadTarget(url, origin=origin, prefix=prefix)) == (
+        "invalid_service_target"
+    )
+
+
+def test_a_body_that_failed_does_not_read_as_ended_to_a_caller_that_reads_on(certificates):
+    key = credential()
+    framed = b"400\r\n" + CONTENT[:1024] + b"\r\n"  # a chunked body cut before its terminator
+    reply = Reply(body=framed, headers=(("Transfer-Encoding", "chunked"),), truncate_at=len(framed))
+    with serve(certificates, reply) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+
+        async def run(transport):
+            async with transport.open_download(request(key), deadline=time.monotonic() + 3) as view:
+                chunks, seen = view.chunks(), []
+                for _ in range(5):
+                    try:
+                        seen.append(len(await anext(chunks)))
+                    except YorungeError as error:
+                        seen.append(error.code)
+                    except StopAsyncIteration:
+                        seen.append("END")
+                return seen, view.complete
+
+        with owned:
+            seen, complete = owned.download(run)
+    assert seen[0] == 1024 and set(seen[1:]) == {"download_incomplete"}
+    assert complete is False  # a cut chunked body must never be published as a whole one

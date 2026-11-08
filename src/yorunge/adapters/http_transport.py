@@ -349,7 +349,12 @@ class HttpxTransport:
         return _ResponseContext(self._open(request, deadline=deadline))
 
     async def _release(
-        self, response: httpx.Response | None, view: _Response | None, acquired: bool
+        self,
+        response: httpx.Response | None,
+        view: _Response | None,
+        acquired: bool,
+        *,
+        shield: bool = False,
     ) -> bool:
         failed = False
         if view is not None:
@@ -357,7 +362,12 @@ class HttpxTransport:
         try:
             if response is not None:
                 try:
-                    await response.aclose()
+                    if shield:  # a cancel landing in the close must not leave the connection open
+                        closing = asyncio.ensure_future(response.aclose())
+                        closing.add_done_callback(lambda task: task.cancelled() or task.exception())
+                        await asyncio.shield(closing)
+                    else:
+                        await response.aclose()
                 except (OSError, httpx.HTTPError):
                     failed = True
                 finally:

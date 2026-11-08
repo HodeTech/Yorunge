@@ -129,9 +129,12 @@ class _DownloadChunks(AsyncIterator[bytes]):
 
     def __init__(self, view: _DownloadView, inner: AsyncIterator[bytes]) -> None:
         self._view, self._inner = view, inner
+        self._broken = False
 
     async def __anext__(self) -> bytes:
         view = self._view
+        if self._broken:  # a body that failed or was interrupted has not ended
+            raise YorungeError("download_incomplete")
         try:
             chunk = await anext(self._inner)
         except StopAsyncIteration:
@@ -143,7 +146,11 @@ class _DownloadChunks(AsyncIterator[bytes]):
             view.finish()  # the body is whole: what follows is not the transport's to time out
             raise
         except YorungeError as error:
+            self._broken = True
             raise YorungeError(body_failure(error.code)) from None
+        except BaseException:
+            self._broken = True
+            raise
         view.received += len(chunk)
         return chunk
 
@@ -320,11 +327,15 @@ class TransferHttpxTransport(HttpxTransport):
                 failure = "invalid_request"
             except httpx.HTTPError:
                 failure = "transport_failed"
+            except OSError:
+                if in_consumer:
+                    raise  # the caller's own (a local disk's) error is the caller's, not ours
+                failure = "transport_failed"  # e.g. an ssl.SSLError the HTTP stack left unmapped
             except YorungeError as error:
                 public_error = error
             finally:
                 pending = sys.exc_info()[0] is not None
-                close_failed = await self._release(response, view, acquired)
+                close_failed = await self._release(response, view, acquired, shield=True)
                 if close_failed and not pending and failure is None and public_error is None:
                     failure = "transport_failed"
         if public_error is not None:
