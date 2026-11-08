@@ -50,8 +50,9 @@ class ArtifactCodes:
     def __post_init__(self) -> None:
         # Every code is a closed one, and the doubt after a link exits 5 in every family: it is
         # what a script acts on, and the publisher cannot choose it.
-        for code in (self.failed, self.exists, self.changed, self.unreadable):
-            YorungeError(code)
+        for code in (self.failed, self.exists, self.uncertain, self.changed, self.unreadable):
+            if type(code) is not str or code not in MESSAGES:
+                raise ValueError("closed error code required")
         if YorungeError(self.uncertain).exit_code != 5:
             raise ValueError("the uncertain code of a family must exit 5")
 
@@ -153,8 +154,9 @@ class ArtifactPublisher:
         identity when publication fails, unless ``_discard`` keeps it; the caller does not touch it
         meanwhile. Everything after the write is the publisher's: verify, link, clean up, sync.
         """
-        if not stage or "/" in stage or stage in (".", "..", self.location.name):
+        if not stage or "/" in stage or "\0" in stage or stage in (".", "..", self.location.name):
             raise ValueError("a stage is one name in the target's directory, and not the target's")
+        # (The caller guarantees that the two names do not alias on a case-insensitive filesystem.)
 
         def adopted() -> None:
             self.stage = stage
@@ -178,9 +180,10 @@ class ArtifactPublisher:
                     raise YorungeError(self.codes.failed) from None
                 self.state.reraise(error)
             except BaseException as final:
-                if stranded and final is not error:
-                    # The error was replaced by a closed one: the note that the stage may still
-                    # be there goes with it.
+                if stranded and final is not error and not self.state.attempted:
+                    # Before the link the error was replaced by a closed one: the note that the
+                    # stage may still be there goes with it. After the link the stage next to the
+                    # target is the expected trace and the error already says the target may exist.
                     BaseException.add_note(final, MESSAGES[self.codes.failed])
                 raise
 
@@ -190,7 +193,9 @@ class ArtifactPublisher:
         By default it is removed again by identity: content in memory can be written again. A
         streaming sink overrides this where the finished stage is the only copy of a download and
         the failure says nothing against it (an I/O error, a deadline, an interrupt): it keeps the
-        stage and removes it only for a definite refusal. The success path removes it itself.
+        stage and removes it only for a definite refusal. A refusal is definite only before the
+        link was attempted (``not self.state.attempted``): after it the target may exist, and a
+        stage that is dropped then can be the last copy. The success path removes it itself.
         """
         self._remove_stage()
 
@@ -211,6 +216,7 @@ class ArtifactPublisher:
         self._publish_link()
         self._check_target(descriptor, size, written.st_mtime_ns)
         self._remove_stage()
+        self.stage = None  # the target now has one link, whatever an override of the removal did
         os.fsync(self.location.descriptor)
         self._sync(descriptor)
         self.check_source()

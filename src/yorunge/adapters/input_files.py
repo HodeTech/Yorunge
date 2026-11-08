@@ -40,18 +40,13 @@ def signature(info: os.stat_result) -> tuple[int, ...]:
     return (*identity(info), info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def close_input_descriptor(
-    descriptor: int,
-    primary: BaseException | None = None,
-    *,
-    note: ErrorCode = "file_unreadable",
-) -> None:
+def close_input_descriptor(descriptor: int, primary: BaseException | None = None) -> None:
     try:
         os.close(descriptor)
     except OSError:
         if primary is None:
             raise
-        BaseException.add_note(primary, MESSAGES[note])
+        BaseException.add_note(primary, MESSAGES["file_unreadable"])
 
 
 def close_descriptor(
@@ -60,11 +55,16 @@ def close_descriptor(
     *,
     code: ErrorCode = "file_unreadable",
 ) -> None:
-    """Close ``descriptor``; a failure to close is ``code`` unless another error is in flight."""
+    """Close ``descriptor``; a failure to close is ``code`` unless another error is in flight.
+
+    With an error in flight the failure is a note on it, in the words of ``code``'s family.
+    """
     try:
-        close_input_descriptor(descriptor, primary, note=code)
+        close_input_descriptor(descriptor)
     except OSError:
-        raise YorungeError(code) from None
+        if primary is None:
+            raise YorungeError(code) from None
+        BaseException.add_note(primary, MESSAGES[code])
 
 
 @contextmanager

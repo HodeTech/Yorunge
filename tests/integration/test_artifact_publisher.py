@@ -442,10 +442,12 @@ class Keeping(ArtifactPublisher):
     """
 
     def _discard(self, error):
-        if isinstance(error, YorungeError) and error.code in (
+        # A refusal is definite only before the link: after it the target may exist.
+        definite = isinstance(error, YorungeError) and error.code in (
             self.codes.exists,
             self.codes.changed,
-        ):
+        )
+        if definite and not self.state.attempted:
             self._remove_stage()
 
 
@@ -526,6 +528,78 @@ def test_a_keeping_publisher_keeps_a_finished_stage_that_nothing_speaks_against(
     assert place.target.read_bytes() == CONTENT and place.leftovers() == []
 
 
+def test_a_keeping_publisher_keeps_the_stage_when_the_target_was_replaced_after_the_link(place):
+    pub = Keeping(place, PublicationState(CODES), prefix=PREFIX)
+
+    def replaced():
+        place.target.unlink()
+        place.target.write_bytes(b"FOREIGN")
+
+    after_link(pub, replaced)
+    error = failure(lambda: publish_stage(place, pub))
+    assert error.code == CODES.uncertain  # the target may or may not be ours
+    (kept,) = place.leftovers()  # and what was downloaded is not dropped on that doubt
+    assert (place.directory / kept).read_bytes() == CONTENT
+    assert place.target.read_bytes() == b"FOREIGN"
+
+
+def test_an_override_of_the_removal_need_not_clear_the_publishers_bookkeeping(place):
+    class Forgetful(ArtifactPublisher):
+        def _remove_stage(self):
+            os.unlink(self.stage, dir_fd=self.location.descriptor)  # and forgets ``self.stage``
+
+    pub = Forgetful(place, PublicationState(CODES), prefix=PREFIX)
+    publish_stage(place, pub)
+    assert place.target.read_bytes() == CONTENT and place.leftovers() == []
+
+
+def test_the_size_that_is_wrong_comes_after_a_source_or_a_place_that_changed(place):
+    def moved():
+        raise YorungeError("input_changed")
+
+    pub, state = publisher(place, check_source=moved)
+    name, descriptor = staged(place)
+    try:
+        error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 5))
+    finally:
+        os.close(descriptor)
+    assert error.code == "input_changed" and state.attempted is False  # not the size's verdict
+
+
+@pytest.mark.parametrize("member", ["failed", "exists", "uncertain", "changed", "unreadable"])
+def test_every_member_of_a_family_must_be_a_closed_code(member):
+    with pytest.raises(ValueError):
+        ArtifactCodes(**{**CODES.__dict__, member: "no_such_code"})
+    with pytest.raises(ValueError):
+        ArtifactCodes(**{**CODES.__dict__, member: None})
+
+
+def test_the_note_that_the_stage_may_be_left_is_on_the_error_once_and_only_before_the_link(
+    place, monkeypatch
+):
+    def unlink_fails(*arguments, **keywords):
+        raise OSError(errno.EIO, "")
+
+    def refuse(written):
+        raise YorungeError("execution_timeout")
+
+    pub, _ = publisher(place)
+    pub._check_stage = refuse
+    monkeypatch.setattr(os, "unlink", unlink_fails)
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == "execution_timeout"
+    assert error.__notes__.count(MESSAGES[CODES.failed]) == 1  # the same error: once
+    monkeypatch.undo()
+    # After the link the target may exist: the error says so, and carries no note to the contrary.
+    for leftover in place.directory.iterdir():
+        leftover.unlink()
+    pub, state = publisher(place)
+    pub._remove_stage = lambda: (_ for _ in ()).throw(OSError(errno.EIO, ""))
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.uncertain and state.attempted is True
+    assert MESSAGES[CODES.failed] not in getattr(error, "__notes__", ())
+
+
 def test_a_keeping_publisher_still_removes_the_stage_of_a_definite_refusal(place):
     place.target.write_bytes(b"someone else's")
     pub = Keeping(place, PublicationState(CODES))
@@ -544,7 +618,7 @@ def test_a_keeping_publisher_removes_a_stage_that_is_not_what_was_written(place)
     assert error.code == CODES.changed and place.leftovers() == []
 
 
-@pytest.mark.parametrize("stage", ["", ".", "..", "a/b", "/elsewhere/stage"])
+@pytest.mark.parametrize("stage", ["", ".", "..", "a/b", "/elsewhere/stage", "a\0b"])
 def test_a_stage_is_one_name_in_the_targets_directory(place, stage):
     pub, state = publisher(place)
     with pytest.raises(ValueError):

@@ -138,7 +138,11 @@ class DownloadPublisher(ArtifactPublisher):
         finds it complete and publishes it (or, after a link that took place, finds the trace of
         this publication and cleans it).
         """
-        if isinstance(error, YorungeError) and error.code == self.codes.exists:
+        if (
+            isinstance(error, YorungeError)
+            and error.code == self.codes.exists
+            and not self.state.attempted
+        ):
             self.sink.remove_present(("stage", "sidecar", "sidecar_tmp"))
 
 
