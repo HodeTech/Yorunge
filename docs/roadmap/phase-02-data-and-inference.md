@@ -93,7 +93,8 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3l | Akışlı yerel yazıcı, sidecar protokolü ve resume doğrulaması | P02-3j, P02-3s; [kart](tasks/p02-3l-download-sink-publisher.md) | `draft` |
 | P02-3m | İndirme motoru, resume kararı ve uçtan uca uyumluluk | P02-3k, P02-3l; [kart](tasks/p02-3m-download-engine-resume.md) | `draft` |
 | P02-3n | Model ağırlığı tüketicisi ve `models download` yüzeyi | P02-3m, P02-0d; [kart](tasks/p02-3n-model-weights-consumer.md) | `draft` |
-| P02-3o | İndirme native ölçümü, kanıt doğrulayıcısı ve kurulu smoke | P02-3n; [kart](tasks/p02-3o-download-native-acceptance.md) | `draft` |
+| P02-3o | İndirme native ölçüm donanımı ve kapalı rapor (doğrulayıcı, saklama ve kurulu smoke P02-3z’ye ayrıldı) | P02-3n; [kart](tasks/p02-3o-download-native-acceptance.md) | `draft` |
+| P02-3z | İndirme ölçümünün kanıt doğrulayıcısı, tanı saklaması, kurulu smoke’lar ve CI (P02-3o’dan ayrıştırıldı) | P02-3o; [kart](tasks/p02-3z-download-evidence-installation-ci.md) | `draft` |
 | P02-3p | Veri sürümü tipleri, strict codec ve salt okuma okuyucusu | P02-0d; [kart](tasks/p02-3p-version-domain-reader.md) | `draft` |
 | P02-3q | Public `datasets versions` yüzeyi ve bağ artifact’ı | P02-3p, P02-3s; [kart](tasks/p02-3q-public-version-surface.md) | `draft` |
 | P02-3s | Ortak no-clobber artifact yayıncısı (manifest yayıncısı genellemesi; indirme ve sürüm hatlarının ortak ihtiyacı) | P02-2c; [kart](tasks/p02-3s-common-artifact-publisher.md) | `draft` |

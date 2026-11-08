@@ -266,6 +266,17 @@ def staged(tmp_path, helper, payload):
     )
 
 
+def test_the_options_the_installed_download_help_is_held_to(helper):
+    assert helper["HELP"] == (
+        "--version-id",
+        "--format",
+        "--weights-out",
+        "--sha256",
+        "--timeout",
+        "--no-resume",
+    )
+
+
 def test_a_correct_download_settles(staged):
     staged.settle()
 

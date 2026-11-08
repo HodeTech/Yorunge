@@ -2,8 +2,9 @@
 
 The object is a deterministic stream of 64 KiB blocks. Block ``b`` holds ``(i + 37 * b) % 256`` at
 offset ``i``, so byte ``p`` of the object is ``(p + 37 * (p >> 16)) % 256``. The pattern repeats
-only every 16 MiB, so a resume from a wrong offset (a multiple of the 8 MiB checkpoint interval
-included) changes the digest.
+only every 16 MiB, so a resume from a wrong offset changes the digest, also when it is a multiple
+of the 8 MiB checkpoint interval; a wrong offset that is a multiple of 16 MiB repeats the same
+bytes and is caught by the size and the byte accounting instead.
 
 Three code paths derive these bytes by three different formulas and none of them allocates more than
 one block, whatever the object size: the oracle below applies ``bytes.translate`` to one base block,

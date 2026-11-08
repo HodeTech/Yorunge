@@ -38,6 +38,9 @@ DENIED = frozenset(
 
 def deny(event, arguments):
     if event in DENIED:
+        # Refusing is not enough: a command that catches the OSError and goes on would pass. The
+        # attempt leaves a line on stderr, which no closed gate and no help may have.
+        sys.stderr.write("offline smoke: " + event + " attempted\\n")
         raise OSError("network access is forbidden in this offline installed smoke")
 
 
@@ -88,6 +91,16 @@ def execute(
     )
 
 
+def defined_options(text: str) -> set[str]:
+    """The options a help DEFINES: the rows of its option list, never a mention in prose.
+
+    An option that was renamed or dropped can still be named by the usage line, the epilog or the
+    help of another option; only a row of the list (two-space indent, an optional short form) is a
+    definition.
+    """
+    return set(re.findall(r"^  (?:-\w, )?(--[\w-]+)", text, flags=re.MULTILINE))
+
+
 def mentions(text: str, name: str) -> bool:
     return re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", text) is not None
 
@@ -95,8 +108,17 @@ def mentions(text: str, name: str) -> bool:
 def check_help(
     result: subprocess.CompletedProcess[str], label: str, names: tuple[str, ...]
 ) -> None:
-    """``--help`` ends 0 with nothing on stderr and names every option the surface promises."""
-    missing = [name for name in names if not mentions(result.stdout, name)]
+    """``--help`` ends 0 with nothing on stderr and defines every option the surface promises.
+
+    An option (``--name``) must be a row of the option list; a command name (a subcommand of a
+    group) is a word of the help, since the group lists its subcommands in prose-like rows.
+    """
+    defined = defined_options(result.stdout)
+    missing = [
+        name
+        for name in names
+        if (name not in defined if name.startswith("-") else not mentions(result.stdout, name))
+    ]
     if result.returncode != 0 or result.stderr or missing:
         raise ValueError(
             f"installed {label} help failed: exit {result.returncode}, "

@@ -189,7 +189,40 @@ print("refused")
         text=True,
         timeout=30,
     )
-    assert (result.returncode, result.stdout.strip(), result.stderr) == (0, "refused", "")
+    assert (result.returncode, result.stdout.strip()) == (0, "refused")
+    assert result.stderr.count("attempted") == 8  # every refusal leaves its trace on stderr
+
+
+def test_an_attempt_the_command_swallows_still_fails_the_smoke(tmp_path):
+    body = """
+import socket
+
+try:
+    socket.getaddrinfo("example.invalid", 80)
+except OSError:
+    pass  # a command that hides the refusal and goes on
+print("carried on")
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", HELPER["GUARD"] + body],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0 and "socket.getaddrinfo attempted" in result.stderr
+    # what the gates then see is not a help with an empty stderr, nor one closed envelope
+    with pytest.raises(ValueError, match="help failed"):
+        HELPER["check_help"](
+            completed(0, "options:\n  --one\n", result.stderr), "synthetic", ("--one",)
+        )
+    with pytest.raises(ValueError):
+        HELPER["check_error"](
+            completed(2, "", result.stderr + json.dumps(ENVELOPE)),
+            "synthetic",
+            "invalid_request",
+            2,
+        )
 
 
 def test_a_gate_that_reaches_for_the_network_fails_the_smoke_instead_of_passing(installed):
@@ -205,8 +238,10 @@ def test_a_gate_that_reaches_for_the_network_fails_the_smoke_instead_of_passing(
         keyed,
         [*listing, "--config", str(config), "--state-dir", str(state), "--output", "json"],
     )
-    # The guard refused the connection, and the product reported it: a closed, different error.
-    assert json.loads(result.stderr)["code"] != "credential_unavailable"
+    # The guard refused the connection (and left its trace), and the product reported it: a closed,
+    # different error, as the last line.
+    assert "offline smoke: socket." in result.stderr
+    assert json.loads(result.stderr.strip().splitlines()[-1])["code"] != "credential_unavailable"
     assert result.returncode not in (0, 3) and result.stdout == ""
     with pytest.raises(ValueError, match="credential_unavailable/3"):
         HELPER["check_error"](result, "list", "credential_unavailable", 3)
@@ -221,34 +256,72 @@ def test_the_guard_is_in_front_of_the_real_entry_point(installed):
 # --- the primitives that judge a command -----------------------------------------------------
 
 
+ROWS = "usage: x [--one] [--two]\n\noptions:\n  -h, --help  show this\n  --one ONE   the first\n"
+
+
 @pytest.mark.parametrize(
     "result,names",
     [
-        (completed(0, "usage: --one --two\n"), ("--one", "--two")),
-        (completed(0, "--one\n--two, --three"), ("--one", "--two", "--three")),
+        (completed(0, ROWS + "  --two\n"), ("--one", "--two")),
+        (
+            completed(0, ROWS + "  -t, --two TWO\n  --three-way\n"),
+            ("--one", "--two", "--three-way"),
+        ),
     ],
 )
-def test_a_help_that_names_every_option_passes(result, names):
+def test_a_help_that_defines_every_option_passes(result, names):
     HELPER["check_help"](result, "synthetic", names)
 
 
 @pytest.mark.parametrize(
     "result,names",
     [
-        (completed(1, "--one\n"), ("--one",)),
-        (completed(2, "--one\n"), ("--one",)),
-        (completed(0, "--one\n", "warning\n"), ("--one",)),
-        (completed(0, "--one\n"), ("--one", "--two")),
+        (completed(1, "  --one\n"), ("--one",)),
+        (completed(2, "  --one\n"), ("--one",)),
+        (completed(0, "  --one\n", "warning\n"), ("--one",)),
+        (completed(0, "  --one\n"), ("--one", "--two")),
         (completed(0, ""), ("--one",)),
-        (completed(0, "--one-more\n"), ("--one",)),
-        (completed(0, "--prefix--one\n"), ("--one",)),
-        (completed(0, "x--one\n"), ("--one",)),
-        (completed(0, "--one\n"), ("--on",)),
+        (completed(0, "  --one-more\n"), ("--one",)),
+        (completed(0, "  --prefix--one\n"), ("--one",)),
+        (completed(0, "x  --one\n"), ("--one",)),
+        (completed(0, "  --one\n"), ("--on",)),
+        # a mention is not a definition: the usage line, an epilog and another option's help
+        (completed(0, "usage: x [--one]\n"), ("--one",)),
+        (completed(0, "options:\n  --two  like --one\n\nSee --one.\n"), ("--one",)),
+        (completed(0, "options:\n    --one  indented as a continuation\n"), ("--one",)),
     ],
 )
 def test_a_help_that_fails_is_refused(result, names):
     with pytest.raises(ValueError, match="help failed"):
         HELPER["check_help"](result, "synthetic", names)
+
+
+def test_the_options_the_surface_promises_are_these():
+    # pinned: the tuples are what an installed help is held to
+    assert HELPER["UPLOAD_OPTIONS"]["resume"] == (
+        "--operation-id",
+        "--accept-unverified-read",
+        "--prepare",
+        "--accept-unconfirmed-effects",
+        "--config",
+        "--profile",
+        "--state-dir",
+    )
+    assert HELPER["UPLOAD_OPTIONS"]["approve"] == (
+        "--plan-id",
+        "--confirm",
+        "--accept-unconfirmed-effects",
+        "--config",
+        "--profile",
+        "--state-dir",
+    )
+    shared = ("--config", "--profile", "--state-dir")
+    assert HELPER["VERSION_OPTIONS"] == {
+        "list": ("--dataset-id", "--page", *shared),
+        "show": ("--dataset-id", "--version-tag", *shared),
+        "bind": ("--dataset-id", "--version-tag", "--binding-out", "--manifest", *shared),
+        "check": ("--binding", *shared),
+    }
 
 
 def test_a_closed_error_passes_and_is_returned():
