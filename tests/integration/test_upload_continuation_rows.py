@@ -288,8 +288,9 @@ def test_a_latched_continuation_record_never_becomes_unlatched(tmp_path):
 def test_a_record_that_is_not_its_plans_admission_is_not_written(tmp_path, change):
     with open_store(tmp_path / "state") as store:
         install(store, operation=False)
+        model_copy_value = RECORD.model_copy(update=change)
         with pytest.raises(YorungeError) as error:
-            write_record(store.connection, RECORD.model_copy(update=change), None)
+            write_record(store.connection, model_copy_value, None)
         assert error.value.code == "state_invalid"
         assert store.connection.execute("SELECT count(*) FROM upload_operations").fetchone() == (0,)
 

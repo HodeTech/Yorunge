@@ -105,8 +105,9 @@ def test_acquire_read_alone_refuses_a_source_with_a_continuation_whatever_the_ch
         before = source_record(data, source)
         stub_authorization(monkeypatch)
         with open_existing_store(data[0]) as store:
+            state_uploads = StateUploads(store)
             with pytest.raises(OperationError) as refused:
-                StateUploads(store).acquire_read(source, accept_unverified_read=True)
+                state_uploads.acquire_read(source, accept_unverified_read=True)
         assert refused.value.code == "operation_conflict"
         assert refused.value.operation_id == successor.operation_id
         assert source_record(data, source) == before  # no lease, no fence, no reason

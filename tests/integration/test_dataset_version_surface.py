@@ -822,8 +822,9 @@ def test_the_arguments_about_where_the_caller_stands_are_judged_before_any_file_
                     DATASET, "v1", binding_out=out, config=config, state_dir=state
                 )
 
+            inside_value = inside()
             with pytest.raises(YorungeError) as inside_a_loop:
-                asyncio.run(inside())
+                asyncio.run(inside_value)
             # The running loop is refused first, whatever the target says.
             assert inside_a_loop.value.code == "invalid_request"
     assert server.requests == []

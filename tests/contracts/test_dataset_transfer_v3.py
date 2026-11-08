@@ -61,8 +61,9 @@ def accepts(value):
 
 
 def rejects(value):
+    canon_value = canon(value)
     with pytest.raises((ValidationError, ValueError)):
-        TransferRecordV3.model_validate_json(canon(value))
+        TransferRecordV3.model_validate_json(canon_value)
 
 
 def lease(**changes):
@@ -277,8 +278,9 @@ def test_every_forbidden_lifecycle_shape_is_rejected(name):
 def test_the_mode_of_a_record_must_be_the_mode_of_its_plan_and_that_alone():
     sending = data("dataset-continuation-record-v3-admitted.json")
     validate_record_binding_v3(PLAN, accepts(sending))  # control: nothing else is wrong
+    accepts_value = accepts({**sending, "verification_only": True})
     with pytest.raises(ValueError, match="does not belong"):
-        validate_record_binding_v3(PLAN, accepts({**sending, "verification_only": True}))
+        validate_record_binding_v3(PLAN, accepts_value)
     check_only = {
         **sending,
         "plan_id": CHECK_ONLY.plan_id,
@@ -288,8 +290,9 @@ def test_the_mode_of_a_record_must_be_the_mode_of_its_plan_and_that_alone():
         "approval": data("dataset-continuation-approval-v3-verification-only.json"),
     }
     validate_record_binding_v3(CHECK_ONLY, accepts({**check_only, "verification_only": True}))
+    accepts_value = accepts({**check_only, "verification_only": False})
     with pytest.raises(ValueError, match="does not belong"):
-        validate_record_binding_v3(CHECK_ONLY, accepts({**check_only, "verification_only": False}))
+        validate_record_binding_v3(CHECK_ONLY, accepts_value)
 
 
 def test_a_check_only_record_that_sends_cannot_have_been_admitted_from_a_sending_plan():
@@ -322,8 +325,9 @@ def test_a_check_only_record_that_sends_cannot_have_been_admitted_from_a_sending
     ],
 )
 def test_a_record_that_does_not_name_its_plan_is_refused(changes):
+    accepts_value = accepts(record_of(**changes))
     with pytest.raises(ValueError):
-        validate_record_binding_v3(PLAN, accepts(record_of(**changes)))
+        validate_record_binding_v3(PLAN, accepts_value)
 
 
 def test_versions_never_mix_between_plan_record_and_proof():
@@ -367,8 +371,9 @@ def test_v3_wire_is_refused_by_the_older_types_and_older_wire_by_the_v3_types():
         (TransferControlV3, graph["controls"][0]),
         (TransferVerificationV3, graph["verification"]),
     ):
+        canon_value = canon(value)
         with pytest.raises((ValidationError, ValueError)):
-            newer.model_validate_json(canon(value))
+            newer.model_validate_json(canon_value)
 
 
 # --- control ------------------------------------------------------------------------------------
@@ -397,8 +402,9 @@ def control_of(**changes):
     ],
 )
 def test_a_malformed_control_is_rejected(changes):
+    canon_value = canon(control_of(**changes))
     with pytest.raises((ValidationError, ValueError)):
-        TransferControlV3.model_validate_json(canon(control_of(**changes)))
+        TransferControlV3.model_validate_json(canon_value)
 
 
 def test_a_read_failure_control_is_recovery_without_a_digest():
@@ -447,21 +453,22 @@ def broken_files(mutate):
     ],
 )
 def test_a_malformed_proof_is_rejected(changes):
+    canon_value = canon(proof_of(**changes))
     with pytest.raises((ValidationError, ValueError)):
-        TransferVerificationV3.model_validate_json(canon(proof_of(**changes)))
+        TransferVerificationV3.model_validate_json(canon_value)
 
 
 def test_an_explicit_read_cannot_carry_a_grant_while_a_verified_read_needs_a_current_one():
     grant = data("dataset-continuation-plan-v3-evidenced.json")["grant"]
+    canon_value = canon(proof_of(grant=grant))
     with pytest.raises(ValueError, match="manufacture a grant"):
-        TransferVerificationV3.model_validate_json(canon(proof_of(grant=grant)))
+        TransferVerificationV3.model_validate_json(canon_value)
     verified = proof_of(authorization_policy="verified_read", grant=grant)
     assert TransferVerificationV3.model_validate_json(canon(verified)).grant is not None
     stale = {**grant, "expires_at": "2026-11-02T11:00:00.000000Z"}  # not current at observed_at
+    canon_value = canon(proof_of(authorization_policy="verified_read", grant=stale))
     with pytest.raises(ValueError, match="actual current grant"):
-        TransferVerificationV3.model_validate_json(
-            canon(proof_of(authorization_policy="verified_read", grant=stale))
-        )
+        TransferVerificationV3.model_validate_json(canon_value)
 
 
 def test_a_proof_short_of_the_manifest_is_well_formed_but_does_not_belong_to_the_plan():
@@ -557,8 +564,9 @@ def test_a_verified_read_needs_a_grant_for_its_scope_with_the_read_permission_cu
         {"checked_at": around(proof, micro=1), "expires_at": around(proof, 60)},
         {"checked_at": around(proof, -60), "expires_at": around(proof)},
     ):
+        canon_value = canon(verified(proof, **changes))
         with pytest.raises(ValueError, match="actual current grant"):
-            model.model_validate_json(canon(verified(proof, **changes)))
+            model.model_validate_json(canon_value)
     edge = {"checked_at": around(proof), "expires_at": around(proof, micro=1)}
     model.model_validate_json(canon(verified(proof, **edge)))  # from now until the next microsecond
 
@@ -566,8 +574,9 @@ def test_a_verified_read_needs_a_grant_for_its_scope_with_the_read_permission_cu
 @pytest.mark.parametrize("model,proof", PROOFS)
 def test_an_explicit_read_never_manufactures_a_grant(model, proof):
     model.model_validate_json(canon(proof))
+    canon_value = canon({**proof, "grant": {**GRANT, "scope": proof["scope"]}})
     with pytest.raises(ValueError, match="manufacture a grant"):
-        model.model_validate_json(canon({**proof, "grant": {**GRANT, "scope": proof["scope"]}}))
+        model.model_validate_json(canon_value)
 
 
 def test_the_binding_validators_accept_only_genuine_values():
@@ -618,8 +627,9 @@ def test_a_continuation_is_never_its_own_source_or_baseline():
     source = PLAN.continuation.source_operation_id
     assert accepts(admitted).operation_id not in {source, PLAN.continuation.baseline_operation_id}
     validate_record_binding_v3(PLAN, accepts(admitted))
+    accepts_value = accepts({**admitted, "operation_id": source})
     with pytest.raises(ValueError, match="own source"):
-        validate_record_binding_v3(PLAN, accepts({**admitted, "operation_id": source}))
+        validate_record_binding_v3(PLAN, accepts_value)
     other_baseline = "00000000-0000-4000-8000-0000000000b1"
     rebased = PLAN.model_copy(
         update={
@@ -628,8 +638,9 @@ def test_a_continuation_is_never_its_own_source_or_baseline():
             )
         }
     )
+    accepts_value = accepts({**admitted, "operation_id": other_baseline})
     with pytest.raises(ValueError, match="own source"):
-        validate_record_binding_v3(rebased, accepts({**admitted, "operation_id": other_baseline}))
+        validate_record_binding_v3(rebased, accepts_value)
     # In a chain the source (the previous continuation) is not the baseline root.
     other_source = "00000000-0000-4000-8000-0000000000b2"
     chained = PLAN.model_copy(
@@ -639,8 +650,9 @@ def test_a_continuation_is_never_its_own_source_or_baseline():
             )
         }
     )
+    accepts_value = accepts({**admitted, "operation_id": other_source})
     with pytest.raises(ValueError, match="own source"):
-        validate_record_binding_v3(chained, accepts({**admitted, "operation_id": other_source}))
+        validate_record_binding_v3(chained, accepts_value)
 
 
 @pytest.mark.parametrize(
@@ -695,8 +707,9 @@ def test_no_key_may_be_left_out_not_even_a_nullable_one(model, name):
     paths = list(deletions(value))
     assert len(paths) >= 8
     for path in paths:
+        canon_value = canon(without(value, path))
         with pytest.raises((ValidationError, ValueError)):
-            model.model_validate_json(canon(without(value, path)))
+            model.model_validate_json(canon_value)
 
 
 def test_no_key_of_a_recovery_control_may_be_left_out_either():
@@ -704,8 +717,9 @@ def test_no_key_of_a_recovery_control_may_be_left_out_either():
     value = control_of(kind="recovery", reason="request_uncertain", verification_digest=None)
     TransferControlV3.model_validate_json(canon(value))
     for path in deletions(value):
+        canon_value = canon(without(value, path))
         with pytest.raises((ValidationError, ValueError)):
-            TransferControlV3.model_validate_json(canon(without(value, path)))
+            TransferControlV3.model_validate_json(canon_value)
 
 
 UPPER = "00000000-0000-4000-8000-0000000000AB"

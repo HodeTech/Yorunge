@@ -97,8 +97,9 @@ def test_it_cannot_be_called_from_a_running_event_loop(prepared_input, certifica
         async def inside():
             return go(data, server, report.plan_id)
 
+        inside_value = inside()
         with pytest.raises(YorungeError) as error:
-            asyncio.run(inside())
+            asyncio.run(inside_value)
         assert error.value.code == "invalid_request"
         assert len(server.requests) == requests
         assert operation_of(data, report.plan_id) is None

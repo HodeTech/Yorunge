@@ -118,14 +118,17 @@ def test_a_complete_graph_marks_the_source_graph_complete(journal):
 
 def test_an_unknown_operation_has_no_journal(journal):
     with open_store(journal.root) as store:
+        repository_value = journal.repository(store)
+        str_value = str(uuid4())
         with pytest.raises(YorungeError) as raised:
-            journal.repository(store).operation_journal(str(uuid4()))
+            repository_value.operation_journal(str_value)
         assert raised.value.code == "operation_not_found"
 
 
 def test_a_view_without_an_operation_has_no_journal():
+    simple_namespace = SimpleNamespace(operation=None)
     with pytest.raises(YorungeError) as raised:
-        operation_journal(SimpleNamespace(operation=None))
+        operation_journal(simple_namespace)
     assert raised.value.code == "operation_not_found"
 
 
@@ -196,15 +199,17 @@ def test_facts_carry_the_stored_dataset_and_manifest_identity(journal):
 
 def test_a_malformed_operation_id_is_invalid_request(journal):
     with open_store(journal.root) as store:
+        repository_value = journal.repository(store)
         with pytest.raises(YorungeError) as raised:
-            journal.repository(store).operation_journal("not-a-uuid")
+            repository_value.operation_journal("not-a-uuid")
         assert raised.value.code == "invalid_request"
 
 
 def test_a_plan_of_another_type_is_refused_instead_of_read_as_a_chain_root():
     record = SimpleNamespace(operation_id=str(uuid4()), dataset_id=None)
+    simple_namespace = SimpleNamespace(operation=record, plan=object())
     with pytest.raises(YorungeError) as raised:
-        operation_journal(SimpleNamespace(operation=record, plan=object()))
+        operation_journal(simple_namespace)
     assert raised.value.code == "state_invalid"
 
 
@@ -239,7 +244,8 @@ def test_a_refused_plan_type_keeps_the_operation_identity_in_the_error(journal, 
 
     monkeypatch.setattr(upload_repository, "stored_journal", refuse)
     with open_store(journal.root) as store:
+        repository_value = journal.repository(store)
         with pytest.raises(YorungeError) as raised:
-            journal.repository(store).operation_journal(record.operation_id)
+            repository_value.operation_journal(record.operation_id)
     assert raised.value.code == "state_invalid"
     assert raised.value.operation_id == record.operation_id

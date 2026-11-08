@@ -184,11 +184,12 @@ def test_the_budget_of_a_port_is_the_plans_own_limits(lifecycle):
         max_upload_bytes=plan.request_limits.max_upload_bytes,
     )
     # An original upload's limits are not a continuation's, whatever their numbers.
+    upload_budget = UploadBudget(original, end=time.monotonic() + 60, read_only=False)
     with pytest.raises(YorungeError) as error:
         port_of(
             lifecycle,
             plan,
-            value=UploadBudget(original, end=time.monotonic() + 60, read_only=False),
+            value=upload_budget,
         )
     assert error.value.code == "invalid_request"
 

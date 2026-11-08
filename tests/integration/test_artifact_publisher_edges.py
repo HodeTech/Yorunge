@@ -314,8 +314,9 @@ def test_the_moved_descriptor_helpers_report_the_callers_code_without_the_os_err
         raise OSError(errno.EIO, "PRIVATE")
 
     monkeypatch.setattr(os, "close", failing)
+    open_value = os.open("/dev/null", os.O_RDONLY)
     with pytest.raises(YorungeError) as caught:
-        close_descriptor(os.open("/dev/null", os.O_RDONLY), code="manifest_write_failed")
+        close_descriptor(open_value, code="manifest_write_failed")
     assert caught.value.code == "manifest_write_failed"
     assert caught.value.__cause__ is None
     assert caught.value.__suppress_context__ is True

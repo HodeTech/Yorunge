@@ -466,12 +466,13 @@ def test_a_reset_runs_inside_the_transaction_of_its_caller_or_not_at_all(tmp_pat
         scope = root["plan"]["scope"]
         assert not store.connection.in_transaction
         before = store.connection.execute("SELECT * FROM upload_operations").fetchall()
+        instant_value = instant(NOW)
         with pytest.raises(ValueError):
             invalidate_uploads(
                 store.connection,
                 scope["store_id"],
                 scope["identity_epoch"],
-                instant(NOW),
+                instant_value,
                 store.deadline,
             )
         assert store.connection.execute("SELECT * FROM upload_operations").fetchall() == before

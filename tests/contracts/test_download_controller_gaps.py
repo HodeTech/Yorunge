@@ -337,16 +337,18 @@ def test_every_required_flag_of_the_controller_is_required(driver, monkeypatch, 
 @pytest.mark.parametrize("samples", [0, 4, -1, True, 2.0, "3"])
 def test_the_sample_count_is_one_two_or_three_integers(driver, samples):
     # mutants L337
+    simple_namespace = SimpleNamespace(labels=["16"], samples=samples)
     with pytest.raises(ValueError):
-        driver["chosen"](SimpleNamespace(labels=["16"], samples=samples))
+        driver["chosen"](simple_namespace)
     for good in (1, 2, 3):
         assert driver["chosen"](SimpleNamespace(labels=["16"], samples=good)) == (["16"], good)
 
 
 @pytest.mark.parametrize("labels", [[], ["resume", "16"], ["16", "16"], ["7"]])
 def test_the_labels_are_unique_known_and_canonically_ordered(driver, labels):
+    simple_namespace = SimpleNamespace(labels=labels, samples=3)
     with pytest.raises(ValueError):
-        driver["chosen"](SimpleNamespace(labels=labels, samples=3))
+        driver["chosen"](simple_namespace)
 
 
 def test_a_worker_output_is_bounded_at_one_mebibyte(tmp_path, driver):

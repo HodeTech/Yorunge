@@ -327,8 +327,9 @@ def test_all_existing_plain_error_envelopes_are_preserved(code: ErrorCode) -> No
 
 def test_a_refused_continuation_has_no_plain_envelope_because_it_names_its_blockers() -> None:
     # (its own envelope, with the blockers, is pinned in test_continuation_error_details.py)
+    yorunge_error = YorungeError("continuation_not_possible")
     with pytest.raises(ValidationError):
-        error_payload(YorungeError("continuation_not_possible"))
+        error_payload(yorunge_error)
 
 
 @pytest.mark.parametrize("capacity_kind", ["store", "attempt", "transition"])

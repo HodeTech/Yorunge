@@ -91,8 +91,9 @@ def plan_of(value):
 
 def rejects(value, *, sealed=True):
     data = seal(value) if sealed else value
+    canon_value = canon(data)
     with pytest.raises((ValidationError, ValueError)):
-        DatasetContinuationPlanV3.model_validate_json(canon(data))
+        DatasetContinuationPlanV3.model_validate_json(canon_value)
 
 
 def changed(path, value, source=None):
@@ -365,8 +366,9 @@ def limits(**changes):
     ],
 )
 def test_continuation_limits_reject_what_they_cannot_state(changes):
+    canon_value = canon(limits(**changes))
     with pytest.raises(ValidationError):
-        ContinuationRequestLimits.model_validate_json(canon(limits(**changes)))
+        ContinuationRequestLimits.model_validate_json(canon_value)
 
 
 ZERO_FILES = dict(
@@ -415,8 +417,9 @@ def test_cost_work_requires_a_selection_that_fits_the_manifest():
         {"max_presign": 3, "max_put": 3, "max_confirm": 3, "max_upload_bytes": 7},  # not all bytes
     ):
         broken = {**work, "request_limits": {**work["request_limits"], **changes}}
+        canon_value = canon(broken)
         with pytest.raises(ValidationError):
-            ContinuationCostWork.model_validate_json(canon(broken))
+            ContinuationCostWork.model_validate_json(canon_value)
     too_many = {
         **work,
         "request_limits": {
@@ -426,8 +429,9 @@ def test_cost_work_requires_a_selection_that_fits_the_manifest():
             "max_confirm": 4,
         },
     }
+    canon_value = canon(too_many)
     with pytest.raises(ValidationError):
-        ContinuationCostWork.model_validate_json(canon(too_many))
+        ContinuationCostWork.model_validate_json(canon_value)
 
 
 def test_the_cost_work_digest_is_domain_separated_from_the_v2_work():
@@ -516,8 +520,9 @@ def test_flags_must_be_booleans_and_a_draft_cannot_be_approved():
     ],
 )
 def test_an_approval_that_does_not_bind_this_plan_is_rejected(changes):
+    approval_of_value = approval_of(**changes)
     with pytest.raises((ValueError, ValidationError)):
-        validate_approval_binding_v3(MAIN, approval_of(**changes))
+        validate_approval_binding_v3(MAIN, approval_of_value)
 
 
 @pytest.mark.parametrize(
@@ -534,12 +539,14 @@ def test_an_approval_that_does_not_bind_this_plan_is_rejected(changes):
     ],
 )
 def test_malformed_approvals_are_rejected(changes):
+    canon_value = canon(approval_body(**changes))
     with pytest.raises(ValidationError):
-        DatasetUploadApprovalV3.model_validate_json(canon(approval_body(**changes)))
+        DatasetUploadApprovalV3.model_validate_json(canon_value)
     stripped = approval_body()
     del stripped["acknowledge_unconfirmed_effects"]
+    canon_value = canon(stripped)
     with pytest.raises(ValidationError):
-        DatasetUploadApprovalV3.model_validate_json(canon(stripped))
+        DatasetUploadApprovalV3.model_validate_json(canon_value)
 
 
 def test_versions_never_mix_between_plan_and_approval():
@@ -964,8 +971,9 @@ def test_selected_bytes_below_the_limit_are_rejected_like_those_above_it():
     data = body()
     data["continuation"].update(file_indices=[0], uncertain_indices=[], remote_present_count=2)
     data["request_limits"].update(max_presign=1, max_put=1, max_confirm=1, max_upload_bytes=5)
+    plan_of_value = plan_of(data)
     with pytest.raises(ValueError, match="selected file bytes"):
-        validate_continuation_selection(plan_of(data), MANIFEST)
+        validate_continuation_selection(plan_of_value, MANIFEST)
 
 
 def test_observation_may_equal_but_never_follow_the_plan_preparation():
@@ -1037,8 +1045,9 @@ def test_a_plan_over_the_wire_limit_is_rejected_cleanly_even_when_only_its_canon
     assert len(raw) < 16 * 1024 < len(canon(data))
     with pytest.raises((ValidationError, ValueError)):
         DatasetContinuationPlanV3.model_validate_json(raw)
+    canon_value = canon(data)
     with pytest.raises(ValueError, match="bounded upload wire"):
-        DatasetContinuationPlanV3.model_validate_json(canon(data) + b" " * 16384)
+        DatasetContinuationPlanV3.model_validate_json(canon_value + b" " * 16384)
 
 
 def test_the_message_of_a_remote_change_is_a_fixed_instruction_to_prepare_again():

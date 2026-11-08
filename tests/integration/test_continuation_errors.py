@@ -105,9 +105,10 @@ def test_a_late_proof_whose_marker_meets_a_clock_that_went_back_is_still_a_timeo
         repository = GoesBack(
             store, lifecycle.bound, clock=lifecycle.clock, write_access=lifecycle.access
         )
+        proof_of_value = proof_of(plan, observed)
         with pytest.raises(OperationError) as error:
             repository.verified(
-                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+                record.operation_id, record.lease, proof_of_value, authorization=check
             )
         assert (error.value.code, error.value.reason_code) == (
             "execution_timeout",
@@ -250,9 +251,10 @@ def test_a_record_that_cannot_be_read_after_a_failed_marker_is_not_taken_for_one
         repository = Hostile(
             store, lifecycle.bound, clock=lifecycle.clock, write_access=lifecycle.access
         )
+        proof_of_value = proof_of(plan, observed)
         with pytest.raises(OperationError) as error:
             repository.verified(
-                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+                record.operation_id, record.lease, proof_of_value, authorization=check
             )
         # What cannot be read is not assumed to have sent nothing: it stays uncertain.
         assert (error.value.code, error.value.reason_code) == (

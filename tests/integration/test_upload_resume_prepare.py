@@ -283,8 +283,9 @@ def test_the_unverified_read_must_be_chosen_to_prepare(prepared_input, certifica
     with TlsServer(certificates, provider.routes()) as server:
         source = interrupted(data, server)
         before, stored = len(server.requests), rows(data[0])
+        resume_runtime_value = resume_runtime(data, server)
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server).resume(source, accept_unverified_read=False, prepare=True)
+            resume_runtime_value.resume(source, accept_unverified_read=False, prepare=True)
         assert error.value.code == "approval_required"
         assert len(server.requests) == before
         assert rows(data[0]) == stored
@@ -404,8 +405,9 @@ def test_a_provider_that_fails_during_prepare_leaves_a_running_source_unfrozen(
         source = killed_while_running(data, server, provider, certificates, monkeypatch)
         provider.route_table[READS[read]] = Reply(status=500, body=b"{}")
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=Later())
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=Later()).resume(
+            resume_runtime_value.resume(
                 source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
             )
         assert error.value.code == "remote_failed"
@@ -437,8 +439,9 @@ def test_each_bound_of_the_store_refuses_an_attempt_before_a_source_is_frozen(
         )
         monkeypatch.setattr(f"yorunge.adapters.upload_resume.{name}", bound(report))
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=Later())
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=Later()).resume(
+            resume_runtime_value.resume(
                 source,
                 accept_unverified_read=True,
                 prepare=True,
@@ -479,8 +482,9 @@ def test_a_folder_that_changes_just_before_the_freeze_is_not_planned_and_freezes
 
         monkeypatch.setattr(UploadResumeRuntime, "_check_scope", check_and_change)
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=Later())
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=Later()).resume(
+            resume_runtime_value.resume(
                 source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
             )
         assert error.value.code == "input_changed"
@@ -504,8 +508,9 @@ def test_a_folder_that_changes_after_the_freeze_leaves_the_source_frozen_and_sav
         monkeypatch.setattr(StateUploads, "freeze_source", freeze_and_change)
         with open_existing_store(data[0]) as store:
             plans = store.connection.execute("SELECT count(*) FROM upload_plans").fetchone()[0]
+        resume_runtime_value = resume_runtime(data, server, clock=Later())
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=Later()).resume(
+            resume_runtime_value.resume(
                 source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
             )
         assert error.value.code == "input_changed"
@@ -568,10 +573,9 @@ def test_a_context_of_another_project_is_not_the_source_s_and_nothing_is_asked(
         )
         before, stored = len(server.requests), rows(state)
         for prepare in (False, True):
+            resume_runtime_value = resume_runtime(elsewhere, server)
             with pytest.raises(YorungeError) as error:
-                resume_runtime(elsewhere, server).resume(
-                    source, accept_unverified_read=True, prepare=prepare
-                )
+                resume_runtime_value.resume(source, accept_unverified_read=True, prepare=prepare)
             assert error.value.code == "state_changed"  # the report and prepare say the same
         assert len(server.requests) == before
         assert rows(state) == stored
@@ -771,10 +775,9 @@ def test_a_clock_that_stepped_while_the_dataset_was_read_is_not_planned_on(
         clock = Stepping()
         step_after_the_listing(server, provider, clock, seconds)
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=clock)
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=clock).resume(
-                source, accept_unverified_read=True, prepare=True
-            )
+            resume_runtime_value.resume(source, accept_unverified_read=True, prepare=True)
         assert error.value.code == "upload_plan_not_valid"  # as for an original plan
         assert rows(data[0]) == stored  # nothing was frozen or saved
 
@@ -793,10 +796,9 @@ def test_a_clock_that_stepped_back_after_the_dataset_was_read_is_not_planned_on(
 
         monkeypatch.setattr(resume_module, "require_distinct_upload_content", step_back)
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=clock)
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=clock).resume(
-                source, accept_unverified_read=True, prepare=True
-            )
+            resume_runtime_value.resume(source, accept_unverified_read=True, prepare=True)
         assert error.value.code == "upload_plan_not_valid"
         assert rows(data[0]) == stored
 
@@ -908,8 +910,9 @@ def test_a_clock_that_stepped_past_the_window_after_the_seal_freezes_nothing(
 
         monkeypatch.setattr(UploadResumeRuntime, "_fits", staticmethod(fits_then_step))
         stored = rows(data[0])
+        resume_runtime_value = resume_runtime(data, server, clock=clock)
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server, clock=clock).resume(
+            resume_runtime_value.resume(
                 source, accept_unverified_read=True, prepare=True, accept_unconfirmed_effects=True
             )
         assert error.value.code == "upload_plan_not_valid"

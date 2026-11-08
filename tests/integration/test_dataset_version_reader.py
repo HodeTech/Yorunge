@@ -406,8 +406,9 @@ def test_an_expired_deadline_asks_nothing(certificates):
 def test_the_code_a_missing_version_means_has_no_default(certificates):
     with TlsServer(certificates, routes()) as server:
         with reader(server) as versions:
+            soon_value = soon()
             with pytest.raises(TypeError):
-                versions.version(DATASET, "v1", deadline=soon())  # type: ignore[call-arg]
+                versions.version(DATASET, "v1", deadline=soon_value)  # type: ignore[call-arg]
     assert server.requests == []
 
 

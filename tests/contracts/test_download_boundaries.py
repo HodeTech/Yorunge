@@ -146,8 +146,9 @@ def test_the_value_types_of_an_answer_and_a_request_are_frozen():
 
 def test_a_resume_may_start_after_one_byte_and_asks_for_a_text_tag():
     assert ResumeAsk(1, 1000, TAG).prefix_bytes == 1
+    subclass = Subclass(TAG)
     with pytest.raises(ValueError):
-        ResumeAsk(400, 1000, Subclass(TAG))
+        ResumeAsk(400, 1000, subclass)
 
 
 def test_an_empty_body_is_a_framed_body():
@@ -172,8 +173,9 @@ FILLS = ["\n", "\r", "\x0b", "\x0c", "\xa0", "\u2003", "\x00"]
 def test_optional_whitespace_is_exactly_space_and_tab(name, good, fill):
     assert parse_response(200, fields_for(name, " \t" + good + "\t ")).status == 200
     for value in (fill + good, good + fill):
+        fields_for_value = fields_for(name, value)
         with pytest.raises(YorungeError):
-            parse_response(200, fields_for(name, value))
+            parse_response(200, fields_for_value)
 
 
 @pytest.mark.parametrize("fill", FILLS)

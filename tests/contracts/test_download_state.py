@@ -404,8 +404,9 @@ def test_a_prefix_that_hashes_as_recorded_confirms_the_decision():
 
 def test_a_decision_that_resumes_or_publishes_without_its_record_is_refused():
     for action in ("resume", "publish_complete"):
+        start_decision = StartDecision(action)
         with pytest.raises(ValueError):
-            confirm_prefix(StartDecision(action), "ef" * 32)
+            confirm_prefix(start_decision, "ef" * 32)
 
 
 @pytest.mark.parametrize("observed", ["00" * 32, None])

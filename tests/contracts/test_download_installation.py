@@ -335,15 +335,17 @@ def test_a_result_that_differs_from_the_closed_summary_is_refused(helper, staged
     [(b"", b"", 0), (b"not json", b"", 0), (b"[]\n", b"", 0), (b"{}\n", b"", 0)],
 )
 def test_a_result_that_is_not_the_closed_summary_at_all_is_refused(staged, stdout, stderr, code):
+    completed_process = subprocess.CompletedProcess(["synthetic"], code, stdout, stderr)
     with pytest.raises(ValueError):
-        staged.settle(subprocess.CompletedProcess(["synthetic"], code, stdout, stderr))
+        staged.settle(completed_process)
 
 
 @pytest.mark.parametrize("code,stderr", [(1, b""), (7, b""), (0, b"warning\n"), (-9, b"")])
 def test_a_download_that_failed_or_spoke_on_stderr_is_refused(staged, code, stderr):
     ok = staged.fetched
+    completed_process = subprocess.CompletedProcess(ok.args, code, ok.stdout, stderr)
     with pytest.raises(ValueError, match="installed download failed"):
-        staged.settle(subprocess.CompletedProcess(ok.args, code, ok.stdout, stderr))
+        staged.settle(completed_process)
 
 
 @pytest.mark.parametrize("damage", ["short", "long", "flipped", "empty", "missing"])

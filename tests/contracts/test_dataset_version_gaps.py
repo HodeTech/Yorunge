@@ -149,11 +149,13 @@ def test_a_binding_file_with_one_wrong_field_and_the_right_digest_is_invalid(cha
 
 
 def test_a_page_model_validates_its_identity_and_its_time_even_when_it_shows_no_row():
+    page_values_value = page_values(dataset_id="not-a-uuid", items=(), total=0)
     with pytest.raises(ValueError):
-        DatasetVersionList(**page_values(dataset_id="not-a-uuid", items=(), total=0))
+        DatasetVersionList(**page_values_value)
     for stamp in ("2026-11-08 12:00", "2026-11-08T12:00:00Z"):
+        page_values_value = page_values(observed_at=stamp, items=(), total=0)
         with pytest.raises(ValueError):
-            DatasetVersionList(**page_values(observed_at=stamp, items=(), total=0))
+            DatasetVersionList(**page_values_value)
 
 
 @pytest.mark.parametrize(
@@ -161,8 +163,9 @@ def test_a_page_model_validates_its_identity_and_its_time_even_when_it_shows_no_
 )
 def test_the_page_bounds_of_the_model_hold_on_their_own(changes):
     # An empty page of an empty dataset has no row, no total and no earlier page to break first.
+    page_values_value = page_values(items=(), total=0, **changes)
     with pytest.raises(ValueError):
-        DatasetVersionList(**page_values(items=(), total=0, **changes))
+        DatasetVersionList(**page_values_value)
 
 
 def test_the_rows_of_a_page_never_exceed_its_size():
@@ -170,8 +173,9 @@ def test_the_rows_of_a_page_never_exceed_its_size():
         update={"version_id": "33333333-3333-4333-8333-333333333333", "version_tag": "v2"}
     )
     two = (listed(), second)
+    page_values_value = page_values(items=two, page_size=1, total=2, has_next=True)
     with pytest.raises(ValueError):
-        DatasetVersionList(**page_values(items=two, page_size=1, total=2, has_next=True))
+        DatasetVersionList(**page_values_value)
     DatasetVersionList(**page_values(items=two, page_size=2, total=2, has_next=False))
 
 
@@ -182,8 +186,9 @@ def test_the_total_of_a_later_page_must_cover_the_row_it_shows():
         {"page": 3, "page_size": 2, "total": 4},
         {"page": 2, "page_size": 20, "total": 20},
     ):
+        page_values_value = page_values(has_next=False, **values)
         with pytest.raises(ValueError):
-            DatasetVersionList(**page_values(has_next=False, **values))
+            DatasetVersionList(**page_values_value)
     DatasetVersionList(**page_values(page=2, page_size=20, total=21, has_next=False))
 
 
@@ -345,7 +350,8 @@ def test_class_labels_that_do_not_encode_keep_no_class_name_in_the_error():
 
 def test_a_binding_that_cannot_be_made_keeps_no_cause():
     odd = ServiceTarget(service_origin="https://api.example.org", api_base_path="/api/v1\ud800")
+    observation_value = observation()
     with pytest.raises(YorungeError) as error:
-        bind(observation(), odd)
+        bind(observation_value, odd)
     assert error.value.__context__ is None
     assert error.value.__cause__ is None

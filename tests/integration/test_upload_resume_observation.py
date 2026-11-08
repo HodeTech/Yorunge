@@ -72,8 +72,10 @@ def lose_confirm_of(provider, name, *, remembered=True):
 def interrupted(data, server):
     """Run the original upload until the lost answer stops it; the operation it leaves."""
     plan = approved(data, server)
+    loader_value = loader(data)
+    factory_value = factory(server)
     with pytest.raises(OperationError) as stopped:
-        upload_files_original(plan.plan_id, data[0], loader(data), session_factory=factory(server))
+        upload_files_original(plan.plan_id, data[0], loader_value, session_factory=factory_value)
     assert stopped.value.code == "operation_uncertain"
     return stopped.value.operation_id
 
@@ -410,8 +412,9 @@ def test_the_unverified_read_must_be_chosen_before_the_provider_is_read(
     with TlsServer(certificates, provider.routes()) as server:
         source = interrupted(data, server)
         before = len(server.requests)
+        resume_runtime_value = resume_runtime(data, server)
         with pytest.raises(YorungeError) as error:
-            resume_runtime(data, server).resume(source, accept_unverified_read=False)
+            resume_runtime_value.resume(source, accept_unverified_read=False)
         assert error.value.code == "approval_required"
         assert len(server.requests) == before
 

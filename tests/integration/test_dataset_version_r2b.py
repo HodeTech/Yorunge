@@ -118,9 +118,10 @@ def test_the_platform_is_judged_with_the_other_arguments_before_any_file(monkeyp
     with pytest.raises(YorungeError) as error:
         api.check_dataset_version(missing)
     assert error.value.code == "state_unsupported"  # not file_unreadable
+    resolve_value = tmp_path.resolve()
     with pytest.raises(YorungeError) as error:
         api.bind_dataset_version(
-            DATASET, "v1", binding_out=tmp_path.resolve() / "b.json", manifest=missing
+            DATASET, "v1", binding_out=resolve_value / "b.json", manifest=missing
         )
     assert error.value.code == "state_unsupported"
     assert not os.path.exists(missing)

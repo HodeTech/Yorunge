@@ -68,11 +68,13 @@ def test_a_short_key_matches_only_whole_a_key_of_eight_bytes_matches_inside():
 
     # 7 bytes: found as a whole value only, never inside another one
     scan_for_secret({"a": "x1234567y", "b": ["1234567x"]}, SecretValue("1234567"))
+    secret_value = SecretValue("12345678")
     with pytest.raises(YorungeError) as error:
-        scan_for_secret({"a": "x12345678y"}, SecretValue("12345678"))  # 8 bytes: found inside
+        scan_for_secret({"a": "x12345678y"}, secret_value)  # 8 bytes: found inside
     assert error.value.code == "invalid_response"
+    secret_value = SecretValue("1234567")
     with pytest.raises(YorungeError):
-        scan_for_secret({"a": "1234567"}, SecretValue("1234567"))  # whole is always found
+        scan_for_secret({"a": "1234567"}, secret_value)  # whole is always found
 
 
 @pytest.mark.parametrize(

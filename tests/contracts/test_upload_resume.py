@@ -305,8 +305,9 @@ def test_the_steps_of_a_chain_refuse_what_the_whole_chain_refuses_at_the_first_s
     with pytest.raises(YorungeError) as raised:
         next(steps)  # the chain is checked as a whole, before any prefix is answered
     assert raised.value.code == "state_invalid"
+    merge_chain_steps_value = merge_chain_steps([], MANIFEST)
     with pytest.raises(ValueError, match="at least its source"):
-        next(merge_chain_steps([], MANIFEST))
+        next(merge_chain_steps_value)
 
 
 @pytest.mark.parametrize(
@@ -349,8 +350,9 @@ def test_merge_chain_takes_the_largest_upload_manifest_and_refuses_larger_or_emp
     largest, larger = numbered_manifest(128), numbered_manifest(129)
     summary = merge_chain([op("r", None, [], manifest=largest.digest)], largest)
     assert len(summary.states) == 128
+    op_value = op("r", None, [], manifest=larger.digest)
     with pytest.raises(ValueError, match="unsupported upload file count"):
-        merge_chain([op("r", None, [], manifest=larger.digest)], larger)
+        merge_chain([op_value], larger)
     with pytest.raises(ValueError, match="at least its source"):
         merge_chain([], MANIFEST)
 
@@ -366,11 +368,14 @@ def test_a_journal_recorded_over_another_manifest_is_state_invalid():
 
 
 def test_classify_requires_a_summary_for_exactly_the_manifest():
+    chain_value = chain("none", "none")
+    inventory_value = inventory()
     with pytest.raises(ValueError, match="belongs to another manifest"):
-        classify(MANIFEST, chain("none", "none"), inventory())
+        classify(MANIFEST, chain_value, inventory_value)
     short = ChainSummary(("none", "none"), False, False, MANIFEST.digest)
+    inventory_value = inventory()
     with pytest.raises(ValueError, match="does not cover the manifest"):
-        classify(MANIFEST, short, inventory())
+        classify(MANIFEST, short, inventory_value)
 
 
 # --- digests ------------------------------------------------------------------------------------

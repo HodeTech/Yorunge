@@ -328,8 +328,9 @@ def test_another_kind_of_evidence_is_no_download_reference(
 
 
 def test_a_download_record_with_a_foreign_field_cannot_even_be_archived(tmp_path, checks, evidence):
+    reference_value = reference(evidence)
     with pytest.raises(ValueError, match="invalid download measurement fields"):
-        archive(checks, tmp_path, {**reference(evidence), "extra": "field"})
+        archive(checks, tmp_path, {**reference_value, "extra": "field"})
     assert list((tmp_path / "docs/research").iterdir()) == []
 
 

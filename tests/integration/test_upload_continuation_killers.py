@@ -192,6 +192,7 @@ def test_a_plan_outside_its_window_is_refused_before_the_provider_is_asked(
     with interrupted_world(public_inputs, certificates, monkeypatch) as rig:
         requests = len(rig.server.requests)
         for delta in (timedelta(minutes=16), timedelta(hours=-1)):
+            shifted = Shifted(delta)
             with pytest.raises(YorungeError) as raised:
                 approve_continuation_plan(
                     rig.plan_id,
@@ -201,7 +202,7 @@ def test_a_plan_outside_its_window_is_refused_before_the_provider_is_asked(
                     authority=True,
                     unpriced=True,
                     unconfirmed=False,
-                    clock=Shifted(delta),
+                    clock=shifted,
                 )
             assert raised.value.code == "upload_plan_not_valid", delta
         assert len(rig.server.requests) == requests
@@ -239,8 +240,9 @@ def test_the_review_of_a_continuation_judges_its_limits_against_its_summary_and_
         return value
 
     def refused(payload):
+        dumps_value = json.dumps(payload)
         with pytest.raises(ValueError):  # a ValidationError, never another exception
-            UploadIntentReview.model_validate_json(json.dumps(payload))
+            UploadIntentReview.model_validate_json(dumps_value)
 
     # M in the limits is not the M of the summary
     refused(changed(good, {"max_presign": 2, "max_put": 2, "max_confirm": 2}))  # F01
@@ -466,6 +468,7 @@ def test_the_window_of_the_plan_is_closed_at_its_start_and_open_at_its_end(
         start, end = instant(plan.prepared_at), instant(plan.expires_at)
         flags = (True, True, False)
         _approval_input(rig.plan_id, rig.digest, flags, rig.state, At(start))
+        at = At(end)
         with pytest.raises(YorungeError) as raised:
-            _approval_input(rig.plan_id, rig.digest, flags, rig.state, At(end))
+            _approval_input(rig.plan_id, rig.digest, flags, rig.state, at)
         assert raised.value.code == "upload_plan_not_valid"

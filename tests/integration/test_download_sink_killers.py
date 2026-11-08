@@ -124,8 +124,9 @@ def test_an_interrupt_between_the_creation_and_the_chmod_does_not_leak_its_descr
 
     monkeypatch.setattr(download_files, "_marker", interrupt)
     before = descriptors()
+    enter_value = enter(place)
     with pytest.raises(KeyboardInterrupt):
-        enter(place)()
+        enter_value()
     monkeypatch.undo()
     assert descriptors() == before
 
@@ -233,8 +234,9 @@ def test_an_interrupt_while_a_stage_is_opened_for_resume_closes_it(place, monkey
 
     before = descriptors()
     monkeypatch.setattr(download_files.os, "fstat", interrupting)
+    enter_value = enter(place)
     with pytest.raises(KeyboardInterrupt):
-        enter(place)()
+        enter_value()
     monkeypatch.undo()
     assert descriptors() == before
 
@@ -577,8 +579,9 @@ def test_a_stopped_prefix_hash_closes_the_stage_it_opened(place, raised):
         raise raised
 
     before = descriptors()
+    open_sink_value = open_sink(target(place), identity_key=IDENTITY, guard=guard)
     with pytest.raises(type(raised)):
-        open_sink(target(place), identity_key=IDENTITY, guard=guard).__enter__()
+        open_sink_value.__enter__()
     assert descriptors() == before
 
 
@@ -606,8 +609,9 @@ def test_a_stopped_prefix_hash_whose_stage_will_not_close_adds_the_note_of_its_f
 
     monkeypatch.setattr(download_files.os, "open", opening)
     monkeypatch.setattr(download_files.os, "close", closing)
+    open_sink_value = open_sink(target(place), identity_key=IDENTITY, guard=guard)
     with pytest.raises(YorungeError) as caught:
-        open_sink(target(place), identity_key=IDENTITY, guard=guard).__enter__()
+        open_sink_value.__enter__()
     monkeypatch.undo()
     assert caught.value.code == "transport_timeout"
     assert caught.value.__notes__ == [MESSAGES["download_write_failed"]]
@@ -1108,8 +1112,9 @@ def test_an_interrupt_during_the_start_releases_the_lock_and_the_descriptors(pla
 
     before = descriptors()
     monkeypatch.setattr(download_files, "_marker", interrupt)
+    enter_value = enter(place)
     with pytest.raises(KeyboardInterrupt):
-        enter(place)()
+        enter_value()
     monkeypatch.undo()
     assert descriptors() == before
     with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):  # not busy

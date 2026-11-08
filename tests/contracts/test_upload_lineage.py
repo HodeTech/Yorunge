@@ -332,8 +332,9 @@ def test_a_loop_is_found_at_its_first_repetition_not_at_the_length_bound():
         reads.append(operation_id)
         return by_operation[operation_id]
 
+    view_value = view(first)
     with pytest.raises(ValueError):
-        resolve_lineage(view(first).plan, read, lambda _: CREATED)
+        resolve_lineage(view_value.plan, read, lambda _: CREATED)
     assert reads == [SECOND, FIRST]  # the second visit of the first is the repetition
 
 
@@ -392,8 +393,9 @@ def test_a_journal_is_refused_for_a_plan_of_no_known_family_and_for_no_operation
     )
     with pytest.raises(ValueError):
         journal_of(odd, complete=False)
+    view_value = view(first, operation=False)
     with pytest.raises(ValueError):
-        journal_of(view(first, operation=False), complete=False)
+        journal_of(view_value, complete=False)
     with pytest.raises(YorungeError) as error:
         operation_journal(odd)
     assert error.value.code == "state_invalid"

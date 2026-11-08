@@ -116,15 +116,17 @@ def test_the_summary_golden_round_trips_and_keeps_the_constants_closed():
     ],
 )
 def test_a_malformed_summary_is_rejected(changes):
+    canon_value = canon(summary_of(**changes))
     with pytest.raises((ValidationError, ValueError)):
-        DatasetUploadSummaryV3.model_validate_json(canon(summary_of(**changes)))
+        DatasetUploadSummaryV3.model_validate_json(canon_value)
 
 
 def test_a_malformed_approval_expiry_is_refused_by_every_summary_version_alike():
     v2 = data("dataset-upload-summary-v2.json")
     assert DatasetUploadSummary.model_validate_json(canon(v2)).approval_expires_at is not None
+    canon_value = canon({**v2, "approval_expires_at": "yesterday"})
     with pytest.raises((ValidationError, ValueError)):
-        DatasetUploadSummary.model_validate_json(canon({**v2, "approval_expires_at": "yesterday"}))
+        DatasetUploadSummary.model_validate_json(canon_value)
     assert DatasetUploadSummaryV3.model_validate_json(canon(summary_of())).approval_status
 
 
@@ -142,8 +144,9 @@ def test_summary_versions_never_cross():
     with pytest.raises((ValidationError, ValueError)):
         DatasetUploadSummary.model_validate_json(v3)
     v2 = {**data(SUMMARY), "schema_version": 2}
+    canon_value = canon(v2)
     with pytest.raises((ValidationError, ValueError)):
-        DatasetUploadSummaryV3.model_validate_json(canon(v2))
+        DatasetUploadSummaryV3.model_validate_json(canon_value)
 
 
 def test_a_finished_summary_carries_metadata_evidence_and_no_other_private_field():
@@ -209,8 +212,9 @@ def accepts(value):
 
 
 def rejects(value):
+    canon_value = canon(value)
     with pytest.raises((ValidationError, ValueError)):
-        DatasetUploadResumeReport.model_validate_json(canon(value))
+        DatasetUploadResumeReport.model_validate_json(canon_value)
 
 
 def action_for(blockers):
@@ -805,8 +809,9 @@ def test_the_plan_a_report_names_is_the_one_prepared_from_that_very_observation(
         {"plan": PLAN},  # the golden plan binds placeholder digests, not this evidence
     ):
         values = {"classification": classification, "plan": plan, **changes}
+        pop_value = values.pop("classification")
         with pytest.raises((ValidationError, ValueError)):
-            build(values.pop("classification"), **values)
+            build(pop_value, **values)
 
 
 def test_examples_are_the_first_eight_paths_of_each_problem_class():
@@ -901,8 +906,9 @@ def test_no_key_of_a_report_may_be_left_out_not_even_a_nullable_one(name):
 def test_no_key_of_the_summary_may_be_left_out_not_even_a_nullable_one():
     value = data(SUMMARY)
     for path in deletions(value):
+        canon_value = canon(without(value, path))
         with pytest.raises((ValidationError, ValueError)):
-            DatasetUploadSummaryV3.model_validate_json(canon(without(value, path)))
+            DatasetUploadSummaryV3.model_validate_json(canon_value)
 
 
 def test_a_summary_may_leave_every_sent_file_uncertain_and_names_its_own_plan_schema():
@@ -910,8 +916,9 @@ def test_a_summary_may_leave_every_sent_file_uncertain_and_names_its_own_plan_sc
         canon(summary_of(continuation_files=2, uncertain_files=2))
     )
     assert summary.uncertain_files == summary.continuation_files == 2
+    canon_value = canon(summary_of(source_plan_schema=1))
     with pytest.raises((ValidationError, ValueError)):
-        DatasetUploadSummaryV3.model_validate_json(canon(summary_of(source_plan_schema=1)))
+        DatasetUploadSummaryV3.model_validate_json(canon_value)
 
 
 def test_every_count_of_the_report_starts_at_zero_and_never_goes_below():
@@ -1016,8 +1023,9 @@ def test_the_builder_refuses_what_is_not_the_evidence_it_asks_for():
         {"blockers": "create_unknown"},
     ):
         values = {"classification": classification, **changes}
+        pop_value = values.pop("classification")
         with pytest.raises(ValueError, match="manifest, a classification or none"):
-            build(values.pop("classification"), **values)
+            build(pop_value, **values)
     # Same file count, another manifest: only the identity inside the classification can tell.
     other = changed_manifest()
     assert len(other.files) == len(MANIFEST.files)

@@ -258,8 +258,9 @@ def test_a_blocked_classification_cannot_be_bound():
     assert blocked.selection() is None
     with pytest.raises(ValueError, match="blockers cannot be bound"):
         bound(blocked)
+    with_blockers_value = classified(**CASES["mixed"]).with_blockers(("source_superseded",))
     with pytest.raises(ValueError, match="blockers cannot be bound"):
-        bound(classified(**CASES["mixed"]).with_blockers(("source_superseded",)))
+        bound(with_blockers_value)
 
 
 @pytest.mark.parametrize("case", CASES)
@@ -308,8 +309,9 @@ def test_selected_bytes_that_are_not_the_selected_files_are_refused():
     golden = json.loads(fixture("plan-v3"))
     limits = {**golden["request_limits"], "max_upload_bytes": 7}  # files 0 and 2 hold 8 bytes
     work = work_of(golden, request_limits=limits)
+    request_from_value = request_from("plan-v3", work=work)
     with pytest.raises(ValueError, match="selected file bytes differ"):
-        prepare_continuation_v3(request_from("plan-v3", work=work))
+        prepare_continuation_v3(request_from_value)
 
 
 def expiring(value, moment):
@@ -348,8 +350,9 @@ def test_a_plan_needs_a_moment_inside_its_window_and_inside_its_evidence():
         {"prepared_at": "2026-11-02T11:15:00.000000Z"},  # when it closes: no lifetime left
         {"grant": spent},  # the evidence ends the moment the plan starts
     ):
+        request_from_value = request_from("plan-v3-evidenced", **changes)
         with pytest.raises(ValidationError, match="fit fixed execution window"):
-            prepare_continuation_v3(request_from("plan-v3-evidenced", **changes))
+            prepare_continuation_v3(request_from_value)
     # The control for the first case: the same early observation with a moment inside the window.
     prepare_continuation_v3(
         request_from("plan-v3-evidenced", prepared_at="2026-11-02T11:00:00.000000Z", binding=early)

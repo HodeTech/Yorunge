@@ -519,8 +519,9 @@ def test_a_running_event_loop_is_refused_before_anything_else(rig):
     async def inside():
         return rig.call()
 
+    inside_value = inside()
     with pytest.raises(YorungeError) as error:
-        asyncio.run(inside())
+        asyncio.run(inside_value)
     assert error.value.code == "invalid_request"
     assert rig.server.requests == []
 

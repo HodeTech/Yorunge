@@ -676,6 +676,7 @@ def test_an_undecodable_original_is_preserved_privately_not_published(tmp_path, 
     workspace = make_workspace(tmp_path, names=[], decoys=False)
     write(workspace, "stdout.json", raw)
     root = make_root(tmp_path)
+    synthetic_context_value = synthetic_context(tmp_path)
     with pytest.raises(ValueError):
         helper["retain"](
             root,
@@ -683,7 +684,7 @@ def test_an_undecodable_original_is_preserved_privately_not_published(tmp_path, 
             "failed.json",
             COMMIT,
             "invalid_evidence",
-            privacy_context=synthetic_context(tmp_path),
+            privacy_context=synthetic_context_value,
         )
     assert (workspace / "stdout.json").read_bytes() == raw
     assert (root / "dist/failed.json").exists()

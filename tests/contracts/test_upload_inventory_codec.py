@@ -88,15 +88,17 @@ def test_page_bounds_are_enforced_by_both_readers(reader, raw):
 def test_an_item_outside_the_local_grammar_makes_the_listing_an_error(reader, change):
     # Documented contract: a remote item that cannot be read under the local name, size, hash and
     # identifier grammar is a malformed provider response, not a plan-level extra item.
+    body_value = body([row("a", **change)], 1)
     with pytest.raises(YorungeError) as raised:
-        reader(body([row("a", **change)], 1), DATASET, SECRET)
+        reader(body_value, DATASET, SECRET)
     assert raised.value.code == "invalid_response"
 
 
 @pytest.mark.parametrize("reader", [metadata.items, metadata.item_page])
 def test_items_of_another_dataset_are_an_error(reader):
+    body_value = body([row("a", dataset_id=str(uuid4()))], 1)
     with pytest.raises(YorungeError) as raised:
-        reader(body([row("a", dataset_id=str(uuid4()))], 1), DATASET, SECRET)
+        reader(body_value, DATASET, SECRET)
     assert raised.value.code == "invalid_response"
 
 
@@ -114,8 +116,9 @@ def test_a_literal_secret_anywhere_in_a_listing_is_an_error_without_echo(reader,
         top = {"meta": secret}
     else:
         top = {"next_cursor": secret}
+    body_value = body(rows, 1, **top)
     with pytest.raises(YorungeError) as raised:
-        reader(body(rows, 1, **top), DATASET, SECRET)
+        reader(body_value, DATASET, SECRET)
     assert raised.value.code == "invalid_response"
     assert secret not in repr(raised.value) + str(raised.value)
     assert raised.value.__cause__ is None

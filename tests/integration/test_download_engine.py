@@ -725,12 +725,14 @@ def test_a_local_write_failure_is_reported_before_a_remote_one(world, monkeypatc
 
 
 def test_a_bad_digest_is_refused_before_the_job_exists():
+    source_value = source()
+    resolver = Resolver(credential())
     with pytest.raises(YorungeError) as error:
         DownloadJob(
             target=None,  # type: ignore[arg-type]
-            source=source(),
+            source=source_value,
             identity_key="x",
-            resolve=Resolver(credential()),
+            resolve=resolver,
         )
     assert error.value.code == "invalid_request"
 

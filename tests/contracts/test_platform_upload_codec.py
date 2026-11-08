@@ -328,8 +328,9 @@ def test_an_answer_that_says_the_dataset_is_shared_or_open_is_another_dataset(re
 @pytest.mark.parametrize("field,value", DRIFT)
 def test_a_detail_of_a_shared_or_open_dataset_is_not_the_expected_one(field, value):
     expected = read_detail()
+    encoded_value = encoded(dataset(**{field: value}))
     with pytest.raises(codec.DatasetMismatch):
-        codec.detail(encoded(dataset(**{field: value})), expected, SCOPE, PARAMETERS, SECRET)
+        codec.detail(encoded_value, expected, SCOPE, PARAMETERS, SECRET)
 
 
 @READERS

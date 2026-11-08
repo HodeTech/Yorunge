@@ -86,18 +86,20 @@ def test_the_error_event_cannot_name_blockers_for_another_code_or_omit_them_for_
     plain = OperationErrorDetails(reason_code="operation_conflict", capacity_kind=None)
     with pytest.raises(ValueError):
         ErrorEnvelope(code="operation_conflict", message="x", details=named, **kwargs)
+    operation_error_details = OperationErrorDetails(
+        reason_code="continuation_not_possible", capacity_kind=None
+    )
     with pytest.raises(ValueError):
         ErrorEnvelope(
             code="continuation_not_possible",
             message="x",
-            details=OperationErrorDetails(
-                reason_code="continuation_not_possible", capacity_kind=None
-            ),
+            details=operation_error_details,
             **kwargs,
         )
+    empty_error_details = EmptyErrorDetails()
     with pytest.raises(ValueError):
         ErrorEnvelope(
-            code="continuation_not_possible", message="x", details=EmptyErrorDetails(), **kwargs
+            code="continuation_not_possible", message="x", details=empty_error_details, **kwargs
         )
     ok = ErrorEnvelope(code="continuation_not_possible", message="x", details=named, **kwargs)
     assert ok.message == MESSAGES["continuation_not_possible"]  # rebuilt from trusted text

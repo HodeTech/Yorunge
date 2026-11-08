@@ -378,8 +378,10 @@ def test_a_check_that_finds_nothing_changed_is_the_only_success():
 
 
 def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
+    binding_value = binding()
+    observation_value = observation(is_frozen=False)
     with pytest.raises(DatasetVersionChanged) as error:
-        binding().check(observation(is_frozen=False), active=SERVICE)
+        binding_value.check(observation_value, active=SERVICE)
     assert error.value.code == "dataset_version_changed"
     assert error.value.exit_code == 7
     assert error.value.envelope()["details"] == {
@@ -387,15 +389,17 @@ def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
         "changed_fields": ["is_frozen"],
         "annotation_only": False,
     }
+    binding_value = binding()
+    observation_value = observation(annotated_item_count=1, total_annotation_count=2)
     with pytest.raises(DatasetVersionChanged) as annotation:
-        binding().check(
-            observation(annotated_item_count=1, total_annotation_count=2), active=SERVICE
-        )
+        binding_value.check(observation_value, active=SERVICE)
     details = annotation.value.envelope()["details"]
     assert details["annotation_only"] is True
     assert details["changed_field_count"] == 2
+    binding_value = binding()
+    observation_value = observation(annotated_item_count=1, version_tag="v2")
     with pytest.raises(DatasetVersionChanged) as mixed:
-        binding().check(observation(annotated_item_count=1, version_tag="v2"), active=SERVICE)
+        binding_value.check(observation_value, active=SERVICE)
     assert mixed.value.annotation_only is False
     assert mixed.value.envelope()["details"]["changed_fields"] == [
         "annotated_item_count",
@@ -728,8 +732,9 @@ def test_a_page_past_the_end_or_of_a_dataset_without_versions_is_an_honest_empty
 
 @pytest.mark.parametrize("path", ["/tmp/a\nb.json", "/tmp/\udcff.json", "/" + "x" * 4096, ""])
 def test_the_report_of_a_binding_carries_only_a_path_it_can_report(path):
+    bind_value = bind(observation(), SERVICE)
     with pytest.raises(ValidationError):
-        bound_summary(bind(observation(), SERVICE), path)
+        bound_summary(bind_value, path)
 
 
 def test_the_report_of_a_binding_is_its_digest_and_where_it_is_not_the_file():

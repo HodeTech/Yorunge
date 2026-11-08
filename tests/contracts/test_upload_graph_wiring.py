@@ -282,7 +282,8 @@ def test_environment_requires_exactly_one_presigned_upload_per_plan_file(monkeyp
     environment({0: "a", 1: "b", 2: "c"}).validate_uploads()
     assert len(seen) == 1
     for uploads in ({0: "a", 1: "b"}, {0: "a", 1: "b", 2: "c", 3: "d"}, {1: "a", 2: "b", 3: "c"}):
+        environment_value = environment(uploads)
         with pytest.raises(YorungeError) as raised:
-            environment(uploads).validate_uploads()
+            environment_value.validate_uploads()
         assert raised.value.code == "invalid_response"
     assert len(seen) == 1

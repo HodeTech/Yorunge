@@ -174,8 +174,9 @@ def test_prepare_refuses_a_source_the_journal_rules_out_and_leaves_the_store_alo
 
 def test_prepare_names_the_descendant_that_keeps_a_source_active(lifecycle):
     install_first(lifecycle, status="running")
+    root_of_value = root_of(lifecycle)
     with pytest.raises(OperationError) as error:
-        resume(lifecycle, root_of(lifecycle), prepare=True)
+        resume(lifecycle, root_of_value, prepare=True)
     assert (error.value.code, error.value.operation_id) == ("operation_conflict", FIRST)
 
 
@@ -187,8 +188,9 @@ def test_a_lineage_that_cannot_be_merged_is_a_state_that_is_not_valid(lifecycle,
 
     monkeypatch.setattr("yorunge.adapters.upload_chain.merge_chain", foreign)
     for flags in ({}, {"prepare": True}):
+        root_of_value = root_of(lifecycle)
         with pytest.raises(YorungeError) as error:
-            resume(lifecycle, root_of(lifecycle), **flags)
+            resume(lifecycle, root_of_value, **flags)
         assert error.value.code == "state_invalid"
 
 
@@ -229,8 +231,9 @@ def test_an_operation_id_that_is_not_one_is_refused_before_anything_is_read(life
 def test_the_flags_are_booleans_and_the_acknowledgement_belongs_to_prepare(lifecycle, flags):
     # A source the journal rules out would be reported (or refused) if the call were accepted.
     install_first(lifecycle, status="succeeded")
+    runtime_value = runtime(lifecycle)
     with pytest.raises(YorungeError) as error:
-        runtime(lifecycle).resume(FIRST, **{"accept_unverified_read": True, **flags})
+        runtime_value.resume(FIRST, **{"accept_unverified_read": True, **flags})
     assert error.value.code == "invalid_request"
 
 
@@ -319,6 +322,7 @@ def test_the_unverified_read_is_not_asked_for_when_nothing_would_be_read(lifecyc
     assert report.quota_added.payload_bytes == continuation_added_payload_bytes(
         lifecycle.manifest.file_count
     )
+    runtime_value = runtime(lifecycle)
     with pytest.raises(OperationError) as error:
-        runtime(lifecycle).resume(FIRST, accept_unverified_read=False, prepare=True)
+        runtime_value.resume(FIRST, accept_unverified_read=False, prepare=True)
     assert error.value.code == "continuation_not_possible"

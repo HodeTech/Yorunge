@@ -252,8 +252,10 @@ def deep_directory(root, *, longer_than=4100):
 
 def test_a_target_the_summary_cannot_hold_is_refused_before_any_request(world):
     target = deep_directory(world.directory) / NAME  # legal for the filesystem, 4300+ characters
+    job_value = world.job(target=target)
+    monotonic_value = time.monotonic()
     with pytest.raises(YorungeError) as error:
-        run_download(world.job(target=target), world.owned, deadline=time.monotonic() + 20)
+        run_download(job_value, world.owned, deadline=monotonic_value + 20)
     assert error.value.code == "download_target_invalid"
     assert world.server.requests == []  # the download did not happen only to fail at its summary
 
@@ -437,8 +439,9 @@ def test_a_session_that_cannot_serve_the_call_is_refused_before_a_stale_partial_
         return run_download(world.job(identity_key=other), world.owned)
 
     before = world.names()
+    inside_value = inside()
     with pytest.raises(YorungeError) as error:
-        asyncio.run(inside())  # the loop of the call is running: no session serves it
+        asyncio.run(inside_value)  # the loop of the call is running: no session serves it
     assert error.value.code == "invalid_request"
     assert world.names() == before  # the stale partial is still there
     assert code_of(lambda: run_download(world.job(), object())) == "invalid_request"  # type: ignore[arg-type]

@@ -382,9 +382,10 @@ def test_a_late_proof_whose_marker_cannot_be_written_is_a_timeout_and_never_unce
     monkeypatch.setattr(StateUploads, "_uncertain_verification", after_the_lease_is_over)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
+        proof_of_value = proof_of(plan, observed)
         with pytest.raises(OperationError) as error:
             repository.verified(
-                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+                record.operation_id, record.lease, proof_of_value, authorization=check
             )
         # The marker could not land, but nothing was sent: no uncertainty, only a late proof.
         assert (error.value.code, error.value.reason_code) == (
@@ -416,9 +417,10 @@ def test_a_late_proof_of_a_continuation_that_sent_something_stays_uncertain_with
     monkeypatch.setattr(StateUploads, "_uncertain_verification", after_the_lease_is_over)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
+        proof_of_value = proof_of(plan, observed)
         with pytest.raises(OperationError) as error:
             repository.verified(
-                record.operation_id, record.lease, proof_of(plan, observed), authorization=check
+                record.operation_id, record.lease, proof_of_value, authorization=check
             )
         # Something was sent, so what the late proof means is not known, marker or no marker.
         assert (error.value.code, error.value.reason_code) == (

@@ -1350,8 +1350,9 @@ def test_a_source_map_without_a_measurement_file_is_refused(evidence, monkeypatc
     )
     with pytest.raises(ValueError, match="lacks"):
         evidence["source"](ROOT)
+    proof_value = proof()
     with pytest.raises(ValueError, match="measurement files missing"):
-        evidence["provenance"]({**proof(), "source_before": complete}, "a" * 40)
+        evidence["provenance"]({**proof_value, "source_before": complete}, "a" * 40)
 
 
 def test_provenance_binds_the_commit_the_wheel_and_the_marker(evidence):
@@ -1427,8 +1428,9 @@ def test_labels_and_samples_are_validated_before_any_file_is_made(tmp_path, driv
         (["16"], 4),
         (["16"], True),
     ):
+        args_value = args(labels, samples)
         with pytest.raises(ValueError):
-            driver["chosen"](args(labels, samples))
+            driver["chosen"](args_value)
 
 
 def command(driver, monkeypatch, capsys, tmp_path, *extra, output="report.json"):

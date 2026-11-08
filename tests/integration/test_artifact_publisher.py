@@ -930,8 +930,10 @@ def test_a_failing_close_of_the_stage_descriptor_after_the_link_is_uncertain(pla
 
 
 def test_an_oserror_the_caller_hands_to_reraise_is_the_familys_unreadable():
+    publication_state = PublicationState(CODES)
+    o_s_error = OSError(errno.EIO, "PRIVATE")
     with pytest.raises(YorungeError) as caught:
-        PublicationState(CODES).reraise(OSError(errno.EIO, "PRIVATE"))
+        publication_state.reraise(o_s_error)
     assert caught.value.code == CODES.unreadable
 
 
@@ -1439,8 +1441,9 @@ def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypa
     try:
         raise OSError(errno.EIO, secret)
     except OSError as os_error:
+        publication_state = PublicationState(CODES)
         with pytest.raises(YorungeError) as caught:
-            PublicationState(CODES).reraise(os_error)
+            publication_state.reraise(os_error)
     assert secret not in traceback_text(caught.value)
 
 
@@ -1448,8 +1451,9 @@ def test_the_manifest_family_maps_an_os_or_unicode_error_to_file_unreadable():
     from yorunge.adapters.dataset_reports import PublicationState as ManifestState
 
     for error in (OSError(errno.EIO, "PRIVATE"), UnicodeError("PRIVATE")):
+        manifest_state = ManifestState()
         with pytest.raises(YorungeError) as caught:
-            ManifestState().reraise(error)
+            manifest_state.reraise(error)
         assert caught.value.code == "file_unreadable"
 
 
@@ -1524,8 +1528,9 @@ def test_a_stage_cannot_be_named_like_the_target(place):
 
 
 def test_a_stage_name_prefix_is_part_of_one_name(place):
+    publication_state = PublicationState(CODES)
     with pytest.raises(ValueError):
-        ArtifactPublisher(place, PublicationState(CODES), prefix="dir/.artifact-")
+        ArtifactPublisher(place, publication_state, prefix="dir/.artifact-")
 
 
 # --- real SIGKILL at each step ------------------------------------------------------------------

@@ -124,8 +124,9 @@ def test_a_report_exactly_one_interval_later_is_made():
 # L02: the deadline is reached when the clock says so.
 def test_the_deadline_is_reached_at_the_instant(monkeypatch):
     monkeypatch.setattr(download_engine.time, "monotonic", lambda: 100.0)
+    limit = _Limit(100.0)
     with pytest.raises(YorungeError) as error:
-        _Limit(100.0).guard()
+        limit.guard()
     assert error.value.code == "transport_timeout"
 
 

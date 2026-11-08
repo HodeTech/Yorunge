@@ -353,8 +353,9 @@ def test_confirm_requires_exact_created_integer(created):
 def test_confirm_cannot_leave_created_out_whatever_else_it_says(shape, base):
     # The two counters are checked only when present; ``created`` is what says the confirm took
     # effect once, so an answer without it is not an acknowledgement.
+    encoded_value = encoded(shape)
     with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(encoded(shape), 1, SECRET, base=base)
+        metadata.confirm_ack(encoded_value, 1, SECRET, base=base)
     assert error.value.code == "invalid_response"
 
 
@@ -362,8 +363,9 @@ def test_confirm_cannot_leave_created_out_whatever_else_it_says(shape, base):
 def test_a_confirm_has_a_place_among_one_to_128_confirms_of_the_operation(place):
     # A place outside the operation, or not an integer, is the caller's mistake: not a provider's
     # answer to judge and not a request that should have been sent.
+    confirmed_value = confirmed(1)
     with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(confirmed(1), place, SECRET)
+        metadata.confirm_ack(confirmed_value, place, SECRET)
     assert error.value.code == "invalid_request"
 
 
@@ -373,8 +375,9 @@ def test_a_confirm_has_a_place_among_one_to_128_confirms_of_the_operation(place)
 )
 def test_a_base_the_dataset_cannot_have_had_is_the_callers_mistake(base, place):
     # The dataset holds at most 128 items: what it held before, and this operation's confirms.
+    confirmed_value = confirmed(place)
     with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(confirmed(place), place, SECRET, base=base)
+        metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
     assert error.value.code == "invalid_request"
 
 
@@ -403,8 +406,9 @@ def confirmed(count, **updates):
 def test_an_original_confirm_has_one_meaning_its_place_in_the_operation(place):
     metadata.confirm_ack(confirmed(place), place, SECRET)
     for other in (place - 1, place + 1):
+        confirmed_value = confirmed(other)
         with pytest.raises(YorungeError) as error:
-            metadata.confirm_ack(confirmed(other), place, SECRET)
+            metadata.confirm_ack(confirmed_value, place, SECRET)
         assert error.value.code == "invalid_response"
 
 
@@ -415,8 +419,9 @@ def test_a_confirm_into_a_dataset_that_was_not_empty_may_mean_either_count(base,
         metadata.confirm_ack(confirmed(meant), place, SECRET, base=base)
     wrong = {0, place - 1, place + 1, base + place - 1, base + place + 1} - {place, base + place}
     for other in sorted(wrong - {-1}):
+        confirmed_value = confirmed(other)
         with pytest.raises(YorungeError) as error:
-            metadata.confirm_ack(confirmed(other), place, SECRET, base=base)
+            metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
         assert error.value.code == "invalid_response", (base, place, other)
 
 
@@ -432,8 +437,9 @@ def test_each_confirm_is_judged_on_its_own_not_by_the_meaning_an_earlier_one_sho
     for neither in (0, own - 1, total + 1, own + total + 1):
         if neither in (own, total):
             continue
+        confirmed_value = confirmed(neither)
         with pytest.raises(YorungeError) as error:
-            metadata.confirm_ack(confirmed(neither), place, SECRET, base=base)
+            metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
         assert error.value.code == "invalid_response"
 
 
@@ -446,15 +452,17 @@ def test_a_base_leaves_everything_else_of_the_confirm_as_strict():
         {"batch_duplicates": 1},
         {"actual_count": True},
     ):
+        confirmed_value = confirmed(2, **updates)
         with pytest.raises(YorungeError) as error:
-            metadata.confirm_ack(confirmed(2, **updates), 2, SECRET, **base)
+            metadata.confirm_ack(confirmed_value, 2, SECRET, **base)
         assert error.value.code == "invalid_response"
 
 
 @pytest.mark.parametrize("base", [True, -1, 1.0, "5", None, 127])
 def test_a_base_that_cannot_be_a_count_of_present_items_is_an_invalid_request(base):
+    confirmed_value = confirmed(2)
     with pytest.raises(YorungeError) as error:
-        metadata.confirm_ack(confirmed(2), 2, SECRET, base=base)
+        metadata.confirm_ack(confirmed_value, 2, SECRET, base=base)
     assert error.value.code == "invalid_request"
 
 
@@ -791,8 +799,9 @@ def test_the_uploads_of_a_selection_are_distinct_for_that_selection_alone():
 @pytest.mark.parametrize("selection", [(0, 1), (2, 0), (0,), (0, 2, 3), (), (1, 2)])
 def test_uploads_of_other_files_than_the_selection_are_refused(selection):
     expected = continued()
+    presigned_all_value = presigned_all(expected)
     with pytest.raises(YorungeError) as error:
-        codec.distinct_uploads(presigned_all(expected), expected, selection)
+        codec.distinct_uploads(presigned_all_value, expected, selection)
     assert error.value.code == "invalid_response"
 
 
@@ -811,8 +820,9 @@ def test_a_selection_cannot_hide_a_missing_or_foreign_upload():
         CONTINUATION, MANIFEST, str(uuid4()), CONTINUATION.continuation.dataset_id, SECRET
     )
     mixed = (other[0], expected[1])
+    presigned_all_value = presigned_all(mixed)
     with pytest.raises(YorungeError) as error:  # one operation's file beside another's
-        codec.distinct_uploads(presigned_all(mixed), mixed, (0, 2))
+        codec.distinct_uploads(presigned_all_value, mixed, (0, 2))
     assert error.value.code == "invalid_response"
 
 

@@ -505,8 +505,9 @@ def test_a_missing_operation_is_not_found_and_a_broken_lineage_is_invalid(tmp_pa
     with world(tmp_path, {"status": "running", "source": uuid(0xDEAD)}) as (store, root, (item,)):
         uploads = StateUploads(store)
         at = stamp(store, root, now=datetime(2026, 11, 2, 11, 1, tzinfo=UTC))
+        uuid_value = uuid(0xABC)
         with pytest.raises(YorungeError) as missing:
-            uploads.chain_snapshot(uuid(0xABC), at)
+            uploads.chain_snapshot(uuid_value, at)
         assert missing.value.code == "operation_not_found"
         with pytest.raises(YorungeError) as broken:
             uploads.chain_snapshot(item.record["operation_id"], at)
@@ -552,8 +553,9 @@ def test_the_snapshot_a_reset_is_previewed_from_reads_every_plan_with_its_lineag
         assert counts["unknown_transfer_count"] == 2  # the root and the first continuation
         assert counts["nonterminal_transfer_count"] == 3
     with world(tmp_path / "broken", {"status": "running", "source": uuid(0xDEAD)}) as (store, _, _):
+        deadline = Deadline()
         with pytest.raises(YorungeError) as error:
-            upload_snapshot(store.connection, Deadline())
+            upload_snapshot(store.connection, deadline)
         assert error.value.code == "state_invalid"
 
 

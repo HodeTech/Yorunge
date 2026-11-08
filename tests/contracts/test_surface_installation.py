@@ -224,13 +224,13 @@ print("carried on")
     assert result.returncode == 0
     assert "socket.getaddrinfo attempted" in result.stderr
     # what the gates then see is not a help with an empty stderr, nor one closed envelope
+    completed_value = completed(0, "options:\n  --one\n", result.stderr)
     with pytest.raises(ValueError, match="help failed"):
-        HELPER["check_help"](
-            completed(0, "options:\n  --one\n", result.stderr), "synthetic", ("--one",)
-        )
+        HELPER["check_help"](completed_value, "synthetic", ("--one",))
+    completed_value = completed(2, "", result.stderr + json.dumps(ENVELOPE))
     with pytest.raises(ValueError):
         HELPER["check_error"](
-            completed(2, "", result.stderr + json.dumps(ENVELOPE)),
+            completed_value,
             "synthetic",
             "invalid_request",
             2,

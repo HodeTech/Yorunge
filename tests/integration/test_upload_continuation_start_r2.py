@@ -407,8 +407,9 @@ def test_an_existing_operation_is_not_returned_from_inside_a_running_loop(
                 report.plan_id, Path(data[0]), no_context, session_factory=factory(server)
             )
 
+        inside_value = inside()
         with pytest.raises(YorungeError) as error:
-            asyncio.run(inside())
+            asyncio.run(inside_value)
         assert error.value.code == "invalid_request"
 
 
@@ -417,9 +418,11 @@ def test_a_state_dir_that_is_not_a_path_is_invalid_request(prepared_input, certi
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
         approve(data, server, report.plan_id)
+        str_value = str(data[0])
+        factory_value = factory(server)
         with pytest.raises(YorungeError) as error:
             run_upload_continuation(
-                report.plan_id, str(data[0]), no_context, session_factory=factory(server)
+                report.plan_id, str_value, no_context, session_factory=factory_value
             )
         assert error.value.code == "invalid_request"
 
@@ -627,8 +630,9 @@ def test_the_listing_needs_five_seconds_before_the_lease_the_approval_and_the_pl
     from yorunge.adapters.upload_original_read import _deadline
 
     environment, check = _environment(which)
+    simple_namespace = SimpleNamespace(grant=None)
     with pytest.raises(YorungeError) as error:
-        _deadline(environment, check, SimpleNamespace(grant=None))
+        _deadline(environment, check, simple_namespace)
     assert error.value.code == "execution_timeout"
 
 

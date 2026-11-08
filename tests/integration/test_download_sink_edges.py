@@ -820,8 +820,9 @@ def test_a_failing_close_is_a_write_failure_not_a_read_failure(place, monkeypatc
 def test_an_os_error_carries_nothing_of_itself_into_the_closed_error(place):
     place.chmod(0o500)
     try:
+        open_sink_value = open_sink(target(place), identity_key=IDENTITY)
         with pytest.raises(YorungeError) as error:
-            open_sink(target(place), identity_key=IDENTITY).__enter__()
+            open_sink_value.__enter__()
     finally:
         place.chmod(0o700)
     assert error.value.__context__ is None

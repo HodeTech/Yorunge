@@ -150,8 +150,9 @@ def test_the_gate_answers_busy_not_a_raw_sqlite_error_while_another_writer_holds
     holder.execute("BEGIN IMMEDIATE")
     try:
         with open_existing_store(state) as store:
+            state_uploads = StateUploads(store)
             with pytest.raises(OperationError) as busy:
-                StateUploads(store).require_no_successor(source)
+                state_uploads.require_no_successor(source)
     finally:
         holder.execute("ROLLBACK")
         holder.close()

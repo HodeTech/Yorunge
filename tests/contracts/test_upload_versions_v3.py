@@ -178,8 +178,9 @@ def test_the_graph_of_a_check_only_continuation_is_empty():
 def test_a_continuation_never_has_a_create_receipt():
     intent = StageIntent.model_validate_json(canon(GRAPH["intents"][0]))
     assert intent.kind == "create"
+    simple_namespace = SimpleNamespace()
     with pytest.raises(ValueError, match="v2 create receipt requires v2 plan"):
-        validate_create_receipt(PLANS[3], intent, SimpleNamespace())
+        validate_create_receipt(PLANS[3], intent, simple_namespace)
 
 
 PAYLOADS = [
@@ -235,11 +236,13 @@ def test_the_decoder_keeps_its_closed_version_and_size_rules_with_three_types(fi
     # tag tells them apart, and the pairing with the record (same version) is the store's rule;
     # the other three carry fields no older type accepts.
     if field in ("plan", "approval", "record"):
+        decode_value = canon({**value, "schema_version": 2}).decode()
         with pytest.raises(YorungeError):
-            decode_versioned(v1, v2, canon({**value, "schema_version": 2}).decode(), v3)
+            decode_versioned(v1, v2, decode_value, v3)
     limit = max(v1.max_wire_bytes, v2.max_wire_bytes, v3.max_wire_bytes)
+    decode_value = canon(value).decode()
     with pytest.raises(YorungeError):
-        decode_versioned(v1, v2, canon(value).decode() + " " * (limit + 1), v3)
+        decode_versioned(v1, v2, decode_value + " " * (limit + 1), v3)
 
 
 def test_the_graph_of_a_continuation_is_validated_like_any_other_not_refused():
@@ -254,8 +257,9 @@ def test_the_graph_of_a_continuation_is_validated_like_any_other_not_refused():
     validate_graph(VersionedTransferView(plan, approval, admitted), MANIFEST)
     validate_graph(VersionedTransferView(plan, approval, None), MANIFEST)
     # A running record claims a latch that no stage intent supports.
+    versioned_transfer_view = VersionedTransferView(plan, approval, running)
     with pytest.raises(YorungeError) as error:
-        validate_graph(VersionedTransferView(plan, approval, running), MANIFEST)
+        validate_graph(versioned_transfer_view, MANIFEST)
     assert error.value.code == "state_invalid"
 
 
@@ -277,10 +281,9 @@ def test_the_size_bound_of_the_listed_third_type_counts_not_only_the_older_two()
     assert type(decode_versioned(Small, Small, body, Large)) is Large
     with pytest.raises(YorungeError):  # no third type listed: the payload is simply too big
         decode_versioned(Small, Small, body)
+    decode_value = canon({"schema_version": 3, "pad": "x" * 300}).decode()
     with pytest.raises(YorungeError):
-        decode_versioned(
-            Small, Small, canon({"schema_version": 3, "pad": "x" * 300}).decode(), Large
-        )
+        decode_versioned(Small, Small, decode_value, Large)
 
 
 V1_RECORD = TransferRecord.model_validate_json(
@@ -319,8 +322,9 @@ def test_a_continuation_record_binds_to_its_own_plan_and_to_nothing_else():
         {"operation_id": plan.continuation.source_operation_id},
         {"operation_id": plan.continuation.baseline_operation_id},
     ):
+        model_copy_value = V3_RECORD.model_copy(update=change)
         with pytest.raises(ValueError):
-            bind_continuation_record(plan, V3_RECORD.model_copy(update=change))
+            bind_continuation_record(plan, model_copy_value)
 
 
 def test_a_continuation_borrows_its_baselines_namespace_and_an_original_owns_its_own():
