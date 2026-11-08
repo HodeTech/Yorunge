@@ -225,6 +225,29 @@ def test_a_stage_longer_than_its_last_checkpoint_is_cut_back_and_resumed(place):
     assert plan.resumed_from == 100_000 and target(place).read_bytes() == DATA
 
 
+def test_a_complete_stage_with_bytes_after_its_total_is_cut_back_before_it_is_published(place):
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete()
+    with (place / NAMES.stage).open("ab") as stage:
+        stage.write(b"garbage that was written after the completion checkpoint")
+    published, plan = download(place)
+    assert plan.action == "publish" and published.bytes == len(DATA)
+    assert target(place).read_bytes() == DATA  # exactly the total: nothing trails it
+
+
+def test_a_provider_that_restarts_with_a_shorter_object_leaves_nothing_of_the_old_tail(place):
+    stopped_after(place, 100_000)
+    smaller = os.urandom(50_000)
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
+        sink.begin(full(len(smaller), etag='"v2"'), "restart")  # the object changed
+        sink.write(smaller)
+        sink.complete()
+        published = sink.publish(None)
+    assert published.bytes == 50_000 and target(place).read_bytes() == smaller
+
+
 def test_a_stage_whose_committed_prefix_is_not_what_was_hashed_starts_clean(place):
     stopped_after(place, 100_000)
     with (place / NAMES.stage).open("r+b") as stage:
@@ -607,6 +630,46 @@ def test_a_trace_that_is_not_provably_ours_stops_the_command_and_nothing_is_chan
     assert {p.name: p.lstat().st_mode for p in place.iterdir()} == before
     if kind is make_fifo or kind is make_symlink:
         assert foreign.is_fifo() or foreign.is_symlink()
+
+
+def test_a_name_that_is_swapped_after_the_look_is_not_removed(place, monkeypatch):
+    stopped_after(place, 100_000)
+
+    def swap(name):
+        if name == "decided":  # between the look at the directory and the removals it ordered
+            foreign = place / "foreign"
+            foreign.write_bytes(b"FOREIGN")
+            os.chmod(foreign, 0o600)
+            os.replace(foreign, place / NAMES.stage)
+
+    monkeypatch.setattr(download_files, "_marker", swap)
+    assert code_of(lambda: download(place, no_resume=True)) == "download_partial_unverified"
+    assert (place / NAMES.stage).read_bytes() == b"FOREIGN"  # it is not the stage that was seen
+
+
+def test_a_file_that_is_swapped_while_it_is_being_opened_is_not_ours(place, monkeypatch):
+    stopped_after(place, 100_000)
+    stage, hold, foreign = place / NAMES.stage, place / "hold", place / "foreign"
+    real = os.open
+    swapped = []
+
+    def swapping_open(path, flags, mode=0o777, *, dir_fd=None):
+        if path == NAMES.stage and not swapped:
+            swapped.append(1)
+            foreign.write_bytes(b"FOREIGN")
+            os.chmod(foreign, 0o600)
+            os.rename(stage, hold)
+            os.replace(foreign, stage)  # the open gets the foreign file...
+            descriptor = real(path, flags, mode, dir_fd=dir_fd)
+            os.unlink(stage)
+            os.rename(hold, stage)  # ...and the name leads to the file that was seen again
+            return descriptor
+        return real(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(download_files.os, "open", swapping_open)
+    assert code_of(lambda: download(place)) == "download_partial_unverified"
+    monkeypatch.undo()
+    assert stage.read_bytes() == DATA[:100_000]  # the stage was left as it was
 
 
 def test_a_file_of_another_user_is_not_ours(place, monkeypatch):
