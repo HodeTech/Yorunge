@@ -195,7 +195,6 @@ class World:
             "source": source(),
             "identity_key": identity(),
             "resolve": self.resolver,
-            "secret": self.key.secret,
             "progress": lambda held, total: self.reports.append((held, total)),
         }
         return DownloadJob(**{**values, **changes})
@@ -347,8 +346,10 @@ def unfit_partial(world, **changes):
         {"total": len(DATA) + 1},  # the object grew
         {"total": len(DATA) - 1},
         {"last": len(DATA) - 2},
+        {"length": len(DATA) - CUT - 1},  # only the length is wrong: one byte short of the range
+        {"length": 0},  # and short by the whole tail
     ],
-    ids=["start", "tag", "no tag", "grew", "shrank", "end"],
+    ids=["start", "tag", "no tag", "grew", "shrank", "end", "length-1", "length-0"],
 )
 def test_a_partial_answer_that_does_not_fit_drops_the_prefix_and_asks_once_without_a_range(
     world, changes
@@ -607,17 +608,17 @@ def test_a_deadline_already_gone_is_a_timeout_before_any_request(world):
 
 def test_a_stalled_body_ends_at_the_deadline_and_keeps_what_it_can(world):
     # The server sends a prefix and then says nothing: the caller's deadline ends the wait.
-    world.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
-    stall = Reply(
-        body=DATA[:CUT],
-        headers=(("ETag", TAG),),
-        truncate_at=CUT,
-        after_first_chunk=lambda: time.sleep(5),
-    )
+    stall = Reply(body=DATA, headers=(("ETag", TAG),), after_first_chunk=lambda: time.sleep(5))
     world.provider.script = [stall]
     started = time.monotonic()
     assert code_of(lambda: world.run(seconds=1.5)) == "transport_timeout"  # not download_incomplete
     assert time.monotonic() - started < 4
+    # What arrived is kept, and the next call asks for the rest.
+    assert world.names() == sorted([world.stage().name, world.sidecar().name])
+    assert 0 < world.stage().stat().st_size <= CUT
+    kept = world.stage().stat().st_size
+    assert_whole(world, world.run(), resumed=True, resumed_from=kept)
+    assert world.provider.seen[-1] == (f"bytes={kept}-", TAG)
 
 
 def test_the_json_call_is_not_charged_to_the_download_deadline(world):
@@ -679,7 +680,6 @@ def test_a_bad_digest_is_refused_before_the_job_exists():
             source=source(),
             identity_key="x",
             resolve=Resolver(credential()),
-            secret=credential().secret,
         )
     assert error.value.code == "invalid_request"
 

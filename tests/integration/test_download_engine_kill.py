@@ -60,7 +60,6 @@ def engine_child(directory, port, certificate):
         source=source(),
         identity_key=identity(),
         resolve=Resolver(key),
-        secret=key.secret,
     )
     with owned:
         run_download(job, owned, deadline=time.monotonic() + 300)

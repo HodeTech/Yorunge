@@ -15,14 +15,18 @@ reached after the body is whole is no failure: the transport stops timing a whol
 checkpoint, the comparison and the publication that follow are exempt by the protocol.
 
 The consumer (P02-3n) supplies what is its own: the target path, the identity of what is
-downloaded, the resolution of the signed address, the key, the expectation and the progress sink.
+downloaded, the resolution of the signed address, the expectation and the progress sink; the key is
+the session's own. Use one session for one download: after an interrupt or a body that carried more
+than it promised, the pooled connection is not trusted and the session is discarded.
 """
 
 from __future__ import annotations
 
+import asyncio
+import math
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
@@ -36,6 +40,7 @@ from yorunge.application.download_transport import (
 )
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.download import (
+    CONTROL_CALL_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
     MAX_DOWNLOAD_BYTES,
     DownloadSource,
@@ -45,7 +50,8 @@ from yorunge.domain.download import (
 )
 from yorunge.domain.errors import YorungeError
 
-JSON_BUDGET_SECONDS: Final = 30.0  # the control call that yields the signed address
+JSON_BUDGET_SECONDS: Final = float(CONTROL_CALL_SECONDS)  # the call that yields the signed address
+RESOLVE_GRACE_SECONDS: Final = 1.0  # what a resolver that honours its deadline is given to say so
 PROGRESS_SECONDS: Final = 0.1  # at most ten reports a second (the first and the last always)
 
 Resolver = Callable[[DownloadTransport, float], Awaitable[DownloadTarget]]
@@ -58,29 +64,33 @@ class DownloadJob:
 
     ``resolve`` makes the one JSON call that yields the signed address; it is given the open
     transport and the absolute deadline of the call (its 30-second budget), and is called once per
-    run and only if the network is needed. ``identity_key`` is the stable key of what is downloaded
-    (``domain.download.identity_key``): a stage left by another service, version, format or fold is
-    never resumed or published. ``progress`` receives (bytes held, total or None) and never a name,
-    path, address or tag. ``max_bytes`` is the most one answer's body may carry (the contract's
-    limit unless a caller asks for less; with a resume ask keep it at the contract's).
+    run and only if the network is needed; the engine ends it at its budget (and one second more)
+    whatever it does with the deadline it is handed. ``identity_key`` is the stable key of what is
+    downloaded (``domain.download.identity_key``): a stage left by another service, version, format
+    or fold is never resumed or published. ``progress`` receives (bytes held, total or None) and
+    never a name, path, address or tag; it runs on the event loop's thread and must be quick and
+    must not raise (what it raises leaves the engine as it is, the stage is kept and the next call
+    continues; mapping an output that has closed is the consumer's). ``max_bytes`` is the most one
+    answer's body may carry (the contract's limit unless a caller asks for less; with a resume ask
+    keep it at the contract's). The target is also judged as a path a summary can hold (no control
+    or bidirectional character, UTF-8, at most 4096 bytes) when its directory is opened, before
+    anything is asked of the network.
     """
 
     target: Path
     source: DownloadSource
     identity_key: str
-    resolve: Resolver = field(repr=False)
-    secret: SecretValue = field(repr=False)
+    resolve: Resolver
     expected_sha256: str | None = None
     no_resume: bool = False
     timeout: int = DEFAULT_TIMEOUT_SECONDS
-    progress: Progress | None = field(default=None, repr=False)
+    progress: Progress | None = None
     max_bytes: int = MAX_DOWNLOAD_BYTES
 
     def __post_init__(self) -> None:
         if (
             not isinstance(self.target, Path)
             or type(self.source) is not DownloadSource
-            or type(self.secret) is not SecretValue
             or type(self.no_resume) is not bool
             or not callable(self.resolve)
             or (self.progress is not None and not callable(self.progress))
@@ -122,8 +132,8 @@ class _Progress:
         self._held = -1
 
     def update(self, held: int, total: int | None) -> None:
-        """A report if one is due (the first is due at once)."""
-        if self._report is None:
+        """A report if one is due (the first is due at once; nothing that has not moved)."""
+        if self._report is None or held <= self._held:
             return
         now = self._clock()
         if self._last is not None and now - self._last < PROGRESS_SECONDS:
@@ -132,13 +142,13 @@ class _Progress:
 
     def finish(self, held: int, total: int | None) -> None:
         """The last report, whatever the clock says (unless nothing moved since the previous)."""
-        if self._report is None or held == self._held:
+        if self._report is None or held <= self._held:
             return
         self._emit(held, total, self._clock())
 
     def _emit(self, held: int, total: int | None, now: float) -> None:
         assert self._report is not None
-        self._last, self._held = now, max(held, self._held)
+        self._last, self._held = now, held
         self._report(held, total)
 
 
@@ -148,24 +158,44 @@ def run_download(
     """Download ``job`` through the entered ``session``; the summary of the published file.
 
     ``deadline`` is the caller's own absolute deadline (``time.monotonic()`` instants, as every
-    transport deadline); by default it is ``job.timeout`` seconds from now.
+    transport deadline); by default it is ``job.timeout`` seconds from now. The arguments and the
+    session (the right thread, no running loop, not closed) are judged first, before the local
+    state is touched: a stale partial of another download is not dropped for a session that could
+    never have served the request.
     """
+    if type(job) is not DownloadJob or not isinstance(session, TransferSession):
+        raise YorungeError("invalid_request")
+    if deadline is not None and not _instant(deadline):
+        raise YorungeError("invalid_request")
+    session.preflight()
     limit = _Limit(time.monotonic() + job.timeout if deadline is None else deadline)
     progress = _Progress(job.progress)
     with open_sink(
         job.target, identity_key=job.identity_key, no_resume=job.no_resume, guard=limit.guard
     ) as (sink, plan):
         if plan.action == "download":
+            secret = session.secret
             session.download(
-                lambda transport: _network(job, plan, sink, transport, limit, progress)
+                lambda transport: _network(job, secret, plan, sink, transport, limit, progress)
             )
-            sink.complete(terminated=True)  # the loop above ended at the framing's own end
         published = sink.publish(job.expected_sha256)
-    return _summary(job, published, plan)
+    return _summary(job, published)
+
+
+def _instant(value: float) -> bool:
+    """A finite number: ``True``, ``inf``, ``nan``, a string or an integer too large for a float
+    is not a point of the monotonic clock (the annotation is the contract, this is its check)."""
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 async def _network(
     job: DownloadJob,
+    secret: SecretValue,
     plan: SinkPlan,
     sink: DownloadSink,
     transport: DownloadTransport,
@@ -174,13 +204,19 @@ async def _network(
 ) -> None:
     limit.guard()  # a deadline already gone is no reason to ask for an address
     began = time.monotonic()
-    address = await job.resolve(transport, began + JSON_BUDGET_SECONDS)
-    limit.refund(time.monotonic() - began)  # the control call has its own budget
+    try:
+        # The resolver is handed its deadline and is expected to keep it; the engine does not take
+        # that on trust, so the budget is a bound and not a request.
+        async with asyncio.timeout_at(began + JSON_BUDGET_SECONDS + RESOLVE_GRACE_SECONDS):
+            address = await job.resolve(transport, began + JSON_BUDGET_SECONDS)
+    except TimeoutError:
+        raise YorungeError("transport_timeout") from None
+    limit.refund(min(time.monotonic() - began, JSON_BUDGET_SECONDS))  # its own budget, not more
     ask = plan.ask
     # One conditional request if a verified prefix is held, and, if the answer does not fit it,
     # exactly one more without a range: there is no third.
     for _ in range(2):
-        request = DownloadRequest(address, job.secret, ask, max_bytes=job.max_bytes)
+        request = DownloadRequest(address, secret, ask, max_bytes=job.max_bytes)
         async with transport.open_download(request, deadline=limit.deadline) as view:
             if view.disposition != "discard_and_retry":
                 await _receive(sink, view, progress)
@@ -197,12 +233,19 @@ async def _receive(sink: DownloadSink, view: DownloadView, progress: _Progress) 
         total += sink.written  # the answer is the rest of the object; the total is all of it
     progress.update(sink.written, total)
     async for chunk in view.chunks():  # to its end: only the last read disarms the deadline
-        sink.write(chunk)  # every byte received is written before the next await
+        # What is held so far is reported before this record is written, so that the last record
+        # is reported only by ``finish``, once the framing has ended: no report of the consumer's
+        # can run between the last byte and the mark that the body is whole.
         progress.update(sink.written, total)
+        sink.write(chunk)  # each record received is written before the next one is awaited
+    # The framing ended by itself: the body is whole. That is made durable before anything of the
+    # consumer's runs (a chunked or tag-less stage is kept only once it is complete, and a report
+    # that raises must not cost a whole download).
+    sink.complete(terminated=True)
     progress.finish(sink.written, total)
 
 
-def _summary(job: DownloadJob, published: Published, plan: SinkPlan) -> DownloadSummary:
+def _summary(job: DownloadJob, published: Published) -> DownloadSummary:
     verification = published.verification
     return DownloadSummary(
         schema_version=1,

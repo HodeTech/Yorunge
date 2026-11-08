@@ -38,6 +38,8 @@ P02-3n verified olmalıdır. Ölçüm kuralları standarttadır (U≤64 MiB, G�
 
 Native ölçüm betiği, kanıt doğrulayıcısı ve contract testleri, kurulum/dağıtım denetimi, belge kontrolü, actionlint, Ruff, strict mypy. Eşzamanlı ağır iş olmadan seri ölçüm.
 
+**P02-3m devri (yazma maliyeti).** Motor her TLS kaydını (≤16 KiB) gelir gelmez yazar. Yüklü bir ana bilgisayarda küçük yazmalar pahalı ölçüldü (4–16 KiB yazma başına 1–3 ms ≈ birkaç MB/s; 1 MiB yazmalar ≈ 190 MB/s; sessiz makinede ölçülmedi). Bu kartın ölçümü motorun gerçek hızını ve yazma başına maliyeti sessiz makinede kaydeder; bütçe tutmazsa kaldıraç, çalışan olay döngüsü turunda zaten gelmiş kayıtları (araya `await` girmeden) birleştirip tek `write` yapmaktır — kayıt başına yazma ve “her kayıt bir sonrakini beklemeden yazılır” ilkesi o zaman gerekçesiyle değiştirilir, sessizce değil.
+
 ## Teslim kaydı
 
 Draft; uygulama, commit veya review kanıtı yoktur.

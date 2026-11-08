@@ -135,7 +135,7 @@ class DownloadView(Protocol):
         ...
 
     def chunks(self) -> AsyncIterator[bytes]:
-        """The body, in chunks of at most a TLS record (16 KiB; coalesce to write in blocks).
+        """The body, one chunk per TLS read (at most one 16 KiB record; the read buffer is 32 KiB).
 
         Read it to its end. A short or cut body raises its closed code where it breaks or at the
         end; a body past the caller's ``max_bytes`` raises ``download_limit_exceeded`` (the cap is

@@ -31,7 +31,7 @@ from yorunge.application.storage import (
 )
 from yorunge.application.upload_progress import source_chunk
 from yorunge.domain.capabilities import instant
-from yorunge.domain.credentials import normalize_target
+from yorunge.domain.credentials import SecretValue, normalize_target
 from yorunge.domain.download_response import (
     Disposition,
     DownloadResponse,
@@ -475,10 +475,17 @@ class TransferSession(HttpSession):
         storage_origins: tuple[str, ...] = (),
     ) -> None:
         self._storage_origins = _origins(storage_origins)
+        self._secret = credential.secret
         super().__init__(
             transport_factory=transport_factory
             or (lambda: TransferHttpxTransport(credential, storage_origins=self._storage_origins))
         )
+
+    @property
+    def secret(self) -> SecretValue:
+        """The key this session's transport holds: a download names the very same object, so that
+        the signed address can be scanned for it (the transport compares identity, not value)."""
+        return self._secret
 
     def exchange(self, consumer: Callable[[StorageTransport], Awaitable[T]]) -> T:
         def consume(transport: HttpTransport) -> Awaitable[T]:
