@@ -451,7 +451,7 @@ class Keeping(ArtifactPublisher):
             self._remove_stage()
 
 
-def eio(*arguments):
+def eio(*arguments, **keywords):
     raise OSError(errno.EIO, "PRIVATE")
 
 
@@ -519,12 +519,12 @@ def test_a_keeping_publisher_keeps_a_finished_stage_that_nothing_speaks_against(
     monkeypatch.undo()
     # The next run publishes the very stage it finds, without the bytes being written again.
     descriptor = os.open(kept, os.O_RDWR | os.O_NOFOLLOW, dir_fd=place.descriptor)
+    again = Place(place.directory)
     try:
-        Keeping(Place(place.directory), PublicationState(CODES)).publish_stage(
-            kept, descriptor, len(CONTENT)
-        )
+        Keeping(again, PublicationState(CODES)).publish_stage(kept, descriptor, len(CONTENT))
     finally:
         os.close(descriptor)
+        again.close()
     assert place.target.read_bytes() == CONTENT and place.leftovers() == []
 
 

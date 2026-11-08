@@ -37,6 +37,12 @@ from yorunge.adapters.local_files import full_sync
 from yorunge.domain.errors import MESSAGES, ErrorCode, YorungeError
 
 
+def _add_note_once(error: BaseException, note: str) -> None:
+    """Notes are fixed sentences: the same one is never written twice on one error."""
+    if note not in getattr(error, "__notes__", ()):
+        BaseException.add_note(error, note)
+
+
 @dataclass(frozen=True)
 class ArtifactCodes:
     """The error family of one kind of artifact."""
@@ -156,11 +162,22 @@ class ArtifactPublisher:
         """
         if not stage or "/" in stage or "\0" in stage or stage in (".", "..", self.location.name):
             raise ValueError("a stage is one name in the target's directory, and not the target's")
-        # (The caller guarantees that the two names do not alias on a case-insensitive filesystem.)
 
         def adopted() -> None:
+            held = os.fstat(descriptor)
+            try:
+                named = os.stat(
+                    self.location.name, dir_fd=self.location.descriptor, follow_symlinks=False
+                )
+            except OSError:
+                named = None
+            if named is not None and identity(named) == identity(held) and held.st_nlink == 1:
+                # One directory entry under two spellings (case, normalization): cleaning the
+                # "stage" up would delete the target. (A twin with two links is the trace of an
+                # earlier publication and is judged as `changed` below.)
+                raise ValueError("a stage cannot be the target under another spelling")
             self.stage = stage
-            self.stage_identity = identity(os.fstat(descriptor))
+            self.stage_identity = identity(held)
             self._finalize(descriptor, size, os.fstat(descriptor))
 
         self._guarded(adopted)
@@ -174,7 +191,7 @@ class ArtifactPublisher:
                 self._discard(error)
             except (OSError, YorungeError):
                 stranded = True
-                BaseException.add_note(error, MESSAGES[self.codes.failed])
+                _add_note_once(error, MESSAGES[self.codes.failed])
             try:
                 if isinstance(error, OSError) and not self.state.attempted:
                     raise YorungeError(self.codes.failed) from None
@@ -184,18 +201,21 @@ class ArtifactPublisher:
                     # Before the link the error was replaced by a closed one: the note that the
                     # stage may still be there goes with it. After the link the stage next to the
                     # target is the expected trace and the error already says the target may exist.
-                    BaseException.add_note(final, MESSAGES[self.codes.failed])
+                    _add_note_once(final, MESSAGES[self.codes.failed])
                 raise
 
     def _discard(self, error: BaseException) -> None:
         """What becomes of the stage when publication failed with ``error``.
 
-        By default it is removed again by identity: content in memory can be written again. A
-        streaming sink overrides this where the finished stage is the only copy of a download and
-        the failure says nothing against it (an I/O error, a deadline, an interrupt): it keeps the
-        stage and removes it only for a definite refusal. A refusal is definite only before the
-        link was attempted (``not self.state.attempted``): after it the target may exist, and a
-        stage that is dropped then can be the last copy. The success path removes it itself.
+        By default it is removed again by identity: content in memory can be written again, and
+        a caller whose stage is not a resumable copy needs nothing else. A streaming sink, whose
+        finished stage can be the only copy of a download, MUST override this: it keeps the stage
+        for a failure that says nothing against it (an I/O error, a deadline, an interrupt) and
+        removes it only for a definite refusal. ``error`` is the error as it happened, before it is
+        mapped to the family's codes, so it cannot tell a refusal before the link from the same
+        code after it: a refusal is definite only while ``not self.state.attempted``, because
+        after the link the target may exist and a stage that is dropped then can be the last copy.
+        The success path removes the stage itself.
         """
         self._remove_stage()
 
@@ -291,8 +311,12 @@ class ArtifactPublisher:
         interval is observed, not sandboxed; a stage name that an adversary can predict (a stream's)
         and a directory the adversary can write are what make it matter.
         """
-        if self.stage is None or self.stage_identity is None:
+        if self.stage is None:
             return
+        if self.stage_identity is None:
+            # The name is there, but whose file it is was never learned (the look at it failed):
+            # it is not removed by guess, and the caller is told it may remain.
+            raise YorungeError(self.codes.changed)
         try:
             info = os.stat(self.stage, dir_fd=self.location.descriptor, follow_symlinks=False)
         except FileNotFoundError:
