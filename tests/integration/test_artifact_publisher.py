@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from yorunge.adapters import artifact_publisher
 from yorunge.adapters.artifact_publisher import (
     LINK_REFUSED,
     ArtifactCodes,
@@ -317,6 +318,36 @@ def test_a_stage_with_another_mode_is_changed(place):
     def chmod(written):
         os.chmod(place.directory / pub.stage, 0o644)
         original(written)
+
+    pub._check_stage = chmod
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
+    assert not place.target.exists() and place.leftovers() == []
+
+
+def test_a_file_system_that_names_the_inode_with_the_first_byte_still_lets_a_refused_stage_go(
+    place, monkeypatch
+):
+    # FAT and exFAT: the inode number of an empty file is a placeholder that changes once a byte is
+    # written, so an identity learned before the write would never match the stage again.
+    real_identity, real_write = artifact_publisher.identity, ArtifactPublisher._write
+    written = []
+
+    def identity(info):
+        device, inode = real_identity(info)
+        return (device, inode) if written else (device, 2**64 - 25)
+
+    def write(self, descriptor, content):
+        real_write(self, descriptor, content)
+        written.append(True)
+
+    monkeypatch.setattr(artifact_publisher, "identity", identity)
+    monkeypatch.setattr(ArtifactPublisher, "_write", write)
+    pub, _ = publisher(place)
+    original = pub._check_stage
+
+    def chmod(info):
+        os.chmod(place.directory / pub.stage, 0o644)  # the mode a FAT volume would have shown
+        original(info)
 
     pub._check_stage = chmod
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed

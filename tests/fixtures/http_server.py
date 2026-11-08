@@ -6,6 +6,7 @@ import socket
 import ssl
 import struct
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -246,6 +247,13 @@ class TlsServer:
                 except BaseException:
                     connection.close()
                     raise
+
+            def handle_error(self, request, client_address):
+                # A client that went away while a (deliberately slow) reply was pending is this
+                # fixture's ordinary business, not a traceback printed after the run.
+                if isinstance(sys.exc_info()[1], (ConnectionError, ssl.SSLError, TimeoutError)):
+                    return
+                super().handle_error(request, client_address)
 
             def finish_request(self, request, client_address):
                 # Handshake in the request worker, never in the listening thread.

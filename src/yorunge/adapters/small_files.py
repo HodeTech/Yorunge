@@ -39,6 +39,8 @@ def read_regular_file(
     if not isinstance(path, Path) or not path.is_absolute() or not path.name:
         raise YorungeError("invalid_request")
     require_input_files()
+    if "\0" in path.name:
+        raise YorungeError("input_invalid")  # the parents are judged by ``directory_chain``
     end = time.monotonic() + seconds
     try:
         descriptor, chain = directory_chain(str(path.parent))

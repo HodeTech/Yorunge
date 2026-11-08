@@ -94,6 +94,14 @@ Atma yolları (206 uyumsuz, 416, ETag/kimlik farkı) kilit altında stage → si
 
 `DownloadPartial v1` alanları: `schema_version=1`, `kind=download_partial`, `identity_key` (tüketici tanımlı kararlı anahtar: normalize edilmiş Platform origin’i + `api_base_path` + model sürümü kimliği + biçim + isteğe bağlı `fold`), `target_hash`, `etag` (güçlü veya null), `total_size` (null olabilir; chunked gövdede yalnız başarılı terminasyondan sonraki tamamlanma checkpoint’inde kesinleşen bayt sayısı), `committed_bytes` (fsync edilmiş), `prefix_sha256` (o bayt sayısına kadar ön ekin SHA-256’sı), `stage_device`, `stage_inode`, `created_at`, `updated_at`.
 
+## Hedef yolu ve dosya sistemi
+
+İndirme ve `datasets versions bind --binding-out` aynı hedef kurallarını paylaşır (`adapters/target_directory.py`, `adapters/artifact_publisher.py`).
+
+- **Yol.** Hedefin parent’ı mevcut ve bütün üst dizin zinciri symlink’siz olmalıdır. macOS’ta `/tmp`, `/var/tmp`, `/etc` ve `$TMPDIR` (`/var/folders/…`) symlink’tir; altındaki bir hedef, ağdan ve yazma denenmeden önce reddedilir (`download_target_invalid`; `bind`de `binding_write_failed`): gerçek yolu (`/private/tmp/…`) verin. Bir `..` bileşeni içeren yol (`../b.json`, `s/../b.json`) aynı kodla reddedilir. Göreli yol çalışma dizinine göre mutlaklaştırılır (symlink çözülmez); sondaki `/` yok sayılır (`dizin/ad/` hedefi `ad` dosyasıdır).
+- **İzin.** Yazılamayan bir parent (örneğin 0500) ancak ilk yazımda `*_write_failed` olarak görünür: indirmede imzalı adres alındıktan sonra, `bind`de sağlayıcı okumalarından sonra.
+- **Dosya sistemi.** Yayın 0600 modunu ve hard link’i varsayar. Çekirdeğin reddettiği `link()` (`EPERM`, `EACCES`, `EROFS`, `ENOTSUP`, `EOPNOTSUPP`, `EMLINK`, `EXDEV`, `ENOSPC`, `EDQUOT`, `ENAMETOOLONG`, `ELOOP`, `ENOTDIR`, `ENOENT`) hiçbir giriş yapmamıştır ve `*_write_failed`dır; diğer hatalar (`EIO` gibi) belirsizdir (`*_write_uncertain`). `bind` 0600’ü tutmayan bir birimde (macOS’ta gerçek bir FAT32 biriminde denendi) `binding_write_failed` ile biter ve stage bırakmaz; o birimden bir bağı `check` yine okuyabilir. İndirme FAT/exFAT’ta ve SMB/NFS paylaşımlarında denenmedi; bu birimlerin gerçek `link()` sonuçları gözlenmedi (yalnız errno enjeksiyonu).
+
 ## Sonuç ve hatalar
 
 Başarı DTO’su (taslak): `schema_version=1`, `kind=download_summary`, `output_path`, `bytes`, `sha256`, `verification_level`, `expectation_source`, `resumed`, `resumed_from_bytes`, kaynak (`model_version`, kimlik, biçim, `fold`). Metin/JSON/NDJSON Result v1 zarfını korur; ilerleme yalnız TTY stderr’dedir.

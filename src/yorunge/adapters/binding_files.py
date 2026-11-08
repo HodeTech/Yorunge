@@ -84,9 +84,13 @@ def binding_target(target: Path) -> Iterator[BindingTarget]:
         directory = open_target_directory(
             target, invalid="binding_write_failed", failed="binding_write_failed"
         )
+        primary: BaseException | None = None
         try:
             yield BindingTarget(directory, state)
+        except BaseException as error:
+            primary = error
+            raise
         finally:
-            directory.close()
+            directory.close(primary)
     except BaseException as error:
         state.reraise(error)

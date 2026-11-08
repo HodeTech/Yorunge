@@ -10,7 +10,7 @@ Kullanıcı profili seçer, gerekli hizmetin anahtarını ortam/işletim sistemi
 
 ## 2. Klasörü veri setine dönüştürmek
 
-Klasör seç → dosya/format/hash denetimi → ad ve görünürlük özeti → yükleme planı → aktarım → uzak/yerel doğrulama → veri seti kimliği ve rapor. Kesintide yeni veri seti açmak yerine önceki işlem uzlaştırılır. Aynı boyutta değişen dosya ve kök dışı symlink açıkça bildirilir.
+Klasör seç → dosya/format/hash denetimi → ad ve görünürlük özeti → yükleme planı → aktarım → uzak/yerel doğrulama → veri seti kimliği ve rapor. Kesintide yeni veri seti açmak yerine önceki işlem uzlaştırılır. Aynı boyutta değişen dosya ve kök dışı symlink açıkça bildirilir. Sonrasında `datasets versions list|show` bir veri setinin sürümlerini gösterir, `bind` seçilen dondurulmuş sürümün sağlayıcı metadata’sını bir dosyaya sabitler (yerel Manifest ile dosya sayısı eşliği üyelik kanıtı değildir), `check` sağlayıcıdaki sürümün hâlâ aynı olduğunu söyler; hiçbiri içerik, üyelik ya da model uygunluğu iddia etmez ([başvuru](reference/dataset-versions.md)).
 
 **Kabul:** Büyük dosya akışlı gider; ilerleme gerçek aktarılan bayta dayanır; `done` günlüğü tek başına başarı kanıtı olmaz; son çıktı eksik dosyaları belirtir. Yalnız veri taşımak isteyen kullanıcı eğitim aracı kurmaz.
 

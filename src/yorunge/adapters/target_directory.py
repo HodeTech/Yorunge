@@ -55,8 +55,9 @@ class TargetDirectory:
         except OSError:
             raise YorungeError(self.failed) from None
 
-    def close(self) -> None:
-        close_descriptor(self.descriptor, code=self.failed)
+    def close(self, primary: BaseException | None = None) -> None:
+        """Close the handle; with an error in flight a failing close is a note on it."""
+        close_descriptor(self.descriptor, primary, code=self.failed)
 
 
 def open_target_directory(

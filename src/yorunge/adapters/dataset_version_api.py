@@ -16,13 +16,12 @@ from typing import TypeVar
 
 from yorunge.adapters.binding_files import binding_target
 from yorunge.adapters.capability_cache import SystemClock
+from yorunge.adapters.command_arguments import absolute, judge_ground
 from yorunge.adapters.context_state import StateDiscovery
 from yorunge.adapters.dataset_version_exchange import VersionObserver
 from yorunge.adapters.dataset_version_reader import VERSION_SECONDS
-from yorunge.adapters.local_files import require_local_files
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.small_files import read_regular_file
-from yorunge.adapters.upload_sync import require_upload_sync_context
 from yorunge.application.context_discovery import ObservationClock
 from yorunge.application.dataset_versions import (
     Observers,
@@ -78,32 +77,11 @@ def _page(page: object) -> int:
     return page
 
 
-def _absolute(path: object) -> Path:
-    """The path as one observation of the working directory makes it absolute (no symlink walk)."""
-    if not isinstance(path, Path) or not path.name:
-        raise YorungeError("invalid_request")
-    if path.is_absolute():
-        return path
-    try:
-        return Path.cwd() / path
-    except OSError:
-        raise YorungeError("input_invalid") from None
-
-
-def _local(state_dir: object) -> None:
-    """Where the caller stands (a state directory that is a path, a thread that may block):
-    judged with the other arguments, before any file or secret is touched."""
-    if state_dir is not None and not isinstance(state_dir, Path):
-        raise YorungeError("invalid_request")
-    require_upload_sync_context()  # a running event loop is refused whatever the target says
-    require_local_files()
-
-
 class _Composition:
     """The state, the clock and the observers of one use; built after the arguments are judged."""
 
     def __init__(self, loader: ContextLoader, state_dir: Path | None) -> None:
-        _local(state_dir)
+        judge_ground(state_dir)
         self.started = time.monotonic()
         self.clock = ObservationClock(SystemClock())
         self.state = StateDiscovery(
@@ -125,7 +103,7 @@ def list_dataset_versions(
     dataset_id: str, page: int, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionList]:
     identifier, number = _identifier(dataset_id), _page(page)
-    _local(state_dir)
+    judge_ground(state_dir)
     use = _Composition(loader, state_dir)
     listed = list_versions(
         use.state,
@@ -142,7 +120,7 @@ def show_dataset_version(
     dataset_id: str, version_tag: str, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionObservation]:
     identifier, tag = _identifier(dataset_id), _tag(version_tag)
-    _local(state_dir)
+    judge_ground(state_dir)
     use = _Composition(loader, state_dir)
     shown = show_version(
         use.state,
@@ -169,9 +147,9 @@ def bind_dataset_version(
     state_dir: Path | None,
 ) -> Result[DatasetVersionBound]:
     identifier, tag = _identifier(dataset_id), _tag(version_tag)
-    _local(state_dir)
-    target = _absolute(binding_out)
-    chosen = None if manifest is None else _absolute(manifest)
+    judge_ground(state_dir)
+    target = absolute(binding_out)
+    chosen = None if manifest is None else absolute(manifest)
     if chosen is not None and chosen == target:
         raise YorungeError("invalid_request")
     local = None if chosen is None else _read_manifest(chosen)
@@ -208,8 +186,8 @@ def bind_dataset_version(
 def check_dataset_version(
     binding: Path, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionCheck]:
-    _local(state_dir)
-    source = _absolute(binding)
+    judge_ground(state_dir)
+    source = absolute(binding)
     held = decode_binding(
         read_regular_file(source, limit=MAX_BINDING_BYTES, oversize="binding_invalid")
     )

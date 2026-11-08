@@ -245,6 +245,8 @@ class ArtifactPublisher:
         self.stage_identity = identity(os.fstat(descriptor))
         os.fchmod(descriptor, 0o600)
         self._write(descriptor, content)
+        # FAT and exFAT give a file its inode number only once it holds a byte: learn it again.
+        self.stage_identity = identity(os.fstat(descriptor))
         self._sync(descriptor)
         self._finalize(descriptor, len(content), os.fstat(descriptor))
 

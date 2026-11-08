@@ -118,12 +118,6 @@ def parsed(process, output="json"):
     return value
 
 
-def failure(process):
-    assert process.returncode != 0
-    assert not process.stdout.strip() or process.stdout.strip().startswith(b"{") is False
-    return json.loads(process.stderr.decode("utf-8", "strict"))
-
-
 def flags(workspace):
     state, config, _ = workspace
     return ("--config", str(config), "--state-dir", str(state))
@@ -901,7 +895,8 @@ def test_a_closed_stdout_is_a_local_output_error_after_the_read(workspace, certi
 def test_an_interrupt_while_the_provider_is_slow_is_a_cancellation_and_prints_no_result(
     workspace, certificates
 ):
-    table = routes(**{BASE + "?page=1": Reply(body=b"{}", header_delay=3)})
+    # The interrupt ends the wait at once; the delay only has to outlast a slow test machine.
+    table = routes(**{BASE + "?page=1": Reply(body=b"{}", header_delay=30)})
     with TlsServer(certificates, table) as server:
         process = popen(
             server,
