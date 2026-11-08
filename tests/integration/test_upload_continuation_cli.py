@@ -342,7 +342,7 @@ def test_a_continuation_that_stops_too_is_resumed_in_its_turn(public_inputs, cer
 @pytest.mark.parametrize(
     "arguments,code,exit_code,hint",
     [
-        ((), "approval_required", 4, "--accept-unverified-read verin"),
+        ((), "approval_required", 4, "dataset’in okunması için --accept-unverified-read"),
         (("--accept-unconfirmed-effects",), "invalid_request", 2, "seçenekleri yardımla"),
         (("--accept-unverified-read", "--accept-unconfirmed-effects"), "invalid_request", 2, None),
     ],

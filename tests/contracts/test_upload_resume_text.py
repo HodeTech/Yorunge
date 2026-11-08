@@ -61,7 +61,8 @@ def test_the_text_of_an_eligible_report_with_unconfirmed_files_leads_to_prepare(
     assert "--accept-unconfirmed-effects" not in command
     assert "ayrıca --accept-unconfirmed-effects eklemek gerekir" in text
     assert "aynı adlı bir kopya yaratabilir" in text and "`conflict` ile engellenir" in text
-    assert "yalnız Platform arayüzünde silinebilir" in text and "lease süresinin" in text
+    assert "yalnız Platform arayüzünde silinebilir" in text
+    assert "lease süresi (en çok 150 sn) dolduktan sonra da bir süre bekleyin" in text
     assert "yetim nesneler kalabilir" in text
     assert "Engeller" not in text and "- " not in text.split("Dosya sınıfları")[0]
     assert text.rstrip().endswith("baytları doğrulanmadı.")
@@ -227,5 +228,7 @@ def test_no_blocker_tells_a_person_to_make_a_new_plan_where_the_adr_says_it_does
         assert "yeni bir plan kurun" not in step, name
     assert "aşmaz" in BLOCKER_TEXT["known_negative"][1]
     assert "ayrı bir ekleme işidir" in BLOCKER_TEXT["local_changed"][1]
-    # the one that is true: nothing was sent, so there is nothing a new plan would repeat
-    assert "yeni plan kurulabilir" in BLOCKER_TEXT["create_unknown"][1]
+    # a create intent claims the name: the same name is refused, another one may make a second
+    # dataset; "nothing was sent" is the source's own sentence (source_ineligible), not this one
+    assert "aynı adlı yeni plan reddedilir" in BLOCKER_TEXT["create_unknown"][1]
+    assert "yeni plan kurulabilir" not in BLOCKER_TEXT["create_unknown"][1]

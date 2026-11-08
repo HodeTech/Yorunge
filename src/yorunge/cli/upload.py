@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO, cast
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from yorunge.adapters.upload_public import ResumeHint
     from yorunge.application.upload_progress import UploadProgress
     from yorunge.cli import Parser
+    from yorunge.domain.errors import YorungeError
     from yorunge.domain.models import Model, Result
     from yorunge.domain.upload_public import (
         DatasetUploadsPage,
@@ -129,7 +130,7 @@ def _arguments(command: argparse.ArgumentParser, action: str) -> None:
                 action="store_true",
                 help="Yalnız devam planı: son onay isteği gitmiş olabilecek dosyaların yeniden "
                 "gönderilmesini kabul et (geri alınamaz: aynı adlı kopya oluşabilir ve sonraki "
-                "devamları engeller; önce lease süresini bekleyin)",
+                "devamları engeller; önce lease süresinin dolmasını ve sonra da bir süre bekleyin)",
             )
 
 
@@ -157,7 +158,7 @@ def _resume_arguments(command: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Yalnız --prepare ile: son onay isteği gitmiş olabilecek dosyaların yeniden "
         "gönderilmesini kabul et (geri alınamaz: aynı adlı kopya oluşabilir ve sonraki "
-        "devamları engeller; önce lease süresini bekleyin)",
+        "devamları engeller; önce lease süresinin dolmasını ve sonra da bir süre bekleyin)",
     )
 
 
@@ -444,12 +445,18 @@ def _next_text(data: UploadSummary, hint: ResumeHint | None = None) -> list[str]
     return lines
 
 
-def _explained(names: Sequence[str]) -> tuple[str, ...]:
-    """The blockers a person is told about: a record that is over has no proof left to take."""
+def explained_blockers(names: Sequence[str]) -> tuple[str, ...]:
+    """The blockers a person is told about, each only where its advice can still help.
+
+    A record that is over has no proof left to take (``reconcile_available``), and a listing that
+    is too large is not one to take again later (``inventory_unreliable``).
+    """
     held = tuple(names)
-    return tuple(
-        name for name in held if not (name == "reconcile_available" and "source_terminal" in held)
-    )
+    silenced = {
+        "reconcile_available": "source_terminal" in held,
+        "inventory_unreliable": "inventory_too_large" in held,
+    }
+    return tuple(name for name in held if not silenced.get(name, False))
 
 
 def _continue_text(data: UploadSummary, hint: ResumeHint | None) -> list[str]:
@@ -465,7 +472,7 @@ def _continue_text(data: UploadSummary, hint: ResumeHint | None) -> list[str]:
             "--prepare ile devam planı kaydedilir.",
         ]
     lines = ["Devam şu an mümkün değil (yerel kayda göre):"]
-    for name in _explained(hint.blockers):
+    for name in explained_blockers(hint.blockers):
         reason, step = BLOCKER_TEXT[name]
         lines.extend((f"- {name}: {reason}", f"  Sonraki adım: {step}"))
     if hint.related_operation_id is not None:
@@ -607,9 +614,10 @@ UNCONFIRMED_WARNING = (
     "Uyarı: bazı dosyaların son onay (confirm) isteği sunucuya ulaşmış olabilir. Yeniden "
     "göndermek aynı adlı bir kopya yaratabilir; kopya varsa sonraki her devam `conflict` ile "
     "engellenir ve kopya yalnız Platform arayüzünde silinebilir.",
-    "Kabul etmeden önce kaynağın lease süresinin (en çok 150 sn) dolmasını bekleyin; yeniden "
-    "gönderilen dosyaların önceki yüklemelerinden yetim nesneler kalabilir (silinmez, saklama "
-    "maliyeti bilinmiyor).",
+    "Kabul etmeden önce kaynağın lease süresi (en çok 150 sn) dolduktan sonra da bir süre "
+    "bekleyin: sunucuda geç kalmış bir commit sınırsız gecikebilir. Yeniden gönderilen "
+    "dosyaların önceki yüklemelerinden yetim nesneler kalabilir (silinmez, saklama maliyeti "
+    "bilinmiyor).",
 )
 ORPHAN_NOTE = (
     "Yeniden gönderilen dosyalar yeni nesne anahtarıyla yüklenir; önceki presign/PUT’tan kalan "
@@ -627,8 +635,9 @@ BLOCKER_TEXT: dict[str, tuple[str, str]] = {
     "source_ineligible": (
         "Kaynak devam için uygun değil: henüz hiçbir şey göndermemiş ya da doğrulanmamış "
         "okumaya izin vermeyen (verified-only) bir kaynak.",
-        "Devam yok; hiçbir şey göndermemiş bir devamsa kaynağının kimliğiyle resume verin, kaynak "
-        "bekliyorsa lease dolunca yerel olarak iptal edilir, sonra yeni plan kurun.",
+        "Devam yok; hiçbir şey göndermemiş bir devamsa kaynağının kimliğiyle resume verin, "
+        "bekleyen kaynağı lease dolunca reconcile --operation-id --accept-unverified-read "
+        "sonlandırır, sonra yeni plan kurun.",
     ),
     "source_superseded": (
         "Bu kaynağın iptal edilmemiş bir devamı zaten var.",
@@ -648,9 +657,9 @@ BLOCKER_TEXT: dict[str, tuple[str, str]] = {
     "create_unknown": (
         "Platform’daki veri setinin kimliği kaydedilmedi: create hiç gönderilmemiş ya da sonucu "
         "bilinmiyor.",
-        "Hiçbir şey gönderilmediyse yeni plan kurulabilir; create gönderilmiş olabilirse "
-        "Platform arayüzünde inceleyin (ID adından tahmin edilmez, otomatik kurtarma ya da silme "
-        "yoktur).",
+        "Platform arayüzünde inceleyin (otomatik kurtarma ya da silme yoktur); create "
+        "gönderildiyse aynı adlı yeni plan reddedilir, farklı adlı plan ikinci bir veri seti "
+        "yaratabilir.",
     ),
     "membership_unobserved": (
         "Veri setinin kaynağın oluşturduğu private veri seti olduğu ve projede tek kez "
@@ -695,16 +704,36 @@ CLASS_TEXT = {
     "conflict": "çakışan",
     "inventory_unreliable": "güvenilmez listede",
 }
+
+
+def _conflict_hint(error: YorungeError) -> str | None:
+    """Another operation stands in the way (the source's live continuation, or its own reader)."""
+    identity = getattr(error, "operation_id", None)
+    if identity is None:
+        return None
+    return (
+        "Kaynak iş ya da devamı hâlâ çalışıyor ya da lease'i dolmadı (en çok 150 sn). Önce o işin "
+        f"raporunu alın: yorunge datasets upload resume --operation-id {identity} "
+        "--accept-unverified-read; --prepare'i raporun uygun dediği iş için verin."
+    )
+
+
 # The errors a `resume` meets in its own way: what a person does about each (the closed code and
 # the fixed message stay as they are; this is added to the text output of that command alone).
-RESUME_ERROR_HINTS: dict[str, str] = {
+RESUME_ERROR_HINTS: dict[str, str | Callable[[YorungeError], str | None]] = {
     "state_changed": (
         "Yerel durum rapor hazırlanırken değişti (anahtar döndürülmüş ya da saat izi "
         "değişmiş olabilir); aynı --config ve --profile ile komutu yeniden çalıştırın."
     ),
-    "operation_conflict": (
-        "Kaynak iş ya da devamı hâlâ çalışıyor (lease en çok 150 sn): --prepare olmadan raporu "
-        "alın, lease bitince komutu yeniden verin."
+    "operation_conflict": _conflict_hint,
+    "state_invalid": (
+        "Bu kayıt devam ettirilemiyor: eski (v1) bir kayıt yalnız tarihtir (show --operation-id "
+        "durumunu söyler); v1 değilse yerel durum geçersizdir, sahiplik ve bütünlük "
+        "denetimini çalıştırın."
+    ),
+    "input_changed": (
+        "Klasör ya da manifest plandakinden farklı: klasörü yüklemedeki haline getirip komutu "
+        "yeniden verin; değişmiş bir klasör bu işin devamı değil, ayrı bir ekleme işidir."
     ),
     "state_busy": "Yerel durum deposu meşgul; çalışan başka bir komut bitince yeniden deneyin.",
     "upload_plan_not_valid": (
@@ -720,8 +749,9 @@ RESUME_ERROR_HINTS: dict[str, str] = {
         "silin ya da adını değiştirin, değilse biraz sonra yeniden deneyin."
     ),
     "approval_required": (
-        "Dataset’in okunması açık bir seçim ister: --accept-unverified-read verin; belirsiz "
-        "dosyalarla --prepare için --accept-unconfirmed-effects de gerekir."
+        "Eksik açık seçim: dataset’in okunması için --accept-unverified-read; belirsiz "
+        "dosyalarla --prepare için ayrıca --accept-unconfirmed-effects (geri alınamaz sonucu "
+        "raporun uyarısından okuyun)."
     ),
 }
 QUOTA_TEXT = {"plans": "plan", "operations": "iş", "files": "dosya", "payload_bytes": "bayt"}
@@ -871,7 +901,7 @@ def _resume_text(data: DatasetUploadResumeReport) -> str:
         )
     else:
         lines.append("Devam edilemiyor: engeller kapanmadan plan kaydedilmez.")
-    for blocker in _explained(data.blockers):
+    for blocker in explained_blockers(data.blockers):
         reason, step = BLOCKER_TEXT[blocker]
         lines.extend((f"- {blocker}: {reason}", f"  Sonraki adım: {step}"))
     if data.related_operation_id is not None:
@@ -896,7 +926,7 @@ def _selection_text(data: UploadIntentReview) -> tuple[str, ...]:
     return (
         f"Bu devamda gönderilecek: {limits.max_presign} dosya, {limits.max_upload_bytes} byte"
         + (" (manifestin geri kalanı Platform’da zaten görülüyor)." if present > 0 else "."),
-        ORPHAN_NOTE,
+        *((ORPHAN_NOTE,) if limits.max_presign else ()),
     )
 
 

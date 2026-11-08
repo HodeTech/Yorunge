@@ -258,10 +258,10 @@ class OutputRenderer:
     @staticmethod
     def _blockers_text(blockers: tuple[str, ...], operation_id: str) -> str:
         """Why a continuation was refused: a sentence of reason and one of next step for each."""
-        from yorunge.cli.upload import BLOCKER_TEXT
+        from yorunge.cli.upload import BLOCKER_TEXT, explained_blockers
 
         lines: list[str] = []
-        for name in blockers:
+        for name in explained_blockers(blockers):
             reason, step = BLOCKER_TEXT[name]
             lines.extend((f"- {name}: {reason}", f"  Sonraki adım: {step}"))
         lines.append(

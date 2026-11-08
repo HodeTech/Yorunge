@@ -143,7 +143,7 @@ Terminal sonucu yazarken I/O/bütçe veya commit dönüşü belirsizse bellektek
 
 ## Coordination hata sınırı
 
-Yeni OperationError mevcut YorungeError alt sınıfıdır; tam zarf `schema_version=1, code, message, operation_id, retryable=false, details` olur. Operation ID biliniyorsa canonical UUID, bilinmiyorsa null. Details tam `{reason_code: ErrorCode, capacity_kind: store|attempt|transition|null}`; capacity_kind yalnız kapasite hatasında non-null'dır. reason_code exception kataloğundandır; kalıcı OperationReason ayrı tiptir. Eski hataların details={} davranışı değiştirilmez.
+Yeni OperationError mevcut YorungeError alt sınıfıdır; tam zarf `schema_version=1, code, message, operation_id, retryable=false, details` olur. Operation ID biliniyorsa canonical UUID, bilinmiyorsa null. Details tam `{reason_code: ErrorCode, capacity_kind: store|attempt|transition|null}`; capacity_kind yalnız kapasite hatasında non-null'dır. reason_code exception kataloğundandır; kalıcı OperationReason ayrı tiptir. Tek istisna `continuation_not_possible`tır: details bu iki alana ek olarak kapalı `blockers` listesini (boş olmayan, tekil, `BLOCKERS` sırasında adlar) taşır ([devam sözleşmesi](dataset-upload-continuation.md)). Eski hataların details={} davranışı değiştirilmez.
 
 Kod/exit/tetik tablosunun kanonik yeri [CLI hata kataloğudur](cli-contract.md#operation-hata-kataloğu).
 

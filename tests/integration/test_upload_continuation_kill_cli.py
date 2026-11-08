@@ -71,12 +71,20 @@ class Terminal(Journey):
         self.transcript += [process.stdout, process.stderr]
         return process
 
-    def killed_start(self, plan_id, checkpoint, ready):
+    def killed_start(self, plan_id, checkpoint, ready, shift=0.0):
         """`start`, paused after the armed stage `checkpoint` and killed there: returncode -9."""
         base = ["datasets", "upload", "start", "--plan-id", plan_id]
         base += ["--state-dir", str(self.data[0]), "--config", str(self.config)]
         process = subprocess.Popen(
-            console(self.server, *base, "--output", "json", checkpoint=checkpoint, ready=ready),
+            console(
+                self.server,
+                *base,
+                "--output",
+                "json",
+                shift=shift,
+                checkpoint=checkpoint,
+                ready=ready,
+            ),
             env=environment(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -160,7 +168,9 @@ def test_a_killed_start_is_finished_by_the_commands_alone(public_inputs, certifi
             "resume", "--operation-id", source, "--accept-unverified-read", "--prepare"
         )
         assert waiting.returncode == 2 and waiting.stdout == b""
-        assert "lease en çok 150 sn" in waiting.stderr.decode()
+        waiting_text = waiting.stderr.decode()
+        assert "lease'i dolmadı (en çok 150 sn)" in waiting_text
+        assert f"resume --operation-id {source} --accept-unverified-read" in waiting_text
 
         # (2) the lease has lapsed (a clock 200 s on): `show` now points at the report
         lapsed = person.run("show", "--operation-id", source, context=False, shift=LAPSED)
@@ -222,3 +232,132 @@ def test_a_killed_start_is_finished_by_the_commands_alone(public_inputs, certifi
         body = json.dumps(json.loads(machine.transcript[-2]))
         for private in ("object_key", "created_dataset", "write_access", "credential_id"):
             assert private not in body
+
+
+LAPSED_AGAIN = 400.0  # past the lease of the dead continuation, which began on the clock LAPSED
+
+
+def test_a_killed_continuation_is_itself_continued_by_the_commands_alone(
+    public_inputs, certificates
+):
+    """The chain with real kills: the original and then its continuation die with a SIGKILL.
+
+    The second death leaves the continuation `running`; once its lease has lapsed `show` of the
+    continuation (not of the original) points at `resume --operation-id <continuation>`, and the
+    commands finish the dataset once: every file is on the provider exactly once.
+    """
+    data, manifest, config = public_inputs
+    data = many(data)
+    manifest.write_bytes(data[2].encoded())
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    with TlsServer(certificates, provider.routes()) as server:
+        machine = Terminal(server, data, manifest, config, "json")
+        planned, _ = machine.done(
+            machine.run(
+                "plan",
+                str(data[1]),
+                "--manifest",
+                str(manifest),
+                "--name",
+                "sample",
+                "--project",
+                SCOPE.project_id,
+                "--owner-user",
+                SCOPE.owner.id,
+                "--modality",
+                "VISION",
+                "--unpriced",
+                "--admission-policy",
+                "explicit-attempt",
+                "--profile",
+                "test",
+            )
+        )
+        machine.done(
+            machine.run(
+                "approve",
+                "--plan-id",
+                planned["plan_id"],
+                "--confirm",
+                planned["plan_digest"],
+                *FLAGS,
+            )
+        )
+        original = machine.killed_start(
+            planned["plan_id"], "presign-0", config.parent / "original.ready"
+        )
+        assert original == -signal.SIGKILL
+        provider.represign = True
+
+        def continuation_plan(source, shift):
+            report, _ = machine.done(
+                machine.run(
+                    "resume", "--operation-id", source, "--accept-unverified-read", shift=shift
+                )
+            )
+            assert report["eligible"] is True
+            uncertain = (
+                ("--accept-unconfirmed-effects",)
+                if report["observation"]["unconfirmed_ack_required"]
+                else ()
+            )
+            prepared, _ = machine.done(
+                machine.run(
+                    "resume",
+                    "--operation-id",
+                    source,
+                    "--accept-unverified-read",
+                    "--prepare",
+                    *uncertain,
+                    shift=shift,
+                )
+            )
+            machine.done(
+                machine.run(
+                    "approve",
+                    "--plan-id",
+                    prepared["plan_id"],
+                    "--confirm",
+                    prepared["plan_digest"],
+                    *FLAGS,
+                    *uncertain,
+                    shift=shift,
+                )
+            )
+            return prepared["plan_id"]
+
+        source = machine.done(machine.run("show", "--plan-id", planned["plan_id"], context=False))[
+            0
+        ]["operation_id"]
+        first = continuation_plan(source, LAPSED)
+        killed = machine.killed_start(
+            first, "cont-confirm-1", config.parent / "continuation.ready", shift=LAPSED
+        )
+        assert killed == -signal.SIGKILL
+        dead = machine.done(machine.run("show", "--plan-id", first, context=False))[0]
+        continuation = dead["operation_id"]
+        assert continuation != source and dead["operation_status"] == "running"
+
+        # the lease of the dead continuation has not lapsed (the clock is 200 s on, its lease
+        # began there): `show` says who is in the way, and does not point at the original
+        person = Terminal(server, data, manifest, config, "text")
+        live = person.run("show", "--operation-id", continuation, context=False, shift=LAPSED)
+        text = live.stdout.decode()
+        assert "Devam şu an mümkün değil (yerel kayda göre):" in text and "- source_active:" in text
+        assert "Devam için:" not in text
+
+        # once it has: the direction names the CONTINUATION, and the commands finish the job
+        lapsed = person.run(
+            "show", "--operation-id", continuation, context=False, shift=LAPSED_AGAIN
+        )
+        assert (
+            f"Devam için: yorunge datasets upload resume --operation-id {continuation}"
+            in lapsed.stdout.decode()
+        )
+        second = continuation_plan(continuation, LAPSED_AGAIN)
+        finished, _ = machine.done(machine.run("start", "--plan-id", second, shift=LAPSED_AGAIN))
+        assert finished["operation_status"] == "succeeded"
+        assert finished["continuation_of"] == continuation
+        assert finished["verification_level"] == "metadata"
+        # three files, once each: nothing the first continuation confirmed was sent again
+        assert sorted(provider.confirmed) == sorted(file.path for file in data[2].files)
