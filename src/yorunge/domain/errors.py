@@ -77,6 +77,14 @@ ErrorCode = Literal[
     "download_incomplete",
     "download_write_failed",
     "download_write_uncertain",
+    "dataset_version_not_found",
+    "dataset_version_not_frozen",
+    "dataset_version_changed",
+    "dataset_version_missing",
+    "binding_invalid",
+    "binding_output_exists",
+    "binding_write_failed",
+    "binding_write_uncertain",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -143,6 +151,28 @@ MESSAGES: dict[ErrorCode, str] = {
     ),
     "download_write_uncertain": (
         "İndirilen dosya yayınlanmış olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
+    ),
+    "dataset_version_not_found": (
+        "Veri sürümü bulunamadı. Veri seti kimliğini ve sürüm etiketini kontrol edin."
+    ),
+    "dataset_version_not_frozen": (
+        "Veri sürümü dondurulmamış; değişmez bağ üretilmedi. Sürümü Platform'da dondurun."
+    ),
+    "dataset_version_changed": (
+        "Bağlı veri sürümü değişmiş. Değişen alanlar ayrıntıdadır; yeni bir bağ üretin."
+    ),
+    "dataset_version_missing": (
+        "Bağlı veri sürümü uzakta artık yok; referans geçerliliğini yitirdi."
+    ),
+    "binding_invalid": "Sürüm bağı dosyası geçersiz. Dosyanın bozulmadığını kontrol edin.",
+    "binding_output_exists": (
+        "Sürüm bağı hedefi zaten var. Dosyaya dokunulmadı; yeni ve kullanılmamış bir hedef seçin."
+    ),
+    "binding_write_failed": (
+        "Sürüm bağı yazılamadı. Hedef oluşturulmadı; disk, izinler ve hedef dizini kontrol edin."
+    ),
+    "binding_write_uncertain": (
+        "Sürüm bağı yayınlanmış olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
     ),
     "transport_timeout": "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok.",
     "transport_failed": "Ağ bağlantısı veya güvenli taşıma tamamlanamadı. Hedefi kontrol edin.",
@@ -267,9 +297,15 @@ class YorungeError(Exception):
             "operation_uncertain",
             "manifest_write_uncertain",
             "download_write_uncertain",
+            "binding_write_uncertain",
         ):
             self.exit_code = 5
-        elif code in ("manifest_mismatch", "download_integrity_mismatch"):
+        elif code in (
+            "manifest_mismatch",
+            "download_integrity_mismatch",
+            "dataset_version_changed",
+            "dataset_version_missing",
+        ):
             self.exit_code = 7
         elif code in ("credential_unavailable", "invalid_credential", "remote_access_denied"):
             self.exit_code = 3
@@ -393,6 +429,52 @@ class ManifestMismatch(YorungeError):
     def envelope(self) -> dict[str, object]:
         value = super().envelope()
         value["details"] = dict(self.details)
+        return value
+
+
+# The closed vocabulary of what a bound dataset version can differ in (ADR-0033 §3): the identity
+# and membership fields, and the annotation fields that may move on a frozen version.
+VERSION_IDENTITY_FIELDS = (
+    "created_at",
+    "is_frozen",
+    "item_count",
+    "split_counts",
+    "split_total_matches_item_count",
+    "version_id",
+    "version_tag",
+)
+VERSION_ANNOTATION_FIELDS = (
+    "annotated_item_count",
+    "class_count",
+    "class_labels_sha256",
+    "is_partial",
+    "total_annotation_count",
+)
+VERSION_FIELDS = tuple(sorted(VERSION_IDENTITY_FIELDS + VERSION_ANNOTATION_FIELDS))
+
+
+class DatasetVersionChanged(YorungeError):
+    """A bound dataset version differs from the provider's now: which fields, and nothing else."""
+
+    def __init__(self, changed_fields: tuple[str, ...]) -> None:
+        if (
+            type(changed_fields) is not tuple
+            or not changed_fields
+            or list(changed_fields) != sorted(set(changed_fields))
+            or any(name not in VERSION_FIELDS for name in changed_fields)
+        ):
+            raise ValueError("a sorted, non-empty set of closed field names required")
+        super().__init__("dataset_version_changed")
+        self.changed_fields = changed_fields
+        self.annotation_only = all(name in VERSION_ANNOTATION_FIELDS for name in changed_fields)
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = {
+            "changed_field_count": len(self.changed_fields),
+            "changed_fields": list(self.changed_fields),
+            "annotation_only": self.annotation_only,
+        }
         return value
 
 

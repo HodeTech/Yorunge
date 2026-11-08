@@ -1,0 +1,386 @@
+"""Remote dataset versions and the immutable reference to one (ADR-0033).
+
+``docs/reference/dataset-versions.md``. Pure: no I/O, clock or randomness. A version is observed as
+facts (counts, flags, a digest of its class labels), a frozen one can be bound into a closed,
+canonical, self-digested record, and a bound record can be compared with a later observation. A
+class name, a description, an author or a URL never enters any of these types: names are only
+hashed.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from collections.abc import Mapping, Sequence
+from typing import Annotated, ClassVar, Final, Literal, Self
+
+from pydantic import Field, field_validator, model_validator
+
+from yorunge.domain.capabilities import JsonWireModel, instant
+from yorunge.domain.credentials import ServiceTarget
+from yorunge.domain.dataset_manifest import canonical_manifest
+from yorunge.domain.dataset_upload import provider_uuid
+from yorunge.domain.errors import (
+    VERSION_ANNOTATION_FIELDS,
+    VERSION_IDENTITY_FIELDS,
+    DatasetVersionChanged,
+    YorungeError,
+)
+from yorunge.domain.models import Model
+
+MAX_COUNT: Final = 2**63 - 1
+MAX_BINDING_BYTES: Final = 16 * 1024
+MIN_PAGE: Final = 1
+MAX_PAGE: Final = 10_000
+MAX_LIST_ITEMS: Final = 100
+MAX_CLASS_LABELS: Final = 4096
+
+Count = Annotated[int, Field(ge=0, le=MAX_COUNT)]
+Sha256 = Annotated[str, Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")]
+
+_TAG = re.compile(r"[A-Za-z0-9._-]{1,128}", re.ASCII)
+_SHA256 = re.compile(r"[a-f0-9]{64}", re.ASCII)
+
+
+def validate_version_tag(value: object) -> str:
+    """One path component of 1-128 characters of ``[A-Za-z0-9._-]``; ``.`` and ``..`` never."""
+    if type(value) is not str or value in (".", "..") or _TAG.fullmatch(value) is None:
+        raise ValueError("a version tag is 1-128 characters of [A-Za-z0-9._-], not . or ..")
+    return value
+
+
+def _canonical_time(value: str) -> str:
+    instant(value)
+    return value
+
+
+class SplitCounts(Model):
+    train: Count
+    val: Count
+    test: Count
+    unassigned: Count
+
+    @property
+    def total(self) -> int:
+        return self.train + self.val + self.test + self.unassigned
+
+
+class _VersionFacts(Model):
+    """What a version list and a version detail both say; never a class name, text or URL."""
+
+    schema_version: Literal[1]
+    dataset_id: str
+    version_id: str
+    version_tag: str
+    is_frozen: bool
+    is_partial: bool
+    is_export_ready: bool
+    item_count: Count
+    split_counts: SplitCounts
+    split_total_matches_item_count: bool
+    annotated_item_count: Count
+    total_annotation_count: Count
+    created_at: str
+    observed_at: str
+
+    @field_validator("dataset_id", "version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @field_validator("version_tag")
+    @classmethod
+    def closed_tag(cls, value: str) -> str:
+        return validate_version_tag(value)
+
+    @field_validator("created_at", "observed_at")
+    @classmethod
+    def canonical_instant(cls, value: str) -> str:
+        return _canonical_time(value)
+
+    @model_validator(mode="after")
+    def honest_total(self) -> Self:
+        if self.split_total_matches_item_count != (self.item_count == self.split_counts.total):
+            raise ValueError("the split total flag says what the counts say")
+        return self
+
+
+class DatasetVersionListItem(_VersionFacts):
+    """A version as a list shows it: without class labels (the list carries none)."""
+
+    kind: Literal["dataset_version_list_item"]
+
+
+class DatasetVersionObservation(_VersionFacts):
+    """One version, observed: the facts of the list and the digest of its class labels."""
+
+    kind: Literal["dataset_version_observation"]
+    class_count: Count
+    class_labels_sha256: Sha256
+
+
+class LocalManifestRelation(Model):
+    """The local Manifest v1 the binding was made against, and how its file count relates."""
+
+    digest: Sha256
+    file_count: Count
+    relation: Literal["count_matches", "count_differs"]
+
+
+class DatasetVersionCheck(Model):
+    """The only success of ``check``: the binding still names what the provider shows."""
+
+    schema_version: Literal[1]
+    kind: Literal["dataset_version_check"]
+    result: Literal["unchanged"]
+    dataset_id: str
+    version_id: str
+    version_tag: str
+    binding_digest: Sha256
+    observed_at: str
+
+    @field_validator("dataset_id", "version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @field_validator("version_tag")
+    @classmethod
+    def closed_tag(cls, value: str) -> str:
+        return validate_version_tag(value)
+
+    @field_validator("observed_at")
+    @classmethod
+    def canonical_instant(cls, value: str) -> str:
+        return _canonical_time(value)
+
+
+class DatasetVersionBinding(JsonWireModel):
+    """The immutable reference to one frozen version (ADR-0033 §2): closed, canonical, digested.
+
+    The digest covers every field except ``digest`` and ``observed_at`` and is the SHA-256 of the
+    Manifest v1 encoder's bytes: observing the same provider state again, against the same local
+    manifest, gives the same digest. It is a checksum of itself, not a signature.
+    """
+
+    max_wire_bytes: ClassVar[int] = MAX_BINDING_BYTES
+
+    schema_version: Literal[1]
+    policy_version: Literal[1]
+    kind: Literal["dataset_version_binding"]
+    service: ServiceTarget
+    dataset_id: str
+    version_id: str
+    version_tag: str
+    created_at: str
+    is_frozen: Literal[True]
+    is_partial: bool
+    item_count: Count
+    split_counts: SplitCounts
+    split_total_matches_item_count: bool
+    annotated_item_count: Count
+    total_annotation_count: Count
+    class_count: Count
+    class_labels_sha256: Sha256
+    local_manifest: LocalManifestRelation | None
+    observed_at: str
+    digest: Sha256
+
+    @field_validator("policy_version", mode="before")
+    @classmethod
+    def integer_policy(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer policy version required")
+        return value
+
+    @field_validator("dataset_id", "version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @field_validator("version_tag")
+    @classmethod
+    def closed_tag(cls, value: str) -> str:
+        return validate_version_tag(value)
+
+    @field_validator("created_at", "observed_at")
+    @classmethod
+    def canonical_instant(cls, value: str) -> str:
+        return _canonical_time(value)
+
+    @model_validator(mode="after")
+    def integrity(self) -> Self:
+        if self.split_total_matches_item_count != (self.item_count == self.split_counts.total):
+            raise ValueError("the split total flag says what the counts say")
+        if self.local_manifest is not None:
+            matches = self.local_manifest.file_count == self.item_count
+            if self.local_manifest.relation != ("count_matches" if matches else "count_differs"):
+                raise ValueError("the manifest relation says what the counts say")
+        if self.digest != self.computed_digest():
+            raise ValueError("binding digest mismatch")
+        return self
+
+    def computed_digest(self) -> str:
+        body = self.model_dump(mode="json", exclude={"digest", "observed_at"})
+        return hashlib.sha256(canonical_manifest(body)).hexdigest()
+
+    def encoded(self) -> bytes:
+        """The artifact: the same encoding, with the digest and ``observed_at``, and one LF."""
+        content = canonical_manifest(self.model_dump(mode="json")) + b"\n"
+        if len(content) > MAX_BINDING_BYTES:
+            raise ValueError("binding byte limit exceeded")
+        return content
+
+    def check(
+        self, observation: DatasetVersionObservation, observed_at: str
+    ) -> DatasetVersionCheck:
+        """``unchanged`` if the observation differs in nothing the binding holds, else the error."""
+        differences = changed_fields(self, observation)
+        if differences:
+            raise DatasetVersionChanged(differences)
+        return DatasetVersionCheck(
+            schema_version=1,
+            kind="dataset_version_check",
+            result="unchanged",
+            dataset_id=self.dataset_id,
+            version_id=self.version_id,
+            version_tag=self.version_tag,
+            binding_digest=self.digest,
+            observed_at=observed_at,
+        )
+
+
+def bind(
+    observation: DatasetVersionObservation,
+    service: ServiceTarget,
+    *,
+    manifest_digest: str | None = None,
+    manifest_file_count: int | None = None,
+) -> DatasetVersionBinding:
+    """The binding of a frozen version, optionally against a local Manifest v1."""
+    if not observation.is_frozen:
+        raise YorungeError("dataset_version_not_frozen")
+    if (manifest_digest is None) != (manifest_file_count is None):
+        raise YorungeError("invalid_request")
+    local: LocalManifestRelation | None = None
+    if manifest_digest is not None and manifest_file_count is not None:
+        if type(manifest_file_count) is not int or _SHA256.fullmatch(manifest_digest) is None:
+            raise YorungeError("invalid_request")
+        local = LocalManifestRelation(
+            digest=manifest_digest,
+            file_count=manifest_file_count,
+            relation="count_matches"
+            if manifest_file_count == observation.item_count
+            else "count_differs",
+        )
+    fields = {
+        "schema_version": 1,
+        "policy_version": 1,
+        "kind": "dataset_version_binding",
+        "service": service.model_dump(mode="json"),
+        "dataset_id": observation.dataset_id,
+        "version_id": observation.version_id,
+        "version_tag": observation.version_tag,
+        "created_at": observation.created_at,
+        "is_frozen": True,
+        "is_partial": observation.is_partial,
+        "item_count": observation.item_count,
+        "split_counts": observation.split_counts.model_dump(mode="json"),
+        "split_total_matches_item_count": observation.split_total_matches_item_count,
+        "annotated_item_count": observation.annotated_item_count,
+        "total_annotation_count": observation.total_annotation_count,
+        "class_count": observation.class_count,
+        "class_labels_sha256": observation.class_labels_sha256,
+        "local_manifest": None if local is None else local.model_dump(mode="json"),
+        "observed_at": observation.observed_at,
+    }
+    digest = hashlib.sha256(
+        canonical_manifest({k: v for k, v in fields.items() if k != "observed_at"})
+    ).hexdigest()
+    return DatasetVersionBinding.model_validate({**fields, "digest": digest})
+
+
+def decode_binding(data: object) -> DatasetVersionBinding:
+    """A stored binding: exactly the canonical bytes of a valid one, or ``binding_invalid``."""
+    try:
+        if type(data) is not bytes or not 0 < len(data) <= MAX_BINDING_BYTES:
+            raise ValueError("bounded binding required")
+        binding = DatasetVersionBinding.model_validate_json(data)
+        if binding.encoded() != data:
+            raise ValueError("canonical binding required")
+    except (ValueError, RecursionError, UnicodeError):
+        raise YorungeError("binding_invalid") from None
+    return binding
+
+
+def require_same_service(binding: DatasetVersionBinding, active: ServiceTarget) -> None:
+    """The binding names the provider the active profile targets; else ``state_changed``."""
+    if binding.service != active:
+        raise YorungeError("state_changed")
+
+
+def changed_fields(
+    binding: DatasetVersionBinding, observation: DatasetVersionObservation
+) -> tuple[str, ...]:
+    """The sorted closed names in which the observation differs from what the binding holds.
+
+    ``observed_at``, ``is_export_ready`` (a flag that changes with export preparation and defines
+    nothing about the content), the provider target and the local manifest relation are not
+    compared. A version that was unfrozen is ``is_frozen``, never unchanged.
+    """
+    differences = [
+        name
+        for name in (*VERSION_IDENTITY_FIELDS, *VERSION_ANNOTATION_FIELDS)
+        if getattr(binding, name) != getattr(observation, name)
+    ]
+    return tuple(sorted(differences))
+
+
+def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
+    """The digest of a version's class labels, which are never shown (ADR-0033, reference).
+
+    The objects ``{annotation_count, id, name, sort_order}`` sorted by ``id`` (integers numerically,
+    strings by their UTF-8 bytes), encoded by the Manifest v1 encoder. The ``id`` keeps the type
+    the provider gave it; mixed types or a repeated ``id`` make the order ambiguous, so the
+    answer is not one (``invalid_response``).
+    """
+    if not isinstance(labels, Sequence) or isinstance(labels, (str, bytes)):
+        raise YorungeError("invalid_response")
+    if len(labels) > MAX_CLASS_LABELS:
+        raise YorungeError("invalid_response")
+    rows: list[dict[str, object]] = []
+    for label in labels:
+        if not isinstance(label, Mapping) or set(label) != {
+            "annotation_count",
+            "id",
+            "name",
+            "sort_order",
+        }:
+            raise YorungeError("invalid_response")
+        identifier, name = label["id"], label["name"]
+        annotations, order = label["annotation_count"], label["sort_order"]
+        if (
+            type(identifier) not in (int, str)
+            or type(name) is not str
+            or type(annotations) is not int
+            or not 0 <= annotations <= MAX_COUNT
+            or type(order) is not int
+            or not -MAX_COUNT <= order <= MAX_COUNT
+            or (type(identifier) is int and not -MAX_COUNT <= identifier <= MAX_COUNT)
+        ):
+            raise YorungeError("invalid_response")
+        rows.append(dict(label))
+    kinds = {type(row["id"]) for row in rows}
+    if len(kinds) > 1 or len({row["id"] for row in rows}) != len(rows):
+        raise YorungeError("invalid_response")
+    try:
+        if kinds == {str}:
+            rows.sort(key=lambda row: str(row["id"]).encode("utf-8"))
+        else:
+            rows.sort(key=lambda row: int(str(row["id"])))
+        encoded = canonical_manifest(rows)
+        json.loads(encoded)  # the encoder's own output must parse (lone surrogates do not encode)
+    except (UnicodeError, ValueError):
+        raise YorungeError("invalid_response") from None
+    return hashlib.sha256(encoded).hexdigest()
