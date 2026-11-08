@@ -68,6 +68,15 @@ ErrorCode = Literal[
     "manifest_write_failed",
     "manifest_write_uncertain",
     "manifest_mismatch",
+    "download_target_invalid",
+    "download_output_exists",
+    "download_partial_unverified",
+    "download_busy",
+    "download_limit_exceeded",
+    "download_integrity_mismatch",
+    "download_incomplete",
+    "download_write_failed",
+    "download_write_uncertain",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -105,6 +114,35 @@ MESSAGES: dict[ErrorCode, str] = {
     ),
     "manifest_mismatch": (
         "Klasörün dosya adları veya içeriği manifestle eşleşmiyor. Değişiklikleri inceleyin."
+    ),
+    "download_target_invalid": (
+        "İndirme hedefi geçersiz. Hedef dizinin var olduğunu ve yeni, geçerli bir dosya adı "
+        "verdiğinizi kontrol edin."
+    ),
+    "download_output_exists": (
+        "İndirme hedefi zaten var. Dosyaya dokunulmadı; yeni ve kullanılmamış bir hedef seçin."
+    ),
+    "download_partial_unverified": (
+        "Hedef dizinde doğrulanamayan bir yarım indirme izi var. Hiçbir dosyaya dokunulmadı; "
+        "dizindeki .yorunge-download- dosyalarını inceleyin veya başka bir hedef seçin."
+    ),
+    "download_busy": (
+        "Aynı hedef için başka bir indirme sürüyor. Hiçbir dosyaya dokunulmadı; bitmesini bekleyin."
+    ),
+    "download_limit_exceeded": "İndirme 1 GiB sınırını aştı. Hedef oluşturulmadı.",
+    "download_integrity_mismatch": (
+        "İndirilen içeriğin SHA-256 özeti beklenenle eşleşmedi. Hedef oluşturulmadı; "
+        "--sha256 değerini kontrol edin."
+    ),
+    "download_incomplete": (
+        "İndirme tamamlanmadan kesildi. Komutu yeniden çalıştırın; "
+        "uygunsa kaldığı yerden devam eder."
+    ),
+    "download_write_failed": (
+        "İndirme yazılamadı. Hedef oluşturulmadı; disk, izinler ve hedef dizini kontrol edin."
+    ),
+    "download_write_uncertain": (
+        "İndirilen dosya yayınlanmış olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
     ),
     "transport_timeout": "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok.",
     "transport_failed": "Ağ bağlantısı veya güvenli taşıma tamamlanamadı. Hedefi kontrol edin.",
@@ -224,9 +262,14 @@ class YorungeError(Exception):
         self.exit_code = 2
         if code == "approval_required":
             self.exit_code = 4
-        elif code in ("config_write_uncertain", "operation_uncertain", "manifest_write_uncertain"):
+        elif code in (
+            "config_write_uncertain",
+            "operation_uncertain",
+            "manifest_write_uncertain",
+            "download_write_uncertain",
+        ):
             self.exit_code = 5
-        elif code == "manifest_mismatch":
+        elif code in ("manifest_mismatch", "download_integrity_mismatch"):
             self.exit_code = 7
         elif code in ("credential_unavailable", "invalid_credential", "remote_access_denied"):
             self.exit_code = 3
@@ -240,6 +283,7 @@ class YorungeError(Exception):
             "invalid_response",
             "stream_interrupted",
             "output_write_failed",
+            "download_incomplete",
         ):
             self.exit_code = 1
         super().__init__(self.message)
@@ -345,6 +389,27 @@ class ManifestMismatch(YorungeError):
             "unexpected_file_count": unexpected_file_count,
             "changed_file_count": changed_file_count,
         }
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = dict(self.details)
+        return value
+
+
+class DownloadIntegrityMismatch(YorungeError):
+    """The expected digest did not match: what was computed, and nothing else (no name or path)."""
+
+    def __init__(self, computed_sha256: str, size: int) -> None:
+        if (
+            type(computed_sha256) is not str
+            or len(computed_sha256) != 64
+            or any(char not in "0123456789abcdef" for char in computed_sha256)
+        ):
+            raise ValueError("canonical sha256 required")
+        if type(size) is not int or not 0 <= size <= 1024**3:
+            raise ValueError("bounded byte count required")
+        super().__init__("download_integrity_mismatch")
+        self.details: dict[str, object] = {"computed_sha256": computed_sha256, "bytes": size}
 
     def envelope(self) -> dict[str, object]:
         value = super().envelope()
