@@ -364,6 +364,125 @@ def test_a_sidecar_write_that_fails_is_a_write_failure_and_leaves_no_temporary_c
         monkeypatch.undo()
 
 
+def test_a_deadline_during_the_prefix_hash_propagates_and_discards_nothing(place):
+    stopped_after(place, 100_000)
+    ticks = []
+
+    def guard():
+        ticks.append(1)
+        raise YorungeError("transport_timeout")  # the engine's deadline reaches the local read
+
+    with pytest.raises(YorungeError) as error:
+        with open_sink(target(place), identity_key=IDENTITY, guard=guard):
+            pytest.fail("the sink was handed over although its prefix was never checked")
+    assert error.value.code == "transport_timeout" and ticks
+    assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # a deadline is not a verdict
+    assert (place / NAMES.stage).read_bytes() == DATA[:100_000]
+
+
+def test_the_guard_is_asked_between_the_blocks_of_a_long_write(place):
+    asked = []
+    with open_sink(target(place), identity_key=IDENTITY, guard=lambda: asked.append(1)) as (
+        sink,
+        _,
+    ):
+        sink.begin(full(3 * 1024 * 1024), "full")
+        sink.write(os.urandom(3 * 1024 * 1024))
+        assert len(asked) == 3  # one per block of at most a mebibyte
+        sink.stop()
+
+
+def test_a_clock_that_goes_backwards_never_makes_a_record_older_than_its_start(place):
+    from datetime import UTC, datetime, timedelta
+
+    times = iter(datetime(2026, 11, 8, 12, tzinfo=UTC) - timedelta(minutes=n) for n in range(50))
+    with open_sink(target(place), identity_key=IDENTITY, clock=lambda: next(times)) as (sink, _):
+        sink.begin(full(), "full")
+        sink.write(DATA[:1000])
+        sink.stop()
+    record = sidecar_of(place)
+    assert record.updated_at >= record.created_at and record.committed_bytes == 1000
+
+
+def test_a_resume_keeps_the_time_the_download_began(place):
+    stopped_after(place, 100_000)
+    began = sidecar_of(place).created_at
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(partial_answer(plan.ask.prefix_bytes), "continue")
+        sink.write(DATA[100_000:150_000])
+        sink.stop()
+    record = sidecar_of(place)
+    assert record.created_at == began and record.committed_bytes == 150_000
+
+
+def test_the_sink_is_driven_in_order_and_anything_else_is_refused(place):
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
+        assert code_of(lambda: sink.write(b"x")) == "invalid_request"  # no answer yet
+        assert code_of(sink.complete) == "invalid_request"
+        assert code_of(lambda: sink.publish(None)) == "invalid_request"
+        assert code_of(lambda: sink.begin(full(), "continue")) == "invalid_request"  # nothing held
+        assert code_of(lambda: sink.begin(full(), "discard_and_retry")) == "invalid_request"
+        sink.begin(full(), "full")
+        assert code_of(lambda: sink.begin(full(), "full")) == "invalid_request"  # once
+        assert code_of(sink.discard) == "invalid_request"  # only before an answer is accepted
+        sink.stop()
+        assert code_of(lambda: sink.write(b"x")) == "invalid_request"  # stopped
+
+
+def test_a_stop_before_the_answer_leaves_the_stage_of_an_earlier_run_as_it_was(place):
+    stopped_after(place, 100_000)
+    before = (place / NAMES.stage).read_bytes(), (place / NAMES.sidecar).read_bytes()
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        assert plan.ask is not None
+        sink.stop()  # the request failed before any answer: nothing changed this run
+    assert ((place / NAMES.stage).read_bytes(), (place / NAMES.sidecar).read_bytes()) == before
+    assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
+    assert download(place)[1].resumed_from == 100_000
+
+
+def test_the_stage_is_made_durable_with_a_full_sync_before_the_link(place, monkeypatch):
+    synced = []
+    real = download_sink.full_sync
+    monkeypatch.setattr(
+        download_sink, "full_sync", lambda handle: (synced.append(handle), real(handle))
+    )
+    download(place)
+    assert len(synced) == 1
+
+
+def test_a_stage_that_appears_between_the_decision_and_its_creation_is_looked_at_again(
+    place, monkeypatch
+):
+    appeared = []
+
+    def marker(name):
+        if name == "decided" and not appeared:
+            appeared.append(1)
+            stage = place / NAMES.stage
+            stage.write_bytes(b"")
+            os.chmod(stage, 0o600)
+
+    monkeypatch.setattr(download_files, "_marker", marker)
+    published, plan = download(place)
+    assert appeared and plan.action == "download" and target(place).read_bytes() == DATA
+
+
+def test_a_stage_that_keeps_appearing_is_not_ours(place, monkeypatch):
+    def marker(name):
+        if name == "decided":
+            stage = place / NAMES.stage
+            if not stage.exists():
+                stage.write_bytes(b"")
+                os.chmod(stage, 0o600)
+            else:  # the foreign file is replaced again and again, so that creation never wins
+                stage.unlink()
+                stage.write_bytes(b"")
+                os.chmod(stage, 0o600)
+
+    monkeypatch.setattr(download_files, "_marker", marker)
+    assert code_of(lambda: download(place)) in {"download_partial_unverified"}
+
+
 # --- what is already there ------------------------------------------------------------------------
 
 
