@@ -497,6 +497,11 @@ def test_flags_must_be_booleans_and_a_draft_cannot_be_approved():
         )
 
 
+def judged_against_main(**changes):
+    """Make the approval these changes describe and judge it against the plan: either may refuse."""
+    validate_approval_binding_v3(MAIN, approval_of(**changes))
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -520,9 +525,8 @@ def test_flags_must_be_booleans_and_a_draft_cannot_be_approved():
     ],
 )
 def test_an_approval_that_does_not_bind_this_plan_is_rejected(changes):
-    approval_of_value = approval_of(**changes)
     with pytest.raises((ValueError, ValidationError)):
-        validate_approval_binding_v3(MAIN, approval_of_value)
+        judged_against_main(**changes)
 
 
 @pytest.mark.parametrize(

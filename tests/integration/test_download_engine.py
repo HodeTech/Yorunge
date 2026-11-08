@@ -684,6 +684,11 @@ def test_the_json_call_is_not_charged_to_the_download_deadline(world):
 
 
 def test_an_interrupt_keeps_what_can_be_resumed_and_the_next_call_continues(world):
+    # Paced, so that the interrupt always lands in the middle of the body: on a fast or idle
+    # machine the whole body could be written before the first progress report.
+    world.provider.script = [
+        Reply(body=DATA, headers=(("ETag", TAG),), chunk_size=65536, chunk_delay=0.02)
+    ]
     fired = []
 
     def interrupt(held, total):
