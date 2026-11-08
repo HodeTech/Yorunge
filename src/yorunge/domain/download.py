@@ -157,6 +157,8 @@ class DownloadSummary(Model):
 
     @model_validator(mode="after")
     def consistent(self) -> Self:
+        if (self.bytes == 0) != (self.sha256 == EMPTY_SHA256):
+            raise ValueError("the digest of no bytes belongs to a download of no bytes")
         level_source = (self.verification_level, self.expectation_source)
         if level_source not in {("transfer_complete", "none"), ("sha256_matched", "user_supplied")}:
             raise ValueError("a level is earned against its own kind of expectation")

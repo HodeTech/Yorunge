@@ -4,6 +4,8 @@ Independent vectors: one case per row of the table, and the ways each field of a
 No network; the transport's job is only to hand over a status and the raw header fields.
 """
 
+from dataclasses import replace
+
 import pytest
 
 from yorunge.domain.download import MAX_DOWNLOAD_BYTES
@@ -306,13 +308,63 @@ def test_unusable_range_or_tag_fields_are_not_errors_they_are_absent():
     assert twice.content_range is None  # two fields are ambiguous
 
 
-def test_a_full_answer_that_carries_a_content_range_is_a_mislabelled_partial_one():
-    # RFC 9110 14.4: Content-Range belongs to 206 and 416. A server that applied the range and
-    # called the tail "200" must not have it written as the whole object (with a range asked for
-    # or without one: the answer is refused before it can be told apart).
-    mislabelled = {"Content_Range": "bytes 400-2047/2048", "Content_Length": "1648"}
-    assert code_of(lambda: typed(200, **mislabelled)) == "invalid_response"
-    assert typed(200, Content_Length="10").content_range is None  # and a plain one has none
+MISLABELLED = [
+    # (a server that applied the range and called the tail "200": RFC 9110 14.4)
+    [("Content-Range", "bytes 400-2047/2048"), ("Content-Length", "1648")],
+    [("Content-Range", "bytes 400-2047/2048"), ("Content-Length", "1648"), ("ETag", TAG)],
+    [
+        ("Content-Range", "bytes 0-9/10"),
+        ("Content-Range", "bytes 0-9/10"),
+        ("Content-Length", "10"),
+    ],
+    [("Content-Range", "bytes 0-9/10")] * 3 + [("Content-Length", "10")],
+    [("Content-Range", "garbage"), ("Content-Length", "10")],
+    [("Content-Range", ""), ("Content-Length", "10")],
+    # the body cannot be framed, and it is still the same answer (its body is never read)
+    [("Content-Range", "bytes 400-2047/2048")],
+    [("Content-Range", "bytes 400-2047/2048"), ("Content-Length", "10"), ("Content-Length", "10")],
+    [("Content-Range", "bytes 400-2047/2048"), ("Transfer-Encoding", "gzip")],
+]
+
+
+@pytest.mark.parametrize("fields", MISLABELLED)
+def test_a_full_answer_that_carries_a_content_range_is_typed_as_the_partial_one_it_is(fields):
+    # Written as the whole object, the tail would be a complete transfer of the wrong bytes. It is
+    # not refused outright either: refused, the stage and the sidecar would stay and every rerun
+    # would ask the same question and get the same answer (only --no-resume would leave). Typed as
+    # a partial answer that is not an exact continuation, it takes the same way out as any other:
+    # the stage is dropped and one Range-less request follows; to a Range-less request a partial
+    # answer is not in the protocol.
+    found = parse_response(200, fields)
+    assert (found.status, found.content_range, found.framing, found.content_length) == (
+        206,
+        None,
+        None,
+        None,
+    )
+    assert disposition(found, ResumeAsk(400, 2048, TAG)) == "discard_and_retry"
+    assert code_of(lambda: disposition(found, None)) == "invalid_response"
+
+
+def test_a_mislabelled_answer_keeps_its_tag_and_a_plain_one_has_no_range():
+    tagged = parse_response(200, [("Content-Range", "bytes 400-2047/2048"), ("ETag", TAG)])
+    assert tagged.etag == TAG and tagged.status == 206
+    assert typed(200, Content_Length="10").content_range is None
+    assert typed(200, Content_Length="10").status == 200
+
+
+def test_a_mislabelled_answer_is_judged_after_its_encoding_and_before_its_framing():
+    # a non-identity encoding is refused for what it is, whatever else the answer says
+    gzip = [
+        ("Content-Range", "bytes 0-9/10"),
+        ("Content-Encoding", "gzip"),
+        ("Content-Length", "10"),
+    ]
+    assert code_of(lambda: parse_response(200, gzip)) == "invalid_response"
+    # and a mislabelled 206 is a 206 (the range is read as for any other)
+    assert typed(206, Content_Range="bytes 0-9/10", Content_Length="10").content_range == (
+        ContentRange(0, 9, 10)
+    )
 
 
 # --- the request ----------------------------------------------------------------------------------
@@ -376,6 +428,28 @@ def test_a_plain_request_is_answered_by_a_full_body_or_by_nothing_in_the_protoco
 def test_a_range_the_provider_ignored_restarts_from_the_start_of_this_answer():
     assert disposition(DownloadResponse(200, None, TAG, "length", 1000), ASK) == "restart"
     assert disposition(DownloadResponse(200, None, None, "chunked", None), ASK) == "restart"
+
+
+@pytest.mark.parametrize("length", [600])
+def test_a_full_answer_of_exactly_the_tail_that_was_asked_for_is_the_tail_labelled_200(length):
+    # Ignoring the range sends the whole object (here 1000 bytes), not the 600 after the prefix:
+    # a 200 of exactly the tail's length is the tail, and is written as nothing.
+    tail = DownloadResponse(200, None, TAG, "length", length)
+    assert disposition(tail, ASK) == "discard_and_retry"
+    assert disposition(replace(tail, etag=None), ASK) == "discard_and_retry"
+
+
+@pytest.mark.parametrize("length", [0, 1, 599, 601, 999, 1000, 1001, 10**9])
+def test_any_other_length_of_a_full_answer_to_a_ranged_request_restarts(length):
+    assert disposition(DownloadResponse(200, None, TAG, "length", length), ASK) == "restart"
+
+
+def test_a_chunked_answer_cannot_be_told_from_the_whole_object_and_restarts():
+    assert disposition(DownloadResponse(200, None, TAG, "chunked", None), ASK) == "restart"
+
+
+def test_the_tail_length_of_a_plain_request_is_just_a_body():
+    assert disposition(DownloadResponse(200, None, TAG, "length", 600), None) == "full"
 
 
 def test_an_exact_continuation_continues():

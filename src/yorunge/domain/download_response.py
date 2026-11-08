@@ -38,7 +38,12 @@ class ContentRange:
 
 @dataclass(frozen=True, slots=True)
 class DownloadResponse:
-    """What the engine is allowed to know of an answer; it never touches a raw header."""
+    """What the engine is allowed to know of an answer; it never touches a raw header.
+
+    A ``200`` that carries a ``Content-Range`` is typed as the partial answer it is (status 206, no
+    usable range, no framing): after a ranged request it is not an exact continuation, and to a
+    Range-less request a partial answer is not in the protocol.
+    """
 
     status: Literal[200, 206, 416]
     content_range: ContentRange | None  # 206 only; None when absent, unusable or of another form
@@ -149,9 +154,9 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     Rows of the table: 3xx ``remote_failed`` (a redirect is never followed); 401 and 403
     ``remote_access_denied``; 429 ``remote_rate_limited``; 404 and every other 4xx, and 5xx,
     ``remote_failed``; any other 2xx, a ``Content-Encoding`` other than identity, an
-    informational status, a ``200`` that carries a ``Content-Range`` and a body without a length
-    or chunked end ``invalid_response``; a ``Content-Length`` over the limit
-    ``download_limit_exceeded``.
+    informational status and a ``200`` body without a length or chunked end ``invalid_response``;
+    a ``200`` that carries a ``Content-Range`` is typed as a partial answer that is not an exact
+    continuation; a ``Content-Length`` over the limit ``download_limit_exceeded``.
     """
     if type(status) is not int or not 100 <= status <= 599:
         raise YorungeError("invalid_response")
@@ -169,6 +174,15 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     encodings = _values(headers, "content-encoding")
     if any(value.strip(" \t").lower() not in ("", "identity") for value in encodings):
         raise YorungeError("invalid_response")
+    ranges = _values(headers, "content-range")
+    if status == 200 and ranges:
+        # Content-Range belongs to partial answers (RFC 9110 14.4). On a "full" one it is the mark
+        # of a server that applied the range and labelled the tail 200: written as the whole
+        # object it would be a complete transfer of the wrong bytes. It is typed as the partial
+        # answer it is, whose body is never read (whatever its framing): after a ranged request
+        # the stage is dropped and one Range-less request follows; to a Range-less request it is
+        # invalid_response (see disposition). A refusal here would repeat on every rerun.
+        return DownloadResponse(206, None, parse_etag(_values(headers, "etag")), None, None)
     framing: Framing | None
     length: int | None
     try:
@@ -179,12 +193,6 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
         # A partial answer that cannot be framed is not an exact continuation ("Content-Length
         # uyumsuz veya eksik"): it is dropped like any other, and one Range-less request follows.
         framing, length = None, None
-    ranges = _values(headers, "content-range")
-    if status == 200 and ranges:
-        # Content-Range belongs to partial answers (RFC 9110 14.4). On a "full" one it is the mark
-        # of a server that applied the range and labelled the tail 200: written as the whole
-        # object it would be a complete transfer of the wrong bytes.
-        raise YorungeError("invalid_response")
     content_range = parse_content_range(ranges[0]) if status == 206 and len(ranges) == 1 else None
     return DownloadResponse(
         200 if status == 200 else 206,
@@ -206,12 +214,22 @@ def disposition(response: DownloadResponse, ask: ResumeAsk | None) -> Dispositio
     exact continuation. ``discard_and_retry``: the stage and the sidecar are dropped (stage first)
     and exactly one Range-less request follows. A partial answer, or a 416, to a request that
     asked for no range is not in the protocol.
+
+    A ``200`` whose length is exactly the tail that was asked for (the total less the prefix) is
+    not the whole object that ignoring the range would send: it is the tail labelled ``200``, and
+    is treated as the partial answer that is not an exact continuation. (A 200 of the same
+    length for an object that changed costs one more request inside the same two.)
     """
     if ask is None:
         if response.status != 200:
             raise YorungeError("invalid_response")
         return "full"
     if response.status == 200:
+        if (
+            response.framing == "length"
+            and response.content_length == ask.total_size - ask.prefix_bytes
+        ):
+            return "discard_and_retry"
         return "restart"
     if response.status == 416:
         return "discard_and_retry"

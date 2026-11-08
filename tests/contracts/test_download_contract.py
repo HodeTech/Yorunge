@@ -191,6 +191,8 @@ def test_a_summary_carries_what_was_written_and_what_it_earned():
     assert matched.expectation_source == "user_supplied"
     resumed = summary(bytes=10, resumed=True, resumed_from_bytes=4)
     assert (resumed.resumed, resumed.resumed_from_bytes) == (True, 4)
+    nothing = summary(bytes=0, sha256=EMPTY_SHA256, resumed=True, resumed_from_bytes=0)
+    assert (nothing.bytes, nothing.resumed) == (0, True)  # a complete stage of no bytes
 
 
 @pytest.mark.parametrize(
@@ -201,6 +203,11 @@ def test_a_summary_carries_what_was_written_and_what_it_earned():
         {"resumed": True, "resumed_from_bytes": 0},
         {"resumed": True, "resumed_from_bytes": 6},
         {"resumed": False, "resumed_from_bytes": 1},
+        {"bytes": 0},  # the digest of no bytes belongs to no bytes, and only to them
+        {"bytes": 0, "sha256": "ab" * 32},
+        {"bytes": 5, "sha256": EMPTY_SHA256},
+        {"bytes": 0, "sha256": "ab" * 32, "resumed": True, "resumed_from_bytes": 5},
+        {"bytes": 0, "sha256": EMPTY_SHA256, "resumed": True, "resumed_from_bytes": 5},
         {"output_path": ""},
         {"output_path": "/tmp/a\nb"},
         {"output_path": "x" * 4097},

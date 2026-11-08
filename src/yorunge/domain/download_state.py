@@ -80,6 +80,13 @@ class Entry:
     inode: int
     size: int
 
+    def __post_init__(self) -> None:
+        # The writer normalises ids to unsigned 64 bit, as the sidecar's own ids are: a raw
+        # (possibly negative) st_dev would compare unequal to the record's, silently and forever.
+        for value in (self.device, self.inode):
+            if type(value) is not int or not 0 <= value < 2**64:
+                raise ValueError("a file identity as an unsigned 64-bit integer required")
+
     @property
     def owned(self) -> bool:
         """Provably this download's own kind of file: regular, ours, private, one link."""
@@ -240,6 +247,11 @@ def confirm_prefix(decision: StartDecision, observed_sha256: str | None) -> Star
     """
     if decision.action not in ("resume", "publish_complete"):
         return decision
+    if observed_sha256 is not None and (
+        type(observed_sha256) is not str or _SHA256.fullmatch(observed_sha256) is None
+    ):
+        # A malformed digest would read as a mismatch and order the stage deleted.
+        raise ValueError("a lowercase SHA-256 digest, or None for a prefix that was not readable")
     if decision.record is None:
         raise ValueError("a decision that resumes or publishes carries its record")
     if observed_sha256 == decision.record.prefix_sha256:

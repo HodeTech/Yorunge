@@ -135,7 +135,7 @@ def test_the_mismatch_detail_refuses_a_short_digest_and_accepts_a_whole_gibibyte
 
 
 def test_both_unicode_line_and_paragraph_separators_are_refused_in_a_name():
-    for char in (" ", " ", "\u0085", "‎"):
+    for char in ("\u2028", "\u2029", "\u0085", "\u200e"):
         assert code_of(lambda char=char: validate_target_name("a" + char + "b")) == (
             "download_target_invalid"
         )
@@ -250,7 +250,7 @@ def test_header_fields_that_are_not_pairs_of_text_are_a_closed_refusal(status, f
     assert code_of(lambda: parse_response(status, fields)) == "invalid_response"
 
 
-def test_a_generator_of_fields_is_not_an_answer_and_is_not_consumed_by_a_first_pass():
+def test_a_generator_of_fields_is_not_an_answer():
     fields = (item for item in [("Content-Length", "10")])
     assert code_of(lambda: parse_response(200, fields)) == "invalid_response"
 
