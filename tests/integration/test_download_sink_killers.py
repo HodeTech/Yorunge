@@ -1530,3 +1530,37 @@ def test_a_byte_past_the_limit_is_refused_before_it_is_written(place, monkeypatc
             place / NAMES.stage
         ).stat().st_size == 1000  # the refused byte never reached the file
         sink.stop()
+
+
+# --- the body is whole once complete() accepts it: nothing later in it drops the stage -----------
+@pytest.mark.parametrize(
+    "response",
+    [
+        DownloadResponse(200, None, None, "chunked", None),
+        DownloadResponse(200, None, None, "length", len(DATA)),
+        full(),
+    ],
+    ids=["chunked, no tag", "length, no tag", "length, strong tag"],
+)
+@pytest.mark.parametrize("failure", [KeyboardInterrupt, OSError], ids=["interrupt", "io error"])
+def test_a_failure_inside_complete_never_drops_a_body_that_is_whole(
+    place, monkeypatch, response, failure
+):
+    state = {"in_completion": False}
+
+    def marker(name):
+        if name == "complete:stage_synced" and state["in_completion"]:
+            raise failure(errno.EIO, "after the stage sync") if failure is OSError else failure()
+
+    monkeypatch.setattr(download_files, "_marker", marker)
+    with pytest.raises((YorungeError, KeyboardInterrupt)):  # the stop runs when the block is left
+        with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+            sink.begin(response, "full")
+            sink.write(DATA)
+            state["in_completion"] = True
+            sink.complete(terminated=True)
+    monkeypatch.undo()
+    assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])  # not dropped: whole
+    assert (place / NAMES.stage).read_bytes() == DATA
+    published, _ = download(place)  # and the next run finishes without anyone deleting anything
+    assert target(place).read_bytes() == DATA and left(place) == [NAME]

@@ -544,13 +544,15 @@ class DownloadSink:
             raise YorungeError("download_incomplete")
         if self._total is not None and self.written != self._total:
             raise YorungeError("download_incomplete")
+        # From here the body is whole and the record on disk may already say so: whatever fails
+        # (an I/O error, a second interrupt), :meth:`stop` leaves what stands to the next run.
+        self._completing = True
         try:
             os.fsync(stage)
         except OSError:
             raise _write_failed() from None
         step("complete:stage_synced")
         self._total = self.written
-        self._completing = True  # from here the record on disk may already say "complete"
         self._write_sidecar(committed=self.written)
         self.committed = self.written
         self._phase = "complete"
