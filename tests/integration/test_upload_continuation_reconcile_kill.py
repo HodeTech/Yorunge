@@ -92,6 +92,8 @@ def test_sigkill_of_a_continuations_reconcile_leaves_it_unproved_or_proved_and_n
                 process.kill()
                 process.join(10)
             parent.close()
+            if not process.is_alive():
+                process.close()  # lets go of the process sentinel (two descriptors per child)
         assert provider.events[sends:] == []  # a reconcile never sends
         assert all(r.method == "GET" for r in server.requests[count:])
         store_is_valid(data)

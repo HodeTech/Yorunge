@@ -22,7 +22,7 @@ from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, basel
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.upload_resume import (
     BLOCKERS,
@@ -90,8 +90,13 @@ def _descendants(
     for (operation_id,) in connection.execute(
         "SELECT operation_id FROM upload_operations ORDER BY operation_id"
     ).fetchall():
-        record = read_any_record(connection, operation_id)
-        plan = read_plan(connection, record.plan_id)
+        try:
+            record = read_any_record(connection, operation_id)
+            plan = read_plan(connection, record.plan_id)
+        except (YorungeError, ValueError, TypeError):
+            # The row may be a descendant, so the scan cannot go on; and a row whose plan is gone is
+            # no "missing plan" of the operation that was asked about: the answer is the row's.
+            raise OperationError("state_invalid", operation_id) from None
         if (
             isinstance(plan, DatasetContinuationPlanV3)
             and plan.continuation.source_operation_id == source_operation_id
