@@ -1,11 +1,11 @@
 """The signed GET's private typed boundary: the target, the closed request, the view of an answer.
 
 ADR-0032 §2 (a partial change of ADR-0025). The target is an address the provider signed: its raw
-bytes are kept exactly, it carries no credential and no expiry is demanded of it. The request adds
-no header of its own beyond the two the resume protocol names; the transport adds ``Host`` and
-``Accept-Encoding: identity``. What the engine sees of an answer is the typed
-:class:`~yorunge.domain.download_response.DownloadResponse` and the action it calls for, never a
-raw header.
+bytes are kept exactly, it carries no credential and no expiry is demanded of it. The request names
+no header beyond the two the resume protocol adds and ``Accept-Encoding: identity`` (its own public
+list); the HTTP layer adds ``Host``, and the wire must be exactly that list. What the engine sees
+of an answer is the typed :class:`~yorunge.domain.download_response.DownloadResponse` and the
+action it calls for, never a raw header.
 """
 
 from __future__ import annotations
@@ -63,6 +63,9 @@ class DownloadTarget:
             raise YorungeError("invalid_service_target")
 
     def __setattr__(self, name: str, value: object) -> None:
+        raise AttributeError("download targets are immutable")
+
+    def __delattr__(self, name: str) -> None:
         raise AttributeError("download targets are immutable")
 
     def __repr__(self) -> str:
@@ -126,9 +129,29 @@ class DownloadView(Protocol):
     @property
     def received(self) -> int: ...
 
+    @property
+    def complete(self) -> bool:
+        """The body was read to its end and was the whole of what the framing promised."""
+        ...
+
     def chunks(self) -> AsyncIterator[bytes]:
-        """The body, in chunks. A short, over-long or cut body raises its closed code at the end
-        (or where it breaks); a 416 has no body to read."""
+        """The body, in chunks of at most a TLS record (16 KiB; coalesce to write in blocks).
+
+        Read it to its end. A short or cut body raises its closed code where it breaks or at the
+        end; a body past the caller's ``max_bytes`` raises ``download_limit_exceeded`` (a server
+        that sends more than it promised is cut at what it promised by the HTTP layer, and its
+        surplus ruins the next request on that connection, which fails as ``transport_failed``).
+        A 416 has no body to read.
+
+        The deadline is the caller's own, across the whole block. Reading the body to its end
+        **disarms it**: the completion checkpoint, the comparison and the publication that follow
+        are not timed by the transport (they are exempt by the protocol). Before that, a deadline
+        strike arrives inside the block as a bare ``asyncio.CancelledError`` (indistinguishable
+        from a task cancellation there) and leaving the block turns it into ``transport_timeout``:
+        a caller that stops cleanly catches it inside, checkpoints, and re-raises. ``received``
+        counts the bytes handed over, not the bytes written or synced: checkpoint from your own
+        counter.
+        """
         ...
 
 

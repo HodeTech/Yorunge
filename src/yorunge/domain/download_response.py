@@ -149,8 +149,9 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     Rows of the table: 3xx ``remote_failed`` (a redirect is never followed); 401 and 403
     ``remote_access_denied``; 429 ``remote_rate_limited``; 404 and every other 4xx, and 5xx,
     ``remote_failed``; any other 2xx, a ``Content-Encoding`` other than identity, an
-    informational status and a body without a length or chunked end ``invalid_response``; a
-    ``Content-Length`` over the limit ``download_limit_exceeded``.
+    informational status, a ``200`` that carries a ``Content-Range`` and a body without a length
+    or chunked end ``invalid_response``; a ``Content-Length`` over the limit
+    ``download_limit_exceeded``.
     """
     if type(status) is not int or not 100 <= status <= 599:
         raise YorungeError("invalid_response")
@@ -179,6 +180,11 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
         # uyumsuz veya eksik"): it is dropped like any other, and one Range-less request follows.
         framing, length = None, None
     ranges = _values(headers, "content-range")
+    if status == 200 and ranges:
+        # Content-Range belongs to partial answers (RFC 9110 14.4). On a "full" one it is the mark
+        # of a server that applied the range and labelled the tail 200: written as the whole
+        # object it would be a complete transfer of the wrong bytes.
+        raise YorungeError("invalid_response")
     content_range = parse_content_range(ranges[0]) if status == 206 and len(ranges) == 1 else None
     return DownloadResponse(
         200 if status == 200 else 206,

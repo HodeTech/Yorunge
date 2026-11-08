@@ -304,8 +304,15 @@ def test_unusable_range_or_tag_fields_are_not_errors_they_are_absent():
         ],
     )
     assert twice.content_range is None  # two fields are ambiguous
-    plain = typed(200, Content_Range="bytes 0-9/10")
-    assert plain.content_range is None  # a full answer has no range
+
+
+def test_a_full_answer_that_carries_a_content_range_is_a_mislabelled_partial_one():
+    # RFC 9110 14.4: Content-Range belongs to 206 and 416. A server that applied the range and
+    # called the tail "200" must not have it written as the whole object (with a range asked for
+    # or without one: the answer is refused before it can be told apart).
+    mislabelled = {"Content_Range": "bytes 400-2047/2048", "Content_Length": "1648"}
+    assert code_of(lambda: typed(200, **mislabelled)) == "invalid_response"
+    assert typed(200, Content_Length="10").content_range is None  # and a plain one has none
 
 
 # --- the request ----------------------------------------------------------------------------------

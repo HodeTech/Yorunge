@@ -111,6 +111,14 @@ class _StorageResponse(_Response):
         self.sent_bytes, self.sent_sha256 = body.count, body.digest.hexdigest()
 
 
+def _disarm(window: asyncio.Timeout) -> None:
+    """A whole body ends the transport's deadline: the caller's completion work is not timed."""
+    try:
+        window.reschedule(None)
+    except RuntimeError:
+        pass  # the deadline struck in the same instant: the cancellation reports it as it is
+
+
 class _DownloadChunks(AsyncIterator[bytes]):
     """The body of an accepted answer, by the closed rules of the download.
 
@@ -132,6 +140,7 @@ class _DownloadChunks(AsyncIterator[bytes]):
             check_body_end(
                 response.framing, response.content_length, view.received, terminated=True
             )
+            view.finish()  # the body is whole: what follows is not the transport's to time out
             raise
         except YorungeError as error:
             raise YorungeError(body_failure(error.code)) from None
@@ -149,6 +158,14 @@ class _DownloadView(_Response):
     ) -> None:
         super().__init__(response, request)
         self.response, self.disposition, self.received = typed, action, 0
+        self.complete = False
+        self._disarm: Callable[[], None] | None = None
+
+    def finish(self) -> None:
+        """The body was read to its end and checked: the deadline is over for the caller's tail."""
+        self.complete = True
+        if self._disarm is not None:
+            self._disarm()
 
     def chunks(self) -> AsyncIterator[bytes]:
         if self.response.framing is None:  # a 416 has no body the engine may read
@@ -276,8 +293,10 @@ class TransferHttpxTransport(HttpxTransport):
                     self._download_headers(response)
                     typed = parse_response(response.status_code, response.headers.multi_items())
                     view = _DownloadView(response, request, typed, disposition(typed, request.ask))
+                    view._disarm = lambda: _disarm(window)
                     yield view
-                    _remaining(deadline)
+                    if not view.complete:
+                        _remaining(deadline)
             except (TimeoutError, httpx.TimeoutException):
                 failure = "transport_timeout"
             except httpx.InvalidURL:
