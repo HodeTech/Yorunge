@@ -66,6 +66,8 @@ Text sonucu manifest yolunu, digest/sayıları ve sonraki verify adımını gös
 
 Kaynak ağacı/çıktı parent’ı descriptor zincirleriyle sabitlenir. Parent’ın root veya altı olduğu kimlik zinciriyle de reddedilir; salt metin prefix’i yeterli değildir. Parent ayrı bir symlink alias’ıyla root içine açılmaz. Stage aynı parent’ta rastgele tek adla `O_EXCL|O_NOFOLLOW`, 0600 açılır; serializasyon tam ve bounded’dir. File sync ve gerekli platform full-sync, son parent/root zinciri kontrolü ardından aynı directory’de exclusive `link` ile yeni hedef yayınlanır. Stage unlink ve parent sync tamamlanır; hedefe overwrite/replace yapılmaz. Son hedef descriptor/inode eşliği ve parent zinciri denetlenir. Desteklenmeyen primitive hata yutma veya overwrite fallback’i açmaz.
 
+Bu yayın mantığı (stage, doğrulama, exclusive `link`, kimlik denetimli temizlik, sync ve link sonrası belirsizlik) manifestin değil ortak artifact yayıncısının (`adapters/artifact_publisher.py`) işidir; manifest ona yalnız hata ailesini (aşağıdaki kodlar), stage adı önekini (`.yorunge-manifest-*.tmp`) ve kancalarını (`_check_stage`, `_publish_link`, `_check_target`, bu modülün `full_sync`i) verir. Aynı yayıncı bellekteki baytlar (`publish_bytes`) ve bir akışlı yazıcının kendi açıp doldurup sync ettiği stage (`publish_stage`: yalnız doğrula–link–temizle–sync sırası ve kimlik denetimleri) için kullanılır; hata ailesi çağıranındır.
+
 Toplam deadline çağrı başlangıcından parse/scan/serialize/publish’e kadar 30 s’tir; her sınırlı iş/okuma ve yayın öncesi/sonrası kontrol edilir. Verify manifest okuması içerik toplamından ayrı ≤8 MiB’dir. Metadata/name/JSON sınırları kendi boyutlarıyla işler. Kernel I/O’sunu zorla durdurma veya fiziksel disk süresi garantisi yoktur.
 
 | Kod | Exit | Tetik |
