@@ -13,6 +13,7 @@ import hashlib
 import os
 import stat
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -69,7 +70,7 @@ def download(place, data=DATA, *, response=None, expected=None, **options):
         else:
             sink.begin(response or full(len(data)), "full")
             sink.write(data)
-        sink.complete()
+        sink.complete(terminated=True)
         return sink.publish(expected), plan
 
 
@@ -139,7 +140,7 @@ def test_a_body_may_arrive_in_pieces_of_any_size(place):
         for offset in range(0, len(DATA), 7_001):
             sink.write(DATA[offset : offset + 7_001])
         sink.write(b"")
-        sink.complete()
+        sink.complete(terminated=True)
         assert sink.publish(None).bytes == len(DATA)
     assert target(place).read_bytes() == DATA
 
@@ -148,11 +149,10 @@ def test_a_chunked_body_fixes_its_total_at_the_completion_checkpoint(place):
     with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
         sink.begin(chunked(), "full")
         sink.write(DATA[:1000])
-        sink.stop_checkpoint = None  # nothing: the sidecar is only written at checkpoints
         header = sidecar_of(place)
         assert (header.total_size, header.committed_bytes) == (None, 0)
         sink.write(DATA[1000:])
-        sink.complete()
+        sink.complete(terminated=True)
         finished = sidecar_of(place)
         assert (finished.total_size, finished.committed_bytes) == (len(DATA), len(DATA))
         assert finished.prefix_sha256 == hashlib.sha256(DATA).hexdigest()
@@ -229,7 +229,7 @@ def test_a_complete_stage_with_bytes_after_its_total_is_cut_back_before_it_is_pu
     with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
         sink.begin(full(), "full")
         sink.write(DATA)
-        sink.complete()
+        sink.complete(terminated=True)
     with (place / NAMES.stage).open("ab") as stage:
         stage.write(b"garbage that was written after the completion checkpoint")
     published, plan = download(place)
@@ -243,7 +243,7 @@ def test_a_provider_that_restarts_with_a_shorter_object_leaves_nothing_of_the_ol
     with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
         sink.begin(full(len(smaller), etag='"v2"'), "restart")  # the object changed
         sink.write(smaller)
-        sink.complete()
+        sink.complete(terminated=True)
         published = sink.publish(None)
     assert published.bytes == 50_000 and target(place).read_bytes() == smaller
 
@@ -280,7 +280,7 @@ def test_a_provider_that_ignores_the_range_restarts_from_the_first_byte(place):
         assert plan.ask is not None
         sink.begin(full(), "restart")  # a 200 to a ranged request: the whole body again
         sink.write(DATA)
-        sink.complete()
+        sink.complete(terminated=True)
         published = sink.publish(None)
     assert (published.bytes, published.resumed_from_bytes) == (len(DATA), 0)
     assert target(place).read_bytes() == DATA and left(place) == [NAME]
@@ -294,7 +294,7 @@ def test_an_answer_that_does_not_fit_drops_the_stage_and_the_sidecar_and_starts_
         assert left(place) == sorted([NAMES.lock, NAMES.stage])  # a fresh, empty stage
         sink.begin(full(), "full")
         sink.write(DATA)
-        sink.complete()
+        sink.complete(terminated=True)
         published = sink.publish(None)
     assert published.resumed_from_bytes == 0 and target(place).read_bytes() == DATA
 
@@ -303,7 +303,9 @@ def test_a_complete_stage_is_published_without_a_request_and_reports_the_resume(
     with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
         sink.begin(full(), "full")
         sink.write(DATA)
-        sink.complete()  # the completion checkpoint; the process ends before publishing
+        sink.complete(
+            terminated=True
+        )  # the completion checkpoint; the process ends before publishing
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
     published, plan = download(place)
     assert (plan.action, plan.ask) == ("publish", None)
@@ -315,7 +317,7 @@ def test_a_complete_stage_that_does_not_match_the_expectation_is_dropped(place):
     with open_sink(target(place), identity_key=IDENTITY) as (sink, _):
         sink.begin(full(), "full")
         sink.write(DATA)
-        sink.complete()
+        sink.complete(terminated=True)
     with pytest.raises(DownloadIntegrityMismatch):
         download(place, expected="00" * 32)
     assert left(place) == []  # a kept stage would make every rerun the same offline mismatch
@@ -340,7 +342,7 @@ def test_a_checkpoint_is_written_every_eight_mebibytes_with_the_digest_of_the_sy
         record = sidecar_of(place)
         assert record.committed_bytes == 8 * 1024 * 1024
         assert record.prefix_sha256 == hashlib.sha256(big[: 8 * 1024 * 1024]).hexdigest()
-        sink.complete()
+        sink.complete(terminated=True)
         assert sink.publish(None).bytes == len(big)
     assert target(place).read_bytes() == big
 
@@ -559,7 +561,7 @@ def test_a_stage_without_its_sidecar_that_was_never_filled_is_reused(place):
         assert stage.stat().st_ino == inode  # the very file, not a new one
         sink.begin(full(), "full")
         sink.write(DATA)
-        sink.complete()
+        sink.complete(terminated=True)
         sink.publish(None)
     assert target(place).read_bytes() == DATA
 
@@ -674,8 +676,14 @@ def test_a_file_that_is_swapped_while_it_is_being_opened_is_not_ours(place, monk
 
 def test_a_file_of_another_user_is_not_ours(place, monkeypatch):
     stopped_after(place, 100_000)
-    someone_else = os.getuid() + 1
-    monkeypatch.setattr(download_files.os, "getuid", lambda: someone_else)
+    stage_inode = (place / NAMES.stage).stat().st_ino
+    real = download_files.describe
+
+    def as_seen_by_someone_else(info):
+        found = real(info)
+        return replace(found, ours=False) if info.st_ino == stage_inode else found
+
+    monkeypatch.setattr(download_files, "describe", as_seen_by_someone_else)
     assert code_of(lambda: download(place)) == "download_partial_unverified"
     assert (place / NAMES.stage).read_bytes() == DATA[:100_000]
 
@@ -933,7 +941,7 @@ def test_a_directory_that_was_replaced_before_the_link_is_a_write_failure_and_no
         with open_sink(goal, identity_key=IDENTITY) as (sink, _):
             sink.begin(full(), "full")
             sink.write(DATA)
-            sink.complete()
+            sink.complete(terminated=True)
             monkeypatch.setattr(download_files, "_marker", swap)
             assert code_of(lambda: sink.publish(None)) == "download_write_failed"
             monkeypatch.undo()

@@ -62,7 +62,7 @@ def engine_run(directory, *, scenario="fresh", no_resume=False, expected=None):
             sink.begin(full(chunked=chunked), "full")
         for piece in pieces(body, size):
             sink.write(piece)
-        sink.complete()
+        sink.complete(terminated=True)
         return sink.publish(expected)
 
 
@@ -78,7 +78,7 @@ def prepare(directory, kind):
         elif kind == "unpublished":
             for piece in pieces(DATA, SMALL_CHECKPOINT):
                 sink.write(piece)
-            sink.complete()
+            sink.complete(terminated=True)
         else:
             raise ValueError(kind)
 

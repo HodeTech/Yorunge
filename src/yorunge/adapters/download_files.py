@@ -13,7 +13,6 @@ Every boundary of the closed order (``docs/reference/download-engine.md``) is an
 from __future__ import annotations
 
 import errno
-import fcntl
 import os
 import stat
 import threading
@@ -21,6 +20,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
 from yorunge.adapters.input_files import (
     Budget,
@@ -28,11 +28,13 @@ from yorunge.adapters.input_files import (
     directory_chain,
     owned_descriptor,
 )
+from yorunge.adapters.local_files import require_local_files
 from yorunge.domain.download import MAX_SIDECAR_BYTES
 from yorunge.domain.download_state import Entry
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import ErrorCode, YorungeError
 
 OPEN_FLAGS = os.O_NOFOLLOW | os.O_NONBLOCK
+CLOSE_CODE: Final[ErrorCode] = "download_write_failed"
 LOCK_ATTEMPTS = 3
 _UNSIGNED_64 = 2**64 - 1
 Chain = tuple[tuple[int, int], ...]
@@ -96,7 +98,7 @@ def open_checked(directory: int, name: str, seen: Entry, flags: int) -> int:
             raise YorungeError("download_partial_unverified")
         return descriptor
     except BaseException as error:
-        close_descriptor(descriptor, error)
+        close_descriptor(descriptor, error, code=CLOSE_CODE)
         raise
 
 
@@ -132,11 +134,27 @@ def create_exclusive(directory: int, name: str, *, label: str) -> int:
     try:
         step(f"{label}:created")
         os.fchmod(descriptor, 0o600)
+        made = os.fstat(descriptor)
+        if stat.S_IMODE(made.st_mode) != 0o600 or made.st_uid != os.getuid():
+            # A filesystem that keeps no permissions (FAT, exFAT) cannot hold a file that is
+            # provably ours: refused here, before a byte is downloaded, and nothing is left.
+            _discard_just_made(directory, name, made)
+            raise YorungeError("download_write_failed")
         step(f"{label}:private")
         return descriptor
     except BaseException as error:
-        close_descriptor(descriptor, error)
+        close_descriptor(descriptor, error, code=CLOSE_CODE)
         raise
+
+
+def _discard_just_made(directory: int, name: str, made: os.stat_result) -> None:
+    """Unlink the file this call created, if the name still leads to it."""
+    try:
+        current = os.stat(name, dir_fd=directory, follow_symlinks=False)
+        if (current.st_dev, current.st_ino) == (made.st_dev, made.st_ino):
+            os.unlink(name, dir_fd=directory)
+    except OSError:
+        pass
 
 
 def read_small(directory: int, name: str, seen: Entry) -> bytes:
@@ -145,7 +163,7 @@ def read_small(directory: int, name: str, seen: Entry) -> bytes:
     try:
         return os.read(descriptor, MAX_SIDECAR_BYTES + 1)
     finally:
-        close_descriptor(descriptor)
+        close_descriptor(descriptor, code=CLOSE_CODE)
 
 
 def remove_seen(directory: int, name: str, seen: Entry, *, label: str) -> None:
@@ -190,13 +208,13 @@ def replace_atomically(directory: int, tmp: str, final: str, content: bytes, *, 
         os.fsync(descriptor)
         step(f"{label}_tmp:synced")
     except BaseException as error:
-        close_descriptor(descriptor, error)
+        close_descriptor(descriptor, error, code=CLOSE_CODE)
         try:
             os.unlink(tmp, dir_fd=directory)  # the copy this call just made: not left to the next
         except OSError:
             pass
         raise
-    close_descriptor(descriptor)
+    close_descriptor(descriptor, code=CLOSE_CODE)
     os.replace(tmp, final, src_dir_fd=directory, dst_dir_fd=directory)
     step(f"{label}:replaced")
     sync_directory(directory)
@@ -211,6 +229,15 @@ class LockObject:
     descriptor: int
     seen: Entry
 
+    def verify(self) -> None:
+        """The name still leads to the locked file; else the exclusion this download holds is gone.
+
+        Somebody removed the hidden lock file (a cleanup tool, a hand): another run may have taken
+        a lock on a new one and be using the very same stage. Nothing more is written or removed.
+        """
+        if not same_file(self.seen, entry_of(self.directory, self.name)):
+            raise YorungeError("download_busy")
+
     def release(self) -> None:
         """Remove the lock file, under the lock and last, then let the lock go.
 
@@ -223,7 +250,7 @@ class LockObject:
             pass
         finally:
             try:
-                close_descriptor(self.descriptor)
+                close_descriptor(self.descriptor, code=CLOSE_CODE)
             except YorungeError:
                 pass
 
@@ -234,8 +261,10 @@ def acquire_lock(directory: int, name: str) -> LockObject:
     A missing file is created exclusively (a lost race takes the present branch); a present one
     must be provably ours. After the lock is taken the name must still lead to the locked file: a
     process finishing a download removes its lock file, so a waiter that was handed the lock of a
-    removed file starts again, at most three times.
+    removed file starts again; so does one whose look or open met the removal. Three attempts in
+    all, whatever sent them round again.
     """
+    fcntl = require_local_files()
     for _ in range(LOCK_ATTEMPTS):
         seen = entry_of(directory, name)
         if seen is None:
@@ -246,7 +275,14 @@ def acquire_lock(directory: int, name: str) -> LockObject:
         else:
             if not seen.owned:
                 raise YorungeError("download_partial_unverified")
-            descriptor = open_checked(directory, name, seen, os.O_RDWR)
+            try:
+                descriptor = open_checked(directory, name, seen, os.O_RDWR)
+            except FileNotFoundError:
+                continue  # the process that finished removed it between the look and the open
+            except YorungeError:
+                if entry_of(directory, name) is None:
+                    continue  # ... or between the open and the second look: nothing foreign
+                raise
         try:
             step("lock:opened")
             try:
@@ -254,15 +290,17 @@ def acquire_lock(directory: int, name: str) -> LockObject:
             except OSError as error:
                 if error.errno in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
                     raise YorungeError("download_busy") from None
-                raise
+                raise YorungeError("download_write_failed") from None  # ENOLCK, no locks here
             step("lock:held")
             held = describe(os.fstat(descriptor))
             if same_file(held, entry_of(directory, name)):
                 return LockObject(directory, name, descriptor, held)
         except BaseException as error:
-            close_descriptor(descriptor, error)
+            close_descriptor(descriptor, error, code=CLOSE_CODE)
             raise
-        close_descriptor(descriptor)  # the name leads elsewhere now: take it from the start
+        close_descriptor(
+            descriptor, code=CLOSE_CODE
+        )  # the name leads elsewhere now: from the start
     raise YorungeError("download_busy")
 
 
@@ -298,7 +336,7 @@ class TargetDirectory:
             raise YorungeError("download_write_failed") from None
 
     def close(self) -> None:
-        close_descriptor(self.descriptor, code="download_write_failed")
+        close_descriptor(self.descriptor, code=CLOSE_CODE)
 
 
 def open_target_directory(target: Path) -> TargetDirectory:
