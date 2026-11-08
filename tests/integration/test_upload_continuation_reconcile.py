@@ -31,6 +31,7 @@ from tests.integration.test_upload_continuation_start import (
     the_check_goes_stale,
 )
 from tests.integration.test_upload_http_budget import SECRET
+from tests.integration.test_upload_original import approved as approved_original
 from tests.integration.test_upload_original import factory
 from tests.integration.test_upload_preparation import ENV
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
@@ -38,12 +39,14 @@ from tests.integration.test_upload_resume_observation import (
     certificates as certificates,
 )
 from tests.integration.test_upload_resume_observation import (
-    loopback_only as loopback_only,
-)
-from tests.integration.test_upload_resume_observation import (
+    interrupted,
     lose_confirm_of,
 )
+from tests.integration.test_upload_resume_observation import (
+    loopback_only as loopback_only,
+)
 from tests.integration.test_upload_resume_observation import world as three_files
+from yorunge import api
 from yorunge.adapters.platform_upload_port import ObservedUploadPort
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_api import recover_upload
@@ -92,7 +95,7 @@ def store_is_valid(data):
 # --- an unproved continuation becomes verified in the same operation ------------------------------
 
 
-@pytest.mark.parametrize("current", ["same", "rotated"])
+@pytest.mark.parametrize("current", ["same", "rotated", "reset", "profile"])
 def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
     prepared_input, certificates, monkeypatch, current
 ):
@@ -107,6 +110,11 @@ def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
         assert before.verification is None and len(before.receipts) == len(before.intents) == 3
         if current == "rotated":
             monkeypatch.setenv(ENV, "replacement-read-key")
+        elif current == "reset":
+            preview = api.preview_identity_reset(state_dir=data[0]).data
+            api.reset_identity(preview.digest, state_dir=data[0])
+        elif current == "profile":
+            data = (*data[:3], data[3].model_copy(update={"profile": "readonly"}), data[4])
         events, requests = len(provider.events), len(server.requests)
 
         phase = reconcile(data, server, operation_id, budgets=budgets)
@@ -138,6 +146,10 @@ def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
         assert len({f.item_id for f in proof.files}) == 3  # three distinct provider items
         if current == "rotated":
             assert proof.scope.credential_revision > after.plan.scope.credential_revision
+        if current == "reset":
+            assert proof.scope.identity_epoch != after.plan.scope.identity_epoch
+        if current == "profile":
+            assert (proof.scope.profile, after.plan.scope.profile) == ("readonly", "test")
         store_is_valid(data)
         with pytest.raises(OperationError) as finished:  # a verified record is history
             reconcile(data, server, operation_id)
@@ -216,6 +228,35 @@ def test_a_read_that_goes_wrong_keeps_its_own_error_and_the_unknown_record(
         assert (after.operation.status, after.operation.reason) == ("unknown", "read_unavailable")
         assert after.operation.lease is None and after.verification is None
         assert len(after.receipts) == 3
+        store_is_valid(data)
+
+
+@pytest.mark.parametrize("mutation", ["another owner", "dataset gone"])
+def test_a_dataset_that_is_not_the_baseline_is_a_failed_read_and_the_record_stays_unknown(
+    prepared_input, certificates, monkeypatch, mutation
+):
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        operation_id = left_unproved(data, provider, server, report.plan_id, monkeypatch)
+        before = operation_of(data, report.plan_id)
+        if mutation == "another owner":
+            provider.wrong_detail_owner = True
+        else:
+            provider.created = False  # the detail answers 404
+        count = len(server.requests)
+        with pytest.raises(OperationError) as raised:
+            reconcile(data, server, operation_id)
+        after = operation_of(data, report.plan_id)
+        assert (raised.value.code, raised.value.operation_id) == ("invalid_response", operation_id)
+        assert (after.status, after.reason) == ("unknown", "read_unavailable")
+        assert after.fence == before.fence + 1 and after.lease is None  # as the v2 read does
+        assert journal(data, report.plan_id).verification is None
+        assert all(r.method == "GET" for r in server.requests[count:])
+        provider.wrong_detail_owner, provider.created = False, True  # the provider is right again
+        phase = reconcile(data, server, operation_id)
+        assert (phase.record.status, phase.record.reason) == ("succeeded", "metadata_verified")
         store_is_valid(data)
 
 
@@ -357,6 +398,31 @@ def test_the_store_itself_refuses_to_read_or_clean_a_source_that_has_a_continuat
         store_is_valid(data)
 
 
+def test_a_continuation_whose_lease_lapsed_without_sending_is_no_successor_yet(
+    prepared_input, certificates
+):
+    # Admitted, nothing sent, and its lease lapsed: it is not cancelled yet (the next prepare or
+    # admission does that), but it no longer stands in the source's way.
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        start(data, server, report.plan_id, algorithm=admit_only, clock=clock)
+        source = journal(data, report.plan_id).plan.continuation.source_operation_id
+        clock.skew += 200
+        before = source_record(data, source)
+        with pytest.raises(OperationError) as uncertain:
+            reconcile(data, server, source, clock=clock)
+        assert (uncertain.value.code, uncertain.value.operation_id) == (
+            "operation_uncertain",
+            source,
+        )
+        assert source_record(data, source).fence == before.fence + 1
+        assert operation_of(data, report.plan_id).status == "admitted"  # the cleanup is not ours
+        store_is_valid(data)
+
+
 def test_a_source_whose_continuation_was_cancelled_is_reconciled_as_it_always_was(
     prepared_input, certificates
 ):
@@ -392,6 +458,34 @@ def test_a_source_whose_continuation_was_cancelled_is_reconciled_as_it_always_wa
         store_is_valid(data)
 
 
+def test_a_successor_found_inside_the_session_is_named_too(
+    prepared_input, certificates, monkeypatch
+):
+    from yorunge.domain.upload_resume import SourceHasSuccessor
+
+    data, provider = three_files(prepared_input)
+    other = "00000000-0000-4000-8000-0000000000bb"
+    real = StateUploads.require_no_successor
+    calls = []
+
+    def second_time_is_the_session(repository, operation_id):
+        calls.append(operation_id)
+        if len(calls) == 2:  # the check the session makes of its own record before it acquires
+            raise SourceHasSuccessor(other)
+        return real(repository, operation_id)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        operation_id = left_unproved(data, provider, server, report.plan_id, monkeypatch)
+        before = source_record(data, operation_id)
+        monkeypatch.setattr(StateUploads, "require_no_successor", second_time_is_the_session)
+        with pytest.raises(OperationError) as refused:
+            reconcile(data, server, operation_id)
+        assert (refused.value.code, refused.value.operation_id) == ("operation_conflict", other)
+        assert source_record(data, operation_id) == before
+
+
 # --- the public reconcile does not reach a continuation until its results are named ---------------
 
 
@@ -415,3 +509,63 @@ def test_the_public_reconcile_refuses_a_continuation_before_it_reads_or_writes(
         # a summary that then cannot be shown.
         assert refused.value.code == "state_invalid"
         assert len(server.requests) == requests and journal(data, report.plan_id) == before
+
+
+def test_the_public_reconcile_of_original_uploads_answers_as_it_did_before_the_step(
+    prepared_input, certificates, tmp_path
+):
+    """The guard that refuses a continuation is one more local look at the operation: for a v1/v2
+    state it changes no code, no identity and no order (the answers pinned here are those of the
+    tree before this step, which the review compared run for run)."""
+    data, provider = three_files(prepared_input)
+    load = lambda plan: (data[3], data[4])  # noqa: E731
+    missing = "00000000-0000-4000-8000-0000000000aa"
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = approved_original(data, server)
+
+        def answer(call):
+            with pytest.raises(YorungeError) as error:
+                call()
+            return (
+                type(error.value).__name__,
+                error.value.code,
+                getattr(error.value, "operation_id", None),
+            )
+
+        state = data[0]
+        assert answer(lambda: recover_upload(missing, load, state, accepted=True)) == (
+            "OperationError",
+            "operation_not_found",
+            missing,
+        )
+        assert answer(lambda: recover_upload(plan.plan_id, load, state, accepted=True)) == (
+            "OperationError",
+            "operation_not_found",
+            plan.plan_id,
+        )
+        assert answer(
+            lambda: recover_upload(missing, load, tmp_path / "no-store", accepted=True)
+        ) == ("OperationError", "state_invalid", missing)
+        for bad in (
+            lambda: recover_upload("not-a-uuid", load, state, accepted=True),
+            lambda: recover_upload(None, load, state, accepted=True),
+            lambda: recover_upload(missing, load, state, accepted="yes"),
+            lambda: recover_upload(missing, load, "a-str-is-not-a-path", accepted=True),
+        ):
+            assert answer(bad) == ("YorungeError", "invalid_request", None)
+        source = interrupted(data, server)  # an original upload that stopped uncertain
+        before = source_record(data, source)
+        assert answer(lambda: recover_upload(source, load, state, accepted=False)) == (
+            "OperationError",
+            "approval_required",
+            source,
+        )
+        assert source_record(data, source) == before  # no consent: nothing is touched
+        assert answer(lambda: recover_upload(source, load, state, accepted=True)) == (
+            "OperationError",
+            "operation_uncertain",
+            source,
+        )
+        after = source_record(data, source)  # the graph is not whole: the old local cleanup
+        assert (after.status, after.reason) == ("unknown", "request_uncertain")
+        assert (after.fence, after.revision) == (before.fence + 1, before.revision + 1)

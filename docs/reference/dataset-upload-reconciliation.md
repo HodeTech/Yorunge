@@ -11,6 +11,7 @@ Sync/ID/state-dir/flag türü denetlenir; open_existing_store ile exact operatio
 | Durum | Loader/network/ownership öncesi sonuç |
 |---|---|
 | Terminal succeeded/failed/cancelled | operation_conflict/2; geçmiş değişmez |
+| İptal edilmemiş bir devamı (continuation) olan kaynak (P02-3x) | operation_conflict/2 ve hata kimliği **torunun** kimliği; kaynağın fence’i, revision’ı ve nedeni değişmez, hiçbir okuma yapılmaz, onay bayrağından bağımsızdır (kaynağın grafı eksik olduğundan zaten `succeeded` olamazdı) |
 | V2 historical accepted-create v1 baseline | ADR-0027 require_created_baseline owner/CAS tablosu: operation_uncertain/5, koşullu local marker, sıfır HTTP/yeni lease |
 | Unlatched veya dataset ID’si olmayan kayıtta etkin lease | Mevcut cleanup/takeover kapısı operation_conflict/2; yeni hak yok |
 | Expired unlatched admission | Mevcut execution izni üretmeyen cleanup → cancelled; yerel sonuç, HTTP yok |

@@ -167,6 +167,9 @@ class _ReadEnvironment:
         return self.record
 
     def failure(self, error: BaseException) -> OperationError:
+        if isinstance(error, SourceHasSuccessor):
+            # The successor, not the source: and still marked as such, for the outer re-binding.
+            return SourceHasSuccessor(error.operation_id)
         code, operation_id = _source_code(error), self.record.operation_id
         reason = error.reason_code if isinstance(error, OperationError) else None
         try:

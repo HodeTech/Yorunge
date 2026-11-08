@@ -1253,10 +1253,15 @@ class StateUploads:
             raise SourceHasSuccessor(verdict.related_operation_id)
 
     def require_no_successor(self, operation_id: str) -> None:
-        """The local, read-only form of the gate ``acquire_read`` and ``cleanup_expired`` apply."""
-        stamp = self.cache.stamp()  # the clock may be written: not inside the read snapshot
-        with self.phase(operation_id), read_snapshot(self.connection):
-            self._no_successor(operation_id, stamp)
+        """The local form of the gate ``acquire_read`` and ``cleanup_expired`` apply.
+
+        It writes no upload row and changes nothing of the source (the clock's own trace advances,
+        as with every look at the store) and reads the chain in one snapshot.
+        """
+        with self.phase(operation_id):
+            stamp = self.cache.stamp()  # the clock may be written: not inside the read snapshot
+            with read_snapshot(self.connection):
+                self._no_successor(operation_id, stamp)
 
     def cleanup_expired(self, operation_id: str) -> VersionedTransferView:
         """Non-executing local cleanup; no grant, remote lookup or permit is produced."""
