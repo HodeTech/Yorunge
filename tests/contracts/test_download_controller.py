@@ -431,16 +431,15 @@ def test_a_report_that_does_not_validate_is_never_handed_back(driver):
 @pytest.mark.parametrize("name", ["SIGTERM", "SIGHUP"])
 def test_a_terminated_controller_is_stopped_like_a_ctrl_c_and_the_handlers_come_back(driver, name):
     import signal
-    import time
 
     number = getattr(signal, name)
     if signal.getsignal(number) is signal.SIG_IGN:
         pytest.skip(f"{name} is ignored on entry (nohup): the controller leaves that choice alone")
     before = {n: signal.getsignal(n) for n in (signal.SIGTERM, signal.SIGHUP)}
+    guarded = driver["termination_signals"]()
     with pytest.raises(SystemExit) as stopped:
-        with driver["termination_signals"]():
-            os.kill(os.getpid(), number)
-            time.sleep(1)  # the handler raises at the next bytecode; this is never reached
+        with guarded:
+            signal.raise_signal(number)  # returns only after the handler ran: it raises here
     assert stopped.value.code == 128 + number
     assert {n: signal.getsignal(n) for n in before} == before
 
@@ -524,8 +523,7 @@ def test_a_second_signal_during_the_cleanup_is_ignored_and_the_handlers_come_bac
     before = {n: signal.getsignal(n) for n in (signal.SIGTERM, signal.SIGHUP)}
     with driver["termination_signals"]():
         with pytest.raises(SystemExit) as first:
-            os.kill(os.getpid(), signal.SIGTERM)
-            time.sleep(1)
+            signal.raise_signal(signal.SIGTERM)
         assert first.value.code == 128 + signal.SIGTERM
         os.kill(os.getpid(), signal.SIGHUP)  # the cleanup is under way: this one changes nothing
         os.kill(os.getpid(), signal.SIGTERM)

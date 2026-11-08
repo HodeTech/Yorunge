@@ -212,9 +212,11 @@ def test_an_interrupt_in_the_middle_of_a_helper_closes_what_it_opened(place, mon
         (place / NAMES.lock).chmod(0o600)
     before = descriptors()
     monkeypatch.setattr(download_files, "_marker", interrupt)
+    open_sink_value = open_sink(target(place), identity_key=IDENTITY)
+    full_value = full()
     with pytest.raises(KeyboardInterrupt):
-        with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
-            sink.begin(full(), "restart" if plan.ask else "full")
+        with open_sink_value as (sink, plan):
+            sink.begin(full_value, "restart" if plan.ask else "full")
     monkeypatch.undo()
     assert descriptors() == before
     assert NAMES.sidecar_tmp not in left(place)
@@ -560,9 +562,11 @@ def test_an_interrupt_is_not_replaced_by_the_failure_of_the_cleanup_of_the_tempo
 
     monkeypatch.setattr(download_files.os, "unlink", failing)
     monkeypatch.setattr(download_files, "_marker", interrupt)
+    open_sink_value = open_sink(target(place), identity_key=IDENTITY)
+    full_value = full()
     with pytest.raises(KeyboardInterrupt):
-        with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
-            sink.begin(full(), "full")
+        with open_sink_value as (sink, plan):
+            sink.begin(full_value, "full")
     monkeypatch.undo()
 
 

@@ -75,9 +75,11 @@ def test_each_documented_refusal_of_link_is_a_definite_failure_and_leaves_nothin
         raise OSError(number, "PRIVATE")
 
     monkeypatch.setattr(artifact_publisher.os, "link", refuse)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert (error.value.code, error.value.exit_code) == ("binding_write_failed", 2)
     assert list(place.iterdir()) == []
 
@@ -88,9 +90,11 @@ def test_any_other_error_of_link_stays_uncertain(place, monkeypatch, number):
         raise OSError(number, "PRIVATE")
 
     monkeypatch.setattr(artifact_publisher.os, "link", fail)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert (error.value.code, error.value.exit_code) == ("binding_write_uncertain", 5)
 
 

@@ -230,9 +230,11 @@ def test_a_name_that_is_taken_by_anything_is_never_replaced(place, kind):
         path.mkdir()
     else:
         path.symlink_to(place / "nowhere")
+    binding_target_value = binding_target(path)
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(path) as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert error.value.code == "binding_output_exists"
     assert path.is_symlink() or path.exists()
     assert not list(place.glob(".yorunge-binding-*"))
@@ -256,9 +258,11 @@ def test_an_os_error_before_the_link_is_the_write_failed_code_and_leaves_no_stag
         raise OSError(errno.ENOSPC, "PRIVATE")
 
     monkeypatch.setattr(artifact_publisher.os, "write", failing)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert error.value.code == "binding_write_failed"
     assert list(place.iterdir()) == []
 
@@ -268,9 +272,11 @@ def test_a_failure_after_the_link_began_is_uncertain_and_exit_5(place, monkeypat
         raise OSError(errno.EIO, "PRIVATE")
 
     monkeypatch.setattr(artifact_publisher.os, "link", failing)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert error.value.code == "binding_write_uncertain"
     assert error.value.exit_code == 5
 
@@ -283,9 +289,11 @@ def test_a_volume_that_refuses_hard_links_is_a_write_failure_not_an_uncertain_pu
         raise OSError(number, "PRIVATE")
 
     monkeypatch.setattr(artifact_publisher.os, "link", refuse)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(YorungeError) as error:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert (error.value.code, error.value.exit_code) == ("binding_write_failed", 2)
     assert list(place.iterdir()) == []  # no target, no stage: a rerun is a plain retry
 
@@ -371,7 +379,9 @@ def test_a_task_cancellation_after_the_link_began_carries_the_uncertainty(place,
         raise asyncio.CancelledError
 
     monkeypatch.setattr(artifact_publisher.os, "link", linking_then_cancelled)
+    binding_target_value = binding_target(place / "binding.json")
+    binding_value = binding()
     with pytest.raises(asyncio.CancelledError) as cancelled:
-        with binding_target(place / "binding.json") as target:
-            target.publish(binding())
+        with binding_target_value as target:
+            target.publish(binding_value)
     assert MESSAGES["binding_write_uncertain"] in cancelled.value.__notes__

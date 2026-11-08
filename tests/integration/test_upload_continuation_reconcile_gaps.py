@@ -154,12 +154,15 @@ def test_a_continuation_admitted_between_the_prechecks_and_the_transaction_still
 
         with open_existing_store(data[0]) as store:
             repository = StateUploads(store)
+            if call == "cleanup_expired":
+                action = repository.cleanup_expired
+                arguments = {}
+            else:
+                action = repository.acquire_read
+                arguments = {"accept_unverified_read": True}
             with admission_before_the_write_transaction(monkeypatch, admit) as fired:
                 with pytest.raises(OperationError) as refused:
-                    if call == "cleanup_expired":
-                        repository.cleanup_expired(source)
-                    else:
-                        repository.acquire_read(source, accept_unverified_read=True)
+                    action(source, **arguments)
             assert fired
         successor = operation_of(data, report.plan_id)
         assert successor is not None

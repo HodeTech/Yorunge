@@ -436,8 +436,9 @@ def test_a_deadline_during_the_prefix_hash_propagates_and_discards_nothing(place
         ticks.append(1)
         raise YorungeError("transport_timeout")  # the engine's deadline reaches the local read
 
+    open_sink_value = open_sink(target(place), identity_key=IDENTITY, guard=guard)
     with pytest.raises(YorungeError) as error:
-        with open_sink(target(place), identity_key=IDENTITY, guard=guard):
+        with open_sink_value:
             pytest.fail("the sink was handed over although its prefix was never checked")
     assert error.value.code == "transport_timeout"
     assert ticks

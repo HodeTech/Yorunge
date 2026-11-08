@@ -733,9 +733,11 @@ def test_a_stage_that_is_not_what_was_written_is_write_failed_and_leaves_nothing
         os.fchmod(descriptor, 0o644)
 
     monkeypatch.setattr(binding_files.BindingWriter, "_sync", tampering)
+    binding_target_value = binding_target(place / "b.json")
+    held_binding_value = held_binding()
     with pytest.raises(YorungeError) as raised:
-        with binding_target(place / "b.json") as target:
-            target.publish(held_binding())
+        with binding_target_value as target:
+            target.publish(held_binding_value)
     assert raised.value.code == "binding_write_failed"
     assert list(place.iterdir()) == []
 
