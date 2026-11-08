@@ -29,6 +29,9 @@ AuthorizationOutcome = Literal["allowed", "not_exposed", "denied", "unavailable"
 UNAVAILABLE_CODES = frozenset(
     {"transport_timeout", "transport_failed", "remote_rate_limited", "remote_failed"}
 )
+# What a provider can answer to a read of the dataset that makes the read fail, as the check
+# ``read_failed`` records it: not a failed upload, and never a reason to replay one.
+READ_FAILURES = UNAVAILABLE_CODES | {"remote_access_denied", "invalid_response"}
 
 
 def mandatory_http_failure(status: int) -> tuple[AuthorizationOutcome, ErrorCode]:

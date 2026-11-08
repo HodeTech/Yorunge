@@ -96,7 +96,12 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUpl
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
+from yorunge.domain.upload_checks import (
+    READ_FAILURES,
+    AuthorizationCheck,
+    UploadCurrentCheck,
+    require_fresh,
+)
 from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
 from yorunge.domain.upload_resume import OperationJournal
 from yorunge.domain.upload_versions import (
@@ -1401,19 +1406,7 @@ class StateUploads:
             self.require_created_baseline(operation_id, owner)
             check = decode(AuthorizationCheck, authorization.encoded().decode("ascii"))
             code = check.error_code
-            if (
-                code is None
-                or code
-                not in {
-                    "remote_access_denied",
-                    "remote_rate_limited",
-                    "remote_failed",
-                    "transport_timeout",
-                    "transport_failed",
-                    "invalid_response",
-                }
-                or check.action != "read_created_dataset"
-            ):
+            if code is None or code not in READ_FAILURES or check.action != "read_created_dataset":
                 raise YorungeError("invalid_request")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:

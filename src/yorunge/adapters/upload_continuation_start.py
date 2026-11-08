@@ -1,12 +1,13 @@
 """The start of a continuation: from an approved plan to a verified dataset.
 
 What decides whether the plan still stands is looked at before the operation exists: the plan and
-its approval, the folder, the source's journal and the dataset as the provider lists it now. The
-plan carries the classification it was approved on; a dataset that no longer classifies the same
-way, whatever the cause, ends the start before a request that changes anything is sent or a line
-is written (``continuation_remote_changed``: prepare the continuation again). The stages and the
-closing read are those of ``upload_continuation``; this module only composes them, once, in one
-invocation.
+its approval, the source's journal, the folder and the dataset as the provider lists it now. The
+journal comes first, because it needs nothing from the folder or the provider: a source that is no
+longer alone is refused at once. The plan carries the classification it was approved on; a dataset
+that no longer classifies the same way, whatever the cause, ends the start before a request that
+changes anything is sent or a line is written (``continuation_remote_changed``: prepare the
+continuation again). The stages and the closing read are those of ``upload_continuation``; this
+module only composes them, once, in one invocation.
 """
 
 from __future__ import annotations
@@ -19,9 +20,10 @@ from typing import NoReturn
 
 from yorunge.adapters.capability_cache import Clock, SystemClock
 from yorunge.adapters.state import open_existing_store
+from yorunge.adapters.upload_chain import ResumeSource
 from yorunge.adapters.upload_continuation import ContinuationStages, run_stages
 from yorunge.adapters.upload_http import UploadSession
-from yorunge.adapters.upload_input_files import capture_upload_input
+from yorunge.adapters.upload_input_files import UploadInputObservation, capture_upload_input
 from yorunge.adapters.upload_original import _plan_id
 from yorunge.adapters.upload_preparation import SessionFactory, require_upload_sync_context
 from yorunge.adapters.upload_repository import StateUploads
@@ -38,7 +40,7 @@ from yorunge.domain.dataset_upload import UploadScope
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Context, Profile
 from yorunge.domain.platform_upload import ProviderDataset
-from yorunge.domain.upload_resume import classify
+from yorunge.domain.upload_resume import ChainSummary, classify
 
 ContinuationContextLoader = Callable[[DatasetContinuationPlanV3], tuple[Context, Profile]]
 
@@ -91,20 +93,14 @@ def _initial(
         return plan, manifest
 
 
-def _still_stands(
-    runtime: UploadResumeRuntime,
-    plan: DatasetContinuationPlanV3,
-    bound: BoundCredential,
-    scope: UploadScope,
-    end: float,
-) -> ProviderDataset:
-    """The dataset the plan extends, if the plan still stands on what it was approved on.
+def _journal_clear(
+    runtime: UploadResumeRuntime, plan: DatasetContinuationPlanV3
+) -> tuple[ResumeSource, ChainSummary]:
+    """The source and its lineage, if what the journal alone says leaves the plan standing.
 
-    The journal is read first and asks nothing of the provider: a source that is no longer alone
-    is a conflict with the operation in the way, and one the journal rules out otherwise is a plan
-    that has been outlived. The dataset is then listed and classified as ``resume`` classifies it;
-    the plan stands only if the selection, the files it is unsure of and both digests are those it
-    was prepared with. A failure to look (access, rate, transport) is that failure, not a change.
+    Nothing is asked of the folder or the provider: a source that is no longer alone is a conflict
+    with the operation in the way, and one the journal rules out otherwise is a plan that has been
+    outlived. The admission refuses on the same facts, so this only says so sooner and cheaper.
     """
     source_id = plan.continuation.source_operation_id
     source, _ = runtime._read_source(source_id)
@@ -113,6 +109,24 @@ def _still_stands(
         raise OperationError("operation_conflict", related or source_id)
     if blockers:
         raise YorungeError("continuation_remote_changed")
+    return source, chain
+
+
+def _dataset_stands(
+    runtime: UploadResumeRuntime,
+    plan: DatasetContinuationPlanV3,
+    bound: BoundCredential,
+    scope: UploadScope,
+    source: ResumeSource,
+    chain: ChainSummary,
+    end: float,
+) -> ProviderDataset:
+    """The dataset the plan extends, if the provider still shows what the plan was approved on.
+
+    It is listed and classified as ``resume`` classifies it; the plan stands only if the selection,
+    the files it is unsure of and both digests are those it was prepared with. A failure to look
+    (access, rate, transport) is that failure, not a change.
+    """
     baseline = source.baseline
     assert baseline is not None  # a source whose create is unknown is a conflict above
     _, inventory = runtime._read_remote(bound, scope, baseline, plan, source.manifest, end)
@@ -123,6 +137,41 @@ def _still_stands(
         # The dataset is no longer shown to be the baseline, or no longer classifies as approved.
         raise YorungeError("continuation_remote_changed")
     return baseline
+
+
+def _looked_at(
+    runtime: UploadResumeRuntime,
+    plan: DatasetContinuationPlanV3,
+    manifest: DatasetManifest,
+    end: float,
+) -> tuple[BoundCredential, UploadInputObservation, ProviderDataset]:
+    """Everything the start stands on, looked at before the operation exists; nothing is written."""
+    source, chain = _journal_clear(runtime, plan)
+    bound, scope = runtime._bind(plan.scope.owner)
+    if scope != plan.scope:
+        raise YorungeError("state_changed")
+    runtime._check_scope(bound, scope)
+    inputs = capture_upload_input(
+        Path(plan.root.anchor),
+        manifest,
+        bound.credential.secret,
+        end=end,
+        expected_root=plan.root,
+    )
+    runtime._check_scope(bound, scope)
+    baseline = _dataset_stands(runtime, plan, bound, scope, source, chain, end)
+    return bound, inputs, baseline
+
+
+def _admitted_meanwhile(
+    plan_id: str, state_dir: Path | None, clock: Clock
+) -> ContinuationPhase | None:
+    """The operation the plan got while this invocation was looking, if it got one (no request)."""
+    try:
+        found = _initial(plan_id, state_dir, clock)
+    except YorungeError:
+        return None
+    return found if isinstance(found, ContinuationPhase) else None
 
 
 def run_upload_continuation(
@@ -164,18 +213,16 @@ def run_upload_continuation(
 
     with runtime._invocation() as invocation_end:
         end = min(started + 900, invocation_end)
-        bound, scope = runtime._bind(plan.scope.owner)
-        if scope != plan.scope:
-            raise YorungeError("state_changed")
-        runtime._check_scope(bound, scope)
-        inputs = capture_upload_input(
-            Path(plan.root.anchor),
-            manifest,
-            bound.credential.secret,
-            end=end,
-            expected_root=plan.root,
-        )
-        runtime._check_scope(bound, scope)
-        baseline = _still_stands(runtime, plan, bound, scope, end)
+        try:
+            bound, inputs, baseline = _looked_at(runtime, plan, manifest, end)
+        except YorungeError:
+            # The look takes a while (the folder is hashed, the dataset listed), and another
+            # invocation may have admitted this very plan meanwhile: its operation is the answer,
+            # found without a request, whatever the look has to say of a journal or a dataset that
+            # operation changed. A refusal stands only while the plan has no operation of its own.
+            found = _admitted_meanwhile(plan_id, state_dir, clock)
+            if found is None:
+                raise
+            return found
         record = run_stages(runtime, plan, bound, inputs, baseline, end, start)
     return ContinuationPhase(plan, record, not owned)

@@ -16,11 +16,13 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from yorunge.adapters.upload_original_read import _deadline
-from yorunge.adapters.upload_reconciliation import READ_FAILURES
+from yorunge.adapters.upload_read_access import ReadAccess
 from yorunge.domain.capabilities import timestamp
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
+from yorunge.domain.dataset_transfer import VerifiedFile
 from yorunge.domain.dataset_transfer_v3 import TransferRecordV3, TransferVerificationV3
 from yorunge.domain.errors import ErrorCode, YorungeError
-from yorunge.domain.upload_checks import AuthorizationCheck, AuthorizationOutcome
+from yorunge.domain.upload_checks import READ_FAILURES, AuthorizationCheck, AuthorizationOutcome
 
 if TYPE_CHECKING:
     from yorunge.adapters.upload_continuation import ContinuationStages
@@ -62,7 +64,32 @@ def _provider_read(environment: ContinuationStages) -> Iterator[None]:
             repository.read_failed(
                 record.operation_id, record.lease, _negative(environment, error.code)
             )
-        raise  # ``read_failed`` ends in an error of its own; else the read's error stands
+        # ``read_failed`` always ends in an error of its own. Were it ever to return, the read's
+        # error must still stand: a context manager that returned here would swallow it.
+        raise
+
+
+def continuation_proof(
+    plan: DatasetContinuationPlanV3,
+    dataset_id: str,
+    access: ReadAccess,
+    observed_at: str,
+    files: tuple[VerifiedFile, ...],
+) -> TransferVerificationV3:
+    """The proof of one read of the whole dataset, under the access that allowed the read.
+
+    The reconciliation of a continuation that is left unproved builds the same proof.
+    """
+    return TransferVerificationV3(
+        schema_version=3,
+        dataset_id=dataset_id,
+        project_id=plan.scope.project_id,
+        scope=access.scope,
+        authorization_policy=access.policy,
+        grant=access.grant,
+        observed_at=observed_at,
+        files=files,
+    )
 
 
 async def verify_continuation(environment: ContinuationStages) -> TransferRecordV3:
@@ -97,15 +124,8 @@ async def verify_continuation(environment: ContinuationStages) -> TransferRecord
             environment.baseline.id,
             deadline=_deadline(environment, check, access),
         )
-    proof = TransferVerificationV3(
-        schema_version=3,
-        dataset_id=environment.baseline.id,
-        project_id=environment.plan.scope.project_id,
-        scope=access.scope,
-        authorization_policy=access.policy,
-        grant=access.grant,
-        observed_at=observed_at,
-        files=files,
+    proof = continuation_proof(
+        environment.plan, environment.baseline.id, access, observed_at, files
     )
     with environment.repository() as repository:
         view = repository.verified(record.operation_id, record.lease, proof, authorization=check)

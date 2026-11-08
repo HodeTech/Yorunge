@@ -17,7 +17,7 @@ import time
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from datetime import timedelta
-from typing import Literal
+from typing import Literal, TypeVar
 
 from yorunge.adapters.platform_upload_port import ObservedUploadPort
 from yorunge.adapters.platform_upload_reader import ObservedUploadReader
@@ -43,6 +43,8 @@ from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.upload_checks import UploadCurrentCheck
 from yorunge.domain.upload_versions import graph_of
+
+_Outcome = TypeVar("_Outcome")
 
 
 class ContinuationStages:
@@ -268,6 +270,11 @@ class ContinuationStages:
         try:
             latched = self._stop(operation_id)
         except YorungeError as marker_error:
+            if not graph_of(self.plan).files:
+                # A check-only continuation has sent nothing and never will: whatever stopped it,
+                # and whether or not its stop could be written, nothing is uncertain (the lease
+                # cleanup cancels the record).
+                return OperationError(code, operation_id, reason_code=reason)
             return OperationError(
                 "operation_uncertain", operation_id, reason_code=marker_error.code
             )
@@ -295,8 +302,8 @@ def run_stages(
     inputs: UploadInputObservation,
     baseline: ProviderDataset,
     end: float,
-    algorithm: Callable[[ContinuationStages], Awaitable[TransferRecordV3]],
-) -> TransferRecordV3:
+    algorithm: Callable[[ContinuationStages], Awaitable[_Outcome]],
+) -> _Outcome:
     """One session with the continuation's own budget (no create, no link, M files), one
     environment and ``algorithm`` over it; a failure is the operation's own error.
 
@@ -320,7 +327,7 @@ def run_stages(
     )
     environment: ContinuationStages | None = None
 
-    async def consume(client: UploadHttpxTransport) -> TransferRecordV3:
+    async def consume(client: UploadHttpxTransport) -> _Outcome:
         nonlocal environment
         environment = ContinuationStages(
             runtime, plan, bound, inputs, reader, port, client, end, baseline
@@ -328,7 +335,7 @@ def run_stages(
         return await algorithm(environment)
 
     failure = None
-    record: TransferRecordV3 | None = None
+    record: _Outcome | None = None
     try:
         session = runtime._session(key, budget)
         with session:

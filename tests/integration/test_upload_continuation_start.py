@@ -64,6 +64,12 @@ def approve(data, server, plan_id):
     start(data, server, plan_id, algorithm=approve_only)
 
 
+async def admit_only(environment):
+    """What an invocation does that is admitted and then stopped: the operation, nothing sent."""
+    assert environment.admit(await environment.admission())  # the plan is approved already
+    return environment.record
+
+
 def go(data, server, plan_id, *, budgets=None, clock=None):
     return run_upload_continuation(
         plan_id,
@@ -197,6 +203,60 @@ def test_a_process_that_does_not_win_the_admission_sends_and_proves_nothing(
         assert provider.events[sends:] == []
         assert all(r.method == "GET" for r in server.requests[requests:])
         assert journal(data, report.plan_id).verification is None
+
+
+def test_a_plan_that_another_invocation_admits_while_this_one_looks_is_found_not_a_conflict(
+    prepared_input, certificates, monkeypatch
+):
+    # The look takes a while (the folder is hashed, the dataset listed). Another invocation admits
+    # this very plan after the first lookup and before the journal is read: the journal then shows
+    # that operation in the way, and it is this plan's own.
+    data, provider = three_files(prepared_input)
+    original = UploadResumeRuntime._read_source
+    done = []
+
+    def read_source(runtime, operation_id):
+        if not done:
+            done.append(1)
+            start(data, server, report.plan_id, algorithm=admit_only)  # the other invocation
+        return original(runtime, operation_id)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        monkeypatch.setattr(UploadResumeRuntime, "_read_source", read_source)
+        sends, budgets = len(provider.events), []
+        phase = go(data, server, report.plan_id, budgets=budgets)
+        assert done and phase.existing is True and phase.record.status == "admitted"
+        assert phase.record == operation_of(data, report.plan_id)
+        assert provider.events[sends:] == [] and budgets == []  # this invocation asked nothing
+
+
+def test_a_plan_whose_dataset_its_own_operation_changed_meanwhile_is_found_not_changed(
+    prepared_input, certificates, monkeypatch
+):
+    # The other invocation does not stop at the admission: it sends the file that was left, so the
+    # dataset this one then lists is no longer the one the plan was approved on. The operation that
+    # changed it is this plan's own, and it is the answer.
+    data, provider = three_files(prepared_input)
+    original = UploadResumeRuntime._read_remote
+    done = []
+
+    def read_remote(runtime, *args, **kwargs):
+        if not done:
+            done.append(1)
+            assert go(data, server, report.plan_id).existing is False  # the other invocation
+        return original(runtime, *args, **kwargs)
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        monkeypatch.setattr(UploadResumeRuntime, "_read_remote", read_remote)
+        sends = len(provider.events)
+        phase = go(data, server, report.plan_id)
+        assert done and phase.existing is True and phase.record.status == "succeeded"
+        assert phase.record == operation_of(data, report.plan_id)
+        assert provider.events[sends:] == ["presign", "put", "confirm"]  # the one file, once
 
 
 # --- the plan no longer stands: nothing is sent and nothing is written ----------------------------
@@ -549,6 +609,60 @@ def test_a_closing_read_that_is_too_slow_leaves_a_continuation_that_sent_files_u
         assert provider.events[sends:] == ["presign", "put", "confirm"]  # nothing is replayed
 
 
+@pytest.mark.parametrize(
+    "seconds,closed_as",
+    [(200, "lease_expired"), (1000, "approval_expired")],
+    ids=["the lease lapsed", "the window is over"],
+)
+def test_a_check_only_continuation_that_cannot_write_its_stop_is_still_nothing_uncertain(
+    prepared_input, certificates, monkeypatch, seconds, closed_as
+):
+    # The time that goes by costs the operation its lease (or the plan its window), so the stop of
+    # the failed read cannot be written either. A continuation that sent nothing and never will has
+    # nothing to be uncertain about: the caller gets the read's own failure, and the lease cleanup
+    # closes the record.
+    data, provider = check_only_world(prepared_input)
+    clock = Skewed()
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        the_check_goes_stale(monkeypatch, clock, seconds)
+        with pytest.raises(OperationError) as error:
+            go(data, server, report.plan_id, clock=clock)
+        record = operation_of(data, report.plan_id)
+        assert (
+            error.value.code == "execution_timeout" and error.value.reason_code == error.value.code
+        )
+        assert error.value.operation_id == record.operation_id
+        assert (record.status, record.workflow_latched) == ("admitted", False)
+        assert journal(data, report.plan_id).verification is None
+        with open_existing_store(data[0]) as store:
+            cleaned = StateUploads(store, clock=clock).cleanup_expired(record.operation_id)
+            assert (cleaned.operation.status, cleaned.operation.reason) == ("cancelled", closed_as)
+            validate_uploads(store.connection)
+
+
+@pytest.mark.parametrize("seconds", [200, 1000], ids=["the lease lapsed", "the window is over"])
+def test_a_continuation_that_sent_files_and_cannot_write_its_stop_is_uncertain(
+    prepared_input, certificates, monkeypatch, seconds
+):
+    data, provider = three_files(prepared_input)
+    clock = Skewed()
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        the_check_goes_stale(monkeypatch, clock, seconds)
+        with pytest.raises(OperationError) as error:
+            go(data, server, report.plan_id, clock=clock)
+        record = operation_of(data, report.plan_id)
+        # The file was sent and its stop cannot be written: the operation is left as it stands.
+        assert error.value.code == "operation_uncertain"
+        assert error.value.operation_id == record.operation_id
+        assert (
+            record.workflow_latched is True and journal(data, report.plan_id).verification is None
+        )
+
+
 # --- the source is no longer alone ----------------------------------------------------------------
 
 
@@ -563,7 +677,7 @@ def two_plans(data, server, provider):
 
 
 def test_a_source_that_was_continued_by_another_plan_is_a_conflict_with_that_operation(
-    prepared_input, certificates
+    prepared_input, certificates, monkeypatch
 ):
     data, provider = three_files(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
@@ -571,9 +685,15 @@ def test_a_source_that_was_continued_by_another_plan_is_a_conflict_with_that_ope
         winner = go(data, server, first.plan_id).record
         assert winner.status == "succeeded"
         requests = len(server.requests)
+
+        def not_looked_at(*args, **kwargs):
+            pytest.fail("a refusal the journal gives costs neither a key nor a hashed folder")
+
+        monkeypatch.setattr(start_module, "capture_upload_input", not_looked_at)
+        monkeypatch.setattr(UploadResumeRuntime, "_bind", not_looked_at)
         with pytest.raises(OperationError) as error:
             go(data, server, second.plan_id)
-        # The journal says so before anything is asked of the provider.
+        # The journal says so before anything is asked of the folder or the provider.
         assert (error.value.code, error.value.operation_id) == (
             "operation_conflict",
             winner.operation_id,
@@ -815,15 +935,13 @@ def test_an_admission_that_the_repository_refuses_names_the_operation_in_the_way
         monkeypatch.setattr(ContinuationStages, "admission", admitted_only)
         holder = go(data, server, first.plan_id)
         monkeypatch.setattr(ContinuationStages, "admission", original)
+
         # The look at the journal is skipped, as if the other plan was admitted a moment later.
-        baseline = UploadResumeRuntime._read_source
-        monkeypatch.setattr(
-            start_module,
-            "_still_stands",
-            lambda runtime, plan, bound, scope, end: (
-                baseline(runtime, plan.continuation.source_operation_id)[0].baseline
-            ),
-        )
+        def journal_clear(runtime, plan):
+            source, _ = runtime._read_source(plan.continuation.source_operation_id)
+            return source, runtime._journal(source)[0]
+
+        monkeypatch.setattr(start_module, "_journal_clear", journal_clear)
         sends = len(provider.events)
         with pytest.raises(OperationError) as error:
             go(data, server, second.plan_id)

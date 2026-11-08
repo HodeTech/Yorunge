@@ -13,6 +13,7 @@ import multiprocessing
 import os
 import signal
 import ssl
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -40,9 +41,11 @@ from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_continuation_start import run_upload_continuation
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import validate_uploads
+from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context, Profile
 
 BOUNDARIES = ("admission", "proof_gate", "proof_look", "proof_listing", "proof_commit")
+BUSY_RETRIES = 6
 
 
 def _child(state, plan_id, context, profile, port, certificate, boundary, connection):
@@ -226,8 +229,21 @@ def _racer(state, plan_id, context, profile, port, certificate, barrier, results
         Profile.model_validate(profile),
     )
     barrier.wait(60)
-    phase = child_go(data, endpoint, plan_id)
-    results.put((phase.existing, phase.record.status))
+    try:
+        for attempt in range(BUSY_RETRIES):
+            try:
+                phase = child_go(data, endpoint, plan_id)
+                break
+            except YorungeError as error:
+                # A store held for more than its second (a loaded machine) is the one answer a user
+                # retries; any other error is the answer, and is reported at once.
+                if error.code != "state_busy" or attempt == BUSY_RETRIES - 1:
+                    raise
+                time.sleep(0.5)
+    except BaseException as error:
+        results.put(("raised", type(error).__name__, getattr(error, "code", None)))
+        raise
+    results.put(("returned", phase.existing, phase.record.status))
 
 
 def test_two_processes_starting_the_same_plan_send_its_files_once(
@@ -266,9 +282,10 @@ def test_two_processes_starting_the_same_plan_send_its_files_once(
                 process.join(30)
                 if process.is_alive():
                     process.kill()
+        assert all(answer[0] == "returned" for answer in answers), answers
         assert all(process.exitcode == 0 for process in processes)
         # One of them owned the operation; the other only found it, whatever state it saw.
-        assert sorted(existing for existing, _ in answers) == [False, True]
+        assert sorted(answer[1] for answer in answers) == [False, True]
         assert provider.events[sends:] == list(STAGES)
         view = journal(data, report.plan_id)
         assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")

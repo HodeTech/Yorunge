@@ -32,13 +32,12 @@ from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
 from yorunge.domain.models import Context, Profile
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import (
-    UNAVAILABLE_CODES,
+    READ_FAILURES,
     AuthorizationCheck,
     AuthorizationOutcome,
 )
 
 ContextLoader = Callable[[DatasetUploadPlanV2], tuple[Context, Profile]]
-READ_FAILURES = UNAVAILABLE_CODES | {"remote_access_denied", "invalid_response"}
 
 
 def _source_code(error: BaseException) -> ErrorCode:
