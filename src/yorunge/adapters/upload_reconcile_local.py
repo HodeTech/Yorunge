@@ -1,4 +1,9 @@
-"""Local-only reconciliation selection; never read source files or mint write access."""
+"""Local-only reconciliation selection; never read source files or mint write access.
+
+What is reconciled is an original upload (v2) or a continuation (v3) whose every stage is
+acknowledged and that lacks only its metadata proof. A source that already has a continuation is
+history and is not reconciled: nothing local or remote touches it again.
+"""
 
 from __future__ import annotations
 
@@ -15,9 +20,11 @@ from yorunge.adapters.upload_store import (
     created_dataset,
     read_manifest,
 )
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import TERMINAL
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
+from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
@@ -42,14 +49,17 @@ class ReadPhase(_PrivateRead):
 
 @dataclass(frozen=True, slots=True, repr=False)
 class ReadInput(_PrivateRead):
-    plan: DatasetUploadPlanV2
-    record: TransferRecordV2
+    plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3
+    record: TransferRecordV2 | TransferRecordV3
     manifest: DatasetManifest
     baseline: ProviderDataset
 
 
 def read_policy(plan: UploadPlan, accepted: bool) -> None:
-    explicit = type(plan) is DatasetUploadPlanV2 and plan.admission_policy == "explicit_attempt"
+    explicit = (
+        isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
+        and plan.admission_policy == "explicit_attempt"
+    )
     if not explicit:
         raise YorungeError("invalid_request" if accepted else "upload_plan_not_valid")
     if not accepted:
@@ -79,7 +89,10 @@ def load_read_input(
             assert record is not None
             if record.status in TERMINAL:
                 raise YorungeError("operation_conflict")
-            repository.require_created_baseline(operation_id)
+            # A source with a continuation is not reconciled, whatever consent or credential is
+            # at hand: the successor is named and nothing is read or written.
+            repository.require_no_successor(operation_id)
+            required = repository.require_created_baseline(operation_id)
             # Missing response and unlatched expiry cleanup are deliberately
             # independent of read consent/config/credential availability.
             local = _stop_unreadable(repository, view)
@@ -91,10 +104,20 @@ def load_read_input(
             if not acknowledged_stages(view):
                 repository.cleanup_expired(operation_id)
                 raise YorungeError("operation_uncertain")
-            baseline = created_dataset(view)
-            if baseline is None or type(view.plan) is not DatasetUploadPlanV2:
-                raise YorungeError("upload_plan_not_valid")
-            if type(record) is not TransferRecordV2:
-                raise YorungeError("state_invalid")
-            manifest = read_manifest(store.connection, view.plan)
-            return ReadInput(view.plan, record, manifest, baseline)
+            plan = view.plan
+            if isinstance(plan, DatasetContinuationPlanV3):
+                # A continuation sent no create: the dataset is its root's, found as its lineage
+                # was validated.
+                baseline = required
+                if baseline is None:
+                    raise YorungeError("upload_plan_not_valid")
+                if not isinstance(record, TransferRecordV3):
+                    raise YorungeError("state_invalid")
+            else:
+                baseline = created_dataset(view)
+                if baseline is None or not isinstance(plan, DatasetUploadPlanV2):
+                    raise YorungeError("upload_plan_not_valid")
+                if not isinstance(record, TransferRecordV2):
+                    raise YorungeError("state_invalid")
+            manifest = read_manifest(store.connection, plan)
+            return ReadInput(plan, record, manifest, baseline)

@@ -11,6 +11,7 @@ from yorunge.adapters.capability_cache import SystemClock
 from yorunge.adapters.upload_original import ContextLoader, OriginalPhase, run_upload_original
 from yorunge.adapters.upload_preparation import UploadPreparationRuntime, read_approval_input
 from yorunge.adapters.upload_public import show_upload, validate_local
+from yorunge.adapters.upload_reconciliation import ContextLoader as ReconcileContextLoader
 from yorunge.adapters.upload_reconciliation import reconcile_upload
 from yorunge.application.upload_inputs import revalidate_input
 from yorunge.domain.dataset_upload import (
@@ -188,7 +189,7 @@ def start_upload(
 
 def recover_upload(
     operation_id: str,
-    load_context: ContextLoader,
+    load_context: ReconcileContextLoader,
     state_dir: Path | None,
     *,
     accepted: bool,
@@ -198,6 +199,10 @@ def recover_upload(
         raise YorungeError("invalid_request")
 
     def recover() -> Result[DatasetUploadSummary]:
+        # The reconcile reaches a continuation too (P02-3x), but this result type names none until
+        # P02-3i: refuse it now, before anything is read or written, not after the reconcile has
+        # closed it and its summary is refused.
+        show_upload(state_dir, operation_id=operation_id)
         phase = reconcile_upload(
             operation_id, state_dir, load_context, accept_unverified_read=accepted
         )

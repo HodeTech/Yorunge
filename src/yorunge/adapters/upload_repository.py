@@ -103,7 +103,7 @@ from yorunge.domain.upload_checks import (
     require_fresh,
 )
 from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
-from yorunge.domain.upload_resume import OperationJournal
+from yorunge.domain.upload_resume import OperationJournal, SourceHasSuccessor, descendant_verdict
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
@@ -1196,6 +1196,7 @@ class StateUploads:
                 self._baseline_in_view(view)
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
+                self._no_successor(operation_id, stamp)
                 if record.workflow_latched and record.dataset_id is None:
                     raise YorungeError("operation_uncertain")
                 access = authorize_read(
@@ -1238,6 +1239,25 @@ class StateUploads:
         if record.fence >= 2**63 - 1:
             raise YorungeError("operation_fence_exhausted")
 
+    def _no_successor(self, operation_id: str, stamp: Stamp) -> None:
+        """A source that has a continuation is history: its fence, revision and reason stay.
+
+        A continuation that was cancelled ran nothing, and an admitted one whose lease lapsed is
+        cancelled by the next prepare; neither is a successor (``descendant_verdict``'s rule, the
+        one the resume report and the admission gate use). Any other is named in the conflict.
+        """
+        verdict = descendant_verdict(
+            stored_snapshot(self.connection, operation_id, stamp).descendants
+        )
+        if verdict.blocker is not None:
+            raise SourceHasSuccessor(verdict.related_operation_id)
+
+    def require_no_successor(self, operation_id: str) -> None:
+        """The local, read-only form of the gate ``acquire_read`` and ``cleanup_expired`` apply."""
+        stamp = self.cache.stamp()  # the clock may be written: not inside the read snapshot
+        with self.phase(operation_id), read_snapshot(self.connection):
+            self._no_successor(operation_id, stamp)
+
     def cleanup_expired(self, operation_id: str) -> VersionedTransferView:
         """Non-executing local cleanup; no grant, remote lookup or permit is produced."""
         with self.phase(operation_id):
@@ -1247,6 +1267,7 @@ class StateUploads:
                 view = self._nonterminal(operation_id)
                 record = view.operation
                 assert record is not None
+                self._no_successor(operation_id, stamp)
                 self._takeover_allowed(record, stamp)
                 if (
                     legacy_create_without_baseline(view)

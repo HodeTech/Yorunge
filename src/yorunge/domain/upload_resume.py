@@ -625,6 +625,17 @@ def recommended_action(blockers: Sequence[Blocker]) -> Action:
     return "prepare"
 
 
+class SourceHasSuccessor(OperationError):
+    """A source whose continuation stands is history: the successor is named, nothing is done.
+
+    The same ``operation_conflict`` the admission gate gives, but it names the operation to look
+    at, which a caller that re-binds errors to the operation it was asked about must not replace.
+    """
+
+    def __init__(self, successor_operation_id: str | None) -> None:
+        super().__init__("operation_conflict", successor_operation_id)
+
+
 class ContinuationNotPossible(OperationError):
     """``--prepare`` refused: the closed blockers say why; the resume report shows the detail."""
 

@@ -40,6 +40,8 @@ v2 `reconcile` ve v2 original yolu davranışsal olarak aynı kalır; torunu olm
 
 Gerçek TLS/süreç/SQLite integration testleri, v1/v2 farklı-ikili karşılaştırması, Ruff ve strict mypy.
 
+**Gerçekleşen kapsam (P02-3x).** `upload_reconcile_local`: `ReadInput` v2 ya da v3 plan/kayıt taşır, `read_policy` ikisinin `explicit_attempt` politikasını kabul eder, `load_read_input` devam için baseline’ı kökün zincirinden alır; `upload_reconciliation._ReadEnvironment` ve `application/upload_reconciliation` iki kayıt ailesiyle çalışır; `upload_reconcile_metadata` devam için `continuation_proof` ile N dosyalık `TransferVerificationV3` kurar. Beş v2-yalnız dağıtım noktası çözüldü (liste `done`). **Karar (2):** iptal edilmemiş torunu olan kaynak reddedilir — `StateUploads.require_no_successor` (yerel, okuma-yalnız) `load_read_input`un başında, `_no_successor` ise `acquire_read` ve `cleanup_expired` işlemlerinin içinde işler; hata `SourceHasSuccessor` (`operation_conflict`, torunun kimliği) ve `_reconcile`ın hata yeniden bağlamasından geçer. Public `recover_upload` devamı `show_upload` ile reddeder (`state_invalid`) — sonuç tipleri P02-3i’de genişleyene kadar kayıt kapatılıp özeti reddedilmez. Testler: `tests/integration/test_upload_continuation_reconcile.py` (19: gerçek TLS/SQLite; kapanış okuması bozulmuş devam → aynı operation’da kanıt, anahtar döndürülmüş durum, graf eksik → belirsiz, 7 okuma hatası, iptal, onay bayrağı, gönderim yapmamış kayıt, torunu olan kaynak iki yönde ve depo kapıları, public koruma) ve v1/v2 reconcile testleri değişmeden geçer.
+
 ## Teslim kaydı
 
 Draft; uygulama, commit veya review kanıtı yoktur.

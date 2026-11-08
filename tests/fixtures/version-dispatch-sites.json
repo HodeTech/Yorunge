@@ -345,47 +345,56 @@
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
    "function": "read_policy",
-   "kind": "type_is",
-   "text": "type(plan) is DatasetUploadPlanV2",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3x",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
+   "owner": "done",
+   "note": "the reconcile reads an original upload's or a continuation's plan; the explicit read policy is the same for both"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
    "function": "load_read_input",
-   "kind": "type_is",
-   "text": "type(view.plan) is not DatasetUploadPlanV2",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3x",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
+   "owner": "done",
+   "note": "a continuation sent no create: its dataset is its root's, found through its lineage; an original upload's is its create receipt"
   },
   {
    "file": "src/yorunge/adapters/upload_reconcile_local.py",
    "function": "load_read_input",
-   "kind": "type_is",
-   "text": "type(record) is not TransferRecordV2",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3x",
-   "note": "local reconcile preconditions; the v3 reconcile is P02-3x's"
+   "owner": "done",
+   "note": "an original upload's plan; any other family without a continuation's plan is not reconciled"
   },
   {
-   "file": "src/yorunge/adapters/upload_reconciliation.py",
-   "function": "_ReadEnvironment.acquire",
-   "kind": "type_is",
-   "text": "type(record) is TransferRecordV2",
+   "file": "src/yorunge/adapters/upload_reconcile_local.py",
+   "function": "load_read_input",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
-   "owner": "P02-3x",
-   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3x's"
+   "owner": "done",
+   "note": "the record of a continuation is v3's"
   },
   {
-   "file": "src/yorunge/adapters/upload_reconciliation.py",
-   "function": "_ReadEnvironment.commit",
-   "kind": "type_is",
-   "text": "type(view.operation) is TransferRecordV2",
+   "file": "src/yorunge/adapters/upload_reconcile_local.py",
+   "function": "load_read_input",
+   "kind": "isinstance",
+   "text": "isinstance(record, TransferRecordV2)",
    "occurrence": 0,
-   "owner": "P02-3x",
-   "note": "reconcile coordinator over v2 records; the v3 reconcile is P02-3x's"
+   "owner": "done",
+   "note": "the record of an original upload is v2's"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_reconcile_metadata.py",
+   "function": "observe_metadata",
+   "kind": "isinstance",
+   "text": "isinstance(loaded.plan, DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "a continuation is proved by the one v3 proof constructor its own closing read uses; an original upload by v2's"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",

@@ -24,8 +24,10 @@ from yorunge.application.upload_budget import UploadBudget
 from yorunge.application.upload_reconciliation import reconcile_read
 from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import BoundCredential, normalize_target
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer import TERMINAL, TransferLease, scope_target
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2, TransferVerificationV2
+from yorunge.domain.dataset_transfer_v3 import TransferRecordV3, TransferVerificationV3
 from yorunge.domain.dataset_upload import UploadScope
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
@@ -36,8 +38,10 @@ from yorunge.domain.upload_checks import (
     AuthorizationCheck,
     AuthorizationOutcome,
 )
+from yorunge.domain.upload_resume import SourceHasSuccessor
 
-ContextLoader = Callable[[DatasetUploadPlanV2], tuple[Context, Profile]]
+ReadPlan = DatasetUploadPlanV2 | DatasetContinuationPlanV3
+ContextLoader = Callable[[ReadPlan], tuple[Context, Profile]]
 
 
 def _source_code(error: BaseException) -> ErrorCode:
@@ -132,15 +136,17 @@ class _ReadEnvironment:
                 self.record.operation_id, authorization=check, accept_unverified_read=True
             )
             record = repository.show(operation_id=self.record.operation_id).operation
-            assert type(record) is TransferRecordV2
+            assert type(record) is type(self.record)  # the family the source is, v2 or v3
             self.record = record
 
-    async def metadata(self) -> TransferVerificationV2:
+    async def metadata(self) -> TransferVerificationV2 | TransferVerificationV3:
         from yorunge.adapters.upload_reconcile_metadata import observe_metadata
 
         return await observe_metadata(self)
 
-    def commit(self, proof: TransferVerificationV2) -> TransferRecordV2:
+    def commit(
+        self, proof: TransferVerificationV2 | TransferVerificationV3
+    ) -> TransferRecordV2 | TransferRecordV3:
         assert self.owner is not None and self.authorization is not None
         self.require_current(self.authorization)
         # Convert the remaining network-clock budget once, conservatively,
@@ -156,7 +162,7 @@ class _ReadEnvironment:
                 accept_unverified_read=True,
                 deadline=deadline,
             )
-            assert type(view.operation) is TransferRecordV2
+            assert type(view.operation) is type(self.record)
             self.record, self.owner = view.operation, None
         return self.record
 
@@ -292,7 +298,8 @@ def _reconcile(
             raise
         failure = OperationError(
             _source_code(error),
-            operation_id,
+            # A source with a continuation names the successor: that is the operation to look at.
+            error.operation_id if isinstance(error, SourceHasSuccessor) else operation_id,
             reason_code=error.reason_code if isinstance(error, OperationError) else None,
         )
     failure.__cause__ = failure.__context__ = None

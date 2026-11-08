@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
+    from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
     from yorunge.domain.dataset_upload import UploadOwner, UploadParameters
     from yorunge.domain.dataset_upload_v2 import AdmissionPolicy, DatasetUploadPlanV2
@@ -1268,7 +1269,7 @@ def _upload_options(config: Path | None, profile: str | None) -> None:
 def _upload_context(
     config: Path | None,
     profile: str | None,
-    plan: DatasetUploadPlanV2,
+    plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
 ) -> tuple[Context, Profile]:
     return _context(
         config, Request(profile=profile or plan.scope.profile, project=plan.scope.project_id), None
