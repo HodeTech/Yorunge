@@ -112,9 +112,7 @@ def download_model_weights(
     chosen_fold = None if fold is None else parse_fold(fold)
     expected = None if sha256 is None else parse_sha256(sha256)
     seconds = DEFAULT_TIMEOUT_SECONDS if timeout is None else parse_timeout(timeout)
-    if type(no_resume) is not bool or (
-        progress is not None and (not callable(progress) or iscoroutinefunction(progress))
-    ):
+    if type(no_resume) is not bool or (progress is not None and not _synchronous(progress)):
         raise YorungeError("invalid_request")
     judge_ground(state_dir)
     target = absolute(weights_out)
@@ -172,6 +170,14 @@ def _captured(state: StateDiscovery, end: float) -> DiscoverySnapshot:
             if error.code != "state_busy" or remaining <= 0.3:
                 raise
             time.sleep(min(remaining - 0.2, 0.05 + 0.25 * random.random()))
+
+
+def _synchronous(progress: object) -> bool:
+    """A callable the engine can call and forget: a coroutine function (also behind ``partial`` or
+    an instance's ``__call__``) would only produce a coroutine that nobody awaits."""
+    if not callable(progress):
+        return False
+    return not (iscoroutinefunction(progress) or iscoroutinefunction(progress.__call__))
 
 
 def _format(value: object) -> Literal["onnx", "pt", "tflite"]:

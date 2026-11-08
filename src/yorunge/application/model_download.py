@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from typing import Final
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from yorunge.application.download_transport import DownloadTarget
 from yorunge.application.response_json import parse_json, scan_for_secret
@@ -25,9 +25,10 @@ FORMATS: Final = ("onnx", "pt", "tflite")
 MODEL_FILES_SEGMENT: Final = "/files/evren-models/"
 MAX_FILENAME_BYTES: Final = 255
 # What a signed address always is: lowercase ``https``, a plain host and only the characters
-# RFC 3986 allows in a path and a query. Anything else (a quote, an angle
-# bracket, a backslash, a brace, a space, a mixed-case scheme) is rewritten by the HTTP client on
-# its way to the wire, so the address would not be the one that was signed.
+# RFC 3986 allows in a path and a query. The HTTP client rewrites some of what lies outside (a
+# quote, an angle bracket or a space; a brace or a backtick in the path; the case of the scheme and
+# host) on its way to the wire, and the rest is no URI character at all: a signature is made of
+# exact bytes, so only the plain set is accepted, whatever a client version does with the others.
 _ADDRESS: Final = re.compile(r"https://[A-Za-z0-9.-]+/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*")
 
 
@@ -88,11 +89,16 @@ def parse_weights_answer(
 
 def _names_an_object(target: DownloadTarget) -> bool:
     """The path below the prefix names one object: not the prefix itself, not a directory, and no
-    segment that a servlet container reads as a dot segment (``..;x``)."""
+    segment that a server may read as a dot segment (``..;x``, ``%2e%2e;x``)."""
     path = urlsplit(target.wire_url).path
-    if path == target.prefix or path.endswith("/"):
+    if path.endswith("/"):  # the prefix itself ends with "/" too
         return False
-    return not any(segment.split(";", 1)[0] in (".", "..") for segment in path.split("/"))
+    return not any(_dot_segment(segment) for segment in path.split("/"))
+
+
+def _dot_segment(segment: str) -> bool:
+    """``.`` or ``..`` as a server may read it: with percent-encoded dots and path parameters."""
+    return unquote(segment).split(";", 1)[0] in (".", "..")
 
 
 def _plain_name(name: str) -> bool:

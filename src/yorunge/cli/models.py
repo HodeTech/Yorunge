@@ -6,7 +6,6 @@ import argparse
 import select
 import sys
 from collections.abc import Callable
-from errno import EINTR
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
@@ -185,8 +184,10 @@ TARGET_HINT = (
     "/var/folders symlink'tir, gerçek yolu (/private/...) verin."
 )
 TIMEOUT_HINT = (
-    "Bir kısmı inmişse yarım dosya saklanır; komutu yeniden çalıştırmak (ETag ve boyut uyuyorsa) "
-    "kaldığı yerden devam eder. Süreyi --timeout ile artırabilirsiniz."
+    "Bir kısmı inmişse ve sağlayıcı ETag ile toplam boyutu bildirdiyse yarım dosya saklanır; "
+    "komutu yeniden çalıştırmak kaldığı yerden devam eder. Toplam süre dolduysa --timeout ile "
+    "artırabilirsiniz; bağlantı ya da yanıt akışı birkaç saniye durduysa (5 sn) süreyi artırmak "
+    "yardımcı olmaz, ağı kontrol edin."
 )
 NO_RESUME_HINT = (
     "--no-resume zaten verildi: iz bu aracın kanıtlanabilir yarım dosyası olmadığından "
@@ -273,11 +274,15 @@ class ProgressText:
         if not self.enabled:
             return
         amount = f"{held} / {total} bayt (%{held * 100 // total})" if total else f"{held} bayt"
-        self._write(f"\rİndiriliyor: {amount}")
-        self._open = True
+        if self._write(f"\rİndiriliyor: {amount}"):
+            self._open = True  # only a line that was written has to be ended
 
     def close(self) -> None:
-        """End the line, so that whatever follows (the result, an error) starts on a new one."""
+        """End the line, so that whatever follows (the result, an error) starts on a new one.
+
+        A terminal that is stopped at this very moment takes no newline (it is never waited for):
+        what follows then glues onto the last report; the result is still complete and correct.
+        """
         if self._open:
             self._open = False
             self._write("\n")
@@ -294,14 +299,17 @@ class ProgressText:
         except (OSError, ValueError):
             return False
 
-    def _write(self, line: str) -> None:
+    def _write(self, line: str) -> bool:
+        """True when the line went out; a report the terminal cannot take now is dropped."""
         if not self._writable():
-            return  # this report is dropped; the next one is tried
+            return False  # this report is dropped; the next one is tried
         try:
             write_utf8(line, self.stream)
         except (OSError, ValueError) as error:
             self.enabled = False
             # A terminal that is only full for now (non-blocking, EAGAIN) is still the terminal the
             # real error will be written to; only a terminal that is gone is cut off.
-            if not (isinstance(error, BlockingIOError) or getattr(error, "errno", None) == EINTR):
+            if not isinstance(error, BlockingIOError):
                 _silence_failed_descriptor(self.stream)
+            return False
+        return True
