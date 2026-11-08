@@ -364,6 +364,12 @@ class OperationError(YorungeError):
             raise ValueError("capacity kind required only for capacity errors")
         if (blockers is not None) != (code == "continuation_not_possible"):
             raise ValueError("blockers belong to continuation_not_possible alone")
+        if blockers is not None:
+            from yorunge.domain.upload_resume import BLOCKERS  # that module imports this one
+
+            names = tuple(blockers)
+            if not names or names != tuple(name for name in BLOCKERS if name in names):
+                raise ValueError("closed, ordered, distinct blockers required")
         if capacity_kind not in (None, "store", "attempt", "transition"):
             raise ValueError("closed capacity kind required")
         if code not in MESSAGES or (reason_code is not None and reason_code not in MESSAGES):

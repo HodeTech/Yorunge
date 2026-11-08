@@ -51,10 +51,18 @@ def test_the_text_of_an_eligible_report_with_unconfirmed_files_leads_to_prepare(
     assert "Gönderilecek: 2 dosya, 8 bayt." in text
     assert "belirsiz 1" in text and "--accept-unconfirmed-effects" in text
     assert "Örnek (belirsiz (son onay isteği gitmiş olabilir)): ölçüm.txt" in text
+    # The consent is not pre-filled into the suggested command: it is a sentence of its own, after
+    # the consequence that ADR-0031 §3 says the consent must name.
     assert (
         f"Hazırla: yorunge datasets upload resume --operation-id {SOURCE} "
-        "--accept-unverified-read --prepare --accept-unconfirmed-effects"
-    ) in text
+        "--accept-unverified-read --prepare\n"
+    ) in text + "\n"
+    command = next(line for line in text.splitlines() if line.startswith("Hazırla:"))
+    assert "--accept-unconfirmed-effects" not in command
+    assert "ayrıca --accept-unconfirmed-effects eklemek gerekir" in text
+    assert "aynı adlı bir kopya yaratabilir" in text and "`conflict` ile engellenir" in text
+    assert "yalnız Platform arayüzünde silinebilir" in text and "lease süresinin" in text
+    assert "yetim nesneler kalabilir" in text
     assert "Engeller" not in text and "- " not in text.split("Dosya sınıfları")[0]
     assert text.rstrip().endswith("baytları doğrulanmadı.")
     assert "Özel --config/--profile/--state-dir" in text
@@ -101,6 +109,19 @@ def test_the_quota_line_says_when_the_local_record_cannot_take_another_attempt()
     assert "kullanılan 128/128 plan" in text
     assert "Kota dolu: bu deneme yerel kaydın şu sınırını aşar: plan." in text
     assert "Kayıtlar otomatik silinmez" in text
+    # a limit that is certainly passed: no command that would be refused, no "go ahead" header
+    assert "Hazırla:" not in text and "Şu an hazırlanamaz" in text
+    assert "Devam edilebilir (yerel kayıt kotası hariç); plan kaydedilmedi" in text
+
+
+def test_a_payload_that_may_pass_the_limit_only_by_its_upper_bound_is_not_called_full():
+    report = golden("eligible")
+    near = report.model_copy(
+        update={"quota_used": report.quota_used.model_copy(update={"payload_bytes": 16_777_216})}
+    )
+    text = _resume_text(near)
+    assert "Kota dolu" not in text and "Kota sınırda" in text
+    assert "Hazırla: yorunge datasets upload resume" in text  # the prepare checks the true size
 
 
 def test_the_related_operation_of_a_waiting_source_is_named():
@@ -171,3 +192,40 @@ def test_the_machine_error_never_carries_the_line(output):
     text = rendered(output, OperationError("operation_conflict", OTHER), requested=SOURCE)
     envelope = json.loads(text.splitlines()[0])
     assert envelope["operation_id"] == OTHER and "İstediğiniz" not in text
+
+
+def test_a_record_that_is_over_has_no_proof_to_take_and_is_not_told_to():
+    report = golden("blocked").model_copy(
+        update={"blockers": ("source_terminal", "reconcile_available"), "observation": None}
+    )
+    text = _resume_text(report)
+    assert "- source_terminal:" in text and "reconcile_available" not in text
+
+
+def test_what_was_read_is_told_truthfully_when_the_dataset_listing_was_not():
+    report = golden("blocked").model_copy(
+        update={"blockers": ("membership_unobserved",), "observation": None}
+    )
+    text = _resume_text(report)
+    assert "Dataset’in dosya listesi okunmadı" in text and "Uzak durum okunmadı" not in text
+    assert "Yalnız sağlayıcı metadata’sı gözlendi" not in text  # nothing of the listing was seen
+    assert text.rstrip().endswith("Dosya içeriği ya da baytları doğrulanmadı.")
+    nothing = golden("unobserved")  # a journal blocker: no remote read at all
+    assert "Uzak durum okunmadı" in _resume_text(nothing)
+    assert "Yalnız sağlayıcı metadata’sı gözlendi" not in _resume_text(nothing)
+
+
+def test_the_numbers_of_a_report_that_cannot_prepare_are_information_only():
+    text = _resume_text(golden("blocked"))
+    assert "Gönderilecek (yalnız bilgi; engeller sürdüğü için plan kurulamaz):" in text
+    assert "Gönderilecek: " not in text.replace("Gönderilecek (", "")
+
+
+def test_no_blocker_tells_a_person_to_make_a_new_plan_where_the_adr_says_it_does_not_help():
+    for name in ("source_terminal", "known_negative", "local_changed"):
+        reason, step = BLOCKER_TEXT[name]
+        assert "yeni bir plan kurun" not in step, name
+    assert "aşmaz" in BLOCKER_TEXT["known_negative"][1]
+    assert "ayrı bir ekleme işidir" in BLOCKER_TEXT["local_changed"][1]
+    # the one that is true: nothing was sent, so there is nothing a new plan would repeat
+    assert "yeni plan kurulabilir" in BLOCKER_TEXT["create_unknown"][1]

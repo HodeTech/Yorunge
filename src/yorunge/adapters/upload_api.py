@@ -261,11 +261,16 @@ def resume_upload(
 ) -> Result[DatasetUploadResumeReport]:
     """The report of what an interrupted upload still needs; with ``prepare``, the plan too."""
     validate_local(state_dir, operation_id)
-    flags = (prepare, accept_unverified_read, accept_unconfirmed_effects)
-    if operation_id is None or any(type(flag) is not bool for flag in flags):
+    if operation_id is None:
         raise YorungeError("invalid_request")
 
     def resume() -> Result[DatasetUploadResumeReport]:
+        # Judged before the store is touched, but inside `_safe`: the error names the source.
+        flags = (prepare, accept_unverified_read, accept_unconfirmed_effects)
+        if any(type(flag) is not bool for flag in flags):
+            raise YorungeError("invalid_request")
+        if accept_unconfirmed_effects and not prepare:
+            raise YorungeError("invalid_request")  # a choice of the plan, asked for without a plan
         # The source's own plan names the scope (profile, project) the context is loaded under.
         plan = _plan_of(state_dir, operation_id=operation_id)
         if not isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):

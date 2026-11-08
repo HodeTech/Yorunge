@@ -184,7 +184,7 @@ def test_approve_asks_for_exactly_the_acknowledgements_the_plan_needs(
         assert rig.show().approval_status is None
 
 
-def test_approve_refuses_another_digest_and_an_original_plans_flag(
+def test_approve_refuses_another_digest_than_the_one_that_was_reviewed(
     public_inputs, certificates, monkeypatch
 ):
     with interrupted_world(public_inputs, certificates, monkeypatch) as rig:
@@ -203,6 +203,28 @@ def test_approve_refuses_another_digest_and_an_original_plans_flag(
             == "upload_plan_not_valid"
         )
         assert rig.show().approval_status is None
+
+
+def test_an_original_plan_has_no_unconfirmed_files_to_acknowledge(
+    public_inputs, certificates, monkeypatch
+):
+    with interrupted_world(public_inputs, certificates, monkeypatch) as rig:
+        original = api.show_dataset_upload(operation_id=rig.source, state_dir=rig.state).data
+        before = len(rig.server.requests)
+        refused = code_of(
+            lambda: api.approve_dataset_upload(
+                original.plan_id,
+                original.plan_digest,
+                accept_unverified_authority=True,
+                accept_unpriced_cost=True,
+                accept_unconfirmed_effects=True,
+                config=rig.config,
+                state_dir=rig.state,
+            )
+        )
+        # a choice that exists only in a continuation is a bad request, whatever else is true of
+        # the plan, and nothing is asked of the provider
+        assert refused == "invalid_request" and len(rig.server.requests) == before
 
 
 def test_a_continuation_whose_files_include_unconfirmed_ones_needs_its_own_acknowledgement(
@@ -471,6 +493,48 @@ def test_the_hint_of_show_is_silence_for_anything_a_hostile_row_can_raise(
         code, out, err = cli_show(capsys, rig.state, rig.source)
         assert code == 0 and err == "" and "Devam için" not in out and "PRIVATE" not in out
         assert f"İş: {rig.source}" in out  # the summary itself is there, as it always was
+
+
+def clock_row(state):
+    with open_existing_store(state) as store:
+        return store.connection.execute(
+            "SELECT identity_epoch,clock_generation,high_watermark,anomaly_active,"
+            "mutation_revision FROM cache_clock WHERE singleton=1"
+        ).fetchone()
+
+
+def dump(state):
+    with open_existing_store(state) as store:
+        return list(store.connection.iterdump())
+
+
+def test_the_hint_of_show_reads_and_writes_nothing_even_on_a_clock_that_ran_ahead(
+    public_inputs, certificates, monkeypatch, capsys
+):
+    """`show` is a local read: the hint added to its text must not record the clock (a later
+    `approve` or `start` compares plans with the generation a write of the clock could bump)."""
+    import time
+    from datetime import UTC, datetime, timedelta
+
+    from yorunge.adapters import upload_public
+
+    class Clock:
+        def __init__(self, hours):
+            self.hours = hours
+
+        def now(self):
+            return datetime.now(UTC) + timedelta(hours=self.hours)
+
+        def monotonic(self):
+            return time.monotonic()
+
+    with interrupted_world(public_inputs, certificates, monkeypatch, prepare=False) as rig:
+        before, stored = clock_row(rig.state), dump(rig.state)
+        for hours in (0, 1, -1):  # now, an hour ahead, and behind what the store has seen
+            monkeypatch.setattr(upload_public, "SystemClock", lambda hours=hours: Clock(hours))
+            code, out, _ = cli_show(capsys, rig.state, rig.source)
+            assert code == 0 and "Devam için:" in out
+            assert clock_row(rig.state) == before and dump(rig.state) == stored
 
 
 def test_the_json_of_show_is_the_summary_and_nothing_added(

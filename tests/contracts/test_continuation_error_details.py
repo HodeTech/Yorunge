@@ -153,3 +153,23 @@ def test_the_cli_renderer_keeps_the_blockers_when_it_binds_the_error_to_its_stre
     bound = renderer._bound_error(refusal())
     assert isinstance(bound, OperationError) and bound.blockers == NAMED
     assert bound.operation_id == SOURCE
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        (),
+        ("nope",),
+        ("source_terminal", "source_terminal"),
+        ("local_changed", "source_active"),
+        "abc",
+    ],
+    ids=["none", "unknown", "duplicate", "out of order", "a string"],
+)
+def test_an_error_cannot_carry_blockers_the_report_does_not_know_or_in_another_order(bad):
+    with pytest.raises(ValueError):
+        OperationError("continuation_not_possible", SOURCE, blockers=bad)
+    # (the same names, closed and in the reporting order, are what the refusal itself builds)
+    assert OperationError(
+        "continuation_not_possible", SOURCE, blockers=("source_active", "local_changed")
+    ).blockers == ("source_active", "local_changed")
