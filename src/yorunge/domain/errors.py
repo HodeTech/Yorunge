@@ -260,7 +260,10 @@ MESSAGES: dict[ErrorCode, str] = {
         "Yerel durum kalıcılaştırılamadı. Disk ve tanılama sonucunu kontrol edin."
     ),
     "state_unsupported": "Yerel durum için desteklenen macOS/Linux ve SQLite 3.37+ gereklidir.",
-    "state_changed": "Yerel bağ değişti. Güncel durumu inceleyip isteği yeniden hazırlayın.",
+    "state_changed": (
+        "Yerel bağ ya da hedef hizmet değişti. Güncel durumu inceleyip isteği veya bağı "
+        "yeniden hazırlayın."
+    ),
     "credential_revision_exhausted": (
         "Credential nesil sınırına ulaşıldı. Açık kimlik reset akışını kullanın."
     ),

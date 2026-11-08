@@ -456,3 +456,66 @@ def test_the_last_page_that_may_be_asked_for_is_asked_and_the_next_is_not(certif
                     lambda page=page: versions.versions(DATASET, page, deadline=soon())
                 ).code == ("invalid_request")
     assert [r.path for r in server.requests] == [BASE + "?page=10000"]  # the refused cost nothing
+
+
+# --- what the reviews found unpinned --------------------------------------------------------------
+
+
+def test_a_reader_without_a_session_makes_its_own():
+    default = VersionReader(credential(), SystemClock())
+    assert isinstance(default.session, HttpSession)
+    own = HttpSession()
+    assert VersionReader(credential(), SystemClock(), session=own).session is own
+
+
+def test_the_read_budget_is_the_thirty_seconds_of_the_adr():
+    from yorunge.adapters.dataset_version_reader import VERSION_SECONDS
+
+    assert VERSION_SECONDS == 30.0  # ADR-0033 section 4: the total a caller gives one read
+
+
+class JumpClock:
+    """``monotonic()`` leaps past any deadline once the server has received ``after`` requests."""
+
+    def __init__(self, server, after):
+        self.server, self.after = server, after
+
+    def now(self):
+        return datetime(2026, 11, 8, 12, 0, 0, tzinfo=UTC)
+
+    def monotonic(self):
+        return time.monotonic() + (1000.0 if len(self.server.requests) >= self.after else 0.0)
+
+
+def jump_reader(server, after):
+    session = HttpSession(transport_factory=lambda: HttpxTransport(transport=server.transport()))
+    return VersionReader(credential(), JumpClock(server, after), session=session)
+
+
+def test_a_version_read_whose_deadline_passed_during_the_reads_is_not_stamped(certificates):
+    with TlsServer(certificates, routes()) as server, jump_reader(server, 2) as versions:
+        error = failure(
+            lambda: versions.version(DATASET, "v1", deadline=soon(30), absent=NOT_FOUND)
+        )
+    assert error.code == "transport_timeout" and len(server.requests) == 2
+
+
+def test_a_page_whose_deadline_passed_during_the_read_is_not_stamped(certificates):
+    with TlsServer(certificates, routes()) as server, jump_reader(server, 1) as versions:
+        error = failure(lambda: versions.versions(DATASET, 1, deadline=soon(30)))
+    assert error.code == "transport_timeout" and len(server.requests) == 1
+
+
+@pytest.mark.parametrize("deadline", [None, "5", [1], True, float("inf"), float("nan"), 10**400])
+def test_a_deadline_that_is_not_a_finite_number_is_refused_before_any_request(
+    certificates, deadline
+):
+    with TlsServer(certificates, routes()) as server:
+        with reader(server) as versions:
+            assert failure(lambda: versions.versions(DATASET, 1, deadline=deadline)).code == (
+                "invalid_request"
+            )
+            assert failure(
+                lambda: versions.version(DATASET, "v1", deadline=deadline, absent=NOT_FOUND)
+            ).code == ("invalid_request")
+    assert server.requests == []

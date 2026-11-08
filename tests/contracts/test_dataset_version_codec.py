@@ -506,6 +506,32 @@ def test_an_empty_page_that_says_more_is_coming_or_that_shows_rows_beyond_the_to
     assert code_of(lambda: page(page_body([row()], page=2, total=5), page=2)) == "invalid_response"
 
 
+@pytest.mark.parametrize(
+    "asked,meta",
+    [
+        (1, {"page": 1, "page_size": 20, "total": 5, "has_next": False}),
+        (1, {"page": 1, "page_size": 20, "total": 1000, "has_next": True}),
+        (2, {"page": 2, "page_size": 20, "total": 100, "has_next": True}),
+        (3, {"page": 3, "page_size": 20, "total": 41, "has_next": False}),
+        (2, {"page": 2, "page_size": 20, "total": 21, "has_next": False}),
+    ],
+    ids=["1-of-5", "1-of-1000", "2-of-100", "3-of-41", "21st-row-hidden"],
+)
+def test_an_empty_page_that_starts_inside_the_total_hides_rows_and_is_refused(asked, meta):
+    # The honest empty page is one past the last row or of a dataset without versions (above).
+    assert code_of(lambda: page(page_body([], **meta), page=asked)) == "invalid_response"
+
+
+def test_the_page_the_provider_shows_must_be_the_page_that_was_asked_for_on_its_own():
+    # Page 1 of a hundred versions, answered to a request for page 2: every other rule agrees with
+    # it (twenty rows, a total that covers them, more to come), so meta.page is the only witness
+    # of a provider that ignores the page parameter.
+    rows = [row(id=f"{i:08x}-3333-4333-8333-333333333333", version_tag=f"v{i}") for i in range(20)]
+    meta = {"page": 1, "page_size": 20, "total": 100, "has_next": True}
+    assert page(page_body(rows, **meta), page=1).page == 1
+    assert code_of(lambda: page(page_body(rows, **meta), page=2)) == "invalid_response"
+
+
 def test_the_largest_legal_page_is_a_hundred_rows():
     rows = [row(id=f"{i:08x}-3333-4333-8333-333333333333", version_tag=f"v{i}") for i in range(100)]
     assert len(page(page_body(rows, page_size=100, total=100)).items) == 100

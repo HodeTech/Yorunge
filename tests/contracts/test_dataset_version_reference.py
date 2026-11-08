@@ -3,9 +3,17 @@
 import re
 from pathlib import Path
 
+from yorunge.adapters.dataset_version_reader import VERSION_SECONDS
 from yorunge.domain.credentials import ServiceTarget
 from yorunge.domain.dataset_version import (
+    MAX_BINDING_BYTES,
+    MAX_CLASS_LABELS,
+    MAX_LIST_ITEMS,
+    MAX_PAGE,
+    MIN_PAGE,
     DatasetVersionBinding,
+    DatasetVersionBound,
+    DatasetVersionCheck,
     DatasetVersionList,
     DatasetVersionListItem,
     DatasetVersionObservation,
@@ -83,3 +91,34 @@ def test_the_page_fields_of_the_reference_are_the_fields_of_the_page_model():
     )
     section = text[start : text.index("satırlar sayfa boyutunu aşamaz", start)]
     assert names(section) == set(DatasetVersionList.model_fields)
+
+
+def test_the_check_fields_of_the_reference_are_the_fields_of_the_check_model():
+    text = REFERENCE.read_text()
+    opening = "`DatasetVersionCheck v1` döndürür ("
+    start = text.index(opening) + len(opening)
+    section = text[start : text.index("); diğer sonuçlar hata zarfıdır", start)]
+    assert names(section) == set(DatasetVersionCheck.model_fields)
+
+
+def test_the_bound_fields_of_the_reference_are_the_fields_of_the_bound_model():
+    text = REFERENCE.read_text()
+    opening = "`bind` → `DatasetVersionBound` ("
+    start = text.index(opening) + len(opening)
+    section = text[start : text.index("; dosyanın kendisi değil özeti)", start)]
+    assert names(section) == set(DatasetVersionBound.model_fields)
+
+
+def test_the_numeric_limits_of_the_reference_are_the_limits_of_the_code():
+    assert (MIN_PAGE, MAX_PAGE, MAX_LIST_ITEMS) == (1, 10_000, 100)
+    assert (MAX_CLASS_LABELS, MAX_BINDING_BYTES, VERSION_SECONDS) == (4096, 16 * 1024, 30.0)
+    text = REFERENCE.read_text()
+    for phrase in (
+        "`--page` 1–10 000",
+        "`1 ≤ page_size ≤ 100`",
+        "en çok 4096 etiket",
+        "16 KiB üstü",
+        "`monotonic() + VERSION_SECONDS`, 30 s",
+        "1 MiB",
+    ):
+        assert phrase in text, phrase

@@ -153,6 +153,8 @@ class DatasetVersionList(Model):
             )
         if self.items and self.total < (self.page - 1) * self.page_size + len(self.items):
             raise ValueError("the total covers the rows shown")
+        if not self.items and (self.page - 1) * self.page_size < self.total:
+            raise ValueError("an empty page lies past the last row")
         if any(item.dataset_id != self.dataset_id for item in self.items):
             raise ValueError("the rows are the dataset's own")
         if len({item.version_id for item in self.items}) != len(self.items) or len(
@@ -332,6 +334,8 @@ class DatasetVersionBinding(JsonWireModel):
         (``dataset_id`` is not a compared field: another dataset is not a change of this version but
         a caller's mistake); it is stamped with its own ``observed_at``.
         """
+        if type(observation) is not DatasetVersionObservation:
+            raise YorungeError("invalid_request")
         require_same_service(self, active)
         if observation.dataset_id != self.dataset_id:
             raise YorungeError("invalid_request")
@@ -418,17 +422,22 @@ def bind(
         "local_manifest": None if local is None else local.model_dump(mode="json"),
         "observed_at": observation.observed_at,
     }
-    digest = hashlib.sha256(
-        canonical_manifest({k: v for k, v in fields.items() if k != "observed_at"})
-    ).hexdigest()
+    made: DatasetVersionBinding | None = None
     try:
-        return DatasetVersionBinding.model_validate({**fields, "digest": digest})
+        digest = hashlib.sha256(
+            canonical_manifest({k: v for k, v in fields.items() if k != "observed_at"})
+        ).hexdigest()
+        made = DatasetVersionBinding.model_validate({**fields, "digest": digest})
     except ValueError:
-        raise YorungeError("invalid_request") from None  # e.g. a service that is not canonical
+        pass  # e.g. a service that is not canonical or does not encode
+    if made is None:
+        raise YorungeError("invalid_request")  # raised outside the handler: no cause is kept
+    return made
 
 
 def decode_binding(data: object) -> DatasetVersionBinding:
     """A stored binding: exactly the canonical bytes of a valid one, or ``binding_invalid``."""
+    binding: DatasetVersionBinding | None = None
     try:
         if type(data) is not bytes or not 0 < len(data) <= MAX_BINDING_BYTES:
             raise ValueError("bounded binding required")
@@ -436,12 +445,20 @@ def decode_binding(data: object) -> DatasetVersionBinding:
         if binding.encoded() != data:
             raise ValueError("canonical binding required")
     except (ValueError, RecursionError, UnicodeError):
-        raise YorungeError("binding_invalid") from None
+        binding = None  # the parser's error holds the text of the file: none of it is kept
+    if binding is None:
+        raise YorungeError("binding_invalid")
     return binding
 
 
 def require_same_service(binding: DatasetVersionBinding, active: ServiceTarget) -> None:
-    """The binding names the provider the active profile targets; else ``state_changed``."""
+    """The binding names the provider the active profile targets; else ``state_changed``.
+
+    Two targets are compared; anything else is the caller's mistake (``invalid_request``), never a
+    changed provider.
+    """
+    if type(binding) is not DatasetVersionBinding or type(active) is not ServiceTarget:
+        raise YorungeError("invalid_request")
     if binding.service != active:
         raise YorungeError("state_changed")
 
@@ -455,6 +472,10 @@ def changed_fields(
     nothing about the content), the provider target and the local manifest relation are not
     compared. A version that was unfrozen is ``is_frozen``, never unchanged.
     """
+    if type(binding) is not DatasetVersionBinding or type(observation) is not (
+        DatasetVersionObservation
+    ):
+        raise YorungeError("invalid_request")
     differences = [
         name
         for name in (*VERSION_IDENTITY_FIELDS, *VERSION_ANNOTATION_FIELDS)
@@ -470,7 +491,9 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
     strings by their UTF-8 bytes), encoded by the Manifest v1 encoder. The ``id`` keeps the type
     the provider gave it; mixed types or a repeated ``id`` make the order ambiguous, so the
     answer is not one (``invalid_response``). At most ``MAX_CLASS_LABELS`` (4096) labels: a longer
-    list is not an answer (the response size and node budgets would refuse it first).
+    list is not an answer. The cap is this reader's own limit (the response size and node budgets
+    alone would let about seven thousand short labels through), kept so that the work and the
+    digest input stay small.
     """
     if not isinstance(labels, Sequence) or isinstance(labels, (str, bytes)):
         raise YorungeError("invalid_response")
@@ -501,6 +524,7 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
     kinds = {type(row["id"]) for row in rows}
     if len(kinds) > 1 or len({row["id"] for row in rows}) != len(rows):
         raise YorungeError("invalid_response")
+    encoded: bytes | None = None
     try:
         if kinds == {str}:
             rows.sort(key=lambda row: str(row["id"]).encode("utf-8"))
@@ -508,5 +532,7 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
             rows.sort(key=lambda row: int(str(row["id"])))
         encoded = canonical_manifest(rows)  # a lone surrogate does not encode
     except (UnicodeError, ValueError):
-        raise YorungeError("invalid_response") from None
+        encoded = None  # the encoder's error holds the class names: none of them is kept
+    if encoded is None:
+        raise YorungeError("invalid_response")
     return hashlib.sha256(encoded).hexdigest()

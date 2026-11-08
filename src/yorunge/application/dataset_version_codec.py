@@ -205,7 +205,7 @@ def version_page(
         shown != page
         or not 1 <= size <= MAX_LIST_ITEMS
         or len(rows) > size
-        or (bool(rows) and total < (page - 1) * size + len(rows))
+        or (total < (page - 1) * size + len(rows) if rows else (page - 1) * size < total)
         or more != (page * size < total)
     ):
         raise _invalid()

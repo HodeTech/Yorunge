@@ -9,6 +9,7 @@ was never there, or a bound version is gone); the 404 of the split route is a re
 
 from __future__ import annotations
 
+import math
 from types import TracebackType
 from typing import Final, Self
 
@@ -73,7 +74,7 @@ class VersionReader:
 
     def versions(self, dataset_id: str, page: int, *, deadline: float) -> DatasetVersionList:
         """One page of the dataset's versions: one GET, the page that was asked for."""
-        self._arguments(dataset_id, page)
+        self._arguments(dataset_id, page, deadline)
         self.session.preflight()
         data = self._get(f"datasets/{dataset_id}/versions", deadline, query=(("page", str(page)),))
         assert data is not None
@@ -102,7 +103,7 @@ class VersionReader:
         """
         if absent not in ABSENT_CODES:
             raise YorungeError("invalid_request")
-        self._arguments(dataset_id, MIN_PAGE)
+        self._arguments(dataset_id, MIN_PAGE, deadline)
         try:
             validate_version_tag(version_tag)
         except ValueError:
@@ -122,9 +123,15 @@ class VersionReader:
         return observation(detail, version_splits(splits, secret=secret), observed_at=observed_at)
 
     @staticmethod
-    def _arguments(dataset_id: object, page: object) -> None:
+    def _arguments(dataset_id: object, page: object, deadline: float) -> None:
         if type(dataset_id) is not str or type(page) is not int:
             raise YorungeError("invalid_request")
+        try:
+            finite = type(deadline) in (int, float) and math.isfinite(deadline)
+        except OverflowError:
+            finite = False
+        if not finite:
+            raise YorungeError("invalid_request")  # a deadline is a number, not a request's data
         try:
             provider_uuid(dataset_id)
         except ValueError:

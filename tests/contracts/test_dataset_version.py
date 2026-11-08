@@ -670,7 +670,9 @@ def test_a_list_of_versions_is_a_closed_frozen_page():
         {"page": 10_001},
         {"kind": "dataset_version_observation"},
         {"dataset_id": "33333333-3333-4333-8333-333333333333"},  # not the rows' dataset
-        {"items": ()},  # fine: an empty page; see the accepting test below
+        {"items": ()},  # page 1 of a total of 1 shows no row: the row is hidden
+        {"items": (), "total": 100, "has_next": True},
+        {"items": (), "page": 2, "total": 21},  # the 21st row exists and is not shown
     ],
 )
 def test_a_page_that_contradicts_itself_is_not_a_page(changes):
@@ -686,11 +688,33 @@ def test_a_page_that_contradicts_itself_is_not_a_page(changes):
         "observed_at": "2026-11-08T12:00:00.000000Z",
         **changes,
     }
-    if changes == {"items": ()}:
-        assert DatasetVersionList(**values).items == ()  # total 1, no rows shown: past the end
-        return
     with pytest.raises(ValueError):
         DatasetVersionList(**values)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"total": 0},  # a dataset without versions
+        {"page": 2, "total": 20},  # exactly full before it
+        {"page": 2, "total": 1},  # past the end
+        {"page": 99, "total": 5},
+    ],
+)
+def test_a_page_past_the_end_or_of_a_dataset_without_versions_is_an_honest_empty_page(changes):
+    values = {
+        "schema_version": 1,
+        "kind": "dataset_version_list",
+        "dataset_id": DATASET,
+        "page": 1,
+        "page_size": 20,
+        "total": 1,
+        "has_next": False,
+        "items": (),
+        "observed_at": "2026-11-08T12:00:00.000000Z",
+        **changes,
+    }
+    assert DatasetVersionList(**values).items == ()
 
 
 @pytest.mark.parametrize("path", ["/tmp/a\nb.json", "/tmp/\udcff.json", "/" + "x" * 4096, ""])
