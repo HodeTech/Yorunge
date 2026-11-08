@@ -15,6 +15,8 @@ import stat
 import subprocess
 import sys
 import textwrap
+import traceback
+import uuid
 from pathlib import Path
 
 import pytest
@@ -52,11 +54,17 @@ class Place:
         self.directory, self.name = Path(directory), NAME
         self.descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
         self.budget, self.rechecks, self.changed = Budget(), 0, False
+        self.recheck_hook = None
 
     def recheck(self):
         self.rechecks += 1
+        if self.recheck_hook is not None:
+            self.recheck_hook()
         if self.changed:
             raise YorungeError("input_changed")
+
+    def names(self):
+        return sorted(p.name for p in self.directory.iterdir())
 
     def close(self):
         os.close(self.descriptor)
@@ -163,9 +171,11 @@ def test_a_failure_before_the_link_is_the_familys_failed_and_creates_no_target(p
 
 def test_a_zero_length_write_is_failed(place, monkeypatch):
     monkeypatch.setattr(os, "write", lambda *a: 0)
+    place.budget.fail_after = 50  # a regression fails here, it does not spin
     pub, _ = publisher(place)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
     assert not place.target.exists() and place.leftovers() == []
+    assert place.budget.checks < 50  # it was the guard that stopped it
 
 
 def test_short_writes_still_complete_the_file(place, monkeypatch):
@@ -273,7 +283,7 @@ def test_a_stage_that_was_substituted_is_changed_and_the_foreign_file_is_not_rem
     assert MESSAGES[CODES.failed] in error.__notes__
 
 
-def test_a_stage_with_another_mode_or_link_count_is_changed(place):
+def test_a_stage_with_another_mode_is_changed(place):
     pub, _ = publisher(place)
     original = pub._check_stage
 
@@ -286,19 +296,40 @@ def test_a_stage_with_another_mode_or_link_count_is_changed(place):
     assert not place.target.exists() and place.leftovers() == []
 
 
-def test_a_place_that_changed_is_the_error_of_its_own_and_creates_nothing(place):
+def test_a_stage_with_a_second_link_is_changed_and_the_foreign_link_stays(place):
     pub, _ = publisher(place)
     original = pub._check_stage
 
-    def moved(written):
-        place.changed = True
+    def link(written):
+        os.link(place.directory / pub.stage, place.directory / "second-name")
         original(written)
 
-    pub._check_stage = moved
-    # The place's own check ran after the stage was verified: the next look sees the change.
-    pub._publish_link = lambda: place.recheck()
-    error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == "input_changed" and not place.target.exists() and place.leftovers() == []
+    pub._check_stage = link
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
+    assert not place.target.exists() and place.leftovers() == ["second-name"]
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_a_place_that_changed_before_the_link_is_the_error_of_its_own_and_creates_nothing(
+    place, entry
+):
+    # The source look comes right before the place's: it is where the place moves.
+    pub, state = publisher(place, check_source=lambda: setattr(place, "changed", True))
+    error = failure(
+        lambda: publish_stage(place, pub) if entry == "stage" else pub.publish_bytes(CONTENT)
+    )
+    assert error.code == "input_changed" and state.attempted is False
+    assert not place.target.exists() and place.leftovers() == []
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_a_place_that_changed_after_the_link_is_uncertain_and_the_target_stays(place, entry):
+    pub, state = publisher(place)
+    place.recheck_hook = lambda: setattr(place, "changed", state.attempted)
+    error = failure(
+        lambda: publish_stage(place, pub) if entry == "stage" else pub.publish_bytes(CONTENT)
+    )
+    assert error.code == CODES.uncertain and place.target.read_bytes() == CONTENT
 
 
 def test_a_source_that_changed_stops_before_the_link(place):
@@ -589,6 +620,623 @@ def test_the_manifests_publication_state_keeps_the_base_positional_order():
     assert Manifest().attempted is False and Manifest(codes=MANIFEST_CODES).attempted is False
 
 
+# --- what independent mutation found the first tests did not pin ---------------------------------
+
+
+def entry_publish(place, pub, entry, content=CONTENT):
+    if entry == "bytes":
+        return pub.publish_bytes(content)
+    name, descriptor = staged(place, content)
+    try:
+        return pub.publish_stage(name, descriptor, len(content))
+    finally:
+        os.close(descriptor)
+
+
+def test_the_uncertainty_note_is_added_only_once():
+    state = PublicationState(CODES)
+    state.attempted = True
+    error = asyncio.CancelledError()
+    for _ in range(2):  # the publisher's guard, then the caller's own outer handler
+        with pytest.raises(asyncio.CancelledError):
+            state.reraise(error)
+    assert error.__notes__.count(MESSAGES[CODES.uncertain]) == 1
+
+
+def test_a_failing_close_of_the_stage_descriptor_after_the_link_is_uncertain(place, monkeypatch):
+    stage_descriptors, real_open, real_close = set(), os.open, os.close
+
+    def opening(path, *arguments, **keywords):
+        descriptor = real_open(path, *arguments, **keywords)
+        if isinstance(path, str) and path.startswith(PREFIX):
+            stage_descriptors.add(descriptor)
+        return descriptor
+
+    def closing(descriptor):
+        real_close(descriptor)
+        if descriptor in stage_descriptors:
+            raise OSError(errno.EIO, "PRIVATE-PATH")
+
+    monkeypatch.setattr(os, "open", opening)
+    monkeypatch.setattr(os, "close", closing)
+    pub, _ = publisher(place)
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert isinstance(error, YorungeError) and error.code == CODES.uncertain
+    assert place.target.read_bytes() == CONTENT
+
+
+def test_an_oserror_the_caller_hands_to_reraise_is_the_familys_unreadable():
+    with pytest.raises(YorungeError) as caught:
+        PublicationState(CODES).reraise(OSError(errno.EIO, "PRIVATE"))
+    assert caught.value.code == CODES.unreadable
+
+
+def test_a_programming_error_before_the_link_propagates_unchanged_and_cleans_up(place):
+    pub, _ = publisher(place)
+
+    def bug(written):
+        raise RuntimeError("bug")
+
+    pub._check_stage = bug
+    assert type(failure(lambda: pub.publish_bytes(CONTENT))) is RuntimeError
+    assert place.names() == []
+
+
+def test_a_stat_failure_on_the_target_is_the_familys_failed(place, monkeypatch):
+    real = os.stat
+
+    def refused(path, *arguments, **keywords):
+        if path == NAME:
+            raise PermissionError(errno.EACCES, "PRIVATE-PATH")
+        return real(path, *arguments, **keywords)
+
+    monkeypatch.setattr(os, "stat", refused)
+    pub, state = publisher(place)
+    assert failure(lambda: pub.ensure_absent()).code == CODES.failed
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
+    assert place.names() == [] and state.attempted is False
+
+
+@pytest.mark.parametrize("planted", ["file", "dangling-symlink", "symlink-to-victim"])
+def test_a_stage_name_that_is_already_taken_is_never_written_through(place, monkeypatch, planted):
+    fixed = uuid.UUID(int=1)
+    monkeypatch.setattr("yorunge.adapters.artifact_publisher.uuid4", lambda: fixed)
+    stage = place.directory / f"{PREFIX}{fixed.hex}.tmp"
+    victim = place.directory / "victim.txt"
+    victim.write_bytes(b"VICTIM")
+    if planted == "file":
+        stage.write_bytes(b"FOREIGN")
+    elif planted == "dangling-symlink":
+        stage.symlink_to("nowhere")
+    else:
+        stage.symlink_to(victim)
+    pub, state = publisher(place)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
+    assert victim.read_bytes() == b"VICTIM"
+    if planted == "file":
+        assert stage.read_bytes() == b"FOREIGN"
+    assert not place.target.exists() and state.attempted is False
+
+
+def test_the_stage_is_private_whatever_the_umask(place):
+    old = os.umask(0o277)
+    try:
+        pub, _ = publisher(place)
+        pub.publish_bytes(CONTENT)
+    finally:
+        os.umask(old)
+    assert (
+        stat.S_IMODE(place.target.stat().st_mode) == 0o600 and place.target.read_bytes() == CONTENT
+    )
+
+
+def test_the_stage_is_created_private_before_any_fchmod(place, monkeypatch):
+    old = os.umask(0)
+    monkeypatch.setattr(os, "fchmod", lambda *arguments: None)
+    try:
+        pub, _ = publisher(place)
+        pub.publish_bytes(CONTENT)
+    finally:
+        os.umask(old)
+    assert stat.S_IMODE(place.target.stat().st_mode) == 0o600
+
+
+def test_a_source_that_changes_only_after_the_link_is_uncertain(place):
+    calls = []
+
+    def check_source():
+        calls.append(1)
+        if len(calls) == 2:  # the second look is the one after the link
+            raise YorungeError("input_changed")
+
+    pub, state = publisher(place, check_source=check_source)
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.uncertain and state.attempted is True
+    assert place.target.read_bytes() == CONTENT
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_the_last_budget_check_after_the_link_is_uncertain(place, tmp_path, entry):
+    (tmp_path / "count").mkdir()
+    counting = Place(tmp_path / "count")
+    try:
+        pub, _ = publisher(counting)
+        entry_publish(counting, pub, entry)
+        total = counting.budget.checks
+    finally:
+        counting.close()
+    (tmp_path / "limited").mkdir()
+    limited = Place(tmp_path / "limited")
+    try:
+        limited.budget.fail_after = total - 1  # runs out at the very last check
+        pub, _ = publisher(limited)
+        error = failure(lambda: entry_publish(limited, pub, entry))
+        assert error.code == CODES.uncertain
+        assert (tmp_path / "limited" / NAME).read_bytes() == CONTENT
+    finally:
+        limited.close()
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_the_directory_is_synced_after_the_unlink_and_before_the_file_sync(
+    place, monkeypatch, entry
+):
+    events, real_unlink, real_fsync, real_link = [], os.unlink, os.fsync, os.link
+    directory = place.descriptor
+    pub, _ = publisher(place)
+    name, descriptor = staged(place, CONTENT) if entry == "stage" else (None, None)
+
+    def unlink(path, *arguments, **keywords):
+        events.append("unlink")
+        return real_unlink(path, *arguments, **keywords)
+
+    def link(*arguments, **keywords):
+        events.append("link")
+        return real_link(*arguments, **keywords)
+
+    def fsync(handle):
+        events.append("fsync-directory" if handle == directory else "fsync-file")
+        return real_fsync(handle)
+
+    monkeypatch.setattr(os, "unlink", unlink)
+    monkeypatch.setattr(os, "link", link)
+    monkeypatch.setattr(os, "fsync", fsync)
+    if entry == "bytes":
+        pub.publish_bytes(CONTENT)
+    else:
+        pub.publish_stage(name, descriptor, len(CONTENT))
+        os.close(descriptor)
+    tail = events[events.index("link") :]
+    assert tail[:3] == ["link", "unlink", "fsync-directory"] and "fsync-file" in tail[3:]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="F_FULLFSYNC is a macOS barrier")
+def test_the_default_sync_is_a_full_sync_on_macos(place, monkeypatch):
+    import fcntl
+
+    seen, real = [], fcntl.fcntl
+
+    def spy(descriptor, command, *rest):
+        seen.append(command)
+        return real(descriptor, command, *rest)
+
+    monkeypatch.setattr(fcntl, "fcntl", spy)
+    pub, _ = publisher(place)
+    pub.publish_bytes(CONTENT)
+    assert seen.count(fcntl.F_FULLFSYNC) == 2  # once before the link, once after
+
+
+def test_writes_are_bounded_to_one_mebibyte_and_a_long_write_is_failed(
+    place, tmp_path, monkeypatch
+):
+    sizes, real = [], os.write
+    big = b"x" * (3 * 1024 * 1024 + 5)
+
+    def write(descriptor, data):
+        sizes.append(len(data))
+        return real(descriptor, data)
+
+    monkeypatch.setattr(os, "write", write)
+    pub, _ = publisher(place)
+    pub.publish_bytes(big)
+    assert max(sizes) == 1024 * 1024 and len(sizes) == 4
+
+    monkeypatch.setattr(os, "write", lambda descriptor, data: len(data) + 1)  # more than offered
+    (tmp_path / "again").mkdir()
+    again = Place(tmp_path / "again")
+    try:
+        pub, _ = publisher(again)
+        assert failure(lambda: pub.publish_bytes(b"abc")).code == CODES.failed
+    finally:
+        again.close()
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_the_place_and_the_source_are_looked_at_before_the_link(place, entry):
+    log = []
+    pub, state = publisher(place, check_source=lambda: log.append(("source", state.attempted)))
+    place.recheck_hook = lambda: log.append(("place", state.attempted))
+    entry_publish(place, pub, entry)
+    assert ("source", False) in log and ("place", False) in log
+
+
+def test_a_failing_first_fstat_of_a_stream_stage_is_the_familys_failed(place, monkeypatch):
+    pub, state = publisher(place)
+    name, descriptor = staged(place, CONTENT)
+    real, calls = os.fstat, []
+
+    def fstat(handle):
+        calls.append(handle)
+        if len(calls) == 1:
+            raise OSError(errno.EIO, "PRIVATE-PATH-NEVER-PRINT")
+        return real(handle)
+
+    monkeypatch.setattr(os, "fstat", fstat)
+    error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
+    os.close(descriptor)
+    assert error.code == CODES.failed and "PRIVATE-PATH" not in str(error.envelope())
+
+
+def test_a_stage_name_turned_into_a_symlink_to_the_real_stage_is_changed_before_the_link(place):
+    pub, state = publisher(place)
+    original = pub._check_stage
+
+    def swap(written):
+        stage, moved = place.directory / pub.stage, place.directory / "moved"
+        stage.rename(moved)
+        stage.symlink_to(moved)
+        original(written)
+
+    pub._check_stage = swap
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.changed and state.attempted is False
+    assert not place.target.exists() and not place.target.is_symlink()
+
+
+def test_a_stage_modified_after_the_last_look_and_before_the_stage_check_is_changed(place):
+    pub, state = publisher(place)
+    original = pub._check_stage
+
+    def append(written):
+        with open(place.directory / pub.stage, "ab") as handle:
+            handle.write(b"+")
+        original(written)
+
+    pub._check_stage = append
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
+    assert state.attempted is False and not place.target.exists()
+
+
+@pytest.mark.parametrize("mode", [0o644, 0o400, 0o700])
+def test_a_streams_stage_with_another_mode_is_changed_before_the_link(place, mode):
+    pub, state = publisher(place)
+    name, descriptor = staged(place, CONTENT)
+    os.fchmod(descriptor, mode)
+    error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
+    os.close(descriptor)
+    assert error.code == CODES.changed and state.attempted is False
+    assert not place.target.exists() and place.names() == []
+
+
+def test_a_stage_owned_by_somebody_else_is_changed_before_the_link(place, monkeypatch):
+    pub, state = publisher(place)
+    name, descriptor = staged(place, CONTENT)
+    owner = os.fstat(descriptor).st_uid
+    monkeypatch.setattr(os, "getuid", lambda: owner + 1)
+    error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
+    os.close(descriptor)
+    assert error.code == CODES.changed and state.attempted is False and not place.target.exists()
+
+
+def test_the_stage_carries_the_callers_prefix_and_suffix(place):
+    pub, _ = publisher(place)
+    seen, original = [], pub._check_stage
+
+    def look(written):
+        seen.append(pub.stage)
+        original(written)
+
+    pub._check_stage = look
+    pub.publish_bytes(CONTENT)
+    (stage,) = seen
+    assert stage.startswith(PREFIX) and stage.endswith(".tmp") and "/" not in stage
+
+
+def after_link(pub, action):
+    original = pub._publish_link
+
+    def link_then_act():
+        original()
+        action()
+
+    pub._publish_link = link_then_act
+
+
+def test_a_target_whose_mode_changed_after_the_link_is_uncertain(place):
+    pub, _ = publisher(place)
+    after_link(pub, lambda: os.chmod(place.target, 0o644))
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_a_target_with_a_second_name_after_the_link_is_uncertain(place, entry):
+    pub, _ = publisher(place)
+    after_link(pub, lambda: os.link(place.target, place.directory / "second"))
+    assert failure(lambda: entry_publish(place, pub, entry)).code == CODES.uncertain
+
+
+def test_a_target_replaced_by_a_symlink_to_the_same_file_is_uncertain(place):
+    pub, _ = publisher(place)
+
+    def swap():
+        os.link(place.target, place.directory / "elsewhere")
+        place.target.unlink()
+        place.target.symlink_to("elsewhere")
+
+    after_link(pub, swap)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+
+
+def test_a_target_truncated_after_the_link_with_its_mtime_restored_is_uncertain(place):
+    pub, _ = publisher(place)
+
+    def truncate():
+        before = place.target.stat()
+        os.truncate(place.target, len(CONTENT) - 1)
+        os.utime(place.target, ns=(before.st_atime_ns, before.st_mtime_ns))
+
+    after_link(pub, truncate)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+
+
+def test_a_target_owned_by_somebody_else_after_the_link_is_uncertain(place, monkeypatch):
+    pub, state = publisher(place)
+    real = os.getuid
+    monkeypatch.setattr(os, "getuid", lambda: real() + 1 if state.attempted else real())
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+
+
+def test_a_same_size_overwrite_of_the_target_after_the_link_is_uncertain(place):
+    pub, _ = publisher(place)
+
+    def overwrite():
+        descriptor = os.open(place.target, os.O_WRONLY)
+        os.pwrite(descriptor, b"Z", 0)  # same size, other byte, new mtime
+        os.close(descriptor)
+
+    after_link(pub, overwrite)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_a_stage_that_somebody_else_removed_before_our_cleanup_is_not_an_error(place, entry):
+    pub, _ = publisher(place)
+    original, calls = pub._check_target, []
+
+    def check(*arguments):
+        original(*arguments)
+        calls.append(1)
+        if len(calls) == 1:  # after the first look at the target, before our own cleanup
+            (place.directory / pub.stage).unlink()
+
+    pub._check_target = check
+    entry_publish(place, pub, entry)
+    assert place.target.read_bytes() == CONTENT and place.names() == [NAME]
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+def test_a_link_that_fails_for_another_reason_than_a_taken_name_is_uncertain(
+    place, monkeypatch, entry
+):
+    def refuse(*arguments, **keywords):
+        raise OSError(errno.EIO, "PRIVATE-PATH")
+
+    monkeypatch.setattr(os, "link", refuse)
+    pub, state = publisher(place)
+    error = failure(lambda: entry_publish(place, pub, entry))
+    assert error.code == CODES.uncertain and state.attempted is True
+    assert "PRIVATE-PATH" not in str(error.envelope())
+
+
+def test_a_dangling_symlink_target_is_exists_from_the_first_look_and_no_stage_is_made(
+    place, monkeypatch
+):
+    place.target.symlink_to("nowhere")
+    opened, real = [], os.open
+
+    def spy(path, *arguments, **keywords):
+        opened.append(path)
+        return real(path, *arguments, **keywords)
+
+    monkeypatch.setattr(os, "open", spy)
+    pub, _ = publisher(place)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.exists
+    assert opened == []  # refused at the first look, before anything was created
+
+
+def test_a_stage_shorter_than_the_size_it_was_said_to_be_is_changed_before_the_link(place):
+    pub, state = publisher(place)
+    name, descriptor = staged(place, CONTENT)
+    error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 1))
+    os.close(descriptor)
+    assert error.code == CODES.changed and state.attempted is False
+    assert not place.target.exists() and place.names() == []
+
+
+def test_a_stage_modified_while_the_source_is_looked_at_is_changed_before_the_link(place):
+    holder, first = {}, []
+
+    def check_source():
+        if not first:
+            first.append(1)  # the look takes long: somebody appends to the stage meanwhile
+            with open(place.directory / holder["pub"].stage, "ab") as handle:
+                handle.write(b"+")
+
+    pub, state = publisher(place, check_source=check_source)
+    holder["pub"] = pub
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
+    assert state.attempted is False and not place.target.exists()
+
+
+def test_a_symlink_put_at_the_stage_name_after_the_link_is_not_ours_to_remove(place):
+    pub, _ = publisher(place)
+    original, calls, kept = pub._check_target, [], {}
+
+    def check(*arguments):
+        original(*arguments)
+        calls.append(1)
+        if len(calls) == 1:  # the target was verified; now the stage name becomes a symlink
+            stage, moved = place.directory / pub.stage, place.directory / "moved"
+            kept["stage"] = stage
+            stage.rename(moved)
+            stage.symlink_to(moved)
+
+    pub._check_target = check
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.uncertain
+    assert kept["stage"].is_symlink()  # the foreign symlink was left alone
+
+
+def traceback_text(error):
+    return "".join(traceback.format_exception(type(error), error, error.__traceback__))
+
+
+def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypatch):
+    secret = "PRIVATE-PATH-NEVER-PRINT"
+    pub, _ = publisher(place)
+
+    def disk_full(*arguments):
+        raise OSError(errno.ENOSPC, secret)
+
+    pub._sync = disk_full
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.failed and secret not in traceback_text(error)
+
+    pub, state = publisher(place)
+    original = pub._check_target
+
+    def late(*arguments):
+        if state.attempted:
+            raise OSError(errno.EIO, secret)
+        return original(*arguments)
+
+    pub._check_target = late
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.uncertain and secret not in traceback_text(error)
+    place.target.unlink()
+
+    real = os.stat
+
+    def refused(path, *arguments, **keywords):
+        if path == NAME:
+            raise PermissionError(errno.EACCES, secret)
+        return real(path, *arguments, **keywords)
+
+    monkeypatch.setattr(os, "stat", refused)
+    pub, _ = publisher(place)
+    error = failure(lambda: pub.ensure_absent())
+    assert error.code == CODES.failed and secret not in traceback_text(error)
+    monkeypatch.setattr(os, "stat", real)
+
+    pub, _ = publisher(place)
+    original_link = pub._publish_link
+
+    def taken_then_link():
+        place.target.write_bytes(b"other")
+        original_link()
+
+    pub._publish_link = taken_then_link
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.exists and "File exists" not in traceback_text(error)
+
+    try:
+        raise OSError(errno.EIO, secret)
+    except OSError as os_error:
+        with pytest.raises(YorungeError) as caught:
+            PublicationState(CODES).reraise(os_error)
+    assert secret not in traceback_text(caught.value)
+
+
+def test_the_manifest_family_maps_an_os_or_unicode_error_to_file_unreadable():
+    from yorunge.adapters.dataset_reports import PublicationState as ManifestState
+
+    for error in (OSError(errno.EIO, "PRIVATE"), UnicodeError("PRIVATE")):
+        with pytest.raises(YorungeError) as caught:
+            ManifestState().reraise(error)
+        assert caught.value.code == "file_unreadable"
+
+
+def test_the_manifest_writer_keeps_its_prefix_and_hands_its_source_check_on(place):
+    from yorunge.adapters.dataset_reports import DatasetManifestWriter
+    from yorunge.adapters.dataset_reports import PublicationState as ManifestState
+
+    calls, seen = [], []
+    writer = DatasetManifestWriter(place, ManifestState(), lambda: calls.append(1))
+    original = writer._check_stage
+    writer._check_stage = lambda written: (seen.append(writer.stage), original(written))
+    writer.publish_bytes(b"{}")
+    assert len(calls) == 2  # before and after the link
+    assert seen[0].startswith(".yorunge-manifest-") and seen[0].endswith(".tmp")
+
+
+# --- a stage that cannot be removed, and the error that replaces the one raised -------------
+
+
+def test_a_failed_cleanup_leaves_its_note_on_the_error_that_is_raised(place, monkeypatch):
+    pub, state = publisher(place)
+
+    def disk_full(*arguments):
+        raise OSError(errno.ENOSPC, "PRIVATE")
+
+    pub._sync = disk_full
+    monkeypatch.setattr(os, "unlink", lambda *a, **k: (_ for _ in ()).throw(OSError(errno.EIO, "")))
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == CODES.failed and state.attempted is False
+    assert MESSAGES[CODES.failed] in error.__notes__  # the stage may still be there
+    monkeypatch.undo()
+    assert len(place.leftovers()) == 1
+
+
+def test_a_close_that_fails_while_another_error_is_raised_leaves_the_familys_note(
+    place, monkeypatch
+):
+    stage_descriptors, real_open, real_close = set(), os.open, os.close
+
+    def opening(path, *arguments, **keywords):
+        descriptor = real_open(path, *arguments, **keywords)
+        if isinstance(path, str) and path.startswith(PREFIX):
+            stage_descriptors.add(descriptor)
+        return descriptor
+
+    def closing(descriptor):
+        real_close(descriptor)
+        if descriptor in stage_descriptors:
+            raise OSError(errno.EIO, "PRIVATE")
+
+    monkeypatch.setattr(os, "open", opening)
+    monkeypatch.setattr(os, "close", closing)
+    pub, _ = publisher(place)
+    pub._check_stage = lambda written: (_ for _ in ()).throw(YorungeError("execution_timeout"))
+    error = failure(lambda: pub.publish_bytes(CONTENT))
+    assert error.code == "execution_timeout"
+    assert MESSAGES[CODES.failed] in error.__notes__  # the family's, not the manifest's
+    assert MESSAGES["file_unreadable"] not in error.__notes__
+
+
+# --- the entry's arguments ---------------------------------------------------------------
+
+
+def test_a_stage_cannot_be_named_like_the_target(place):
+    pub, state = publisher(place)
+    with pytest.raises(ValueError):
+        pub.publish_stage(NAME, 0, 1)
+    assert state.attempted is False and place.leftovers() == []
+
+
+def test_a_stage_name_prefix_is_part_of_one_name(place):
+    with pytest.raises(ValueError):
+        ArtifactPublisher(place, PublicationState(CODES), prefix="dir/.artifact-")
+
+
 # --- real SIGKILL at each step ------------------------------------------------------------------
 
 KILL = textwrap.dedent(
@@ -652,10 +1300,12 @@ def test_a_kill_at_every_step_leaves_the_target_absent_or_whole(
 ):
     directory = tmp_path / "place"
     directory.mkdir()
-    environment = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    repository = str(Path(__file__).resolve().parents[2])
+    environment = {**os.environ, "PYTHONPATH": os.pathsep.join([repository, *sys.path])}
     run = subprocess.run(
         [sys.executable, "-c", KILL, point, entry, str(directory)],
         env=environment,
+        cwd=repository,
         capture_output=True,
         timeout=60,
     )
@@ -670,3 +1320,15 @@ def test_a_kill_at_every_step_leaves_the_target_absent_or_whole(
     else:
         assert not target.exists()  # not a byte of it is visible before the link
         assert len(others) == 1  # the stage is left; the next run does not trip on it
+    # The next publication, in the same place, goes through whatever the kill left behind.
+    again = Place(directory)
+    try:
+        pub, _ = publisher(again)
+        if published:
+            assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.exists
+            assert target.read_bytes() == CONTENT  # never replaced
+        else:
+            pub.publish_bytes(CONTENT)
+            assert target.read_bytes() == CONTENT and stat.S_IMODE(target.stat().st_mode) == 0o600
+    finally:
+        again.close()

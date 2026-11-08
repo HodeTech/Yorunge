@@ -45,7 +45,7 @@ class ArtifactCodes:
     exists: ErrorCode  # the target is taken: nothing of the caller's was published
     uncertain: ErrorCode  # the link was attempted: the target may or may not exist
     changed: ErrorCode  # the stage, the target or the place is not what was written
-    unreadable: ErrorCode  # the operating system refused something before the link
+    unreadable: ErrorCode  # an OSError or UnicodeError the caller's own handler reports
 
     def __post_init__(self) -> None:
         # Every code is a closed one, and the doubt after a link exits 5 in every family: it is
@@ -106,6 +106,8 @@ class ArtifactPublisher:
     ) -> None:
         """``check_source`` re-checks what the artifact was made from (a stream has none);
         ``prefix`` starts the stage names ``publish_bytes`` makes (a stream names its own)."""
+        if "/" in prefix:
+            raise ValueError("a stage name prefix is part of one name")
         self.location, self.state, self.check_source = location, state, check_source
         self.codes, self.prefix = state.codes, prefix
         self.stage: str | None = None
@@ -151,8 +153,8 @@ class ArtifactPublisher:
         identity when publication fails, unless ``_discard`` keeps it; the caller does not touch it
         meanwhile. Everything after the write is the publisher's: verify, link, clean up, sync.
         """
-        if not stage or "/" in stage or stage in (".", ".."):
-            raise ValueError("a stage is one name in the target's directory")
+        if not stage or "/" in stage or stage in (".", "..", self.location.name):
+            raise ValueError("a stage is one name in the target's directory, and not the target's")
 
         def adopted() -> None:
             self.stage = stage
@@ -165,13 +167,22 @@ class ArtifactPublisher:
         try:
             action()
         except BaseException as error:
+            stranded = False
             try:
                 self._discard(error)
             except (OSError, YorungeError):
+                stranded = True
                 BaseException.add_note(error, MESSAGES[self.codes.failed])
-            if isinstance(error, OSError) and not self.state.attempted:
-                raise YorungeError(self.codes.failed) from None
-            self.state.reraise(error)
+            try:
+                if isinstance(error, OSError) and not self.state.attempted:
+                    raise YorungeError(self.codes.failed) from None
+                self.state.reraise(error)
+            except BaseException as final:
+                if stranded and final is not error:
+                    # The error was replaced by a closed one: the note that the stage may still
+                    # be there goes with it.
+                    BaseException.add_note(final, MESSAGES[self.codes.failed])
+                raise
 
     def _discard(self, error: BaseException) -> None:
         """What becomes of the stage when publication failed with ``error``.
@@ -267,6 +278,13 @@ class ArtifactPublisher:
             raise YorungeError(self.codes.changed)
 
     def _remove_stage(self) -> None:
+        """Remove the stage if the name still leads to the file that was staged.
+
+        The identity is looked at and then the name is unlinked: POSIX offers no removal by
+        identity, so a name that is swapped between the two calls is removed in its place. That
+        interval is observed, not sandboxed; a stage name that an adversary can predict (a stream's)
+        and a directory the adversary can write are what make it matter.
+        """
         if self.stage is None or self.stage_identity is None:
             return
         try:
