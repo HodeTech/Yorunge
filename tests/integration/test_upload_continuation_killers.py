@@ -87,6 +87,8 @@ def test_the_resume_api_refuses_an_active_loop_before_the_state_is_touched(tmp_p
     import asyncio
     from uuid import uuid4
 
+    from yorunge.domain.errors import YorungeError
+
     root, identity = tmp_path / "absent", str(uuid4())
 
     async def run():
@@ -98,7 +100,7 @@ def test_the_resume_api_refuses_an_active_loop_before_the_state_is_touched(tmp_p
                 identity, prepare=True, accept_unverified_read=True, state_dir=root
             ),
         ):
-            with pytest.raises(Exception) as raised:
+            with pytest.raises(YorungeError) as raised:
                 call()
             assert raised.value.code == "invalid_request"
 

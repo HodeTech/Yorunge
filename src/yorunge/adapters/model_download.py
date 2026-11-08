@@ -50,6 +50,7 @@ from yorunge.domain.models import Context, Profile, Result, ServiceId
 
 PLATFORM: ServiceId = "evren-platform"
 CAPTURE_SECONDS = 30.0  # the local snapshot (store, key) has this much; the download its own time
+_JITTER = random.SystemRandom()  # the retry spread is no secret; a system source needs no seed
 ContextLoader = Callable[[], tuple[Context, Profile]]
 
 
@@ -169,7 +170,7 @@ def _captured(state: StateDiscovery, end: float) -> DiscoverySnapshot:
             remaining = end - time.monotonic()
             if error.code != "state_busy" or remaining <= 0.3:
                 raise
-            time.sleep(min(remaining - 0.2, 0.05 + 0.25 * random.random()))
+            time.sleep(min(remaining - 0.2, 0.05 + 0.25 * _JITTER.random()))
 
 
 def _synchronous(progress: object) -> bool:

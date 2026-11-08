@@ -322,7 +322,7 @@ def test_a_target_that_cannot_be_one_opens_no_directory_handle(place):
         place / "real" / "new\nline.json",
         place / "real" / "tab\there.json",
         place / "real" / ("x" * 4097),
-        place / "real" / "a‮b.json",
+        place / "real" / "a\u202eb.json",
     ):
         with pytest.raises(YorungeError):
             with binding_target(bad):

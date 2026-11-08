@@ -675,7 +675,8 @@ def test_instruments_tell_the_stage_from_other_files_and_restore_everything(tmp_
             artifact_publisher.full_sync(stage)
             local_files.full_sync(stage)
             assert os.fstat(stage).st_size == 6
-        assert (os.write, os.fsync, local_files.full_sync) == real
+        seen_hooks = (os.write, os.fsync, local_files.full_sync)
+        assert seen_hooks == real
         assert download_sink.full_sync is artifact_publisher.full_sync is local_files.full_sync
     finally:
         for descriptor in (stage, other, directory):
@@ -692,7 +693,8 @@ def test_instruments_are_restored_when_the_window_fails(tmp_path):
     real = (os.write, os.fsync, local_files.full_sync)
     with pytest.raises(RuntimeError, match="boom"), instruments(tmp_path):
         raise RuntimeError("boom")
-    assert (os.write, os.fsync, local_files.full_sync) == real
+    seen_hooks = (os.write, os.fsync, local_files.full_sync)
+    assert seen_hooks == real
 
 
 def test_instruments_refuse_a_sink_that_does_not_use_the_common_full_sync(tmp_path, monkeypatch):

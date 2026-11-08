@@ -73,13 +73,14 @@ def test_every_derived_fact_matches_the_frozen_formulas_for_all_file_counts(vers
         assert spec.intent_count == frozen_intent_count(count) == len(spec.required_stages())
         assert spec.operation_reservation() == frozen_reservation(count)
         counts = spec.request_counts()
-        assert {
+        seen_counts = {
             "create": counts.create,
             "project_link": counts.project_link,
             "presign": counts.presign,
             "put": counts.put,
             "confirm": counts.confirm,
-        } == frozen_limits(count)
+        }
+        assert seen_counts == frozen_limits(count)
         assert counts.total == spec.intent_count
         # Tuples, not ranges: later graphs name file subsets that a range cannot express.
         assert spec.files == tuple(range(count))

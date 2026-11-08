@@ -743,21 +743,28 @@ def stream_summary_v2(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_INSTALLATION_FIELDS = "schema_version report_kind source_commit environment results passed"
+_INSTALLATION_ROW_FIELDS = "archive sha256 members "
+_INSTALLATION_ENVIRONMENT = "installation environment must be an object"
+_INSTALLATION_PAIR = "one wheel and one sdist installation are required"
+_INSTALLATION_UNIQUE = "installation artifacts must be unique wheel and sdist"
+
+
 def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
-        "schema_version report_kind source_commit environment results passed",
+        _INSTALLATION_FIELDS,
         "installation",
     )
     pattern_value(report["source_commit"], COMMIT)
     if not isinstance(report["environment"], dict):
-        raise ValueError("installation environment must be an object")
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
     results = report["results"]
     if not isinstance(results, list) or len(results) != 2:
-        raise ValueError("one wheel and one sdist installation are required")
+        raise ValueError(_INSTALLATION_PAIR)
     kinds = [installation_row(row) for row in results]
     if set(kinds) != {"wheel", "sdist"}:
-        raise ValueError("installation artifacts must be unique wheel and sdist")
+        raise ValueError(_INSTALLATION_UNIQUE)
     passed = all(
         row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS[1:])
         for row in results
@@ -772,7 +779,7 @@ def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
 
 
 def installation_row(value: object) -> str:
-    row = closed(value, "archive sha256 members " + " ".join(INSTALL_CHECKS), "installation result")
+    row = closed(value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS), "installation result")
     archive = text_value(row["archive"])
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*", archive) is None or ".." in archive:
         raise ValueError("invalid installation artifact filename")
@@ -799,7 +806,7 @@ def installation_row(value: object) -> str:
 def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
-        "schema_version report_kind source_commit environment results passed",
+        _INSTALLATION_FIELDS,
         "installation v3",
     )
     if (
@@ -810,13 +817,13 @@ def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("unknown installation v3 schema")
     pattern_value(report["source_commit"], COMMIT)
     if not isinstance(report["environment"], dict):
-        raise ValueError("installation environment must be an object")
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
     results = report["results"]
     if not isinstance(results, list) or len(results) != 2:
-        raise ValueError("one wheel and one sdist installation are required")
+        raise ValueError(_INSTALLATION_PAIR)
     kinds = [installation_row_v3(row) for row in results]
     if set(kinds) != {"wheel", "sdist"}:
-        raise ValueError("installation artifacts must be unique wheel and sdist")
+        raise ValueError(_INSTALLATION_UNIQUE)
     passed = all(
         row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V3[1:])
         for row in results
@@ -832,7 +839,7 @@ def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
 
 def installation_row_v3(value: object) -> str:
     row = closed(
-        value, "archive sha256 members " + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
+        value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
     )
     kind = installation_row({key: item for key, item in row.items() if key != "upload_smoke"})
     if not isinstance(row["upload_smoke"], str) or row["upload_smoke"] not in {
@@ -847,7 +854,7 @@ def installation_row_v3(value: object) -> str:
 def installation_summary_v4(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
-        "schema_version report_kind source_commit environment results passed",
+        _INSTALLATION_FIELDS,
         "installation v4",
     )
     if (
@@ -858,13 +865,13 @@ def installation_summary_v4(report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("unknown installation v4 schema")
     pattern_value(report["source_commit"], COMMIT)
     if not isinstance(report["environment"], dict):
-        raise ValueError("installation environment must be an object")
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
     results = report["results"]
     if not isinstance(results, list) or len(results) != 2:
-        raise ValueError("one wheel and one sdist installation are required")
+        raise ValueError(_INSTALLATION_PAIR)
     kinds = [installation_row_v4(row) for row in results]
     if set(kinds) != {"wheel", "sdist"}:
-        raise ValueError("installation artifacts must be unique wheel and sdist")
+        raise ValueError(_INSTALLATION_UNIQUE)
     passed = all(
         row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V4[1:])
         for row in results
@@ -880,7 +887,7 @@ def installation_summary_v4(report: dict[str, Any]) -> dict[str, Any]:
 
 def installation_row_v4(value: object) -> str:
     row = closed(
-        value, "archive sha256 members " + " ".join(INSTALL_CHECKS_V4), "installation v4 result"
+        value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS_V4), "installation v4 result"
     )
     added = INSTALL_CHECKS_V4[len(INSTALL_CHECKS_V3) :]
     kind = installation_row_v3({key: item for key, item in row.items() if key not in added})

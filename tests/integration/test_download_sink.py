@@ -502,7 +502,8 @@ def test_a_stop_before_the_answer_leaves_the_stage_of_an_earlier_run_as_it_was(p
     with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
         assert plan.ask is not None
         sink.stop()  # the request failed before any answer: nothing changed this run
-    assert ((place / NAMES.stage).read_bytes(), (place / NAMES.sidecar).read_bytes()) == before
+    seen_files = ((place / NAMES.stage).read_bytes(), (place / NAMES.sidecar).read_bytes())
+    assert seen_files == before
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
     assert download(place)[1].resumed_from == 100_000
 

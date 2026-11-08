@@ -56,7 +56,7 @@ def test_gap_every_closed_download_gate_is_asserted_by_code_and_exit(
 def test_gap_sdist_is_a_known_artifact_kind(helper, tmp_path):
     # the kind check passes for both kinds: it is the next statement (git) that fails here
     for kind in ("wheel", "sdist"):
-        with pytest.raises(Exception) as caught:
+        with pytest.raises((ValueError, OSError, subprocess.SubprocessError)) as caught:
             helper["verify"](
                 tmp_path / "py",
                 tmp_path,

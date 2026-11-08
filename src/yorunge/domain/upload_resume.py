@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Final, Literal
 
 from yorunge.domain.capabilities import canonical
@@ -400,7 +400,13 @@ class Classification:
         if any(name not in BLOCKERS for name in extra):
             raise ValueError("closed blockers required")
         merged = {*self.blockers, *extra}
-        return replace(self, blockers=tuple(b for b in BLOCKERS if b in merged))
+        return Classification(
+            self.classes,
+            tuple(b for b in BLOCKERS if b in merged),
+            self.classification_digest,
+            self.inventory_digest,
+            self.manifest_digest,
+        )
 
     @property
     def plannable(self) -> bool:

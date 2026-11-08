@@ -93,6 +93,12 @@ def _object(value: object) -> dict[str, object]:
     return value
 
 
+def _array(value: object) -> list[object]:
+    if not isinstance(value, list):
+        raise _invalid()
+    return value
+
+
 def _field(source: dict[str, object], name: str) -> object:
     if name not in source:
         raise _invalid()
@@ -249,9 +255,7 @@ def version_detail(
     if _tag(_field(source, "version_tag")) != version_tag:
         raise _invalid()
     values = {name: _field(source, name) for name in _ROW_FIELDS}
-    labels = _field(source, "class_labels_snapshot")
-    if not isinstance(labels, list):
-        raise _invalid()
+    labels = _array(_field(source, "class_labels_snapshot"))
     projected = []
     for label in labels:
         row = _object(label)

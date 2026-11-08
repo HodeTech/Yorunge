@@ -261,9 +261,8 @@ def test_each_problem_of_the_remote_state_is_a_blocker_with_its_class(
         assert found.class_counts == counts
         assert [(e.file_class, e.paths) for e in found.examples] == examples
         # What would be sent is what the provider does not hold: the one file left (nine bytes).
-        assert (found.send_files, found.send_bytes) == (
-            (1, len(b"different")) if counts.pending_clean else (0, 0)
-        )
+        seen_sent = (found.send_files, found.send_bytes)
+        assert seen_sent == ((1, len(b"different")) if counts.pending_clean else (0, 0))
         assert not found.unconfirmed_ack_required
         encoded = report.encoded().decode()
         assert "stray.bin" not in encoded

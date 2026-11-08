@@ -133,7 +133,8 @@ def test_the_approval_builder_reproduces_both_golden_approvals(approval, plan):
 )
 def test_limits_count_the_selected_files_and_their_exact_bytes(indices, size):
     limits = continuation_limits(MANIFEST, indices)
-    assert (limits.max_presign, limits.max_put, limits.max_confirm) == (len(indices),) * 3
+    seen_limits = (limits.max_presign, limits.max_put, limits.max_confirm)
+    assert seen_limits == (len(indices),) * 3
     assert (limits.max_create, limits.max_project_link) == (0, 0)
     assert limits.max_upload_bytes == size
     assert limits.files == len(indices)

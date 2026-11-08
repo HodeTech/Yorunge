@@ -55,7 +55,7 @@ ERROR_HINTS = {
 
 def _page(value: str) -> int:
     """A page number: decimal ASCII digits, no sign, no space, no leading zero, 1-10 000."""
-    if re.fullmatch(r"[1-9][0-9]{0,4}", value) is None or int(value) > MAX_PAGE:
+    if re.fullmatch(r"[1-9]\d{0,4}", value, re.ASCII) is None or int(value) > MAX_PAGE:
         raise argparse.ArgumentTypeError("page")
     return int(value)
 
@@ -194,13 +194,17 @@ def _bound_text(data: DatasetVersionBound) -> str:
         rows.append("Uyarı: sürümün bölme sayıları toplamı öğe sayısından farklı.")
     if data.is_partial:
         rows.append("Uyarı: sağlayıcı bu sürümü kısmi (is_partial) işaretlemiş; anlamı bilinmiyor.")
-    rows.append(
-        "Denetle: "
-        + shlex.join(("yorunge", "datasets", "versions", "check", "--binding", data.binding_path))
+    rows.extend(
+        (
+            "Denetle: "
+            + shlex.join(
+                ("yorunge", "datasets", "versions", "check", "--binding", data.binding_path)
+            ),
+            "Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.",
+            "Digest kendi kendine hash'tir (imza değil); kullanmadan önce check edin.",
+            "Yalnız sağlayıcı metadata'sı; içerik, üyelik ya da model uygunluğu söylenmez.",
+        )
     )
-    rows.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
-    rows.append("Digest kendi kendine hash'tir (imza değil); kullanmadan önce check edin.")
-    rows.append("Yalnız sağlayıcı metadata'sı; içerik, üyelik ya da model uygunluğu söylenmez.")
     return "\n".join(rows)
 
 

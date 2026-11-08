@@ -309,7 +309,7 @@ def test_a_continuations_reconcile_makes_six_reads_and_holds_no_lock_while_it_wa
 
 
 def test_the_local_form_of_the_gate_binds_a_failing_store_to_the_source_it_was_asked_about(
-    tmp_path,
+    tmp_path, monkeypatch
 ):
     """A store that cannot take the clock's trace is a closed error of that operation, not raw."""
     import sqlite3
@@ -321,13 +321,9 @@ def test_the_local_form_of_the_gate_binds_a_failing_store_to_the_source_it_was_a
     def busy(self, *args, **kwargs):
         raise sqlite3.OperationalError("database is locked")
 
-    monkeypatched = StateCache.stamp
-    StateCache.stamp = busy
-    try:
-        with open_existing_store(state) as store:
-            with pytest.raises(OperationError) as refused:
-                StateUploads(store).require_no_successor(source)
-    finally:
-        StateCache.stamp = monkeypatched
+    monkeypatch.setattr(StateCache, "stamp", busy)
+    with open_existing_store(state) as store:
+        with pytest.raises(OperationError) as refused:
+            StateUploads(store).require_no_successor(source)
     assert refused.value.code in {"state_busy", "state_invalid"}
     assert refused.value.operation_id == source

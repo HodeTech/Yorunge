@@ -21,7 +21,7 @@ Framing = Literal["length", "chunked"]
 Disposition = Literal["full", "restart", "continue", "discard_and_retry"]
 
 _MAX_NUMBER: Final = 2**63 - 1
-_DIGITS = r"(0|[1-9][0-9]{0,18})"
+_DIGITS = r"(0|[1-9]\d{0,18})"  # always compiled with re.ASCII below
 _RANGE = re.compile(rf"bytes ({_DIGITS})-({_DIGITS})/({_DIGITS})", re.ASCII | re.IGNORECASE)
 _LENGTH = re.compile(r"(0|[1-9][0-9]{0,63})", re.ASCII)  # any length, however absurd, is a number
 _STRONG_ETAG = re.compile(r'"[\x21\x23-\x7e]{1,126}"', re.ASCII)
@@ -75,9 +75,10 @@ class ResumeAsk:
 
 def request_headers(ask: ResumeAsk | None) -> tuple[tuple[str, str], ...]:
     """The headers the application adds, and no others (the transport adds Host and identity)."""
-    if ask is None:
-        return ()
-    return (("Range", f"bytes={ask.prefix_bytes}-"), ("If-Range", ask.etag))
+    headers: list[tuple[str, str]] = []
+    if ask is not None:
+        headers += [("Range", f"bytes={ask.prefix_bytes}-"), ("If-Range", ask.etag)]
+    return tuple(headers)
 
 
 # --- field parsers --------------------------------------------------------------------------------

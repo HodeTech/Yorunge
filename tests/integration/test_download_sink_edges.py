@@ -1122,9 +1122,8 @@ def test_a_fresh_download_did_not_use_an_earlier_run_and_a_continued_one_did(pla
     target(place).unlink()
     stopped_after(place, 100_000)
     continued, plan = download(place)
-    assert (plan.resumed_from, continued.resumed_from_bytes, continued.resumed) == (
-        100_000,
-    ) * 2 + (True,)
+    seen_resume = (plan.resumed_from, continued.resumed_from_bytes, continued.resumed)
+    assert seen_resume == (100_000,) * 2 + (True,)
 
 
 def test_a_malformed_identity_is_refused_before_anything_is_created(place):

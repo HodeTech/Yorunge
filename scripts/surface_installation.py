@@ -107,7 +107,7 @@ def defined_options(text: str) -> set[str]:
     help of another option; only a row of the list (two-space indent, an optional short form that
     may carry its own metavar, ``-o OUTPUT, --output OUTPUT``) is a definition.
     """
-    return set(re.findall(r"^  (?:-\w(?: [\w.]+)?, )?(--[\w-]+)", text, flags=re.MULTILINE))
+    return set(re.findall(r"^ {2}(?:-\w(?: [\w.]+)?, )?(--[\w-]+)", text, flags=re.MULTILINE))
 
 
 def mentions(text: str, name: str) -> bool:

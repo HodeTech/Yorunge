@@ -276,7 +276,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             raise changed  # nothing is planned on a folder that is not the one that was uploaded
         # The plan's window starts once the folder was hashed, as an original plan's does.
         start = self.clock.now()
-        found, inventory = self._read_remote(bound, scope, baseline, plan, source.manifest, end)
+        _, inventory = self._read_remote(bound, scope, baseline, plan, source.manifest, end)
         observed_at = timestamp(self.clock.now())
         extra: set[Blocker] = set()
         if changed is not None:

@@ -444,7 +444,7 @@ def decode_binding(data: object) -> DatasetVersionBinding:
         binding = DatasetVersionBinding.model_validate_json(data)
         if binding.encoded() != data:
             raise ValueError("canonical binding required")
-    except (ValueError, RecursionError, UnicodeError):
+    except (ValueError, RecursionError):  # UnicodeError is a ValueError
         binding = None  # the parser's error holds the text of the file: none of it is kept
     if binding is None:
         raise YorungeError("binding_invalid")
@@ -531,7 +531,7 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
         else:
             rows.sort(key=lambda row: int(str(row["id"])))
         encoded = canonical_manifest(rows)  # a lone surrogate does not encode
-    except (UnicodeError, ValueError):
+    except ValueError:  # a UnicodeError is one
         encoded = None  # the encoder's error holds the class names: none of them is kept
     if encoded is None:
         raise YorungeError("invalid_response")

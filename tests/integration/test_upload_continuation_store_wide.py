@@ -187,9 +187,8 @@ def test_a_plan_that_was_never_admitted_adds_everything_but_its_reservation(tmp_
 def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path):
     with world(tmp_path, UNKNOWN, LATER) as (store, _, _):
         used = quota_used(store.connection)
-        assert (used.plans, used.operations, used.files, used.payload_bytes) == capacity(
-            store.connection
-        )
+        seen_usage = (used.plans, used.operations, used.files, used.payload_bytes)
+        assert seen_usage == capacity(store.connection)
         assert used.plans == used.operations == 3
         assert used.files == 3 * len(FILES)
     # A plan that was never admitted is a plan and no operation: the two counters part.

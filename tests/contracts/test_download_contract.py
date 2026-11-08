@@ -434,7 +434,8 @@ def test_the_four_names_are_derived_from_the_hash_alone_and_have_a_fixed_length(
 def test_every_valid_name_gets_names_of_one_length_and_no_other_shape(name):
     names = download_names(name)
     prefix = len(".yorunge-download-") + 32
-    assert [len(names.lock), len(names.stage), len(names.sidecar)] == [prefix + 5] * 3
+    seen_lengths = [len(names.lock), len(names.stage), len(names.sidecar)]
+    assert seen_lengths == [prefix + 5] * 3
     assert len(names.sidecar_tmp) == prefix + len(".json.tmp")
     for item in (names.lock, names.stage, names.sidecar, names.sidecar_tmp):
         assert item.startswith(".yorunge-download-")
@@ -451,9 +452,9 @@ def test_different_names_never_share_a_file_name_and_a_name_is_stable():
         )
         if name in {".", ".."} or name.startswith(".yorunge-download-"):
             continue
-        stem = download_names(name).stage
-        assert seen.setdefault(stem, name) == name  # one stem, one name: no collision
-        assert download_names(name) == download_names(name)
+        first = download_names(name)
+        assert seen.setdefault(first.stage, name) == name  # one stem, one name: no collision
+        assert download_names(name) == first  # the same name always gives the same names
     assert len(seen) > 19000
 
 

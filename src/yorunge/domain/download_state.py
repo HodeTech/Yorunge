@@ -25,7 +25,7 @@ cleanup of a publication trace and is raised after it is done.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Final, Literal
 
 from yorunge.domain.download import MAX_SIDECAR_BYTES, DownloadPartial
@@ -255,6 +255,13 @@ def confirm_prefix(decision: StartDecision, observed_sha256: str | None) -> Star
     if decision.record is None:
         raise ValueError("a decision that resumes or publishes carries its record")
     if observed_sha256 == decision.record.prefix_sha256:
-        return replace(decision, prefix_checked=True)
+        return StartDecision(
+            decision.action,
+            decision.remove,
+            decision.record,
+            decision.truncate_to,
+            decision.ask,
+            prefix_checked=True,
+        )
     planned = {"stage", "sidecar", *decision.remove}
     return StartDecision("start_clean", tuple(name for name in REMOVAL_ORDER if name in planned))

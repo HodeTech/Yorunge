@@ -165,7 +165,8 @@ def test_a_continuation_sends_the_file_that_was_left_and_creates_and_links_nothi
         assert record.status == "running"
         assert record.dataset_id == DATASET
         assert provider.events[len(events) :] == ["presign", "put", "confirm"]
-        assert (provider.create_calls, provider.link_calls) == created  # the original's alone
+        seen_calls = (provider.create_calls, provider.link_calls)
+        assert seen_calls == created  # the original's alone
         sent = [r for r in server.requests[before:] if r.method != "GET"]
         assert [r.method for r in sent] == ["POST", "PUT", "POST"]
         counters = budgets[0].snapshot()

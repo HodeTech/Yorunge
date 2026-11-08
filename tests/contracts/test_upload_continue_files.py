@@ -160,7 +160,7 @@ def test_every_effect_is_released_whether_it_succeeded_or_not():
 def test_a_presign_that_fails_stops_the_continuation_before_anything_else_is_armed():
     boom = OperationError("operation_uncertain", "00000000-0000-4000-8000-000000000001")
     environment = Environment(EVERY_FILE, break_at=("presign", 1), error=boom)
-    with pytest.raises(BaseException) as error:
+    with pytest.raises(OperationError) as error:
         run(environment)
     assert error.type is type(boom)
     assert environment.names("arm") == [("presign", 0), ("presign", 1)]

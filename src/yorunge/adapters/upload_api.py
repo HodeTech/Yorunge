@@ -212,14 +212,15 @@ def start_upload(
     if plan_id is None:
         raise YorungeError("invalid_request")
 
-    record: UploadRecord | None = None
+    reached: list[UploadRecord] = []  # the record, once the run produced one
 
     def start() -> Result[UploadSummary]:
-        nonlocal record
+        record: UploadRecord
         if isinstance(_plan_of(state_dir, plan_id=plan_id), DatasetContinuationPlanV3):
             record = run_upload_continuation(plan_id, state_dir, load_context).record
         else:
             record = run_upload_original(plan_id, state_dir, load_context).record
+        reached.append(record)
         if record.status != "succeeded":
             code: ErrorCode = "operation_conflict"
             if record.workflow_latched and record.status in {"running", "unknown", "admitted"}:
@@ -227,7 +228,7 @@ def start_upload(
             raise OperationError(code, record.operation_id)
         return show_upload(state_dir, operation_id=record.operation_id)
 
-    return _safe(start, identity=lambda: record.operation_id if record is not None else None)
+    return _safe(start, identity=lambda: reached[0].operation_id if reached else None)
 
 
 def recover_upload(

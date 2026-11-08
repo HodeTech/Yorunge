@@ -233,9 +233,11 @@ def link_then_fsync_fails(monkeypatch):
 
 
 def caught(action):
-    with pytest.raises(BaseException) as error:
+    try:
         action()
-    return error.value
+    except (Exception, KeyboardInterrupt, asyncio.CancelledError) as error:
+        return error
+    pytest.fail("the action was expected to fail")
 
 
 FAILED_NOTE = MESSAGES["binding_write_failed"]
@@ -424,9 +426,9 @@ def test_an_interrupt_inside_the_publication_is_a_doubt_and_after_it_a_cancel(
             assert json.loads(again.stderr)["code"] == "binding_output_exists"
 
 
-def test_the_interrupt_console_knows_the_points_this_matrix_names():
+def test_the_interrupt_console_knows_the_points_this_matrix_names(monkeypatch):
     import importlib
 
-    sys.path.insert(0, str(SIGNAL_CONSOLE.parents[2]))
+    monkeypatch.syspath_prepend(str(SIGNAL_CONSOLE.parents[2]))
     console = importlib.import_module("tests.fixtures.version_signal_console")
     assert set(BOUNDARIES) | {"none"} == set(console.POINTS)

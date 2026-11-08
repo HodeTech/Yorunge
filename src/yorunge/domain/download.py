@@ -45,7 +45,7 @@ StrongEtag = Annotated[str, Field(pattern=r'^"[\x21\x23-\x7e]{1,126}"$')]
 ByteCount = Annotated[int, Field(ge=0, le=MAX_DOWNLOAD_BYTES)]
 FileId = Annotated[int, Field(ge=0, lt=2**64)]
 
-_INTEGER = re.compile(r"(0|[1-9][0-9]{0,18})", re.ASCII)
+_INTEGER = re.compile(r"(0|[1-9]\d{0,18})", re.ASCII)
 _SHA256 = re.compile(r"[a-f0-9]{64}", re.ASCII)
 
 

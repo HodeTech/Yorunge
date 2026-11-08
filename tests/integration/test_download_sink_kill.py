@@ -96,6 +96,23 @@ def keep_checkpoint_interval(monkeypatch):
     monkeypatch.setattr(download_sink, "CHECKPOINT_BYTES", download_sink.CHECKPOINT_BYTES)
 
 
+def check_after_kill(directory):
+    """What the next run must make of whatever the kill left (the caller collects the failures)."""
+    assert_only_the_protocols_own_traces(directory)
+    published = True
+    try:
+        driver.engine_run(directory)
+    except YorungeError as error:
+        assert error.code == "download_output_exists", error.code
+        published = False
+    target = directory / driver.NAME
+    assert target.read_bytes() == driver.DATA
+    if published:
+        assert listing(directory) == [driver.NAME], listing(directory)
+    else:  # the killed run had published: only an orphan sidecar may be left behind
+        assert set(listing(directory)) - {driver.NAME} <= {NAMES.sidecar}, listing(directory)
+
+
 @pytest.mark.parametrize("name", list(SCENARIOS))
 def test_a_kill_at_every_boundary_is_finished_by_the_next_run(tmp_path, name):
     scenario, preparation, extra = SCENARIOS[name]
@@ -112,21 +129,7 @@ def test_a_kill_at_every_boundary_is_finished_by_the_next_run(tmp_path, name):
             problems.append((label, "was not killed", run.returncode, run.stderr[-200:]))
             continue
         try:
-            assert_only_the_protocols_own_traces(directory)
-            published = True
-            try:
-                driver.engine_run(directory)
-            except YorungeError as error:
-                assert error.code == "download_output_exists", error.code
-                published = False
-            target = directory / driver.NAME
-            assert target.read_bytes() == driver.DATA
-            if published:
-                assert listing(directory) == [driver.NAME], listing(directory)
-            else:  # the killed run had published: only an orphan sidecar may be left behind
-                assert set(listing(directory)) - {driver.NAME} <= {NAMES.sidecar}, listing(
-                    directory
-                )
+            check_after_kill(directory)
         except AssertionError as error:
             problems.append((label, str(error)[:300]))
     assert not problems, problems

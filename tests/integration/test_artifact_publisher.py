@@ -96,9 +96,11 @@ def publisher(place, check_source=lambda: None):
 
 
 def failure(action):
-    with pytest.raises(BaseException) as error:
+    try:
         action()
-    return error.value
+    except (Exception, KeyboardInterrupt, asyncio.CancelledError) as error:
+        return error
+    pytest.fail("the action was expected to fail")
 
 
 def staged(place, content=CONTENT, name=".stream-0.tmp"):
