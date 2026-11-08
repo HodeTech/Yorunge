@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Final
 
-from yorunge.application.response_json import literal_secret_match, parse_json
+from yorunge.application.response_json import parse_json, scan_for_secret
 from yorunge.domain.capabilities import timestamp
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.dataset_upload import provider_uuid
@@ -76,24 +76,7 @@ class VersionDetail:
 # --- the document --------------------------------------------------------------------------------
 
 
-def _scan(value: object, secret: SecretValue) -> None:
-    """The selected key is in no string or key of the answer, wherever in it, used or dropped."""
-    if type(secret) is not SecretValue:
-        raise YorungeError("invalid_request")
-    captured = secret.reveal()
-    pending: list[object] = [value]
-    while pending:
-        item = pending.pop()
-        if isinstance(item, str):
-            if literal_secret_match(item, captured):
-                raise _invalid()
-        elif isinstance(item, dict):
-            for key, child in item.items():
-                if literal_secret_match(key, captured):
-                    raise _invalid()
-                pending.append(child)
-        elif isinstance(item, list):
-            pending.extend(item)
+_scan = scan_for_secret  # the selected key is in no string or key of the answer
 
 
 def _envelope(data: bytes, secret: SecretValue) -> dict[str, object]:

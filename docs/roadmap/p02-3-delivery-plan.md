@@ -66,7 +66,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 | 10 | [P02-3k](tasks/p02-3k-signed-get-transport.md) | ağ güvenliği · sır sızıntısı · test | Kimliksiz akışlı GET, kapalı başlıklar, guard, süre |
 | 11 | [P02-3l](tasks/p02-3l-download-sink-publisher.md) | dosya güvenliği/yarış · kilitleme/çökme tutarlılığı · test/kill | Akışlı yazıcı, sidecar protokolü, flock/sahiplik, resume doğrulaması |
 | 12 | [P02-3m](tasks/p02-3m-download-engine-resume.md) | protokol doğruluğu · çökme/durum · test | Motor, resume kararı, Range/ETag matrisi, protokol dönüşü |
-| 13 | [P02-3n](tasks/p02-3n-model-weights-consumer.md) | UX/CLI sözleşmesi · sır/hedef güvenliği | `models download` tüketicisi ve yüzeyi |
+| 13 | [P02-3n](tasks/p02-3n-model-weights-consumer.md) | UX/CLI sözleşmesi · sır/hedef güvenliği | `models download` tüketicisi ve yüzeyi (kod ve çevrimdışı testler çalışma dalında; canlı kabul yapılmadı) |
 | 14 | [P02-3o](tasks/p02-3o-download-native-acceptance.md) | ölçüm/kanıt · CI/kurulum | Native 16/256/1.024 MiB, doğrulayıcı, kurulu smoke, CI, kanıt arşivi |
 | 15 | [P02-3p](tasks/p02-3p-version-domain-reader.md) | sözleşme/codec · güvenlik/PII | Sürüm/bölme tipleri, strict codec, okuyucu, sapma |
 | 16 | [P02-3q](tasks/p02-3q-public-version-surface.md) | UX/CLI sözleşmesi · yayın/regresyon | `datasets versions list/show/bind/check`, artifact |

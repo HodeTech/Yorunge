@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         DatasetVersionObservation,
     )
     from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.download import DownloadSummary
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlan,
@@ -1368,7 +1369,7 @@ def reconcile_dataset_upload(
     )
 
 
-def _version_loader(
+def _platform_loader(
     config: Path | None, profile: str | None
 ) -> Callable[[], tuple[Context, Profile]]:
     request = validate(
@@ -1392,7 +1393,7 @@ def list_dataset_versions(
     """One page (1-10 000) of a dataset's versions; read-only, one request."""
     from yorunge.adapters.dataset_version_api import list_dataset_versions as use
 
-    return use(dataset_id, page, _version_loader(config, profile), state_dir)
+    return use(dataset_id, page, _platform_loader(config, profile), state_dir)
 
 
 def show_dataset_version(
@@ -1406,7 +1407,7 @@ def show_dataset_version(
     """One version from its detail and its split counts (two requests, which must agree)."""
     from yorunge.adapters.dataset_version_api import show_dataset_version as use
 
-    return use(dataset_id, version_tag, _version_loader(config, profile), state_dir)
+    return use(dataset_id, version_tag, _platform_loader(config, profile), state_dir)
 
 
 def bind_dataset_version(
@@ -1427,7 +1428,7 @@ def bind_dataset_version(
         version_tag,
         binding_out,
         manifest,
-        _version_loader(config, profile),
+        _platform_loader(config, profile),
         state_dir,
     )
 
@@ -1442,4 +1443,43 @@ def check_dataset_version(
     """``unchanged`` if the provider still shows what the binding holds; else a closed error."""
     from yorunge.adapters.dataset_version_api import check_dataset_version as use
 
-    return use(binding, _version_loader(config, profile), state_dir)
+    return use(binding, _platform_loader(config, profile), state_dir)
+
+
+def download_model_weights(
+    version_id: str,
+    *,
+    artifact_format: str,
+    weights_out: Path,
+    fold: int | None = None,
+    sha256: str | None = None,
+    timeout: int | None = None,
+    no_resume: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+    progress: Callable[[int, int | None], None] | None = None,
+) -> Result[DownloadSummary]:
+    """Download the weights of one exact model version into a new file; never overwrites.
+
+    ``artifact_format`` is ``onnx``, ``pt`` or ``tflite`` (never guessed). ``sha256`` is the
+    caller's own expected digest: only with it do the written bytes earn ``sha256_matched``;
+    without it the result says no more than ``transfer_complete``. ``timeout`` is whole seconds
+    (30-3600, default 900) for the download; a partial download of the same thing resumes unless
+    ``no_resume``. ``progress(bytes_written, total_or_None)`` is called while the body is
+    received, at most ten times a second, and must return quickly.
+    """
+    from yorunge.adapters.model_download import download_model_weights as use
+
+    return use(
+        version_id,
+        artifact_format,
+        weights_out,
+        fold,
+        sha256,
+        timeout,
+        no_resume,
+        _platform_loader(config, profile),
+        state_dir,
+        progress,
+    )

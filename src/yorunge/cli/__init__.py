@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         DatasetVersionObservation,
     )
     from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.download import DownloadSummary
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlans,
@@ -56,6 +57,7 @@ if TYPE_CHECKING:
         | Result[DatasetVersionObservation]
         | Result[DatasetVersionBound]
         | Result[DatasetVersionCheck]
+        | Result[DownloadSummary]
         | Result[DatasetUploadSummary]
         | Result[UploadIntentReview]
         | Result[DatasetUploadsPage]
@@ -179,6 +181,11 @@ def parser() -> Parser:
         "Yerel veri manifestleri, private dataset aktarımı ve veri sürümü referansları",
         _datasets_options,
     )
+    add(
+        "models",
+        "Model sürümü ağırlığı indir (kesin sürüm kimliğiyle, ezmeden, doğrulama seviyesi görünür)",
+        _models_options,
+    )
     return root
 
 
@@ -211,6 +218,12 @@ def _datasets_options(datasets: Parser) -> None:
     from yorunge.cli.versions import configure as configure_versions
 
     versions._configure = configure_versions
+
+
+def _models_options(models: Parser) -> None:
+    from yorunge.cli.models import configure
+
+    configure(models)
 
 
 def _doctor_options(doctor: Parser) -> None:
@@ -293,6 +306,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
         )
+    elif args.command == "models":
+        from yorunge.cli.models import SINGLETONS as MODEL_SINGLETONS
+
+        _reject_duplicates(arguments, MODEL_SINGLETONS)
 
 
 def _context_options(context: Parser) -> None:
@@ -475,6 +492,10 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
         return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
+    if args.command == "models":
+        from yorunge.cli.models import text as models_text
+
+        return models_text(data)
     if args.command == "context" and args.action == "discover":
         return discovery_text_result(data)
     return text_result(data)
@@ -843,6 +864,10 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return datasets_result(args)
     if args.command == "state":
         return state_result(args)
+    if args.command == "models":
+        from yorunge.cli.models import dispatch as models_result
+
+        return models_result(args)
     if args.command == "jobs":
         reject_context(args, ("config", "profile", "project"))
         if args.action == "show":
