@@ -179,9 +179,11 @@ def test_a_source_that_already_has_a_continuation_that_was_not_cancelled_is_not_
 ):
     spec, lapsed = branch
     with open_chain(lifecycle) as store:
-        # The root already continues into another one: the new plan would be a second branch.
-        install(store, build(lifecycle.root, 1, **spec))
+        # The plan was saved while the root continued into nothing ...
         plan, repository = ready(lifecycle, store, 2)
+        # ... and then the root continued into another one (a racing process): admitting the plan
+        # now would make a second branch.
+        install(store, build(lifecycle.root, 1, **spec))
         if lapsed:
             lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
         before = dump(store)
@@ -204,8 +206,8 @@ def test_a_descendant_that_lapsed_before_it_sent_anything_is_cancelled_by_the_ne
     lifecycle,
 ):
     with open_chain(lifecycle) as store:
+        plan, repository = ready(lifecycle, store, 2)  # saved before the root had a continuation
         install(store, build(lifecycle.root, 1, status="admitted"))  # lease until 11:02:32
-        plan, repository = ready(lifecycle, store, 2)
         # While its lease lives it is the live descendant of the source and blocks.
         assert related_of(lambda: repository.admit(plan.plan_id, plan)) == (
             "operation_conflict",
@@ -282,6 +284,7 @@ def test_an_operation_may_be_born_in_the_very_instant_its_source_last_did_someth
 
 def test_a_descendant_whose_approval_was_revoked_is_cancelled_for_that_reason(lifecycle):
     with open_chain(lifecycle) as store:
+        plan, repository = ready(lifecycle, store, 2)  # saved before the root had a continuation
         sibling = build(lifecycle.root, 1, status="admitted")
         install(store, sibling)
         revoked = {
@@ -293,7 +296,6 @@ def test_a_descendant_whose_approval_was_revoked_is_cancelled_for_that_reason(li
             "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
             (canon(revoked).decode(), sibling.plan["plan_id"]),
         )
-        plan, repository = ready(lifecycle, store, 2)
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
         repository.admit(plan.plan_id, plan)
         stale = repository.show(operation_id=FIRST)
@@ -403,12 +405,12 @@ def test_work_on_another_dataset_does_not_hold_this_one_back(lifecycle):
 
 def test_a_descendant_whose_approval_ran_out_is_cancelled_for_that_reason(lifecycle):
     with open_chain(lifecycle) as store:
+        plan, repository = ready(lifecycle, store, 2)  # saved before the root had a continuation
         sibling = build(lifecycle.root, 1, status="admitted")
         over = "2026-11-02T11:03:00.000000Z"  # before the second admission, after the first lease
         sibling.approval = {**sibling.approval, "expires_at": over}
         sibling.record = {**sibling.record, "approval": sibling.approval}
         install(store, sibling)
-        plan, repository = ready(lifecycle, store, 2)
         lifecycle.clock.value = instant(over)  # the very instant the approval runs out
         repository.admit(plan.plan_id, plan)
         stale = repository.show(operation_id=FIRST)
@@ -423,8 +425,8 @@ def test_an_admission_that_fails_after_it_cancelled_a_stale_descendant_takes_tha
         raise YorungeError("upload_capacity_exceeded")
 
     with open_chain(lifecycle) as store:
+        plan, repository = ready(lifecycle, store, 2)  # saved before the root had a continuation
         install(store, build(lifecycle.root, 1, status="admitted"))
-        plan, repository = ready(lifecycle, store, 2)
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
         before = dump(store)
         monkeypatch.setattr("yorunge.adapters.upload_repository.require_capacity", full)

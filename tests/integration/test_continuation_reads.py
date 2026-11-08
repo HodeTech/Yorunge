@@ -206,19 +206,22 @@ def test_a_check_only_continuation_reads_and_is_verified_without_sending_or_a_la
 
 
 def test_a_finished_check_only_continuation_supersedes_its_source(lifecycle):
-    plan, record = lifecycle.admitted(indices=(), uncertain=())
-    close(lifecycle, plan, record)
-    tick(lifecycle)
-    # The root already continues into a verified, finished operation: another is refused.
+    # A second plan of the root, saved while the root continued into nothing ...
+    other = lifecycle.plan(2)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
-        other = lifecycle.plan(2)
         repository.save(other, lifecycle.manifest)
         repository.approve_continuation(
             other.plan_id, other.digest, other,
             acknowledge_unverified_authority=True, acknowledge_unpriced_cost=True,
             acknowledge_unconfirmed_effects=True,
         )  # fmt: skip
+    plan, record = lifecycle.admitted(indices=(), uncertain=())
+    close(lifecycle, plan, record)
+    tick(lifecycle)
+    # ... and then the root continues into a verified, finished operation: another is refused.
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        repository = lifecycle.repository(store)
         with pytest.raises(OperationError) as error:
             repository.admit(other.plan_id, other)
         assert (error.value.code, error.value.operation_id) == (

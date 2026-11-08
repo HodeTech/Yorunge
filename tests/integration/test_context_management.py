@@ -221,7 +221,11 @@ def test_doctor_missing_installation_reads_no_secrets_sqlite_or_writes(tmp_path,
 def test_doctor_existing_store_is_read_only_and_key_check_stays_unchecked(
     config, tmp_path, monkeypatch, cli, problem
 ):
-    from yorunge.adapters import state
+    from yorunge.adapters import diagnostics, maintenance, state
+
+    # Both are imported lazily and bind ``new_key`` / ``load_key`` by name: first imported under
+    # the patches below they would keep the denying stand-in for the rest of the process.
+    assert diagnostics and maintenance
 
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)

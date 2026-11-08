@@ -76,8 +76,11 @@ def sweep(lifecycle, tmp_path, act, outcome):
 
 
 def admitted_first_that_lapsed(lifecycle):
-    """An admitted continuation whose lease is over, and a second plan of the same source."""
-    first, _ = lifecycle.admitted(1)
+    """An admitted continuation whose lease is over, and a second plan of the same source.
+
+    The second plan is saved first, while the source continues into nothing: a source that
+    already has a continuation takes no more plans.
+    """
     second = lifecycle.plan(2)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
@@ -90,6 +93,7 @@ def admitted_first_that_lapsed(lifecycle):
             acknowledge_unpriced_cost=True,
             acknowledge_unconfirmed_effects=True,
         )
+    first, _ = lifecycle.admitted(1)
     lifecycle.clock.value += timedelta(seconds=200)
     return first, second
 

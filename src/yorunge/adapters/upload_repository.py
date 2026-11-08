@@ -474,6 +474,7 @@ class StateUploads:
                     instant(plan.expires_at),
                     error="upload_plan_not_valid",
                 )
+                continued: str | None = None
                 if self.connection.execute(
                     "SELECT 1 FROM upload_plans WHERE plan_id=?", (plan.plan_id,)
                 ).fetchone():
@@ -484,9 +485,7 @@ class StateUploads:
                         # A continuation shares its root's namespace and makes no create right.
                         self._namespace_available(plan.intent_digest())
                     else:
-                        # ... and a source that got its continuation meanwhile takes no more plans:
-                        # a draft saved now could never be admitted and would only fill the quota.
-                        self._no_successor(plan.continuation.source_operation_id, stamp)
+                        continued = plan.continuation.source_operation_id
                     self.connection.execute(
                         "INSERT OR IGNORE INTO upload_namespaces VALUES(?,?,NULL)",
                         (plan.intent_digest(), namespace(plan).decode("ascii")),
@@ -508,6 +507,12 @@ class StateUploads:
                     )
                     require_capacity(self.connection)
                 view = read_view(self.connection, plan.plan_id)
+                if continued is not None:
+                    # A source that got its continuation meanwhile takes no more plans: a draft
+                    # saved now could never be admitted and would only fill the quota. Asked after
+                    # the view, which judges the lineage, so a lineage that does not hold is still
+                    # `state_invalid`; the savepoint takes the row back.
+                    self._no_successor(continued, stamp)
             self._finish(stamp, gate, scope=plan.scope)
             return view
 
