@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, BinaryIO, TextIO, TypeVar
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class OutputRenderer:
         stream_id: str | None = None,
         operation_id: str | None = None,
         upload_guidance: bool = False,
-        error_hints: Mapping[str, str] | None = None,
+        error_hints: Mapping[str, str | Callable[[YorungeError], str | None]] | None = None,
         requested_operation_id: str | None = None,
     ) -> None:
         self.output = output
@@ -279,12 +279,16 @@ class OutputRenderer:
         if self.output == "text":
             from yorunge.domain.errors import OperationError
 
-            if error.code in self._error_hints:
-                message += "\n" + self._error_hints[error.code]
+            hint = self._error_hints.get(error.code)
+            if callable(hint):
+                hint = hint(error)
+            if hint:
+                message += "\n" + hint
             if isinstance(error, OperationError) and error.operation_id is not None:
                 message += f"\nİş: {error.operation_id}"
                 if (
-                    self._requested is not None
+                    error.code == "operation_conflict"
+                    and self._requested is not None
                     and error.operation_id.lower() != self._requested.lower()
                 ):
                     message += (

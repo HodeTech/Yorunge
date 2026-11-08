@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import select
 import sys
+from collections.abc import Callable
+from errno import EINTR
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
@@ -12,6 +15,7 @@ from yorunge.cli.output import _silence_failed_descriptor, write_utf8
 if TYPE_CHECKING:
     from yorunge.cli import CliResult, Parser
     from yorunge.domain.download import DownloadSummary
+    from yorunge.domain.errors import YorungeError
     from yorunge.domain.models import Model
 
 SINGLETONS = {
@@ -104,7 +108,10 @@ def configure(models: Parser) -> None:
         "--weights-out",
         type=Path,
         required=True,
-        help="Yeni ağırlık dosyası (var olan ezilmez; parent'ı mevcut olmalı)",
+        help=(
+            "Yeni ağırlık dosyası (var olan ezilmez). Parent'ı mevcut olmalı ve üst dizin zinciri "
+            "symlink içermemeli (macOS'ta /tmp ve /var/folders symlink'tir: /private/... verin)"
+        ),
     )
     command.add_argument(
         "--fold",
@@ -139,15 +146,19 @@ def configure(models: Parser) -> None:
     )
     command.epilog = (
         "Yarım kalan bir indirme (güçlü ETag ve toplam boyut biliniyorsa) aynı komutla kaldığı "
-        "yerden devam eder. Hedef var olan bir dosyaysa ezilmez. Anahtar argüman değildir; "
-        "kayıtlı Platform hizmetinin anahtarı yalnız sürüm adresini almak için kullanılır, "
-        "dosya imzalı adresten anahtarsız indirilir."
+        "yerden devam eder. Hedef var olan bir dosyaysa ezilmez. En çok 1 GiB iner; aşılırsa "
+        "hedef oluşturulmaz. Önkoşullar: 'yorunge state init' ile hazırlanmış durum dizini, bir "
+        "Platform profili ve anahtarın env değişkeni (varsayılan profilde "
+        "EVREN_PLATFORM_API_KEY). Anahtar argüman değildir; kayıtlı Platform hizmetinin anahtarı "
+        "yalnız sürüm adresini almak için kullanılır, dosya imzalı adresten anahtarsız indirilir."
     )
 
 
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
+    from yorunge.cli import reject_context
 
+    reject_context(args, ("project",))  # a weights download has no project; none is dropped quietly
     options = vars(args)
     progress = ProgressText(sys.stderr) if options.get("output", "text") == "text" else None
     try:
@@ -167,6 +178,46 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     finally:
         if progress is not None:
             progress.close()
+
+
+TARGET_HINT = (
+    "Hedefin parent'ı var olmalı ve üst dizin zinciri symlink içermemeli: macOS'ta /tmp ve "
+    "/var/folders symlink'tir, gerçek yolu (/private/...) verin."
+)
+TIMEOUT_HINT = (
+    "Bir kısmı inmişse yarım dosya saklanır; komutu yeniden çalıştırmak (ETag ve boyut uyuyorsa) "
+    "kaldığı yerden devam eder. Süreyi --timeout ile artırabilirsiniz."
+)
+NO_RESUME_HINT = (
+    "--no-resume zaten verildi: iz bu aracın kanıtlanabilir yarım dosyası olmadığından "
+    "dokunulmadı. İzi inceleyip elle kaldırın ya da başka bir hedef seçin."
+)
+
+
+def _mismatch_hint(error: YorungeError) -> str | None:
+    """The digest that was computed (the stage is gone, so seeing it again costs a download)."""
+    details = getattr(error, "details", None)
+    if not isinstance(details, dict):
+        return None
+    computed, size = details.get("computed_sha256"), details.get("bytes")
+    if type(computed) is not str or type(size) is not int:
+        return None
+    return (
+        f"Hesaplanan SHA-256: {computed} ({size} bayt). Beklediğiniz değerle karşılaştırın; "
+        "yarım dosya atıldı, yeniden denemek baştan indirir."
+    )
+
+
+def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeError], str | None]]:
+    """What a person is told, in text, of the errors this command meets in its own way."""
+    hints: dict[str, str | Callable[[YorungeError], str | None]] = {
+        "transport_timeout": TIMEOUT_HINT,
+        "download_integrity_mismatch": _mismatch_hint,
+        "download_target_invalid": TARGET_HINT,
+    }
+    if vars(args).get("no_resume") is True:
+        hints["download_partial_unverified"] = NO_RESUME_HINT
+    return hints
 
 
 def _summary_text(data: DownloadSummary) -> str:
@@ -231,9 +282,26 @@ class ProgressText:
             self._open = False
             self._write("\n")
 
+    def _writable(self) -> bool:
+        """The terminal takes a report now: a stopped one (^S, a stalled ssh) must never be waited
+        for, since the download's own deadlines cannot fire while this thread sits in ``write``."""
+        try:
+            descriptor = self.stream.fileno()
+        except (OSError, ValueError, AttributeError):
+            return True  # nothing to ask (a stream without a descriptor): the write decides
+        try:
+            return bool(select.select([], [descriptor], [], 0)[1])
+        except (OSError, ValueError):
+            return False
+
     def _write(self, line: str) -> None:
+        if not self._writable():
+            return  # this report is dropped; the next one is tried
         try:
             write_utf8(line, self.stream)
-        except (OSError, ValueError):
+        except (OSError, ValueError) as error:
             self.enabled = False
-            _silence_failed_descriptor(self.stream)
+            # A terminal that is only full for now (non-blocking, EAGAIN) is still the terminal the
+            # real error will be written to; only a terminal that is gone is cut off.
+            if not (isinstance(error, BlockingIOError) or getattr(error, "errno", None) == EINTR):
+                _silence_failed_descriptor(self.stream)

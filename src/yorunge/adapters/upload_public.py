@@ -180,7 +180,8 @@ def resume_hint(state_dir: Path | None, operation_id: str) -> ResumeHint | None:
     No credential, no folder and no provider are asked: it is the report's journal-level check,
     which is what lets ``show`` say what the next command is without reading anything remote. A
     store that cannot be read, a record that is no source or a chain that does not merge give
-    nothing here (the summary itself has already been shown or has failed on its own).
+    nothing here (the summary itself has already been shown or has failed on its own). Nothing
+    is allowed to fail ``show`` from here: a hostile row can raise more than the closed errors.
     """
     clock = SystemClock()
     try:
@@ -189,6 +190,6 @@ def resume_hint(state_dir: Path | None, operation_id: str) -> ResumeHint | None:
             stamp = StateCache(store, clock).stamp()
             source = StateUploads(store, clock=clock).resume_source(operation_id, stamp)
         _, blockers, related = source_journal(source)
-    except (YorungeError, OSError, ValueError):
+    except Exception:  # cosmetic: whatever goes wrong is silence, never a failed `show`
         return None
     return ResumeHint(blockers, related)

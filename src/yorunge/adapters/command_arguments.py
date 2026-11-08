@@ -24,8 +24,8 @@ def judge_ground(state_dir: object) -> None:
 
 def absolute(path: object) -> Path:
     """The path as one observation of the working directory makes it absolute."""
-    if not isinstance(path, Path) or not path.name:
-        raise YorungeError("invalid_request")
+    if not isinstance(path, Path) or not path.name or path.name in (".", ".."):
+        raise YorungeError("invalid_request")  # no name, or the name of a directory that exists
     if path.is_absolute():
         return path
     try:

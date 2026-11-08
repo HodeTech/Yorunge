@@ -1,4 +1,4 @@
-"""Candidate tests that kill the surviving mutants of P02-3q (reviewer B). Each passes on HEAD.
+"""Tests that kill the mutants the first review round of P02-3q (reviewer B) left alive.
 
 Placed next to the surface tests; reuses their fixtures and helpers.
 """
@@ -279,7 +279,6 @@ def test_a_manifest_over_the_byte_limit_is_a_manifest_error_before_the_provider_
         ("--config", "/tmp/c"),
         ("--profile", "test", "--profile", "test"),
         ("--output", "text"),
-        ("--project", "p-1", "--project", "p-1"),
         ("--non-interactive", "--non-interactive"),
     ],
 )
@@ -416,7 +415,7 @@ def test_the_text_of_show_names_a_partial_version_and_a_skewed_split_total(works
                 *flags(workspace),
             )
         )
-    assert "tam;" in plain and "KISMİ" not in plain and "farklı" not in plain
+    assert "is_partial: hayır" in plain and "KISMİ" not in plain and "farklı" not in plain
 
 
 @pytest.mark.parametrize("count,phrase", [(10, "sayısıyla aynı"), (9, "FARKLI")])

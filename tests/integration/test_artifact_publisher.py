@@ -354,6 +354,76 @@ def test_a_file_system_that_names_the_inode_with_the_first_byte_still_lets_a_ref
     assert not place.target.exists() and place.leftovers() == []
 
 
+def test_a_write_that_fails_on_a_volume_whose_inode_drifts_still_lets_the_stage_go(
+    place, monkeypatch
+):
+    # A real FAT16 volume names the empty file with one placeholder inode at creation and another
+    # once a write was attempted (even one that stored no byte, such as a full volume's ENOSPC):
+    # the identity learned at creation no longer names the stage, and the stage would be stranded.
+    real_identity = artifact_publisher.identity
+    attempted = []
+
+    def identity(info):
+        device, inode = real_identity(info)
+        return (device, inode) if attempted else (device, 2**64 - 57)
+
+    def write(self, descriptor, content):
+        attempted.append(True)
+        raise OSError(errno.ENOSPC, "PRIVATE-PATH")
+
+    monkeypatch.setattr(artifact_publisher, "identity", identity)
+    monkeypatch.setattr(ArtifactPublisher, "_write", write)
+    pub, state = publisher(place)
+    assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
+    assert not place.target.exists() and place.leftovers() == [] and state.attempted is False
+
+
+def test_an_interrupt_that_lands_while_the_stage_is_being_created_does_not_strand_it(
+    place, monkeypatch
+):
+    """The kernel made the file, then the signal handler raised KeyboardInterrupt from the very
+    call that returns the descriptor: without the hold, the name is not yet the publisher's."""
+    real = artifact_publisher.os.open
+
+    def created_then_signalled(path, flags, *arguments, **keywords):
+        descriptor = real(path, flags, *arguments, **keywords)
+        if str(path).startswith(PREFIX):
+            try:
+                signal.raise_signal(signal.SIGINT)  # the handler runs before this call returns
+            except BaseException:
+                os.close(descriptor)
+                raise
+        return descriptor
+
+    monkeypatch.setattr(artifact_publisher.os, "open", created_then_signalled)
+    pub, state = publisher(place)
+    with pytest.raises(KeyboardInterrupt):
+        pub.publish_bytes(CONTENT)
+    assert place.leftovers() == [] and not place.target.exists() and state.attempted is False
+
+
+def test_the_signal_held_back_while_the_stage_is_made_is_delivered_once_it_is_ours(
+    place, monkeypatch
+):
+    # A SIGINT that arrives between the create and the end of the hold is raised when the hold is
+    # lifted, with the stage recorded (so cleaned up) and the descriptor closed (no leak).
+    real_mask = artifact_publisher.signal.pthread_sigmask
+    before = len(os.listdir("/dev/fd"))
+
+    def mask(how, signals):
+        previous = real_mask(how, signals)
+        if how == signal.SIG_SETMASK:  # the lift of the hold: the pending signal arrives here
+            raise KeyboardInterrupt
+        return previous
+
+    monkeypatch.setattr(artifact_publisher.signal, "pthread_sigmask", mask)
+    pub, _ = publisher(place)
+    with pytest.raises(KeyboardInterrupt):
+        pub.publish_bytes(CONTENT)
+    monkeypatch.undo()
+    assert place.leftovers() == [] and len(os.listdir("/dev/fd")) == before
+
+
 def test_a_stage_with_a_second_link_is_changed_and_the_foreign_link_stays(place):
     pub, _ = publisher(place)
     original = pub._check_stage

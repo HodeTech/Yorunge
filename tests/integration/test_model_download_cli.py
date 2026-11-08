@@ -224,6 +224,18 @@ def test_a_digest_that_differs_is_exit_7_with_no_target_and_no_result(rig, certi
     assert_nothing_private(process.stdout, process.stderr, rig=rig)
 
 
+def test_a_digest_that_differs_shows_the_digest_that_was_computed_in_text_too(rig, certificates):
+    """The stage is gone after a mismatch, so seeing the digest again would cost a download."""
+    text = run(rig, certificates, command(rig, "--sha256", "00" * 32))
+    assert text.returncode == 7 and not text.stdout.strip()
+    message = text.stderr.decode()
+    assert f"Hesaplanan SHA-256: {sha(DATA)} ({len(DATA)} bayt)" in message
+    machine = run(rig, certificates, command(rig, "--sha256", "00" * 32, output="json"))
+    details = error_of(machine)["details"]
+    assert details == {"computed_sha256": sha(DATA), "bytes": len(DATA)}  # the same, unchanged
+    assert "Hesaplanan" not in machine.stderr.decode()
+
+
 def test_a_target_that_exists_is_exit_2_and_nothing_is_asked_of_the_network(rig, certificates):
     rig.target.write_bytes(b"mine")
     process = run(rig, certificates, command(rig, output="json"))
@@ -347,6 +359,18 @@ def test_a_trace_that_is_not_ours_stops_the_command_and_the_message_names_no_fil
     assert "Hiçbir dosyaya dokunulmadı" in envelope["message"] and names.sidecar not in str(
         envelope
     )
+    assert rig.server.requests == []
+
+
+@pytest.mark.parametrize("given", [False, True], ids=["without", "with --no-resume"])
+def test_the_advice_for_a_trace_that_is_not_ours_does_not_ask_for_what_was_already_given(
+    rig, certificates, given
+):
+    (rig.directory / download_names(NAME).sidecar).mkdir()
+    process = run(rig, certificates, command(rig, *(["--no-resume"] if given else [])))
+    assert process.returncode == 2
+    message = process.stderr.decode()
+    assert ("--no-resume zaten verildi" in message) is given
     assert rig.server.requests == []
 
 

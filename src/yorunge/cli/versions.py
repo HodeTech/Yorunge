@@ -33,6 +33,8 @@ SINGLETONS = {
     "--binding",
 }
 
+MAX_PAGE = 10_000
+
 DESCRIPTIONS = {
     "list": "Veri setinin sürümlerinden bir sayfa göster (salt okuma)",
     "show": "Bir sürümü detay ve bölme sayılarıyla göster (salt okuma)",
@@ -41,9 +43,19 @@ DESCRIPTIONS = {
 }
 
 
+# What a person is told, in text, of the one error this command family meets in its own way (the
+# closed message and the machine envelope stay as they are).
+ERROR_HINTS = {
+    "state_changed": (
+        "Çoğunlukla bağ başka bir profil ya da hizmetle yazılmıştır: bağı yazarken kullandığınız "
+        "--config, --profile ve --state-dir seçimini verin."
+    ),
+}
+
+
 def _page(value: str) -> int:
     """A page number: decimal ASCII digits, no sign, no space, no leading zero, 1-10 000."""
-    if re.fullmatch(r"[1-9][0-9]{0,4}", value) is None or int(value) > 10_000:
+    if re.fullmatch(r"[1-9][0-9]{0,4}", value) is None or int(value) > MAX_PAGE:
         raise argparse.ArgumentTypeError("page")
     return int(value)
 
@@ -57,9 +69,13 @@ def configure(versions: Parser) -> None:
     for action, description in DESCRIPTIONS.items():
         command = actions.add_parser(action, help=description, description=description)
         common(command, context=False)
-        command.add_argument("--config", type=Path, default=argparse.SUPPRESS)
-        command.add_argument("--profile", default=argparse.SUPPRESS)
-        command.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
+        command.add_argument(
+            "--config", type=Path, default=argparse.SUPPRESS, help="TOML profil dosyası"
+        )
+        command.add_argument("--profile", default=argparse.SUPPRESS, help="Profil adı")
+        command.add_argument(
+            "--state-dir", type=Path, default=argparse.SUPPRESS, help="Yerel durum dizini"
+        )
         if action != "check":
             command.add_argument("--dataset-id", required=True, help="Veri seti kimliği (UUID)")
         if action in ("show", "bind"):
@@ -82,7 +98,10 @@ def configure(versions: Parser) -> None:
 
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
+    from yorunge.cli import reject_context
 
+    # No version command has a project: one given at the root is refused, not dropped.
+    reject_context(args, ("project",))
     options = vars(args)
     context = {name: options.get(name) for name in ("config", "profile")}
     shared = {**context, "state_dir": options.get("state_dir")}
@@ -115,16 +134,24 @@ def _yes(value: bool, yes: str, no: str) -> str:
 def _list_text(data: DatasetVersionList) -> str:
     rows = [f"Veri seti {data.dataset_id}: sayfa {data.page}, toplam {data.total} sürüm."]
     for item in data.items:
+        flags = _yes(item.is_partial, "; KISMİ (is_partial)", "") + _yes(
+            item.split_total_matches_item_count, "", "; toplam≠öğe"
+        )
         rows.append(
             f"- {item.version_tag} ({item.version_id}): "
             f"{_yes(item.is_frozen, 'dondurulmuş', 'DONDURULMAMIŞ')}; "
-            f"{item.item_count} öğe ({_splits(item.split_counts)}); oluşturma {item.created_at}"
+            f"{item.item_count} öğe ({_splits(item.split_counts)}){flags}; "
+            f"oluşturma {item.created_at}"
         )
     if not data.items:
         rows.append("Bu sayfada sürüm yok.")
-    if data.has_next:
+    if data.has_next and data.page < MAX_PAGE:
         rows.append(f"Sonraki sayfa var (--page {data.page + 1}).")
-    rows.append("Yalnız sağlayıcı metadata'sı; sürümün tamamlandığı iddia edilmez.")
+    elif data.has_next:
+        rows.append(
+            f"Sonraki sayfa var ama --page en çok {MAX_PAGE} olabilir; bu komut daha ileri gidemez."
+        )
+    rows.append("Yalnız sağlayıcı metadata'sı ve tek sayfa; sürümlerin tamamlandığı iddia edilmez.")
     return "\n".join(rows)
 
 
@@ -134,7 +161,7 @@ def _show_text(data: DatasetVersionObservation) -> str:
         f"Veri seti: {data.dataset_id}",
         (
             f"Durum: {_yes(data.is_frozen, 'dondurulmuş', 'DONDURULMAMIŞ')}; "
-            f"{_yes(data.is_partial, 'KISMİ', 'tam')}; "
+            f"{_yes(data.is_partial, 'KISMİ (is_partial)', 'is_partial: hayır')}; "
             f"export {_yes(data.is_export_ready, 'hazır', 'hazır değil')}"
         ),
         f"Öğe: {data.item_count} ({_splits(data.split_counts)})",

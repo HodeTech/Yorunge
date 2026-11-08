@@ -27,8 +27,10 @@ from __future__ import annotations
 import asyncio
 import errno
 import os
+import signal
 import stat
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import NoReturn, Protocol
 from uuid import uuid4
@@ -53,6 +55,7 @@ LINK_REFUSED = frozenset(
         errno.EROFS,
         errno.ENOTSUP,
         errno.EOPNOTSUPP,
+        errno.ENOSYS,  # a FUSE volume without link(): nothing exists to have changed
         errno.EMLINK,
         errno.EXDEV,
         errno.ENOSPC,
@@ -153,6 +156,41 @@ class ArtifactPublisher:
             raise YorungeError(self.codes.failed) from None
         raise YorungeError(self.codes.exists)
 
+    def _create_stage(self, stage: str) -> int:
+        """Make the stage and make it the publisher's, with a SIGINT held back until it is.
+
+        A SIGINT that lands in the create call is raised from the call that returns the descriptor,
+        with the file made and nothing to remove it by: the signal waits (it is the thread's mask;
+        a pending signal is delivered when it is restored) until the name and its identity are
+        recorded, and so the cleanup of an interrupted publication finds the stage.
+        """
+        held = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+        descriptor: int | None = None
+        try:
+            descriptor = os.open(
+                stage,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=self.location.descriptor,
+            )
+            self.stage = stage
+            self.stage_identity = identity(os.fstat(descriptor))
+        except BaseException:
+            if descriptor is not None:
+                os.close(descriptor)  # the name stays recorded: the cleanup removes the stage
+                descriptor = None
+            raise
+        finally:
+            try:
+                signal.pthread_sigmask(signal.SIG_SETMASK, held)
+            except BaseException:  # the signal that was waiting: the descriptor is not yet owned
+                if descriptor is not None:
+                    with suppress(OSError):
+                        os.close(descriptor)
+                raise
+        assert descriptor is not None
+        return descriptor
+
     def publish_bytes(self, content: bytes) -> None:
         """Publish ``content`` as the target, or fail without having replaced anything."""
         if not self.prefix:
@@ -161,15 +199,18 @@ class ArtifactPublisher:
         stage = f"{self.prefix}{uuid4().hex}.tmp"
 
         def staged() -> None:
-            descriptor = os.open(
-                stage,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                0o600,
-                dir_fd=self.location.descriptor,
-            )
-            self.stage = stage
+            descriptor = self._create_stage(stage)
             with owned_descriptor(descriptor, close_code=self.codes.failed):
-                self._publish_staged(descriptor, content)
+                try:
+                    self._publish_staged(descriptor, content)
+                except BaseException:
+                    # On FAT and exFAT the inode of an empty file drifts before its first byte, and
+                    # a write that fails (a full volume) leaves the stage under an identity other
+                    # than the one learned at creation: learn it again, so that it is removed.
+                    if self.stage_identity is not None:
+                        with suppress(OSError):
+                            self.stage_identity = identity(os.fstat(descriptor))
+                    raise
             self.location.budget.check()
 
         self._guarded(staged)

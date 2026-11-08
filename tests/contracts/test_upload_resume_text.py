@@ -153,6 +153,13 @@ def test_an_error_about_a_related_operation_says_it_is_not_the_one_asked_about()
     assert f"İncele: yorunge datasets upload show --operation-id {OTHER}" in text
 
 
+@pytest.mark.parametrize("code", ["state_invalid", "operation_not_found", "operation_uncertain"])
+def test_only_a_conflict_is_described_as_belonging_to_the_operation_asked_about(code):
+    # another code naming another row (a broken row of the store, say) is not "its continuation"
+    text = rendered("text", OperationError(code, OTHER), requested=SOURCE)
+    assert f"İş: {OTHER}" in text and "İstediğiniz iş" not in text
+
+
 @pytest.mark.parametrize("requested", [SOURCE, SOURCE.upper(), None])
 def test_an_error_about_the_asked_operation_or_without_one_has_no_such_line(requested):
     text = rendered("text", OperationError("operation_conflict", SOURCE), requested=requested)

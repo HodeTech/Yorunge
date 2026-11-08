@@ -195,6 +195,78 @@ def test_an_address_that_is_not_below_the_model_prefix_of_the_platform_is_invali
 
 
 @pytest.mark.parametrize(
+    "url",
+    [
+        # bytes the HTTP client rewrites on its way to the wire: the address would not be the one
+        # that was signed (a quote, angle brackets, a brace or a backtick, a mixed-case scheme)
+        ORIGIN + PREFIX + 'w".onnx' + QUERY,
+        ORIGIN + PREFIX + "w<.onnx" + QUERY,
+        ORIGIN + PREFIX + "w>.onnx" + QUERY,
+        ORIGIN + PREFIX + "w`.onnx" + QUERY,
+        ORIGIN + PREFIX + "w{.onnx" + QUERY,
+        ORIGIN + PREFIX + "w}.onnx" + QUERY,
+        ORIGIN + PREFIX + "w.onnx?a=" + '"b"',
+        ORIGIN + PREFIX + "w.onnx?a=<b>",
+        ORIGIN + PREFIX + "w.onnx?a=b|c",
+        ORIGIN + PREFIX + "w.onnx?a=b^c",
+        ORIGIN + PREFIX + "w.onnx?a=[b]",
+        ORIGIN + PREFIX + "w.onnx?a=b\\c",
+        "HTTPS://api.ssyz.org.tr" + PREFIX + "w.onnx" + QUERY,
+        "Https://api.ssyz.org.tr" + PREFIX + "w.onnx" + QUERY,
+        "https://[::1]" + PREFIX + "w.onnx" + QUERY,
+        "https://api.ssyz.org.tr:443" + PREFIX + "w.onnx" + QUERY,  # the origin is not spelled so
+        "https://api.ssyz.org.tr\uff0f" + PREFIX + "w.onnx",  # a fullwidth solidus in the host
+    ],
+)
+def test_an_address_the_client_would_rewrite_is_invalid_not_a_target_the_user_must_fix(url):
+    assert code_of(lambda: parse(answer(url=url))) == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        ORIGIN + PREFIX,  # the prefix itself names no object
+        ORIGIN + PREFIX + QUERY,
+        ORIGIN + PREFIX + "?sig=abc",
+        ORIGIN + PREFIX + "sub/",  # a directory
+        ORIGIN + PREFIX + "sub/" + QUERY,
+        ORIGIN + PREFIX + "..;/b.onnx" + QUERY,  # a dot segment to a servlet container
+        ORIGIN + PREFIX + "a/..;x/b.onnx" + QUERY,
+        ORIGIN + PREFIX + ".;/b.onnx" + QUERY,
+        ORIGIN + PREFIX + "a/.;p=1/b.onnx" + QUERY,
+    ],
+)
+def test_an_address_that_names_no_single_object_is_invalid(url):
+    assert code_of(lambda: parse(answer(url=url))) == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        SIGNED,
+        ORIGIN + PREFIX + "a/b/c.onnx" + QUERY,
+        ORIGIN + PREFIX + "w.onnx",  # no query at all
+        ORIGIN + PREFIX + "w.onnx?",  # an empty one
+        ORIGIN + PREFIX + "w;v=1.onnx" + QUERY,  # a semicolon that is not a dot segment
+        ORIGIN + PREFIX + "w~(1)'!*$,=:@.onnx" + QUERY,  # every sub-delimiter RFC 3986 allows
+        ORIGIN + PREFIX + "%C3%A9vren.onnx" + QUERY,  # percent-encoded UTF-8
+        ORIGIN + PREFIX + "w.onnx?x=a/b?c:d@e;f,g'h(i)j*k!l$m~n.o_p-q%2Br",
+    ],
+)
+def test_an_address_made_of_what_a_signature_is_made_of_stays_exactly_as_it_was_signed(url):
+    assert parse(answer(url=url)).wire_url == url
+
+
+def test_a_key_in_the_address_in_any_encoding_the_wire_would_carry_is_refused():
+    encoded = SECRET.replace("-", "%2D")  # the same bytes once the wire's percent-escapes are read
+    for url in (
+        ORIGIN + PREFIX + "w.onnx?k=" + encoded,
+        ORIGIN + PREFIX + encoded + ".onnx?x=1",
+    ):
+        assert code_of(lambda url=url: parse(answer(url=url))) == "invalid_response"
+
+
+@pytest.mark.parametrize(
     "data",
     [
         answer(url=SIGNED + "&key=" + SECRET),  # the key in the address

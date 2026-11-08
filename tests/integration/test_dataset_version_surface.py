@@ -36,7 +36,7 @@ from tests.integration.test_upload_preparation import loopback_only as loopback_
 from yorunge import api
 from yorunge.domain.dataset_manifest import DatasetFile, build_manifest
 from yorunge.domain.dataset_version import decode_binding
-from yorunge.domain.errors import YorungeError
+from yorunge.domain.errors import MESSAGES, YorungeError
 
 ENV = "VERSION_SURFACE_TEST_KEY"
 SECRET = "synthetic-version-surface-key-8841"
@@ -536,16 +536,19 @@ def test_a_provider_that_is_slower_than_the_budget_ends_the_command_and_writes_n
 
     out = workspace[2] / "binding.json"
     monkeypatch.setattr(dataset_version_api, "VERSION_SECONDS", 1.0)
-    table = routes(**{BASE + "/v1": body(detail(), header_delay=3.0)})
+    # The delay is far past the 1 s budget, so the command can only end by its own deadline; only
+    # the call is timed (leaving the server waits for its handler, which says nothing of the call).
+    table = routes(**{BASE + "/v1": body(detail(), header_delay=6.0)})
     state, config, _ = workspace
-    began = time.monotonic()
     with TlsServer(certificates, table) as server:
         with loopback_versions(certificates[0], server.port):
+            began = time.monotonic()
             with pytest.raises(YorungeError) as error:
                 api.bind_dataset_version(
                     DATASET, "v1", binding_out=out, config=config, state_dir=state
                 )
-    assert error.value.code == "transport_timeout" and time.monotonic() - began < 2.9
+            elapsed = time.monotonic() - began
+    assert error.value.code == "transport_timeout" and elapsed < 4.5
     assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
 
 
@@ -628,7 +631,9 @@ def test_a_difference_is_an_error_envelope_and_never_a_result_in_every_mode(
     if output == "ndjson":
         assert json.loads(process.stderr)["code"] == "dataset_version_changed"
     else:
-        assert b"dataset_version_changed" not in process.stderr and process.stderr.strip()
+        # the person reads the catalog's sentence, not the closed code the machine envelope carries
+        assert b"dataset_version_changed" not in process.stderr
+        assert MESSAGES["dataset_version_changed"] in process.stderr.decode("utf-8")
 
 
 def test_an_unchanged_version_is_a_result_in_text_and_ndjson(workspace, certificates):
@@ -663,6 +668,21 @@ def test_a_binding_for_another_provider_is_state_changed_and_nothing_is_read(
     assert process.returncode == 2
     assert json.loads(process.stderr)["code"] == "state_changed"
     assert len(server.requests) == before
+
+
+def test_a_binding_for_another_provider_tells_a_person_which_options_to_give_in_text_only(
+    workspace, certificates
+):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        parsed(bind(server, certificates, workspace, out))
+        as_text = check(
+            server, certificates, workspace, out, "--profile", "elsewhere", output="text"
+        )
+        as_json = check(server, certificates, workspace, out, "--profile", "elsewhere")
+    message = as_text.stderr.decode()
+    assert as_text.returncode == 2 and "--config, --profile ve --state-dir" in message
+    assert "--config, --profile" not in as_json.stderr.decode()  # the envelope is what it was
 
 
 @pytest.mark.parametrize(
@@ -799,8 +819,6 @@ def test_the_project_option_is_not_a_versions_option_since_a_read_of_versions_ne
 
 
 def test_the_messages_of_a_changed_version_and_an_invalid_binding_say_what_to_do():
-    from yorunge.domain.errors import MESSAGES
-
     assert "--output json" in MESSAGES["dataset_version_changed"]
     assert "bayt bayt aynı" in MESSAGES["binding_invalid"]
 

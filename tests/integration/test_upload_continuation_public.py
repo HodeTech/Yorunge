@@ -7,6 +7,7 @@ answers with a summary of the continuation and, where it is told to, hears nothi
 own words: the digest they confirmed and the acknowledgements the plan asks for.
 """
 
+import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -29,6 +30,7 @@ from yorunge.adapters import upload_api
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_continuation_approval import approve_continuation_plan
 from yorunge.adapters.upload_continuation_start import run_upload_continuation
+from yorunge.adapters.upload_public import resume_hint
 from yorunge.adapters.upload_reconciliation import reconcile_upload
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_resume import UploadResumeRuntime
@@ -443,6 +445,32 @@ def test_show_of_an_unknown_source_points_at_the_resume_report(
         assert "salt okuma raporudur" in out and "Devam şu an mümkün değil" not in out
         assert len(rig.server.requests) == requests  # the hint is the journal's, not the provider's
         assert rows(rig.state) == stored
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        TypeError("PRIVATE"),
+        KeyError("PRIVATE"),
+        RuntimeError("PRIVATE"),
+        sqlite3.DatabaseError("x"),
+    ],
+    ids=["type", "key", "runtime", "sqlite"],
+)
+def test_the_hint_of_show_is_silence_for_anything_a_hostile_row_can_raise(
+    public_inputs, certificates, monkeypatch, capsys, failure
+):
+    """The hint is advice added to a summary that was already made: it never fails `show`."""
+
+    def broken(*arguments, **keywords):
+        raise failure
+
+    with interrupted_world(public_inputs, certificates, monkeypatch, prepare=False) as rig:
+        monkeypatch.setattr(StateUploads, "resume_source", broken)
+        assert resume_hint(rig.state, rig.source) is None
+        code, out, err = cli_show(capsys, rig.state, rig.source)
+        assert code == 0 and err == "" and "Devam için" not in out and "PRIVATE" not in out
+        assert f"İş: {rig.source}" in out  # the summary itself is there, as it always was
 
 
 def test_the_json_of_show_is_the_summary_and_nothing_added(

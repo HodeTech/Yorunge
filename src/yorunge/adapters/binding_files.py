@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from yorunge.adapters.artifact_publisher import (
@@ -91,6 +91,12 @@ def binding_target(target: Path) -> Iterator[BindingTarget]:
             primary = error
             raise
         finally:
-            directory.close(primary)
+            if primary is not None and state.attempted:
+                # The error says the target may exist: the note a failing close would add ("target
+                # not created") would contradict it, so the close failure is not reported at all.
+                with suppress(YorungeError):
+                    directory.close()
+            else:
+                directory.close(primary)
     except BaseException as error:
         state.reraise(error)

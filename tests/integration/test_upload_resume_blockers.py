@@ -176,7 +176,7 @@ def test_a_lineage_that_cannot_be_merged_is_a_state_that_is_not_valid(lifecycle,
     def foreign(journals, manifest):
         raise ValueError("the journals of two lineages")
 
-    monkeypatch.setattr("yorunge.adapters.upload_resume.merge_chain", foreign)
+    monkeypatch.setattr("yorunge.adapters.upload_chain.merge_chain", foreign)
     for flags in ({}, {"prepare": True}):
         with pytest.raises(YorungeError) as error:
             resume(lifecycle, root_of(lifecycle), **flags)

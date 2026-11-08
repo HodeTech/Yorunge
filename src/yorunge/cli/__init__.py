@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, cast, overload
 
@@ -748,11 +748,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     from yorunge.domain.errors import YorungeError
 
     upload_guidance = args.command == "datasets" and args.action == "upload"
-    hints = None
+    hints: Mapping[str, str | Callable[[YorungeError], str | None]] | None = None
     if upload_guidance and vars(args).get("upload_action") == "resume":
         from yorunge.cli.upload import RESUME_ERROR_HINTS
 
         hints = RESUME_ERROR_HINTS
+    elif args.command == "models":
+        from yorunge.cli.models import error_hints
+
+        hints = error_hints(args)
+    elif args.command == "datasets" and args.action == "versions":
+        from yorunge.cli.versions import ERROR_HINTS
+
+        hints = ERROR_HINTS
     requested = vars(args).get("operation_id") if upload_guidance else None
     renderer = OutputRenderer(
         vars(args).get("output", "text"),

@@ -11,7 +11,9 @@ forgotten: it never becomes the name of the output, and nothing the provider say
 
 from __future__ import annotations
 
+import re
 from typing import Final
+from urllib.parse import urlsplit
 
 from yorunge.application.download_transport import DownloadTarget
 from yorunge.application.response_json import parse_json, scan_for_secret
@@ -22,6 +24,11 @@ from yorunge.domain.errors import YorungeError
 FORMATS: Final = ("onnx", "pt", "tflite")
 MODEL_FILES_SEGMENT: Final = "/files/evren-models/"
 MAX_FILENAME_BYTES: Final = 255
+# What a signed address always is: lowercase ``https``, a plain host and only the characters
+# RFC 3986 allows in a path and a query. Anything else (a quote, an angle
+# bracket, a backslash, a brace, a space, a mixed-case scheme) is rewritten by the HTTP client on
+# its way to the wire, so the address would not be the one that was signed.
+_ADDRESS: Final = re.compile(r"https://[A-Za-z0-9.-]+/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*")
 
 
 def weights_endpoint(version_id: str) -> str:
@@ -54,7 +61,8 @@ def parse_weights_answer(
     A strict object with a string ``download_url`` and a string ``filename`` (the provider's schema
     requires both); the selected key is in no string or key of the answer; the filename is a plain
     name (no separator, control character, dot name or more than 255 bytes) although it is never
-    used; the address passes every rule of a direct signed target below the model prefix.
+    used; the address passes every rule of a direct signed target below the model prefix and
+    names one object there (not the prefix itself, not a directory).
     """
     document = parse_json(data)
     scan_for_secret(document, secret)
@@ -63,22 +71,28 @@ def parse_weights_answer(
     url, name = document.get("download_url"), document.get("filename")
     if type(url) is not str or type(name) is not str or not _plain_name(name):
         raise YorungeError("invalid_response")
-    if not _plain_url(url):
-        raise YorungeError("invalid_response")  # a space or control character is no signed address
+    if _ADDRESS.fullmatch(url) is None:
+        raise YorungeError("invalid_response")  # not the bytes a signature can have been made of
     target: DownloadTarget | None = None
     try:
-        target = DownloadTarget(url, origin=origin, prefix=weights_prefix(api_base_path))
-        target.check_secret(secret)
+        candidate = DownloadTarget(url, origin=origin, prefix=weights_prefix(api_base_path))
+        candidate.check_secret(secret)
+        if _names_an_object(candidate):
+            target = candidate
     except YorungeError:
-        target = None  # an address the answer made is the answer's fault, not the local target's
+        pass  # an address the answer made is the answer's fault, not the local target's
     if target is None:
         raise YorungeError("invalid_response")
     return target
 
 
-def _plain_url(url: str) -> bool:
-    """ASCII without space or control characters: what a signed address always is."""
-    return url.isascii() and not any(char <= " " or char == "\x7f" for char in url)
+def _names_an_object(target: DownloadTarget) -> bool:
+    """The path below the prefix names one object: not the prefix itself, not a directory, and no
+    segment that a servlet container reads as a dot segment (``..;x``)."""
+    path = urlsplit(target.wire_url).path
+    if path == target.prefix or path.endswith("/"):
+        return False
+    return not any(segment.split(";", 1)[0] in (".", "..") for segment in path.split("/"))
 
 
 def _plain_name(name: str) -> bool:

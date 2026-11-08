@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from yorunge.adapters import download_files, download_sink
+from yorunge.adapters.artifact_publisher import LINK_REFUSED
 from yorunge.adapters.download_sink import open_sink
 from yorunge.adapters.target_directory import open_target_directory
 from yorunge.domain.download import EMPTY_SHA256, DownloadPartial, download_names
@@ -900,6 +901,25 @@ def test_a_link_the_filesystem_refuses_is_uncertain_and_the_complete_stage_is_ke
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # the only copy of the download
     published, plan = download(place)  # the next run finds a complete stage and publishes it
     assert plan.action == "publish" and target(place).read_bytes() == DATA
+
+
+@pytest.mark.parametrize("number", sorted(LINK_REFUSED))
+def test_a_link_the_kernel_refuses_is_a_failure_and_keeps_the_complete_stage_for_the_next_run(
+    place, monkeypatch, number
+):
+    real = os.link
+
+    def refuse(*arguments, **keywords):
+        raise OSError(number, "PRIVATE-PATH")
+
+    monkeypatch.setattr(os, "link", refuse)
+    assert code_of(lambda: download(place)) == "download_write_failed"  # nothing was linked
+    monkeypatch.setattr(os, "link", real)
+    assert not target(place).exists()
+    assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # a refusal drops nothing
+    published, plan = download(place)  # the same stage is published once the link works
+    assert plan.action == "publish" and target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_an_interrupt_before_the_link_keeps_the_complete_stage(place, monkeypatch):
