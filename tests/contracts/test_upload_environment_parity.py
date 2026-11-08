@@ -22,7 +22,7 @@ from yorunge.adapters.upload_continuation import ContinuationStages
 from yorunge.adapters.upload_original import _Environment
 
 SHARED = ("repository", "scope", "write_owned", "_renew_for_probe", "arm", "_stop")
-CHECK_ONLY = "not graph_of(self.plan).files"
+CHECK_ONLY = "not graph_of(self.plan).files or self._sent_nothing(operation_id)"
 
 
 class WithoutCheckOnly(ast.NodeTransformer):

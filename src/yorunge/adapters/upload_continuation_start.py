@@ -44,6 +44,16 @@ from yorunge.domain.upload_resume import ChainSummary, classify
 
 ContinuationContextLoader = Callable[[DatasetContinuationPlanV3], tuple[Context, Profile]]
 
+# What a plan that cannot be started is told (it has no operation of its own to be found).
+_NOT_STARTABLE = frozenset(
+    {
+        "approval_required",
+        "upload_plan_not_valid",
+        "upload_plan_not_found",
+        "upload_duplicate_content",
+    }
+)
+
 # What the source's own record and its descendants say. The admission refuses on these, naming the
 # operation that stands in the way; the start says the same before it asks the provider anything.
 _CONFLICTS = frozenset(
@@ -166,11 +176,17 @@ def _looked_at(
 def _admitted_meanwhile(
     plan_id: str, state_dir: Path | None, clock: Clock
 ) -> ContinuationPhase | None:
-    """The operation the plan got while this invocation was looking, if it got one (no request)."""
+    """The operation the plan got while this invocation was looking, if it got one (no request).
+
+    A plan that can no longer be started has no operation to be found. Any other failure — a store
+    that cannot be read now — is no answer at all, and is not "the plan has none": it is said.
+    """
     try:
         found = _initial(plan_id, state_dir, clock)
-    except YorungeError:
-        return None
+    except YorungeError as error:
+        if error.code in _NOT_STARTABLE:
+            return None
+        raise
     return found if isinstance(found, ContinuationPhase) else None
 
 
@@ -226,23 +242,30 @@ def run_upload_continuation(
 
     async def start(environment: ContinuationStages) -> TransferRecordV3:
         nonlocal owned
-        record = await complete_continuation(environment)
-        owned = environment.write_owned
-        return record
+        try:
+            return await complete_continuation(environment)
+        finally:
+            owned = environment.write_owned
 
     with runtime._invocation() as invocation_end:
         end = min(started + 900, invocation_end)
         try:
             bound, inputs, baseline = _looked_at(runtime, plan, manifest, end)
+            record = run_stages(runtime, plan, bound, inputs, baseline, end, start)
         except YorungeError as refusal:
-            # The look takes a while (the folder is hashed, the dataset listed), and another
-            # invocation may have admitted this very plan meanwhile: its operation is the answer,
-            # found without a request, whatever the look has to say of a journal or a dataset that
-            # operation changed. A refusal stands only while the plan has no operation of its own;
-            # if a sibling plan of the source has one, that conflict is what is reported.
+            if owned:
+                raise  # this invocation's own operation speaks for itself
+            # The look takes a while (the folder is hashed, the dataset listed), the admission
+            # probe asks the provider again, and another invocation may have admitted this very
+            # plan meanwhile: its operation is the answer, found without a request, whatever the
+            # look or the probe has to say of a journal or a dataset that operation changed. A
+            # refusal stands only while the plan has no operation of its own. The journal is read
+            # for the sibling that is in the way FIRST and the plan's own operation AFTER it: the
+            # other order lets the plan be admitted between the two and be named as its own
+            # obstacle.
+            explained = _explained(runtime, plan, refusal)
             found = _admitted_meanwhile(plan_id, state_dir, clock)
             if found is None:
-                raise _explained(runtime, plan, refusal) from None
+                raise explained from None
             return found
-        record = run_stages(runtime, plan, bound, inputs, baseline, end, start)
     return ContinuationPhase(plan, record, not owned)

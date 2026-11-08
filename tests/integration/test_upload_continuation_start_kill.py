@@ -252,9 +252,16 @@ def _racer(state, plan_id, context, profile, port, certificate, barrier, results
     results.put(("returned", phase.existing, phase.record.status))
 
 
-def test_two_processes_starting_the_same_plan_send_its_files_once(
-    prepared_input, certificates, monkeypatch
+@pytest.mark.parametrize(
+    "racers,round_",
+    [(2, 0), (3, 0), (3, 1), (3, 2)],
+    ids=["two", "three-a", "three-b", "three-c"],
+)
+def test_processes_starting_the_same_plan_send_its_files_once_and_none_is_refused(
+    prepared_input, certificates, monkeypatch, racers, round_
 ):
+    # With three, a late loser can read the journal while the winner is admitted between its two
+    # reads; every one of them must come back with the plan's one operation.
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2]))
     data, provider = three_files(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
@@ -262,7 +269,7 @@ def test_two_processes_starting_the_same_plan_send_its_files_once(
         approve(data, server, report.plan_id)
         sends = len(provider.events)
         context = multiprocessing.get_context("spawn")
-        barrier, results = context.Barrier(2), context.Queue()
+        barrier, results = context.Barrier(racers), context.Queue()
         processes = [
             context.Process(
                 target=_racer,
@@ -277,7 +284,7 @@ def test_two_processes_starting_the_same_plan_send_its_files_once(
                     results,
                 ),
             )
-            for _ in range(2)
+            for _ in range(racers)
         ]
         for process in processes:
             process.start()
@@ -291,7 +298,7 @@ def test_two_processes_starting_the_same_plan_send_its_files_once(
         assert all(answer[0] == "returned" for answer in answers), answers
         assert all(process.exitcode == 0 for process in processes)
         # One of them owned the operation; the other only found it, whatever state it saw.
-        assert sorted(answer[1] for answer in answers) == [False, True]
+        assert sorted(answer[1] for answer in answers) == [False] + [True] * (racers - 1)
         assert provider.events[sends:] == list(STAGES)
         view = journal(data, report.plan_id)
         assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")

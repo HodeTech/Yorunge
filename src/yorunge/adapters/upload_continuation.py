@@ -93,6 +93,10 @@ class ContinuationStages:
         """A fresh check that the key may still upload to the baseline (reused for 25 s)."""
         if kind not in ("presign", "put", "confirm"):
             raise YorungeError("invalid_request")  # a continuation has neither create nor link
+        # A cancellation asked for so far is taken here, before a permit is armed: asyncio delivers
+        # it at the next real suspension, and nothing between the admission and the first send
+        # suspends.
+        await asyncio.sleep(0)
         self.scope()
         action: UploadPermission = "upload_created_dataset"
         dataset_id = self.baseline.id
@@ -258,6 +262,19 @@ class ContinuationStages:
                 )
             return "latched" if record.workflow_latched else "unlatched"
 
+    def _sent_nothing(self, operation_id: str) -> bool:
+        """Whether the stored record never wrote an intent (the latch is set with the first one).
+
+        Read-only: no lease is needed to look. If the store cannot be read there is no answer, and
+        what cannot be shown to be unsent is treated as sent.
+        """
+        try:
+            with self.repository() as repository:
+                record = repository.show(operation_id=operation_id).operation
+        except YorungeError:
+            return False
+        return record is not None and not record.workflow_latched
+
     def failure(self, error: BaseException) -> OperationError | None:
         """What a failed stage leaves and says: a send that may have happened is uncertain (the
         operation stops, never replays); one that provably did not is a local cancellation."""
@@ -270,10 +287,11 @@ class ContinuationStages:
         try:
             latched = self._stop(operation_id)
         except YorungeError as marker_error:
-            if not graph_of(self.plan).files:
-                # A check-only continuation has sent nothing and never will: whatever stopped it,
-                # and whether or not its stop could be written, nothing is uncertain (the lease
-                # cleanup cancels the record).
+            if not graph_of(self.plan).files or self._sent_nothing(operation_id):
+                # A check-only continuation has sent nothing and never will, and one that fails
+                # before its first intent has sent nothing yet: whatever stopped it, and whether or
+                # not its stop could be written, nothing is uncertain (the lease cleanup cancels
+                # the record).
                 return OperationError(code, operation_id, reason_code=reason)
             return OperationError(
                 "operation_uncertain", operation_id, reason_code=marker_error.code
