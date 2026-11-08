@@ -174,7 +174,11 @@ def parser() -> Parser:
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
     add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
     add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
-    add("datasets", "Yerel veri manifestleri ve private dataset aktarımı", _datasets_options)
+    add(
+        "datasets",
+        "Yerel veri manifestleri, private dataset aktarımı ve veri sürümü referansları",
+        _datasets_options,
+    )
     return root
 
 

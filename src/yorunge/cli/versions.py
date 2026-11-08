@@ -25,7 +25,6 @@ SINGLETONS = {
     "--state-dir",
     "--config",
     "--profile",
-    "--project",
     "--dataset-id",
     "--version-tag",
     "--page",
@@ -57,7 +56,9 @@ def configure(versions: Parser) -> None:
     actions = versions.add_subparsers(dest="versions_action", required=True)
     for action, description in DESCRIPTIONS.items():
         command = actions.add_parser(action, help=description, description=description)
-        common(command)
+        common(command, context=False)
+        command.add_argument("--config", type=Path, default=argparse.SUPPRESS)
+        command.add_argument("--profile", default=argparse.SUPPRESS)
         command.add_argument("--state-dir", type=Path, default=argparse.SUPPRESS)
         if action != "check":
             command.add_argument("--dataset-id", required=True, help="Veri seti kimliği (UUID)")
@@ -83,7 +84,7 @@ def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
     options = vars(args)
-    context = {name: options.get(name) for name in ("config", "profile", "project")}
+    context = {name: options.get(name) for name in ("config", "profile")}
     shared = {**context, "state_dir": options.get("state_dir")}
     action = args.versions_action
     if action == "list":
@@ -158,7 +159,7 @@ def _bound_text(data: DatasetVersionBound) -> str:
     if data.local_manifest is not None:
         relation = _yes(
             data.local_manifest.relation == "count_matches",
-            "dosya sayısı sürümün öğe sayısıyla aynı",
+            "dosya sayısı sürümün öğe sayısıyla aynı; üyelik kanıtı değildir",
             "DOSYA SAYISI sürümün öğe sayısından FARKLI",
         )
         rows.append(f"Yerel Manifest: {data.local_manifest.digest} ({relation})")
@@ -170,7 +171,9 @@ def _bound_text(data: DatasetVersionBound) -> str:
         "Denetle: "
         + shlex.join(("yorunge", "datasets", "versions", "check", "--binding", data.binding_path))
     )
+    rows.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
     rows.append("Digest kendi kendine hash'tir (imza değil); kullanmadan önce check edin.")
+    rows.append("Yalnız sağlayıcı metadata'sı; içerik, üyelik ya da model uygunluğu söylenmez.")
     return "\n".join(rows)
 
 

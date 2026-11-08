@@ -21,7 +21,12 @@ from pathlib import Path
 
 import pytest
 
-from yorunge.adapters.artifact_publisher import ArtifactCodes, ArtifactPublisher, PublicationState
+from yorunge.adapters.artifact_publisher import (
+    LINK_REFUSED,
+    ArtifactCodes,
+    ArtifactPublisher,
+    PublicationState,
+)
 from yorunge.adapters.local_files import full_sync
 from yorunge.domain.errors import MESSAGES, YorungeError
 
@@ -154,6 +159,28 @@ def test_a_name_taken_after_the_first_look_is_exists_and_not_uncertain(place):
     error = failure(lambda: pub.publish_bytes(CONTENT))
     assert error.code == CODES.exists and state.attempted is False  # definite: not created
     assert place.target.read_bytes() == b"the other owner" and place.leftovers() == []
+
+
+@pytest.mark.parametrize("entry", ["bytes", "stage"])
+@pytest.mark.parametrize(
+    "number",
+    sorted(LINK_REFUSED),
+    ids=[errno.errorcode[number] for number in sorted(LINK_REFUSED)],
+)
+def test_a_link_the_kernel_refused_made_no_entry_and_is_the_familys_failed(
+    place, monkeypatch, number, entry
+):
+    # No hard links on the volume, no permission, no room, another volume: ``link`` either made an
+    # entry or failed, so the target certainly does not exist and nothing is uncertain.
+    def refuse(*arguments, **keywords):
+        raise OSError(number, "PRIVATE-PATH-NEVER-PRINT")
+
+    monkeypatch.setattr(os, "link", refuse)
+    pub, state = publisher(place)
+    error = failure(lambda: entry_publish(place, pub, entry))
+    assert error.code == CODES.failed and state.attempted is False
+    assert "PRIVATE-PATH" not in str(error.envelope()) and error.__context__ is None
+    assert not place.target.exists()
 
 
 @pytest.mark.parametrize("step", ["_sync", "_write", "_check_stage"])

@@ -33,7 +33,8 @@ def read_regular_file(
 
     ``input_invalid`` for a path that is not a regular file reached without a link,
     ``file_unreadable`` for an OS error, ``input_changed`` for a file that changed while it was
-    read, ``oversize`` for a file longer than ``limit``, ``execution_timeout`` past the deadline.
+    read, ``oversize`` for a file longer than ``limit``; a read that outlasts ``seconds`` is
+    ``file_unreadable`` too (the time budgets of the network are not a local file's).
     """
     if not isinstance(path, Path) or not path.is_absolute() or not path.name:
         raise YorungeError("invalid_request")
@@ -62,7 +63,9 @@ def read_regular_file(
                 content = bytearray()
                 while len(content) <= limit:
                     if time.monotonic() >= end:
-                        raise YorungeError("execution_timeout")
+                        raise YorungeError(
+                            "file_unreadable"
+                        )  # a local file that stalls is not read
                     block = os.read(opened, min(BLOCK_BYTES, limit + 1 - len(content)))
                     if not block:
                         break

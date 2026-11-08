@@ -28,7 +28,14 @@ def test_empty_and_ordinary_multilingual_text_remain_allowed():
 
 def test_a_reportable_path_is_printable_strict_utf8_and_at_most_4096_bytes():
     assert MAX_REPORTED_PATH_BYTES == 4096
-    for good in ("/", "/tmp/a.json", "/tmp/Yörünge/日本語 😀.json", "x" * 4096, "é" * 2048):
+    for good in (
+        "/",
+        "/tmp/a.json",
+        "/tmp/Yörünge/日本語 😀.json",
+        "/tmp/zero\u200bwidth.json",  # a format character that is not a bidirectional override
+        "x" * 4096,
+        "é" * 2048,
+    ):
         assert is_reportable_path(good), good[:20]
     for bad in (
         "",
@@ -37,6 +44,9 @@ def test_a_reportable_path_is_printable_strict_utf8_and_at_most_4096_bytes():
         "/tmp/a\x00b",
         "/tmp/\x7f",
         "/tmp/\x85",  # a control character, in the ASCII range and above it
+        "/tmp/a\u202eb.json",
+        "/tmp/a\u2066b.json",
+        "/tmp/a\u2069b.json",  # a bidirectional override reorders what a person reads
         "/tmp/\udcff",
         "/tmp/\ud800x",  # the lone surrogates of a file name that is not UTF-8
         "x" * 4097,

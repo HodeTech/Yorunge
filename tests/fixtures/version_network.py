@@ -1,4 +1,4 @@
-"""Test-only canonical-host TLS mapping for the version reads; never a production flag."""
+"""Test-only TLS mapping of two provider hosts for the version reads; never a production flag."""
 
 from __future__ import annotations
 
@@ -15,23 +15,25 @@ from yorunge.adapters.guarded_network import GuardedBackend
 from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
 
+HOSTS = ("api.ssyz.org.tr", "other.ssyz.org.tr")  # the canonical host and a second provider
+
 
 @contextmanager
 def loopback_versions(ca: Path, port: int):
-    """Every ``HttpSession`` made by the product reaches ``api.ssyz.org.tr`` on a loopback port."""
+    """Every ``HttpSession`` made by the product reaches one of ``HOSTS`` on a loopback port."""
     context = ssl.create_default_context(cafile=str(ca))
 
     class FixtureNetwork(GuardedBackend):
         def __init__(self) -> None:
             async def resolver(host, requested_port, timeout):
-                assert host == "api.ssyz.org.tr" and requested_port == 443
+                assert host in HOSTS and requested_port == 443
                 return ("127.0.0.1",)
 
             super().__init__(resolver=resolver, allowed=lambda address: address == "127.0.0.1")
 
         async def _connect(self, pinned, requested_port, timeout, options, original_host):
             assert pinned == "127.0.0.1" and requested_port == 443
-            assert original_host == "api.ssyz.org.tr"
+            assert original_host in HOSTS
             return await httpcore.AnyIOBackend().connect_tcp(
                 pinned, port, timeout=timeout, socket_options=options
             )

@@ -22,6 +22,7 @@ from yorunge.adapters.dataset_version_reader import VERSION_SECONDS
 from yorunge.adapters.local_files import require_local_files
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.small_files import read_regular_file
+from yorunge.adapters.upload_sync import require_upload_sync_context
 from yorunge.application.context_discovery import ObservationClock
 from yorunge.application.dataset_versions import (
     Observers,
@@ -89,13 +90,20 @@ def _absolute(path: object) -> Path:
         raise YorungeError("input_invalid") from None
 
 
+def _local(state_dir: object) -> None:
+    """Where the caller stands (a state directory that is a path, a thread that may block):
+    judged with the other arguments, before any file or secret is touched."""
+    if state_dir is not None and not isinstance(state_dir, Path):
+        raise YorungeError("invalid_request")
+    require_upload_sync_context()  # a running event loop is refused whatever the target says
+    require_local_files()
+
+
 class _Composition:
     """The state, the clock and the observers of one use; built after the arguments are judged."""
 
     def __init__(self, loader: ContextLoader, state_dir: Path | None) -> None:
-        if state_dir is not None and not isinstance(state_dir, Path):
-            raise YorungeError("invalid_request")
-        require_local_files()
+        _local(state_dir)
         self.started = time.monotonic()
         self.clock = ObservationClock(SystemClock())
         self.state = StateDiscovery(
@@ -117,6 +125,7 @@ def list_dataset_versions(
     dataset_id: str, page: int, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionList]:
     identifier, number = _identifier(dataset_id), _page(page)
+    _local(state_dir)
     use = _Composition(loader, state_dir)
     listed = list_versions(
         use.state,
@@ -133,6 +142,7 @@ def show_dataset_version(
     dataset_id: str, version_tag: str, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionObservation]:
     identifier, tag = _identifier(dataset_id), _tag(version_tag)
+    _local(state_dir)
     use = _Composition(loader, state_dir)
     shown = show_version(
         use.state,
@@ -159,6 +169,7 @@ def bind_dataset_version(
     state_dir: Path | None,
 ) -> Result[DatasetVersionBound]:
     identifier, tag = _identifier(dataset_id), _tag(version_tag)
+    _local(state_dir)
     target = _absolute(binding_out)
     chosen = None if manifest is None else _absolute(manifest)
     if chosen is not None and chosen == target:
@@ -167,15 +178,21 @@ def bind_dataset_version(
     use = _Composition(loader, state_dir)
     with binding_target(target) as destination:
         destination.require_absent()
-        binding = bind_version(
-            use.state,
-            use.observers(),
-            use.clock,
-            dataset_id=identifier,
-            version_tag=tag,
-            manifest=local,
-            deadline=use.deadline,
-        )
+        binding = None
+        try:
+            binding = bind_version(
+                use.state,
+                use.observers(),
+                use.clock,
+                dataset_id=identifier,
+                version_tag=tag,
+                manifest=local,
+                deadline=use.deadline,
+            )
+        except (OSError, UnicodeError):
+            pass  # the read phase's own failure (config, state, secret), not the write's
+        if binding is None:
+            raise YorungeError("file_unreadable")
         # Everything the command will say is made before the link, the one step that cannot be
         # taken back: nothing that can still be refused is left for after it.
         report = bound_summary(binding, str(target))
@@ -191,6 +208,7 @@ def bind_dataset_version(
 def check_dataset_version(
     binding: Path, loader: ContextLoader, state_dir: Path | None
 ) -> Result[DatasetVersionCheck]:
+    _local(state_dir)
     source = _absolute(binding)
     held = decode_binding(
         read_regular_file(source, limit=MAX_BINDING_BYTES, oversize="binding_invalid")

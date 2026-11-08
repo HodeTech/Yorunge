@@ -159,12 +159,16 @@ MESSAGES: dict[ErrorCode, str] = {
         "Veri sürümü dondurulmamış; değişmez bağ üretilmedi. Sürümü Platform'da dondurun."
     ),
     "dataset_version_changed": (
-        "Bağlı veri sürümü değişmiş. Değişen alanlar ayrıntıdadır; bağı kullanmadan önce inceleyin."
+        "Bağlı veri sürümü değişmiş. Değişen alanlar için --output json kullanın; "
+        "bağı kullanmadan önce inceleyin."
     ),
     "dataset_version_missing": (
         "Bağlı veri sürümü uzakta artık yok; referans geçerliliğini yitirdi."
     ),
-    "binding_invalid": "Sürüm bağı dosyası geçersiz. Dosyanın bozulmadığını kontrol edin.",
+    "binding_invalid": (
+        "Sürüm bağı dosyası geçersiz. Dosya, yazıldığı gibi bayt bayt aynı olmalıdır "
+        "(satır sonu dönüşümü, düzenleme veya kırpma bozar); bozulmadığını kontrol edin."
+    ),
     "binding_output_exists": (
         "Sürüm bağı hedefi zaten var. Dosyaya dokunulmadı; yeni ve kullanılmamış bir hedef seçin."
     ),

@@ -25,6 +25,7 @@ stage may be the only copy of what took a long download.
 from __future__ import annotations
 
 import asyncio
+import errno
 import os
 import stat
 from collections.abc import Callable
@@ -41,6 +42,27 @@ def _add_note_once(error: BaseException, note: str) -> None:
     """Notes are fixed sentences: the same one is never written twice on one error."""
     if note not in getattr(error, "__notes__", ()):
         BaseException.add_note(error, note)
+
+
+# The errors of ``link(2)`` that mean the call was refused before any entry was made. Any other
+# (an I/O error, a stale or timed-out network volume) leaves the outcome unknown.
+LINK_REFUSED = frozenset(
+    {
+        errno.EPERM,
+        errno.EACCES,
+        errno.EROFS,
+        errno.ENOTSUP,
+        errno.EOPNOTSUPP,
+        errno.EMLINK,
+        errno.EXDEV,
+        errno.ENOSPC,
+        errno.EDQUOT,
+        errno.ENAMETOOLONG,
+        errno.ELOOP,
+        errno.ENOTDIR,
+        errno.ENOENT,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -274,6 +296,7 @@ class ArtifactPublisher:
         if self.stage is None:
             raise YorungeError(self.codes.failed)
         self.state.attempted = True
+        refused = False
         try:
             os.link(
                 self.stage,
@@ -286,6 +309,16 @@ class ArtifactPublisher:
             # This definite failure did not create the requested target.
             self.state.attempted = False
             raise YorungeError(self.codes.exists) from None
+        except OSError as error:
+            if error.errno not in LINK_REFUSED:
+                raise  # an I/O error, a timeout of a network volume: the outcome cannot be told
+            refused = True
+        if refused:
+            # The kernel rejected the call (no hard links here, no permission, no room, another
+            # volume): a link either exists or the call failed, so nothing was published. Raised
+            # outside the handler so that the OS error, which names paths, is not kept as context.
+            self.state.attempted = False
+            raise YorungeError(self.codes.failed)
 
     def _check_target(self, descriptor: int, size: int, mtime: int) -> None:
         held = os.fstat(descriptor)

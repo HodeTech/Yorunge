@@ -1369,11 +1369,11 @@ def reconcile_dataset_upload(
 
 
 def _version_loader(
-    config: Path | None, profile: str | None, project: str | None
+    config: Path | None, profile: str | None
 ) -> Callable[[], tuple[Context, Profile]]:
     request = validate(
         CredentialRequest,
-        {"service_id": "evren-platform", "profile": profile, "project": project},
+        {"service_id": "evren-platform", "profile": profile, "project": None},
         "invalid_request",
     )
     if config is not None and not isinstance(config, Path):
@@ -1387,13 +1387,12 @@ def list_dataset_versions(
     page: int = 1,
     config: Path | None = None,
     profile: str | None = None,
-    project: str | None = None,
     state_dir: Path | None = None,
 ) -> Result[DatasetVersionList]:
     """One page (1-10 000) of a dataset's versions; read-only, one request."""
     from yorunge.adapters.dataset_version_api import list_dataset_versions as use
 
-    return use(dataset_id, page, _version_loader(config, profile, project), state_dir)
+    return use(dataset_id, page, _version_loader(config, profile), state_dir)
 
 
 def show_dataset_version(
@@ -1402,13 +1401,12 @@ def show_dataset_version(
     *,
     config: Path | None = None,
     profile: str | None = None,
-    project: str | None = None,
     state_dir: Path | None = None,
 ) -> Result[DatasetVersionObservation]:
     """One version from its detail and its split counts (two requests, which must agree)."""
     from yorunge.adapters.dataset_version_api import show_dataset_version as use
 
-    return use(dataset_id, version_tag, _version_loader(config, profile, project), state_dir)
+    return use(dataset_id, version_tag, _version_loader(config, profile), state_dir)
 
 
 def bind_dataset_version(
@@ -1419,7 +1417,6 @@ def bind_dataset_version(
     manifest: Path | None = None,
     config: Path | None = None,
     profile: str | None = None,
-    project: str | None = None,
     state_dir: Path | None = None,
 ) -> Result[DatasetVersionBound]:
     """Bind a frozen version into a new file; never overwrites, never writes remotely."""
@@ -1430,7 +1427,7 @@ def bind_dataset_version(
         version_tag,
         binding_out,
         manifest,
-        _version_loader(config, profile, project),
+        _version_loader(config, profile),
         state_dir,
     )
 
@@ -1440,10 +1437,9 @@ def check_dataset_version(
     *,
     config: Path | None = None,
     profile: str | None = None,
-    project: str | None = None,
     state_dir: Path | None = None,
 ) -> Result[DatasetVersionCheck]:
     """``unchanged`` if the provider still shows what the binding holds; else a closed error."""
     from yorunge.adapters.dataset_version_api import check_dataset_version as use
 
-    return use(binding, _version_loader(config, profile, project), state_dir)
+    return use(binding, _version_loader(config, profile), state_dir)

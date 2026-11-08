@@ -61,13 +61,16 @@ MAX_REPORTED_PATH_BYTES = 4096
 def is_reportable_path(value: object) -> bool:
     """Whether a result may carry ``value`` as the path of a file it made.
 
-    A plain, non-empty ``str`` with no control character that encodes as strict UTF-8 (the lone
-    surrogate of an undecodable file name does not) in at most ``MAX_REPORTED_PATH_BYTES`` bytes.
+    A plain, non-empty ``str`` with no control character and no bidirectional override (the rule
+    of a manifest's own names) that encodes as strict UTF-8 (the lone surrogate of an undecodable
+    file name does not) in at most ``MAX_REPORTED_PATH_BYTES`` bytes.
     One definition for the models that report a path and for the code that decides a target, so a
     file is never made whose own report would then be refused.
     """
     if type(value) is not str or not value or has_control_characters(value):
         return False
+    if any("\u202a" <= char <= "\u202e" or "\u2066" <= char <= "\u2069" for char in value):
+        return False  # a bidirectional override reorders what a person reads of the path
     try:
         return len(value.encode("utf-8")) <= MAX_REPORTED_PATH_BYTES
     except UnicodeEncodeError:

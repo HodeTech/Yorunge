@@ -30,7 +30,7 @@ Kanonik sözleşme [sürüm referansı sözleşmesi](../../reference/dataset-ver
 
 1. Alt kartlar verified ve ikişer fresh turla kapanmış.
 2. Üç ortam CI ve kurulu smoke geçer.
-3. Yetkili canlı salt okuma kabulü (sınırlı GET sayısı, receipt): `list`/`show`/`bind`/`check` gerçek hesapta tutarlı; yapılmadıysa kısıt kayıtlı.
+3. Yetkili canlı salt okuma kabulü (sınırlı GET sayısı, receipt): `list`/`show`/`bind`/`check` gerçek hesapta tutarlı; yapılmadıysa kısıt kayıtlı. **Canlı yoklama listesi** (offline fixture yeşili bunların hiçbirini kanıtlamaz; her madde gözlenip kaydedilir ya da “yapılmadı” kalır): (1) sağlayıcı zamanları bölge taşıyor mu (`Z`/`±SS:DD`) ve `T` ayırıcısı kullanıyor mu — değilse bütün yanıtlar `invalid_response` olur (ilk madde); (2) sınıfsız bir sürümde `class_labels_snapshot` `[]` mı `null` mu — `null` ise `show`/`bind`/`check` hepsi başarısız olur; (3) `meta.{page, page_size, total, has_next}` anlamı: varsayılan sayfa boyutu ≤ 100 mü, `page` parametresi uygulanıyor mu, son sayfanın ötesi 200 ve boş mu (404 `remote_failed` olur), tam dolu son sayfada `has_next`; (4) sürüm detayının 404’ü ne demek — silinmiş sürüm, başka veri seti ya da yetkinin gizlediği veri seti; yetkisiz anahtarda 404 mü 403 mü (404 ise başka projenin anahtarıyla `check` bir bütünlük hatası, `dataset_version_missing`/7, olur); (5) `is_frozen` ve `is_partial` anlamları ve 100 satırlık sayfanın (uzun açıklamalarla) 1 MiB altında kalması; (6) etiket `id` türleri (tamsayı/dize) ve bir sürümün sınıf sayısı (4096 sınırı).
 4. Belgeler, yetenek matrisi (C04) ve P03-1 bağımlılığı doğru durumu gösterir.
 
 ## Doğrulama

@@ -8,6 +8,7 @@ private and whole or absent, and a name that is taken (before or meanwhile) is n
 import asyncio
 import errno
 import os
+import shutil
 import stat
 from pathlib import Path
 
@@ -127,7 +128,7 @@ def test_a_slow_read_ends_at_its_deadline(place, monkeypatch):
     monkeypatch.setattr(small_files.time, "monotonic", lambda: next(clock))
     assert code_of(
         lambda: read_regular_file(path, limit=100, oversize="binding_invalid", seconds=1.0)
-    ) == ("execution_timeout")
+    ) == ("file_unreadable")
 
 
 # --- the target directory ------------------------------------------------------------------------
@@ -271,6 +272,21 @@ def test_a_failure_after_the_link_began_is_uncertain_and_exit_5(place, monkeypat
     assert error.value.code == "binding_write_uncertain" and error.value.exit_code == 5
 
 
+@pytest.mark.parametrize("number", [errno.EPERM, errno.ENOTSUP, errno.EMLINK, errno.EXDEV])
+def test_a_volume_that_refuses_hard_links_is_a_write_failure_not_an_uncertain_publication(
+    place, monkeypatch, number
+):
+    def refuse(*arguments, **keywords):
+        raise OSError(number, "PRIVATE")
+
+    monkeypatch.setattr(artifact_publisher.os, "link", refuse)
+    with pytest.raises(YorungeError) as error:
+        with binding_target(place / "binding.json") as target:
+            target.publish(binding())
+    assert (error.value.code, error.value.exit_code) == ("binding_write_failed", 2)
+    assert list(place.iterdir()) == []  # no target, no stage: a rerun is a plain retry
+
+
 def test_an_error_of_the_block_that_is_not_the_publications_passes_through_closed(place):
     with pytest.raises(YorungeError) as error:
         with binding_target(place / "binding.json"):
@@ -290,6 +306,49 @@ def test_a_parent_that_is_replaced_before_the_link_is_a_write_failure_and_nothin
             target.publish(binding())
     assert error.value.code == "binding_write_failed"
     assert list(inner.iterdir()) == [] and not (place / "elsewhere" / "binding.json").exists()
+
+
+def names_below(place):
+    """Every file name under ``place``, symbolic links to directories followed."""
+    return sorted(name for _, _, files in os.walk(place, followlinks=True) for name in files)
+
+
+@pytest.mark.parametrize(
+    "how",
+    ["symlink in its place", "renamed away", "grandparent swapped for a symlink", "removed"],
+)
+def test_a_parent_that_changes_in_any_way_after_the_early_look_is_a_write_failure(place, how):
+    """The directory is held open from before the provider is asked; whatever happens to the path
+    meanwhile, nothing is linked into the directory that is now at it, nor into the old one."""
+    outer, inner = place / "outer", place / "outer" / "inner"
+    inner.mkdir(parents=True)
+    with pytest.raises(YorungeError) as error:
+        with binding_target(inner / "binding.json") as target:
+            target.require_absent()
+            if how == "symlink in its place":
+                inner.rename(outer / "moved")
+                inner.symlink_to(outer / "moved")
+            elif how == "renamed away":
+                inner.rename(outer / "moved")
+            elif how == "grandparent swapped for a symlink":
+                outer.rename(place / "outer-moved")
+                outer.symlink_to(place / "outer-moved")
+            else:
+                shutil.rmtree(inner)
+            target.publish(binding())
+    assert error.value.code == "binding_write_failed"
+    assert names_below(place) == []  # no binding at the name, no stage left anywhere
+
+
+def test_a_parent_that_is_renamed_away_and_back_is_the_same_directory_and_gets_the_binding(place):
+    inner = place / "inner"
+    inner.mkdir()
+    with binding_target(inner / "binding.json") as target:
+        target.require_absent()
+        inner.rename(place / "elsewhere")
+        (place / "elsewhere").rename(inner)  # the same directory, by identity
+        target.publish(binding())
+    assert names_below(place) == ["binding.json"]
 
 
 def test_a_task_cancellation_before_the_link_propagates_as_it_is(place):

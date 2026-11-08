@@ -6,8 +6,10 @@ how often, with which key), on disk (the binding: private, canonical, never over
 and in the result (exit status, machine output, nothing private).
 """
 
+import asyncio
 import json
 import os
+import shlex
 import signal
 import stat
 import subprocess
@@ -17,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.fixtures.http_server import Reply, TlsServer
-from tests.fixtures.version_network import loopback_versions
+from tests.fixtures.http_server import Reply, TlsServer, certificate
+from tests.fixtures.version_network import HOSTS, loopback_versions
 from tests.integration.test_dataset_version_reader import (
     BASE,
     CANARY,
@@ -30,7 +32,6 @@ from tests.integration.test_dataset_version_reader import (
     row,
     splits,
 )
-from tests.integration.test_upload_preparation import certificates as certificates
 from tests.integration.test_upload_preparation import loopback_only as loopback_only
 from yorunge import api
 from yorunge.domain.dataset_manifest import DatasetFile, build_manifest
@@ -40,6 +41,11 @@ from yorunge.domain.errors import YorungeError
 ENV = "VERSION_SURFACE_TEST_KEY"
 SECRET = "synthetic-version-surface-key-8841"
 CONSOLE = Path(__file__).parents[1] / "fixtures" / "version_console.py"
+
+
+@pytest.fixture(scope="module")
+def certificates(tmp_path_factory):
+    return certificate(tmp_path_factory.mktemp("version-surface-tls"), names=(*HOSTS, "localhost"))
 
 
 def routes(**overrides):
@@ -78,7 +84,7 @@ def manifest_file(count):
     return build_manifest(files)
 
 
-def execute(server, certificates, *args, environment=None, timeout=60):
+def execute(server, certificates, *args, environment=None, timeout=60, cwd=None):
     env = dict(os.environ)
     env.update(LC_ALL="C", PYTHONIOENCODING="ascii", PYTHONUTF8="0", **(environment or {}))
     return subprocess.run(
@@ -98,6 +104,7 @@ def execute(server, certificates, *args, environment=None, timeout=60):
         env=env,
         capture_output=True,
         timeout=timeout,
+        cwd=cwd,
     )
 
 
@@ -156,6 +163,51 @@ def test_list_shows_the_page_asked_for_and_nothing_private(workspace, certificat
     everything = process.stdout + process.stderr
     for private in (CANARY, "someone@example.test", "files.example.test", SECRET):
         assert private.encode() not in everything
+
+
+def versions_list(server, certificates, workspace, *extra, output="json"):
+    return execute(
+        server,
+        certificates,
+        "datasets",
+        "versions",
+        "list",
+        "--dataset-id",
+        DATASET,
+        "--output",
+        output,
+        *extra,
+        *flags(workspace),
+    )
+
+
+def test_list_page_two_asks_for_page_two_and_says_where_the_next_one_is(workspace, certificates):
+    third = row(id="33333333-3333-4333-8333-333333333333", version_tag="v3")
+    table = routes(
+        **{BASE + "?page=2": body(listing([third], page=2, page_size=2, total=5, has_next=True))}
+    )
+    with TlsServer(certificates, table) as server:
+        as_json = versions_list(server, certificates, workspace, "--page", "2")
+        as_text = versions_list(server, certificates, workspace, "--page", "2", output="text")
+    page = parsed(as_json)["data"]
+    assert (page["page"], page["page_size"], page["total"], page["has_next"]) == (2, 2, 5, True)
+    assert [request.path for request in server.requests] == [BASE + "?page=2"] * 2
+    text = as_text.stdout.decode("utf-8")
+    assert as_text.returncode == 0 and not as_text.stderr
+    assert "sayfa 2, toplam 5 sürüm" in text and "v3" in text
+    assert "Sonraki sayfa var (--page 3)." in text and "provider" not in text.casefold()
+
+
+def test_a_page_past_the_end_is_an_honest_empty_page_in_every_mode(workspace, certificates):
+    table = routes(
+        **{BASE + "?page=99": body(listing([], page=99, page_size=20, total=1, has_next=False))}
+    )
+    with TlsServer(certificates, table) as server:
+        as_text = versions_list(server, certificates, workspace, "--page", "99", output="text")
+        as_json = versions_list(server, certificates, workspace, "--page", "99")
+    assert as_text.returncode == 0 and "Bu sayfada sürüm yok." in as_text.stdout.decode()
+    page = parsed(as_json)["data"]
+    assert (page["items"], page["total"], page["has_next"]) == ([], 1, False)
 
 
 def test_show_is_one_version_from_two_agreeing_reads_and_text_is_readable(workspace, certificates):
@@ -325,6 +377,79 @@ def test_bind_writes_a_new_private_canonical_file_and_check_finds_it_unchanged(
     assert SECRET.encode() not in out.read_bytes() + process.stdout + process.stderr
 
 
+def test_bind_in_text_says_where_the_binding_is_how_to_check_it_and_claims_nothing_more(
+    workspace, certificates
+):
+    out = workspace[2] / "my binding.json"  # a space: the printed command must stay quotable
+    with TlsServer(certificates, routes()) as server:
+        process = bind(server, certificates, workspace, out, output="text")
+    text = process.stdout.decode("utf-8")
+    assert process.returncode == 0 and not process.stderr
+    assert f"Sürüm bağı kaydedildi: {out}" in text and "Digest: " in text
+    (command,) = [line for line in text.splitlines() if line.startswith("Denetle: ")]
+    assert shlex.split(command.removeprefix("Denetle: ")) == [
+        "yorunge",
+        "datasets",
+        "versions",
+        "check",
+        "--binding",
+        str(out),
+    ]
+    assert "Özel --config/--profile/--state-dir kullandıysanız" in text
+    assert "Yalnız sağlayıcı metadata'sı" in text and "üyelik" in text
+    assert SECRET not in text
+
+
+def test_bind_in_ndjson_is_one_result_event(workspace, certificates):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        process = bind(server, certificates, workspace, out, output="ndjson")
+        value = parsed(process, "ndjson")
+    assert value["data"]["kind"] == "dataset_version_bound"
+    assert value["data"]["binding_digest"] == decode_binding(out.read_bytes()).digest
+    assert value["warnings"] == ["provider_metadata_only"]
+
+
+def test_a_relative_binding_path_is_made_absolute_once_and_check_reads_it_the_same_way(
+    workspace, certificates
+):
+    here = workspace[2].resolve()
+    with TlsServer(certificates, routes()) as server:
+        made = execute(
+            server,
+            certificates,
+            "datasets",
+            "versions",
+            "bind",
+            "--dataset-id",
+            DATASET,
+            "--version-tag",
+            "v1",
+            "--binding-out",
+            "binding.json",
+            "--output",
+            "json",
+            *flags(workspace),
+            cwd=here,
+        )
+        assert parsed(made)["data"]["binding_path"] == str(here / "binding.json")
+        checked = execute(
+            server,
+            certificates,
+            "datasets",
+            "versions",
+            "check",
+            "--binding",
+            "binding.json",
+            "--output",
+            "text",
+            *flags(workspace),
+            cwd=here,
+        )
+    assert checked.returncode == 0 and "Değişmedi: v1" in checked.stdout.decode()
+    assert (here / "binding.json").is_file()
+
+
 def test_a_second_bind_over_the_same_name_is_refused_before_the_provider_is_asked(
     workspace, certificates
 ):
@@ -367,6 +492,67 @@ def test_a_binding_name_the_report_could_not_carry_is_refused_before_the_provide
     assert process.returncode == 2 and json.loads(process.stderr)["code"] == "binding_write_failed"
     assert server.requests == [] and process.stdout == b""
     assert sorted(p.name for p in out.parent.iterdir() if "line" in p.name) == []
+
+
+def test_a_version_the_provider_does_not_have_is_not_found_for_bind_too_and_nothing_is_written(
+    workspace, certificates
+):
+    out = workspace[2] / "binding.json"
+    table = routes(**{BASE + "/v1": Reply(status=404, body=b"{}")})
+    with TlsServer(certificates, table) as server:
+        process = bind(server, certificates, workspace, out)
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "dataset_version_not_found"
+    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+
+
+def test_a_plain_bind_says_only_that_it_is_provider_metadata(workspace, certificates):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        value = parsed(bind(server, certificates, workspace, out))
+    assert value["warnings"] == ["provider_metadata_only"]
+    assert value["data"]["is_partial"] is False and value["data"]["split_total_matches_item_count"]
+
+
+def test_a_partial_version_is_bound_with_its_flag_in_the_result_too(workspace, certificates):
+    out = workspace[2] / "binding.json"
+    table = routes(**{BASE + "/v1": body(detail(is_partial=True))})
+    with TlsServer(certificates, table) as server:
+        value = parsed(bind(server, certificates, workspace, out))
+    assert value["data"]["is_partial"] is True and decode_binding(out.read_bytes()).is_partial
+
+
+def test_the_binding_names_the_provider_of_the_active_profile_not_the_default_one(
+    workspace, certificates
+):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        process = bind(server, certificates, workspace, out, "--profile", "elsewhere")
+        parsed(process)
+        (request, *_) = server.requests
+    held = decode_binding(out.read_bytes())
+    assert held.service.service_origin == "https://other.ssyz.org.tr"
+    assert request.header("Host").startswith("other.ssyz.org.tr")
+
+
+def test_a_provider_that_is_slower_than_the_budget_ends_the_command_and_writes_nothing(
+    workspace, certificates, monkeypatch
+):
+    from yorunge.adapters import dataset_version_api
+
+    out = workspace[2] / "binding.json"
+    monkeypatch.setattr(dataset_version_api, "VERSION_SECONDS", 1.0)
+    table = routes(**{BASE + "/v1": body(detail(), header_delay=3.0)})
+    state, config, _ = workspace
+    began = time.monotonic()
+    with TlsServer(certificates, table) as server:
+        with loopback_versions(certificates[0], server.port):
+            with pytest.raises(YorungeError) as error:
+                api.bind_dataset_version(
+                    DATASET, "v1", binding_out=out, config=config, state_dir=state
+                )
+    assert error.value.code == "transport_timeout" and time.monotonic() - began < 2.9
+    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
 
 
 def test_an_unfrozen_version_is_not_bound_and_no_file_is_made(workspace, certificates):
@@ -433,6 +619,33 @@ def test_a_changed_version_is_exit_7_with_the_closed_list_of_what_changed(worksp
         "annotation_only": False,
     }
     assert not process.stdout.strip()  # a difference is an error, never a result
+
+
+@pytest.mark.parametrize("output", ["ndjson", "text"])
+def test_a_difference_is_an_error_envelope_and_never_a_result_in_every_mode(
+    workspace, certificates, output
+):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        parsed(bind(server, certificates, workspace, out))
+        server.routes[BASE + "/v1"] = body(detail(item_count=11, annotated_item_count=3))
+        process = check(server, certificates, workspace, out, output=output)
+    assert process.returncode == 7 and not process.stdout.strip()  # no event before the verdict
+    if output == "ndjson":
+        assert json.loads(process.stderr)["code"] == "dataset_version_changed"
+    else:
+        assert b"dataset_version_changed" not in process.stderr and process.stderr.strip()
+
+
+def test_an_unchanged_version_is_a_result_in_text_and_ndjson(workspace, certificates):
+    out = workspace[2] / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        parsed(bind(server, certificates, workspace, out))
+        as_text = check(server, certificates, workspace, out, output="text")
+        as_events = check(server, certificates, workspace, out, output="ndjson")
+    assert as_text.returncode == 0 and "Değişmedi: v1" in as_text.stdout.decode()
+    assert "bayt eşliği" in as_text.stdout.decode() and not as_text.stderr
+    assert parsed(as_events, "ndjson")["data"]["result"] == "unchanged"
 
 
 def test_a_version_that_is_gone_is_missing_and_exit_7(workspace, certificates):
@@ -526,6 +739,76 @@ def test_the_api_returns_the_same_typed_results_and_validates_before_it_touches_
     assert listed.warnings == shown.warnings == checked.warnings == ("provider_metadata_only",)
     assert checked.data.result == "unchanged" and checked.operation_id is None
     assert (shown.data.observed_at, checked.data.observed_at) != (None, None)
+
+
+def test_the_arguments_about_where_the_caller_stands_are_judged_before_any_file_is_read(
+    workspace, certificates
+):
+    state, config, directory = workspace
+    missing = directory / "no-such-manifest.json"
+    out = directory / "binding.json"
+    with TlsServer(certificates, routes()) as server:
+        with loopback_versions(certificates[0], server.port):
+            for call in (
+                lambda: api.bind_dataset_version(
+                    DATASET, "v1", binding_out=out, manifest=missing, config=config, state_dir="s"
+                ),
+                lambda: api.check_dataset_version(missing, config=config, state_dir="s"),
+                lambda: api.list_dataset_versions(DATASET, config=config, state_dir="s"),
+            ):
+                with pytest.raises(YorungeError) as error:
+                    call()
+                assert error.value.code == "invalid_request"  # not file_unreadable
+            out.write_bytes(b"MINE")
+
+            async def inside():
+                return api.bind_dataset_version(
+                    DATASET, "v1", binding_out=out, config=config, state_dir=state
+                )
+
+            with pytest.raises(YorungeError) as inside_a_loop:
+                asyncio.run(inside())
+            # The running loop is refused first, whatever the target says.
+            assert inside_a_loop.value.code == "invalid_request"
+    assert server.requests == [] and out.read_bytes() == b"MINE"
+
+
+def test_an_os_error_of_the_read_phase_of_bind_is_not_called_a_write_failure(
+    workspace, certificates, monkeypatch
+):
+    from yorunge.adapters.http_session import HttpSession
+
+    state, config, directory = workspace
+    out = directory / "binding.json"
+
+    def exhausted(self):
+        raise OSError(24, "PRIVATE-DETAIL-OF-THE-OS")
+
+    monkeypatch.setattr(HttpSession, "__enter__", exhausted)
+    with TlsServer(certificates, routes()) as server:
+        with loopback_versions(certificates[0], server.port):
+            with pytest.raises(YorungeError) as error:
+                api.bind_dataset_version(
+                    DATASET, "v1", binding_out=out, config=config, state_dir=state
+                )
+    assert error.value.code == "file_unreadable"
+    assert "PRIVATE-DETAIL" not in repr(error.value.envelope()) and error.value.__context__ is None
+    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+
+
+def test_the_project_option_is_not_a_versions_option_since_a_read_of_versions_needs_none(
+    workspace, certificates
+):
+    with TlsServer(certificates, routes()) as server:
+        process = versions_list(server, certificates, workspace, "--project", "alpha")
+    assert process.returncode == 2 and server.requests == []
+
+
+def test_the_messages_of_a_changed_version_and_an_invalid_binding_say_what_to_do():
+    from yorunge.domain.errors import MESSAGES
+
+    assert "--output json" in MESSAGES["dataset_version_changed"]
+    assert "bayt bayt aynı" in MESSAGES["binding_invalid"]
 
 
 def test_the_api_warns_when_the_versions_split_total_is_not_its_item_count(workspace, certificates):
