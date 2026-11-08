@@ -1,7 +1,7 @@
 ---
 id: P02-3p
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-0d]
 capabilities: [C04]
@@ -43,4 +43,6 @@ Contract/unit/integration testleri, Ruff, strict mypy. Gerçek hesap salt okuma 
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+- PR/commit: tek development PR’ı bu daldan açılır (bağlantı PR açıklamasındadır); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: uygulama [fac444f](https://github.com/HodeTech/Yorunge/commit/fac444fb6386ad317ce0b07ddf2dfb774bf48b5e); R1 düzeltmeleri [d4e091d](https://github.com/HodeTech/Yorunge/commit/d4e091d7725921cb0e0d4a637b8d3bdd8947876c); R2 düzeltmeleri [60102fe](https://github.com/HodeTech/Yorunge/commit/60102fe374491ffee7f39da3381d78e44f49e842).
+- Sonuç: Veri sürümü ve bölme tipleri, strict codec’ler, değişmez bağ (`DatasetVersionBinding`: kendi kendine hash’li canonical artifact) ve salt okuma okuyucusu (`VersionReader`: liste bir GET, detay iki GET), sapma karşılaştırması ve hizmet doğrulaması (R1 ve R2 kapandı; Adım 16). Tam paket: 12.704 geçti, 3 atlandı, 0 düştü (`a574c5b`, temiz klon; ilk tam paket 21 integration hatası buldu ve düzeltildi, ikinci paket temiz; ayrıntı araştırma kaydındadır).
+- Kalan sınır: Canlı kabul (sağlayıcı zamanının bölge taşıması, `class_labels_snapshot` null/[] ayrımı, sayfa boyutu ve son-sonrası davranışı, 404’ün anlamı) P02-3c’dedir; `normalize_target` yüzde-kodlu eşdeğer yazımları birleştirmez (eşdeğer ama farklı yazılmış hedef kapalı başarısız olur).

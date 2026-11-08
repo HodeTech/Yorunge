@@ -1,7 +1,7 @@
 ---
 id: P02-3x
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-3y]
 capabilities: [C03, C12]
@@ -44,4 +44,6 @@ Gerçek TLS/süreç/SQLite integration testleri, v1/v2 farklı-ikili karşılaş
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+- PR/commit: tek development PR’ı bu daldan açılır (bağlantı PR açıklamasındadır); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: uygulama [9f4efa2](https://github.com/HodeTech/Yorunge/commit/9f4efa2985d4616e481544476953deeca85b5b8a); R1 düzeltmeleri [dd00024](https://github.com/HodeTech/Yorunge/commit/dd00024ba6f615c58f3977c61018991d04e9a57c), [fc0137c](https://github.com/HodeTech/Yorunge/commit/fc0137c5675cedf52a3c83844d95b0ca1684dc29); R2 düzeltmeleri [d364030](https://github.com/HodeTech/Yorunge/commit/d3640303b914ba3a068c4c51ed6a3bbb01455bd7), [2533f47](https://github.com/HodeTech/Yorunge/commit/2533f47d4d851451bef375dcbc6c4e31fbcd3e12).
+- Sonuç: `reconcile` 3M makbuzu tam ama proof’u eksik bir v3 kaydı aynı operation’da kanıtlar (`succeeded/metadata_verified`; graf eksikse `operation_uncertain`); devam edilmiş kaynak tarihsel ve değişmez kalır (`SourceHasSuccessor`: `operation_conflict`, hata kimliği torunun kimliği; kapı yazma işleminin içindedir); beş sürüm dağıtım noktası çözüldü (R1 ve R2 kapandı; Adım 19). Tam paket: 12.704 geçti, 3 atlandı, 0 düştü (`a574c5b`, temiz klon; ilk tam paket 21 integration hatası buldu ve düzeltildi, ikinci paket temiz; ayrıntı araştırma kaydındadır).
+- Kalan sınır: Canlı sağlayıcı gözlenmedi (gerçek listeleme/sayfalama, ikinci presign, `actual_count`); gerçek CLI SIGINT/TTY denenmedi (CLI P02-3i’de sınandı); torun taraması bütün operation satırlarını çözer ve güvenli tarafta kapanır (ilgisiz tek bozuk satır `state_invalid` verir; belgeli); Linux CI ve Python ≥ 3.12 asyncio SIGINT semantiği PR aşamasında sınanır.

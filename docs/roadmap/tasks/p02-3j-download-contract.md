@@ -1,7 +1,7 @@
 ---
 id: P02-3j
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-2c]
 capabilities: [C03]
@@ -42,4 +42,6 @@ Unit/contract testleri, bağımsız vektörler, Ruff, strict mypy ve belge/katal
 
 ## Teslim kaydı
 
-Draft; uygulama, commit veya review kanıtı yoktur.
+- PR/commit: tek development PR’ı bu daldan açılır (bağlantı PR açıklamasındadır); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: uygulama [cf57e55](https://github.com/HodeTech/Yorunge/commit/cf57e551616eb0d699854628122eb2292ca5e859); R1 düzeltmeleri [160d81a](https://github.com/HodeTech/Yorunge/commit/160d81a85f9bb17f34a22fc00541ea1243e01277); R2 düzeltmeleri [6e5e15e](https://github.com/HodeTech/Yorunge/commit/6e5e15e50ae4c9736e3ded772905e23064162736).
+- Sonuç: İndirme sözleşme tipleri: doğrulama sözlüğü, `DownloadPartial` sidecar tipi, tipli yanıt sınıflandırıcısı ve iki aşamalı başlangıç tablosu; saftır (G/Ç yok); her tablo satırı için bağımsız vektörler, tohumlu rastgele süpürme ve yakınsama özellikleri; referansın 15 satırı koda bağlıdır (R1 ve R2 kapandı; Adım 13). Tam paket: 12.704 geçti, 3 atlandı, 0 düştü (`a574c5b`, temiz klon; ilk tam paket 21 integration hatası buldu ve düzeltildi, ikinci paket temiz; ayrıntı araştırma kaydındadır).
+- Kalan sınır: Yanlış etiketli 200 yanıtlarının canlı sağlayıcıda nasıl göründüğü gözlenmedi; testler varsayımsal sunucularla yapıldı.

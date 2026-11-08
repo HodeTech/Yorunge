@@ -1,7 +1,7 @@
 ---
 id: P02-3c
 phase: P02
-status: draft
+status: in_review
 size: M
 depends_on: [P02-3q]
 capabilities: [C04, C13]
@@ -39,4 +39,6 @@ Hedefli ve tam test paketi, belge/rehber/kanıt kontrolleri, canlı kabul raporu
 
 ## Teslim kaydı
 
-Draft; uygulama ve kabul kaydı yoktur.
+- PR/commit: tek development PR’ı bu daldan açılır (bağlantı PR açıklamasındadır); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: alt kartların commit’leri ilgili kartlarında; bu kartın kendi değişiklikleri belge güncellemeleridir.
+- Sonuç: Alt kartlar (P02-3p, q) `verified` ve her biri iki fresh yorumcu turuyla kapandı; `datasets versions list|show|bind|check` salt okuma sürüm/bölme referansını ve bağ artifact’ını verir; kurulu `versions_smoke` (wheel ve sdist) yerelde geçti. Tam paket: 12.704 geçti, 3 atlandı, 0 düştü (`a574c5b`, temiz klon; ilk tam paket 21 integration hatası buldu ve düzeltildi, ikinci paket temiz; ayrıntı araştırma kaydındadır).
+- Kalan sınır: Üç ortam CI PR aşamasında görülür; **yetkili canlı salt okuma kabulü yapılmadı** (K6c: kullanıcının dataset kimliği ve yetkisi sağlanmadı) — sağlayıcı zamanının bölge taşıması, `class_labels_snapshot` null/[] ayrımı, sayfa davranışı ve 404’ün anlamı canlı doğrulanmadı; sürüm oluşturma/freeze P02-R4’te kalır.

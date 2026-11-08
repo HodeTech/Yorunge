@@ -1,7 +1,7 @@
 ---
 id: P02-3a
 phase: P02
-status: draft
+status: in_review
 size: M
 depends_on: [P02-3i]
 capabilities: [C03, C12, C13]
@@ -39,4 +39,6 @@ Hedefli ve tam test paketi, kurulum/dağıtım denetimi, belge/rehber/kanıt kon
 
 ## Teslim kaydı
 
-Draft; uygulama ve kabul kaydı yoktur.
+- PR/commit: tek development PR’ı bu daldan açılır (bağlantı PR açıklamasındadır); adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: alt kartların commit’leri ilgili kartlarında; bu kartın kendi değişiklikleri belge güncellemeleridir.
+- Sonuç: Alt kartlar (P02-3d, e, f, t, g, u, v, r, h, w, y, x, i) `verified` ve her biri iki fresh yorumcu turuyla kapandı; `resume`/`approve` yardımı ve ağsız/yerel kapıları kurulu wheel ve sdist’te çalışır (`resume_smoke`; P02-3z, `installation_v4`); v1/v2 geçmişi ve golden’lar değişmedi; continuation için ek native ölçüm yapılmaz (karar kartta). Kullanıcı belgeleri, referans, yetenek matrisi ve rehber gerçek duruma göre güncel. Tam paket: 12.704 geçti, 3 atlandı, 0 düştü (`a574c5b`, temiz klon; ilk tam paket 21 integration hatası buldu ve düzeltildi, ikinci paket temiz; ayrıntı araştırma kaydındadır).
+- Kalan sınır: Altı temiz kurulum (wheel ve sdist × üç CI hücresi) ve üç ortam CI yalnız PR aşamasında görülebilir; **yetkili canlı kabul yapılmadı** (K6b: gerçek kesintiden sonra aynı dataset’te devam, `actual_count` anlamı) — oracle anlamı “doğrulanmadı” kalır; son kaynak M5 referans serisi: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-1` kod `a574c5b`’de dondurulduktan sonra kişisiz kökte bir kez alındı, altısı da ilk denemede geçti ve beş kaynak bağlı doğrulayıcıdan geçti (indirme: 12 süreç `accepted`, en uzun 3,42 s, U ≤ 1.507.328 bayt, G ≤ 704.512 bayt); ayrıntı araştırma kaydındadır.
