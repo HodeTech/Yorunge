@@ -257,3 +257,14 @@ def test_the_cleanup_order_is_stage_then_sidecar_then_tmp_then_the_lock_object_l
     observe, apply = steps()[4][1], steps()[5][1]
     assert "bu koşu henüz hiçbirini yaratmaz" in observe
     assert "kararın silmeleri" in apply or "Silme listesi" in apply
+
+
+def test_the_engine_section_states_the_constants_and_the_order_of_the_engine():
+    from yorunge.adapters.download_engine import JSON_BUDGET_SECONDS, PROGRESS_SECONDS
+
+    section = table("Motor (P02-3m)")
+    assert JSON_BUDGET_SECONDS == 30.0 and "30 sn" in section and "düşülmez" in section
+    assert PROGRESS_SECONDS == 0.1 and "saniyede en çok on" in section
+    assert "en çok iki GET" in section and "tamponlamaz" in section
+    assert "yerel durumu her istekten önce" in section and "`complete(terminated=True)`" in section
+    assert section.index("Tam-stage ise ağ koşusu yoktur") < section.index("en çok iki GET")

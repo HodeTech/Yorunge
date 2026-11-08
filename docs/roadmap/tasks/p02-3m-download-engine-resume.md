@@ -34,6 +34,8 @@ Gerçek loopback TLS sunucusunda (Range/ETag/206/416 betiklenebilir) şu matris,
 
 Gerçek TLS + süreç integration testleri, Ruff, strict mypy. Native bellek/süre ölçümü P02-3o’dadır; canlı Platform kabulü P02-3n/3b’dedir.
 
+**Gerçekleşen kapsam (P02-3m).** `adapters/download_engine.py`: `DownloadJob`, `run_download` (anlatım [referanstaki “Motor (P02-3m)” bölümündedir](../../reference/download-engine.md#motor-p02-3m)). Kararlar: yerel durum ağdan önce (`open_sink`; tam-stage’de JSON çağrısı dahil istek yok); en çok iki GET ve bir protokol dönüşü; gövde TLS kaydı geldikçe yazılır (tamponlama yok); deadline koşunun başında başlar, JSON çağrısı ayrı 30 sn’dir ve düşülmez; deadline `deadline=` ile çağıranın elindeki mutlak ana bağlanabilir (testler 30 sn’lik alt sınırı beklemez); ilerleme saniyede en çok on kez. Testler: `tests/integration/test_download_engine.py` (64) ve `test_download_engine_kill.py` (2: ayrı süreçte SIGKILL, ilk checkpoint’ten sonra ve önce). Kartın “gövde bittikten sonra deadline aşımı → stage korunur” satırı şöyle gerçekleşti: taşıma gövde bitince deadline’ı söndürür ve yayın zamanlanmaz, bu yüzden deadline geçmiş bir gövde sonrası indirme **başarıyla** yayımlanır (test); gövdeden sonra gelen bir I/O hatası (örn. `full_sync`) tamamlanmış stage’i korur ve sonraki çağrı onu ağsız yayımlar (test).
+
 ## Teslim kaydı
 
 Draft; uygulama, commit veya review kanıtı yoktur.
