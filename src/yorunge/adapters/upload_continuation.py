@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable, Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from datetime import timedelta
 from typing import Literal, TypeVar
 
@@ -24,7 +24,12 @@ from yorunge.adapters.platform_upload_reader import ObservedUploadReader
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.adapters.upload_input_files import UploadInputObservation
-from yorunge.adapters.upload_original import _Call, _failure_identity, _source_code
+from yorunge.adapters.upload_original import (
+    _Call,
+    _confirmed_indices,
+    _failure_identity,
+    _source_code,
+)
 from yorunge.adapters.upload_preparation import UploadPreparationRuntime
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.application import upload_descriptors as descriptors
@@ -32,6 +37,7 @@ from yorunge.application.http_transport import HttpCredential
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm
 from yorunge.application.upload_budget import UploadBudget
+from yorunge.application.upload_progress import UploadCounter, count_upload
 from yorunge.application.upload_workflow import EffectOutcome, PreparedEffect
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import BoundCredential
@@ -63,7 +69,9 @@ class ContinuationStages:
         client: UploadHttpxTransport,
         end: float,
         baseline: ProviderDataset,
+        progress: UploadCounter | None = None,
     ) -> None:
+        self.progress = progress  # counts the M selected files (the CLI's terminal line; cosmetic)
         self.runtime, self.plan, self.bound, self.inputs = runtime, plan, bound, inputs
         self.reader, self.port, self.client, self.end = reader, port, client, end
         self.baseline = baseline
@@ -152,6 +160,8 @@ class ContinuationStages:
             if type(record) is not TransferRecordV3:
                 raise YorungeError("upload_plan_not_valid")
             self.record, self.access = record, repository.write_access
+        if self.progress is not None:
+            self.progress.bind(record.operation_id)
         # Another process may have won between the initial lookup and admission. Its durable
         # owner IDs cannot manufacture this process's write access.
         return self.access is not None
@@ -234,6 +244,13 @@ class ContinuationStages:
             )
             if outcome.upload is not None:
                 self.uploads[outcome.upload.context.file_index] = outcome.upload
+            confirmed = _confirmed_indices(view) if self.progress is not None else ()
+        # Cosmetic I/O runs after the durable receipt transaction and its store are closed.
+        if self.progress is not None:
+            selection = graph_of(self.plan).files
+            for index in confirmed:
+                assert index is not None
+                self.progress.confirm(selection.index(index))
 
     async def verify(self) -> TransferRecordV3:
         """The closing read: the proof of the whole dataset (N files), sent or already there."""
@@ -345,12 +362,19 @@ def run_stages(
     )
     environment: ContinuationStages | None = None
 
+    sizes = tuple(inputs.manifest.files[index].size for index in graph_of(plan).files)
+
     async def consume(client: UploadHttpxTransport) -> _Outcome:
         nonlocal environment
-        environment = ContinuationStages(
-            runtime, plan, bound, inputs, reader, port, client, end, baseline
+        # A check-only continuation (M=0) sends no byte: there is nothing to count.
+        counting: AbstractContextManager[UploadCounter | None] = (
+            count_upload(sizes) if sizes else nullcontext(None)
         )
-        return await algorithm(environment)
+        with counting as progress:
+            environment = ContinuationStages(
+                runtime, plan, bound, inputs, reader, port, client, end, baseline, progress
+            )
+            return await algorithm(environment)
 
     failure = None
     record: _Outcome | None = None

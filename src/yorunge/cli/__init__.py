@@ -41,7 +41,9 @@ if TYPE_CHECKING:
         DatasetUploadsPage,
         DatasetUploadSummary,
         UploadIntentReview,
+        UploadSummary,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
     CliResult: TypeAlias = (
         Result[Plan]
@@ -59,6 +61,8 @@ if TYPE_CHECKING:
         | Result[DatasetVersionCheck]
         | Result[DownloadSummary]
         | Result[DatasetUploadSummary]
+        | Result[UploadSummary]
+        | Result[DatasetUploadResumeReport]
         | Result[UploadIntentReview]
         | Result[DatasetUploadsPage]
         | Result[StateInfo]
@@ -484,7 +488,7 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
         if args.action == "upload":
             from yorunge.cli.upload import text
 
-            return text(data)
+            return text(data, getattr(args, "resume_hint", None))
         if args.action == "versions":
             from yorunge.cli.versions import text as versions_text
 
@@ -744,7 +748,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     from yorunge.domain.errors import YorungeError
 
     upload_guidance = args.command == "datasets" and args.action == "upload"
-    renderer = OutputRenderer(vars(args).get("output", "text"), upload_guidance=upload_guidance)
+    hints = None
+    if upload_guidance and vars(args).get("upload_action") == "resume":
+        from yorunge.cli.upload import RESUME_ERROR_HINTS
+
+        hints = RESUME_ERROR_HINTS
+    requested = vars(args).get("operation_id") if upload_guidance else None
+    renderer = OutputRenderer(
+        vars(args).get("output", "text"),
+        upload_guidance=upload_guidance,
+        error_hints=hints,
+        requested_operation_id=requested if isinstance(requested, str) else None,
+    )
     try:
         result = dispatch(args)
     except YorungeError as error:

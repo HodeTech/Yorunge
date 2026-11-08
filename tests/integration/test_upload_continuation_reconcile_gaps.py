@@ -41,6 +41,7 @@ from tests.integration.test_upload_resume_observation import (
 )
 from tests.integration.test_upload_resume_observation import world as three_files
 from tests.integration.test_upload_resume_prepare import prepared
+from yorunge import api
 from yorunge.adapters import upload_repository as repository_module
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.state import open_existing_store
@@ -271,3 +272,54 @@ def test_a_continuation_of_a_continuation_is_proved_and_neither_ancestor_is_touc
                 successor,
             )
         assert {name: source_record(data, name) for name in before} == before
+
+
+def test_a_continuations_reconcile_makes_six_reads_and_holds_no_lock_while_it_waits(
+    prepared_input, certificates, monkeypatch
+):
+    """The v2 reconcile's cost and manners, kept: six GETs, and the store is free in between."""
+    data, provider = three_files(prepared_input)
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        operation = left_unproved(data, provider, server, report.plan_id, monkeypatch)
+        locks = []
+
+        def unlocked():
+            with open_existing_store(data[0]) as store:
+                store.connection.execute("BEGIN IMMEDIATE")
+                store.connection.rollback()
+            locks.append(True)
+
+        provider.on_request = unlocked
+        count = len(server.requests)
+        phase = reconcile(data, server, operation)
+        requests = server.requests[count:]
+        assert len(requests) == len(locks) == 6 and all(r.method == "GET" for r in requests)
+        assert (phase.record.status, phase.record.reason) == ("succeeded", "metadata_verified")
+        store_is_valid(data)
+
+
+def test_the_local_form_of_the_gate_binds_a_failing_store_to_the_source_it_was_asked_about(
+    tmp_path,
+):
+    """A store that cannot take the clock's trace is a closed error of that operation, not raw."""
+    import sqlite3
+
+    state = tmp_path / "state"
+    api.initialize_state(state_dir=state)
+    source = "00000000-0000-4000-8000-0000000000f1"
+
+    def busy(self, *args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatched = StateCache.stamp
+    StateCache.stamp = busy
+    try:
+        with open_existing_store(state) as store:
+            with pytest.raises(OperationError) as refused:
+                StateUploads(store).require_no_successor(source)
+    finally:
+        StateCache.stamp = monkeypatched
+    assert refused.value.code in {"state_busy", "state_invalid"}
+    assert refused.value.operation_id == source

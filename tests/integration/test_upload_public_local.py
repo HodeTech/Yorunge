@@ -205,7 +205,7 @@ def test_page_snapshot_prevents_another_writer_from_committing_between_rows(jour
     with open_existing_store(journal.root) as store:
         for plan in plans:
             journal.repository(store).approve(plan.plan_id, plan.digest, plan)
-    original, invoked = upload_public.original_summary, []
+    original, invoked = upload_public.summary, []
 
     def project(view):
         if not invoked:
@@ -223,7 +223,7 @@ def test_page_snapshot_prevents_another_writer_from_committing_between_rows(jour
                 other.rollback()
         return original(view)
 
-    monkeypatch.setattr(upload_public, "original_summary", project)
+    monkeypatch.setattr(upload_public, "summary", project)
     result = api.list_dataset_uploads(state_dir=journal.root).data
     assert len(result.uploads) == 2
     assert all(p.approval_status == "approved" for p in result.uploads)

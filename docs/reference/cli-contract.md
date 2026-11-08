@@ -21,7 +21,7 @@
 | `yorunge plan execution prepare/list/show/validate/approve/revoke/forget` | Ayrı kalıcı hazırlık, güncel validation ve digest onayı/yerel yönetim; [exact sözleşme](execution-plan.md) |
 | `yorunge jobs list/show` | Son yerel summary/plan/attempt/terminal outcome; current validation veya provider sorgusu yok; [exact sözleşme](operations.md) |
 | `yorunge datasets inspect/verify` | Yerel normal dosya envanteri, root dışı no-clobber manifest ve yeniden hash ile doğrulama; [kesin sözleşme](dataset-manifest.md) |
-| `yorunge datasets upload plan/review/approve/revoke/start/list/show/reconcile` | Çalışma dalında private aktarım/aynı-ID salt okuma; [public sözleşme](dataset-upload-public.md) ve [kullanım](upload-workflows.md); t.3 kod/review tamam; üst c son CI/kurulum/saklama kabulünü bekler |
+| `yorunge datasets upload plan/review/approve/revoke/start/list/show/reconcile/resume` | Çalışma dalında private aktarım/aynı-ID salt okuma; `resume` (P02-3i) yarım kalan aktarımın ne gerektirdiğini raporlar ve `--prepare` ile devam planı kaydeder; `show/list/review/approve/revoke/start/reconcile` devam planlarını ve operation’larını da tanır (`schema_version=3` özeti); [public sözleşme](dataset-upload-public.md), [devam sözleşmesi](dataset-upload-continuation.md#public-yüzey-p02-3i) ve [kullanım](upload-workflows.md); t.3 kod/review tamam; üst c son CI/kurulum/saklama kabulünü bekler |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 

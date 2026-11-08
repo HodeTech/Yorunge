@@ -1,13 +1,16 @@
 """Local public history/intent reads; no config, secret, filesystem source or HTTP."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
 
+from yorunge.adapters.capability_cache import StateCache, SystemClock
 from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, open_existing_store
-from yorunge.adapters.upload_projection import original_summary, review
+from yorunge.adapters.upload_chain import source_journal
+from yorunge.adapters.upload_projection import review, summary
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view
 from yorunge.adapters.upload_sync import require_upload_sync_context
@@ -17,9 +20,10 @@ from yorunge.domain.models import Model, Result
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_public import (
     DatasetUploadsPage,
-    DatasetUploadSummary,
     UploadIntentReview,
+    UploadSummary,
 )
+from yorunge.domain.upload_resume import Blocker
 
 MAX_PAGE_RESULT_BYTES = 1024 * 1024
 T = TypeVar("T", bound=Model)
@@ -52,6 +56,7 @@ def _safe_local(
             error.code,
             error.operation_id if isinstance(error, OperationError) else operation_id,
             reason_code=error.reason_code if isinstance(error, OperationError) else None,
+            blockers=error.blockers if isinstance(error, OperationError) else None,
         )
     except KeyboardInterrupt:
         failure = OperationError("request_cancelled", operation_id)
@@ -61,17 +66,17 @@ def _safe_local(
 
 def show_upload(
     state_dir: Path | None, *, plan_id: str | None = None, operation_id: str | None = None
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     validate_local(state_dir, plan_id, operation_id)
     if (plan_id is None) == (operation_id is None):
         raise YorungeError("invalid_request")
 
-    def read(store: Store) -> DatasetUploadSummary:
+    def read(store: Store) -> UploadSummary:
         repository = StateUploads(store)
         with repository.phase(operation_id):
-            return original_summary(repository.show(plan_id=plan_id, operation_id=operation_id))
+            return summary(repository.show(plan_id=plan_id, operation_id=operation_id))
 
-    return Result[DatasetUploadSummary](data=_safe_local(state_dir, operation_id, read))
+    return Result[UploadSummary](data=_safe_local(state_dir, operation_id, read))
 
 
 def review_upload(plan_id: str, state_dir: Path | None) -> Result[UploadIntentReview]:
@@ -87,21 +92,18 @@ def review_upload(plan_id: str, state_dir: Path | None) -> Result[UploadIntentRe
     return Result[UploadIntentReview](data=_safe_local(state_dir, None, read))
 
 
-def revoke_upload(plan_id: str, state_dir: Path | None) -> Result[DatasetUploadSummary]:
+def revoke_upload(plan_id: str, state_dir: Path | None) -> Result[UploadSummary]:
     validate_local(state_dir, plan_id)
     if plan_id is None:
         raise YorungeError("invalid_request")
 
-    def revoke(store: Store) -> DatasetUploadSummary:
+    def revoke(store: Store) -> UploadSummary:
         repository = StateUploads(store)
         with repository.phase():
             view = repository.show(plan_id=plan_id)
-            # The result types name no continuation yet: refuse one before anything is written, not
-            # after its approval has been revoked.
-            original_summary(view)
-            return original_summary(repository.revoke(plan_id, view.plan.digest))
+            return summary(repository.revoke(plan_id, view.plan.digest))
 
-    return Result[DatasetUploadSummary](data=_safe_local(state_dir, None, revoke))
+    return Result[UploadSummary](data=_safe_local(state_dir, None, revoke))
 
 
 def _page(
@@ -115,10 +117,10 @@ def _page(
             "ORDER BY prepared_at,plan_id LIMIT ?",
             (*after, plan_id, plan_id, limit + 1),
         ).fetchall()
-        included: list[DatasetUploadSummary] = []
+        included: list[UploadSummary] = []
         cursor = None
         for index, row in enumerate(rows[:limit]):
-            item = original_summary(read_any_view(store.connection, row[1]))
+            item = summary(read_any_view(store.connection, row[1]))
             pending_cursor = encode_cursor(*row) if index + 1 < len(rows) else None
             candidate = DatasetUploadsPage(
                 schema_version=1, uploads=(*included, item), next_cursor=pending_cursor
@@ -162,3 +164,31 @@ def list_uploads(
     return Result[DatasetUploadsPage](
         data=_safe_local(state_dir, None, lambda store: _page(store, plan_id, limit, after))
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ResumeHint:
+    """What the journal alone says of continuing an operation: why not, and who is in the way."""
+
+    blockers: tuple[Blocker, ...]
+    related_operation_id: str | None
+
+
+def resume_hint(state_dir: Path | None, operation_id: str) -> ResumeHint | None:
+    """A local, best-effort look for the text of ``show``; ``None`` where it cannot be made.
+
+    No credential, no folder and no provider are asked: it is the report's journal-level check,
+    which is what lets ``show`` say what the next command is without reading anything remote. A
+    store that cannot be read, a record that is no source or a chain that does not merge give
+    nothing here (the summary itself has already been shown or has failed on its own).
+    """
+    clock = SystemClock()
+    try:
+        validate_local(state_dir, operation_id)
+        with open_existing_store(state_dir) as store:
+            stamp = StateCache(store, clock).stamp()
+            source = StateUploads(store, clock=clock).resume_source(operation_id, stamp)
+        _, blockers, related = source_journal(source)
+    except (YorungeError, OSError, ValueError):
+        return None
+    return ResumeHint(blockers, related)

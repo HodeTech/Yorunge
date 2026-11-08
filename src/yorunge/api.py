@@ -64,7 +64,9 @@ if TYPE_CHECKING:
         DatasetUploadsPage,
         DatasetUploadSummary,
         UploadIntentReview,
+        UploadSummary,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
 
 class Request(Model):
@@ -1215,7 +1217,7 @@ def show_dataset_upload(
     plan_id: str | None = None,
     operation_id: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Read one durable upload summary; no credentials or network are needed."""
     from yorunge.adapters.upload_public import show_upload
 
@@ -1250,7 +1252,7 @@ def revoke_dataset_upload(
     plan_id: str,
     *,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Revoke the saved approval locally; an issued permit is not recalled."""
     from yorunge.adapters.upload_public import revoke_upload
 
@@ -1317,11 +1319,16 @@ def approve_dataset_upload(
     *,
     accept_unverified_authority: bool = False,
     accept_unpriced_cost: bool = False,
+    accept_unconfirmed_effects: bool = False,
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
-    """Recheck current files/context before recording exact digest/risk consent."""
+) -> Result[UploadSummary]:
+    """Recheck current files/context before recording exact digest/risk consent.
+
+    ``accept_unconfirmed_effects`` exists for a continuation plan whose files include some whose
+    last confirm may or may not have landed; it is required exactly then and refused otherwise.
+    """
     from yorunge.adapters.upload_api import approve_upload
 
     _upload_options(config, profile)
@@ -1332,6 +1339,7 @@ def approve_dataset_upload(
         state_dir,
         authority=accept_unverified_authority,
         unpriced=accept_unpriced_cost,
+        unconfirmed=accept_unconfirmed_effects,
     )
 
 
@@ -1341,12 +1349,45 @@ def start_dataset_upload(
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Run a new original workflow once; existing operations are local lookups."""
     from yorunge.adapters.upload_api import start_upload
 
     _upload_options(config, profile)
     return start_upload(plan_id, lambda plan: _upload_context(config, profile, plan), state_dir)
+
+
+def resume_dataset_upload(
+    operation_id: str,
+    *,
+    prepare: bool = False,
+    accept_unverified_read: bool = False,
+    accept_unconfirmed_effects: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadResumeReport]:
+    """What an interrupted upload still needs; with ``prepare``, the plan that continues it.
+
+    The default is a read-only report: it answers with the same shape whether the source can be
+    continued or not (what rules it out is in ``blockers``) and writes nothing. ``prepare`` makes
+    the same observation and, only without blockers, saves the local plan; it is an error
+    (``continuation_not_possible``, or ``operation_conflict`` naming the operation in the way)
+    otherwise. ``accept_unverified_read`` is the human's choice to read the dataset on an explicit
+    attempt; ``accept_unconfirmed_effects`` belongs to ``prepare`` and to files whose last confirm
+    was sent without an answer.
+    """
+    from yorunge.adapters.upload_api import resume_upload
+
+    _upload_options(config, profile)
+    return resume_upload(
+        operation_id,
+        lambda plan: _upload_context(config, profile, plan),
+        state_dir,
+        prepare=prepare,
+        accept_unverified_read=accept_unverified_read,
+        accept_unconfirmed_effects=accept_unconfirmed_effects,
+    )
 
 
 def reconcile_dataset_upload(
@@ -1356,7 +1397,7 @@ def reconcile_dataset_upload(
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Inspect the same resource through a new bounded read; never resumes writes."""
     from yorunge.adapters.upload_api import recover_upload
 

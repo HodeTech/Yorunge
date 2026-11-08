@@ -644,12 +644,4 @@ class ContinuationNotPossible(OperationError):
         if not ordered or ordered != tuple(blockers) or "source_active" in ordered:
             # An active source or descendant is ``operation_conflict`` with the successor named.
             raise ValueError("closed, ordered, distinct blockers without source_active required")
-        super().__init__("continuation_not_possible", operation_id)
-        self.blockers = ordered
-
-    def envelope(self) -> dict[str, object]:
-        value = super().envelope()
-        details = value["details"]
-        assert isinstance(details, dict)
-        details["blockers"] = list(self.blockers)
-        return value
+        super().__init__("continuation_not_possible", operation_id, blockers=ordered)

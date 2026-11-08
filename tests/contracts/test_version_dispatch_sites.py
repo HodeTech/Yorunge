@@ -249,14 +249,12 @@ def test_every_site_has_a_known_owner_and_says_why():
     assert len(listed_sites()) == len(set(listed_sites()))
 
 
-def test_only_the_slices_still_to_come_own_open_sites():
-    # P02-3g has handled its own; v1-only, v2-only and v3-only are deliberate, permanent families
-    # (a module that serves one family alone), and an unrelated site reads the version of
-    # something that is not a family.
+def test_no_site_is_left_open():
+    # Every slice has handled its own sites. v1-only, v2-only and v3-only are deliberate, permanent
+    # families (a module that serves one family alone), and an unrelated site reads the version of
+    # something that is not a family: a new dispatch site must say which of these it is.
     closed = {"done", "v1-only", "v2-only", "v3-only", "unrelated"}
-    open_owners = {site["owner"] for site in LIST["sites"]} - closed
-    assert open_owners <= {"P02-3x", "P02-3i"}
-    assert "P02-3g" not in open_owners
+    assert {site["owner"] for site in LIST["sites"]} <= closed
 
 
 def test_the_dispatch_helpers_of_the_versions_module_name_every_family():
@@ -264,12 +262,6 @@ def test_the_dispatch_helpers_of_the_versions_module_name_every_family():
     text = (SOURCE / "domain" / "upload_versions.py").read_text()
     for name in ("DatasetContinuationPlanV3", "DatasetUploadApprovalV3", "TransferVerificationV3"):
         assert name in text
-
-
-@pytest.mark.parametrize("owner", ["P02-3x", "P02-3i"])
-def test_each_open_owner_names_a_card_that_exists(owner):
-    cards = list((ROOT / "docs" / "roadmap" / "tasks").glob(f"{owner.lower()}-*.md"))
-    assert len(cards) == 1, owner
 
 
 def test_every_decode_names_the_members_of_one_family_in_version_order():

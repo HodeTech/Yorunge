@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar, Literal, Protocol, Self
+from typing import Annotated, ClassVar, Literal, Protocol, Self, TypeAlias
 
 from pydantic import Field, field_validator, model_validator
 
@@ -29,7 +29,11 @@ from yorunge.domain.dataset_upload_v2 import (
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Identifier
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_costs import ChargeCategory, UploadRequestLimits
+from yorunge.domain.upload_costs import (
+    ChargeCategory,
+    ContinuationRequestLimits,
+    UploadRequestLimits,
+)
 from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 
@@ -253,6 +257,11 @@ class DatasetUploadSummaryV3(UploadWire):
         return self
 
 
+# What every public read and write of an upload answers with: an original upload's summary, or a
+# continuation's (told apart by ``schema_version``).
+UploadSummary: TypeAlias = DatasetUploadSummary | DatasetUploadSummaryV3
+
+
 class UploadReviewTarget(UploadWire):
     service_origin: str
     api_base_path: str
@@ -276,7 +285,7 @@ class UploadIntentReview(UploadWire):
     max_wire_bytes: ClassVar[int] = 32 * 1024
     schema_version: Literal[1]
     kind: Literal["dataset_upload_intent_review"]
-    summary: DatasetUploadSummary
+    summary: UploadSummary
     target: UploadReviewTarget
     selected_owner: UploadOwner
     selected_project_id: str
@@ -284,7 +293,7 @@ class UploadIntentReview(UploadWire):
     manifest: UploadManifestRef
     parameters: UploadParameters
     storage: UploadStoragePolicy
-    request_limits: UploadRequestLimits | None
+    request_limits: UploadRequestLimits | ContinuationRequestLimits | None
     prepared_at: str
     expires_at: str
 
@@ -304,6 +313,16 @@ class UploadIntentReview(UploadWire):
             raise ValueError("request limits must match source family")
         if instant(self.prepared_at) >= instant(self.expires_at):
             raise ValueError("positive plan interval required")
+        if isinstance(self.summary, DatasetUploadSummaryV3):
+            self._continuation_limits(self.summary)
+        elif isinstance(self.request_limits, ContinuationRequestLimits):
+            raise ValueError("an original upload has no continuation limits")
+        else:
+            self._original_limits()
+        self.encoded()
+        return self
+
+    def _original_limits(self) -> None:
         limits = self.request_limits
         if limits is not None:
             counts = StageGraphSpec(
@@ -315,12 +334,26 @@ class UploadIntentReview(UploadWire):
                 counts.confirm,
             ) or limits.max_upload_bytes != self.manifest.total_bytes:
                 raise ValueError("request quantities must match manifest")
-        self.encoded()
-        return self
+
+    def _continuation_limits(self, summary: DatasetUploadSummaryV3) -> None:
+        """A continuation sends M of the manifest's N files: its limits are those M, no create."""
+        limits = self.request_limits
+        if not isinstance(limits, ContinuationRequestLimits):
+            raise ValueError("a continuation has continuation limits")
+        if (
+            limits.files != summary.continuation_files
+            or summary.continuation_files + summary.remote_present_files != self.manifest.file_count
+            or limits.max_upload_bytes > self.manifest.total_bytes
+            or (
+                limits.files == self.manifest.file_count  # all of it is sent: all of its bytes
+                and limits.max_upload_bytes != self.manifest.total_bytes
+            )
+        ):
+            raise ValueError("continuation limits must match the manifest selection")
 
 
 class DatasetUploadsPage(UploadWire):
     max_wire_bytes: ClassVar[int] = 1024 * 1024
     schema_version: Literal[1]
-    uploads: Annotated[tuple[DatasetUploadSummary, ...], Field(max_length=100)]
+    uploads: Annotated[tuple[UploadSummary, ...], Field(max_length=100)]
     next_cursor: Annotated[str, Field(max_length=256)] | None

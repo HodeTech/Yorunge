@@ -4,8 +4,6 @@
   "v1-only",
   "v2-only",
   "v3-only",
-  "P02-3x",
-  "P02-3i",
   "unrelated"
  ],
  "sites": [
@@ -44,6 +42,42 @@
    "occurrence": 0,
    "owner": "done",
    "note": "the fresh check of a stage is taken for either family of plan"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_api.py",
+   "function": "approve_upload.approve",
+   "kind": "isinstance",
+   "text": "isinstance(_plan_of(state_dir, plan_id=plan_id), DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the public approve sends a continuation plan to its own approval gate; an original plan takes the original path"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_api.py",
+   "function": "start_upload.start",
+   "kind": "isinstance",
+   "text": "isinstance(_plan_of(state_dir, plan_id=plan_id), DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the public start sends a continuation plan to the continuation start; an original plan takes the original start"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_api.py",
+   "function": "resume_upload.resume",
+   "kind": "isinstance",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the source's own plan names the scope the resume context is loaded under: an original or a continuation plan is a source, a v1 plan is history"
+  },
+  {
+   "file": "src/yorunge/adapters/upload_continuation_approval.py",
+   "function": "_approval_input",
+   "kind": "type_is",
+   "text": "type(plan) is not DatasetContinuationPlanV3",
+   "occurrence": 0,
+   "owner": "v3-only",
+   "note": "the continuation approval gate serves continuation plans alone; an original plan is approved by read_approval_input"
   },
   {
    "file": "src/yorunge/adapters/upload_chain.py",
@@ -249,8 +283,8 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetUploadPlanV2)",
    "occurrence": 0,
-   "owner": "P02-3i",
-   "note": "the approval input reader is the original upload producer's and returns v2 plans; the continuation producer (UploadResumeRuntime) reads its own plan, and approving a continuation plan is the public surface's (P02-3i)"
+   "owner": "v2-only",
+   "note": "the original upload's approval input reader (it returns v2 plans); a continuation's approval has its own gate in adapters/upload_continuation_approval"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
@@ -285,8 +319,8 @@
    "kind": "isinstance",
    "text": "isinstance(plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3i",
-   "note": "the public result types name no continuation yet: the original summary refuses one (state_invalid) until P02-3i widens them to summary()"
+   "owner": "v2-only",
+   "note": "the original upload's projection (v1/v2): the public paths call summary(), which sends a continuation to its own; a caller that can only name an original upload is refused (state_invalid) rather than shown a continuation as legacy history"
   },
   {
    "file": "src/yorunge/adapters/upload_projection.py",
@@ -310,10 +344,10 @@
    "file": "src/yorunge/adapters/upload_projection.py",
    "function": "review",
    "kind": "isinstance",
-   "text": "isinstance(plan, DatasetUploadPlanV2)",
+   "text": "isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
-   "owner": "P02-3i",
-   "note": "the review type carries a v2 summary and v2 request limits (a continuation is refused through original_summary); its own review type and limits are P02-3i's"
+   "owner": "done",
+   "note": "a v2 or v3 plan carries request limits to review (the continuation's are those of the M files it sends); a v1 plan has none"
   },
   {
    "file": "src/yorunge/adapters/upload_read_access.py",
@@ -1187,6 +1221,24 @@
    "occurrence": 0,
    "owner": "unrelated",
    "note": "reads the identity-reset preview data's own schema version, not an upload family's"
+  },
+  {
+   "file": "src/yorunge/cli/upload.py",
+   "function": "_cost_text",
+   "kind": "version",
+   "text": "data.schema_version == 3",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "the cost line of a continuation names its own invocation (a continuation start), not the first one"
+  },
+  {
+   "file": "src/yorunge/cli/upload.py",
+   "function": "_selection_text",
+   "kind": "version",
+   "text": "data.summary.schema_version != 3",
+   "occurrence": 0,
+   "owner": "done",
+   "note": "only a continuation sends part of the manifest: it shows which count and how many bytes"
   },
   {
    "file": "src/yorunge/domain/upload_resume_report.py",

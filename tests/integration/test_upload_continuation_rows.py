@@ -211,11 +211,18 @@ def test_a_record_of_a_continuation_is_written_with_its_own_reservation_and_rule
         assert error.value.code == "operation_conflict"
 
 
-def test_the_original_projections_refuse_a_continuation_instead_of_calling_it_legacy():
+def test_the_original_projection_refuses_a_continuation_instead_of_calling_it_legacy():
     view = VersionedTransferView(PLAN, APPROVAL, None)
     refuses(lambda: original_summary(view))
-    refuses(lambda: review(view))
     assert type(summary(view)) is DatasetUploadSummaryV3  # its own summary is the other function
+
+
+def test_the_review_of_a_continuation_shows_the_files_it_sends_and_none_it_does_not():
+    shown = review(VersionedTransferView(PLAN, APPROVAL, None))
+    assert type(shown.summary) is DatasetUploadSummaryV3
+    assert shown.request_limits == PLAN.request_limits  # the M files, no create, no link
+    assert (shown.manifest, shown.root) == (PLAN.manifest, PLAN.root.anchor)
+    assert shown.summary.continuation_files == PLAN.request_limits.files
 
 
 EARLIER = timestamp(instant(RECORD.created_at) - timedelta(seconds=1))

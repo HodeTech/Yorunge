@@ -19,7 +19,7 @@ from yorunge.adapters.platform_upload_reader import (
     BaselineCheck,
 )
 from yorunge.adapters.state import open_existing_store
-from yorunge.adapters.upload_chain import ResumeSource
+from yorunge.adapters.upload_chain import ResumeSource, source_journal
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.adapters.upload_input_files import UploadInputObservation, capture_upload_input
 from yorunge.adapters.upload_preparation import UploadPreparationRuntime, _limits
@@ -57,11 +57,7 @@ from yorunge.domain.upload_resume import (
     Classification,
     ContinuationNotPossible,
     RemoteInventory,
-    chain_blockers,
     classify,
-    descendant_verdict,
-    merge_chain,
-    source_blockers,
 )
 from yorunge.domain.upload_resume_report import (
     DatasetUploadResumeReport,
@@ -193,15 +189,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
     @staticmethod
     def _journal(source: ResumeSource) -> tuple[ChainSummary, tuple[Blocker, ...], str | None]:
         """What the journal alone says: the lineage, what rules the source out, the successor."""
-        try:
-            chain = merge_chain(source.chain.journals, source.manifest)
-        except ValueError:
-            raise YorungeError("state_invalid") from None
-        verdict = descendant_verdict(source.chain.descendants)
-        blockers = _ordered(
-            {*source_blockers(source.chain.source, verdict), *chain_blockers(chain)}
-        )
-        return chain, blockers, verdict.related_operation_id
+        return source_journal(source)
 
     def _still_open(self, operation_id: str) -> None:
         """Nothing was admitted or begun on the source while the dataset was being read."""

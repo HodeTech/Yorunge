@@ -24,6 +24,7 @@ from yorunge.domain.errors import (
 )
 from yorunge.domain.models import Model, Result
 from yorunge.domain.state import canonical_uuid
+from yorunge.domain.upload_resume import BLOCKERS, Blocker
 from yorunge.domain.wire_limits import JSON_LIMIT
 
 MAX_SEQUENCE = 2**63 - 1
@@ -67,6 +68,20 @@ class OperationErrorDetails(Model):
     capacity_kind: CapacityKind | None
 
 
+class ContinuationErrorDetails(Model):
+    """Why a continuation was refused: the closed, ordered blockers; the report has the detail."""
+
+    reason_code: ErrorCode
+    capacity_kind: None
+    blockers: Annotated[tuple[Blocker, ...], Field(min_length=1, max_length=len(BLOCKERS))]
+
+    @model_validator(mode="after")
+    def closed_order(self) -> ContinuationErrorDetails:
+        if self.blockers != tuple(name for name in BLOCKERS if name in self.blockers):
+            raise ValueError("closed, ordered, distinct blockers required")
+        return self
+
+
 class ApprovalErrorDetails(Model):
     plan_id: str
     approval_id: str
@@ -86,7 +101,9 @@ class ApprovalErrorDetails(Model):
         return value
 
 
-ErrorDetails: TypeAlias = EmptyErrorDetails | OperationErrorDetails | ApprovalErrorDetails
+ErrorDetails: TypeAlias = (
+    EmptyErrorDetails | OperationErrorDetails | ContinuationErrorDetails | ApprovalErrorDetails
+)
 
 
 class ErrorEnvelope(Model):
@@ -125,6 +142,11 @@ class ErrorEnvelope(Model):
     @model_validator(mode="after")
     def local_error(self) -> ErrorEnvelope:
         message = MESSAGES[self.code]
+        if isinstance(self.details, ContinuationErrorDetails):
+            if self.code != "continuation_not_possible":
+                raise ValueError("blockers belong to continuation_not_possible alone")
+        elif self.code == "continuation_not_possible":
+            raise ValueError("continuation_not_possible names its blockers")
         if isinstance(self.details, OperationErrorDetails):
             if (self.details.capacity_kind is not None) != (
                 self.code == "operation_capacity_exceeded"
@@ -136,7 +158,9 @@ class ErrorEnvelope(Model):
             message = ApprovalNotEffective(
                 self.details.plan_id, self.details.approval_id, self.details.reason_code
             ).message
-        elif self.operation_id is not None:
+        elif self.operation_id is not None and not isinstance(
+            self.details, ContinuationErrorDetails
+        ):
             raise ValueError("bound error requires operation details")
         object.__setattr__(self, "message", message)
         return self
@@ -218,9 +242,16 @@ def error_payload(error: YorungeError, *, operation_id: str | None = None) -> Er
             if operation_id is not None and error.operation_id != operation_id:
                 raise ValueError("conflicting operation identities")
             operation_id = error.operation_id
-        details = OperationErrorDetails(
-            reason_code=error.reason_code, capacity_kind=error.capacity_kind
-        )
+        if error.blockers is not None:
+            details = ContinuationErrorDetails(
+                reason_code=error.reason_code,
+                capacity_kind=None,
+                blockers=cast("tuple[Blocker, ...]", error.blockers),
+            )
+        else:
+            details = OperationErrorDetails(
+                reason_code=error.reason_code, capacity_kind=error.capacity_kind
+            )
     elif isinstance(error, ApprovalNotEffective) and operation_id is None:
         details = ApprovalErrorDetails(
             plan_id=error.plan_id,

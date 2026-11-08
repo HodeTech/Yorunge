@@ -317,12 +317,18 @@ def test_union_selects_only_the_expected_event_variant() -> None:
     assert isinstance(third, ErrorEvent)
 
 
-@pytest.mark.parametrize("code", list(MESSAGES))
+@pytest.mark.parametrize("code", [code for code in MESSAGES if code != "continuation_not_possible"])
 def test_all_existing_plain_error_envelopes_are_preserved(code: ErrorCode) -> None:
     error = YorungeError(code)
     payload = error_payload(error)
     assert isinstance(payload.details, EmptyErrorDetails)
     assert payload.model_dump(mode="json") == error.envelope()
+
+
+def test_a_refused_continuation_has_no_plain_envelope_because_it_names_its_blockers() -> None:
+    # (its own envelope, with the blockers, is pinned in test_continuation_error_details.py)
+    with pytest.raises(ValidationError):
+        error_payload(YorungeError("continuation_not_possible"))
 
 
 @pytest.mark.parametrize("capacity_kind", ["store", "attempt", "transition"])

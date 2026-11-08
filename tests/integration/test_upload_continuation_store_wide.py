@@ -849,7 +849,7 @@ def test_the_repository_shows_and_lists_a_continuation_next_to_its_root(tmp_path
         )
 
 
-def test_the_public_results_name_no_continuation_yet_so_they_fail_closed(tmp_path):
+def test_the_public_results_show_a_continuation_and_the_reads_move_no_row(tmp_path):
     root_dir = tmp_path / "state"
     tables = ("upload_plans", "upload_approvals", "upload_operations", "upload_controls")
     tables += ("upload_stage_intents", "upload_stage_receipts", "upload_verifications")
@@ -866,25 +866,25 @@ def test_the_public_results_name_no_continuation_yet_so_they_fail_closed(tmp_pat
             ]
 
     before = dump()
-    calls = (
-        lambda: api.show_dataset_upload(plan_id=plan_id, state_dir=root_dir),
-        lambda: api.show_dataset_upload(operation_id=operation_id, state_dir=root_dir),
-        lambda: api.review_dataset_upload(plan_id, state_dir=root_dir),
-        lambda: api.list_dataset_uploads(plan_id=plan_id, state_dir=root_dir),
-        lambda: api.list_dataset_uploads(state_dir=root_dir),
-        lambda: api.revoke_dataset_upload(plan_id, state_dir=root_dir),
+    by_plan = api.show_dataset_upload(plan_id=plan_id, state_dir=root_dir).data
+    by_operation = api.show_dataset_upload(operation_id=operation_id, state_dir=root_dir).data
+    assert by_plan == by_operation and type(by_plan) is DatasetUploadSummaryV3
+    assert by_plan.operation_id == operation_id and by_plan.plan_id == plan_id
+    shown = api.review_dataset_upload(plan_id, state_dir=root_dir).data
+    assert shown.summary == by_plan and type(shown.request_limits).__name__ == (
+        "ContinuationRequestLimits"
     )
-    for call in calls:
-        assert code_of(call) == "state_invalid"
-    assert dump() == before  # every refusal is a read: not one row of the store moved
-    # Only what touches the continuation is closed: its root is an ordinary plan of the same store.
+    page = api.list_dataset_uploads(plan_id=plan_id, state_dir=root_dir).data
+    assert page.uploads == (by_plan,)
+    everything = api.list_dataset_uploads(state_dir=root_dir).data
     root_plan = root["plan"]["plan_id"]
+    assert {entry.plan_id for entry in everything.uploads} == {root_plan, plan_id}
+    assert by_plan in everything.uploads
+    assert dump() == before  # every read is a read: not one row of the store moved
+    revoked = api.revoke_dataset_upload(plan_id, state_dir=root_dir).data
+    assert type(revoked) is DatasetUploadSummaryV3 and revoked.approval_status == "revoked"
+    # its root is an ordinary plan of the same store, and the store still validates
     assert api.show_dataset_upload(plan_id=root_plan, state_dir=root_dir).data.plan_id == root_plan
-    assert (
-        api.review_dataset_upload(root_plan, state_dir=root_dir).data.summary.plan_id == root_plan
-    )
-    page = api.list_dataset_uploads(plan_id=root_plan, state_dir=root_dir).data
-    assert [entry.plan_id for entry in page.uploads] == [root_plan]
     with open_store(root_dir, timeout=60) as store:
         validate_uploads(store.connection)
 
@@ -1137,10 +1137,10 @@ def test_the_summary_of_a_continuation_names_no_path_baseline_or_provider_payloa
             assert secret not in text, secret
 
 
-def test_the_original_projections_refuse_a_continuation_instead_of_calling_it_legacy(tmp_path):
+def test_the_original_projection_refuses_a_continuation_and_the_review_shows_it(tmp_path):
     with world(tmp_path, live()) as (store, _, (item,)):
         view = read_any_view(store.connection, item.plan["plan_id"])
-        assert code_of(lambda: original_summary(view)) == "state_invalid"
-        # The review type carries a v2 summary and v2 request limits; the continuation's own is
-        # the user surface's (P02-3i), so it stays closed here and never falls back to "legacy".
-        assert code_of(lambda: review(view)) == "state_invalid"
+        assert code_of(lambda: original_summary(view)) == "state_invalid"  # never "legacy history"
+        shown = review(view)
+        assert type(shown.summary) is DatasetUploadSummaryV3
+        assert shown.request_limits == view.plan.request_limits and shown.summary == summary(view)

@@ -486,12 +486,15 @@ def test_a_successor_found_inside_the_session_is_named_too(
         assert source_record(data, operation_id) == before
 
 
-# --- the public reconcile does not reach a continuation until its results are named ---------------
+# --- the public reconcile reaches a continuation like any other upload ----------------------------
 
 
-def test_the_public_reconcile_refuses_a_continuation_before_it_reads_or_writes(
+def test_the_public_reconcile_asks_a_continuation_for_the_choice_before_it_reads_or_writes(
     prepared_input, certificates, monkeypatch
 ):
+    """P02-3i removed the guard that refused a continuation: it is an upload like any other, so the
+    missing consent is the same `approval_required` (naming the operation), before any request.
+    The closing itself is pinned through the public API in test_upload_continuation_public."""
     data, provider = three_files(prepared_input)
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
@@ -499,15 +502,15 @@ def test_the_public_reconcile_refuses_a_continuation_before_it_reads_or_writes(
         operation_id = left_unproved(data, provider, server, report.plan_id, monkeypatch)
         before, requests = journal(data, report.plan_id), len(server.requests)
 
-        def forbidden(plan):
-            pytest.fail("a refused reconcile asks for no context")
+        with pytest.raises(OperationError) as refused:
+            recover_upload(
+                operation_id, lambda plan: (data[3], data[4]), Path(data[0]), accepted=False
+            )
 
-        with pytest.raises(YorungeError) as refused:
-            recover_upload(operation_id, forbidden, Path(data[0]), accepted=True)
-
-        # The result types name no continuation yet (P02-3i): the record is not closed behind
-        # a summary that then cannot be shown.
-        assert refused.value.code == "state_invalid"
+        assert (refused.value.code, refused.value.operation_id) == (
+            "approval_required",
+            operation_id,
+        )
         assert len(server.requests) == requests and journal(data, report.plan_id) == before
 
 

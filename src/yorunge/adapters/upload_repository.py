@@ -1245,6 +1245,17 @@ class StateUploads:
         A continuation that was cancelled ran nothing, and an admitted one whose lease lapsed is
         cancelled by the next prepare; neither is a successor (``descendant_verdict``'s rule, the
         one the resume report and the admission gate use). Any other is named in the conflict.
+
+        The scan reads every operation row of the store and the plan of each: a row that cannot be
+        decoded might be a successor, so the gate fails closed (``state_invalid``) rather than let a
+        source with an unreadable neighbour be changed.
+
+        Two gates are enough because nothing else can change a source that has a successor: every
+        other writer of an existing operation row is guarded by the lease (``_owner``) and a
+        successor is admitted only while no lease is active; ``freeze_source`` changes ``running``
+        sources only (a source with a successor is ``unknown``); and ``read_failed`` without an
+        owner is reached only before ``acquire_read``, for a source whose graph is complete, which
+        cannot have a stored successor (``save`` and ``admit`` re-run the chain checks).
         """
         verdict = descendant_verdict(
             stored_snapshot(self.connection, operation_id, stamp).descendants

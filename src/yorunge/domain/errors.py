@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Literal
 
 ErrorCode = Literal[
@@ -353,6 +354,7 @@ class OperationError(YorungeError):
         *,
         reason_code: ErrorCode | None = None,
         capacity_kind: Literal["store", "attempt", "transition"] | None = None,
+        blockers: Sequence[str] | None = None,
     ) -> None:
         from yorunge.domain.state import canonical_uuid
 
@@ -360,6 +362,8 @@ class OperationError(YorungeError):
             canonical_uuid(operation_id)
         if (capacity_kind is not None) != (code == "operation_capacity_exceeded"):
             raise ValueError("capacity kind required only for capacity errors")
+        if (blockers is not None) != (code == "continuation_not_possible"):
+            raise ValueError("blockers belong to continuation_not_possible alone")
         if capacity_kind not in (None, "store", "attempt", "transition"):
             raise ValueError("closed capacity kind required")
         if code not in MESSAGES or (reason_code is not None and reason_code not in MESSAGES):
@@ -368,14 +372,19 @@ class OperationError(YorungeError):
         self.operation_id = operation_id
         self.reason_code = reason_code or code
         self.capacity_kind = capacity_kind
+        # The closed names of what ruled a continuation out (the resume report shows the detail).
+        self.blockers = None if blockers is None else tuple(blockers)
 
     def envelope(self) -> dict[str, object]:
         value = super().envelope()
         value["operation_id"] = self.operation_id
-        value["details"] = {
+        details: dict[str, object] = {
             "reason_code": self.reason_code,
             "capacity_kind": self.capacity_kind,
         }
+        if self.blockers is not None:
+            details["blockers"] = list(self.blockers)
+        value["details"] = details
         return value
 
 

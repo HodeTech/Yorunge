@@ -84,8 +84,8 @@ def _continuation_summary(
 def original_summary(view: VersionedTransferView) -> DatasetUploadSummary:
     """The summary of a v1/v2 upload; a continuation is refused, never called "legacy history".
 
-    The public result types name no continuation yet: they call this one, so a stored continuation
-    fails closed there until P02-3i widens them to :func:`summary`.
+    The public paths call :func:`summary`, which sends a continuation to its own projection; this
+    one stays closed for a caller that can only name an original upload.
     """
     plan, record, approval = view.plan, view.operation, view.approval
     if isinstance(plan, DatasetContinuationPlanV3):
@@ -132,12 +132,16 @@ def summary(view: VersionedTransferView) -> DatasetUploadSummary | DatasetUpload
 
 
 def review(view: VersionedTransferView) -> UploadIntentReview:
-    """The review of a v1/v2 upload; the continuation's own review type is P02-3i's."""
+    """The review of a stored upload of any family: the summary, the target and the exact intent.
+
+    A continuation shows the limits of the M files it sends (no create, no link) and, through its
+    summary, which operation it continues and how many files are already on the provider.
+    """
     plan = view.plan
     return UploadIntentReview(
         schema_version=1,
         kind="dataset_upload_intent_review",
-        summary=original_summary(view),
+        summary=summary(view),
         target=UploadReviewTarget(
             service_origin=plan.scope.service_origin,
             api_base_path=plan.scope.api_base_path,
@@ -149,7 +153,11 @@ def review(view: VersionedTransferView) -> UploadIntentReview:
         manifest=plan.manifest,
         parameters=plan.parameters,
         storage=plan.storage,
-        request_limits=plan.request_limits if isinstance(plan, DatasetUploadPlanV2) else None,
+        request_limits=(
+            plan.request_limits
+            if isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
+            else None
+        ),
         prepared_at=plan.prepared_at,
         expires_at=plan.expires_at,
     )

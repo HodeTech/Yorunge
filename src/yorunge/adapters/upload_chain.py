@@ -24,7 +24,18 @@ from yorunge.domain.dataset_upload import DatasetUploadPlan
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
-from yorunge.domain.upload_resume import DescendantFact, OperationJournal, SourceFacts
+from yorunge.domain.upload_resume import (
+    BLOCKERS,
+    Blocker,
+    ChainSummary,
+    DescendantFact,
+    OperationJournal,
+    SourceFacts,
+    chain_blockers,
+    descendant_verdict,
+    merge_chain,
+    source_blockers,
+)
 from yorunge.domain.upload_resume_report import QuotaCounters
 from yorunge.domain.upload_versions import UploadPlan, UploadRecord
 
@@ -166,4 +177,22 @@ def resume_source(connection: sqlite3.Connection, operation_id: str, stamp: Stam
         baseline_digest=None if baseline is None else baseline_digest(baseline),
         intent_digest=root.operation.intent_digest,
         quota=quota_used(connection),
+    )
+
+
+def source_journal(source: ResumeSource) -> tuple[ChainSummary, tuple[Blocker, ...], str | None]:
+    """What the journal alone says: the lineage, what rules the source out, the successor.
+
+    Nothing is asked of the folder or the provider: the facts are those of one database snapshot.
+    """
+    try:
+        chain = merge_chain(source.chain.journals, source.manifest)
+    except ValueError:
+        raise YorungeError("state_invalid") from None
+    verdict = descendant_verdict(source.chain.descendants)
+    held = {*source_blockers(source.chain.source, verdict), *chain_blockers(chain)}
+    return (
+        chain,
+        tuple(blocker for blocker in BLOCKERS if blocker in held),
+        verdict.related_operation_id,
     )

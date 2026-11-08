@@ -169,6 +169,9 @@ class _ReadEnvironment:
     def failure(self, error: BaseException) -> OperationError:
         if isinstance(error, SourceHasSuccessor):
             # The successor, not the source: and still marked as such, for the outer re-binding.
+            # Only the gates before the read lease raise it (``inspect`` and ``acquire_read``
+            # itself), so nothing is held that would need releasing and the source is untouched.
+            assert self.owner is None
             return SourceHasSuccessor(error.operation_id)
         code, operation_id = _source_code(error), self.record.operation_id
         reason = error.reason_code if isinstance(error, OperationError) else None

@@ -2,7 +2,8 @@
 
 The environment of an original upload (v2) and that of a continuation (v3) are kept apart so that
 the verified original path stays byte-identical, but what they do when a stage fails, how they
-open the store and when they renew a lease is the same by design. Each shared method is compared
+open the store, how they admit and when they renew a lease is the same by design (admission binds
+the same terminal counter to the operation it won). Each shared method is compared
 as a syntax tree, with the docstring dropped and the record type named alike, so that a change to
 one of them without the other fails here instead of becoming two failure maps.
 
@@ -21,7 +22,7 @@ import pytest
 from yorunge.adapters.upload_continuation import ContinuationStages
 from yorunge.adapters.upload_original import _Environment
 
-SHARED = ("repository", "scope", "write_owned", "_renew_for_probe", "arm", "_stop")
+SHARED = ("repository", "scope", "write_owned", "admit", "_renew_for_probe", "arm", "_stop")
 CHECK_ONLY = "not graph_of(self.plan).files or self._sent_nothing(operation_id)"
 
 
@@ -70,5 +71,5 @@ def test_the_failure_path_differs_only_by_the_branch_of_a_continuation_that_send
 
 def test_the_comparison_sees_a_difference_when_there_is_one():
     # A guard against a comparison that would pass for any two methods.
-    assert normalised(_Environment.admit) != normalised(ContinuationStages.admit)
     assert normalised(_Environment.prepare) != normalised(ContinuationStages.prepare)
+    assert normalised(_Environment.publish) != normalised(ContinuationStages.publish)

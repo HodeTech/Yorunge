@@ -11,14 +11,18 @@ from typing import TYPE_CHECKING, TextIO, cast
 from yorunge.cli.output import _silence_failed_descriptor, write_utf8
 
 if TYPE_CHECKING:
+    from yorunge.adapters.upload_public import ResumeHint
     from yorunge.application.upload_progress import UploadProgress
     from yorunge.cli import Parser
     from yorunge.domain.models import Model, Result
     from yorunge.domain.upload_public import (
         DatasetUploadsPage,
         DatasetUploadSummary,
+        DatasetUploadSummaryV3,
         UploadIntentReview,
+        UploadSummary,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
 LOCAL = {"list", "show", "review", "revoke"}
 SINGLETONS = {
@@ -42,7 +46,9 @@ SINGLETONS = {
     "--confirm",
     "--accept-unverified-authority",
     "--accept-unpriced-cost",
+    "--accept-unconfirmed-effects",
     "--accept-unverified-read",
+    "--prepare",
     "--limit",
     "--cursor",
     "--license",
@@ -81,6 +87,7 @@ def configure(upload: Parser) -> None:
         "list": "Yerel plan ve iş özetlerini göster",
         "show": "Plan veya operation ID ile kayıtlı özeti göster",
         "reconcile": "Aynı işi yalnız uzak okumayla uzlaştır",
+        "resume": "Yarım kalan aktarımın ne gerektirdiğini raporla; --prepare planı kaydeder",
     }
     for action, description in descriptions.items():
         command = actions.add_parser(action, help=description, description=description)
@@ -106,6 +113,8 @@ def _arguments(command: argparse.ArgumentParser, action: str) -> None:
     elif action == "reconcile":
         command.add_argument("--operation-id", required=True)
         command.add_argument("--accept-unverified-read", action="store_true")
+    elif action == "resume":
+        _resume_arguments(command)
     else:
         command.add_argument("--plan-id", required=True)
         if action == "approve":
@@ -114,6 +123,39 @@ def _arguments(command: argparse.ArgumentParser, action: str) -> None:
             )
             command.add_argument("--accept-unverified-authority", action="store_true")
             command.add_argument("--accept-unpriced-cost", action="store_true")
+            command.add_argument(
+                "--accept-unconfirmed-effects",
+                action="store_true",
+                help="Yalnız devam planı: son onay isteği gitmiş olabilecek dosyaların yeniden "
+                "gönderilmesini kabul et",
+            )
+
+
+def _resume_arguments(command: argparse.ArgumentParser) -> None:
+    command.epilog = (
+        "Varsayılan salt okuma raporudur: yerel plan yazmaz, uzak yazma yapmaz ve devam edilsin "
+        'ya da edilemesin exit 0 verir (neden "Engeller" altındadır). Dataset’in okunması '
+        "reconcile ile aynı açık seçimi ister (--accept-unverified-read). --prepare aynı gözlemi "
+        "yapar ve engel yoksa devam planını kaydeder; engel varsa hata verir. Plan sonra "
+        "review, approve ve start ile ilerler."
+    )
+    command.add_argument("--operation-id", required=True, help="Yarım kalan kaynak işin kimliği")
+    command.add_argument(
+        "--accept-unverified-read",
+        action="store_true",
+        help="Dataset’i doğrulanmamış açık okuma denemesiyle okumayı kabul et",
+    )
+    command.add_argument(
+        "--prepare",
+        action="store_true",
+        help="Engel yoksa devam planını yerel olarak kaydet (yalnız yerel yazma)",
+    )
+    command.add_argument(
+        "--accept-unconfirmed-effects",
+        action="store_true",
+        help="Yalnız --prepare ile: son onay isteği gitmiş olabilecek dosyaların yeniden "
+        "gönderilmesini kabul et",
+    )
 
 
 def _plan_arguments(command: argparse.ArgumentParser) -> None:
@@ -203,7 +245,13 @@ def _plan(args: argparse.Namespace) -> Result[DatasetUploadSummary]:
 
 def dispatch(
     args: argparse.Namespace,
-) -> Result[DatasetUploadSummary] | Result[UploadIntentReview] | Result[DatasetUploadsPage]:
+) -> (
+    Result[DatasetUploadSummary]
+    | Result[UploadSummary]
+    | Result[UploadIntentReview]
+    | Result[DatasetUploadsPage]
+    | Result[DatasetUploadResumeReport]
+):
     from yorunge import api
     from yorunge.cli import reject_context
 
@@ -220,9 +268,17 @@ def dispatch(
             plan_id=args.plan_id, limit=args.limit, cursor=args.cursor, state_dir=state
         )
     if action == "show":
-        return api.show_dataset_upload(
+        shown = api.show_dataset_upload(
             plan_id=args.plan_id, operation_id=args.operation_id, state_dir=state
         )
+        if options.get("output", "text") == "text" and shown.data.operation_status == "unknown":
+            # What the journal alone says of continuing: only the text of an unknown operation
+            # uses it (the summary itself does not change).
+            from yorunge.adapters.upload_public import resume_hint
+
+            assert shown.data.operation_id is not None
+            args.resume_hint = resume_hint(state, shown.data.operation_id)
+        return shown
     if action == "review":
         return api.review_dataset_upload(args.plan_id, state_dir=state)
     if action == "revoke":
@@ -234,11 +290,20 @@ def dispatch(
             args.confirm,
             accept_unverified_authority=args.accept_unverified_authority,
             accept_unpriced_cost=args.accept_unpriced_cost,
+            accept_unconfirmed_effects=args.accept_unconfirmed_effects,
             **context,
         )
     if action == "reconcile":
         return api.reconcile_dataset_upload(
             args.operation_id, accept_unverified_read=args.accept_unverified_read, **context
+        )
+    if action == "resume":
+        return api.resume_dataset_upload(
+            args.operation_id,
+            prepare=args.prepare,
+            accept_unverified_read=args.accept_unverified_read,
+            accept_unconfirmed_effects=args.accept_unconfirmed_effects,
+            **context,
         )
     from yorunge.application.upload_progress import observe_upload
 
@@ -248,22 +313,33 @@ def dispatch(
 
 
 def operation_id(data: Model) -> str | None:
-    from yorunge.domain.upload_public import DatasetUploadSummary, UploadIntentReview
+    from yorunge.domain.upload_public import (
+        DatasetUploadSummary,
+        DatasetUploadSummaryV3,
+        UploadIntentReview,
+    )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
-    if isinstance(data, DatasetUploadSummary):
+    if isinstance(data, DatasetUploadResumeReport):
+        return data.source_operation_id  # the report is about the source it was asked for
+    if isinstance(data, DatasetUploadSummary | DatasetUploadSummaryV3):
         return data.operation_id
     return data.summary.operation_id if isinstance(data, UploadIntentReview) else None
 
 
-def text(data: Model) -> str:
+def text(data: Model, hint: ResumeHint | None = None) -> str:
     from yorunge.domain.upload_public import (
         DatasetUploadsPage,
         DatasetUploadSummary,
+        DatasetUploadSummaryV3,
         UploadIntentReview,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
     if isinstance(data, UploadIntentReview):
         return _review_text(data)
+    if isinstance(data, DatasetUploadResumeReport):
+        return _resume_text(data)
     if isinstance(data, DatasetUploadsPage):
         rows = [
             f"{p.plan_id}  {p.operation_id or '-'}  "
@@ -280,18 +356,36 @@ def text(data: Model) -> str:
         if data.next_cursor is not None:
             rows.append(f"Sonraki sayfa: --cursor {data.next_cursor}")
         return "\n".join(rows)
-    if not isinstance(data, DatasetUploadSummary):
+    if not isinstance(data, DatasetUploadSummary | DatasetUploadSummaryV3):
         raise TypeError("upload result type required")
-    return "\n".join(_summary_text(data))
+    return "\n".join(_summary_text(data, hint))
 
 
-def _summary_text(data: DatasetUploadSummary) -> list[str]:
+def _continuation_text(data: DatasetUploadSummaryV3) -> list[str]:
+    """What makes a continuation what it is: whose remainder it sends, and how much."""
+    lines = [
+        f"Devam: {data.continuation_of} işinin kalanını gönderir; {data.continuation_files} dosya "
+        f"gönderilir, {data.remote_present_files} dosya Platform’da zaten görülüyor."
+    ]
+    if data.uncertain_files:
+        lines.append(
+            f"Gönderilecek dosyalardan {data.uncertain_files} tanesinin son onay isteği gitmiş "
+            "olabilir (belirsiz); onay bunun için ayrı bir seçim ister."
+        )
+    return lines
+
+
+def _summary_text(data: UploadSummary, hint: ResumeHint | None = None) -> list[str]:
+    from yorunge.domain.upload_public import DatasetUploadSummaryV3
+
     lines = [
         f"Plan: {data.plan_id}",
         f"Digest: {data.plan_digest}",
         f"Plan durumu: {PLAN_STATES[data.plan_status]}",
     ]
-    if data.legacy_history_only:
+    if isinstance(data, DatasetUploadSummaryV3):
+        lines.extend(_continuation_text(data))
+    elif data.legacy_history_only:
         lines.append("Tarihsel kayıt; yeni yazma kapalı.")
     if data.approval_status is not None:
         lines.append(
@@ -306,7 +400,12 @@ def _summary_text(data: DatasetUploadSummary) -> list[str]:
     if data.dataset_id is not None:
         lines.append(f"Veri seti: {data.dataset_id}")
     if data.verification_level == "metadata":
-        lines.append("Dosya metadata eşliği doğrulandı; uzak byte’lar indirilip hash’lenmedi.")
+        lines.append(
+            "Veri setinin bütün dosyalarının metadata eşliği doğrulandı; uzak byte’lar "
+            "indirilip hash’lenmedi."
+            if isinstance(data, DatasetUploadSummaryV3)
+            else "Dosya metadata eşliği doğrulandı; uzak byte’lar indirilip hash’lenmedi."
+        )
     if not data.authority_verified:
         lines.append("Yazma yetkisi doğrulanmış sayılmaz.")
     else:
@@ -316,13 +415,13 @@ def _summary_text(data: DatasetUploadSummary) -> list[str]:
         lines.append("Riskler: " + "; ".join(RISKS[risk] for risk in data.risks))
     if data.blockers:
         lines.append("Engeller: " + "; ".join(BLOCKERS[blocker] for blocker in data.blockers))
-    lines.extend(_next_text(data))
+    lines.extend(_next_text(data, hint))
     return lines
 
 
-def _next_text(data: DatasetUploadSummary) -> list[str]:
+def _next_text(data: UploadSummary, hint: ResumeHint | None = None) -> list[str]:
     if data.operation_id is not None:
-        return _unknown_text(data) if data.operation_status == "unknown" else []
+        return _unknown_text(data, hint) if data.operation_status == "unknown" else []
     lines = [f"İncele: yorunge datasets upload review --plan-id {data.plan_id}"]
     if data.legacy_history_only or data.blockers:
         if data.blockers:
@@ -337,7 +436,31 @@ def _next_text(data: DatasetUploadSummary) -> list[str]:
     return lines
 
 
-def _unknown_text(data: DatasetUploadSummary) -> list[str]:
+def _continue_text(data: UploadSummary, hint: ResumeHint | None) -> list[str]:
+    """How to go on from an unknown operation, as far as its own journal can tell."""
+    if hint is None:
+        return []
+    identity = data.operation_id
+    if not hint.blockers:
+        return [
+            f"Devam için: yorunge datasets upload resume --operation-id {identity} "
+            "--accept-unverified-read",
+            "Bu bir salt okuma raporudur: ne kaldığını gösterir, hiçbir şey göndermez ve yazmaz; "
+            "--prepare ile devam planı kaydedilir.",
+        ]
+    lines = ["Devam şu an mümkün değil (yerel kayda göre):"]
+    for name in hint.blockers:
+        reason, step = BLOCKER_TEXT[name]
+        lines.extend((f"- {name}: {reason}", f"  Sonraki adım: {step}"))
+    if hint.related_operation_id is not None:
+        lines.append(
+            f"Devamı: {hint.related_operation_id} — yorunge datasets upload show "
+            f"--operation-id {hint.related_operation_id}"
+        )
+    return lines
+
+
+def _unknown_text(data: UploadSummary, hint: ResumeHint | None = None) -> list[str]:
     lines = [
         f"İncele: yorunge datasets upload show --operation-id {data.operation_id}",
         "Aynı --state-dir ve uzlaştırmada aynı --config/--profile seçimini koruyun.",
@@ -357,10 +480,11 @@ def _unknown_text(data: DatasetUploadSummary) -> list[str]:
                 "eksik receipt okuma ile doldurulmaz.",
             )
         )
+    lines.extend(_continue_text(data, hint))
     return lines
 
 
-def _approval_text(data: DatasetUploadSummary) -> list[str]:
+def _approval_text(data: UploadSummary) -> list[str]:
     lines = []
     if data.approval_status is None:
         command = (
@@ -377,6 +501,11 @@ def _approval_text(data: DatasetUploadSummary) -> list[str]:
                 "Sayısal CR tavanı olmamasını kabul ediyorsanız ayrıca "
                 "--accept-unpriced-cost ekleyin."
             )
+        if getattr(data, "uncertain_files", 0):
+            lines.append(
+                "Son onay isteği gitmiş olabilecek dosyaların yeniden gönderilmesini kabul "
+                "ediyorsanız ayrıca --accept-unconfirmed-effects ekleyin."
+            )
         lines.append(command)
     elif data.approval_status == "approved":
         lines.append(f"Başlat: yorunge datasets upload start --plan-id {data.plan_id}")
@@ -390,7 +519,7 @@ def _credits(micros: int) -> str:
     return f"{whole}.{fraction:06d}"
 
 
-def _cost_text(data: DatasetUploadSummary) -> list[str]:
+def _cost_text(data: UploadSummary) -> list[str]:
     lines = []
     if data.budget_micros is not None:
         lines.append(f"CR bütçesi: {_credits(data.budget_micros)} CR")
@@ -402,9 +531,10 @@ def _cost_text(data: DatasetUploadSummary) -> list[str]:
         if data.cost_policy == "bounded_required":
             lines.append("Bütçe, güncel fiyat üst sınırı olmadan yürütme izni vermez.")
         return lines
+    scope = "Devam başlatma" if data.schema_version == 3 else "İlk başlatma"
     lines.extend(
         (
-            f"İlk başlatma maliyet üst sınırı: {_credits(bound.maximum_micros)} CR",
+            f"{scope} maliyet üst sınırı: {_credits(bound.maximum_micros)} CR",
             f"Ücret dönemi: {bound.charge_period_start} — {bound.charge_period_end}",
             "Dönem sonrası depolama: "
             + ("bilinmiyor" if bound.post_period_storage == "unknown" else "ek ücret yok"),
@@ -426,6 +556,7 @@ def _review_text(data: UploadIntentReview) -> str:
             f"İstenen ad: {chosen.name}",
             f"Tür: {chosen.modality}; görünürlük: private; katkılar: kapalı",
             f"Dosyalar: {data.manifest.file_count}; toplam: {data.manifest.total_bytes} byte",
+            *_selection_text(data),
             f"Manifest: {data.manifest.digest}",
             f"Yükleme hedefi: {data.storage.origin or 'Platform API'}",
             f"Plan bitişi: {data.expires_at}",
@@ -448,6 +579,233 @@ def _review_text(data: UploadIntentReview) -> str:
     if chosen.tags:
         lines.append("Etiketler: " + ", ".join(chosen.tags))
     return "\n".join(lines)
+
+
+# For each closed blocker of a resume report, one sentence of why and one of what to do next: the
+# JSON carries only the names, so this is the whole explanation a person gets.
+BLOCKER_TEXT: dict[str, tuple[str, str]] = {
+    "source_active": (
+        "Kaynak iş ya da devamı hâlâ çalışıyor (lease dolmadı).",
+        "Lease bitince raporu yeniden alın; çalışan işe show --operation-id ile bakın.",
+    ),
+    "source_ineligible": (
+        "Kaynak devam için uygun değil: henüz hiçbir şey göndermemiş ya da doğrulanmamış "
+        "okumaya izin vermeyen (verified-only) bir kaynak.",
+        "Devam yok; kaynak bekliyorsa lease dolunca yerel olarak iptal edilir, sonra yeni bir "
+        "plan kurun.",
+    ),
+    "source_superseded": (
+        "Bu kaynağın iptal edilmemiş bir devamı zaten var.",
+        "Devamın kimliğiyle show --operation-id çalıştırın; belirsizse onun için resume "
+        "--operation-id verin, başarıyla bittiyse devam gerekmez.",
+    ),
+    "source_terminal": (
+        "Kaynak iş sona ermiş (başarılı, başarısız ya da iptal edilmiş).",
+        "Başarıyla bittiyse devam gerekmez; başarısız ya da iptal edildiyse yeni bir plan kurun.",
+    ),
+    "reconcile_available": (
+        "Kaynağın bütün aşamaları kayıtlı; yalnız metadata kanıtı eksik.",
+        "reconcile --operation-id ile salt okuma kanıtı alın; invalid_response alırsanız "
+        "Platform’daki öğeler kayıtla uyuşmuyordur, veri setini Platform arayüzünde inceleyin.",
+    ),
+    "create_unknown": (
+        "Platform’daki veri setinin kimliği kaydedilmedi (create sonucu bilinmiyor).",
+        "Adından ID tahmin edilmez; Platform arayüzünde inceleyin, otomatik kurtarma ya da "
+        "silme yoktur.",
+    ),
+    "membership_unobserved": (
+        "Veri setinin kaynağın oluşturduğu private veri seti olduğu ve projede tek kez "
+        "göründüğü doğrulanamadı.",
+        "Platform arayüzünde veri setini ve proje bağını kontrol edip raporu yeniden alın.",
+    ),
+    "known_negative": (
+        "Kayıtlı zincirde bilinen olumsuz bir sonuç (reddedilmiş makbuz) var.",
+        "Devam desteklenmez; Platform’daki durumu inceleyip yeni bir plan kurun.",
+    ),
+    "drift_missing": (
+        "Daha önce kabul edilmiş bir dosya Platform’da artık görünmüyor.",
+        "Platform arayüzünde veri setini inceleyin; kaybolan dosyayı ürün kendiliğinden "
+        "yeniden göndermez.",
+    ),
+    "conflict": (
+        "Platform’da aynı adlı ama içeriği farklı bir öğe var.",
+        "Platform arayüzünde öğeyi silin ya da adını değiştirin.",
+    ),
+    "extra_remote": (
+        "Veri setinde manifestte olmayan öğeler var.",
+        "Platform arayüzünde fazla öğeleri inceleyin; ürün onları silmez.",
+    ),
+    "inventory_unreliable": (
+        "Platform’un öğe listesi tutarlı bir bütün oluşturmuyor.",
+        "Biraz sonra raporu yeniden alın; sürerse Platform’da inceleyin.",
+    ),
+    "inventory_too_large": (
+        "Veri setinde 1.024’ten fazla öğe var; devam bu büyüklükte desteklenmez.",
+        "Uzak durumu Platform arayüzünden inceleyin.",
+    ),
+    "local_changed": (
+        "Yerel klasör ya da manifest, plandaki gibi değil.",
+        "Klasörü yüklemedeki haline getirin ya da yeni bir plan kurun, sonra raporu yeniden alın.",
+    ),
+}
+CLASS_TEXT = {
+    "pending_uncertain": "belirsiz (son onay isteği gitmiş olabilir)",
+    "drift_missing": "kaybolmuş",
+    "conflict": "çakışan",
+    "inventory_unreliable": "güvenilmez listede",
+}
+# The errors a `resume` meets in its own way: what a person does about each (the closed code and
+# the fixed message stay as they are; this is added to the text output of that command alone).
+RESUME_ERROR_HINTS: dict[str, str] = {
+    "state_changed": (
+        "Bağlam (profil, proje, sahip) bu kaynağın yüklendiği bağlamla aynı değil; kaynağın "
+        "kendi --config ve --profile seçimini kullanın."
+    ),
+    "state_busy": "Yerel durum deposu meşgul; çalışan başka bir komut bitince yeniden deneyin.",
+    "upload_plan_not_valid": (
+        "Gözlem sürerken plan penceresi doldu ya da saat geriye gitti; komutu yeniden çalıştırın."
+    ),
+    "invalid_request": (
+        "Manifest’teki bir dosya yolu kullanılan anahtarla aynı olduğu için rapor "
+        "gösterilemiyor ya da bir seçenek geçersiz; seçenekleri yardımla karşılaştırın."
+    ),
+    "invalid_response": (
+        "Platform’da yerel yol kurallarına uymayan adlı bir öğe (örneğin CON, a., dosya:adı) "
+        "ya da beklenen biçimde olmayan bir yanıt var; Platform arayüzünde öğeyi silin ya da "
+        "adını değiştirin."
+    ),
+    "approval_required": (
+        "Dataset’in okunması açık bir seçim ister: --accept-unverified-read verin; belirsiz "
+        "dosyalarla --prepare için --accept-unconfirmed-effects de gerekir."
+    ),
+}
+QUOTA_TEXT = {"plans": "plan", "operations": "iş", "files": "dosya", "payload_bytes": "bayt"}
+
+
+def _quota_lines(data: DatasetUploadResumeReport) -> list[str]:
+    from yorunge.domain.dataset_upload import (
+        MAX_TRANSFER_FILES,
+        MAX_TRANSFER_OPERATIONS,
+        MAX_TRANSFER_PAYLOAD_BYTES,
+        MAX_TRANSFER_PLANS,
+    )
+
+    limits = {
+        "plans": MAX_TRANSFER_PLANS,
+        "operations": MAX_TRANSFER_OPERATIONS,
+        "files": MAX_TRANSFER_FILES,
+        "payload_bytes": MAX_TRANSFER_PAYLOAD_BYTES,
+    }
+    used, added = data.quota_used, data.quota_added
+    lines = [
+        f"Yerel kayıt kotası: kullanılan {used.plans}/{limits['plans']} plan, "
+        f"{used.operations}/{limits['operations']} iş, {used.files}/{limits['files']} dosya, "
+        f"{used.payload_bytes}/{limits['payload_bytes']} bayt; bu deneme ekler: "
+        f"{added.plans} plan, {added.operations} iş, {added.files} dosya, en çok "
+        f"{added.payload_bytes} bayt."
+    ]
+    full = [
+        QUOTA_TEXT[name]
+        for name, limit in limits.items()
+        if getattr(used, name) + getattr(added, name) > limit
+    ]
+    if full:
+        lines.append(
+            "Kota dolu: bu deneme yerel kaydın şu sınırını aşar: "
+            + ", ".join(full)
+            + ". Kayıtlar otomatik silinmez; plan kaydedilemez."
+        )
+    return lines
+
+
+def _observation_lines(data: DatasetUploadResumeReport) -> list[str]:
+    observation = data.observation
+    if observation is None:
+        return ["Uzak durum okunmadı: rapor yalnız yerel kayda dayanır."]
+    counts = observation.class_counts
+    lines = [
+        f"Dosya sınıfları: onaylı {counts.confirmed}, uzakta gözlenen {counts.observed}, "
+        f"gönderilmemiş {counts.pending_clean}, belirsiz {counts.pending_uncertain}, "
+        f"kaybolmuş {counts.drift_missing}, çakışan {counts.conflict}, "
+        f"güvenilmez listede {counts.inventory_unreliable}.",
+        f"Gönderilecek: {observation.send_files} dosya, {observation.send_bytes} bayt.",
+    ]
+    if observation.unconfirmed_ack_required:
+        lines.append(
+            "Bazı dosyaların son onay isteği gitmiş olabilir (belirsiz); plan ve onay bunun "
+            "için ayrı bir seçim ister (--accept-unconfirmed-effects)."
+        )
+    for example in observation.examples:
+        lines.append(f"Örnek ({CLASS_TEXT[example.file_class]}): " + ", ".join(example.paths))
+    return lines
+
+
+def _resume_next_lines(data: DatasetUploadResumeReport) -> list[str]:
+    lines = []
+    identity = data.source_operation_id
+    if data.plan_id is not None:
+        lines.append(f"İncele: yorunge datasets upload review --plan-id {data.plan_id}")
+        lines.append("Onay ve başlatma review çıktısındaki komutlarla sürer (approve, start).")
+    elif data.recommended_action == "prepare":
+        flag = (
+            " --accept-unconfirmed-effects"
+            if data.observation is not None and data.observation.unconfirmed_ack_required
+            else ""
+        )
+        lines.append(
+            f"Hazırla: yorunge datasets upload resume --operation-id {identity} "
+            f"--accept-unverified-read --prepare{flag}"
+        )
+    elif data.recommended_action == "reconcile":
+        lines.append(
+            f"Uzlaştır: yorunge datasets upload reconcile --operation-id {identity} "
+            "--accept-unverified-read"
+        )
+    elif data.recommended_action == "wait":
+        lines.append("Bekle: lease bitince raporu yeniden alın.")
+    else:
+        lines.append(
+            "Bu rapordan sonra çalıştırılacak bir devam komutu yok; engellerin adımlarına bakın."
+        )
+    lines.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
+    return lines
+
+
+def _resume_text(data: DatasetUploadResumeReport) -> str:
+    lines = [
+        f"Devam raporu — kaynak iş: {data.source_operation_id}",
+        f"Veri seti: {data.dataset_id or 'kaydedilmedi (create sonucu bilinmiyor)'}",
+        f"Manifest: {data.file_count} dosya; gözlem zamanı: {data.observed_at}",
+    ]
+    if data.plan_id is not None:
+        lines.append(f"Devam planı kaydedildi: {data.plan_id} (digest: {data.plan_digest})")
+    elif data.eligible:
+        lines.append("Devam edilebilir; plan kaydedilmedi (salt okuma raporu).")
+    else:
+        lines.append("Devam edilemiyor: engeller kapanmadan plan kaydedilmez.")
+    for blocker in data.blockers:
+        reason, step = BLOCKER_TEXT[blocker]
+        lines.extend((f"- {blocker}: {reason}", f"  Sonraki adım: {step}"))
+    if data.related_operation_id is not None:
+        lines.append(f"İlgili iş: {data.related_operation_id}")
+    lines.extend(_observation_lines(data))
+    lines.extend(_quota_lines(data))
+    lines.extend(_resume_next_lines(data))
+    lines.append(
+        "Yalnız sağlayıcı metadata’sı gözlendi; dosya içeriği ya da baytları doğrulanmadı."
+    )
+    return "\n".join(lines)
+
+
+def _selection_text(data: UploadIntentReview) -> tuple[str, ...]:
+    """A continuation sends only some of the manifest's files: which count and how many bytes."""
+    limits = data.request_limits
+    if data.summary.schema_version != 3 or limits is None:
+        return ()
+    return (
+        f"Bu devamda gönderilecek: {limits.max_presign} dosya, {limits.max_upload_bytes} byte "
+        "(manifestin geri kalanı Platform’da zaten görülüyor).",
+    )
 
 
 class ProgressText:
