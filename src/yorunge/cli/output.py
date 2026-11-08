@@ -268,6 +268,7 @@ class OutputRenderer:
             f"Rapor: yorunge datasets upload resume --operation-id {operation_id} "
             "--accept-unverified-read"
         )
+        lines.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
         return "\n" + "\n".join(lines)
 
     def _stderr_error(self, error: YorungeError) -> None:

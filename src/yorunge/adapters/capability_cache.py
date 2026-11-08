@@ -397,10 +397,16 @@ class StateCache:
                 clock_row = self.connection.execute(SELECT_CLOCK).fetchone()
             except BaseException:
                 observed = self.observed
-                connection.execute("ROLLBACK TO business")
-                self._tick(observed)
-                connection.execute("RELEASE business")
-                connection.execute("COMMIT")
+                try:
+                    connection.execute("ROLLBACK TO business")
+                    self._tick(observed)
+                    connection.execute("RELEASE business")
+                    connection.execute("COMMIT")
+                except sqlite3.Error:
+                    # SQLite rolled the whole transaction back itself (a full disk does that): the
+                    # savepoint is gone and the clock cannot be kept; the failure that caused it is
+                    # the one to report, not the cleanup's "no such savepoint".
+                    pass
                 raise
             connection.execute("RELEASE business")
             connection.execute("COMMIT")

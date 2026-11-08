@@ -207,6 +207,30 @@ def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_p
         store.verify()
 
 
+def test_a_full_disk_inside_a_business_transaction_is_reported_as_a_full_disk(tmp_path):
+    """SQLite rolls a transaction back itself when a single-row write finds the disk full: the
+    savepoint is gone, and the cleanup's "no such savepoint" must not hide the failure that caused
+    it (which is ``state_write_failed``, not ``state_invalid``)."""
+    from yorunge.adapters.state import sqlite_error_code
+
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, Clock())
+        stamp = cache.stamp()
+        store.connection.execute("CREATE TABLE filler(value TEXT)")
+        pages = store.connection.execute("PRAGMA page_count").fetchone()[0]
+        store.connection.execute(f"PRAGMA max_page_count={pages}")
+        with pytest.raises(sqlite3.OperationalError) as failure:
+            with cache.transaction(stamp):
+                for _ in range(64):  # one row at a time: no statement journal to fall back on
+                    store.connection.execute("INSERT INTO filler VALUES(?)", ("x" * 4000,))
+        assert "savepoint" not in str(failure.value), failure.value
+        assert sqlite_error_code(failure.value) == "state_write_failed"
+        assert not store.connection.in_transaction
+        store.connection.execute("PRAGMA max_page_count=1073741823")
+        store.connection.execute("DROP TABLE filler")
+        store.verify()  # the store is intact and usable afterwards
+
+
 @pytest.mark.parametrize("interrupt", [False, True])
 def test_global_expiry_migration_backfills_existing_records_atomically(
     tmp_path, monkeypatch, interrupt, schema5_runtime

@@ -8,8 +8,11 @@ own words must lead out: `show` names `resume`, and `resume --prepare` finishes 
 
 import json
 
+import pytest
+
 from tests.fixtures.http_server import TlsServer
 from tests.integration.test_upload_continuation_cli import Journey, no_secret_anywhere, world
+from tests.integration.test_upload_continuation_public import interrupted_world
 from tests.integration.test_upload_preparation import certificates as certificates
 from tests.integration.test_upload_preparation import loopback_only as loopback_only
 from tests.integration.test_upload_preparation import prepared_input as prepared_input
@@ -96,3 +99,39 @@ def test_a_continuation_whose_confirm_count_lies_is_led_out_by_show_not_by_recon
         assert json.loads(json.dumps(finished))["verification_level"] == "metadata"
         no_secret_anywhere(machine)
         no_secret_anywhere(person)
+
+
+def test_a_prepare_that_loses_the_race_for_its_source_saves_no_plan(
+    public_inputs, certificates, monkeypatch
+):
+    """Another process continues the source between the last journal read and the save.
+
+    The first prepared plan is approved and started (and finishes) while a second ``--prepare`` is
+    between its journal read and its ``save``: the second must refuse, naming the successor, and
+    leave no draft behind (a plan that can never be admitted would only fill the local quota).
+    """
+    from yorunge import api
+    from yorunge.adapters.upload_resume import UploadResumeRuntime
+    from yorunge.domain.errors import YorungeError
+
+    with interrupted_world(public_inputs, certificates, monkeypatch) as rig:
+        original = UploadResumeRuntime._still_open
+
+        def raced(self, operation_id):
+            original(self, operation_id)  # the journal is read: the source is alone
+            rig.approve()
+            rig.start()  # ... and the plan that was prepared before is started, and finishes
+
+        monkeypatch.setattr(UploadResumeRuntime, "_still_open", raced)
+        before = len(api.list_dataset_uploads(state_dir=rig.state).data.uploads)
+        with pytest.raises(YorungeError) as raised:
+            api.resume_dataset_upload(
+                rig.source,
+                prepare=True,
+                accept_unverified_read=True,
+                config=rig.config,
+                state_dir=rig.state,
+            )
+        assert raised.value.code == "operation_conflict"
+        plans = api.list_dataset_uploads(state_dir=rig.state).data.uploads
+        assert len(plans) == before  # no draft was saved for a source that cannot use one

@@ -5,7 +5,12 @@ command the state refuses, to wait for what has already happened, to take a repo
 never change, or to re-send what ADR-0031 §3 says is irreversible without hearing so.
 """
 
+import contextlib
+import io
+import json
+from pathlib import Path
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
@@ -18,12 +23,18 @@ from yorunge.cli.upload import (
     RESUME_ERROR_HINTS,
     UNCONFIRMED_WARNING,
     _continue_text,
+    _quota_lines,
+    _resume_next_lines,
+    _resume_text,
     _selection_text,
+    _summary_text,
     _unknown_text,
     explained_blockers,
 )
 from yorunge.domain.errors import OperationError, YorungeError
+from yorunge.domain.upload_public import DatasetUploadSummary
 from yorunge.domain.upload_resume import BLOCKERS
+from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
 SOURCE = "00000000-0000-4000-8000-000000000009"
 OTHER = "00000000-0000-4000-8000-0000000000cc"
@@ -69,7 +80,8 @@ def test_the_error_block_of_a_refused_prepare_explains_the_same_blockers_as_the_
     )
     assert "- inventory_too_large:" in block and "Biraz sonra raporu yeniden alın" not in block
     assert block.endswith(
-        f"Rapor: yorunge datasets upload resume --operation-id {SOURCE} --accept-unverified-read"
+        f"Rapor: yorunge datasets upload resume --operation-id {SOURCE} --accept-unverified-read\n"
+        "Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun."
     )
 
 
@@ -213,3 +225,149 @@ def test_the_help_of_approve_names_what_the_consent_costs(capsys):
 def test_the_help_of_start_says_it_starts_either_family_of_plan(capsys):
     text = _help(capsys, "datasets", "upload")
     assert "Planı bir kez başlat (özgün ya da devam planı)" in text
+
+
+# --- what round two's mutation run found nobody pinning -------------------------------------------
+
+FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+def golden(name):
+    return DatasetUploadResumeReport.model_validate_json(
+        (FIXTURES / f"dataset-continuation-resume-report-v1-{name}.json").read_bytes()
+    )
+
+
+def run(*arguments):
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = main(["datasets", "upload", *arguments, "--output", "json"])
+    return code, out.getvalue(), err.getvalue()
+
+
+def original_plan_without_approval():
+    value = DatasetUploadSummary.model_validate_json(
+        (FIXTURES / "dataset-upload-summary-v2.json").read_bytes()
+    )
+    return value.model_copy(
+        update={
+            "approval_status": None,
+            "approval_expires_at": None,
+            "operation_id": None,
+            "operation_status": None,
+            "dataset_id": None,
+            "verification_level": "none",
+            "authority_verified": False,
+        }
+    )
+
+
+def test_the_approval_hint_of_an_original_plan_never_speaks_of_unconfirmed_effects():
+    # the shared hint was rewritten for continuations; the original side must stay as it was
+    text = "\n".join(_summary_text(original_plan_without_approval()))
+    assert "Onay: yorunge datasets upload approve --plan-id" in text
+    assert "--accept-unconfirmed-effects" not in text
+
+
+def test_a_report_without_unconfirmed_files_does_not_ask_for_the_unconfirmed_flag():
+    report = golden("eligible")
+    quiet = report.model_copy(
+        update={
+            "observation": report.observation.model_copy(update={"unconfirmed_ack_required": False})
+        }
+    )
+    text = _resume_text(quiet)
+    assert "Hazırla: yorunge datasets upload resume" in text
+    assert "--accept-unconfirmed-effects" not in text and "yetim" not in text
+
+
+def test_an_exhausted_operation_quota_is_a_certain_limit_like_the_plan_quota():
+    report = golden("eligible")
+    full = report.model_copy(
+        update={"quota_used": report.quota_used.model_copy(update={"operations": 128})}
+    )
+    assert any("Kota dolu" in line and "iş" in line for line in _quota_lines(full))
+    assert "Hazırla:" not in "\n".join(_resume_next_lines(full))
+
+
+@pytest.mark.parametrize("verb", ["resume", "reconcile"])
+def test_a_repeated_unverified_read_flag_is_a_usage_error_before_any_state(tmp_path, verb):
+    absent = tmp_path / "absent"
+    code, out, err = run(
+        verb,
+        "--operation-id",
+        str(uuid4()),
+        "--accept-unverified-read",
+        "--accept-unverified-read",
+        "--state-dir",
+        str(absent),
+    )
+    assert code == 2 and out == "" and json.loads(err)["code"] == "invalid_request"
+    assert not absent.exists()
+
+
+@pytest.mark.parametrize("verb", ["resume", "approve", "start", "reconcile"])
+def test_the_root_level_project_is_refused_by_every_verb_that_takes_a_plan_or_a_source(
+    tmp_path, verb
+):
+    extra = {
+        "resume": ["--operation-id", str(uuid4())],
+        "reconcile": ["--operation-id", str(uuid4())],
+        "approve": ["--plan-id", str(uuid4()), "--confirm", "0" * 64],
+        "start": ["--plan-id", str(uuid4())],
+    }[verb]
+    absent = tmp_path / "absent"
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = main(
+            ["--project", str(uuid4()), "datasets", "upload", verb, *extra]
+            + ["--state-dir", str(absent), "--output", "json"]
+        )
+    assert code == 2 and json.loads(err.getvalue())["code"] == "invalid_request"
+    assert not absent.exists()
+
+
+def test_the_error_details_of_a_refusal_carry_no_capacity_kind():
+    from yorunge.domain.streams import ContinuationErrorDetails
+
+    with pytest.raises(ValueError):
+        ContinuationErrorDetails(
+            reason_code="continuation_not_possible",
+            capacity_kind="store",
+            blockers=("source_terminal",),
+        )
+
+
+def test_the_flag_relation_of_resume_is_judged_before_the_store_and_names_the_source(tmp_path):
+    from yorunge import api
+
+    identity, root = str(uuid4()), tmp_path / "absent"
+    with pytest.raises(YorungeError) as raised:
+        api.resume_dataset_upload(
+            identity, accept_unverified_read=True, accept_unconfirmed_effects=True, state_dir=root
+        )
+    assert raised.value.code == "invalid_request"
+    assert getattr(raised.value, "operation_id", None) == identity
+    assert not root.exists()
+
+
+def rendered(output, error, *, requested):
+    stderr = io.StringIO()
+    OutputRenderer(
+        output,
+        stderr=stderr,
+        stdout=io.StringIO(),
+        upload_guidance=True,
+        requested_operation_id=requested,
+    ).error(error)
+    return stderr.getvalue()
+
+
+def test_the_comparison_of_operation_ids_in_the_error_text_ignores_the_case():
+    # a canonical id is lower case, but a caller's spelling must not make a related operation look
+    # like another one: hex letters, so that upper() really differs
+    asked = "00000000-0000-4000-8000-0000000000ab"
+    named = OperationError("operation_conflict", asked)
+    for requested in (asked, asked.upper()):
+        text = rendered("text", named, requested=requested)
+        assert "İstediğiniz iş" not in text, requested

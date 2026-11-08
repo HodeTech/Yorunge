@@ -146,7 +146,8 @@ def test_a_refused_continuation_is_explained_in_the_text_error_output(names):
         reason, step = BLOCKER_TEXT[name]
         assert f"- {name}: {reason}\n  Sonraki adım: {step}" in block
     assert block.endswith(
-        f"Rapor: yorunge datasets upload resume --operation-id {SOURCE} --accept-unverified-read"
+        f"Rapor: yorunge datasets upload resume --operation-id {SOURCE} --accept-unverified-read\n"
+        "Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun."
     )
 
 

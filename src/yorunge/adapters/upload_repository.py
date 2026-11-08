@@ -483,6 +483,10 @@ class StateUploads:
                     if not isinstance(plan, DatasetContinuationPlanV3):
                         # A continuation shares its root's namespace and makes no create right.
                         self._namespace_available(plan.intent_digest())
+                    else:
+                        # ... and a source that got its continuation meanwhile takes no more plans:
+                        # a draft saved now could never be admitted and would only fill the quota.
+                        self._no_successor(plan.continuation.source_operation_id, stamp)
                     self.connection.execute(
                         "INSERT OR IGNORE INTO upload_namespaces VALUES(?,?,NULL)",
                         (plan.intent_digest(), namespace(plan).decode("ascii")),
