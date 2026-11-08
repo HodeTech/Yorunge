@@ -18,6 +18,8 @@ import pytest
 
 from tests.fixtures.download_native_data import FIXTURES, WARM_OF, expected_sha256
 
+pytestmark = pytest.mark.usefixtures("evidence_publication_context")
+
 ROOT = Path(__file__).resolve().parents[2]
 MIB = 1_048_576
 LABELS = ("16", "256", "1024", "resume")
@@ -1541,24 +1543,32 @@ def test_a_failed_worker_leaves_every_original_and_stops_both_servers(tmp_path, 
         driver["measure_one"](Path(sys.executable), workspace, receipt, certificates, "16", 1)
 
 
-def controller_args(tmp_path, labels, samples):
+def controller_args(tmp_path, labels, samples, run_url=None):
     python, wheel = tmp_path / "python", tmp_path / "package.whl"
     python.write_bytes(b"synthetic unused file")
     wheel.write_bytes(b"synthetic unused file")
+    (tmp_path / "dist").mkdir(exist_ok=True)  # the report is created directly in the root's dist
     return SimpleNamespace(
         python=python,
         wheel=wheel,
-        output=tmp_path / "report.json",
+        output=tmp_path / "dist/report.json",
         workspace=tmp_path / "workspace",
         cpu="synthetic",
         disk_type="synthetic",
         labels=labels,
         samples=samples,
+        run_url=run_url,
     )
 
 
 def patch_controller(driver, monkeypatch, tmp_path, runs):
     globals_ = driver["check"].__globals__
+    # A temporary root: its dist, its evidence archive and its (stubbed) Git commit.
+    (tmp_path / "docs/research").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setitem(globals_, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        globals_["subprocess"], "run", lambda *args, **kwargs: SimpleNamespace(stdout="a" * 40)
+    )
     base = proof()
     monkeypatch.setitem(
         globals_["EVIDENCE"], "source", lambda root: copy.deepcopy(base["source_before"])

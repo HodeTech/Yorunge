@@ -2,8 +2,13 @@
 
 Twelve fresh runtime-only ``-I`` clients (labels 16, 256, 1024 and ``resume``, three samples each)
 download through the product's public API from a separate-process server; the report is written once
-to a new path. ``--labels`` and ``--samples`` select a smoke subset: its report says it is partial
-and is never accepted.
+to a new canonical path directly in ``dist``. ``--labels`` and ``--samples`` select a smoke subset:
+its report says it is partial and is never accepted.
+
+A complete report that did not pass is archived as it is. An interrupted complete run leaves a
+``controller-error.json`` marker in its workspace and retains the original files that exist as a
+rejected-download attachment; nothing is retried, deleted or rewritten. A smoke subset is a tool:
+its originals stay in the workspace and it never writes the evidence archive.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ EVIDENCE = runpy.run_path(str(ROOT / "scripts/download_evidence.py"))
 CHECKS = EVIDENCE["CHECKS"]
 STREAM = EVIDENCE["STREAM"]
 WHEEL = runpy.run_path(str(ROOT / "scripts/dataset_wheel.py"))
+DIAGNOSTIC = runpy.run_path(str(ROOT / "scripts/download_diagnostic.py"))
 # Longest a worker may take: warm, oracle, one 900 s product budget per call, and the verification.
 WORKER_SECONDS = {"16": 1200, "256": 1200, "1024": 1500, "resume": 2100}
 
@@ -206,9 +212,23 @@ def check(args: argparse.Namespace) -> int:
     if CHECKS["NAME"].fullmatch(output.name) is None:
         raise ValueError("download report requires a new canonical lowercase name")
     labels, samples = chosen(args)
+    partial = EVIDENCE["is_partial"](labels, samples)
     python, wheel = args.python.absolute(), args.wheel.absolute()
     if not python.is_file() or not wheel.is_file():
         raise ValueError("installed runtime Python and wheel required")
+    if output.parent != ROOT / "dist":
+        raise ValueError("download report must be created directly in dist")
+    if args.run_url is not None:
+        CHECKS["pattern_value"](args.run_url, CHECKS["CI_RUN_URL"])
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        env=CONTROL["environment"](),
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout.strip()
     workspace.mkdir(mode=0o700)
     try:
         before = EVIDENCE["source"](ROOT)
@@ -248,7 +268,18 @@ def check(args: argparse.Namespace) -> int:
         (workspace / "controller-error.json").write_bytes(
             b'{"outcome":"incomplete_download_measurement"}\n'
         )
+        if not partial:  # a smoke subset is a tool: its originals stay in the workspace
+            DIAGNOSTIC["retain"](
+                ROOT,
+                workspace,
+                output.stem + "-rejected.json",
+                commit,
+                "interrupted_measurement",
+                args.run_url,
+            )
         raise
+    if not report["passed"] and not partial:  # a failed complete measurement is evidence
+        CHECKS["archive_report"](ROOT, output, None)
     print(json.dumps(EVIDENCE["summarize_report"](report), allow_nan=False))
     return 0 if report["accepted"] else 1
 
@@ -261,6 +292,7 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--cpu", required=True)
     parser.add_argument("--disk-type", required=True)
+    parser.add_argument("--run-url")
     parser.add_argument(
         "--labels",
         nargs="+",

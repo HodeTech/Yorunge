@@ -129,7 +129,8 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         ".ci-tools/bin/uv build",
         ".venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv "
         "--evidence-output dist/installation.json --upload-workspace "
-        ".local/distribution-upload-check > dist/verification.jsonl",
+        ".local/distribution-upload-check --download-workspace "
+        ".local/distribution-download-check > dist/verification.jsonl",
         "cat dist/verification.jsonl",
     ]
 
@@ -203,6 +204,20 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
             "--python .local/startup-check/candidate/env/bin/python "
             "--wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check "
             "--output dist/upload.json --environment dist/ci-environment.json "
+            '--run-url "https://github.com/${{ github.repository }}'
+            '/actions/runs/${{ github.run_id }}"',
+        ),
+        (
+            "download-reference",
+            ".venv/bin/python scripts/research_evidence.py verify-download-reference "
+            "p02-3-reference-download-1.json > dist/download-reference.txt",
+        ),
+        (
+            "download-budgets",
+            ".venv/bin/python scripts/download_ci.py "
+            "--python .local/startup-check/candidate/env/bin/python "
+            "--wheel-dir .local/startup-check/candidate/dist --workspace .local/download-check "
+            "--output dist/download.json --environment dist/ci-environment.json "
             '--run-url "https://github.com/${{ github.repository }}'
             '/actions/runs/${{ github.run_id }}"',
         ),
@@ -280,6 +295,21 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         ".local/upload-check/*/client-stderr.txt",
         ".local/upload-check/*/*-server/*.json",
         ".local/upload-check/*/*-server/*.txt",
+        "dist/download.json",
+        "dist/download-reference.txt",
+        "dist/download*-rejected.json",
+        ".local/download-check/source-before.json",
+        ".local/download-check/source-manifest.json",
+        ".local/download-check/source-after.json",
+        ".local/download-check/controller-error.json",
+        ".local/download-check/stdout.json",
+        ".local/download-check/stderr.txt",
+        ".local/download-check-controller-stdout.txt",
+        ".local/download-check-controller-stderr.txt",
+        ".local/download-check/*/client-stdout.json",
+        ".local/download-check/*/client-stderr.txt",
+        ".local/download-check/*/*-server/*.json",
+        ".local/download-check/*/*-server/*.txt",
         ".local/distribution-upload-check/*/source-before.json",
         ".local/distribution-upload-check/*/source-manifest.json",
         ".local/distribution-upload-check/*/source-after.json",
@@ -292,6 +322,18 @@ def test_each_cell_preserves_evidence_even_after_failure(workflow):
         ".local/distribution-upload-check/*/*/client-stderr.txt",
         ".local/distribution-upload-check/*/*/*-server/*.json",
         ".local/distribution-upload-check/*/*/*-server/*.txt",
+        "dist/installation-download-*-rejected.json",
+        ".local/distribution-download-check/*/source-before.json",
+        ".local/distribution-download-check/*/source-manifest.json",
+        ".local/distribution-download-check/*/source-after.json",
+        ".local/distribution-download-check/*/controller-error.json",
+        ".local/distribution-download-check/*/metadata-stdout.json",
+        ".local/distribution-download-check/*/metadata-stderr.txt",
+        ".local/distribution-download-check/*/stdout.json",
+        ".local/distribution-download-check/*/*/client-stdout.json",
+        ".local/distribution-download-check/*/*/client-stderr.txt",
+        ".local/distribution-download-check/*/*/*-server/*.json",
+        ".local/distribution-download-check/*/*/*-server/*.txt",
     }
 
 
@@ -317,6 +359,52 @@ def test_upload_artifacts_preserve_interrupted_logs_and_exclude_payloads_and_sta
     )
     assert all(any(PurePosixPath(name).match(pattern) for pattern in patterns) for name in selected)
     assert not any(PurePosixPath(name).match(pattern) for pattern in patterns for name in excluded)
+
+
+def test_installation_download_artifacts_keep_the_smoke_logs_and_exclude_payloads_and_state(
+    workflow,
+):
+    patterns = ARTIFACT_PATHS.read_text().splitlines()
+    selected = (
+        "dist/installation-download-wheel-rejected.json",
+        "dist/installation-download-sdist-rejected.json",
+        ".local/distribution-download-check/wheel/source-before.json",
+        ".local/distribution-download-check/wheel/controller-error.json",
+        ".local/distribution-download-check/wheel/metadata-stdout.json",
+        ".local/distribution-download-check/sdist/stdout.json",
+        ".local/distribution-download-check/wheel/16-1/client-stdout.json",
+        ".local/distribution-download-check/wheel/16-2/client-stderr.txt",
+        ".local/distribution-download-check/sdist/16-1/warm-server/stdout.json",
+        ".local/distribution-download-check/sdist/16-2/measured-server/ready.json",
+    )
+    excluded = (
+        ".local/distribution-download-check/wheel/cert/key.pem",
+        ".local/distribution-download-check/wheel/16-1/measured/out/weights.onnx",
+        ".local/distribution-download-check/wheel/16-1/measured/state/state.sqlite3",
+        ".local/distribution-download-check/sdist/16-1/warm/config.toml",
+        ".local/distribution-download-check/wheel/oracle.json",
+    )
+    assert all(any(PurePosixPath(name).match(pattern) for pattern in patterns) for name in selected)
+    assert not any(PurePosixPath(name).match(pattern) for pattern in patterns for name in excluded)
+
+
+def test_evidence_context_declares_every_download_workspace_and_child_root(workflow):
+    run = steps_by_id(workflow["jobs"]["linux311"])["evidence-context"]["run"]
+    command = next(line for line in run.splitlines() if "evidence_privacy.py context" in line)
+    words = command.split()
+    declared = {
+        option: [words[index + 1] for index, word in enumerate(words) if word == option]
+        for option in ("--workspace", "--child-root")
+    }
+    for option, paths in declared.items():
+        assert len(paths) == len(set(paths)), option  # each path is declared once
+    for path in (
+        ".local/upload-check",
+        ".local/distribution-upload-check",
+        ".local/download-check",
+        ".local/distribution-download-check",
+    ):
+        assert path in declared["--workspace"] and path in declared["--child-root"], path
 
 
 def invoke_gate(workflow, tmp_path, content):
@@ -469,6 +557,9 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     )
     assert report["raw_stream_budget_scope"] == scope
     assert report["upload_budget_scope"] == (
+        "native_linux311_and_source_bound_m5" if budgets == "true" else "compatibility_only"
+    )
+    assert report["download_budget_scope"] == (
         "native_linux311_and_source_bound_m5" if budgets == "true" else "compatibility_only"
     )
     assert "do-not-record-ambient-values" not in encoded
