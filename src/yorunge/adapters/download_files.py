@@ -19,15 +19,9 @@ import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Final
 
-from yorunge.adapters.input_files import (
-    Budget,
-    close_descriptor,
-    directory_chain,
-    owned_descriptor,
-)
+from yorunge.adapters.input_files import close_descriptor
 from yorunge.adapters.local_files import require_local_files
 from yorunge.domain.download import MAX_SIDECAR_BYTES
 from yorunge.domain.download_state import Entry
@@ -37,7 +31,6 @@ OPEN_FLAGS = os.O_NOFOLLOW | os.O_NONBLOCK
 CLOSE_CODE: Final[ErrorCode] = "download_write_failed"
 LOCK_ATTEMPTS = 3
 _UNSIGNED_64 = 2**64 - 1
-Chain = tuple[tuple[int, int], ...]
 
 # The tests replace this to stop the process at a named boundary; in production it is None.
 _marker: Callable[[str], None] | None = None
@@ -302,49 +295,3 @@ def acquire_lock(directory: int, name: str) -> LockObject:
             descriptor, code=CLOSE_CODE
         )  # the name leads elsewhere now: from the start
     raise YorungeError("download_busy")
-
-
-@dataclass(frozen=True)
-class NoBudget:
-    """The publication is local I/O and is exempt from the download's deadline."""
-
-    def check(self) -> None:
-        return None
-
-
-@dataclass(frozen=True)
-class TargetDirectory:
-    """The directory of the target, held open, with the chain it was reached through."""
-
-    anchor: Path
-    descriptor: int
-    chain: Chain
-    budget: Budget = NoBudget()
-
-    @property
-    def name(self) -> str:
-        return self.anchor.name
-
-    def recheck(self) -> None:
-        """The directory is still the one that was opened (every ancestor, by identity)."""
-        try:
-            descriptor, chain = directory_chain(str(self.anchor.parent))
-            with owned_descriptor(descriptor, close_code="download_write_failed"):
-                if chain != self.chain:
-                    raise YorungeError("download_write_failed")
-        except OSError:
-            raise YorungeError("download_write_failed") from None
-
-    def close(self) -> None:
-        close_descriptor(self.descriptor, code=CLOSE_CODE)
-
-
-def open_target_directory(target: Path) -> TargetDirectory:
-    """Step 1: the target's directory exists and is reached without following a link."""
-    if not isinstance(target, Path) or not target.is_absolute() or not target.name:
-        raise YorungeError("download_target_invalid")
-    try:
-        descriptor, chain = directory_chain(str(target.parent))
-    except (YorungeError, OSError):
-        raise YorungeError("download_target_invalid") from None
-    return TargetDirectory(target, descriptor, chain)

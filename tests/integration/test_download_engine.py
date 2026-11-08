@@ -466,6 +466,13 @@ def test_a_parent_that_is_missing_is_a_target_error_before_any_request(world):
     assert code == "download_target_invalid" and world.server.requests == []
 
 
+@pytest.mark.parametrize("name", ["new\nline.bin", "undecodable-\udcff.bin"])
+def test_a_target_the_summary_could_not_report_is_refused_before_any_request(world, name):
+    code = code_of(lambda: world.run(target=world.directory / name))
+    assert code == "download_target_invalid"
+    assert world.server.requests == [] and world.resolver.calls == 0 and world.names() == []
+
+
 def broken_publication(patch):
     def broken(descriptor):
         raise OSError(errno.EIO, "PRIVATE")
@@ -527,6 +534,20 @@ def test_a_stage_left_by_another_service_is_neither_resumed_nor_published(world,
     summary = world.run()
     assert_whole(world, summary, OTHER)  # the whole stage was not ours: dropped, downloaded afresh
     assert world.provider.seen[-1] == (None, None)
+
+
+@pytest.mark.parametrize(
+    "kind",
+    ["origin", "fold"],
+)
+def test_a_partial_download_of_another_service_or_fold_is_dropped_and_started_over(world, kind):
+    other = identity(origin="https://other.localhost") if kind == "origin" else identity(fold=3)
+    world.provider.script = [Reply(body=DATA, headers=world.provider.headers(), truncate_at=CUT)]
+    assert code_of(lambda: world.run(identity_key=other)) == "download_incomplete"
+    assert world.stage().stat().st_size == CUT  # kept, under the other identity
+    summary = world.run()
+    assert_whole(world, summary)  # same version, format and name: not this download's stage
+    assert world.provider.seen[-1] == (None, None) and summary.resumed is False
 
 
 def test_a_wrong_expected_digest_leaves_nothing_and_the_rerun_downloads_again(world):

@@ -28,13 +28,11 @@ from typing import Concatenate, Literal, ParamSpec, TypeVar
 from yorunge.adapters.artifact_publisher import ArtifactCodes, ArtifactPublisher, PublicationState
 from yorunge.adapters.download_files import (
     LockObject,
-    TargetDirectory,
     acquire_lock,
     create_exclusive,
     describe,
     entry_of,
     open_checked,
-    open_target_directory,
     read_small,
     remove_seen,
     replace_atomically,
@@ -44,6 +42,7 @@ from yorunge.adapters.download_files import (
 )
 from yorunge.adapters.input_files import close_descriptor
 from yorunge.adapters.local_files import full_sync
+from yorunge.adapters.target_directory import TargetDirectory, open_target_directory
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.download import (
     BLOCK_BYTES,

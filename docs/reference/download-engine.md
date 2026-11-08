@@ -58,7 +58,7 @@ Hedefle aynı dizinde, hedef adının hash’inden (`<h>`) türeyen sabit uzunlu
 
 **Kapalı sıra** (P02-3l kabulünün oracle’ıdır; her adımdaki kesinti bir sonraki koşuda elle silme gerektirmeden çözülür):
 
-1. Hedef parent’ı mevcut ve no-follow olmalı (aksi `download_target_invalid`).
+1. Hedef parent’ı mevcut ve no-follow olmalı, hedef yol da özetin taşıyabileceği bir yol olmalı: kontrol karakteri, UTF-8 olmayan ad ya da 4096 bayt üstü yol değil (aksi `download_target_invalid`; özet link’ten sonra kurulur, orada reddedilecek bir yol dosya bırakıp komutu hataya düşürürdü).
 2. Kilit nesnesi `lstat`: yoksa `O_CREAT|O_EXCL|O_NOFOLLOW|O_RDWR` 0600 + `fchmod(0600)` (yaratma anında süreç `umask`ı yalnız daha kısıtlayıcı yapılır: yaratma ile `fchmod` arasındaki öldürme bir sonraki koşunun kabul etmediği bir dosya bırakmaz; `EEXIST` yarışı bu adımı “mevcut” koluyla yeniden çalıştırır); varsa sahiplik denetimi + `O_RDWR|O_NOFOLLOW|O_NONBLOCK` açılışı.
 3. `flock(LOCK_EX|LOCK_NB)`: meşgulse `download_busy`, hiçbir şey silinmez. Kilit alınınca fstat–lstat kimlik eşleşmesi doğrulanır; eşleşmezse (bitirmekte olan süreç nesneyi silmiş) kilit bırakılır ve 2. adım en çok üç kez yeniden denenir, sonra `download_busy`.
 4. **Kilit altında:** hedef varsa `download_output_exists`; ondan önce hedefle aynı device/inode’lu (`nlink==2`) sahipliği kanıtlı stage — link sonrası/unlink öncesi kesinti izi — varsa stage, sidecar ve tmp sırasıyla silinir.
@@ -100,7 +100,7 @@ Başarı DTO’su (taslak): `schema_version=1`, `kind=download_summary`, `output
 
 | Kod | Exit | Tetik |
 |---|---:|---|
-| `download_target_invalid` | 2 | Parent yok/no-follow değil/kontrol-bidi karakter/uzunluk, boş ad |
+| `download_target_invalid` | 2 | Parent yok/no-follow değil/kontrol-bidi karakter/uzunluk, boş ad; özetin taşıyamayacağı yol (kontrol karakteri, UTF-8 olmayan ad, 4096 bayt üstü) |
 | `download_output_exists` | 2 | Hedef var veya yayın yarışında oluştu; hedefe dokunulmaz (yalnız kendi yayınımızın artığı olan stage/sidecar temizlenir) |
 | `download_partial_unverified` | 2 | Yarım indirme izi (stage, sidecar, tmp veya kilit nesnesi) doğrulanamadı; hiçbir dosyaya dokunulmadı. Mesaj sabittir: dosya adı taşımaz, hedef dizindeki `.yorunge-download-` dosyalarını incelemeyi veya başka hedef seçmeyi önerir |
 | `download_busy` | 2 | Aynı hedef için başka bir indirme sürüyor (kilit nesnesinin kilidi alınamadı); hiçbir dosyaya dokunulmadı (`config_busy` emsali) |
@@ -148,4 +148,4 @@ Bu belgedeki seviye, değer, kayıt, ad ve tablo kuralları `domain/download.py`
 
 **Hata ve iptal önceliği** doğal akışla verilir: iptal ve belirsizlik (`KeyboardInterrupt`, Task iptali, link sonrası) her şeyden önce yayılır ve yazıcı temiz durur; yerel yazma hatası uzak bir kopmadan önce raporlanır (taşıma, tüketicinin kendi bloğundan çıkan hatayı olduğu gibi döndürür ve kapanış hatasını onun üstüne koymaz); sonra beklenti uyuşmazlığı; en sonda uzak hatalar. **İlerleme** `(tutulan bayt, toplam | None)` verir ve saniyede en çok on kez çağrılır (ilk ve son rapor her zaman yapılır, bayt sayısı geri gitmez); devam eden bir indirmede toplam nesnenin tamamıdır, chunked gövdede yoktur; ad, yol, adres ya da etiket taşımaz.
 
-**Kapsam dışı.** Komut, CLI zarfı, metin/JSON/NDJSON ilerleme çizimi, `--sha256`/`--timeout` ayrıştırması (P02-3n); native bellek/süre ölçümü (P02-3o); canlı kabul (P02-3n/3b). Testler: `tests/integration/test_download_engine.py` (gerçek loopback TLS’te 64: yukarıdaki matrisin her satırı, hedefin son durumu ve istek sayısıyla; bağımsız `hashlib` oracle’ı) ve `test_download_engine_kill.py` (ayrı bir süreçte SIGKILL: ilk checkpoint’ten sonra devam, öncesinde baştan).
+**Kapsam dışı.** Komut, CLI zarfı, metin/JSON/NDJSON ilerleme çizimi, `--sha256`/`--timeout` ayrıştırması (P02-3n); native bellek/süre ölçümü (P02-3o); canlı kabul (P02-3n/3b). Testler: `tests/integration/test_download_engine.py` (gerçek loopback TLS’te 68: yukarıdaki matrisin her satırı, hedefin son durumu ve istek sayısıyla; bağımsız `hashlib` oracle’ı) ve `test_download_engine_kill.py` (ayrı bir süreçte SIGKILL: ilk checkpoint’ten sonra devam, öncesinde baştan).

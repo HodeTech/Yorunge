@@ -20,6 +20,7 @@ import pytest
 
 from yorunge.adapters import download_files, download_sink
 from yorunge.adapters.download_sink import open_sink
+from yorunge.adapters.target_directory import open_target_directory
 from yorunge.domain.download import EMPTY_SHA256, DownloadPartial, download_names
 from yorunge.domain.download_response import ContentRange, DownloadResponse
 from yorunge.domain.errors import DownloadIntegrityMismatch, YorungeError
@@ -930,7 +931,7 @@ def test_a_directory_that_was_replaced_before_the_link_is_a_write_failure_and_no
     inner = holder / "inner"
     inner.mkdir()
     goal = inner / NAME
-    original = download_files.open_target_directory(goal)
+    original = open_target_directory(goal)
 
     def swap(name):
         if name == "publish:synced":

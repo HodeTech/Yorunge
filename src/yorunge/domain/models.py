@@ -55,6 +55,25 @@ def has_control_characters(value: str) -> bool:
     return CONTROL_CHARACTERS.search(value) is not None
 
 
+MAX_REPORTED_PATH_BYTES = 4096
+
+
+def is_reportable_path(value: object) -> bool:
+    """Whether a result may carry ``value`` as the path of a file it made.
+
+    A plain, non-empty ``str`` with no control character that encodes as strict UTF-8 (the lone
+    surrogate of an undecodable file name does not) in at most ``MAX_REPORTED_PATH_BYTES`` bytes.
+    One definition for the models that report a path and for the code that decides a target, so a
+    file is never made whose own report would then be refused.
+    """
+    if type(value) is not str or not value or has_control_characters(value):
+        return False
+    try:
+        return len(value.encode("utf-8")) <= MAX_REPORTED_PATH_BYTES
+    except UnicodeEncodeError:
+        return False
+
+
 class Model(BaseModel):
     model_config = ConfigDict(
         defer_build=True,

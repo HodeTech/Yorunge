@@ -16,6 +16,12 @@ if TYPE_CHECKING:
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
+    from yorunge.domain.dataset_version import (
+        DatasetVersionBound,
+        DatasetVersionCheck,
+        DatasetVersionList,
+        DatasetVersionObservation,
+    )
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.execution import (
         ExecutionApprovalState,
@@ -46,6 +52,10 @@ if TYPE_CHECKING:
         | Result[PlatformContextDiscovery]
         | Result[DatasetInspection]
         | Result[DatasetVerification]
+        | Result[DatasetVersionList]
+        | Result[DatasetVersionObservation]
+        | Result[DatasetVersionBound]
+        | Result[DatasetVersionCheck]
         | Result[DatasetUploadSummary]
         | Result[UploadIntentReview]
         | Result[DatasetUploadsPage]
@@ -191,6 +201,13 @@ def _datasets_options(datasets: Parser) -> None:
 
     upload._configure = configure
 
+    versions = actions.add_parser(
+        "versions", help="Veri sürümlerini listele, göster, değişmez referansa bağla ve denetle"
+    )
+    from yorunge.cli.versions import configure as configure_versions
+
+    versions._configure = configure_versions
+
 
 def _doctor_options(doctor: Parser) -> None:
     common(doctor)
@@ -264,6 +281,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         from yorunge.cli.upload import SINGLETONS
 
         _reject_duplicates(arguments, SINGLETONS)
+    elif args.command == "datasets" and args.action == "versions":
+        from yorunge.cli.versions import SINGLETONS as VERSION_SINGLETONS
+
+        _reject_duplicates(arguments, VERSION_SINGLETONS)
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
@@ -443,6 +464,10 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
             from yorunge.cli.upload import text
 
             return text(data)
+        if args.action == "versions":
+            from yorunge.cli.versions import text as versions_text
+
+            return versions_text(data)
         return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
@@ -792,6 +817,10 @@ def datasets_result(args: argparse.Namespace) -> CliResult:
         from yorunge.cli.upload import dispatch as upload_result
 
         return upload_result(args)
+    if args.action == "versions":
+        from yorunge.cli.versions import dispatch as versions_result
+
+        return versions_result(args)
     reject_context(args, ("config", "profile", "project"))
     from yorunge.adapters.dataset_files import anchor_dataset_paths
 

@@ -21,6 +21,7 @@ from yorunge.domain.dataset_version import (
     DatasetVersionObservation,
     SplitCounts,
     bind,
+    bound_summary,
     changed_fields,
     class_labels_sha256,
     decode_binding,
@@ -690,3 +691,19 @@ def test_a_page_that_contradicts_itself_is_not_a_page(changes):
         return
     with pytest.raises(ValueError):
         DatasetVersionList(**values)
+
+
+@pytest.mark.parametrize("path", ["/tmp/a\nb.json", "/tmp/\udcff.json", "/" + "x" * 4096, ""])
+def test_the_report_of_a_binding_carries_only_a_path_it_can_report(path):
+    with pytest.raises(ValidationError):
+        bound_summary(bind(observation(), SERVICE), path)
+
+
+def test_the_report_of_a_binding_is_its_digest_and_where_it_is_not_the_file():
+    held = bind(observation(), SERVICE)
+    report = bound_summary(held, "/tmp/Yörünge/binding.json")
+    assert (report.binding_digest, report.binding_path) == (
+        held.digest,
+        "/tmp/Yörünge/binding.json",
+    )
+    assert report.version_tag == held.version_tag and report.local_manifest is None

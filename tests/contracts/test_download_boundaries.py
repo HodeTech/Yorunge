@@ -101,6 +101,8 @@ def test_the_output_path_limits_are_exact_in_characters_and_in_bytes():
         summary(output_path="é" * 2048 + "a")  # 2049 characters, 4097 bytes
     with pytest.raises(ValueError):
         summary(output_path="")
+    with pytest.raises(ValueError):
+        summary(output_path="/tmp/\udcffname")  # the name of a file that is not UTF-8
 
 
 def test_a_negative_fold_is_not_a_source():

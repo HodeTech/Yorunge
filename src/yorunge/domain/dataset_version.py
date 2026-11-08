@@ -26,9 +26,10 @@ from yorunge.domain.errors import (
     DatasetVersionChanged,
     YorungeError,
 )
-from yorunge.domain.models import Model
+from yorunge.domain.models import Model, is_reportable_path
 
 MAX_COUNT: Final = 2**63 - 1
+Absent = Literal["dataset_version_not_found", "dataset_version_missing"]
 MAX_BINDING_BYTES: Final = 16 * 1024
 MIN_PAGE: Final = 1
 MAX_PAGE: Final = 10_000
@@ -197,6 +198,44 @@ class DatasetVersionCheck(Model):
         return _canonical_time(value)
 
 
+class DatasetVersionBound(Model):
+    """What ``bind`` reports of the binding it wrote: its digest and where it is, not the file."""
+
+    schema_version: Literal[1]
+    kind: Literal["dataset_version_bound"]
+    dataset_id: str
+    version_id: str
+    version_tag: str
+    binding_digest: Sha256
+    binding_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    local_manifest: LocalManifestRelation | None
+    split_total_matches_item_count: bool
+    is_partial: bool
+    observed_at: str
+
+    @field_validator("dataset_id", "version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @field_validator("version_tag")
+    @classmethod
+    def closed_tag(cls, value: str) -> str:
+        return validate_version_tag(value)
+
+    @field_validator("observed_at")
+    @classmethod
+    def canonical_instant(cls, value: str) -> str:
+        return _canonical_time(value)
+
+    @field_validator("binding_path")
+    @classmethod
+    def printable_path(cls, value: str) -> str:
+        if not is_reportable_path(value):
+            raise ValueError("a bounded printable path is required")
+        return value
+
+
 class DatasetVersionBinding(JsonWireModel):
     """The immutable reference to one frozen version (ADR-0033 §2): closed, canonical, digested.
 
@@ -309,6 +348,23 @@ class DatasetVersionBinding(JsonWireModel):
             binding_digest=self.digest,
             observed_at=observation.observed_at,
         )
+
+
+def bound_summary(binding: DatasetVersionBinding, path: str) -> DatasetVersionBound:
+    """The report of a binding that was written to ``path``."""
+    return DatasetVersionBound(
+        schema_version=1,
+        kind="dataset_version_bound",
+        dataset_id=binding.dataset_id,
+        version_id=binding.version_id,
+        version_tag=binding.version_tag,
+        binding_digest=binding.digest,
+        binding_path=path,
+        local_manifest=binding.local_manifest,
+        split_total_matches_item_count=binding.split_total_matches_item_count,
+        is_partial=binding.is_partial,
+        observed_at=binding.observed_at,
+    )
 
 
 def bind(

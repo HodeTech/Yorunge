@@ -18,7 +18,7 @@ from pydantic import Field, field_validator, model_validator
 from yorunge.domain.capabilities import JsonWireModel, canonical, instant
 from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.errors import DownloadIntegrityMismatch, YorungeError
-from yorunge.domain.models import Model, has_control_characters
+from yorunge.domain.models import Model, has_control_characters, is_reportable_path
 
 # --- limits and times (ADR-0032 §1-§3) ------------------------------------------------------------
 
@@ -151,7 +151,7 @@ class DownloadSummary(Model):
     @field_validator("output_path")
     @classmethod
     def printable_path(cls, value: str) -> str:
-        if has_control_characters(value) or len(value.encode("utf-8", errors="strict")) > 4096:
+        if not is_reportable_path(value):
             raise ValueError("bounded printable path required")
         return value
 

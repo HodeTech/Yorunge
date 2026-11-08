@@ -10,7 +10,7 @@ was never there, or a bound version is gone); the 404 of the split route is a re
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Final, Literal, Self
+from typing import Final, Self
 
 from yorunge.adapters.http_session import HttpSession
 from yorunge.application.context_discovery import DiscoveryClock, remaining
@@ -33,13 +33,13 @@ from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.dataset_version import (
     MAX_PAGE,
     MIN_PAGE,
+    Absent,
     DatasetVersionList,
     DatasetVersionObservation,
     validate_version_tag,
 )
 from yorunge.domain.errors import YorungeError
 
-Absent = Literal["dataset_version_not_found", "dataset_version_missing"]
 ABSENT_CODES: Final = ("dataset_version_not_found", "dataset_version_missing")
 VERSION_SECONDS: Final = (
     30.0  # the budget a caller gives one read: ``monotonic() + VERSION_SECONDS``
