@@ -45,6 +45,9 @@ class Reply:
     # No Content-Length of its own (the body is delimited by the connection closing, or by headers
     # the reply names itself).
     omit_length: bool = False
+    # Bytes written after the declared body, on the same connection (a server that sends more
+    # than it promised).
+    trailing: bytes = b""
 
 
 Route = Reply | Callable[[RequestRecord, int], Reply]
@@ -210,6 +213,9 @@ class TlsServer:
                                 reply.after_first_chunk()
                             if reply.chunk_delay:
                                 time.sleep(reply.chunk_delay)
+                    if reply.trailing and self.command != "HEAD":
+                        self.wfile.write(reply.trailing)
+                        self.wfile.flush()
                     if reply.truncate_at is not None or reply.omit_length:
                         self.close_connection = True
                     if reply.reset_after_body:

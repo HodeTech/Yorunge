@@ -275,10 +275,13 @@ class TransferHttpxTransport(HttpxTransport):
         acquired = False
         failure: ErrorCode | None = None
         public_error: YorungeError | None = None
+        in_consumer = False
+        timers: list[asyncio.Timeout] = []
         with _private_logs():
             try:
                 deadline = self._download_window(request, deadline)
                 async with asyncio.timeout(_remaining(deadline)) as window:
+                    timers.append(window)
                     async with asyncio.timeout(min(1.0, _remaining(deadline))):
                         await self._slots.acquire()
                     acquired = True
@@ -292,12 +295,19 @@ class TransferHttpxTransport(HttpxTransport):
                     self._responses.add(response)
                     self._download_headers(response)
                     typed = parse_response(response.status_code, response.headers.multi_items())
+                    promised = typed.content_length
+                    if promised is not None and promised > request.max_bytes:
+                        raise YorungeError("download_limit_exceeded")  # before a byte is read
                     view = _DownloadView(response, request, typed, disposition(typed, request.ask))
                     view._disarm = lambda: _disarm(window)
+                    in_consumer = True
                     yield view
+                    in_consumer = False
                     if not view.complete:
                         _remaining(deadline)
             except (TimeoutError, httpx.TimeoutException):
+                if in_consumer and not (timers and timers[0].expired()):
+                    raise  # a TimeoutError of the caller's own code is the caller's, not ours
                 failure = "transport_timeout"
             except httpx.InvalidURL:
                 failure = "invalid_request"

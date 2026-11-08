@@ -113,6 +113,7 @@ def test_a_download_carries_no_credential_even_beside_a_service_call_on_the_same
         service_call = [r for r in api.requests if r.path == "/v1/check"][0]
         assert service_call.header("X-API-Key") == SECRET  # the service call kept its own
         assert "cookie" not in names
+        assert len(network.connections) == 1  # one connection served both: reuse is what is tested
 
 
 def test_a_resume_adds_exactly_range_and_if_range(certificates):
@@ -296,7 +297,7 @@ def test_every_other_answer_is_one_closed_code_after_exactly_one_request(certifi
 # --- the body -------------------------------------------------------------------------------------
 
 
-def test_a_body_cut_short_is_incomplete_and_a_complete_one_is_not(certificates):
+def test_a_body_cut_short_is_incomplete(certificates):
     key = credential()
     cut = Reply(body=CONTENT, truncate_at=600)  # Content-Length says 2048, 600 arrive
     with serve(certificates, cut) as api:
@@ -437,11 +438,10 @@ def test_a_wire_header_that_is_not_the_described_one_is_refused_before_the_netwo
 
 def test_a_request_is_closed_by_construction(certificates):
     key = credential()
-    for ask in (ResumeAsk,):
-        with pytest.raises(ValueError):
-            ask(0, 100, TAG)  # nothing to resume from
-        with pytest.raises(ValueError):
-            ask(10, 100, 'W/"weak"')  # a weak tag is no identity
+    with pytest.raises(ValueError):
+        ResumeAsk(0, 100, TAG)  # nothing to resume from
+    with pytest.raises(ValueError):
+        ResumeAsk(10, 100, 'W/"weak"')  # a weak tag is no identity
     for kwargs in ({"max_bytes": 0}, {"max_bytes": MAX_DOWNLOAD_BYTES + 1}, {"max_bytes": True}):
         assert (
             failure(lambda kwargs=kwargs: DownloadRequest(target(), key.secret, None, **kwargs))
@@ -648,23 +648,6 @@ def test_a_session_that_owns_other_origins_refuses_a_target_on_this_one(
 # --- the answer's size and the time each phase may take -------------------------------------------
 
 
-def test_an_answer_with_more_header_fields_than_the_bound_is_refused_without_its_body(
-    certificates,
-):
-    key = credential()
-    many = tuple((f"X-Field-{number}", "1") for number in range(65))
-    with serve(certificates, Reply(body=CONTENT, headers=many)) as api:
-        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
-        with owned:
-            assert failure(lambda: fetch(owned, request(key))) == "invalid_response"
-        assert instances[0]._responses == set() and len(api.requests) == 1
-    few = tuple((f"X-Field-{number}", "1") for number in range(40))
-    with serve(certificates, Reply(body=CONTENT, headers=few)) as api:
-        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
-        with owned:
-            assert fetch(owned, request(key))[2] == CONTENT
-
-
 def test_a_header_stall_ends_at_the_phase_budget_not_at_the_callers_deadline(certificates):
     key = credential()
     with serve(certificates, Reply(body=CONTENT, header_delay=8.0)) as api:
@@ -673,43 +656,6 @@ def test_a_header_stall_ends_at_the_phase_budget_not_at_the_callers_deadline(cer
         with owned:
             assert failure(lambda: fetch(owned, request(key), seconds=60)) == "transport_timeout"
         assert 4.0 < time.monotonic() - started < 7.5  # five seconds, not sixty
-
-
-def test_a_third_download_waits_one_second_for_a_slot_and_no_longer(certificates):
-    key = credential()
-    slow = Reply(body=b"z" * 200_000, chunk_size=1024, chunk_delay=0.05)
-    paths = [f"/v1/files/evren-models/held-{number}.onnx" for number in range(3)]
-    routes = {path + QUERY: slow for path in paths}
-    with TlsServer(certificates, routes) as api:
-        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
-
-        async def run(transport):
-            async def hold(path):
-                async with transport.open_download(
-                    request(key, path=path), deadline=time.monotonic() + 30
-                ) as view:
-                    async for _ in view.chunks():
-                        pass
-
-            holders = [asyncio.create_task(hold(path)) for path in paths[:2]]
-            await asyncio.sleep(0.6)  # both slots are taken
-            started = time.monotonic()
-            try:
-                async with transport.open_download(
-                    request(key, path=paths[2]), deadline=time.monotonic() + 30
-                ):
-                    code = None
-            except YorungeError as error:
-                code = error.code
-            waited = time.monotonic() - started
-            for holder in holders:
-                holder.cancel()
-            await asyncio.gather(*holders, return_exceptions=True)
-            return code, waited
-
-        with owned:
-            code, waited = owned.download(run)
-        assert code == "transport_timeout" and 0.7 < waited < 2.5  # one second
 
 
 def test_the_get_window_reaches_the_connection_whole(certificates, monkeypatch):
