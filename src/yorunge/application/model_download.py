@@ -88,17 +88,26 @@ def parse_weights_answer(
 
 
 def _names_an_object(target: DownloadTarget) -> bool:
-    """The path below the prefix names one object: not the prefix itself, not a directory, and no
-    segment that a server may read as a dot segment (``..;x``, ``%2e%2e;x``)."""
+    """The path below the prefix names one object, as a server will read it.
+
+    Not the prefix itself, not a directory, and no segment that is empty or a dot segment once it is
+    decoded (also twice) and stripped of its path parameters: ``..;x``, ``%2e%2e;x``, ``;x``.
+    """
     path = urlsplit(target.wire_url).path
-    if path.endswith("/"):  # the prefix itself ends with "/" too
+    if not path.startswith(target.prefix):
         return False
-    return not any(_dot_segment(segment) for segment in path.split("/"))
+    below = path[len(target.prefix) :]  # the prefix itself ends with "/"
+    return bool(below) and all(_names_something(segment) for segment in below.split("/"))
 
 
-def _dot_segment(segment: str) -> bool:
-    """``.`` or ``..`` as a server may read it: with percent-encoded dots and path parameters."""
-    return unquote(segment).split(";", 1)[0] in (".", "..")
+def _names_something(segment: str) -> bool:
+    """A path segment a server reads as a name: not empty, not ``.``/``..``, parameters aside."""
+    for _ in range(3):  # an encoded encoding (``%252e``) is decoded as often as a server might
+        decoded = unquote(segment)
+        if decoded == segment:
+            break
+        segment = decoded
+    return segment.split(";", 1)[0] not in ("", ".", "..")
 
 
 def _plain_name(name: str) -> bool:

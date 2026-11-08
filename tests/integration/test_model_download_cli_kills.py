@@ -367,6 +367,7 @@ def test_a_stopped_terminal_is_never_waited_for():
     stream = Stopped(io.FileIO(write, "w", closefd=True), write_through=True)
     progress = ProgressText(stream)
     done = threading.Event()
+    started = time.monotonic()
 
     def report():
         progress(1, 2)
@@ -377,9 +378,11 @@ def test_a_stopped_terminal_is_never_waited_for():
     thread.start()
     try:
         assert done.wait(10), "the report waited for a terminal that takes nothing"
+        assert time.monotonic() - started < 0.5, "a select with a timeout is a wait"
     finally:
         os.close(read)  # lets a blocked writer (if the guard is gone) finish with EPIPE
         thread.join(10)
+        stream.close()  # the write end is the test's to close (a ResourceWarning otherwise)
 
 
 def test_a_target_through_a_symlink_says_so_in_text_and_the_envelope_is_unchanged(

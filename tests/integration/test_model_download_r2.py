@@ -69,6 +69,8 @@ def test_a_stalled_json_call_times_out_after_five_seconds_and_only_text_says_wha
     assert text.returncode == machine.returncode == 1
     assert error_of(machine)["code"] == "transport_timeout"
     message = text.stderr.decode("utf-8")
+    # exactly: the fixed message, a newline, the advice, a newline — nothing before or after
+    assert message == f"{YorungeError('transport_timeout').message}\n{TIMEOUT_HINT}\n"
     assert "ETag ile toplam boyutu bildirdiyse" in message and "yardımcı olmaz" in message
     assert "yardımcı olmaz" not in machine.stderr.decode() and "hint" not in machine.stderr.decode()
     assert rig.signed() == [] and rig.names() == []  # nothing was downloaded, nothing was kept
@@ -130,6 +132,8 @@ def test_the_help_states_the_ceiling_the_prerequisites_and_the_symlink_rule(
         "Anahtar argüman değildir",
         "üst dizin zinciri symlink içermemeli",
         "/private/... verin",
+        "Hedef var olan bir dosyaysa ezilmez",
+        "k-fold sürümleri için fold (0-1024)",
     ):
         assert phrase in text, phrase
 
@@ -235,6 +239,7 @@ class _Busy:
 
     def capture(self, *, deadline):
         self.deadlines.append(deadline)
+        assert len(self.deadlines) < 2_000, "the retry loop never ends"  # fail, do not hang
         if len(self.deadlines) <= self.busy:
             raise YorungeError(self.code)
         return "snapshot"
@@ -364,3 +369,88 @@ def test_a_stream_that_cannot_say_whether_it_is_writable_takes_no_report():
     progress(10, 100)
     progress.close()
     assert stream.getvalue() == "" and progress.enabled is True
+
+
+# --- a terminal that cannot say whether it is writable: the write decides -------------------------
+
+
+@pytest.mark.parametrize("error", [OSError, ValueError, AttributeError], ids=lambda e: e.__name__)
+def test_a_stream_whose_descriptor_cannot_be_asked_for_still_takes_its_reports(error):
+    class NoDescriptor(_Terminal):
+        def fileno(self):
+            raise error("no descriptor")
+
+    stream = NoDescriptor()
+    progress = ProgressText(stream)
+    progress(10, 100)
+    progress.close()
+    assert stream.getvalue().endswith("(%10)\n")  # asked nothing, written, ended
+
+
+# --- the options of the command group stand between `models` and the action ----------------------
+
+
+def test_the_common_options_are_accepted_between_models_and_the_action(monkeypatch, tmp_path):
+    from yorunge import api
+    from yorunge.cli import main
+
+    calls = []
+
+    def stub(*args, **kwargs):
+        calls.append(kwargs)
+        raise YorungeError("remote_failed")
+
+    monkeypatch.setattr(api, "download_model_weights", stub)
+    arguments = [
+        "--version-id",
+        VERSION,
+        "--format",
+        "onnx",
+        "--weights-out",
+        str(tmp_path / "w.onnx"),
+    ]
+    state = tmp_path / "state"
+    code = main(["models", "--output", "json", "--state-dir", str(state), "download", *arguments])
+    assert code == 1 and calls[0]["state_dir"] == state
+    # and without a state directory the API is given None: the user's default store
+    assert main(["models", "download", *arguments]) == 1 and calls[1]["state_dir"] is None
+
+
+def test_the_default_state_directory_is_used_when_none_is_given(
+    certificates, workspace, monkeypatch, tmp_path
+):
+    from yorunge import api
+
+    home = tmp_path / "home"
+    home.mkdir()
+    for name in ("XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CONFIG_HOME"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HOME", str(home))
+    api.initialize_state()  # the default store under HOME
+    with Rig(certificates, workspace) as rig:
+        summary = rig.call(state_dir=None).data
+        assert summary.bytes > 0 and rig.target.exists()
+
+
+# --- the text of a download, line by line ---------------------------------------------------------
+
+
+def test_the_text_of_a_download_is_exactly_these_lines_in_this_order(certificates, workspace):
+    from tests.integration.test_download_engine import DATA, sha
+
+    with Rig(certificates, workspace) as rig:
+        process = run(rig, certificates, command(rig))
+        assert process.returncode == 0 and process.stderr == b""
+        expected = "\n".join(
+            (
+                f"Model ağırlığı indirildi: {rig.target}",
+                f"Sürüm: {VERSION}; biçim onnx",
+                f"Boyut: {len(DATA)} bayt; SHA-256: {sha(DATA)}",
+                "Doğrulama: yalnız aktarım tamamlandı (transfer_complete); beklenen bir özet "
+                "verilmedi, içerik doğrulanmadı. Bağımsız bir özetiniz varsa --sha256 ile verin.",
+                "Aktarım: baştan indirildi.",
+                "Seviye yalnız indirilen baytların beklentinizle ilişkisini söyler; "
+                "sağlayıcıdaki nesnenin özgünlüğünü, lisansını ya da model uygunluğunu söylemez.",
+            )
+        )
+        assert process.stdout.decode("utf-8") == expected + "\n"

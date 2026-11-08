@@ -244,6 +244,7 @@ def test_a_store_that_stays_busy_ends_with_state_busy_when_the_window_is_over(
 
     def busy(self, *, deadline):
         attempts.append(deadline)
+        assert len(attempts) < 200, "the retry loop never ends"  # a broken loop fails, not hangs
         raise YorungeError("state_busy")
 
     monkeypatch.setattr(StateDiscovery, "capture", busy)

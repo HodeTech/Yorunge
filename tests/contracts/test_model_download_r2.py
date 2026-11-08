@@ -31,6 +31,13 @@ from tests.contracts.test_model_download_codec import (
         "..;x/b.onnx",
         ".;x/b.onnx",
         "a/..;x/b.onnx",
+        "%2e.;x/w.onnx",
+        "%252e%252e;x/w.onnx",  # one more layer of encoding
+        "w.onnx/%2e%2e;/x",
+        ";x",  # reads as the prefix itself
+        ";",
+        "a/b.onnx/;x",  # reads as a directory
+        "a/;x/b.onnx",  # an empty segment between two names
     ],
 )
 def test_a_dot_segment_is_not_an_object_whatever_its_spelling(tail):
@@ -56,7 +63,15 @@ def test_names_that_only_look_like_a_dot_segment_stay_objects(tail):
 
 @pytest.mark.parametrize(
     "host",
-    ["models-1.example.org", "a1.b2.c3.example", "x-y.example", "1.example"],
+    [
+        "models-1.example.org",
+        "a1.b2.c3.example",
+        "x-y.example",
+        "1.example",
+        "api-2.ssyz.org.tr",
+        "xn--vren-pta.ssyz.org.tr",
+        "203.0.113.7",
+    ],
 )
 def test_the_host_class_takes_hyphens_and_digits(host):
     origin = f"https://{host}"
@@ -71,6 +86,26 @@ def test_the_host_class_takes_hyphens_and_digits(host):
 def test_a_signed_query_may_use_every_plain_character_of_rfc3986(query):
     url = ORIGIN + PREFIX + "w.onnx" + query
     assert parse(answer(url=url)).wire_url == url
+
+
+def test_a_plus_sign_in_the_path_is_part_of_what_was_signed():
+    url = ORIGIN + PREFIX + "w+1.onnx" + QUERY
+    assert parse(answer(url=url)).wire_url == url
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        ORIGIN
+        + PREFIX
+        + "w.onnx?a=[b",  # one bracket alone: DownloadTarget takes it, only the pattern
+        ORIGIN + PREFIX + "w.onnx?a=b]",  # refuses it
+        ORIGIN + PREFIX + "w[.onnx",
+        ORIGIN + PREFIX + "w].onnx",
+    ],
+)
+def test_each_bracket_alone_is_refused(url):
+    assert code_of(lambda: parse(answer(url=url))) == "invalid_response"
 
 
 @pytest.mark.parametrize("path", [PREFIX, PREFIX + "?x=1", PREFIX + "dir/", PREFIX + "dir/?x=1"])
