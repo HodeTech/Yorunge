@@ -80,7 +80,8 @@ def test_every_shape_of_a_continuation_reads_back_with_its_root(tmp_path, shape)
 def test_a_prepared_continuation_with_no_operation_yet_reads_back_with_its_root(tmp_path):
     with world(tmp_path, {"status": "admitted", "plan_only": True}) as (store, root, (item,)):
         view, lineage = read_view_and_lineage(store.connection, item.plan["plan_id"])
-        assert view.operation is None and view.approval is not None
+        assert view.operation is None
+        assert view.approval is not None
         assert lineage.sources[0].operation.operation_id == root["record"]["operation_id"]
 
 
@@ -355,7 +356,8 @@ def test_the_store_asks_the_continuations_own_rule_about_its_proof(tmp_path, mon
         raise ValueError("this proof is not this continuation's")
 
     with world(tmp_path, {"status": "succeeded"}) as (store, _, (item,)):
-        assert read(store, item).verification is not None and asked == []
+        assert read(store, item).verification is not None
+        assert asked == []
         monkeypatch.setattr(
             "yorunge.adapters.upload_store.validate_verification_binding_v3", refuse
         )
@@ -413,8 +415,10 @@ def test_the_journals_of_a_chain_run_from_the_root_to_the_source(tmp_path):
         # first continuation the second, and nothing has reached the third.
         manifest = DatasetManifest.model_validate_json(canon_manifest())
         assert merge_chain(snapshot.journals, manifest).states == ("accepted", "accepted", "none")
-        assert snapshot.source.status == "unknown" and snapshot.source.lease_active is False
-        assert snapshot.source.policy == "explicit_attempt" and snapshot.source.has_created_dataset
+        assert snapshot.source.status == "unknown"
+        assert snapshot.source.lease_active is False
+        assert snapshot.source.policy == "explicit_attempt"
+        assert snapshot.source.has_created_dataset
         # Its one descendant is the running continuation, whose lease is still live at this stamp.
         assert [(d.operation_id, d.status, d.lease_active) for d in snapshot.descendants] == [
             (SECOND, "running", True)
@@ -531,7 +535,8 @@ def test_the_repository_reads_a_continuation_as_itself_and_revokes_it_as_a_v3(tm
         assert item.plan["plan_id"] in [entry.plan_id for entry in uploads.list()[0]]
         # The approval is revoked in its own family, never re-decoded as a v1/v2 one.
         revoked = uploads.revoke(item.plan["plan_id"], item.plan["digest"]).approval
-        assert type(revoked) is DatasetUploadApprovalV3 and revoked.status == "revoked"
+        assert type(revoked) is DatasetUploadApprovalV3
+        assert revoked.status == "revoked"
         assert revoked.approval_id == view.approval.approval_id
 
 
@@ -670,7 +675,8 @@ def test_reading_every_plan_of_a_long_lineage_reads_each_operation_once(tmp_path
         assert len(calls) == count + 1
         calls.clear()
         entries, _ = StateUploads(store).list(limit=100)
-        assert len(entries) == count + 1 and len(calls) <= count + 2
+        assert len(entries) == count + 1
+        assert len(calls) <= count + 2
 
 
 # --- the facts of a chain, in the places a mutant could hide ------------------------------------
@@ -685,7 +691,8 @@ def test_the_facts_of_a_deeper_chain_name_each_operations_own_status_parent_and_
         root_operation = root["record"]["operation_id"]
         # Each journal's parent is the operation before it; the facts are the source's own.
         assert [j.parent_operation_id for j in deep.journals] == [None, root_operation, FIRST]
-        assert deep.source.status == "running" and deep.source.lease_active is True
+        assert deep.source.status == "running"
+        assert deep.source.lease_active is True
         assert uploads.chain_snapshot(FIRST, at).source.status == "unknown"
         assert deep.descendants == ()
         # A lease is over at the very instant it expires, not a moment later.
@@ -709,7 +716,8 @@ def test_a_v1_operation_is_a_root_with_no_explicit_policy_and_no_dataset_of_its_
     with open_store(tmp_path / "state", timeout=60) as store:
         plan, record = install_legacy_running(store, history=True)
         view = read_any_view(store.connection, plan.plan_id)
-        assert view.operation.schema_version == 1 and len(view.intents) == 1
+        assert view.operation.schema_version == 1
+        assert len(view.intents) == 1
         at = Stamp(
             plan.scope.store_id,
             plan.scope.identity_epoch,
@@ -723,7 +731,8 @@ def test_a_v1_operation_is_a_root_with_no_explicit_policy_and_no_dataset_of_its_
         # The oldest family never granted an explicit read, and its create left no strict receipt.
         assert snapshot.source.policy == "verified_only"
         assert snapshot.source.has_created_dataset is False
-        assert snapshot.source.status == "running" and snapshot.descendants == ()
+        assert snapshot.source.status == "running"
+        assert snapshot.descendants == ()
 
 
 def test_a_source_whose_plan_row_is_gone_is_a_corrupt_history(tmp_path):
@@ -809,7 +818,8 @@ def test_the_baseline_gate_of_a_continuation_reads_and_walks_its_lineage_once(
         baseline = StateUploads(store).require_created_baseline(SECOND)
         assert baseline.id == DATASET_ID
         # The continuation, its source and the root are each read once, in one walk.
-        assert len(walks) == 1 and len(reads) == 3
+        assert len(walks) == 1
+        assert len(reads) == 3
 
 
 def test_a_continuation_and_its_lineage_are_read_in_one_snapshot_no_writer_can_slip_into(
@@ -913,6 +923,7 @@ def test_a_cache_handed_in_empty_is_filled_by_the_first_walk_and_used_by_the_nex
             store_module, "_read_view", lambda *args: (reads.append(args[1]), real(*args))[1]
         )
         assert len(store_module.lineage_of(store.connection, view, cache).sources) == 2
-        assert len(reads) == 2 and len(cache) == 2  # both sources, each read once
+        assert len(reads) == 2
+        assert len(cache) == 2  # both sources, each read once
         store_module.lineage_of(store.connection, view, cache)
         assert len(reads) == 2  # the empty dict that was handed in is the one that was filled

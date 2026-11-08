@@ -225,7 +225,8 @@ def test_doctor_existing_store_is_read_only_and_key_check_stays_unchecked(
 
     # Both are imported lazily and bind ``new_key`` / ``load_key`` by name: first imported under
     # the patches below they would keep the denying stand-in for the rest of the process.
-    assert diagnostics and maintenance
+    assert diagnostics
+    assert maintenance
 
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)

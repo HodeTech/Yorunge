@@ -108,7 +108,8 @@ def test_a_stage_is_resumed_by_another_key_of_the_same_target(certificates, work
         cut(rig)
         monkeypatch.setenv(ENV, "another-synthetic-model-key-9917")
         summary = rig.call().data
-        assert summary.resumed is True and summary.bytes == len(DATA)
+        assert summary.resumed is True
+        assert summary.bytes == len(DATA)
 
 
 # --- the timeout the caller gave is the job's -----------------------------------------------------
@@ -147,7 +148,9 @@ def test_a_success_other_than_200_is_not_the_answer_and_no_signed_get_follows(
         with pytest.raises(YorungeError) as error:
             rig.call()
         assert (error.value.code, error.value.exit_code) == ("invalid_response", 1)
-        assert rig.signed() == [] and rig.names() == [] and len(rig.json_calls()) == 1
+        assert rig.signed() == []
+        assert rig.names() == []
+        assert len(rig.json_calls()) == 1
 
 
 # --- the Python API takes the integers it names, and a progress receiver that can be called -------
@@ -172,7 +175,8 @@ def test_the_python_api_judges_its_argument_types_before_any_request(
         with pytest.raises(YorungeError) as error:
             rig.call(**changes)
         assert error.value.code == "invalid_request"
-        assert rig.server.requests == [] and rig.names() == []
+        assert rig.server.requests == []
+        assert rig.names() == []
 
 
 def test_an_async_progress_receiver_is_refused_instead_of_never_being_awaited(
@@ -184,7 +188,8 @@ def test_an_async_progress_receiver_is_refused_instead_of_never_being_awaited(
     with Rig(certificates, workspace) as rig:
         with pytest.raises(YorungeError) as error:
             rig.call(progress=progress)
-        assert error.value.code == "invalid_request" and rig.server.requests == []
+        assert error.value.code == "invalid_request"
+        assert rig.server.requests == []
 
 
 # --- a failure of the session's own close does not overwrite a delivered file ---------------------
@@ -230,8 +235,10 @@ def test_a_busy_store_is_waited_for_and_the_download_then_goes_through(
     monkeypatch.setattr(module.time, "sleep", lambda seconds: None)
     with Rig(certificates, workspace) as rig:
         summary = rig.call().data
-        assert len(attempts) == 3 and len(set(attempts)) == 1  # one window for all the attempts
-        assert summary.bytes == len(DATA) and len(rig.json_calls()) == 1
+        assert len(attempts) == 3
+        assert len(set(attempts)) == 1  # one window for all the attempts
+        assert summary.bytes == len(DATA)
+        assert len(rig.json_calls()) == 1
 
 
 def test_a_store_that_stays_busy_ends_with_state_busy_when_the_window_is_over(
@@ -252,8 +259,10 @@ def test_a_store_that_stays_busy_ends_with_state_busy_when_the_window_is_over(
     with Rig(certificates, workspace) as rig:
         with pytest.raises(YorungeError) as error:
             rig.call()
-        assert error.value.code == "state_busy" and 2 <= len(attempts) < 40
-        assert rig.server.requests == [] and rig.names() == []
+        assert error.value.code == "state_busy"
+        assert 2 <= len(attempts) < 40
+        assert rig.server.requests == []
+        assert rig.names() == []
 
 
 def test_any_other_error_of_the_capture_is_not_retried(certificates, workspace, monkeypatch):
@@ -269,7 +278,8 @@ def test_any_other_error_of_the_capture_is_not_retried(certificates, workspace, 
     with Rig(certificates, workspace) as rig:
         with pytest.raises(YorungeError) as error:
             rig.call()
-        assert error.value.code == "credential_unavailable" and attempts == [1]
+        assert error.value.code == "credential_unavailable"
+        assert attempts == [1]
 
 
 # --- the command line: single-valued options and the project --------------------------------------

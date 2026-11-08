@@ -54,16 +54,15 @@ def test_a_continuation_whose_confirm_count_lies_is_led_out_by_show_not_by_recon
         # the words of that error are the generic ones; they send a person to `reconcile` ...
         person = Journey(server, data, manifest, config, "text")
         text = person.run("start", "--plan-id", prepared["plan_id"]).stderr.decode()
-        assert (
-            "uzlaştırın" in text
-            and f"İncele: yorunge datasets upload show --operation-id {continuation}" in text
-        )
+        assert "uzlaştırın" in text
+        assert f"İncele: yorunge datasets upload show --operation-id {continuation}" in text
 
         # ... which cannot close this graph: it ends with the same words, a dead end
         reconcile = person.run(
             "reconcile", "--operation-id", continuation, "--accept-unverified-read"
         )
-        assert reconcile.returncode == 5 and reconcile.stdout == b""
+        assert reconcile.returncode == 5
+        assert reconcile.stdout == b""
         assert "uzlaştırın" in reconcile.stderr.decode()
 
         # `show` is what leads out: the journal says a new report is the way

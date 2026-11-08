@@ -82,7 +82,8 @@ def test_a_source_whose_continuation_lapsed_in_admitted_is_reconciled_as_it_alwa
             source,
         )
         after = source_record(data, source)
-        assert after.status == "unknown" and after.fence > before.fence
+        assert after.status == "unknown"
+        assert after.fence > before.fence
         assert operation_of(data, report.plan_id).status == "admitted"  # left for the next prepare
         store_is_valid(data)
 
@@ -160,7 +161,8 @@ def test_a_continuation_admitted_between_the_prechecks_and_the_transaction_still
                         repository.acquire_read(source, accept_unverified_read=True)
             assert fired
         successor = operation_of(data, report.plan_id)
-        assert successor is not None and successor.status == "admitted"
+        assert successor is not None
+        assert successor.status == "admitted"
         assert refused.value.code == "operation_conflict"
         assert refused.value.operation_id == successor.operation_id
         assert source_record(data, source) == before
@@ -181,20 +183,24 @@ def test_a_continuation_killed_in_running_with_every_receipt_is_reconciled_after
         view = journal(data, report.plan_id)
         operation = view.operation
         assert (operation.status, operation.lease is not None) == ("running", True)
-        assert len(view.intents) == len(view.receipts) == 3 and view.verification is None
+        assert len(view.intents) == len(view.receipts) == 3
+        assert view.verification is None
         requests = len(server.requests)
         with pytest.raises(OperationError) as live:  # the dead owner's lease still stands
             reconcile(data, server, operation.operation_id)
-        assert live.value.code == "operation_conflict" and len(server.requests) == requests
+        assert live.value.code == "operation_conflict"
+        assert len(server.requests) == requests
         clock = Skewed()
         clock.skew = 200
         phase = reconcile(data, server, operation.operation_id, clock=clock)
         record = phase.record
         assert (record.status, record.reason) == ("succeeded", "metadata_verified")
-        assert record.operation_id == operation.operation_id and record.lease is None
+        assert record.operation_id == operation.operation_id
+        assert record.lease is None
         after = journal(data, report.plan_id)
         assert len(after.verification.files) == 3
-        assert after.intents == view.intents and after.receipts == view.receipts
+        assert after.intents == view.intents
+        assert after.receipts == view.receipts
         store_is_valid(data)
 
 
@@ -222,7 +228,8 @@ def test_a_running_complete_continuation_that_meets_a_failing_read_ends_unknown_
         assert raised.value.operation_id == operation.operation_id
         view = journal(data, report.plan_id)
         assert (view.operation.status, view.operation.reason) == ("unknown", "read_unavailable")
-        assert view.operation.lease is None and view.verification is None
+        assert view.operation.lease is None
+        assert view.verification is None
         assert len(view.intents) == len(view.receipts) == 3
         store_is_valid(data)
         provider.route_table[path] = real
@@ -295,7 +302,8 @@ def test_a_continuations_reconcile_makes_six_reads_and_holds_no_lock_while_it_wa
         count = len(server.requests)
         phase = reconcile(data, server, operation)
         requests = server.requests[count:]
-        assert len(requests) == len(locks) == 6 and all(r.method == "GET" for r in requests)
+        assert len(requests) == len(locks) == 6
+        assert all(r.method == "GET" for r in requests)
         assert (phase.record.status, phase.record.reason) == ("succeeded", "metadata_verified")
         store_is_valid(data)
 

@@ -93,7 +93,9 @@ def test_gap_one_stage_fsync_beyond_the_upper_bound_fails_a_plain_run(evidence, 
 def test_gap_the_smallest_smoke_is_one_run(evidence):
     smoke = build(evidence, labels=("16",), samples=1)
     summary = evidence["summarize_report"](smoke)
-    assert summary["cases"] == 1 and summary["partial"] is True and summary["accepted"] is False
+    assert summary["cases"] == 1
+    assert summary["partial"] is True
+    assert summary["accepted"] is False
 
 
 @pytest.mark.parametrize(

@@ -106,14 +106,17 @@ def test_an_approved_continuation_sends_what_was_left_and_proves_the_whole_datas
         assert type(view.verification) is TransferVerificationV3
         assert len(view.verification.files) == 3  # the whole manifest, though one file was sent
         assert view.verification.authorization_policy == "explicit_read_attempt"
-        assert view.verification.grant is None and len(view.intents) == len(view.receipts) == 3
+        assert view.verification.grant is None
+        assert len(view.intents) == len(view.receipts) == 3
         with open_existing_store(data[0]) as store:
             validate_uploads(store.connection)
         # Two sessions: the look at the dataset before anything is admitted (it only reads) and the
         # stages, on the plan's own budget: three effects, nothing left pending.
         look, stages = budgets
-        assert look.snapshot().effect_attempts == 0 and look.snapshot().read_requests > 0
-        assert stages.snapshot().effect_attempts == 3 and stages.snapshot().response_pending == 0
+        assert look.snapshot().effect_attempts == 0
+        assert look.snapshot().read_requests > 0
+        assert stages.snapshot().effect_attempts == 3
+        assert stages.snapshot().response_pending == 0
 
 
 def test_five_of_eight_files_are_sent_and_the_eight_are_proved(prepared_input, certificates):
@@ -125,9 +128,11 @@ def test_five_of_eight_files_are_sent_and_the_eight_are_proved(prepared_input, c
         record = go(data, server, report.plan_id).record
         assert (record.status, record.reason) == ("succeeded", "metadata_verified")
         events = provider.events[sends:]  # every presign first, then the puts two at a time
-        assert events[:5] == ["presign"] * 5 and sorted(events[5:]) == ["confirm"] * 5 + ["put"] * 5
+        assert events[:5] == ["presign"] * 5
+        assert sorted(events[5:]) == ["confirm"] * 5 + ["put"] * 5
         view = journal(data, report.plan_id)
-        assert len(view.verification.files) == 8 and len(view.intents) == 15
+        assert len(view.verification.files) == 8
+        assert len(view.intents) == 15
 
 
 # --- a continuation that sends nothing only proves the dataset -----------------------------------
@@ -152,11 +157,13 @@ def test_a_continuation_that_sends_nothing_only_reads_and_proves_the_dataset(
         sends, requests = len(provider.events), len(server.requests)
         record = go(data, server, report.plan_id).record
         assert (record.status, record.reason) == ("succeeded", "metadata_verified")
-        assert record.verification_only and record.workflow_latched is False
+        assert record.verification_only
+        assert record.workflow_latched is False
         assert provider.events[sends:] == []  # nothing was created, linked, presigned or put
         assert all(r.method == "GET" for r in server.requests[requests:])
         view = journal(data, report.plan_id)
-        assert view.intents == () and view.receipts == ()
+        assert view.intents == ()
+        assert view.receipts == ()
         assert len(view.verification.files) == 2  # both files were already there
 
 
@@ -177,7 +184,8 @@ def test_a_plan_that_has_its_operation_returns_it_without_a_network(prepared_inp
         again = run_upload_continuation(
             report.plan_id, Path(data[0]), no_context, session_factory=factory(server)
         )
-        assert again.existing is True and again.record == first.record
+        assert again.existing is True
+        assert again.record == first.record
         assert len(server.requests) == requests
 
 
@@ -199,7 +207,8 @@ def test_a_process_that_does_not_win_the_admission_sends_and_proves_nothing(
         monkeypatch.setattr(ContinuationStages, "admission", admitted_first)
         sends, requests = len(provider.events), len(server.requests)
         phase = go(data, server, report.plan_id)
-        assert phase.existing is True and phase.record.status == "admitted"
+        assert phase.existing is True
+        assert phase.record.status == "admitted"
         assert provider.events[sends:] == []
         assert all(r.method == "GET" for r in server.requests[requests:])
         assert journal(data, report.plan_id).verification is None
@@ -227,9 +236,12 @@ def test_a_plan_that_another_invocation_admits_while_this_one_looks_is_found_not
         monkeypatch.setattr(UploadResumeRuntime, "_read_source", read_source)
         sends, budgets = len(provider.events), []
         phase = go(data, server, report.plan_id, budgets=budgets)
-        assert done and phase.existing is True and phase.record.status == "admitted"
+        assert done
+        assert phase.existing is True
+        assert phase.record.status == "admitted"
         assert phase.record == operation_of(data, report.plan_id)
-        assert provider.events[sends:] == [] and budgets == []  # this invocation asked nothing
+        assert provider.events[sends:] == []
+        assert budgets == []  # this invocation asked nothing
 
 
 def test_a_plan_whose_dataset_its_own_operation_changed_meanwhile_is_found_not_changed(
@@ -254,7 +266,9 @@ def test_a_plan_whose_dataset_its_own_operation_changed_meanwhile_is_found_not_c
         monkeypatch.setattr(UploadResumeRuntime, "_read_remote", read_remote)
         sends = len(provider.events)
         phase = go(data, server, report.plan_id)
-        assert done and phase.existing is True and phase.record.status == "succeeded"
+        assert done
+        assert phase.existing is True
+        assert phase.record.status == "succeeded"
         assert phase.record == operation_of(data, report.plan_id)
         assert provider.events[sends:] == ["presign", "put", "confirm"]  # the one file, once
 
@@ -359,7 +373,8 @@ def test_a_look_that_fails_before_the_start_is_that_failure_and_not_a_change(
         sends = len(provider.events)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert error.value.code == code and operation_of(data, report.plan_id) is None
+        assert error.value.code == code
+        assert operation_of(data, report.plan_id) is None
         assert provider.events[sends:] == []
 
 
@@ -389,7 +404,8 @@ def test_a_dataset_that_changes_during_the_stages_is_not_proved_and_not_sent_aga
         # Every stage is known to be done; only the proof is missing, and nothing is replayed.
         assert (record.status, record.reason) == ("unknown", "read_unavailable")
         view = journal(data, report.plan_id)
-        assert view.verification is None and len(view.intents) == len(view.receipts) == 3
+        assert view.verification is None
+        assert len(view.intents) == len(view.receipts) == 3
         assert provider.events[sends:] == ["presign", "put", "confirm"]
 
 
@@ -433,13 +449,15 @@ def test_a_closing_read_that_fails_after_files_were_sent_leaves_the_read_unavail
         assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("unknown", "read_unavailable")
         view = journal(data, report.plan_id)
-        assert view.verification is None and len(view.intents) == len(view.receipts) == 3
+        assert view.verification is None
+        assert len(view.intents) == len(view.receipts) == 3
         assert provider.events[sends:] == ["presign", "put", "confirm"]  # nothing is replayed
         requests = len(server.requests)
         again = run_upload_continuation(
             report.plan_id, Path(data[0]), no_context, session_factory=factory(server)
         )
-        assert again.existing is True and len(server.requests) == requests
+        assert again.existing is True
+        assert len(server.requests) == requests
 
 
 @pytest.mark.parametrize("path", [ME, ITEMS], ids=["the permission", "the listing"])
@@ -460,14 +478,16 @@ def test_a_closing_read_that_fails_for_a_check_only_continuation_cancels_it_with
         assert (error.value.code, error.value.reason_code) == (code, code)
         assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
-        assert record.workflow_latched is False and journal(data, report.plan_id).intents == ()
+        assert record.workflow_latched is False
+        assert journal(data, report.plan_id).intents == ()
         assert provider.events[sends:] == []
         # The plan cannot be started again: its operation is over, a new prepare is needed.
         requests = len(server.requests)
         again = run_upload_continuation(
             report.plan_id, Path(data[0]), no_context, session_factory=factory(server)
         )
-        assert again.existing is True and again.record.status == "cancelled"
+        assert again.existing is True
+        assert again.record.status == "cancelled"
         assert len(server.requests) == requests
 
 
@@ -524,7 +544,8 @@ def test_an_interrupt_in_the_closing_read_of_a_check_only_continuation_cancels_i
             go(data, server, report.plan_id)
         record = operation_of(data, report.plan_id)
         if code is not None:
-            assert error.value.code == code and error.value.operation_id == record.operation_id
+            assert error.value.code == code
+            assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
         assert journal(data, report.plan_id).intents == ()
 
@@ -578,7 +599,8 @@ def test_a_closing_read_that_is_too_slow_cancels_a_check_only_continuation_local
             go(data, server, report.plan_id, clock=clock)
         record = operation_of(data, report.plan_id)
         # Nothing was sent, so a proof that is late is no uncertainty: the operation is cancelled.
-        assert error.value.code == code and error.value.operation_id == record.operation_id
+        assert error.value.code == code
+        assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
         assert journal(data, report.plan_id).verification is None
 
@@ -605,7 +627,8 @@ def test_a_closing_read_that_is_too_slow_leaves_a_continuation_that_sent_files_u
         assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("unknown", "request_uncertain")
         view = journal(data, report.plan_id)
-        assert view.verification is None and len(view.receipts) == 3
+        assert view.verification is None
+        assert len(view.receipts) == 3
         assert provider.events[sends:] == ["presign", "put", "confirm"]  # nothing is replayed
 
 
@@ -630,9 +653,8 @@ def test_a_check_only_continuation_that_cannot_write_its_stop_is_still_nothing_u
         with pytest.raises(OperationError) as error:
             go(data, server, report.plan_id, clock=clock)
         record = operation_of(data, report.plan_id)
-        assert (
-            error.value.code == "execution_timeout" and error.value.reason_code == error.value.code
-        )
+        assert error.value.code == "execution_timeout"
+        assert error.value.reason_code == error.value.code
         assert error.value.operation_id == record.operation_id
         assert (record.status, record.workflow_latched) == ("admitted", False)
         assert journal(data, report.plan_id).verification is None
@@ -658,9 +680,8 @@ def test_a_continuation_that_sent_files_and_cannot_write_its_stop_is_uncertain(
         # The file was sent and its stop cannot be written: the operation is left as it stands.
         assert error.value.code == "operation_uncertain"
         assert error.value.operation_id == record.operation_id
-        assert (
-            record.workflow_latched is True and journal(data, report.plan_id).verification is None
-        )
+        assert record.workflow_latched is True
+        assert journal(data, report.plan_id).verification is None
 
 
 # --- the source is no longer alone ----------------------------------------------------------------
@@ -718,7 +739,8 @@ def test_a_source_that_another_plan_has_admitted_is_a_conflict_with_that_operati
         first, second = two_plans(data, server, provider)
         monkeypatch.setattr(ContinuationStages, "admission", admitted_only)
         holder = go(data, server, first.plan_id)  # admitted by "another process", not run by this
-        assert holder.existing is True and holder.record.status == "admitted"
+        assert holder.existing is True
+        assert holder.record.status == "admitted"
         monkeypatch.setattr(ContinuationStages, "admission", original)
         requests, sends = len(server.requests), len(provider.events)
         with pytest.raises(OperationError) as error:
@@ -727,7 +749,8 @@ def test_a_source_that_another_plan_has_admitted_is_a_conflict_with_that_operati
             "operation_conflict",
             holder.record.operation_id,
         )
-        assert len(server.requests) == requests and len(provider.events) == sends
+        assert len(server.requests) == requests
+        assert len(provider.events) == sends
 
 
 # --- the plan and what it stands on ---------------------------------------------------------------
@@ -740,7 +763,8 @@ def test_a_plan_that_was_not_approved_is_not_started(prepared_input, certificate
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert error.value.code == "approval_required" and len(server.requests) == requests
+        assert error.value.code == "approval_required"
+        assert len(server.requests) == requests
         assert operation_of(data, report.plan_id) is None
 
 
@@ -754,7 +778,8 @@ def test_a_plan_whose_window_has_passed_is_not_started(prepared_input, certifica
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id, clock=clock)
-        assert error.value.code == "upload_plan_not_valid" and len(server.requests) == requests
+        assert error.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == requests
 
 
 def test_the_plan_of_an_original_upload_is_not_a_continuation_to_start(
@@ -768,7 +793,8 @@ def test_the_plan_of_an_original_upload_is_not_a_continuation_to_start(
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, original.plan_id)
-        assert error.value.code == "upload_plan_not_valid" and len(server.requests) == requests
+        assert error.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == requests
 
 
 def test_a_folder_that_changed_since_the_plan_ends_the_start_before_a_request(
@@ -782,7 +808,8 @@ def test_a_folder_that_changed_since_the_plan_ends_the_start_before_a_request(
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert error.value.code == "input_changed" and len(server.requests) == requests
+        assert error.value.code == "input_changed"
+        assert len(server.requests) == requests
         assert operation_of(data, report.plan_id) is None
 
 
@@ -807,10 +834,12 @@ def test_no_key_and_no_volatile_provider_value_reaches_the_journal_the_log_or_th
         view = journal(data, report.plan_id)
         own = b"".join(x.encoded() for x in (*view.intents, *view.receipts)).decode()
         shown = own + repr(phase) + phase.record.model_dump_json() + caplog.text
-        assert SECRET not in shown and not any(marker in shown for marker in VOLATILE[:2])
+        assert SECRET not in shown
+        assert not any(marker in shown for marker in VOLATILE[:2])
         everything = stored_bytes(data[0])
         assert SECRET.encode() not in everything
-        assert b"objects/blob" not in everything and b"upload/put?key=" not in everything
+        assert b"objects/blob" not in everything
+        assert b"upload/put?key=" not in everything
         assert phase.record.model_dump_json().count("created_dataset") == 0
 
 
@@ -835,8 +864,10 @@ def test_a_closing_read_that_fails_says_nothing_of_what_the_provider_answered(
         with pytest.raises(OperationError) as error:
             go(data, server, report.plan_id)
         shown = "".join(traceback.format_exception(error.value)) + repr(error.value)
-        assert canary not in shown and SECRET not in shown
-        assert error.value.__cause__ is None and error.value.__context__ is None
+        assert canary not in shown
+        assert SECRET not in shown
+        assert error.value.__cause__ is None
+        assert error.value.__context__ is None
         assert canary.encode() not in stored_bytes(data[0])
         assert SECRET.encode() not in stored_bytes(data[0])
 
@@ -862,7 +893,8 @@ def test_a_file_whose_confirm_had_no_answer_is_sent_again_and_the_whole_dataset_
         record = go(data, server, report.plan_id).record
         assert (record.status, record.reason) == ("succeeded", "metadata_verified")
         events = provider.events[sends:]
-        assert events[:2] == ["presign", "presign"] and sorted(events[2:]) == [
+        assert events[:2] == ["presign", "presign"]
+        assert sorted(events[2:]) == [
             "confirm",
             "confirm",
             "put",
@@ -870,7 +902,8 @@ def test_a_file_whose_confirm_had_no_answer_is_sent_again_and_the_whole_dataset_
         ]
         assert set(provider.confirmed) == {f.path for f in data[2].files}
         view = journal(data, report.plan_id)
-        assert len(view.verification.files) == 3 and len(view.intents) == len(view.receipts) == 6
+        assert len(view.verification.files) == 3
+        assert len(view.intents) == len(view.receipts) == 6
 
 
 # --- what the journal says about the source, one blocker at a time --------------------------------
@@ -909,7 +942,8 @@ def test_what_the_journal_rules_out_ends_the_start_before_the_provider_is_asked(
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert error.value.code == code and len(server.requests) == requests
+        assert error.value.code == code
+        assert len(server.requests) == requests
         if operation is None:  # the plan is outlived: there is no operation to name
             assert not isinstance(error.value, OperationError)
         else:  # the operation in the way: the successor when there is one, else the source
@@ -949,4 +983,5 @@ def test_an_admission_that_the_repository_refuses_names_the_operation_in_the_way
             "operation_conflict",
             holder.record.operation_id,
         )
-        assert operation_of(data, second.plan_id) is None and len(provider.events) == sends
+        assert operation_of(data, second.plan_id) is None
+        assert len(provider.events) == sends

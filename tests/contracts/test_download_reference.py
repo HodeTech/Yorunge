@@ -126,19 +126,23 @@ def answer(status, **fields):
 
 def test_the_full_answer_rows_are_what_the_contract_does():
     plain = row(f"`200`, Range{APOS}siz istek")
-    assert "Tam gövde" in plain and "`invalid_response`" in plain
+    assert "Tam gövde" in plain
+    assert "`invalid_response`" in plain
     assert disposition(answer(200), None) == "full"
 
     ignored = row(f"`200`, Range{APOS}li istek (`Content-Range` yok")
-    assert "`ftruncate(0)`" in ignored and "ek istek yok" in ignored
+    assert "`ftruncate(0)`" in ignored
+    assert "ek istek yok" in ignored
     assert disposition(answer(200, Content_Length="1000"), ASK) == "restart"
 
     tail = row(f"`200`, Range{APOS}li istek, `Content-Length` tam olarak")
-    assert f"Range{APOS}siz istek" in tail and "T−N" in tail
+    assert f"Range{APOS}siz istek" in tail
+    assert "T−N" in tail
     assert disposition(answer(200, Content_Length="600"), ASK) == "discard_and_retry"
 
     mislabelled = row("`200` + `Content-Range`")
-    assert f"Range{APOS}siz istek" in mislabelled and "`invalid_response`/1" in mislabelled
+    assert f"Range{APOS}siz istek" in mislabelled
+    assert "`invalid_response`/1" in mislabelled
     labelled = answer(200, Content_Range="bytes 400-999/1000", Content_Length="600")
     assert disposition(labelled, ASK) == "discard_and_retry"
     with pytest.raises(YorungeError) as error:
@@ -183,17 +187,24 @@ def test_the_rows_of_the_wire_table_are_all_present():
 
 def test_the_limits_of_the_reference_are_the_limits_of_the_code():
     limits = table("Motor sınırı")
-    assert MAX_DOWNLOAD_BYTES == 1 << 30 and "1 GiB" in limits
-    assert BLOCK_BYTES == 1 << 20 and "1 MiB" in limits
-    assert MAX_SIDECAR_BYTES == 4096 and "≤4 KiB" in limits
-    assert CHECKPOINT_BYTES == 8 << 20 and "8 MiB" in table("Stage ve sidecar protokolü")
-    assert DEFAULT_TIMEOUT_SECONDS == 900 and "varsayılan 900 s" in limits
+    assert MAX_DOWNLOAD_BYTES == 1 << 30
+    assert "1 GiB" in limits
+    assert BLOCK_BYTES == 1 << 20
+    assert "1 MiB" in limits
+    assert MAX_SIDECAR_BYTES == 4096
+    assert "≤4 KiB" in limits
+    assert CHECKPOINT_BYTES == 8 << 20
+    assert "8 MiB" in table("Stage ve sidecar protokolü")
+    assert DEFAULT_TIMEOUT_SECONDS == 900
+    assert "varsayılan 900 s" in limits
     assert "30–3600" in limits
-    assert parse_timeout(30) == 30 and parse_timeout(3600) == 3600
+    assert parse_timeout(30) == 30
+    assert parse_timeout(3600) == 3600
     for outside in (29, 3601):
         with pytest.raises(YorungeError):
             parse_timeout(outside)
-    assert "koşunun başında" in limits and "düşülmez" in limits  # the deadline's own start
+    assert "koşunun başında" in limits
+    assert "düşülmez" in limits  # the deadline's own start
 
 
 def test_the_names_of_the_reference_are_the_names_of_the_code():
@@ -201,7 +212,9 @@ def test_the_names_of_the_reference_are_the_names_of_the_code():
     assert (len(names.lock), len(names.stage), len(names.sidecar)) == (55, 55, 55)
     assert len(names.sidecar_tmp) == 59
     text = table("Saf sözleşme (P02-3j)")
-    assert "55" in text and "59" in text and "ilk 32 hex" in text
+    assert "55" in text
+    assert "59" in text
+    assert "ilk 32 hex" in text
     for spelling in (".yorunge-download-x", ".YORUNGE-DOWNLOAD-x", ".Yorunge-Download-"):
         with pytest.raises(YorungeError):
             validate_target_name(spelling)
@@ -270,13 +283,20 @@ def test_the_engine_section_states_the_constants_and_the_order_of_the_engine():
     from yorunge.domain.models import MAX_REPORTED_PATH_BYTES
 
     section = table("Motor (P02-3m)")
-    assert JSON_BUDGET_SECONDS == 30.0 and "30 sn" in section and "düşülmez" in section
-    assert RESOLVE_GRACE_SECONDS == 1.0 and "bütçe + 1 sn" in section
-    assert PROGRESS_SECONDS == 0.1 and "saniyede en çok on" in section
-    assert "en çok iki GET" in section and "tamponlamaz" in section
-    assert "yerel durumu her istekten önce" in section and "`complete(terminated=True)`" in section
+    assert JSON_BUDGET_SECONDS == 30.0
+    assert "30 sn" in section
+    assert "düşülmez" in section
+    assert RESOLVE_GRACE_SECONDS == 1.0
+    assert "bütçe + 1 sn" in section
+    assert PROGRESS_SECONDS == 0.1
+    assert "saniyede en çok on" in section
+    assert "en çok iki GET" in section
+    assert "tamponlamaz" in section
+    assert "yerel durumu her istekten önce" in section
+    assert "`complete(terminated=True)`" in section
     assert section.index("Tam-stage ise ağ koşusu yoktur") < section.index("en çok iki GET")
     # the framing ends, the whole-body mark is written, THEN the last report
     assert section.index("`complete(terminated=True)` yazılır") < section.index("sonra son rapor")
-    assert MAX_REPORTED_PATH_BYTES == 4096 and "4096 bayt" in section
+    assert MAX_REPORTED_PATH_BYTES == 4096
+    assert "4096 bayt" in section
     assert "≤16 KiB" in section  # the size of one TLS record, which is what is written at a time

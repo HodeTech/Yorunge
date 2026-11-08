@@ -631,7 +631,8 @@ def test_a_mandatory_read_that_is_dripped_is_cut_at_the_phase_budget(certificate
         with owned:
             check = owned.exchange(source.preparation)
     # The body alone would take half a minute; the phase (one second here) ends it first.
-    assert check.outcome == "unavailable" and check.error_code == "transport_timeout"
+    assert check.outcome == "unavailable"
+    assert check.error_code == "transport_timeout"
     assert time.monotonic() - began < 10
 
 
@@ -652,7 +653,8 @@ def test_the_phase_of_a_mandatory_read_is_the_named_constant(certificates, monke
         owned, _ = session(server, key, value)
         with owned:
             check = owned.exchange(source.preparation)
-    assert check.error_code is None and seen
+    assert check.error_code is None
+    assert seen
     assert 5.5 < seen[0] <= 7.0, seen
 
 
@@ -682,7 +684,8 @@ def test_the_baseline_of_a_foreign_client_or_dataset_is_refused_before_anything_
             assert failure.value.code == "invalid_request"
 
     asyncio.run(run())
-    assert calls == [] and value.snapshot().read_requests == 0
+    assert calls == []
+    assert value.snapshot().read_requests == 0
 
 
 def test_new_negative_keeps_source_timeout_code_without_refreshing_a_positive():

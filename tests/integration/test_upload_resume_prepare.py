@@ -141,13 +141,15 @@ def test_prepare_saves_the_plan_the_report_describes(prepared_input, certificate
         described = reported(data, server, source)
         before = len(server.requests)
         report = prepared(data, server, source)
-        assert report.eligible and report.plan_id is not None
+        assert report.eligible
+        assert report.plan_id is not None
         # The report and the prepare that follows it observe the same: one computation.
         assert report.observation == described.observation
         assert (report.blockers, report.quota_used) == (described.blockers, described.quota_used)
         view = saved(data, report.plan_id)
         plan = view.plan
-        assert isinstance(plan, DatasetContinuationPlanV3) and plan.digest == report.plan_digest
+        assert isinstance(plan, DatasetContinuationPlanV3)
+        assert plan.digest == report.plan_digest
         binding = plan.continuation
         assert (binding.source_operation_id, binding.baseline_operation_id) == (source, source)
         assert (binding.dataset_id, binding.file_indices, binding.uncertain_indices) == (
@@ -155,15 +157,20 @@ def test_prepare_saves_the_plan_the_report_describes(prepared_input, certificate
             (2,),
             (),
         )
-        assert binding.remote_present_count == 2 and binding.observed_at == report.observed_at
-        assert plan.request_limits.files == 1 and plan.status == "attempt_ready"
+        assert binding.remote_present_count == 2
+        assert binding.observed_at == report.observed_at
+        assert plan.request_limits.files == 1
+        assert plan.status == "attempt_ready"
         assert plan.request_limits.max_upload_bytes == len(b"different")
         assert (plan.admission_policy, plan.cost_policy) == (
             "explicit_attempt",
             "unpriced_accepted",
         )
-        assert plan.grant is None and plan.cost_bound is None and plan.inputs_verified
-        assert view.operation is None and view.approval is None  # nothing is admitted or approved
+        assert plan.grant is None
+        assert plan.cost_bound is None
+        assert plan.inputs_verified
+        assert view.operation is None
+        assert view.approval is None  # nothing is admitted or approved
         assert all(r.method == "GET" for r in server.requests[before:])
         with open_existing_store(data[0]) as store:
             validate_uploads(store.connection)
@@ -181,12 +188,12 @@ def test_a_check_only_continuation_is_prepared_when_nothing_is_left_to_send(
         source = interrupted(data, server)
         report = prepared(data, server, source)
         plan = saved(data, report.plan_id).plan
-        assert plan.continuation.file_indices == () and plan.request_limits.files == 0
-        assert (
-            plan.request_limits.max_upload_bytes == 0
-            and plan.continuation.remote_present_count == 2
-        )
-        assert report.observation.send_files == 0 and report.observation.send_bytes == 0
+        assert plan.continuation.file_indices == ()
+        assert plan.request_limits.files == 0
+        assert plan.request_limits.max_upload_bytes == 0
+        assert plan.continuation.remote_present_count == 2
+        assert report.observation.send_files == 0
+        assert report.observation.send_bytes == 0
 
 
 def test_the_plan_is_taken_under_the_credential_of_today(prepared_input, certificates, monkeypatch):
@@ -218,9 +225,8 @@ def test_a_source_that_is_frozen_already_is_not_touched_and_the_plan_holds_no_se
         # was hashed; the dataset was observed after that and before the plan was sealed.
         window = plan.execution_window
         not_before, not_after = instant(window.not_before), instant(window.not_after)
-        assert (
-            not_after - not_before == timedelta(seconds=900) and plan.expires_at == window.not_after
-        )
+        assert not_after - not_before == timedelta(seconds=900)
+        assert plan.expires_at == window.not_after
         observed_at, prepared_at = instant(plan.continuation.observed_at), instant(plan.prepared_at)
         assert not_before < observed_at <= prepared_at < not_after
 
@@ -255,7 +261,8 @@ def test_unconfirmed_effects_must_be_acknowledged_before_anything_is_written(
         refused(data, server, source, "approval_required")
         report = prepared(data, server, source, accept_unconfirmed_effects=True)
         plan = saved(data, report.plan_id).plan
-        assert plan.continuation.uncertain_indices == (1,) and plan.continuation.file_indices == (
+        assert plan.continuation.uncertain_indices == (1,)
+        assert plan.continuation.file_indices == (
             1,
             2,
         )
@@ -279,7 +286,8 @@ def test_the_unverified_read_must_be_chosen_to_prepare(prepared_input, certifica
         with pytest.raises(YorungeError) as error:
             resume_runtime(data, server).resume(source, accept_unverified_read=False, prepare=True)
         assert error.value.code == "approval_required"
-        assert len(server.requests) == before and rows(data[0]) == stored
+        assert len(server.requests) == before
+        assert rows(data[0]) == stored
 
 
 PROBLEMS = {
@@ -304,7 +312,8 @@ def test_a_remote_state_that_blocks_is_not_possible_and_names_each_blocker(
         source = interrupted(data, server)
         change(provider)
         error = refused(data, server, source, "continuation_not_possible")
-        assert isinstance(error, ContinuationNotPossible) and error.blockers == blockers
+        assert isinstance(error, ContinuationNotPossible)
+        assert error.blockers == blockers
         assert error.operation_id == source
 
 
@@ -339,7 +348,8 @@ def test_a_store_that_cannot_hold_the_attempt_refuses_it_before_it_freezes_anyth
         refused(data, server, source, "upload_capacity_exceeded")
         # The report is no error: it states what is used and what the attempt would add.
         report = resume_runtime(data, server).resume(source, accept_unverified_read=True)
-        assert report.quota_used.plans == 1 and report.quota_added.plans == 1
+        assert report.quota_used.plans == 1
+        assert report.quota_added.plans == 1
 
 
 # --- the freeze ---------------------------------------------------------------------------------
@@ -359,12 +369,14 @@ def test_prepare_freezes_a_source_that_was_killed_while_running(
         # The report finds it free and leaves it as it is.
         stored = rows(data[0])
         report = later.resume(source, accept_unverified_read=True)
-        assert report.eligible and rows(data[0]) == stored
+        assert report.eligible
+        assert rows(data[0]) == stored
         # The confirm that was about to be sent never was: it may be sent now, so it is uncertain.
         assert report.observation.unconfirmed_ack_required
         with pytest.raises(YorungeError) as error:
             later.resume(source, accept_unverified_read=True, prepare=True)
-        assert error.value.code == "approval_required" and rows(data[0]) == stored
+        assert error.value.code == "approval_required"
+        assert rows(data[0]) == stored
         done = later.resume(
             source,
             accept_unverified_read=True,
@@ -378,7 +390,8 @@ def test_prepare_freezes_a_source_that_was_killed_while_running(
             "request_uncertain",
             None,
         )
-        assert frozen.fence == record.fence + 1 and done.plan_id is not None
+        assert frozen.fence == record.fence + 1
+        assert done.plan_id is not None
 
 
 @pytest.mark.parametrize("read", ["me", "owned", "detail", "role", "items"])
@@ -531,7 +544,8 @@ def test_a_credential_rotated_during_the_observation_stops_prepare_before_the_fr
         # The new key is registered once the listing was asked for; the plan is for the old one.
         with pytest.raises(YorungeError) as error:
             prepared(data, server, source)
-        assert error.value.code == "state_changed" and not frozen
+        assert error.value.code == "state_changed"
+        assert not frozen
         assert rows(data[0]) == stored
 
 
@@ -559,7 +573,8 @@ def test_a_context_of_another_project_is_not_the_source_s_and_nothing_is_asked(
                     source, accept_unverified_read=True, prepare=prepare
                 )
             assert error.value.code == "state_changed"  # the report and prepare say the same
-        assert len(server.requests) == before and rows(state) == stored
+        assert len(server.requests) == before
+        assert rows(state) == stored
 
 
 def test_the_plan_window_begins_once_the_folder_was_hashed(
@@ -637,7 +652,8 @@ def test_the_plan_of_a_second_hop_extends_the_root_and_passes_the_next_gates(
         continuation = record.operation_id
         later = resume_runtime(data, server, clock=Later())
         report = later.resume(continuation, accept_unverified_read=True)
-        assert report.eligible and report.observation.class_counts.pending_clean == 1
+        assert report.eligible
+        assert report.observation.class_counts.pending_clean == 1
         made = later.resume(continuation, accept_unverified_read=True, prepare=True)
         second = saved(data, made.plan_id).plan
         binding, base = second.continuation, plan.continuation
@@ -648,7 +664,8 @@ def test_the_plan_of_a_second_hop_extends_the_root_and_passes_the_next_gates(
             base.baseline_digest,
             base.intent_digest,
         )
-        assert binding.file_indices == (2,) and binding.remote_present_count == 2
+        assert binding.file_indices == (2,)
+        assert binding.remote_present_count == 2
         with open_existing_store(data[0]) as store:
             frozen = StateUploads(store).show(operation_id=continuation).operation
             assert (frozen.status, frozen.reason) == ("unknown", "request_uncertain")

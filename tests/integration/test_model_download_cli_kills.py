@@ -47,14 +47,16 @@ def test_every_option_of_the_command_is_a_singleton(option, monkeypatch):
     argv = ["models", "download", *REQUIRED, *once, *once]
     if option != "--output":
         argv += ["--output", "json"]
-    assert main(argv) == 2 and calls == []
+    assert main(argv) == 2
+    assert calls == []
     # control: given once, the same command reaches the API (so the 2 above is the repeat)
     single = ["models", "download", *REQUIRED]
     if option not in ("--version-id", "--format", "--weights-out"):
         single += once
     if option != "--output":
         single += ["--output", "json"]
-    assert main(single) == 1 and len(calls) == 1
+    assert main(single) == 1
+    assert len(calls) == 1
 
 
 import os  # noqa: E402
@@ -117,7 +119,8 @@ def slow(certificates, workspace):
 
 def test_a_terminal_sees_one_rewritten_line_then_a_newline_then_the_result(slow, certificates):
     code, terminal, _ = _on_terminal(slow, certificates, command(slow), stdout_too=True)
-    assert code == 0 and slow.target.read_bytes() == DATA
+    assert code == 0
+    assert slow.target.read_bytes() == DATA
     first, last = terminal.index("İndiriliyor"), terminal.index("Model ağırlığı indirildi")
     assert terminal.count("\rİndiriliyor") >= 3  # rewritten, not appended
     assert terminal[first:last].rstrip().endswith("(%100)")  # ends at the whole object ...
@@ -134,7 +137,9 @@ def test_machine_output_on_a_terminal_has_no_progress(certificates, workspace):
         code, terminal, _ = _on_terminal(
             rig, certificates, command(rig, output="json"), stdout_too=True
         )
-        assert code == 0 and "İndiriliyor" not in terminal and terminal.lstrip().startswith("{")
+        assert code == 0
+        assert "İndiriliyor" not in terminal
+        assert terminal.lstrip().startswith("{")
 
 
 def test_an_error_after_progress_starts_on_a_new_line(certificates, workspace):
@@ -151,7 +156,8 @@ def test_an_error_after_progress_starts_on_a_new_line(certificates, workspace):
             )
         ]
         code, terminal, _ = _on_terminal(rig, certificates, command(rig), stdout_too=True)
-        assert code == 1 and "İndiriliyor" in terminal
+        assert code == 1
+        assert "İndiriliyor" in terminal
         message = terminal.index("İndirme tamamlanmadan kesildi")
         assert terminal[message - 1] == "\n"
 
@@ -173,9 +179,12 @@ def test_machine_output_is_given_no_progress_receiver_even_on_a_terminal(monkeyp
     monkeypatch.setattr(api, "download_model_weights", stub)
     monkeypatch.setattr(sys, "stderr", Terminal())
     base = ["models", "download", *REQUIRED]
-    assert main([*base, "--output", "json"]) == 2 and seen == [None]
-    assert main([*base, "--output", "ndjson"]) == 2 and seen == [None, None]
-    assert main(base) == 2 and seen[-1] is not None  # control: text on a terminal gets one
+    assert main([*base, "--output", "json"]) == 2
+    assert seen == [None]
+    assert main([*base, "--output", "ndjson"]) == 2
+    assert seen == [None, None]
+    assert main(base) == 2
+    assert seen[-1] is not None  # control: text on a terminal gets one
 
 
 def test_every_cli_option_reaches_the_api_and_the_defaults_are_the_apis(monkeypatch):
@@ -299,10 +308,8 @@ def test_a_timeout_that_is_not_a_plain_decimal_integer_is_exit_2(value, monkeypa
         "download_model_weights",
         lambda *a, **k: calls.append(k) or (_ for _ in ()).throw(YorungeError("remote_failed")),
     )
-    assert (
-        main(["models", "download", *REQUIRED, "--timeout", value, "--output", "json"]) == 2
-        and calls == []
-    )
+    assert main(["models", "download", *REQUIRED, "--timeout", value, "--output", "json"]) == 2
+    assert calls == []
 
 
 # --- the progress line never decides the fate of the command --------------------------------------
@@ -335,12 +342,14 @@ def test_a_terminal_that_is_only_full_for_now_is_not_cut_off(monkeypatch):
     full = Terminal(BlockingIOError(errno.EAGAIN, "full"))
     progress = ProgressText(full)
     progress(1, 2)
-    assert progress.enabled is False and silenced == []
+    assert progress.enabled is False
+    assert silenced == []
     # a terminal that is gone is cut off, as before
     gone = Terminal(OSError(errno.EIO, "gone"))
     progress = ProgressText(gone)
     progress(1, 2)
-    assert progress.enabled is False and silenced == [gone]
+    assert progress.enabled is False
+    assert silenced == [gone]
 
 
 def test_a_stopped_terminal_is_never_waited_for():
@@ -395,7 +404,8 @@ def test_a_target_through_a_symlink_says_so_in_text_and_the_envelope_is_unchange
     target = link / "w.onnx"
     as_text = run(rig, certificates, command(rig, out=target))
     as_json = run(rig, certificates, command(rig, out=target, output="json"))
-    assert as_text.returncode == as_json.returncode == 2 and rig.server.requests == []
+    assert as_text.returncode == as_json.returncode == 2
+    assert rig.server.requests == []
     assert "symlink içermemeli" in as_text.stderr.decode()
     assert "symlink içermemeli" not in as_json.stderr.decode()
     assert json.loads(as_json.stderr)["code"] == "download_target_invalid"

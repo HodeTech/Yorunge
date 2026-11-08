@@ -73,9 +73,8 @@ def test_a_silent_supervisor_times_out_with_the_command_and_the_bound(helper, mo
     with control, child:
         with pytest.raises(subprocess.TimeoutExpired) as raised:
             helper["wait_status"](control, ["controller", "--flag"])
-    assert (
-        raised.value.cmd == ["controller", "--flag"] and raised.value.timeout == 0.3
-    )  # mutant L76
+    assert raised.value.cmd == ["controller", "--flag"]
+    assert raised.value.timeout == 0.3  # mutant L76
 
 
 # --- the success path of check()
@@ -152,13 +151,19 @@ def test_the_context_manager_nests_reuses_and_resets_its_depth(helper):
     before = signal.getsignal(signal.SIGTERM)
     with helper["termination_signals"]():
         outer = signal.getsignal(signal.SIGTERM)
-        assert callable(outer) and outer != before and names["_termination_depth"] == 1
+        assert callable(outer)
+        assert outer != before
+        assert names["_termination_depth"] == 1
         with helper["termination_signals"]():
-            assert signal.getsignal(signal.SIGTERM) == outer and names["_termination_depth"] == 2
-        assert signal.getsignal(signal.SIGTERM) == outer and names["_termination_depth"] == 1
-    assert signal.getsignal(signal.SIGTERM) == before and names["_termination_depth"] == 0
+            assert signal.getsignal(signal.SIGTERM) == outer
+            assert names["_termination_depth"] == 2
+        assert signal.getsignal(signal.SIGTERM) == outer
+        assert names["_termination_depth"] == 1
+    assert signal.getsignal(signal.SIGTERM) == before
+    assert names["_termination_depth"] == 0
     with helper["termination_signals"]():  # a second, sequential use installs the handler again
-        assert callable(signal.getsignal(signal.SIGTERM)) and names["_termination_depth"] == 1
+        assert callable(signal.getsignal(signal.SIGTERM))
+        assert names["_termination_depth"] == 1
     assert names["_termination_depth"] == 0  # mutants L37-L45
 
 
@@ -173,7 +178,8 @@ def test_a_second_sigterm_during_the_cleanup_is_ignored(helper):
             except SystemExit:
                 seen["during"] = signal.getsignal(signal.SIGTERM)
                 raise
-    assert stopped.value.code == 128 + signal.SIGTERM and seen["during"] == signal.SIG_IGN  # L34
+    assert stopped.value.code == 128 + signal.SIGTERM
+    assert seen["during"] == signal.SIG_IGN  # L34
     assert signal.getsignal(signal.SIGTERM) == before
 
 

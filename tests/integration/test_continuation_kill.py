@@ -38,7 +38,8 @@ def killed_after(lifecycle, step, *arguments):
         assert committed.wait(30), "the child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode != 0 and not process.is_alive()
+        assert process.exitcode != 0
+        assert not process.is_alive()
     finally:
         if process.is_alive():
             process.kill()
@@ -99,8 +100,10 @@ def test_a_kill_after_admission_before_the_id_is_given_leaves_a_recoverable_admi
     with open_store(lifecycle.root_dir, timeout=60) as store:
         repository = lifecycle.repository(store)
         view = repository.show(plan_id=plan.plan_id)
-        assert view.operation is not None and view.operation.status == "admitted"
-        assert view.intents == () and view.operation.workflow_latched is False
+        assert view.operation is not None
+        assert view.operation.status == "admitted"
+        assert view.intents == ()
+        assert view.operation.workflow_latched is False
         # Asking again finds the same operation; the lease ends it, and nothing was ever sent.
         assert repository.admit(plan.plan_id, plan) == view.operation
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
@@ -119,8 +122,10 @@ def test_a_kill_after_arming_leaves_an_intent_no_second_effect_and_an_unknown_op
         repository = lifecycle.repository(store)
         view = repository.show(plan_id=plan.plan_id)
         record = view.operation
-        assert len(view.intents) == 1 and view.receipts == ()
-        assert record.status == "running" and record.workflow_latched is True
+        assert len(view.intents) == 1
+        assert view.receipts == ()
+        assert record.status == "running"
+        assert record.workflow_latched is True
         # The permit died with the process: nothing can arm the stage again or use the lease.
         total_end = lifecycle.clock.monotonic() + 900
         try:
@@ -148,7 +153,8 @@ def test_a_kill_after_a_receipt_leaves_the_receipt_and_a_readable_history(lifecy
         view = read_any_view(store.connection, plan.plan_id)
         assert len(view.intents) == len(view.receipts) == 1
         assert view.receipts[0].intent_id == view.intents[0].intent_id
-        assert view.receipts[0].result == "accepted" and view.operation.status == "running"
+        assert view.receipts[0].result == "accepted"
+        assert view.operation.status == "running"
         validate_uploads(store.connection)
         assert store.verify().store_schema_version == 7
 

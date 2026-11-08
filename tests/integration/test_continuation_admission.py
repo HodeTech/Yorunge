@@ -45,16 +45,20 @@ def test_an_approved_continuation_is_admitted_as_a_record_that_has_sent_nothing(
         record = repository.admit(plan.plan_id, plan)
         assert type(record) is TransferRecordV3
         assert (record.status, record.revision, record.fence) == ("admitted", 1, 1)
-        assert record.workflow_latched is False and record.reason is None
-        assert record.verification_only is False and record.clock_anomaly is False
+        assert record.workflow_latched is False
+        assert record.reason is None
+        assert record.verification_only is False
+        assert record.clock_anomaly is False
         assert record.dataset_id == plan.continuation.dataset_id
         assert (
             record.intent_digest
             == plan.intent_digest()
             == lifecycle.root["record"]["intent_digest"]
         )
-        assert record.plan_id == plan.plan_id and record.plan_digest == plan.digest
-        assert record.lease.mode == "write" and record.lease.fence == 1
+        assert record.plan_id == plan.plan_id
+        assert record.plan_digest == plan.digest
+        assert record.lease.mode == "write"
+        assert record.lease.fence == 1
         assert record.approval == repository.show(plan_id=plan.plan_id).approval
         # Its journal is empty, its namespace is its root's and no create right was taken.
         assert repository.show(operation_id=record.operation_id).intents == ()
@@ -73,7 +77,8 @@ def test_a_continuation_that_sends_nothing_is_admitted_as_a_check_only_record(li
     with open_chain(lifecycle) as store:
         plan, repository = ready(lifecycle, store, indices=(), uncertain=())
         record = repository.admit(plan.plan_id, plan)
-        assert record.verification_only is True and record.workflow_latched is False
+        assert record.verification_only is True
+        assert record.workflow_latched is False
         assert plan.continuation.file_indices == ()
         validate_uploads(store.connection)
 
@@ -218,9 +223,11 @@ def test_a_descendant_that_lapsed_before_it_sent_anything_is_cancelled_by_the_ne
         assert record.status == "admitted"
         stale = repository.show(operation_id=FIRST)
         assert (stale.operation.status, stale.operation.reason) == ("cancelled", "lease_expired")
-        assert stale.operation.lease is None and stale.operation.fence == 2
+        assert stale.operation.lease is None
+        assert stale.operation.fence == 2
         kinds = [c.kind for c in stale.controls]
-        assert kinds == ["terminal"] and type(stale.controls[0]) is TransferControlV3
+        assert kinds == ["terminal"]
+        assert type(stale.controls[0]) is TransferControlV3
         # The store never holds two descendants of the root that are not cancelled.
         validate_uploads(store.connection)
 

@@ -162,7 +162,8 @@ def test_no_resume_treats_an_unreadable_sidecar_alike_with_or_without_a_stage():
 
 def test_a_prefix_that_did_not_hash_keeps_the_leftover_copy_removal_of_the_first_phase():
     first = decide(stage=stage(), sidecar=sidecar(), sidecar_tmp=entry(inode=8))
-    assert first.action == "resume" and first.remove == ("sidecar_tmp",)
+    assert first.action == "resume"
+    assert first.remove == ("sidecar_tmp",)
     second = confirm_prefix(first, "00" * 32)
     assert second.action == "start_clean"
     assert second.remove == ("stage", "sidecar", "sidecar_tmp")

@@ -75,9 +75,11 @@ def test_a_project_is_refused_wherever_it_is_given_not_dropped(
             "--output",
             "json",
         )
-        assert process.returncode == 2 and process.stdout == b""
+        assert process.returncode == 2
+        assert process.stdout == b""
         assert json.loads(process.stderr)["code"] == "invalid_request"
-        assert server.requests == [] and not (directory / "b.json").exists()
+        assert server.requests == []
+        assert not (directory / "b.json").exists()
 
 
 @pytest.mark.parametrize("target", ["..", ".", "/", "a/..", "../.."])
@@ -86,7 +88,8 @@ def test_a_binding_out_that_names_a_directory_is_an_invalid_request_not_an_exist
 ):
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, target)
-        assert process.returncode == 2 and process.stdout == b""
+        assert process.returncode == 2
+        assert process.stdout == b""
         assert json.loads(process.stderr)["code"] == "invalid_request"
         assert server.requests == []
 
@@ -134,9 +137,12 @@ def test_a_list_row_carries_the_flags_that_show_and_bind_warn_about(workspace, c
     plain = next(line for line in lines if line.startswith("- v1 "))
     kismi = next(line for line in lines if line.startswith("- v2 "))
     odd_line = next(line for line in lines if line.startswith("- v3 "))
-    assert "KISMİ" not in plain and "toplam≠öğe" not in plain
-    assert "KISMİ (is_partial)" in kismi and "toplam≠öğe" not in kismi
-    assert "toplam≠öğe" in odd_line and "KISMİ" not in odd_line
+    assert "KISMİ" not in plain
+    assert "toplam≠öğe" not in plain
+    assert "KISMİ (is_partial)" in kismi
+    assert "toplam≠öğe" not in kismi
+    assert "toplam≠öğe" in odd_line
+    assert "KISMİ" not in odd_line
     assert "tamamlandığı iddia edilmez" in process.stdout.decode()
 
 
@@ -159,7 +165,8 @@ def test_show_does_not_call_a_version_complete_when_it_only_is_not_marked_partia
             *flags(workspace),
         )
     text = process.stdout.decode()
-    assert "is_partial: hayır" in text and "; tam;" not in text
+    assert "is_partial: hayır" in text
+    assert "; tam;" not in text
 
 
 def test_the_last_page_is_not_pointed_past_the_option_the_command_has(workspace, certificates):
@@ -185,7 +192,9 @@ def test_the_last_page_is_not_pointed_past_the_option_the_command_has(workspace,
             *flags(workspace),
         )
     text = process.stdout.decode()
-    assert process.returncode == 0 and "--page 10001" not in text and "en çok 10000" in text
+    assert process.returncode == 0
+    assert "--page 10001" not in text
+    assert "en çok 10000" in text
 
 
 # --- the held directory ---------------------------------------------------------------------------
@@ -246,7 +255,8 @@ def test_a_failing_close_does_not_replace_the_error_a_binding_body_raised(
             raise interruption
 
     error = caught(body_)
-    assert error is interruption and closing.failed == 1
+    assert error is interruption
+    assert closing.failed == 1
     assert FAILED_NOTE in getattr(error, "__notes__", [])  # nothing was created: true here
     assert not (tmp_path / "b.json").exists()
 
@@ -263,8 +273,10 @@ def test_a_failing_close_after_the_link_adds_no_note_that_contradicts_the_doubt(
             target.publish(held_binding())
 
     error = caught(body_)
-    assert isinstance(error, YorungeError) and error.code == "binding_write_uncertain"
-    assert error.exit_code == 5 and closing.failed == 1
+    assert isinstance(error, YorungeError)
+    assert error.code == "binding_write_uncertain"
+    assert error.exit_code == 5
+    assert closing.failed == 1
     assert FAILED_NOTE not in getattr(error, "__notes__", [])  # "not created", with a file there
     assert (tmp_path / "b.json").exists()
 
@@ -280,7 +292,8 @@ def test_a_failing_close_after_a_clean_body_is_its_own_closed_error(tmp_path, mo
                 target.publish(held_binding())
 
     error = caught(body_)
-    assert isinstance(error, YorungeError) and closing.failed == 1
+    assert isinstance(error, YorungeError)
+    assert closing.failed == 1
     # nothing created: a failure; published: the file is whole but the held handle could not be
     # let go, which is the conservative doubt, never a silent success
     assert error.code == ("binding_write_uncertain" if publish else "binding_write_failed")
@@ -305,8 +318,10 @@ def test_a_failing_close_does_not_replace_the_doubt_of_a_published_download(tmp_
             sink.publish(None)
 
     error = caught(body_)
-    assert isinstance(error, YorungeError) and error.code == "download_write_uncertain"
-    assert error.exit_code == 5 and closing.failed == 1
+    assert isinstance(error, YorungeError)
+    assert error.code == "download_write_uncertain"
+    assert error.exit_code == 5
+    assert closing.failed == 1
     assert (tmp_path / "w.onnx").read_bytes() == data
 
 
@@ -318,7 +333,8 @@ def test_a_failing_close_does_not_replace_an_interrupt_in_a_download(tmp_path, m
             closing.descriptor = sink.directory.descriptor
             raise KeyboardInterrupt
 
-    assert isinstance(caught(body_), KeyboardInterrupt) and closing.failed == 1
+    assert isinstance(caught(body_), KeyboardInterrupt)
+    assert closing.failed == 1
 
 
 def test_a_failing_close_after_a_whole_download_does_not_undo_it(tmp_path, monkeypatch):
@@ -331,7 +347,8 @@ def test_a_failing_close_after_a_whole_download_does_not_undo_it(tmp_path, monke
         sink.write(data)
         sink.complete(terminated=True)
         sink.publish(None)
-    assert closing.failed == 1 and (tmp_path / "w.onnx").read_bytes() == data
+    assert closing.failed == 1
+    assert (tmp_path / "w.onnx").read_bytes() == data
 
 
 # --- signals at each boundary of a bind, with a real SIGINT ---------------------------------------
@@ -400,7 +417,8 @@ def test_an_interrupt_inside_the_publication_is_a_doubt_and_after_it_a_cancel(
         # the stage never outlives the command (a published target keeps nothing next to it)
         assert sorted(p.name for p in directory.iterdir() if p.name.startswith(".")) == []
         if published:  # whole and private, and the rerun says so rather than writing again
-            assert out.stat().st_mode & 0o777 == 0o600 and out.stat().st_nlink == 1
+            assert out.stat().st_mode & 0o777 == 0o600
+            assert out.stat().st_nlink == 1
             again = bind(server, certificates, workspace, out)
             assert again.returncode == 2
             assert json.loads(again.stderr)["code"] == "binding_output_exists"

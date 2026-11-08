@@ -73,7 +73,8 @@ def test_the_summary_golden_round_trips_and_keeps_the_constants_closed():
     summary = DatasetUploadSummaryV3.model_validate_json(raw)
     assert summary.encoded() == raw
     assert (summary.schema_version, summary.source_plan_schema) == (3, 3)
-    assert summary.legacy_history_only is False and summary.remote_bytes_verified is False
+    assert summary.legacy_history_only is False
+    assert summary.remote_bytes_verified is False
     assert (summary.continuation_files, summary.remote_present_files, summary.uncertain_files) == (
         2,
         1,
@@ -275,23 +276,30 @@ def listed(*examples, classes=MISSING):
 def test_report_goldens_round_trip(name):
     raw = fixture(name)
     report = DatasetUploadResumeReport.model_validate_json(raw)
-    assert report.encoded() == raw and len(raw) < DatasetUploadResumeReport.max_wire_bytes
+    assert report.encoded() == raw
+    assert len(raw) < DatasetUploadResumeReport.max_wire_bytes
 
 
 def test_the_goldens_name_blockers_a_plan_and_a_source_nothing_was_observed_of():
     blocked = DatasetUploadResumeReport.model_validate_json(fixture(BLOCKED))
-    assert blocked.blockers == ("drift_missing",) and not blocked.eligible
-    assert blocked.recommended_action == "none" and blocked.plan_id is None
+    assert blocked.blockers == ("drift_missing",)
+    assert not blocked.eligible
+    assert blocked.recommended_action == "none"
+    assert blocked.plan_id is None
     assert [e.file_class for e in blocked.observation.examples] == ["drift_missing"]
     eligible = DatasetUploadResumeReport.model_validate_json(fixture(ELIGIBLE))
-    assert eligible.blockers == () and eligible.eligible
+    assert eligible.blockers == ()
+    assert eligible.eligible
     assert eligible.recommended_action == "prepare"
     assert eligible.observation.unconfirmed_ack_required
-    assert eligible.plan_id is None and eligible.observation.send_files == 2
+    assert eligible.plan_id is None
+    assert eligible.observation.send_files == 2
     assert eligible.observation.class_counts.total() == eligible.file_count == 3
     nothing = DatasetUploadResumeReport.model_validate_json(fixture(UNOBSERVED))
-    assert nothing.observation is None and nothing.dataset_id is None
-    assert nothing.blockers == ("create_unknown",) and nothing.recommended_action == "none"
+    assert nothing.observation is None
+    assert nothing.dataset_id is None
+    assert nothing.blockers == ("create_unknown",)
+    assert nothing.recommended_action == "none"
     assert (nothing.quota_added.plans, nothing.quota_added.files) == (1, 3)
 
 
@@ -568,7 +576,8 @@ def test_every_single_blocker_yields_the_reference_action(blocker):
     else:
         value = observed(names, classes, related_operation_id=related, dataset_id=DATASET)
     report = accepts(value)
-    assert report.recommended_action == recommended_action(tuple(names)) and not report.eligible
+    assert report.recommended_action == recommended_action(tuple(names))
+    assert not report.eligible
 
 
 def test_the_worst_legal_report_fits_the_wire_limit_that_the_old_one_would_not():
@@ -687,7 +696,8 @@ def test_blockers_the_caller_merged_in_are_reported_and_withdraw_the_plan():
     merged = classification.with_blockers(("local_changed", "membership_unobserved"))
     report = build(merged)
     assert report.blockers == ("membership_unobserved", "local_changed") == merged.blockers
-    assert not report.eligible and report.recommended_action == recommended_action(merged.blockers)
+    assert not report.eligible
+    assert report.recommended_action == recommended_action(merged.blockers)
     assert report.observation.send_files == 2  # informational while blocked
     # A blocker the journal alone establishes means nothing was read: it cannot ride on evidence.
     for blocker in sorted(JOURNAL):
@@ -816,7 +826,8 @@ def test_examples_are_the_first_eight_paths_of_each_problem_class():
     (example,) = report.observation.examples
     assert example.file_class == "pending_uncertain"
     assert list(example.paths) == [f"f{n:02d}.bin" for n in range(8)]
-    assert report.observation.send_files == 12 and report.observation.send_bytes == 24
+    assert report.observation.send_files == 12
+    assert report.observation.send_bytes == 24
     assert report.file_count == report.quota_added.files == 12
 
 
@@ -1009,7 +1020,8 @@ def test_the_builder_refuses_what_is_not_the_evidence_it_asks_for():
             build(values.pop("classification"), **values)
     # Same file count, another manifest: only the identity inside the classification can tell.
     other = changed_manifest()
-    assert len(other.files) == len(MANIFEST.files) and other.digest != MANIFEST.digest
+    assert len(other.files) == len(MANIFEST.files)
+    assert other.digest != MANIFEST.digest
     with pytest.raises(ValueError, match="another manifest"):
         build(classification, manifest=other)
 

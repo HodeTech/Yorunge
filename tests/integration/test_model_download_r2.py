@@ -71,16 +71,21 @@ def test_a_stalled_json_call_times_out_after_five_seconds_and_only_text_says_wha
     message = text.stderr.decode("utf-8")
     # exactly: the fixed message, a newline, the advice, a newline — nothing before or after
     assert message == f"{YorungeError('transport_timeout').message}\n{TIMEOUT_HINT}\n"
-    assert "ETag ile toplam boyutu bildirdiyse" in message and "yardımcı olmaz" in message
-    assert "yardımcı olmaz" not in machine.stderr.decode() and "hint" not in machine.stderr.decode()
-    assert rig.signed() == [] and rig.names() == []  # nothing was downloaded, nothing was kept
+    assert "ETag ile toplam boyutu bildirdiyse" in message
+    assert "yardımcı olmaz" in message
+    assert "yardımcı olmaz" not in machine.stderr.decode()
+    assert "hint" not in machine.stderr.decode()
+    assert rig.signed() == []
+    assert rig.names() == []  # nothing was downloaded, nothing was kept
 
 
 def test_the_timeout_advice_does_not_promise_what_depends_on_the_provider():
     # A saved partial file needs the provider's ETag and total size; the advice says so, and it
     # separates a spent --timeout from a stalled connection that no timeout cures.
-    assert "ETag" in TIMEOUT_HINT and "toplam boyutu" in TIMEOUT_HINT
-    assert "--timeout" in TIMEOUT_HINT and "5 sn" in TIMEOUT_HINT
+    assert "ETag" in TIMEOUT_HINT
+    assert "toplam boyutu" in TIMEOUT_HINT
+    assert "--timeout" in TIMEOUT_HINT
+    assert "5 sn" in TIMEOUT_HINT
     hints = error_hints(_Args(no_resume=False))
     assert hints["transport_timeout"] == TIMEOUT_HINT
     assert hints["download_target_invalid"] == TARGET_HINT
@@ -96,7 +101,9 @@ class _Args:
 def test_the_mismatch_hint_names_the_digest_only_for_an_error_that_carries_one():
     mismatch = DownloadIntegrityMismatch("a" * 64, 5)
     hint = _mismatch_hint(mismatch)
-    assert hint is not None and "a" * 64 in hint and "(5 bayt)" in hint
+    assert hint is not None
+    assert "a" * 64 in hint
+    assert "(5 bayt)" in hint
     assert _mismatch_hint(YorungeError("download_integrity_mismatch")) is None  # no details at all
     for details in (
         None,
@@ -122,7 +129,8 @@ def test_the_help_states_the_ceiling_the_prerequisites_and_the_symlink_rule(
     with Rig(certificates, workspace) as rig:
         process = run(rig, certificates, ["models", "download", "--help"])
         text = " ".join(process.stdout.decode().split())
-        assert process.returncode == 0 and rig.server.requests == []
+        assert process.returncode == 0
+        assert rig.server.requests == []
     for phrase in (
         "En çok 1 GiB iner",
         "aşılırsa hedef oluşturulmaz",
@@ -169,15 +177,18 @@ def test_a_terminated_download_dies_by_the_signal_and_the_next_run_resumes_at_th
             if process.poll() is None:
                 process.kill()
                 process.wait()
-        assert process.returncode == -signal_number and stdout == b""  # no handler: died by it
+        assert process.returncode == -signal_number
+        assert stdout == b""  # no handler: died by it
         assert not rig.target.exists()
         sidecar = json.loads((rig.directory / names.sidecar).read_text())
         assert sidecar["committed_bytes"] == 8 * MIB  # the last checkpoint before the signal
         rig.provider.script, rig.provider.seen = [], []
         finished = run(rig, certificates, command(rig, output="json"))
-        assert finished.returncode == 0 and rig.target.read_bytes() == big
+        assert finished.returncode == 0
+        assert rig.target.read_bytes() == big
         data = json.loads(finished.stdout)["data"]
-        assert data["resumed"] is True and data["resumed_from_bytes"] == 8 * MIB
+        assert data["resumed"] is True
+        assert data["resumed_from_bytes"] == 8 * MIB
         assert rig.provider.seen[0][0] == f"bytes={8 * MIB}-"
 
 
@@ -217,15 +228,18 @@ def test_a_progress_callback_that_would_only_produce_a_coroutine_is_refused_up_f
 ):
     with Rig(certificates, workspace) as rig:
         assert code_of(lambda: rig.call(progress=progress)) == "invalid_request"
-        assert rig.server.requests == [] and rig.names() == []
+        assert rig.server.requests == []
+        assert rig.names() == []
 
 
 def test_an_instance_with_a_plain_call_is_a_progress_callback(certificates, workspace):
     collector = _Collector()
     with Rig(certificates, workspace) as rig:
         summary = rig.call(progress=collector).data
-        assert rig.target.exists() and summary.bytes > 0
-    assert collector.reports and collector.reports[-1][0] == summary.bytes
+        assert rig.target.exists()
+        assert summary.bytes > 0
+    assert collector.reports
+    assert collector.reports[-1][0] == summary.bytes
 
 
 # --- the capture of the local snapshot ------------------------------------------------------------
@@ -269,7 +283,8 @@ def test_a_busy_store_is_waited_for_with_a_jitter_of_fifty_to_three_hundred_mill
     state = _Busy(2)
     assert model_download._captured(state, clock.now + 30) == "snapshot"
     assert clock.slept == pytest.approx([expected, expected])
-    assert len(state.deadlines) == 3 and len(set(state.deadlines)) == 1  # one window for all
+    assert len(state.deadlines) == 3
+    assert len(set(state.deadlines)) == 1  # one window for all
 
 
 def test_the_wait_is_clamped_to_what_is_left_of_the_window(monkeypatch):
@@ -284,7 +299,8 @@ def test_a_window_that_is_over_ends_the_wait_with_the_busy_error(monkeypatch):
     clock = _Clock(monkeypatch)
     state = _Busy(10)
     assert code_of(lambda: model_download._captured(state, clock.now + 0.3)) == "state_busy"
-    assert clock.slept == [] and len(state.deadlines) == 1  # no time left: not waited for
+    assert clock.slept == []
+    assert len(state.deadlines) == 1  # no time left: not waited for
 
 
 def test_a_store_that_stays_busy_is_given_up_when_the_window_is_spent(monkeypatch):
@@ -292,7 +308,8 @@ def test_a_store_that_stays_busy_is_given_up_when_the_window_is_spent(monkeypatc
     monkeypatch.setattr(model_download.random, "random", lambda: 0.5)
     state = _Busy(10_000)
     assert code_of(lambda: model_download._captured(state, clock.now + 2.0)) == "state_busy"
-    assert 1.5 <= sum(clock.slept) <= 2.0 and len(state.deadlines) >= 5  # waited, within the window
+    assert 1.5 <= sum(clock.slept) <= 2.0
+    assert len(state.deadlines) >= 5  # waited, within the window
 
 
 @pytest.mark.parametrize("code", ["credential_unavailable", "state_invalid", "invalid_request"])
@@ -300,7 +317,8 @@ def test_only_a_busy_store_is_waited_for(monkeypatch, code):
     clock = _Clock(monkeypatch)
     state = _Busy(1, code=code)
     assert code_of(lambda: model_download._captured(state, clock.now + 30)) == code
-    assert clock.slept == [] and len(state.deadlines) == 1
+    assert clock.slept == []
+    assert len(state.deadlines) == 1
 
 
 def test_the_window_of_the_capture_is_thirty_seconds_from_the_start_of_the_call(
@@ -324,7 +342,8 @@ def test_the_window_of_the_capture_is_thirty_seconds_from_the_start_of_the_call(
             config=tmp_path / "absent.toml",
             state_dir=tmp_path / "state",
         )
-    assert seen and 25 < seen[0] <= 30  # started + 30 s, a few moments after the start
+    assert seen
+    assert 25 < seen[0] <= 30  # started + 30 s, a few moments after the start
 
 
 # --- the progress line is ended only if it was written --------------------------------------------
@@ -356,7 +375,8 @@ def test_a_line_that_was_written_is_ended_when_the_terminal_takes_the_newline(mo
     other(10, 100)
     monkeypatch.setattr(other, "_writable", lambda: False)  # stopped exactly at the end
     other.close()  # never waited for: the newline is lost and nothing raises
-    assert stopped.getvalue().endswith("(%10)") and other._open is False
+    assert stopped.getvalue().endswith("(%10)")
+    assert other._open is False
 
 
 def test_a_stream_that_cannot_say_whether_it_is_writable_takes_no_report():
@@ -368,7 +388,8 @@ def test_a_stream_that_cannot_say_whether_it_is_writable_takes_no_report():
     progress = ProgressText(stream)
     progress(10, 100)
     progress.close()
-    assert stream.getvalue() == "" and progress.enabled is True
+    assert stream.getvalue() == ""
+    assert progress.enabled is True
 
 
 # --- a terminal that cannot say whether it is writable: the write decides -------------------------
@@ -411,9 +432,11 @@ def test_the_common_options_are_accepted_between_models_and_the_action(monkeypat
     ]
     state = tmp_path / "state"
     code = main(["models", "--output", "json", "--state-dir", str(state), "download", *arguments])
-    assert code == 1 and calls[0]["state_dir"] == state
+    assert code == 1
+    assert calls[0]["state_dir"] == state
     # and without a state directory the API is given None: the user's default store
-    assert main(["models", "download", *arguments]) == 1 and calls[1]["state_dir"] is None
+    assert main(["models", "download", *arguments]) == 1
+    assert calls[1]["state_dir"] is None
 
 
 def test_the_default_state_directory_is_used_when_none_is_given(
@@ -429,7 +452,8 @@ def test_the_default_state_directory_is_used_when_none_is_given(
     api.initialize_state()  # the default store under HOME
     with Rig(certificates, workspace) as rig:
         summary = rig.call(state_dir=None).data
-        assert summary.bytes > 0 and rig.target.exists()
+        assert summary.bytes > 0
+        assert rig.target.exists()
 
 
 # --- the text of a download, line by line ---------------------------------------------------------
@@ -440,7 +464,8 @@ def test_the_text_of_a_download_is_exactly_these_lines_in_this_order(certificate
 
     with Rig(certificates, workspace) as rig:
         process = run(rig, certificates, command(rig))
-        assert process.returncode == 0 and process.stderr == b""
+        assert process.returncode == 0
+        assert process.stderr == b""
         expected = "\n".join(
             (
                 f"Model ağırlığı indirildi: {rig.target}",

@@ -292,7 +292,8 @@ def test_a_stage_and_a_sidecar_that_fit_resume_from_the_committed_prefix():
     found = decide(stage=stage(), sidecar=sidecar())
     assert (found.action, found.remove, found.truncate_to) == ("resume", (), None)
     assert (found.ask.prefix_bytes, found.ask.total_size, found.ask.etag) == (400, 1000, TAG)
-    assert found.record == record() and found.error is None
+    assert found.record == record()
+    assert found.error is None
 
 
 def test_a_stage_longer_than_its_last_checkpoint_is_cut_back_to_it():
@@ -671,7 +672,8 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
         counts[found.action] = counts.get(found.action, 0) + 1
         # The lock comes first: unless it is held, nothing is removed or rewritten.
         if directory["lock"] != "held":
-            assert found.remove == () and found.action in {"busy", "unverified"}
+            assert found.remove == ()
+            assert found.action in {"busy", "unverified"}
         # Only what is present and provably ours is ever removed, always in the fixed order.
         assert provably_ours_to_remove(found, directory), (directory, found)
         assert list(found.remove) == [name for name in REMOVAL_ORDER if name in found.remove]
@@ -688,9 +690,12 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
         # A resume or a publication happens only for our own identity, on a stage that fits.
         if found.action in {"resume", "publish_complete"}:
             rec = found.record
-            assert rec is not None and directory["lock"] == "held" and directory["target"] is None
+            assert rec is not None
+            assert directory["lock"] == "held"
+            assert directory["target"] is None
             assert (rec.identity_key, rec.target_hash) == (IDENTITY, TARGET)
-            assert directory["stage"].owned and directory["stage"].size >= rec.committed_bytes
+            assert directory["stage"].owned
+            assert directory["stage"].size >= rec.committed_bytes
             assert (directory["stage"].device, directory["stage"].inode) == (
                 rec.stage_device,
                 rec.stage_inode,
@@ -699,15 +704,17 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
                 directory["stage"].size > rec.committed_bytes
             )
         if found.action == "resume":
-            assert found.ask is not None and 0 < found.ask.prefix_bytes < found.ask.total_size
-            assert (
-                found.ask.prefix_bytes == found.record.committed_bytes
-                and found.ask.etag == found.record.etag
-            )
+            assert found.ask is not None
+            assert 0 < found.ask.prefix_bytes < found.ask.total_size
+            assert found.ask.prefix_bytes == found.record.committed_bytes
+            assert found.ask.etag == found.record.etag
         if found.action == "publish_complete":
-            assert found.ask is None and found.record.complete
+            assert found.ask is None
+            assert found.record.complete
         if found.action not in {"resume", "publish_complete"}:
-            assert found.ask is None and found.record is None and found.truncate_to is None
+            assert found.ask is None
+            assert found.record is None
+            assert found.truncate_to is None
         # Nothing of ours is left behind by a clean start; a resume or a reuse removes only a
         # leftover temporary copy.
         owned_here = present_and_ours(directory)
@@ -740,7 +747,8 @@ def test_a_seeded_sweep_of_directories_never_breaks_the_rules_of_the_table():
         "resume",
         "publish_complete",
     }  # the sweep reached every row
-    assert counts["resume"] > 25 and counts["publish_complete"] > 25  # and the rows that matter
+    assert counts["resume"] > 25
+    assert counts["publish_complete"] > 25  # and the rows that matter
 
 
 @pytest.mark.parametrize(
@@ -774,7 +782,8 @@ def test_a_removal_is_ordered_before_the_error_it_accompanies():
     linked = stage(nlink=2, inode=9)
     found = decide(target=entry(inode=9, nlink=2), stage=linked, sidecar=sidecar())
     # The command stops with the error, but only after this cleanup: both are in one decision.
-    assert found.error == "download_output_exists" and found.remove == ("stage", "sidecar")
+    assert found.error == "download_output_exists"
+    assert found.remove == ("stage", "sidecar")
 
 
 def test_an_interruption_inside_any_removal_leaves_a_directory_the_same_command_continues_from():

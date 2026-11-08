@@ -160,7 +160,8 @@ def test_header_names_are_matched_without_regard_to_case():
     found = parse_response(
         206, [("CONTENT-RANGE", "bytes 0-9/10"), ("content-length", "10"), ("etag", TAG)]
     )
-    assert found.content_range == ContentRange(0, 9, 10) and found.etag == TAG
+    assert found.content_range == ContentRange(0, 9, 10)
+    assert found.etag == TAG
 
 
 def test_a_sixteen_four_one_six_carries_nothing_the_engine_reads():
@@ -296,7 +297,8 @@ def test_a_length_past_the_limit_is_refused_before_a_byte_is_written():
 
 def test_unusable_range_or_tag_fields_are_not_errors_they_are_absent():
     found = typed(206, Content_Range="bytes 0-9/*", ETag='W/"x"')
-    assert found.content_range is None and found.etag is None
+    assert found.content_range is None
+    assert found.etag is None
     twice = parse_response(
         206,
         [
@@ -348,7 +350,8 @@ def test_a_full_answer_that_carries_a_content_range_is_typed_as_the_partial_one_
 
 def test_a_mislabelled_answer_keeps_its_tag_and_a_plain_one_has_no_range():
     tagged = parse_response(200, [("Content-Range", "bytes 400-2047/2048"), ("ETag", TAG)])
-    assert tagged.etag == TAG and tagged.status == 206
+    assert tagged.etag == TAG
+    assert tagged.status == 206
     assert typed(200, Content_Length="10").content_range is None
     assert typed(200, Content_Length="10").status == 200
 

@@ -25,7 +25,9 @@ def test_a_running_source_whose_lease_lapsed_is_frozen_as_unknown(lifecycle):
         view = repository.freeze_source(FIRST)
         record = view.operation
         assert (record.status, record.reason) == ("unknown", "request_uncertain")
-        assert record.lease is None and record.fence == 2 and record.workflow_latched is True
+        assert record.lease is None
+        assert record.fence == 2
+        assert record.workflow_latched is True
         assert [(c.kind, type(c)) for c in view.controls] == [("recovery", TransferControlV3)]
         validate_uploads(store.connection)
 
@@ -51,11 +53,10 @@ def test_a_source_that_is_already_unknown_is_left_exactly_as_it_is(lifecycle, re
         before = dump(store)
         first = repository.freeze_source(FIRST)
         second = repository.freeze_source(FIRST)  # a second prepare, after the first
-        assert first == second and first.operation.reason == reason
-        assert (
-            first.operation.fence == record["fence"]
-            and first.operation.revision == record["revision"]
-        )
+        assert first == second
+        assert first.operation.reason == reason
+        assert first.operation.fence == record["fence"]
+        assert first.operation.revision == record["revision"]
         assert dump(store) == before
 
 
@@ -149,5 +150,6 @@ def test_a_source_is_frozen_without_the_credential_it_was_planned_with(lifecycle
         # commit. (Planning, approving and admitting are what need the current credential.)
         view = lifecycle.repository(store, bound).freeze_source(FIRST)
         assert (view.operation.status, view.operation.reason) == ("unknown", "request_uncertain")
-        assert view.operation.lease is None and view.operation.fence == 2
+        assert view.operation.lease is None
+        assert view.operation.fence == 2
         validate_uploads(store.connection)

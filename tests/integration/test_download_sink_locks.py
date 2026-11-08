@@ -68,7 +68,8 @@ def test_stop_after_the_lock_object_was_removed_drops_nothing(place):
         sink.write(b"x" * 10)
         lost_lock(place)
         sink.stop()  # ... but without the lock what stands there may be another run's
-    assert (place / NAMES.stage).exists() and (place / NAMES.sidecar).exists()
+    assert (place / NAMES.stage).exists()
+    assert (place / NAMES.sidecar).exists()
 
 
 # --- the closed-error wrapper on write, complete and publish --------------------------------------
@@ -153,7 +154,8 @@ def test_a_lock_object_replaced_by_a_newer_one_between_the_look_and_the_open_is_
 
     monkeypatch.setattr(download_files.os, "open", racing_open)
     published, _ = download(place)
-    assert raced and published.bytes == len(DATA)
+    assert raced
+    assert published.bytes == len(DATA)
 
 
 def test_a_lock_object_replaced_after_the_open_is_taken_again(place, monkeypatch):
@@ -173,7 +175,8 @@ def test_a_lock_object_replaced_after_the_open_is_taken_again(place, monkeypatch
 
     monkeypatch.setattr(download_files.os, "fstat", racing_fstat)
     published, _ = download(place)
-    assert raced and published.bytes == len(DATA)
+    assert raced
+    assert published.bytes == len(DATA)
 
 
 def test_a_lock_object_that_lstat_shows_with_no_links_is_being_removed_not_foreign(
@@ -193,7 +196,8 @@ def test_a_lock_object_that_lstat_shows_with_no_links_is_being_removed_not_forei
 
     monkeypatch.setattr(download_files, "entry_of", unlinking_look)
     published, _ = download(place)
-    assert shown and published.bytes == len(DATA)
+    assert shown
+    assert published.bytes == len(DATA)
 
 
 # --- a close that fails must not replace what is already decided ----------------------------------

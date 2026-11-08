@@ -122,7 +122,8 @@ def world(certificates, tmp_path, monkeypatch):
 def test_a_download_killed_after_a_checkpoint_is_continued_from_it_by_the_next_process(world):
     killed_when(world, lambda: (committed(world.directory) or 0) >= CHECKPOINT_BYTES)
     kept = committed(world.directory)
-    assert kept is not None and kept >= CHECKPOINT_BYTES
+    assert kept is not None
+    assert kept >= CHECKPOINT_BYTES
     # SIGKILL ran no cleanup: the stage, its record and the lock object are all still there
     assert world.names() == sorted([NAMES.lock, NAMES.stage, NAMES.sidecar])
     assert stage_size(world.directory) >= kept  # beyond the checkpoint is cut back, never trusted

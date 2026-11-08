@@ -104,8 +104,10 @@ def test_a_report_classifies_the_files_of_an_interrupted_upload(prepared_input, 
         report = resume_runtime(data, server).resume(source, accept_unverified_read=True)
         counts = report.observation.class_counts
         assert (counts.confirmed, counts.observed, counts.pending_clean) == (1, 1, 1)
-        assert counts.pending_uncertain == 0 and report.eligible
-        assert report.recommended_action == "prepare" and report.blockers == ()
+        assert counts.pending_uncertain == 0
+        assert report.eligible
+        assert report.recommended_action == "prepare"
+        assert report.blockers == ()
         assert (report.observation.send_files, report.plan_id) == (1, None)
         assert all(r.method == "GET" for r in server.requests[before:])
 
@@ -178,8 +180,10 @@ def test_a_confirm_that_took_no_effect_is_uncertain_and_asks_for_the_acknowledge
         report = reported(data, server, interrupted(data, server))
         counts = report.observation.class_counts
         assert (counts.confirmed, counts.pending_uncertain, counts.pending_clean) == (1, 1, 1)
-        assert report.observation.send_files == 2 and report.observation.unconfirmed_ack_required
-        assert report.eligible and report.recommended_action == "prepare"
+        assert report.observation.send_files == 2
+        assert report.observation.unconfirmed_ack_required
+        assert report.eligible
+        assert report.recommended_action == "prepare"
         assert [e.file_class for e in report.observation.examples] == ["pending_uncertain"]
         assert [e.paths for e in report.observation.examples] == [("two.bin",)]
 
@@ -249,8 +253,10 @@ def test_each_problem_of_the_remote_state_is_a_blocker_with_its_class(
         source = interrupted(data, server)
         change(provider)
         report = reported(data, server, source)
-        assert report.blockers == blockers and not report.eligible
-        assert report.recommended_action == "none" and report.plan_id is None
+        assert report.blockers == blockers
+        assert not report.eligible
+        assert report.recommended_action == "none"
+        assert report.plan_id is None
         found = report.observation
         assert found.class_counts == counts
         assert [(e.file_class, e.paths) for e in found.examples] == examples
@@ -260,7 +266,8 @@ def test_each_problem_of_the_remote_state_is_a_blocker_with_its_class(
         )
         assert not found.unconfirmed_ack_required
         encoded = report.encoded().decode()
-        assert "stray.bin" not in encoded and "copy.bin" not in encoded  # never named
+        assert "stray.bin" not in encoded
+        assert "copy.bin" not in encoded  # never named
 
 
 def test_a_listing_of_more_than_a_thousand_items_is_too_large_and_unreliable(
@@ -286,7 +293,8 @@ def test_a_listing_whose_cursor_comes_back_is_unreliable(prepared_input, certifi
         provider.route_table[base + "&cursor=c1"] = lambda request, count: reply(again)
         before = len(server.requests)
         report = reported(data, server, source)
-        assert "inventory_unreliable" in report.blockers and not report.eligible
+        assert "inventory_unreliable" in report.blockers
+        assert not report.eligible
         # The loop is cut at the second visit of the cursor, not followed.
         assert sum(r.path.startswith(base) for r in server.requests[before:]) == 2
 
@@ -297,7 +305,8 @@ def test_a_listing_whose_total_moves_is_unreliable(prepared_input, certificates)
         source = interrupted(data, server)
         serve_items(provider, list(provider.confirmed.values()), total=99)
         report = reported(data, server, source)
-        assert "inventory_unreliable" in report.blockers and not report.eligible
+        assert "inventory_unreliable" in report.blockers
+        assert not report.eligible
 
 
 # --- what stands in the way before the files are looked at --------------------------------------
@@ -312,8 +321,10 @@ def test_a_dataset_the_project_does_not_list_is_unobserved_and_nothing_is_classi
         provider.linked = False  # the project no longer lists the dataset
         before = len(server.requests)
         report = reported(data, server, source)
-        assert report.blockers == ("membership_unobserved",) and report.observation is None
-        assert report.dataset_id == DATASET and report.recommended_action == "none"
+        assert report.blockers == ("membership_unobserved",)
+        assert report.observation is None
+        assert report.dataset_id == DATASET
+        assert report.recommended_action == "none"
         asked = [r.path for r in server.requests[before:]]
         assert not any(path.endswith(("/items?limit=128", "/my-role")) for path in asked)
 
@@ -324,7 +335,8 @@ def test_a_folder_that_changed_is_a_blocker_beside_an_observation(prepared_input
         source = interrupted(data, server)
         (data[1] / "one.bin").write_bytes(b"changed after the interruption")
         report = reported(data, server, source)
-        assert "local_changed" in report.blockers and report.observation is not None
+        assert "local_changed" in report.blockers
+        assert report.observation is not None
         assert report.recommended_action == "none"
 
 
@@ -375,9 +387,11 @@ def test_a_report_writes_nothing_locally_and_asks_the_provider_only_to_read(
         counters = (provider.create_calls, provider.link_calls, provider.presign_calls)
         counters += (provider.put_calls, provider.confirm_calls)
         report = reported(data, server, source)
-        assert report.eligible and rows(data[0]) == stored
+        assert report.eligible
+        assert rows(data[0]) == stored
         found = server.requests[before:]
-        assert all(r.method == "GET" for r in found) and len(found) == len(READS)
+        assert all(r.method == "GET" for r in found)
+        assert len(found) == len(READS)
         assert counters == (
             provider.create_calls,
             provider.link_calls,
@@ -399,7 +413,8 @@ def test_the_unverified_read_must_be_chosen_before_the_provider_is_read(
         before = len(server.requests)
         with pytest.raises(YorungeError) as error:
             resume_runtime(data, server).resume(source, accept_unverified_read=False)
-        assert error.value.code == "approval_required" and len(server.requests) == before
+        assert error.value.code == "approval_required"
+        assert len(server.requests) == before
 
 
 def drifted(**changes):
@@ -451,8 +466,10 @@ def test_a_dataset_that_is_not_the_baseline_is_unobserved_and_never_listed(
         change(provider)
         before = len(server.requests)
         report = reported(data, server, source)
-        assert report.blockers == ("membership_unobserved",) and report.observation is None
-        assert report.recommended_action == "none" and report.dataset_id == DATASET
+        assert report.blockers == ("membership_unobserved",)
+        assert report.observation is None
+        assert report.recommended_action == "none"
+        assert report.dataset_id == DATASET
         asked = [r.path for r in server.requests[before:]]
         assert not any(path.endswith(("/items?limit=128", "/my-role")) for path in asked)
 
@@ -488,7 +505,8 @@ def test_a_dataset_not_shown_to_be_the_baseline_still_reports_all_the_report_kno
         report = reported(data, server, source)
         # Both stand together, in the closed order of the blockers.
         assert report.blockers == ("membership_unobserved", "local_changed")
-        assert report.observation is None and report.dataset_id == DATASET
+        assert report.observation is None
+        assert report.dataset_id == DATASET
         # The store's counters and what an attempt would add (for all three files: none is chosen).
         assert (report.quota_used.plans, report.quota_used.operations) == (1, 1)
         assert report.quota_added.payload_bytes == continuation_added_payload_bytes(3)
@@ -523,7 +541,8 @@ def test_a_key_that_reads_like_a_path_of_the_manifest_is_refused_though_the_fold
         before = len(server.requests)
         with pytest.raises(YorungeError) as error:
             reported(data, server, source)
-        assert error.value.code == "invalid_request" and len(server.requests) == before
+        assert error.value.code == "invalid_request"
+        assert len(server.requests) == before
         assert "one.bin" not in str(error.value) + repr(error.value)
 
 
@@ -549,7 +568,8 @@ def test_nothing_the_provider_says_reaches_the_error_the_traceback_or_the_log(
         with caplog.at_level(logging.DEBUG), pytest.raises(YorungeError) as error:
             reported(data, server, source)
     shown = "".join(traceback.format_exception(error.value)) + repr(error.value) + caplog.text
-    assert CANARY not in shown and SECRET not in shown
+    assert CANARY not in shown
+    assert SECRET not in shown
 
 
 def test_a_key_that_may_not_upload_to_the_dataset_is_refused_by_the_report(
@@ -613,7 +633,8 @@ def test_a_well_formed_answer_about_another_dataset_is_a_missing_one(prepared_in
         other = {**provider.dataset(), "id": "00000000-0000-4000-8000-0000000000bb"}
         provider.route_table[DETAIL] = reply(other)
         report = reported(data, server, source)
-        assert report.blockers == ("membership_unobserved",) and report.observation is None
+        assert report.blockers == ("membership_unobserved",)
+        assert report.observation is None
 
 
 def test_a_read_that_fails_for_a_moment_is_asked_again_once(prepared_input, certificates):
@@ -638,7 +659,8 @@ def test_a_folder_that_was_moved_away_is_a_changed_folder_to_the_report_and_unre
         source = interrupted(data, server)
         data[1].rename(data[1].parent / "moved-away")
         report = reported(data, server, source)
-        assert "local_changed" in report.blockers and report.observation is not None
+        assert "local_changed" in report.blockers
+        assert report.observation is not None
         with pytest.raises(YorungeError) as error:
             reported(data, server, source, prepare=True)
         assert error.value.code == "file_unreadable"

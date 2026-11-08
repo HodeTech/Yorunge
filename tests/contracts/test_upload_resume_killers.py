@@ -53,7 +53,8 @@ def test_a_report_that_recommends_reconcile_leads_to_reconcile():
         f"Uzlaştır: yorunge datasets upload reconcile --operation-id {SOURCE} "
         "--accept-unverified-read"
     ) in text
-    assert "Hazırla:" not in text and "devam komutu yok" not in text
+    assert "Hazırla:" not in text
+    assert "devam komutu yok" not in text
 
 
 def test_a_report_that_recommends_waiting_says_to_wait():
@@ -65,7 +66,8 @@ def test_a_report_that_recommends_waiting_says_to_wait():
     )
     text = _resume_text(report)
     assert "Bekle: lease bitince raporu yeniden alın." in text
-    assert "Hazırla:" not in text and "devam komutu yok" not in text
+    assert "Hazırla:" not in text
+    assert "devam komutu yok" not in text
 
 
 # --- the observation lines ------------------------------------------------------------------
@@ -144,7 +146,8 @@ def test_each_error_a_resume_meets_has_its_hint_in_text_and_none_in_machine_outp
         upload_guidance=True,
         error_hints=RESUME_ERROR_HINTS,
     ).error(error)
-    assert error.message in text.getvalue() and RESUME_ERROR_HINTS[code] in text.getvalue()
+    assert error.message in text.getvalue()
+    assert RESUME_ERROR_HINTS[code] in text.getvalue()
     assert word in RESUME_ERROR_HINTS[code]
     machine = io.StringIO()
     OutputRenderer(
@@ -181,4 +184,5 @@ def test_a_plan_with_unconfirmed_files_says_so_and_names_the_flag_of_the_approva
     assert "Gönderilecek dosyalardan 1 tanesinin son onay isteği gitmiş olabilir" in lines
     assert "--accept-unconfirmed-effects ekleyin" in lines
     quiet = "\n".join(_summary_text(plan.model_copy(update={"uncertain_files": 0})))
-    assert "belirsiz" not in quiet and "--accept-unconfirmed-effects" not in quiet
+    assert "belirsiz" not in quiet
+    assert "--accept-unconfirmed-effects" not in quiet

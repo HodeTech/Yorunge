@@ -112,9 +112,11 @@ def parsed(process, output="json"):
     assert process.returncode == 0, process.stderr.decode("utf-8", "strict")
     value = json.loads(process.stdout.decode("utf-8", "strict"))
     if output == "ndjson":
-        assert value["event"] == "result" and value["sequence"] == 1
+        assert value["event"] == "result"
+        assert value["sequence"] == 1
         value = value["payload"]
-    assert value["operation_id"] is None and not process.stderr
+    assert value["operation_id"] is None
+    assert not process.stderr
     return value
 
 
@@ -149,7 +151,8 @@ def test_list_shows_the_page_asked_for_and_nothing_private(workspace, certificat
         1,
         False,
     )
-    assert page["items"][0]["version_tag"] == "v1" and page["items"][0]["is_frozen"] is True
+    assert page["items"][0]["version_tag"] == "v1"
+    assert page["items"][0]["is_frozen"] is True
     assert value["warnings"] == ["provider_metadata_only"]
     (request,) = server.requests
     assert (request.method, request.path) == ("GET", BASE + "?page=1")
@@ -187,9 +190,12 @@ def test_list_page_two_asks_for_page_two_and_says_where_the_next_one_is(workspac
     assert (page["page"], page["page_size"], page["total"], page["has_next"]) == (2, 2, 5, True)
     assert [request.path for request in server.requests] == [BASE + "?page=2"] * 2
     text = as_text.stdout.decode("utf-8")
-    assert as_text.returncode == 0 and not as_text.stderr
-    assert "sayfa 2, toplam 5 sürüm" in text and "v3" in text
-    assert "Sonraki sayfa var (--page 3)." in text and "provider" not in text.casefold()
+    assert as_text.returncode == 0
+    assert not as_text.stderr
+    assert "sayfa 2, toplam 5 sürüm" in text
+    assert "v3" in text
+    assert "Sonraki sayfa var (--page 3)." in text
+    assert "provider" not in text.casefold()
 
 
 def test_a_page_past_the_end_is_an_honest_empty_page_in_every_mode(workspace, certificates):
@@ -199,7 +205,8 @@ def test_a_page_past_the_end_is_an_honest_empty_page_in_every_mode(workspace, ce
     with TlsServer(certificates, table) as server:
         as_text = versions_list(server, certificates, workspace, "--page", "99", output="text")
         as_json = versions_list(server, certificates, workspace, "--page", "99")
-    assert as_text.returncode == 0 and "Bu sayfada sürüm yok." in as_text.stdout.decode()
+    assert as_text.returncode == 0
+    assert "Bu sayfada sürüm yok." in as_text.stdout.decode()
     page = parsed(as_json)["data"]
     assert (page["items"], page["total"], page["has_next"]) == ([], 1, False)
 
@@ -220,10 +227,13 @@ def test_show_is_one_version_from_two_agreeing_reads_and_text_is_readable(worksp
         )
     assert process.returncode == 0, process.stderr
     text = process.stdout.decode("utf-8")
-    assert "v1" in text and VERSION in text and "dondurulmuş" in text
+    assert "v1" in text
+    assert VERSION in text
+    assert "dondurulmuş" in text
     assert "sınıf adları yazılmaz" in text
     assert [r.path for r in server.requests] == [BASE + "/v1", BASE + "/v1/splits"]
-    assert CANARY not in text and SECRET not in text
+    assert CANARY not in text
+    assert SECRET not in text
 
 
 def test_a_version_the_provider_does_not_have_is_not_found_and_costs_one_read(
@@ -280,7 +290,8 @@ def test_list_refuses_a_page_that_is_not_a_plain_number_and_repeated_options(
             "json",
             *flags(workspace),
         )
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
     assert server.requests == []
 
 
@@ -304,7 +315,8 @@ def test_a_provider_that_refuses_is_the_existing_closed_error_and_the_key_is_not
             "json",
             *flags(workspace),
         )
-    assert process.returncode == exit_code and json.loads(process.stderr)["code"] == code
+    assert process.returncode == exit_code
+    assert json.loads(process.stderr)["code"] == code
     assert SECRET.encode() not in process.stdout + process.stderr
 
 
@@ -354,11 +366,14 @@ def test_bind_writes_a_new_private_canonical_file_and_check_finds_it_unchanged(
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, out)
         summary = parsed(process)["data"]
-        assert summary["kind"] == "dataset_version_bound" and summary["binding_path"] == str(out)
+        assert summary["kind"] == "dataset_version_bound"
+        assert summary["binding_path"] == str(out)
         info = out.lstat()
-        assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1
+        assert stat.S_IMODE(info.st_mode) == 0o600
+        assert info.st_nlink == 1
         binding = decode_binding(out.read_bytes())
-        assert summary["binding_digest"] == binding.digest and binding.local_manifest is None
+        assert summary["binding_digest"] == binding.digest
+        assert binding.local_manifest is None
         assert binding.service.service_origin == "https://api.ssyz.org.tr"
         assert sorted(p.name for p in out.parent.iterdir() if p.name.startswith(".yorunge")) == []
         before = len(server.requests)
@@ -367,7 +382,8 @@ def test_bind_writes_a_new_private_canonical_file_and_check_finds_it_unchanged(
         assert outcome["data"]["binding_digest"] == binding.digest
         assert len(server.requests) - before == 2  # the detail and the splits
         for request in server.requests:
-            assert request.header("X-API-Key") == SECRET and request.method == "GET"
+            assert request.header("X-API-Key") == SECRET
+            assert request.method == "GET"
     assert SECRET.encode() not in out.read_bytes() + process.stdout + process.stderr
 
 
@@ -378,8 +394,10 @@ def test_bind_in_text_says_where_the_binding_is_how_to_check_it_and_claims_nothi
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, out, output="text")
     text = process.stdout.decode("utf-8")
-    assert process.returncode == 0 and not process.stderr
-    assert f"Sürüm bağı kaydedildi: {out}" in text and "Digest: " in text
+    assert process.returncode == 0
+    assert not process.stderr
+    assert f"Sürüm bağı kaydedildi: {out}" in text
+    assert "Digest: " in text
     (command,) = [line for line in text.splitlines() if line.startswith("Denetle: ")]
     assert shlex.split(command.removeprefix("Denetle: ")) == [
         "yorunge",
@@ -390,7 +408,8 @@ def test_bind_in_text_says_where_the_binding_is_how_to_check_it_and_claims_nothi
         str(out),
     ]
     assert "Özel --config/--profile/--state-dir kullandıysanız" in text
-    assert "Yalnız sağlayıcı metadata'sı" in text and "üyelik" in text
+    assert "Yalnız sağlayıcı metadata'sı" in text
+    assert "üyelik" in text
     assert SECRET not in text
 
 
@@ -440,7 +459,8 @@ def test_a_relative_binding_path_is_made_absolute_once_and_check_reads_it_the_sa
             *flags(workspace),
             cwd=here,
         )
-    assert checked.returncode == 0 and "Değişmedi: v1" in checked.stdout.decode()
+    assert checked.returncode == 0
+    assert "Değişmedi: v1" in checked.stdout.decode()
     assert (here / "binding.json").is_file()
 
 
@@ -453,7 +473,8 @@ def test_a_second_bind_over_the_same_name_is_refused_before_the_provider_is_aske
         process = bind(server, certificates, workspace, out)
     assert process.returncode == 2
     assert json.loads(process.stderr)["code"] == "binding_output_exists"
-    assert out.read_bytes() == b"MINE" and server.requests == []
+    assert out.read_bytes() == b"MINE"
+    assert server.requests == []
 
 
 def test_bind_over_a_name_that_appears_meanwhile_does_not_overwrite_it(
@@ -483,8 +504,10 @@ def test_a_binding_name_the_report_could_not_carry_is_refused_before_the_provide
     out = workspace[2] / "new\nline.json"  # the report is made after the link: no such file is made
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, out)
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "binding_write_failed"
-    assert server.requests == [] and process.stdout == b""
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "binding_write_failed"
+    assert server.requests == []
+    assert process.stdout == b""
     assert sorted(p.name for p in out.parent.iterdir() if "line" in p.name) == []
 
 
@@ -497,7 +520,8 @@ def test_a_version_the_provider_does_not_have_is_not_found_for_bind_too_and_noth
         process = bind(server, certificates, workspace, out)
     assert process.returncode == 2
     assert json.loads(process.stderr)["code"] == "dataset_version_not_found"
-    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+    assert not out.exists()
+    assert not list(out.parent.glob(".yorunge-binding-*"))
 
 
 def test_a_plain_bind_says_only_that_it_is_provider_metadata(workspace, certificates):
@@ -505,7 +529,8 @@ def test_a_plain_bind_says_only_that_it_is_provider_metadata(workspace, certific
     with TlsServer(certificates, routes()) as server:
         value = parsed(bind(server, certificates, workspace, out))
     assert value["warnings"] == ["provider_metadata_only"]
-    assert value["data"]["is_partial"] is False and value["data"]["split_total_matches_item_count"]
+    assert value["data"]["is_partial"] is False
+    assert value["data"]["split_total_matches_item_count"]
 
 
 def test_a_partial_version_is_bound_with_its_flag_in_the_result_too(workspace, certificates):
@@ -513,7 +538,8 @@ def test_a_partial_version_is_bound_with_its_flag_in_the_result_too(workspace, c
     table = routes(**{BASE + "/v1": body(detail(is_partial=True))})
     with TlsServer(certificates, table) as server:
         value = parsed(bind(server, certificates, workspace, out))
-    assert value["data"]["is_partial"] is True and decode_binding(out.read_bytes()).is_partial
+    assert value["data"]["is_partial"] is True
+    assert decode_binding(out.read_bytes()).is_partial
 
 
 def test_the_binding_names_the_provider_of_the_active_profile_not_the_default_one(
@@ -548,8 +574,10 @@ def test_a_provider_that_is_slower_than_the_budget_ends_the_command_and_writes_n
                     DATASET, "v1", binding_out=out, config=config, state_dir=state
                 )
             elapsed = time.monotonic() - began
-    assert error.value.code == "transport_timeout" and elapsed < 4.5
-    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+    assert error.value.code == "transport_timeout"
+    assert elapsed < 4.5
+    assert not out.exists()
+    assert not list(out.parent.glob(".yorunge-binding-*"))
 
 
 def test_an_unfrozen_version_is_not_bound_and_no_file_is_made(workspace, certificates):
@@ -559,7 +587,8 @@ def test_an_unfrozen_version_is_not_bound_and_no_file_is_made(workspace, certifi
         process = bind(server, certificates, workspace, out)
     assert process.returncode == 2
     assert json.loads(process.stderr)["code"] == "dataset_version_not_frozen"
-    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+    assert not out.exists()
+    assert not list(out.parent.glob(".yorunge-binding-*"))
 
 
 @pytest.mark.parametrize("count,relation", [(10, "count_matches"), (9, "count_differs")])
@@ -574,7 +603,8 @@ def test_bind_with_a_manifest_records_its_digest_and_how_its_file_count_relates(
         process = bind(server, certificates, workspace, out, "--manifest", str(path))
         value = parsed(process)
     local = value["data"]["local_manifest"]
-    assert local["digest"] == manifest.digest and local["relation"] == relation
+    assert local["digest"] == manifest.digest
+    assert local["relation"] == relation
     assert decode_binding(out.read_bytes()).local_manifest.relation == relation
 
 
@@ -587,8 +617,10 @@ def test_a_manifest_that_is_not_one_stops_bind_before_the_provider_is_asked(
         process = bind(
             server, certificates, workspace, out, "--manifest", str(directory / "manifest.json")
         )
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "manifest_invalid"
-    assert server.requests == [] and not out.exists()
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "manifest_invalid"
+    assert server.requests == []
+    assert not out.exists()
 
 
 def test_the_binding_and_the_manifest_cannot_be_the_same_file(workspace, certificates):
@@ -596,8 +628,10 @@ def test_the_binding_and_the_manifest_cannot_be_the_same_file(workspace, certifi
     path.write_bytes(b"{}")
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, path, "--manifest", str(path))
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
-    assert path.read_bytes() == b"{}" and server.requests == []
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
+    assert path.read_bytes() == b"{}"
+    assert server.requests == []
 
 
 def test_a_changed_version_is_exit_7_with_the_closed_list_of_what_changed(workspace, certificates):
@@ -627,7 +661,8 @@ def test_a_difference_is_an_error_envelope_and_never_a_result_in_every_mode(
         parsed(bind(server, certificates, workspace, out))
         server.routes[BASE + "/v1"] = body(detail(item_count=11, annotated_item_count=3))
         process = check(server, certificates, workspace, out, output=output)
-    assert process.returncode == 7 and not process.stdout.strip()  # no event before the verdict
+    assert process.returncode == 7
+    assert not process.stdout.strip()  # no event before the verdict
     if output == "ndjson":
         assert json.loads(process.stderr)["code"] == "dataset_version_changed"
     else:
@@ -642,8 +677,10 @@ def test_an_unchanged_version_is_a_result_in_text_and_ndjson(workspace, certific
         parsed(bind(server, certificates, workspace, out))
         as_text = check(server, certificates, workspace, out, output="text")
         as_events = check(server, certificates, workspace, out, output="ndjson")
-    assert as_text.returncode == 0 and "Değişmedi: v1" in as_text.stdout.decode()
-    assert "bayt eşliği" in as_text.stdout.decode() and not as_text.stderr
+    assert as_text.returncode == 0
+    assert "Değişmedi: v1" in as_text.stdout.decode()
+    assert "bayt eşliği" in as_text.stdout.decode()
+    assert not as_text.stderr
     assert parsed(as_events, "ndjson")["data"]["result"] == "unchanged"
 
 
@@ -681,7 +718,8 @@ def test_a_binding_for_another_provider_tells_a_person_which_options_to_give_in_
         )
         as_json = check(server, certificates, workspace, out, "--profile", "elsewhere")
     message = as_text.stderr.decode()
-    assert as_text.returncode == 2 and "--config, --profile ve --state-dir" in message
+    assert as_text.returncode == 2
+    assert "--config, --profile ve --state-dir" in message
     assert "--config, --profile" not in as_json.stderr.decode()  # the envelope is what it was
 
 
@@ -697,7 +735,8 @@ def test_a_file_that_is_not_a_binding_is_binding_invalid_and_nothing_is_asked(
     path.write_bytes(content)
     with TlsServer(certificates, routes()) as server:
         process = check(server, certificates, workspace, path)
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "binding_invalid"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "binding_invalid"
     assert server.requests == []
 
 
@@ -708,13 +747,15 @@ def test_a_binding_that_is_a_symlink_is_not_followed(workspace, certificates):
         parsed(bind(server, certificates, workspace, out))
         link.symlink_to(out)
         process = check(server, certificates, workspace, link)
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "input_invalid"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "input_invalid"
 
 
 def test_a_missing_binding_file_is_unreadable_not_invalid(workspace, certificates):
     with TlsServer(certificates, routes()) as server:
         process = check(server, certificates, workspace, workspace[2] / "absent.json")
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "file_unreadable"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "file_unreadable"
     assert server.requests == []
 
 
@@ -751,7 +792,8 @@ def test_the_api_returns_the_same_typed_results_and_validates_before_it_touches_
     assert listed.data.items[0].version_id == shown.data.version_id == bound.data.version_id
     assert bound.data.binding_digest == checked.data.binding_digest
     assert listed.warnings == shown.warnings == checked.warnings == ("provider_metadata_only",)
-    assert checked.data.result == "unchanged" and checked.operation_id is None
+    assert checked.data.result == "unchanged"
+    assert checked.operation_id is None
     assert (shown.data.observed_at, checked.data.observed_at) != (None, None)
 
 
@@ -784,7 +826,8 @@ def test_the_arguments_about_where_the_caller_stands_are_judged_before_any_file_
                 asyncio.run(inside())
             # The running loop is refused first, whatever the target says.
             assert inside_a_loop.value.code == "invalid_request"
-    assert server.requests == [] and out.read_bytes() == b"MINE"
+    assert server.requests == []
+    assert out.read_bytes() == b"MINE"
 
 
 def test_an_os_error_of_the_read_phase_of_bind_is_not_called_a_write_failure(
@@ -806,8 +849,10 @@ def test_an_os_error_of_the_read_phase_of_bind_is_not_called_a_write_failure(
                     DATASET, "v1", binding_out=out, config=config, state_dir=state
                 )
     assert error.value.code == "file_unreadable"
-    assert "PRIVATE-DETAIL" not in repr(error.value.envelope()) and error.value.__context__ is None
-    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+    assert "PRIVATE-DETAIL" not in repr(error.value.envelope())
+    assert error.value.__context__ is None
+    assert not out.exists()
+    assert not list(out.parent.glob(".yorunge-binding-*"))
 
 
 def test_the_project_option_is_not_a_versions_option_since_a_read_of_versions_needs_none(
@@ -815,7 +860,8 @@ def test_the_project_option_is_not_a_versions_option_since_a_read_of_versions_ne
 ):
     with TlsServer(certificates, routes()) as server:
         process = versions_list(server, certificates, workspace, "--project", "alpha")
-    assert process.returncode == 2 and server.requests == []
+    assert process.returncode == 2
+    assert server.requests == []
 
 
 def test_the_messages_of_a_changed_version_and_an_invalid_binding_say_what_to_do():
@@ -850,12 +896,14 @@ def test_a_key_that_cannot_be_read_is_the_existing_credential_error_before_any_r
         with loopback_versions(certificates[0], server.port):
             with pytest.raises(YorungeError) as error:
                 api.list_dataset_versions(DATASET, config=config, state_dir=state)
-    assert error.value.code == "credential_unavailable" and server.requests == []
+    assert error.value.code == "credential_unavailable"
+    assert server.requests == []
 
 
 def test_row_data_the_version_tests_share_is_what_the_provider_serves():
     # the shared fixtures of the reader tests are the provider's shapes (guards the helpers above)
-    assert row()["version_tag"] == "v1" and detail()["data"]["dataset_id"] == DATASET
+    assert row()["version_tag"] == "v1"
+    assert detail()["data"]["dataset_id"] == DATASET
 
 
 # --- the terminal: a closed pipe and an interrupt are local, never a claim about the provider -----
@@ -906,7 +954,8 @@ def test_a_closed_stdout_is_a_local_output_error_after_the_read(workspace, certi
                 process.kill()
                 process.wait()
             process.stderr.close()
-    assert json.loads(stderr)["code"] == "output_closed" and len(server.requests) == 1
+    assert json.loads(stderr)["code"] == "output_closed"
+    assert len(server.requests) == 1
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signal contract")
@@ -939,6 +988,7 @@ def test_an_interrupt_while_the_provider_is_slow_is_a_cancellation_and_prints_no
             if process.poll() is None:
                 process.kill()
                 process.wait()
-    assert process.returncode == 6 and stdout == b""
+    assert process.returncode == 6
+    assert stdout == b""
     assert json.loads(stderr)["code"] == "request_cancelled"
     assert SECRET.encode() not in stderr

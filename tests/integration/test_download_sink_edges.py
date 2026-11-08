@@ -86,7 +86,8 @@ def test_a_sidecar_swapped_for_a_fifo_between_the_look_and_the_open_does_not_blo
         fd = real(sidecar, os.O_WRONLY | os.O_NONBLOCK)
         os.close(fd)
     assert result is not None, "the command blocked on a FIFO"
-    assert result[0] == "raised" and result[1].code == "download_partial_unverified"
+    assert result[0] == "raised"
+    assert result[1].code == "download_partial_unverified"
     assert sidecar.is_fifo()
 
 
@@ -137,7 +138,8 @@ def test_after_the_lock_object_was_found_removed_the_lock_held_is_on_the_name_th
     monkeypatch.setattr(download_files, "_marker", marker)
     with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
         monkeypatch.undo()
-        assert opened and lock.exists()  # a lock on a removed file excludes nobody
+        assert opened
+        assert lock.exists()  # a lock on a removed file excludes nobody
         assert (
             code_of(lambda: open_sink(target(place), identity_key=IDENTITY).__enter__())
             == "download_busy"
@@ -193,7 +195,8 @@ def test_a_foreign_file_that_is_opened_in_the_place_of_the_stage_and_lives_on_is
     monkeypatch.setattr(download_files.os, "open", swapping_open)
     assert code_of(lambda: download(place)) == "download_partial_unverified"
     monkeypatch.undo()
-    assert stage.read_bytes() == DATA[:100_000] and kept.read_bytes() == b"FOREIGN"
+    assert stage.read_bytes() == DATA[:100_000]
+    assert kept.read_bytes() == b"FOREIGN"
 
 
 # --- and the name must still lead to it after the open ----------------------------------------
@@ -214,7 +217,8 @@ def test_a_stage_whose_name_is_swapped_just_after_the_open_is_not_ours(place, mo
     monkeypatch.setattr(download_files.os, "open", swapping_open)
     assert code_of(lambda: download(place)) == "download_partial_unverified"
     monkeypatch.undo()
-    assert stage.read_bytes() == b"FOREIGN" and aside.read_bytes() == DATA[:100_000]
+    assert stage.read_bytes() == b"FOREIGN"
+    assert aside.read_bytes() == DATA[:100_000]
 
 
 # --- the process umask is only borrowed ---------------------------------------------------------
@@ -266,7 +270,8 @@ def test_an_unlink_that_finds_the_name_gone_is_tolerated(place, monkeypatch):
 
     monkeypatch.setattr(download_files.os, "unlink", racing_unlink)
     download(place, no_resume=True)
-    assert raced and target(place).read_bytes() == DATA
+    assert raced
+    assert target(place).read_bytes() == DATA
 
 
 # --- a sidecar write that writes nothing is a failure, not a livelock ---------------------------
@@ -285,7 +290,8 @@ def test_a_sidecar_write_that_writes_nothing_is_a_write_failure(place, monkeypat
     result = run_with_deadline(attempt)
     monkeypatch.undo()
     assert result is not None, "the sidecar write never ended"
-    assert result[0] == "raised" and result[1].code == "download_write_failed"
+    assert result[0] == "raised"
+    assert result[1].code == "download_write_failed"
 
 
 # --- short writes keep the sidecar whole and the digests true -------------------------------
@@ -305,7 +311,8 @@ def test_short_writes_keep_the_sidecar_whole_and_the_digests_true(place, monkeyp
         record.prefix_sha256 == hashlib.sha256(DATA[:100_000]).hexdigest()
     )  # S55: hashed what was written
     published, plan = download(place)
-    assert published.sha256 == hashlib.sha256(DATA).hexdigest() and plan.resumed_from == 100_000
+    assert published.sha256 == hashlib.sha256(DATA).hexdigest()
+    assert plan.resumed_from == 100_000
 
 
 # --- a lock object that was replaced does not turn a published download into an error ---------
@@ -329,7 +336,8 @@ def test_a_lock_object_replaced_during_the_download_is_left_alone_and_the_downlo
         monkeypatch.setattr(download_files, "_marker", replace_the_lock)
         sink.publish(None)
         monkeypatch.undo()
-    assert lock.read_bytes() == b"SOMEONE ELSE" and target(place).read_bytes() == DATA
+    assert lock.read_bytes() == b"SOMEONE ELSE"
+    assert target(place).read_bytes() == DATA
 
 
 # --- the lost race to create the lock object is taken as 'present' --------------------------------
@@ -346,7 +354,8 @@ def test_a_lock_object_created_by_another_process_a_moment_earlier_is_taken_up(p
 
     monkeypatch.setattr(download_files.os, "open", racing_open)
     published, plan = download(place)
-    assert raced and published.bytes == len(DATA)
+    assert raced
+    assert published.bytes == len(DATA)
 
 
 # --- published is a phase of its own -------------------------------------------------------------
@@ -565,7 +574,8 @@ def test_a_resumed_download_reports_the_digest_of_the_whole_file_and_earns_the_l
         sink.write(DATA[start:])
         sink.complete()
         published = sink.publish(whole)
-    assert published.sha256 == whole and published.verification.level == "sha256_matched"
+    assert published.sha256 == whole
+    assert published.verification.level == "sha256_matched"
 
 
 # --- a local read error is a verdict about the trace, not an escaping OSError -----------------
@@ -598,7 +608,8 @@ def test_a_prefix_that_cannot_be_read_is_discarded_and_the_download_starts_clean
     monkeypatch.setattr(download_sink.os, "read", failing)
     published, plan = download(place)
     monkeypatch.undo()
-    assert plan.ask is None and target(place).read_bytes() == DATA
+    assert plan.ask is None
+    assert target(place).read_bytes() == DATA
 
 
 # --- a file that was not seen to be ours is not even opened --------------------------------------
@@ -813,7 +824,8 @@ def test_an_os_error_carries_nothing_of_itself_into_the_closed_error(place):
             open_sink(target(place), identity_key=IDENTITY).__enter__()
     finally:
         place.chmod(0o700)
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None
 
 
 # --- a lock object that was removed during the download: no more exclusion, so no more writes -----
@@ -830,7 +842,8 @@ def test_a_download_whose_lock_object_was_removed_stops_at_its_next_checkpoint(p
         sink.write(DATA[:10_000])
         lost_lock(place)
         assert code_of(lambda: sink.write(DATA[10_000:80_000])) == "download_busy"
-    assert (place / NAMES.stage).exists() and sidecar_of(place).committed_bytes == 0
+    assert (place / NAMES.stage).exists()
+    assert sidecar_of(place).committed_bytes == 0
 
 
 def test_a_download_whose_lock_object_was_removed_is_never_completed_or_published(place):
@@ -839,9 +852,8 @@ def test_a_download_whose_lock_object_was_removed_is_never_completed_or_publishe
         sink.write(DATA)
         lost_lock(place)
         assert code_of(lambda: sink.complete(terminated=True)) == "download_busy"
-    assert not target(place).exists() and sorted(left(place)) == sorted(
-        [NAMES.stage, NAMES.sidecar]
-    )
+    assert not target(place).exists()
+    assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])
 
 
 def test_a_second_run_that_took_the_stage_is_not_overwritten_by_the_first(place):
@@ -873,7 +885,8 @@ def test_a_download_that_lost_its_lock_does_not_delete_what_the_other_run_holds(
         # leaving the block with an error: the stop must not drop the stage that is not its own
         with pytest.raises(KeyError):
             raise KeyError("an unrelated failure of the engine")
-    assert (place / NAMES.stage).exists() and (place / NAMES.sidecar).exists()
+    assert (place / NAMES.stage).exists()
+    assert (place / NAMES.sidecar).exists()
 
 
 def test_a_wrong_digest_with_a_lost_lock_object_removes_nothing(place):
@@ -903,7 +916,8 @@ def test_a_lock_object_removed_between_the_look_and_the_open_is_taken_again(plac
 
     monkeypatch.setattr(download_files.os, "open", racing_open)
     published, _ = download(place)
-    assert raced and published.bytes == len(DATA)
+    assert raced
+    assert published.bytes == len(DATA)
 
 
 def test_a_lock_object_removed_between_the_open_and_the_second_look_is_taken_again(
@@ -923,7 +937,8 @@ def test_a_lock_object_removed_between_the_open_and_the_second_look_is_taken_aga
 
     monkeypatch.setattr(download_files.os, "fstat", racing_fstat)
     published, _ = download(place)
-    assert raced and published.bytes == len(DATA)
+    assert raced
+    assert published.bytes == len(DATA)
 
 
 # --- what is written must be what is counted ------------------------------------------------------
@@ -959,7 +974,8 @@ def test_an_interrupt_between_the_digest_and_the_count_keeps_the_record_that_sto
     record = sidecar_of(place)
     assert (record.committed_bytes, record.prefix_sha256) == (100_000, sha(DATA[:100_000]))
     published, plan = download(place)
-    assert plan.resumed_from == 100_000 and published.resumed  # progress kept, not thrown away
+    assert plan.resumed_from == 100_000
+    assert published.resumed  # progress kept, not thrown away
     assert target(place).read_bytes() == DATA
 
 
@@ -968,7 +984,8 @@ def test_more_bytes_than_the_answer_promised_are_refused_and_nothing_is_kept(pla
         with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
             sink.begin(full(1000), "full")
             sink.write(b"x" * 1500)
-    assert error.value.code == "invalid_response" and left(place) == []
+    assert error.value.code == "invalid_response"
+    assert left(place) == []
 
 
 def test_stopping_never_raises_whatever_it_finds(place, monkeypatch):
@@ -991,7 +1008,8 @@ def test_a_buffer_of_wider_items_is_written_as_bytes(place):
         sink.write(wide)
         sink.complete(terminated=True)
         published = sink.publish(None)
-    assert target(place).read_bytes() == raw and published.sha256 == sha(raw)
+    assert target(place).read_bytes() == raw
+    assert published.sha256 == sha(raw)
 
 
 def test_a_failed_header_checkpoint_after_the_range_was_ignored_drops_the_whole_trace(
@@ -1060,7 +1078,8 @@ def test_the_cleanup_after_a_wrong_digest_leaves_what_is_not_provably_ours(place
         foreign.write_bytes(b"FOREIGN")
         foreign.chmod(0o644)
         assert code_of(lambda: sink.publish("00" * 32)) == "download_integrity_mismatch"
-    assert foreign.read_bytes() == b"FOREIGN" and not (place / NAMES.stage).exists()
+    assert foreign.read_bytes() == b"FOREIGN"
+    assert not (place / NAMES.stage).exists()
 
 
 def test_the_cleanup_after_a_wrong_digest_does_not_remove_a_stage_that_is_not_the_one_written(

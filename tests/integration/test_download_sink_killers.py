@@ -253,7 +253,8 @@ def test_a_lock_object_that_cannot_be_removed_does_not_turn_a_published_download
     monkeypatch.setattr(download_files.os, "unlink", failing)
     published, _ = download(place)
     monkeypatch.undo()
-    assert published.bytes == len(DATA) and target(place).read_bytes() == DATA
+    assert published.bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
     assert sorted(left(place)) == sorted([NAME, NAMES.lock])  # an empty file the next run reuses
 
 
@@ -280,7 +281,8 @@ def test_a_lock_descriptor_that_will_not_close_does_not_turn_a_published_downloa
     monkeypatch.setattr(download_files.os, "close", closing)
     published, _ = download(place)
     monkeypatch.undo()
-    assert published.bytes == len(DATA) and target(place).read_bytes() == DATA
+    assert published.bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
 
 
 # --- the error code of each place that opens or creates (M0245, M0250, M0481) ---------------------
@@ -673,7 +675,8 @@ def test_a_prefix_that_cannot_be_positioned_is_discarded_like_one_that_cannot_be
     monkeypatch.setattr(download_sink.os, "lseek", failing)
     with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
         monkeypatch.undo()
-        assert plan.ask is None and failed
+        assert plan.ask is None
+        assert failed
         sink.stop()
 
 
@@ -695,7 +698,8 @@ def test_a_provider_that_restarts_with_an_empty_object_leaves_an_empty_file(plac
         sink.begin(DownloadResponse(200, None, '"v2"', "length", 0), "restart")
         sink.complete(terminated=True)
         published = sink.publish(None)
-    assert published.bytes == 0 and target(place).read_bytes() == b""
+    assert published.bytes == 0
+    assert target(place).read_bytes() == b""
 
 
 # --- a request that fails right after a discard leaves nothing: a discarded stage is not "kept" --
@@ -790,7 +794,8 @@ def test_a_closed_error_of_the_sink_carries_no_context_and_no_cause(place, monke
                 monkeypatch.setattr(download_sink.os, "write", refuse)
                 sink.write(DATA)
     monkeypatch.undo()
-    assert caught.value.__context__ is None and caught.value.__cause__ is None
+    assert caught.value.__context__ is None
+    assert caught.value.__cause__ is None
 
 
 # --- B-1: an I/O error right after the completion checkpoint was replaced never drops the stage ---
@@ -833,7 +838,8 @@ def test_a_failure_right_after_the_completion_checkpoint_never_drops_a_whole_sta
         [NAMES.stage, NAMES.sidecar]
     )  # the body is whole: it stays
     published, plan = download(place)
-    assert plan.action == "publish" and target(place).read_bytes() == DATA
+    assert plan.action == "publish"
+    assert target(place).read_bytes() == DATA
 
 
 # --- write(): its own closed errors, the buffers it takes and the total it was promised ----------
@@ -932,10 +938,13 @@ def test_a_full_stage_without_its_sidecar_is_unverified_and_no_resume_removes_it
     (place / NAMES.sidecar).unlink()
     before = (place / NAMES.stage).read_bytes()
     assert code_of(lambda: download(place)) == "download_partial_unverified"
-    assert left(place) == [NAMES.stage] and (place / NAMES.stage).read_bytes() == before
+    assert left(place) == [NAMES.stage]
+    assert (place / NAMES.stage).read_bytes() == before
     published, plan = download(place, no_resume=True)
-    assert plan.ask is None and published.resumed_from_bytes == 0
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert plan.ask is None
+    assert published.resumed_from_bytes == 0
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 # --- acceptance 7: Unicode and long target names are safe -----------------------------------------
@@ -978,7 +987,8 @@ def test_a_stage_sync_that_fails_at_the_end_of_the_body_records_no_completion(pl
 def test_a_resume_from_a_single_byte_is_reported_as_a_resume(place):
     stopped_after(place, 1)
     published, plan = download(place)
-    assert plan.resumed_from == 1 and published.resumed_from_bytes == 1
+    assert plan.resumed_from == 1
+    assert published.resumed_from_bytes == 1
     assert published.resumed is True
 
 
@@ -1213,7 +1223,8 @@ def test_a_lock_object_that_was_found_removed_leaks_no_descriptor_on_the_retry(p
     monkeypatch.setattr(download_files, "_marker", marker)
     download(place)
     monkeypatch.undo()
-    assert opened and descriptors() == before
+    assert opened
+    assert descriptors() == before
 
 
 def test_the_published_target_is_synced_after_the_link_and_the_cleanup(place, monkeypatch):
@@ -1392,7 +1403,8 @@ def test_a_prefix_mismatch_followed_by_a_failed_removal_closes_each_descriptor_o
     monkeypatch.setattr(download_files.os, "unlink", failing)
     assert code_of(enter(place)) == "download_write_failed"
     monkeypatch.undo()
-    assert not wrong and not live, (wrong, live)
+    assert not wrong, (wrong, live)
+    assert not live, (wrong, live)
 
 
 # --- a restart marks the record stale only once the stage was cut (M0725); a verdict needs no clean
@@ -1455,7 +1467,8 @@ def test_an_interrupt_at_the_completion_boundary_keeps_the_whole_stage(place, mo
     monkeypatch.undo()
     assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])
     published, plan = download(place)
-    assert plan.action == "publish" and target(place).read_bytes() == DATA
+    assert plan.action == "publish"
+    assert target(place).read_bytes() == DATA
 
 
 def test_the_full_sync_happens_between_the_compared_and_the_published_boundaries(
@@ -1505,7 +1518,8 @@ def test_the_compared_boundary_is_announced_only_when_the_digest_was_accepted(pl
         names.clear()
         assert code_of(lambda: sink.publish("00" * 32)) == "download_integrity_mismatch"
     monkeypatch.undo()
-    assert "compared" not in names and "publish:before_link" not in names
+    assert "compared" not in names
+    assert "publish:before_link" not in names
 
 
 # --- the lock is checked on the continue branch too; a refused byte is not written (M0754, M0891) -
@@ -1563,4 +1577,5 @@ def test_a_failure_inside_complete_never_drops_a_body_that_is_whole(
     assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])  # not dropped: whole
     assert (place / NAMES.stage).read_bytes() == DATA
     published, _ = download(place)  # and the next run finishes without anyone deleting anything
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]

@@ -47,18 +47,22 @@ def test_a_continuation_that_sent_its_files_is_verified_by_reading_the_whole_dat
     plan, record = lifecycle.admitted()
     send_all(lifecycle, plan, record)
     access, proof, view = close(lifecycle, plan, record)
-    assert access.policy == "explicit_read_attempt" and access.grant is None
+    assert access.policy == "explicit_read_attempt"
+    assert access.grant is None
     operation = view.operation
     assert (operation.status, operation.reason) == ("succeeded", "metadata_verified")
-    assert operation.lease is None and operation.workflow_latched is True
-    assert type(view.verification) is TransferVerificationV3 and view.verification == proof
+    assert operation.lease is None
+    assert operation.workflow_latched is True
+    assert type(view.verification) is TransferVerificationV3
+    assert view.verification == proof
     assert len(view.verification.files) == 3  # the whole manifest, though two files were sent
     assert [(c.kind, type(c)) for c in view.controls] == [("terminal", TransferControlV3)]
     assert view.controls[0].verification_digest == proof_digest(proof)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         validate_uploads(store.connection)
         found = summary(read_any_view(store.connection, plan.plan_id))
-        assert found.operation_status == "succeeded" and found.verification_level == "metadata"
+        assert found.operation_status == "succeeded"
+        assert found.verification_level == "metadata"
         assert found.authority_verified is False  # nothing proved the authority: a bare attempt
 
 
@@ -70,7 +74,8 @@ def test_a_second_continuation_runs_from_the_first_that_stopped_to_a_verified_da
     send_all(lifecycle, plan, record, [(kind, 2) for kind in ("presign", "put", "confirm")])
     _, proof, view = close(lifecycle, plan, record)
     assert (view.operation.status, view.operation.reason) == ("succeeded", "metadata_verified")
-    assert len(view.intents) == len(view.receipts) == 3 and view.verification == proof
+    assert len(view.intents) == len(view.receipts) == 3
+    assert view.verification == proof
     assert view.plan.continuation.source_operation_id == FIRST
     with open_store(lifecycle.root_dir, timeout=60) as store:
         validate_uploads(store.connection)
@@ -194,13 +199,17 @@ def test_the_proof_must_be_of_the_plans_dataset_and_cover_the_whole_manifest(lif
 
 def test_a_check_only_continuation_reads_and_is_verified_without_sending_or_a_latch(lifecycle):
     plan, record = lifecycle.admitted(indices=(), uncertain=())
-    assert record.verification_only and record.status == "admitted"
+    assert record.verification_only
+    assert record.status == "admitted"
     access, proof, view = close(lifecycle, plan, record)
     operation = view.operation
     assert access.policy == "explicit_read_attempt"
     assert (operation.status, operation.reason) == ("succeeded", "metadata_verified")
-    assert operation.workflow_latched is False and operation.verification_only is True
-    assert view.intents == () and view.receipts == () and view.verification == proof
+    assert operation.workflow_latched is False
+    assert operation.verification_only is True
+    assert view.intents == ()
+    assert view.receipts == ()
+    assert view.verification == proof
     with open_store(lifecycle.root_dir, timeout=60) as store:
         validate_uploads(store.connection)
 
@@ -238,10 +247,12 @@ def test_a_failed_read_cancels_a_check_only_continuation_and_reports_the_reads_o
         with pytest.raises(OperationError) as error:
             repository.read_failed(record.operation_id, record.lease, failure)
         # The read's own code, never "operation_uncertain": nothing was sent.
-        assert error.value.code == "remote_failed" and error.value.reason_code == "remote_failed"
+        assert error.value.code == "remote_failed"
+        assert error.value.reason_code == "remote_failed"
         view = repository.show(operation_id=record.operation_id)
         assert (view.operation.status, view.operation.reason) == ("cancelled", "local_cancelled")
-        assert view.operation.workflow_latched is False and view.intents == ()
+        assert view.operation.workflow_latched is False
+        assert view.intents == ()
         assert [(c.kind, type(c)) for c in view.controls] == [("terminal", TransferControlV3)]
         # The same plan cannot be started again: its operation is over (a new prepare is needed).
         assert repository.admit(plan.plan_id, plan).status == "cancelled"
@@ -278,7 +289,8 @@ def test_a_proof_that_comes_too_late_cancels_a_check_only_continuation_without_u
         )
         view = repository.show(operation_id=record.operation_id)
         assert (view.operation.status, view.operation.reason) == ("cancelled", "local_cancelled")
-        assert view.verification is None and view.intents == ()
+        assert view.verification is None
+        assert view.intents == ()
 
 
 def test_a_failed_read_before_anything_was_sent_is_a_conflict_and_leaves_the_operation_alone(
@@ -469,7 +481,8 @@ def test_an_unknown_continuation_is_verified_later_by_a_read_owner(lifecycle):
         lease = repository.acquire_read(
             record.operation_id, authorization=check, accept_unverified_read=True
         )
-        assert lease.mode == "read" and lease.fence == 2
+        assert lease.mode == "read"
+        assert lease.fence == 2
         proof = proof_of(plan, timestamp(lifecycle.clock.value))
         view = repository.verified(
             record.operation_id, lease, proof, authorization=check, accept_unverified_read=True

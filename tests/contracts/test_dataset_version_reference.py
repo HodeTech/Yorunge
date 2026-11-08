@@ -65,10 +65,12 @@ def test_the_binding_fields_of_the_reference_are_the_fields_of_the_model():
     top = re.sub(r"\([^)]*\)", "", section)  # the nested keys are checked below
     assert names(top) == set(DatasetVersionBinding.model_fields)
     service = re.search(r"`service` \(([^:)]*)", section)
-    assert service is not None and names(service.group(1)) == set(ServiceTarget.model_fields)
+    assert service is not None
+    assert names(service.group(1)) == set(ServiceTarget.model_fields)
     manifest = re.search(r"`local_manifest` \(([^)]*)\)", section)
     expected = set(LocalManifestRelation.model_fields)
-    assert manifest is not None and names(manifest.group(1)) == expected
+    assert manifest is not None
+    assert names(manifest.group(1)) == expected
 
 
 def test_the_observation_and_list_fields_of_the_reference_are_the_fields_of_the_models():
@@ -81,7 +83,8 @@ def test_the_observation_and_list_fields_of_the_reference_are_the_fields_of_the_
         DatasetVersionObservation.model_fields
     ) - {"class_count", "class_labels_sha256"}
     kind = "`kind=dataset_version_list_item`"
-    assert kind in text and "`kind=dataset_version_list`" in text
+    assert kind in text
+    assert "`kind=dataset_version_list`" in text
 
 
 def test_the_page_fields_of_the_reference_are_the_fields_of_the_page_model():

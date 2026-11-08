@@ -211,7 +211,8 @@ def test_the_run_url_is_validated_before_anything_is_created(tmp_path, driver, m
         args = controller_args(tmp_path, list(LABELS), 3, run_url=url)
         with pytest.raises(ValueError, match="invalid evidence digest or identifier"):
             driver["check"](args)
-        assert not args.workspace.exists() and list((tmp_path / "dist").iterdir()) == []
+        assert not args.workspace.exists()
+        assert list((tmp_path / "dist").iterdir()) == []
 
 
 @pytest.mark.parametrize(
@@ -227,7 +228,8 @@ def test_the_report_must_be_created_directly_in_the_roots_dist(
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with pytest.raises(ValueError, match="directly in dist"):
         driver["check"](args)
-    assert not args.workspace.exists() and not args.output.exists()
+    assert not args.workspace.exists()
+    assert not args.output.exists()
 
 
 def test_the_name_is_checked_before_the_place(tmp_path, driver, monkeypatch):
@@ -255,7 +257,9 @@ def test_the_commit_is_read_from_git_in_the_root_before_the_workspace_exists(
         driver["check"](args)
     (((command,), keywords),) = calls
     assert command == ["git", "rev-parse", "HEAD"]
-    assert keywords["cwd"] == tmp_path and keywords["check"] is True and keywords["timeout"] == 10
+    assert keywords["cwd"] == tmp_path
+    assert keywords["check"] is True
+    assert keywords["timeout"] == 10
     assert not args.workspace.exists()  # no workspace, so nothing to retain
 
 
@@ -272,7 +276,8 @@ def test_a_failed_complete_measurement_is_archived_as_it_is(tmp_path, driver, mo
     assert gzip.decompress((archive / "raw/report.json.gz").read_bytes()) == written
     assert driver["CHECKS"]["verify"](tmp_path) == 1
     entry = json.loads((archive / "evidence-manifest.json").read_bytes())["entries"][0]
-    assert entry["name"] == "report.json" and entry["summary"] == {
+    assert entry["name"] == "report.json"
+    assert entry["summary"] == {
         "source_commit": "a" * 40,
         "diagnostic_only": False,
         **printed,
@@ -364,8 +369,10 @@ def test_the_command_refuses_a_bad_run_url_before_it_creates_anything(
 ):
     patch_controller(driver, monkeypatch, tmp_path, [])
     code, args = invoke(driver, monkeypatch, tmp_path, "--run-url", "https://example.com/runs/1")
-    assert code == 1 and "invalid evidence digest or identifier" in capsys.readouterr().err
-    assert not args.workspace.exists() and list((tmp_path / "dist").iterdir()) == []
+    assert code == 1
+    assert "invalid evidence digest or identifier" in capsys.readouterr().err
+    assert not args.workspace.exists()
+    assert list((tmp_path / "dist").iterdir()) == []
 
 
 def test_the_command_documents_the_run_url(driver, monkeypatch, capsys):
@@ -415,10 +422,8 @@ def assembled(driver, cpu):
 
 def test_a_report_that_does_not_validate_is_never_handed_back(driver):
     report = assembled(driver, "synthetic")
-    assert (
-        report["report_kind"] == "download_budget_v1"
-        and report["environment"]["cpu"] == "synthetic"
-    )
+    assert report["report_kind"] == "download_budget_v1"
+    assert report["environment"]["cpu"] == "synthetic"
     with pytest.raises(ValueError):
         assembled(driver, "")  # an empty label: judged by the closed report itself, not by the runs
 
@@ -474,7 +479,8 @@ def test_main_runs_the_measurement_under_those_handlers(driver, monkeypatch):
     before = signal.getsignal(signal.SIGTERM)
     hangup_ignored = signal.getsignal(signal.SIGHUP) is signal.SIG_IGN  # started with nohup
     assert driver["main"]() == 0
-    assert seen["term"] not in (before, signal.SIG_DFL, signal.SIG_IGN) and callable(seen["term"])
+    assert seen["term"] not in (before, signal.SIG_DFL, signal.SIG_IGN)
+    assert callable(seen["term"])
     assert (seen["hup"] is signal.SIG_IGN) if hangup_ignored else callable(seen["hup"])
     assert signal.getsignal(signal.SIGTERM) == before
 

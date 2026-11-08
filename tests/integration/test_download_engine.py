@@ -248,7 +248,8 @@ def assert_whole(world, summary, data=DATA, *, resumed=False, resumed_from=0):
 def test_a_whole_download_is_published_with_one_json_call_and_one_get(world):
     summary = world.run()
     assert_whole(world, summary)
-    assert world.resolver.calls == 1 and len(world.service_calls()) == 1
+    assert world.resolver.calls == 1
+    assert len(world.service_calls()) == 1
     assert world.provider.seen == [(None, None)]  # a plain request: nothing but the address
 
 
@@ -262,8 +263,10 @@ def test_the_json_call_has_its_own_budget_of_thirty_seconds(world):
 def test_progress_ends_at_the_whole_and_never_goes_back(world):
     summary = world.run()
     held = [pair[0] for pair in world.reports]
-    assert held == sorted(held) and world.reports[-1] == (len(DATA), len(DATA))
-    assert world.reports[0][1] == len(DATA) and summary.bytes == len(DATA)
+    assert held == sorted(held)
+    assert world.reports[-1] == (len(DATA), len(DATA))
+    assert world.reports[0][1] == len(DATA)
+    assert summary.bytes == len(DATA)
     assert len(world.reports) < 200  # bounded: not one report per chunk of a 3 MiB body
 
 
@@ -288,7 +291,8 @@ def test_a_cut_download_is_continued_by_the_next_call_from_what_was_kept(world):
     assert_whole(world, summary, resumed=True, resumed_from=CUT)
     assert world.provider.seen == [(None, None), (f"bytes={CUT}-", TAG)]  # one GET each
     assert world.reports[-1] == (len(DATA), len(DATA))  # the total is the whole object's
-    assert len(world.signed()) == 2 and len(world.service_calls()) == 2
+    assert len(world.signed()) == 2
+    assert len(world.service_calls()) == 2
 
 
 def test_the_kept_prefix_is_hashed_again_and_a_flipped_byte_starts_over(world):
@@ -306,7 +310,8 @@ def test_an_object_that_changed_is_downloaded_from_the_start(world):
     world.provider.data, world.provider.etag = OTHER, '"v2-other"'
     summary = world.run()
     assert_whole(world, summary, OTHER)  # If-Range did not match: the whole object, new tag
-    assert world.provider.seen[-1] == (f"bytes={CUT}-", TAG) and len(world.signed()) == 2
+    assert world.provider.seen[-1] == (f"bytes={CUT}-", TAG)
+    assert len(world.signed()) == 2
 
 
 def test_a_provider_that_ignores_the_range_is_restarted_without_another_request(world):
@@ -380,7 +385,8 @@ def test_the_one_protocol_turn_is_not_a_loop(world):
 def test_a_partial_answer_to_a_plain_request_is_refused_and_nothing_is_kept(world):
     world.provider.script = [unfit_partial(world, start=10, length=len(DATA) - 10)]
     assert code_of(world.run) == "invalid_response"
-    assert world.names() == [] and len(world.provider.seen) == 1
+    assert world.names() == []
+    assert len(world.provider.seen) == 1
 
 
 def test_a_full_answer_that_carries_a_content_range_is_never_written_as_the_whole(world):
@@ -410,10 +416,12 @@ def test_without_a_strong_tag_a_cut_download_keeps_nothing(world):
     world.provider.script = [Reply(body=DATA, truncate_at=CUT)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []  # nothing to resume against: not kept
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1
     assert_whole(world, world.run())
     assert world.provider.seen[-1] == (None, None)
-    assert len(world.signed()) == 2 and len(world.service_calls()) == 2  # one GET per run
+    assert len(world.signed()) == 2
+    assert len(world.service_calls()) == 2  # one GET per run
 
 
 def test_a_weak_tag_is_no_tag(world):
@@ -421,7 +429,8 @@ def test_a_weak_tag_is_no_tag(world):
     world.provider.script = [Reply(body=DATA, headers=(("ETag", 'W/"weak"'),), truncate_at=CUT)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1
 
 
 def test_a_chunked_answer_is_whole_when_terminated_and_is_not_resumed_when_cut(world):
@@ -430,11 +439,13 @@ def test_a_chunked_answer_is_whole_when_terminated_and_is_not_resumed_when_cut(w
     world.provider.script = [Reply(body=body, headers=chunked, truncate_at=len(body) // 2)]
     assert code_of(world.run) == "download_incomplete"
     assert world.names() == []  # no total until it ends: not resumable
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1
     world.provider.script = [Reply(body=body, headers=chunked)]
     summary = world.run()
     assert_whole(world, summary)
-    assert len(world.signed()) == 2 and len(world.service_calls()) == 2  # no ranged request
+    assert len(world.signed()) == 2
+    assert len(world.service_calls()) == 2  # no ranged request
     assert world.provider.seen == [(None, None), (None, None)]
     assert world.reports[-1][1] is None or world.reports[-1] == (len(DATA), len(DATA))
     assert all(total is None for _, total in world.reports[-3:])  # chunked: no total to report
@@ -444,12 +455,14 @@ def test_a_body_delimited_by_the_connection_is_refused(world):
     world.provider.script = [Reply(body=DATA, omit_length=True)]
     assert code_of(world.run) == "invalid_response"
     assert world.names() == []
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1  # no second try
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1  # no second try
 
 
 def test_a_body_longer_than_the_callers_cap_is_refused_before_a_byte_is_written(world):
     assert code_of(lambda: world.run(max_bytes=len(DATA) - 1)) == "download_limit_exceeded"
-    assert world.names() == [] and len(world.provider.seen) == 1
+    assert world.names() == []
+    assert len(world.provider.seen) == 1
 
 
 def test_a_chunked_body_past_the_callers_cap_is_cut_and_not_kept(world):
@@ -457,7 +470,8 @@ def test_a_chunked_body_past_the_callers_cap_is_cut_and_not_kept(world):
     world.provider.script = [Reply(body=framed(DATA), headers=chunked)]
     assert code_of(lambda: world.run(max_bytes=len(DATA) // 2)) == "download_limit_exceeded"
     assert world.names() == []
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1
 
 
 # --- what the directory says before anything is asked of the network ------------------------------
@@ -466,20 +480,25 @@ def test_a_chunked_body_past_the_callers_cap_is_cut_and_not_kept(world):
 def test_a_target_that_exists_is_refused_before_any_request(world):
     world.target.write_bytes(b"mine")
     assert code_of(world.run) == "download_output_exists"
-    assert world.server.requests == [] and world.resolver.calls == 0  # the JSON call included
-    assert world.target.read_bytes() == b"mine" and world.names() == [NAME]
+    assert world.server.requests == []
+    assert world.resolver.calls == 0  # the JSON call included
+    assert world.target.read_bytes() == b"mine"
+    assert world.names() == [NAME]
 
 
 def test_a_parent_that_is_missing_is_a_target_error_before_any_request(world):
     code = code_of(lambda: world.run(target=world.directory / "missing" / NAME))
-    assert code == "download_target_invalid" and world.server.requests == []
+    assert code == "download_target_invalid"
+    assert world.server.requests == []
 
 
 @pytest.mark.parametrize("name", ["new\nline.bin", "undecodable-\udcff.bin"])
 def test_a_target_the_summary_could_not_report_is_refused_before_any_request(world, name):
     code = code_of(lambda: world.run(target=world.directory / name))
     assert code == "download_target_invalid"
-    assert world.server.requests == [] and world.resolver.calls == 0 and world.names() == []
+    assert world.server.requests == []
+    assert world.resolver.calls == 0
+    assert world.names() == []
 
 
 @pytest.mark.parametrize("parent", ["bidi\u202eevil", "new\nline", "tab\there", "bell\x07"])
@@ -488,7 +507,8 @@ def test_a_parent_the_summary_could_not_report_is_refused_before_any_request(wor
     directory.mkdir()
     code = code_of(lambda: world.run(target=directory / NAME))
     assert code == "download_target_invalid"
-    assert world.server.requests == [] and world.resolver.calls == 0
+    assert world.server.requests == []
+    assert world.resolver.calls == 0
     assert list(directory.iterdir()) == []  # nothing was made there
 
 
@@ -506,7 +526,8 @@ def whole_stage(world, monkeypatch, **changes):
         assert code_of(lambda: world.run(**changes)) == "download_write_failed"
     assert world.names() == sorted([world.stage().name, world.sidecar().name])
     record = DownloadPartial.decode(world.sidecar().read_bytes())
-    assert record.complete and record.committed_bytes == len(record_data(world))
+    assert record.complete
+    assert record.committed_bytes == len(record_data(world))
 
 
 def record_data(world):
@@ -518,7 +539,8 @@ def test_a_whole_stage_is_published_by_the_next_call_without_any_request(world, 
     requests, calls = len(world.server.requests), world.resolver.calls
     summary = world.run()
     assert_whole(world, summary, resumed=True, resumed_from=len(DATA))
-    assert len(world.server.requests) == requests and world.resolver.calls == calls
+    assert len(world.server.requests) == requests
+    assert world.resolver.calls == calls
 
 
 def test_a_whole_chunked_stage_is_published_without_any_request_too(world, monkeypatch):
@@ -540,10 +562,8 @@ def test_a_revoked_key_does_not_stand_in_the_way_of_a_whole_stage(world, monkeyp
     json_calls = world.service_calls()
     summary = world.run()
     assert_whole(world, summary, resumed=True, resumed_from=len(DATA))
-    assert (
-        world.service_calls() == json_calls
-        and world.provider.script == [Reply(status=401, body=b"")] * 3
-    )
+    assert world.service_calls() == json_calls
+    assert world.provider.script == [Reply(status=401, body=b"")] * 3
 
 
 def test_a_stage_left_by_another_service_is_neither_resumed_nor_published(world, monkeypatch):
@@ -566,21 +586,25 @@ def test_a_partial_download_of_another_service_or_fold_is_dropped_and_started_ov
     assert world.stage().stat().st_size == CUT  # kept, under the other identity
     summary = world.run()
     assert_whole(world, summary)  # same version, format and name: not this download's stage
-    assert world.provider.seen[-1] == (None, None) and summary.resumed is False
+    assert world.provider.seen[-1] == (None, None)
+    assert summary.resumed is False
 
 
 def test_a_wrong_expected_digest_leaves_nothing_and_the_rerun_downloads_again(world):
     with pytest.raises(YorungeError) as error:
         world.run(expected_sha256="00" * 32)
-    assert error.value.code == "download_integrity_mismatch" and error.value.exit_code == 7
+    assert error.value.code == "download_integrity_mismatch"
+    assert error.value.exit_code == 7
     assert error.value.details == {"computed_sha256": sha(DATA), "bytes": len(DATA)}
-    assert world.names() == [] and len(world.signed()) == 1
+    assert world.names() == []
+    assert len(world.signed()) == 1
     summary = world.run(expected_sha256=sha(DATA))  # no offline loop of the same mismatch
     assert (summary.verification_level, summary.expectation_source) == (
         "sha256_matched",
         "user_supplied",
     )
-    assert world.target.read_bytes() == DATA and len(world.signed()) == 2
+    assert world.target.read_bytes() == DATA
+    assert len(world.signed()) == 2
 
 
 def test_no_resume_removes_a_partial_that_is_ours_and_downloads_from_the_start(world):
@@ -596,7 +620,8 @@ def test_a_partial_that_cannot_be_proved_ours_is_never_touched(world, no_resume)
     world.stage().chmod(0o644)  # not the private file this download makes
     requests = len(world.server.requests)
     assert code_of(lambda: world.run(no_resume=no_resume)) == "download_partial_unverified"
-    assert world.stage().stat().st_size == CUT and world.sidecar().exists()
+    assert world.stage().stat().st_size == CUT
+    assert world.sidecar().exists()
     assert len(world.server.requests) == requests
 
 
@@ -621,7 +646,8 @@ def test_publishing_is_not_timed_by_the_download_deadline(world, monkeypatch):
 
 def test_a_deadline_already_gone_is_a_timeout_before_any_request(world):
     assert code_of(lambda: world.run(seconds=-1)) == "transport_timeout"
-    assert world.server.requests == [] and world.names() == []
+    assert world.server.requests == []
+    assert world.names() == []
 
 
 def test_a_stalled_body_ends_at_the_deadline_and_keeps_what_it_can(world):
@@ -670,10 +696,12 @@ def test_an_interrupt_keeps_what_can_be_resumed_and_the_next_call_continues(worl
     assert world.names() == sorted([world.stage().name, world.sidecar().name])
     kept = world.stage().stat().st_size
     assert kept >= 1024 * 1024
-    assert len(world.signed()) == 1 and len(world.service_calls()) == 1
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1
     summary = world.run()
     assert_whole(world, summary, resumed=True, resumed_from=kept)
-    assert len(world.signed()) == 2 and len(world.service_calls()) == 2
+    assert len(world.signed()) == 2
+    assert len(world.service_calls()) == 2
     assert world.provider.seen[-1] == (f"bytes={kept}-", TAG)
 
 
@@ -692,9 +720,8 @@ def test_a_local_write_failure_is_reported_before_a_remote_one(world, monkeypatc
         # the disk fails first; the cut that would be reported next never gets the chance
         assert code_of(world.run) == "download_write_failed"
     assert world.target.exists() is False
-    assert (
-        len(world.signed()) == 1 and len(world.service_calls()) == 1
-    )  # no retry after a disk fault
+    assert len(world.signed()) == 1
+    assert len(world.service_calls()) == 1  # no retry after a disk fault
 
 
 def test_a_bad_digest_is_refused_before_the_job_exists():
@@ -726,7 +753,8 @@ def test_a_bad_digest_is_refused_before_the_job_exists():
 )
 def test_a_job_with_a_value_outside_its_contract_is_refused(world, changes):
     assert code_of(lambda: world.job(**changes)) == "invalid_request"
-    assert world.server.requests == [] and world.names() == []
+    assert world.server.requests == []
+    assert world.names() == []
 
 
 def test_a_job_shows_nothing_of_what_it_holds(world):
@@ -747,9 +775,8 @@ def test_the_body_is_written_as_it_arrives_never_buffered(world, monkeypatch):
 
     monkeypatch.setattr(DownloadSink, "write", spy)
     assert_whole(world, world.run())
-    assert max(sizes) <= 16384 and sum(sizes) == len(
-        DATA
-    )  # a TLS record at most, whatever the body
+    assert max(sizes) <= 16384
+    assert sum(sizes) == len(DATA)  # a TLS record at most, whatever the body
 
 
 PRIVATE = [
@@ -830,7 +857,8 @@ def test_reports_are_at_most_ten_a_second_and_the_first_and_the_last_are_always_
         now[0] = 100.0 + step / 1000
         meter.update(step, 5000)
     meter.finish(5000, 5000)
-    assert seen[0] == (0, 5000) and seen[-1] == (5000, 5000)
+    assert seen[0] == (0, 5000)
+    assert seen[-1] == (5000, 5000)
     assert len(seen) <= 12  # the first, ten in the second, the last
     assert [held for held, _ in seen] == sorted(held for held, _ in seen)
 

@@ -100,7 +100,8 @@ def code_of(action):
 def test_a_fresh_download_is_published_whole_and_private_and_leaves_nothing(place):
     published, plan = download(place)
     assert (plan.action, plan.ask, plan.resumed_from) == ("download", None, 0)
-    assert published.bytes == len(DATA) and published.resumed_from_bytes == 0
+    assert published.bytes == len(DATA)
+    assert published.resumed_from_bytes == 0
     assert published.sha256 == hashlib.sha256(DATA).hexdigest()
     assert (published.verification.level, published.verification.expectation_source) == (
         "transfer_complete",
@@ -108,7 +109,8 @@ def test_a_fresh_download_is_published_whole_and_private_and_leaves_nothing(plac
     )
     info = target(place).lstat()
     assert target(place).read_bytes() == DATA
-    assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1
+    assert stat.S_IMODE(info.st_mode) == 0o600
+    assert info.st_nlink == 1
     assert left(place) == [NAME]  # no lock object, no stage, no sidecar, no temporary copy
 
 
@@ -133,7 +135,8 @@ def test_an_expectation_that_does_not_match_publishes_nothing_and_keeps_nothing(
 def test_an_empty_body_is_a_download(place):
     published, _ = download(place, b"")
     assert (published.bytes, published.sha256) == (0, EMPTY_SHA256)
-    assert target(place).read_bytes() == b"" and left(place) == [NAME]
+    assert target(place).read_bytes() == b""
+    assert left(place) == [NAME]
 
 
 def test_a_body_may_arrive_in_pieces_of_any_size(place):
@@ -193,8 +196,10 @@ def test_the_next_run_resumes_from_the_committed_prefix_and_reports_it(place):
     published, plan = download(place)
     assert (plan.action, plan.resumed_from) == ("download", 100_000)
     assert (plan.ask.prefix_bytes, plan.ask.total_size, plan.ask.etag) == (100_000, len(DATA), TAG)
-    assert published.resumed_from_bytes == 100_000 and published.bytes == len(DATA)
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert published.resumed_from_bytes == 100_000
+    assert published.bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 @pytest.mark.parametrize(
@@ -214,8 +219,10 @@ def test_a_stop_after_every_byte_of_a_body_of_known_length_keeps_it_even_without
     record = sidecar_of(place)
     assert (record.committed_bytes, record.total_size, record.etag) == (len(DATA), len(DATA), None)
     published, plan = download(place)
-    assert plan.action == "publish" and published.resumed_from_bytes == len(DATA)
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert plan.action == "publish"
+    assert published.resumed_from_bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_a_stop_after_every_byte_of_a_chunked_body_drops_it_the_end_was_not_seen(place):
@@ -232,7 +239,8 @@ def test_even_one_byte_of_progress_resumes(place):
     stopped_after(place, 1)
     assert sidecar_of(place).committed_bytes == 1
     published, plan = download(place)
-    assert plan.resumed_from == 1 and target(place).read_bytes() == DATA
+    assert plan.resumed_from == 1
+    assert target(place).read_bytes() == DATA
 
 
 def test_a_stage_longer_than_its_last_checkpoint_is_cut_back_and_resumed(place):
@@ -240,7 +248,8 @@ def test_a_stage_longer_than_its_last_checkpoint_is_cut_back_and_resumed(place):
     with (place / NAMES.stage).open("ab") as stage:
         stage.write(b"bytes written after the last checkpoint, then the process was killed")
     published, plan = download(place)
-    assert plan.resumed_from == 100_000 and target(place).read_bytes() == DATA
+    assert plan.resumed_from == 100_000
+    assert target(place).read_bytes() == DATA
 
 
 def test_a_complete_stage_with_bytes_after_its_total_is_cut_back_before_it_is_published(place):
@@ -251,7 +260,8 @@ def test_a_complete_stage_with_bytes_after_its_total_is_cut_back_before_it_is_pu
     with (place / NAMES.stage).open("ab") as stage:
         stage.write(b"garbage that was written after the completion checkpoint")
     published, plan = download(place)
-    assert plan.action == "publish" and published.bytes == len(DATA)
+    assert plan.action == "publish"
+    assert published.bytes == len(DATA)
     assert target(place).read_bytes() == DATA  # exactly the total: nothing trails it
 
 
@@ -263,7 +273,8 @@ def test_a_provider_that_restarts_with_a_shorter_object_leaves_nothing_of_the_ol
         sink.write(smaller)
         sink.complete(terminated=True)
         published = sink.publish(None)
-    assert published.bytes == 50_000 and target(place).read_bytes() == smaller
+    assert published.bytes == 50_000
+    assert target(place).read_bytes() == smaller
 
 
 def test_a_stage_whose_committed_prefix_is_not_what_was_hashed_starts_clean(place):
@@ -274,15 +285,18 @@ def test_a_stage_whose_committed_prefix_is_not_what_was_hashed_starts_clean(plac
             bytes([DATA[500] ^ 0xFF])
         )  # corruption inside the committed prefix: always a change
     published, plan = download(place)
-    assert (plan.ask, plan.resumed_from) == (None, 0) and published.resumed_from_bytes == 0
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert (plan.ask, plan.resumed_from) == (None, 0)
+    assert published.resumed_from_bytes == 0
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_a_stage_shorter_than_what_the_sidecar_commits_starts_clean(place):
     stopped_after(place, 100_000)
     os.truncate(place / NAMES.stage, 50_000)
     _, plan = download(place)
-    assert plan.ask is None and target(place).read_bytes() == DATA
+    assert plan.ask is None
+    assert target(place).read_bytes() == DATA
 
 
 def test_a_sidecar_of_another_download_is_not_resumed(place):
@@ -303,7 +317,8 @@ def test_a_provider_that_ignores_the_range_restarts_from_the_first_byte(place):
         sink.complete(terminated=True)
         published = sink.publish(None)
     assert (published.bytes, published.resumed_from_bytes) == (len(DATA), 0)
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_an_answer_that_does_not_fit_drops_the_stage_and_the_sidecar_and_starts_fresh(place):
@@ -316,7 +331,8 @@ def test_an_answer_that_does_not_fit_drops_the_stage_and_the_sidecar_and_starts_
         sink.write(DATA)
         sink.complete(terminated=True)
         published = sink.publish(None)
-    assert published.resumed_from_bytes == 0 and target(place).read_bytes() == DATA
+    assert published.resumed_from_bytes == 0
+    assert target(place).read_bytes() == DATA
 
 
 def test_a_complete_stage_is_published_without_a_request_and_reports_the_resume(place):
@@ -329,7 +345,8 @@ def test_a_complete_stage_is_published_without_a_request_and_reports_the_resume(
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
     published, plan = download(place)
     assert (plan.action, plan.ask) == ("publish", None)
-    assert published.resumed_from_bytes == len(DATA) and target(place).read_bytes() == DATA
+    assert published.resumed_from_bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
     assert left(place) == [NAME]
 
 
@@ -346,7 +363,8 @@ def test_a_complete_stage_that_does_not_match_the_expectation_is_dropped(place):
 def test_no_resume_drops_what_is_ours_and_starts_clean(place):
     stopped_after(place, 100_000)
     published, plan = download(place, no_resume=True)
-    assert (plan.ask, plan.resumed_from) == (None, 0) and published.resumed_from_bytes == 0
+    assert (plan.ask, plan.resumed_from) == (None, 0)
+    assert published.resumed_from_bytes == 0
     assert target(place).read_bytes() == DATA
 
 
@@ -403,7 +421,8 @@ def test_a_sidecar_write_that_fails_is_a_write_failure_and_leaves_no_temporary_c
             sink.begin(full(), "full")
         except YorungeError as caught:
             error = caught
-        assert error is not None and error.code == "download_write_failed"
+        assert error is not None
+        assert error.code == "download_write_failed"
         assert "PRIVATE-PATH" not in str(error.envelope())
         assert NAMES.sidecar_tmp not in left(place)
         monkeypatch.undo()
@@ -420,7 +439,8 @@ def test_a_deadline_during_the_prefix_hash_propagates_and_discards_nothing(place
     with pytest.raises(YorungeError) as error:
         with open_sink(target(place), identity_key=IDENTITY, guard=guard):
             pytest.fail("the sink was handed over although its prefix was never checked")
-    assert error.value.code == "transport_timeout" and ticks
+    assert error.value.code == "transport_timeout"
+    assert ticks
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # a deadline is not a verdict
     assert (place / NAMES.stage).read_bytes() == DATA[:100_000]
 
@@ -446,7 +466,8 @@ def test_a_clock_that_goes_backwards_never_makes_a_record_older_than_its_start(p
         sink.write(DATA[:1000])
         sink.stop()
     record = sidecar_of(place)
-    assert record.updated_at >= record.created_at and record.committed_bytes == 1000
+    assert record.updated_at >= record.created_at
+    assert record.committed_bytes == 1000
 
 
 def test_a_resume_keeps_the_time_the_download_began(place):
@@ -457,7 +478,8 @@ def test_a_resume_keeps_the_time_the_download_began(place):
         sink.write(DATA[100_000:150_000])
         sink.stop()
     record = sidecar_of(place)
-    assert record.created_at == began and record.committed_bytes == 150_000
+    assert record.created_at == began
+    assert record.committed_bytes == 150_000
 
 
 def test_the_sink_is_driven_in_order_and_anything_else_is_refused(place):
@@ -509,7 +531,9 @@ def test_a_stage_that_appears_between_the_decision_and_its_creation_is_looked_at
 
     monkeypatch.setattr(download_files, "_marker", marker)
     published, plan = download(place)
-    assert appeared and plan.action == "download" and target(place).read_bytes() == DATA
+    assert appeared
+    assert plan.action == "download"
+    assert target(place).read_bytes() == DATA
 
 
 def test_a_stage_that_keeps_appearing_is_not_ours(place, monkeypatch):
@@ -559,7 +583,8 @@ def test_a_lock_object_that_a_killed_process_left_behind_is_taken_up_again(place
     lock.write_bytes(b"")
     os.chmod(lock, 0o600)
     published, _ = download(place)
-    assert published.bytes == len(DATA) and left(place) == [NAME]
+    assert published.bytes == len(DATA)
+    assert left(place) == [NAME]
 
 
 def test_a_leftover_temporary_sidecar_of_ours_is_removed(place):
@@ -568,7 +593,8 @@ def test_a_leftover_temporary_sidecar_of_ours_is_removed(place):
     tmp.write_bytes(b"{")
     os.chmod(tmp, 0o600)
     published, plan = download(place)
-    assert plan.resumed_from == 100_000 and left(place) == [NAME]
+    assert plan.resumed_from == 100_000
+    assert left(place) == [NAME]
 
 
 def test_a_stage_without_its_sidecar_that_was_never_filled_is_reused(place):
@@ -590,7 +616,9 @@ def test_an_orphan_sidecar_is_discarded_and_the_download_starts_clean(place):
     stopped_after(place, 100_000)
     (place / NAMES.stage).unlink()  # the interrupted run's worst trace: no stage, a sidecar
     published, plan = download(place)
-    assert plan.ask is None and target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert plan.ask is None
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_no_resume_gets_out_of_an_unreadable_sidecar_without_a_stage(place):
@@ -600,7 +628,8 @@ def test_no_resume_gets_out_of_an_unreadable_sidecar_without_a_stage(place):
     assert code_of(lambda: download(place)) == "download_partial_unverified"
     assert sidecar.read_bytes() == b"not a record"  # nothing was touched
     published, _ = download(place, no_resume=True)
-    assert published.bytes == len(DATA) and left(place) == [NAME]
+    assert published.bytes == len(DATA)
+    assert left(place) == [NAME]
 
 
 # --- what is not ours is never touched -----------------------------------------------------------
@@ -718,7 +747,8 @@ def test_the_files_are_private_and_accepted_by_the_next_run_whatever_the_umask(p
         published, plan = download(place)
     finally:
         os.umask(previous)
-    assert plan.resumed_from == 100_000 and target(place).read_bytes() == DATA
+    assert plan.resumed_from == 100_000
+    assert target(place).read_bytes() == DATA
 
 
 # --- one writer at a time -------------------------------------------------------------------------
@@ -758,7 +788,9 @@ def test_a_lock_that_was_waited_for_on_a_removed_object_is_taken_again(place, mo
 
     monkeypatch.setattr(download_files, "_marker", marker)
     published, _ = download(place)
-    assert opened and published.bytes == len(DATA) and left(place) == [NAME]
+    assert opened
+    assert published.bytes == len(DATA)
+    assert left(place) == [NAME]
 
 
 def test_a_lock_object_that_keeps_vanishing_is_busy_after_three_attempts(place, monkeypatch):
@@ -837,12 +869,14 @@ def test_a_disk_that_fills_is_a_write_failure_and_the_next_run_goes_through(plac
                 sink.write(DATA[offset : offset + 50_000])
         except YorungeError as caught:
             error = caught
-        assert error is not None and error.code == "download_write_failed"
+        assert error is not None
+        assert error.code == "download_write_failed"
         assert "PRIVATE-PATH" not in str(error.envelope())
         sink.stop()
     monkeypatch.undo()
     published, _ = download(place)
-    assert published.bytes == len(DATA) and target(place).read_bytes() == DATA
+    assert published.bytes == len(DATA)
+    assert target(place).read_bytes() == DATA
 
 
 def test_short_writes_still_complete_the_file(place, monkeypatch):
@@ -900,7 +934,8 @@ def test_a_link_the_filesystem_refuses_is_uncertain_and_the_complete_stage_is_ke
     assert not target(place).exists()
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # the only copy of the download
     published, plan = download(place)  # the next run finds a complete stage and publishes it
-    assert plan.action == "publish" and target(place).read_bytes() == DATA
+    assert plan.action == "publish"
+    assert target(place).read_bytes() == DATA
 
 
 @pytest.mark.parametrize("number", sorted(LINK_REFUSED))
@@ -918,7 +953,8 @@ def test_a_link_the_kernel_refuses_is_a_failure_and_keeps_the_complete_stage_for
     assert not target(place).exists()
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])  # a refusal drops nothing
     published, plan = download(place)  # the same stage is published once the link works
-    assert plan.action == "publish" and target(place).read_bytes() == DATA
+    assert plan.action == "publish"
+    assert target(place).read_bytes() == DATA
     assert left(place) == [NAME]
 
 
@@ -932,7 +968,8 @@ def test_an_interrupt_before_the_link_keeps_the_complete_stage(place, monkeypatc
     monkeypatch.undo()
     assert left(place) == sorted([NAMES.stage, NAMES.sidecar])
     download(place)
-    assert target(place).read_bytes() == DATA and left(place) == [NAME]
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [NAME]
 
 
 def test_an_interrupt_that_the_link_itself_raises_is_the_links_doubt(place, monkeypatch):

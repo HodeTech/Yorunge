@@ -135,7 +135,8 @@ def code_of(action):
 def test_the_weights_come_by_the_json_call_with_the_key_then_a_signed_get_without_it(rig):
     result = rig.call()
     summary = result.data
-    assert summary.kind == "download_summary" and summary.output_path == str(rig.target)
+    assert summary.kind == "download_summary"
+    assert summary.output_path == str(rig.target)
     assert (summary.bytes, summary.sha256) == (len(DATA), sha(DATA))
     assert (summary.verification_level, summary.expectation_source) == ("transfer_complete", "none")
     assert (summary.resumed, summary.resumed_from_bytes) == (False, 0)
@@ -145,7 +146,8 @@ def test_the_weights_come_by_the_json_call_with_the_key_then_a_signed_get_withou
         "format": "onnx",
         "fold": None,
     }
-    assert rig.target.read_bytes() == DATA and rig.names() == [NAME]  # nothing else is left
+    assert rig.target.read_bytes() == DATA
+    assert rig.names() == [NAME]  # nothing else is left
     assert stat.S_IMODE(rig.target.stat().st_mode) == 0o600
     first, second = rig.server.requests  # exactly one JSON call, then exactly one signed GET
     assert (first.method, first.path) == ("GET", f"{JSON_PATH}?format=onnx")
@@ -153,19 +155,23 @@ def test_the_weights_come_by_the_json_call_with_the_key_then_a_signed_get_withou
     assert (second.method, second.path) == ("GET", SIGNED)  # the signature's bytes, untouched
     sent = {name.lower() for name, _ in second.headers}
     assert sent <= {"host", "accept-encoding", "user-agent", "connection"}, sent
-    assert second.header("X-API-Key") is None and second.header("Authorization") is None
-    assert second.header("Accept-Encoding") == "identity" and second.header("Range") is None
+    assert second.header("X-API-Key") is None
+    assert second.header("Authorization") is None
+    assert second.header("Accept-Encoding") == "identity"
+    assert second.header("Range") is None
 
 
 def test_the_provider_chosen_name_never_becomes_the_name_of_the_output(rig):
     rig.call()
-    assert rig.names() == [NAME] and FILENAME not in " ".join(rig.names())
+    assert rig.names() == [NAME]
+    assert FILENAME not in " ".join(rig.names())
 
 
 def test_the_progress_runs_from_a_first_report_to_the_whole_object(rig):
     rig.call()
     helds = [held for held, _ in rig.reports]
-    assert helds == sorted(set(helds)) and rig.reports[-1] == (len(DATA), len(DATA))
+    assert helds == sorted(set(helds))
+    assert rig.reports[-1] == (len(DATA), len(DATA))
     assert all(total == len(DATA) for _, total in rig.reports)
 
 
@@ -191,7 +197,8 @@ def test_a_fold_is_asked_for_only_if_it_was_given_and_is_part_of_what_a_stage_be
         summary = rig.call(fold=4).data  # another fold: the stage of fold 3 is not resumed
         assert (summary.resumed, summary.resumed_from_bytes, summary.source.fold) == (False, 0, 4)
         assert rig.provider.seen[-1] == (None, None)  # a plain request from the first byte
-        assert rig.target.read_bytes() == DATA and rig.names() == [NAME]
+        assert rig.target.read_bytes() == DATA
+        assert rig.names() == [NAME]
 
 
 def test_no_fold_is_sent_when_none_was_given(rig):
@@ -229,7 +236,8 @@ def test_an_expected_digest_that_matches_earns_the_level_it_names(rig):
 def test_an_expected_digest_that_differs_ends_in_a_mismatch_and_no_target(rig):
     with pytest.raises(YorungeError) as error:
         rig.call(sha256="00" * 32)
-    assert error.value.code == "download_integrity_mismatch" and error.value.exit_code == 7
+    assert error.value.code == "download_integrity_mismatch"
+    assert error.value.exit_code == 7
     assert rig.names() == []  # no target, no stage, no sidecar: the mismatch does not loop
 
 
@@ -268,7 +276,8 @@ def test_an_address_that_is_not_below_the_model_prefix_is_refused_and_never_requ
 ):
     with Rig(certificates, workspace, route=json_route(url)) as rig:
         assert code_of(rig.call) == "invalid_response"
-        assert len(rig.json_calls()) == 1 and rig.signed() == []  # the signed GET never went out
+        assert len(rig.json_calls()) == 1
+        assert rig.signed() == []  # the signed GET never went out
         assert rig.names() == []
 
 
@@ -279,19 +288,22 @@ def test_an_address_that_is_not_below_the_model_prefix_is_refused_and_never_requ
 def test_an_answer_that_is_not_the_two_strings_is_refused(certificates, workspace, body):
     with Rig(certificates, workspace, route=lambda record, count: Reply(body=body)) as rig:
         assert code_of(rig.call) == "invalid_response"
-        assert rig.signed() == [] and rig.names() == []
+        assert rig.signed() == []
+        assert rig.names() == []
 
 
 @pytest.mark.parametrize("name", ["a/b.onnx", "..", "", "x\ny"])
 def test_a_provider_name_that_is_not_a_plain_name_is_refused(certificates, workspace, name):
     route = json_route(filename=name)
     with Rig(certificates, workspace, route=route) as rig:
-        assert code_of(rig.call) == "invalid_response" and rig.signed() == []
+        assert code_of(rig.call) == "invalid_response"
+        assert rig.signed() == []
 
 
 def test_a_key_echoed_by_the_provider_is_refused_wherever_it_is(certificates, workspace):
     with Rig(certificates, workspace, route=json_route(echo={"deep": [SECRET]})) as rig:
-        assert code_of(rig.call) == "invalid_response" and rig.signed() == []
+        assert code_of(rig.call) == "invalid_response"
+        assert rig.signed() == []
 
 
 # --- the statuses of the JSON call ----------------------------------------------------------------
@@ -316,7 +328,8 @@ def test_a_status_of_the_json_call_is_a_closed_error_and_no_signed_get_follows(
         with pytest.raises(YorungeError) as error:
             rig.call()
         assert (error.value.code, error.value.exit_code) == (code, exit_code)
-        assert "PRIVATE-DETAIL" not in str(error.value) and rig.signed() == []
+        assert "PRIVATE-DETAIL" not in str(error.value)
+        assert rig.signed() == []
         assert rig.names() == []
         assert len(rig.json_calls()) == attempts
         assert all(r.header("X-API-Key") == SECRET for r in rig.json_calls())
@@ -329,7 +342,8 @@ def test_a_redirect_of_the_json_call_is_not_followed_and_the_key_goes_nowhere_el
     with Rig(certificates, workspace, route=lambda record, count: reply) as rig:
         with pytest.raises(YorungeError):
             rig.call()
-        assert len(rig.server.requests) <= 2 and rig.signed() == []
+        assert len(rig.server.requests) <= 2
+        assert rig.signed() == []
         assert {r.path for r in rig.server.requests} == {f"{JSON_PATH}?format=onnx"}
 
 
@@ -344,8 +358,10 @@ def test_a_cut_download_resumes_with_the_same_call_from_where_it_stopped(rig):
     summary = rig.call().data
     assert (summary.resumed, summary.resumed_from_bytes, summary.bytes) == (True, CUT, len(DATA))
     assert rig.provider.seen == [(None, None), (f"bytes={CUT}-", TAG)]
-    assert len(rig.json_calls()) == 2 and len(rig.signed()) == 2
-    assert rig.target.read_bytes() == DATA and rig.names() == [NAME]
+    assert len(rig.json_calls()) == 2
+    assert len(rig.signed()) == 2
+    assert rig.target.read_bytes() == DATA
+    assert rig.names() == [NAME]
 
 
 def test_a_whole_stage_is_published_with_no_request_at_all_the_json_call_included(rig):
@@ -363,13 +379,15 @@ def test_a_whole_stage_is_published_with_no_request_at_all_the_json_call_include
     summary = rig.call().data
     assert len(rig.server.requests) == before  # nothing was asked of the network, not even the JSON
     assert (summary.resumed, summary.resumed_from_bytes) == (True, len(DATA))
-    assert rig.target.read_bytes() == DATA and rig.names() == [NAME]
+    assert rig.target.read_bytes() == DATA
+    assert rig.names() == [NAME]
 
 
 def test_a_target_that_exists_is_refused_before_any_request_and_left_alone(rig):
     rig.target.write_bytes(b"mine")
     assert code_of(rig.call) == "download_output_exists"
-    assert rig.server.requests == [] and rig.target.read_bytes() == b"mine"
+    assert rig.server.requests == []
+    assert rig.target.read_bytes() == b"mine"
     assert rig.names() == [NAME]
 
 
@@ -390,7 +408,8 @@ def test_a_stage_of_another_service_is_not_resumed(certificates, workspace, monk
                 state_dir=state,
             ).data
         assert (summary.resumed, summary.resumed_from_bytes) == (False, 0)
-        assert rig.provider.seen[-1] == (None, None) and rig.target.read_bytes() == DATA
+        assert rig.provider.seen[-1] == (None, None)
+        assert rig.target.read_bytes() == DATA
 
 
 def test_no_resume_drops_what_is_provably_ours_and_downloads_again(rig):
@@ -398,7 +417,8 @@ def test_no_resume_drops_what_is_provably_ours_and_downloads_again(rig):
     assert code_of(rig.call) == "download_incomplete"
     summary = rig.call(no_resume=True).data
     assert (summary.resumed, summary.resumed_from_bytes) == (False, 0)
-    assert rig.provider.seen[-1] == (None, None) and rig.names() == [NAME]
+    assert rig.provider.seen[-1] == (None, None)
+    assert rig.names() == [NAME]
 
 
 def test_a_chunked_answer_is_whole_when_terminated(certificates, workspace):
@@ -406,7 +426,8 @@ def test_a_chunked_answer_is_whole_when_terminated(certificates, workspace):
     with Rig(certificates, workspace) as rig:
         rig.provider.script = [chunked]
         summary = rig.call().data
-        assert summary.bytes == len(DATA) and all(total is None for _, total in rig.reports[-3:])
+        assert summary.bytes == len(DATA)
+        assert all(total is None for _, total in rig.reports[-3:])
 
 
 # --- the arguments are judged before the key or the state is touched ------------------------------
@@ -446,7 +467,8 @@ def test_an_argument_that_is_wrong_is_refused_before_the_key_is_read(
     monkeypatch.delenv(ENV)  # a missing key would be a different, later error
     with Rig(certificates, workspace) as rig:
         assert code_of(lambda: rig.call(**changes)) == "invalid_request"
-        assert rig.server.requests == [] and rig.names() == []
+        assert rig.server.requests == []
+        assert rig.names() == []
 
 
 @pytest.mark.parametrize(
@@ -487,7 +509,8 @@ def test_a_missing_key_is_a_closed_error_before_any_request(certificates, worksp
         with pytest.raises(YorungeError) as error:
             rig.call()
         assert error.value.code.startswith("credential") or error.value.code.endswith("missing")
-        assert rig.server.requests == [] and rig.names() == []
+        assert rig.server.requests == []
+        assert rig.names() == []
 
 
 def test_a_running_event_loop_is_refused_before_anything_else(rig):
@@ -498,7 +521,8 @@ def test_a_running_event_loop_is_refused_before_anything_else(rig):
 
     with pytest.raises(YorungeError) as error:
         asyncio.run(inside())
-    assert error.value.code == "invalid_request" and rig.server.requests == []
+    assert error.value.code == "invalid_request"
+    assert rig.server.requests == []
 
 
 # --- nothing private ------------------------------------------------------------------------------

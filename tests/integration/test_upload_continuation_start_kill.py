@@ -177,7 +177,8 @@ def test_sigkill_of_a_start_leaves_the_operation_found_by_its_plan_and_nothing_t
         # A check-only continuation never runs: admitted until the proof is written.
         if done:
             assert (operation.status, operation.reason) == ("succeeded", "metadata_verified")
-            assert view.verification is not None and len(view.verification.files) >= 2
+            assert view.verification is not None
+            assert len(view.verification.files) >= 2
         else:
             running = sends_files and boundary != "admission"
             assert operation.status == ("running" if running else "admitted")
@@ -194,7 +195,8 @@ def test_sigkill_of_a_start_leaves_the_operation_found_by_its_plan_and_nothing_t
         again = run_upload_continuation(
             report.plan_id, Path(data[0]), no_context, session_factory=factory(server)
         )
-        assert again.existing is True and again.record == operation
+        assert again.existing is True
+        assert again.record == operation
         assert len(server.requests) == again_requests
 
 
@@ -209,7 +211,8 @@ def test_a_killed_check_only_continuation_is_cancelled_when_its_lease_runs_out(
         approve(data, server, report.plan_id)
         kill_at(data, server, provider, report.plan_id, boundary, certificates)
         operation = journal(data, report.plan_id).operation
-        assert operation.status == "admitted" and operation.workflow_latched is False
+        assert operation.status == "admitted"
+        assert operation.workflow_latched is False
         clock = Skewed()
         clock.skew = 400  # far past the lease of the owner that was killed
         with open_existing_store(data[0]) as store:

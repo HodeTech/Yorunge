@@ -111,7 +111,8 @@ def test_a_body_that_promises_more_than_the_callers_cap_is_refused_before_a_byte
 
         with owned:
             assert failure(lambda: owned.download(run)) == "download_limit_exceeded"
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
         assert len(api.requests) == 1
 
 
@@ -137,7 +138,8 @@ def test_the_early_limit_check_is_exact_at_the_promised_length(certificates, cap
                 owned.download(run)
             else:
                 assert failure(lambda: owned.download(run)) == "download_limit_exceeded"
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
         assert offered == ([2048] if entered else [])
 
 
@@ -176,14 +178,16 @@ def test_a_partial_answer_that_is_dropped_is_not_judged_by_the_cap_for_a_body_ne
             response, action, body, _ = fetch(
                 owned, request(key, ask=ask, max_bytes=1000), read=False
             )
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
         assert (response.status, action, body) == (206, "discard_and_retry", b"")
 
 
 def test_the_default_body_limit_is_the_contract_limit():
     key = credential()
     assert DownloadRequest(target(), key.secret).max_bytes == MAX_DOWNLOAD_BYTES
-    assert target().prefix == PREFIX and target().origin == ORIGIN
+    assert target().prefix == PREFIX
+    assert target().origin == ORIGIN
 
 
 def test_a_body_is_taken_once_and_the_view_is_dead_after_its_context(certificates):
@@ -284,10 +288,12 @@ def test_a_third_download_waits_one_second_for_a_slot_and_nothing_leaks(certific
 
         with owned:
             code, waited = owned.download(run)
-            assert code == "transport_timeout" and 0.8 < waited < 2.5  # one second
+            assert code == "transport_timeout"
+            assert 0.8 < waited < 2.5  # one second
             for _ in range(5):
                 assert fetch(owned, request(key, path=OTHER))[2] == CONTENT
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
 
 
 def test_the_open_response_is_registered_while_the_body_is_read(certificates):
@@ -340,7 +346,8 @@ def test_a_prepared_wire_that_is_not_the_described_one_never_reaches_the_network
         monkeypatch.setattr(storage_transport.httpx, "Request", changed)
         with owned:
             assert failure(lambda: fetch(owned, request(key))) == "invalid_service_target"
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 def test_a_url_the_http_layer_cannot_take_is_a_closed_request_error_not_a_raw_one(
@@ -495,7 +502,9 @@ def test_a_caller_that_swallows_the_deadline_strike_and_still_finishes_the_body(
 
         with owned:
             assert owned.download(run) is True
-        assert struck and instances[0]._slots._value == 2 and not instances[0]._responses
+        assert struck
+        assert instances[0]._slots._value == 2
+        assert not instances[0]._responses
 
 
 # --- the gates of the entry and of the session ----------------------------------------------------
@@ -571,7 +580,8 @@ def test_a_failed_close_after_a_clean_exit_is_a_transport_failure(certificates, 
         monkeypatch.setattr(httpx.Response, "aclose", failing)
         with owned:
             assert failure(lambda: fetch(owned, request(key), read=False)) == "transport_failed"
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
 
 
 def test_a_private_cause_never_survives_on_a_refused_connection():
@@ -595,7 +605,8 @@ def test_a_private_cause_never_survives_on_a_refused_connection():
         with pytest.raises(YorungeError) as error:
             owned.download(run)
     assert error.value.code == "invalid_service_target"
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None
 
 
 def test_a_download_left_by_cancellation_closes_its_own_connection_while_the_session_is_open(
@@ -618,7 +629,8 @@ def test_a_download_left_by_cancellation_closes_its_own_connection_while_the_ses
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
-            assert transport._slots._value == 2 and not transport._responses
+            assert transport._slots._value == 2
+            assert not transport._responses
             return await asyncio.to_thread(api.disconnected.wait, 3)
 
         with owned:
@@ -661,7 +673,8 @@ def test_a_timeout_of_the_callers_own_code_is_the_callers_and_not_a_transport_ti
             with pytest.raises(TimeoutError) as error:
                 owned.download(run)
             assert error.value is local  # the same object, not relabelled
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
 
 
 def test_the_callers_other_errors_come_back_as_they_were_raised(certificates):
@@ -746,7 +759,8 @@ def test_an_oserror_the_stack_leaves_unmapped_in_the_head_phase_is_transport_fai
         monkeypatch.setattr(httpx.AsyncClient, "send", raising)
         with owned:
             assert failure(lambda: fetch(owned, request(key))) == "transport_failed"
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
 
 
 def test_a_cancel_inside_the_release_of_an_unfinished_body_leaves_no_pool_connection(certificates):
@@ -778,7 +792,8 @@ def test_a_cancel_inside_the_release_of_an_unfinished_body_leaves_no_pool_connec
 
         with owned:
             slots, connections = owned.download(interrupted)
-        assert slots == 2 and connections == []  # an ACTIVE connection stays in the pool otherwise
+        assert slots == 2
+        assert connections == []  # an ACTIVE connection stays in the pool otherwise
 
 
 def test_open_download_from_another_thread_is_refused_before_anything_happens(certificates):
@@ -809,7 +824,8 @@ def test_open_download_from_another_thread_is_refused_before_anything_happens(ce
             worker.start()
             worker.join(10)
         assert outcome == ["invalid_request"]
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 def test_a_caller_that_stays_busy_past_the_deadline_with_the_body_unread_is_timed_out(certificates):
@@ -825,7 +841,8 @@ def test_a_caller_that_stays_busy_past_the_deadline_with_the_body_unread_is_time
 
         with owned:
             assert failure(lambda: owned.download(run)) == "transport_timeout"
-            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+            assert instances[0]._slots._value == 2
+            assert instances[0]._responses == set()
 
 
 def test_a_cap_of_one_byte_is_a_valid_request():
@@ -871,7 +888,8 @@ def test_a_request_the_gates_refuse_is_refused_at_once_even_when_both_slots_are_
 
         with owned:
             outcome, waited = owned.download(run)
-        assert outcome == "invalid_service_target" and waited < 0.5
+        assert outcome == "invalid_service_target"
+        assert waited < 0.5
 
 
 def test_the_wait_for_a_slot_is_exactly_one_second(certificates, monkeypatch):
@@ -904,7 +922,8 @@ def test_a_body_is_never_handed_over_in_pieces_larger_than_a_tls_record(certific
 
         with owned:
             pieces = owned.download(sizes)
-    assert sum(pieces) == len(BIG) and max(pieces) <= 16_384  # the reference promises "16 KiB"
+    assert sum(pieces) == len(BIG)
+    assert max(pieces) <= 16_384  # the reference promises "16 KiB"
 
 
 @pytest.mark.parametrize(
@@ -963,5 +982,6 @@ def test_a_body_that_failed_does_not_read_as_ended_to_a_caller_that_reads_on(cer
 
         with owned:
             seen, complete = owned.download(run)
-    assert seen[0] == 1024 and set(seen[1:]) == {"download_incomplete"}
+    assert seen[0] == 1024
+    assert set(seen[1:]) == {"download_incomplete"}
     assert complete is False  # a cut chunked body must never be published as a whole one

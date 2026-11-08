@@ -404,7 +404,8 @@ def test_evidence_context_declares_every_download_workspace_and_child_root(workf
         ".local/download-check",
         ".local/distribution-download-check",
     ):
-        assert path in declared["--workspace"] and path in declared["--child-root"], path
+        assert path in declared["--workspace"], path
+        assert path in declared["--child-root"], path
 
 
 def invoke_gate(workflow, tmp_path, content):

@@ -345,7 +345,8 @@ def test_a_single_run_is_judged_with_the_three_proof_fields_an_installation_smok
 
 
 def test_the_labels_and_limits_are_the_standards(evidence):
-    assert evidence["LABELS"] == LABELS and evidence["BYTE_LABELS"] == ("16", "256", "1024")
+    assert evidence["LABELS"] == LABELS
+    assert evidence["BYTE_LABELS"] == ("16", "256", "1024")
     assert evidence["LIMITS"]["rss_upper_bytes"] == 67_108_864 == 64 * MIB
     assert evidence["LIMITS"]["growth_upper_bytes"] == 8_388_608 == 8 * MIB
     assert evidence["LIMITS"]["window_seconds"] == 900
@@ -1092,7 +1093,8 @@ def test_growth_uses_all_cross_label_sample_pairs_not_correlated_high_peaks(evid
     assert result == {"span_upper_bound_bytes": 64 * MIB, "passed": False}
     report["growth"], report["passed"], report["accepted"] = result, False, False
     summary = evidence["summarize_report"](report)
-    assert summary["passed"] is False and summary["accepted"] is False
+    assert summary["passed"] is False
+    assert summary["accepted"] is False
     assert summary["growth"]["span_upper_bound_bytes"] == 67_108_864
     # The same series is refused as accepted: the verdicts of the report are recomputed.
     report["accepted"] = True
@@ -1184,7 +1186,8 @@ def test_a_complete_report_with_a_failed_run_is_valid_and_not_accepted(evidence,
 )
 def test_a_partial_smoke_is_valid_and_can_never_be_accepted(evidence, labels, samples, passed):
     smoke = build(evidence, labels, samples)
-    assert smoke["scope"]["partial"] is True and smoke["accepted"] is False
+    assert smoke["scope"]["partial"] is True
+    assert smoke["accepted"] is False
     summary = evidence["summarize_report"](smoke)
     assert summary["cases"] == len(labels) * samples
     assert (summary["partial"], summary["passed"], summary["accepted"]) == (True, passed, False)
@@ -1279,7 +1282,8 @@ def test_a_changed_source_wheel_or_runtime_is_a_failed_not_forced_green_report(
         report["runs"][3]["client"]["runtime"]["python"] = "3.11.19 another build"
     report["passed"] = report["accepted"] = False
     summary = evidence["summarize_report"](report)
-    assert summary["passed"] is False and summary["accepted"] is False
+    assert summary["passed"] is False
+    assert summary["accepted"] is False
     report["passed"] = True
     with pytest.raises(ValueError):
         evidence["summarize_report"](report)
@@ -1316,7 +1320,8 @@ def test_report_passed_requires_each_of_its_conditions(evidence, report):
 
 def test_the_real_source_map_includes_every_measurement_file(evidence):
     value = evidence["source"](ROOT)
-    assert value["commit"] and set(evidence["REQUIRED_SOURCES"]) <= set(value["source_sha256"])
+    assert value["commit"]
+    assert set(evidence["REQUIRED_SOURCES"]) <= set(value["source_sha256"])
     assert "tests/fixtures/download_native_server.py" in value["source_sha256"]
     assert "scripts/upload_evidence.py" in value["source_sha256"]  # everything of the upload map
     upload = runpy.run_path(str(ROOT / "scripts/upload_evidence.py"))["source"](ROOT)
@@ -1456,8 +1461,11 @@ def test_the_command_refuses_bad_labels_before_it_creates_anything(
     tmp_path, driver, monkeypatch, capsys, extra
 ):
     code, out, err = command(driver, monkeypatch, capsys, tmp_path, *extra)
-    assert code == 1 and "canonical order" in err and not out
-    assert not (tmp_path / "workspace").exists() and not (tmp_path / "report.json").exists()
+    assert code == 1
+    assert "canonical order" in err
+    assert not out
+    assert not (tmp_path / "workspace").exists()
+    assert not (tmp_path / "report.json").exists()
 
 
 @pytest.mark.parametrize("extra", [("--samples", "4"), ("--samples", "0"), ("--labels", "2048")])
@@ -1465,7 +1473,9 @@ def test_the_command_refuses_unknown_samples_and_labels(
     tmp_path, driver, monkeypatch, capsys, extra
 ):
     code, out, err = command(driver, monkeypatch, capsys, tmp_path, *extra)
-    assert code == 2 and "invalid choice" in err and not out
+    assert code == 2
+    assert "invalid choice" in err
+    assert not out
 
 
 def test_the_command_never_overwrites_a_report_or_a_workspace(
@@ -1473,24 +1483,28 @@ def test_the_command_never_overwrites_a_report_or_a_workspace(
 ):
     (tmp_path / "report.json").write_bytes(b"previous evidence")
     code, _, err = command(driver, monkeypatch, capsys, tmp_path)
-    assert code == 1 and "new path" in err
+    assert code == 1
+    assert "new path" in err
     assert (tmp_path / "report.json").read_bytes() == b"previous evidence"
     (tmp_path / "report.json").unlink()
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace/kept.txt").write_bytes(b"previous workspace")
     code, _, err = command(driver, monkeypatch, capsys, tmp_path)
-    assert code == 1 and "new path" in err
+    assert code == 1
+    assert "new path" in err
     assert (tmp_path / "workspace/kept.txt").read_bytes() == b"previous workspace"
 
 
 def test_the_report_needs_a_canonical_lowercase_name(tmp_path, driver, monkeypatch, capsys):
     code, _, err = command(driver, monkeypatch, capsys, tmp_path, output="Report.JSON")
-    assert code == 1 and "canonical lowercase name" in err
+    assert code == 1
+    assert "canonical lowercase name" in err
 
 
 def test_the_command_needs_an_installed_python_and_a_wheel(tmp_path, driver, monkeypatch, capsys):
     code, _, err = command(driver, monkeypatch, capsys, tmp_path)
-    assert code == 1 and "installed runtime Python and wheel" in err
+    assert code == 1
+    assert "installed runtime Python and wheel" in err
     assert not (tmp_path / "workspace").exists()
 
 
@@ -1508,7 +1522,8 @@ def test_samples_run_serially_label_by_label_in_canonical_order(tmp_path, driver
         ["16", "resume"],
         2,
     )
-    assert seen == [("16", 1), ("16", 2), ("resume", 1), ("resume", 2)] and len(rows) == 4
+    assert seen == [("16", 1), ("16", 2), ("resume", 1), ("resume", 2)]
+    assert len(rows) == 4
 
 
 def test_a_failed_worker_leaves_every_original_and_stops_both_servers(tmp_path, driver):
@@ -1532,7 +1547,8 @@ def test_a_failed_worker_leaves_every_original_and_stops_both_servers(tmp_path, 
     )
     for name, label in (("warm-server", "warm"), ("measured-server", "16")):
         found = json.loads((work / name / "stdout.json").read_bytes())
-        assert found["label"] == label and found["requests"] == {
+        assert found["label"] == label
+        assert found["requests"] == {
             "json": 0,
             "signed": 0,
             "unexpected": 0,
@@ -1659,6 +1675,8 @@ def test_a_failed_sample_stays_in_the_report_as_failed(tmp_path, driver, monkeyp
     assert driver["check"](args) == 1
     written = driver["CHECKS"]["decode"](args.output.read_bytes())
     assert [item["passed"] for item in written["runs"]].count(False) == 1
-    assert written["runs"][2]["passed"] is False and written["passed"] is False
-    assert written["accepted"] is False and written["scope"]["partial"] is False
+    assert written["runs"][2]["passed"] is False
+    assert written["passed"] is False
+    assert written["accepted"] is False
+    assert written["scope"]["partial"] is False
     assert json.loads(capsys.readouterr().out)["passed"] is False

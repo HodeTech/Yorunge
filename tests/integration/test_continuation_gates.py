@@ -21,8 +21,10 @@ def test_a_continuation_plan_is_saved_beside_its_root_and_makes_no_create_right(
         before = capacity(store.connection)
         namespaces = store.connection.execute("SELECT * FROM upload_namespaces").fetchall()
         view = lifecycle.repository(store).save(plan, lifecycle.manifest)
-        assert type(view.plan) is DatasetContinuationPlanV3 and view.plan == plan
-        assert view.operation is None and view.approval is None
+        assert type(view.plan) is DatasetContinuationPlanV3
+        assert view.plan == plan
+        assert view.operation is None
+        assert view.approval is None
         # The root's namespace row is untouched: still the root's create right, no second one.
         assert store.connection.execute("SELECT * FROM upload_namespaces").fetchall() == namespaces
         after = capacity(store.connection)
@@ -115,10 +117,12 @@ def test_a_saved_continuation_is_approved_once_with_the_acknowledgements_it_need
         assert type(approval).__name__ == "DatasetUploadApprovalV3"
         assert (approval.plan_id, approval.plan_digest) == (plan.plan_id, plan.digest)
         assert approval.binding_digest == plan.binding_digest()
-        assert approval.status == "approved" and approval.expires_at == plan.expires_at
+        assert approval.status == "approved"
+        assert approval.expires_at == plan.expires_at
         assert approval.acknowledge_unconfirmed_effects is True  # the plan has an unconfirmed file
         view = repository.show(plan_id=plan.plan_id)
-        assert view.approval == approval and view.operation is None
+        assert view.approval == approval
+        assert view.operation is None
         assert (
             code_of(
                 lambda: repository.approve_continuation(
@@ -225,6 +229,7 @@ def test_an_approval_is_revoked_locally_and_a_revoked_one_stays_revoked(lifecycl
         assert code_of(lambda: repository.revoke(plan.plan_id, "0" * 64)) == "state_changed"
         view = repository.revoke(plan.plan_id, plan.digest)
         assert type(view.approval).__name__ == "DatasetUploadApprovalV3"
-        assert view.approval.status == "revoked" and view.approval.revoked_at is not None
+        assert view.approval.status == "revoked"
+        assert view.approval.revoked_at is not None
         assert view.approval.approval_id == approval.approval_id
         assert repository.revoke(plan.plan_id, plan.digest).approval == view.approval

@@ -136,7 +136,8 @@ def test_list_asks_for_the_page_it_was_given_and_the_last_page_is_allowed(worksp
             "json",
             *flags(workspace),
         )
-    assert parsed(two)["data"]["page"] == 2 and parsed(last)["data"]["page"] == 10_000
+    assert parsed(two)["data"]["page"] == 2
+    assert parsed(last)["data"]["page"] == 10_000
     assert [r.path for r in server.requests] == [BASE + "?page=2", BASE + "?page=10000"]
 
 
@@ -231,12 +232,11 @@ def test_bind_of_a_tag_the_provider_does_not_have_is_not_found_and_makes_no_file
     table = routes(**{BASE + "/v1": Reply(status=404, body=b"{}")})
     with TlsServer(certificates, table) as server:
         process = bind(server, certificates, workspace, out)
-    assert (
-        process.returncode == 2
-        and json.loads(process.stderr)["code"] == "dataset_version_not_found"
-    )
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "dataset_version_not_found"
     assert [r.path for r in server.requests] == [BASE + "/v1"]
-    assert not out.exists() and not list(out.parent.glob(".yorunge-binding-*"))
+    assert not out.exists()
+    assert not list(out.parent.glob(".yorunge-binding-*"))
 
 
 def test_nothing_is_linked_when_the_report_cannot_be_made(workspace, certificates, monkeypatch):
@@ -253,7 +253,8 @@ def test_nothing_is_linked_when_the_report_cannot_be_made(workspace, certificate
                 api.bind_dataset_version(
                     DATASET, "v1", binding_out=out, config=config, state_dir=state
                 )
-    assert not out.exists() and not list(directory.glob(".yorunge-binding-*"))
+    assert not out.exists()
+    assert not list(directory.glob(".yorunge-binding-*"))
 
 
 def test_a_manifest_over_the_byte_limit_is_a_manifest_error_before_the_provider_is_asked(
@@ -265,7 +266,8 @@ def test_a_manifest_over_the_byte_limit_is_a_manifest_error_before_the_provider_
         process = bind(
             server, certificates, workspace, out, "--manifest", str(directory / "m.json")
         )
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "manifest_invalid"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "manifest_invalid"
     assert server.requests == []
 
 
@@ -286,14 +288,17 @@ def test_bind_refuses_every_repeated_option(workspace, certificates, arguments):
     out = workspace[2] / "binding.json"
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, out, *arguments)
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
-    assert server.requests == [] and not out.exists()
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
+    assert server.requests == []
+    assert not out.exists()
 
 
 def test_check_refuses_a_repeated_binding(workspace, certificates):
     with TlsServer(certificates, routes()) as server:
         process = check(server, certificates, workspace, "/tmp/x", "--binding", "/tmp/y")
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
 
 
 @pytest.mark.parametrize(
@@ -319,7 +324,8 @@ def test_a_required_option_that_is_missing_is_a_usage_error_and_asks_nothing(
             "json",
             *flags(workspace),
         )
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
     assert server.requests == []
 
 
@@ -354,9 +360,11 @@ def test_the_text_of_list_shows_rows_frozenness_and_the_next_page(workspace, cer
     text = text_of(process)
     first = next(line for line in text.splitlines() if line.startswith("- v1 ("))
     second = next(line for line in text.splitlines() if line.startswith("- v2 ("))
-    assert "dondurulmuş" in first and "DONDURULMAMIŞ" not in first
+    assert "dondurulmuş" in first
+    assert "DONDURULMAMIŞ" not in first
     assert "DONDURULMAMIŞ" in second
-    assert "Sonraki sayfa var (--page 2)." in text and "toplam 5" in text
+    assert "Sonraki sayfa var (--page 2)." in text
+    assert "toplam 5" in text
 
 
 def test_the_text_of_an_empty_page_says_so_and_has_no_next_page(workspace, certificates):
@@ -373,7 +381,8 @@ def test_the_text_of_an_empty_page_says_so_and_has_no_next_page(workspace, certi
             *flags(workspace),
         )
     text = text_of(process)
-    assert "Bu sayfada sürüm yok." in text and "Sonraki sayfa" not in text
+    assert "Bu sayfada sürüm yok." in text
+    assert "Sonraki sayfa" not in text
 
 
 def test_the_text_of_show_names_a_partial_version_and_a_skewed_split_total(workspace, certificates):
@@ -398,7 +407,8 @@ def test_the_text_of_show_names_a_partial_version_and_a_skewed_split_total(works
             *flags(workspace),
         )
     text = text_of(process)
-    assert "KISMİ" in text and "bölme sayıları toplamı öğe sayısından farklı" in text
+    assert "KISMİ" in text
+    assert "bölme sayıları toplamı öğe sayısından farklı" in text
     # and the plain case says neither
     with TlsServer(certificates, routes()) as server:
         plain = text_of(
@@ -415,7 +425,9 @@ def test_the_text_of_show_names_a_partial_version_and_a_skewed_split_total(works
                 *flags(workspace),
             )
         )
-    assert "is_partial: hayır" in plain and "KISMİ" not in plain and "farklı" not in plain
+    assert "is_partial: hayır" in plain
+    assert "KISMİ" not in plain
+    assert "farklı" not in plain
 
 
 @pytest.mark.parametrize("count,phrase", [(10, "sayısıyla aynı"), (9, "FARKLI")])
@@ -430,7 +442,8 @@ def test_the_text_of_bind_quotes_the_check_command_and_states_the_manifest_relat
             server, certificates, workspace, out, "--manifest", str(manifest), output="text"
         )
     text = text_of(process)
-    assert f"Sürüm bağı kaydedildi: {out}" in text and phrase in text
+    assert f"Sürüm bağı kaydedildi: {out}" in text
+    assert phrase in text
     import shlex
 
     assert (
@@ -452,7 +465,8 @@ def test_the_text_of_bind_warns_about_a_partial_version_and_a_split_skew(workspa
     out = workspace[2] / "b.json"
     with TlsServer(certificates, table) as server:
         text = text_of(bind(server, certificates, workspace, out, output="text"))
-    assert "kısmi (is_partial)" in text and "bölme sayıları toplamı öğe sayısından farklı" in text
+    assert "kısmi (is_partial)" in text
+    assert "bölme sayıları toplamı öğe sayısından farklı" in text
 
 
 def test_the_text_of_check_says_unchanged_and_only_provider_metadata(workspace, certificates):
@@ -460,10 +474,8 @@ def test_the_text_of_check_says_unchanged_and_only_provider_metadata(workspace, 
     with TlsServer(certificates, routes()) as server:
         parsed(bind(server, certificates, workspace, out))
         text = text_of(check(server, certificates, workspace, out, output="text"))
-    assert (
-        text.startswith("Değişmedi: v1 (")
-        and "Yalnız sağlayıcı metadata'sı karşılaştırıldı" in text
-    )
+    assert text.startswith("Değişmedi: v1 (")
+    assert "Yalnız sağlayıcı metadata'sı karşılaştırıldı" in text
 
 
 # ---------------------------------------------------------------------------------------------
@@ -509,11 +521,9 @@ def test_an_interrupt_while_bind_waits_for_the_provider_leaves_no_file_and_no_st
             if process.poll() is None:
                 process.kill()
                 process.wait()
-    assert (
-        process.returncode == 6
-        and stdout == b""
-        and json.loads(stderr)["code"] == "request_cancelled"
-    )
+    assert process.returncode == 6
+    assert stdout == b""
+    assert json.loads(stderr)["code"] == "request_cancelled"
     assert (
         sorted(p.name for p in out.parent.iterdir() if p.name.startswith(("binding", ".yorunge")))
         == []
@@ -726,7 +736,8 @@ def test_a_stage_that_is_not_what_was_written_is_write_failed_and_leaves_nothing
     with pytest.raises(YorungeError) as raised:
         with binding_target(place / "b.json") as target:
             target.publish(held_binding())
-    assert raised.value.code == "binding_write_failed" and list(place.iterdir()) == []
+    assert raised.value.code == "binding_write_failed"
+    assert list(place.iterdir()) == []
 
 
 def test_the_stage_of_a_binding_is_named_for_a_binding(place, monkeypatch):
@@ -740,9 +751,9 @@ def test_the_stage_of_a_binding_is_named_for_a_binding(place, monkeypatch):
     monkeypatch.setattr(artifact_publisher.ArtifactPublisher, "_publish_link", spy)
     with binding_target(place / "b.json") as target:
         target.publish(held_binding())
-    assert (
-        len(names) == 1 and names[0].startswith(".yorunge-binding-") and names[0].endswith(".tmp")
-    )
+    assert len(names) == 1
+    assert names[0].startswith(".yorunge-binding-")
+    assert names[0].endswith(".tmp")
 
 
 def test_the_directory_handle_of_a_target_is_closed_on_every_path(place, monkeypatch):
@@ -771,7 +782,8 @@ def test_the_directory_handle_of_a_target_is_closed_on_every_path(place, monkeyp
                 body_(target)
         except YorungeError:
             pass
-    assert len(opened) == len(bodies) and closed == opened  # every path let go of its handle
+    assert len(opened) == len(bodies)
+    assert closed == opened  # every path let go of its handle
 
 
 def test_a_use_leaves_no_descriptor_and_no_thread_behind(workspace, certificates):
@@ -884,7 +896,8 @@ def test_check_compares_the_provider_before_it_reads_anything():
     held = make_binding(shown, SERVICE)
     with pytest.raises(YorungeError) as error:
         dataset_versions.check_binding(state, observer, clock, binding=held, deadline=clock.t + 30)
-    assert error.value.code == "state_changed" and port.calls == []
+    assert error.value.code == "state_changed"
+    assert port.calls == []
 
 
 def test_bind_records_the_digest_and_count_of_the_manifest_it_was_given():
@@ -902,10 +915,8 @@ def test_bind_records_the_digest_and_count_of_the_manifest_it_was_given():
         manifest=manifest,
         deadline=clock.t + 30,
     )
-    assert (
-        held.local_manifest.digest == manifest.digest
-        and held.local_manifest.relation == "count_matches"
-    )
+    assert held.local_manifest.digest == manifest.digest
+    assert held.local_manifest.relation == "count_matches"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -916,7 +927,8 @@ def test_bind_records_the_digest_and_count_of_the_manifest_it_was_given():
 def test_a_binding_out_without_a_name_is_a_mistake_before_anything_else(workspace, certificates):
     with TlsServer(certificates, routes()) as server:
         process = bind(server, certificates, workspace, "/")
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
     assert server.requests == []
 
 
@@ -1001,8 +1013,10 @@ def test_the_report_of_bind_says_what_the_file_says(workspace, certificates):
         "local_manifest",
     ):
         assert report[field] == held[field], field
-    assert report["binding_digest"] == held["digest"] and report["binding_path"] == str(out)
-    assert report["is_partial"] is True and report["split_total_matches_item_count"] is False
+    assert report["binding_digest"] == held["digest"]
+    assert report["binding_path"] == str(out)
+    assert report["is_partial"] is True
+    assert report["split_total_matches_item_count"] is False
 
 
 def test_the_report_of_a_binding_accepts_a_path_up_to_the_byte_limit():
@@ -1029,7 +1043,8 @@ def test_list_refuses_a_page_with_a_trailing_newline(workspace, certificates):
             "json",
             *flags(workspace),
         )
-    assert process.returncode == 2 and json.loads(process.stderr)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert json.loads(process.stderr)["code"] == "invalid_request"
     assert server.requests == []
 
 

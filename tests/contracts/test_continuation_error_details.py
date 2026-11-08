@@ -36,7 +36,8 @@ def refusal():
 
 def test_the_envelope_of_the_error_lists_the_blockers_in_the_closed_order():
     value = refusal().envelope()
-    assert value["code"] == "continuation_not_possible" and value["operation_id"] == SOURCE
+    assert value["code"] == "continuation_not_possible"
+    assert value["operation_id"] == SOURCE
     assert value["details"] == {
         "reason_code": "continuation_not_possible",
         "capacity_kind": None,
@@ -72,7 +73,8 @@ def test_an_active_source_is_never_a_refusal_with_blockers():
 def test_the_stream_error_carries_the_blockers_in_a_closed_details_type():
     payload = error_payload(refusal())
     assert type(payload.details) is ContinuationErrorDetails
-    assert payload.details.blockers == NAMED and payload.operation_id == SOURCE
+    assert payload.details.blockers == NAMED
+    assert payload.operation_id == SOURCE
     assert json.loads(payload.model_dump_json())["details"]["blockers"] == list(NAMED)
 
 
@@ -116,7 +118,8 @@ def test_the_public_layer_keeps_the_blockers_when_it_binds_the_error_to_its_oper
 
     with pytest.raises(OperationError) as bound:
         _safe(refuse, identity=lambda: SOURCE)
-    assert bound.value.blockers == NAMED and bound.value.operation_id == SOURCE
+    assert bound.value.blockers == NAMED
+    assert bound.value.operation_id == SOURCE
 
 
 def test_the_local_reads_keep_the_blockers_too():
@@ -144,14 +147,16 @@ def test_the_local_reads_keep_the_blockers_too():
 
 def test_the_stream_results_keep_the_blockers_when_they_bind_the_error():
     bound = _bound(refusal(), SOURCE)
-    assert isinstance(bound, OperationError) and bound.blockers == NAMED
+    assert isinstance(bound, OperationError)
+    assert bound.blockers == NAMED
     assert not isinstance(_bound(YorungeError("invalid_request"), SOURCE), ContinuationNotPossible)
 
 
 def test_the_cli_renderer_keeps_the_blockers_when_it_binds_the_error_to_its_stream():
     renderer = OutputRenderer("ndjson", operation_id=SOURCE)
     bound = renderer._bound_error(refusal())
-    assert isinstance(bound, OperationError) and bound.blockers == NAMED
+    assert isinstance(bound, OperationError)
+    assert bound.blockers == NAMED
     assert bound.operation_id == SOURCE
 
 

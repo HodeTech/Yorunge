@@ -43,10 +43,12 @@ def test_a_plan_with_unconfirmed_files_is_approved_with_the_flag_and_only_with_i
         ]
         assert journey.failed(journey.run(*approve, *FLAGS), "approval_required", 4)
         approved, _ = journey.done(journey.run(*approve, *FLAGS, "--accept-unconfirmed-effects"))
-        assert approved["approval_status"] == "approved" and approved["uncertain_files"] == 1
+        assert approved["approval_status"] == "approved"
+        assert approved["uncertain_files"] == 1
         started, _ = journey.done(journey.run("start", "--plan-id", prepared["plan_id"]))
         assert started["operation_status"] == "succeeded"
-        assert started["continuation_files"] == 2 and started["uncertain_files"] == 1
+        assert started["continuation_files"] == 2
+        assert started["uncertain_files"] == 1
 
 
 def test_a_repeated_unconfirmed_flag_is_an_invalid_request(public_inputs, certificates):
@@ -61,5 +63,6 @@ def test_a_repeated_unconfirmed_flag_is_an_invalid_request(public_inputs, certif
             twice = journey.run(
                 *verb, "--accept-unconfirmed-effects", "--accept-unconfirmed-effects"
             )
-            assert twice.returncode == 2 and twice.stdout == b""
+            assert twice.returncode == 2
+            assert twice.stdout == b""
             assert json.loads(twice.stderr)["code"] == "invalid_request"

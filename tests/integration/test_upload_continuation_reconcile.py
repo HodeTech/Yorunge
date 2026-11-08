@@ -107,7 +107,8 @@ def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
         operation_id = left_unproved(data, provider, server, report.plan_id, monkeypatch)
         before = journal(data, report.plan_id)
         assert (before.operation.status, before.operation.reason) == ("unknown", "read_unavailable")
-        assert before.verification is None and len(before.receipts) == len(before.intents) == 3
+        assert before.verification is None
+        assert len(before.receipts) == len(before.intents) == 3
         if current == "rotated":
             monkeypatch.setenv(ENV, "replacement-read-key")
         elif current == "reset":
@@ -125,7 +126,8 @@ def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
             "succeeded",
             "metadata_verified",
         )
-        assert record.lease is None and record.fence > before.operation.fence
+        assert record.lease is None
+        assert record.fence > before.operation.fence
         # No new write owner: the continuation's own write access is what it was.
         assert record.write_owner_id == before.operation.write_owner_id
         assert record.write_access_digest == before.operation.write_access_digest
@@ -135,10 +137,12 @@ def test_a_continuation_left_without_its_proof_is_proved_in_the_same_operation(
         assert counters.effect_attempts == counters.upload_bytes == counters.response_pending == 0
         after = journal(data, report.plan_id)
         assert after.operation == record
-        assert after.intents == before.intents and after.receipts == before.receipts
+        assert after.intents == before.intents
+        assert after.receipts == before.receipts
         proof = after.verification
         assert type(proof) is TransferVerificationV3
-        assert proof.grant is None and proof.authorization_policy == "explicit_read_attempt"
+        assert proof.grant is None
+        assert proof.authorization_policy == "explicit_read_attempt"
         # The whole dataset, though one file was sent: the three of the manifest, in its order.
         assert [(f.file_index, f.size_bytes, f.sha256) for f in proof.files] == [
             (index, f.size, f.sha256) for index, f in enumerate(data[2].files)
@@ -168,8 +172,10 @@ def test_a_continuation_that_stopped_between_its_stages_stays_uncertain_and_is_n
             go(data, server, report.plan_id)
         operation_id = stopped.value.operation_id
         before = journal(data, report.plan_id)
-        assert before.operation.status == "unknown" and before.verification is None
-        assert len(before.receipts) < len(before.intents) + 1 and len(before.receipts) == 2
+        assert before.operation.status == "unknown"
+        assert before.verification is None
+        assert len(before.receipts) < len(before.intents) + 1
+        assert len(before.receipts) == 2
         requests = len(server.requests)
 
         with pytest.raises(OperationError) as refused:
@@ -183,8 +189,10 @@ def test_a_continuation_that_stopped_between_its_stages_stays_uncertain_and_is_n
         )
         assert len(server.requests) == requests  # not even a read
         after = journal(data, report.plan_id)
-        assert after.operation.status == "unknown" and after.verification is None
-        assert after.intents == before.intents and after.receipts == before.receipts
+        assert after.operation.status == "unknown"
+        assert after.verification is None
+        assert after.intents == before.intents
+        assert after.receipts == before.receipts
         store_is_valid(data)
 
 
@@ -220,13 +228,16 @@ def test_a_read_that_goes_wrong_keeps_its_own_error_and_the_unknown_record(
             "429": "remote_rate_limited",
             "503": "remote_failed",
         }.get(failure, "invalid_response")
-        assert raised.value.code == expected and raised.value.operation_id == operation_id
+        assert raised.value.code == expected
+        assert raised.value.operation_id == operation_id
         assert raised.value.__cause__ is raised.value.__context__ is None
-        assert SECRET not in str(raised.value) and SECRET not in repr(raised.value.envelope())
+        assert SECRET not in str(raised.value)
+        assert SECRET not in repr(raised.value.envelope())
         assert all(r.method == "GET" for r in server.requests[count:])
         after = journal(data, report.plan_id)
         assert (after.operation.status, after.operation.reason) == ("unknown", "read_unavailable")
-        assert after.operation.lease is None and after.verification is None
+        assert after.operation.lease is None
+        assert after.verification is None
         assert len(after.receipts) == 3
         store_is_valid(data)
 
@@ -251,7 +262,8 @@ def test_a_dataset_that_is_not_the_baseline_is_a_failed_read_and_the_record_stay
         after = operation_of(data, report.plan_id)
         assert (raised.value.code, raised.value.operation_id) == ("invalid_response", operation_id)
         assert (after.status, after.reason) == ("unknown", "read_unavailable")
-        assert after.fence == before.fence + 1 and after.lease is None  # as the v2 read does
+        assert after.fence == before.fence + 1
+        assert after.lease is None  # as the v2 read does
         assert journal(data, report.plan_id).verification is None
         assert all(r.method == "GET" for r in server.requests[count:])
         provider.wrong_detail_owner, provider.created = False, True  # the provider is right again
@@ -280,7 +292,8 @@ def test_a_cancel_after_the_read_lease_releases_it_and_leaves_the_record_unknown
                 reconcile(data, server, operation_id)
         after = journal(data, report.plan_id)
         assert (after.operation.status, after.operation.reason) == ("unknown", "request_uncertain")
-        assert after.operation.lease is None and after.verification is None
+        assert after.operation.lease is None
+        assert after.verification is None
         assert len(after.receipts) == 3
         store_is_valid(data)
         # The next read is a clean one: the same record is still reconcilable.
@@ -300,7 +313,8 @@ def test_the_consent_to_an_unverified_read_is_asked_for_a_continuation_too(
         with pytest.raises(OperationError) as refused:
             reconcile(data, server, operation_id, accepted=False)
         assert refused.value.code == "approval_required"
-        assert len(server.requests) == requests and journal(data, report.plan_id) == before
+        assert len(server.requests) == requests
+        assert journal(data, report.plan_id) == before
 
 
 # --- a continuation that sent nothing -------------------------------------------------------------
@@ -454,7 +468,8 @@ def test_a_source_whose_continuation_was_cancelled_is_reconciled_as_it_always_wa
             source,
         )
         after = source_record(data, source)
-        assert after.status == "unknown" and after.fence > before.fence
+        assert after.status == "unknown"
+        assert after.fence > before.fence
         store_is_valid(data)
 
 
@@ -511,7 +526,8 @@ def test_the_public_reconcile_asks_a_continuation_for_the_choice_before_it_reads
             "approval_required",
             operation_id,
         )
-        assert len(server.requests) == requests and journal(data, report.plan_id) == before
+        assert len(server.requests) == requests
+        assert journal(data, report.plan_id) == before
 
 
 def test_the_public_reconcile_of_original_uploads_answers_as_it_did_before_the_step(

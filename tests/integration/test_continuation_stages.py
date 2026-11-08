@@ -53,12 +53,14 @@ def test_the_stages_of_a_continuation_run_in_order_for_the_selected_files_only(l
         _, intent, view = run(lifecycle, plan, record, kind, index)
         assert intent.sequence == position
         assert intent.request_digest == expected_digest(plan, kind, index)
-        assert view.operation.status == "running" and view.operation.workflow_latched is True
+        assert view.operation.status == "running"
+        assert view.operation.workflow_latched is True
         assert view.operation.dataset_id == DATASET_ID  # the plan's, not a create receipt's
         assert not any(i.kind in {"create", "project_link"} for i in view.intents)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         view = read_any_view(store.connection, plan.plan_id)
-        assert len(view.intents) == len(view.receipts) == 6 and acknowledged_stages(view)
+        assert len(view.intents) == len(view.receipts) == 6
+        assert acknowledged_stages(view)
         assert type(view.operation) is TransferRecordV3
         validate_uploads(store.connection)
 
@@ -169,7 +171,8 @@ def test_a_rejection_with_nothing_else_in_flight_fails_the_operation(lifecycle):
     put = view_of(lifecycle, record).intents[-1]
     view = lifecycle.accept(record, put, rejected=True)
     assert (view.operation.status, view.operation.reason) == ("failed", "provider_rejected")
-    assert view.operation.lease is None and view.operation.workflow_latched is True
+    assert view.operation.lease is None
+    assert view.operation.workflow_latched is True
     assert [(c.kind, type(c)) for c in view.controls] == [("terminal", TransferControlV3)]
     with open_store(lifecycle.root_dir, timeout=60) as store:
         validate_uploads(store.connection)
@@ -188,7 +191,8 @@ def test_a_rejection_with_another_request_in_flight_leaves_the_operation_unknown
     view = lifecycle.accept(record, put, rejected=True)
     assert (view.operation.status, view.operation.reason) == ("unknown", "provider_rejected")
     assert [(c.kind, type(c)) for c in view.controls] == [("recovery", TransferControlV3)]
-    assert len(view.intents) == 3 and len(view.receipts) == 2  # the presign of file 2 is open
+    assert len(view.intents) == 3
+    assert len(view.receipts) == 2  # the presign of file 2 is open
     with open_store(lifecycle.root_dir, timeout=60) as store:
         validate_uploads(store.connection)
 
@@ -209,7 +213,8 @@ def test_stopping_before_the_first_intent_cancels_even_with_the_reason_that_says
             "local_cancelled",
         )
         assert [(c.kind, type(c)) for c in stopped.controls] == [("terminal", TransferControlV3)]
-        assert stopped.operation.lease is None and stopped.operation.workflow_latched is False
+        assert stopped.operation.lease is None
+        assert stopped.operation.workflow_latched is False
         validate_uploads(store.connection)
 
 
@@ -260,7 +265,8 @@ def test_an_expired_continuation_that_sent_nothing_is_cancelled_and_its_source_i
             "cancelled",
             "lease_expired",
         )
-        assert cleaned.operation.fence == 2 and cleaned.operation.lease is None
+        assert cleaned.operation.fence == 2
+        assert cleaned.operation.lease is None
         assert [(c.kind, type(c)) for c in cleaned.controls] == [("terminal", TransferControlV3)]
         assert (
             store.connection.execute(
@@ -281,7 +287,8 @@ def test_an_expired_continuation_that_had_sent_something_becomes_unknown(lifecyc
             "unknown",
             "request_uncertain",
         )
-        assert cleaned.operation.fence == 2 and cleaned.operation.workflow_latched is True
+        assert cleaned.operation.fence == 2
+        assert cleaned.operation.workflow_latched is True
         assert [c.kind for c in cleaned.controls] == ["recovery"]
         validate_uploads(store.connection)
 
@@ -291,10 +298,12 @@ def test_the_lease_of_a_continuation_is_renewed_by_its_own_write_owner(lifecycle
     tick(lifecycle, 20)
     with open_store(lifecycle.root_dir, timeout=60) as store:
         renewed = lifecycle.repository(store).renew(record.operation_id, record.lease)
-        assert renewed.owner_id == record.lease.owner_id and renewed.fence == record.lease.fence
+        assert renewed.owner_id == record.lease.owner_id
+        assert renewed.fence == record.lease.fence
         assert instant(renewed.expires_at) > instant(record.lease.expires_at)
         now = read_any_view(store.connection, plan.plan_id).operation
-        assert now.lease == renewed and json.loads(now.encoded())["lease"]["owner_id"]
+        assert now.lease == renewed
+        assert json.loads(now.encoded())["lease"]["owner_id"]
 
 
 # --- the current check each stage is armed on -------------------------------------------------
@@ -335,7 +344,8 @@ def test_a_stage_is_not_armed_on_a_stale_a_foreign_or_a_wrong_current_check(life
         assert dump(store) == before
     # A check of the right dataset and action, taken now, is what arms the very same stage.
     _, intent, view = run(lifecycle, plan, record, "presign", 1)
-    assert view.operation.status == "running" and intent.file_index == 1
+    assert view.operation.status == "running"
+    assert intent.file_index == 1
 
 
 # --- an identity reset over what the gates wrote ----------------------------------------------

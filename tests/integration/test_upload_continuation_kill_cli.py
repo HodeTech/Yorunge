@@ -159,15 +159,19 @@ def test_a_killed_start_is_finished_by_the_commands_alone(public_inputs, certifi
         # error of `start` and of `resume --prepare` lead to that same explanation
         live = person.run("show", "--operation-id", source, context=False)
         text = live.stdout.decode()
-        assert live.returncode == 0 and "Devam şu an mümkün değil (yerel kayda göre):" in text
-        assert "- source_active:" in text and "Lease bitince raporu yeniden alın" in text
+        assert live.returncode == 0
+        assert "Devam şu an mümkün değil (yerel kayda göre):" in text
+        assert "- source_active:" in text
+        assert "Lease bitince raporu yeniden alın" in text
         assert "Devam için:" not in text
         again = person.run("start", "--plan-id", plan_id)
-        assert again.returncode == 5 and f"show --operation-id {source}" in again.stderr.decode()
+        assert again.returncode == 5
+        assert f"show --operation-id {source}" in again.stderr.decode()
         waiting = person.run(
             "resume", "--operation-id", source, "--accept-unverified-read", "--prepare"
         )
-        assert waiting.returncode == 2 and waiting.stdout == b""
+        assert waiting.returncode == 2
+        assert waiting.stdout == b""
         waiting_text = waiting.stderr.decode()
         assert "lease'i dolmadı (en çok 150 sn)" in waiting_text
         assert f"resume --operation-id {source} --accept-unverified-read" in waiting_text
@@ -185,7 +189,8 @@ def test_a_killed_start_is_finished_by_the_commands_alone(public_inputs, certifi
                 "resume", "--operation-id", source, "--accept-unverified-read", shift=LAPSED
             )
         )
-        assert report["eligible"] is True and report["recommended_action"] == "prepare"
+        assert report["eligible"] is True
+        assert report["recommended_action"] == "prepare"
         uncertain = (
             ("--accept-unconfirmed-effects",)
             if report["observation"]["unconfirmed_ack_required"]
@@ -336,14 +341,16 @@ def test_a_killed_continuation_is_itself_continued_by_the_commands_alone(
         assert killed == -signal.SIGKILL
         dead = machine.done(machine.run("show", "--plan-id", first, context=False))[0]
         continuation = dead["operation_id"]
-        assert continuation != source and dead["operation_status"] == "running"
+        assert continuation != source
+        assert dead["operation_status"] == "running"
 
         # the lease of the dead continuation has not lapsed (the clock is 200 s on, its lease
         # began there): `show` says who is in the way, and does not point at the original
         person = Terminal(server, data, manifest, config, "text")
         live = person.run("show", "--operation-id", continuation, context=False, shift=LAPSED)
         text = live.stdout.decode()
-        assert "Devam şu an mümkün değil (yerel kayda göre):" in text and "- source_active:" in text
+        assert "Devam şu an mümkün değil (yerel kayda göre):" in text
+        assert "- source_active:" in text
         assert "Devam için:" not in text
 
         # once it has: the direction names the CONTINUATION, and the commands finish the job

@@ -349,14 +349,16 @@ def refused(journal, certificates, routes, *, dataset=DATASET, deadline_in=5, bu
 @pytest.mark.parametrize("dataset", ["../x", "a/b", "", "x" * 129])
 def test_a_malformed_dataset_segment_is_refused_before_any_request(journal, certificates, dataset):
     error, count = refused(journal, certificates, {}, dataset=dataset)
-    assert error.code == "invalid_request" and count == 0
+    assert error.code == "invalid_request"
+    assert count == 0
 
 
 def test_a_client_that_belongs_to_another_budget_is_refused(journal, certificates):
     error, count = refused(
         journal, certificates, {ITEMS: page(item_rows(journal))}, foreign_client=True
     )
-    assert error.code == "invalid_request" and count == 0
+    assert error.code == "invalid_request"
+    assert count == 0
 
 
 def test_an_expired_deadline_is_refused_before_any_request(journal, certificates):
@@ -391,4 +393,5 @@ def test_a_deadline_that_lapses_while_a_page_is_processed_stops_the_listing(
         deadline_in=deadline_in,
         budget_in=budget_in,
     )
-    assert error.code in ("transport_timeout", "execution_timeout") and count == 1
+    assert error.code in ("transport_timeout", "execution_timeout")
+    assert count == 1

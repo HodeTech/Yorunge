@@ -207,9 +207,11 @@ def test_sigkill_of_a_continuation_leaves_the_operation_found_by_its_plan_and_no
         assert events in alternatives
         # Every effectful request the server saw is a stage the journal armed: none unexplained.
         effects = [r for r in server.requests if r.method in {"POST", "PUT"}]
-        assert len(effects) == len(provider.events) and (provider.create_calls == 1)
+        assert len(effects) == len(provider.events)
+        assert provider.create_calls == 1
         view = journal(data, report.plan_id)
-        assert len(view.intents) == intents and len(view.receipts) == receipts
+        assert len(view.intents) == intents
+        assert len(view.receipts) == receipts
         assert view.operation.status == ("running" if intents else "admitted")
         assert view.operation.workflow_latched == bool(intents)
         assert view.operation.dataset_id == DATASET

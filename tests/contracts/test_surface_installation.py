@@ -221,7 +221,8 @@ print("carried on")
         text=True,
         timeout=30,
     )
-    assert result.returncode == 0 and "socket.getaddrinfo attempted" in result.stderr
+    assert result.returncode == 0
+    assert "socket.getaddrinfo attempted" in result.stderr
     # what the gates then see is not a help with an empty stderr, nor one closed envelope
     with pytest.raises(ValueError, match="help failed"):
         HELPER["check_help"](
@@ -253,7 +254,8 @@ def test_a_gate_that_reaches_for_the_network_fails_the_smoke_instead_of_passing(
     # different error, as the last line.
     assert "offline smoke: socket." in result.stderr
     assert json.loads(result.stderr.strip().splitlines()[-1])["code"] != "credential_unavailable"
-    assert result.returncode not in (0, 3) and result.stdout == ""
+    assert result.returncode not in (0, 3)
+    assert result.stdout == ""
     with pytest.raises(ValueError, match="credential_unavailable/3"):
         HELPER["check_error"](result, "list", "credential_unavailable", 3)
 
@@ -261,7 +263,9 @@ def test_a_gate_that_reaches_for_the_network_fails_the_smoke_instead_of_passing(
 def test_the_guard_is_in_front_of_the_real_entry_point(installed):
     _, python, scratch, environment = installed
     result = HELPER["guarded"](python, scratch, environment, ["--version"])
-    assert result.returncode == 0 and result.stdout.strip() and result.stderr == ""
+    assert result.returncode == 0
+    assert result.stdout.strip()
+    assert result.stderr == ""
 
 
 # --- the primitives that judge a command -----------------------------------------------------

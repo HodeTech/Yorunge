@@ -50,7 +50,8 @@ def test_reset_makes_a_running_v1_operation_unknown_with_a_v1_recovery_control(t
         kind, payload = store.connection.execute(
             "SELECT kind,payload FROM upload_controls"
         ).fetchone()
-        assert kind == "recovery" and json.loads(payload)["schema_version"] == 1
+        assert kind == "recovery"
+        assert json.loads(payload)["schema_version"] == 1
 
 
 def test_a_record_of_another_family_than_its_plan_is_never_read_as_its_own(tmp_path):

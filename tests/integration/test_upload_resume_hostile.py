@@ -39,7 +39,8 @@ LISTING = b'{"items":[],"total":0,"next_cursor":null}'
 
 
 def test_the_phases_of_the_observation_are_thirty_seconds_and_the_whole_a_minute():
-    assert PHASE_SECONDS == LISTING_SECONDS == 30.0 and OBSERVATION_SECONDS == 60.0
+    assert PHASE_SECONDS == LISTING_SECONDS == 30.0
+    assert OBSERVATION_SECONDS == 60.0
 
 
 DRIP = "yorunge.adapters.upload_resume."
@@ -132,7 +133,8 @@ def test_the_observation_is_made_under_a_read_only_budget(prepared_input, certif
         # none of the effects was asked for: the counters stand well inside the read-only limits.
         counters, asked = budgets[0].snapshot(), len(server.requests) - before
         assert counters.read_requests == counters.read_attempts == asked
-        assert asked == len(READS) and counters.effect_attempts == 0  # each read, once
+        assert asked == len(READS)
+        assert counters.effect_attempts == 0  # each read, once
         assert counters.create_requests == counters.project_link_requests == 0
         assert counters.presign_requests == counters.put_requests == counters.confirm_requests == 0
         with pytest.raises(YorungeError) as error:

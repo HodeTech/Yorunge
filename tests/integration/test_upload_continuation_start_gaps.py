@@ -67,7 +67,8 @@ def test_a_revoked_approval_is_refused_before_any_request(prepared_input, certif
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
         assert error.value.code == "approval_required"
-        assert len(server.requests) == requests and operation_of(data, report.plan_id) is None
+        assert len(server.requests) == requests
+        assert operation_of(data, report.plan_id) is None
 
 
 def test_a_key_rotated_since_the_plan_is_state_changed_before_any_request(
@@ -82,7 +83,8 @@ def test_a_key_rotated_since_the_plan_is_state_changed_before_any_request(
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
         assert error.value.code == "state_changed"
-        assert len(server.requests) == requests and operation_of(data, report.plan_id) is None
+        assert len(server.requests) == requests
+        assert operation_of(data, report.plan_id) is None
 
 
 def test_it_cannot_be_called_from_a_running_event_loop(prepared_input, certificates):
@@ -98,7 +100,8 @@ def test_it_cannot_be_called_from_a_running_event_loop(prepared_input, certifica
         with pytest.raises(YorungeError) as error:
             asyncio.run(inside())
         assert error.value.code == "invalid_request"
-        assert len(server.requests) == requests and operation_of(data, report.plan_id) is None
+        assert len(server.requests) == requests
+        assert operation_of(data, report.plan_id) is None
 
 
 @pytest.mark.parametrize("plan_id", ["not-a-uuid", "", "00000000-0000-4000-8000-00000000zzzz"])
@@ -149,7 +152,8 @@ def test_a_check_only_continuation_that_loses_its_lease_never_says_uncertain(
         with pytest.raises(OperationError) as error:
             go(data, server, report.plan_id, clock=clock)
         record = operation_of(data, report.plan_id)
-        assert record.workflow_latched is False and journal(data, report.plan_id).intents == ()
+        assert record.workflow_latched is False
+        assert journal(data, report.plan_id).intents == ()
         # it wrote no intent: nothing it did is uncertain, whatever stopped it
         assert error.value.code != "operation_uncertain", (
             error.value.code,
@@ -177,7 +181,8 @@ def test_a_late_loser_of_the_same_plan_returns_the_record_as_it_stands(
 
         monkeypatch.setattr(start_module, "capture_upload_input", capture)
         phase = go(data, server, report.plan_id)
-        assert phase.existing is True and phase.record.operation_id == winner[0].record.operation_id
+        assert phase.existing is True
+        assert phase.record.operation_id == winner[0].record.operation_id
 
 
 def test_a_sibling_plan_that_wins_while_the_look_is_taken_is_the_conflict_not_a_remote_change(
@@ -239,7 +244,8 @@ def test_the_clock_before_the_approval_is_not_a_started_plan(prepared_input, cer
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id, clock=clock)
-        assert error.value.code == "upload_plan_not_valid" and len(server.requests) == requests
+        assert error.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == requests
 
 
 def _journal_tables(state):
@@ -273,7 +279,8 @@ def test_an_unknown_plan_is_a_closed_error(prepared_input, certificates):
     with TlsServer(certificates, provider.routes()) as server:
         with pytest.raises(YorungeError) as error:
             go(data, server, "00000000-0000-4000-8000-0000000000ab")
-        assert error.value.code == "upload_plan_not_found" and not server.requests
+        assert error.value.code == "upload_plan_not_found"
+        assert not server.requests
 
 
 def test_the_phase_is_private_in_repr_and_cannot_be_pickled(prepared_input, certificates):
@@ -367,6 +374,7 @@ def test_a_continuation_is_resumed_in_turn_when_it_is_interrupted_too(
         # the whole chain is over: a third start of the same plan finds its operation
         requests = len(server.requests)
         again = go(data, server, report2.plan_id)
-        assert again.existing is True and len(server.requests) == requests
+        assert again.existing is True
+        assert len(server.requests) == requests
     assert phase.record.status == "succeeded"
     assert len(view.verification.files) == len(data[2].files)

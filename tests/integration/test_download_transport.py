@@ -109,7 +109,8 @@ def test_a_download_carries_no_credential_even_beside_a_service_call_on_the_same
         get = [r for r in api.requests if r.path == PATH + QUERY][0]
         names = {name.lower() for name, _ in get.headers}
         assert names == {"host", "accept-encoding"}  # nothing else, in particular no credential
-        assert get.header("Accept-Encoding") == "identity" and get.header("Host") == "api.localhost"
+        assert get.header("Accept-Encoding") == "identity"
+        assert get.header("Host") == "api.localhost"
         service_call = [r for r in api.requests if r.path == "/v1/check"][0]
         assert service_call.header("X-API-Key") == SECRET  # the service call kept its own
         assert "cookie" not in names
@@ -129,7 +130,8 @@ def test_a_resume_adds_exactly_range_and_if_range(certificates):
         with owned:
             response, action, body, received = fetch(owned, request(key, ask=ask))
         assert (response.status, action, body, received) == (206, "continue", CONTENT[400:], 1648)
-        assert response.content_range == ContentRange(400, 2047, 2048) and response.etag == TAG
+        assert response.content_range == ContentRange(400, 2047, 2048)
+        assert response.etag == TAG
         sent = api.requests[0]
         assert {name.lower(): value for name, value in sent.headers} == {
             "host": "api.localhost",
@@ -205,7 +207,8 @@ def test_an_answer_to_a_resume_that_does_not_fit_calls_for_the_closed_action(
             response, found, _, _ = fetch(
                 owned, request(key, ask=ResumeAsk(400, 2048, TAG)), read=False
             )
-    assert found == action and len(api.requests) == 1
+    assert found == action
+    assert len(api.requests) == 1
 
 
 def test_a_sixteen_four_one_six_has_no_body_the_engine_may_read(certificates):
@@ -291,7 +294,8 @@ def test_every_other_answer_is_one_closed_code_after_exactly_one_request(certifi
         with owned:
             assert failure(lambda: fetch(owned, request(key))) == code
         # A redirect is never followed, a throttle or a failure never retried, nothing else asked.
-        assert len(api.requests) == 1 and api.requests[0].path == PATH + QUERY
+        assert len(api.requests) == 1
+        assert api.requests[0].path == PATH + QUERY
 
 
 # --- the body -------------------------------------------------------------------------------------
@@ -416,7 +420,8 @@ def test_a_target_outside_the_owned_origin_or_with_another_key_is_refused_before
         with owned:
             assert failure(lambda: fetch(owned, stranger)) == "invalid_service_target"
             assert failure(lambda: fetch(owned, other_key)) == "invalid_service_target"
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 def test_a_wire_header_that_is_not_the_described_one_is_refused_before_the_network(
@@ -433,7 +438,8 @@ def test_a_wire_header_that_is_not_the_described_one_is_refused_before_the_netwo
         )
         with owned:
             assert failure(lambda: fetch(owned, wanted)) == "invalid_service_target"
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 def test_a_request_is_closed_by_construction(certificates):
@@ -530,7 +536,8 @@ def test_neither_the_address_nor_the_key_is_in_a_repr_an_error_or_a_log(certific
             "weights.onnx",
         ):
             assert canary not in shown
-        assert error.value.__cause__ is None and error.value.__context__ is None
+        assert error.value.__cause__ is None
+        assert error.value.__context__ is None
     with pytest.raises(AttributeError):
         wanted.target._url = "x"  # type: ignore[misc]
     import pickle
@@ -596,7 +603,8 @@ def test_an_untrusted_certificate_never_sends_a_byte_of_http(certificates):
             owned.download(run)
         assert error.value.code == "transport_failed"
         assert error.value.__cause__ is error.value.__context__ is None
-        assert len(network.connections) == 1 and not server.requests
+        assert len(network.connections) == 1
+        assert not server.requests
 
 
 # --- the wire is exactly the described request, whatever else changed it --------------------------
@@ -628,7 +636,8 @@ def test_a_prepared_wire_that_changed_is_refused_before_the_network(
         monkeypatch.setattr(storage_transport.httpx, "Request", changed)
         with owned:
             assert failure(lambda: fetch(owned, request(key))) == "invalid_service_target"
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 @pytest.mark.parametrize("owned_origins", [(), ("https://storage.localhost",)])
@@ -642,7 +651,8 @@ def test_a_session_that_owns_other_origins_refuses_a_target_on_this_one(
         )
         with owned:
             assert failure(lambda: fetch(owned, request(key))) == "invalid_service_target"
-        assert api.requests == [] and network.connections == []
+        assert api.requests == []
+        assert network.connections == []
 
 
 # --- the answer's size and the time each phase may take -------------------------------------------
@@ -698,7 +708,8 @@ def test_a_deadline_that_strikes_in_the_body_arrives_inside_as_a_cancellation(ce
 
         with owned:
             assert failure(lambda: owned.download(run)) == "transport_timeout"
-    assert len(seen) == 1 and seen[0] < 4096
+    assert len(seen) == 1
+    assert seen[0] < 4096
 
 
 def test_a_whole_body_ends_the_deadline_for_what_the_caller_does_next(certificates):
@@ -712,7 +723,8 @@ def test_a_whole_body_ends_the_deadline_for_what_the_caller_does_next(certificat
             ) as view:
                 assert view.complete is False
                 body = b"".join([chunk async for chunk in view.chunks()])
-                assert view.complete is True and view.received == len(CONTENT)
+                assert view.complete is True
+                assert view.received == len(CONTENT)
                 await asyncio.sleep(1.4)  # the completion checkpoint and the publication
                 return body
 
@@ -756,12 +768,14 @@ def test_the_end_of_a_body_is_checked_against_what_its_framing_promised():
         return [chunk async for chunk in chunks]
 
     view, chunks, finished = view_of("length", 10, [b"12345", b"67890"])
-    assert asyncio.run(read(chunks)) == [b"12345", b"67890"] and finished == [True]
+    assert asyncio.run(read(chunks)) == [b"12345", b"67890"]
+    assert finished == [True]
     view, chunks, finished = view_of("length", 10, [b"12345", b"678"])
     assert failure(lambda: asyncio.run(read(chunks))) == "download_incomplete"
     assert finished == []  # a short body is not a whole one
     view, chunks, finished = view_of("chunked", None, [b"abc"])
-    assert asyncio.run(read(chunks)) == [b"abc"] and finished == [True]
+    assert asyncio.run(read(chunks)) == [b"abc"]
+    assert finished == [True]
 
 
 # --- the peer: no HTTP byte before it is the address that was approved ---------------------------
@@ -804,7 +818,8 @@ def test_a_peer_that_is_not_the_approved_address_is_sent_no_http_byte(stream):
     owned = TransferSession(key, transport_factory=factory, storage_origins=(ORIGIN,))
     with owned:
         assert failure(lambda: owned.download(go)) == "invalid_service_target"
-    assert stream.writes == [] and stream.closed  # the connection was dropped unspoken-to
+    assert stream.writes == []
+    assert stream.closed  # the connection was dropped unspoken-to
 
 
 # --- the signed address is checked for the key as the service address is --------------------------

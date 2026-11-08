@@ -32,7 +32,8 @@ def test_every_blocker_has_one_sentence_of_reason_and_one_of_next_step():
     assert set(BLOCKER_TEXT) == set(BLOCKERS)
     for name, (reason, step) in BLOCKER_TEXT.items():
         for sentence in (reason, step):
-            assert sentence.endswith(".") and "\n" not in sentence, name
+            assert sentence.endswith("."), name
+            assert "\n" not in sentence, name
             assert ". " not in sentence, f"{name}: one sentence, not two"
             assert len(sentence) < 200, name
         assert reason != step
@@ -49,7 +50,8 @@ def test_the_text_of_an_eligible_report_with_unconfirmed_files_leads_to_prepare(
     assert f"Devam raporu — kaynak iş: {SOURCE}" in text
     assert "Devam edilebilir; plan kaydedilmedi (salt okuma raporu)." in text
     assert "Gönderilecek: 2 dosya, 8 bayt." in text
-    assert "belirsiz 1" in text and "--accept-unconfirmed-effects" in text
+    assert "belirsiz 1" in text
+    assert "--accept-unconfirmed-effects" in text
     assert "Örnek (belirsiz (son onay isteği gitmiş olabilir)): ölçüm.txt" in text
     # The consent is not pre-filled into the suggested command: it is a sentence of its own, after
     # the consequence that ADR-0031 §3 says the consent must name.
@@ -60,11 +62,13 @@ def test_the_text_of_an_eligible_report_with_unconfirmed_files_leads_to_prepare(
     command = next(line for line in text.splitlines() if line.startswith("Hazırla:"))
     assert "--accept-unconfirmed-effects" not in command
     assert "ayrıca --accept-unconfirmed-effects eklemek gerekir" in text
-    assert "aynı adlı bir kopya yaratabilir" in text and "`conflict` ile engellenir" in text
+    assert "aynı adlı bir kopya yaratabilir" in text
+    assert "`conflict` ile engellenir" in text
     assert "yalnız Platform arayüzünde silinebilir" in text
     assert "lease süresi (en çok 150 sn) dolduktan sonra da bir süre bekleyin" in text
     assert "yetim nesneler kalabilir" in text
-    assert "Engeller" not in text and "- " not in text.split("Dosya sınıfları")[0]
+    assert "Engeller" not in text
+    assert "- " not in text.split("Dosya sınıfları")[0]
     assert text.rstrip().endswith("baytları doğrulanmadı.")
     assert "Özel --config/--profile/--state-dir" in text
 
@@ -75,7 +79,8 @@ def test_the_text_of_a_blocked_report_says_why_and_what_next_and_offers_no_comma
     assert "Devam edilemiyor" in text
     assert f"- drift_missing: {reason}\n  Sonraki adım: {step}" in text
     assert "Örnek (kaybolmuş): a.txt" in text
-    assert "Hazırla:" not in text and "Uzlaştır:" not in text
+    assert "Hazırla:" not in text
+    assert "Uzlaştır:" not in text
     assert "devam komutu yok" in text
 
 
@@ -83,7 +88,8 @@ def test_the_text_of_a_report_that_read_nothing_says_so():
     text = _resume_text(golden("unobserved"))
     assert "Veri seti: kaydedilmedi (create sonucu bilinmiyor)" in text
     assert "Uzak durum okunmadı: rapor yalnız yerel kayda dayanır." in text
-    assert "Dosya sınıfları" not in text and "- create_unknown:" in text
+    assert "Dosya sınıfları" not in text
+    assert "- create_unknown:" in text
 
 
 def test_a_report_with_a_plan_leads_to_the_review_not_to_another_prepare():
@@ -111,7 +117,8 @@ def test_the_quota_line_says_when_the_local_record_cannot_take_another_attempt()
     assert "Kota dolu: bu deneme yerel kaydın şu sınırını aşar: plan." in text
     assert "Kayıtlar otomatik silinmez" in text
     # a limit that is certainly passed: no command that would be refused, no "go ahead" header
-    assert "Hazırla:" not in text and "Şu an hazırlanamaz" in text
+    assert "Hazırla:" not in text
+    assert "Şu an hazırlanamaz" in text
     assert "Devam edilebilir (yerel kayıt kotası hariç); plan kaydedilmedi" in text
 
 
@@ -121,7 +128,8 @@ def test_a_payload_that_may_pass_the_limit_only_by_its_upper_bound_is_not_called
         update={"quota_used": report.quota_used.model_copy(update={"payload_bytes": 16_777_216})}
     )
     text = _resume_text(near)
-    assert "Kota dolu" not in text and "Kota sınırda" in text
+    assert "Kota dolu" not in text
+    assert "Kota sınırda" in text
     assert "Hazırla: yorunge datasets upload resume" in text  # the prepare checks the true size
 
 
@@ -180,20 +188,23 @@ def test_an_error_about_a_related_operation_says_it_is_not_the_one_asked_about()
 def test_only_a_conflict_is_described_as_belonging_to_the_operation_asked_about(code):
     # another code naming another row (a broken row of the store, say) is not "its continuation"
     text = rendered("text", OperationError(code, OTHER), requested=SOURCE)
-    assert f"İş: {OTHER}" in text and "İstediğiniz iş" not in text
+    assert f"İş: {OTHER}" in text
+    assert "İstediğiniz iş" not in text
 
 
 @pytest.mark.parametrize("requested", [SOURCE, SOURCE.upper(), None])
 def test_an_error_about_the_asked_operation_or_without_one_has_no_such_line(requested):
     text = rendered("text", OperationError("operation_conflict", SOURCE), requested=requested)
-    assert f"İş: {SOURCE}" in text and "İstediğiniz iş" not in text
+    assert f"İş: {SOURCE}" in text
+    assert "İstediğiniz iş" not in text
 
 
 @pytest.mark.parametrize("output", ["json", "ndjson"])
 def test_the_machine_error_never_carries_the_line(output):
     text = rendered(output, OperationError("operation_conflict", OTHER), requested=SOURCE)
     envelope = json.loads(text.splitlines()[0])
-    assert envelope["operation_id"] == OTHER and "İstediğiniz" not in text
+    assert envelope["operation_id"] == OTHER
+    assert "İstediğiniz" not in text
 
 
 def test_a_record_that_is_over_has_no_proof_to_take_and_is_not_told_to():
@@ -201,7 +212,8 @@ def test_a_record_that_is_over_has_no_proof_to_take_and_is_not_told_to():
         update={"blockers": ("source_terminal", "reconcile_available"), "observation": None}
     )
     text = _resume_text(report)
-    assert "- source_terminal:" in text and "reconcile_available" not in text
+    assert "- source_terminal:" in text
+    assert "reconcile_available" not in text
 
 
 def test_what_was_read_is_told_truthfully_when_the_dataset_listing_was_not():
@@ -209,7 +221,8 @@ def test_what_was_read_is_told_truthfully_when_the_dataset_listing_was_not():
         update={"blockers": ("membership_unobserved",), "observation": None}
     )
     text = _resume_text(report)
-    assert "Dataset’in dosya listesi okunmadı" in text and "Uzak durum okunmadı" not in text
+    assert "Dataset’in dosya listesi okunmadı" in text
+    assert "Uzak durum okunmadı" not in text
     assert "Yalnız sağlayıcı metadata’sı gözlendi" not in text  # nothing of the listing was seen
     assert text.rstrip().endswith("Dosya içeriği ya da baytları doğrulanmadı.")
     nothing = golden("unobserved")  # a journal blocker: no remote read at all

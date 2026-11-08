@@ -66,7 +66,8 @@ def test_a_change_during_the_measurements_is_recorded_and_fails_the_report(
     assert driver["check"](args) == 1
     written = driver["CHECKS"]["decode"](args.output.read_bytes())
     proof_ = written["provenance"]
-    assert written["passed"] is False and written["accepted"] is False
+    assert written["passed"] is False
+    assert written["accepted"] is False
     if what == "source":
         key = "scripts/download_evidence.py"
         assert proof_["source_before"]["source_sha256"][key] == "3" * 64  # the first snapshot
@@ -92,7 +93,9 @@ def run_script(*arguments):
 def test_the_controller_script_runs_as_a_process_and_documents_itself():
     # mutant L358 (`if __name__ == "__main__"` forced False): a script that silently does nothing
     result = run_script("--help")
-    assert result.returncode == 0 and "--labels" in result.stdout and "--run-url" in result.stdout
+    assert result.returncode == 0
+    assert "--labels" in result.stdout
+    assert "--run-url" in result.stdout
 
 
 def test_the_controller_process_ends_nonzero_with_a_closed_message_on_a_refused_run(tmp_path):
@@ -112,8 +115,10 @@ def test_the_controller_process_ends_nonzero_with_a_closed_message_on_a_refused_
         "d",
     )
     assert result.returncode == 1
-    assert "Download measurement failed" in result.stderr and "Traceback" not in result.stderr
-    assert not (tmp_path / "w").exists() and not (tmp_path / "o.json").exists()
+    assert "Download measurement failed" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert not (tmp_path / "w").exists()
+    assert not (tmp_path / "o.json").exists()
 
 
 # --- the worker is killed on every way out (BaseException), and before it is reaped

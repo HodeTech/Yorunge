@@ -52,9 +52,12 @@ def code_of(action):
 def test_the_limits_and_times_are_the_documented_ones():
     assert MAX_DOWNLOAD_BYTES == 1_073_741_824  # 1 GiB
     assert (MIN_TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS) == (30, 900, 3600)
-    assert MAX_FOLD == 1024 and CONTROL_CALL_SECONDS == 30
-    assert BLOCK_BYTES == 1_048_576 and CHECKPOINT_BYTES == 8 * 1_048_576
-    assert MAX_SIDECAR_BYTES == 4096 and MAX_URL_BYTES == 16_384
+    assert MAX_FOLD == 1024
+    assert CONTROL_CALL_SECONDS == 30
+    assert BLOCK_BYTES == 1_048_576
+    assert CHECKPOINT_BYTES == 8 * 1_048_576
+    assert MAX_SIDECAR_BYTES == 4096
+    assert MAX_URL_BYTES == 16_384
     assert EMPTY_SHA256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
@@ -135,7 +138,8 @@ def test_bytes_that_match_the_users_digest_earn_the_sha256_level_from_that_sourc
 def test_a_digest_that_does_not_match_is_the_mismatch_with_the_computed_digest_and_nothing_else():
     with pytest.raises(DownloadIntegrityMismatch) as error:
         verify_expectation(HELLO, 5, ZEROS)
-    assert error.value.code == "download_integrity_mismatch" and error.value.exit_code == 7
+    assert error.value.code == "download_integrity_mismatch"
+    assert error.value.exit_code == 7
     assert error.value.details == {"computed_sha256": HELLO, "bytes": 5}
     assert error.value.envelope()["details"] == {"computed_sha256": HELLO, "bytes": 5}
     assert ZEROS not in json.dumps(error.value.envelope())  # the expectation is not echoed
@@ -296,7 +300,8 @@ def test_the_longest_record_still_fits_the_sidecar_limit():
 
 def test_a_record_without_a_tag_or_a_total_is_valid_while_the_download_runs():
     chunked = partial(etag=None, total_size=None)
-    assert not chunked.complete and DownloadPartial.decode(chunked.encoded()) == chunked
+    assert not chunked.complete
+    assert DownloadPartial.decode(chunked.encoded()) == chunked
     assert partial(committed_bytes=1000).complete is True
     assert partial(total_size=None, committed_bytes=1000).complete is False  # length not fixed yet
 
@@ -395,10 +400,14 @@ def test_the_target_hash_is_the_documented_domain_separated_digest_of_the_name()
 def test_the_four_names_are_derived_from_the_hash_alone_and_have_a_fixed_length():
     names = download_names("weights.onnx")
     stem = ".yorunge-download-" + target_hash("weights.onnx")[:32]
-    assert names.lock == stem + ".lock" and names.stage == stem + ".part"
-    assert names.sidecar == stem + ".json" and names.sidecar_tmp == stem + ".json.tmp"
+    assert names.lock == stem + ".lock"
+    assert names.stage == stem + ".part"
+    assert names.sidecar == stem + ".json"
+    assert names.sidecar_tmp == stem + ".json.tmp"
     for name in (names.lock, names.stage, names.sidecar, names.sidecar_tmp):
-        assert "weights" not in name and "/" not in name and len(name) <= 59
+        assert "weights" not in name
+        assert "/" not in name
+        assert len(name) <= 59
 
 
 @pytest.mark.parametrize(
@@ -428,7 +437,8 @@ def test_every_valid_name_gets_names_of_one_length_and_no_other_shape(name):
     assert [len(names.lock), len(names.stage), len(names.sidecar)] == [prefix + 5] * 3
     assert len(names.sidecar_tmp) == prefix + len(".json.tmp")
     for item in (names.lock, names.stage, names.sidecar, names.sidecar_tmp):
-        assert item.startswith(".yorunge-download-") and "/" not in item
+        assert item.startswith(".yorunge-download-")
+        assert "/" not in item
 
 
 def test_different_names_never_share_a_file_name_and_a_name_is_stable():
@@ -497,7 +507,8 @@ def test_the_identity_key_is_bound_to_the_service_target_the_thing_and_the_fold(
         "fold": None,
     }
     key = identity_key(**base)
-    assert len(key) == 64 and key == identity_key(**base)
+    assert len(key) == 64
+    assert key == identity_key(**base)
     for field, value in {
         "origin": "https://staging.ssyz.org.tr",
         "api_base_path": "/api/v2",
@@ -536,15 +547,16 @@ CODES = {
 @pytest.mark.parametrize("code,exit_code", CODES.items())
 def test_each_download_code_has_its_exit_a_fixed_message_and_an_empty_detail(code, exit_code):
     error = YorungeError(code)
-    assert error.exit_code == exit_code and error.message == MESSAGES[code]
+    assert error.exit_code == exit_code
+    assert error.message == MESSAGES[code]
     envelope = error.envelope()
-    assert (
-        envelope["code"] == code and envelope["details"] == {} and envelope["operation_id"] is None
-    )
+    assert envelope["code"] == code
+    assert envelope["details"] == {}
+    assert envelope["operation_id"] is None
     # A fixed message names no file, path, address, tag or provider text, and takes no value.
-    assert (
-        "{" not in error.message and "%" not in error.message and error.message.endswith((".", ";"))
-    )
+    assert "{" not in error.message
+    assert "%" not in error.message
+    assert error.message.endswith((".", ";"))
 
 
 def test_the_download_messages_are_distinct_and_never_the_manifests():

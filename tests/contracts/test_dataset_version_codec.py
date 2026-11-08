@@ -122,7 +122,8 @@ def test_a_page_is_the_versions_asked_for_and_what_the_provider_says_about_the_p
         DATASET,
     )
     assert first.split_counts == SplitCounts(train=6, val=2, test=1, unassigned=1)
-    assert first.split_total_matches_item_count is True and first.observed_at == OBSERVED
+    assert first.split_total_matches_item_count is True
+    assert first.observed_at == OBSERVED
     assert second.version_tag == "v2"
 
 
@@ -290,7 +291,8 @@ def test_a_version_detail_is_the_facts_the_class_count_and_the_digest_of_the_lab
     )
     assert (shown.is_frozen, shown.is_partial, shown.is_export_ready) == (True, False, False)
     assert shown.created_at == "2026-11-04T10:11:12.123456Z"
-    assert CANARY not in repr(shown) and "köpek" not in repr(shown)
+    assert CANARY not in repr(shown)
+    assert "köpek" not in repr(shown)
 
 
 def test_the_class_labels_digest_does_not_depend_on_colours_shortcuts_or_the_order():
@@ -354,7 +356,8 @@ def test_a_missing_field_is_never_an_implicit_default():
 def test_the_answer_may_carry_fields_this_project_does_not_know_and_they_are_dropped():
     body = detail_body(future_field={"a": [1, 2, 3]}, description=CANARY)
     shown = detail(body)
-    assert CANARY not in repr(shown) and not hasattr(shown, "future_field")
+    assert CANARY not in repr(shown)
+    assert not hasattr(shown, "future_field")
 
 
 # --- the two reads together -----------------------------------------------------------------------
@@ -365,8 +368,10 @@ def test_the_two_reads_that_agree_are_one_observation():
         detail(detail_body()), version_splits(raw(splits_body()), secret=KEY), observed_at=OBSERVED
     )
     assert both.split_counts == SplitCounts(train=6, val=2, test=1, unassigned=1)
-    assert both.split_total_matches_item_count is True and both.observed_at == OBSERVED
-    assert both.kind == "dataset_version_observation" and both.class_count == 2
+    assert both.split_total_matches_item_count is True
+    assert both.observed_at == OBSERVED
+    assert both.kind == "dataset_version_observation"
+    assert both.class_count == 2
 
 
 def test_the_two_reads_that_disagree_are_not_an_observation_the_state_moved_between_them():
@@ -400,7 +405,8 @@ def test_the_split_counts_are_four_strict_counts():
 def test_a_total_that_is_not_the_item_count_is_recorded_in_the_observation():
     shown = detail(detail_body(item_count=11))
     both = observation(shown, version_splits(raw(splits_body()), secret=KEY), observed_at=OBSERVED)
-    assert both.item_count == 11 and both.split_total_matches_item_count is False
+    assert both.item_count == 11
+    assert both.split_total_matches_item_count is False
 
 
 # --- the provider's times -------------------------------------------------------------------------
@@ -461,7 +467,8 @@ def test_zero_counts_are_counts_in_a_detail_a_list_row_and_the_split_route():
             },
         }
     )
-    assert shown.item_count == 0 and shown.split_config == SplitCounts(**zero)
+    assert shown.item_count == 0
+    assert shown.split_config == SplitCounts(**zero)
     listed = page(page_body([row(**empty)]))
     assert listed.items[0].split_total_matches_item_count is True
     only_train = {"success": True, "data": {"train": 10, "val": 0, "test": 0, "unassigned": 0}}
@@ -481,7 +488,9 @@ def test_the_largest_count_is_accepted_and_one_more_is_not():
 
 def test_a_dataset_without_versions_is_an_empty_page_not_an_error():
     shown = page(page_body([], total=0))
-    assert shown.items == () and shown.total == 0 and shown.has_next is False
+    assert shown.items == ()
+    assert shown.total == 0
+    assert shown.has_next is False
 
 
 @pytest.mark.parametrize(
@@ -495,7 +504,8 @@ def test_a_dataset_without_versions_is_an_empty_page_not_an_error():
 )
 def test_a_page_past_the_end_is_an_honest_empty_page(meta):
     shown = page(page_body([], **meta), page=meta["page"])
-    assert shown.items == () and shown.page == meta["page"]
+    assert shown.items == ()
+    assert shown.page == meta["page"]
 
 
 def test_an_empty_page_that_says_more_is_coming_or_that_shows_rows_beyond_the_total_is_refused():
@@ -565,7 +575,8 @@ def test_the_page_is_a_frozen_wire_model_of_a_closed_kind():
         "dataset_version_list",
         DATASET,
     )
-    assert shown.observed_at == OBSERVED and shown.items[0].kind == "dataset_version_list_item"
+    assert shown.observed_at == OBSERVED
+    assert shown.items[0].kind == "dataset_version_list_item"
     with pytest.raises(ValueError):
         shown.total = 99  # type: ignore[misc]
     assert json.loads(shown.model_dump_json())["items"][0]["version_tag"] == "v1.0-final"
@@ -634,7 +645,8 @@ def test_the_int64_bounds_of_sort_order_id_and_annotation_count():
     top = 2**63 - 1
     assert class_labels_sha256([label(1, order=top, annotations=top)])
     assert class_labels_sha256([label(1, order=-top)])
-    assert class_labels_sha256([label(top)]) and class_labels_sha256([label(-top)])
+    assert class_labels_sha256([label(top)])
+    assert class_labels_sha256([label(-top)])
     for refused in (
         label(1, order=top + 1),
         label(1, order=-top - 1),

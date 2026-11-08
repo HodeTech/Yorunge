@@ -203,7 +203,8 @@ def test_the_proof_of_a_reconcile_is_observed_before_the_listing_starts(
         monkeypatch.setattr(ObservedUploadPort, "items", items)
         phase = reconcile(data, server, operation_id)
         proof = journal(data, report.plan_id).verification
-        assert phase.record.status == "succeeded" and len(started) == 1
+        assert phase.record.status == "succeeded"
+        assert len(started) == 1
         assert instant(proof.observed_at) <= started[0]
 
 

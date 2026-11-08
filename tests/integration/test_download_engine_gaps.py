@@ -79,7 +79,8 @@ from yorunge.domain.errors import YorungeError
 )
 def test_each_value_of_a_job_is_refused_on_its_own(world, changes):
     assert code_of(lambda: world.job(**changes)) == "invalid_request"
-    assert world.server.requests == [] and world.names() == []
+    assert world.server.requests == []
+    assert world.names() == []
 
 
 @pytest.mark.parametrize("credential", [None, "a-key", object(), b"x"])
@@ -117,7 +118,8 @@ def test_without_a_caller_deadline_the_get_gets_the_jobs_timeout_from_now(world,
     monkeypatch.setattr(TransferHttpxTransport, "open_download", spy)
     summary = run_download(world.job(timeout=77), world.owned)  # no deadline= : the default
     assert_whole(world, summary)
-    assert len(handed) == 1 and 74 <= handed[0] <= 77.5
+    assert len(handed) == 1
+    assert 74 <= handed[0] <= 77.5
 
 
 # --- the JSON call's time is given back exactly (N4, N4b, N4c, N4d) ------------------------------
@@ -178,7 +180,8 @@ def test_the_first_report_is_the_start_and_reports_follow_while_the_body_arrives
     assert_whole(world, summary)
     assert world.reports[0] == (0, len(DATA))  # Q4: before the first byte
     held = [pair[0] for pair in world.reports]
-    assert len(held) >= 4 and held == sorted(set(held))  # Q5: live, strictly forward
+    assert len(held) >= 4
+    assert held == sorted(set(held))  # Q5: live, strictly forward
     assert any(0 < value < len(DATA) for value in held)
     assert world.reports[-1] == (len(DATA), len(DATA))
 
@@ -270,7 +273,8 @@ def test_an_empty_object_is_published_and_a_whole_empty_stage_needs_no_request(w
     requests = len(world.server.requests)
     summary = world.run()
     assert (summary.bytes, summary.resumed, summary.resumed_from_bytes) == (0, True, 0)  # S2
-    assert world.target.read_bytes() == b"" and world.names() == [NAME]
+    assert world.target.read_bytes() == b""
+    assert world.names() == [NAME]
     assert len(world.server.requests) == requests  # no request at all
 
 
@@ -374,7 +378,8 @@ def test_a_deadline_already_gone_is_no_reason_to_touch_the_held_state_or_the_net
     before, requests = world.names(), len(world.server.requests)
     size = world.stage().stat().st_size
     assert code_of(lambda: world.run(seconds=-1)) == "transport_timeout"
-    assert world.names() == before and len(world.server.requests) == requests
+    assert world.names() == before
+    assert len(world.server.requests) == requests
     # untouched: the next call continues from, or publishes, what was held
     assert_whole(world, world.run(), resumed=True, resumed_from=size)
 
@@ -418,7 +423,8 @@ def test_a_deadline_that_is_not_a_finite_number_is_refused_before_anything_is_to
     assert code_of(lambda: run_download(world.job(), world.owned, deadline=deadline)) == (
         "invalid_request"
     )
-    assert world.names() == before and len(world.server.requests) == requests
+    assert world.names() == before
+    assert len(world.server.requests) == requests
 
 
 def test_a_session_that_cannot_serve_the_call_is_refused_before_a_stale_partial_is_dropped(world):
@@ -454,7 +460,8 @@ def test_a_resolver_that_never_answers_is_ended_at_its_budget_not_by_a_signal(wo
     began = time.monotonic()
     assert code_of(lambda: world.run(resolve=hangs)) == "transport_timeout"
     assert time.monotonic() - began < 3
-    assert world.names() == [] and world.server.requests == []
+    assert world.names() == []
+    assert world.server.requests == []
     assert_whole(world, world.run())  # and the session serves the next call
 
 
@@ -474,7 +481,8 @@ def test_a_resolver_that_swallows_its_cancellation_and_answers_late_is_ended_all
         return DownloadTarget(ORIGIN + SIGNED, origin=ORIGIN, prefix=PREFIX)  # ... and it answers
 
     assert code_of(lambda: world.run(resolve=stubborn)) == "transport_timeout"
-    assert world.names() == [] and world.provider.seen == []  # no signed GET followed it
+    assert world.names() == []
+    assert world.provider.seen == []  # no signed GET followed it
     assert_whole(world, world.run())
 
 
@@ -508,11 +516,13 @@ def test_a_wrong_digest_after_a_resume_removes_the_stage_and_the_next_call_downl
     wrong = "00" * 32
     with pytest.raises(YorungeError) as error:
         world.run(expected_sha256=wrong)
-    assert error.value.code == "download_integrity_mismatch" and error.value.exit_code == 7
+    assert error.value.code == "download_integrity_mismatch"
+    assert error.value.exit_code == 7
     assert world.names() == []  # no target, no stage, no sidecar: no offline loop of the mismatch
     matched = world.run(expected_sha256=sha_of_data())  # the right digest this time
     assert (matched.bytes, matched.verification_level) == (len(DATA), "sha256_matched")
-    assert world.target.read_bytes() == DATA and world.names() == [NAME]
+    assert world.target.read_bytes() == DATA
+    assert world.names() == [NAME]
     assert world.provider.seen[-1] == (None, None)  # and it started from the first byte
 
 
@@ -526,7 +536,8 @@ def test_a_wrong_digest_of_a_whole_stage_is_found_without_the_network_and_remove
     with pytest.raises(YorungeError) as error:
         world.run(expected_sha256="00" * 32)
     assert error.value.code == "download_integrity_mismatch"
-    assert world.names() == [] and len(world.server.requests) == requests
+    assert world.names() == []
+    assert len(world.server.requests) == requests
     assert_whole(world, world.run())  # downloaded afresh
 
 

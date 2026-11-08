@@ -127,17 +127,22 @@ def test_content_is_published_as_a_private_regular_file_with_nothing_left_behind
     pub.publish_bytes(CONTENT)
     info = place.target.stat()
     assert place.target.read_bytes() == CONTENT
-    assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1
-    assert place.leftovers() == [] and state.attempted is True
-    assert place.rechecks >= 3 and place.budget.checks >= 5  # the place and the budget were watched
+    assert stat.S_IMODE(info.st_mode) == 0o600
+    assert info.st_nlink == 1
+    assert place.leftovers() == []
+    assert state.attempted is True
+    assert place.rechecks >= 3
+    assert place.budget.checks >= 5  # the place and the budget were watched
 
 
 def test_a_taken_name_is_the_familys_exists_and_nothing_is_replaced(place):
     place.target.write_bytes(b"someone else's")
     pub, state = publisher(place)
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert isinstance(error, YorungeError) and error.code == CODES.exists
-    assert place.target.read_bytes() == b"someone else's" and place.leftovers() == []
+    assert isinstance(error, YorungeError)
+    assert error.code == CODES.exists
+    assert place.target.read_bytes() == b"someone else's"
+    assert place.leftovers() == []
     assert state.attempted is False
 
 
@@ -145,7 +150,8 @@ def test_a_dangling_symlink_is_a_taken_name(place):
     place.target.symlink_to("nowhere")
     pub, _ = publisher(place)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.exists
-    assert place.target.is_symlink() and place.leftovers() == []
+    assert place.target.is_symlink()
+    assert place.leftovers() == []
 
 
 def test_a_name_taken_after_the_first_look_is_exists_and_not_uncertain(place):
@@ -158,8 +164,10 @@ def test_a_name_taken_after_the_first_look_is_exists_and_not_uncertain(place):
 
     pub._publish_link = race
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.exists and state.attempted is False  # definite: not created
-    assert place.target.read_bytes() == b"the other owner" and place.leftovers() == []
+    assert error.code == CODES.exists
+    assert state.attempted is False  # definite: not created
+    assert place.target.read_bytes() == b"the other owner"
+    assert place.leftovers() == []
 
 
 @pytest.mark.parametrize("entry", ["bytes", "stage"])
@@ -179,8 +187,10 @@ def test_a_link_the_kernel_refused_made_no_entry_and_is_the_familys_failed(
     monkeypatch.setattr(os, "link", refuse)
     pub, state = publisher(place)
     error = failure(lambda: entry_publish(place, pub, entry))
-    assert error.code == CODES.failed and state.attempted is False
-    assert "PRIVATE-PATH" not in str(error.envelope()) and error.__context__ is None
+    assert error.code == CODES.failed
+    assert state.attempted is False
+    assert "PRIVATE-PATH" not in str(error.envelope())
+    assert error.__context__ is None
     assert not place.target.exists()
 
 
@@ -193,8 +203,11 @@ def test_a_failure_before_the_link_is_the_familys_failed_and_creates_no_target(p
 
     setattr(pub, step, denied)
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.failed and "PRIVATE-PATH" not in str(error.envelope())
-    assert not place.target.exists() and place.leftovers() == [] and state.attempted is False
+    assert error.code == CODES.failed
+    assert "PRIVATE-PATH" not in str(error.envelope())
+    assert not place.target.exists()
+    assert place.leftovers() == []
+    assert state.attempted is False
 
 
 def test_a_zero_length_write_is_failed(place, monkeypatch):
@@ -202,7 +215,8 @@ def test_a_zero_length_write_is_failed(place, monkeypatch):
     place.budget.fail_after = 50  # a regression fails here, it does not spin
     pub, _ = publisher(place)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
     assert place.budget.checks < 50  # it was the guard that stopped it
 
 
@@ -216,7 +230,8 @@ def test_short_writes_still_complete_the_file(place, monkeypatch):
     monkeypatch.setattr(os, "write", short)
     pub, _ = publisher(place)
     pub.publish_bytes(CONTENT)
-    assert len(sizes) > 100 and place.target.read_bytes() == CONTENT
+    assert len(sizes) > 100
+    assert place.target.read_bytes() == CONTENT
 
 
 @pytest.mark.parametrize("step", ["_sync", "_check_target"])
@@ -232,8 +247,10 @@ def test_a_failure_after_the_link_is_the_familys_uncertain_and_the_target_stays(
 
     setattr(pub, step, late)
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.uncertain and "PRIVATE-PATH" not in str(error.envelope())
-    assert state.attempted is True and place.target.read_bytes() == CONTENT
+    assert error.code == CODES.uncertain
+    assert "PRIVATE-PATH" not in str(error.envelope())
+    assert state.attempted is True
+    assert place.target.read_bytes() == CONTENT
 
 
 def test_an_identity_failure_after_the_link_is_uncertain_not_changed(place):
@@ -274,22 +291,27 @@ def test_a_cancelled_task_before_the_link_has_no_note_and_leaves_no_stage(place)
 
     pub._publish_link = cancelled
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert isinstance(error, asyncio.CancelledError) and not getattr(error, "__notes__", ())
-    assert state.attempted is False and not place.target.exists() and place.leftovers() == []
+    assert isinstance(error, asyncio.CancelledError)
+    assert not getattr(error, "__notes__", ())
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_an_interrupt_before_the_link_is_passed_on_and_removes_the_stage(place):
     pub, _ = publisher(place)
     pub._check_stage = lambda written: (_ for _ in ()).throw(KeyboardInterrupt())
     assert isinstance(failure(lambda: pub.publish_bytes(CONTENT)), KeyboardInterrupt)
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_a_unicode_error_before_the_link_is_the_familys_unreadable(place):
     pub, _ = publisher(place)
     pub._check_stage = lambda written: (_ for _ in ()).throw(UnicodeError("PRIVATE"))
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.unreadable and not place.target.exists()
+    assert error.code == CODES.unreadable
+    assert not place.target.exists()
 
 
 def test_a_stage_that_was_substituted_is_changed_and_the_foreign_file_is_not_removed(place):
@@ -305,7 +327,8 @@ def test_a_stage_that_was_substituted_is_changed_and_the_foreign_file_is_not_rem
 
     pub._check_stage = substitute
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.changed and not place.target.exists()
+    assert error.code == CODES.changed
+    assert not place.target.exists()
     (kept,) = place.leftovers()  # not the publisher's to remove: its identity is not ours
     assert (place.directory / kept).read_bytes() == b"a foreign file under the stage's name"
     assert MESSAGES[CODES.failed] in error.__notes__
@@ -321,7 +344,8 @@ def test_a_stage_with_another_mode_is_changed(place):
 
     pub._check_stage = chmod
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_a_file_system_that_names_the_inode_with_the_first_byte_still_lets_a_refused_stage_go(
@@ -351,7 +375,8 @@ def test_a_file_system_that_names_the_inode_with_the_first_byte_still_lets_a_ref
 
     pub._check_stage = chmod
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_a_write_that_fails_on_a_volume_whose_inode_drifts_still_lets_the_stage_go(
@@ -375,7 +400,9 @@ def test_a_write_that_fails_on_a_volume_whose_inode_drifts_still_lets_the_stage_
     monkeypatch.setattr(ArtifactPublisher, "_write", write)
     pub, state = publisher(place)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
-    assert not place.target.exists() and place.leftovers() == [] and state.attempted is False
+    assert not place.target.exists()
+    assert place.leftovers() == []
+    assert state.attempted is False
 
 
 def test_an_interrupt_that_lands_while_the_stage_is_being_created_does_not_strand_it(
@@ -399,7 +426,9 @@ def test_an_interrupt_that_lands_while_the_stage_is_being_created_does_not_stran
     pub, state = publisher(place)
     with pytest.raises(KeyboardInterrupt):
         pub.publish_bytes(CONTENT)
-    assert place.leftovers() == [] and not place.target.exists() and state.attempted is False
+    assert place.leftovers() == []
+    assert not place.target.exists()
+    assert state.attempted is False
 
 
 def test_the_signal_held_back_while_the_stage_is_made_is_delivered_once_it_is_ours(
@@ -421,7 +450,8 @@ def test_the_signal_held_back_while_the_stage_is_made_is_delivered_once_it_is_ou
     with pytest.raises(KeyboardInterrupt):
         pub.publish_bytes(CONTENT)
     monkeypatch.undo()
-    assert place.leftovers() == [] and len(os.listdir("/dev/fd")) == before
+    assert place.leftovers() == []
+    assert len(os.listdir("/dev/fd")) == before
 
 
 def test_a_stage_with_a_second_link_is_changed_and_the_foreign_link_stays(place):
@@ -434,7 +464,8 @@ def test_a_stage_with_a_second_link_is_changed_and_the_foreign_link_stays(place)
 
     pub._check_stage = link
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
-    assert not place.target.exists() and place.leftovers() == ["second-name"]
+    assert not place.target.exists()
+    assert place.leftovers() == ["second-name"]
 
 
 @pytest.mark.parametrize("entry", ["bytes", "stage"])
@@ -446,8 +477,10 @@ def test_a_place_that_changed_before_the_link_is_the_error_of_its_own_and_create
     error = failure(
         lambda: publish_stage(place, pub) if entry == "stage" else pub.publish_bytes(CONTENT)
     )
-    assert error.code == "input_changed" and state.attempted is False
-    assert not place.target.exists() and place.leftovers() == []
+    assert error.code == "input_changed"
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 @pytest.mark.parametrize("entry", ["bytes", "stage"])
@@ -457,7 +490,8 @@ def test_a_place_that_changed_after_the_link_is_uncertain_and_the_target_stays(p
     error = failure(
         lambda: publish_stage(place, pub) if entry == "stage" else pub.publish_bytes(CONTENT)
     )
-    assert error.code == CODES.uncertain and place.target.read_bytes() == CONTENT
+    assert error.code == CODES.uncertain
+    assert place.target.read_bytes() == CONTENT
 
 
 def test_a_source_that_changed_stops_before_the_link(place):
@@ -466,14 +500,17 @@ def test_a_source_that_changed_stops_before_the_link(place):
 
     pub, state = publisher(place, check_source=changed)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == "input_changed"
-    assert not place.target.exists() and place.leftovers() == [] and state.attempted is False
+    assert not place.target.exists()
+    assert place.leftovers() == []
+    assert state.attempted is False
 
 
 def test_an_exhausted_budget_stops_the_publication_and_removes_the_stage(place):
     place.budget.fail_after = 3
     pub, _ = publisher(place)
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == "execution_timeout"
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 # --- the seams are really called -----------------------------------------------------------------
@@ -509,15 +546,19 @@ def test_a_staged_stream_is_published_exclusively_and_its_stage_is_removed(place
     pub, state = publisher(place)
     publish_stage(place, pub)
     info = place.target.stat()
-    assert place.target.read_bytes() == CONTENT and place.leftovers() == []
-    assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1 and state.attempted
+    assert place.target.read_bytes() == CONTENT
+    assert place.leftovers() == []
+    assert stat.S_IMODE(info.st_mode) == 0o600
+    assert info.st_nlink == 1
+    assert state.attempted
 
 
 def test_a_staged_stream_never_replaces_a_taken_name_and_the_stage_goes(place):
     place.target.write_bytes(b"someone else's")
     pub, state = publisher(place)
     assert failure(lambda: publish_stage(place, pub)).code == CODES.exists
-    assert place.target.read_bytes() == b"someone else's" and place.leftovers() == []
+    assert place.target.read_bytes() == b"someone else's"
+    assert place.leftovers() == []
     assert state.attempted is False
 
 
@@ -529,8 +570,10 @@ def test_a_staged_stream_that_is_not_the_size_it_was_said_to_be_is_changed_befor
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     finally:
         os.close(descriptor)
-    assert error.code == CODES.changed and state.attempted is False  # definite: not linked
-    assert not place.target.exists() and place.leftovers() == []
+    assert error.code == CODES.changed
+    assert state.attempted is False  # definite: not linked
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_a_staged_stream_with_a_second_link_is_changed(place):
@@ -541,7 +584,8 @@ def test_a_staged_stream_with_a_second_link_is_changed(place):
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     finally:
         os.close(descriptor)
-    assert error.code == CODES.changed and not place.target.exists()
+    assert error.code == CODES.changed
+    assert not place.target.exists()
     assert place.leftovers() == ["other-name"]  # the stage went, the foreign link stays
 
 
@@ -627,7 +671,8 @@ def test_a_publisher_removes_a_finished_stage_by_default_for_any_failure(
     pub, state = publisher(place)
     fault(place, pub, monkeypatch)
     assert fault_outcome(failure(lambda: publish_stage(place, pub)), expected)
-    assert state.attempted is attempted and not place.target.exists()
+    assert state.attempted is attempted
+    assert not place.target.exists()
     assert place.leftovers() == []
 
 
@@ -641,7 +686,8 @@ def test_a_keeping_publisher_keeps_a_finished_stage_that_nothing_speaks_against(
     pub = Keeping(place, state, prefix=PREFIX)
     fault(place, pub, monkeypatch)
     assert fault_outcome(failure(lambda: publish_stage(place, pub)), expected)
-    assert state.attempted is attempted and not place.target.exists()
+    assert state.attempted is attempted
+    assert not place.target.exists()
     (kept,) = place.leftovers()  # the only copy is still whole
     assert (place.directory / kept).read_bytes() == CONTENT
     monkeypatch.undo()
@@ -653,7 +699,8 @@ def test_a_keeping_publisher_keeps_a_finished_stage_that_nothing_speaks_against(
     finally:
         os.close(descriptor)
         again.close()
-    assert place.target.read_bytes() == CONTENT and place.leftovers() == []
+    assert place.target.read_bytes() == CONTENT
+    assert place.leftovers() == []
 
 
 def test_a_keeping_publisher_keeps_the_stage_when_the_target_was_replaced_after_the_link(place):
@@ -678,7 +725,8 @@ def test_an_override_of_the_removal_need_not_clear_the_publishers_bookkeeping(pl
 
     pub = Forgetful(place, PublicationState(CODES), prefix=PREFIX)
     publish_stage(place, pub)
-    assert place.target.read_bytes() == CONTENT and place.leftovers() == []
+    assert place.target.read_bytes() == CONTENT
+    assert place.leftovers() == []
 
 
 def test_the_size_that_is_wrong_comes_after_a_source_or_a_place_that_changed(place):
@@ -691,7 +739,8 @@ def test_the_size_that_is_wrong_comes_after_a_source_or_a_place_that_changed(pla
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 5))
     finally:
         os.close(descriptor)
-    assert error.code == "input_changed" and state.attempted is False  # not the size's verdict
+    assert error.code == "input_changed"
+    assert state.attempted is False  # not the size's verdict
 
 
 @pytest.mark.parametrize("member", ["failed", "exists", "uncertain", "changed", "unreadable"])
@@ -724,7 +773,8 @@ def test_the_note_that_the_stage_may_be_left_is_on_the_error_once_and_only_befor
     pub, state = publisher(place)
     pub._remove_stage = lambda: (_ for _ in ()).throw(OSError(errno.EIO, ""))
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.uncertain and state.attempted is True
+    assert error.code == CODES.uncertain
+    assert state.attempted is True
     assert MESSAGES[CODES.failed] not in getattr(error, "__notes__", ())
 
 
@@ -732,7 +782,8 @@ def test_a_keeping_publisher_still_removes_the_stage_of_a_definite_refusal(place
     place.target.write_bytes(b"someone else's")
     pub = Keeping(place, PublicationState(CODES))
     assert failure(lambda: publish_stage(place, pub)).code == CODES.exists
-    assert place.target.read_bytes() == b"someone else's" and place.leftovers() == []
+    assert place.target.read_bytes() == b"someone else's"
+    assert place.leftovers() == []
 
 
 def test_a_keeping_publisher_removes_a_stage_that_is_not_what_was_written(place):
@@ -743,7 +794,8 @@ def test_a_keeping_publisher_removes_a_stage_that_is_not_what_was_written(place)
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     finally:
         os.close(descriptor)
-    assert error.code == CODES.changed and place.leftovers() == []
+    assert error.code == CODES.changed
+    assert place.leftovers() == []
 
 
 @pytest.mark.parametrize("stage", ["", ".", "..", "a/b", "/elsewhere/stage", "a\0b"])
@@ -751,7 +803,8 @@ def test_a_stage_is_one_name_in_the_targets_directory(place, stage):
     pub, state = publisher(place)
     with pytest.raises(ValueError):
         pub.publish_stage(stage, 0, 1)
-    assert state.attempted is False and place.leftovers() == []
+    assert state.attempted is False
+    assert place.leftovers() == []
 
 
 def test_a_stage_whose_identity_cannot_be_read_is_the_familys_failed_and_is_left_alone(place):
@@ -759,7 +812,8 @@ def test_a_stage_whose_identity_cannot_be_read_is_the_familys_failed_and_is_left
     name, descriptor = staged(place)
     os.close(descriptor)  # the stream's descriptor is gone
     error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
-    assert error.code == CODES.failed and state.attempted is False
+    assert error.code == CODES.failed
+    assert state.attempted is False
     assert place.leftovers() == [name]  # its identity is unknown: not the publisher's to remove
 
 
@@ -767,7 +821,8 @@ def test_bytes_cannot_be_published_without_a_stage_name_prefix(place):
     pub = ArtifactPublisher(place, PublicationState(CODES))
     with pytest.raises(ValueError):
         pub.publish_bytes(CONTENT)
-    assert not place.target.exists() and place.leftovers() == []
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 @pytest.mark.parametrize(
@@ -809,8 +864,10 @@ def test_a_manifest_stage_that_a_racer_truncates_after_the_sync_is_not_published
         api.inspect_dataset(root, manifest_out=target)
     # Not the bytes that were written: a definite failure before the link, nothing published. (A
     # damaged manifest was once linked and then reported as uncertain.)
-    assert error.value.code == "input_changed" and error.value.exit_code == 2
-    assert not target.exists() and sorted(p.name for p in out.iterdir()) == []
+    assert error.value.code == "input_changed"
+    assert error.value.exit_code == 2
+    assert not target.exists()
+    assert sorted(p.name for p in out.iterdir()) == []
 
 
 def test_the_manifests_publication_state_keeps_the_base_positional_order():
@@ -818,8 +875,10 @@ def test_the_manifests_publication_state_keeps_the_base_positional_order():
     from yorunge.adapters.dataset_reports import PublicationState as Manifest
 
     state = Manifest(True)
-    assert state.attempted is True and state.codes == MANIFEST_CODES
-    assert Manifest().attempted is False and Manifest(codes=MANIFEST_CODES).attempted is False
+    assert state.attempted is True
+    assert state.codes == MANIFEST_CODES
+    assert Manifest().attempted is False
+    assert Manifest(codes=MANIFEST_CODES).attempted is False
 
 
 # --- what independent mutation found the first tests did not pin ---------------------------------
@@ -863,7 +922,8 @@ def test_a_failing_close_of_the_stage_descriptor_after_the_link_is_uncertain(pla
     monkeypatch.setattr(os, "close", closing)
     pub, _ = publisher(place)
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert isinstance(error, YorungeError) and error.code == CODES.uncertain
+    assert isinstance(error, YorungeError)
+    assert error.code == CODES.uncertain
     assert place.target.read_bytes() == CONTENT
 
 
@@ -896,7 +956,8 @@ def test_a_stat_failure_on_the_target_is_the_familys_failed(place, monkeypatch):
     pub, state = publisher(place)
     assert failure(lambda: pub.ensure_absent()).code == CODES.failed
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.failed
-    assert place.names() == [] and state.attempted is False
+    assert place.names() == []
+    assert state.attempted is False
 
 
 @pytest.mark.parametrize("planted", ["file", "dangling-symlink", "symlink-to-victim"])
@@ -917,7 +978,8 @@ def test_a_stage_name_that_is_already_taken_is_never_written_through(place, monk
     assert victim.read_bytes() == b"VICTIM"
     if planted == "file":
         assert stage.read_bytes() == b"FOREIGN"
-    assert not place.target.exists() and state.attempted is False
+    assert not place.target.exists()
+    assert state.attempted is False
 
 
 def test_the_stage_is_private_whatever_the_umask(place):
@@ -927,9 +989,8 @@ def test_the_stage_is_private_whatever_the_umask(place):
         pub.publish_bytes(CONTENT)
     finally:
         os.umask(old)
-    assert (
-        stat.S_IMODE(place.target.stat().st_mode) == 0o600 and place.target.read_bytes() == CONTENT
-    )
+    assert stat.S_IMODE(place.target.stat().st_mode) == 0o600
+    assert place.target.read_bytes() == CONTENT
 
 
 def test_the_stage_is_created_private_before_any_fchmod(place, monkeypatch):
@@ -953,7 +1014,8 @@ def test_a_source_that_changes_only_after_the_link_is_uncertain(place):
 
     pub, state = publisher(place, check_source=check_source)
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.uncertain and state.attempted is True
+    assert error.code == CODES.uncertain
+    assert state.attempted is True
     assert place.target.read_bytes() == CONTENT
 
 
@@ -1009,7 +1071,8 @@ def test_the_directory_is_synced_after_the_unlink_and_before_the_file_sync(
         pub.publish_stage(name, descriptor, len(CONTENT))
         os.close(descriptor)
     tail = events[events.index("link") :]
-    assert tail[:3] == ["link", "unlink", "fsync-directory"] and "fsync-file" in tail[3:]
+    assert tail[:3] == ["link", "unlink", "fsync-directory"]
+    assert "fsync-file" in tail[3:]
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="F_FULLFSYNC is a macOS barrier")
@@ -1041,7 +1104,8 @@ def test_writes_are_bounded_to_one_mebibyte_and_a_long_write_is_failed(
     monkeypatch.setattr(os, "write", write)
     pub, _ = publisher(place)
     pub.publish_bytes(big)
-    assert max(sizes) == 1024 * 1024 and len(sizes) == 4
+    assert max(sizes) == 1024 * 1024
+    assert len(sizes) == 4
 
     monkeypatch.setattr(os, "write", lambda descriptor, data: len(data) + 1)  # more than offered
     (tmp_path / "again").mkdir()
@@ -1059,7 +1123,8 @@ def test_the_place_and_the_source_are_looked_at_before_the_link(place, entry):
     pub, state = publisher(place, check_source=lambda: log.append(("source", state.attempted)))
     place.recheck_hook = lambda: log.append(("place", state.attempted))
     entry_publish(place, pub, entry)
-    assert ("source", False) in log and ("place", False) in log
+    assert ("source", False) in log
+    assert ("place", False) in log
 
 
 def test_a_failing_first_fstat_of_a_stream_stage_is_the_familys_failed(place, monkeypatch):
@@ -1076,7 +1141,8 @@ def test_a_failing_first_fstat_of_a_stream_stage_is_the_familys_failed(place, mo
     monkeypatch.setattr(os, "fstat", fstat)
     error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     os.close(descriptor)
-    assert error.code == CODES.failed and "PRIVATE-PATH" not in str(error.envelope())
+    assert error.code == CODES.failed
+    assert "PRIVATE-PATH" not in str(error.envelope())
 
 
 def test_a_stage_name_turned_into_a_symlink_to_the_real_stage_is_changed_before_the_link(place):
@@ -1091,8 +1157,10 @@ def test_a_stage_name_turned_into_a_symlink_to_the_real_stage_is_changed_before_
 
     pub._check_stage = swap
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.changed and state.attempted is False
-    assert not place.target.exists() and not place.target.is_symlink()
+    assert error.code == CODES.changed
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert not place.target.is_symlink()
 
 
 def test_a_stage_modified_after_the_last_look_and_before_the_stage_check_is_changed(place):
@@ -1106,7 +1174,8 @@ def test_a_stage_modified_after_the_last_look_and_before_the_stage_check_is_chan
 
     pub._check_stage = append
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
-    assert state.attempted is False and not place.target.exists()
+    assert state.attempted is False
+    assert not place.target.exists()
 
 
 @pytest.mark.parametrize("mode", [0o644, 0o400, 0o700])
@@ -1116,8 +1185,10 @@ def test_a_streams_stage_with_another_mode_is_changed_before_the_link(place, mod
     os.fchmod(descriptor, mode)
     error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     os.close(descriptor)
-    assert error.code == CODES.changed and state.attempted is False
-    assert not place.target.exists() and place.names() == []
+    assert error.code == CODES.changed
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert place.names() == []
 
 
 def test_a_stage_owned_by_somebody_else_is_changed_before_the_link(place, monkeypatch):
@@ -1127,7 +1198,9 @@ def test_a_stage_owned_by_somebody_else_is_changed_before_the_link(place, monkey
     monkeypatch.setattr(os, "getuid", lambda: owner + 1)
     error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT)))
     os.close(descriptor)
-    assert error.code == CODES.changed and state.attempted is False and not place.target.exists()
+    assert error.code == CODES.changed
+    assert state.attempted is False
+    assert not place.target.exists()
 
 
 def test_the_stage_carries_the_callers_prefix_and_suffix(place):
@@ -1141,7 +1214,9 @@ def test_the_stage_carries_the_callers_prefix_and_suffix(place):
     pub._check_stage = look
     pub.publish_bytes(CONTENT)
     (stage,) = seen
-    assert stage.startswith(PREFIX) and stage.endswith(".tmp") and "/" not in stage
+    assert stage.startswith(PREFIX)
+    assert stage.endswith(".tmp")
+    assert "/" not in stage
 
 
 def after_link(pub, action):
@@ -1223,7 +1298,8 @@ def test_a_stage_that_somebody_else_removed_before_our_cleanup_is_not_an_error(p
 
     pub._check_target = check
     entry_publish(place, pub, entry)
-    assert place.target.read_bytes() == CONTENT and place.names() == [NAME]
+    assert place.target.read_bytes() == CONTENT
+    assert place.names() == [NAME]
 
 
 @pytest.mark.parametrize("entry", ["bytes", "stage"])
@@ -1236,7 +1312,8 @@ def test_a_link_that_fails_for_another_reason_than_a_taken_name_is_uncertain(
     monkeypatch.setattr(os, "link", refuse)
     pub, state = publisher(place)
     error = failure(lambda: entry_publish(place, pub, entry))
-    assert error.code == CODES.uncertain and state.attempted is True
+    assert error.code == CODES.uncertain
+    assert state.attempted is True
     assert "PRIVATE-PATH" not in str(error.envelope())
 
 
@@ -1261,8 +1338,10 @@ def test_a_stage_shorter_than_the_size_it_was_said_to_be_is_changed_before_the_l
     name, descriptor = staged(place, CONTENT)
     error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 1))
     os.close(descriptor)
-    assert error.code == CODES.changed and state.attempted is False
-    assert not place.target.exists() and place.names() == []
+    assert error.code == CODES.changed
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert place.names() == []
 
 
 def test_a_stage_modified_while_the_source_is_looked_at_is_changed_before_the_link(place):
@@ -1277,7 +1356,8 @@ def test_a_stage_modified_while_the_source_is_looked_at_is_changed_before_the_li
     pub, state = publisher(place, check_source=check_source)
     holder["pub"] = pub
     assert failure(lambda: pub.publish_bytes(CONTENT)).code == CODES.changed
-    assert state.attempted is False and not place.target.exists()
+    assert state.attempted is False
+    assert not place.target.exists()
 
 
 def test_a_symlink_put_at_the_stage_name_after_the_link_is_not_ours_to_remove(place):
@@ -1311,7 +1391,8 @@ def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypa
 
     pub._sync = disk_full
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.failed and secret not in traceback_text(error)
+    assert error.code == CODES.failed
+    assert secret not in traceback_text(error)
 
     pub, state = publisher(place)
     original = pub._check_target
@@ -1323,7 +1404,8 @@ def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypa
 
     pub._check_target = late
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.uncertain and secret not in traceback_text(error)
+    assert error.code == CODES.uncertain
+    assert secret not in traceback_text(error)
     place.target.unlink()
 
     real = os.stat
@@ -1336,7 +1418,8 @@ def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypa
     monkeypatch.setattr(os, "stat", refused)
     pub, _ = publisher(place)
     error = failure(lambda: pub.ensure_absent())
-    assert error.code == CODES.failed and secret not in traceback_text(error)
+    assert error.code == CODES.failed
+    assert secret not in traceback_text(error)
     monkeypatch.setattr(os, "stat", real)
 
     pub, _ = publisher(place)
@@ -1348,7 +1431,8 @@ def test_mapped_errors_carry_no_os_error_text_in_their_traceback(place, monkeypa
 
     pub._publish_link = taken_then_link
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.exists and "File exists" not in traceback_text(error)
+    assert error.code == CODES.exists
+    assert "File exists" not in traceback_text(error)
 
     try:
         raise OSError(errno.EIO, secret)
@@ -1377,7 +1461,8 @@ def test_the_manifest_writer_keeps_its_prefix_and_hands_its_source_check_on(plac
     writer._check_stage = lambda written: (seen.append(writer.stage), original(written))
     writer.publish_bytes(b"{}")
     assert len(calls) == 2  # before and after the link
-    assert seen[0].startswith(".yorunge-manifest-") and seen[0].endswith(".tmp")
+    assert seen[0].startswith(".yorunge-manifest-")
+    assert seen[0].endswith(".tmp")
 
 
 # --- a stage that cannot be removed, and the error that replaces the one raised -------------
@@ -1392,7 +1477,8 @@ def test_a_failed_cleanup_leaves_its_note_on_the_error_that_is_raised(place, mon
     pub._sync = disk_full
     monkeypatch.setattr(os, "unlink", lambda *a, **k: (_ for _ in ()).throw(OSError(errno.EIO, "")))
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.failed and state.attempted is False
+    assert error.code == CODES.failed
+    assert state.attempted is False
     assert MESSAGES[CODES.failed] in error.__notes__  # the stage may still be there
     monkeypatch.undo()
     assert len(place.leftovers()) == 1
@@ -1431,7 +1517,8 @@ def test_a_stage_cannot_be_named_like_the_target(place):
     pub, state = publisher(place)
     with pytest.raises(ValueError):
         pub.publish_stage(NAME, 0, 1)
-    assert state.attempted is False and place.leftovers() == []
+    assert state.attempted is False
+    assert place.leftovers() == []
 
 
 def test_a_stage_name_prefix_is_part_of_one_name(place):
@@ -1516,7 +1603,8 @@ def test_a_kill_at_every_step_leaves_the_target_absent_or_whole(
     others = sorted(p.name for p in directory.iterdir() if p.name != NAME)
     if published:
         # The target is whole and private; it is never a partial file.
-        assert target.read_bytes() == CONTENT and stat.S_IMODE(target.stat().st_mode) == 0o600
+        assert target.read_bytes() == CONTENT
+        assert stat.S_IMODE(target.stat().st_mode) == 0o600
         assert target.stat().st_nlink == (2 if second_link else 1)
         assert len(others) == (1 if second_link else 0)
     else:
@@ -1531,6 +1619,7 @@ def test_a_kill_at_every_step_leaves_the_target_absent_or_whole(
             assert target.read_bytes() == CONTENT  # never replaced
         else:
             pub.publish_bytes(CONTENT)
-            assert target.read_bytes() == CONTENT and stat.S_IMODE(target.stat().st_mode) == 0o600
+            assert target.read_bytes() == CONTENT
+            assert stat.S_IMODE(target.stat().st_mode) == 0o600
     finally:
         again.close()

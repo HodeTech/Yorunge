@@ -181,12 +181,15 @@ def test_the_bounds_are_taken_from_the_baseline_and_the_two_peaks_in_that_order(
     stage, result = run(monkeypatch)
     assert stage.calls["rss_bounds"] == [(5_000, 1_000, 2_000)]
     assert stage.calls["rss_bytes"] == [(5_000, "Darwin")]
-    assert result["baseline_rss_native"] == 5_000 and result["baseline_rss_bytes"] == 5_000
+    assert result["baseline_rss_native"] == 5_000
+    assert result["baseline_rss_bytes"] == 5_000
     assert result["baseline_rss_method"] == "method"
     assert result["pretransfer_peak_rss_native"] == 111
     assert result["pretransfer_peak_rss_bytes"] == 1_000
-    assert result["peak_rss_native"] == 222 and result["peak_rss_bytes"] == 2_000
-    assert result["extra_rss_lower_bound_bytes"] == 7 and result["extra_rss_upper_bound_bytes"] == 8
+    assert result["peak_rss_native"] == 222
+    assert result["peak_rss_bytes"] == 2_000
+    assert result["extra_rss_lower_bound_bytes"] == 7
+    assert result["extra_rss_upper_bound_bytes"] == 8
     assert result["rss_native_unit"] == "bytes"
 
 
@@ -201,13 +204,15 @@ def test_on_linux_the_baseline_is_read_in_pages_inside_the_window(monkeypatch):
     assert window[:3] == ["+instruments", "baseline", "rss_bytes"]
     assert stage.events.count("baseline") == 1  # the Linux reader replaces the portable one
     assert stage.calls["rss_bytes"] == [(4_000, "Linux")]
-    assert result["baseline_rss_pages"] == 1 and result["rss_page_bytes"] == 4_096
+    assert result["baseline_rss_pages"] == 1
+    assert result["rss_page_bytes"] == 4_096
     assert result["rss_native_unit"] == "KiB"
 
 
 def test_off_linux_there_are_no_page_details(monkeypatch):
     _, result = run(monkeypatch, system="Darwin")
-    assert "baseline_rss_pages" not in result and "rss_page_bytes" not in result
+    assert "baseline_rss_pages" not in result
+    assert "rss_page_bytes" not in result
 
 
 # --- what is recorded -------------------------------------------------------------------------
@@ -254,7 +259,8 @@ def test_the_provenance_is_taken_before_and_after_the_window_and_nowhere_else(mo
     positions = [i for i, name in enumerate(stage.events) if name == "provenance"]
     assert len(positions) == 2
     start, stop = stage.events.index("+instruments"), stage.events.index("-instruments")
-    assert positions[0] < start and positions[1] > stop
+    assert positions[0] < start
+    assert positions[1] > stop
 
 
 # --- what is on disk afterwards, outside the window --------------------------------------------
@@ -289,15 +295,18 @@ def test_a_verified_payload_is_removed_and_the_record_says_so(tmp_path):
 def test_a_payload_that_differs_from_the_oracle_is_kept_for_diagnosis(tmp_path):
     item, layout, digest = written(tmp_path, damaged=True)
     record = client.verify_output(tmp_path, item, digest)
-    assert record["payload_removed"] is False and layout.target.exists()
-    assert record["file_bytes"] == item.size and record["file_sha256"] != digest
+    assert record["payload_removed"] is False
+    assert layout.target.exists()
+    assert record["file_bytes"] == item.size
+    assert record["file_sha256"] != digest
     assert record["file_sha256"] == hashlib.sha256(layout.target.read_bytes()).hexdigest()
 
 
 def test_a_payload_of_the_wrong_size_is_kept(tmp_path):
     item, layout, digest = written(tmp_path, extra=b"x")
     record = client.verify_output(tmp_path, item, digest)
-    assert record["file_bytes"] == item.size + 1 and record["payload_removed"] is False
+    assert record["file_bytes"] == item.size + 1
+    assert record["payload_removed"] is False
     assert layout.target.exists()
 
 
@@ -305,7 +314,8 @@ def test_a_payload_whose_digest_matches_but_is_not_the_measured_object_is_kept(t
     item, layout, digest = written(tmp_path)  # the 1 MiB warm bytes and their own digest
     other = data.fixture("16")  # ... offered as the answer for the 16 MiB object
     record = client.verify_output(tmp_path, other, digest)
-    assert record["file_sha256"] == digest and record["payload_removed"] is False
+    assert record["file_sha256"] == digest
+    assert record["payload_removed"] is False
     assert layout.target.exists()
     assert item.size != other.size
 

@@ -70,7 +70,8 @@ def test_an_attempt_a_byte_over_the_payload_bound_is_refused_and_writes_nothing(
         stored = rows(data[0])
         with pytest.raises(YorungeError) as error:
             prepared(data, server, source)
-        assert error.value.code == "upload_capacity_exceeded" and rows(data[0]) == stored
+        assert error.value.code == "upload_capacity_exceeded"
+        assert rows(data[0]) == stored
 
 
 def test_the_file_bound_counts_every_file_of_the_manifest_not_only_those_that_are_sent(
@@ -84,7 +85,8 @@ def test_the_file_bound_counts_every_file_of_the_manifest_not_only_those_that_ar
         stored = rows(data[0])
         with pytest.raises(YorungeError) as error:
             prepared(data, server, source)
-        assert error.value.code == "upload_capacity_exceeded" and rows(data[0]) == stored
+        assert error.value.code == "upload_capacity_exceeded"
+        assert rows(data[0]) == stored
 
 
 def test_the_payload_a_report_and_a_plan_add_is_the_formula_and_the_observation_is_dated(

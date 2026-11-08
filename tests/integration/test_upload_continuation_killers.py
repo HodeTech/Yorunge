@@ -119,8 +119,10 @@ def test_a_hint_that_cannot_be_made_says_nothing_not_that_resume_is_fine(
 
         monkeypatch.setattr(upload_public, "source_journal", broken)
         code, out, err = cli_show(capsys, rig.state, rig.source)
-        assert code == 0 and "Durum: belirsiz" in out
-        assert "Devam için" not in out and "Devam şu an mümkün değil" not in out
+        assert code == 0
+        assert "Durum: belirsiz" in out
+        assert "Devam için" not in out
+        assert "Devam şu an mümkün değil" not in out
 
 
 def test_the_journal_is_in_the_closed_order_with_the_successor_named(monkeypatch):
@@ -146,7 +148,8 @@ def test_the_journal_is_in_the_closed_order_with_the_successor_named(monkeypatch
         upload_chain, "chain_blockers", lambda chain: ("known_negative", "reconcile_available")
     )
     chain, blockers, related = upload_chain.source_journal(source)
-    assert chain == "chain" and related == "successor"
+    assert chain == "chain"
+    assert related == "successor"
     assert calls["descendants"] == ("d",)
     assert blockers == tuple(name for name in BLOCKERS if name in blockers)
     assert set(blockers) == {
@@ -310,7 +313,8 @@ def test_a_check_only_continuation_shows_no_counter_even_with_an_observer(
         seen: list[UploadProgress] = []
         with observe_upload(seen.append):
             done = api.start_dataset_upload(second.plan_id, config=rig.config, state_dir=rig.state)
-        assert done.data.operation_status == "succeeded" and done.data.continuation_files == 0
+        assert done.data.operation_status == "succeeded"
+        assert done.data.continuation_files == 0
         assert seen == []
 
 
@@ -383,7 +387,8 @@ def test_reconcile_of_a_continuation_needs_the_explicit_read_choice(
             api.reconcile_dataset_upload(
                 operation, accept_unverified_read=False, config=rig.config, state_dir=rig.state
             )
-        assert refused.value.code == "approval_required" and refused.value.operation_id == operation
+        assert refused.value.code == "approval_required"
+        assert refused.value.operation_id == operation
         assert len(rig.server.requests) == requests
         # and an error of the reconcile names the operation that was asked about (B09)
         with pytest.raises(OperationError) as missing:

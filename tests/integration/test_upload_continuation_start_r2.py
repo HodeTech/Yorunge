@@ -107,7 +107,8 @@ def test_a_continuation_that_sends_files_and_fails_before_its_first_intent_is_no
         assert error.value.code != "operation_uncertain"
         assert error.value.operation_id == record.operation_id
         assert (record.status, record.workflow_latched) == ("admitted", False)
-        assert journal(data, report.plan_id).intents == () and provider.events[sends:] == []
+        assert journal(data, report.plan_id).intents == ()
+        assert provider.events[sends:] == []
         with open_existing_store(data[0]) as store:  # the lease cleanup closes the record
             cleaned = StateUploads(store, clock=clock).cleanup_expired(record.operation_id)
         assert (cleaned.operation.status, cleaned.operation.reason) == ("cancelled", closed_as)
@@ -160,7 +161,8 @@ def test_a_real_sigint_right_after_the_operation_exists_cancels_it_before_any_pe
         record = operation_of(data, report.plan_id)
         assert (error.value.code, error.value.exit_code) == ("request_cancelled", 6)
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
-        assert journal(data, report.plan_id).intents == () and provider.events[sends:] == []
+        assert journal(data, report.plan_id).intents == ()
+        assert provider.events[sends:] == []
         store_is_valid(data)
 
 
@@ -190,7 +192,8 @@ def test_a_plan_admitted_between_the_two_reads_of_the_journal_returns_its_own_re
         monkeypatch.setattr(start_module, "_explained", explained)
         phase = go(data, server, report.plan_id)
         assert seen == ["remote_failed"]
-        assert phase.existing is True and phase.record == operation_of(data, report.plan_id)
+        assert phase.existing is True
+        assert phase.record == operation_of(data, report.plan_id)
 
 
 @pytest.mark.parametrize("status", [503, 429])
@@ -207,7 +210,8 @@ def test_a_loser_whose_admission_probe_fails_after_the_winner_finished_returns_t
             thread = threading.Thread(target=lambda: result.append(go(data, server, plan_id)))
             thread.start()
             thread.join()
-            assert result[0].existing is False and result[0].record.status == "succeeded"
+            assert result[0].existing is False
+            assert result[0].record.status == "succeeded"
             provider.route_table[ME] = lambda request, count: reply({}, status)
         return await original(environment)
 
@@ -217,7 +221,8 @@ def test_a_loser_whose_admission_probe_fails_after_the_winner_finished_returns_t
         approve(data, server, plan_id)
         monkeypatch.setattr(ContinuationStages, "admission", admission)
         phase = go(data, server, plan_id)
-        assert phase.existing is True and phase.record.status == "succeeded"
+        assert phase.existing is True
+        assert phase.record.status == "succeeded"
         assert phase.record == operation_of(data, plan_id)
 
 
@@ -242,7 +247,8 @@ def test_a_store_that_is_busy_when_the_plans_operation_is_asked_for_is_said_not_
         monkeypatch.setattr(start_module, "_initial", initial)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert error.value.code == "state_busy" and len(calls) == 2
+        assert error.value.code == "state_busy"
+        assert len(calls) == 2
 
 
 def _journal_that_cannot_explain(prepared_input, certificates, monkeypatch, second):
@@ -262,7 +268,8 @@ def _journal_that_cannot_explain(prepared_input, certificates, monkeypatch, seco
         monkeypatch.setattr(UploadResumeRuntime, "_read_source", read_source)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
-        assert len(calls) == 2 and error.value.code == "remote_failed"
+        assert len(calls) == 2
+        assert error.value.code == "remote_failed"
 
 
 def test_an_operation_error_that_is_not_a_conflict_does_not_replace_the_refusal(
@@ -318,7 +325,8 @@ def test_the_refusal_of_a_look_is_raised_without_its_context(prepared_input, cer
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
         assert error.value.code == "remote_failed"
-        assert error.value.__cause__ is None and error.value.__suppress_context__ is True
+        assert error.value.__cause__ is None
+        assert error.value.__suppress_context__ is True
 
 
 def test_an_error_that_names_a_sibling_operation_leaves_run_stages_without_its_chain(
@@ -340,7 +348,8 @@ def test_an_error_that_names_a_sibling_operation_leaves_run_stages_without_its_c
         with pytest.raises(OperationError) as error:
             start(data, server, report.plan_id, algorithm=boom)
         assert error.value.code == "operation_conflict"
-        assert error.value.__cause__ is None and error.value.__context__ is None
+        assert error.value.__cause__ is None
+        assert error.value.__context__ is None
 
 
 def test_a_sibling_admitted_and_lapsed_does_not_block_the_next_plan(prepared_input, certificates):
@@ -355,7 +364,8 @@ def test_a_sibling_admitted_and_lapsed_does_not_block_the_next_plan(prepared_inp
         late.skew = 200  # the lease of P1 (150 s) has lapsed
         sends = len(provider.events)
         phase = go(data, server, second.plan_id, clock=late)
-        assert phase.existing is False and phase.record.status == "succeeded"
+        assert phase.existing is False
+        assert phase.record.status == "succeeded"
         assert provider.events[sends:] == ["presign", "put", "confirm"]
         cancelled = operation_of(data, first.plan_id)
         assert (cancelled.status, cancelled.reason) == ("cancelled", "lease_expired")
@@ -434,7 +444,8 @@ def test_a_clock_between_the_plan_and_its_approval_is_refused_before_one_request
         requests = len(server.requests)
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id, clock=clock)
-        assert error.value.code == "upload_plan_not_valid" and len(server.requests) == requests
+        assert error.value.code == "upload_plan_not_valid"
+        assert len(server.requests) == requests
 
 
 def test_the_invocation_ends_fifteen_minutes_after_it_started(
@@ -491,7 +502,8 @@ def test_the_look_and_the_stages_cannot_outlive_the_invocation(
         monkeypatch.setattr(start_module, "run_stages", spy)
         assert go(data, server, report.plan_id, budgets=budgets).record.status == "succeeded"
         look, stages = budgets
-        assert look.end <= ends[0] + 0.5 and stages.end <= ends[0] + 0.5, (look.end, ends[0])
+        assert look.end <= ends[0] + 0.5, (look.end, ends[0])
+        assert stages.end <= ends[0] + 0.5, (look.end, ends[0])
 
 
 def test_the_stage_budget_lasts_as_long_as_the_invocation(
@@ -559,7 +571,8 @@ def test_an_identity_reset_between_the_look_and_the_admission_asks_nothing_more(
             go(data, server, report.plan_id)
         assert error.value.code == "state_changed"
         asked = [r.path for r in server.requests[requests:]]
-        assert asked.count(ME) == 1 and len(asked) == 7  # the look only
+        assert asked.count(ME) == 1
+        assert len(asked) == 7  # the look only
 
 
 @pytest.mark.parametrize("world", ["m1", "m0"])
@@ -667,8 +680,10 @@ def test_the_proof_of_a_continuation_is_built_from_what_the_read_was_allowed_und
         view.plan, stored.dataset_id, access, stored.observed_at, stored.files
     )
     # The scope and the policy are the access's own; the project is the plan's; the files, as given.
-    assert built.scope == other_scope and built.scope != stored.scope
-    assert built.authorization_policy == stored.authorization_policy and built.grant is None
+    assert built.scope == other_scope
+    assert built.scope != stored.scope
+    assert built.authorization_policy == stored.authorization_policy
+    assert built.grant is None
     assert built.project_id == view.plan.scope.project_id == stored.project_id
     assert (built.dataset_id, built.observed_at, built.files) == (
         stored.dataset_id,
@@ -744,7 +759,8 @@ def test_a_listing_that_is_not_the_datasets_at_the_look_ends_the_look_as_a_remot
         with pytest.raises(YorungeError) as error:
             go(data, server, report.plan_id)
         assert error.value.code == "continuation_remote_changed"
-        assert operation_of(data, report.plan_id) is None and provider.events[sends:] == []
+        assert operation_of(data, report.plan_id) is None
+        assert provider.events[sends:] == []
 
 
 @pytest.mark.parametrize("world", ["m1", "m0"])
@@ -773,6 +789,7 @@ def test_a_listing_that_is_not_the_datasets_at_the_closing_read_is_a_failed_read
             )
             assert (record.status, record.reason) == ("unknown", "read_unavailable")
         else:
-            assert error.value.code == "invalid_response" and view.intents == ()
+            assert error.value.code == "invalid_response"
+            assert view.intents == ()
             assert (record.status, record.reason) == ("cancelled", "local_cancelled")
         assert view.verification is None

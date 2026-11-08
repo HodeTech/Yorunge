@@ -391,5 +391,7 @@ def test_a_second_count_that_is_neither_of_its_two_is_refused(
     lifecycle, certificates, first, second
 ):
     outcomes = two_confirms(lifecycle, certificates, first, second)
-    assert len(outcomes) == 2 and outcomes[0].receipt.result == "accepted"
-    assert isinstance(outcomes[1], YorungeError) and outcomes[1].code == "invalid_response"
+    assert len(outcomes) == 2
+    assert outcomes[0].receipt.result == "accepted"
+    assert isinstance(outcomes[1], YorungeError)
+    assert outcomes[1].code == "invalid_response"

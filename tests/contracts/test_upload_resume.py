@@ -192,7 +192,8 @@ def test_selection_counters_and_the_remote_present_count():
     # The whole pending set, never a partial selection; present + sent covers the manifest.
     assert result.selection() == ContinuationSelection((1, 2), (1,), 1)
     assert [result.count(c) for c in FILE_CLASSES] == [1, 0, 1, 1, 0, 0, 0]
-    assert result.blockers == () and result.plannable
+    assert result.blockers == ()
+    assert result.plannable
 
 
 def test_a_fully_present_folder_is_a_valid_verification_only_selection():
@@ -208,7 +209,8 @@ def test_one_blocking_file_makes_the_whole_classification_unplannable():
     for bad in ("drift_missing", "conflict"):
         items = [item(B)] if bad == "drift_missing" else [item(A, size=9), item(B)]
         result = classify(MANIFEST, chain("accepted", "none", "none"), inventory(*items))
-        assert bad in result.blockers and not result.plannable
+        assert bad in result.blockers
+        assert not result.plannable
 
 
 # --- the lineage union ---------------------------------------------------------------------------
@@ -644,7 +646,8 @@ def test_each_evidence_blocker_alone_blocks_planning_and_withholds_the_selection
     }
     for blocker, result in alone.items():
         assert result.blockers == (blocker,), blocker
-        assert not result.plannable and result.selection() is None
+        assert not result.plannable
+        assert result.selection() is None
     # Too many items is always also an untrustworthy listing.
     huge = classify(MANIFEST_A, chain("none"), inventory(item(A), faults=("too_large",)))
     assert huge.blockers == ("inventory_unreliable", "inventory_too_large")
@@ -660,10 +663,12 @@ def test_names_are_compared_exactly_without_case_or_unicode_folding(name):
     other = classify(manifest, unsent, inventory(RemoteItem(name, 3, sha("z"), "x")))
     # A look-alike name is a foreign item, not the file; the file itself is not on the remote.
     assert other.classes == ("pending_clean",)
-    assert other.blockers == ("extra_remote",) and other.selection() is None
+    assert other.blockers == ("extra_remote",)
+    assert other.selection() is None
     same = classify(manifest, unsent, inventory(RemoteItem(name, 3, file.sha256, "x")))
     # The same content under a look-alike name is a copy of this file.
-    assert same.classes == ("conflict",) and not same.plannable
+    assert same.classes == ("conflict",)
+    assert not same.plannable
 
 
 def test_a_manifest_that_repeats_a_hash_follows_the_table_and_marks_the_twin_a_conflict():
@@ -674,7 +679,8 @@ def test_a_manifest_that_repeats_a_hash_follows_the_table_and_marks_the_twin_a_c
     assert classify(manifest, summary, inventory()).classes == ("pending_clean", "pending_clean")
     # Once one of them is there, the other is a copy of it.
     present = classify(manifest, summary, inventory(item(A)))
-    assert present.classes == ("observed", "conflict") and not present.plannable
+    assert present.classes == ("observed", "conflict")
+    assert not present.plannable
 
 
 @pytest.mark.parametrize(
@@ -719,12 +725,14 @@ def test_the_digest_orders_ties_by_size_then_hash_with_a_null_hash_first():
 def test_remote_names_and_identities_stay_out_of_reprs():
     listing = inventory(item(A))
     text = repr(listing) + repr(listing.items[0])
-    assert "a.bin" not in text and "id-a" not in text
+    assert "a.bin" not in text
+    assert "id-a" not in text
 
 
 def test_the_page_limit_and_item_cap_hold_their_documented_values():
     # The fold's own tests import these constants, so only a literal pins the contract.
-    assert MAX_INVENTORY_ITEMS == 1024 and MAX_INVENTORY_PAGES == 128
+    assert MAX_INVENTORY_ITEMS == 1024
+    assert MAX_INVENTORY_PAGES == 128
 
 
 # --- review round 2: rejected receipts, blocker merging, source eligibility, actions ------------
@@ -742,11 +750,14 @@ def test_a_rejected_receipt_is_found_in_any_journal_not_only_when_all_stages_are
 
 def test_with_blockers_merges_caller_blockers_in_the_closed_order_and_closes_the_selection():
     clear = classify(MANIFEST_A, chain("none"), inventory())
-    assert clear.plannable and clear.selection() is not None
+    assert clear.plannable
+    assert clear.selection() is not None
     held = clear.with_blockers(("local_changed", "source_active", "source_active"))
     assert held.blockers == ("source_active", "local_changed")
-    assert not held.plannable and held.selection() is None
-    assert held.classes == clear.classes and held.inventory_digest == clear.inventory_digest
+    assert not held.plannable
+    assert held.selection() is None
+    assert held.classes == clear.classes
+    assert held.inventory_digest == clear.inventory_digest
     mixed = classify(MANIFEST_A, chain("accepted", rejected=True), inventory(item(A)))
     assert mixed.with_blockers(("source_terminal", "known_negative")).blockers == (
         "source_terminal",
@@ -762,7 +773,8 @@ def test_indices_report_one_class_without_being_a_selection():
     assert result.classes == ("confirmed", "observed", "pending_clean")
     assert [result.indices(name) for name in FILE_CLASSES] == [(0,), (1,), (2,), (), (), (), ()]
     blocked = classify(MANIFEST, chain("accepted", "none", "none"), inventory())
-    assert blocked.indices("drift_missing") == (0,) and blocked.selection() is None
+    assert blocked.indices("drift_missing") == (0,)
+    assert blocked.selection() is None
 
 
 @pytest.mark.parametrize(

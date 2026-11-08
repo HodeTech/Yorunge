@@ -42,10 +42,13 @@ def test_the_errnos_of_a_refused_link_in_both_references_are_the_codes_definite_
         line for line in VERSIONS.splitlines() if line.startswith("| `binding_write_uncertain`")
     )
     refused = re.search(r"`link\(\)` \(([^)]*)\)", engine)  # the list, not the EIO that follows
-    assert refused is not None and errnos_of(refused.group(1)) == set(LINK_REFUSED)
-    assert "`EIO`" in engine and errno.EIO not in LINK_REFUSED
+    assert refused is not None
+    assert errnos_of(refused.group(1)) == set(LINK_REFUSED)
+    assert "`EIO`" in engine
+    assert errno.EIO not in LINK_REFUSED
     # the table names the first eight and says "…": it may not name one the code does not refuse
-    assert errnos_of(versions) <= set(LINK_REFUSED) and len(errnos_of(versions)) >= 8
+    assert errnos_of(versions) <= set(LINK_REFUSED)
+    assert len(errnos_of(versions)) >= 8
 
 
 def test_the_results_of_check_exit_with_the_codes_the_table_says():
@@ -66,13 +69,19 @@ def test_the_closed_error_table_exits_are_the_catalogs():
 
 
 def test_the_limits_the_reference_states_are_the_constants():
-    assert MAX_LIST_ITEMS == 100 and "en çok 100 kayıt" in VERSIONS
-    assert (MIN_PAGE, MAX_PAGE) == (1, 10_000) and "1–10 000" in VERSIONS
-    assert _TAG.pattern == "[A-Za-z0-9._-]{1,128}" and "{1,128}" in VERSIONS
-    assert MAX_MANIFEST_BYTES == 8 * 1024 * 1024 and "en çok 8 MiB" in VERSIONS
-    assert MAX_BINDING_BYTES == 16 * 1024 and "en çok 16 KiB" in VERSIONS
+    assert MAX_LIST_ITEMS == 100
+    assert "en çok 100 kayıt" in VERSIONS
+    assert (MIN_PAGE, MAX_PAGE) == (1, 10_000)
+    assert "1–10 000" in VERSIONS
+    assert _TAG.pattern == "[A-Za-z0-9._-]{1,128}"
+    assert "{1,128}" in VERSIONS
+    assert MAX_MANIFEST_BYTES == 8 * 1024 * 1024
+    assert "en çok 8 MiB" in VERSIONS
+    assert MAX_BINDING_BYTES == 16 * 1024
+    assert "en çok 16 KiB" in VERSIONS
     seconds = inspect.signature(read_regular_file).parameters["seconds"].default
-    assert seconds == 5.0 and "5 sn’lik okuma bütçesini" in VERSIONS
+    assert seconds == 5.0
+    assert "5 sn’lik okuma bütçesini" in VERSIONS
 
 
 def test_the_exits_of_a_signal_and_a_closed_stdout_are_the_ones_the_reference_says():

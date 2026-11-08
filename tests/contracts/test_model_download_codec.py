@@ -107,7 +107,8 @@ def test_fields_the_codec_does_not_know_are_dropped_not_reflected():
 def test_a_provider_name_is_validated_and_then_forgotten():
     # nothing of ``filename`` is in what comes back: only the address is
     target = parse(answer(filename="évren-ağırlık.onnx"))
-    assert "ağırlık" not in target.wire_url and "provider" not in repr(target)
+    assert "ağırlık" not in target.wire_url
+    assert "provider" not in repr(target)
 
 
 @pytest.mark.parametrize(

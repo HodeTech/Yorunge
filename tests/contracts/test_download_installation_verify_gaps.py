@@ -69,7 +69,8 @@ def test_a_passing_smoke_keeps_the_judged_row_and_a_private_workspace(tmp_path, 
     helper, arguments, workspace, root = smoke(tmp_path, monkeypatch, lambda *a: row("16", 1, 0))
     assert helper["verify"](*arguments) == "passed"
     kept = json.loads((workspace / "stdout.json").read_bytes())
-    assert kept["passed"] is True and kept["label"] == "16"
+    assert kept["passed"] is True
+    assert kept["label"] == "16"
     assert stat.S_IMODE(workspace.stat().st_mode) == 0o700
 
 

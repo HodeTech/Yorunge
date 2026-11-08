@@ -179,7 +179,8 @@ def test_optional_whitespace_is_exactly_space_and_tab(name, good, fill):
 @pytest.mark.parametrize("fill", FILLS)
 def test_a_tag_has_no_whitespace_around_it_but_space_and_tab(fill):
     assert parse_etag([" \t" + TAG + "\t "]) == TAG
-    assert parse_etag([fill + TAG]) is None and parse_etag([TAG + fill]) is None
+    assert parse_etag([fill + TAG]) is None
+    assert parse_etag([TAG + fill]) is None
 
 
 def test_header_names_are_not_trimmed():
@@ -233,7 +234,9 @@ def test_one_committed_byte_is_worth_resuming():
         stage=stage(size=1),
         sidecar=sidecar(rec=record(committed_bytes=1, prefix_sha256="ef" * 32)),
     )
-    assert found.action == "resume" and found.ask is not None and found.ask.prefix_bytes == 1
+    assert found.action == "resume"
+    assert found.ask is not None
+    assert found.ask.prefix_bytes == 1
 
 
 def test_the_start_table_values_are_frozen():
@@ -258,7 +261,9 @@ def test_any_lock_value_but_held_fails_closed(lock):
 def test_the_resume_ask_carries_the_tag_exactly_as_the_record_has_it():
     tag = '"V1-3f9C~a"'
     found = decide(stage=stage(), sidecar=sidecar(rec=record(etag=tag)))
-    assert found.action == "resume" and found.ask is not None and found.ask.etag == tag
+    assert found.action == "resume"
+    assert found.ask is not None
+    assert found.ask.etag == tag
 
 
 @pytest.mark.parametrize(

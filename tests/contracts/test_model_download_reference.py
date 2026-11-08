@@ -55,14 +55,18 @@ def test_the_json_table_is_what_the_transport_does_with_each_status():
             expected_attempts = 2 if status in _TRANSIENT else 1
             if key != "yönlendirme":
                 assert expected_attempts == int(attempts), (label, status)
-    assert seen == set(STATUSES) and answers == 2, (seen, answers)
+    assert seen == set(STATUSES), (seen, answers)
+    assert answers == 2, (seen, answers)
 
 
 def test_the_prefix_the_name_the_limits_and_the_exits_are_the_codes():
     text = section()
     assert "{api_base_path}" + MODEL_FILES_SEGMENT in text
-    assert f"{MAX_FILENAME_BYTES} bayt" in text and JSON_LIMIT == 1 << 20 and "1 MiB" in text
-    assert f"0–{MAX_FOLD}" in text and set(FORMATS) == {"onnx", "pt", "tflite"}
+    assert f"{MAX_FILENAME_BYTES} bayt" in text
+    assert JSON_LIMIT == 1 << 20
+    assert "1 MiB" in text
+    assert f"0–{MAX_FOLD}" in text
+    assert set(FORMATS) == {"onnx", "pt", "tflite"}
     assert DEFAULT_TIMEOUT_SECONDS == 900
     for code in ("download_integrity_mismatch", "download_write_uncertain"):
         assert f"`{code}` {YorungeError(code).exit_code}" in text, code
@@ -74,7 +78,8 @@ def test_the_prefix_the_name_the_limits_and_the_exits_are_the_codes():
 
 def test_what_was_not_observed_is_said_not_to_have_been():
     text = section()
-    assert "canlı yoklamayla doğrulanmadı" in text and "yoklama yapılmadı" in text
+    assert "canlı yoklamayla doğrulanmadı" in text
+    assert "yoklama yapılmadı" in text
     assert "canlı yoklamada gözlenen" not in REFERENCE.read_text()
 
 

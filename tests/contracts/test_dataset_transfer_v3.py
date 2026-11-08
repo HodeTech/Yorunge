@@ -90,7 +90,8 @@ def read_lease(**changes):
 def test_record_goldens_round_trip_and_belong_to_the_plan(name):
     raw = fixture(f"dataset-continuation-record-v3-{name}.json")
     record = TransferRecordV3.model_validate_json(raw)
-    assert record.encoded() == raw and record.schema_version == 3
+    assert record.encoded() == raw
+    assert record.schema_version == 3
     validate_record_binding_v3(PLAN, record)
     assert record.verification_only is False
     assert record.dataset_id == PLAN.continuation.dataset_id
@@ -113,7 +114,8 @@ def test_control_and_verification_goldens_and_the_digest_between_them():
     control_raw = fixture("dataset-continuation-control-v3.json")
     proof = TransferVerificationV3.model_validate_json(proof_raw)
     control = TransferControlV3.model_validate_json(control_raw)
-    assert proof.encoded() == proof_raw and control.encoded() == control_raw
+    assert proof.encoded() == proof_raw
+    assert control.encoded() == control_raw
     assert hashlib.sha256(proof_raw).hexdigest() == PROOF_DIGEST == control.verification_digest
     assert (proof.schema_version, control.schema_version) == (3, 3)
     assert len(proof.files) == PLAN.manifest.file_count == 3
@@ -403,7 +405,8 @@ def test_a_read_failure_control_is_recovery_without_a_digest():
     control = TransferControlV3.model_validate_json(
         canon(control_of(kind="recovery", reason="read_unavailable", verification_digest=None))
     )
-    assert control.kind == "recovery" and control.verification_digest is None
+    assert control.kind == "recovery"
+    assert control.verification_digest is None
 
 
 # --- verification --------------------------------------------------------------------------------

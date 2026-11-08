@@ -209,7 +209,8 @@ def test_a_binding_is_published_new_private_and_whole(place):
     written = place / "binding.json"
     info = written.lstat()
     assert written.read_bytes() == held.encoded()
-    assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1
+    assert stat.S_IMODE(info.st_mode) == 0o600
+    assert info.st_nlink == 1
     assert sorted(p.name for p in place.iterdir()) == ["binding.json"]
 
 
@@ -244,7 +245,8 @@ def test_a_name_taken_after_the_early_look_is_still_never_overwritten(place):
             target.require_absent()
             path.write_bytes(b"THEIRS")  # while the provider was being asked
             target.publish(binding())
-    assert error.value.code == "binding_output_exists" and path.read_bytes() == b"THEIRS"
+    assert error.value.code == "binding_output_exists"
+    assert path.read_bytes() == b"THEIRS"
 
 
 def test_an_os_error_before_the_link_is_the_write_failed_code_and_leaves_no_stage(
@@ -269,7 +271,8 @@ def test_a_failure_after_the_link_began_is_uncertain_and_exit_5(place, monkeypat
     with pytest.raises(YorungeError) as error:
         with binding_target(place / "binding.json") as target:
             target.publish(binding())
-    assert error.value.code == "binding_write_uncertain" and error.value.exit_code == 5
+    assert error.value.code == "binding_write_uncertain"
+    assert error.value.exit_code == 5
 
 
 @pytest.mark.parametrize("number", [errno.EPERM, errno.ENOTSUP, errno.EMLINK, errno.EXDEV])
@@ -305,7 +308,8 @@ def test_a_parent_that_is_replaced_before_the_link_is_a_write_failure_and_nothin
             inner.mkdir()  # the same path, another directory, while the provider was asked
             target.publish(binding())
     assert error.value.code == "binding_write_failed"
-    assert list(inner.iterdir()) == [] and not (place / "elsewhere" / "binding.json").exists()
+    assert list(inner.iterdir()) == []
+    assert not (place / "elsewhere" / "binding.json").exists()
 
 
 def names_below(place):

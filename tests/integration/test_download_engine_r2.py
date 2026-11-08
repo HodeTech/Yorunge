@@ -69,7 +69,8 @@ def test_no_report_before_the_mark_carries_the_whole_body(world, monkeypatch):
     monkeypatch.setattr(DownloadSink, "complete", complete)
     assert_whole(world, world.run(progress=lambda held, total: events.append(held)))
     mark = events.index("complete")
-    assert len(events[:mark]) > 3 and all(held < len(DATA) for held in events[:mark])
+    assert len(events[:mark]) > 3
+    assert all(held < len(DATA) for held in events[:mark])
     assert events[mark + 1 :] == [len(DATA)]
 
 
@@ -83,7 +84,8 @@ def test_a_subclass_of_the_job_is_no_job(world):
         target=job.target, source=source(), identity_key=job.identity_key, resolve=job.resolve
     )
     assert code_of(lambda: run_download(spoof, world.owned)) == "invalid_request"
-    assert world.server.requests == [] and world.names() == []
+    assert world.server.requests == []
+    assert world.names() == []
 
 
 # N09: the closed error of an ended resolver carries no chain.
@@ -99,7 +101,8 @@ def test_a_resolver_ended_at_its_budget_leaves_no_chain(world, monkeypatch):
     with pytest.raises(YorungeError) as error:
         world.run(resolve=hangs)
     assert error.value.code == "transport_timeout"
-    assert error.value.__cause__ is None and error.value.__suppress_context__ is True
+    assert error.value.__cause__ is None
+    assert error.value.__suppress_context__ is True
 
 
 # C02 / C03: the default grace is what the reference says.
@@ -153,7 +156,8 @@ def test_the_neighbours_of_the_bidirectional_controls_are_plain_characters(plain
 def test_a_target_with_a_dot_dot_component_is_a_target_error_before_any_request(world):
     code = code_of(lambda: world.run(target=world.directory / ".." / world.target.name))
     assert code == "download_target_invalid"
-    assert world.server.requests == [] and world.names() == []
+    assert world.server.requests == []
+    assert world.names() == []
 
 
 # D01: a target that is not a Path is the family's invalid code, not an AttributeError.

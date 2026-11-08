@@ -96,7 +96,8 @@ def root_counters(tmp_path):
 
 def test_capacity_counts_a_continuation_as_a_plan_an_operation_its_files_and_its_bytes(tmp_path):
     base = root_counters(tmp_path)
-    assert base[0] == base[1] == 1 and base[2] == len(FILES)
+    assert base[0] == base[1] == 1
+    assert base[2] == len(FILES)
     with world(tmp_path / "chain", UNKNOWN, LATER) as (store, _, built):
         assert capacity(store.connection) == expected_counters(base, built)
     # A prepared continuation that was never admitted is a plan with no operation and no journal.
@@ -189,7 +190,8 @@ def test_quota_used_is_what_the_capacity_check_counts_and_nothing_else(tmp_path)
         assert (used.plans, used.operations, used.files, used.payload_bytes) == capacity(
             store.connection
         )
-        assert used.plans == used.operations == 3 and used.files == 3 * len(FILES)
+        assert used.plans == used.operations == 3
+        assert used.files == 3 * len(FILES)
     # A plan that was never admitted is a plan and no operation: the two counters part.
     prepared = {"status": "admitted", "plan_only": True}
     with world(tmp_path / "apart", live(), prepared) as (store, _, _):
@@ -405,12 +407,14 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
     with world(tmp_path, live()) as (store, root, (item,)):
         epoch = root["plan"]["scope"]["identity_epoch"]
         before = read_any_view(store.connection, item.plan["plan_id"])
-        assert before.operation.workflow_latched and before.operation.status == "running"
+        assert before.operation.workflow_latched
+        assert before.operation.status == "running"
         reset(store, root)
         after = read_any_view(store.connection, item.plan["plan_id"])
         assert type(after.operation) is TransferRecordV3
         assert (after.operation.status, after.operation.reason) == ("unknown", "identity_reset")
-        assert after.operation.lease is None and after.operation.workflow_latched
+        assert after.operation.lease is None
+        assert after.operation.workflow_latched
         assert after.operation.clock_anomaly is False  # the reset clock is ahead of the record
         assert after.operation.revision == item.record["revision"] + 1
         assert after.operation.updated_at == NOW
@@ -429,7 +433,8 @@ def test_a_reset_leaves_a_continuation_that_sent_something_unknown_with_a_v3_rec
         # Nothing but the record's state moved: the plan, the approval and the journal are intact.
         assert after.plan.encoded() == before.plan.encoded()
         assert after.approval.encoded() == before.approval.encoded()
-        assert after.intents == before.intents and after.receipts == before.receipts
+        assert after.intents == before.intents
+        assert after.receipts == before.receipts
         validate_uploads(store.connection)
 
 
@@ -445,14 +450,16 @@ def test_a_reset_keeps_an_anomaly_the_record_already_noted(tmp_path):
             store, root
         )  # a reset clock ahead of the record finds nothing new, and forgets nothing
         after = read_any_view(store.connection, item.plan["plan_id"]).operation
-        assert after.clock_anomaly is True and after.status == "unknown"
+        assert after.clock_anomaly is True
+        assert after.status == "unknown"
 
 
 def test_a_reset_at_the_very_instant_of_the_records_last_update_is_no_anomaly(tmp_path):
     with world(tmp_path, live()) as (store, root, (item,)):
         reset(store, root, now=item.record["updated_at"])
         after = read_any_view(store.connection, item.plan["plan_id"]).operation
-        assert after.updated_at == item.record["updated_at"] and after.clock_anomaly is False
+        assert after.updated_at == item.record["updated_at"]
+        assert after.clock_anomaly is False
 
 
 def test_a_reset_runs_inside_the_transaction_of_its_caller_or_not_at_all(tmp_path):
@@ -499,7 +506,8 @@ def test_a_reset_that_finds_the_clock_behind_the_record_marks_the_anomaly(tmp_pa
     with world(tmp_path, shape) as (store, root, (item,)):
         reset(store, root, now=BEHIND)
         after = read_any_view(store.connection, item.plan["plan_id"])
-        assert after.operation.clock_anomaly is True and after.operation.updated_at == BEHIND
+        assert after.operation.clock_anomaly is True
+        assert after.operation.updated_at == BEHIND
         assert after.operation.reason == "identity_reset"
         validate_uploads(store.connection)
 
@@ -510,7 +518,8 @@ def test_a_reset_cancels_a_continuation_that_sent_nothing_with_a_v3_terminal_con
         reset(store, root)
         after = read_any_view(store.connection, item.plan["plan_id"])
         assert (after.operation.status, after.operation.reason) == ("cancelled", "identity_reset")
-        assert not after.operation.workflow_latched and after.operation.lease is None
+        assert not after.operation.workflow_latched
+        assert after.operation.lease is None
         assert control_rows(store, item.record["operation_id"]) == {
             "terminal": expected_control("terminal", item.record, epoch=epoch, now=NOW)
         }
@@ -617,7 +626,8 @@ def test_a_failed_public_reset_leaves_the_whole_chain_and_the_identity_as_they_w
     # Nothing was half done: the same consent still resets the chain once the fault is gone.
     api.reset_identity(preview.digest, state_dir=root_dir)
     after, epoch = dump()
-    assert epoch != before[1] and after != before[0]
+    assert epoch != before[1]
+    assert after != before[0]
 
 
 def test_the_public_identity_reset_carries_a_chain_to_the_new_epoch_and_the_store_verifies(
@@ -633,7 +643,8 @@ def test_the_public_identity_reset_carries_a_chain_to_the_new_epoch_and_the_stor
     preview = api.preview_identity_reset(state_dir=root_dir).data
     current = preview.current
     assert current.upload_plan_count == current.transfer_operation_count == 3
-    assert current.nonterminal_transfer_count == 3 and current.unknown_transfer_count == 2
+    assert current.nonterminal_transfer_count == 3
+    assert current.unknown_transfer_count == 2
     api.reset_identity(preview.digest, state_dir=root_dir)
     with open_store(root_dir, timeout=60) as store:
         new_epoch = metadata(store.connection).identity_epoch
@@ -745,7 +756,10 @@ def test_the_preview_fingerprint_changes_with_every_part_of_the_journal(tmp_path
     with world(tmp_path, {"status": "succeeded"}) as (store, _, (item,)):
         plan_id = item.plan["plan_id"]
         view = read_any_view(store.connection, plan_id)
-        assert view.intents and view.receipts and view.controls and view.verification is not None
+        assert view.intents
+        assert view.receipts
+        assert view.controls
+        assert view.verification is not None
 
         def digest_with(change):
             def patched(connection, identifier, views=None):
@@ -837,7 +851,8 @@ def test_the_repository_shows_and_lists_a_continuation_next_to_its_root(tmp_path
         )
         entries, cursor = uploads.list()
         by_plan = {entry.plan_id: entry for entry in entries}
-        assert cursor is None and set(by_plan) == {root["plan"]["plan_id"], item.plan["plan_id"]}
+        assert cursor is None
+        assert set(by_plan) == {root["plan"]["plan_id"], item.plan["plan_id"]}
         listed = by_plan[item.plan["plan_id"]]
         assert (listed.operation_id, listed.operation_status) == (
             item.record["operation_id"],
@@ -868,12 +883,13 @@ def test_the_public_results_show_a_continuation_and_the_reads_move_no_row(tmp_pa
     before = dump()
     by_plan = api.show_dataset_upload(plan_id=plan_id, state_dir=root_dir).data
     by_operation = api.show_dataset_upload(operation_id=operation_id, state_dir=root_dir).data
-    assert by_plan == by_operation and type(by_plan) is DatasetUploadSummaryV3
-    assert by_plan.operation_id == operation_id and by_plan.plan_id == plan_id
+    assert by_plan == by_operation
+    assert type(by_plan) is DatasetUploadSummaryV3
+    assert by_plan.operation_id == operation_id
+    assert by_plan.plan_id == plan_id
     shown = api.review_dataset_upload(plan_id, state_dir=root_dir).data
-    assert shown.summary == by_plan and type(shown.request_limits).__name__ == (
-        "ContinuationRequestLimits"
-    )
+    assert shown.summary == by_plan
+    assert type(shown.request_limits).__name__ == ("ContinuationRequestLimits")
     page = api.list_dataset_uploads(plan_id=plan_id, state_dir=root_dir).data
     assert page.uploads == (by_plan,)
     everything = api.list_dataset_uploads(state_dir=root_dir).data
@@ -882,7 +898,8 @@ def test_the_public_results_show_a_continuation_and_the_reads_move_no_row(tmp_pa
     assert by_plan in everything.uploads
     assert dump() == before  # every read is a read: not one row of the store moved
     revoked = api.revoke_dataset_upload(plan_id, state_dir=root_dir).data
-    assert type(revoked) is DatasetUploadSummaryV3 and revoked.approval_status == "revoked"
+    assert type(revoked) is DatasetUploadSummaryV3
+    assert revoked.approval_status == "revoked"
     # its root is an ordinary plan of the same store, and the store still validates
     assert api.show_dataset_upload(plan_id=root_plan, state_dir=root_dir).data.plan_id == root_plan
     with open_store(root_dir, timeout=60) as store:
@@ -1004,7 +1021,8 @@ def test_a_continuation_is_summarized_as_itself_whatever_its_state(tmp_path, sha
 def test_a_continuation_of_a_continuation_names_the_operation_it_continues(tmp_path):
     with world(tmp_path, UNKNOWN, LATER) as (store, _, (first, second)):
         found = summary(read_any_view(store.connection, second.plan["plan_id"]))
-        assert found.continuation_of == FIRST and found.operation_id == SECOND
+        assert found.continuation_of == FIRST
+        assert found.operation_id == SECOND
         assert json.loads(found.encoded()) == expected_summary(second)
         assert summary(read_any_view(store.connection, first.plan["plan_id"])).uncertain_files == 1
 
@@ -1022,7 +1040,8 @@ def test_the_blockers_of_a_draft_continuation_show_in_its_summary(tmp_path):
         view = read_any_view(store.connection, item.plan["plan_id"])
         draft = view.plan.model_copy(update={"status": "draft", "blockers": ("cost_unverified",)})
         found = summary(replace(view, plan=draft))
-        assert found.plan_status == "draft" and found.blockers == ("cost_unverified",)
+        assert found.plan_status == "draft"
+        assert found.blockers == ("cost_unverified",)
         assert summary(view).blockers == ()
 
 
@@ -1033,7 +1052,8 @@ def test_a_v1_summary_derives_its_risks_from_the_grant_the_plan_holds():
     grant = UploadGrant.model_validate_json(
         canon(raw("dataset-upload-approved-v2.json")["plan"]["grant"])
     )
-    assert grant.permissions == REQUIRED_PERMISSIONS and plan.grant is None
+    assert grant.permissions == REQUIRED_PERMISSIONS
+    assert plan.grant is None
     nothing = VersionedTransferView(plan, None, None)
     complete = plan.model_copy(update={"grant": grant})
     partial = plan.model_copy(
@@ -1057,7 +1077,8 @@ def test_a_revoked_approval_shows_in_the_summary_of_a_plan_that_was_never_admitt
             (canon(revoked).decode(), item.plan["plan_id"]),
         )
         found = summary(read_any_view(store.connection, item.plan["plan_id"]))
-        assert found.approval_status == "revoked" and found.operation_id is None
+        assert found.approval_status == "revoked"
+        assert found.operation_id is None
         assert found.approval_expires_at == item.approval["expires_at"]
 
 
@@ -1092,7 +1113,8 @@ def test_evidence_the_plan_holds_shows_in_the_summary_once_the_upload_has_finish
     done = summary(VersionedTransferView(plan, approval, record))
     assert (waiting.authority_verified, waiting.verification_level) == (False, "none")
     assert (done.authority_verified, done.verification_level) == (True, "metadata")
-    assert done.operation_status == "succeeded" and done.cost_policy == "bounded_required"
+    assert done.operation_status == "succeeded"
+    assert done.cost_policy == "bounded_required"
     assert done.budget_micros == document["budget_micros"]
     assert (done.risks, done.blockers) == ((), ())
     # Authority counts as verified only when the grant holds every permission the upload needs.
@@ -1101,7 +1123,8 @@ def test_evidence_the_plan_holds_shows_in_the_summary_once_the_upload_has_finish
         update={"grant": grant.model_copy(update={"permissions": grant.permissions[:-1]})}
     )
     narrowed = summary(VersionedTransferView(partial, approval, record))
-    assert narrowed.operation_status == "succeeded" and narrowed.authority_verified is False
+    assert narrowed.operation_status == "succeeded"
+    assert narrowed.authority_verified is False
     # The cost evidence is projected field for field, with no extra and no payload.
     cost = done.cost_bound
     assert cost is not None
@@ -1143,4 +1166,5 @@ def test_the_original_projection_refuses_a_continuation_and_the_review_shows_it(
         assert code_of(lambda: original_summary(view)) == "state_invalid"  # never "legacy history"
         shown = review(view)
         assert type(shown.summary) is DatasetUploadSummaryV3
-        assert shown.request_limits == view.plan.request_limits and shown.summary == summary(view)
+        assert shown.request_limits == view.plan.request_limits
+        assert shown.summary == summary(view)

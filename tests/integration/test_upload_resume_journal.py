@@ -97,7 +97,8 @@ def test_every_stored_shape_reduces_to_the_expected_facts_and_state(journal, nam
     stages, unanswered, rejected, states, expected = SHAPES[name]
     record = advance(journal, stages, unanswered=unanswered, rejected=rejected)
     facts = facts_of(journal, record)
-    assert facts.operation_id == record.operation_id and facts.parent_operation_id is None
+    assert facts.operation_id == record.operation_id
+    assert facts.parent_operation_id is None
     assert receipts(facts) == expected
     summary = merge_chain([facts], journal.manifest)
     assert summary.states == states
@@ -108,7 +109,8 @@ def test_every_stored_shape_reduces_to_the_expected_facts_and_state(journal, nam
 def test_a_complete_graph_marks_the_source_graph_complete(journal):
     record = advance(journal, EVERY_STAGE)
     facts = facts_of(journal, record)
-    assert facts.graph_complete and len(facts.stages) == 11
+    assert facts.graph_complete
+    assert len(facts.stages) == 11
     summary = merge_chain([facts], journal.manifest)
     assert summary.states == ("accepted", "accepted", "accepted")
     assert summary.source_graph_complete
@@ -137,9 +139,12 @@ def test_reading_the_journal_facts_writes_nothing_and_leaks_no_receipt_content(j
         assert list(store.connection.iterdump()) == before
         assert repository.show(operation_id=record.operation_id) == viewed
         assert store.verify().store_schema_version == 7
-    assert viewed.operation.status == "running" and len(viewed.intents) == 5
+    assert viewed.operation.status == "running"
+    assert len(viewed.intents) == 5
     text = repr(facts)
-    assert "objects/" not in text and "created_dataset" not in text and "http" not in text
+    assert "objects/" not in text
+    assert "created_dataset" not in text
+    assert "http" not in text
 
 
 def inventory_of(journal, *indices):
@@ -161,7 +166,8 @@ def test_stored_shapes_classify_end_to_end_against_a_remote_inventory(journal):
     assert healthy.selection() == ContinuationSelection((1, 2), (), 1)
     assert healthy.plannable
     drifted = classify(manifest, summary, inventory_of(journal))
-    assert drifted.classes[0] == "drift_missing" and "drift_missing" in drifted.blockers
+    assert drifted.classes[0] == "drift_missing"
+    assert "drift_missing" in drifted.blockers
 
 
 @pytest.mark.parametrize("present,expected", [(False, "pending_uncertain"), (True, "observed")])
@@ -183,7 +189,8 @@ def test_an_unreceipted_confirm_needs_the_remote_to_tell_whether_it_landed(
 def test_facts_carry_the_stored_dataset_and_manifest_identity(journal):
     record = advance(journal, CONFIRMABLE)
     facts = facts_of(journal, record)
-    assert record.dataset_id is not None and facts.dataset_id == record.dataset_id
+    assert record.dataset_id is not None
+    assert facts.dataset_id == record.dataset_id
     assert facts.manifest_digest == journal.plan.manifest.digest
 
 
@@ -216,8 +223,10 @@ def test_a_stored_v1_plan_is_a_valid_chain_root_and_a_wrong_one_is_refused():
     facts = operation_journal(
         SimpleNamespace(plan=legacy, operation=record, intents=(), receipts=())
     )
-    assert facts.manifest_digest == legacy.manifest.digest and facts.parent_operation_id is None
-    assert facts.stages == () and facts.graph_complete is False
+    assert facts.manifest_digest == legacy.manifest.digest
+    assert facts.parent_operation_id is None
+    assert facts.stages == ()
+    assert facts.graph_complete is False
 
 
 def test_a_refused_plan_type_keeps_the_operation_identity_in_the_error(journal, monkeypatch):

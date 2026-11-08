@@ -141,8 +141,10 @@ def test_a_page_is_one_get_with_the_key_in_one_header_and_nothing_else_asked(cer
     (request,) = server.requests
     assert (request.method, request.path) == ("GET", BASE + "?page=1")
     assert request.header("X-API-Key") == SECRET
-    assert request.header("Authorization") is None and request.header("Cookie") is None
-    assert [item.version_tag for item in shown.items] == ["v1"] and shown.total == 1
+    assert request.header("Authorization") is None
+    assert request.header("Cookie") is None
+    assert [item.version_tag for item in shown.items] == ["v1"]
+    assert shown.total == 1
     dumped = repr(shown) + repr([item.model_dump() for item in shown.items])
     for private in (CANARY, "someone@example.test", "files.example.test"):
         assert private not in dumped
@@ -156,12 +158,16 @@ def test_a_version_is_its_detail_then_its_splits_and_two_gets_at_most(certificat
         ("GET", BASE + "/v1"),
         ("GET", BASE + "/v1/splits"),
     ]
-    assert seen.version_id == VERSION and seen.split_counts == SplitCounts(
-        train=6, val=2, test=1, unassigned=1
-    )
-    assert seen.class_count == 2 and len(seen.class_labels_sha256) == 64
-    assert seen.is_frozen and not seen.is_partial and seen.observed_at.endswith("Z")
-    assert "kedi" not in repr(seen) and "köpek" not in repr(seen) and CANARY not in repr(seen)
+    assert seen.version_id == VERSION
+    assert seen.split_counts == SplitCounts(train=6, val=2, test=1, unassigned=1)
+    assert seen.class_count == 2
+    assert len(seen.class_labels_sha256) == 64
+    assert seen.is_frozen
+    assert not seen.is_partial
+    assert seen.observed_at.endswith("Z")
+    assert "kedi" not in repr(seen)
+    assert "köpek" not in repr(seen)
+    assert CANARY not in repr(seen)
 
 
 def test_the_observation_is_stamped_after_both_reads(certificates):
@@ -170,7 +176,8 @@ def test_the_observation_is_stamped_after_both_reads(certificates):
             before = time.time()
             seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
     stamp = time.mktime(time.strptime(seen.observed_at[:19], "%Y-%m-%dT%H:%M:%S"))
-    assert abs(stamp - time.time()) < 86_400 and before > 0  # a real, recent time
+    assert abs(stamp - time.time()) < 86_400
+    assert before > 0  # a real, recent time
 
 
 # --- the arguments are checked before any request -------------------------------------------------
@@ -204,7 +211,8 @@ def test_a_bad_argument_is_refused_before_anything_is_asked(certificates, call):
 def test_another_services_credential_is_not_used(certificates):
     with TlsServer(certificates, routes()) as server:
         error = failure(lambda: reader(server, credential=credential(service="evren-llm")))
-    assert error.code == "invalid_service_target" and server.requests == []
+    assert error.code == "invalid_service_target"
+    assert server.requests == []
 
 
 # --- 404, and the other things a provider says ----------------------------------------------------
@@ -224,7 +232,8 @@ def test_the_missing_detail_is_not_found_or_missing_as_the_caller_says_and_costs
                     DATASET, "v1", deadline=soon(), absent="dataset_version_missing"
                 )
             )
-    assert absent.code == "dataset_version_missing" and absent.exit_code == 7
+    assert absent.code == "dataset_version_missing"
+    assert absent.exit_code == 7
     assert [r.path for r in server.requests] == [BASE + "/v1"] * 2  # never the splits
 
 
@@ -281,7 +290,8 @@ def test_a_read_that_failed_once_is_asked_again_once_and_not_more(certificates):
     with TlsServer(certificates, routes(**{BASE + "/v1": flaky})) as server:
         with reader(server) as versions:
             seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
-    assert seen.version_tag == "v1" and len(calls) == 2
+    assert seen.version_tag == "v1"
+    assert len(calls) == 2
     with TlsServer(certificates, routes(**{BASE + "/v1": body({}, status=503)})) as server:
         with reader(server) as versions:
             assert failure(
@@ -325,7 +335,8 @@ def test_the_selected_key_in_an_answer_is_refused_and_never_echoed(certificates)
                 lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
             )
     assert error.code == "invalid_response"
-    assert SECRET not in str(error.envelope()) and SECRET not in repr(error)
+    assert SECRET not in str(error.envelope())
+    assert SECRET not in repr(error)
 
 
 def padded_detail(total):
@@ -374,7 +385,8 @@ def test_a_stalled_provider_ends_at_the_deadline(certificates):
             error = failure(
                 lambda: versions.version(DATASET, "v1", deadline=soon(1), absent=NOT_FOUND)
             )
-            assert error.code == "transport_timeout" and time.monotonic() - started < 3
+            assert error.code == "transport_timeout"
+            assert time.monotonic() - started < 3
 
 
 def test_an_expired_deadline_asks_nothing(certificates):
@@ -408,7 +420,8 @@ def test_a_code_that_is_not_one_of_the_two_is_refused_before_any_request(certifi
             error = failure(
                 lambda: versions.version(DATASET, "v1", deadline=soon(), absent=absent)  # type: ignore[arg-type]
             )
-    assert error.code == "invalid_request" and server.requests == []
+    assert error.code == "invalid_request"
+    assert server.requests == []
 
 
 # --- the observation is stamped after the reads it describes --------------------------------------
@@ -450,7 +463,8 @@ def test_the_last_page_that_may_be_asked_for_is_asked_and_the_next_is_not(certif
     with TlsServer(certificates, routes(**{BASE + "?page=10000": body(last)})) as server:
         with reader(server) as versions:
             shown = versions.versions(DATASET, 10_000, deadline=soon())
-            assert shown.items == () and shown.page == 10_000
+            assert shown.items == ()
+            assert shown.page == 10_000
             for page in (0, 10_001, -1):
                 assert failure(
                     lambda page=page: versions.versions(DATASET, page, deadline=soon())
@@ -497,13 +511,15 @@ def test_a_version_read_whose_deadline_passed_during_the_reads_is_not_stamped(ce
         error = failure(
             lambda: versions.version(DATASET, "v1", deadline=soon(30), absent=NOT_FOUND)
         )
-    assert error.code == "transport_timeout" and len(server.requests) == 2
+    assert error.code == "transport_timeout"
+    assert len(server.requests) == 2
 
 
 def test_a_page_whose_deadline_passed_during_the_read_is_not_stamped(certificates):
     with TlsServer(certificates, routes()) as server, jump_reader(server, 1) as versions:
         error = failure(lambda: versions.versions(DATASET, 1, deadline=soon(30)))
-    assert error.code == "transport_timeout" and len(server.requests) == 1
+    assert error.code == "transport_timeout"
+    assert len(server.requests) == 1
 
 
 @pytest.mark.parametrize("deadline", [None, "5", [1], True, float("inf"), float("nan"), 10**400])

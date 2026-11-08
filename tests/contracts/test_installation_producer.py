@@ -73,7 +73,8 @@ def test_the_record_is_the_closed_v4_one_and_both_artifacts_get_their_own_worksp
     ]
     assert {root for *_, root in calls} == {ROOT}
     for directory in (upload, download):
-        assert directory.is_dir() and directory.stat().st_mode & 0o777 == 0o700
+        assert directory.is_dir()
+        assert directory.stat().st_mode & 0o777 == 0o700
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.strip()
@@ -90,7 +91,8 @@ def test_a_smoke_that_did_not_pass_makes_a_valid_record_that_fails(
     report = json.loads(output.read_bytes())
     assert report["passed"] is False
     summary = CHECKS["summarize"](report)
-    assert summary["passed"] is False and summary["checks"][name] == {status: 2}
+    assert summary["passed"] is False
+    assert summary["checks"][name] == {status: 2}
 
 
 def test_the_default_workspaces_are_the_ci_paths(monkeypatch, tmp_path):
@@ -140,7 +142,8 @@ def test_unusable_workspaces_stop_everything_before_a_directory_is_made(
     before = sorted(tmp_path.rglob("*"))
     with pytest.raises(ValueError):
         main()
-    assert not calls and sorted(tmp_path.rglob("*")) == before
+    assert not calls
+    assert sorted(tmp_path.rglob("*")) == before
 
 
 def test_an_existing_record_is_never_replaced(monkeypatch, tmp_path):
@@ -148,7 +151,8 @@ def test_an_existing_record_is_never_replaced(monkeypatch, tmp_path):
     main, output, calls = produce(monkeypatch, tmp_path, None, *options(tmp_path))
     with pytest.raises(ValueError):
         main()
-    assert output.read_bytes() == b"earlier record" and not calls
+    assert output.read_bytes() == b"earlier record"
+    assert not calls
     assert not Path(workspaces(tmp_path)[0]).exists()
 
 
@@ -223,12 +227,14 @@ def test_verify_package_runs_the_new_smokes_after_upload_in_their_own_workspaces
             environment,
             kind,
         )
-        assert python.parent.parent == venv and scratch == venv.parent
+        assert python.parent.parent == venv
+        assert scratch == venv.parent
     # resume and versions: (console, python, scratch, environment), the same installation
     for label in ("resume", "versions"):
         console, python, scratch, issued = smokes[label]
         assert (console.name, python.name, issued) == ("yorunge", "python", environment)
-        assert console.parent == python.parent and scratch == python.parent.parent.parent
+        assert console.parent == python.parent
+        assert scratch == python.parent.parent.parent
     assert {key: result[key] for key in CHECKS["INSTALL_CHECKS_V4"][1:]} == dict.fromkeys(
         CHECKS["INSTALL_CHECKS_V4"][1:], "passed"
     )

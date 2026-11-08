@@ -370,7 +370,8 @@ def test_a_byte_beyond_the_limits_keeps_the_originals_and_writes_nothing(tmp_pat
     with pytest.raises(ValueError, match=match):
         helper["retain"](root, workspace, "failed-download.json", COMMIT, "invalid_evidence")
     assert snapshot(workspace) == before
-    assert list((root / "dist").iterdir()) == [] and list((root / "docs/research").iterdir()) == []
+    assert list((root / "dist").iterdir()) == []
+    assert list((root / "docs/research").iterdir()) == []
 
 
 def test_the_file_count_limit_is_checked_before_any_file_is_read(tmp_path, helper, monkeypatch):
@@ -574,7 +575,8 @@ def test_unarchivable_workspaces_fail_and_preserve_every_original(tmp_path, help
     with pytest.raises(ValueError):
         helper["retain"](root, workspace, "failed-download.json", COMMIT, "invalid_evidence")
     assert snapshot(tmp_path) == before  # the root added only empty directories
-    assert list((root / "dist").iterdir()) == [] and list((root / "docs/research").iterdir()) == []
+    assert list((root / "dist").iterdir()) == []
+    assert list((root / "docs/research").iterdir()) == []
 
 
 def test_a_symlinked_dist_is_never_written_through(tmp_path, helper):
@@ -586,7 +588,8 @@ def test_a_symlinked_dist_is_never_written_through(tmp_path, helper):
     (root / "dist").symlink_to(elsewhere)
     with pytest.raises(ValueError, match="must not use a symlink"):
         helper["retain"](root, workspace, "failed-download.json", COMMIT, "invalid_evidence")
-    assert list(elsewhere.iterdir()) == [] and list((root / "docs/research").iterdir()) == []
+    assert list(elsewhere.iterdir()) == []
+    assert list((root / "docs/research").iterdir()) == []
 
 
 def test_nothing_is_retained_from_an_empty_or_missing_workspace(tmp_path, helper):
@@ -813,7 +816,8 @@ def test_the_cli_action_takes_the_context_from_the_environment_and_a_missing_run
     )
     assert main() == 0
     ((arguments, keywords),) = calls
-    assert arguments[-1] is None and keywords["privacy_context"]["mode"] == "local"
+    assert arguments[-1] is None
+    assert keywords["privacy_context"]["mode"] == "local"
 
 
 def test_the_cli_action_without_any_declared_context_retains_nothing(tmp_path, monkeypatch):
@@ -835,7 +839,8 @@ def test_the_cli_action_without_any_declared_context_retains_nothing(tmp_path, m
     monkeypatch.delenv("YORUNGE_EVIDENCE_CONTEXT")
     with pytest.raises(SystemExit) as stop:
         main()
-    assert stop.value.code == 1 and calls == []
+    assert stop.value.code == 1
+    assert calls == []
 
 
 REQUIRED = {
@@ -875,7 +880,8 @@ def test_the_cli_action_refuses_unknown_reasons_and_missing_arguments(
     )
     with pytest.raises(SystemExit) as stop:
         main()
-    assert stop.value.code == 2 and calls == []
+    assert stop.value.code == 2
+    assert calls == []
 
 
 # --- the artifact patterns publish what the retention keeps ---------------------------------------

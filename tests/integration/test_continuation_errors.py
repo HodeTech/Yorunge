@@ -141,7 +141,8 @@ def test_an_admission_that_fails_once_committed_names_the_operation_it_made(life
         monkeypatch.undo()
         made = repository.show(plan_id=plan.plan_id).operation
         # The admission is committed; the caller learns which operation it is.
-        assert made is not None and error.value.operation_id == made.operation_id
+        assert made is not None
+        assert error.value.operation_id == made.operation_id
         assert error.value.code == "state_busy"
 
 

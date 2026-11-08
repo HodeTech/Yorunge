@@ -100,17 +100,18 @@ def test_sigkill_of_a_continuations_reconcile_leaves_it_unproved_or_proved_and_n
         mid, view = source_record(data, operation_id), journal(data, report.plan_id)
         if terminal:
             assert (mid.status, mid.reason) == ("succeeded", "metadata_verified")
-            assert (
-                type(view.verification) is TransferVerificationV3
-                and len(view.verification.files) == 3
-            )
+            assert type(view.verification) is TransferVerificationV3
+            assert len(view.verification.files) == 3
             with pytest.raises(OperationError) as finished:
                 reconcile(data, server, operation_id)
             assert finished.value.code == "operation_conflict"
             return
         # The dead process holds a read lease: nobody else reads while it lives ...
-        assert mid.status == "unknown" and mid.lease is not None and mid.lease.mode == "read"
-        assert mid.fence == before.fence + 1 and view.verification is None
+        assert mid.status == "unknown"
+        assert mid.lease is not None
+        assert mid.lease.mode == "read"
+        assert mid.fence == before.fence + 1
+        assert view.verification is None
         assert len(view.intents) == len(view.receipts) == 3
         with pytest.raises(OperationError) as busy:
             reconcile(data, server, operation_id)
@@ -120,6 +121,7 @@ def test_sigkill_of_a_continuations_reconcile_leaves_it_unproved_or_proved_and_n
         clock.skew += 200
         phase = reconcile(data, server, operation_id, clock=clock)
         assert (phase.record.operation_id, phase.record.status) == (operation_id, "succeeded")
-        assert phase.record.fence > mid.fence and phase.record.lease is None
+        assert phase.record.fence > mid.fence
+        assert phase.record.lease is None
         assert len(journal(data, report.plan_id).verification.files) == 3
         store_is_valid(data)

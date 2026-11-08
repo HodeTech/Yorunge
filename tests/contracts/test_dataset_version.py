@@ -93,7 +93,8 @@ def test_the_binding_is_the_hand_computed_golden_to_the_byte_and_to_the_digest()
     made = binding()
     assert made.encoded() == golden
     assert made.digest == "a6691786960ed3fed3ce9addeb831315156b518201e7ccd5b83c70f3d15cd58c"
-    assert decode_binding(golden) == made and golden.endswith(b"}\n")
+    assert decode_binding(golden) == made
+    assert golden.endswith(b"}\n")
     # The digest is the SHA-256 of every field but ``digest`` and ``observed_at``.
     body = json.loads(golden)
     del body["digest"], body["observed_at"]
@@ -111,7 +112,8 @@ def test_the_class_labels_digest_is_the_hand_computed_one_whatever_the_order_the
 def test_observing_again_gives_the_same_digest_and_the_time_is_not_part_of_it():
     first = binding()
     later = binding(observed_at="2026-12-01T00:00:00.000000Z")
-    assert first.digest == later.digest and first.encoded() != later.encoded()
+    assert first.digest == later.digest
+    assert first.encoded() != later.encoded()
 
 
 @pytest.mark.parametrize(
@@ -178,7 +180,8 @@ def test_only_a_frozen_version_is_bound_and_a_partial_one_is_with_its_flag():
         "dataset_version_not_frozen"
     )
     partial = bind(observation(is_partial=True), SERVICE)
-    assert partial.is_partial is True and partial.is_frozen is True
+    assert partial.is_partial is True
+    assert partial.is_frozen is True
 
 
 def test_a_total_that_differs_from_the_item_count_is_recorded_and_does_not_stop_the_binding():
@@ -188,7 +191,8 @@ def test_a_total_that_differs_from_the_item_count_is_recorded_and_does_not_stop_
         split_total_matches_item_count=False,
     )
     made = bind(odd, SERVICE)
-    assert made.split_total_matches_item_count is False and decode_binding(made.encoded()) == made
+    assert made.split_total_matches_item_count is False
+    assert decode_binding(made.encoded()) == made
 
 
 # --- the observation ------------------------------------------------------------------------------
@@ -331,7 +335,8 @@ def test_the_closed_vocabulary_is_the_reference_s_and_nothing_else():
         "class_count",
         "class_labels_sha256",
     }
-    assert VERSION_FIELDS == tuple(sorted(VERSION_FIELDS)) and len(VERSION_FIELDS) == 12
+    assert VERSION_FIELDS == tuple(sorted(VERSION_FIELDS))
+    assert len(VERSION_FIELDS) == 12
 
 
 @pytest.mark.parametrize(
@@ -375,7 +380,8 @@ def test_a_check_that_finds_nothing_changed_is_the_only_success():
 def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
     with pytest.raises(DatasetVersionChanged) as error:
         binding().check(observation(is_frozen=False), active=SERVICE)
-    assert error.value.code == "dataset_version_changed" and error.value.exit_code == 7
+    assert error.value.code == "dataset_version_changed"
+    assert error.value.exit_code == 7
     assert error.value.envelope()["details"] == {
         "changed_field_count": 1,
         "changed_fields": ["is_frozen"],
@@ -386,7 +392,8 @@ def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
             observation(annotated_item_count=1, total_annotation_count=2), active=SERVICE
         )
     details = annotation.value.envelope()["details"]
-    assert details["annotation_only"] is True and details["changed_field_count"] == 2
+    assert details["annotation_only"] is True
+    assert details["changed_field_count"] == 2
     with pytest.raises(DatasetVersionChanged) as mixed:
         binding().check(observation(annotated_item_count=1, version_tag="v2"), active=SERVICE)
     assert mixed.value.annotation_only is False
@@ -461,11 +468,9 @@ def test_a_stored_binding_is_exactly_the_canonical_bytes_of_a_valid_one():
 
 def test_the_binding_carries_no_class_name_description_author_or_url():
     text = FIXTURE.read_text()
-    assert (
-        "kedi" not in text
-        and "köpek" not in text
-        and "http" not in text.replace("https://api.example.org", "")
-    )
+    assert "kedi" not in text
+    assert "köpek" not in text
+    assert "http" not in text.replace("https://api.example.org", "")
     assert set(json.loads(text)) == set(DatasetVersionBinding.model_fields)
 
 
@@ -487,9 +492,11 @@ def test_the_binding_carries_no_class_name_description_author_or_url():
 )
 def test_the_version_codes_have_a_fixed_message_and_the_reference_s_exit(code, exit_code):
     error = YorungeError(code)
-    assert error.exit_code == exit_code and error.message == MESSAGES[code]
+    assert error.exit_code == exit_code
+    assert error.message == MESSAGES[code]
     assert error.envelope()["details"] == {} or code == "dataset_version_changed"
-    assert "/" not in error.message and "http" not in error.message
+    assert "/" not in error.message
+    assert "http" not in error.message
 
 
 # --- the service the binding names is the target as the project writes it -------------------------
@@ -622,9 +629,11 @@ def test_the_relation_to_the_manifest_is_about_the_items_not_the_splits():
     # 11 items, a split total of 10 (flag false), a manifest of 10 files: files and items differ
     skewed = observation(item_count=11, split_total_matches_item_count=False)
     made = bind(skewed, SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=10)
-    assert made.local_manifest is not None and made.local_manifest.relation == "count_differs"
+    assert made.local_manifest is not None
+    assert made.local_manifest.relation == "count_differs"
     same = bind(skewed, SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=11)
-    assert same.local_manifest is not None and same.local_manifest.relation == "count_matches"
+    assert same.local_manifest is not None
+    assert same.local_manifest.relation == "count_matches"
 
 
 # --- the page model -------------------------------------------------------------------------------
@@ -730,4 +739,5 @@ def test_the_report_of_a_binding_is_its_digest_and_where_it_is_not_the_file():
         held.digest,
         "/tmp/Yörünge/binding.json",
     )
-    assert report.version_tag == held.version_tag and report.local_manifest is None
+    assert report.version_tag == held.version_tag
+    assert report.local_manifest is None

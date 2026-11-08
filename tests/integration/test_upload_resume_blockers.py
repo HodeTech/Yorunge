@@ -105,16 +105,21 @@ def test_a_source_the_journal_rules_out_is_reported_without_asking_the_provider(
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
     stored = state(lifecycle)
     report = resume(lifecycle, FIRST)
-    assert report.blockers == blockers and not report.eligible and report.observation is None
-    assert report.recommended_action == action and report.dataset_id == DATASET_ID
-    assert report.related_operation_id is None and report.plan_id is None
+    assert report.blockers == blockers
+    assert not report.eligible
+    assert report.observation is None
+    assert report.recommended_action == action
+    assert report.dataset_id == DATASET_ID
+    assert report.related_operation_id is None
+    assert report.plan_id is None
     assert state(lifecycle) == stored  # a report writes nothing
 
 
 def test_a_root_that_continued_into_an_unknown_one_is_superseded_by_it(lifecycle):
     install_first(lifecycle, status="unknown", intents=5, acknowledged=4)
     report = resume(lifecycle, root_of(lifecycle))
-    assert report.blockers == ("source_superseded",) and report.related_operation_id == FIRST
+    assert report.blockers == ("source_superseded",)
+    assert report.related_operation_id == FIRST
     assert report.recommended_action == "none"
 
 
@@ -124,21 +129,24 @@ def test_prepare_refuses_a_superseded_root_and_names_the_root_it_was_asked_about
     stored = state(lifecycle)
     with pytest.raises(ContinuationNotPossible) as error:
         resume(lifecycle, root, prepare=True)
-    assert error.value.blockers == ("source_superseded",) and error.value.operation_id == root
+    assert error.value.blockers == ("source_superseded",)
+    assert error.value.operation_id == root
     assert state(lifecycle) == stored
 
 
 def test_a_root_whose_continuation_still_runs_is_active_and_names_it(lifecycle):
     install_first(lifecycle, status="running")
     report = resume(lifecycle, root_of(lifecycle))
-    assert report.blockers == ("source_active",) and report.related_operation_id == FIRST
+    assert report.blockers == ("source_active",)
+    assert report.related_operation_id == FIRST
     assert report.recommended_action == "wait"
 
 
 def test_a_root_whose_create_is_unknown_has_no_dataset_to_continue(lifecycle_without_baseline):
     lifecycle = lifecycle_without_baseline
     report = resume(lifecycle, root_of(lifecycle))
-    assert "create_unknown" in report.blockers and report.dataset_id is None
+    assert "create_unknown" in report.blockers
+    assert report.dataset_id is None
 
 
 @pytest.mark.parametrize(
@@ -156,7 +164,8 @@ def test_prepare_refuses_a_source_the_journal_rules_out_and_leaves_the_store_alo
     stored = state(lifecycle)
     with pytest.raises(OperationError) as error:
         resume(lifecycle, FIRST, prepare=True)
-    assert error.value.code == code and error.value.operation_id == FIRST
+    assert error.value.code == code
+    assert error.value.operation_id == FIRST
     if code == "continuation_not_possible":
         assert isinstance(error.value, ContinuationNotPossible)
         assert error.value.blockers[0] == "source_terminal"
@@ -234,7 +243,8 @@ def test_what_a_report_needs_of_a_source_is_read_from_one_snapshot_of_its_lineag
         found = repository.resume_source(FIRST, stamp)
         # A continuation's baseline is its root's: the root's operation, dataset and intent digest.
         assert found.baseline_operation_id == root
-        assert found.baseline is not None and found.baseline_digest == BASELINE_DIGEST
+        assert found.baseline is not None
+        assert found.baseline_digest == BASELINE_DIGEST
         assert found.intent_digest == lifecycle.root["record"]["intent_digest"]
         assert len(found.chain.journals) == 2  # the root's journal, then the source's own
         assert found.plan.plan_id == build(lifecycle.root, 1).plan["plan_id"]
@@ -244,8 +254,10 @@ def test_what_a_report_needs_of_a_source_is_read_from_one_snapshot_of_its_lineag
         assert (found.quota.plans, found.quota.operations) == (2, 2)
         # A root is its own baseline.
         top = repository.resume_source(root, stamp)
-        assert top.baseline_operation_id == root and len(top.chain.journals) == 1
-        assert top.baseline == found.baseline and top.chain.descendants[0].operation_id == FIRST
+        assert top.baseline_operation_id == root
+        assert len(top.chain.journals) == 1
+        assert top.baseline == found.baseline
+        assert top.chain.descendants[0].operation_id == FIRST
 
 
 def test_the_chain_and_the_quota_are_read_from_one_snapshot(lifecycle):
@@ -301,7 +313,8 @@ def test_the_unverified_read_is_not_asked_for_when_nothing_would_be_read(lifecyc
     install_first(lifecycle, status="succeeded")
     # The journal rules the source out: no provider read is made, so no choice about one is needed.
     report = runtime(lifecycle).resume(FIRST, accept_unverified_read=False)
-    assert "source_terminal" in report.blockers and report.observation is None
+    assert "source_terminal" in report.blockers
+    assert report.observation is None
     # What the store would hold after an attempt is stated even then: for all N files.
     assert report.quota_added.payload_bytes == continuation_added_payload_bytes(
         lifecycle.manifest.file_count

@@ -156,7 +156,8 @@ def test_the_graph_of_a_continuation_is_its_own_selection():
     spec = graph_of(plan)
     assert spec == StageGraphSpec(3, plan.manifest.file_count, plan.continuation.file_indices)
     assert spec.files == plan.continuation.file_indices == (0, 2)
-    assert spec.continuation and spec.intent_count == 6
+    assert spec.continuation
+    assert spec.intent_count == 6
     for version in (1, 2):  # the original graphs are unchanged and cover the whole manifest
         original = graph_of(PLANS[version])
         assert original == StageGraphSpec(version, PLANS[version].manifest.file_count)
@@ -169,7 +170,9 @@ def test_the_graph_of_a_check_only_continuation_is_empty():
         fixture("dataset-continuation-plan-v3-verification-only.json")
     )
     spec = graph_of(plan)
-    assert spec.files == () and spec.intent_count == 0 and spec.required_stages() == frozenset()
+    assert spec.files == ()
+    assert spec.intent_count == 0
+    assert spec.required_stages() == frozenset()
 
 
 def test_a_continuation_never_has_a_create_receipt():

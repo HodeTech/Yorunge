@@ -125,7 +125,8 @@ def test_plan_approval_and_cost_work_goldens_round_trip_with_independent_digests
         fixture("dataset-continuation-approval-v3.json")
     )
     assert approval.encoded() == fixture("dataset-continuation-approval-v3.json")
-    assert approval.binding_digest == BINDING_DIGEST and approval.plan_digest == PLAN_DIGEST
+    assert approval.binding_digest == BINDING_DIGEST
+    assert approval.plan_digest == PLAN_DIGEST
     validate_approval_binding_v3(MAIN, approval)
     work = ContinuationCostWork.model_validate_json(
         fixture("dataset-continuation-cost-work-v3.json")
@@ -142,8 +143,10 @@ def test_the_selection_goldens_cover_some_none_and_all_files():
     everything = DatasetContinuationPlanV3.model_validate_json(
         fixture("dataset-continuation-plan-v3-all-files.json")
     )
-    assert only.continuation.file_indices == () and only.request_limits.max_upload_bytes == 0
-    assert only.continuation.remote_present_count == 3 and only.request_limits.files == 0
+    assert only.continuation.file_indices == ()
+    assert only.request_limits.max_upload_bytes == 0
+    assert only.continuation.remote_present_count == 3
+    assert only.request_limits.files == 0
     assert everything.continuation.file_indices == (0, 1, 2)
     assert everything.continuation.remote_present_count == 0
     assert everything.request_limits.max_upload_bytes == MANIFEST.total_bytes == 8
@@ -155,7 +158,8 @@ def test_the_selection_goldens_cover_some_none_and_all_files():
 
 def test_a_plan_is_a_closed_executable_false_v3_value():
     assert (MAIN.schema_version, MAIN.policy_version) == (3, 3)
-    assert MAIN.kind == "dataset_upload_continuation_plan" and MAIN.executable is False
+    assert MAIN.kind == "dataset_upload_continuation_plan"
+    assert MAIN.executable is False
     assert len(MAIN.encoded()) < 16 * 1024
 
 
@@ -679,7 +683,8 @@ def test_the_matrix_replay_covers_every_status_of_the_v2_matrix():
 def test_continuation_not_possible_carries_closed_ordered_blockers_and_the_operation_id():
     error = ContinuationNotPossible(("drift_missing", "extra_remote"), SOURCE)
     envelope = error.envelope()
-    assert error.code == "continuation_not_possible" and error.exit_code == 2
+    assert error.code == "continuation_not_possible"
+    assert error.exit_code == 2
     assert envelope["operation_id"] == SOURCE
     assert envelope["details"]["blockers"] == ["drift_missing", "extra_remote"]
     assert envelope["message"] == MESSAGES["continuation_not_possible"]
@@ -708,7 +713,8 @@ def test_every_other_blocker_name_can_be_carried_alone():
 
 def test_continuation_remote_changed_is_a_plain_exit_two_error_with_a_fixed_message():
     error = YorungeError("continuation_remote_changed")
-    assert type(error) is YorungeError and not isinstance(error, OperationError)
+    assert type(error) is YorungeError
+    assert not isinstance(error, OperationError)
     assert error.exit_code == 2
     assert error.message == MESSAGES["continuation_remote_changed"]
     assert "http" not in error.message
@@ -751,7 +757,8 @@ def test_a_fresh_classification_that_says_the_same_matches_the_binding():
     fresh = fresh_classification()
     assert fresh.classes == ("pending_clean", "observed", "pending_uncertain")
     binding = bound_to(fresh)
-    assert binding.file_indices == (0, 2) and binding.uncertain_indices == (2,)
+    assert binding.file_indices == (0, 2)
+    assert binding.uncertain_indices == (2,)
     assert binding_matches(binding, fresh)
     # The same evidence rebuilt from scratch matches too.
     assert binding_matches(binding, fresh_classification())
@@ -809,7 +816,8 @@ def evidenced_plan():
 def test_grant_and_cost_evidence_instants_do_not_change_the_binding_but_content_does():
     data = evidenced_plan()
     base = plan_of(data)
-    assert base.grant is not None and base.cost_bound is not None
+    assert base.grant is not None
+    assert base.cost_bound is not None
     earlier_and_longer = json.loads(json.dumps(data))
     earlier_and_longer["grant"].update(
         checked_at="2026-11-02T10:59:00.000000Z", expires_at="2026-11-02T11:20:00.000000Z"
@@ -818,7 +826,8 @@ def test_grant_and_cost_evidence_instants_do_not_change_the_binding_but_content_
         checked_at="2026-11-02T10:58:00.000000Z", expires_at="2026-11-02T11:20:00.000000Z"
     )
     moved = plan_of(earlier_and_longer)
-    assert moved.digest != base.digest and moved.binding_digest() == base.binding_digest()
+    assert moved.digest != base.digest
+    assert moved.binding_digest() == base.binding_digest()
     for evidence, field, value in (
         ("grant", "producer_version", "9"),
         ("cost_bound", "maximum_micros", 2_000_000),
@@ -887,7 +896,8 @@ def test_another_admission_policy_is_rejected_when_no_acknowledgement_can_mask_i
     plan = DatasetContinuationPlanV3.model_validate_json(
         fixture("dataset-continuation-plan-v3-evidenced.json")
     )
-    assert plan.status == "prepared" and plan.risks == ()
+    assert plan.status == "prepared"
+    assert plan.risks == ()
     assert plan.admission_policy == "explicit_attempt"
     clean = dict(
         acknowledge_unverified_authority=False,
@@ -1045,21 +1055,24 @@ def test_the_message_of_a_remote_change_is_a_fixed_instruction_to_prepare_again(
 def test_the_evidenced_golden_pins_non_null_evidence_and_a_partial_selection():
     raw = fixture("dataset-continuation-plan-v3-evidenced.json")
     plan = DatasetContinuationPlanV3.model_validate_json(raw)
-    assert plan.encoded() == raw and plan.digest == EVIDENCED_DIGEST
+    assert plan.encoded() == raw
+    assert plan.digest == EVIDENCED_DIGEST
     assert plan.binding_digest() == EVIDENCED_BINDING
-    assert plan.grant is not None and plan.cost_bound is not None
-    assert plan.status == "prepared" and plan.risks == () and plan.blockers == ()
+    assert plan.grant is not None
+    assert plan.cost_bound is not None
+    assert plan.status == "prepared"
+    assert plan.risks == ()
+    assert plan.blockers == ()
     # Two of three files and 3 of the manifest's 8 bytes: M < N and fewer bytes than the total.
-    assert plan.continuation.file_indices == (0, 1) and plan.request_limits.max_upload_bytes == 3
+    assert plan.continuation.file_indices == (0, 1)
+    assert plan.request_limits.max_upload_bytes == 3
     approval = DatasetUploadApprovalV3.model_validate_json(
         fixture("dataset-continuation-approval-v3-evidenced.json")
     )
     assert approval.encoded() == fixture("dataset-continuation-approval-v3-evidenced.json")
-    assert not (
-        approval.acknowledge_unverified_authority
-        or approval.acknowledge_unpriced_cost
-        or approval.acknowledge_unconfirmed_effects
-    )
+    assert not approval.acknowledge_unverified_authority
+    assert not approval.acknowledge_unpriced_cost
+    assert not approval.acknowledge_unconfirmed_effects
     validate_approval_binding_v3(plan, approval)
     validate_continuation_selection(plan, MANIFEST)
 

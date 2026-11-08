@@ -44,7 +44,8 @@ def test_every_format_reaches_the_provider_and_the_summary(certificates, workspa
     with Rig(certificates, workspace) as rig:
         rig.server.routes[f"{JSON_PATH}?format={fmt}"] = json_route()
         summary = rig.call(artifact_format=fmt).data
-        assert summary.source.format == fmt and summary.bytes == len(DATA)
+        assert summary.source.format == fmt
+        assert summary.bytes == len(DATA)
         assert rig.json_calls()[0].path == f"{JSON_PATH}?format={fmt}"
 
 
@@ -61,7 +62,9 @@ def test_the_timeout_and_the_other_options_reach_the_engine(rig, monkeypatch):
     monkeypatch.setattr(module, "run_download", spy)
     rig.call(timeout=77, sha256=sha(DATA), no_resume=True)
     (job,) = seen
-    assert job.timeout == 77 and job.expected_sha256 == sha(DATA) and job.no_resume is True
+    assert job.timeout == 77
+    assert job.expected_sha256 == sha(DATA)
+    assert job.no_resume is True
     assert job.progress is not None
 
 
@@ -113,7 +116,9 @@ def test_a_change_of_the_store_during_the_download_does_not_fail_a_verified_file
                 connection.close()
 
     summary = rig.call(progress=disturb).data
-    assert changed and summary.bytes == len(DATA) and rig.target.read_bytes() == DATA
+    assert changed
+    assert summary.bytes == len(DATA)
+    assert rig.target.read_bytes() == DATA
 
 
 ALT = "/alt/v2"
@@ -136,7 +141,8 @@ def test_a_platform_with_another_api_base_gets_its_own_route_and_prefix(certific
         rig.server.routes[ALT_JSON] = json_route(good)
         rig.server.routes[ALT_SIGNED_PATH + "?sig=1"] = rig.provider
         summary = rig.call(profile="alt").data
-        assert summary.bytes == len(DATA) and rig.target.read_bytes() == DATA
+        assert summary.bytes == len(DATA)
+        assert rig.target.read_bytes() == DATA
         assert [r.path for r in rig.server.requests] == [ALT_JSON, ALT_SIGNED_PATH + "?sig=1"]
 
 

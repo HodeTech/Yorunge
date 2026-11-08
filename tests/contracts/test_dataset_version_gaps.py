@@ -219,10 +219,12 @@ def test_the_manifest_counts_at_their_edges_are_bound_and_beyond_them_are_refuse
         total_annotation_count=0,
     )
     made = bind(empty, SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=0)
-    assert made.local_manifest.file_count == 0 and made.local_manifest.relation == "count_matches"
+    assert made.local_manifest.file_count == 0
+    assert made.local_manifest.relation == "count_matches"
     assert decode_binding(made.encoded()) == made
     big = bind(observation(), SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=top)
-    assert big.local_manifest.file_count == top and big.local_manifest.relation == "count_differs"
+    assert big.local_manifest.file_count == top
+    assert big.local_manifest.relation == "count_differs"
     assert decode_binding(big.encoded()) == big
     for count in (top + 1, -1):
         assert (
@@ -328,7 +330,8 @@ def test_a_file_that_is_not_a_binding_keeps_none_of_its_text_in_the_error():
     with pytest.raises(YorungeError) as error:
         decode_binding(secret_looking)
     assert error.value.code == "binding_invalid"
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None
 
 
 def test_class_labels_that_do_not_encode_keep_no_class_name_in_the_error():
@@ -336,11 +339,13 @@ def test_class_labels_that_do_not_encode_keep_no_class_name_in_the_error():
     with pytest.raises(YorungeError) as error:
         class_labels_sha256(labels)
     assert error.value.code == "invalid_response"
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None
 
 
 def test_a_binding_that_cannot_be_made_keeps_no_cause():
     odd = ServiceTarget(service_origin="https://api.example.org", api_base_path="/api/v1\ud800")
     with pytest.raises(YorungeError) as error:
         bind(observation(), odd)
-    assert error.value.__context__ is None and error.value.__cause__ is None
+    assert error.value.__context__ is None
+    assert error.value.__cause__ is None

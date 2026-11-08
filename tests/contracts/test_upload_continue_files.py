@@ -173,7 +173,8 @@ def test_a_put_that_fails_stops_the_batch_before_the_other_worker_is_armed():
     with pytest.raises(OperationError):
         run(environment)
     arms = environment.names("arm")
-    assert ("put", 0) in arms and ("put", 1) not in arms  # no second permit after the failure
+    assert ("put", 0) in arms
+    assert ("put", 1) not in arms  # no second permit after the failure
     assert not any(kind == "confirm" for kind, _ in arms)
 
 
@@ -183,7 +184,9 @@ def test_a_confirm_that_fails_stops_the_confirms_after_it():
     with pytest.raises(OperationError):
         run(environment)
     arms = environment.names("arm")
-    assert ("confirm", 0) in arms and ("confirm", 1) not in arms and ("put", 2) not in arms
+    assert ("confirm", 0) in arms
+    assert ("confirm", 1) not in arms
+    assert ("put", 2) not in arms
 
 
 def test_an_environment_that_has_nothing_to_say_of_a_failure_lets_it_through_unchanged():

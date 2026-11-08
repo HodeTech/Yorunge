@@ -49,7 +49,8 @@ def test_the_strict_page_rejects_what_the_lenient_page_keeps_for_the_reducer(nam
 def test_unknown_provider_fields_are_projected_away_not_rejected(reader):
     rows = [{**row("a"), "created_at": "2026-01-01", "uploader": {"id": 1}}]
     page = reader(body(rows, 1, meta={"x": 1}), DATASET, SECRET)
-    assert [item.original_filename for item in page.items] == ["a"] and page.total == 1
+    assert [item.original_filename for item in page.items] == ["a"]
+    assert page.total == 1
 
 
 @pytest.mark.parametrize("reader", [metadata.items, metadata.item_page])

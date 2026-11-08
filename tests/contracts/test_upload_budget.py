@@ -525,5 +525,6 @@ def test_a_continuation_budget_reports_the_counters_of_the_work_it_did(clock):
     value = budget(values=continuation(1))
     value.reserve("presign", request_bytes=7, response_bytes=0)
     counters = value.snapshot()
-    assert counters.presign_requests == 1 and counters.create_requests == 0
+    assert counters.presign_requests == 1
+    assert counters.create_requests == 0
     assert counters.control_request_reserved == 7

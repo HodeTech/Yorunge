@@ -463,7 +463,8 @@ def test_the_cli_action_fails_closed_on_a_refused_reference(monkeypatch, checks,
     with pytest.raises(SystemExit) as stop:
         main()
     printed = capsys.readouterr()
-    assert stop.value.code == 1 and printed.out == ""
+    assert stop.value.code == 1
+    assert printed.out == ""
     assert "Evidence check failed" in printed.err
     assert "current source bytes" not in printed.err  # a closed message, no interpolated detail
 

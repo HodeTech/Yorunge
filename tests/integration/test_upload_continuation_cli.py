@@ -66,7 +66,8 @@ class Journey:
         assert process.stderr == b""
         value = json.loads(process.stdout)
         if self.output == "ndjson":
-            assert value["event"] == "result" and value["sequence"] == 1
+            assert value["event"] == "result"
+            assert value["sequence"] == 1
             return value["payload"]["data"], value["operation_id"]
         assert value["operation_id"] is None
         return value["data"], None
@@ -153,9 +154,11 @@ def test_an_upload_that_stopped_is_finished_by_the_commands_alone(
         assert journey.failed(needs_the_choice, "approval_required", 4)["operation_id"] == source
         read = journey.run("resume", "--operation-id", source, "--accept-unverified-read")
         report, stream = journey.done(read)
-        assert report["kind"] == "dataset_upload_resume_report" and report["eligible"] is True
+        assert report["kind"] == "dataset_upload_resume_report"
+        assert report["eligible"] is True
         assert (report["blockers"], report["recommended_action"]) == ([], "prepare")
-        assert report["observation"]["send_files"] == 1 and report["plan_id"] is None
+        assert report["observation"]["send_files"] == 1
+        assert report["plan_id"] is None
         if output == "ndjson":
             assert stream == source  # the stream is about the operation it was asked about
         provider.represign = True
@@ -163,12 +166,12 @@ def test_an_upload_that_stopped_is_finished_by_the_commands_alone(
             journey.run("resume", "--operation-id", source, "--accept-unverified-read", "--prepare")
         )
         plan_id = prepared["plan_id"]
-        assert plan_id is not None and prepared["plan_digest"] is not None
+        assert plan_id is not None
+        assert prepared["plan_digest"] is not None
         review, _ = journey.done(journey.run("review", "--plan-id", plan_id, context=False))
         assert review["summary"]["schema_version"] == 3
-        assert (
-            review["request_limits"]["max_presign"] == 1 and review["manifest"]["file_count"] == 3
-        )
+        assert review["request_limits"]["max_presign"] == 1
+        assert review["manifest"]["file_count"] == 3
         approved, _ = journey.done(
             journey.run(
                 "approve",
@@ -180,11 +183,13 @@ def test_an_upload_that_stopped_is_finished_by_the_commands_alone(
                 "--accept-unpriced-cost",
             )
         )
-        assert approved["approval_status"] == "approved" and approved["continuation_of"] == source
+        assert approved["approval_status"] == "approved"
+        assert approved["continuation_of"] == source
         sent = len(provider.events)
         started, _ = journey.done(journey.run("start", "--plan-id", plan_id))
         assert started["operation_status"] == "succeeded"
-        assert started["verification_level"] == "metadata" and started["continuation_of"] == source
+        assert started["verification_level"] == "metadata"
+        assert started["continuation_of"] == source
         assert provider.events[sent:] == ["presign", "put", "confirm"]
         no_secret_anywhere(journey)
         # the source is history now, and its own `show` says who continued it
@@ -206,7 +211,8 @@ def test_the_text_a_person_reads_leads_from_each_step_to_the_next(public_inputs,
         machine = Journey(server, data, manifest, config, "json")
         source = machine.plan_and_stop(provider)
         shown = journey.run("show", "--operation-id", source, context=False)
-        assert shown.returncode == 0 and shown.stderr == b""
+        assert shown.returncode == 0
+        assert shown.stderr == b""
         text = shown.stdout.decode()
         assert f"Devam için: yorunge datasets upload resume --operation-id {source}" in text
         report = journey.run("resume", "--operation-id", source, "--accept-unverified-read")
@@ -215,15 +221,15 @@ def test_the_text_a_person_reads_leads_from_each_step_to_the_next(public_inputs,
         assert f"Devam raporu — kaynak iş: {source}" in text
         assert "Devam edilebilir; plan kaydedilmedi (salt okuma raporu)." in text
         assert "Gönderilecek: 1 dosya" in text
-        assert "Hazırla: yorunge datasets upload resume" in text and "--prepare" in text
+        assert "Hazırla: yorunge datasets upload resume" in text
+        assert "--prepare" in text
         provider.represign = True
         prepared = journey.run(
             "resume", "--operation-id", source, "--accept-unverified-read", "--prepare"
         )
         text = prepared.stdout.decode()
-        assert (
-            "Devam planı kaydedildi: " in text and "İncele: yorunge datasets upload review" in text
-        )
+        assert "Devam planı kaydedildi: " in text
+        assert "İncele: yorunge datasets upload review" in text
         plan_id = text.split("Devam planı kaydedildi: ")[1].split(" ")[0]
         digest = text.split("(digest: ")[1].split(")")[0]
         reviewed = journey.run("review", "--plan-id", plan_id, context=False).stdout.decode()
@@ -262,7 +268,8 @@ def test_a_refused_continuation_explains_itself_in_text_and_keeps_the_operation(
         refused = person.run(
             "resume", "--operation-id", source, "--accept-unverified-read", "--prepare"
         )
-        assert refused.returncode == 2 and refused.stdout == b""
+        assert refused.returncode == 2
+        assert refused.stdout == b""
         text = refused.stderr.decode()
         assert "Devam bu işten şu an hazırlanamıyor." in text
         assert "- source_superseded: Bu kaynağın iptal edilmemiş bir devamı zaten var." in text
@@ -273,7 +280,8 @@ def test_a_refused_continuation_explains_itself_in_text_and_keeps_the_operation(
         successor = listed["uploads"][-1]["operation_id"]
         assert successor != source
         reconcile = person.run("reconcile", "--operation-id", source, "--accept-unverified-read")
-        assert reconcile.returncode == 2 and reconcile.stdout == b""
+        assert reconcile.returncode == 2
+        assert reconcile.stdout == b""
         text = reconcile.stderr.decode()
         assert f"İş: {successor}" in text
         assert f"İstediğiniz iş {source} değil; yukarıdaki iş ona bağlı" in text
@@ -318,11 +326,13 @@ def test_a_continuation_that_stops_too_is_resumed_in_its_turn(public_inputs, cer
         report, _ = journey.done(
             journey.run("resume", "--operation-id", interrupted, "--accept-unverified-read")
         )
-        assert report["eligible"] is True and report["source_operation_id"] == interrupted
+        assert report["eligible"] is True
+        assert report["source_operation_id"] == interrupted
         assert report["observation"]["send_files"] == 0  # everything is on the provider already
         second = continue_from(interrupted)
         done, _ = journey.done(journey.run("start", "--plan-id", second))
-        assert done["operation_status"] == "succeeded" and done["verification_level"] == "metadata"
+        assert done["operation_status"] == "succeeded"
+        assert done["verification_level"] == "metadata"
         assert done["continuation_of"] == interrupted
         assert done["continuation_files"] == 0  # a check of the dataset, nothing sent
         # each source in the chain names its own continuation, not the tip
@@ -362,8 +372,10 @@ def test_resume_errors_say_what_to_do_in_text_and_keep_the_machine_envelope_as_i
         )
     assert (text.returncode, machine.returncode) == (exit_code, exit_code)
     envelope = json.loads(machine.stderr)
-    assert envelope["code"] == code and envelope["operation_id"] == source
-    assert "hint" not in json.dumps(envelope) and list(envelope["details"]) == [
+    assert envelope["code"] == code
+    assert envelope["operation_id"] == source
+    assert "hint" not in json.dumps(envelope)
+    assert list(envelope["details"]) == [
         "reason_code",
         "capacity_kind",
     ]
@@ -384,7 +396,8 @@ def test_resume_arguments_are_judged_like_every_other_command(public_inputs, cer
             ("--operation-id", "00000000-0000-4000-8000-0000000000aa", "--nope"),
         ):
             refused = journey.run("resume", *arguments)
-            assert refused.returncode == 2 and refused.stdout == b""
+            assert refused.returncode == 2
+            assert refused.stdout == b""
             assert json.loads(refused.stderr)["code"] == "invalid_request"
         missing = journey.run(
             "resume",
@@ -462,7 +475,8 @@ def test_a_closed_stdout_is_output_closed_with_the_source_and_never_sends_anythi
             # by `list`, and a second prepare is one more draft, never a replay of anything
             assert len(after) == len(before) + 1
             saved = [row for row in after if row not in before]
-            assert saved[0][1] is None and saved[0][0] is not None
+            assert saved[0][1] is None
+            assert saved[0][0] is not None
             again, _ = machine.done(machine.run(*arguments, "--prepare"))
             assert again["plan_id"] not in (row[0] for row in after)
             assert effects(provider) == sent
@@ -520,7 +534,8 @@ def test_sigint_while_resume_reads_the_dataset_is_cancelled_with_nothing_saved(
         assert process.returncode == 6
         assert stdout == b""
         error = json.loads(stderr)
-        assert error["code"] == "request_cancelled" and error["operation_id"] == source
+        assert error["code"] == "request_cancelled"
+        assert error["operation_id"] == source
         assert kept(data[0]) == before  # no plan: a prepare cancelled in its read freezes nothing
         assert effects(provider) == sent
         routes[path] = original
@@ -528,4 +543,5 @@ def test_sigint_while_resume_reads_the_dataset_is_cancelled_with_nothing_saved(
         report, _ = machine.done(
             machine.run("resume", "--operation-id", source, "--accept-unverified-read")
         )
-        assert report["eligible"] is True and report["plan_id"] is None
+        assert report["eligible"] is True
+        assert report["plan_id"] is None

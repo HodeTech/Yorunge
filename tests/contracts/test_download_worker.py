@@ -88,12 +88,16 @@ def test_each_label_is_given_exactly_its_documented_time_and_the_command_names_i
     record = {}
     patch_popen(driver, monkeypatch, {"stdout": good_output(driver)}, record)
     value, pid = run_worker(driver, tmp_path, label)
-    assert record["waits"] == [limit] and pid == PID and value["pid"] == PID
+    assert record["waits"] == [limit]
+    assert pid == PID
+    assert value["pid"] == PID
     command = record["command"]
     option = {name: command[index + 1] for index, name in enumerate(command[:-1])}
-    assert option["--port"] == "222" and option["--warm-port"] == "111"  # measured, then warm
+    assert option["--port"] == "222"
+    assert option["--warm-port"] == "111"  # measured, then warm
     assert option["--label"] == label
-    assert option["--work"].endswith("work/measured") and option["--warm"].endswith("work/warm")
+    assert option["--work"].endswith("work/measured")
+    assert option["--warm"].endswith("work/warm")
     assert option["--prefix"] == str(tmp_path / "env")
     assert command[1:4] == ["-I", "-W", "error"]  # isolated, and a warning is an error
     assert record["cwd"] == tmp_path / "work"
@@ -111,7 +115,8 @@ def test_a_worker_that_outlives_its_limit_is_killed_and_the_timeout_surfaces(
     patch_popen(driver, monkeypatch, {"stdout": b"", "hang": True}, record)
     with pytest.raises(subprocess.TimeoutExpired):
         run_worker(driver, tmp_path, label)
-    assert record["killed"] is True and record["waits"] == [LIMITS[label], 10]
+    assert record["killed"] is True
+    assert record["waits"] == [LIMITS[label], 10]
 
 
 @pytest.mark.parametrize(
@@ -228,13 +233,16 @@ def test_one_measurement_names_whose_pid_is_whose_and_which_fixture_each_server_
     row = measure(driver, tmp_path, label, 3)
     warm_label = driver["DATA"]["WARM_OF"][label]
     assert sorted(served) == sorted([("warm-server", warm_label), ("measured-server", label)])
-    assert row["label"] == label and row["sample"] == 3
-    assert row["client_process_pid"] == 900 and row["client"] == {"label": label, "pid": 900}
+    assert row["label"] == label
+    assert row["sample"] == 3
+    assert row["client_process_pid"] == 900
+    assert row["client"] == {"label": label, "pid": 900}
     assert row["server_process_pid"] == 502  # the measured server's, not the warm one's
     assert row["warm_server_process_pid"] == 501
     assert row["server"] == {"served": "measured-server"}
     assert row["warm_server"] == {"served": "warm-server"}
-    assert seen["sink"]["pid"] == 502 and seen["warm"]["pid"] == 501  # the worker got both
+    assert seen["sink"]["pid"] == 502
+    assert seen["warm"]["pid"] == 501  # the worker got both
     assert seen["work"] == tmp_path / f"{label}-3"
     assert (tmp_path / f"{label}-3" / "warm").is_dir()
     assert (tmp_path / f"{label}-3" / "measured").is_dir()

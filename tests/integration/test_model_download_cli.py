@@ -138,7 +138,8 @@ def rig(certificates, workspace):
 def test_the_help_says_where_the_version_id_comes_from_and_what_the_options_cost(rig, certificates):
     process = run(rig, certificates, ["models", "download", "--help"])
     text = " ".join(stdout_of(process).split())  # argparse wraps lines: compare words, not layout
-    assert process.returncode == 0 and process.stderr == b""
+    assert process.returncode == 0
+    assert process.stderr == b""
     for phrase in (
         "--version-id",
         "Platform arayüzündeki model sürümü sayfasından",  # where the id is taken from
@@ -166,7 +167,8 @@ def test_the_command_is_listed_and_documented_at_every_level(rig, certificates):
     assert "models" in stdout_of(run(rig, certificates, ["--help"]))
     assert "download" in stdout_of(run(rig, certificates, ["models", "--help"]))
     bare = run(rig, certificates, ["models", "--output", "json"])
-    assert bare.returncode == 2 and json.loads(bare.stderr)["code"] == "invalid_request"
+    assert bare.returncode == 2
+    assert json.loads(bare.stderr)["code"] == "invalid_request"
 
 
 # --- the outputs ----------------------------------------------------------------------------------
@@ -175,12 +177,17 @@ def test_the_command_is_listed_and_documented_at_every_level(rig, certificates):
 def test_the_text_output_names_the_file_the_level_and_what_it_does_not_claim(rig, certificates):
     process = run(rig, certificates, command(rig))
     text = stdout_of(process)
-    assert process.returncode == 0 and process.stderr == b"" and rig.target.read_bytes() == DATA
+    assert process.returncode == 0
+    assert process.stderr == b""
+    assert rig.target.read_bytes() == DATA
     assert f"Model ağırlığı indirildi: {rig.target}" in text
-    assert f"Sürüm: {VERSION}; biçim onnx" in text and ", fold" not in text
+    assert f"Sürüm: {VERSION}; biçim onnx" in text
+    assert ", fold" not in text
     assert f"Boyut: {len(DATA)} bayt; SHA-256: {sha(DATA)}" in text
-    assert "transfer_complete" in text and "içerik doğrulanmadı" in text
-    assert "--sha256 ile verin" in text and "sha256_matched" not in text
+    assert "transfer_complete" in text
+    assert "içerik doğrulanmadı" in text
+    assert "--sha256 ile verin" in text
+    assert "sha256_matched" not in text
     assert "Aktarım: baştan indirildi." in text
     assert "özgünlüğünü, lisansını ya da model uygunluğunu söylemez" in text
     assert_nothing_private(process.stdout, process.stderr, rig=rig)
@@ -191,24 +198,32 @@ def test_the_text_output_of_a_verified_download_says_whose_digest_matched(rig, c
     process = run(rig, certificates, command(rig, "--sha256", sha(DATA), "--fold", "2"))
     text = stdout_of(process)
     assert process.returncode == 0
-    assert "sha256_matched" in text and "verdiğiniz beklenen özetle eşleşti" in text
-    assert "transfer_complete" not in text and "biçim onnx, fold 2" in text
+    assert "sha256_matched" in text
+    assert "verdiğiniz beklenen özetle eşleşti" in text
+    assert "transfer_complete" not in text
+    assert "biçim onnx, fold 2" in text
 
 
 def test_json_is_one_result_and_nothing_else_and_ndjson_is_one_event(rig, certificates):
     as_json = run(rig, certificates, command(rig, output="json"))
-    assert as_json.returncode == 0 and as_json.stderr == b""
+    assert as_json.returncode == 0
+    assert as_json.stderr == b""
     value = json.loads(as_json.stdout)
     data = value["data"]
-    assert value["operation_id"] is None and value["warnings"] == []
-    assert data["kind"] == "download_summary" and data["bytes"] == len(DATA)
-    assert data["verification_level"] == "transfer_complete" and data["source"]["format"] == "onnx"
+    assert value["operation_id"] is None
+    assert value["warnings"] == []
+    assert data["kind"] == "download_summary"
+    assert data["bytes"] == len(DATA)
+    assert data["verification_level"] == "transfer_complete"
+    assert data["source"]["format"] == "onnx"
     rig.target.unlink()
     as_events = run(rig, certificates, command(rig, output="ndjson"))
-    assert as_events.returncode == 0 and as_events.stderr == b""
+    assert as_events.returncode == 0
+    assert as_events.stderr == b""
     (line,) = as_events.stdout.decode().splitlines()
     event = json.loads(line)
-    assert event["event"] == "result" and event["sequence"] == 1
+    assert event["event"] == "result"
+    assert event["sequence"] == 1
     assert event["payload"]["data"]["sha256"] == sha(DATA)
     assert_nothing_private(as_json.stdout, as_events.stdout, rig=rig)
 
@@ -220,14 +235,16 @@ def test_a_digest_that_differs_is_exit_7_with_no_target_and_no_result(rig, certi
     process = run(rig, certificates, command(rig, "--sha256", "00" * 32, output="json"))
     assert process.returncode == 7
     assert error_of(process)["code"] == "download_integrity_mismatch"
-    assert rig.names() == [] and len(rig.signed()) == 1
+    assert rig.names() == []
+    assert len(rig.signed()) == 1
     assert_nothing_private(process.stdout, process.stderr, rig=rig)
 
 
 def test_a_digest_that_differs_shows_the_digest_that_was_computed_in_text_too(rig, certificates):
     """The stage is gone after a mismatch, so seeing the digest again would cost a download."""
     text = run(rig, certificates, command(rig, "--sha256", "00" * 32))
-    assert text.returncode == 7 and not text.stdout.strip()
+    assert text.returncode == 7
+    assert not text.stdout.strip()
     message = text.stderr.decode()
     assert f"Hesaplanan SHA-256: {sha(DATA)} ({len(DATA)} bayt)" in message
     machine = run(rig, certificates, command(rig, "--sha256", "00" * 32, output="json"))
@@ -239,8 +256,10 @@ def test_a_digest_that_differs_shows_the_digest_that_was_computed_in_text_too(ri
 def test_a_target_that_exists_is_exit_2_and_nothing_is_asked_of_the_network(rig, certificates):
     rig.target.write_bytes(b"mine")
     process = run(rig, certificates, command(rig, output="json"))
-    assert process.returncode == 2 and error_of(process)["code"] == "download_output_exists"
-    assert rig.server.requests == [] and rig.target.read_bytes() == b"mine"
+    assert process.returncode == 2
+    assert error_of(process)["code"] == "download_output_exists"
+    assert rig.server.requests == []
+    assert rig.target.read_bytes() == b"mine"
 
 
 @pytest.mark.parametrize(
@@ -274,14 +293,17 @@ def test_a_wrong_value_or_option_is_exit_2_invalid_request_and_the_key_is_not_re
         command(rig, *extra, output="json", **replace),
         extra_env={ENV: ""},  # an empty key would be a different, later error
     )
-    assert process.returncode == 2 and error_of(process)["code"] == "invalid_request"
-    assert rig.server.requests == [] and rig.names() == []
+    assert process.returncode == 2
+    assert error_of(process)["code"] == "invalid_request"
+    assert rig.server.requests == []
+    assert rig.names() == []
 
 
 def test_a_missing_required_option_is_exit_2(rig, certificates):
     args = [a for a in command(rig, output="json") if a not in ("--weights-out", str(rig.target))]
     process = run(rig, certificates, args)
-    assert process.returncode == 2 and error_of(process)["code"] == "invalid_request"
+    assert process.returncode == 2
+    assert error_of(process)["code"] == "invalid_request"
 
 
 def test_a_missing_key_is_a_closed_credential_error_and_no_request_is_made(rig, certificates):
@@ -293,7 +315,8 @@ def test_a_missing_key_is_a_closed_credential_error_and_no_request_is_made(rig, 
         capture_output=True,
         timeout=60,
     )
-    assert process.returncode != 0 and rig.server.requests == []
+    assert process.returncode != 0
+    assert rig.server.requests == []
     assert error_of(process)["code"] in {"credential_unavailable", "credential_missing"}
 
 
@@ -301,8 +324,10 @@ def test_a_statuses_error_goes_to_stderr_and_the_exit_code_is_the_codes(certific
     reply = Reply(status=403, body=b'{"detail":"PRIVATE-DETAIL"}')
     with Rig(certificates, workspace, route=lambda record, count: reply) as rig:
         process = run(rig, certificates, command(rig, output="json"))
-        assert process.returncode == 3 and error_of(process)["code"] == "remote_access_denied"
-        assert b"PRIVATE-DETAIL" not in process.stderr and rig.signed() == []
+        assert process.returncode == 3
+        assert error_of(process)["code"] == "remote_access_denied"
+        assert b"PRIVATE-DETAIL" not in process.stderr
+        assert rig.signed() == []
 
 
 # --- resuming -------------------------------------------------------------------------------------
@@ -311,12 +336,14 @@ def test_a_statuses_error_goes_to_stderr_and_the_exit_code_is_the_codes(certific
 def test_a_cut_download_is_resumed_by_the_same_command_and_the_text_says_so(rig, certificates):
     rig.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
     first = run(rig, certificates, command(rig, output="json"))
-    assert first.returncode == 1 and error_of(first)["code"] == "download_incomplete"
+    assert first.returncode == 1
+    assert error_of(first)["code"] == "download_incomplete"
     names = download_names(NAME)
     assert rig.names() == sorted([names.stage, names.sidecar])
     second = run(rig, certificates, command(rig))
     text = stdout_of(second)
-    assert second.returncode == 0 and rig.target.read_bytes() == DATA
+    assert second.returncode == 0
+    assert rig.target.read_bytes() == DATA
     assert f"yarım kalan indirmeden {CUT} bayttan devam edildi" in text
     assert rig.provider.seen == [(None, None), (f"bytes={CUT}-", TAG)]
 
@@ -334,7 +361,8 @@ def test_a_whole_stage_is_published_by_the_command_with_no_request_and_the_text_
         rig.call(progress=interrupted)
     before = len(rig.server.requests)
     process = run(rig, certificates, command(rig))
-    assert process.returncode == 0 and rig.target.read_bytes() == DATA
+    assert process.returncode == 0
+    assert rig.target.read_bytes() == DATA
     assert len(rig.server.requests) == before  # not even the JSON call
     assert "ağ isteği yapılmadan yayımlandı" in stdout_of(process)
     assert rig.names() == [NAME]
@@ -344,7 +372,8 @@ def test_no_resume_starts_over_and_the_text_says_it_was_downloaded_afresh(rig, c
     rig.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
     assert run(rig, certificates, command(rig, output="json")).returncode == 1
     process = run(rig, certificates, command(rig, "--no-resume"))
-    assert process.returncode == 0 and "baştan indirildi" in stdout_of(process)
+    assert process.returncode == 0
+    assert "baştan indirildi" in stdout_of(process)
     assert rig.provider.seen[-1] == (None, None)
 
 
@@ -355,10 +384,10 @@ def test_a_trace_that_is_not_ours_stops_the_command_and_the_message_names_no_fil
     (rig.directory / names.sidecar).mkdir()  # a directory where the sidecar belongs
     process = run(rig, certificates, command(rig, output="json"))
     envelope = error_of(process)
-    assert process.returncode == 2 and envelope["code"] == "download_partial_unverified"
-    assert "Hiçbir dosyaya dokunulmadı" in envelope["message"] and names.sidecar not in str(
-        envelope
-    )
+    assert process.returncode == 2
+    assert envelope["code"] == "download_partial_unverified"
+    assert "Hiçbir dosyaya dokunulmadı" in envelope["message"]
+    assert names.sidecar not in str(envelope)
     assert rig.server.requests == []
 
 
@@ -398,13 +427,15 @@ def test_an_interrupt_during_the_body_is_exit_6_prints_no_result_and_the_next_ru
             if process.poll() is None:
                 process.kill()
                 process.wait()
-        assert process.returncode == 6 and stdout == b""
+        assert process.returncode == 6
+        assert stdout == b""
         assert json.loads(stderr)["code"] == "request_cancelled"
         assert not rig.target.exists()
         assert_nothing_private(stdout, stderr, rig=rig)
         rig.provider.script = []
         finished = run(rig, certificates, command(rig, output="json"))
-        assert finished.returncode == 0 and rig.target.read_bytes() == DATA
+        assert finished.returncode == 0
+        assert rig.target.read_bytes() == DATA
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signal contract")
@@ -421,7 +452,8 @@ def test_a_closed_stdout_after_the_publication_is_exit_6_and_the_file_is_whole(r
             process.wait()
         process.stderr.close()
     assert json.loads(stderr)["code"] == "output_closed"
-    assert rig.target.read_bytes() == DATA and rig.names() == [NAME]  # whole, and said so
+    assert rig.target.read_bytes() == DATA
+    assert rig.names() == [NAME]  # whole, and said so
 
 
 # --- the progress line ----------------------------------------------------------------------------
@@ -441,8 +473,10 @@ def test_progress_is_one_rewritten_line_on_a_terminal_and_ends_with_a_newline():
     progress(1000, 1000)
     progress.close()
     text = stream.getvalue()
-    assert text.startswith("\rİndiriliyor: 0 / 1000 bayt (%0)") and text.endswith("(%100)\n")
-    assert text.count("\r") == 3 and text.count("\n") == 1
+    assert text.startswith("\rİndiriliyor: 0 / 1000 bayt (%0)")
+    assert text.endswith("(%100)\n")
+    assert text.count("\r") == 3
+    assert text.count("\n") == 1
     progress.close()
     assert stream.getvalue() == text  # closing twice adds nothing
 
@@ -452,12 +486,14 @@ def test_progress_without_a_total_shows_bytes_only_and_without_a_terminal_nothin
     progress = ProgressText(stream)
     progress(4096, None)
     progress(8192, 0)
-    assert "4096 bayt" in stream.getvalue() and "%" not in stream.getvalue()
+    assert "4096 bayt" in stream.getvalue()
+    assert "%" not in stream.getvalue()
     quiet = io.StringIO()  # not a terminal
     silent = ProgressText(quiet)
     silent(1, 2)
     silent.close()
-    assert not silent.enabled and quiet.getvalue() == ""
+    assert not silent.enabled
+    assert quiet.getvalue() == ""
 
 
 def test_a_progress_line_that_cannot_be_written_silences_itself_and_never_raises():
@@ -496,7 +532,10 @@ def test_the_progress_receiver_is_given_only_to_text_on_a_terminal(monkeypatch):
         "--weights-out",
         "/tmp/x.onnx",
     ]
-    assert main([*base, "--output", "json"]) == 2 and seen == [None]  # machine output: never
-    assert main(base) == 2 and seen == [None, None]  # text, but stderr is not a terminal here
+    assert main([*base, "--output", "json"]) == 2
+    assert seen == [None]  # machine output: never
+    assert main(base) == 2
+    assert seen == [None, None]  # text, but stderr is not a terminal here
     monkeypatch.setattr(sys, "stderr", Terminal())
-    assert main(base) == 2 and isinstance(seen[-1], ProgressText)
+    assert main(base) == 2
+    assert isinstance(seen[-1], ProgressText)

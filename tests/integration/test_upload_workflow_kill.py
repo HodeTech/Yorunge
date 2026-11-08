@@ -242,7 +242,8 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
             plan.plan_id, prepared_input[0], denied, session_factory=denied
         )
         assert result.existing
-        assert len(server.requests) == count and tuple(provider.events) == events
+        assert len(server.requests) == count
+        assert tuple(provider.events) == events
         expected_status = "running" if intents else "admitted"
         if terminal:
             expected_status = "succeeded"
@@ -274,10 +275,12 @@ def test_sigkill_original_is_found_by_plan_without_any_restart_write(
                 assert stopped.operation.status == ("unknown" if intents else "cancelled")
                 assert stopped.operation.lease is None
                 assert stopped.operation.workflow_latched == bool(intents)
-                assert len(stopped.intents) == intents and len(stopped.receipts) == receipts
+                assert len(stopped.intents) == intents
+                assert len(stopped.receipts) == receipts
                 assert store.verify().store_schema_version == 7
             again = run_upload_original(
                 plan.plan_id, prepared_input[0], denied, session_factory=denied
             )
             assert again.record.operation_id == result.record.operation_id
-            assert len(server.requests) == count and tuple(provider.events) == events
+            assert len(server.requests) == count
+            assert tuple(provider.events) == events

@@ -118,12 +118,14 @@ def test_plan_approval_and_record_rows_come_back_as_the_continuation_family(tmp_
     with open_store(tmp_path / "state") as store:
         install(store)
         plan = read_plan(store.connection, PLAN.plan_id)
-        assert type(plan) is DatasetContinuationPlanV3 and plan.encoded() == PLAN.encoded()
+        assert type(plan) is DatasetContinuationPlanV3
+        assert plan.encoded() == PLAN.encoded()
         approval = read_approval(store.connection, plan)
         assert type(approval) is DatasetUploadApprovalV3
         assert approval.encoded() == APPROVAL.encoded()
         record = read_any_record(store.connection, RECORD.operation_id)
-        assert type(record) is TransferRecordV3 and record.encoded() == RECORD.encoded()
+        assert type(record) is TransferRecordV3
+        assert record.encoded() == RECORD.encoded()
 
 
 def test_a_stored_row_that_disagrees_with_its_payload_is_state_invalid(tmp_path):

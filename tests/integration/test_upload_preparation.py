@@ -180,7 +180,8 @@ def test_the_connection_of_a_prepare_is_one_phase_of_thirty_seconds(prepared_inp
             context, profile, state, session_factory=factory
         )
         prepare(value, prepared_input)
-    assert len(seen) == 1 and 25.0 < seen[0] <= 30.0  # the freshness rule of the reads: 30 seconds
+    assert len(seen) == 1
+    assert 25.0 < seen[0] <= 30.0  # the freshness rule of the reads: 30 seconds
 
 
 @pytest.mark.parametrize("admission", ["verified_only", "explicit_attempt"])

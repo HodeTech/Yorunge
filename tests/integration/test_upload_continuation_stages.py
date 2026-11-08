@@ -162,7 +162,8 @@ def test_a_continuation_sends_the_file_that_was_left_and_creates_and_links_nothi
         events, created = list(provider.events), (provider.create_calls, provider.link_calls)
         before, budgets = len(server.requests), []
         record = start(data, server, report.plan_id, budgets=budgets)
-        assert record.status == "running" and record.dataset_id == DATASET
+        assert record.status == "running"
+        assert record.dataset_id == DATASET
         assert provider.events[len(events) :] == ["presign", "put", "confirm"]
         assert (provider.create_calls, provider.link_calls) == created  # the original's alone
         sent = [r for r in server.requests[before:] if r.method != "GET"]
@@ -175,7 +176,8 @@ def test_a_continuation_sends_the_file_that_was_left_and_creates_and_links_nothi
             1,
             1,
         )
-        assert counters.upload_bytes == len(b"different") and counters.response_pending == 0
+        assert counters.upload_bytes == len(b"different")
+        assert counters.response_pending == 0
         # One fresh look at the dataset (context, dataset, membership, role) served all the stages.
         assert counters.read_requests == counters.read_attempts == 6
         view = journal(data, report.plan_id)
@@ -216,7 +218,8 @@ def test_five_of_eight_files_are_presigned_first_put_two_at_a_time_and_confirmed
         assert counters.upload_bytes == sum(data[2].files[i].size for i in (3, 4, 5, 6, 7))
         assert (counters.create_requests, counters.project_link_requests) == (0, 0)
         sent = [r for r in server.requests[before:] if r.method != "GET"]
-        assert len(sent) == 15 and not any(r.path.endswith("/datasets") for r in sent)
+        assert len(sent) == 15
+        assert not any(r.path.endswith("/datasets") for r in sent)
         view = journal(data, report.plan_id)
         assert len(view.intents) == len(view.receipts) == 15
 
@@ -238,7 +241,8 @@ def test_a_confirm_that_counts_neither_way_makes_the_operation_uncertain_and_is_
         view = journal(data, report.plan_id)
         confirm = [i for i in view.intents if i.kind == "confirm"]
         done = {r.intent_id for r in view.receipts if r.result == "accepted"}
-        assert len(confirm) == 1 and confirm[0].intent_id not in done
+        assert len(confirm) == 1
+        assert confirm[0].intent_id not in done
 
 
 def test_a_file_whose_confirm_had_no_answer_is_sent_again_and_presigned_again(
@@ -252,7 +256,8 @@ def test_a_file_whose_confirm_had_no_answer_is_sent_again_and_presigned_again(
         report = planned(data, server, provider, accept_unconfirmed_effects=True)
         provider.route_table[CONFIRM] = answering  # the provider answers again
         plan = saved(data, report.plan_id).plan
-        assert plan.continuation.uncertain_indices == (1,) and plan.continuation.file_indices == (
+        assert plan.continuation.uncertain_indices == (1,)
+        assert plan.continuation.file_indices == (
             1,
             2,
         )
@@ -319,7 +324,8 @@ def test_a_stage_that_fails_leaves_the_operation_uncertain_and_is_sent_once(
         view = journal(data, report.plan_id)
         accepted = {r.intent_id for r in view.receipts if r.result == "accepted"}
         last = view.intents[-1]
-        assert last.kind == stage and last.intent_id not in accepted  # armed, never claimed done
+        assert last.kind == stage
+        assert last.intent_id not in accepted  # armed, never claimed done
 
 
 def test_a_fresh_check_that_fails_before_any_stage_is_a_local_cancellation_not_an_uncertainty(
@@ -380,7 +386,8 @@ def test_a_process_that_does_not_own_the_admission_sends_nothing(prepared_input,
         report = planned(data, server, provider)
         sends = len(provider.events)
         record = start(data, server, report.plan_id, algorithm=lost_the_race)
-        assert record.status == "admitted" and len(provider.events) == sends
+        assert record.status == "admitted"
+        assert len(provider.events) == sends
         assert journal(data, report.plan_id).intents == ()
 
 
@@ -391,7 +398,8 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
 
     async def probe(environment):
         check = await environment.admission()  # it sends files: the permission to upload
-        assert check.authorization.action == "upload_created_dataset" and check.upload_observation
+        assert check.authorization.action == "upload_created_dataset"
+        assert check.upload_observation
         for kind in ("create", "project_link"):
             with pytest.raises(YorungeError) as error:
                 await environment.current(kind)
@@ -445,7 +453,8 @@ def test_the_environment_refuses_a_create_a_link_and_a_stage_of_a_file_it_was_no
         report = planned(data, server, provider)
         sends = len(provider.events)
         record = start(data, server, report.plan_id, algorithm=probe)
-        assert record.status == "admitted" and len(provider.events) == sends
+        assert record.status == "admitted"
+        assert len(provider.events) == sends
 
 
 # --- what must never be written down or said ----------------------------------------------------
@@ -471,11 +480,13 @@ def test_no_key_and_no_volatile_provider_value_reaches_the_journal_the_log_or_th
         own = b"".join(x.encoded() for x in (*view.intents, *view.receipts)).decode()
         assert not any(marker in own for marker in VOLATILE)
         shown = own + repr(record) + record.model_dump_json() + caplog.text
-        assert SECRET not in shown and not any(marker in shown for marker in VOLATILE[:2])
+        assert SECRET not in shown
+        assert not any(marker in shown for marker in VOLATILE[:2])
         # The whole state directory: the key is never stored, and no provider object key is.
         everything = stored_bytes(data[0])
         assert SECRET.encode() not in everything
-        assert b"objects/blob" not in everything and b"upload/put?key=" not in everything
+        assert b"objects/blob" not in everything
+        assert b"upload/put?key=" not in everything
 
 
 @pytest.mark.parametrize("stage", ["presign", "put", "confirm"])
@@ -490,8 +501,10 @@ def test_a_failure_says_nothing_of_what_the_provider_answered(prepared_input, ce
         with pytest.raises(OperationError) as error:
             start(data, server, report.plan_id)
         shown = "".join(traceback.format_exception(error.value)) + repr(error.value)
-        assert canary not in shown and SECRET not in shown
-        assert error.value.__cause__ is None and error.value.__context__ is None
+        assert canary not in shown
+        assert SECRET not in shown
+        assert error.value.__cause__ is None
+        assert error.value.__context__ is None
         assert canary.encode() not in stored_bytes(data[0])
 
 
@@ -532,7 +545,8 @@ def test_a_cancellation_before_anything_was_armed_cancels_the_operation_locally(
             assert error.value.code == "request_cancelled"
             assert error.value.operation_id == record.operation_id
         assert (record.status, record.reason) == ("cancelled", "local_cancelled")
-        assert len(provider.events) == sends and journal(data, report.plan_id).intents == ()
+        assert len(provider.events) == sends
+        assert journal(data, report.plan_id).intents == ()
 
 
 @pytest.mark.parametrize(
@@ -567,7 +581,8 @@ def test_a_cancellation_after_a_permit_was_committed_leaves_the_operation_uncert
         assert (record.status, record.reason) == ("unknown", "request_uncertain")
         assert len(provider.events) == sends  # the permit was never used: and never will be
         view = journal(data, report.plan_id)
-        assert len(view.intents) == 1 and not view.receipts
+        assert len(view.intents) == 1
+        assert not view.receipts
         with open_existing_store(data[0]) as store:
             validate_uploads(store.connection)
 
@@ -587,7 +602,8 @@ def test_a_put_that_fails_ends_the_continuation_before_any_confirm_or_later_batc
             start(data, server, report.plan_id)
         assert error.value.code == "operation_uncertain"
         events = provider.events[before:]
-        assert events[:5] == ["presign"] * 5 and set(events[5:]) <= {"put"}
+        assert events[:5] == ["presign"] * 5
+        assert set(events[5:]) <= {"put"}
         assert 1 <= events.count("put") <= 2  # the batch's two workers, never a later batch
         assert "confirm" not in events
         record = operation_of(data, report.plan_id)
@@ -628,7 +644,8 @@ def test_the_dataset_a_continuation_extends_is_its_plans_and_no_other(prepared_i
         with pytest.raises(YorungeError) as error:
             start(data, server, report.plan_id, baseline=other)
         assert error.value.code == "invalid_request"
-        assert len(server.requests) == before and operation_of(data, report.plan_id) is None
+        assert len(server.requests) == before
+        assert operation_of(data, report.plan_id) is None
 
 
 # --- time, deadlines and what changes between two stages ----------------------------------------
@@ -695,7 +712,8 @@ def test_every_permit_is_armed_within_the_end_of_the_run(prepared_input, certifi
         report = planned(data, server, provider)  # the original upload armed its own permits
         monkeypatch.setattr(StateUploads, "arm", arm)
         start(data, server, report.plan_id, window=300, ends=ends)
-    assert len(ends) == 1 and seen == ends * 3  # presign, put and confirm of the one file
+    assert len(ends) == 1
+    assert seen == ends * 3  # presign, put and confirm of the one file
 
 
 def test_a_run_given_more_than_fifteen_minutes_is_held_to_fifteen(prepared_input, certificates):
@@ -859,7 +877,8 @@ def test_a_continuation_that_sends_nothing_is_admitted_on_the_permission_to_read
         assert saved(data, report.plan_id).plan.continuation.file_indices == ()
         sends, before = len(provider.events), len(server.requests)
         record = start(data, server, report.plan_id, algorithm=check_only)
-        assert record.status == "admitted" and record.dataset_id == DATASET
+        assert record.status == "admitted"
+        assert record.dataset_id == DATASET
         assert provider.events[sends:] == []  # nothing was created, linked, presigned or put
         assert all(r.method == "GET" for r in server.requests[before:])
         assert journal(data, report.plan_id).intents == ()
@@ -914,10 +933,8 @@ def test_a_failure_that_names_the_operation_of_another_plan_is_not_this_continua
         before = stored(environment, source)
         named = OperationError("operation_uncertain", source)
         assert environment.failure(named) is named  # said as it came: that plan is not this one
-        assert (
-            stored(environment, source) == before
-            and stored(environment, record.operation_id) == record
-        )
+        assert stored(environment, source) == before
+        assert stored(environment, record.operation_id) == record
         return record
 
     with TlsServer(certificates, provider.routes()) as server:
@@ -971,7 +988,8 @@ def test_a_process_that_does_not_own_the_operation_stops_nothing_when_it_fails(
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
         record = start(data, server, report.plan_id, algorithm=watcher)
-        assert record.status == "admitted" and journal(data, report.plan_id).intents == ()
+        assert record.status == "admitted"
+        assert journal(data, report.plan_id).intents == ()
 
 
 @pytest.mark.parametrize("reason", ["state_changed", None], ids=["its own reason", "no reason"])

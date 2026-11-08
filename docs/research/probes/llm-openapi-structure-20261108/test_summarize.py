@@ -11,7 +11,8 @@ import pytest
 _SPEC = importlib.util.spec_from_file_location(
     "summarize", Path(__file__).with_name("summarize.py")
 )
-assert _SPEC is not None and _SPEC.loader is not None
+assert _SPEC is not None
+assert _SPEC.loader is not None
 summarize_module = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(summarize_module)
 
@@ -96,7 +97,8 @@ def test_nullability_and_description_changes_are_visible_without_storing_text() 
     before = summarize_module.summarize(raw(DOCUMENT))["schemas"]["Quota"]["properties"]
     after = summarize_module.summarize(raw(changed))["schemas"]["Quota"]["properties"]
 
-    assert before["held"] == "string#-" and after["held"] == "null|string#-"
+    assert before["held"] == "string#-"
+    assert after["held"] == "null|string#-"
     assert before["used"] != after["used"]
     assert before["used"].split("#")[0] == after["used"].split("#")[0]
 

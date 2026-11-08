@@ -129,7 +129,8 @@ def test_installed_smoke_surface_source_and_metadata_failures_cannot_be_hidden(
         steps = [call for call in calls if isinstance(call, tuple)]
         assert [name for name, _ in steps] == ["surface", "measure_one"]
         assert steps[0][1][:4] == (python, prefix / "bin/yorunge", scratch, workspace / "16-2")
-        assert steps[1][1][:2] == (python, workspace) and steps[1][1][4:] == ("16", 1)
+        assert steps[1][1][:2] == (python, workspace)
+        assert steps[1][1][4:] == ("16", 1)
         assert calls.count("source") == 2  # before and after, around both steps
         manifest = json.loads((workspace / "source-manifest.json").read_bytes())
         assert manifest == {
@@ -290,7 +291,8 @@ def test_the_summary_is_the_cli_result_the_installed_package_prints(helper, tmp_
     assert value["data"]["verification_level"] == "sha256_matched"
     assert value["data"]["expectation_source"] == "user_supplied"
     assert (value["status"], value["operation_id"], value["warnings"]) == ("completed", None, [])
-    assert value["data"]["bytes"] == SIZE and value["data"]["resumed"] is False
+    assert value["data"]["bytes"] == SIZE
+    assert value["data"]["resumed"] is False
 
 
 @pytest.mark.parametrize(
@@ -446,7 +448,8 @@ def test_the_real_surface_helps_refuses_downloads_and_leaves_its_evidence(develo
     ]
     assert (run / "client-stderr.txt").read_bytes() == b""
     document = helper["CHECKS"]["decode"]((run / "client-stdout.json").read_bytes())
-    assert document["data"]["bytes"] == SIZE and document["data"]["resumed"] is False
+    assert document["data"]["bytes"] == SIZE
+    assert document["data"]["resumed"] is False
     account = helper["DRIVER"]["decode_output"](run / "measured-server/stdout.json")
     assert account["requests"] == {"json": 1, "signed": 1, "unexpected": 0}
     assert (scratch / "cli-download/out").is_dir()

@@ -113,7 +113,8 @@ def test_gap_the_script_as_a_process_fails_red_when_the_environment_file_is_miss
         check=False,
     )
     assert result.returncode == 1
-    assert "Download CI failed" in result.stderr and "Traceback" not in result.stderr
+    assert "Download CI failed" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_a_report_too_deep_to_read_is_a_closed_failure_of_the_wrapper(helper, monkeypatch, capsys):

@@ -202,8 +202,10 @@ def test_a_continuation_matches_the_frozen_formulas_for_every_kind_of_selection(
     for selection in selections(count):
         spec = StageGraphSpec(3, count, selection)
         sent = len(selection)
-        assert spec.continuation and spec.dataset_from_plan
-        assert spec.files == selection and type(spec.files) is tuple
+        assert spec.continuation
+        assert spec.dataset_from_plan
+        assert spec.files == selection
+        assert type(spec.files) is tuple
         assert spec.required_stages() == frozen_continuation_stages(selection)
         assert spec.intent_count == 3 * sent == len(spec.required_stages())
         assert spec.operation_reservation() == frozen_continuation_reservation(sent, count)
@@ -224,7 +226,8 @@ def test_a_continuation_of_every_file_saves_exactly_the_create_and_link_intents(
     assert original.intent_count - everything.intent_count == 2
     assert original.operation_reservation() - everything.operation_reservation() == 2 * 4096
     assert original.files == everything.files
-    assert not original.continuation and not original.dataset_from_plan
+    assert not original.continuation
+    assert not original.dataset_from_plan
 
 
 def test_a_continuation_has_no_create_or_link_and_nothing_before_a_presign():
@@ -240,7 +243,8 @@ def test_a_continuation_has_no_create_or_link_and_nothing_before_a_presign():
         required = spec.predecessor(kind, index)
         assert (required is None) == (kind == "presign")
         assert required is None or required in stages
-    assert ("create", None) not in stages and ("project_link", None) not in stages
+    assert ("create", None) not in stages
+    assert ("project_link", None) not in stages
 
 
 def test_the_dataset_of_a_stage_comes_from_the_plan_only_in_a_continuation():

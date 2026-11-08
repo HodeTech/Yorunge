@@ -206,7 +206,8 @@ def test_a_versions_command_without_an_action_is_a_usage_error_not_a_crash():
     error = io.StringIO()
     with contextlib.redirect_stderr(error), contextlib.redirect_stdout(io.StringIO()):
         assert main(["--output", "json", "datasets", "versions"]) == 2
-    assert "invalid_request" in error.getvalue() and "Traceback" not in error.getvalue()
+    assert "invalid_request" in error.getvalue()
+    assert "Traceback" not in error.getvalue()
 
 
 # --- the text of list, show and bind: lines nothing asserted --------------------------------------
@@ -267,7 +268,8 @@ def test_the_text_of_show_says_whether_the_export_is_ready(workspace, certificat
 
     not_ready = shown(routes())
     ready = shown(routes(**{BASE + "/v1": body(detail(is_export_ready=True))}))
-    assert "export hazır değil" in not_ready and "export hazır değil" not in ready
+    assert "export hazır değil" in not_ready
+    assert "export hazır değil" not in ready
     assert "export hazır" in ready
 
 
@@ -340,7 +342,8 @@ def test_a_binding_is_synced_to_disk_before_and_after_it_is_linked(place, monkey
     monkeypatch.setattr(os, "fsync", spy)
     with binding_target(place / "binding.json") as target:
         target.publish(binding())
-    assert seen.count("file") == 2 and seen.count("directory") == 1
+    assert seen.count("file") == 2
+    assert seen.count("directory") == 1
 
 
 def test_the_stage_of_a_binding_is_exactly_prefix_random_suffix(place, monkeypatch):
@@ -354,4 +357,5 @@ def test_the_stage_of_a_binding_is_exactly_prefix_random_suffix(place, monkeypat
     monkeypatch.setattr(artifact_publisher.ArtifactPublisher, "_publish_link", spy)
     with binding_target(place / "b.json") as target:
         target.publish(binding())
-    assert len(names) == 1 and re.fullmatch(r"\.yorunge-binding-[0-9a-f]{32}\.tmp", names[0])
+    assert len(names) == 1
+    assert re.fullmatch(r"\.yorunge-binding-[0-9a-f]{32}\.tmp", names[0])

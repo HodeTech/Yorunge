@@ -93,7 +93,8 @@ def request_from(name, **changes):
 def test_the_builder_reproduces_every_golden_plan_byte_for_byte(name):
     plan = prepare_continuation_v3(request_from(name))
     assert plan.encoded() == fixture(name)
-    assert plan.digest == plan.computed_digest() and plan.executable is False
+    assert plan.digest == plan.computed_digest()
+    assert plan.executable is False
     assert continuation_limits(MANIFEST, plan.continuation.file_indices) == plan.request_limits
 
 
@@ -134,7 +135,8 @@ def test_limits_count_the_selected_files_and_their_exact_bytes(indices, size):
     limits = continuation_limits(MANIFEST, indices)
     assert (limits.max_presign, limits.max_put, limits.max_confirm) == (len(indices),) * 3
     assert (limits.max_create, limits.max_project_link) == (0, 0)
-    assert limits.max_upload_bytes == size and limits.files == len(indices)
+    assert limits.max_upload_bytes == size
+    assert limits.files == len(indices)
     assert (limits.max_read_requests, limits.max_read_attempts) == (512, 1024)
     assert limits.max_control_request_bytes == 4 * 1024 * 1024
     assert limits.max_control_response_bytes == 16 * 1024 * 1024
@@ -272,7 +274,8 @@ def test_a_classification_flows_through_limits_and_binding_into_a_valid_plan(cas
         execution_window=MAIN.execution_window,
     )
     plan = prepare_continuation_v3(request_from("plan-v3", work=work, binding=binding))
-    assert plan.continuation == binding and plan.request_limits.files == len(binding.file_indices)
+    assert plan.continuation == binding
+    assert plan.request_limits.files == len(binding.file_indices)
     approval = approve_upload_v3(
         plan,
         approval_id=APPROVAL_ID,
@@ -329,7 +332,8 @@ def test_the_plan_lives_as_long_as_its_window_and_its_shortest_evidence_allow():
         plan = prepare_continuation_v3(
             request_from("plan-v3-evidenced", grant=grant, cost_bound=cost)
         )
-        assert plan.expires_at == expected and plan.digest == plan.computed_digest()
+        assert plan.expires_at == expected
+        assert plan.digest == plan.computed_digest()
 
 
 def test_a_plan_needs_a_moment_inside_its_window_and_inside_its_evidence():
@@ -401,11 +405,13 @@ def test_the_observation_instant_is_kept_as_observed_when_the_plan_is_prepared_l
 
 def test_sealing_is_deterministic_and_the_identity_stays_out_of_the_binding():
     first, second = (prepare_continuation_v3(request_from("plan-v3")) for _ in range(2))
-    assert first.encoded() == second.encoded() and first == second
+    assert first.encoded() == second.encoded()
+    assert first == second
     other = prepare_continuation_v3(
         request_from("plan-v3", plan_id="00000000-0000-4000-8000-000000000066")
     )
-    assert other.digest != first.digest and other.binding_digest() == first.binding_digest()
+    assert other.digest != first.digest
+    assert other.binding_digest() == first.binding_digest()
 
 
 # --- approving a plan ----------------------------------------------------------------------------
@@ -694,7 +700,8 @@ def test_the_largest_continuations_build_limits_bindings_plans_and_approvals():
         RemoteInventory((), frozenset()),
     )
     plan = pipeline(manifest, everything)  # 128 files to send, every one of them unconfirmed
-    assert plan.request_limits.files == 128 and plan.request_limits.max_upload_bytes == 128
+    assert plan.request_limits.files == 128
+    assert plan.request_limits.max_upload_bytes == 128
     assert plan.continuation.file_indices == tuple(range(128))
     assert plan.continuation.uncertain_indices == tuple(range(128))
     assert len(plan.encoded()) < 16 * 1024
@@ -706,7 +713,8 @@ def test_the_largest_continuations_build_limits_bindings_plans_and_approvals():
         RemoteInventory(items, frozenset()),
     )
     check_only = pipeline(manifest, confirmed)  # nothing to send, 128 files verified
-    assert check_only.request_limits.files == 0 and check_only.request_limits.max_upload_bytes == 0
+    assert check_only.request_limits.files == 0
+    assert check_only.request_limits.max_upload_bytes == 0
     assert check_only.continuation.remote_present_count == 128
     approval = approve(
         check_only,

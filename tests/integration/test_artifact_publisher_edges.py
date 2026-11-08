@@ -72,7 +72,8 @@ def test_a_source_that_changed_wins_over_a_stage_of_the_wrong_size(place):
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 1))
     finally:
         os.close(descriptor)
-    assert error.code == "input_changed" and state.attempted is False
+    assert error.code == "input_changed"
+    assert state.attempted is False
 
 
 def test_a_place_that_changed_wins_over_a_stage_of_the_wrong_size(place):
@@ -83,8 +84,10 @@ def test_a_place_that_changed_wins_over_a_stage_of_the_wrong_size(place):
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT) + 1))
     finally:
         os.close(descriptor)
-    assert error.code == "input_changed" and state.attempted is False
-    assert not place.target.exists() and place.leftovers() == []
+    assert error.code == "input_changed"
+    assert state.attempted is False
+    assert not place.target.exists()
+    assert place.leftovers() == []
 
 
 def test_a_stage_descriptor_that_is_not_a_regular_file_is_changed_before_the_link(place):
@@ -97,7 +100,8 @@ def test_a_stage_descriptor_that_is_not_a_regular_file_is_changed_before_the_lin
         error = failure(lambda: pub.publish_stage(name, descriptor, 0))
     finally:
         os.close(descriptor)
-    assert error.code == CODES.changed and state.attempted is False
+    assert error.code == CODES.changed
+    assert state.attempted is False
     assert not place.target.exists()
     assert place.leftovers() == []  # it was the publisher's stage: removed by identity
 
@@ -164,7 +168,8 @@ def test_an_interrupt_after_the_link_is_the_familys_uncertain_not_the_interrupt(
 
     pub._check_target = interrupted
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert isinstance(error, YorungeError) and error.code == CODES.uncertain
+    assert isinstance(error, YorungeError)
+    assert error.code == CODES.uncertain
     assert place.target.read_bytes() == CONTENT
 
 
@@ -185,8 +190,10 @@ def test_a_stage_swapped_for_a_symlink_to_a_foreign_file_just_before_the_link_is
 
     pub._publish_link = swap
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.uncertain and state.attempted is True
-    assert victim.read_bytes() == b"VICTIM" and victim.stat().st_nlink == 1
+    assert error.code == CODES.uncertain
+    assert state.attempted is True
+    assert victim.read_bytes() == b"VICTIM"
+    assert victim.stat().st_nlink == 1
 
 
 # --- notes: said once, said only where they are true ----------------------------------------------
@@ -200,7 +207,8 @@ def test_an_error_that_replaces_another_carries_no_cleanup_note_when_the_cleanup
 
     pub._sync = disk_full
     error = failure(lambda: pub.publish_bytes(CONTENT))
-    assert error.code == CODES.failed and place.leftovers() == []
+    assert error.code == CODES.failed
+    assert place.leftovers() == []
     assert not getattr(error, "__notes__", ())
 
 
@@ -258,7 +266,8 @@ def test_a_stage_that_may_remain_is_not_said_to_mean_nothing_was_published_when_
     monkeypatch.setattr(os, "unlink", unlink)
     error = failure(lambda: pub.publish_bytes(CONTENT))
     assert state.attempted is True
-    assert isinstance(error, YorungeError) and error.code == CODES.uncertain
+    assert isinstance(error, YorungeError)
+    assert error.code == CODES.uncertain
     assert MESSAGES[CODES.failed] not in getattr(error, "__notes__", ())
 
 
@@ -308,11 +317,13 @@ def test_the_moved_descriptor_helpers_report_the_callers_code_without_the_os_err
     with pytest.raises(YorungeError) as caught:
         close_descriptor(os.open("/dev/null", os.O_RDONLY), code="manifest_write_failed")
     assert caught.value.code == "manifest_write_failed"
-    assert caught.value.__cause__ is None and caught.value.__suppress_context__ is True
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__ is True
     with pytest.raises(YorungeError) as caught:
         with owned_descriptor(os.open("/dev/null", os.O_RDONLY), close_code="transport_failed"):
             pass
-    assert caught.value.code == "transport_failed" and caught.value.__suppress_context__ is True
+    assert caught.value.code == "transport_failed"
+    assert caught.value.__suppress_context__ is True
     with pytest.raises(RuntimeError) as caught:  # another error in flight keeps its place
         with owned_descriptor(os.open("/dev/null", os.O_RDONLY), close_code="transport_failed"):
             raise RuntimeError("the real one")
@@ -393,10 +404,12 @@ def test_after_a_kill_the_streams_stage_is_republished_or_refused_and_the_target
                     assert error.code == CODES.changed
                 else:  # the finished stage of a killed stream is published by the next run
                     pub.publish_stage(stage, descriptor, len(CONTENT))
-                    assert target.read_bytes() == CONTENT and names(directory) == [NAME]
+                    assert target.read_bytes() == CONTENT
+                    assert names(directory) == [NAME]
             finally:
                 os.close(descriptor)
     finally:
         again.close()
     if published:
-        assert target.stat().st_ino == inode and target.read_bytes() == CONTENT
+        assert target.stat().st_ino == inode
+        assert target.read_bytes() == CONTENT

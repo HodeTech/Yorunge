@@ -416,7 +416,8 @@ def test_a_passing_smoke_subset_is_not_acceptance(tmp_path, helper, monkeypatch)
         "architecture": runtime["machine"],
     }
     summary = evidence["summarize_report"](report)
-    assert summary["passed"] is True and summary["partial"] is True
+    assert summary["passed"] is True
+    assert summary["partial"] is True
     assert summary["accepted"] is False
     with pytest.raises(ValueError, match="not accepted"):
         validated(monkeypatch, tmp_path, helper, report, environment)
@@ -428,7 +429,8 @@ def test_a_valid_report_that_failed_a_rule_is_not_acceptance(tmp_path, helper, m
     report["runs"][0]["passed"] = False
     report["passed"] = report["accepted"] = False
     summary = evidence["summarize_report"](report)
-    assert summary["passed"] is False and summary["accepted"] is False
+    assert summary["passed"] is False
+    assert summary["accepted"] is False
     with pytest.raises(ValueError, match="not accepted"):
         validated(monkeypatch, tmp_path, helper, report, environment)
 
@@ -467,7 +469,8 @@ def test_the_controller_command_names_the_run_the_single_wheel_and_the_cell(tmp_
         "--run-url": "https://github.com/HodeTech/Yorunge/actions/runs/123",
     }
     # The controller is the full twelve-run measurement: no smoke subset can be requested here.
-    assert "--labels" not in command and "--samples" not in command
+    assert "--labels" not in command
+    assert "--samples" not in command
 
 
 @pytest.mark.parametrize("count", [0, 2])

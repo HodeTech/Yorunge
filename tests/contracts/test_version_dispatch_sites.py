@@ -245,7 +245,8 @@ def test_every_site_has_a_known_owner_and_says_why():
     owners = set(LIST["owners"])
     for site in LIST["sites"]:
         assert site["owner"] in owners, site
-        assert site["note"].strip() and site["note"] != "?", site
+        assert site["note"].strip(), site
+        assert site["note"] != "?", site
     assert len(listed_sites()) == len(set(listed_sites()))
 
 
