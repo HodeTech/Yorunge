@@ -10,15 +10,14 @@ hashed.
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from collections.abc import Mapping, Sequence
-from typing import Annotated, ClassVar, Final, Literal, Self
+from typing import Annotated, Final, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import JsonWireModel, instant
-from yorunge.domain.credentials import ServiceTarget
+from yorunge.domain.credentials import ServiceTarget, normalize_target
 from yorunge.domain.dataset_manifest import canonical_manifest
 from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.errors import (
@@ -120,6 +119,48 @@ class DatasetVersionObservation(_VersionFacts):
     class_labels_sha256: Sha256
 
 
+class DatasetVersionList(Model):
+    """One page of a dataset's versions; completeness is never claimed."""
+
+    schema_version: Literal[1]
+    kind: Literal["dataset_version_list"]
+    dataset_id: str
+    page: Annotated[int, Field(ge=MIN_PAGE, le=MAX_PAGE)]
+    page_size: Annotated[int, Field(ge=1, le=MAX_LIST_ITEMS)]
+    total: Count
+    has_next: bool
+    items: Annotated[tuple[DatasetVersionListItem, ...], Field(max_length=MAX_LIST_ITEMS)]
+    observed_at: str
+
+    @field_validator("dataset_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @field_validator("observed_at")
+    @classmethod
+    def canonical_instant(cls, value: str) -> str:
+        return _canonical_time(value)
+
+    @model_validator(mode="after")
+    def honest_page(self) -> Self:
+        if len(self.items) > self.page_size:
+            raise ValueError("a page holds no more rows than its size")
+        if self.has_next != (self.page * self.page_size < self.total):
+            raise ValueError(
+                "a next page exists exactly when the pages so far fall short of the total"
+            )
+        if self.items and self.total < (self.page - 1) * self.page_size + len(self.items):
+            raise ValueError("the total covers the rows shown")
+        if any(item.dataset_id != self.dataset_id for item in self.items):
+            raise ValueError("the rows are the dataset's own")
+        if len({item.version_id for item in self.items}) != len(self.items) or len(
+            {item.version_tag for item in self.items}
+        ) != len(self.items):
+            raise ValueError("a page of distinct versions")
+        return self
+
+
 class LocalManifestRelation(Model):
     """The local Manifest v1 the binding was made against, and how its file count relates."""
 
@@ -164,8 +205,6 @@ class DatasetVersionBinding(JsonWireModel):
     manifest, gives the same digest. It is a checksum of itself, not a signature.
     """
 
-    max_wire_bytes: ClassVar[int] = MAX_BINDING_BYTES
-
     schema_version: Literal[1]
     policy_version: Literal[1]
     kind: Literal["dataset_version_binding"]
@@ -192,6 +231,18 @@ class DatasetVersionBinding(JsonWireModel):
     def integer_policy(cls, value: object) -> object:
         if type(value) is not int:
             raise ValueError("integer policy version required")
+        return value
+
+    @field_validator("service")
+    @classmethod
+    def canonical_service(cls, value: ServiceTarget) -> ServiceTarget:
+        """The target as ``normalize_target`` writes it (it is compared by equality)."""
+        try:
+            canonical = normalize_target(value.service_origin + value.api_base_path)
+        except YorungeError:
+            raise ValueError("a canonical service target is required") from None
+        if canonical != value:
+            raise ValueError("a canonical service target is required")
         return value
 
     @field_validator("dataset_id", "version_id")
@@ -233,9 +284,18 @@ class DatasetVersionBinding(JsonWireModel):
         return content
 
     def check(
-        self, observation: DatasetVersionObservation, observed_at: str
+        self, observation: DatasetVersionObservation, *, active: ServiceTarget
     ) -> DatasetVersionCheck:
-        """``unchanged`` if the observation differs in nothing the binding holds, else the error."""
+        """``unchanged`` if the observation differs in nothing the binding holds, else the error.
+
+        ``active`` is the provider the active profile targets: a binding for another provider is
+        ``state_changed`` before any field is compared. The observation must be of this dataset
+        (``dataset_id`` is not a compared field: another dataset is not a change of this version but
+        a caller's mistake); it is stamped with its own ``observed_at``.
+        """
+        require_same_service(self, active)
+        if observation.dataset_id != self.dataset_id:
+            raise YorungeError("invalid_request")
         differences = changed_fields(self, observation)
         if differences:
             raise DatasetVersionChanged(differences)
@@ -247,7 +307,7 @@ class DatasetVersionBinding(JsonWireModel):
             version_id=self.version_id,
             version_tag=self.version_tag,
             binding_digest=self.digest,
-            observed_at=observed_at,
+            observed_at=observation.observed_at,
         )
 
 
@@ -259,13 +319,20 @@ def bind(
     manifest_file_count: int | None = None,
 ) -> DatasetVersionBinding:
     """The binding of a frozen version, optionally against a local Manifest v1."""
+    if type(observation) is not DatasetVersionObservation or type(service) is not ServiceTarget:
+        raise YorungeError("invalid_request")
     if not observation.is_frozen:
         raise YorungeError("dataset_version_not_frozen")
     if (manifest_digest is None) != (manifest_file_count is None):
         raise YorungeError("invalid_request")
     local: LocalManifestRelation | None = None
     if manifest_digest is not None and manifest_file_count is not None:
-        if type(manifest_file_count) is not int or _SHA256.fullmatch(manifest_digest) is None:
+        if (
+            type(manifest_file_count) is not int
+            or not 0 <= manifest_file_count <= MAX_COUNT
+            or type(manifest_digest) is not str
+            or _SHA256.fullmatch(manifest_digest) is None
+        ):
             raise YorungeError("invalid_request")
         local = LocalManifestRelation(
             digest=manifest_digest,
@@ -298,7 +365,10 @@ def bind(
     digest = hashlib.sha256(
         canonical_manifest({k: v for k, v in fields.items() if k != "observed_at"})
     ).hexdigest()
-    return DatasetVersionBinding.model_validate({**fields, "digest": digest})
+    try:
+        return DatasetVersionBinding.model_validate({**fields, "digest": digest})
+    except ValueError:
+        raise YorungeError("invalid_request") from None  # e.g. a service that is not canonical
 
 
 def decode_binding(data: object) -> DatasetVersionBinding:
@@ -343,7 +413,8 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
     The objects ``{annotation_count, id, name, sort_order}`` sorted by ``id`` (integers numerically,
     strings by their UTF-8 bytes), encoded by the Manifest v1 encoder. The ``id`` keeps the type
     the provider gave it; mixed types or a repeated ``id`` make the order ambiguous, so the
-    answer is not one (``invalid_response``).
+    answer is not one (``invalid_response``). At most ``MAX_CLASS_LABELS`` (4096) labels: a longer
+    list is not an answer (the response size and node budgets would refuse it first).
     """
     if not isinstance(labels, Sequence) or isinstance(labels, (str, bytes)):
         raise YorungeError("invalid_response")
@@ -379,8 +450,7 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
             rows.sort(key=lambda row: str(row["id"]).encode("utf-8"))
         else:
             rows.sort(key=lambda row: int(str(row["id"])))
-        encoded = canonical_manifest(rows)
-        json.loads(encoded)  # the encoder's own output must parse (lone surrogates do not encode)
+        encoded = canonical_manifest(rows)  # a lone surrogate does not encode
     except (UnicodeError, ValueError):
         raise YorungeError("invalid_response") from None
     return hashlib.sha256(encoded).hexdigest()

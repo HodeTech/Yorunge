@@ -12,9 +12,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from yorunge.domain.credentials import ServiceTarget
+from yorunge.domain.credentials import ServiceTarget, normalize_target
+from yorunge.domain.dataset_manifest import canonical_manifest
 from yorunge.domain.dataset_version import (
     DatasetVersionBinding,
+    DatasetVersionList,
     DatasetVersionListItem,
     DatasetVersionObservation,
     SplitCounts,
@@ -359,19 +361,19 @@ def test_the_comparison_names_exactly_the_fields_that_differ(changes, fields):
 
 
 def test_a_check_that_finds_nothing_changed_is_the_only_success():
-    checked = binding().check(observation(), "2026-11-09T00:00:00.000000Z")
+    checked = binding().check(observation(), active=SERVICE)
     assert (checked.result, checked.binding_digest) == ("unchanged", binding().digest)
     assert (checked.dataset_id, checked.version_id, checked.version_tag) == (
         DATASET,
         VERSION,
         "v1.0-final",
     )
-    assert checked.observed_at == "2026-11-09T00:00:00.000000Z"
+    assert checked.observed_at == observation().observed_at  # the observation's own time
 
 
 def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
     with pytest.raises(DatasetVersionChanged) as error:
-        binding().check(observation(is_frozen=False), "2026-11-09T00:00:00.000000Z")
+        binding().check(observation(is_frozen=False), active=SERVICE)
     assert error.value.code == "dataset_version_changed" and error.value.exit_code == 7
     assert error.value.envelope()["details"] == {
         "changed_field_count": 1,
@@ -380,15 +382,12 @@ def test_a_check_that_finds_a_difference_is_the_error_with_the_closed_detail():
     }
     with pytest.raises(DatasetVersionChanged) as annotation:
         binding().check(
-            observation(annotated_item_count=1, total_annotation_count=2),
-            "2026-11-09T00:00:00.000000Z",
+            observation(annotated_item_count=1, total_annotation_count=2), active=SERVICE
         )
     details = annotation.value.envelope()["details"]
     assert details["annotation_only"] is True and details["changed_field_count"] == 2
     with pytest.raises(DatasetVersionChanged) as mixed:
-        binding().check(
-            observation(annotated_item_count=1, version_tag="v2"), "2026-11-09T00:00:00.000000Z"
-        )
+        binding().check(observation(annotated_item_count=1, version_tag="v2"), active=SERVICE)
     assert mixed.value.annotation_only is False
     assert mixed.value.envelope()["details"]["changed_fields"] == [
         "annotated_item_count",
@@ -490,3 +489,204 @@ def test_the_version_codes_have_a_fixed_message_and_the_reference_s_exit(code, e
     assert error.exit_code == exit_code and error.message == MESSAGES[code]
     assert error.envelope()["details"] == {} or code == "dataset_version_changed"
     assert "/" not in error.message and "http" not in error.message
+
+
+# --- the service the binding names is the target as the project writes it -------------------------
+
+
+def forged(**changes):
+    """The golden binding with some fields changed and a digest that is right for the result."""
+    body = json.loads(FIXTURE.read_bytes())
+    for key, value in changes.items():
+        if "." in key:
+            outer, inner = key.split(".")
+            body[outer][inner] = value
+        else:
+            body[key] = value
+    unsigned = {k: v for k, v in body.items() if k not in ("digest", "observed_at")}
+    body["digest"] = hashlib.sha256(canonical_manifest(unsigned)).hexdigest()
+    return canonical_manifest(body) + b"\n"
+
+
+@pytest.mark.parametrize(
+    "service",
+    [
+        {"service_origin": "https://API.example.org", "api_base_path": "/api/v1"},
+        {"service_origin": "https://api.example.org:443", "api_base_path": "/api/v1"},
+        {"service_origin": "https://api.example.org", "api_base_path": "/api/v1/"},
+        {"service_origin": "http://api.example.org", "api_base_path": "/api/v1"},
+        {"service_origin": "javascript:alert(1)", "api_base_path": ""},
+        {"service_origin": "not a url at all", "api_base_path": ""},
+        {"service_origin": "", "api_base_path": ""},
+        {"service_origin": "https://x\u0000\n.example", "api_base_path": "/a"},
+        {"service_origin": "https://api.example.org", "api_base_path": "/" + "a" * 12_000},
+    ],
+)
+def test_a_binding_file_whose_service_is_not_a_canonical_target_is_invalid(service):
+    assert code_of(lambda: decode_binding(forged(service=service))) == "binding_invalid"
+
+
+def test_a_service_that_is_not_canonical_cannot_be_bound_either():
+    odd = ServiceTarget(service_origin="https://API.example.org", api_base_path="/api/v1/")
+    assert code_of(lambda: bind(observation(), odd)) == "invalid_request"
+
+
+def test_the_canonical_form_of_every_spelling_of_the_target_is_a_fixed_point():
+    for spelling in (
+        "https://api.example.org/api/v1",
+        "https://API.EXAMPLE.ORG:443/api/v1/",
+        "https://api.example.org/api/v1/",
+    ):
+        target = normalize_target(spelling)
+        assert normalize_target(target.service_origin + target.api_base_path) == target
+        assert bind(observation(), target).service == target
+
+
+# --- bind refuses what it cannot bind with a closed code, never a library exception ---------------
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"manifest_digest": "ab" * 32, "manifest_file_count": -1},
+        {"manifest_digest": "ab" * 32, "manifest_file_count": 2**63},
+        {"manifest_digest": "ab" * 32, "manifest_file_count": True},
+        {"manifest_digest": "ab" * 32, "manifest_file_count": 1.5},
+        {"manifest_digest": 5, "manifest_file_count": 1},
+        {"manifest_digest": b"ab" * 32, "manifest_file_count": 1},
+        {"manifest_digest": "AB" * 32, "manifest_file_count": 1},
+        {"manifest_digest": "ab" * 32},
+        {"manifest_file_count": 1},
+    ],
+)
+def test_bind_refuses_a_manifest_it_cannot_describe_with_a_closed_code(arguments):
+    assert code_of(lambda: bind(observation(), SERVICE, **arguments)) == "invalid_request"
+
+
+@pytest.mark.parametrize(
+    "who",
+    [
+        ("service", None),
+        ("service", "https://api.example.org/api/v1"),
+        ("observation", None),
+        ("observation", {"dataset_id": DATASET}),
+    ],
+)
+def test_bind_refuses_arguments_of_the_wrong_type_with_a_closed_code(who):
+    name, value = who
+    arguments = {"observation": observation(), "service": SERVICE}
+    arguments[name] = value
+    assert code_of(lambda: bind(arguments["observation"], arguments["service"])) == (
+        "invalid_request"
+    )
+
+
+# --- check: the service first, the dataset, its own time ------------------------------------------
+
+
+def test_a_binding_for_another_provider_is_state_changed_before_any_field_is_compared():
+    other = ServiceTarget(service_origin="https://other.example.org", api_base_path="/api/v1")
+    assert code_of(lambda: binding().check(observation(is_frozen=False), active=other)) == (
+        "state_changed"
+    )
+
+
+def test_an_observation_of_another_dataset_is_a_mistake_not_a_change():
+    other = observation(dataset_id="33333333-3333-4333-8333-333333333333")
+    assert code_of(lambda: binding().check(other, active=SERVICE)) == "invalid_request"
+
+
+def test_the_check_is_stamped_with_the_observations_own_time_and_never_a_later_one():
+    seen = observation(observed_at="2026-11-09T10:00:00.000000Z")
+    assert binding().check(seen, active=SERVICE).observed_at == "2026-11-09T10:00:00.000000Z"
+
+
+# --- a binding whose digest is right but whose own flags contradict its counts is invalid ---------
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"split_total_matches_item_count": False},  # the counts match, the flag denies it
+        {"local_manifest.relation": "count_differs"},  # 10 == 10, the relation denies it
+        {"local_manifest.file_count": 9},  # 10 != 9, the relation (count_matches) affirms it
+    ],
+    ids=["flag", "relation-denies", "relation-affirms"],
+)
+def test_a_binding_with_a_right_digest_and_contradicting_flags_is_invalid(changes):
+    assert code_of(lambda: decode_binding(forged(**changes))) == "binding_invalid"
+
+
+def test_the_relation_to_the_manifest_is_about_the_items_not_the_splits():
+    # 11 items, a split total of 10 (flag false), a manifest of 10 files: files and items differ
+    skewed = observation(item_count=11, split_total_matches_item_count=False)
+    made = bind(skewed, SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=10)
+    assert made.local_manifest is not None and made.local_manifest.relation == "count_differs"
+    same = bind(skewed, SERVICE, manifest_digest=MANIFEST_DIGEST, manifest_file_count=11)
+    assert same.local_manifest is not None and same.local_manifest.relation == "count_matches"
+
+
+# --- the page model -------------------------------------------------------------------------------
+
+
+def listed(**changes):
+    item = DatasetVersionListItem.model_validate(
+        {
+            k: v
+            for k, v in observation().model_dump(mode="json").items()
+            if k not in ("class_count", "class_labels_sha256")
+        }
+        | {"kind": "dataset_version_list_item"}
+    )
+    return item.model_copy(update=changes)
+
+
+def test_a_list_of_versions_is_a_closed_frozen_page():
+    page = DatasetVersionList(
+        schema_version=1,
+        kind="dataset_version_list",
+        dataset_id=DATASET,
+        page=1,
+        page_size=20,
+        total=1,
+        has_next=False,
+        items=(listed(),),
+        observed_at="2026-11-08T12:00:00.000000Z",
+    )
+    assert json.loads(page.model_dump_json())["kind"] == "dataset_version_list"
+    with pytest.raises(ValidationError):
+        page.total = 2  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"has_next": True},  # 1 * 20 < 1 is false
+        {"total": 0},  # one row is shown, the total says none
+        {"page_size": 0},
+        {"page_size": 101},
+        {"page": 0},
+        {"page": 10_001},
+        {"kind": "dataset_version_observation"},
+        {"dataset_id": "33333333-3333-4333-8333-333333333333"},  # not the rows' dataset
+        {"items": ()},  # fine: an empty page; see the accepting test below
+    ],
+)
+def test_a_page_that_contradicts_itself_is_not_a_page(changes):
+    values = {
+        "schema_version": 1,
+        "kind": "dataset_version_list",
+        "dataset_id": DATASET,
+        "page": 1,
+        "page_size": 20,
+        "total": 1,
+        "has_next": False,
+        "items": (listed(),),
+        "observed_at": "2026-11-08T12:00:00.000000Z",
+        **changes,
+    }
+    if changes == {"items": ()}:
+        assert DatasetVersionList(**values).items == ()  # total 1, no rows shown: past the end
+        return
+    with pytest.raises(ValueError):
+        DatasetVersionList(**values)

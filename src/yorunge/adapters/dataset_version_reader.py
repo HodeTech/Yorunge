@@ -10,12 +10,11 @@ was never there, or a bound version is gone); the 404 of the split route is a re
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Literal, Self
+from typing import Final, Literal, Self
 
 from yorunge.adapters.http_session import HttpSession
 from yorunge.application.context_discovery import DiscoveryClock, remaining
 from yorunge.application.dataset_version_codec import (
-    VersionPage,
     observation,
     version_detail,
     version_page,
@@ -34,12 +33,17 @@ from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.dataset_version import (
     MAX_PAGE,
     MIN_PAGE,
+    DatasetVersionList,
     DatasetVersionObservation,
     validate_version_tag,
 )
 from yorunge.domain.errors import YorungeError
 
 Absent = Literal["dataset_version_not_found", "dataset_version_missing"]
+ABSENT_CODES: Final = ("dataset_version_not_found", "dataset_version_missing")
+VERSION_SECONDS: Final = (
+    30.0  # the budget a caller gives one read: ``monotonic() + VERSION_SECONDS``
+)
 
 
 class VersionReader:
@@ -67,7 +71,7 @@ class VersionReader:
     ) -> None:
         self.session.__exit__(exc_type, exc, traceback)
 
-    def versions(self, dataset_id: str, page: int, *, deadline: float) -> VersionPage:
+    def versions(self, dataset_id: str, page: int, *, deadline: float) -> DatasetVersionList:
         """One page of the dataset's versions: one GET, the page that was asked for."""
         self._arguments(dataset_id, page)
         self.session.preflight()
@@ -88,9 +92,16 @@ class VersionReader:
         version_tag: str,
         *,
         deadline: float,
-        absent: Absent = "dataset_version_not_found",
+        absent: Absent,
     ) -> DatasetVersionObservation:
-        """One version: its detail, then its split counts (two GETs), observed once they agree."""
+        """One version: its detail, then its split counts (two GETs), observed once they agree.
+
+        ``absent`` is the code a 404 of the detail route means to the caller, and it has no default:
+        a version that was never there (``dataset_version_not_found``, exit 2) and a bound version
+        that is gone (``dataset_version_missing``, exit 7) are different answers.
+        """
+        if absent not in ABSENT_CODES:
+            raise YorungeError("invalid_request")
         self._arguments(dataset_id, MIN_PAGE)
         try:
             validate_version_tag(version_tag)

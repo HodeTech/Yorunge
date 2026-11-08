@@ -159,7 +159,7 @@ MESSAGES: dict[ErrorCode, str] = {
         "Veri sürümü dondurulmamış; değişmez bağ üretilmedi. Sürümü Platform'da dondurun."
     ),
     "dataset_version_changed": (
-        "Bağlı veri sürümü değişmiş. Değişen alanlar ayrıntıdadır; yeni bir bağ üretin."
+        "Bağlı veri sürümü değişmiş. Değişen alanlar ayrıntıdadır; bağı kullanmadan önce inceleyin."
     ),
     "dataset_version_missing": (
         "Bağlı veri sürümü uzakta artık yok; referans geçerliliğini yitirdi."

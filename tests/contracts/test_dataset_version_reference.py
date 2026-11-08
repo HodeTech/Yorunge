@@ -3,6 +3,14 @@
 import re
 from pathlib import Path
 
+from yorunge.domain.credentials import ServiceTarget
+from yorunge.domain.dataset_version import (
+    DatasetVersionBinding,
+    DatasetVersionList,
+    DatasetVersionListItem,
+    DatasetVersionObservation,
+    LocalManifestRelation,
+)
 from yorunge.domain.errors import (
     MESSAGES,
     VERSION_ANNOTATION_FIELDS,
@@ -35,3 +43,43 @@ def test_the_changed_fields_of_the_reference_are_the_closed_sets_of_the_code():
     named = lambda block: set(re.findall(r"`([a-z0-9_]+)`", block)) - {"changed_fields"}  # noqa: E731
     assert named(identity) == set(VERSION_IDENTITY_FIELDS)
     assert named(annotation) == set(VERSION_ANNOTATION_FIELDS)
+
+
+def names(block):
+    """The field names a sentence of the reference spells in backticks (name or name=value)."""
+    return set(re.findall(r"`([a-z_0-9]+)(?:=[^`]*)?`", block))
+
+
+def test_the_binding_fields_of_the_reference_are_the_fields_of_the_model():
+    text = REFERENCE.read_text()
+    start = text.index("`DatasetVersionBinding v1` alanları:")
+    section = text[start : text.index("Digest, `digest` ve `observed_at` hariç", start)]
+    top = re.sub(r"\([^)]*\)", "", section)  # the nested keys are checked below
+    assert names(top) == set(DatasetVersionBinding.model_fields)
+    service = re.search(r"`service` \(([^:)]*)", section)
+    assert service is not None and names(service.group(1)) == set(ServiceTarget.model_fields)
+    manifest = re.search(r"`local_manifest` \(([^)]*)\)", section)
+    expected = set(LocalManifestRelation.model_fields)
+    assert manifest is not None and names(manifest.group(1)) == expected
+
+
+def test_the_observation_and_list_fields_of_the_reference_are_the_fields_of_the_models():
+    text = REFERENCE.read_text()
+    start = text.index("`DatasetVersionObservation v1`")
+    section = text[start : text.index("Hepsi strict/frozen/extra-forbid", start)]
+    listed = re.sub(r"\{[^}]*\}", "", section.split("alanları:", 1)[1])
+    assert names(listed) == set(DatasetVersionObservation.model_fields)
+    assert set(DatasetVersionListItem.model_fields) == set(
+        DatasetVersionObservation.model_fields
+    ) - {"class_count", "class_labels_sha256"}
+    kind = "`kind=dataset_version_list_item`"
+    assert kind in text and "`kind=dataset_version_list`" in text
+
+
+def test_the_page_fields_of_the_reference_are_the_fields_of_the_page_model():
+    text = REFERENCE.read_text()
+    start = text.index("`DatasetVersionList v1` olarak verir (") + len(
+        "`DatasetVersionList v1` olarak verir ("
+    )
+    section = text[start : text.index("satırlar sayfa boyutunu aşamaz", start)]
+    assert names(section) == set(DatasetVersionList.model_fields)

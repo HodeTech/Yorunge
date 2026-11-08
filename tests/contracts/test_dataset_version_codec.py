@@ -443,3 +443,200 @@ def test_a_provider_time_with_a_zone_is_the_canonical_utc_time_it_names(given, c
 )
 def test_anything_else_is_not_a_time(bad):
     assert code_of(lambda: provider_time(bad)) == "invalid_response"
+
+
+# --- zero is a count: the most common real value of val, test and unassigned --------------------
+
+
+def test_zero_counts_are_counts_in_a_detail_a_list_row_and_the_split_route():
+    zero = {"train": 0, "val": 0, "test": 0, "unassigned": 0}
+    empty = {"item_count": 0, "split_config": zero, "annotated_item_count": 0}
+    shown = detail(
+        {
+            "success": True,
+            "data": {
+                **row(**empty, total_annotation_count=0),
+                "dataset_id": DATASET,
+                "class_labels_snapshot": [{**LABELS[0], "annotation_count": 0}],
+            },
+        }
+    )
+    assert shown.item_count == 0 and shown.split_config == SplitCounts(**zero)
+    listed = page(page_body([row(**empty)]))
+    assert listed.items[0].split_total_matches_item_count is True
+    only_train = {"success": True, "data": {"train": 10, "val": 0, "test": 0, "unassigned": 0}}
+    assert version_splits(raw(only_train), secret=KEY).val == 0
+
+
+def test_the_largest_count_is_accepted_and_one_more_is_not():
+    top = 2**63 - 1
+    assert version_splits(raw(splits_body(train=top)), secret=KEY).train == top
+    assert code_of(lambda: version_splits(raw(splits_body(train=top + 1)), secret=KEY)) == (
+        "invalid_response"
+    )
+
+
+# --- the paging arithmetic, its bounds and an honest empty page -----------------------------------
+
+
+def test_a_dataset_without_versions_is_an_empty_page_not_an_error():
+    shown = page(page_body([], total=0))
+    assert shown.items == () and shown.total == 0 and shown.has_next is False
+
+
+@pytest.mark.parametrize(
+    "meta",
+    [
+        {"page": 2, "page_size": 20, "total": 5, "has_next": False},  # past the end of 5 versions
+        {"page": 2, "page_size": 20, "total": 0, "has_next": False},
+        {"page": 50, "page_size": 20, "total": 0, "has_next": False},
+        {"page": 2, "page_size": 20, "total": 20, "has_next": False},  # exactly full before it
+    ],
+)
+def test_a_page_past_the_end_is_an_honest_empty_page(meta):
+    shown = page(page_body([], **meta), page=meta["page"])
+    assert shown.items == () and shown.page == meta["page"]
+
+
+def test_an_empty_page_that_says_more_is_coming_or_that_shows_rows_beyond_the_total_is_refused():
+    assert (
+        code_of(lambda: page(page_body([], page=2, total=50, has_next=False), page=2))
+        == "invalid_response"
+    )  # 2 * 20 < 50: there is a next page
+    assert code_of(lambda: page(page_body([row()], page=2, total=5), page=2)) == "invalid_response"
+
+
+def test_the_largest_legal_page_is_a_hundred_rows():
+    rows = [row(id=f"{i:08x}-3333-4333-8333-333333333333", version_tag=f"v{i}") for i in range(100)]
+    assert len(page(page_body(rows, page_size=100, total=100)).items) == 100
+    assert code_of(lambda: page(page_body(rows[:1], page_size=101, total=1))) == "invalid_response"
+    assert code_of(lambda: page(page_body([], page_size=0, total=0))) == "invalid_response"
+
+
+def test_has_next_is_the_page_times_its_size_below_the_total():
+    rows = [row(), row(id="33333333-3333-4333-8333-333333333333", version_tag="v2")]
+    # the last page, partial: 3 * 4 = 12 is not below 10 (3 + 4 = 7 would be)
+    assert page(page_body(rows, page=3, page_size=4, total=10, has_next=False), page=3)
+    assert (
+        code_of(lambda: page(page_body(rows, page=3, page_size=4, total=10, has_next=True), page=3))
+        == "invalid_response"
+    )
+    # a middle page: 2 * 2 < 5
+    assert page(page_body(rows, page=2, page_size=2, total=5, has_next=True), page=2).has_next
+
+
+def test_more_distinct_rows_than_the_page_size_is_refused_whatever_else_agrees():
+    rows = [row(), row(id="33333333-3333-4333-8333-333333333333", version_tag="v2")]
+    assert code_of(lambda: page(page_body(rows, page_size=1, total=2, has_next=True))) == (
+        "invalid_response"
+    )
+
+
+def test_the_page_is_a_frozen_wire_model_of_a_closed_kind():
+    shown = page(page_body([row()]))
+    assert (shown.schema_version, shown.kind, shown.dataset_id) == (
+        1,
+        "dataset_version_list",
+        DATASET,
+    )
+    assert shown.observed_at == OBSERVED and shown.items[0].kind == "dataset_version_list_item"
+    with pytest.raises(ValueError):
+        shown.total = 99  # type: ignore[misc]
+    assert json.loads(shown.model_dump_json())["items"][0]["version_tag"] == "v1.0-final"
+
+
+# --- the answers are frozen; the envelope's success is a boolean, not a truthy number -------------
+
+
+def test_a_detail_is_frozen():
+    shown = detail(detail_body())
+    with pytest.raises(Exception, match="frozen|assign"):
+        shown.item_count = 99  # type: ignore[misc]
+
+
+@pytest.mark.parametrize("success", [1, "true", None, 0, [True]])
+def test_a_success_that_is_not_the_boolean_true_is_refused(success):
+    body = {**page_body(), "success": success}
+    assert code_of(lambda: page(body)) == "invalid_response"
+
+
+# --- time: a zone is hours 00-23 and minutes 00-59 (it shifts the time the digest is made of) -----
+
+
+@pytest.mark.parametrize("zone", ["+00:60", "+05:99", "-01:75", "+24:00", "+99:00", "-24:00"])
+def test_an_offset_that_is_not_a_clock_offset_is_not_a_time(zone):
+    assert code_of(lambda: provider_time(f"2026-11-04T10:11:12.123456{zone}")) == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("2026-11-04T10:11:12.123456+03:00", "2026-11-04T07:11:12.123456Z"),
+        ("2026-11-04T10:11:12.5-05:30", "2026-11-04T15:41:12.500000Z"),
+        ("2026-11-04T23:59:59+23:59", "2026-11-04T00:00:59.000000Z"),
+        ("2026-11-04T10:11:12Z", "2026-11-04T10:11:12.000000Z"),
+        (
+            "2026-11-04T10:11:12.1234567891Z".replace("1234567891", "123456789"),
+            "2026-11-04T10:11:12.123456Z",
+        ),
+    ],
+)
+def test_a_time_with_a_clock_offset_is_the_same_instant_in_utc(value, expected):
+    assert provider_time(value) == expected
+
+
+# --- class labels: bounds, kinds, order -----------------------------------------------------------
+
+
+def label(identifier, order=0, annotations=0, name="x"):
+    return {"id": identifier, "name": name, "sort_order": order, "annotation_count": annotations}
+
+
+def test_four_thousand_ninety_six_labels_are_the_most_and_one_more_is_not_an_answer():
+    assert class_labels_sha256([label(i) for i in range(4096)])
+    assert code_of(lambda: class_labels_sha256([label(i) for i in range(4097)])) == (
+        "invalid_response"
+    )
+
+
+@pytest.mark.parametrize("not_a_list", ["", b"", {}, None, 0])
+def test_only_a_sequence_of_labels_is_labels(not_a_list):
+    assert code_of(lambda: class_labels_sha256(not_a_list)) == "invalid_response"
+
+
+def test_the_int64_bounds_of_sort_order_id_and_annotation_count():
+    top = 2**63 - 1
+    assert class_labels_sha256([label(1, order=top, annotations=top)])
+    assert class_labels_sha256([label(1, order=-top)])
+    assert class_labels_sha256([label(top)]) and class_labels_sha256([label(-top)])
+    for refused in (
+        label(1, order=top + 1),
+        label(1, order=-top - 1),
+        label(top + 1),
+        label(-top - 1),
+        label(1, annotations=top + 1),
+        label(1, annotations=-1),
+    ):
+        assert code_of(lambda refused=refused: class_labels_sha256([refused])) == "invalid_response"
+
+
+@pytest.mark.parametrize("odd_id", [[1], {}, (1,), None, 1.5, True, b"x"])
+def test_an_id_that_is_neither_an_integer_nor_a_string_is_an_invalid_answer(odd_id):
+    assert code_of(lambda: class_labels_sha256([label(odd_id)])) == "invalid_response"
+
+
+def test_string_ids_sort_by_their_utf8_bytes_and_the_digest_was_computed_outside_python():
+    # B (0x42) < a (0x61) < é (0xC3 0xA9): a case-folding or reversed order gives other digests.
+    assert class_labels_sha256([label(i) for i in ("a", "é", "B")]) == (
+        "4a7eecf0cf9e2ea3634fd8203f62055dcc3b13be6f4a7f5ad4c3fe8e71d25b4d"
+    )
+    # UTF-8 byte order is not UTF-16 order: z < é < U+FF5E < U+1F600 (UTF-16: U+1F600 first)
+    wide = [
+        label("\U0001f600", order=-1, annotations=4, name="n4"),
+        label("\uff5e", order=2, annotations=3, name="n3"),
+        label("z", order=0, annotations=1, name="n1"),
+        label("é", order=1, annotations=2, name="n2"),
+    ]
+    assert class_labels_sha256(wide) == (
+        "9b986e63bf3e58743f293daabbf3c587191cb374b0d6a2edec506205b2849ec5"
+    )

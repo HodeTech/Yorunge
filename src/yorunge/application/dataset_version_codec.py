@@ -22,6 +22,7 @@ from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.dataset_version import (
     MAX_COUNT,
     MAX_LIST_ITEMS,
+    DatasetVersionList,
     DatasetVersionListItem,
     DatasetVersionObservation,
     SplitCounts,
@@ -31,7 +32,7 @@ from yorunge.domain.dataset_version import (
 from yorunge.domain.errors import YorungeError
 
 _PROVIDER_TIME = re.compile(
-    r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})",
+    r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)",
     re.ASCII,
 )
 _SPLITS: Final = ("train", "val", "test", "unassigned")
@@ -51,17 +52,6 @@ _ROW_FIELDS: Final = (
 
 def _invalid() -> YorungeError:
     return YorungeError("invalid_response")
-
-
-@dataclass(frozen=True, slots=True)
-class VersionPage:
-    """One page of the version list; completeness is never claimed."""
-
-    items: tuple[DatasetVersionListItem, ...]
-    page: int
-    page_size: int
-    total: int
-    has_next: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,8 +189,12 @@ def _splits(value: object) -> SplitCounts:
 
 def version_page(
     data: bytes, *, dataset_id: str, page: int, secret: SecretValue, observed_at: str
-) -> VersionPage:
-    """One page of the list, for the dataset and the page that were asked for."""
+) -> DatasetVersionList:
+    """One page of the list, for the dataset and the page that were asked for.
+
+    A page past the last one is an honest, empty page (the provider answers it with 200 and no
+    rows); only a page that shows rows has to be covered by the total.
+    """
     document = _envelope(data, secret)
     rows, meta = _field(document, "data"), _object(_field(document, "meta"))
     if not isinstance(rows, list) or len(rows) > MAX_LIST_ITEMS:
@@ -211,16 +205,25 @@ def version_page(
         shown != page
         or not 1 <= size <= MAX_LIST_ITEMS
         or len(rows) > size
-        or total < (page - 1) * size + len(rows)
+        or (bool(rows) and total < (page - 1) * size + len(rows))
         or more != (page * size < total)
     ):
         raise _invalid()
     items = tuple(_list_item(row, dataset_id, observed_at) for row in rows)
-    if len({item.version_id for item in items}) != len(items) or len(
-        {item.version_tag for item in items}
-    ) != len(items):
-        raise _invalid()  # a repeated identifier or tag is not a page of distinct versions
-    return VersionPage(items, shown, size, total, more)
+    try:
+        return DatasetVersionList(
+            schema_version=1,
+            kind="dataset_version_list",
+            dataset_id=dataset_id,
+            page=shown,
+            page_size=size,
+            total=total,
+            has_next=more,
+            items=items,
+            observed_at=observed_at,
+        )
+    except ValueError:
+        raise _invalid() from None  # e.g. a repeated identifier or tag: not distinct versions
 
 
 def _list_item(row: object, dataset_id: str, observed_at: str) -> DatasetVersionListItem:

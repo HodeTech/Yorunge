@@ -9,6 +9,7 @@ gives an answer that is not an answer.
 import json
 import socket
 import time
+from datetime import UTC, datetime
 
 import pytest
 
@@ -35,6 +36,7 @@ SECRET = "synthetic-platform-secret-471920"
 DATASET = "11111111-1111-4111-8111-111111111111"
 VERSION = "22222222-2222-4222-8222-222222222222"
 CANARY = "PRIVATE-DESCRIPTION-CANARY"
+NOT_FOUND = "dataset_version_not_found"
 BASE = f"/api/v1/datasets/{DATASET}/versions"
 LABELS = [
     {"id": 11, "name": "kedi", "sort_order": 1, "annotation_count": 7, "color": "#ff0000"},
@@ -149,7 +151,7 @@ def test_a_page_is_one_get_with_the_key_in_one_header_and_nothing_else_asked(cer
 def test_a_version_is_its_detail_then_its_splits_and_two_gets_at_most(certificates):
     with TlsServer(certificates, routes()) as server:
         with reader(server) as versions:
-            seen = versions.version(DATASET, "v1", deadline=soon())
+            seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
     assert [(r.method, r.path) for r in server.requests] == [
         ("GET", BASE + "/v1"),
         ("GET", BASE + "/v1/splits"),
@@ -166,7 +168,7 @@ def test_the_observation_is_stamped_after_both_reads(certificates):
     with TlsServer(certificates, routes()) as server:
         with reader(server) as versions:
             before = time.time()
-            seen = versions.version(DATASET, "v1", deadline=soon())
+            seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
     stamp = time.mktime(time.strptime(seen.observed_at[:19], "%Y-%m-%dT%H:%M:%S"))
     assert abs(stamp - time.time()) < 86_400 and before > 0  # a real, recent time
 
@@ -184,12 +186,12 @@ def test_the_observation_is_stamped_after_both_reads(certificates):
         lambda v: v.versions(DATASET, True, deadline=soon()),
         lambda v: v.versions(DATASET, "1", deadline=soon()),
         lambda v: v.versions(None, 1, deadline=soon()),
-        lambda v: v.version(DATASET, "..", deadline=soon()),
-        lambda v: v.version(DATASET, "a/b", deadline=soon()),
-        lambda v: v.version(DATASET, "", deadline=soon()),
-        lambda v: v.version(DATASET, "x" * 129, deadline=soon()),
-        lambda v: v.version(DATASET, "é", deadline=soon()),
-        lambda v: v.version("not-a-uuid", "v1", deadline=soon()),
+        lambda v: v.version(DATASET, "..", deadline=soon(), absent=NOT_FOUND),
+        lambda v: v.version(DATASET, "a/b", deadline=soon(), absent=NOT_FOUND),
+        lambda v: v.version(DATASET, "", deadline=soon(), absent=NOT_FOUND),
+        lambda v: v.version(DATASET, "x" * 129, deadline=soon(), absent=NOT_FOUND),
+        lambda v: v.version(DATASET, "é", deadline=soon(), absent=NOT_FOUND),
+        lambda v: v.version("not-a-uuid", "v1", deadline=soon(), absent=NOT_FOUND),
     ],
 )
 def test_a_bad_argument_is_refused_before_anything_is_asked(certificates, call):
@@ -214,9 +216,9 @@ def test_the_missing_detail_is_not_found_or_missing_as_the_caller_says_and_costs
     table = routes(**{BASE + "/v1": body({"success": False}, status=404)})
     with TlsServer(certificates, table) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=soon())).code == (
-                "dataset_version_not_found"
-            )
+            assert failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            ).code == ("dataset_version_not_found")
             absent = failure(
                 lambda: versions.version(
                     DATASET, "v1", deadline=soon(), absent="dataset_version_missing"
@@ -262,7 +264,9 @@ def test_a_provider_that_refuses_is_the_existing_closed_code(certificates, statu
     table = routes(**{BASE + "/v1": body({"error": CANARY}, status=status)})
     with TlsServer(certificates, table) as server:
         with reader(server) as versions:
-            error = failure(lambda: versions.version(DATASET, "v1", deadline=soon()))
+            error = failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            )
     assert error.code == code
     assert CANARY not in str(error.envelope())
 
@@ -276,13 +280,13 @@ def test_a_read_that_failed_once_is_asked_again_once_and_not_more(certificates):
 
     with TlsServer(certificates, routes(**{BASE + "/v1": flaky})) as server:
         with reader(server) as versions:
-            seen = versions.version(DATASET, "v1", deadline=soon())
+            seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
     assert seen.version_tag == "v1" and len(calls) == 2
     with TlsServer(certificates, routes(**{BASE + "/v1": body({}, status=503)})) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=soon())).code == (
-                "remote_failed"
-            )
+            assert failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            ).code == ("remote_failed")
     assert [r.path for r in server.requests].count(BASE + "/v1") == 2  # the read-only policy
 
 
@@ -290,18 +294,18 @@ def test_a_provider_that_moved_between_the_two_reads_gives_no_answer(certificate
     table = routes(**{BASE + "/v1/splits": body(splits(train=7))})
     with TlsServer(certificates, table) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=soon())).code == (
-                "invalid_response"
-            )
+            assert failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            ).code == ("invalid_response")
 
 
 def test_the_answer_of_another_version_than_the_one_asked_for_is_refused(certificates):
     table = routes(**{BASE + "/v1": body(detail(version_tag="v2"))})
     with TlsServer(certificates, table) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=soon())).code == (
-                "invalid_response"
-            )
+            assert failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            ).code == ("invalid_response")
 
 
 def test_a_page_other_than_the_one_asked_for_is_refused(certificates):
@@ -317,19 +321,49 @@ def test_the_selected_key_in_an_answer_is_refused_and_never_echoed(certificates)
     table = routes(**{BASE + "/v1": body(detail(description=f"see {SECRET}"))})
     with TlsServer(certificates, table) as server:
         with reader(server) as versions:
-            error = failure(lambda: versions.version(DATASET, "v1", deadline=soon()))
+            error = failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+            )
     assert error.code == "invalid_response"
     assert SECRET not in str(error.envelope()) and SECRET not in repr(error)
 
 
-def test_an_answer_over_a_mebibyte_is_refused(certificates):
+def padded_detail(total):
+    """A valid detail document of exactly ``total`` bytes (its description is padding)."""
+    document = detail()
+    document["data"]["description"] = ""
+    size = len(json.dumps(document).encode())
+    document["data"]["description"] = "x" * (total - size)
+    encoded = json.dumps(document).encode()
+    assert len(encoded) == total
+    return Reply(body=encoded)
+
+
+@pytest.mark.parametrize("extra,accepted", [(0, True), (1, False)])
+def test_an_answer_of_exactly_a_mebibyte_is_read_and_one_byte_more_is_refused(
+    certificates, extra, accepted
+):
+    answer = padded_detail(1024 * 1024 + extra)
+    with TlsServer(certificates, routes(**{BASE + "/v1": answer})) as server:
+        with reader(server) as versions:
+            if accepted:
+                seen = versions.version(DATASET, "v1", deadline=soon(10), absent=NOT_FOUND)
+                assert seen.version_tag == "v1"
+            else:
+                error = failure(
+                    lambda: versions.version(DATASET, "v1", deadline=soon(10), absent=NOT_FOUND)
+                )
+                assert error.code == "invalid_response"
+
+
+def test_an_answer_that_is_valid_json_of_the_wrong_shape_is_refused_whatever_its_size(certificates):
     big = Reply(body=b'{"success":true,"data":"' + b"x" * (1024 * 1024) + b'"}')
     with TlsServer(certificates, routes(**{BASE + "/v1": big})) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=soon())).code in {
-                "invalid_response",
-                "transport_failed",
-            }
+            error = failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(10), absent=NOT_FOUND)
+            )
+    assert error.code == "invalid_response"
 
 
 def test_a_stalled_provider_ends_at_the_deadline(certificates):
@@ -337,12 +371,88 @@ def test_a_stalled_provider_ends_at_the_deadline(certificates):
     with TlsServer(certificates, routes(**{BASE + "/v1": slow})) as server:
         with reader(server) as versions:
             started = time.monotonic()
-            error = failure(lambda: versions.version(DATASET, "v1", deadline=soon(1)))
+            error = failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(1), absent=NOT_FOUND)
+            )
             assert error.code == "transport_timeout" and time.monotonic() - started < 3
 
 
 def test_an_expired_deadline_asks_nothing(certificates):
     with TlsServer(certificates, routes()) as server:
         with reader(server) as versions:
-            assert failure(lambda: versions.version(DATASET, "v1", deadline=time.monotonic() - 1))
+            assert failure(
+                lambda: versions.version(
+                    DATASET, "v1", deadline=time.monotonic() - 1, absent=NOT_FOUND
+                )
+            )
     assert server.requests == []
+
+
+# --- the 404 code is the caller's, has no default and is checked before anything is asked ---------
+
+
+def test_the_code_a_missing_version_means_has_no_default(certificates):
+    with TlsServer(certificates, routes()) as server:
+        with reader(server) as versions:
+            with pytest.raises(TypeError):
+                versions.version(DATASET, "v1", deadline=soon())  # type: ignore[call-arg]
+    assert server.requests == []
+
+
+@pytest.mark.parametrize(
+    "absent", ["bogus", "", None, 5, "invalid_response", "remote_failed", "DATASET_VERSION_MISSING"]
+)
+def test_a_code_that_is_not_one_of_the_two_is_refused_before_any_request(certificates, absent):
+    with TlsServer(certificates, routes()) as server:
+        with reader(server) as versions:
+            error = failure(
+                lambda: versions.version(DATASET, "v1", deadline=soon(), absent=absent)  # type: ignore[arg-type]
+            )
+    assert error.code == "invalid_request" and server.requests == []
+
+
+# --- the observation is stamped after the reads it describes --------------------------------------
+
+
+class RequestCountClock:
+    """now() is second N, N being how many requests the server has received so far."""
+
+    def __init__(self, server):
+        self.server = server
+
+    def now(self):
+        return datetime(2026, 11, 8, 12, 0, len(self.server.requests), tzinfo=UTC)
+
+    def monotonic(self):
+        return time.monotonic()
+
+
+def counting_reader(server):
+    session = HttpSession(transport_factory=lambda: HttpxTransport(transport=server.transport()))
+    return VersionReader(credential(), RequestCountClock(server), session=session)
+
+
+def test_a_version_is_stamped_after_both_reads(certificates):
+    with TlsServer(certificates, routes()) as server, counting_reader(server) as versions:
+        seen = versions.version(DATASET, "v1", deadline=soon(), absent=NOT_FOUND)
+    assert seen.observed_at == "2026-11-08T12:00:02.000000Z"  # both requests had been received
+
+
+def test_a_page_is_stamped_after_its_read(certificates):
+    with TlsServer(certificates, routes()) as server, counting_reader(server) as versions:
+        shown = versions.versions(DATASET, 1, deadline=soon())
+    assert shown.observed_at == "2026-11-08T12:00:01.000000Z"
+    assert shown.items[0].observed_at == shown.observed_at
+
+
+def test_the_last_page_that_may_be_asked_for_is_asked_and_the_next_is_not(certificates):
+    last = listing([], page=10_000, total=0)
+    with TlsServer(certificates, routes(**{BASE + "?page=10000": body(last)})) as server:
+        with reader(server) as versions:
+            shown = versions.versions(DATASET, 10_000, deadline=soon())
+            assert shown.items == () and shown.page == 10_000
+            for page in (0, 10_001, -1):
+                assert failure(
+                    lambda page=page: versions.versions(DATASET, page, deadline=soon())
+                ).code == ("invalid_request")
+    assert [r.path for r in server.requests] == [BASE + "?page=10000"]  # the refused cost nothing
