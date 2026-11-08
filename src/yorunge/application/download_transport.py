@@ -138,10 +138,17 @@ class DownloadView(Protocol):
         """The body, in chunks of at most a TLS record (16 KiB; coalesce to write in blocks).
 
         Read it to its end. A short or cut body raises its closed code where it breaks or at the
-        end; a body past the caller's ``max_bytes`` raises ``download_limit_exceeded`` (a server
+        end; a body past the caller's ``max_bytes`` raises ``download_limit_exceeded`` (the cap is
+        per answer: with a resume ask keep it at the object-size limit, the contract's own, or a
+        provider that ignores the range and sends the whole object is refused for it). A server
         that sends more than it promised is cut at what it promised by the HTTP layer, and its
-        surplus ruins the next request on that connection, which fails as ``transport_failed``).
-        A 416 has no body to read.
+        surplus can spoil the next request on that connection: that request fails as
+        ``transport_failed``, or, if the surplus is itself a well-formed response that arrived in
+        the same read as the end of the body, is answered with it. (The one allowlisted origin is
+        the trust boundary; the closed header set forbids ``Connection: close``, so this layer
+        cannot prevent it.) An answer that calls for ``discard_and_retry`` (a 416, a partial answer
+        that is not an exact continuation) has no body to read: ``chunks()`` raises
+        ``invalid_request`` for it, and its ``max_bytes`` is not applied.
 
         The deadline is the caller's own, across the whole block. Reading the body to its end
         **disarms it**: the completion checkpoint, the comparison and the publication that follow

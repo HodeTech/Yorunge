@@ -293,12 +293,19 @@ class TransferHttpxTransport(HttpxTransport):
                         wire, stream=True, auth=None, follow_redirects=False
                     )
                     self._responses.add(response)
-                    self._download_headers(response)
+                    # The table first: a refusal by status (401, 429, 503, ...) is that row's code
+                    # whatever the size of the block it came with; the bounds guard what is read.
                     typed = parse_response(response.status_code, response.headers.multi_items())
+                    self._download_headers(response)
+                    action = disposition(typed, request.ask)
                     promised = typed.content_length
-                    if promised is not None and promised > request.max_bytes:
+                    if (
+                        action != "discard_and_retry"  # that body is never read: nothing to cap
+                        and promised is not None
+                        and promised > request.max_bytes
+                    ):
                         raise YorungeError("download_limit_exceeded")  # before a byte is read
-                    view = _DownloadView(response, request, typed, disposition(typed, request.ask))
+                    view = _DownloadView(response, request, typed, action)
                     view._disarm = lambda: _disarm(window)
                     in_consumer = True
                     yield view

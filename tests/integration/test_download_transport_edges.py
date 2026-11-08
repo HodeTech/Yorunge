@@ -8,6 +8,9 @@ would otherwise leave unnoticed. They share the helpers of ``test_download_trans
 
 import asyncio
 import dataclasses
+import socket
+import ssl
+import threading
 import time
 
 import httpx
@@ -110,6 +113,71 @@ def test_a_body_that_promises_more_than_the_callers_cap_is_refused_before_a_byte
             assert failure(lambda: owned.download(run)) == "download_limit_exceeded"
             assert instances[0]._slots._value == 2 and instances[0]._responses == set()
         assert len(api.requests) == 1
+
+
+@pytest.mark.parametrize("cap,entered", [(2048, True), (2047, False)])
+def test_the_early_limit_check_is_exact_at_the_promised_length(certificates, cap, entered):
+    # Promised 2048: a cap of 2047 refuses before the block is entered, 2048 lets it in. (The
+    # running counter would give the same code, but only after reading had begun.)
+    key = credential()
+    with serve(certificates, Reply(body=CONTENT)) as api:
+        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        offered = []
+
+        async def run(transport):
+            async with transport.open_download(
+                request(key, max_bytes=cap), deadline=time.monotonic() + 3
+            ) as view:
+                offered.append(view.response.content_length)
+                async for _ in view.chunks():
+                    pass
+
+        with owned:
+            if entered:
+                owned.download(run)
+            else:
+                assert failure(lambda: owned.download(run)) == "download_limit_exceeded"
+            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+        assert offered == ([2048] if entered else [])
+
+
+def test_a_ranged_request_judged_by_a_cap_below_the_object_is_the_callers_to_set(certificates):
+    # `max_bytes` is checked against THIS answer's body, before the table: a caller that asks for
+    # the rest of an object (or whose provider ignores the range and sends all of it) and lets the
+    # cap be smaller than the object is refused for it. The engine passes the contract's limit.
+    key = credential()
+    ask = ResumeAsk(400, 2048, TAG)
+    ignored = Reply(body=CONTENT, headers=(("ETag", TAG),))  # a 200 of 2048: the range was ignored
+    with serve(certificates, ignored) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        with owned:
+            assert failure(lambda: fetch(owned, request(key, ask=ask, max_bytes=1648))) == (
+                "download_limit_exceeded"
+            )
+            response, action, body, _ = fetch(owned, request(key, ask=ask, max_bytes=2048))
+        assert (action, len(body)) == ("restart", 2048)
+
+
+def test_a_partial_answer_that_is_dropped_is_not_judged_by_the_cap_for_a_body_never_read(
+    certificates,
+):
+    # A 206 that does not fit the request calls for `discard_and_retry` and its body is never
+    # read: a cap lower than its length is no reason to refuse it, the retry has its own answer.
+    key = credential()
+    ask = ResumeAsk(400, 2048, TAG)
+    unfit = Reply(
+        status=206,
+        body=CONTENT[400:],
+        headers=(("Content-Range", "bytes 401-2047/2048"), ("ETag", TAG)),
+    )
+    with serve(certificates, unfit) as api:
+        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        with owned:
+            response, action, body, _ = fetch(
+                owned, request(key, ask=ask, max_bytes=1000), read=False
+            )
+            assert instances[0]._slots._value == 2 and instances[0]._responses == set()
+        assert (response.status, action, body) == (206, "discard_and_retry", b"")
 
 
 def test_the_default_body_limit_is_the_contract_limit():
@@ -344,6 +412,90 @@ def test_the_header_block_bounds_are_exact(certificates, headers, code):
             else:
                 assert failure(lambda: fetch(owned, request(key))) == code
         assert len(api.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "status,code",
+    [
+        (302, "remote_failed"),
+        (401, "remote_access_denied"),
+        (403, "remote_access_denied"),
+        (404, "remote_failed"),
+        (429, "remote_rate_limited"),
+        (503, "remote_failed"),
+    ],
+)
+@pytest.mark.parametrize("ask", [None, ResumeAsk(400, 2048, TAG)], ids=["plain", "ranged"])
+def test_a_refusal_by_status_keeps_its_row_whatever_the_size_of_its_header_block(
+    certificates, status, code, ask
+):
+    # The block bound guards what is read of an answer the table accepts; an answer the table
+    # refuses by its status is that row's code (a 401 is `remote_access_denied`, exit 3) even
+    # with 65 fields: it is not turned into `invalid_response` by the size of its envelope.
+    key = credential()
+    reply = Reply(status=status, body=b"", headers=padded(63))
+    with serve(certificates, reply) as api:
+        owned, _, _ = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        with owned:
+            assert failure(lambda: fetch(owned, request(key, ask=ask))) == code
+        assert len(api.requests) == 1
+
+
+# --- phases the deadline does not cover alone -----------------------------------------------------
+
+
+def test_a_handshake_that_never_answers_ends_at_the_connect_budget_not_the_deadline(certificates):
+    # The peer accepts the connection and says nothing: the 5 s connect/handshake budget ends the
+    # attempt, not the caller's 30 s.
+    key = credential()
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(4)
+    accepted: list[socket.socket] = []
+    threading.Thread(target=lambda: accepted.append(listener.accept()[0]), daemon=True).start()
+
+    class Silent:
+        port = listener.getsockname()[1]
+
+        def client_context(self):
+            return ssl.create_default_context(cafile=str(certificates[0]))
+
+    owned, _, _ = session(key, certificates, {"api.localhost": Silent()}, origins=(ORIGIN,))
+    started = time.monotonic()
+    try:
+        with owned:
+            assert failure(lambda: fetch(owned, request(key), seconds=30)) == "transport_timeout"
+        assert 4.0 < time.monotonic() - started < 8.5  # five seconds, not the thirty
+    finally:
+        listener.close()
+        for connection in accepted:
+            connection.close()
+
+
+def test_a_caller_that_swallows_the_deadline_strike_and_still_finishes_the_body(certificates):
+    # The strike is one-shot and lands in whichever await is pending. A caller that swallows it
+    # (the contract says to re-raise) and reads the body to its end completes: disarming a window
+    # that already fired must not crash the read.
+    key = credential()
+    reply = Reply(body=b"s" * 40_000, chunk_size=2000, chunk_delay=0.03)
+    with serve(certificates, reply) as api:
+        owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
+        struck: list[int] = []
+
+        async def run(transport):
+            async with transport.open_download(
+                request(key), deadline=time.monotonic() + 0.4
+            ) as view:
+                async for _ in view.chunks():
+                    try:
+                        await asyncio.sleep(0.05)
+                    except asyncio.CancelledError:
+                        struck.append(view.received)
+                return view.complete
+
+        with owned:
+            assert owned.download(run) is True
+        assert struck and instances[0]._slots._value == 2 and not instances[0]._responses
 
 
 # --- the gates of the entry and of the session ----------------------------------------------------
