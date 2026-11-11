@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar, overload
 
 from yorunge.adapters.operation_store import read_snapshot
-from yorunge.adapters.state import metadata
+from yorunge.adapters.state import Metadata, metadata
 from yorunge.adapters.upload_lineage import Lineage, resolve_lineage, validate_selection
 from yorunge.adapters.validation_memo import validated
 from yorunge.domain.capabilities import instant
@@ -445,6 +445,13 @@ def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
         raise ValueError("verification target mismatch")
     if not acknowledged_stages(view) or instant(proof.observed_at) > instant(record.updated_at):
         raise ValueError("success requires acknowledged stages and current read evidence")
+    _check_proof_family(view, proof)
+    verification_after(view, proof)
+    _check_read_evidence(manifest, proof)
+
+
+def _check_proof_family(view: VersionedTransferView, proof: UploadVerification) -> None:
+    """What the plan's family says of the proof that stands behind a success."""
     if (
         isinstance(proof, TransferVerificationV2)
         and proof.authorization_policy == "explicit_read_attempt"
@@ -458,7 +465,10 @@ def _verify(view: VersionedTransferView, manifest: DatasetManifest) -> None:
         if not isinstance(view.plan, DatasetContinuationPlanV3):
             raise ValueError("a continuation proof requires a continuation plan")
         validate_verification_binding_v3(view.plan, proof)
-    verification_after(view, proof)
+
+
+def _check_read_evidence(manifest: DatasetManifest, proof: UploadVerification) -> None:
+    """The proof's files are the approved content, and the proof fits its reservation."""
     for expected, actual in zip(manifest.files, proof.files, strict=True):
         if (
             hashlib.sha256(expected.path.encode("utf-8")).hexdigest(),
@@ -860,37 +870,8 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
     views: ViewCache = {}  # a source is read once for the whole pass, not once per continuation
     successors: dict[str, str] = {}  # source operation -> its one descendant that is not cancelled
     for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
-        view = read_any_view(connection, row[0], views)
-        record = view.operation
-        if (
-            record is not None
-            and record.lease is not None
-            and record.lease.identity_epoch != store.identity_epoch
-        ):
-            raise YorungeError("state_invalid")
-        if view.plan.scope.store_id != store.store_id:
-            raise YorungeError("state_invalid")
-        # A source has at most one continuation that has not been cancelled: admission refuses a
-        # second while the first lives, and a cancelled one never sent anything.
-        if (
-            record is not None
-            and record.status != "cancelled"
-            and isinstance(view.plan, DatasetContinuationPlanV3)
-            and successors.setdefault(
-                view.plan.continuation.source_operation_id, record.operation_id
-            )
-            != record.operation_id
-        ):
-            raise YorungeError("state_invalid")
-    for table, key, child, foreign in (
-        ("upload_namespaces", "intent_digest", "upload_plans", "intent_digest"),
-        ("upload_manifests", "digest", "upload_plans", "manifest_digest"),
-    ):
-        if connection.execute(
-            f"SELECT 1 FROM {table} p WHERE NOT EXISTS(SELECT 1 FROM {child} c "
-            f"WHERE c.{foreign}=p.{key}) LIMIT 1"
-        ).fetchone():
-            raise YorungeError("state_invalid")
+        _check_plan_view(read_any_view(connection, row[0], views), store, successors)
+    _check_no_orphans(connection)
     for intent_digest, operation_id in connection.execute(
         "SELECT intent_digest,create_operation_id FROM "
         "upload_namespaces WHERE create_operation_id IS NOT NULL"
@@ -902,6 +883,44 @@ def validate_uploads(connection: sqlite3.Connection) -> None:
     # payload/index identities rather than trusting SQL constraints alone.
 
 
+def _check_plan_view(
+    view: VersionedTransferView, store: Metadata, successors: dict[str, str]
+) -> None:
+    """One plan of the store: its lease and scope belong to the store, and a source that has a
+    continuation has one that is not cancelled (admission refuses a second while the first lives,
+    and a cancelled one never sent anything)."""
+    record = view.operation
+    if (
+        record is not None
+        and record.lease is not None
+        and record.lease.identity_epoch != store.identity_epoch
+    ):
+        raise YorungeError("state_invalid")
+    if view.plan.scope.store_id != store.store_id:
+        raise YorungeError("state_invalid")
+    if (
+        record is not None
+        and record.status != "cancelled"
+        and isinstance(view.plan, DatasetContinuationPlanV3)
+        and successors.setdefault(view.plan.continuation.source_operation_id, record.operation_id)
+        != record.operation_id
+    ):
+        raise YorungeError("state_invalid")
+
+
+def _check_no_orphans(connection: sqlite3.Connection) -> None:
+    """Every namespace and every manifest has a plan that stands on it."""
+    for table, key, child, foreign in (
+        ("upload_namespaces", "intent_digest", "upload_plans", "intent_digest"),
+        ("upload_manifests", "digest", "upload_plans", "manifest_digest"),
+    ):
+        if connection.execute(
+            f"SELECT 1 FROM {table} p WHERE NOT EXISTS(SELECT 1 FROM {child} c "
+            f"WHERE c.{foreign}=p.{key}) LIMIT 1"
+        ).fetchone():
+            raise YorungeError("state_invalid")
+
+
 def write_record(
     connection: sqlite3.Connection, record: UploadRecord, expected: int | None
 ) -> None:
@@ -910,56 +929,66 @@ def write_record(
     )
     lease = value.lease.expires_at if value.lease else None
     if expected is None:
-        plan = read_plan(connection, value.plan_id)
-        try:
-            bind_continuation_record(plan, value)
-        except ValueError:
-            raise YorungeError("state_invalid") from None
-        connection.execute(
-            "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
-            (
-                value.operation_id,
-                value.plan_id,
-                value.intent_digest,
-                value.revision,
-                lease,
-                graph_of(plan).operation_reservation(),
-                value.encoded().decode("ascii"),
-            ),
-        )
+        _insert_record(connection, value, lease)
     else:
-        old = read_any_record(connection, value.operation_id)
-        fixed: tuple[str, ...] = (
-            "schema_version",
-            "operation_id",
-            "plan_id",
-            "plan_digest",
-            "intent_digest",
-            "approval",
-            "created_at",
-            "write_owner_id",
-            "write_access_digest",
-        )
-        if value.schema_version == 3:
-            # Fixed at admission and bound to the plan: the dataset it sends into and its mode.
-            fixed += ("dataset_id", "verification_only")
-        if (
-            old.revision != expected
-            or old.status in TERMINAL
-            or any(getattr(old, key) != getattr(value, key) for key in fixed)
-            or (old.workflow_latched and not value.workflow_latched)
-            or value.fence < old.fence
-            or value.revision not in (old.revision, old.revision + 1)
-        ):
-            raise YorungeError("operation_conflict")
-        if value.revision == old.revision and value.model_dump(exclude={"lease"}) != old.model_dump(
-            exclude={"lease"}
-        ):
-            raise YorungeError("operation_conflict")
-        changed = connection.execute(
-            "UPDATE upload_operations SET "
-            "revision=?,lease_expires_at=?,payload=? WHERE operation_id=? AND revision=?",
-            (value.revision, lease, value.encoded().decode("ascii"), value.operation_id, expected),
-        )
-        if changed.rowcount != 1:
-            raise YorungeError("operation_conflict")
+        _update_record(connection, value, lease, expected)
+
+
+def _insert_record(connection: sqlite3.Connection, value: UploadRecord, lease: str | None) -> None:
+    plan = read_plan(connection, value.plan_id)
+    try:
+        bind_continuation_record(plan, value)
+    except ValueError:
+        raise YorungeError("state_invalid") from None
+    connection.execute(
+        "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
+        (
+            value.operation_id,
+            value.plan_id,
+            value.intent_digest,
+            value.revision,
+            lease,
+            graph_of(plan).operation_reservation(),
+            value.encoded().decode("ascii"),
+        ),
+    )
+
+
+def _update_record(
+    connection: sqlite3.Connection, value: UploadRecord, lease: str | None, expected: int
+) -> None:
+    old = read_any_record(connection, value.operation_id)
+    fixed: tuple[str, ...] = (
+        "schema_version",
+        "operation_id",
+        "plan_id",
+        "plan_digest",
+        "intent_digest",
+        "approval",
+        "created_at",
+        "write_owner_id",
+        "write_access_digest",
+    )
+    if value.schema_version == 3:
+        # Fixed at admission and bound to the plan: the dataset it sends into and its mode.
+        fixed += ("dataset_id", "verification_only")
+    if (
+        old.revision != expected
+        or old.status in TERMINAL
+        or any(getattr(old, key) != getattr(value, key) for key in fixed)
+        or (old.workflow_latched and not value.workflow_latched)
+        or value.fence < old.fence
+        or value.revision not in (old.revision, old.revision + 1)
+    ):
+        raise YorungeError("operation_conflict")
+    if value.revision == old.revision and value.model_dump(exclude={"lease"}) != old.model_dump(
+        exclude={"lease"}
+    ):
+        raise YorungeError("operation_conflict")
+    changed = connection.execute(
+        "UPDATE upload_operations SET "
+        "revision=?,lease_expires_at=?,payload=? WHERE operation_id=? AND revision=?",
+        (value.revision, lease, value.encoded().decode("ascii"), value.operation_id, expected),
+    )
+    if changed.rowcount != 1:
+        raise YorungeError("operation_conflict")

@@ -107,6 +107,23 @@ def _refuse(blockers: tuple[Blocker, ...], source_id: str, related: str | None) 
     return ContinuationNotPossible(blockers, source_id)
 
 
+def _answered(
+    report: DatasetUploadResumeReport, prepare: bool, operation_id: str
+) -> DatasetUploadResumeReport:
+    """A report is the answer of a look; a prepare that has no plan to make is refused with it."""
+    if prepare:
+        raise _refuse(report.blockers, operation_id, None)
+    return report
+
+
+def _require_acknowledgement(uncertain: bool, accepted: bool) -> None:
+    """A selection with files whose effect is unconfirmed needs the acknowledgement, and only it."""
+    if accepted and not uncertain:
+        raise YorungeError("invalid_request")
+    if uncertain and not accepted:
+        raise YorungeError("approval_required")
+
+
 class UploadResumeRuntime(UploadPreparationRuntime):
     """Report and prepare over the seams of the original prepare: state, clock and session.
 
@@ -283,21 +300,9 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             extra.add("local_changed")
         count = len(source.manifest.files)
         if inventory is None:
-            # The dataset is not shown to be the baseline: nothing is listed, nothing is classified.
-            extra.add("membership_unobserved")
-            report = resume_report(
-                source_operation_id=operation_id,
-                dataset_id=baseline.id,
-                manifest=source.manifest,
-                classification=None,
-                blockers=_ordered(extra),
-                quota_used=used,
-                added_payload_bytes=continuation_added_payload_bytes(count),
-                observed_at=observed_at,
+            return self._unobserved(
+                operation_id, source, baseline, used, extra, observed_at, prepare
             )
-            if prepare:
-                raise _refuse(report.blockers, operation_id, None)
-            return report
         classification = classify(source.manifest, chain, inventory).with_blockers(sorted(extra))
         selection = classification.selection()
         selected = None if selection is None else len(selection.file_indices)
@@ -319,29 +324,78 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             )
 
         if selection is None or not prepare:
-            report = reported()
-            if prepare:
-                raise _refuse(report.blockers, operation_id, None)
-            return report
-        uncertain = bool(selection.uncertain_indices)
-        if accept_unconfirmed_effects and not uncertain:
-            raise YorungeError("invalid_request")
-        if uncertain and not accept_unconfirmed_effects:
-            raise YorungeError("approval_required")
+            return _answered(reported(), prepare, operation_id)
+        _require_acknowledgement(bool(selection.uncertain_indices), accept_unconfirmed_effects)
         assert inputs is not None
-        require_distinct_upload_content(inputs.manifest)
-        sealed = self._seal(
+        sealed = self._prepared(
             operation_id,
             source,
             plan,
             classification,
             selection.file_indices,
             inputs,
+            bound,
+            scope,
+            start,
+            observed_at,
+            used,
+            selected,
+        )
+        return reported(sealed)
+
+    def _unobserved(
+        self,
+        operation_id: str,
+        source: ResumeSource,
+        baseline: ProviderDataset,
+        used: QuotaCounters,
+        extra: set[Blocker],
+        observed_at: str,
+        prepare: bool,
+    ) -> DatasetUploadResumeReport:
+        """The dataset is not shown to be the baseline: nothing is listed, nothing is classified."""
+        extra.add("membership_unobserved")
+        report = resume_report(
+            source_operation_id=operation_id,
+            dataset_id=baseline.id,
+            manifest=source.manifest,
+            classification=None,
+            blockers=_ordered(extra),
+            quota_used=used,
+            added_payload_bytes=continuation_added_payload_bytes(len(source.manifest.files)),
+            observed_at=observed_at,
+        )
+        return _answered(report, prepare, operation_id)
+
+    def _prepared(
+        self,
+        operation_id: str,
+        source: ResumeSource,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
+        classification: Classification,
+        file_indices: tuple[int, ...],
+        inputs: UploadInputObservation,
+        bound: BoundCredential,
+        scope: UploadScope,
+        start: datetime,
+        observed_at: str,
+        used: QuotaCounters,
+        selected: int | None,
+    ) -> DatasetContinuationPlanV3:
+        """Seal the plan of this observation, check nothing moved, freeze the source, save."""
+        require_distinct_upload_content(inputs.manifest)
+        sealed = self._seal(
+            operation_id,
+            source,
+            plan,
+            classification,
+            file_indices,
+            inputs,
             scope,
             start,
             observed_at,
         )
-        self._fits(used, count, selected, sealed)
+        self._fits(used, len(source.manifest.files), selected, sealed)
         # The observation took a while: the credential and the clock must still be the scope's, the
         # plan inside its window, the folder what it was, and nothing begun on the source. A prepare
         # refused for any of it freezes nothing; one that fails after the freeze leaves it frozen.
@@ -355,7 +409,7 @@ class UploadResumeRuntime(UploadPreparationRuntime):
         inputs.recheck()
         with open_existing_store(self.state_dir) as store:
             StateUploads(store, bound, clock=self.clock).save(sealed, inputs.manifest)
-        return reported(sealed)
+        return sealed
 
     def _seal(
         self,

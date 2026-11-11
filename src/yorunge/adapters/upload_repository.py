@@ -141,6 +141,76 @@ def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> Non
         raise YorungeError("invalid_request")
 
 
+def _require_proof_fits(record: UploadRecord, proof: UploadVerification) -> None:
+    """A proof is of the operation's own family, and not early (nothing was sent to close)."""
+    if (
+        isinstance(record, TransferRecordV3)
+        and not record.workflow_latched
+        and not record.verification_only
+    ):
+        # It has sent nothing yet, so there is nothing to close: the proof is early.
+        raise YorungeError("operation_conflict")
+    if proof.schema_version != record.schema_version:
+        raise YorungeError("upload_plan_not_valid")
+
+
+def _require_proof_target(
+    record: UploadRecord, proof: UploadVerification, access: ReadAccess, stamp: Stamp
+) -> None:
+    """The proof was made under the read access that was just granted, for this dataset."""
+    if verification_scope(proof) != access.scope or (
+        isinstance(proof, TransferVerificationV2 | TransferVerificationV3)
+        and proof.authorization_policy != access.policy
+    ):
+        raise YorungeError("upload_plan_not_valid")
+    if (
+        record.dataset_id is None
+        or proof.dataset_id != record.dataset_id
+        or instant(proof.observed_at) > stamp.now
+    ):
+        raise YorungeError("operation_conflict")
+
+
+def _require_proof_closes(
+    view: VersionedTransferView, record: UploadRecord, proof: UploadVerification
+) -> None:
+    """Every normal write stage is acknowledged and the proof is what the operation sent."""
+    # All normal write stages must be acknowledged. Recovery without
+    # this evidence remains unknown until an exact provider oracle
+    # is implemented; an ID/name match cannot manufacture success.
+    if not acknowledged_stages(view):
+        raise YorungeError("operation_uncertain")
+    try:
+        verification_after(view, proof)
+    except ValueError:
+        if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+            # An observation that precedes the operation proves nothing about it, and
+            # one that sent nothing has nothing uncertain: the proof is refused.
+            raise YorungeError("operation_conflict") from None
+        raise YorungeError("operation_uncertain") from None
+
+
+def _armable_record(view: VersionedTransferView, kind: StageKind) -> UploadRecord:
+    """The record of a view whose plan can arm ``kind`` at all."""
+    if not isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
+        raise YorungeError("upload_plan_not_valid")
+    record = view.operation
+    assert record is not None
+    if isinstance(view.plan, DatasetContinuationPlanV3) and kind in {"create", "project_link"}:
+        # The dataset exists: a continuation has no create and no link to arm.
+        raise YorungeError("invalid_request")
+    return record
+
+
+def _require_stageable(record: UploadRecord, owner: TransferLease) -> None:
+    """The write owner of an operation that is live and sends something."""
+    if owner.mode != "write" or record.status not in {"admitted", "running"}:
+        raise YorungeError("operation_conflict")
+    if isinstance(record, TransferRecordV3) and record.verification_only:
+        # A check-only continuation sends nothing, so it has no stage to arm.
+        raise YorungeError("operation_conflict")
+
+
 def _arm_permission(kind: StageKind) -> UploadPermission:
     if kind == "create":
         return "create_private_dataset"
@@ -981,23 +1051,10 @@ class StateUploads:
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
-                if not isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
-                    raise YorungeError("upload_plan_not_valid")
-                record = view.operation
-                assert record is not None
-                if isinstance(view.plan, DatasetContinuationPlanV3) and kind in {
-                    "create",
-                    "project_link",
-                }:
-                    # The dataset exists: a continuation has no create and no link to arm.
-                    raise YorungeError("invalid_request")
+                record = _armable_record(view, kind)
                 self._baseline_in_view(view)
                 owner = self._owner(record, owner, stamp, gate)
-                if owner.mode != "write" or record.status not in {"admitted", "running"}:
-                    raise YorungeError("operation_conflict")
-                if isinstance(record, TransferRecordV3) and record.verification_only:
-                    # A check-only continuation sends nothing, so it has no stage to arm.
-                    raise YorungeError("operation_conflict")
+                _require_stageable(record, owner)
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
                 action = _arm_permission(kind)
@@ -1036,18 +1093,7 @@ class StateUploads:
                     ),
                 )
                 if kind == "create":
-                    claimed = self.connection.execute(
-                        "UPDATE upload_namespaces SET create_operation_id=? WHERE "
-                        "intent_digest=? AND create_operation_id IS NULL",
-                        (operation_id, view.plan.intent_digest()),
-                    )
-                    if claimed.rowcount != 1:
-                        previous = self.connection.execute(
-                            "SELECT create_operation_id FROM upload_namespaces WHERE "
-                            "intent_digest=?",
-                            (view.plan.intent_digest(),),
-                        ).fetchone()
-                        raise OperationError("operation_conflict", previous[0])
+                    self._claim_create(operation_id, view.plan.intent_digest())
                 intent = StageIntent(
                     schema_version=1,
                     intent_id=str(uuid4()),
@@ -1091,6 +1137,20 @@ class StateUploads:
                     "operation_uncertain", operation_id, reason_code=error.code
                 ) from None
             return issued
+
+    def _claim_create(self, operation_id: str, intent_digest: str) -> None:
+        """The namespace's one create right: this operation takes it, or says who has it."""
+        claimed = self.connection.execute(
+            "UPDATE upload_namespaces SET create_operation_id=? WHERE "
+            "intent_digest=? AND create_operation_id IS NULL",
+            (operation_id, intent_digest),
+        )
+        if claimed.rowcount != 1:
+            previous = self.connection.execute(
+                "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
+                (intent_digest,),
+            ).fetchone()
+            raise OperationError("operation_conflict", previous[0])
 
     def receipt(
         self, operation_id: str, owner: TransferLease, receipt: UploadReceipt
@@ -1460,65 +1520,89 @@ class StateUploads:
                 record = view.operation
                 assert record is not None
                 self._baseline_in_view(view)
-                check_only = isinstance(record, TransferRecordV3) and record.verification_only
-                if (
-                    isinstance(record, TransferRecordV3)
-                    and not record.workflow_latched
-                    and not check_only
-                ):
-                    # Nothing was sent and nothing is read yet: there is nothing to be uncertain
-                    # about, and nothing for this call to report.
-                    raise YorungeError("operation_conflict")
-                if not check_only and (not record.workflow_latched or record.dataset_id is None):
-                    raise YorungeError("operation_uncertain")
-                self._credential(check.scope, stamp)
-                if (
-                    scope_target(check.scope) != scope_target(view.plan.scope)
-                    or check.dataset_id != record.dataset_id
-                    or instant(check.checked_at) > stamp.now
-                ):
-                    raise YorungeError("state_changed")
-                require_fresh(check.checked_at, timestamp(stamp.now))
-                checked = instant(check.checked_at)
-                gate.require_range(
-                    checked,
-                    checked + timedelta(seconds=30, microseconds=1),
-                    error="upload_plan_not_valid",
-                )
-                active_write = False
-                fence = record.fence
+                check_only = self._failed_read_check_only(record)
+                self._failed_read_current(check, view, record, stamp, gate)
                 if check_only:
-                    # Nothing was sent, so nothing is uncertain: it is cancelled, and the caller
-                    # gets the read's own error rather than "operation_uncertain".
-                    if owner is None:
-                        raise YorungeError("operation_conflict")
-                    self._owner(record, owner, stamp, gate)
-                    changed = self._change(
-                        record, stamp, lease=None, status="cancelled", reason="local_cancelled"
-                    )
-                    self._control(changed, stamp, terminal=True)
+                    self._cancel_check_only(record, owner, stamp, gate)
+                    active_write = False
                 else:
-                    if owner is None:
-                        self._takeover_allowed(record, stamp)
-                        fence += 1
-                    else:
-                        current = self._owner(record, owner, stamp, gate)
-                        active_write = current.mode == "write"
-                    changed = self._change(
-                        record,
-                        stamp,
-                        lease=None,
-                        fence=fence,
-                        status="unknown",
-                        reason="read_unavailable"
-                        if record.schema_version in (2, 3)
-                        else "request_uncertain",
-                    )
-                    self._control(changed, stamp, terminal=False)
+                    active_write = self._read_unavailable(record, owner, stamp, gate)
             self._finish(stamp, gate, scope=check.scope)
             if active_write:
                 raise OperationError("operation_uncertain", operation_id, reason_code=code)
             raise OperationError(code, operation_id, reason_code=code)
+
+    @staticmethod
+    def _failed_read_check_only(record: UploadRecord) -> bool:
+        """Whether the failed read is a check-only continuation's; refuse a record with no read."""
+        check_only = isinstance(record, TransferRecordV3) and record.verification_only
+        if isinstance(record, TransferRecordV3) and not record.workflow_latched and not check_only:
+            # Nothing was sent and nothing is read yet: there is nothing to be uncertain
+            # about, and nothing for this call to report.
+            raise YorungeError("operation_conflict")
+        if not check_only and (not record.workflow_latched or record.dataset_id is None):
+            raise YorungeError("operation_uncertain")
+        return check_only
+
+    def _failed_read_current(
+        self,
+        check: AuthorizationCheck,
+        view: VersionedTransferView,
+        record: UploadRecord,
+        stamp: Stamp,
+        gate: TimeGate,
+    ) -> None:
+        """The failed read is of this plan's scope and this record's dataset, observed just now."""
+        self._credential(check.scope, stamp)
+        if (
+            scope_target(check.scope) != scope_target(view.plan.scope)
+            or check.dataset_id != record.dataset_id
+            or instant(check.checked_at) > stamp.now
+        ):
+            raise YorungeError("state_changed")
+        require_fresh(check.checked_at, timestamp(stamp.now))
+        checked = instant(check.checked_at)
+        gate.require_range(
+            checked,
+            checked + timedelta(seconds=30, microseconds=1),
+            error="upload_plan_not_valid",
+        )
+
+    def _cancel_check_only(
+        self, record: UploadRecord, owner: TransferLease | None, stamp: Stamp, gate: TimeGate
+    ) -> None:
+        # Nothing was sent, so nothing is uncertain: it is cancelled, and the caller
+        # gets the read's own error rather than "operation_uncertain".
+        if owner is None:
+            raise YorungeError("operation_conflict")
+        self._owner(record, owner, stamp, gate)
+        changed = self._change(
+            record, stamp, lease=None, status="cancelled", reason="local_cancelled"
+        )
+        self._control(changed, stamp, terminal=True)
+
+    def _read_unavailable(
+        self, record: UploadRecord, owner: TransferLease | None, stamp: Stamp, gate: TimeGate
+    ) -> bool:
+        """Leave a sent operation unknown after a failed read; whether a write owner was ended."""
+        active_write = False
+        fence = record.fence
+        if owner is None:
+            self._takeover_allowed(record, stamp)
+            fence += 1
+        else:
+            current = self._owner(record, owner, stamp, gate)
+            active_write = current.mode == "write"
+        changed = self._change(
+            record,
+            stamp,
+            lease=None,
+            fence=fence,
+            status="unknown",
+            reason="read_unavailable" if record.schema_version in (2, 3) else "request_uncertain",
+        )
+        self._control(changed, stamp, terminal=False)
+        return active_write
 
     def prepare_initial_read(
         self,
@@ -1735,15 +1819,7 @@ class StateUploads:
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)
-                if (
-                    isinstance(record, TransferRecordV3)
-                    and not record.workflow_latched
-                    and not record.verification_only
-                ):
-                    # It has sent nothing yet, so there is nothing to close: the proof is early.
-                    raise YorungeError("operation_conflict")
-                if proof.schema_version != record.schema_version:
-                    raise YorungeError("upload_plan_not_valid")
+                _require_proof_fits(record, proof)
                 access = authorize_read(
                     self,
                     view,
@@ -1754,17 +1830,7 @@ class StateUploads:
                     accept_unverified_read=accept_unverified_read,
                     initial_owner=owner.mode == "write",
                 )
-                if verification_scope(proof) != access.scope or (
-                    isinstance(proof, TransferVerificationV2 | TransferVerificationV3)
-                    and proof.authorization_policy != access.policy
-                ):
-                    raise YorungeError("upload_plan_not_valid")
-                if (
-                    record.dataset_id is None
-                    or proof.dataset_id != record.dataset_id
-                    or instant(proof.observed_at) > stamp.now
-                ):
-                    raise YorungeError("operation_conflict")
+                _require_proof_target(record, proof, access, stamp)
                 if proof.schema_version in (2, 3):
                     observed = instant(proof.observed_at)
                     gate.require_range(
@@ -1773,19 +1839,7 @@ class StateUploads:
                         error="operation_uncertain",
                     )
                     gate.check(stamp.now)
-                # All normal write stages must be acknowledged. Recovery without
-                # this evidence remains unknown until an exact provider oracle
-                # is implemented; an ID/name match cannot manufacture success.
-                if not acknowledged_stages(view):
-                    raise YorungeError("operation_uncertain")
-                try:
-                    verification_after(view, proof)
-                except ValueError:
-                    if isinstance(record, TransferRecordV3) and not record.workflow_latched:
-                        # An observation that precedes the operation proves nothing about it, and
-                        # one that sent nothing has nothing uncertain: the proof is refused.
-                        raise YorungeError("operation_conflict") from None
-                    raise YorungeError("operation_uncertain") from None
+                _require_proof_closes(view, record, proof)
                 changed = self._change(
                     record,
                     stamp,

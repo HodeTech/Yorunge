@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     )
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.download import DownloadSummary
+    from yorunge.domain.errors import YorungeError
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlans,
@@ -747,27 +748,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from yorunge.domain.errors import YorungeError
 
-    upload_guidance = args.command == "datasets" and args.action == "upload"
-    hints: Mapping[str, str | Callable[[YorungeError], str | None]] | None = None
-    if upload_guidance and vars(args).get("upload_action") == "resume":
-        from yorunge.cli.upload import RESUME_ERROR_HINTS
-
-        hints = RESUME_ERROR_HINTS
-    elif args.command == "models":
-        from yorunge.cli.models import error_hints
-
-        hints = error_hints(args)
-    elif args.command == "datasets" and args.action == "versions":
-        from yorunge.cli.versions import ERROR_HINTS
-
-        hints = ERROR_HINTS
-    requested = vars(args).get("operation_id") if upload_guidance else None
-    renderer = OutputRenderer(
-        vars(args).get("output", "text"),
-        upload_guidance=upload_guidance,
-        error_hints=hints,
-        requested_operation_id=requested if isinstance(requested, str) else None,
-    )
+    renderer = _command_renderer(args)
     try:
         result = dispatch(args)
     except YorungeError as error:
@@ -776,6 +757,44 @@ def main(argv: Sequence[str] | None = None) -> int:
         return renderer.error(YorungeError("request_cancelled"))
     except (OSError, UnicodeError):
         return renderer.error(YorungeError("file_unreadable"))
+    return _render_result(args, renderer, result)
+
+
+def _command_renderer(args: argparse.Namespace) -> OutputRenderer:
+    """The renderer of one parsed command: its output mode and the guidance only it can give."""
+    upload_guidance = args.command == "datasets" and args.action == "upload"
+    hints = _error_hints(args, upload_guidance)
+    requested = vars(args).get("operation_id") if upload_guidance else None
+    return OutputRenderer(
+        vars(args).get("output", "text"),
+        upload_guidance=upload_guidance,
+        error_hints=hints,
+        requested_operation_id=requested if isinstance(requested, str) else None,
+    )
+
+
+def _error_hints(
+    args: argparse.Namespace, upload_guidance: bool
+) -> Mapping[str, str | Callable[[YorungeError], str | None]] | None:
+    """What a person is told, in text, of the errors this command meets in its own way."""
+    if upload_guidance and vars(args).get("upload_action") == "resume":
+        from yorunge.cli.upload import RESUME_ERROR_HINTS
+
+        return RESUME_ERROR_HINTS
+    if args.command == "models":
+        from yorunge.cli.models import error_hints
+
+        return error_hints(args)
+    if args.command == "datasets" and args.action == "versions":
+        from yorunge.cli.versions import ERROR_HINTS
+
+        return ERROR_HINTS
+    return None
+
+
+def _render_result(args: argparse.Namespace, renderer: OutputRenderer, result: CliResult) -> int:
+    """Write the result of a command that succeeded; a failure to write it is reported instead."""
+    from yorunge.domain.errors import YorungeError
 
     try:
         if args.command == "datasets" and args.action == "upload":

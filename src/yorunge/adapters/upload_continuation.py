@@ -29,6 +29,7 @@ from yorunge.adapters.upload_original import (
     _confirmed_indices,
     _failure_identity,
     _source_code,
+    _stopped_failure,
 )
 from yorunge.adapters.upload_preparation import UploadPreparationRuntime
 from yorunge.adapters.upload_repository import StateUploads
@@ -313,18 +314,7 @@ class ContinuationStages:
             return OperationError(
                 "operation_uncertain", operation_id, reason_code=marker_error.code
             )
-        if latched is None:
-            return error if isinstance(error, OperationError) else None
-        if latched == "terminal":
-            return OperationError(
-                "operation_conflict" if code == "operation_uncertain" else code,
-                operation_id,
-                reason_code=reason,
-            )
-        uncertain = uncertain or latched == "latched"
-        if uncertain:
-            return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
-        return OperationError(code, operation_id, reason_code=reason)
+        return _stopped_failure(latched, error, operation_id, code, reason, uncertain)
 
     def __repr__(self) -> str:
         return "<continuation stages environment private>"

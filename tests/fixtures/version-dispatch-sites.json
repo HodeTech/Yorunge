@@ -576,7 +576,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.arm",
+   "function": "_armable_record",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)",
    "occurrence": 0,
@@ -585,7 +585,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.arm",
+   "function": "_armable_record",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
@@ -594,7 +594,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.arm",
+   "function": "_require_stageable",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
@@ -630,7 +630,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.read_failed",
+   "function": "StateUploads._read_unavailable",
    "kind": "version",
    "text": "record.schema_version in (2, 3)",
    "occurrence": 0,
@@ -648,7 +648,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads._verified",
+   "function": "_require_proof_closes",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
@@ -657,7 +657,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads._verified",
+   "function": "_require_proof_fits",
    "kind": "version",
    "text": "proof.schema_version != record.schema_version",
    "occurrence": 0,
@@ -666,7 +666,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads._verified",
+   "function": "_require_proof_target",
    "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV2 | TransferVerificationV3)",
    "occurrence": 0,
@@ -684,10 +684,10 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads._verified",
+   "function": "_require_proof_fits",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
-   "occurrence": 1,
+   "occurrence": 0,
    "owner": "done",
    "note": "an observation that precedes a continuation that sent nothing proves nothing about it: refused as a conflict, not uncertain"
   },
@@ -711,7 +711,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.read_failed",
+   "function": "StateUploads._failed_read_check_only",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
@@ -720,7 +720,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
-   "function": "StateUploads.read_failed",
+   "function": "StateUploads._failed_read_check_only",
    "kind": "isinstance",
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 1,
@@ -981,7 +981,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "_verify",
+   "function": "_check_proof_family",
    "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV2)",
    "occurrence": 0,
@@ -990,7 +990,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "_verify",
+   "function": "_check_proof_family",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetUploadPlanV2)",
    "occurrence": 0,
@@ -999,7 +999,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "_verify",
+   "function": "_check_proof_family",
    "kind": "isinstance",
    "text": "isinstance(proof, TransferVerificationV3)",
    "occurrence": 0,
@@ -1008,7 +1008,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "_verify",
+   "function": "_check_plan_view",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
@@ -1125,7 +1125,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "validate_uploads",
+   "function": "_check_proof_family",
    "kind": "isinstance",
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
@@ -1143,7 +1143,7 @@
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
-   "function": "write_record",
+   "function": "_update_record",
    "kind": "version",
    "text": "value.schema_version == 3",
    "occurrence": 0,

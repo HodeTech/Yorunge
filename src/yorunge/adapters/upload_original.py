@@ -109,6 +109,33 @@ def _failure_identity(
     return operation_id
 
 
+def _stopped_failure(
+    latched: Literal["terminal", "latched", "unlatched"] | None,
+    error: BaseException,
+    operation_id: str,
+    code: ErrorCode,
+    reason: ErrorCode | None,
+    uncertain: bool,
+) -> OperationError | None:
+    """What a failed stage says of its operation once the stop of that operation is known.
+
+    Shared by both stage environments, which keep the rest of their failure path in step.
+    ``code``, ``reason`` and ``uncertain`` are what ``error`` itself stands for.
+    """
+    if latched is None:
+        return error if isinstance(error, OperationError) else None
+    if latched == "terminal":
+        return OperationError(
+            "operation_conflict" if code == "operation_uncertain" else code,
+            operation_id,
+            reason_code=reason,
+        )
+    uncertain = uncertain or latched == "latched"
+    if uncertain:
+        return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
+    return OperationError(code, operation_id, reason_code=reason)
+
+
 class _Environment:
     def __init__(
         self,
@@ -319,18 +346,7 @@ class _Environment:
             return OperationError(
                 "operation_uncertain", operation_id, reason_code=marker_error.code
             )
-        if latched is None:
-            return error if isinstance(error, OperationError) else None
-        if latched == "terminal":
-            return OperationError(
-                "operation_conflict" if code == "operation_uncertain" else code,
-                operation_id,
-                reason_code=reason,
-            )
-        uncertain = uncertain or latched == "latched"
-        if uncertain:
-            return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
-        return OperationError(code, operation_id, reason_code=reason)
+        return _stopped_failure(latched, error, operation_id, code, reason, uncertain)
 
     def __repr__(self) -> str:
         return "<original upload environment private>"

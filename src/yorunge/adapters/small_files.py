@@ -59,23 +59,7 @@ def read_regular_file(
                 path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor
             )
             with owned_descriptor(opened):
-                held = os.fstat(opened)
-                if identity(held) != identity(before) or not stat.S_ISREG(held.st_mode):
-                    raise YorungeError("input_changed")
-                content = bytearray()
-                while len(content) <= limit:
-                    if time.monotonic() >= end:
-                        raise YorungeError(
-                            "file_unreadable"
-                        )  # a local file that stalls is not read
-                    block = os.read(opened, min(BLOCK_BYTES, limit + 1 - len(content)))
-                    if not block:
-                        break
-                    content.extend(block)
-                if len(content) > limit:
-                    raise YorungeError(oversize)
-                if signature(os.fstat(opened)) != signature(before):
-                    raise YorungeError("input_changed")
+                content = _read_held(opened, before, limit=limit, oversize=oversize, end=end)
             after = os.stat(path.name, dir_fd=descriptor, follow_symlinks=False)
             second, again = directory_chain(str(path.parent))
             with owned_descriptor(second):
@@ -84,6 +68,28 @@ def read_regular_file(
         except OSError as error:
             raise _unreadable(error) from None
     return bytes(content)
+
+
+def _read_held(
+    opened: int, before: os.stat_result, *, limit: int, oversize: ErrorCode, end: float
+) -> bytearray:
+    """The bytes of the opened file, which must be the file that was looked at and stay it."""
+    held = os.fstat(opened)
+    if identity(held) != identity(before) or not stat.S_ISREG(held.st_mode):
+        raise YorungeError("input_changed")
+    content = bytearray()
+    while len(content) <= limit:
+        if time.monotonic() >= end:
+            raise YorungeError("file_unreadable")  # a local file that stalls is not read
+        block = os.read(opened, min(BLOCK_BYTES, limit + 1 - len(content)))
+        if not block:
+            break
+        content.extend(block)
+    if len(content) > limit:
+        raise YorungeError(oversize)
+    if signature(os.fstat(opened)) != signature(before):
+        raise YorungeError("input_changed")
+    return content
 
 
 def _unreadable(error: OSError) -> YorungeError:

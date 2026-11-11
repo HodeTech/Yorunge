@@ -119,6 +119,29 @@ def _disarm(window: asyncio.Timeout) -> None:
         pass  # the deadline struck in the same instant: the cancellation reports it as it is
 
 
+def _window_expired(timers: list[asyncio.Timeout]) -> bool:
+    """Whether the transport's own deadline window (the first one) has struck."""
+    return bool(timers) and timers[0].expired()
+
+
+def _download_failure(
+    error: Exception, in_consumer: bool, timers: list[asyncio.Timeout]
+) -> ErrorCode:
+    """The closed code of what the HTTP stack (or the loop) raised, or the error itself if it is
+    the caller's own: tried in this order, the first row that fits decides."""
+    if isinstance(error, TimeoutError | httpx.TimeoutException):
+        if in_consumer and not _window_expired(timers):
+            raise error  # a TimeoutError of the caller's own code is the caller's, not ours
+        return "transport_timeout"
+    if isinstance(error, httpx.InvalidURL):
+        return "invalid_request"
+    if isinstance(error, httpx.HTTPError):
+        return "transport_failed"
+    if in_consumer:
+        raise error  # the caller's own (a local disk's) error is the caller's, not ours
+    return "transport_failed"  # e.g. an ssl.SSLError the HTTP stack left unmapped
+
+
 class _DownloadChunks(AsyncIterator[bytes]):
     """The body of an accepted answer, by the closed rules of the download.
 
@@ -270,6 +293,26 @@ class TransferHttpxTransport(HttpxTransport):
         ):
             raise YorungeError("invalid_response")
 
+    def _classify_download(
+        self, response: httpx.Response, request: DownloadRequest
+    ) -> tuple[DownloadResponse, Disposition]:
+        """The typed answer and what to do with it (the caller's try block is around this call).
+
+        The table first: a refusal by status (401, 429, 503, ...) is that row's code whatever the
+        size of the block it came with; the bounds guard what is read.
+        """
+        typed = parse_response(response.status_code, response.headers.multi_items())
+        self._download_headers(response)
+        action = disposition(typed, request.ask)
+        promised = typed.content_length
+        if (
+            action != "discard_and_retry"  # that body is never read: nothing to cap
+            and promised is not None
+            and promised > request.max_bytes
+        ):
+            raise YorungeError("download_limit_exceeded")  # before a byte is read
+        return typed, action
+
     @asynccontextmanager
     async def _open_download(
         self, request: DownloadRequest, *, deadline: float
@@ -300,18 +343,7 @@ class TransferHttpxTransport(HttpxTransport):
                         wire, stream=True, auth=None, follow_redirects=False
                     )
                     self._responses.add(response)
-                    # The table first: a refusal by status (401, 429, 503, ...) is that row's code
-                    # whatever the size of the block it came with; the bounds guard what is read.
-                    typed = parse_response(response.status_code, response.headers.multi_items())
-                    self._download_headers(response)
-                    action = disposition(typed, request.ask)
-                    promised = typed.content_length
-                    if (
-                        action != "discard_and_retry"  # that body is never read: nothing to cap
-                        and promised is not None
-                        and promised > request.max_bytes
-                    ):
-                        raise YorungeError("download_limit_exceeded")  # before a byte is read
+                    typed, action = self._classify_download(response, request)
                     view = _DownloadView(response, request, typed, action)
                     view._disarm = lambda: _disarm(window)
                     in_consumer = True
@@ -319,18 +351,14 @@ class TransferHttpxTransport(HttpxTransport):
                     in_consumer = False
                     if not view.complete:
                         _remaining(deadline)
-            except (TimeoutError, httpx.TimeoutException):
-                if in_consumer and not (timers and timers[0].expired()):
-                    raise  # a TimeoutError of the caller's own code is the caller's, not ours
-                failure = "transport_timeout"
-            except httpx.InvalidURL:
-                failure = "invalid_request"
-            except httpx.HTTPError:
-                failure = "transport_failed"
-            except OSError:
-                if in_consumer:
-                    raise  # the caller's own (a local disk's) error is the caller's, not ours
-                failure = "transport_failed"  # e.g. an ssl.SSLError the HTTP stack left unmapped
+            except (
+                TimeoutError,
+                httpx.TimeoutException,
+                httpx.InvalidURL,
+                httpx.HTTPError,
+                OSError,
+            ) as error:
+                failure = _download_failure(error, in_consumer, timers)
             except YorungeError as error:
                 public_error = error
             finally:

@@ -19,6 +19,7 @@ import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from types import ModuleType
 from typing import Final
 
 from yorunge.adapters.input_files import close_descriptor
@@ -261,42 +262,74 @@ def acquire_lock(directory: int, name: str) -> LockObject:
     """
     fcntl = require_local_files()
     for _ in range(LOCK_ATTEMPTS):
-        seen = entry_of(directory, name)
-        if seen is None:
-            try:
-                descriptor = create_exclusive(directory, name, label="lock")
-            except FileExistsError:
-                continue
-        else:
-            if seen.nlink == 0:
-                continue  # unlinked right now by the run that finished: not a foreign file
-            if not seen.owned:
-                raise YorungeError("download_partial_unverified")
-            try:
-                descriptor = open_checked(directory, name, seen, os.O_RDWR)
-            except FileNotFoundError:
-                continue  # the process that finished removed it between the look and the open
-            except YorungeError:
-                now = entry_of(directory, name)
-                if now is None or now.nlink == 0 or (now.owned and not same_file(seen, now)):
-                    continue  # ... or removed (perhaps made anew) between the open and the look
-                raise
+        descriptor = _open_lock_object(directory, name)
+        if descriptor is None:
+            continue
         try:
-            step("lock:opened")
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError as error:
-                if error.errno in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
-                    raise YorungeError("download_busy") from None
-                raise YorungeError("download_write_failed") from None  # ENOLCK, no locks here
-            step("lock:held")
-            held = describe(os.fstat(descriptor))
-            if same_file(held, entry_of(directory, name)):
-                return LockObject(directory, name, descriptor, held)
+            lock = _flock_named(fcntl, directory, name, descriptor)
         except BaseException as error:
             close_descriptor(descriptor, error, code=CLOSE_CODE)
             raise
+        if lock is not None:
+            return lock
         close_descriptor(
             descriptor, code=CLOSE_CODE
         )  # the name leads elsewhere now: from the start
     raise YorungeError("download_busy")
+
+
+def _open_lock_object(directory: int, name: str) -> int | None:
+    """Step 2: look at the lock file, create it if missing, else open the one that is there.
+
+    The open descriptor, which the caller closes; ``None`` when the attempt starts again from the
+    look (a lost creation race, or a lock file the run that finished is removing).
+    """
+    seen = entry_of(directory, name)
+    if seen is None:
+        try:
+            return create_exclusive(directory, name, label="lock")
+        except FileExistsError:
+            return None
+    return _open_present_lock(directory, name, seen)
+
+
+def _open_present_lock(directory: int, name: str, seen: Entry) -> int | None:
+    """Open a lock file that was seen to be there; it must be provably ours.
+
+    The open descriptor, or ``None`` when the run that finished has removed (or is removing) it.
+    """
+    if seen.nlink == 0:
+        return None  # unlinked right now by the run that finished: not a foreign file
+    if not seen.owned:
+        raise YorungeError("download_partial_unverified")
+    try:
+        return open_checked(directory, name, seen, os.O_RDWR)
+    except FileNotFoundError:
+        return None  # the process that finished removed it between the look and the open
+    except YorungeError:
+        now = entry_of(directory, name)
+        if now is None or now.nlink == 0 or (now.owned and not same_file(seen, now)):
+            return None  # ... or removed (perhaps made anew) between the open and the look
+        raise
+
+
+def _flock_named(
+    fcntl: ModuleType, directory: int, name: str, descriptor: int
+) -> LockObject | None:
+    """Step 3: ``flock`` the open lock file; the name must still lead to the file that is locked.
+
+    The held lock object, or ``None`` when the name leads elsewhere now. The caller owns the
+    descriptor and closes it on every error and on ``None``.
+    """
+    step("lock:opened")
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as error:
+        if error.errno in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
+            raise YorungeError("download_busy") from None
+        raise YorungeError("download_write_failed") from None  # ENOLCK, no locks here
+    step("lock:held")
+    held = describe(os.fstat(descriptor))
+    if same_file(held, entry_of(directory, name)):
+        return LockObject(directory, name, descriptor, held)
+    return None

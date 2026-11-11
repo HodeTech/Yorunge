@@ -272,18 +272,7 @@ def dispatch(
             plan_id=args.plan_id, limit=args.limit, cursor=args.cursor, state_dir=state
         )
     if action == "show":
-        shown = api.show_dataset_upload(
-            plan_id=args.plan_id, operation_id=args.operation_id, state_dir=state
-        )
-        if options.get("output", "text") == "text" and shown.data.operation_status in HINTED:
-            # What the journal alone says of continuing: only the text of an operation that is
-            # unknown, or still "running" (a killed process leaves it so) uses it; the summary
-            # itself does not change.
-            from yorunge.adapters.upload_public import resume_hint
-
-            assert shown.data.operation_id is not None
-            args.resume_hint = resume_hint(state, shown.data.operation_id)
-        return shown
+        return _show(args, state)
     if action == "review":
         return api.review_dataset_upload(args.plan_id, state_dir=state)
     if action == "revoke":
@@ -312,9 +301,31 @@ def dispatch(
         )
     from yorunge.application.upload_progress import observe_upload
 
-    progress = ProgressText(sys.stderr) if options.get("output", "text") == "text" else None
-    with observe_upload(progress if progress is not None and progress.enabled else None):
+    with observe_upload(_progress_sink(options.get("output", "text"))):
         return api.start_dataset_upload(args.plan_id, **context)
+
+
+def _show(args: argparse.Namespace, state: Path | None) -> Result[UploadSummary]:
+    from yorunge import api
+
+    shown = api.show_dataset_upload(
+        plan_id=args.plan_id, operation_id=args.operation_id, state_dir=state
+    )
+    if vars(args).get("output", "text") == "text" and shown.data.operation_status in HINTED:
+        # What the journal alone says of continuing: only the text of an operation that is
+        # unknown, or still "running" (a killed process leaves it so) uses it; the summary
+        # itself does not change.
+        from yorunge.adapters.upload_public import resume_hint
+
+        assert shown.data.operation_id is not None
+        args.resume_hint = resume_hint(state, shown.data.operation_id)
+    return shown
+
+
+def _progress_sink(output: str) -> ProgressText | None:
+    """The progress line of a text-output start: only where stderr is a terminal."""
+    progress = ProgressText(sys.stderr) if output == "text" else None
+    return progress if progress is not None and progress.enabled else None
 
 
 def operation_id(data: Model) -> str | None:
