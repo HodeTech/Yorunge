@@ -139,6 +139,111 @@ def _owned_removals(
     return tuple(removals)
 
 
+def _has_foreign_trace(
+    stage: Entry | None, sidecar: SidecarState | None, sidecar_tmp: Entry | None
+) -> bool:
+    """Whether any of the three names stands there without being provably this download's own."""
+    return (
+        (stage is not None and not stage.owned)
+        or (sidecar is not None and not sidecar.file_owned)
+        or (sidecar_tmp is not None and not sidecar_tmp.owned)
+    )
+
+
+def _decide_with_target(
+    target: Entry, stage: Entry | None, sidecar: SidecarState | None, sidecar_tmp: Entry | None
+) -> StartDecision:
+    """The rows of a target that is there: it is reported, never touched."""
+    # Only the trace of our own interrupted publication (a stage hard-linked to the target,
+    # two links) is cleaned; nothing else is touched, and the target never is.
+    left_over = (
+        stage is not None
+        and stage.regular
+        and stage.ours
+        and stage.private
+        and stage.nlink == 2
+        and _same_file(stage, target)
+    )
+    if not left_over:
+        return StartDecision("output_exists")
+    removals: list[Removal] = ["stage"]
+    if sidecar is not None and sidecar.file_owned:
+        removals.append("sidecar")
+    if sidecar_tmp is not None and sidecar_tmp.owned:
+        removals.append("sidecar_tmp")
+    return StartDecision("output_exists", tuple(removals))
+
+
+def _decide_without_stage(
+    sidecar: SidecarState | None, sidecar_tmp: Entry | None, no_resume: bool
+) -> StartDecision:
+    """The rows where nothing stands at the stage's name: a sidecar and a copy are all there is."""
+    if sidecar is None:
+        return StartDecision("start_clean", _owned_removals(None, None, sidecar_tmp))
+    if sidecar.record is None and not no_resume:
+        # A sidecar that cannot be read is not discarded on its own say-so. With --no-resume
+        # the user asks for it, and that is also the way out of the trace an interrupted
+        # --no-resume removal leaves (the stage is gone, the unreadable sidecar is not).
+        return StartDecision("unverified")
+    return StartDecision("start_clean", _owned_removals(None, sidecar, sidecar_tmp))
+
+
+def _decide_with_record(
+    stage: Entry,
+    sidecar: SidecarState,
+    sidecar_tmp: Entry | None,
+    record: DownloadPartial,
+    identity_key: str,
+    target_hash: str,
+) -> StartDecision:
+    """The rows of a stage and a readable sidecar written for that very file: keep or discard."""
+    discard = StartDecision("start_clean", _owned_removals(stage, sidecar, sidecar_tmp))
+    if (
+        record.identity_key != identity_key
+        or record.target_hash != target_hash
+        or stage.size < record.committed_bytes
+    ):
+        return discard
+    keep = _owned_removals(None, None, sidecar_tmp)  # a leftover temporary copy goes either way
+    cut = record.committed_bytes if stage.size > record.committed_bytes else None
+    if record.complete:
+        return StartDecision("publish_complete", keep, record, cut)
+    if (
+        record.etag is None
+        or record.total_size is None
+        or not resumable(
+            etag=record.etag,
+            total_size=record.total_size,
+            committed_bytes=record.committed_bytes,
+        )
+    ):
+        return discard
+    ask = ResumeAsk(record.committed_bytes, record.total_size, record.etag)
+    return StartDecision("resume", keep, record, cut, ask)
+
+
+def _decide_with_stage(
+    stage: Entry,
+    sidecar: SidecarState | None,
+    sidecar_tmp: Entry | None,
+    identity_key: str,
+    target_hash: str,
+    no_resume: bool,
+) -> StartDecision:
+    """The rows where a stage of ours stands there: resume it, publish it, reuse it or discard."""
+    record = None if sidecar is None else sidecar.record
+    if no_resume:
+        # What is provably ours is removed, whatever the sidecar says; then a clean start.
+        return StartDecision("start_clean", _owned_removals(stage, sidecar, sidecar_tmp))
+    if sidecar is None or record is None:
+        if sidecar is None and stage.size == 0:
+            return StartDecision("reuse_empty_stage", _owned_removals(None, None, sidecar_tmp))
+        return StartDecision("unverified")  # a full stage without a readable sidecar: not ours
+    if (stage.device, stage.inode) != (record.stage_device, record.stage_inode):
+        return StartDecision("unverified")  # the sidecar was written for another file
+    return _decide_with_record(stage, sidecar, sidecar_tmp, record, identity_key, target_hash)
+
+
 def decide_start(
     *,
     lock: LockState,
@@ -167,73 +272,13 @@ def decide_start(
     if lock != "held":
         return StartDecision("unverified")  # the lock object itself is not provably ours
     if target is not None:
-        # Only the trace of our own interrupted publication (a stage hard-linked to the target,
-        # two links) is cleaned; nothing else is touched, and the target never is.
-        left_over = (
-            stage is not None
-            and stage.regular
-            and stage.ours
-            and stage.private
-            and stage.nlink == 2
-            and _same_file(stage, target)
-        )
-        if not left_over:
-            return StartDecision("output_exists")
-        removals: list[Removal] = ["stage"]
-        if sidecar is not None and sidecar.file_owned:
-            removals.append("sidecar")
-        if sidecar_tmp is not None and sidecar_tmp.owned:
-            removals.append("sidecar_tmp")
-        return StartDecision("output_exists", tuple(removals))
+        return _decide_with_target(target, stage, sidecar, sidecar_tmp)
     # A trace that is not provably ours stops the command; nothing is deleted, --no-resume included.
-    if (
-        (stage is not None and not stage.owned)
-        or (sidecar is not None and not sidecar.file_owned)
-        or (sidecar_tmp is not None and not sidecar_tmp.owned)
-    ):
+    if _has_foreign_trace(stage, sidecar, sidecar_tmp):
         return StartDecision("unverified")
     if stage is None:
-        if sidecar is None:
-            return StartDecision("start_clean", _owned_removals(None, None, sidecar_tmp))
-        if sidecar.record is None and not no_resume:
-            # A sidecar that cannot be read is not discarded on its own say-so. With --no-resume
-            # the user asks for it, and that is also the way out of the trace an interrupted
-            # --no-resume removal leaves (the stage is gone, the unreadable sidecar is not).
-            return StartDecision("unverified")
-        return StartDecision("start_clean", _owned_removals(None, sidecar, sidecar_tmp))
-    record = None if sidecar is None else sidecar.record
-    if no_resume:
-        # What is provably ours is removed, whatever the sidecar says; then a clean start.
-        return StartDecision("start_clean", _owned_removals(stage, sidecar, sidecar_tmp))
-    if sidecar is None or record is None:
-        if sidecar is None and stage.size == 0:
-            return StartDecision("reuse_empty_stage", _owned_removals(None, None, sidecar_tmp))
-        return StartDecision("unverified")  # a full stage without a readable sidecar: not ours
-    if (stage.device, stage.inode) != (record.stage_device, record.stage_inode):
-        return StartDecision("unverified")  # the sidecar was written for another file
-    discard = StartDecision("start_clean", _owned_removals(stage, sidecar, sidecar_tmp))
-    if (
-        record.identity_key != identity_key
-        or record.target_hash != target_hash
-        or stage.size < record.committed_bytes
-    ):
-        return discard
-    keep = _owned_removals(None, None, sidecar_tmp)  # a leftover temporary copy goes either way
-    cut = record.committed_bytes if stage.size > record.committed_bytes else None
-    if record.complete:
-        return StartDecision("publish_complete", keep, record, cut)
-    if (
-        record.etag is None
-        or record.total_size is None
-        or not resumable(
-            etag=record.etag,
-            total_size=record.total_size,
-            committed_bytes=record.committed_bytes,
-        )
-    ):
-        return discard
-    ask = ResumeAsk(record.committed_bytes, record.total_size, record.etag)
-    return StartDecision("resume", keep, record, cut, ask)
+        return _decide_without_stage(sidecar, sidecar_tmp, no_resume)
+    return _decide_with_stage(stage, sidecar, sidecar_tmp, identity_key, target_hash, no_resume)
 
 
 def confirm_prefix(decision: StartDecision, observed_sha256: str | None) -> StartDecision:

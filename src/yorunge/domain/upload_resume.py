@@ -476,6 +476,68 @@ def chain_blockers(chain: ChainSummary) -> tuple[Blocker, ...]:
     return tuple(b for b in BLOCKERS if b in raised)
 
 
+def _index_inventory(
+    items: Sequence[RemoteItem],
+) -> tuple[dict[str, list[RemoteItem]], dict[str, list[RemoteItem]]]:
+    """The listed items by exact name and, for those that carry a hash, by hash."""
+    by_name: dict[str, list[RemoteItem]] = {}
+    by_sha: dict[str, list[RemoteItem]] = {}
+    for item in items:
+        by_name.setdefault(item.path, []).append(item)
+        if item.sha256 is not None:
+            by_sha.setdefault(item.sha256, []).append(item)
+    return by_name, by_sha
+
+
+def _file_classes(
+    files: Sequence[DatasetFile],
+    states: Sequence[ChainState],
+    by_name: dict[str, list[RemoteItem]],
+    by_sha: dict[str, list[RemoteItem]],
+    unreliable: bool,
+) -> list[FileClass]:
+    """The class of each file, in manifest order.
+
+    A positive conflict wins, then an untrustworthy listing; otherwise the table of the file's
+    journal state against the remote decides. ``files`` and ``states`` pair one to one (the caller
+    has checked that they cover each other).
+    """
+    classes: list[FileClass] = []
+    for file, state in zip(files, states, strict=True):
+        same_name = by_name.get(file.path, [])
+        other_sha = any(item.path != file.path for item in by_sha.get(file.sha256, []))
+        if _conflicts(file, same_name, other_sha):
+            classes.append("conflict")
+        elif unreliable:
+            classes.append("inventory_unreliable")
+        else:
+            classes.append(_by_chain_state(state, bool(same_name)))
+    return classes
+
+
+def _classification_blockers(
+    chain: ChainSummary,
+    files: Sequence[DatasetFile],
+    classes: Sequence[FileClass],
+    inventory: RemoteInventory,
+    unreliable: bool,
+) -> tuple[Blocker, ...]:
+    """The blockers the lineage, the classes and the listing establish, in reporting order."""
+    names = {file.path for file in files}
+    raised: set[Blocker] = set(chain_blockers(chain))
+    if "drift_missing" in classes:
+        raised.add("drift_missing")
+    if "conflict" in classes:
+        raised.add("conflict")
+    if unreliable:
+        raised.add("inventory_unreliable")
+    if any(item.path not in names for item in inventory.items):
+        raised.add("extra_remote")
+    if "too_large" in inventory.faults:
+        raised.add("inventory_too_large")
+    return tuple(b for b in BLOCKERS if b in raised)
+
+
 def classify(
     manifest: DatasetManifest, chain: ChainSummary, inventory: RemoteInventory
 ) -> Classification:
@@ -492,43 +554,17 @@ def classify(
     if len(chain.states) != len(files):
         raise ValueError("chain summary does not cover the manifest")
     items = inventory.items
-    by_name: dict[str, list[RemoteItem]] = {}
-    by_sha: dict[str, list[RemoteItem]] = {}
-    for item in items:
-        by_name.setdefault(item.path, []).append(item)
-        if item.sha256 is not None:
-            by_sha.setdefault(item.sha256, []).append(item)
+    by_name, by_sha = _index_inventory(items)
     # Without a trustworthy listing neither absence nor uniqueness can be claimed.
     unreliable = (
         bool(inventory.faults)
         or any(item.sha256 is None for item in items)
         or len({item.item_id for item in items}) != len(items)
     )
-    classes: list[FileClass] = []
-    for file, state in zip(files, chain.states, strict=True):
-        same_name = by_name.get(file.path, [])
-        other_sha = any(item.path != file.path for item in by_sha.get(file.sha256, []))
-        if _conflicts(file, same_name, other_sha):
-            classes.append("conflict")
-        elif unreliable:
-            classes.append("inventory_unreliable")
-        else:
-            classes.append(_by_chain_state(state, bool(same_name)))
-    names = {file.path for file in files}
-    raised: set[Blocker] = set(chain_blockers(chain))
-    if "drift_missing" in classes:
-        raised.add("drift_missing")
-    if "conflict" in classes:
-        raised.add("conflict")
-    if unreliable:
-        raised.add("inventory_unreliable")
-    if any(item.path not in names for item in items):
-        raised.add("extra_remote")
-    if "too_large" in inventory.faults:
-        raised.add("inventory_too_large")
+    classes = _file_classes(files, chain.states, by_name, by_sha, unreliable)
     return Classification(
         classes=tuple(classes),
-        blockers=tuple(b for b in BLOCKERS if b in raised),
+        blockers=_classification_blockers(chain, files, classes, inventory, unreliable),
         classification_digest=classification_digest(classes, chain),
         inventory_digest=inventory_digest(items),
         manifest_digest=manifest.digest,

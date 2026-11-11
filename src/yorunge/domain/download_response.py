@@ -149,6 +149,28 @@ def _framing(headers: Headers) -> tuple[Framing, int | None]:
     return "length", length
 
 
+def _refuse_by_status(status: int) -> None:
+    """The rows that refuse an answer by its status alone, whatever its headers say."""
+    if status in (401, 403):
+        raise YorungeError("remote_access_denied")
+    if status == 429:
+        raise YorungeError("remote_rate_limited")
+    if 300 <= status <= 599 and status != 416:
+        raise YorungeError("remote_failed")
+
+
+def _answer_framing(status: int, headers: Headers) -> tuple[Framing | None, int | None]:
+    """The framing of a 200 or 206 body; a 206 that cannot be framed has none."""
+    try:
+        return _framing(headers)
+    except YorungeError as error:
+        if status != 206 or error.code != "invalid_response":
+            raise
+        # A partial answer that cannot be framed is not an exact continuation ("Content-Length
+        # uyumsuz veya eksik"): it is dropped like any other, and one Range-less request follows.
+        return None, None
+
+
 def parse_response(status: object, headers: Headers) -> DownloadResponse:
     """The typed answer for 200, 206 and 416; any other answer raises its closed code.
 
@@ -162,12 +184,7 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
     if type(status) is not int or not 100 <= status <= 599:
         raise YorungeError("invalid_response")
     headers = _fields(headers)
-    if status in (401, 403):
-        raise YorungeError("remote_access_denied")
-    if status == 429:
-        raise YorungeError("remote_rate_limited")
-    if 300 <= status <= 599 and status != 416:
-        raise YorungeError("remote_failed")
+    _refuse_by_status(status)
     if status == 416:
         return DownloadResponse(416, None, None, None, None)
     if status not in (200, 206):
@@ -184,16 +201,7 @@ def parse_response(status: object, headers: Headers) -> DownloadResponse:
         # the stage is dropped and one Range-less request follows; to a Range-less request it is
         # invalid_response (see disposition). A refusal here would repeat on every rerun.
         return DownloadResponse(206, None, parse_etag(_values(headers, "etag")), None, None)
-    framing: Framing | None
-    length: int | None
-    try:
-        framing, length = _framing(headers)
-    except YorungeError as error:
-        if status != 206 or error.code != "invalid_response":
-            raise
-        # A partial answer that cannot be framed is not an exact continuation ("Content-Length
-        # uyumsuz veya eksik"): it is dropped like any other, and one Range-less request follows.
-        framing, length = None, None
+    framing, length = _answer_framing(status, headers)
     content_range = parse_content_range(ranges[0]) if status == 206 and len(ranges) == 1 else None
     return DownloadResponse(
         200 if status == 200 else 206,

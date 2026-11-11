@@ -159,6 +159,12 @@ def literal_secret_match(value: str, secret: str) -> bool:
     return value == secret or (len(secret.encode("utf-8")) >= 8 and secret in value)
 
 
+def _reject_secret(text: str, captured: str) -> None:
+    """A string or a key that is, or holds, the captured secret is ``invalid_response``."""
+    if literal_secret_match(text, captured):
+        raise YorungeError("invalid_response")
+
+
 def scan_for_secret(value: object, secret: SecretValue) -> None:
     """The selected key is in no string or key of a parsed answer, wherever in it, used or dropped.
 
@@ -171,12 +177,10 @@ def scan_for_secret(value: object, secret: SecretValue) -> None:
     while pending:
         item = pending.pop()
         if isinstance(item, str):
-            if literal_secret_match(item, captured):
-                raise YorungeError("invalid_response")
+            _reject_secret(item, captured)
         elif isinstance(item, dict):
             for key, child in item.items():
-                if literal_secret_match(key, captured):
-                    raise YorungeError("invalid_response")
+                _reject_secret(key, captured)
                 pending.append(child)
         elif isinstance(item, list):
             pending.extend(item)

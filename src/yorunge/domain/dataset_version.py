@@ -484,6 +484,35 @@ def changed_fields(
     return tuple(sorted(differences))
 
 
+def _class_label_row(label: Mapping[str, object]) -> dict[str, object]:
+    """One class label as a plain row, or ``invalid_response`` unless it is exactly the four fields.
+
+    The ``id`` is an integer or a string, the ``name`` a string, the ``annotation_count`` an integer
+    from 0 to ``MAX_COUNT``, the ``sort_order`` (and an integer ``id``) an integer within
+    ``MAX_COUNT`` either way. The types are exact: a bool or an ``int`` subclass is none of these.
+    """
+    if not isinstance(label, Mapping) or set(label) != {
+        "annotation_count",
+        "id",
+        "name",
+        "sort_order",
+    }:
+        raise YorungeError("invalid_response")
+    identifier, name = label["id"], label["name"]
+    annotations, order = label["annotation_count"], label["sort_order"]
+    if (
+        type(identifier) not in (int, str)
+        or type(name) is not str
+        or type(annotations) is not int
+        or not 0 <= annotations <= MAX_COUNT
+        or type(order) is not int
+        or not -MAX_COUNT <= order <= MAX_COUNT
+        or (type(identifier) is int and not -MAX_COUNT <= identifier <= MAX_COUNT)
+    ):
+        raise YorungeError("invalid_response")
+    return dict(label)
+
+
 def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
     """The digest of a version's class labels, which are never shown (ADR-0033, reference).
 
@@ -499,28 +528,7 @@ def class_labels_sha256(labels: Sequence[Mapping[str, object]]) -> str:
         raise YorungeError("invalid_response")
     if len(labels) > MAX_CLASS_LABELS:
         raise YorungeError("invalid_response")
-    rows: list[dict[str, object]] = []
-    for label in labels:
-        if not isinstance(label, Mapping) or set(label) != {
-            "annotation_count",
-            "id",
-            "name",
-            "sort_order",
-        }:
-            raise YorungeError("invalid_response")
-        identifier, name = label["id"], label["name"]
-        annotations, order = label["annotation_count"], label["sort_order"]
-        if (
-            type(identifier) not in (int, str)
-            or type(name) is not str
-            or type(annotations) is not int
-            or not 0 <= annotations <= MAX_COUNT
-            or type(order) is not int
-            or not -MAX_COUNT <= order <= MAX_COUNT
-            or (type(identifier) is int and not -MAX_COUNT <= identifier <= MAX_COUNT)
-        ):
-            raise YorungeError("invalid_response")
-        rows.append(dict(label))
+    rows = [_class_label_row(label) for label in labels]
     kinds = {type(row["id"]) for row in rows}
     if len(kinds) > 1 or len({row["id"] for row in rows}) != len(rows):
         raise YorungeError("invalid_response")

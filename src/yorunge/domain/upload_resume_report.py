@@ -286,6 +286,39 @@ class DatasetUploadResumeReport(UploadWire):
             raise ValueError("a source is not its own successor")
 
 
+def _observation_of(
+    manifest: DatasetManifest, classification: Classification, blockers: Sequence[Blocker]
+) -> ResumeObservation:
+    """What a classification of exactly this manifest established (it carries every blocker)."""
+    if blockers:
+        raise ValueError("a classification already carries every blocker")
+    if classification.manifest_digest != manifest.digest:
+        raise ValueError("the classification belongs to another manifest")
+    if len(classification.classes) != len(manifest.files):
+        raise ValueError("the classification does not cover the manifest")
+    counts = ResumeClassCounts(**{name: classification.count(name) for name in FILE_CLASSES})
+    sending = [i for i, name in enumerate(classification.classes) if name in SEND_CLASSES]
+    return ResumeObservation(
+        class_counts=counts,
+        send_files=len(sending),
+        send_bytes=sum(manifest.files[i].size for i in sending),
+        unconfirmed_ack_required=bool(counts.pending_uncertain),
+        classification_digest=classification.classification_digest,
+        inventory_digest=classification.inventory_digest,
+        examples=tuple(
+            ResumeExamples(
+                file_class=name,
+                # A manifest lists its paths in UTF-8 byte order, so these already are.
+                paths=tuple(
+                    manifest.files[i].path for i in classification.indices(name)[:MAX_EXAMPLES]
+                ),
+            )
+            for name in PROBLEM_CLASSES
+            if classification.count(name)
+        ),
+    )
+
+
 def resume_report(
     *,
     source_operation_id: str,
@@ -316,34 +349,8 @@ def resume_report(
     if classification is None:
         merged = tuple(blockers)
     else:
-        if blockers:
-            raise ValueError("a classification already carries every blocker")
-        if classification.manifest_digest != manifest.digest:
-            raise ValueError("the classification belongs to another manifest")
-        if len(classification.classes) != count:
-            raise ValueError("the classification does not cover the manifest")
+        observation = _observation_of(manifest, classification, blockers)
         merged = classification.blockers
-        counts = ResumeClassCounts(**{name: classification.count(name) for name in FILE_CLASSES})
-        sending = [i for i, name in enumerate(classification.classes) if name in SEND_CLASSES]
-        observation = ResumeObservation(
-            class_counts=counts,
-            send_files=len(sending),
-            send_bytes=sum(manifest.files[i].size for i in sending),
-            unconfirmed_ack_required=bool(counts.pending_uncertain),
-            classification_digest=classification.classification_digest,
-            inventory_digest=classification.inventory_digest,
-            examples=tuple(
-                ResumeExamples(
-                    file_class=name,
-                    # A manifest lists its paths in UTF-8 byte order, so these already are.
-                    paths=tuple(
-                        manifest.files[i].path for i in classification.indices(name)[:MAX_EXAMPLES]
-                    ),
-                )
-                for name in PROBLEM_CLASSES
-                if classification.count(name)
-            ),
-        )
     if plan is not None and (
         type(plan) is not DatasetContinuationPlanV3
         or classification is None
