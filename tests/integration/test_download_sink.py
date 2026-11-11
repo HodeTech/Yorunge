@@ -546,9 +546,13 @@ def test_a_stage_that_keeps_appearing_is_not_ours(place, monkeypatch):
                 stage.write_bytes(b"")
                 os.chmod(stage, 0o600)
             else:  # the foreign file is replaced again and again, so that creation never wins
-                stage.unlink()
-                stage.write_bytes(b"")
-                os.chmod(stage, 0o600)
+                # Made beside the old one and renamed over it: unlink + create would let a Linux
+                # filesystem hand the new file the freed inode number, which a stat-identity
+                # check cannot tell from the file it looked at.
+                replacement = place / "replacement"
+                replacement.write_bytes(b"")
+                os.chmod(replacement, 0o600)
+                os.replace(replacement, stage)
 
     monkeypatch.setattr(download_files, "_marker", marker)
     assert code_of(lambda: download(place)) in {"download_partial_unverified"}

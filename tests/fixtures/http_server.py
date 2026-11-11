@@ -220,6 +220,9 @@ class TlsServer:
                     if reply.truncate_at is not None or reply.omit_length:
                         self.close_connection = True
                     if reply.reset_after_body:
+                        # The abort discards what is still unsent and, on Linux, may reach the
+                        # client before it has read the head: let it read what was written first.
+                        time.sleep(0.2)
                         self.connection.setsockopt(
                             socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
                         )

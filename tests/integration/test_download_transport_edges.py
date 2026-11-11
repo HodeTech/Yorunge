@@ -483,8 +483,10 @@ def test_a_caller_that_swallows_the_deadline_strike_and_still_finishes_the_body(
     # The strike is one-shot and lands in whichever await is pending. A caller that swallows it
     # (the contract says to re-raise) and reads the body to its end completes: disarming a window
     # that already fired must not crash the read.
+    # The body is on the wire (and buffered) long before the strike and the caller is slow, so
+    # the pending await at the strike is always the caller's own sleep, whatever the runner's speed.
     key = credential()
-    reply = Reply(body=b"s" * 40_000, chunk_size=2000, chunk_delay=0.03)
+    reply = Reply(body=b"s" * 40_000, chunk_size=2000, chunk_delay=0.005)
     with serve(certificates, reply) as api:
         owned, _, instances = session(key, certificates, {"api.localhost": api}, origins=(ORIGIN,))
         struck: list[int] = []
@@ -495,7 +497,7 @@ def test_a_caller_that_swallows_the_deadline_strike_and_still_finishes_the_body(
             ) as view:
                 async for _ in view.chunks():
                     try:
-                        await asyncio.sleep(0.05)
+                        await asyncio.sleep(0.1)
                     except asyncio.CancelledError:
                         struck.append(view.received)
                 return view.complete

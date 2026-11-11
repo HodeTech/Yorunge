@@ -279,7 +279,7 @@ def test_a_busy_store_is_waited_for_with_a_jitter_of_fifty_to_three_hundred_mill
     monkeypatch, fraction, expected
 ):
     clock = _Clock(monkeypatch)
-    monkeypatch.setattr(model_download.random, "random", lambda: fraction)
+    monkeypatch.setattr(model_download._JITTER, "random", lambda: fraction)
     state = _Busy(2)
     assert model_download._captured(state, clock.now + 30) == "snapshot"
     assert clock.slept == pytest.approx([expected, expected])
@@ -289,7 +289,7 @@ def test_a_busy_store_is_waited_for_with_a_jitter_of_fifty_to_three_hundred_mill
 
 def test_the_wait_is_clamped_to_what_is_left_of_the_window(monkeypatch):
     clock = _Clock(monkeypatch)
-    monkeypatch.setattr(model_download.random, "random", lambda: 1.0)  # the longest jitter
+    monkeypatch.setattr(model_download._JITTER, "random", lambda: 1.0)  # the longest jitter
     state = _Busy(1)
     assert model_download._captured(state, clock.now + 0.45) == "snapshot"
     assert clock.slept == pytest.approx([0.25])  # 0.45 - 0.2, not the 0.30 jitter
@@ -305,7 +305,7 @@ def test_a_window_that_is_over_ends_the_wait_with_the_busy_error(monkeypatch):
 
 def test_a_store_that_stays_busy_is_given_up_when_the_window_is_spent(monkeypatch):
     clock = _Clock(monkeypatch)
-    monkeypatch.setattr(model_download.random, "random", lambda: 0.5)
+    monkeypatch.setattr(model_download._JITTER, "random", lambda: 0.5)
     state = _Busy(10_000)
     assert code_of(lambda: model_download._captured(state, clock.now + 2.0)) == "state_busy"
     assert 1.5 <= sum(clock.slept) <= 2.0

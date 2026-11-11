@@ -666,13 +666,14 @@ def test_a_stalled_body_ends_at_the_deadline_and_keeps_what_it_can(world):
 
 
 def test_the_json_call_is_not_charged_to_the_download_deadline(world):
-    # A deadline of 2.5 s, a control call that takes 1.2 s and a body that takes about as long:
-    # the whole is over 2.5 s, and still within the deadline moved on by the call's own time.
+    # A deadline of 2.5 s, a control call that takes 2 s and a body that takes about 1 s: the whole
+    # is over 2.5 s, and still 1.5 s inside the deadline moved on by the call's own time (the
+    # margin is what a slow runner can eat).
     world.server.routes[JSON_PATH] = lambda record, count: Reply(
-        body=json.dumps({"download_url": ORIGIN + SIGNED}).encode(), header_delay=1.2
+        body=json.dumps({"download_url": ORIGIN + SIGNED}).encode(), header_delay=2.0
     )
     world.provider.script = [
-        Reply(body=DATA, headers=(("ETag", TAG),), chunk_size=65536, chunk_delay=0.03)
+        Reply(body=DATA, headers=(("ETag", TAG),), chunk_size=65536, chunk_delay=0.02)
     ]
     started = time.monotonic()
     summary = world.run(seconds=2.5)
