@@ -14,6 +14,7 @@ import os
 import signal
 import ssl
 import time
+import traceback
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -250,7 +251,9 @@ def _racer(state, plan_id, context, profile, port, certificate, barrier, results
                     raise
                 time.sleep(0.5)
     except BaseException as error:
-        results.put(("raised", type(error).__name__, getattr(error, "code", None)))
+        # The traceback is for the day this fails on a runner that cannot be reached.
+        code = getattr(error, "code", None)
+        results.put(("raised", type(error).__name__, code, traceback.format_exc()))
         raise
     results.put(("returned", phase.existing, phase.record.status))
 

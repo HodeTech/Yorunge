@@ -812,9 +812,12 @@ class StateUploads:
                     )
                 write_record(self.connection, record, None)
                 require_capacity(self.connection)
+            # The record is durable now. The closing gate can still fail (a store kept busy by
+            # siblings that write at the same moment); the operation is then this one's, and the
+            # access that says so must not be lost with the failure.
+            self.write_access = access
             with self.phase(record.operation_id):
                 self._finish(stamp, gate, scope=plan.scope)
-            self.write_access = access
             return record
 
     def _continuation_record(

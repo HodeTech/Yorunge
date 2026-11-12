@@ -378,6 +378,44 @@ def test_a_look_that_fails_before_the_start_is_that_failure_and_not_a_change(
         assert provider.events[sends:] == []
 
 
+def test_an_admission_whose_closing_gate_fails_is_that_failure_and_not_a_found_operation(
+    prepared_input, certificates, monkeypatch
+):
+    # The record is committed before the closing time gate runs. A gate that fails then (a store
+    # kept busy by siblings that write at the same moment) leaves an operation this invocation
+    # admitted: the start is that failure, and the operation it sent nothing for is cancelled
+    # locally. It is not reported as "another process admitted it" with the operation left alone.
+    data, provider = three_files(prepared_input)
+    finish, admit = StateUploads._finish, StateUploads.admit
+    admitting = []
+
+    def failing_gate(self, stamp, gate, *, scope):
+        if admitting:
+            raise YorungeError("state_busy")
+        return finish(self, stamp, gate, scope=scope)
+
+    def marked_admit(self, plan_id, fresh):
+        admitting.append(plan_id)
+        try:
+            return admit(self, plan_id, fresh)
+        finally:
+            admitting.pop()
+
+    with TlsServer(certificates, provider.routes()) as server:
+        report = planned(data, server, provider)
+        approve(data, server, report.plan_id)
+        monkeypatch.setattr(StateUploads, "_finish", failing_gate)
+        monkeypatch.setattr(StateUploads, "admit", marked_admit)
+        sends = len(provider.events)
+        with pytest.raises(YorungeError) as error:
+            go(data, server, report.plan_id)
+        assert error.value.code == "state_busy"
+        stored = operation_of(data, report.plan_id)
+        assert stored is not None
+        assert (stored.status, stored.reason) == ("cancelled", "local_cancelled")
+        assert provider.events[sends:] == []
+
+
 # --- a dataset that changes while the files are sent ----------------------------------------------
 
 
