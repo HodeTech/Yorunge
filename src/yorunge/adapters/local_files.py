@@ -121,8 +121,7 @@ def durable_private_chain(path: Path) -> None:
         current = current.parent
 
 
-def private_stat(path: Path) -> os.stat_result:
-    info = path.lstat()
+def require_private_file(info: os.stat_result) -> os.stat_result:
     if (
         not stat.S_ISREG(info.st_mode)
         or info.st_uid != os.getuid()
@@ -131,6 +130,10 @@ def private_stat(path: Path) -> os.stat_result:
     ):
         raise YorungeError("state_invalid")
     return info
+
+
+def private_stat(path: Path) -> os.stat_result:
+    return require_private_file(path.lstat())
 
 
 def open_private(path: Path, *, writable: bool = False) -> int:

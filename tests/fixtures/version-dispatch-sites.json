@@ -653,7 +653,7 @@
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
    "owner": "done",
-   "note": "a proof for a continuation that has sent nothing and reads nothing is early, whatever it holds: refused, the record untouched"
+   "note": "an observation that precedes a continuation that sent nothing proves nothing about it: refused as a conflict, not uncertain"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -689,7 +689,7 @@
    "text": "isinstance(record, TransferRecordV3)",
    "occurrence": 0,
    "owner": "done",
-   "note": "an observation that precedes a continuation that sent nothing proves nothing about it: refused as a conflict, not uncertain"
+   "note": "a proof for a continuation that has sent nothing and reads nothing is early, whatever it holds: refused, the record untouched"
   },
   {
    "file": "src/yorunge/adapters/upload_repository.py",
@@ -1013,7 +1013,7 @@
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "done",
-   "note": "a v3 proof under any other plan is refused"
+   "note": "a source has at most one continuation that is not cancelled"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",
@@ -1130,7 +1130,7 @@
    "text": "isinstance(view.plan, DatasetContinuationPlanV3)",
    "occurrence": 0,
    "owner": "done",
-   "note": "a source has at most one continuation that is not cancelled"
+   "note": "a v3 proof under any other plan is refused"
   },
   {
    "file": "src/yorunge/adapters/upload_store.py",

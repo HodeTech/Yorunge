@@ -33,6 +33,7 @@ from yorunge.adapters.local_files import (
     private_stat,
     read_private,
     require_local_files,
+    require_private_file,
     safe_ancestors,
     sync_private,
     write_new,
@@ -146,6 +147,23 @@ def connect(path: Path, deadline: Deadline, *, existing_only: bool = False) -> s
         raise
 
 
+def _sidecar_present(candidate: Path, *, journal: bool) -> bool:
+    """One look at a sidecar file of the database, which another process's commit may remove.
+
+    Absent is absent, and so is a rollback journal caught while it is being unlinked: its name is
+    still there but no link is left (``st_nlink == 0``). Asking first and looking second, or
+    looking twice, would turn that commit into an invalid store. What is there must be private.
+    """
+    try:
+        info = candidate.lstat()
+    except FileNotFoundError:
+        return False
+    if journal and stat.S_ISREG(info.st_mode) and info.st_nlink == 0:
+        return False
+    require_private_file(info)
+    return True
+
+
 def check_header(path: Path) -> None:
     descriptor = open_private(path)
     with os.fdopen(descriptor, "rb") as source:
@@ -161,13 +179,7 @@ def check_header(path: Path) -> None:
         raise YorungeError("state_invalid")
     for suffix in ("-journal", "-wal", "-shm"):
         candidate = path.with_name(path.name + suffix)
-        try:
-            private_stat(candidate)
-        except FileNotFoundError:
-            # Not there, or a rollback journal another process committed away meanwhile:
-            # asking first and looking second would turn that commit into an invalid store.
-            continue
-        if suffix != "-journal":
+        if _sidecar_present(candidate, journal=suffix == "-journal") and suffix != "-journal":
             raise YorungeError("state_invalid")
 
 

@@ -336,6 +336,57 @@ def test_an_admission_whose_closing_gate_fails_is_that_failure_and_sends_nothing
     assert (operation.status, operation.reason) == ("cancelled", "local_cancelled")
 
 
+def test_a_failed_gate_whose_local_cancel_also_fails_is_uncertain_as_in_every_original_stop(
+    prepared_input, certificates, monkeypatch
+):
+    # An original upload always creates something, so a stop that cannot be written is uncertain
+    # there (the parity contract names this as the one deliberate difference from a continuation
+    # that sends nothing). Nothing was sent here and the record stays admitted for the lease
+    # cleanup, but the report is the original path's, not a second rule for this one case.
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    finish, admit = StateUploads._finish, StateUploads.admit
+    admitting = []
+
+    def failing_gate(repository, stamp, gate, *, scope):
+        if admitting:
+            raise YorungeError("state_busy")
+        return finish(repository, stamp, gate, scope=scope)
+
+    def marked_admit(repository, plan_id, current):
+        admitting.append(plan_id)
+        try:
+            return admit(repository, plan_id, current)
+        finally:
+            admitting.pop()
+
+    def unavailable(*args, **kwargs):
+        raise YorungeError("state_write_failed")
+
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = approved(prepared_input, server)
+        monkeypatch.setattr(StateUploads, "_finish", failing_gate)
+        monkeypatch.setattr(StateUploads, "admit", marked_admit)
+        monkeypatch.setattr(StateUploads, "stop_local", unavailable)
+        attempt = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
+        with pytest.raises(OperationError) as raised:
+            attempt()
+        assert raised.value.code == "operation_uncertain"
+        assert raised.value.reason_code == "state_write_failed"
+        assert raised.value.operation_id is not None
+        assert provider.create_calls == provider.link_calls == 0
+    with open_existing_store(prepared_input[0]) as store:
+        operation = StateUploads(store).show(plan_id=plan.plan_id).operation
+    assert operation is not None
+    assert operation.operation_id == raised.value.operation_id
+    assert operation.status == "admitted"
+
+
 def test_failed_marker_preserves_old_state_and_reason_without_claiming_unknown(
     prepared_input, certificates, monkeypatch
 ):
