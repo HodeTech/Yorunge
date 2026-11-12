@@ -23258,6 +23258,414 @@
       }
     },
     {
+      "name": "p02-3-ci43288189915-linux311-download.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-download.json.gz",
+      "original_commit": null,
+      "content_bytes": 578553,
+      "content_sha256": "e79e07ab864e8961ba6ce3d792729c9a2c22182a07954911b44b5b78bc551273",
+      "archive_bytes": 163755,
+      "archive_sha256": "b17beabf114e7e603ed94bfc877492d11ab197a25d26767958defcdec9e85998",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "download-budget",
+        "cases": 12,
+        "partial": false,
+        "passed": true,
+        "accepted": true,
+        "growth": {
+          "span_upper_bound_bytes": 0,
+          "passed": true
+        },
+        "max_elapsed_seconds": 9.664752996000061,
+        "max_extra_rss_upper_bound_bytes": 1458176
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-installation.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1405,
+      "content_sha256": "24ce0614223c2f8441c70bbf063f78e44ec070138e30d47571020b2dc5b89e59",
+      "archive_bytes": 517,
+      "archive_sha256": "ad5c58a179d002d90b7011c48bed5747636ae9b68a5dca8f9d0882896ab6ff64",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "installation_v4",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          },
+          "resume_smoke": {
+            "passed": 2
+          },
+          "versions_smoke": {
+            "passed": 2
+          },
+          "download_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-startup-baseline-selection.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-startup-baseline-selection.json.gz",
+      "original_commit": null,
+      "content_bytes": 401,
+      "content_sha256": "009b3247440ce8671acd3a51f75cdd380bb1ef68eab5180446ca1e922a4a39aa",
+      "archive_bytes": 245,
+      "archive_sha256": "0ea4f2ff5283cb0d91dab24bc17d9281dbc8c10161e1c0c39e19c1bd018766d9",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": true,
+        "kind": "startup_baseline_selection",
+        "mode": "pinned_runtime",
+        "pinned_baseline_commit": "94aaaf03e380381e95c9432de340378e23007e95",
+        "effective_baseline_commit": "94aaaf03e380381e95c9432de340378e23007e95",
+        "report_sha256": "7e9b6a15745303574b8f11b52919dfa954ba22842aadd231f16cffdddfb6d18a",
+        "complete": true
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-startup-diagnostic.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-startup-diagnostic.json.gz",
+      "original_commit": null,
+      "content_bytes": 761,
+      "content_sha256": "5d3cdfae70e9dd3dd5294131630e6eebf50bcf7875ef104e85443ba9376fa729",
+      "archive_bytes": 435,
+      "archive_sha256": "5796ed769e0166766df0230407370a5bc19273f5e11beb3ad027d186ecdb2c33",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": true,
+        "kind": "startup_ci_diagnostic",
+        "outcome": "passed",
+        "reason": "validated",
+        "run_url": "https://github.com/HodeTech/Yorunge/actions/runs/43288189915",
+        "passed": true,
+        "ci_classification_accepted": true,
+        "p95_ms": {
+          "candidate/help": 24.998462999974436,
+          "candidate/version": 26.4565570000741,
+          "candidate/context": 99.67444999983854,
+          "candidate/cache": 127.59027300035086,
+          "baseline/help": 24.871861999599787,
+          "baseline/version": 35.62831399995048,
+          "baseline/context": 100.43725900004574,
+          "baseline/cache": 127.05836199984333
+        },
+        "report_sha256": "7e9b6a15745303574b8f11b52919dfa954ba22842aadd231f16cffdddfb6d18a"
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-startup.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-startup.json.gz",
+      "original_commit": null,
+      "content_bytes": 346204,
+      "content_sha256": "7e9b6a15745303574b8f11b52919dfa954ba22842aadd231f16cffdddfb6d18a",
+      "archive_bytes": 113877,
+      "archive_sha256": "2ed1f7940fe9c7dd1b6b29f9af5adfbfa2395f9d249de293140a3b151a70f735",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "startup_evidence",
+        "passed": true,
+        "outcome": "passed",
+        "measurements": {
+          "candidate/help": {
+            "samples": 30,
+            "p95_ms": 24.998462999974436,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/version": {
+            "samples": 30,
+            "p95_ms": 26.4565570000741,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "candidate/context": {
+            "samples": 30,
+            "p95_ms": 99.67444999983854,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "candidate/cache": {
+            "samples": 30,
+            "p95_ms": 127.59027300035086,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/help": {
+            "samples": 30,
+            "p95_ms": 24.871861999599787,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/version": {
+            "samples": 30,
+            "p95_ms": 35.62831399995048,
+            "budget_ms": 500.0,
+            "passed": true
+          },
+          "baseline/context": {
+            "samples": 30,
+            "p95_ms": 100.43725900004574,
+            "budget_ms": 200.0,
+            "passed": true
+          },
+          "baseline/cache": {
+            "samples": 30,
+            "p95_ms": 127.05836199984333,
+            "budget_ms": 200.0,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-stream.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-stream.json.gz",
+      "original_commit": null,
+      "content_bytes": 111455,
+      "content_sha256": "d470044d38b2eb9e429942c801486a1261b2b671c60b1a094fd3d4a6c0c0d1a3",
+      "archive_bytes": 13463,
+      "archive_sha256": "e8672e427cf3b2040f13319cff302773947d801f0be65d2a46d623fcea842db7",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "raw_stream_budget_v2",
+        "passed": true,
+        "rss_method": "instantaneous_baseline_and_lifetime_peak_interval_v2",
+        "rss_baseline": "native_current_rss_after_imports_and_fixed_tls_warmup",
+        "rss_baseline_source": "linux.proc_self_stat.rss_pages",
+        "rss_peak_source": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+        "rss_interval": "new_high_water_exact_else_zero_to_upper",
+        "rss_window": "after_pretransfer_peak_until_posttransfer_peak_including_instrumentation",
+        "rss_native_unit": "KiB",
+        "source_unchanged_during_measurement": true,
+        "installed_source_matches": true,
+        "size_growth_acceptance": {
+          "method": "max_cross_size_upper_minus_lower",
+          "size_bytes": [
+            16777216,
+            268435456,
+            1073741824
+          ],
+          "lower_bound_bytes": [
+            0,
+            524288,
+            524288
+          ],
+          "upper_bound_bytes": [
+            122880,
+            524288,
+            524288
+          ],
+          "span_upper_bound_bytes": 524288,
+          "passed": true
+        },
+        "measurements": {
+          "16MiB": {
+            "received_bytes": 16777216,
+            "baseline_rss_bytes": 50429952,
+            "pretransfer_peak_rss_bytes": 50552832,
+            "peak_rss_bytes": 50552832,
+            "extra_rss_lower_bound_bytes": 0,
+            "extra_rss_upper_bound_bytes": 122880,
+            "elapsed_seconds": 0.036743152999861195,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 1024,
+            "connection_count": 1,
+            "passed": true
+          },
+          "256MiB": {
+            "received_bytes": 268435456,
+            "baseline_rss_bytes": 45109248,
+            "pretransfer_peak_rss_bytes": 45109248,
+            "peak_rss_bytes": 45633536,
+            "extra_rss_lower_bound_bytes": 524288,
+            "extra_rss_upper_bound_bytes": 524288,
+            "elapsed_seconds": 0.5685951970003771,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 16384,
+            "connection_count": 1,
+            "passed": true
+          },
+          "1024MiB": {
+            "received_bytes": 1073741824,
+            "baseline_rss_bytes": 44974080,
+            "pretransfer_peak_rss_bytes": 44974080,
+            "peak_rss_bytes": 45498368,
+            "extra_rss_lower_bound_bytes": 524288,
+            "extra_rss_upper_bound_bytes": 524288,
+            "elapsed_seconds": 2.2726165980002406,
+            "max_chunk_bytes": 16384,
+            "chunk_count": 65536,
+            "connection_count": 1,
+            "passed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux311-upload.json",
+      "archive": "raw/p02-3-ci43288189915-linux311-upload.json.gz",
+      "original_commit": null,
+      "content_bytes": 1401110,
+      "content_sha256": "92e23caf32049cc754dee79ef91427ca7c12234a34bd69cf335d29cf59a35b16",
+      "archive_bytes": 287609,
+      "archive_sha256": "ecb2f39ec520534251010e6a1d112b229549d39a3b2a57b854f42c856d6be40d",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "upload-budget",
+        "cases": 12,
+        "passed": true,
+        "growth": {
+          "span_upper_bound_bytes": 917504,
+          "passed": true
+        },
+        "max_elapsed_seconds": 61.94823557200016,
+        "max_extra_rss_upper_bound_bytes": 3907584
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-linux314-installation.json",
+      "archive": "raw/p02-3-ci43288189915-linux314-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1405,
+      "content_sha256": "24de219aef904f3b7f3fd8f3733b9ea43d79dbc8a736a9a086b0e1fbff3e8cf9",
+      "archive_bytes": 517,
+      "archive_sha256": "96e5d7dacb3e569d6d652638eee0fe8dd293249b04eca7134700600287d0f772",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "installation_v4",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          },
+          "resume_smoke": {
+            "passed": 2
+          },
+          "versions_smoke": {
+            "passed": 2
+          },
+          "download_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "p02-3-ci43288189915-macos311-installation.json",
+      "archive": "raw/p02-3-ci43288189915-macos311-installation.json.gz",
+      "original_commit": null,
+      "content_bytes": 1425,
+      "content_sha256": "cb606505ee8afc9ce60e3fa7306762544f39fff426ccdb86e1da3304d114052b",
+      "archive_bytes": 524,
+      "archive_sha256": "ccde324201bfc67d6e089699b9aba1590787cd62eb77981d3deddd2b291876f4",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": false,
+        "kind": "installation_v4",
+        "cases": 2,
+        "passed": true,
+        "checks": {
+          "origin_verified": {
+            "true": 2
+          },
+          "smoke": {
+            "passed": 2
+          },
+          "ndjson_smoke": {
+            "passed": 2
+          },
+          "http_smoke": {
+            "passed": 2
+          },
+          "stream_smoke": {
+            "passed": 2
+          },
+          "cache_smoke": {
+            "passed": 2
+          },
+          "execution_smoke": {
+            "passed": 2
+          },
+          "jobs_smoke": {
+            "passed": 2
+          },
+          "upload_smoke": {
+            "passed": 2
+          },
+          "resume_smoke": {
+            "passed": 2
+          },
+          "versions_smoke": {
+            "passed": 2
+          },
+          "download_smoke": {
+            "passed": 2
+          }
+        }
+      }
+    },
+    {
       "name": "p02-3-native1-conditions.json",
       "archive": "raw/p02-3-native1-conditions.json.gz",
       "original_commit": null,
@@ -23360,6 +23768,21 @@
         "diagnostic_only": true,
         "kind": "diagnostic",
         "outcome": "native_conditions_observation"
+      }
+    },
+    {
+      "name": "p02-3-pr15-development-merge-ci-summary.json",
+      "archive": "raw/p02-3-pr15-development-merge-ci-summary.json.gz",
+      "original_commit": null,
+      "content_bytes": 8952,
+      "content_sha256": "3e0d4aab72c2e33dd269d4ec6507a2991a58b407e6376f36185974ec9f0480d4",
+      "archive_bytes": 2549,
+      "archive_sha256": "d01322818fe740e1d2ffaaca7029eb6117a530970e9d2e4dbc8f051e70f4da81",
+      "summary": {
+        "source_commit": "69efc8d465078257257d6494e15fda0e360b01e2",
+        "diagnostic_only": true,
+        "kind": "diagnostic",
+        "outcome": "pr15_development_merge_ci_and_native_outputs_retained"
       }
     },
     {
