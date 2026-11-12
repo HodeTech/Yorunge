@@ -1428,7 +1428,9 @@ class StateUploads:
                     )
                     self._control(changed, stamp, terminal=False)
             # Like the cleanup of an expired operation, freezing needs no credential: a source is
-            # frozen after a rotation too, and never reports an error for what it has committed.
+            # frozen after a rotation too. The closing clock gate still runs after the commit (as
+            # in every write, ADR-0014): it can report ``state_busy`` for a freeze that stands, and
+            # the freeze is idempotent, so the caller looks (``show``) or asks again.
             final, within = self.cache._finish(
                 stamp,
                 expires=tuple(end for _, end, _ in gate.intervals),

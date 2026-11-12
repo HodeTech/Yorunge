@@ -73,6 +73,41 @@ class Stamp:
     anomaly: bool
 
 
+def read_stamp(store: Store, clock: Clock) -> Stamp | None:
+    """The clock point of a read: the stored generation and anomaly, never a write.
+
+    ``StateCache.stamp()`` would record the high watermark (and, for a clock that went backwards,
+    bump the generation that plans are compared with): a command that promises to write nothing
+    (``show``, the default report of ``resume``) must not change what a later ``approve`` or
+    ``start`` sees. Time never runs behind the watermark here. ``None``: the clock row is not the
+    store's own (a store that is not valid).
+    """
+    value = metadata(store.connection)
+    row = store.connection.execute(SELECT_CLOCK).fetchone()
+    if row is None or row[0] != value.identity_epoch:
+        return None
+    checked_clock_row(row)
+    return Stamp(value.store_id, row[0], row[1], max(clock.now(), instant(row[2])), bool(row[3]))
+
+
+def checked_clock_row(row: ClockRow) -> None:
+    """The clock row is one a store can hold; anything else is ``state_invalid``."""
+    epoch, generation, high, anomaly, revision = row
+    try:
+        canonical_uuid(epoch)
+        instant(high)
+        if (
+            type(generation) is not int
+            or not 1 <= generation <= 2**63 - 1
+            or anomaly not in (0, 1)
+            or type(revision) is not int
+            or not 0 <= revision <= 2**63 - 1
+        ):
+            raise ValueError("invalid clock")
+    except (ValueError, TypeError):
+        raise YorungeError("state_invalid") from None
+
+
 @dataclass(frozen=True)
 class Token:
     present: bool
@@ -276,20 +311,8 @@ class StateCache:
         row = self.connection.execute(SELECT_CLOCK).fetchone()
         if row is None or row[0] != value.identity_epoch:
             raise YorungeError("state_invalid")
+        checked_clock_row(row)
         epoch, generation, high, anomaly, revision = row
-        try:
-            canonical_uuid(epoch)
-            instant(high)
-            if (
-                type(generation) is not int
-                or not 1 <= generation <= 2**63 - 1
-                or anomaly not in (0, 1)
-                or type(revision) is not int
-                or not 0 <= revision <= 2**63 - 1
-            ):
-                raise ValueError("invalid clock")
-        except (ValueError, TypeError):
-            raise YorungeError("state_invalid") from None
         moment = timestamp(now)
         if self.observation_high is not None:
             high = max(high, timestamp(self.observation_high))
@@ -402,10 +425,11 @@ class StateCache:
                     self._tick(observed)
                     connection.execute("RELEASE business")
                     connection.execute("COMMIT")
-                except sqlite3.Error:
+                except (sqlite3.Error, YorungeError):
                     # SQLite rolled the whole transaction back itself (a full disk does that): the
-                    # savepoint is gone and the clock cannot be kept; the failure that caused it is
-                    # the one to report, not the cleanup's "no such savepoint".
+                    # savepoint is gone and the clock cannot be kept; or the clock row cannot be
+                    # read back (``_tick``). Either way the failure that caused the cleanup is the
+                    # one to report, not the cleanup's own; the ``finally`` below rolls back.
                     pass
                 raise
             connection.execute("RELEASE business")

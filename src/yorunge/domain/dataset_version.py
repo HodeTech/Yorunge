@@ -120,6 +120,16 @@ class DatasetVersionObservation(_VersionFacts):
     class_labels_sha256: Sha256
 
 
+def page_rows(page: int, page_size: int, total: int) -> int:
+    """How many rows page ``page`` of ``total`` rows holds: all of its slice, none past the last.
+
+    A page that shows fewer rows than the total says it covers would hide versions without a word
+    (the next page starts where this one should have ended), and one that shows more has rows the
+    total does not count: neither is a page of this list.
+    """
+    return max(0, min(page_size, total - (page - 1) * page_size))
+
+
 class DatasetVersionList(Model):
     """One page of a dataset's versions; completeness is never claimed."""
 
@@ -145,16 +155,12 @@ class DatasetVersionList(Model):
 
     @model_validator(mode="after")
     def honest_page(self) -> Self:
-        if len(self.items) > self.page_size:
-            raise ValueError("a page holds no more rows than its size")
         if self.has_next != (self.page * self.page_size < self.total):
             raise ValueError(
                 "a next page exists exactly when the pages so far fall short of the total"
             )
-        if self.items and self.total < (self.page - 1) * self.page_size + len(self.items):
-            raise ValueError("the total covers the rows shown")
-        if not self.items and (self.page - 1) * self.page_size < self.total:
-            raise ValueError("an empty page lies past the last row")
+        if len(self.items) != page_rows(self.page, self.page_size, self.total):
+            raise ValueError("a page shows every row it covers: neither fewer nor more")
         if any(item.dataset_id != self.dataset_id for item in self.items):
             raise ValueError("the rows are the dataset's own")
         if len({item.version_id for item in self.items}) != len(self.items) or len(

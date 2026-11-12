@@ -27,6 +27,7 @@ from yorunge.domain.dataset_version import (
     DatasetVersionObservation,
     SplitCounts,
     class_labels_sha256,
+    page_rows,
     validate_version_tag,
 )
 from yorunge.domain.errors import YorungeError
@@ -182,7 +183,8 @@ def version_page(
     """One page of the list, for the dataset and the page that were asked for.
 
     A page past the last one is an honest, empty page (the provider answers it with 200 and no
-    rows); only a page that shows rows has to be covered by the total.
+    rows); every other page shows exactly the rows its slice of the total covers: a short page
+    would hide versions, and a long one shows rows the total does not count.
     """
     document = _envelope(data, secret)
     rows, meta = _field(document, "data"), _object(_field(document, "meta"))
@@ -193,8 +195,7 @@ def version_page(
     if (
         shown != page
         or not 1 <= size <= MAX_LIST_ITEMS
-        or len(rows) > size
-        or (total < (page - 1) * size + len(rows) if rows else (page - 1) * size < total)
+        or len(rows) != page_rows(page, size, total)
         or more != (page * size < total)
     ):
         raise _invalid()

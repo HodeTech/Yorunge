@@ -5,16 +5,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
 
-from yorunge.adapters.capability_cache import SELECT_CLOCK, Stamp, SystemClock
+from yorunge.adapters.capability_cache import SystemClock, read_stamp
 from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.operation_store import read_snapshot
-from yorunge.adapters.state import Store, metadata, open_existing_store
+from yorunge.adapters.state import Store, open_existing_store
 from yorunge.adapters.upload_chain import source_journal
 from yorunge.adapters.upload_projection import review, summary
 from yorunge.adapters.upload_repository import StateUploads
 from yorunge.adapters.upload_store import read_any_view
 from yorunge.adapters.upload_sync import require_upload_sync_context
-from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.capabilities import canonical
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.models import Model, Result
 from yorunge.domain.state import canonical_uuid
@@ -174,20 +174,6 @@ class ResumeHint:
     related_operation_id: str | None
 
 
-def _read_stamp(store: Store, clock: SystemClock) -> Stamp | None:
-    """The clock point of a read: the stored generation and anomaly, never a write.
-
-    ``StateCache.stamp()`` would record the high watermark (and, for a clock that went backwards,
-    bump the generation that plans are compared with): a hint added to ``show`` must not change
-    what a later ``approve`` or ``start`` sees. Time never runs behind the watermark here.
-    """
-    value = metadata(store.connection)
-    row = store.connection.execute(SELECT_CLOCK).fetchone()
-    if row is None or row[0] != value.identity_epoch:
-        return None
-    return Stamp(value.store_id, row[0], row[1], max(clock.now(), instant(row[2])), bool(row[3]))
-
-
 def resume_hint(state_dir: Path | None, operation_id: str) -> ResumeHint | None:
     """A local, best-effort look for the text of ``show``; ``None`` where it cannot be made.
 
@@ -201,7 +187,7 @@ def resume_hint(state_dir: Path | None, operation_id: str) -> ResumeHint | None:
     try:
         validate_local(state_dir, operation_id)
         with open_existing_store(state_dir) as store:
-            stamp = _read_stamp(store, clock)
+            stamp = read_stamp(store, clock)
             if stamp is None:
                 return None
             source = StateUploads(store, clock=clock).resume_source(operation_id, stamp)

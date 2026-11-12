@@ -532,6 +532,50 @@ def test_an_empty_page_that_starts_inside_the_total_hides_rows_and_is_refused(as
     assert code_of(lambda: page(page_body([], **meta), page=asked)) == "invalid_response"
 
 
+def numbered_rows(count):
+    return [
+        row(id=f"{i:08x}-3333-4333-8333-333333333333", version_tag=f"v{i}") for i in range(count)
+    ]
+
+
+@pytest.mark.parametrize(
+    "asked,count,meta",
+    [
+        (1, 3, {"page_size": 10, "total": 5, "has_next": False}),  # a short only page
+        (1, 5, {"page_size": 10, "total": 15, "has_next": True}),  # a short first page
+        (2, 9, {"page_size": 10, "total": 25, "has_next": True}),  # a short middle page
+        (3, 4, {"page_size": 10, "total": 25, "has_next": False}),  # a short last page
+        (1, 10, {"page_size": 10, "total": 5, "has_next": False}),  # more rows than the total has
+        (3, 6, {"page_size": 10, "total": 25, "has_next": False}),  # more rows than the slice has
+    ],
+    ids=["only-3-of-5", "first-5-of-10", "middle-9-of-10", "last-4-of-5", "10-of-5", "6-of-5"],
+)
+def test_a_page_that_does_not_show_every_row_its_slice_of_the_total_covers_is_refused(
+    asked, count, meta
+):
+    # The versions a short page leaves out are not on the next page either (it starts where this
+    # one should have ended): they would be hidden without a word, so the page is not accepted.
+    body = page_body(numbered_rows(count), page=asked, **meta)
+    assert code_of(lambda: page(body, page=asked)) == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "asked,count,meta",
+    [
+        (1, 5, {"page_size": 10, "total": 5, "has_next": False}),
+        (1, 10, {"page_size": 10, "total": 15, "has_next": True}),
+        (2, 10, {"page_size": 10, "total": 25, "has_next": True}),
+        (3, 5, {"page_size": 10, "total": 25, "has_next": False}),
+        (3, 0, {"page_size": 10, "total": 20, "has_next": False}),  # past the last row: empty
+        (1, 0, {"page_size": 10, "total": 0, "has_next": False}),  # a dataset without versions
+    ],
+    ids=["only-5", "first-10", "middle-10", "last-5", "past-the-end", "no-versions"],
+)
+def test_a_page_that_shows_exactly_its_slice_of_the_total_is_accepted(asked, count, meta):
+    body = page_body(numbered_rows(count), page=asked, **meta)
+    assert len(page(body, page=asked).items) == count
+
+
 def test_the_page_the_provider_shows_must_be_the_page_that_was_asked_for_on_its_own():
     # Page 1 of a hundred versions, answered to a request for page 2: every other rule agrees with
     # it (twenty rows, a total that covers them, more to come), so meta.page is the only witness

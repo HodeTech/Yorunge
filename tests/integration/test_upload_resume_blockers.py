@@ -56,6 +56,12 @@ def state(lifecycle):
         return dump(store)
 
 
+def clock_row(lifecycle):
+    """The durable clock: high watermark, generation, anomaly (a read must not move any of them)."""
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        return store.connection.execute("SELECT * FROM cache_clock").fetchall()
+
+
 # The sources: a name, how the store is made, who is reported on, and what the journal says.
 def install_first(lifecycle, **spec):
     with open_store(lifecycle.root_dir, timeout=60) as store:
@@ -103,7 +109,7 @@ def test_a_source_the_journal_rules_out_is_reported_without_asking_the_provider(
     install_first(lifecycle, **spec)
     if after_the_lease:
         lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
-    stored = state(lifecycle)
+    stored, clock = state(lifecycle), clock_row(lifecycle)
     report = resume(lifecycle, FIRST)
     assert report.blockers == blockers
     assert not report.eligible
@@ -113,6 +119,31 @@ def test_a_source_the_journal_rules_out_is_reported_without_asking_the_provider(
     assert report.related_operation_id is None
     assert report.plan_id is None
     assert state(lifecycle) == stored  # a report writes nothing
+    assert clock_row(lifecycle) == clock  # not even the clock's high watermark
+
+
+def test_a_report_on_a_clock_that_went_backwards_does_not_move_the_generation_of_the_plans(
+    lifecycle,
+):
+    """A durable stamp would record the step back and bump the generation of the plans."""
+    install_first(lifecycle, status="succeeded")
+    lifecycle.clock.value = instant("2026-11-02T11:05:00.000000Z")
+    resume(lifecycle, FIRST)
+    lifecycle.clock.value = instant("2026-11-02T09:00:00.000000Z")  # two hours back
+    clock = clock_row(lifecycle)
+    report = resume(lifecycle, FIRST)
+    assert report.blockers == ("source_terminal", "reconcile_available")
+    assert clock_row(lifecycle) == clock
+
+
+def test_a_clock_row_a_store_cannot_hold_is_an_invalid_store_to_the_report(lifecycle):
+    install_first(lifecycle, status="succeeded")
+    with open_store(lifecycle.root_dir, timeout=60) as store:
+        store.connection.execute("UPDATE cache_clock SET high_watermark=?", ("x" * 27,))
+        store.connection.commit()
+    with pytest.raises(YorungeError) as error:
+        resume(lifecycle, FIRST)
+    assert error.value.code == "state_invalid"
 
 
 def test_a_root_that_continued_into_an_unknown_one_is_superseded_by_it(lifecycle):

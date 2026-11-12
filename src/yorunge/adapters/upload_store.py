@@ -38,6 +38,7 @@ from yorunge.domain.dataset_transfer_v3 import (
     validate_verification_binding_v3,
 )
 from yorunge.domain.dataset_upload import (
+    MAX_EFFECT_INTENTS,
     MAX_TRANSFER_FILES,
     MAX_TRANSFER_OPERATIONS,
     MAX_TRANSFER_PAYLOAD_BYTES,
@@ -656,8 +657,8 @@ def _read_view(connection: sqlite3.Connection, plan_id: str) -> VersionedTransfe
     intents = []
     for item in connection.execute(
         "SELECT intent_id,sequence,kind,file_index,payload FROM "
-        "upload_stage_intents WHERE operation_id=? ORDER BY sequence LIMIT 387",
-        (record.operation_id,),
+        "upload_stage_intents WHERE operation_id=? ORDER BY sequence LIMIT ?",
+        (record.operation_id, MAX_EFFECT_INTENTS + 1),  # one more than may be: the model refuses it
     ):
         intent = decode(StageIntent, item[-1])
         if item[:-1] != (

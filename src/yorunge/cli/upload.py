@@ -479,8 +479,8 @@ def _continue_text(data: UploadSummary, hint: ResumeHint | None) -> list[str]:
         return [
             f"Devam için: yorunge datasets upload resume --operation-id {identity} "
             "--accept-unverified-read",
-            "Bu bir salt okuma raporudur: ne kaldığını gösterir, hiçbir şey göndermez ve yazmaz; "
-            "--prepare ile devam planı kaydedilir.",
+            "Bu bir salt okuma raporudur: ne kaldığını gösterir, hiçbir şey göndermez, "
+            "plan ya da kayıt yazmaz; --prepare ile devam planı kaydedilir.",
         ]
     lines = ["Devam şu an mümkün değil (yerel kayda göre):"]
     for name in explained_blockers(hint.blockers):

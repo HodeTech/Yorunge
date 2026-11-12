@@ -686,6 +686,8 @@ def test_a_list_of_versions_is_a_closed_frozen_page():
         {"items": ()},  # page 1 of a total of 1 shows no row: the row is hidden
         {"items": (), "total": 100, "has_next": True},
         {"items": (), "page": 2, "total": 21},  # the 21st row exists and is not shown
+        {"total": 5},  # one row is shown of the five the first page covers: four are hidden
+        {"page_size": 2, "total": 5, "has_next": True},  # a short first page
     ],
 )
 def test_a_page_that_contradicts_itself_is_not_a_page(changes):

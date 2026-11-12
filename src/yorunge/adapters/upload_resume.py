@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
-from yorunge.adapters.capability_cache import StateCache
+from yorunge.adapters.capability_cache import read_stamp
 from yorunge.adapters.platform_upload_reader import (
     PHASE_SECONDS,
     BaselineCheck,
@@ -160,8 +160,16 @@ class UploadResumeRuntime(UploadPreparationRuntime):
             )
 
     def _read_source(self, operation_id: str) -> tuple[ResumeSource, str]:
+        """The source as the journal holds it now. A read: the clock is looked at, never written.
+
+        The report promises that it writes nothing (``prepare`` saves its plan in a transaction of
+        its own, which takes its own durable clock point); a durable stamp here would record the
+        clock's high watermark and could move the generation that plans are compared with.
+        """
         with open_existing_store(self.state_dir) as store:
-            stamp = StateCache(store, self.clock).stamp()
+            stamp = read_stamp(store, self.clock)
+            if stamp is None:
+                raise YorungeError("state_invalid")
             source = StateUploads(store, clock=self.clock).resume_source(operation_id, stamp)
             return source, timestamp(stamp.now)
 
