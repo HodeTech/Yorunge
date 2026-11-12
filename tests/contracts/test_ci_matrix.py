@@ -101,6 +101,7 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         assert "continue-on-error" not in step
     steps = steps_by_id(job)
     for required in (
+        "change-set",
         "python",
         "environment-setup",
         "environment-report",
@@ -124,7 +125,13 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         ".venv/bin/python scripts/check-agent-guides.py",
         ".venv/bin/python scripts/research_evidence.py verify",
     ]
-    assert steps["tests"]["run"] == ".venv/bin/pytest -o faulthandler_timeout=60"
+    assert steps["tests"]["env"] == {"DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}"}
+    test_lines = steps["tests"]["run"].splitlines()
+    assert (
+        "  .venv/bin/pytest -o faulthandler_timeout=60" in test_lines
+    )  # the full suite is the default
+    assert test_lines[0] == 'if [ "$DOCS_ONLY" = "true" ]; then'
+    assert test_lines[-1] == "fi"
     assert steps["build"]["run"].splitlines() == [
         ".ci-tools/bin/uv build",
         ".venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv "
@@ -138,7 +145,10 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
 def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
     baseline = steps["startup-baseline"]
-    assert baseline["if"] == "${{ env.RUN_BUDGETS == 'true' }}"
+    assert (
+        baseline["if"]
+        == "${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
+    )
     assert baseline["with"]["path"] == ".local/startup-baseline"
     assert baseline["with"]["persist-credentials"] == "false"
     assert baseline["with"]["ref"] == (
@@ -147,7 +157,10 @@ def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(w
         "&& github.event.before) || github.sha }}"
     )
     budgets = steps["startup-budgets"]
-    assert budgets["if"] == "${{ env.RUN_BUDGETS == 'true' }}"
+    assert (
+        budgets["if"]
+        == "${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
+    )
     assert budgets["run"].strip() == (
         ".venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv "
         "--baseline-project .local/startup-baseline --workspace .local/startup-check "
@@ -156,7 +169,7 @@ def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(w
     diagnostics = steps["startup-diagnostics"]
     assert diagnostics["if"] == (
         "${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') "
-        "&& env.RUN_BUDGETS == 'true' }}"
+        "&& env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
     )
     assert "scripts/check-startup.py" not in diagnostics["run"]
 
@@ -223,7 +236,10 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         ),
     ):
         step = steps[step_id]
-        assert step["if"] == "${{ success() && env.RUN_BUDGETS == 'true' }}"
+        assert step["if"] == (
+            "${{ success() && env.RUN_BUDGETS == 'true' "
+            "&& steps.change-set.outputs.docs_only != 'true' }}"
+        )
         assert step["run"].strip() == command
         assert ordered.index(previous) < ordered.index(step_id)
         previous = step_id
@@ -422,7 +438,7 @@ def invoke_gate(workflow, tmp_path, content):
 
 
 def successful_needs():
-    needs = {cell: {"result": "success", "outputs": {}} for cell in CELLS}
+    needs = {cell: {"result": "success", "outputs": {"docs_only": "false"}} for cell in CELLS}
     needs["linux311"]["outputs"]["startup_diagnostic"] = "passed"
     needs["linux311"]["outputs"]["startup_baseline_mode"] = "pinned_runtime"
     return needs
@@ -598,6 +614,7 @@ def test_aggregate_allows_verified_budget_overrun_and_shows_it_without_performan
 def test_completed_measurement_is_guarded_before_artifact_upload(workflow):
     job = workflow["jobs"]["linux311"]
     assert job["outputs"] == {
+        "docs_only": "${{ steps.change-set.outputs.docs_only }}",
         "startup_diagnostic": "${{ steps.startup-budgets.outputs.outcome }}",
         "startup_baseline_mode": "${{ steps.startup-budgets.outputs.baseline_mode }}",
     }
