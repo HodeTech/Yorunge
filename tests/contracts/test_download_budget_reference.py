@@ -26,7 +26,7 @@ pytestmark = pytest.mark.usefixtures("evidence_publication_context")
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN_PATH = runpy.run_path
-NAME = "p02-3-reference-download-6.json"
+NAME = "p02-3-reference-download-7.json"
 M5 = {"cpu": "Apple M5 Max", "disk_type": "internal SSD/APFS"}
 ACCEPTED = "requires an accepted run of twelve measurements"
 CURRENT = "download reference differs from complete current source bytes"
@@ -479,7 +479,8 @@ def test_a_corrupt_deflate_stream_is_a_closed_failure_not_a_traceback(monkeypatc
     with pytest.raises(SystemExit) as stop:
         main()
     printed = capsys.readouterr()
-    assert stop.value.code == 1 and printed.out == ""
+    assert stop.value.code == 1
+    assert printed.out == ""
     assert "Evidence check failed" in printed.err
     assert "Traceback" not in printed.err
 
