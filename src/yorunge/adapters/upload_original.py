@@ -213,10 +213,15 @@ class _Environment:
 
     def admit(self, check: UploadCurrentCheck) -> bool:
         with self.repository() as repository:
-            record = repository.admit(self.plan.plan_id, check)
+            try:
+                record = repository.admit(self.plan.plan_id, check)
+            finally:
+                # An admission whose closing gate failed still left an operation this invocation
+                # admitted: that failure is its own to report, not another process's operation.
+                self.access = repository.write_access
             if type(record) is not TransferRecordV2:
                 raise YorungeError("upload_plan_not_valid")
-            self.record, self.access = record, repository.write_access
+            self.record = record
         if self.progress is not None:
             self.progress.bind(record.operation_id)
         # Another process may have won between the initial lookup and admission.

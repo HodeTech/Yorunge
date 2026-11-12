@@ -293,6 +293,47 @@ def test_admission_race_returns_winner_without_manufacturing_write_access(
         assert view.operation == winners[0]
 
 
+def test_an_admission_whose_closing_gate_fails_is_that_failure_and_sends_nothing(
+    prepared_input, certificates, monkeypatch
+):
+    # The record is committed before the closing time gate runs: a gate that fails then leaves an
+    # operation this invocation admitted, and the failure is its own, as in a continuation.
+    provider = UploadProvider(SCOPE.owner.id, SCOPE.project_id)
+    finish, admit = StateUploads._finish, StateUploads.admit
+    admitting = []
+
+    def failing_gate(repository, stamp, gate, *, scope):
+        if admitting:
+            raise YorungeError("state_busy")
+        return finish(repository, stamp, gate, scope=scope)
+
+    def marked_admit(repository, plan_id, current):
+        admitting.append(plan_id)
+        try:
+            return admit(repository, plan_id, current)
+        finally:
+            admitting.pop()
+
+    with TlsServer(certificates, provider.routes()) as server:
+        plan = approved(prepared_input, server)
+        monkeypatch.setattr(StateUploads, "_finish", failing_gate)
+        monkeypatch.setattr(StateUploads, "admit", marked_admit)
+        with pytest.raises(YorungeError) as error:
+            create_link_original(
+                plan.plan_id,
+                prepared_input[0],
+                loader(prepared_input),
+                session_factory=factory(server),
+            )
+        assert error.value.code == "state_busy"
+        assert not provider.created
+        assert provider.create_calls == provider.link_calls == 0
+    with open_existing_store(prepared_input[0]) as store:
+        operation = StateUploads(store).show(plan_id=plan.plan_id).operation
+    assert operation is not None
+    assert (operation.status, operation.reason) == ("cancelled", "local_cancelled")
+
+
 def test_failed_marker_preserves_old_state_and_reason_without_claiming_unknown(
     prepared_input, certificates, monkeypatch
 ):
