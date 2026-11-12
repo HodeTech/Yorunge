@@ -1,7 +1,7 @@
 ---
 id: P02-3b
 phase: P02
-status: in_review
+status: verified
 size: M
 depends_on: [P02-3o, P02-3z]
 capabilities: [C03, C05, C13]
@@ -39,6 +39,6 @@ Hedefli ve tam test paketi, kurulum/dağıtım denetimi, belge/rehber/kanıt kon
 
 ## Teslim kaydı
 
-- PR/commit: tek development PR’ı ([PR #15](https://github.com/HodeTech/Yorunge/pull/15)) bu daldan açıldı ve incelemededir; adım commit’leri `feat/p02-3-dataset-recovery` dalındadır: alt kartların commit’leri ilgili kartlarında; bu kartın kendi değişiklikleri belge güncellemeleridir.
+- PR/commit: tek development PR’ı ([PR #15](https://github.com/HodeTech/Yorunge/pull/15)) bu daldan açıldı ve 2026-11-12’de [69efc8d](https://github.com/HodeTech/Yorunge/commit/69efc8d465078257257d6494e15fda0e360b01e2) merge commit’iyle development’a alındı; adım commit’leri artık development tarihçesindedir: alt kartların commit’leri ilgili kartlarında; bu kartın kendi değişiklikleri belge güncellemeleridir.
 - Sonuç: Alt kartlar (P02-3j, k, l, m, n, o, z, s) `verified` ve her biri iki fresh yorumcu turuyla kapandı; `models download` kesin model sürümü ağırlığını no-clobber yayınlar, doğrulama seviyesi görünür; kurulu `models download` smoke’u (gerçek CLI indirmesi, wheel ve sdist) yerelde geçti. Tam paket: 12.785 geçti, 1 atlandı, 0 düştü (`10b19be`, temiz klon, macOS; ilk tam paket 21 integration hatası, ilk üç CI koşusu 6 testte hata, bir admission yarış kusuru ve durum deposunda bir journal yarışı buldu, `f82d789`un Linux koşusu ext4’ün inode numarasını hemen geri vermesine dayanan beş test hatası buldu (testin yardımcısıydı, ürün değil), düzeltildi (açık kayıtlar araştırma kaydındadır); ayrıntı araştırma kaydındadır).
-- Kalan sınır: Üç ortam CI ve altı kurulum PR aşamasında görülür; **yetkili canlı model indirme kabulü yapılmadı** (K6a: kullanıcının erişebildiği model sürümü kimliği ve yetki sağlanmadı) — JSON şekli ve `/files/evren-models/` öneki çevrimdışı keşiften gelir, doğrulanmadı; dataset öğesi baytları API anahtarıyla indirilemediğinden upload’ın `remote_bytes_verified=false` sınırı ve P02-R5 görünür kalır; native referans: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-7` kod `10b19be`’de dondurulduktan sonra kişisiz kökte bir kez alındı, altısı da ilk denemede geçti ve beş kaynak bağlı doğrulayıcıdan geçti (indirme: 12 süreç `accepted`, en uzun 3,30 s, U ≤ 5.210.112 bayt, G ≤ 4.096.000 bayt); ayrıntı araştırma kaydındadır.
+- Kalan sınır: Üç ortam CI ve altı kurulum PR #15’in son head’inde geçti ([merge kapanışı](../../research/p02-3-implementation-validation.md#development-merge-kapanışı)); **yetkili canlı model indirme kabulü yapılmadı** (K6a: kullanıcının erişebildiği model sürümü kimliği ve yetki sağlanmadı) — JSON şekli ve `/files/evren-models/` öneki çevrimdışı keşiften gelir, doğrulanmadı; dataset öğesi baytları API anahtarıyla indirilemediğinden upload’ın `remote_bytes_verified=false` sınırı ve P02-R5 görünür kalır; native referans: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-7` kod `10b19be`’de dondurulduktan sonra kişisiz kökte bir kez alındı, altısı da ilk denemede geçti ve beş kaynak bağlı doğrulayıcıdan geçti (indirme: 12 süreç `accepted`, en uzun 3,30 s, U ≤ 5.210.112 bayt, G ≤ 4.096.000 bayt); ayrıntı araştırma kaydındadır.
