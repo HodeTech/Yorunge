@@ -1360,6 +1360,9 @@ def index_text(entries: list[dict[str, Any]]) -> str:
         "Bu indeks manifest ve özgün JSON baytlarından üretilir.",
         "Arşiv biçimi ve sınırlar [kanıt standardındadır](../standards/research-evidence.md).",
         "Eski başarısız ölçümler ve tanılar korunur; güncel kabul ayrıca incelenir.",
+        "`p02-3-reference-*-N` serilerinden yalnız en yüksek numaralı olan bugünkü kaynağa "
+        "bağlıdır; öncekiler tarihsel kayıttır ve doğrulayıcıları bugünkü kaynağa karşı bilerek "
+        "geçmez.",
         "Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.",
         "",
     ]
