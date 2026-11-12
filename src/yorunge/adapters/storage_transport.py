@@ -351,13 +351,9 @@ class TransferHttpxTransport(HttpxTransport):
                     in_consumer = False
                     if not view.complete:
                         _remaining(deadline)
-            except (
-                TimeoutError,
-                httpx.TimeoutException,
-                httpx.InvalidURL,
-                httpx.HTTPError,
-                OSError,
-            ) as error:
+            except (httpx.InvalidURL, httpx.HTTPError, OSError) as error:
+                # TimeoutError is an OSError and httpx.TimeoutException an httpx.HTTPError; the
+                # classifier tells them apart.
                 failure = _download_failure(error, in_consumer, timers)
             except YorungeError as error:
                 public_error = error

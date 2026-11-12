@@ -23,7 +23,7 @@ Disposition = Literal["full", "restart", "continue", "discard_and_retry"]
 _MAX_NUMBER: Final = 2**63 - 1
 _DIGITS = r"(0|[1-9]\d{0,18})"  # always compiled with re.ASCII below
 _RANGE = re.compile(rf"bytes ({_DIGITS})-({_DIGITS})/({_DIGITS})", re.ASCII | re.IGNORECASE)
-_LENGTH = re.compile(r"(0|[1-9][0-9]{0,63})", re.ASCII)  # any length, however absurd, is a number
+_LENGTH = re.compile(r"(0|[1-9]\d{0,63})", re.ASCII)  # any length, however absurd, is a number
 _STRONG_ETAG = re.compile(r'"[\x21\x23-\x7e]{1,126}"', re.ASCII)
 
 
