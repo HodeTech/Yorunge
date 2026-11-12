@@ -1,6 +1,6 @@
 # Açık karar ve araştırma kayıtları
 
-**Güncellendi:** 2026-11-01. Bu liste uygulanmış özellik değildir. Yeni iş kaydı oluştuğunda ilgili satırdan bağlantı verilir; henüz GitHub issue açılmadı.
+**Güncellendi:** 2026-11-08. Bu liste uygulanmış özellik değildir. Yeni iş kaydı oluştuğunda ilgili satırdan bağlantı verilir; henüz GitHub issue açılmadı.
 
 | Kimlik | Konu | Önkoşul / sonraki adım | Sahip faz |
 |---|---|---|---|
@@ -19,5 +19,7 @@
 | B13 | Credential kimliği/nesli için kalıcılık ve değişim kanıtı | [Araştırma](../research/p01-2-state-identity-decision-review.md), [ADR-0012](../decisions/0012-credential-identity-and-change-detection.md) Accepted; özel HMAC + ayrı K dosyası/tehdit/kurtarma ve binding v1 kararı kapandı. Uygulama/kabul P01-4a/P01-2b'de tamamlandı | P01-4a/P01-2b |
 | B14 | Doğrulanmış hizmet principal’ı ve seçili hesap/proje bağı | Kanonik sahip [P02-R1](tasks/p02-r1-verified-context-binding.md), identity-context modülü. Yetkili auth/principal/ilişki ve gerekiyorsa göreve özgü otorite kaynağıyla kapanır; observed discovery veya header yokken 401 bu ihtiyacı tamamlamaz. ADR-0022 Accepted ile dar gözlem P02-0b/d’den ayrılan özgün ihtiyacın açık sahibidir | P02 / P02-R1 |
 | B15 | Kanıt kataloğunun sürdürülebilir kapasitesi | [P02-1a](tasks/p02-1a-evidence-capacity.md), PR #13 / 50d68b1 ile development’ta kapandı: aynı schema 1/path/hash/anchor korunarak 4.096 kayıt, toplam 128 MiB gzip/512 MiB decoded, yazı öncesi katalog/metadata preflight ve gerçek bounded okuma. Eski 247 entry/arşiv eşliği ve yoğun ret/partial-I/O kabulü kanıtlı; adımın tarihsel kapasite kabulünde 248 kayıt. Fresh ürün kaynak referansları P02-1d’de ayrı zorunludur | P02-1 hazırlık / research-evidence |
+| B16 | Kurumsal ağ (proxy/TLS denetimi/özel CA) yolu ve kullanıcıya dönük ağ tanısı | Kullanıcı kararı; alt kararlar, kapsam, önerilen sıra ve kabul tek yerde [P02-R9](tasks/p02-r9-network-diagnosis-and-trust-paths.md) kartındadır ([inceleme](../research/p02-llm-gateway-schema-review.md)). Mevcut sınır taşıma referansına ve upload rehberine yazıldı | P02 / P02-R9 |
+| B17 | Salt okuma LLM şart metni gösterimi (`terms show`) | Kullanıcı kararı. `GET /v1/terms/text` şemada kabul gerektirmeden okunur görünür, canlı doğrulanmadı; şart kabulü yapılmaz (AGENTS.md). Gerekirse boyut sınırı, terminal kaçış temizliği ve URL takibi olmadan. Önce [P02-R10](tasks/p02-r10-llm-terms-guidance.md) (tek yönlendirme satırı) | P02 sonrası / karar |
 
 Her yeni kapsam maddesi kullanıcı sonucuna, modülüne ve kabul kanıtına bağlanır. Bu kayıt tarih verilmiş bir teslim taahhüdü değildir. Kullanıcı önceliği değişirse [kapsam](../product-scope.md) ve [matris](../capability-matrix.md) birlikte güncellenir.

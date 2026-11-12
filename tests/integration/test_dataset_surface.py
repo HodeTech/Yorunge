@@ -469,6 +469,12 @@ api.inspect_dataset(Path(sys.argv[1]), manifest_out=Path(sys.argv[2]))
 
 def test_no_config_environment_state_resolution_for_real_api(tree, monkeypatch):
     root, target = tree
+    # The first use of the data models builds them lazily, and pydantic then reads its plugin
+    # switch from the environment: the library's own doing, which depends on what ran before this
+    # test. It is done once here, before the guard, so that the guard sees only this project's code.
+    warm_up = target.with_name("warm-up.json")
+    api.inspect_dataset(root, manifest_out=warm_up)
+    api.verify_dataset(root, manifest=warm_up)
 
     def forbidden(*a, **k):
         pytest.fail("local dataset consulted config/environment/state")

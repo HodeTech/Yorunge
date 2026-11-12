@@ -12,7 +12,7 @@ import pytest
 from yorunge.application import upload_budget as module
 from yorunge.application.upload_budget import UploadBudget, UploadReservation
 from yorunge.domain.errors import OperationError, YorungeError
-from yorunge.domain.upload_costs import UploadRequestLimits
+from yorunge.domain.upload_costs import ContinuationRequestLimits, UploadRequestLimits
 
 MIB = 1_048_576
 
@@ -21,6 +21,22 @@ def limits(n=4, size=1_073_741_824):
     return UploadRequestLimits(
         max_create=1,
         max_project_link=1,
+        max_presign=n,
+        max_put=n,
+        max_confirm=n,
+        max_read_requests=512,
+        max_read_attempts=1024,
+        max_control_request_bytes=4 * MIB,
+        max_control_response_bytes=16 * MIB,
+        max_upload_bytes=size,
+    )
+
+
+def continuation(n=2, size=1_000):
+    """The ceilings of a continuation that sends ``n`` files: no create, no link."""
+    return ContinuationRequestLimits(
+        max_create=0,
+        max_project_link=0,
         max_presign=n,
         max_put=n,
         max_confirm=n,
@@ -444,3 +460,71 @@ def test_constructed_missing_and_extra_fields_reject_without_dumping_input(clock
         assert observed == []
         assert failure.__context__ is None
     assert capsys.readouterr() == ("", "")
+
+
+# --- a continuation's ceilings: its selected files only, no create or link -------------------
+
+
+def test_a_continuation_budget_admits_its_files_and_never_a_create_or_a_link(clock):
+    value = budget(values=continuation(2))
+    before = value.snapshot()
+    for kind in ("create", "project_link"):
+        error("upload_limit_exceeded", lambda kind=kind: value.reserve(kind, request_bytes=1))
+    assert value.snapshot() == before  # a refused claim leaves nothing behind
+    claims = [
+        value.reserve(kind, request_bytes=1, response_bytes=0)
+        for kind in ("presign", "presign", "confirm", "confirm")
+    ]
+    error("upload_limit_exceeded", lambda: value.reserve("presign", request_bytes=1))
+    error("upload_limit_exceeded", lambda: value.reserve("confirm", request_bytes=1))
+    puts = [value.reserve("put", upload_bytes=500, response_bytes=0) for _ in range(2)]
+    error("upload_limit_exceeded", lambda: value.reserve("put", upload_bytes=1, response_bytes=0))
+    for claim in (*claims, *puts):
+        claim.finish()
+
+
+def test_a_continuation_budget_stops_at_the_selected_bytes(clock):
+    value = budget(values=continuation(2, size=1_000))
+    first = value.reserve("put", upload_bytes=600, response_bytes=0)
+    error("upload_limit_exceeded", lambda: value.reserve("put", upload_bytes=401, response_bytes=0))
+    value.reserve("put", upload_bytes=400, response_bytes=0).finish()
+    first.finish()
+
+
+def test_a_continuation_that_sends_nothing_admits_no_effect_and_still_reads(clock):
+    value = budget(values=continuation(0, size=0))
+    for kind in ("presign", "confirm"):
+        error("upload_limit_exceeded", lambda kind=kind: value.reserve(kind, request_bytes=1))
+    error("upload_limit_exceeded", lambda: value.reserve("put", upload_bytes=0, response_bytes=0))
+    value.reserve("read").finish()  # the observation that closes it is a read
+
+
+def test_a_read_only_continuation_budget_keeps_the_read_only_rule(clock):
+    value = budget(read_only=True, values=continuation(2))
+    error("invalid_request", lambda: value.reserve("presign", response_bytes=0))
+    value.reserve("read").finish()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"max_create": 1},
+        {"max_project_link": 1},
+        {"max_presign": 129},
+        {"max_put": 1},  # not one selection
+        {"max_read_requests": 513},
+        {"max_upload_bytes": -1},
+        {"max_control_response_bytes": 16.0 * MIB},
+    ],
+)
+def test_constructed_or_copied_continuation_limits_are_revalidated(clock, change):
+    error("invalid_request", lambda: budget(values=continuation(2).model_copy(update=change)))
+
+
+def test_a_continuation_budget_reports_the_counters_of_the_work_it_did(clock):
+    value = budget(values=continuation(1))
+    value.reserve("presign", request_bytes=7, response_bytes=0)
+    counters = value.snapshot()
+    assert counters.presign_requests == 1
+    assert counters.create_requests == 0
+    assert counters.control_request_reserved == 7

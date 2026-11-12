@@ -1,6 +1,8 @@
 # P02-2 uygulama ve kabul kaydı
 
-**Tarih:** 2026-11-04; güncellendi 2026-11-05. **Dal:** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Dört kullanıcı review düzeltme dilimi ve Accepted ADR-0029 uygulaması iki fresh turla kapandı. 9b482ea kaynağındaki 08 serisinde dataset/raw/upload ve iki temiz kurulum geçti; startup cache ve jobs normal list/show süre sınırını aştı. Bu kapılar açık, eski başarılı kaynak sonuçları güncel kabul yerine geçmez. PR #14 ve P02-2/a/b/c draft; yeni kaynak üç ortam CI/altı kurulum/Sonar ve üretilen çıktılarının kalıcı saklaması ayrıca beklenir. Önceki retler ve r1–r4 unknown işler korunur; yeniden yazma yoktur. [Güncel PR takibi](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) kanoniktir.
+**Tarih:** 2026-11-04; güncellendi 2026-11-06. **Dal (tarihsel):** feat/p02-2-private-upload; development tabanı 50d68b1. **Güncel durum:** Dört kullanıcı review düzeltme dilimi ve Accepted ADR-0029 uygulaması iki fresh turla kapandı. Ara 08/09 serilerinde startup cache ve jobs normal list/show süre kapıları reddedildi; bu retler korunur. Son 11 reference serisi dataset/raw/upload/startup/jobs hedeflerini geçti ve kullanıcı teyidiyle kabul edildi. P02-2/a/b/c **verified**; PR #14, 6 Kasım’da `94aaaf0` ile development’a alındı. Güncel teslim durumu [development merge kapanışındadır](#development-merge-kapanışı). Önceki retler ve r1–r4 unknown işler korunur; yeniden yazma yoktur. [PR takibi](p02-2-pr14-review-followup.md) ve [current](../roadmap/current.md) ilgili kayıtlardır.
+
+Bu kayıt kronolojiktir. Önceki bölümlerdeki “draft”, “açık”, “beklenir”, “PR draft” ve “çalışma dalında verified” ifadeleri yazıldıkları aşamayı anlatır; güncel teslim durumu [development merge kapanışındadır](#development-merge-kapanışı). Eski bir kaynak veya ölçümün başarısı sonraki kabulün yerine geçmez.
 
 ## Adım 1 — P02-2d yerel plan sözleşmesi
 
@@ -1188,3 +1190,58 @@ Kişisiz fresh checkout/controller ve startup’ın fresh runtime kurulumlarıyl
 [Startup11](evidence.md#p02-2-reference-startup-11), [jobs11](evidence.md#p02-2-reference-jobs-11), [dataset11](evidence.md#p02-2-reference-datasets-11), [raw11](evidence.md#p02-2-reference-raw-11), [upload11](evidence.md#p02-2-reference-upload-11) ve [koşul kaydı](evidence.md#p02-2-native11-conditions) actual private context ile seri arşivlendi. Katalog 476 kayda ulaştı; dört strict reference verifier da güncel kaynak eşliğiyle geçti. Eski retler veya 10’un kabul kararı değiştirilmez.
 
 Son kaynak yeni CI’a tek push ile gönderilir. Sonar’ın 03fe448 analizinde 12 FIXED/8 FALSE-POSITIVE ve sıfır açık kayıt doğrulanmıştı; yeni head analizi ayrıca beklenir. 41990771680 ve 42058897706’nın üretilmiş CI çıktılarının kalıcı saklaması henüz açıktır; bu arşivler tamamlanmadan merge önerisi verilmez. Yeni head’in full CI/native/aggregate sonucu da ayrıca doğrulanmalıdır. P02-2/a/b/c ve PR henüz hazır sayılmaz. ADR-0030 erteleme önerisi uygulanmadı; yeni EVREN çağrısı yapılmadı.
+
+
+## Development merge kapanışı
+
+**6 Kasım 2026 — P02-2 ve P02-2a/b/c verified; development teslimi tamamlandı.** Kullanıcı [PR #14](https://github.com/HodeTech/Yorunge/pull/14)’ü **2026-11-06 01:07:58 Europe/Istanbul** (2026-11-05T22:07:58Z) tarihinde [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) merge commit’iyle birleştirdi. İki parent sırasıyla önceki development `50d68b1deab80d6fe14749d556efde1f103b5759` ve son PR head’i `b0fb1f1a6c5ef2648605267f122ccbff64b6cf13` olarak doğrulandı; merge ağacı (`35277f0c613b75a26a79da5b806fd52f84a26e52`) PR head’inin ağacıyla aynıdır. Squash/rebase veya doğrudan development push yapılmadı; merge’ü kullanıcı yaptı. Master/release veya paket yayını bu teslim değildir.
+
+Private create/proje bağı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı-ID salt okuma recovery, ortak sekiz CLI/Python yüzeyi, şema 7 transfer state’i ve kurulu upload ölçüm araçları teslim edildi. Uygulama adımları, kullanıcı review düzeltmeleri ve ADR-0024–0029 yukarıdaki bölümlerde kendi kanıtlarıyla korunur. Bu teslim yetki, fiyat veya uzaktan indirilmiş byte doğrulaması üretmez; aynı SHA-256’lı farklı adların uzak çokluğu (P02-R2), doğrulanmış kimlik/yetki bağı (P02-R1), etkili resume, indirme/verify ve paket yayını bu kapsamda değildir.
+
+### Son PR koşuları
+
+Son head `b0fb1f1` üzerinde üç `pull_request` koşusu tamamlandı ve üçü de üç ortam, `offline-core` ile başarılıdır. Üç koşuda altı temiz wheel/sdist kurulumu geçti. `branch-policy` ve SonarCloud kontrolleri başarılıydı; CodeRabbit ve Sourcery skipped idi ve çalışmış review sayılmaz.
+
+| Koşu | Linux / Python 3.11 | Linux / Python 3.14 | macOS / Python 3.11 | Linux startup cache p95 aday/taban |
+|---|---|---|---|---|
+| [42071837939](https://github.com/HodeTech/Yorunge/actions/runs/42071837939) | **6.600 passed**, 1.172,72 s | **6.600 passed**, 8 uyarı, 1.053,79 s | **6.599 passed, 1 Linux-native skip**, 1.253,76 s | 166,423/166,216 ms; geçti |
+| [42108426487](https://github.com/HodeTech/Yorunge/actions/runs/42108426487) | **6.600 passed**, 1.154,44 s | **6.600 passed**, 8 uyarı, 1.077,37 s | **6.599 passed, 1 Linux-native skip**, 1.060,78 s | 180,784/180,126 ms; geçti |
+| [42108795043](https://github.com/HodeTech/Yorunge/actions/runs/42108795043) | **6.600 passed**, 1.341,67 s | **6.600 passed**, 8 uyarı, 1.413,09 s | **6.599 passed, 1 Linux-native skip**, 1.164,96 s | **216,442/216,115 ms; `diagnostic_budget_exceeded`** |
+
+Sekiz uyarı bilinçli inherited-PID/fork negatif testlerinin Python deprecation uyarılarıdır; bastırılmadı. Üç koşunun test edilen geçici merge checkout’ları (`102efef`, `edf5631`) GitHub commit API’siyle doğrulandı: parent’ları `50d68b1` ve `b0fb1f1`, ağaçları gerçek merge ağacıyla aynıdır.
+
+Üçüncü koşunun Linux startup cache p95 değeri 200 ms mutlak sınırını aştı; ADR-0019 gereği görünür tanı olarak saklandı ve **performans başarısı sayılmaz**. Aynı koşuda taban da 216,115 ms olduğundan bu aday-özel regresyon kanıtı değildir; host/CPU farkı (üçüncü koşu AMD EPYC 7763, ilk ikisi 9V74) ayrıca not edilir ama neden kanıtlanmadı. Hiçbir örnek çıkarılmadı, ölçüm yeşil aramak için tekrarlanmadı. Üç koşuda 12 süreçli Linux native upload kabulü **12/12 geçti**: en uzun süre 83,8045/87,8444/106,8630 s, en yüksek ek RSS üst sınırı 4.849.664/4.587.520/4.718.592 byte, çapraz boyut span üst sınırı 786.432/917.504/393.216 byte. Raw stream 16/256/1.024 MiB ve dört source-bound M5 reference doğrulaması (11 serisi) geçti; yeni yerel M5 ölçümü yapılmadı. 11 serisinin kullanıcı teyidiyle kabulü [yukarıdaki kayıtta](#5-kasım--kullanıcı-teyidi-ve-geçen-ölçümlerin-kabulü) ve ADR-0030 erteleme önerisinin uygulanmadığı kararı değişmedi.
+
+SonarCloud PR #14 kalite kapısı **OK**, açık issue **0**; yinelenen satır yoğunluğu 0,5 %, hotspot gözden geçirme 100 % (public API’den 2026-11-06’da okundu). Bu, Sonar kapısının geçtiği anlamına gelir; güvenlik/doğruluk garantisi değildir.
+
+### Başarısız ara koşuların saklama kapanışı
+
+[41990771680](https://github.com/HodeTech/Yorunge/actions/runs/41990771680) (head `03fe448`, iki attempt) ve [42058897706](https://github.com/HodeTech/Yorunge/actions/runs/42058897706) (head `21dd9d3`) üç ortam test aşamalarını geçti (Linux 3.11/3.14 6.600 passed, macOS 6.599 passed + 1 skip) ancak Linux 3.11 işinde **“Verify source-bound reference startup budgets”** adımı ve dolayısıyla `offline-core` reddetti: workflow hâlâ reddedilmiş startup09 referansını seçiyordu (iki job logunda komut `verify-startup-reference p02-2-reference-startup-09.json`, exit 1). Bu iki koşu başarısız kalır; sonradan başarıya çevrilmedi. Linux receipt’leri: 42058897706 cache p95 aday/taban 241,065/237,442 ms, 41990771680 attempt 1 229,720/228,976 ms (ikisi `diagnostic_budget_exceeded`), attempt 2 151,884/151,104 ms (`passed`; adım yine de seçili referans nedeniyle reddetti).
+
+Beş koşunun (üç başarılı, iki başarısız) **40 özgün native ZIP üyesi** ayrı kayıt olarak kalıcı arşive alındı: her Linux 3.11 işinin startup/receipt/baseline-witness kayıtları ile `installation_v3`, başarılı koşularda ayrıca raw stream ve 12 süreçli upload raporu, Linux 3.14 ve macOS `installation_v3` kayıtları. Her koşunun ZIP’i GitHub servis digest’i ve boyutuyla yeniden doğrulandı (16 ZIP). Kayıt adları `p02-2-ci<run>-…` biçimindedir; örneğin [son koşu Linux startup](evidence.md#p02-2-ci42108795043-linux311-startup) ve [upload](evidence.md#p02-2-ci42108795043-linux311-upload).
+
+İki özet kayıt işi, job metadata’sını, ZIP digest’lerini, kaynak bağlarını (tested checkout, pinned/etkin taban, raw SHA, receipt sonucu, runner imajı/CPU), 40 arşiv girdisinin SHA/boyutunu ve özgün job loglarının UTF-8/SHA/byte kaydını bağlar: [son üç PR koşusu](evidence.md#p02-2-pr14-final-ci-summary) ve [iki başarısız koşu](evidence.md#p02-2-pr14-failed-ci-summary). Bu audit’ler yeni test, ölçüm veya donanım attestasyonu değildir.
+
+**Açık saklama takibi (kullanıcı kararı gerekir):** 41990771680 attempt 2’nin Linux 3.11 job logu (job 127230734651; debug logging ile yeniden koşu) `##[debug]` checkout satırlarında bilinen kişisel Git yazar bilgisi taşıdığı için ADR-0029 yayım kapısı tarafından reddedildi. Özgün baytlar değiştirilmeden özel, erişimi sınırlı yerel quarantine’da (Git dışı) tutuluyor; public audit yalnız bu logun SHA-256/boyutunu ve job metadata’sını taşır, **metni yoktur** ve özgünün yerine geçmez. Yerel quarantine kalıcı kanıt sayılmaz; kullanıcı erişim kontrollü kalıcı yer veya dar retention kararı verene kadar bu tek log için saklama takibi açık kalır. Başarısız koşunun diğer bütün logları, ZIP’leri ve test/receipt kayıtları arşivdedir.
+
+### Merge CI ve kalıcı ölçüm kaydı
+
+[Merge CI 42118850899](https://github.com/HodeTech/Yorunge/actions/runs/42118850899), gerçek `94aaaf0` checkout’unda (`push`) üç hücre ve `offline-core` ile **başarılıdır**.
+
+| Ortam | Gerçek tam takım | Test süresi |
+|---|---|---|
+| Linux / Python 3.11 | **6.600 passed** | 1.026,13 s |
+| Linux / Python 3.14 | **6.600 passed**, 8 bilinçli inherited-PID/fork deprecation uyarısı | 1.454,90 s |
+| macOS / Python 3.11 | **6.599 passed, 1 Linux-native skip** | 1.400,37 s |
+
+Statik kontroller, belge/ajan/arşiv denetimleri, altı temiz wheel/sdist kurulumu, source-bound reference verifier’lar (11 serisi), gerçek Linux raw, startup raw/receipt/baseline witness guard ve 12 süreçli native upload geçti. Reference verifier yeni benchmark koşusu değildir. Linux ortamı AMD EPYC 9V45 96-Core Processor, Ubuntu image `20261101.360.1`, kernel `7.0.0-1017-azure`, x86_64; disk `unknown`. Startup cache p95 aday/taban **140,822/161,108 ms** ile geçti (witness `pinned_runtime`, taban `50d68b1`). Upload **12/12** geçti: en uzun 58,3591 s, ek RSS üst sınırı 4.456.448 byte, çapraz boyut span üst sınırı 917.504 byte. Raw stream ek RSS üst sınırı 16/256/1.024 MiB için 86.016/524.288/393.216 byte ve bütün boyutlar geçti. Bu tek host sonucu son PR koşularındaki 216,4 ms Linux tanısını değiştirmez veya bütün host’larda 200 ms garantisi üretmez.
+
+Merge’ün [startup](evidence.md#p02-2-pr14-development-merge-linux311-startup), [receipt](evidence.md#p02-2-pr14-development-merge-linux311-startup-diagnostic), [baseline witness](evidence.md#p02-2-pr14-development-merge-linux311-startup-baseline-selection), [raw](evidence.md#p02-2-pr14-development-merge-linux311-stream), [upload](evidence.md#p02-2-pr14-development-merge-linux311-upload) ve üç [installation](evidence.md#p02-2-pr14-development-merge-linux311-installation) kaydı özgün baytlarıyla kalıcı arşive alındı; [merge audit’i](evidence.md#p02-2-pr14-development-merge-ci-summary) merge parent’larını, run/job metadata’sını, üç ZIP’in servis digest’ini ve sekiz arşiv girdisinin hash’ini bağlar. Merge job loglarında gizlilik kapısı reddi yoktur.
+
+Toplam **48 özgün native kayıt** (40 PR koşusu + 8 merge) ve **üç audit** eklendi; katalog **476 → 527** oldu. Önceki 476 entry/özgün hash değişmedi. Kapsam P02-2 PR ve merge CI çıktılarının saklama yükümlülüğüdür; yukarıdaki tek job logu metni açık takip olarak ayrıdır.
+
+### Kapanış dalı ve sonraki kapsam
+
+Kullanıcının isteğiyle kapanış belgeleri/kanıtları, güncel `origin/development/94aaaf0` üzerinde açılmış **`feat/p02-3-dataset-recovery`** dalına commit edilir. Bu kapanış için ayrı PR açılmaz; sonraki P02-3 PR’ının parçası olarak incelenecektir. Runtime/test/script/workflow/lock kaynağı değiştirilmedi; yeni yerel tam takım, build veya benchmark koşusu bu belge kapanışında yapılmadı. Gerçek CI sonuçları ve önceki kaynak bağlı referanslar kendi sınırlarıyla kullanılır.
+
+Sıradaki epik **P02-3** henüz draft’tır; bu turda ürün kodu veya canlı EVREN çağrısı başlatılmadı. İlk hazırlık: [yorunge-plan-task](../../.agents/skills/yorunge-plan-task/SKILL.md) ile P02-3a/b/c’nin dar iş kartlarına bölünmesi, indirme/Range/ETag/verify seviyesi ve hedef güvenliği için gerekirse Proposed ADR’lerin kullanıcı onayına sunulmasıdır. Doğrulanmış kimlik/yetki bağı P02-R1’de, aynı içerikli çoklu-ad desteği P02-R2’de, izole performans kabulü P02-R3/ADR-0030’da (Proposed) açık kalır.

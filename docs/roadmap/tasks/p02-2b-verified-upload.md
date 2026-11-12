@@ -1,18 +1,18 @@
 ---
 id: P02-2b
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-2a]
 capabilities: [C03, C12, C13]
 ---
 # P02-2b — Bounded dosya gönderimi ve doğrulanmış confirm
 
-**Tarih:** 2026-11-02. [Paket planı](../p02-2-delivery-plan.md), [taslak referans](../../reference/dataset-transfer.md).
+**Tarih:** 2026-11-02. [Paket planı](../p02-2-delivery-plan.md), [transfer referansı](../../reference/dataset-transfer.md).
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile çalışma dalında verified, gerçek presign/confirm codec/producer ve ortak workflow d–w dilimlerinde yerel verified; üst teslimin nihai kabulü açıktır.
+Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile, gerçek presign/confirm codec/producer ve ortak workflow d–w dilimlerinde verified; üst teslimin nihai kabulü PR #14 ile kapandı (Teslim kaydı).
 
 ## Giren ve girmeyen kapsam
 
@@ -20,7 +20,7 @@ API proxy/direct signed target ayrımı, exact allowlist/header/expiry, descript
 
 ## Bağımlılıklar ve kararlar
 
-P02-2a gerçek current/intent kabulü ve Accepted [ADR-0025](../../decisions/0025-isolated-storage-streaming.md)/[0026](../../decisions/0026-explicit-unverified-transfer-attempts.md) gerekir. Default verified_only ile açık explicit_attempt risk/onay kapıları ayrı korunur. Mevcut proxy/strict consumer çalışma dalında yerel uygulanmıştır. [Accepted ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) ilk yolu tekil SHA-256’lı dosya kümeleriyle sınırlar; tekrarlar prepare/approve/yeni start öncesi yerel ret olur. Direct provider hedef/expiry/header ve aynı hash/farklı adın olumlu uzak desteği P02-R2’de açık; bu ilk yol için destek iddia edilmez. Son olumlu live/native/CI kabulü henüz kapanmadı. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
+P02-2a gerçek current/intent kabulü ve Accepted [ADR-0025](../../decisions/0025-isolated-storage-streaming.md)/[0026](../../decisions/0026-explicit-unverified-transfer-attempts.md) gerekir. Default verified_only ile açık explicit_attempt risk/onay kapıları ayrı korunur. Proxy/strict consumer uygulanmış ve development'tadır. [Accepted ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) ilk yolu tekil SHA-256’lı dosya kümeleriyle sınırlar; tekrarlar prepare/approve/yeni start öncesi yerel ret olur. Direct provider hedef/expiry/header ve aynı hash/farklı adın olumlu uzak desteği P02-R2’de açık; bu ilk yol için destek iddia edilmez. Native, CI ve dar canlı metadata kabulü kapandı (Teslim kaydı); bu, yetki, fiyat veya uzak byte doğrulaması değildir. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
 
 ## Sözleşme ve uygulama sınırı
 
@@ -41,6 +41,6 @@ Contract/loopback TLS/descriptor/process testleri ve byte sayan bağımsız serv
 
 ## Teslim kaydı
 
-D–w uygulaması ve her kaynak diliminin iki fresh review turu çalışma dalında tamamlandı. R5, ca0d29c/runtime07’de iki farklı PNG’nin tam accepted graph/exact metadata sonucudur; yetki/fiyat/uzak byte kanıtı değildir. Kullanıcı review düzeltmeleri sonrası [08 ilk ölçümleri](../../research/p02-2-implementation-validation.md#5-kasım--08-ilk-ölçümler-ve-açık-süre-kapıları) dataset/raw/upload ve iki temiz kurulumu geçti; startup/jobs süre kabulü açık. Önceki başarılı/başarısız kaynak sonuçları korunur; güncel reference kabulü yerine geçmez.
-
-Üst kart, son üç ortam CI/altı temiz kurulum ve yeni Linux çıktılarının kalıcı saklanması kapanana kadar draft kalır. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md) ve [current](../current.md#sıradaki-iş-ve-kalan-kapsam) gerçek kalan işi gösterir; P02-1 veya eski bir kaynak sonucu bu kabulün yerine sayılmaz.
+- PR/commit: [PR #14](https://github.com/HodeTech/Yorunge/pull/14); d–w uygulaması, kullanıcı review düzeltmeleri ve ölçüm/CI bağları son PR head’i [b0fb1f1](https://github.com/HodeTech/Yorunge/commit/b0fb1f1a6c5ef2648605267f122ccbff64b6cf13)’de tamamlandı. Kullanıcı tek development PR’ını **2026-11-06 01:07:58 Europe/Istanbul** tarihinde [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) merge commit’iyle birleştirdi; [merge/CI ve kanıt kaydı](../../research/p02-2-implementation-validation.md#development-merge-kapanışı).
+- Sonuç: Ayrı hedef politikası ve bounded descriptor streaming ile proxy presign/PUT/confirm, exact ad/boyut/SHA-256 metadata eşliği ve fiilî HTTP/kaynak sayaçları. 16/256/1.024 MiB ve 128 dosya kapasitesi için 12 süreçli native upload kabulü ile CI’ın altı temiz wheel/sdist kurulumu son kaynakta geçti; üst kart verified ve development’a teslim edildi.
+- Kalan sınır: Sonuç yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir (`authority_verified=false`, `pricing_verified=false`, remote bytes doğrulanmadı). Aynı SHA-256’lı farklı adlar P02-R2’de, doğrulanmış kimlik/yetki bağı P02-R1’de, etkili resume/indirme P02-3’te açıktır. Linux startup aşımı ADR-0019 kapsamında görünür tanıdır; M5 başarısı bütün host’lar için süre garantisi değildir. Development merge’ünü kullanıcı yaptı; Master/release ayrı kullanıcı sürecidir.

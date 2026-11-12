@@ -6,6 +6,7 @@ import socket
 import ssl
 import struct
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -42,6 +43,12 @@ class Reply:
     truncate_at: int | None = None
     after_first_chunk: Callable[[], None] | None = None
     reset_after_body: bool = False
+    # No Content-Length of its own (the body is delimited by the connection closing, or by headers
+    # the reply names itself).
+    omit_length: bool = False
+    # Bytes written after the declared body, on the same connection (a server that sends more
+    # than it promised).
+    trailing: bytes = b""
 
 
 Route = Reply | Callable[[RequestRecord, int], Reply]
@@ -119,7 +126,9 @@ class TlsServer:
         self.certificates, self.routes = certificates, routes
         self.requests: list[RequestRecord] = []
         self.disconnected = threading.Event()
+        self.route_errors: list[BaseException] = []
         self._lock = threading.Lock()
+        self._recorded = threading.Condition(self._lock)
         self._counts: dict[str, int] = {}
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -137,13 +146,22 @@ class TlsServer:
     ) -> LoopbackTransport:
         return LoopbackTransport(self.port, context or self.client_context(), hostname)
 
+    def wait_for_requests(self, count: int, timeout: float) -> bool:
+        with self._recorded:
+            return self._recorded.wait_for(lambda: len(self.requests) >= count, timeout)
+
     def _reply(self, record: RequestRecord) -> Reply:
         with self._lock:
             self.requests.append(record)
+            self._recorded.notify_all()
             count = self._counts.get(record.path, 0) + 1
             self._counts[record.path] = count
         route = self.routes.get(record.path, Reply(status=404, body=b""))
-        return route(record, count) if callable(route) else route
+        try:
+            return route(record, count) if callable(route) else route
+        except BaseException as error:  # an assertion in a provider fixture is the test's failure
+            self.route_errors.append(error)
+            raise
 
     def __enter__(self) -> TlsServer:
         owner = self
@@ -174,7 +192,8 @@ class TlsServer:
                 reply = owner._reply(record)
                 length = (
                     ()
-                    if any(name.lower() == "transfer-encoding" for name, _ in reply.headers)
+                    if reply.omit_length
+                    or any(name.lower() == "transfer-encoding" for name, _ in reply.headers)
                     else (("Content-Length", str(len(reply.body))),)
                 )
                 fields = (
@@ -206,9 +225,15 @@ class TlsServer:
                                 reply.after_first_chunk()
                             if reply.chunk_delay:
                                 time.sleep(reply.chunk_delay)
-                    if reply.truncate_at is not None:
+                    if reply.trailing and self.command != "HEAD":
+                        self.wfile.write(reply.trailing)
+                        self.wfile.flush()
+                    if reply.truncate_at is not None or reply.omit_length:
                         self.close_connection = True
                     if reply.reset_after_body:
+                        # The abort discards what is still unsent and, on Linux, may reach the
+                        # client before it has read the head: let it read what was written first.
+                        time.sleep(0.2)
                         self.connection.setsockopt(
                             socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
                         )
@@ -237,6 +262,13 @@ class TlsServer:
                     connection.close()
                     raise
 
+            def handle_error(self, request, client_address):
+                # A client that went away while a (deliberately slow) reply was pending is this
+                # fixture's ordinary business, not a traceback printed after the run.
+                if isinstance(sys.exc_info()[1], (ConnectionError, ssl.SSLError, TimeoutError)):
+                    return
+                super().handle_error(request, client_address)
+
             def finish_request(self, request, client_address):
                 # Handshake in the request worker, never in the listening thread.
                 # A peer cancelled between TCP and TLS must not block shutdown().
@@ -260,6 +292,11 @@ class TlsServer:
         self._server.server_close()
         self._thread.join(timeout=2)
         assert not self._thread.is_alive(), "TLS fixture did not stop"
+        if self.route_errors:
+            if exc[1] is not None:  # the test already failed: the fixture's error rides along
+                exc[1].add_note(f"a route of the fixture raised: {self.route_errors[0]!r}")  # type: ignore[attr-defined]
+            else:
+                raise AssertionError("a route of the fixture raised") from self.route_errors[0]
 
 
 @contextmanager

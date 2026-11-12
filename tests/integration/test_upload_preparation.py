@@ -167,6 +167,23 @@ def test_prepare_approve_revoke_real_journey(prepared_input, certificates, monke
     assert SECRET not in plan.encoded().decode() + repr(value) + caplog.text
 
 
+def test_the_connection_of_a_prepare_is_one_phase_of_thirty_seconds(prepared_input, certificates):
+    seen = []
+
+    def factory(key, budget):
+        seen.append(budget.end - time.monotonic())
+        return session(server, key, budget)[0]
+
+    state, _, _, context, profile = prepared_input
+    with TlsServer(certificates, routes()) as server:
+        value = composition.UploadPreparationRuntime(
+            context, profile, state, session_factory=factory
+        )
+        prepare(value, prepared_input)
+    assert len(seen) == 1
+    assert 25.0 < seen[0] <= 30.0  # the freshness rule of the reads: 30 seconds
+
+
 @pytest.mark.parametrize("admission", ["verified_only", "explicit_attempt"])
 def test_numeric_budget_remains_draft_without_provider_quote(
     prepared_input, certificates, admission

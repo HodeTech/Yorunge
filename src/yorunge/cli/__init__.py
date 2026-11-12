@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, TypeAlias, TypeVar, cast, overload
 
@@ -16,7 +16,15 @@ if TYPE_CHECKING:
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
+    from yorunge.domain.dataset_version import (
+        DatasetVersionBound,
+        DatasetVersionCheck,
+        DatasetVersionList,
+        DatasetVersionObservation,
+    )
     from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.download import DownloadSummary
+    from yorunge.domain.errors import YorungeError
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlans,
@@ -34,7 +42,9 @@ if TYPE_CHECKING:
         DatasetUploadsPage,
         DatasetUploadSummary,
         UploadIntentReview,
+        UploadSummary,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
     CliResult: TypeAlias = (
         Result[Plan]
@@ -46,7 +56,14 @@ if TYPE_CHECKING:
         | Result[PlatformContextDiscovery]
         | Result[DatasetInspection]
         | Result[DatasetVerification]
+        | Result[DatasetVersionList]
+        | Result[DatasetVersionObservation]
+        | Result[DatasetVersionBound]
+        | Result[DatasetVersionCheck]
+        | Result[DownloadSummary]
         | Result[DatasetUploadSummary]
+        | Result[UploadSummary]
+        | Result[DatasetUploadResumeReport]
         | Result[UploadIntentReview]
         | Result[DatasetUploadsPage]
         | Result[StateInfo]
@@ -164,7 +181,16 @@ def parser() -> Parser:
     add("plan", "Çevrimdışı plan; yürütme başlatmaz", _plan_options)
     add("train", "LLM eğitim planı (eğitim çalıştırmaz)", _train_options)
     add("jobs", "Son yerel iş kayıtlarını göster; uzak durumu sorgulamaz", _jobs_options)
-    add("datasets", "Yerel veri manifestleri ve private dataset aktarımı", _datasets_options)
+    add(
+        "datasets",
+        "Yerel veri manifestleri, private dataset aktarımı ve veri sürümü referansları",
+        _datasets_options,
+    )
+    add(
+        "models",
+        "Model sürümü ağırlığı indir (kesin sürüm kimliğiyle, ezmeden, doğrulama seviyesi görünür)",
+        _models_options,
+    )
     return root
 
 
@@ -190,6 +216,19 @@ def _datasets_options(datasets: Parser) -> None:
     from yorunge.cli.upload import configure
 
     upload._configure = configure
+
+    versions = actions.add_parser(
+        "versions", help="Veri sürümlerini listele, göster, değişmez referansa bağla ve denetle"
+    )
+    from yorunge.cli.versions import configure as configure_versions
+
+    versions._configure = configure_versions
+
+
+def _models_options(models: Parser) -> None:
+    from yorunge.cli.models import configure
+
+    configure(models)
 
 
 def _doctor_options(doctor: Parser) -> None:
@@ -264,10 +303,18 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         from yorunge.cli.upload import SINGLETONS
 
         _reject_duplicates(arguments, SINGLETONS)
+    elif args.command == "datasets" and args.action == "versions":
+        from yorunge.cli.versions import SINGLETONS as VERSION_SINGLETONS
+
+        _reject_duplicates(arguments, VERSION_SINGLETONS)
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
         )
+    elif args.command == "models":
+        from yorunge.cli.models import SINGLETONS as MODEL_SINGLETONS
+
+        _reject_duplicates(arguments, MODEL_SINGLETONS)
 
 
 def _context_options(context: Parser) -> None:
@@ -442,10 +489,18 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
         if args.action == "upload":
             from yorunge.cli.upload import text
 
-            return text(data)
+            return text(data, getattr(args, "resume_hint", None))
+        if args.action == "versions":
+            from yorunge.cli.versions import text as versions_text
+
+            return versions_text(data)
         return dataset_text_result(args, data)
     if args.command == "jobs":
         return jobs_text_result(data)
+    if args.command == "models":
+        from yorunge.cli.models import text as models_text
+
+        return models_text(data)
     if args.command == "context" and args.action == "discover":
         return discovery_text_result(data)
     return text_result(data)
@@ -693,8 +748,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from yorunge.domain.errors import YorungeError
 
-    upload_guidance = args.command == "datasets" and args.action == "upload"
-    renderer = OutputRenderer(vars(args).get("output", "text"), upload_guidance=upload_guidance)
+    renderer = _command_renderer(args)
     try:
         result = dispatch(args)
     except YorungeError as error:
@@ -703,6 +757,44 @@ def main(argv: Sequence[str] | None = None) -> int:
         return renderer.error(YorungeError("request_cancelled"))
     except (OSError, UnicodeError):
         return renderer.error(YorungeError("file_unreadable"))
+    return _render_result(args, renderer, result)
+
+
+def _command_renderer(args: argparse.Namespace) -> OutputRenderer:
+    """The renderer of one parsed command: its output mode and the guidance only it can give."""
+    upload_guidance = args.command == "datasets" and args.action == "upload"
+    hints = _error_hints(args, upload_guidance)
+    requested = vars(args).get("operation_id") if upload_guidance else None
+    return OutputRenderer(
+        vars(args).get("output", "text"),
+        upload_guidance=upload_guidance,
+        error_hints=hints,
+        requested_operation_id=requested if isinstance(requested, str) else None,
+    )
+
+
+def _error_hints(
+    args: argparse.Namespace, upload_guidance: bool
+) -> Mapping[str, str | Callable[[YorungeError], str | None]] | None:
+    """What a person is told, in text, of the errors this command meets in its own way."""
+    if upload_guidance and vars(args).get("upload_action") == "resume":
+        from yorunge.cli.upload import RESUME_ERROR_HINTS
+
+        return RESUME_ERROR_HINTS
+    if args.command == "models":
+        from yorunge.cli.models import error_hints
+
+        return error_hints(args)
+    if args.command == "datasets" and args.action == "versions":
+        from yorunge.cli.versions import ERROR_HINTS
+
+        return ERROR_HINTS
+    return None
+
+
+def _render_result(args: argparse.Namespace, renderer: OutputRenderer, result: CliResult) -> int:
+    """Write the result of a command that succeeded; a failure to write it is reported instead."""
+    from yorunge.domain.errors import YorungeError
 
     try:
         if args.command == "datasets" and args.action == "upload":
@@ -792,6 +884,10 @@ def datasets_result(args: argparse.Namespace) -> CliResult:
         from yorunge.cli.upload import dispatch as upload_result
 
         return upload_result(args)
+    if args.action == "versions":
+        from yorunge.cli.versions import dispatch as versions_result
+
+        return versions_result(args)
     reject_context(args, ("config", "profile", "project"))
     from yorunge.adapters.dataset_files import anchor_dataset_paths
 
@@ -810,6 +906,10 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         return datasets_result(args)
     if args.command == "state":
         return state_result(args)
+    if args.command == "models":
+        from yorunge.cli.models import dispatch as models_result
+
+        return models_result(args)
     if args.command == "jobs":
         reject_context(args, ("config", "profile", "project"))
         if args.action == "show":

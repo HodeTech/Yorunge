@@ -1,6 +1,6 @@
 # Kullanıcı yolculukları
 
-**Güncellendi:** 2026-11-02. **Durum:** Uçtan uca hedef deneyimler. Yerel context/capability/plan, config/profil/doctor, credential/state, execution hazırlığı/onayı ve jobs; ortak HTTP/NDJSON, sınırlı salt okunur hizmet keşfi ve yerel dataset inspect/verify development’a teslim edildi. Keşif uzak kimlik/yazma yetkisi üretmez. [Uygulanan CLI sınırı](reference/cli-contract.md#uygulanan-alt-küme) kanoniktir; aşağıdaki tam upload/çıkarım/eğitim yolculukları henüz uygulanmadı. [P02-2 planı](roadmap/p02-2-delivery-plan.md) private upload hazırlığını ve açık karar/otorite kapılarını gösterir.
+**Güncellendi:** 2026-11-12. **Durum:** Uçtan uca hedef deneyimler. Yerel context/capability/plan, config/profil/doctor, credential/state, execution hazırlığı/onayı ve jobs; ortak HTTP/NDJSON, sınırlı salt okunur hizmet keşfi, yerel dataset inspect/verify ve farklı içerikli dosyalar için onaylı private upload ile aynı-ID salt okuma uzlaştırması development’a teslim edildi. Keşif ve upload sonucu uzak kimlik/yazma yetkisi, fiyat veya uzaktan byte doğrulaması üretmez. [Uygulanan CLI sınırı](reference/cli-contract.md#uygulanan-alt-küme) kanoniktir; etkili resume (`datasets upload resume`), `models download` ve `datasets versions` yolculukları çalışma dalında uygulandı (PR incelemesinde; canlı hesap kabulü yoktur); dataset öğesi indirme/uzak byte doğrulaması, çıkarım ve eğitim yolculukları henüz uygulanmadı; dataset baytlarının API anahtarıyla indirilememesi nedeniyle uzak byte doğrulaması [P02-R5](roadmap/tasks/p02-r5-dataset-item-byte-access.md)’e bağlıdır. [P02-2 planı](roadmap/p02-2-delivery-plan.md) teslim edilen private upload paketini ve açık karar/otorite sınırlarını gösterir.
 
 ## 1. İlk bağlantı
 
@@ -10,7 +10,7 @@ Kullanıcı profili seçer, gerekli hizmetin anahtarını ortam/işletim sistemi
 
 ## 2. Klasörü veri setine dönüştürmek
 
-Klasör seç → dosya/format/hash denetimi → ad ve görünürlük özeti → yükleme planı → aktarım → uzak/yerel doğrulama → veri seti kimliği ve rapor. Kesintide yeni veri seti açmak yerine önceki işlem uzlaştırılır. Aynı boyutta değişen dosya ve kök dışı symlink açıkça bildirilir.
+Klasör seç → dosya/format/hash denetimi → ad ve görünürlük özeti → yükleme planı → aktarım → uzak/yerel doğrulama → veri seti kimliği ve rapor. Kesintide yeni veri seti açmak yerine önceki işlem uzlaştırılır ya da kalan işi `resume` raporu gösterir: `show` bir `unknown` işin sonraki komutunu söyler, `resume` neyin gönderilmediğini/belirsiz kaldığını ve neden devam edilemediğini (engel başına tek cümle neden ve sonraki adım) okur ve yazmaz, `resume --prepare` yalnız kalan dosyalar için devam planı kaydeder ve `review`, `approve`, `start` ile bitirilir; ikinci bir kesintide aynı yol devamın kendi operation’ı için yinelenir. Aynı boyutta değişen dosya ve kök dışı symlink açıkça bildirilir. Sonrasında `datasets versions list|show` bir veri setinin sürümlerini gösterir, `bind` seçilen dondurulmuş sürümün sağlayıcı metadata’sını bir dosyaya sabitler (yerel Manifest ile dosya sayısı eşliği üyelik kanıtı değildir), `check` sağlayıcıdaki sürümün hâlâ aynı olduğunu söyler; hiçbiri içerik, üyelik ya da model uygunluğu iddia etmez ([başvuru](reference/dataset-versions.md)).
 
 **Kabul:** Büyük dosya akışlı gider; ilerleme gerçek aktarılan bayta dayanır; `done` günlüğü tek başına başarı kanıtı olmaz; son çıktı eksik dosyaları belirtir. Yalnız veri taşımak isteyen kullanıcı eğitim aracı kurmaz.
 
@@ -22,7 +22,7 @@ Klasör seç → dosya/format/hash denetimi → ad ve görünürlük özeti → 
 
 ## 4. EVREN'de yönetilen eğitim
 
-Veri seti sürümü → proje ve desteklenen mimari → hiperparametre/hesaplama seçimi → tahmin ve onay → başlatma → izleme → metrik ve ağırlık indirme. Veri sürümü ve plan kimliği iş kaydına bağlanır. Kullanıcı bağlantıyı kaybedip döndüğünde işin kimliği ve son durumu bulunur.
+Veri seti sürümü → proje ve desteklenen mimari → hiperparametre/hesaplama seçimi → tahmin ve onay → başlatma → izleme → metrik ve ağırlık indirme. Veri sürümü ve plan kimliği iş kaydına bağlanır. Kullanıcı bağlantıyı kaybedip döndüğünde işin kimliği ve son durumu bulunur. Bir model sürümünün ağırlığı kesin sürüm kimliği (Platform arayüzündeki model sürümü sayfasından) ve biçimiyle `models download` ile yeni bir dosyaya indirilir: var olan dosya ezilmez, yarım kalan indirme (güçlü ETag ve bilinen toplam boyut varsa) aynı komutla devam eder ve sonuç, baytların kullanıcının kendi `--sha256` değeriyle eşleşip eşleşmediğini (`sha256_matched`) ya da yalnız aktarımın tamamlandığını (`transfer_complete`) açıkça söyler; seviye nesnenin özgünlüğü, lisansı ya da model uygunluğu değildir ([başvuru](reference/download-engine.md)).
 
 **Kabul:** Tahmin ve gerçek maliyet ayrı; belirsiz POST ikinci işi başlatmaz; durdurma etkisi açık; bilinmeyen durum başarı diye çevrilmez. Bu akış EVREN'in yönetilen hizmetidir; haricî LLM aracının seçimi bu hizmetin eğitim motorunu değiştirmez.
 

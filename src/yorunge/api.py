@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, overload
@@ -36,10 +36,18 @@ if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
+    from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
     from yorunge.domain.dataset_upload import UploadOwner, UploadParameters
     from yorunge.domain.dataset_upload_v2 import AdmissionPolicy, DatasetUploadPlanV2
+    from yorunge.domain.dataset_version import (
+        DatasetVersionBound,
+        DatasetVersionCheck,
+        DatasetVersionList,
+        DatasetVersionObservation,
+    )
     from yorunge.domain.discovery import ContextDiscovery
+    from yorunge.domain.download import DownloadSummary
     from yorunge.domain.execution import (
         ExecutionApprovalState,
         ExecutionPlan,
@@ -56,7 +64,9 @@ if TYPE_CHECKING:
         DatasetUploadsPage,
         DatasetUploadSummary,
         UploadIntentReview,
+        UploadSummary,
     )
+    from yorunge.domain.upload_resume_report import DatasetUploadResumeReport
 
 
 class Request(Model):
@@ -1207,7 +1217,7 @@ def show_dataset_upload(
     plan_id: str | None = None,
     operation_id: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Read one durable upload summary; no credentials or network are needed."""
     from yorunge.adapters.upload_public import show_upload
 
@@ -1242,7 +1252,7 @@ def revoke_dataset_upload(
     plan_id: str,
     *,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Revoke the saved approval locally; an issued permit is not recalled."""
     from yorunge.adapters.upload_public import revoke_upload
 
@@ -1262,7 +1272,7 @@ def _upload_options(config: Path | None, profile: str | None) -> None:
 def _upload_context(
     config: Path | None,
     profile: str | None,
-    plan: DatasetUploadPlanV2,
+    plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
 ) -> tuple[Context, Profile]:
     return _context(
         config, Request(profile=profile or plan.scope.profile, project=plan.scope.project_id), None
@@ -1309,11 +1319,16 @@ def approve_dataset_upload(
     *,
     accept_unverified_authority: bool = False,
     accept_unpriced_cost: bool = False,
+    accept_unconfirmed_effects: bool = False,
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
-    """Recheck current files/context before recording exact digest/risk consent."""
+) -> Result[UploadSummary]:
+    """Recheck current files/context before recording exact digest/risk consent.
+
+    ``accept_unconfirmed_effects`` exists for a continuation plan whose files include some whose
+    last confirm may or may not have landed; it is required exactly then and refused otherwise.
+    """
     from yorunge.adapters.upload_api import approve_upload
 
     _upload_options(config, profile)
@@ -1324,6 +1339,7 @@ def approve_dataset_upload(
         state_dir,
         authority=accept_unverified_authority,
         unpriced=accept_unpriced_cost,
+        unconfirmed=accept_unconfirmed_effects,
     )
 
 
@@ -1333,12 +1349,46 @@ def start_dataset_upload(
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Run a new original workflow once; existing operations are local lookups."""
     from yorunge.adapters.upload_api import start_upload
 
     _upload_options(config, profile)
     return start_upload(plan_id, lambda plan: _upload_context(config, profile, plan), state_dir)
+
+
+def resume_dataset_upload(
+    operation_id: str,
+    *,
+    prepare: bool = False,
+    accept_unverified_read: bool = False,
+    accept_unconfirmed_effects: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetUploadResumeReport]:
+    """What an interrupted upload still needs; with ``prepare``, the plan that continues it.
+
+    The default is a read-only report: it answers with the same shape whether the source can be
+    continued or not (what rules it out is in ``blockers``) and stores no plan, operation or
+    upload record. ``prepare`` makes the same observation and, only without blockers, saves the
+    local plan; it is an error (``continuation_not_possible``, or ``operation_conflict`` naming
+    the operation in the way)
+    otherwise. ``accept_unverified_read`` is the human's choice to read the dataset on an explicit
+    attempt; ``accept_unconfirmed_effects`` belongs to ``prepare`` and to files whose last confirm
+    was sent without an answer.
+    """
+    from yorunge.adapters.upload_api import resume_upload
+
+    _upload_options(config, profile)
+    return resume_upload(
+        operation_id,
+        lambda plan: _upload_context(config, profile, plan),
+        state_dir,
+        prepare=prepare,
+        accept_unverified_read=accept_unverified_read,
+        accept_unconfirmed_effects=accept_unconfirmed_effects,
+    )
 
 
 def reconcile_dataset_upload(
@@ -1348,7 +1398,7 @@ def reconcile_dataset_upload(
     config: Path | None = None,
     profile: str | None = None,
     state_dir: Path | None = None,
-) -> Result[DatasetUploadSummary]:
+) -> Result[UploadSummary]:
     """Inspect the same resource through a new bounded read; never resumes writes."""
     from yorunge.adapters.upload_api import recover_upload
 
@@ -1358,4 +1408,120 @@ def reconcile_dataset_upload(
         lambda plan: _upload_context(config, profile, plan),
         state_dir,
         accepted=accept_unverified_read,
+    )
+
+
+def _platform_loader(
+    config: Path | None, profile: str | None
+) -> Callable[[], tuple[Context, Profile]]:
+    request = validate(
+        CredentialRequest,
+        {"service_id": "evren-platform", "profile": profile, "project": None},
+        "invalid_request",
+    )
+    if config is not None and not isinstance(config, Path):
+        raise YorungeError("invalid_request")
+    return lambda: _context(config, request, None)
+
+
+def list_dataset_versions(
+    dataset_id: str,
+    *,
+    page: int = 1,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetVersionList]:
+    """One page (1-10 000) of a dataset's versions; read-only, one request."""
+    from yorunge.adapters.dataset_version_api import list_dataset_versions as use
+
+    return use(dataset_id, page, _platform_loader(config, profile), state_dir)
+
+
+def show_dataset_version(
+    dataset_id: str,
+    version_tag: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetVersionObservation]:
+    """One version from its detail and its split counts (two requests, which must agree)."""
+    from yorunge.adapters.dataset_version_api import show_dataset_version as use
+
+    return use(dataset_id, version_tag, _platform_loader(config, profile), state_dir)
+
+
+def bind_dataset_version(
+    dataset_id: str,
+    version_tag: str,
+    *,
+    binding_out: Path,
+    manifest: Path | None = None,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetVersionBound]:
+    """Bind a frozen version into a new file; never overwrites, never writes remotely."""
+    from yorunge.adapters.dataset_version_api import bind_dataset_version as use
+
+    return use(
+        dataset_id,
+        version_tag,
+        binding_out,
+        manifest,
+        _platform_loader(config, profile),
+        state_dir,
+    )
+
+
+def check_dataset_version(
+    binding: Path,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+) -> Result[DatasetVersionCheck]:
+    """``unchanged`` if the provider still shows what the binding holds; else a closed error."""
+    from yorunge.adapters.dataset_version_api import check_dataset_version as use
+
+    return use(binding, _platform_loader(config, profile), state_dir)
+
+
+def download_model_weights(
+    version_id: str,
+    *,
+    artifact_format: str,
+    weights_out: Path,
+    fold: int | None = None,
+    sha256: str | None = None,
+    timeout: int | None = None,
+    no_resume: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+    progress: Callable[[int, int | None], None] | None = None,
+) -> Result[DownloadSummary]:
+    """Download the weights of one exact model version into a new file; never overwrites.
+
+    ``artifact_format`` is ``onnx``, ``pt`` or ``tflite`` (never guessed). ``sha256`` is the
+    caller's own expected digest: only with it do the written bytes earn ``sha256_matched``;
+    without it the result says no more than ``transfer_complete``. ``timeout`` is whole seconds
+    (30-3600, default 900) for the download; a partial download of the same thing resumes unless
+    ``no_resume``. ``progress(bytes_written, total_or_None)`` is called while the body is
+    received, at most ten times a second, and must return quickly.
+    """
+    from yorunge.adapters.model_download import download_model_weights as use
+
+    return use(
+        version_id,
+        artifact_format,
+        weights_out,
+        fold,
+        sha256,
+        timeout,
+        no_resume,
+        _platform_loader(config, profile),
+        state_dir,
+        progress,
     )

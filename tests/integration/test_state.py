@@ -722,6 +722,96 @@ def test_key_symlinks_are_rejected_without_following(tmp_path, part):
     assert saved.exists()
 
 
+def sidecar_seen_as(monkeypatch, sidecar, how):
+    """What one look at ``sidecar`` shows while another process's commit removes it.
+
+    ``gone``: the name is already unlinked (what a look after a separate existence check sees).
+    ``unlinking``: the name is still there, with no link left (``st_nlink == 0``).
+    """
+    real, looked = Path.lstat, []
+
+    def look(self, *args, **kwargs):
+        if self.name != sidecar.name:
+            return real(self, *args, **kwargs)
+        looked.append(self)
+        if how == "gone":
+            self.unlink()
+            return real(self, *args, **kwargs)
+        info = real(self, *args, **kwargs)
+        return os.stat_result(
+            (info.st_mode, info.st_ino, info.st_dev, 0, info.st_uid, info.st_gid, info.st_size)
+            + (0, 0, 0)
+        )
+
+    monkeypatch.setattr(Path, "lstat", look)
+    return looked
+
+
+@pytest.mark.parametrize("how", ["gone", "unlinking"])
+@pytest.mark.parametrize("opener", [state.open_existing_store, open_store])
+def test_a_rollback_journal_committed_away_while_it_is_checked_is_not_an_invalid_store(
+    tmp_path, monkeypatch, opener, how
+):
+    # Another process's commit deletes its journal at any moment, and a look at it can land before
+    # the name is gone but after its last link: the store is the same valid store.
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    journal = root / (DB_NAME + "-journal")
+    journal.write_bytes(b"")
+    journal.chmod(0o600)
+    looked = sidecar_seen_as(monkeypatch, journal, how)
+    with opener(root) as store:
+        assert store.info.store_schema_version == len(state_schema.MIGRATIONS)
+    assert looked
+    assert set(looked) == {journal}
+
+
+def test_only_a_rollback_journal_is_forgiven_for_having_no_link_left(tmp_path, monkeypatch):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    wal = root / (DB_NAME + "-wal")
+    wal.write_bytes(b"")
+    wal.chmod(0o600)
+    looked = sidecar_seen_as(monkeypatch, wal, "unlinking")
+    with pytest.raises(YorungeError) as failure:
+        state.check_header(root / DB_NAME)
+    assert failure.value.code == "state_invalid"
+    assert looked
+
+
+@pytest.mark.parametrize(
+    "kind", ["journal-mode", "journal-link", "journal-dir", "wal", "shm", "wal-link"]
+)
+def test_a_present_but_unsafe_sidecar_file_is_still_an_invalid_store(tmp_path, kind):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    name = DB_NAME + ("-journal" if kind.startswith("journal") else f"-{kind.split('-')[0]}")
+    sidecar = root / name
+    if kind.endswith("-link"):
+        sidecar.symlink_to(root / "missing-target")
+    elif kind.endswith("-dir"):
+        sidecar.mkdir()
+    else:
+        sidecar.write_bytes(b"")
+        sidecar.chmod(0o644 if kind == "journal-mode" else 0o600)
+    before = (root / DB_NAME).read_bytes()
+    with pytest.raises(YorungeError) as failure:
+        state.check_header(root / DB_NAME)
+    assert failure.value.code == "state_invalid"
+    assert (root / DB_NAME).read_bytes() == before
+    assert sidecar.is_symlink() or sidecar.exists()
+
+
+def test_a_private_empty_journal_alone_is_not_an_invalid_header(tmp_path):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    journal = root / (DB_NAME + "-journal")
+    journal.write_bytes(b"")
+    journal.chmod(0o600)
+    state.check_header(root / DB_NAME)
+    assert journal.exists()
+
+
 def test_hardlinked_database_is_not_opened(tmp_path):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)

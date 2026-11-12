@@ -16,6 +16,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import zlib
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
@@ -51,6 +52,7 @@ INSTALL_CHECKS = (
     "jobs_smoke",
 )
 INSTALL_CHECKS_V3 = (*INSTALL_CHECKS, "upload_smoke")
+INSTALL_CHECKS_V4 = (*INSTALL_CHECKS_V3, "resume_smoke", "versions_smoke", "download_smoke")
 JOBS_REFERENCE = {
     "cpu": "Apple M5 Max",
     "disk_type": "internal SSD/APFS",
@@ -742,21 +744,28 @@ def stream_summary_v2(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_INSTALLATION_FIELDS = "schema_version report_kind source_commit environment results passed"
+_INSTALLATION_ROW_FIELDS = "archive sha256 members "
+_INSTALLATION_ENVIRONMENT = "installation environment must be an object"
+_INSTALLATION_PAIR = "one wheel and one sdist installation are required"
+_INSTALLATION_UNIQUE = "installation artifacts must be unique wheel and sdist"
+
+
 def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
-        "schema_version report_kind source_commit environment results passed",
+        _INSTALLATION_FIELDS,
         "installation",
     )
     pattern_value(report["source_commit"], COMMIT)
     if not isinstance(report["environment"], dict):
-        raise ValueError("installation environment must be an object")
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
     results = report["results"]
     if not isinstance(results, list) or len(results) != 2:
-        raise ValueError("one wheel and one sdist installation are required")
+        raise ValueError(_INSTALLATION_PAIR)
     kinds = [installation_row(row) for row in results]
     if set(kinds) != {"wheel", "sdist"}:
-        raise ValueError("installation artifacts must be unique wheel and sdist")
+        raise ValueError(_INSTALLATION_UNIQUE)
     passed = all(
         row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS[1:])
         for row in results
@@ -771,7 +780,7 @@ def installation_summary(report: dict[str, Any]) -> dict[str, Any]:
 
 
 def installation_row(value: object) -> str:
-    row = closed(value, "archive sha256 members " + " ".join(INSTALL_CHECKS), "installation result")
+    row = closed(value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS), "installation result")
     archive = text_value(row["archive"])
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*", archive) is None or ".." in archive:
         raise ValueError("invalid installation artifact filename")
@@ -798,7 +807,7 @@ def installation_row(value: object) -> str:
 def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
     closed(
         report,
-        "schema_version report_kind source_commit environment results passed",
+        _INSTALLATION_FIELDS,
         "installation v3",
     )
     if (
@@ -809,13 +818,13 @@ def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("unknown installation v3 schema")
     pattern_value(report["source_commit"], COMMIT)
     if not isinstance(report["environment"], dict):
-        raise ValueError("installation environment must be an object")
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
     results = report["results"]
     if not isinstance(results, list) or len(results) != 2:
-        raise ValueError("one wheel and one sdist installation are required")
+        raise ValueError(_INSTALLATION_PAIR)
     kinds = [installation_row_v3(row) for row in results]
     if set(kinds) != {"wheel", "sdist"}:
-        raise ValueError("installation artifacts must be unique wheel and sdist")
+        raise ValueError(_INSTALLATION_UNIQUE)
     passed = all(
         row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V3[1:])
         for row in results
@@ -831,7 +840,7 @@ def installation_summary_v3(report: dict[str, Any]) -> dict[str, Any]:
 
 def installation_row_v3(value: object) -> str:
     row = closed(
-        value, "archive sha256 members " + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
+        value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS_V3), "installation v3 result"
     )
     kind = installation_row({key: item for key, item in row.items() if key != "upload_smoke"})
     if not isinstance(row["upload_smoke"], str) or row["upload_smoke"] not in {
@@ -840,6 +849,56 @@ def installation_row_v3(value: object) -> str:
         "not_run_unsupported_platform",
     }:
         raise ValueError("unknown installation upload smoke status")
+    return kind
+
+
+def installation_summary_v4(report: dict[str, Any]) -> dict[str, Any]:
+    closed(
+        report,
+        _INSTALLATION_FIELDS,
+        "installation v4",
+    )
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 4
+        or report["report_kind"] != "installation_v4"
+    ):
+        raise ValueError("unknown installation v4 schema")
+    pattern_value(report["source_commit"], COMMIT)
+    if not isinstance(report["environment"], dict):
+        raise ValueError(_INSTALLATION_ENVIRONMENT)
+    results = report["results"]
+    if not isinstance(results, list) or len(results) != 2:
+        raise ValueError(_INSTALLATION_PAIR)
+    kinds = [installation_row_v4(row) for row in results]
+    if set(kinds) != {"wheel", "sdist"}:
+        raise ValueError(_INSTALLATION_UNIQUE)
+    passed = all(
+        row["origin_verified"] and all(row[key] == "passed" for key in INSTALL_CHECKS_V4[1:])
+        for row in results
+    )
+    flag(report["passed"], passed)
+    return {
+        "kind": "installation_v4",
+        "cases": 2,
+        "passed": passed,
+        "checks": check_counts(results, INSTALL_CHECKS_V4),
+    }
+
+
+def installation_row_v4(value: object) -> str:
+    row = closed(
+        value, _INSTALLATION_ROW_FIELDS + " ".join(INSTALL_CHECKS_V4), "installation v4 result"
+    )
+    added = INSTALL_CHECKS_V4[len(INSTALL_CHECKS_V3) :]
+    kind = installation_row_v3({key: item for key, item in row.items() if key not in added})
+    for name in added:
+        if not isinstance(row[name], str) or row[name] not in {
+            "passed",
+            "failed",
+            "not_run_unsupported_platform",
+        }:
+            raise ValueError(f"unknown installation {name} status")
     return kind
 
 
@@ -1149,6 +1208,12 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
     if kind == "rejected_upload_evidence_v1" and version == 1:
         diagnostic = runpy.run_path(str(Path(__file__).with_name("upload_diagnostic.py")))
         return diagnostic["summarize"](report)  # type: ignore[no-any-return]
+    if kind == "download_budget_v1" and version == 1:
+        download = runpy.run_path(str(Path(__file__).with_name("download_evidence.py")))
+        return download["summarize_report"](report)  # type: ignore[no-any-return]
+    if kind == "rejected_download_evidence_v1" and version == 1:
+        retained = runpy.run_path(str(Path(__file__).with_name("download_diagnostic.py")))
+        return retained["summarize"](report)  # type: ignore[no-any-return]
     if kind == "raw_stream_budget_v1" and version == 1:
         return stream_summary(report)
     if kind == "raw_stream_budget_v2" and version == 2:
@@ -1157,6 +1222,8 @@ def typed_summary(report: dict[str, Any]) -> dict[str, Any]:
         return installation_summary(report)
     if kind == "installation_v3" and version == 3:
         return installation_summary_v3(report)
+    if kind == "installation_v4" and version == 4:
+        return installation_summary_v4(report)
     if kind == "startup_evidence_v1" and version == 1:
         startup = runpy.run_path(str(Path(__file__).with_name("startup_evidence.py")))
         return startup["validate"](report)  # type: ignore[no-any-return]
@@ -1293,6 +1360,9 @@ def index_text(entries: list[dict[str, Any]]) -> str:
         "Bu indeks manifest ve özgün JSON baytlarından üretilir.",
         "Arşiv biçimi ve sınırlar [kanıt standardındadır](../standards/research-evidence.md).",
         "Eski başarısız ölçümler ve tanılar korunur; güncel kabul ayrıca incelenir.",
+        "`p02-3-reference-*-N` serilerinden yalnız en yüksek numaralı olan bugünkü kaynağa "
+        "bağlıdır; öncekiler tarihsel kayıttır ve doğrulayıcıları bugünkü kaynağa karşı bilerek "
+        "geçmez.",
         "Gzip dosyaları Git checkout'unda tutulur; sdist/wheel içine girmez.",
         "",
     ]
@@ -1668,6 +1738,37 @@ def verify_upload_reference(root: Path, name: str) -> dict[str, Any]:
     return {"name": name, "source_commit": report["source_commit"], **summary}
 
 
+def verify_download_reference(root: Path, name: str) -> dict[str, Any]:
+    if NAME.fullmatch(name) is None:
+        raise ValueError("invalid download reference evidence name")
+    verify(root)
+    directory = research_directory(root)
+    item = next((item for item in catalog(directory) if item["name"] == name), None)
+    if item is None:
+        raise ValueError("unknown download reference evidence name")
+    report = decode(unpack(directory, item))
+    helper = runpy.run_path(str(Path(__file__).with_name("download_evidence.py")))
+    summary: dict[str, Any] = helper["summarize_report"](report)
+    # A smoke subset can pass every rule it has and still is no reference: accepted, not passed.
+    if not summary["accepted"]:
+        raise ValueError("download reference requires an accepted run of twelve measurements")
+    environment, runtime = report["environment"], report["runs"][0]["client"]["runtime"]
+    if (
+        environment != {name: JOBS_REFERENCE[name] for name in ("cpu", "disk_type")}
+        or runtime["machine"] != JOBS_REFERENCE["machine"]
+        or not runtime["os"].startswith(JOBS_REFERENCE["platform_prefix"])
+        or not runtime["python"].startswith(JOBS_REFERENCE["python_prefix"])
+    ):
+        raise ValueError("download proof does not declare configured M5 reference runtime")
+    current = helper["source"](root)["source_sha256"]
+    for field in ("source_before", "source_after"):
+        if report["provenance"][field]["source_sha256"] != current:
+            raise ValueError("download reference differs from complete current source bytes")
+    if report["provenance"]["locked_runtime"] != helper["STREAM"]["locked_runtime"](root):
+        raise ValueError("download reference runtime differs from current frozen lock")
+    return {"name": name, "source_commit": report["source_commit"], **summary}
+
+
 def replace_metadata(path: Path, content: bytes) -> None:
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("metadata target must be a regular file")
@@ -1825,7 +1926,12 @@ def archive_rejected_startup(
 
 
 def publication_context(args: argparse.Namespace) -> dict[str, Any] | None:
-    if args.action not in {"archive", "archive-rejected-upload", "archive-rejected-startup"}:
+    if args.action not in {
+        "archive",
+        "archive-rejected-upload",
+        "archive-rejected-download",
+        "archive-rejected-startup",
+    }:
         return None
     privacy = load_privacy(str(Path(__file__).with_name("evidence_privacy.py")))
     declared = args.privacy_context or os.environ.get("YORUNGE_EVIDENCE_CONTEXT")
@@ -1849,6 +1955,8 @@ def main() -> int:
     dataset_reference.add_argument("name")
     upload_reference = commands.add_parser("verify-upload-reference")
     upload_reference.add_argument("name")
+    download_reference = commands.add_parser("verify-download-reference")
+    download_reference.add_argument("name")
     rejected = commands.add_parser("archive-rejected-startup")
     rejected.add_argument("source", type=Path)
     rejected.add_argument("--name", required=True)
@@ -1873,7 +1981,21 @@ def main() -> int:
             "unverified_measurement",
         ),
     )
-    for command in (add, rejected, upload_rejected):
+    download_rejected = commands.add_parser("archive-rejected-download")
+    download_rejected.add_argument("workspace", type=Path)
+    download_rejected.add_argument("--name", required=True)
+    download_rejected.add_argument("--source-commit", required=True)
+    download_rejected.add_argument("--run-url")
+    download_rejected.add_argument(
+        "--reason",
+        required=True,
+        choices=(
+            "invalid_evidence",
+            "interrupted_measurement",
+            "unverified_measurement",
+        ),
+    )
+    for command in (add, rejected, upload_rejected, download_rejected):
         command.add_argument("--privacy-context", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
@@ -1891,6 +2013,18 @@ def main() -> int:
                 privacy_context=privacy_context,
             )
             print("Archived original synthetic upload diagnostics; not acceptance.")
+        elif args.action == "archive-rejected-download":
+            retained = runpy.run_path(str(Path(__file__).with_name("download_diagnostic.py")))
+            retained["retain"](
+                root,
+                args.workspace,
+                args.name,
+                args.source_commit,
+                args.reason,
+                args.run_url,
+                privacy_context=privacy_context,
+            )
+            print("Archived original synthetic download diagnostics; not acceptance.")
         elif args.action == "archive-rejected-startup":
             archive_rejected_startup(
                 root,
@@ -1926,6 +2060,9 @@ def main() -> int:
         elif args.action == "verify-upload-reference":
             summary = verify_upload_reference(root, args.name)
             print(json.dumps(summary, sort_keys=True, allow_nan=False))
+        elif args.action == "verify-download-reference":
+            summary = verify_download_reference(root, args.name)
+            print(json.dumps(summary, sort_keys=True, allow_nan=False))
         else:
             print(f"Verified {verify(root)} lossless evidence archives and their index.")
     except (
@@ -1936,6 +2073,7 @@ def main() -> int:
         EOFError,
         RecursionError,
         subprocess.SubprocessError,
+        zlib.error,
     ):
         parser.exit(
             1, "Evidence check failed; preserve originals privately and keep retention open.\n"

@@ -1,0 +1,402 @@
+"""A continuation is a family of its own: helpers name it, decoders list it, nothing guesses."""
+
+import hashlib
+import json
+from itertools import product
+from pathlib import Path
+from types import SimpleNamespace
+from typing import ClassVar, Literal, get_args
+
+import pytest
+
+from yorunge.adapters.upload_store import (
+    VersionedTransferView,
+    bind_continuation_record,
+    decode_versioned,
+    namespace_owner,
+    request_digest,
+    validate_graph,
+)
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
+from yorunge.domain.dataset_manifest import DatasetManifest
+from yorunge.domain.dataset_transfer import (
+    StageIntent,
+    TransferControl,
+    TransferRecord,
+    TransferVerification,
+)
+from yorunge.domain.dataset_transfer_v2 import (
+    TransferControlV2,
+    TransferRecordV2,
+    TransferVerificationV2,
+)
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
+    TransferVerificationV3,
+)
+from yorunge.domain.dataset_upload import DatasetUploadApproval, DatasetUploadPlan, UploadWire
+from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUploadPlanV2
+from yorunge.domain.errors import YorungeError
+from yorunge.domain.upload_graph import StageGraphSpec
+from yorunge.domain.upload_versions import (
+    UploadApproval,
+    UploadControl,
+    UploadPlan,
+    UploadRecord,
+    UploadVerification,
+    graph_of,
+    validate_create_receipt,
+    validate_versioned_approval,
+    verification_scope,
+)
+
+FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+def fixture(name):
+    return (FIXTURES / name).read_bytes()
+
+
+def canon(value):
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    ).encode()
+
+
+V1_PAIR = json.loads(fixture("dataset-upload-approved-v1.json"))
+V2_PAIR = json.loads(fixture("dataset-upload-approved-v2.json"))
+PLANS = {
+    1: DatasetUploadPlan.model_validate_json(canon(V1_PAIR["plan"])),
+    2: DatasetUploadPlanV2.model_validate_json(canon(V2_PAIR["plan"])),
+    3: DatasetContinuationPlanV3.model_validate_json(fixture("dataset-continuation-plan-v3.json")),
+}
+APPROVALS = {
+    1: DatasetUploadApproval.model_validate_json(canon(V1_PAIR["approval"])),
+    2: DatasetUploadApprovalV2.model_validate_json(canon(V2_PAIR["approval"])),
+    3: DatasetUploadApprovalV3.model_validate_json(
+        fixture("dataset-continuation-approval-v3.json")
+    ),
+}
+GRAPH = json.loads(fixture("dataset-transfer-graph-v2.json"))
+MANIFEST = DatasetManifest.model_validate_json(fixture("dataset-manifest-v1.json"))
+
+
+def test_each_union_names_exactly_its_three_families_in_order():
+    assert get_args(UploadPlan) == (
+        DatasetUploadPlan,
+        DatasetUploadPlanV2,
+        DatasetContinuationPlanV3,
+    )
+    assert get_args(UploadApproval) == (
+        DatasetUploadApproval,
+        DatasetUploadApprovalV2,
+        DatasetUploadApprovalV3,
+    )
+    assert get_args(UploadRecord) == (TransferRecord, TransferRecordV2, TransferRecordV3)
+    assert get_args(UploadControl) == (TransferControl, TransferControlV2, TransferControlV3)
+    assert get_args(UploadVerification) == (
+        TransferVerification,
+        TransferVerificationV2,
+        TransferVerificationV3,
+    )
+
+
+@pytest.mark.parametrize("plan_version,approval_version", list(product((1, 2, 3), repeat=2)))
+def test_an_approval_belongs_only_to_the_plan_of_its_own_family(plan_version, approval_version):
+    plan, approval = PLANS[plan_version], APPROVALS[approval_version]
+    if plan_version == approval_version:
+        validate_versioned_approval(plan, approval)
+    else:
+        with pytest.raises(ValueError, match="mixed upload plan/approval versions"):
+            validate_versioned_approval(plan, approval)
+
+
+def test_a_family_never_validates_against_a_stranger_even_with_matching_fields():
+    class Imitation(DatasetContinuationPlanV3):
+        pass
+
+    imitation = Imitation.model_construct(**dict(PLANS[3]))
+    # A subclass of the genuine plan is still a plan of the continuation family, and the exact
+    # type rule of the binding validator refuses it.
+    with pytest.raises(ValueError):
+        validate_versioned_approval(imitation, APPROVALS[3])
+    for plan, approval in ((None, APPROVALS[3]), (PLANS[3], None), (object(), object())):
+        with pytest.raises(ValueError, match="mixed upload plan/approval versions"):
+            validate_versioned_approval(plan, approval)
+
+
+def legacy_proof():
+    """A genuine v1 proof: the v2 body without its own scope, carrying the plan's grant."""
+    data = {**GRAPH["verification"], "schema_version": 1, "grant": V1_PAIR["plan"]["grant"]}
+    data.pop("scope")
+    data.pop("authorization_policy")
+    return TransferVerification.model_validate_json(canon(data))
+
+
+def test_the_scope_of_a_proof_comes_from_the_family_that_wrote_it_never_by_elimination():
+    v1 = legacy_proof()
+    assert verification_scope(v1) == v1.grant.scope  # the oldest family still takes its grant's
+    v2 = TransferVerificationV2.model_validate_json(canon(GRAPH["verification"]))
+    v3 = TransferVerificationV3.model_validate_json(
+        fixture("dataset-continuation-verification-v3.json")
+    )
+    assert verification_scope(v2) == v2.scope
+    assert verification_scope(v3) == v3.scope  # not v1's grant.scope, which a v3 proof has none of
+    assert v3.grant is None
+    imitation = SimpleNamespace(grant=SimpleNamespace(scope="legacy"))
+    # Anything that is not one of the three families is refused, not read as the oldest.
+    for stranger in (None, {}, object(), imitation):
+        with pytest.raises(ValueError, match="unsupported verification version"):
+            verification_scope(stranger)
+
+
+def test_the_graph_of_a_continuation_is_its_own_selection():
+    plan = PLANS[3]
+    spec = graph_of(plan)
+    assert spec == StageGraphSpec(3, plan.manifest.file_count, plan.continuation.file_indices)
+    assert spec.files == plan.continuation.file_indices == (0, 2)
+    assert spec.continuation
+    assert spec.intent_count == 6
+    for version in (1, 2):  # the original graphs are unchanged and cover the whole manifest
+        original = graph_of(PLANS[version])
+        assert original == StageGraphSpec(version, PLANS[version].manifest.file_count)
+        assert original.files == tuple(range(PLANS[version].manifest.file_count))
+        assert not original.continuation
+
+
+def test_the_graph_of_a_check_only_continuation_is_empty():
+    plan = DatasetContinuationPlanV3.model_validate_json(
+        fixture("dataset-continuation-plan-v3-verification-only.json")
+    )
+    spec = graph_of(plan)
+    assert spec.files == ()
+    assert spec.intent_count == 0
+    assert spec.required_stages() == frozenset()
+
+
+def test_a_continuation_never_has_a_create_receipt():
+    intent = StageIntent.model_validate_json(canon(GRAPH["intents"][0]))
+    assert intent.kind == "create"
+    simple_namespace = SimpleNamespace()
+    with pytest.raises(ValueError, match="v2 create receipt requires v2 plan"):
+        validate_create_receipt(PLANS[3], intent, simple_namespace)
+
+
+PAYLOADS = [
+    ("plan", DatasetUploadPlan, DatasetUploadPlanV2, DatasetContinuationPlanV3),
+    ("approval", DatasetUploadApproval, DatasetUploadApprovalV2, DatasetUploadApprovalV3),
+    ("record", TransferRecord, TransferRecordV2, TransferRecordV3),
+    ("control", TransferControl, TransferControlV2, TransferControlV3),
+    ("verification", TransferVerification, TransferVerificationV2, TransferVerificationV3),
+]
+V3_FIXTURES = {
+    "plan": "dataset-continuation-plan-v3.json",
+    "approval": "dataset-continuation-approval-v3.json",
+    "record": "dataset-continuation-record-v3-running.json",
+    "control": "dataset-continuation-control-v3.json",
+    "verification": "dataset-continuation-verification-v3.json",
+}
+
+
+OLDER = {
+    "plan": canon(V2_PAIR["plan"]),
+    "approval": canon(V2_PAIR["approval"]),
+    "record": canon(GRAPH["record"]),
+    "control": canon(GRAPH["controls"][0]),
+    "verification": canon(GRAPH["verification"]),
+}
+
+
+@pytest.mark.parametrize("field,v1,v2,v3", PAYLOADS)
+def test_the_decoder_reads_a_third_family_only_where_the_caller_lists_it(field, v1, v2, v3):
+    raw = fixture(V3_FIXTURES[field]).decode()
+    assert type(decode_versioned(v1, v2, raw, v3)) is v3
+    # A path that does not list the continuation type fails closed on its payload, unchanged.
+    with pytest.raises(YorungeError) as error:
+        decode_versioned(v1, v2, raw)
+    assert error.value.code == "state_invalid"
+    older = OLDER[field].decode()
+    assert type(decode_versioned(v1, v2, older, v3)) is v2
+    assert type(decode_versioned(v1, v2, older)) is v2
+
+
+@pytest.mark.parametrize("field,v1,v2,v3", PAYLOADS)
+def test_the_decoder_keeps_its_closed_version_and_size_rules_with_three_types(field, v1, v2, v3):
+    value = json.loads(fixture(V3_FIXTURES[field]))
+    for version in (True, 0, 4, 2.0, "3", None):
+        bad = canon({**value, "schema_version": version}).decode()
+        with pytest.raises(YorungeError) as error:
+            decode_versioned(v1, v2, bad, v3)
+        assert error.value.code == "state_invalid"
+    for payload in (None, b"{}", 3, "", "[]", "{", canon(value) + b" "):
+        with pytest.raises(YorungeError):
+            decode_versioned(v1, v2, payload, v3)
+    # The version tag chooses the type. A control or proof of v3 has v2's very fields, so only the
+    # tag tells them apart, and the pairing with the record (same version) is the store's rule;
+    # the other three carry fields no older type accepts.
+    if field in ("plan", "approval", "record"):
+        decode_value = canon({**value, "schema_version": 2}).decode()
+        with pytest.raises(YorungeError):
+            decode_versioned(v1, v2, decode_value, v3)
+    limit = max(v1.max_wire_bytes, v2.max_wire_bytes, v3.max_wire_bytes)
+    decode_value = canon(value).decode()
+    with pytest.raises(YorungeError):
+        decode_versioned(v1, v2, decode_value + " " * (limit + 1), v3)
+
+
+def test_the_graph_of_a_continuation_is_validated_like_any_other_not_refused():
+    plan, approval = PLANS[3], APPROVALS[3]
+    admitted = TransferRecordV3.model_validate_json(
+        fixture("dataset-continuation-record-v3-admitted.json")
+    )
+    running = TransferRecordV3.model_validate_json(
+        fixture("dataset-continuation-record-v3-running.json")
+    )
+    # An admitted record sent nothing and a plan with no operation has no graph to validate.
+    validate_graph(VersionedTransferView(plan, approval, admitted), MANIFEST)
+    validate_graph(VersionedTransferView(plan, approval, None), MANIFEST)
+    # A running record claims a latch that no stage intent supports.
+    versioned_transfer_view = VersionedTransferView(plan, approval, running)
+    with pytest.raises(YorungeError) as error:
+        validate_graph(versioned_transfer_view, MANIFEST)
+    assert error.value.code == "state_invalid"
+
+
+class Small(UploadWire):
+    max_wire_bytes: ClassVar[int] = 64
+    schema_version: Literal[1, 2]
+    pad: str
+
+
+class Large(UploadWire):
+    max_wire_bytes: ClassVar[int] = 256
+    schema_version: Literal[3]
+    pad: str
+
+
+def test_the_size_bound_of_the_listed_third_type_counts_not_only_the_older_two():
+    body = canon({"schema_version": 3, "pad": "x" * 100}).decode()
+    assert 64 < len(body) <= 256
+    assert type(decode_versioned(Small, Small, body, Large)) is Large
+    with pytest.raises(YorungeError):  # no third type listed: the payload is simply too big
+        decode_versioned(Small, Small, body)
+    decode_value = canon({"schema_version": 3, "pad": "x" * 300}).decode()
+    with pytest.raises(YorungeError):
+        decode_versioned(Small, Small, decode_value, Large)
+
+
+V1_RECORD = TransferRecord.model_validate_json(
+    canon(json.loads(fixture("dataset-transfer-journal-v1.json"))["record"])
+)
+V2_RECORD = TransferRecordV2.model_validate_json(canon(GRAPH["record"]))
+V3_RECORD = TransferRecordV3.model_validate_json(
+    fixture("dataset-continuation-record-v3-admitted.json")
+)
+OTHER_DATASET = "00000000-0000-4000-8000-000000000999"
+
+
+@pytest.mark.parametrize(
+    "plan_version,record", [(1, V3_RECORD), (2, V3_RECORD), (3, V1_RECORD), (3, V2_RECORD)]
+)
+def test_a_record_of_one_family_is_never_bound_to_a_plan_of_the_other(plan_version, record):
+    with pytest.raises(ValueError, match="mixed continuation plan/record versions"):
+        bind_continuation_record(PLANS[plan_version], record)
+
+
+def test_the_original_pairs_are_left_to_the_graph_validation_as_before():
+    # The v1/v2 record-to-plan rules are validate_graph's; the continuation binding adds nothing.
+    for plan_version, record in ((1, V1_RECORD), (2, V2_RECORD), (1, V2_RECORD)):
+        assert bind_continuation_record(PLANS[plan_version], record) is None
+
+
+def test_a_continuation_record_binds_to_its_own_plan_and_to_nothing_else():
+    assert bind_continuation_record(PLANS[3], V3_RECORD) is None
+    plan = PLANS[3]
+    for change in (
+        {"dataset_id": OTHER_DATASET},
+        {"verification_only": True},
+        {"plan_id": OTHER_DATASET},
+        {"plan_digest": "0" * 64},
+        {"intent_digest": "0" * 64},
+        {"operation_id": plan.continuation.source_operation_id},
+        {"operation_id": plan.continuation.baseline_operation_id},
+    ):
+        model_copy_value = V3_RECORD.model_copy(update=change)
+        with pytest.raises(ValueError):
+            bind_continuation_record(plan, model_copy_value)
+
+
+def test_a_continuation_borrows_its_baselines_namespace_and_an_original_owns_its_own():
+    assert namespace_owner(PLANS[3], V3_RECORD) == PLANS[3].continuation.baseline_operation_id
+    assert namespace_owner(PLANS[3], V3_RECORD) != V3_RECORD.operation_id
+    # A continuation of a continuation has a source that is not the root: the namespace is still
+    # the root's (the fixtures' source and baseline coincide, which hides the difference).
+    middle = "00000000-0000-4000-8000-0000000000a1"
+    chained = PLANS[3].model_copy(
+        update={
+            "continuation": PLANS[3].continuation.model_copy(update={"source_operation_id": middle})
+        }
+    )
+    assert chained.continuation.source_operation_id != chained.continuation.baseline_operation_id
+    assert namespace_owner(chained, V3_RECORD) == PLANS[3].continuation.baseline_operation_id
+    assert namespace_owner(PLANS[2], V2_RECORD) == V2_RECORD.operation_id
+    assert namespace_owner(PLANS[1], V1_RECORD) == V1_RECORD.operation_id
+
+
+def expected_digest(plan, kind, index, dataset_id, key):
+    """The request binding recomputed from its definition, with nothing of the store's code."""
+    body = {
+        "plan_digest": plan.digest,
+        "kind": kind,
+        "file_index": index,
+        "file": MANIFEST.files[index].model_dump(mode="json") if index is not None else None,
+        "dataset_id": dataset_id,
+        "object_key": key,
+    }
+    text = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def receipt(dataset_id=None, key=None):
+    return SimpleNamespace(dataset_id=dataset_id, object_key=key)
+
+
+def test_a_continuations_requests_bind_the_plans_dataset_never_a_create_receipts():
+    plan = PLANS[3]
+    dataset = plan.continuation.dataset_id
+    presigned = {("presign", 2): receipt(dataset, "key-2")}
+    for kind, receipts, key in (
+        ("presign", {}, None),
+        ("put", presigned, "key-2"),
+        ("confirm", presigned, "key-2"),
+    ):
+        # Even a create receipt that should not exist cannot change what a request is bound to.
+        for given in (receipts, {**receipts, ("create", None): receipt(OTHER_DATASET)}):
+            assert request_digest(plan, MANIFEST, kind, 2, given) == expected_digest(
+                plan, kind, 2, dataset, key
+            )
+    assert expected_digest(plan, "presign", 2, dataset, None) != expected_digest(
+        plan, "presign", 2, OTHER_DATASET, None
+    )
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_an_original_uploads_requests_still_bind_the_create_receipts_dataset(version):
+    plan = PLANS[version]
+    create = {("create", None): receipt(OTHER_DATASET)}
+    for kind, index in (("project_link", None), ("presign", 0)):
+        assert request_digest(plan, MANIFEST, kind, index, create) == expected_digest(
+            plan, kind, index, OTHER_DATASET, None
+        )
+        assert request_digest(plan, MANIFEST, kind, index, {}) == expected_digest(
+            plan, kind, index, None, None
+        )
+    # The create request itself carries no dataset, whatever the receipts hold.
+    assert request_digest(plan, MANIFEST, "create", None, create) == expected_digest(
+        plan, "create", None, None, None
+    )
+    confirmed = {**create, ("presign", 1): receipt(OTHER_DATASET, "key-1")}
+    assert request_digest(plan, MANIFEST, "put", 1, confirmed) == expected_digest(
+        plan, "put", 1, OTHER_DATASET, "key-1"
+    )

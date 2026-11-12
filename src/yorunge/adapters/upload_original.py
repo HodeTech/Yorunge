@@ -45,6 +45,7 @@ from yorunge.domain.credentials import BoundCredential
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import StageKind
 from yorunge.domain.dataset_transfer_v2 import TransferRecordV2
+from yorunge.domain.dataset_transfer_v3 import TransferRecordV3
 from yorunge.domain.dataset_upload import COMMIT_MARGIN_SECONDS, UploadPermission
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
 from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
@@ -52,7 +53,7 @@ from yorunge.domain.models import Context, Profile
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_checks import UploadCurrentCheck
-from yorunge.domain.upload_versions import UploadPlan, UploadRecord
+from yorunge.domain.upload_versions import UploadPlan, UploadRecord, graph_of
 
 ContextLoader = Callable[[DatasetUploadPlanV2], tuple[Context, Profile]]
 
@@ -99,11 +100,40 @@ def _confirmed_indices(view: VersionedTransferView) -> tuple[int, ...]:
     return tuple(indices)
 
 
-def _failure_identity(record: TransferRecordV2 | None, error: BaseException) -> str | None:
+def _failure_identity(
+    record: TransferRecordV2 | TransferRecordV3 | None, error: BaseException
+) -> str | None:
     operation_id = record.operation_id if record is not None else None
     if isinstance(error, OperationError) and error.operation_id is not None:
         operation_id = error.operation_id
     return operation_id
+
+
+def _stopped_failure(
+    latched: Literal["terminal", "latched", "unlatched"] | None,
+    error: BaseException,
+    operation_id: str,
+    code: ErrorCode,
+    reason: ErrorCode | None,
+    uncertain: bool,
+) -> OperationError | None:
+    """What a failed stage says of its operation once the stop of that operation is known.
+
+    Shared by both stage environments, which keep the rest of their failure path in step.
+    ``code``, ``reason`` and ``uncertain`` are what ``error`` itself stands for.
+    """
+    if latched is None:
+        return error if isinstance(error, OperationError) else None
+    if latched == "terminal":
+        return OperationError(
+            "operation_conflict" if code == "operation_uncertain" else code,
+            operation_id,
+            reason_code=reason,
+        )
+    uncertain = uncertain or latched == "latched"
+    if uncertain:
+        return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
+    return OperationError(code, operation_id, reason_code=reason)
 
 
 class _Environment:
@@ -183,10 +213,15 @@ class _Environment:
 
     def admit(self, check: UploadCurrentCheck) -> bool:
         with self.repository() as repository:
-            record = repository.admit(self.plan.plan_id, check)
+            try:
+                record = repository.admit(self.plan.plan_id, check)
+            finally:
+                # An admission whose closing gate failed still left an operation this invocation
+                # admitted: that failure is its own to report, not another process's operation.
+                self.access = repository.write_access
             if type(record) is not TransferRecordV2:
                 raise YorungeError("upload_plan_not_valid")
-            self.record, self.access = record, repository.write_access
+            self.record = record
         if self.progress is not None:
             self.progress.bind(record.operation_id)
         # Another process may have won between the initial lookup and admission.
@@ -207,7 +242,7 @@ class _Environment:
 
     def _context(self, index: int | None) -> descriptors.FileContext:
         assert self.record is not None and self.record.dataset_id is not None
-        if type(index) is not int or not 0 <= index < self.plan.manifest.file_count:
+        if type(index) is not int or index not in graph_of(self.plan).files:
             raise YorungeError("invalid_request")
         if not self.contexts:
             self.contexts = self.port.files(self.record.operation_id, self.record.dataset_id)
@@ -236,7 +271,7 @@ class _Environment:
         return _Call(call, self.client)
 
     def validate_uploads(self) -> None:
-        if set(self.uploads) != set(range(self.plan.manifest.file_count)):
+        if set(self.uploads) != set(graph_of(self.plan).files):
             raise YorungeError("invalid_response")
         descriptors.distinct_uploads(
             tuple(self.uploads[index] for index in range(len(self.contexts))), self.contexts
@@ -316,18 +351,7 @@ class _Environment:
             return OperationError(
                 "operation_uncertain", operation_id, reason_code=marker_error.code
             )
-        if latched is None:
-            return error if isinstance(error, OperationError) else None
-        if latched == "terminal":
-            return OperationError(
-                "operation_conflict" if code == "operation_uncertain" else code,
-                operation_id,
-                reason_code=reason,
-            )
-        uncertain = uncertain or latched == "latched"
-        if uncertain:
-            return OperationError("operation_uncertain", operation_id, reason_code=reason or code)
-        return OperationError(code, operation_id, reason_code=reason)
+        return _stopped_failure(latched, error, operation_id, code, reason, uncertain)
 
     def __repr__(self) -> str:
         return "<original upload environment private>"

@@ -290,20 +290,63 @@ def test_platform_no_init_and_no_secret_read_for_absent_store(tmp_path, certific
     assert not root.exists()
 
 
-def test_platform_total_deadline_is_shared_across_reads(tmp_path, certificates):
+class RecordingTransport(HttpxTransport):
+    """Notes the deadline every read of one discovery is given, and changes nothing else."""
+
+    deadlines: list[float]
+
+    def open(self, request, *, deadline):
+        self.deadlines.append(deadline)
+        return super().open(request, deadline=deadline)
+
+
+def test_every_read_of_one_discovery_is_given_the_one_absolute_deadline(
+    tmp_path, certificates, monkeypatch
+):
+    """The deadline is shared by the reads: not a fresh budget per read (no wall-clock margin)."""
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    deadlines: list[float] = []
+    # the class declares ``deadlines`` as an annotation only: there is no attribute to restore
+    monkeypatch.setattr(RecordingTransport, "deadlines", deadlines, raising=False)
+    clock = ObservationClock(SystemClock())
+    with TlsServer(certificates, routes()) as server:
+        session = HttpSession(
+            transport_factory=lambda: RecordingTransport(transport=server.transport())
+        )
+        discover_platform(
+            state(root, clock, project="selected"),
+            PlatformReader(clock, session=session),
+            clock,
+            deadline=clock.monotonic() + 30,
+        )
+    assert len(deadlines) == 4  # me, organizations, projects, the selected project
+    assert len(set(deadlines)) == 1, deadlines
+
+
+def test_a_slow_second_read_ends_at_the_shared_deadline_not_at_its_own_reply(
+    tmp_path, certificates
+):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
     selected_routes = routes()
     selected_routes["/api/v1/organizations"] = Reply(
-        body=b'{"items":[],"total":0}', header_delay=0.5
+        body=b'{"items":[],"total":0}', header_delay=10.0
     )
     with TlsServer(certificates, selected_routes) as server:
         started = time.monotonic()
         with pytest.raises(YorungeError) as failure:
-            run(root, server, timeout=0.3)
-        assert time.monotonic() - started < 1.0
+            run(root, server, timeout=2.0)
+        elapsed = time.monotonic() - started
+        # The server records a request before it waits to answer it: this only waits (bounded, by
+        # an event) for its thread to have been scheduled, whatever the machine's load.
+        assert server.wait_for_requests(2, timeout=10)
     assert failure.value.code == "transport_timeout"
-    assert len(server.requests) == 2
+    assert elapsed < 4.0  # the reply was due after ten seconds: the deadline ended the read
+    assert [request.path for request in server.requests] == [
+        "/api/v1/auth/me",
+        "/api/v1/organizations",
+    ]
 
 
 @pytest.mark.parametrize(

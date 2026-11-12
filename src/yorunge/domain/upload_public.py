@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Protocol, Self, TypeAlias
 
 from pydantic import Field, field_validator, model_validator
 
@@ -29,7 +29,12 @@ from yorunge.domain.dataset_upload_v2 import (
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Identifier
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_costs import ChargeCategory, UploadRequestLimits
+from yorunge.domain.upload_costs import (
+    ChargeCategory,
+    ContinuationRequestLimits,
+    UploadRequestLimits,
+)
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 
 class UploadCostSummary(UploadWire):
@@ -54,6 +59,50 @@ class UploadCostSummary(UploadWire):
         if instant(self.checked_at) >= instant(self.expires_at):
             raise ValueError("positive cost evidence lifetime required")
         return self
+
+
+class SummaryFacts(Protocol):
+    """What the approval and evidence rules of every summary version read."""
+
+    @property
+    def approval_status(self) -> Literal["approved", "revoked"] | None: ...
+    @property
+    def approval_expires_at(self) -> str | None: ...
+    @property
+    def operation_status(self) -> TransferStatus | None: ...
+    @property
+    def verification_level(self) -> Literal["none", "metadata"]: ...
+    @property
+    def authority_verified(self) -> bool: ...
+    @property
+    def risks(self) -> tuple[UploadRisk, ...]: ...
+    @property
+    def blockers(self) -> tuple[UploadBlocker, ...]: ...
+    @property
+    def cost_policy(self) -> CostPolicy: ...
+    @property
+    def budget_micros(self) -> int | None: ...
+
+
+def validate_summary_approval(summary: SummaryFacts) -> None:
+    if (summary.approval_status is None) != (summary.approval_expires_at is None):
+        raise ValueError("approval state and expiry must be paired")
+    if summary.approval_expires_at is not None:
+        instant(summary.approval_expires_at)
+
+
+def validate_summary_evidence(summary: SummaryFacts) -> None:
+    succeeded = summary.operation_status == "succeeded"
+    if (summary.verification_level == "metadata") != succeeded or (
+        summary.authority_verified and not succeeded
+    ):
+        raise ValueError("success evidence required")
+    if summary.risks != tuple(sorted(set(summary.risks))) or summary.blockers != tuple(
+        sorted(set(summary.blockers))
+    ):
+        raise ValueError("canonical risk and blocker sets required")
+    if (summary.cost_policy == "bounded_required") != (summary.budget_micros is not None):
+        raise ValueError("cost policy and budget mismatch")
 
 
 class DatasetUploadSummary(UploadWire):
@@ -131,23 +180,86 @@ class DatasetUploadSummary(UploadWire):
             raise ValueError("dataset identity requires an operation")
 
     def _approval_binding(self) -> None:
-        if (self.approval_status is None) != (self.approval_expires_at is None):
-            raise ValueError("approval state and expiry must be paired")
-        if self.approval_expires_at is not None:
-            instant(self.approval_expires_at)
+        validate_summary_approval(self)
 
     def _evidence_binding(self) -> None:
-        succeeded = self.operation_status == "succeeded"
-        if (self.verification_level == "metadata") != succeeded or (
-            self.authority_verified and not succeeded
+        validate_summary_evidence(self)
+
+
+class DatasetUploadSummaryV3(UploadWire):
+    """User view of a continuation: counts and identities only, never paths or provider payloads."""
+
+    schema_version: Literal[3]
+    kind: Literal["dataset_upload_summary"]
+    source_plan_schema: Literal[3]
+    legacy_history_only: Literal[False]
+    plan_id: str
+    plan_digest: Sha256
+    plan_status: UploadPlanStatus
+    admission_policy: AdmissionPolicy
+    cost_policy: CostPolicy
+    risks: tuple[UploadRisk, ...]
+    blockers: tuple[UploadBlocker, ...]
+    approval_status: Literal["approved", "revoked"] | None
+    approval_expires_at: str | None
+    operation_id: str | None
+    operation_status: TransferStatus | None
+    dataset_id: str
+    verification_level: Literal["none", "metadata"]
+    remote_bytes_verified: Literal[False]
+    authority_verified: bool
+    cost_bound: UploadCostSummary | None
+    budget_micros: NonnegativeInt64 | None
+    cost_scope: Literal["continuation_start_invocation"]
+    continuation_of: str
+    continuation_files: Annotated[int, Field(ge=0, le=128)]
+    remote_present_files: Annotated[int, Field(ge=0, le=128)]
+    uncertain_files: Annotated[int, Field(ge=0, le=128)]
+
+    @field_validator("source_plan_schema", mode="before")
+    @classmethod
+    def source_version(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer source version required")
+        return value
+
+    @field_validator("legacy_history_only", "remote_bytes_verified", mode="before")
+    @classmethod
+    def exact_flags(cls, value: object) -> object:
+        if type(value) is not bool:
+            raise ValueError("boolean flag required")
+        return value
+
+    @field_validator("plan_id", "operation_id", "continuation_of")
+    @classmethod
+    def identifiers(cls, value: str | None) -> str | None:
+        return canonical_uuid(value) if value is not None else None
+
+    @field_validator("dataset_id")
+    @classmethod
+    def dataset(cls, value: str) -> str:
+        return provider_uuid(value)
+
+    @model_validator(mode="after")
+    def relationships(self) -> Self:
+        if (self.operation_id is None) != (self.operation_status is None):
+            raise ValueError("operation identity and state must be paired")
+        if (
+            self.uncertain_files > self.continuation_files
+            or not 1 <= self.continuation_files + self.remote_present_files <= 128
         ):
-            raise ValueError("success evidence required")
-        if self.risks != tuple(sorted(set(self.risks))) or self.blockers != tuple(
-            sorted(set(self.blockers))
-        ):
-            raise ValueError("canonical risk and blocker sets required")
-        if (self.cost_policy == "bounded_required") != (self.budget_micros is not None):
-            raise ValueError("cost policy and budget mismatch")
+            raise ValueError("continuation file counts must fit one manifest")
+        if self.operation_id == self.continuation_of:
+            raise ValueError("a continuation cannot be its own source")
+        validate_summary_approval(self)
+        validate_summary_evidence(self)
+        self.encoded()
+        return self
+
+
+# What every public read and write of an upload answers with: an original upload's summary, or a
+# continuation's (told apart by ``schema_version``).
+UploadSummary: TypeAlias = DatasetUploadSummary | DatasetUploadSummaryV3
 
 
 class UploadReviewTarget(UploadWire):
@@ -173,7 +285,7 @@ class UploadIntentReview(UploadWire):
     max_wire_bytes: ClassVar[int] = 32 * 1024
     schema_version: Literal[1]
     kind: Literal["dataset_upload_intent_review"]
-    summary: DatasetUploadSummary
+    summary: UploadSummary
     target: UploadReviewTarget
     selected_owner: UploadOwner
     selected_project_id: str
@@ -181,7 +293,7 @@ class UploadIntentReview(UploadWire):
     manifest: UploadManifestRef
     parameters: UploadParameters
     storage: UploadStoragePolicy
-    request_limits: UploadRequestLimits | None
+    request_limits: UploadRequestLimits | ContinuationRequestLimits | None
     prepared_at: str
     expires_at: str
 
@@ -201,22 +313,47 @@ class UploadIntentReview(UploadWire):
             raise ValueError("request limits must match source family")
         if instant(self.prepared_at) >= instant(self.expires_at):
             raise ValueError("positive plan interval required")
-        if self.request_limits is not None and (
-            (
-                self.request_limits.max_presign,
-                self.request_limits.max_put,
-                self.request_limits.max_confirm,
-            )
-            != (self.manifest.file_count,) * 3
-            or self.request_limits.max_upload_bytes != self.manifest.total_bytes
-        ):
-            raise ValueError("request quantities must match manifest")
+        if isinstance(self.summary, DatasetUploadSummaryV3):
+            self._continuation_limits(self.summary)
+        elif isinstance(self.request_limits, ContinuationRequestLimits):
+            raise ValueError("an original upload has no continuation limits")
+        else:
+            self._original_limits()
         self.encoded()
         return self
+
+    def _original_limits(self) -> None:
+        limits = self.request_limits
+        if limits is not None:
+            counts = StageGraphSpec(
+                ORIGINAL_PLAN_VERSION, self.manifest.file_count
+            ).request_counts()
+            if (limits.max_presign, limits.max_put, limits.max_confirm) != (
+                counts.presign,
+                counts.put,
+                counts.confirm,
+            ) or limits.max_upload_bytes != self.manifest.total_bytes:
+                raise ValueError("request quantities must match manifest")
+
+    def _continuation_limits(self, summary: DatasetUploadSummaryV3) -> None:
+        """A continuation sends M of the manifest's N files: its limits are those M, no create."""
+        limits = self.request_limits
+        if not isinstance(limits, ContinuationRequestLimits):
+            raise ValueError("a continuation has continuation limits")
+        if (
+            limits.files != summary.continuation_files
+            or summary.continuation_files + summary.remote_present_files != self.manifest.file_count
+            or limits.max_upload_bytes > self.manifest.total_bytes
+            or (
+                limits.files == self.manifest.file_count  # all of it is sent: all of its bytes
+                and limits.max_upload_bytes != self.manifest.total_bytes
+            )
+        ):
+            raise ValueError("continuation limits must match the manifest selection")
 
 
 class DatasetUploadsPage(UploadWire):
     max_wire_bytes: ClassVar[int] = 1024 * 1024
     schema_version: Literal[1]
-    uploads: Annotated[tuple[DatasetUploadSummary, ...], Field(max_length=100)]
+    uploads: Annotated[tuple[UploadSummary, ...], Field(max_length=100)]
     next_cursor: Annotated[str, Field(max_length=256)] | None

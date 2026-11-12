@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 2026-11-02 kullanıcı, review bulguları giderildikten sonra uygulamayı açıkça yetkilendirdi; dış wire/yetki/live kabulü ayrıca kapatılır. **Tarih:** 2026-11-02. **İş:** P02-2b. [Araştırma](../research/p02-2-readiness-review.md), [transfer önerisi](0024-durable-dataset-transfers.md), [kanonik taslak](../reference/dataset-transfer.md). Uygulanmış signed URL/streaming upload desteği değildir.
 
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0032](0032-bounded-download-and-verification-levels.md) bu portun yalnız-PUT kapsamını private, tipli bir GET hedefiyle genişletir ve GET için `expires_at` zorunluluğunu aramaz; PUT yolunun header/yanıt/expiry/120 s kuralları değişmez.
+
 ## Bağlam
 
 [ADR-0017](0017-bounded-http-transport.md) göreli endpoint ve ≤1 MiB bytes request'i kabul eder; genel signed URL veya büyük streaming request yoktur. SDK credentialed client ile dönen URL'ye PUT yapar; güncel web istemcisi ise `direct_upload_url` için ayrı credentialsız XHR, `upload_url` için hizmet proxy'si kullanır. İki yolun auth/hedef/expiry kuralları eşit varsayılamaz. İmzalı URL'nin query'si yetki taşır; yeniden urlencode edilmesi imzayı değiştirebilir.

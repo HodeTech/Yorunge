@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -28,6 +28,7 @@ from yorunge.domain.dataset_upload import (
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_costs import (
+    ContinuationCostWork,
     UploadCostBoundV2,
     UploadCostWork,
     UploadExecutionWindow,
@@ -75,7 +76,7 @@ def _policy_status(
 
 
 def reduce_upload_policy(
-    work: UploadCostWork,
+    work: UploadCostWork | ContinuationCostWork,
     *,
     admission_policy: AdmissionPolicy,
     cost_policy: CostPolicy,
@@ -109,6 +110,81 @@ def reduce_upload_policy(
         blockers.append("inputs_unverified")
     status = _policy_status(cost_policy, risks, blockers)
     return UploadPolicyState(tuple(sorted(risks)), tuple(sorted(blockers)), status)
+
+
+class PlanFacts(Protocol):
+    """What every upload plan version shares; the version-independent consistency rules read it."""
+
+    @property
+    def scope(self) -> UploadScope: ...
+    @property
+    def execution_window(self) -> UploadExecutionWindow: ...
+    @property
+    def admission_policy(self) -> AdmissionPolicy: ...
+    @property
+    def cost_policy(self) -> CostPolicy: ...
+    @property
+    def budget_micros(self) -> int | None: ...
+    @property
+    def inputs_verified(self) -> bool: ...
+    @property
+    def grant(self) -> UploadGrant | None: ...
+    @property
+    def cost_bound(self) -> UploadCostBoundV2 | None: ...
+    @property
+    def risks(self) -> tuple[UploadRisk, ...]: ...
+    @property
+    def blockers(self) -> tuple[UploadBlocker, ...]: ...
+    @property
+    def prepared_at(self) -> str: ...
+    @property
+    def expires_at(self) -> str: ...
+    @property
+    def status(self) -> UploadPlanStatus: ...
+    @property
+    def digest(self) -> str: ...
+
+    def cost_work(self) -> UploadCostWork | ContinuationCostWork: ...
+    def computed_digest(self) -> str: ...
+    def encoded(self) -> bytes: ...
+
+
+def validate_plan_facts(plan: PlanFacts) -> None:
+    """Window, evidence, policy and digest rules shared by every plan version."""
+    start, end = instant(plan.prepared_at), instant(plan.expires_at)
+    if not (
+        instant(plan.execution_window.not_before)
+        <= start
+        < end
+        <= instant(plan.execution_window.not_after)
+    ):
+        raise ValueError("upload plan must fit fixed execution window")
+    for evidence in (plan.grant, plan.cost_bound):
+        if evidence is not None and (
+            evidence.scope != plan.scope
+            or instant(evidence.checked_at) > start
+            or end > instant(evidence.expires_at)
+        ):
+            raise ValueError("upload evidence scope or time mismatch")
+    try:
+        state = reduce_upload_policy(
+            plan.cost_work(),
+            admission_policy=plan.admission_policy,
+            cost_policy=plan.cost_policy,
+            budget_micros=plan.budget_micros,
+            inputs_verified=plan.inputs_verified,
+            grant=plan.grant,
+            cost_bound=plan.cost_bound,
+        )
+    except YorungeError:
+        raise ValueError("invalid upload policy choice") from None
+    if (plan.risks, plan.blockers, plan.status) != (
+        state.risks,
+        state.blockers,
+        state.status,
+    ) or plan.digest != plan.computed_digest():
+        raise ValueError("upload policy or plan digest mismatch")
+    plan.encoded()
 
 
 class DatasetUploadPlanV2(UploadWire):
@@ -155,40 +231,7 @@ class DatasetUploadPlanV2(UploadWire):
 
     @model_validator(mode="after")
     def consistent(self) -> Self:
-        start, end = instant(self.prepared_at), instant(self.expires_at)
-        if not (
-            instant(self.execution_window.not_before)
-            <= start
-            < end
-            <= instant(self.execution_window.not_after)
-        ):
-            raise ValueError("upload plan must fit fixed execution window")
-        for evidence in (self.grant, self.cost_bound):
-            if evidence is not None and (
-                evidence.scope != self.scope
-                or instant(evidence.checked_at) > start
-                or end > instant(evidence.expires_at)
-            ):
-                raise ValueError("upload evidence scope or time mismatch")
-        try:
-            state = reduce_upload_policy(
-                self.cost_work(),
-                admission_policy=self.admission_policy,
-                cost_policy=self.cost_policy,
-                budget_micros=self.budget_micros,
-                inputs_verified=self.inputs_verified,
-                grant=self.grant,
-                cost_bound=self.cost_bound,
-            )
-        except YorungeError:
-            raise ValueError("invalid upload policy choice") from None
-        if (self.risks, self.blockers, self.status) != (
-            state.risks,
-            state.blockers,
-            state.status,
-        ) or self.digest != self.computed_digest():
-            raise ValueError("upload policy or plan digest mismatch")
-        self.encoded()
+        validate_plan_facts(self)
         return self
 
     def computed_digest(self) -> str:
@@ -207,6 +250,51 @@ class DatasetUploadPlanV2(UploadWire):
             if value[field] is not None:
                 del value[field]["checked_at"], value[field]["expires_at"]
         return hashlib.sha256(canonical(value)).hexdigest()
+
+
+class ApprovalFacts(Protocol):
+    """What every approval version shares; the version-independent lifetime and policy rules."""
+
+    @property
+    def approved_at(self) -> str: ...
+    @property
+    def expires_at(self) -> str: ...
+    @property
+    def status(self) -> Literal["approved", "revoked"]: ...
+    @property
+    def revoked_at(self) -> str | None: ...
+    @property
+    def admission_policy(self) -> AdmissionPolicy: ...
+    @property
+    def cost_policy(self) -> CostPolicy: ...
+    @property
+    def acknowledge_unverified_authority(self) -> bool: ...
+    @property
+    def acknowledge_unpriced_cost(self) -> bool: ...
+
+    def encoded(self) -> bytes: ...
+
+
+def validate_approval_facts(approval: ApprovalFacts) -> None:
+    """Lifetime, revocation and risk-acknowledgement rules shared by every approval version."""
+    start, end = instant(approval.approved_at), instant(approval.expires_at)
+    if not timedelta(0) < end - start <= timedelta(seconds=UPLOAD_SECONDS):
+        raise ValueError("bounded upload approval lifetime required")
+    if (approval.status == "revoked") != (approval.revoked_at is not None):
+        raise ValueError("upload revocation mismatch")
+    if approval.revoked_at is not None and instant(approval.revoked_at) < start:
+        raise ValueError("upload revocation precedes approval")
+    if approval.admission_policy == "verified_only" and (
+        approval.cost_policy != "bounded_required"
+        or approval.acknowledge_unverified_authority
+        or approval.acknowledge_unpriced_cost
+    ):
+        raise ValueError("verified policy cannot acknowledge unknown risks")
+    if approval.cost_policy == "bounded_required" and approval.acknowledge_unpriced_cost:
+        raise ValueError("bounded policy cannot acknowledge unpriced cost")
+    if (approval.cost_policy == "unpriced_accepted") != approval.acknowledge_unpriced_cost:
+        raise ValueError("explicit unpriced acknowledgement required")
+    approval.encoded()
 
 
 class DatasetUploadApprovalV2(UploadWire):
@@ -234,46 +322,39 @@ class DatasetUploadApprovalV2(UploadWire):
 
     @model_validator(mode="after")
     def consistent(self) -> Self:
-        start, end = instant(self.approved_at), instant(self.expires_at)
-        if not timedelta(0) < end - start <= timedelta(seconds=UPLOAD_SECONDS):
-            raise ValueError("bounded upload approval lifetime required")
-        if (self.status == "revoked") != (self.revoked_at is not None):
-            raise ValueError("upload revocation mismatch")
-        if self.revoked_at is not None and instant(self.revoked_at) < start:
-            raise ValueError("upload revocation precedes approval")
-        if self.admission_policy == "verified_only" and (
-            self.cost_policy != "bounded_required"
-            or self.acknowledge_unverified_authority
-            or self.acknowledge_unpriced_cost
-        ):
-            raise ValueError("verified policy cannot acknowledge unknown risks")
-        if self.cost_policy == "bounded_required" and self.acknowledge_unpriced_cost:
-            raise ValueError("bounded policy cannot acknowledge unpriced cost")
-        if (self.cost_policy == "unpriced_accepted") != self.acknowledge_unpriced_cost:
-            raise ValueError("explicit unpriced acknowledgement required")
-        self.encoded()
+        validate_approval_facts(self)
         return self
 
 
-def require_acknowledgements(plan: DatasetUploadPlanV2, *, authority: bool, unpriced: bool) -> None:
-    if plan.status == "draft":
+def check_acknowledgements(
+    status: UploadPlanStatus, supplied: tuple[bool, ...], required: tuple[bool, ...]
+) -> None:
+    """A draft is never approved; an unneeded flag is invalid, a missing needed one is refused."""
+    if status == "draft":
         raise YorungeError("upload_plan_not_valid")
-    if type(authority) is not bool or type(unpriced) is not bool:
+    if any(type(flag) is not bool for flag in supplied):
         raise YorungeError("invalid_request")
-    required = (
-        "authority_unverified" in plan.risks,
-        plan.cost_policy == "unpriced_accepted",
-    )
-    supplied = (authority, unpriced)
     if any(given and not needed for given, needed in zip(supplied, required, strict=True)):
         raise YorungeError("invalid_request")
     if supplied != required:
         raise YorungeError("approval_required")
 
 
+def require_acknowledgements(plan: DatasetUploadPlanV2, *, authority: bool, unpriced: bool) -> None:
+    if type(plan) is not DatasetUploadPlanV2:
+        raise YorungeError("upload_plan_not_valid")
+    check_acknowledgements(
+        plan.status,
+        (authority, unpriced),
+        ("authority_unverified" in plan.risks, plan.cost_policy == "unpriced_accepted"),
+    )
+
+
 def validate_approval_binding_v2(
     plan: DatasetUploadPlanV2, approval: DatasetUploadApprovalV2
 ) -> None:
+    if type(plan) is not DatasetUploadPlanV2 or type(approval) is not DatasetUploadApprovalV2:
+        raise ValueError("mixed upload plan/approval versions")
     try:
         require_acknowledgements(
             plan,

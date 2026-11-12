@@ -23,6 +23,7 @@ from yorunge.domain.dataset_upload import (
     UploadWire,
 )
 from yorunge.domain.models import Identifier
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 ChargeCategory = Literal["create", "project_link", "control", "transfer", "confirm", "storage"]
 ALL_CHARGE_CATEGORIES: tuple[ChargeCategory, ...] = (
@@ -34,6 +35,7 @@ ALL_CHARGE_CATEGORIES: tuple[ChargeCategory, ...] = (
     "transfer",
 )
 WORK_DOMAIN = b"yorunge-upload-cost-work-v2\0"
+CONTINUATION_WORK_DOMAIN = b"yorunge-upload-cost-work-v3\0"
 
 
 class UploadRequestLimits(UploadWire):
@@ -54,6 +56,41 @@ class UploadRequestLimits(UploadWire):
         if type(value) is not int:
             raise ValueError("integer request limit required")
         return value
+
+
+class ContinuationRequestLimits(UploadWire):
+    """Request ceilings of a continuation: no create or link, one selection of files."""
+
+    max_create: Literal[0]
+    max_project_link: Literal[0]
+    max_presign: Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
+    max_put: Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
+    max_confirm: Annotated[int, Field(ge=0, le=MAX_UPLOAD_FILES)]
+    max_read_requests: Literal[512]
+    max_read_attempts: Literal[1024]
+    max_control_request_bytes: Literal[4194304]
+    max_control_response_bytes: Literal[16777216]
+    max_upload_bytes: Annotated[int, Field(ge=0, le=MAX_UPLOAD_BYTES)]
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def integer_limit(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer request limit required")
+        return value
+
+    @model_validator(mode="after")
+    def one_selection(self) -> Self:
+        if not self.max_presign == self.max_put == self.max_confirm:
+            raise ValueError("one file selection required")
+        if self.max_presign == 0 and self.max_upload_bytes != 0:
+            raise ValueError("verification-only continuation sends no bytes")
+        return self
+
+    @property
+    def files(self) -> int:
+        """Number of selected files (M)."""
+        return self.max_presign
 
 
 class UploadExecutionWindow(UploadWire):
@@ -83,15 +120,46 @@ class UploadCostWork(UploadWire):
     @model_validator(mode="after")
     def quantities(self) -> Self:
         limits = self.request_limits
+        counts = StageGraphSpec(ORIGINAL_PLAN_VERSION, self.manifest.file_count).request_counts()
         if (limits.max_presign, limits.max_put, limits.max_confirm) != (
-            self.manifest.file_count,
-        ) * 3 or limits.max_upload_bytes != self.manifest.total_bytes:
+            counts.presign,
+            counts.put,
+            counts.confirm,
+        ) or limits.max_upload_bytes != self.manifest.total_bytes:
             raise ValueError("request limits must match exact upload manifest")
         self.encoded()
         return self
 
     def digest(self) -> str:
         return hashlib.sha256(WORK_DOMAIN + self.encoded()).hexdigest()
+
+
+class ContinuationCostWork(UploadWire):
+    """Exact work of a continuation: the upload fields with the continuation request ceilings."""
+
+    scope: UploadScope
+    root: UploadRoot
+    manifest: UploadManifestRef
+    parameters: UploadParameters
+    storage: UploadStoragePolicy
+    request_limits: ContinuationRequestLimits
+    execution_window: UploadExecutionWindow
+
+    @model_validator(mode="after")
+    def quantities(self) -> Self:
+        limits, manifest = self.request_limits, self.manifest
+        sends_everything = limits.files == manifest.file_count
+        if (
+            limits.files > manifest.file_count
+            or limits.max_upload_bytes > manifest.total_bytes
+            or (sends_everything and limits.max_upload_bytes != manifest.total_bytes)
+        ):
+            raise ValueError("continuation limits must fit the upload manifest")
+        self.encoded()
+        return self
+
+    def digest(self) -> str:
+        return hashlib.sha256(CONTINUATION_WORK_DOMAIN + self.encoded()).hexdigest()
 
 
 class UploadCostBoundV2(UploadWire):
@@ -124,12 +192,16 @@ class UploadCostBoundV2(UploadWire):
         return canonical(self.model_dump(mode="json", exclude={"checked_at", "expires_at"}))
 
 
-def validate_cost_binding(work: UploadCostWork, cost: UploadCostBoundV2) -> None:
+def validate_cost_binding(
+    work: UploadCostWork | ContinuationCostWork, cost: UploadCostBoundV2
+) -> None:
     if cost.scope != work.scope or cost.work_digest != work.digest():
         raise ValueError("upload price evidence scope or work mismatch")
 
 
-def complete_cost(work: UploadCostWork, cost: UploadCostBoundV2 | None) -> bool:
+def complete_cost(
+    work: UploadCostWork | ContinuationCostWork, cost: UploadCostBoundV2 | None
+) -> bool:
     """Coverage predicate, independent of quote freshness and the user's CR ceiling."""
     if cost is None:
         return False

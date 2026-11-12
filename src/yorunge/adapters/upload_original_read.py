@@ -12,11 +12,15 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.upload_checks import AuthorizationCheck
 
 if TYPE_CHECKING:
+    from yorunge.adapters.upload_continuation import ContinuationStages
     from yorunge.adapters.upload_original import _Environment
     from yorunge.adapters.upload_read_access import ReadAccess
 
 
-def _deadline(environment: _Environment, check: AuthorizationCheck, access: ReadAccess) -> float:
+def _deadline(
+    environment: _Environment | ContinuationStages, check: AuthorizationCheck, access: ReadAccess
+) -> float:
+    """How long the item listing of a closing read may take: the shortest of what bounds it."""
     record = environment.record
     assert record is not None and record.lease is not None
     now = environment.runtime.clock.now()

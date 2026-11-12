@@ -12,10 +12,10 @@ from uuid import uuid4
 import pytest
 
 from tests.contracts.test_upload_versions import graph
+from tests.fixtures.upload_history import install_fixture
 from tests.fixtures.upload_receipts import accepted_create
 from tests.integration.test_upload_journal import DATASET
 from tests.integration.test_upload_journal import journal as journal
-from tests.integration.test_upload_versioned_history import install_fixture
 from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
@@ -571,16 +571,16 @@ def test_terminal_entry_and_terminal_race_never_downgrade_history(tmp_path, monk
             ),
             verification=None,
         )
-        original, used = repo._nonterminal, False
+        original, used = repo._nonterminal_with_lineage, False
 
         def observed_once(operation_id):
             nonlocal used
             if not used:
                 used = True
-                return stale
+                return stale, None  # a legacy create has no lineage
             return original(operation_id)
 
-        monkeypatch.setattr(repo, "_nonterminal", observed_once)
+        monkeypatch.setattr(repo, "_nonterminal_with_lineage", observed_once)
         with pytest.raises(OperationError) as raised:
             repo.require_created_baseline(identifier)
         assert raised.value.code == "operation_uncertain"

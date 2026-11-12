@@ -8,6 +8,7 @@ from typing import Literal, Self
 from pydantic import field_validator, model_validator
 
 from yorunge.domain.capabilities import canonical, instant
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import Sha256
 from yorunge.domain.dataset_upload import (
     REQUIRED_PERMISSIONS,
@@ -28,6 +29,9 @@ AuthorizationOutcome = Literal["allowed", "not_exposed", "denied", "unavailable"
 UNAVAILABLE_CODES = frozenset(
     {"transport_timeout", "transport_failed", "remote_rate_limited", "remote_failed"}
 )
+# What a provider can answer to a read of the dataset that makes the read fail, as the check
+# ``read_failed`` records it: not a failed upload, and never a reason to replay one.
+READ_FAILURES = UNAVAILABLE_CODES | {"remote_access_denied", "invalid_response"}
 
 
 def mandatory_http_failure(status: int) -> tuple[AuthorizationOutcome, ErrorCode]:
@@ -183,7 +187,7 @@ class UploadCurrentCheck(UploadWire):
 
     def require_current(
         self,
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         *,
         now: str,
         action: UploadPermission,
@@ -213,7 +217,9 @@ class UploadCurrentCheck(UploadWire):
             self.upload_observation.require_current(plan.scope, dataset_id, now)
         return expiries
 
-    def _evidence(self, plan: DatasetUploadPlanV2, now: str) -> tuple[str, ...]:
+    def _evidence(
+        self, plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3, now: str
+    ) -> tuple[str, ...]:
         saved = (plan.grant, plan.cost_bound)
         baseline = (self.baseline_grant, self.baseline_cost_bound)
         for original, current in zip(saved, baseline, strict=True):

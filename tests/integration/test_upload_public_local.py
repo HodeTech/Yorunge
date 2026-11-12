@@ -8,9 +8,9 @@ from uuid import uuid4
 
 import pytest
 
+from tests.fixtures.upload_history import install_fixture
 from tests.integration.test_upload_journal import journal as journal
 from tests.integration.test_upload_journal import seal
-from tests.integration.test_upload_versioned_history import install_fixture
 from yorunge import api
 from yorunge.adapters.state import open_existing_store, open_store
 from yorunge.adapters.upload_repository import StateUploads

@@ -618,6 +618,76 @@ def test_wrong_client_budget_and_local_secret_are_rejected_without_reads():
     assert value.snapshot().read_requests == 0
 
 
+def test_a_mandatory_read_that_is_dripped_is_cut_at_the_phase_budget(certificates, monkeypatch):
+    monkeypatch.setattr("yorunge.adapters.platform_upload_reader.PHASE_SECONDS", 1.0)
+    key, value, values = credential(), budget(readonly=True), routes()
+    values["/api/v1/auth/me"] = json_reply(
+        {"success": True, "data": {"id": SCOPE.owner.id}}, chunk_size=1, chunk_delay=0.5
+    )
+    source = reader(key, value)
+    with TlsServer(certificates, values) as server:
+        owned, _ = session(server, key, value)
+        began = time.monotonic()
+        with owned:
+            check = owned.exchange(source.preparation)
+    # The body alone would take half a minute; the phase (one second here) ends it first.
+    assert check.outcome == "unavailable"
+    assert check.error_code == "transport_timeout"
+    assert time.monotonic() - began < 10
+
+
+def test_the_phase_of_a_mandatory_read_is_the_named_constant(certificates, monkeypatch):
+    """Asked at the deadline itself: a phase twice as long would still cut the dripped body."""
+    monkeypatch.setattr("yorunge.adapters.platform_upload_reader.PHASE_SECONDS", 7.0)
+    seen = []
+    original = ObservedUploadReader._get
+
+    async def get(self, client, kind, endpoint, end, query=()):
+        seen.append(end - time.monotonic())
+        return await original(self, client, kind, endpoint, end, query)
+
+    monkeypatch.setattr(ObservedUploadReader, "_get", get)
+    key, value = credential(), budget(readonly=True)
+    source = reader(key, value)
+    with TlsServer(certificates, routes()) as server:
+        owned, _ = session(server, key, value)
+        with owned:
+            check = owned.exchange(source.preparation)
+    assert check.error_code is None
+    assert seen
+    assert 5.5 < seen[0] <= 7.0, seen
+
+
+def test_the_baseline_of_a_foreign_client_or_dataset_is_refused_before_anything_is_read():
+    key, value = credential(), budget()
+    source = reader(key, value)
+    expected = ProviderDataset.model_validate(dataset())
+    foreign = ProviderDataset.model_validate(
+        dataset(owner_id="00000000-0000-4000-8000-000000000999")
+    )
+    calls = []
+
+    async def handler(wire):
+        calls.append(wire)
+        return httpx.Response(200, content=b"{}")
+
+    async def run():
+        async with UploadHttpxTransport(
+            key, budget(), transport=httpx.MockTransport(handler)
+        ) as other:
+            with pytest.raises(YorungeError) as failure:  # a client of another budget
+                await source.baseline(other, expected, PARAMETERS)
+            assert failure.value.code == "invalid_request"
+        async with UploadHttpxTransport(key, value, transport=httpx.MockTransport(handler)) as own:
+            with pytest.raises(YorungeError) as failure:  # a dataset of another owner
+                await source.baseline(own, foreign, PARAMETERS)
+            assert failure.value.code == "invalid_request"
+
+    asyncio.run(run())
+    assert calls == []
+    assert value.snapshot().read_requests == 0
+
+
 def test_new_negative_keeps_source_timeout_code_without_refreshing_a_positive():
     key, value, times = (
         credential(),

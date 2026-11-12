@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Literal
 
 ErrorCode = Literal[
@@ -48,6 +49,8 @@ ErrorCode = Literal[
     "operation_fence_exhausted",
     "operation_capacity_exceeded",
     "operation_uncertain",
+    "continuation_not_possible",
+    "continuation_remote_changed",
     "plan_in_use",
     "transport_timeout",
     "transport_failed",
@@ -66,6 +69,23 @@ ErrorCode = Literal[
     "manifest_write_failed",
     "manifest_write_uncertain",
     "manifest_mismatch",
+    "download_target_invalid",
+    "download_output_exists",
+    "download_partial_unverified",
+    "download_busy",
+    "download_limit_exceeded",
+    "download_integrity_mismatch",
+    "download_incomplete",
+    "download_write_failed",
+    "download_write_uncertain",
+    "dataset_version_not_found",
+    "dataset_version_not_frozen",
+    "dataset_version_changed",
+    "dataset_version_missing",
+    "binding_invalid",
+    "binding_output_exists",
+    "binding_write_failed",
+    "binding_write_uncertain",
 ]
 
 MESSAGES: dict[ErrorCode, str] = {
@@ -104,6 +124,62 @@ MESSAGES: dict[ErrorCode, str] = {
     "manifest_mismatch": (
         "Klasörün dosya adları veya içeriği manifestle eşleşmiyor. Değişiklikleri inceleyin."
     ),
+    "download_target_invalid": (
+        "İndirme hedefi geçersiz. Hedef dizinin var olduğunu ve yeni, geçerli bir dosya adı "
+        "verdiğinizi kontrol edin."
+    ),
+    "download_output_exists": (
+        "İndirme hedefi zaten var. Dosyaya dokunulmadı; yeni ve kullanılmamış bir hedef seçin."
+    ),
+    "download_partial_unverified": (
+        "Hedef dizinde doğrulanamayan bir yarım indirme izi var. Hiçbir dosyaya dokunulmadı; "
+        "dizindeki .yorunge-download- dosyalarını inceleyin, başka bir hedef seçin ya da iz "
+        "bu aracın kendi yarım dosyasıysa --no-resume ile yeniden çalıştırın."
+    ),
+    "download_busy": (
+        "Aynı hedef için başka bir indirme sürüyor. Hiçbir dosyaya dokunulmadı; bitmesini bekleyin."
+    ),
+    "download_limit_exceeded": "İndirme 1 GiB sınırını aştı. Hedef oluşturulmadı.",
+    "download_integrity_mismatch": (
+        "İndirilen içeriğin SHA-256 özeti beklenenle eşleşmedi. Hedef oluşturulmadı; "
+        "--sha256 değerini kontrol edin."
+    ),
+    "download_incomplete": (
+        "İndirme tamamlanmadan kesildi. Komutu yeniden çalıştırın; "
+        "uygunsa kaldığı yerden devam eder."
+    ),
+    "download_write_failed": (
+        "İndirme yazılamadı. Hedef oluşturulmadı; disk, izinler ve hedef dizini kontrol edin."
+    ),
+    "download_write_uncertain": (
+        "İndirilen dosya yayınlanmış olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
+    ),
+    "dataset_version_not_found": (
+        "Veri sürümü bulunamadı. Veri seti kimliğini ve sürüm etiketini kontrol edin."
+    ),
+    "dataset_version_not_frozen": (
+        "Veri sürümü dondurulmamış; değişmez bağ üretilmedi. Sürümü Platform'da dondurun."
+    ),
+    "dataset_version_changed": (
+        "Bağlı veri sürümü değişmiş. Değişen alanlar için --output json kullanın; "
+        "bağı kullanmadan önce inceleyin."
+    ),
+    "dataset_version_missing": (
+        "Bağlı veri sürümü uzakta artık yok; referans geçerliliğini yitirdi."
+    ),
+    "binding_invalid": (
+        "Sürüm bağı dosyası geçersiz. Dosya, yazıldığı gibi bayt bayt aynı olmalıdır "
+        "(satır sonu dönüşümü, düzenleme veya kırpma bozar); bozulmadığını kontrol edin."
+    ),
+    "binding_output_exists": (
+        "Sürüm bağı hedefi zaten var. Dosyaya dokunulmadı; yeni ve kullanılmamış bir hedef seçin."
+    ),
+    "binding_write_failed": (
+        "Sürüm bağı yazılamadı. Hedef oluşturulmadı; disk, izinler ve hedef dizini kontrol edin."
+    ),
+    "binding_write_uncertain": (
+        "Sürüm bağı yayınlanmış olabilir. İstenen hedefi inceleyin; otomatik tekrar yapmayın."
+    ),
     "transport_timeout": "Ağ çağrısının süre bütçesi doldu. Sonucu inceleyin; otomatik tekrar yok.",
     "transport_failed": "Ağ bağlantısı veya güvenli taşıma tamamlanamadı. Hedefi kontrol edin.",
     "remote_access_denied": "Uzak hizmet erişimi reddetti. Seçili hizmet kimliğini kontrol edin.",
@@ -116,6 +192,13 @@ MESSAGES: dict[ErrorCode, str] = {
     "output_write_failed": "Sonuç çıktısı teslim edilemedi. Kayıtlı sonucu inceleyin.",
     "operation_not_found": "Kayıtlı iş bulunamadı. Yerel iş listesini inceleyin.",
     "operation_conflict": "İşin mevcut durumu bu geçişe izin vermiyor; yeniden gönderim yok.",
+    "continuation_not_possible": (
+        "Devam bu işten şu an hazırlanamıyor. Nedenler için resume raporunu inceleyin."
+    ),
+    "continuation_remote_changed": (
+        "Uzak durum devam planı hazırlandıktan sonra değişti; istek gönderilmedi. "
+        "Yeniden hazırlayın."
+    ),
     "operation_lease_lost": (
         "İşin sahipliği veya lease geçerliliği kaybedildi; yeniden göndermeyin."
     ),
@@ -183,7 +266,10 @@ MESSAGES: dict[ErrorCode, str] = {
         "Yerel durum kalıcılaştırılamadı. Disk ve tanılama sonucunu kontrol edin."
     ),
     "state_unsupported": "Yerel durum için desteklenen macOS/Linux ve SQLite 3.37+ gereklidir.",
-    "state_changed": "Yerel bağ değişti. Güncel durumu inceleyip isteği yeniden hazırlayın.",
+    "state_changed": (
+        "Yerel bağ ya da hedef hizmet değişti. Güncel durumu inceleyip isteği veya bağı "
+        "yeniden hazırlayın."
+    ),
     "credential_revision_exhausted": (
         "Credential nesil sınırına ulaşıldı. Açık kimlik reset akışını kullanın."
     ),
@@ -215,9 +301,20 @@ class YorungeError(Exception):
         self.exit_code = 2
         if code == "approval_required":
             self.exit_code = 4
-        elif code in ("config_write_uncertain", "operation_uncertain", "manifest_write_uncertain"):
+        elif code in (
+            "config_write_uncertain",
+            "operation_uncertain",
+            "manifest_write_uncertain",
+            "download_write_uncertain",
+            "binding_write_uncertain",
+        ):
             self.exit_code = 5
-        elif code == "manifest_mismatch":
+        elif code in (
+            "manifest_mismatch",
+            "download_integrity_mismatch",
+            "dataset_version_changed",
+            "dataset_version_missing",
+        ):
             self.exit_code = 7
         elif code in ("credential_unavailable", "invalid_credential", "remote_access_denied"):
             self.exit_code = 3
@@ -231,6 +328,7 @@ class YorungeError(Exception):
             "invalid_response",
             "stream_interrupted",
             "output_write_failed",
+            "download_incomplete",
         ):
             self.exit_code = 1
         super().__init__(self.message)
@@ -256,6 +354,7 @@ class OperationError(YorungeError):
         *,
         reason_code: ErrorCode | None = None,
         capacity_kind: Literal["store", "attempt", "transition"] | None = None,
+        blockers: Sequence[str] | None = None,
     ) -> None:
         from yorunge.domain.state import canonical_uuid
 
@@ -263,6 +362,14 @@ class OperationError(YorungeError):
             canonical_uuid(operation_id)
         if (capacity_kind is not None) != (code == "operation_capacity_exceeded"):
             raise ValueError("capacity kind required only for capacity errors")
+        if (blockers is not None) != (code == "continuation_not_possible"):
+            raise ValueError("blockers belong to continuation_not_possible alone")
+        if blockers is not None:
+            from yorunge.domain.upload_resume import BLOCKERS  # that module imports this one
+
+            names = tuple(blockers)
+            if not names or names != tuple(name for name in BLOCKERS if name in names):
+                raise ValueError("closed, ordered, distinct blockers required")
         if capacity_kind not in (None, "store", "attempt", "transition"):
             raise ValueError("closed capacity kind required")
         if code not in MESSAGES or (reason_code is not None and reason_code not in MESSAGES):
@@ -271,14 +378,19 @@ class OperationError(YorungeError):
         self.operation_id = operation_id
         self.reason_code = reason_code or code
         self.capacity_kind = capacity_kind
+        # The closed names of what ruled a continuation out (the resume report shows the detail).
+        self.blockers = None if blockers is None else tuple(blockers)
 
     def envelope(self) -> dict[str, object]:
         value = super().envelope()
         value["operation_id"] = self.operation_id
-        value["details"] = {
+        details: dict[str, object] = {
             "reason_code": self.reason_code,
             "capacity_kind": self.capacity_kind,
         }
+        if self.blockers is not None:
+            details["blockers"] = list(self.blockers)
+        value["details"] = details
         return value
 
 
@@ -336,6 +448,73 @@ class ManifestMismatch(YorungeError):
             "unexpected_file_count": unexpected_file_count,
             "changed_file_count": changed_file_count,
         }
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = dict(self.details)
+        return value
+
+
+# The closed vocabulary of what a bound dataset version can differ in (ADR-0033 §3): the identity
+# and membership fields, and the annotation fields that may move on a frozen version.
+VERSION_IDENTITY_FIELDS = (
+    "created_at",
+    "is_frozen",
+    "item_count",
+    "split_counts",
+    "split_total_matches_item_count",
+    "version_id",
+    "version_tag",
+)
+VERSION_ANNOTATION_FIELDS = (
+    "annotated_item_count",
+    "class_count",
+    "class_labels_sha256",
+    "is_partial",
+    "total_annotation_count",
+)
+VERSION_FIELDS = tuple(sorted(VERSION_IDENTITY_FIELDS + VERSION_ANNOTATION_FIELDS))
+
+
+class DatasetVersionChanged(YorungeError):
+    """A bound dataset version differs from the provider's now: which fields, and nothing else."""
+
+    def __init__(self, changed_fields: tuple[str, ...]) -> None:
+        if (
+            type(changed_fields) is not tuple
+            or not changed_fields
+            or list(changed_fields) != sorted(set(changed_fields))
+            or any(name not in VERSION_FIELDS for name in changed_fields)
+        ):
+            raise ValueError("a sorted, non-empty set of closed field names required")
+        super().__init__("dataset_version_changed")
+        self.changed_fields = changed_fields
+        self.annotation_only = all(name in VERSION_ANNOTATION_FIELDS for name in changed_fields)
+
+    def envelope(self) -> dict[str, object]:
+        value = super().envelope()
+        value["details"] = {
+            "changed_field_count": len(self.changed_fields),
+            "changed_fields": list(self.changed_fields),
+            "annotation_only": self.annotation_only,
+        }
+        return value
+
+
+class DownloadIntegrityMismatch(YorungeError):
+    """The expected digest did not match: what was computed, and nothing else (no name or path)."""
+
+    def __init__(self, computed_sha256: str, size: int) -> None:
+        if (
+            type(computed_sha256) is not str
+            or len(computed_sha256) != 64
+            or any(char not in "0123456789abcdef" for char in computed_sha256)
+        ):
+            raise ValueError("canonical sha256 required")
+        if type(size) is not int or not 0 <= size <= 1024**3:
+            raise ValueError("bounded byte count required")
+        super().__init__("download_integrity_mismatch")
+        self.details: dict[str, object] = {"computed_sha256": computed_sha256, "bytes": size}
 
     def envelope(self) -> dict[str, object]:
         value = super().envelope()

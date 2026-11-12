@@ -4,12 +4,40 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Fixed — 2026-11-12
+
+- Yerel durum deposunu açan bir süreç, aynı anda başka bir süreç commit ederken geçerli depoyu reddedebiliyordu: SQLite’ın rollback journal’ı (`state.sqlite3-journal`) varlığı sorulup incelenmeden önce commit’le silinirse okuyucu `state_invalid`, yazıcı `state_write_failed` alıyordu. Artık o dosya bu arada silinmişse ya da silinirken adı duran ama bağı kalmamışsa (`st_nlink == 0`) depo geçerlidir (yoklama ve bakış tek `lstat`); var olan yan dosyaların denetimi (özel olmayan ya da symlink journal, `-wal`, `-shm` hâlâ `state_invalid`) değişmedi. Aynı planı eşzamanlı başlatan süreçlerin Linux 3.14 CI testi bu yarışı gösterdi.
+- Model ağırlığı indirmesi, yayımlamadan önce stage’i tutulan tanıtıcıdan geri okur: bildirilen özet artık bağlanan baytların özetidir (aynı kullanıcının başka bir süreci stage’e yazdıysa `download_write_failed`, hiçbir şey bağlanmaz; son denetim ile `link()` arasındaki yazma `link()` sonrası bulunur ve sonuç başarı değil `download_write_uncertain` olur). Sidecar adı indirmenin bıraktığı dosyadan başka bir şeye çıkarsa checkpoint ve temizlik ona dokunmaz (`download_partial_unverified`). İndirme süreç `umask`ını artık hiç değiştirmez (çok iş parçacıklı uygulamalarda başka dosyaların izinlerini etkiliyordu).
+- `datasets upload resume` raporu, journal’ın dışarıda bıraktığı bir kaynakta saatin yüksek su seviyesini ve generation’ını yazmaz; sağlayıcıyı okuyan rapor her Platform komutu gibi kimlik bağını ve saat noktasını kaydeder. “Yazmaz” sözü “plan, operation ya da upload kaydı yazmaz” olarak daraltıldı.
+- Sürüm listesi, kapsadığı dilimden az satır gösteren bir sayfayı artık kabul etmez (sürümler sessizce gizleniyordu).
+- Kanıt gizlilik tarayıcısı bilinen kişisel değerleri harf farkından bağımsız arar; sdist doğrulayıcı gizli adları (`.env`, `.local/`) reddeder.
+
+### Added — 2026-11-08
+
+- P02-3 (23 adım kartı; PR incelemesinde, canlı kabul yok): `datasets upload resume --operation-id ID --accept-unverified-read [--prepare [--accept-unconfirmed-effects]]` ve `api.resume_dataset_upload` kesintiye uğramış bir yüklemenin kalanını salt okuma raporlar (14 kapalı engel; her biri tek cümle neden ve sonraki adım), `--prepare` yeni bir devam planı kaydeder (onaysızdır; gönderim ancak ayrı `approve` ve `start` ile olur) ve plan `review/approve/start/reconcile/show/list/revoke` ile ilerler (`schema_version=3`); aynı operation canlandırılmaz, onaylı plan soy bağlı yeni bir operation olarak yalnız kanıtlanmış güvenli dosya adımlarını gönderir ([ADR-0031](docs/decisions/0031-upload-continuation.md)). `yorunge models download --version-id UUID --format onnx|pt|tflite --weights-out FILE` ve `api.download_model_weights` kesin model sürümü ağırlığını kayıtlı Platform kimliğiyle alınan imzalı adresten kimliksiz, no-clobber ve görünür doğrulama seviyesiyle indirir; yarım indirme aynı komutla devam eder ([ADR-0032](docs/decisions/0032-bounded-download-and-verification-levels.md)). `datasets versions list|show|bind|check` salt okuma veri sürümü/bölme gözlemi, değişmez bağ artifact’ı ve sapma denetimi verir ([ADR-0033](docs/decisions/0033-dataset-version-references.md)). Kurulu `resume`, `versions` ve `models download` smoke’ları (wheel ve sdist, `installation_v4`), native indirme ölçüm donanımı (kapalı `download_budget_v1`, 27 adlı kural), `verify-download-reference`, tanı saklama ve CI adımları eklendi; compatibility hücrelerinin job tavanı 45’ten 90 dakikaya çıktı. Son kaynak M5 referans serisi: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-7`, kod `10b19be`’de dondurulduktan sonra kişisiz kökte bir kez alındı ve arşivlendi (altısı da ilk denemede geçti; beş kaynak bağlı doğrulayıcı geçti; `-1` (a574c5b), `-2` (27a532c), `-3` (50946ba), `-4` (9ab9d6a), `-5` (1b2cc1f) ve `-6` (932b27f) serileri kaynak değiştiği için tarihsel kayıttır). Üç ortam CI, altı temiz kurulum ve yetkili canlı kabuller (model indirme, resume `actual_count`, sürüm okuma) bu kayıtla tamamlanmış değildir. Master/release veya paket yayını değildir.
+
+### Changed — 2026-11-08
+
+- Yalnız belge/roadmap: LLM OpenAPI yeniden sabitlendi (53.649 byte) ve üç dış inceleme iddiası [araştırma kaydında](docs/research/p02-llm-gateway-schema-review.md) doğrulandı. Kullanıcı belgesine ortam proxy/özel CA kullanılmadığı ve kurumsal ağlardaki sınır yazıldı ([HTTP taşıma](docs/reference/http-transport.md#kurumsal-ağ-ve-ortam-proxysi)). Takip kartları P02-R9 (ağ tanısı ve açık CA/proxy yolu, `draft`, karar B16) ve P02-R10 (şart durumu yönlendirmesi, `ready`). Ürün davranışı değişmedi; referans belgeleri mevcut davranışı (ortam proxy/CA'nın yok sayılması, upload adres politikası) açıkladı. Sonraki yeniden okumalarda diff için LLM OpenAPI yapısal özeti ve betiği [araştırma aracı](docs/research/probes/llm-openapi-structure-20261108/README.md) olarak eklendi.
+
+### Fixed — 2026-11-08
+
+- Dolu bir diskte yerel durum yazımı, SQLite işlemi kendisi geri aldığında paylaşılan işlem sarmalayıcısının temizlik hatası (`no such savepoint`) asıl hatayı ezdiği için `state_invalid` (“durumu onarın”) yanıtlıyordu; artık `state_write_failed` olarak raporlanır. Kanıt arşivi gizlilik taramasının üye sınırı 512’den 1.024’e çıktı (başarısız bir CI koşusunun her iki indirme tanısını saklaması 512’yi bulur).
+
+### Added — 2026-11-06
+
+- P02-3 hazırlığı: [teslim planı](docs/roadmap/p02-3-delivery-plan.md), [hazırlık incelemesi](docs/research/p02-3-readiness-review.md), ADR-0031 (soy bağlı, yeni onaylı resume; Accepted), ADR-0032 (akışlı indirme ve doğrulama seviyeleri) ve ADR-0033 (salt okuma veri sürümü referansı) — üçü de kullanıcı 2026-11-06 talimatıyla Accepted —, üç taslak referans sözleşmesi, 16 adım ve üç üst kabul kartı ile P02-R4–R8 takipleri. Ürün kodu veya uygulanmış davranış değişikliği henüz yoktur; uygulama adım adım sürer.
+
+### Changed — 2026-11-06
+
+- P02-2 (private create, bounded upload ve aynı-ID salt okuma recovery) ve P02-2a/b/c verified; [PR #14](https://github.com/HodeTech/Yorunge/pull/14) kullanıcı tarafından `94aaaf0` merge commit’iyle development’a alındı. Master/release veya paket yayını değildir. Sıradaki epik P02-3 draft; ADR-0030 Proposed kalır.
+
 ### Added — 2026-11-04
 
-- Çalışma dalında upload state’i için SQL-only şema 6→7 migration; var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
+- Upload state’i için SQL-only şema 6→7 migration ([PR #14](https://github.com/HodeTech/Yorunge/pull/14) ile development’ta); var olan execution/approval/operation geçmişinin canonical payload baytları ve kimlikleri korunur.
 
 - ADR-0028: ilk Platform upload yolu aynı SHA-256’lı farklı adları ağ/create öncesinde açık `upload_duplicate_content`/exit 2 ile reddeder. Yerel Manifest/inspect/verify ve geçmiş kayıtlar korunur; tekrarlı adları bulmak için salt yerel rehber örneği eklendi. Özgün çoklu-ad upload desteği P02-R2’de açık kalır.
-- Çalışma dalında `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [Kullanım rehberi](docs/reference/upload-workflows.md); nihai native/kurulum/CI/ayrı canlı kabul durumu [current](docs/roadmap/current.md) ve [kabul kaydında](docs/research/p02-2-implementation-validation.md) izlenir.
+- `datasets upload` plan/review/approve/start/list/show/revoke/reconcile ve ortak Python API: private create/proje bağlantısı, bounded presign/PUT/confirm, kalıcı tekil intent/receipt, aynı operation üzerinde salt okuma toparlanması ve text/JSON/NDJSON. Varsayılan verified-only; yalnız açık risk/onayla explicit/unpriced deneme. Metadata sonucu yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir. Otomatik replay, etkili resume ve indirme yoktur. [PR #14](https://github.com/HodeTech/Yorunge/pull/14) ile development’a alındı; paket yayını değildir. [Kullanım rehberi](docs/reference/upload-workflows.md); native/kurulum/CI/canlı metadata kabulü ve kanıt saklama [kabul kaydında](docs/research/p02-2-implementation-validation.md#development-merge-kapanışı) izlenir.
 
 ### Fixed — 2026-11-04
 
@@ -125,6 +153,6 @@ Eski stateless offline v1 değişmedi. Public execution producer araç/uzak yetk
 - Roadmap epikleri dar teslim, bağımlılık ve dış kapılarla netleştirildi; ilk hazır P01-2a kartı ve ajan çalışma rehberi eklendi. Ürün capability'si eklenmedi.
 - Ortak repo skill kütüphanesi ve Claude alias'ları, metadata/bağımlılık kontrolleri ve ilgili CI kapısı oluşturuldu.
 - `development` hedefli zorunlu PR, merge commit ve kullanıcı kontrollü `Master` release akışı benimsendi; CI dal filtreleri ve güvenilen metadata kontrolü eklendi.
-- Yerel analiz arşivi `docs/analysis/private/` altına taşınıp Git ve yayın kapsamından dışlandı.
+- Yerel analiz arşivi Git ve yayın kapsamından dışlandı.
 - Paylaşılabilir kaynak kaydı resmî platform/araç belgeleri ve proje kararlarıyla sınırlandırıldı.
 - Özel analizlerin kod, doküman ve commit/PR içeriklerinde referans verilmemesi kuralı eklendi.

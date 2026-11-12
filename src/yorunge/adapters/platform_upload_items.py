@@ -3,22 +3,42 @@
 from __future__ import annotations
 
 import hashlib
+from typing import Protocol
 
 from yorunge.adapters.http_transport import _remaining
 from yorunge.adapters.platform_upload_port import ObservedUploadPort
 from yorunge.adapters.upload_http import UploadHttpxTransport
 from yorunge.application import platform_upload_codec as codec
 from yorunge.application import upload_metadata_codec as metadata
-from yorunge.application.http_transport import HttpRequest, HttpStatusFailure
+from yorunge.application.http_transport import HttpCredential, HttpRequest, HttpStatusFailure
+from yorunge.application.upload_budget import UploadBudget
 from yorunge.domain.dataset_manifest import DatasetFile
 from yorunge.domain.dataset_transfer import VerifiedFile
 from yorunge.domain.errors import ErrorCode, YorungeError
 from yorunge.domain.platform_upload_items import ProviderItems
 from yorunge.domain.upload_checks import mandatory_http_failure
+from yorunge.domain.upload_resume import (
+    MAX_INVENTORY_PAGES,
+    InventoryFold,
+    RemoteInventory,
+    RemoteItem,
+)
+
+
+class ItemSource(Protocol):
+    """What listing a dataset's items needs of its owner: a checked client, a key and a budget.
+
+    The port of a plan has them, and so has the reader of an observation that has no plan yet.
+    """
+
+    _credential: HttpCredential
+    _budget: UploadBudget
+
+    def _client(self, client: UploadHttpxTransport) -> None: ...
 
 
 async def _page(
-    port: ObservedUploadPort,
+    port: ItemSource,
     client: UploadHttpxTransport,
     dataset_id: str,
     cursor: str | None,
@@ -85,7 +105,7 @@ async def read_items(
     ids: set[str] = set()
     cursors: set[str] = set()
     cursor = None
-    for _ in range(128):
+    for _ in range(MAX_INVENTORY_PAGES):
         page = metadata.items(
             await _page(port, client, dataset_id, cursor, deadline),
             dataset_id,
@@ -104,3 +124,38 @@ async def read_items(
         cursor = page.next_cursor
         cursors.add(cursor)
     raise YorungeError("invalid_response")
+
+
+async def read_inventory(
+    port: ItemSource, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+) -> RemoteInventory:
+    """The dataset's item listing as observed, for the resume classifier.
+
+    Unlike ``read_items`` this never compares against the manifest and does not raise when the
+    listing is internally inconsistent: duplicate identities, a moving total, a repeated cursor,
+    too many pages or items are recorded for ``classify`` to turn into blocking classes. Malformed
+    pages, items of another dataset and transport failures still raise.
+    """
+    port._client(client)
+    dataset_id = codec.segment(dataset_id, port._credential.secret)
+    _remaining(deadline)
+    deadline = min(deadline, port._budget.end)
+    fold = InventoryFold()
+    cursor: str | None = None
+    while True:
+        page = metadata.item_page(
+            await _page(port, client, dataset_id, cursor, deadline),
+            dataset_id,
+            port._credential.secret,
+        )
+        _remaining(deadline)
+        cursor = fold.add(
+            [
+                RemoteItem(item.original_filename, item.file_size_bytes, item.sha256_hash, item.id)
+                for item in page.items
+            ],
+            page.total,
+            page.next_cursor,
+        )
+        if cursor is None:
+            return fold.result()

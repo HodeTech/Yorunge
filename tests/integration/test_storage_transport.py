@@ -766,3 +766,20 @@ def test_shortened_expiry_window_interrupts_body_instead_of_waiting_for_context_
         assert not instances[0]._responses
         assert body._file_fd is None
         assert len(server.requests) == 1
+
+
+def test_a_put_is_given_at_most_120_seconds_whatever_the_callers_deadline(tmp_path):
+    # ADR-0025's rule, unchanged by the signed GET (which has no such cut): a PUT's window is the
+    # shortest of the caller's deadline, 120 seconds and the address's expiry less its margin.
+    key = credential()
+    transport = TransferHttpxTransport(
+        key, storage_origins=("https://storage.localhost",), utc_clock=lambda: NOW
+    )
+    body = source(tmp_path)
+    far = timestamp(NOW + timedelta(hours=1))
+    window = transport._window(direct(body, key, expiry=far), time.monotonic() + 3000)
+    assert 118 < window - time.monotonic() <= 120.5
+    # The expiry still cuts it shorter.
+    soon = timestamp(NOW + timedelta(seconds=30))
+    window = transport._window(direct(body, key, expiry=soon), time.monotonic() + 3000)
+    assert 20 < window - time.monotonic() <= 25.5

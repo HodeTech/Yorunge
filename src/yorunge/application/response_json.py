@@ -159,6 +159,33 @@ def literal_secret_match(value: str, secret: str) -> bool:
     return value == secret or (len(secret.encode("utf-8")) >= 8 and secret in value)
 
 
+def _reject_secret(text: str, captured: str) -> None:
+    """A string or a key that is, or holds, the captured secret is ``invalid_response``."""
+    if literal_secret_match(text, captured):
+        raise YorungeError("invalid_response")
+
+
+def scan_for_secret(value: object, secret: SecretValue) -> None:
+    """The selected key is in no string or key of a parsed answer, wherever in it, used or dropped.
+
+    The answer is ``invalid_response``: a provider that echoes the key is not a provider to trust.
+    """
+    if type(secret) is not SecretValue:
+        raise YorungeError("invalid_request")
+    captured = secret.reveal()
+    pending: list[object] = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, str):
+            _reject_secret(item, captured)
+        elif isinstance(item, dict):
+            for key, child in item.items():
+                _reject_secret(key, captured)
+                pending.append(child)
+        elif isinstance(item, list):
+            pending.extend(item)
+
+
 def _schema_children(item: object) -> list[object]:
     if isinstance(item, dict):
         # Only schema nodes, not the model's field-name mapping or default JSON data.

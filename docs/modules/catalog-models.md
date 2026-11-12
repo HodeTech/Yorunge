@@ -8,4 +8,4 @@ Model/veri araması, sahip/slug/UUID çözümleme, model görevi ve sürüm meta
 
 Görev seçimi için metin üretimi, embedding, rerank, görsel veya karar modeli türü korunur. “En iyi model” sabit bir sıralama olarak verilmez; görev, erişim ve ölçülmüş ihtiyaca göre seçenek sunulur. İndirme talebi artefakt modülünün dosya/güvenlik kurallarıyla yürür.
 
-**Kabul:** Belirsiz slug, eksik yetki, stale katalog, model sürümü değişimi ve bilinmeyen görev türü ele alınır. Katalog sorgusu eğitim paketi yüklemez. Kullanıcıya modelin listede olmasının sağlık/servis garantisi olmadığı doğru bağlamda anlatılır.
+**Kabul:** Belirsiz slug, eksik yetki, stale katalog, model sürümü değişimi ve bilinmeyen görev türü ele alınır. Katalog sorgusu eğitim paketi yüklemez. Kesin model sürümü kimliğiyle ağırlık indirme (`models download`) P02-3n’de çalışma dalında uygulandı ([ADR-0032](../decisions/0032-bounded-download-and-verification-levels.md) Accepted; [başvuru](../reference/download-engine.md); canlı kabul yok); katalog çözümlü seçim P02-4b’dedir. Kullanıcıya modelin listede olmasının sağlık/servis garantisi olmadığı doğru bağlamda anlatılır.

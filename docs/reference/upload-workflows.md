@@ -1,6 +1,6 @@
 # Private dataset aktarımı
 
-**Tarih:** 2026-11-03. **Durum:** P02-2t ortak CLI/Python akışı ve iki fresh review turu çalışma dalında yerel tamamlandı. R5 canlı metadata ve 06 önceki kaynak native kabulü geçti; üst c son üç ortam CI/altı kurulum ve kalıcı saklamayı bekler. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
+**Tarih:** 2026-11-03. **Durum:** P02-2t ortak CLI/Python akışı ve iki fresh review turu tamamlandı; üst P02-2c, son kaynak üç ortam CI/altı kurulum ve kalıcı saklamayla verified ve PR #14 / 94aaaf0 ile development’a teslim edildi. R5 canlı metadata kabulü yetki, fiyat veya uzak byte doğrulaması değildir. [Kesin public sözleşme](dataset-upload-public.md), [güncel durum](../roadmap/current.md).
 
 Önce yerel dosyaları inceleyin, seçtiğiniz owner/projeyi kontrol edin ve planın tam digest’ini onaylayın. Aktarım bir kez gönderilir. Uzak metadata eşliği, dosyaların uzaktan indirilip hash’lendiği veya yetkinizin doğrulandığı anlamına gelmez.
 
@@ -26,6 +26,8 @@ export EVREN_PLATFORM_API_KEY
 ```
 
 Mevcut [P02 özel credential dosyası](../p02-account-setup.md#hazırlıktan-normal-discoveryye) ürün tarafından doğrudan okunmaz; o rehberdeki çocuk-süreç env aktarımı da kullanılabilir. Anahtar CLI argümanı değildir. Farklı terminaldeki env seçiminiz bu terminale taşınmaz.
+
+**Kurumsal ağ:** Yörünge `HTTPS_PROXY`/`SSL_CERT_FILE` gibi ortam değerlerini kullanmaz ve upload (aynı oturumu kullanan `models download` da), çözülen adres genel değilse (private/CGNAT gibi) bağlanmadan reddeder. Zorunlu proxy, TLS denetimi, özel CA veya split-horizon DNS olan ağlarda upload ve model indirme şimdilik desteklenmez; belirtiler ve ayrıntı [HTTP taşıma sözleşmesindedir](http-transport.md#kurumsal-ağ-ve-ortam-proxysi).
 
 ## Planı inceleyip açıkça onaylayın
 
@@ -75,7 +77,7 @@ DIGEST='FULL_64_HEX_DIGEST_FROM_REVIEW'
 
 Sadece gereken acknowledgement’lar kabul edilir. Plan/onay en çok 900 saniye geçerlidir; değişmiş kaynak veya bağ eski onayla gönderilmez. TTY ilerlemesinde **taşımaya verilen byte** ve **kalıcı confirm ile onaylanan dosya/byte** ayrı görünür. JSON/NDJSON ve non-TTY’de ilerleme metni yoktur. Başarılı sonuç operation ve dataset ID ile yalnız metadata doğrulama seviyesini gösterir.
 
-İlk yol en çok **128 dosya**, dosya başına **500.000.000 byte**, toplam **1 GiB** kabul eder. Her PUT en çok **120 saniyedir**; 500 MB için kesintisiz en az **33,34 Mbit/s** yükleme hızı gerekir. Kontrol ve bağlantı giderleri ek süre tüketir. Daha yavaş bağlantıda uzak yazma gerçekleşmiş olsa bile sonuç belirsiz kalabilir; otomatik resume yoktur. Plan, onay ve ilk çalıştırmanın 900 saniyelik pencereleri ayrı uygulanır; kalan onay süresi aktarımı tamamlamaya yetmeyebilir.
+İlk yol en çok **128 dosya**, dosya başına **500.000.000 byte**, toplam **1 GiB** kabul eder. Her PUT en çok **120 saniyedir**; 500 MB için kesintisiz en az **33,34 Mbit/s** yükleme hızı gerekir. Kontrol ve bağlantı giderleri ek süre tüketir. Daha yavaş bağlantıda uzak yazma gerçekleşmiş olsa bile sonuç belirsiz kalabilir; otomatik resume yoktur, kalan işi açık onayla `resume` ile gönderirsiniz ([aşağıda](#kesintiden-sonra-kalanı-gönderme-resume)). Plan, onay ve ilk çalıştırmanın 900 saniyelik pencereleri ayrı uygulanır; kalan onay süresi aktarımı tamamlamaya yetmeyebilir.
 
 Store kotası **128 plan ve bağlı iş**, **4.096 dosya** ve **16 MiB ayrılmış payload** sınırlarından ilk dolana kadardır. Taslaklar, süresi dolan planlar ve terminal geçmiş de yer kaplar; otomatik silinmez. Bunlar bütün üst sınırlara aynı anda ulaşma garantisi değildir. `upload list` ile geçmişi inceleyin; belirsiz işi aşmak için yeni store veya ad kullanmayın. `revoke` onayı geri alır; aynı plan yeniden onaylanmaz ve geçmişi silmez.
 
@@ -130,4 +132,45 @@ result = api.show_dataset_upload(plan_id="PLAN_UUID", state_dir=Path(".local/upl
 print(result.data.operation_id, result.data.operation_status, result.data.verification_level)
 ```
 
-Diğer yedi API imzası, çıktı ve hata önceliği [public sözleşmede](dataset-upload-public.md) tek yerde tutulur. `--output json|ndjson` aynı typed sonuçları verir; üst Result v1 kimliği null, gerçek kimlik summary/event/error içindedir.
+Diğer sekiz API imzası, çıktı ve hata önceliği [public sözleşmede](dataset-upload-public.md) tek yerde tutulur. `--output json|ndjson` aynı typed sonuçları verir; üst Result v1 kimliği null, gerçek kimlik summary/event/error içindedir.
+
+
+## Kesintiden sonra kalanı gönderme (`resume`)
+
+Gönderim kesilmiş ve işin durumu `unknown` kalmışsa ya da süreç öldürülmüş ve iş `running` görünüyorsa (`start` exit 5 ya da `show` çıktısı; öldürülen sürecin lease'i en çok 150 sn sonra dolar, o zamana kadar `show` işin hâlâ çalıştığını söyler ve `resume --prepare` `operation_conflict` verir) aynı planı ya da yeni bir create'i tekrar göndermezsiniz; kalan dosyaları `resume` ile ayrı, **yeni onaylı** bir devam olarak gönderirsiniz. Metin çıktısında `show --operation-id` bu iş için "Devam için: yorunge datasets upload resume --operation-id …" satırını verir; devam edilemiyorsa nedenini ve varsa devamın kimliğini söyler. Önce rapor alınır. Rapor yerel plan yazmaz, uzak yazma yapmaz ve devam edilsin ya da edilemesin exit 0 verir:
+
+```bash
+OPERATION_ID='OPERATION_UUID_FROM_SHOW'
+.venv/bin/yorunge datasets upload resume --operation-id "$OPERATION_ID" \
+  --accept-unverified-read --config "$CFG" --state-dir "$STATE"
+```
+
+Rapor, Platform'da dataset'te görünen dosyaları yerel manifestinizle karşılaştırıp her dosyayı sınıflar (zaten uzakta olanlar, gönderilecekler, kaybolmuş, çakışan ya da belirsiz olanlar), kaç dosya ve kaç byte gönderileceğini ile yerel store kotasına etkisini gösterir. Devam edilemiyorsa her engelin satırında bir cümle neden ve bir cümle sonraki adım vardır; engeller sürerken "gönderilecek" sayıları yalnız bilgidir. Yerel kayıt kotası (128 plan/iş, 4.096 dosya, 16 MiB) bu denemeyi almıyorsa rapor bunu söyler ve hazırlama komutunu önermez. Dataset'in okunması `reconcile` ile aynı açık seçimdir (`--accept-unverified-read`) ve yalnız sağlayıcının metadata'sını görür; dosya baytlarının uzakta doğru olduğunu göstermez. Kaynak klasör ve manifest planlandığı gibi olmalıdır; değişmişse rapor `local_changed` engelini gösterir.
+
+Engel yoksa `--prepare` aynı gözlemi yapar ve devam planını yerel olarak kaydeder (kaynak iş bu sırada `unknown` olarak dondurulur; uzak yazma yoktur). Engel varsa komut hata verir: `continuation_not_possible` (exit 2, ayrıntıda aynı engeller) ya da kaynak ya da devamı hâlâ çalışıyorsa çalışan işin kimliğiyle `operation_conflict`:
+
+```bash
+.venv/bin/yorunge datasets upload resume --operation-id "$OPERATION_ID" \
+  --accept-unverified-read --prepare --config "$CFG" --state-dir "$STATE"
+```
+
+Çıktıdaki plan kimliği ve digest ilk aktarımdaki gibi `review`, `approve` ve `start` ile ilerler. `review` bu devamın hangi işin kalanını ve kaç dosyayı göndereceğini gösterir (manifestin tamamı N dosyadır; devam yalnız seçilen M dosyayı gönderir). Son onay isteği gitmiş olabilecek ("belirsiz") dosya varsa bunların yeniden gönderilmesini kabul eden `--accept-unconfirmed-effects` hem `--prepare` hem `approve` için gerekir; eksikse plan yazılmaz ya da onay verilmez (`approval_required`, exit 4). Bu kabul **geri alınamaz bir sonucu** kabul etmektir: gecikmiş bir sunucu commit'i ile yeniden gönderme aynı adlı bir kopya yaratabilir; kopya varsa sonraki her devam `conflict` ile engellenir ve kopya yalnız Platform arayüzünde silinebilir. Bayrağı vermeden önce kaynağın lease süresinin dolmasını bekleyin; yeniden gönderilen dosyaların önceki presign/PUT'larından yetim nesneler kalabilir (silinmez, saklama maliyeti bilinmiyor). Önerilen komut bayrağı kendiliğinden eklemez. `start` seçilen dosyaları gönderir, sonra bütün dataset'i okuyarak kapatır; başarı, ilk aktarımdaki gibi yalnız `metadata` doğrulama seviyesidir.
+
+Devam da kesilebilir. O zaman `resume`a hatadaki **devamın** operation kimliğini verirsiniz (kaynağınkini değil). İptal edilmemiş bir devamı olan kaynak tarihçedir: `resume --prepare` `source_superseded` verir ve `show --operation-id` o kaynağın devamını adlandırır. `resume` kesilirse (Ctrl-C ya da kapalı stdout) hata exit 6 ile kaynağın kimliğini taşır ve uzak yazma yapılmamıştır; Ctrl-C okuma sürerken geldiyse hiçbir plan yazılmaz, `--prepare`ın planı çıktı yazılamadan kaydedildiyse `upload list` ile bulunur ve komut yeniden çalıştırılabilir (bir taslak daha kaydedilir; taslaklar da kota yer kaplar ve otomatik silinmez).
+
+`resume` dataset'i silmez, bilinmeyen bir create'i sahiplenmez, uzakta kaybolan bir öğeyi kendiliğinden yeniden göndermez ve dosya baytlarını uzaktan doğrulamaz; bu durumlar ilgili engelin sonraki adım cümlesiyle Platform arayüzünde incelenir. Python karşılığı:
+
+```python
+from pathlib import Path
+from yorunge import api
+
+report = api.resume_dataset_upload(
+    "OPERATION_UUID",
+    accept_unverified_read=True,
+    config=Path(".local/upload/config.toml"),
+    state_dir=Path(".local/upload/state"),
+).data
+print(report.eligible, report.blockers, report.recommended_action)
+```
+
+Engel adları, eylem önceliği ve devam kayıtlarının tipleri [devam sözleşmesindedir](dataset-upload-continuation.md#public-yüzey-p02-3i).

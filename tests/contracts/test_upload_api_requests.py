@@ -152,8 +152,14 @@ def test_provider_direct_mode_is_not_silently_selected_or_contacted(tmp_path, or
         ("approve", {"confirmed_digest": None}),
         ("approve", {"accept_unpriced_cost": 1}),
         ("approve", {"accept_unverified_authority": "yes"}),
+        ("approve", {"accept_unconfirmed_effects": 1}),
         ("reconcile", {"accept_unverified_read": 1}),
         ("start", {"profile": False}),
+        ("resume", {"prepare": 1}),
+        ("resume", {"accept_unverified_read": None}),
+        ("resume", {"accept_unconfirmed_effects": "yes"}),
+        # a choice of the plan, asked for without a plan: judged with the types, not after the store
+        ("resume", {"accept_unconfirmed_effects": True}),
     ],
 )
 def test_invalid_public_controls_precede_store(tmp_path, operation, change):
@@ -163,6 +169,8 @@ def test_invalid_public_controls_precede_store(tmp_path, operation, change):
         invoke = partial(api.approve_dataset_upload, **options)
     elif operation == "reconcile":
         invoke = partial(api.reconcile_dataset_upload, identity, state_dir=root, **change)
+    elif operation == "resume":
+        invoke = partial(api.resume_dataset_upload, identity, state_dir=root, **change)
     else:
         invoke = partial(api.start_dataset_upload, identity, state_dir=root, **change)
     with pytest.raises(YorungeError) as raised:

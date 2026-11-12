@@ -16,6 +16,12 @@ from yorunge.adapters.execution_store import decode_cursor, encode_cursor
 from yorunge.adapters.identity import credential_matches
 from yorunge.adapters.operation_store import read_snapshot
 from yorunge.adapters.state import Store, sqlite_error_code
+from yorunge.adapters.upload_admission import continuation_admission
+from yorunge.adapters.upload_chain import ChainSnapshot, ResumeSource
+from yorunge.adapters.upload_chain import chain_snapshot as stored_snapshot
+from yorunge.adapters.upload_chain import operation_journal as stored_journal
+from yorunge.adapters.upload_chain import resume_source as stored_resume_source
+from yorunge.adapters.upload_lineage import Lineage
 from yorunge.adapters.upload_read_access import ReadAccess, authorize_read, initial_read_consent
 from yorunge.adapters.upload_store import (
     VersionedTransferView,
@@ -25,9 +31,9 @@ from yorunge.adapters.upload_store import (
     decode_versioned,
     legacy_create_without_baseline,
     namespace,
-    predecessor,
     read_manifest,
     read_plan,
+    read_view_and_lineage,
     request_digest,
     require_capacity,
     verification_after,
@@ -40,6 +46,7 @@ from yorunge.adapters.upload_store import (
     read_any_view as read_view,
 )
 from yorunge.adapters.validation_memo import validation_session
+from yorunge.application.continuation_policy import approve_upload_v3
 from yorunge.application.response_json import check_response_secrets
 from yorunge.application.transfer_access import TransferWriteAccess
 from yorunge.application.upload_arms import UploadArm, _issue_upload_arm
@@ -48,6 +55,7 @@ from yorunge.application.upload_policy import approve_upload_v2
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.create_receipt import CreateReceiptV2
 from yorunge.domain.credentials import BoundCredential
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3, DatasetUploadApprovalV3
 from yorunge.domain.dataset_manifest import DatasetManifest
 from yorunge.domain.dataset_transfer import (
     TERMINAL,
@@ -66,6 +74,11 @@ from yorunge.domain.dataset_transfer_v2 import (
     TransferRecordV2,
     TransferVerificationV2,
 )
+from yorunge.domain.dataset_transfer_v3 import (
+    TransferControlV3,
+    TransferRecordV3,
+    TransferVerificationV3,
+)
 from yorunge.domain.dataset_upload import (
     COMMIT_MARGIN_SECONDS,
     PUT_SECONDS,
@@ -83,13 +96,21 @@ from yorunge.domain.dataset_upload_v2 import DatasetUploadApprovalV2, DatasetUpl
 from yorunge.domain.errors import OperationError, YorungeError
 from yorunge.domain.platform_upload import ProviderDataset
 from yorunge.domain.state import canonical_uuid
-from yorunge.domain.upload_checks import AuthorizationCheck, UploadCurrentCheck, require_fresh
+from yorunge.domain.upload_checks import (
+    READ_FAILURES,
+    AuthorizationCheck,
+    UploadCurrentCheck,
+    require_fresh,
+)
+from yorunge.domain.upload_graph import STAGE_KINDS, file_index_matches
+from yorunge.domain.upload_resume import OperationJournal, SourceHasSuccessor, descendant_verdict
 from yorunge.domain.upload_versions import (
     UploadApproval,
     UploadPlan,
     UploadReceipt,
     UploadRecord,
     UploadVerification,
+    graph_of,
     validate_create_receipt,
     verification_scope,
 )
@@ -98,12 +119,17 @@ from yorunge.domain.upload_versions import (
 )
 
 
+def continuation_action(plan: DatasetContinuationPlanV3) -> tuple[UploadPermission, str]:
+    """What a continuation needs first: to upload into its dataset, or (sending nothing) to read."""
+    binding = plan.continuation
+    action: UploadPermission = (
+        "upload_created_dataset" if binding.file_indices else "read_created_dataset"
+    )
+    return action, binding.dataset_id
+
+
 def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> None:
-    if (
-        type(kind) is not str
-        or kind not in {"create", "project_link", "presign", "put", "confirm"}
-        or (kind in {"create", "project_link"}) != (file_index is None)
-    ):
+    if type(kind) is not str or kind not in STAGE_KINDS or not file_index_matches(kind, file_index):
         raise YorungeError("invalid_request")
     finite = False
     if type(total_end) in (int, float):
@@ -113,6 +139,76 @@ def _arm_input(kind: StageKind, file_index: int | None, total_end: float) -> Non
             pass
     if not finite:
         raise YorungeError("invalid_request")
+
+
+def _require_proof_fits(record: UploadRecord, proof: UploadVerification) -> None:
+    """A proof is of the operation's own family, and not early (nothing was sent to close)."""
+    if (
+        isinstance(record, TransferRecordV3)
+        and not record.workflow_latched
+        and not record.verification_only
+    ):
+        # It has sent nothing yet, so there is nothing to close: the proof is early.
+        raise YorungeError("operation_conflict")
+    if proof.schema_version != record.schema_version:
+        raise YorungeError("upload_plan_not_valid")
+
+
+def _require_proof_target(
+    record: UploadRecord, proof: UploadVerification, access: ReadAccess, stamp: Stamp
+) -> None:
+    """The proof was made under the read access that was just granted, for this dataset."""
+    if verification_scope(proof) != access.scope or (
+        isinstance(proof, TransferVerificationV2 | TransferVerificationV3)
+        and proof.authorization_policy != access.policy
+    ):
+        raise YorungeError("upload_plan_not_valid")
+    if (
+        record.dataset_id is None
+        or proof.dataset_id != record.dataset_id
+        or instant(proof.observed_at) > stamp.now
+    ):
+        raise YorungeError("operation_conflict")
+
+
+def _require_proof_closes(
+    view: VersionedTransferView, record: UploadRecord, proof: UploadVerification
+) -> None:
+    """Every normal write stage is acknowledged and the proof is what the operation sent."""
+    # All normal write stages must be acknowledged. Recovery without
+    # this evidence remains unknown until an exact provider oracle
+    # is implemented; an ID/name match cannot manufacture success.
+    if not acknowledged_stages(view):
+        raise YorungeError("operation_uncertain")
+    try:
+        verification_after(view, proof)
+    except ValueError:
+        if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+            # An observation that precedes the operation proves nothing about it, and
+            # one that sent nothing has nothing uncertain: the proof is refused.
+            raise YorungeError("operation_conflict") from None
+        raise YorungeError("operation_uncertain") from None
+
+
+def _armable_record(view: VersionedTransferView, kind: StageKind) -> UploadRecord:
+    """The record of a view whose plan can arm ``kind`` at all."""
+    if not isinstance(view.plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3):
+        raise YorungeError("upload_plan_not_valid")
+    record = view.operation
+    assert record is not None
+    if isinstance(view.plan, DatasetContinuationPlanV3) and kind in {"create", "project_link"}:
+        # The dataset exists: a continuation has no create and no link to arm.
+        raise YorungeError("invalid_request")
+    return record
+
+
+def _require_stageable(record: UploadRecord, owner: TransferLease) -> None:
+    """The write owner of an operation that is live and sends something."""
+    if owner.mode != "write" or record.status not in {"admitted", "running"}:
+        raise YorungeError("operation_conflict")
+    if isinstance(record, TransferRecordV3) and record.verification_only:
+        # A check-only continuation sends nothing, so it has no stage to arm.
+        raise YorungeError("operation_conflict")
 
 
 def _arm_permission(kind: StageKind) -> UploadPermission:
@@ -134,12 +230,11 @@ def _arm_predecessors(
     }
     if any((i.kind, i.file_index) == (kind, file_index) for i in view.intents):
         raise YorungeError("operation_conflict")
-    required = predecessor(kind, file_index)
+    graph = graph_of(view.plan)
+    required = graph.predecessor(kind, file_index)
     if required is not None and required not in accepted:
         raise YorungeError("operation_conflict")
-    if file_index is not None and (
-        type(file_index) is not int or not 0 <= file_index < view.plan.manifest.file_count
-    ):
+    if file_index is not None and (type(file_index) is not int or file_index not in graph.files):
         raise YorungeError("invalid_request")
     return accepted
 
@@ -300,7 +395,7 @@ class StateUploads:
         dataset_id: str | None = None,
     ) -> tuple[str, ...]:
         if (
-            not isinstance(plan, DatasetUploadPlanV2)
+            not isinstance(plan, DatasetUploadPlanV2 | DatasetContinuationPlanV3)
             or not isinstance(fresh, UploadCurrentCheck)
             or plan.status == "draft"
         ):
@@ -319,7 +414,7 @@ class StateUploads:
 
     @staticmethod
     def _current_ranges(
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         fresh: UploadCurrentCheck,
         gate: TimeGate,
         *,
@@ -427,7 +522,10 @@ class StateUploads:
     ) -> VersionedTransferView:
         with self.phase():
             plan = decode_versioned(
-                DatasetUploadPlan, DatasetUploadPlanV2, plan.encoded().decode("ascii")
+                DatasetUploadPlan,
+                DatasetUploadPlanV2,
+                plan.encoded().decode("ascii"),
+                DatasetContinuationPlanV3,
             )
             if manifest_reference(manifest) != plan.manifest:
                 raise YorungeError("input_changed")
@@ -446,13 +544,18 @@ class StateUploads:
                     instant(plan.expires_at),
                     error="upload_plan_not_valid",
                 )
+                continued: str | None = None
                 if self.connection.execute(
                     "SELECT 1 FROM upload_plans WHERE plan_id=?", (plan.plan_id,)
                 ).fetchone():
                     if read_plan(self.connection, plan.plan_id) != plan:
                         raise YorungeError("operation_conflict")
                 else:
-                    self._namespace_available(plan.intent_digest())
+                    if not isinstance(plan, DatasetContinuationPlanV3):
+                        # A continuation shares its root's namespace and makes no create right.
+                        self._namespace_available(plan.intent_digest())
+                    else:
+                        continued = plan.continuation.source_operation_id
                     self.connection.execute(
                         "INSERT OR IGNORE INTO upload_namespaces VALUES(?,?,NULL)",
                         (plan.intent_digest(), namespace(plan).decode("ascii")),
@@ -474,19 +577,54 @@ class StateUploads:
                     )
                     require_capacity(self.connection)
                 view = read_view(self.connection, plan.plan_id)
+                if continued is not None:
+                    # A source that got its continuation meanwhile takes no more plans: a draft
+                    # saved now could never be admitted and would only fill the quota. Asked after
+                    # the view, which judges the lineage, so a lineage that does not hold is still
+                    # `state_invalid`; the savepoint takes the row back.
+                    self._no_successor(continued, stamp)
             self._finish(stamp, gate, scope=plan.scope)
             return view
 
     def show(
         self, *, plan_id: str | None = None, operation_id: str | None = None
     ) -> VersionedTransferView:
+        return self._show(plan_id, operation_id)[0]
+
+    def _show(
+        self, plan_id: str | None, operation_id: str | None
+    ) -> tuple[VersionedTransferView, Lineage | None]:
+        """A stored view and, for a continuation, the lineage it was validated with.
+
+        Both come from one read transaction, so a caller that needs the baseline does not walk the
+        lineage a second time, nor from another state than the one its status was read in.
+        """
         if (plan_id is None) == (operation_id is None):
             raise YorungeError("invalid_request")
         with self.phase(operation_id), read_snapshot(self.connection):
             if operation_id is not None:
                 plan_id = read_record(self.connection, operation_id).plan_id
             assert plan_id is not None
-            return read_view(self.connection, plan_id)
+            return read_view_and_lineage(self.connection, plan_id)
+
+    def operation_journal(self, operation_id: str) -> OperationJournal:
+        """Read-only stage facts for the resume classifier; writes nothing and grants nothing."""
+        with self.phase(operation_id):
+            return stored_journal(self.show(operation_id=operation_id))
+
+    def chain_snapshot(self, operation_id: str, stamp: Stamp) -> ChainSnapshot:
+        """The journals of a source's lineage, its facts and its descendants, from one snapshot.
+
+        Separate reads would let a continuation appear between the journals and the descendants.
+        ``stamp`` is the caller's clock point for lease activity; nothing is written or granted.
+        """
+        with self.phase(operation_id), read_snapshot(self.connection):
+            return stored_snapshot(self.connection, operation_id, stamp)
+
+    def resume_source(self, operation_id: str, stamp: Stamp) -> ResumeSource:
+        """The chain facts and the immutable facts of one source operation, from one snapshot."""
+        with self.phase(operation_id), read_snapshot(self.connection):
+            return stored_resume_source(self.connection, operation_id, stamp)
 
     def list(
         self, *, limit: int = 50, cursor: str | None = None
@@ -500,8 +638,9 @@ class StateUploads:
                 "(prepared_at,plan_id)>(?,?) ORDER BY prepared_at,plan_id LIMIT ?",
                 (*after, limit + 1),
             ).fetchall()
+            views: dict[str, VersionedTransferView] = {}  # a source is read once for the page
             return tuple(
-                list_entry(read_view(self.connection, r[1])) for r in rows[:limit]
+                list_entry(read_view(self.connection, r[1], views)) for r in rows[:limit]
             ), encode_cursor(*rows[limit - 1]) if len(rows) > limit else None
 
     def approve(
@@ -518,7 +657,7 @@ class StateUploads:
             with self.cache.transaction(stamp, clock_error="state_changed") as gate:
                 view = read_view(self.connection, plan_id)
                 if not isinstance(view.plan, DatasetUploadPlanV2):
-                    raise YorungeError("upload_plan_not_valid")
+                    raise YorungeError("upload_plan_not_valid")  # a continuation has its own
                 self._current(view.plan, fresh, stamp, gate)
                 if view.operation is not None or view.approval is not None:
                     raise YorungeError("operation_conflict")
@@ -529,6 +668,50 @@ class StateUploads:
                     approved_at=timestamp(stamp.now),
                     acknowledge_unverified_authority=acknowledge_unverified_authority,
                     acknowledge_unpriced_cost=acknowledge_unpriced_cost,
+                )
+                self.connection.execute(
+                    "INSERT INTO upload_approvals VALUES(?,?,?,?)",
+                    (
+                        plan_id,
+                        approval.approval_id,
+                        approval.expires_at,
+                        approval.encoded().decode("ascii"),
+                    ),
+                )
+                require_capacity(self.connection)
+            self._finish(stamp, gate, scope=view.plan.scope)
+            return approval
+
+    def approve_continuation(
+        self,
+        plan_id: str,
+        digest: str,
+        fresh: UploadCurrentCheck | UploadPlan,
+        *,
+        acknowledge_unverified_authority: bool = False,
+        acknowledge_unpriced_cost: bool = False,
+        acknowledge_unconfirmed_effects: bool = False,
+    ) -> DatasetUploadApprovalV3:
+        """Approve a saved continuation plan: the v2 rules and one more acknowledgement."""
+        with self.phase():
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="state_changed") as gate:
+                view = read_view(self.connection, plan_id)
+                if not isinstance(view.plan, DatasetContinuationPlanV3):
+                    raise YorungeError("upload_plan_not_valid")
+                # The fresh check must show what the continuation does first.
+                action, dataset_id = continuation_action(view.plan)
+                self._current(view.plan, fresh, stamp, gate, action=action, dataset_id=dataset_id)
+                if view.operation is not None or view.approval is not None:
+                    raise YorungeError("operation_conflict")
+                approval = approve_upload_v3(
+                    view.plan,
+                    approval_id=str(uuid4()),
+                    confirmed_digest=digest,
+                    approved_at=timestamp(stamp.now),
+                    acknowledge_unverified_authority=acknowledge_unverified_authority,
+                    acknowledge_unpriced_cost=acknowledge_unpriced_cost,
+                    acknowledge_unconfirmed_effects=acknowledge_unconfirmed_effects,
                 )
                 self.connection.execute(
                     "INSERT INTO upload_approvals VALUES(?,?,?,?)",
@@ -558,6 +741,7 @@ class StateUploads:
                         DatasetUploadApproval,
                         DatasetUploadApprovalV2,
                         changed.encoded().decode("ascii"),
+                        DatasetUploadApprovalV3,
                     )
                     self.connection.execute(
                         "UPDATE upload_approvals SET payload=? WHERE plan_id=?",
@@ -578,11 +762,13 @@ class StateUploads:
                 view = read_view(self.connection, plan_id)
                 if view.operation is not None:
                     return view.operation
-                self._current(view.plan, fresh, stamp, gate)
+                plan = view.plan
+                if isinstance(plan, DatasetContinuationPlanV3):
+                    action, dataset_id = continuation_action(plan)
+                    self._current(plan, fresh, stamp, gate, action=action, dataset_id=dataset_id)
+                else:
+                    self._current(plan, fresh, stamp, gate)
                 approval = self._approved(view, gate)
-                if not isinstance(approval, DatasetUploadApprovalV2):
-                    raise YorungeError("upload_plan_not_valid")
-                self._namespace_available(view.plan.intent_digest())
                 lease = self._lease(stamp, fence=1, mode="write")
                 operation_id = str(uuid4())
                 access = TransferWriteAccess(
@@ -590,37 +776,112 @@ class StateUploads:
                     lease.owner_id,
                     before
                     + (
-                        min(instant(view.plan.expires_at), instant(approval.expires_at)) - stamp.now
+                        min(instant(plan.expires_at), instant(approval.expires_at)) - stamp.now
                     ).total_seconds(),
                 )
-                record = TransferRecordV2(
-                    schema_version=2,
-                    operation_id=operation_id,
-                    plan_id=plan_id,
-                    plan_digest=view.plan.digest,
-                    intent_digest=view.plan.intent_digest(),
-                    approval=approval,
-                    write_owner_id=lease.owner_id,
-                    write_access_digest=access.digest,
-                    created_at=timestamp(stamp.now),
-                    updated_at=timestamp(stamp.now),
-                    status="admitted",
-                    revision=1,
-                    fence=1,
-                    observed_identity_epoch=stamp.identity_epoch,
-                    observed_clock_generation=stamp.generation,
-                    clock_anomaly=False,
-                    lease=lease,
-                    workflow_latched=False,
-                    dataset_id=None,
-                    reason=None,
-                )
+                record: UploadRecord
+                if isinstance(plan, DatasetContinuationPlanV3):
+                    record = self._continuation_record(
+                        plan, approval, operation_id, lease, access, stamp
+                    )
+                else:
+                    if not isinstance(approval, DatasetUploadApprovalV2):
+                        raise YorungeError("upload_plan_not_valid")
+                    self._namespace_available(plan.intent_digest())
+                    record = TransferRecordV2(
+                        schema_version=2,
+                        operation_id=operation_id,
+                        plan_id=plan_id,
+                        plan_digest=plan.digest,
+                        intent_digest=plan.intent_digest(),
+                        approval=approval,
+                        write_owner_id=lease.owner_id,
+                        write_access_digest=access.digest,
+                        created_at=timestamp(stamp.now),
+                        updated_at=timestamp(stamp.now),
+                        status="admitted",
+                        revision=1,
+                        fence=1,
+                        observed_identity_epoch=stamp.identity_epoch,
+                        observed_clock_generation=stamp.generation,
+                        clock_anomaly=False,
+                        lease=lease,
+                        workflow_latched=False,
+                        dataset_id=None,
+                        reason=None,
+                    )
                 write_record(self.connection, record, None)
                 require_capacity(self.connection)
-            with self.phase(record.operation_id):
-                self._finish(stamp, gate, scope=view.plan.scope)
+            # The record is durable now. The closing gate can still fail (a store kept busy by
+            # siblings that write at the same moment); the operation is then this one's, and the
+            # access that says so must not be lost with the failure.
             self.write_access = access
+            with self.phase(record.operation_id):
+                self._finish(stamp, gate, scope=plan.scope)
             return record
+
+    def _continuation_record(
+        self,
+        plan: DatasetContinuationPlanV3,
+        approval: UploadApproval,
+        operation_id: str,
+        lease: TransferLease,
+        access: TransferWriteAccess,
+        stamp: Stamp,
+    ) -> TransferRecordV3:
+        """The admitted record of a continuation, once the chain it extends allows one more link.
+
+        The source must be frozen and alone at the end of its chain; a descendant of it that was
+        admitted but let its lease lapse is cancelled here, in the same transaction, because the
+        store never holds two descendants of one source that are not cancelled. The approval is
+        bound to the plan when the view is read and the record is bound to both when it is written.
+        """
+        if not isinstance(approval, DatasetUploadApprovalV3):
+            raise YorungeError("upload_plan_not_valid")
+        for lapsed in continuation_admission(self.connection, plan, stamp):
+            self._cancel_unlatched(read_record(self.connection, lapsed), stamp)
+        return TransferRecordV3(
+            schema_version=3,
+            operation_id=operation_id,
+            plan_id=plan.plan_id,
+            plan_digest=plan.digest,
+            intent_digest=plan.intent_digest(),
+            approval=approval,
+            write_owner_id=lease.owner_id,
+            write_access_digest=access.digest,
+            created_at=timestamp(stamp.now),
+            updated_at=timestamp(stamp.now),
+            status="admitted",
+            revision=1,
+            fence=1,
+            observed_identity_epoch=stamp.identity_epoch,
+            observed_clock_generation=stamp.generation,
+            clock_anomaly=False,
+            lease=lease,
+            workflow_latched=False,
+            verification_only=not plan.continuation.file_indices,
+            dataset_id=plan.continuation.dataset_id,
+            reason=None,
+        )
+
+    def _cancel_unlatched(self, record: UploadRecord, stamp: Stamp) -> UploadRecord:
+        """Close an admitted operation that sent nothing: its approval and its lease say why."""
+        view = read_view(self.connection, record.plan_id)
+        reason: TransferReason = "lease_expired"
+        if view.approval is not None and view.approval.status == "revoked":
+            reason = "approval_revoked"
+        elif stamp.now >= instant(record.approval.expires_at):
+            reason = "approval_expired"
+        changed = self._change(
+            record,
+            stamp,
+            lease=None,
+            fence=record.fence + 1,
+            status="cancelled",
+            reason=reason,
+        )
+        self._control(changed, stamp, terminal=True)
+        return changed
 
     def _lease(self, stamp: Stamp, *, fence: int, mode: str) -> TransferLease:
         return TransferLease.model_validate(
@@ -684,7 +945,7 @@ class StateUploads:
             }
         )
         updated = decode_versioned(
-            TransferRecord, TransferRecordV2, updated.encoded().decode("ascii")
+            TransferRecord, TransferRecordV2, updated.encoded().decode("ascii"), TransferRecordV3
         )
         write_record(self.connection, updated, record.revision)
         return updated
@@ -712,7 +973,10 @@ class StateUploads:
         from yorunge.domain.capabilities import canonical
 
         value = decode_versioned(
-            TransferControl, TransferControlV2, canonical(body).decode("ascii")
+            TransferControl,
+            TransferControlV2,
+            canonical(body).decode("ascii"),
+            TransferControlV3,
         )
         if terminal:
             self.connection.execute(
@@ -790,14 +1054,10 @@ class StateUploads:
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
-                if not isinstance(view.plan, DatasetUploadPlanV2):
-                    raise YorungeError("upload_plan_not_valid")
-                record = view.operation
-                assert record is not None
+                record = _armable_record(view, kind)
                 self._baseline_in_view(view)
                 owner = self._owner(record, owner, stamp, gate)
-                if owner.mode != "write" or record.status not in {"admitted", "running"}:
-                    raise YorungeError("operation_conflict")
+                _require_stageable(record, owner)
                 assert self.write_access is not None
                 total_end = min(total_end, self.write_access.end)
                 action = _arm_permission(kind)
@@ -836,18 +1096,7 @@ class StateUploads:
                     ),
                 )
                 if kind == "create":
-                    claimed = self.connection.execute(
-                        "UPDATE upload_namespaces SET create_operation_id=? WHERE "
-                        "intent_digest=? AND create_operation_id IS NULL",
-                        (operation_id, view.plan.intent_digest()),
-                    )
-                    if claimed.rowcount != 1:
-                        previous = self.connection.execute(
-                            "SELECT create_operation_id FROM upload_namespaces WHERE "
-                            "intent_digest=?",
-                            (view.plan.intent_digest(),),
-                        ).fetchone()
-                        raise OperationError("operation_conflict", previous[0])
+                    self._claim_create(operation_id, view.plan.intent_digest())
                 intent = StageIntent(
                     schema_version=1,
                     intent_id=str(uuid4()),
@@ -892,6 +1141,20 @@ class StateUploads:
                 ) from None
             return issued
 
+    def _claim_create(self, operation_id: str, intent_digest: str) -> None:
+        """The namespace's one create right: this operation takes it, or says who has it."""
+        claimed = self.connection.execute(
+            "UPDATE upload_namespaces SET create_operation_id=? WHERE "
+            "intent_digest=? AND create_operation_id IS NULL",
+            (operation_id, intent_digest),
+        )
+        if claimed.rowcount != 1:
+            previous = self.connection.execute(
+                "SELECT create_operation_id FROM upload_namespaces WHERE intent_digest=?",
+                (intent_digest,),
+            ).fetchone()
+            raise OperationError("operation_conflict", previous[0])
+
     def receipt(
         self, operation_id: str, owner: TransferLease, receipt: UploadReceipt
     ) -> VersionedTransferView:
@@ -925,7 +1188,10 @@ class StateUploads:
                         raise YorungeError("operation_conflict")
                     return view
                 self._baseline_in_view(view)
-                if (
+                if isinstance(view.plan, DatasetContinuationPlanV3):
+                    if isinstance(receipt, CreateReceiptV2):  # it makes no dataset to receipt
+                        raise YorungeError("invalid_request")
+                elif (
                     isinstance(view.plan, DatasetUploadPlanV2)
                     and intent.kind == "create"
                     and receipt.result == "accepted"
@@ -961,6 +1227,9 @@ class StateUploads:
                 owner = self._owner(record, owner, stamp, gate)
                 if reason not in {"request_uncertain", "local_cancelled"}:
                     raise YorungeError("invalid_request")
+                if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+                    # Before its first intent nothing is uncertain: the operation is cancelled.
+                    reason = "local_cancelled"
                 changed = self._change(
                     record,
                     stamp,
@@ -999,6 +1268,7 @@ class StateUploads:
                 self._baseline_in_view(view)
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
+                self._no_successor(operation_id, stamp)
                 if record.workflow_latched and record.dataset_id is None:
                     raise YorungeError("operation_uncertain")
                 access = authorize_read(
@@ -1041,6 +1311,41 @@ class StateUploads:
         if record.fence >= 2**63 - 1:
             raise YorungeError("operation_fence_exhausted")
 
+    def _no_successor(self, operation_id: str, stamp: Stamp) -> None:
+        """A source that has a continuation is history: its fence, revision and reason stay.
+
+        A continuation that was cancelled ran nothing, and an admitted one whose lease lapsed is
+        cancelled by the next prepare; neither is a successor (``descendant_verdict``'s rule, the
+        one the resume report and the admission gate use). Any other is named in the conflict.
+
+        The scan reads every operation row of the store and the plan of each: a row that cannot be
+        decoded might be a successor, so the gate fails closed (``state_invalid``) rather than let a
+        source with an unreadable neighbour be changed.
+
+        Two gates are enough because nothing else can change a source that has a successor: every
+        other writer of an existing operation row is guarded by the lease (``_owner``) and a
+        successor is admitted only while no lease is active; ``freeze_source`` changes ``running``
+        sources only (a source with a successor is ``unknown``); and ``read_failed`` without an
+        owner is reached only before ``acquire_read``, for a source whose graph is complete, which
+        cannot have a stored successor (``save`` and ``admit`` re-run the chain checks).
+        """
+        verdict = descendant_verdict(
+            stored_snapshot(self.connection, operation_id, stamp).descendants
+        )
+        if verdict.blocker is not None:
+            raise SourceHasSuccessor(verdict.related_operation_id)
+
+    def require_no_successor(self, operation_id: str) -> None:
+        """The local form of the gate ``acquire_read`` and ``cleanup_expired`` apply.
+
+        It writes no upload row and changes nothing of the source (the clock's own trace advances,
+        as with every look at the store) and reads the chain in one snapshot.
+        """
+        with self.phase(operation_id):
+            stamp = self.cache.stamp()  # the clock may be written: not inside the read snapshot
+            with read_snapshot(self.connection):
+                self._no_successor(operation_id, stamp)
+
     def cleanup_expired(self, operation_id: str) -> VersionedTransferView:
         """Non-executing local cleanup; no grant, remote lookup or permit is produced."""
         with self.phase(operation_id):
@@ -1050,6 +1355,7 @@ class StateUploads:
                 view = self._nonterminal(operation_id)
                 record = view.operation
                 assert record is not None
+                self._no_successor(operation_id, stamp)
                 self._takeover_allowed(record, stamp)
                 if (
                     legacy_create_without_baseline(view)
@@ -1087,6 +1393,55 @@ class StateUploads:
                 raise YorungeError("state_busy")
             return self.show(operation_id=operation_id)
 
+    def freeze_source(self, operation_id: str) -> VersionedTransferView:
+        """Freeze the source a continuation is prepared from: what ``--prepare`` writes first.
+
+        A source that was running when its lease lapsed becomes unknown, exactly as the cleanup of
+        an expired operation does; a source that is already unknown is left as it is (its reason
+        and its fence stay, so two processes preparing at once freeze it once); a source with a live
+        lease is active and nothing is changed. Descendants that were admitted, sent nothing and let
+        their lease lapse are cancelled in the same transaction.
+        """
+        with self.phase(operation_id):
+            self._nonterminal(operation_id)
+            stamp = self.cache.stamp()
+            with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
+                view = self._nonterminal(operation_id)
+                record = view.operation
+                assert record is not None
+                if not record.workflow_latched:
+                    raise YorungeError("operation_conflict")  # nothing was sent: not a source
+                for descendant in stored_snapshot(self.connection, operation_id, stamp).descendants:
+                    if descendant.status == "admitted" and not descendant.lease_active:
+                        self._cancel_unlatched(
+                            read_record(self.connection, descendant.operation_id), stamp
+                        )
+                if record.status != "unknown":
+                    self._takeover_allowed(record, stamp)  # a live lease is someone else's
+                    changed = self._change(
+                        record,
+                        stamp,
+                        lease=None,
+                        fence=record.fence + 1,
+                        status="unknown",
+                        reason="request_uncertain",
+                    )
+                    self._control(changed, stamp, terminal=False)
+            # Like the cleanup of an expired operation, freezing needs no credential: a source is
+            # frozen after a rotation too. The closing clock gate still runs after the commit (as
+            # in every write, ADR-0014): it can report ``state_busy`` for a freeze that stands, and
+            # the freeze is idempotent, so the caller looks (``show``) or asks again.
+            final, within = self.cache._finish(
+                stamp,
+                expires=tuple(end for _, end, _ in gate.intervals),
+                checkpoint=gate.checkpoint,
+            )
+            gate.check_clock(final)
+            gate.check(final.now)
+            if not within:
+                raise YorungeError("state_busy")
+            return self.show(operation_id=operation_id)
+
     def _read_grant(
         self, view: VersionedTransferView, grant: UploadGrant, stamp: Stamp, gate: TimeGate
     ) -> None:
@@ -1102,11 +1457,16 @@ class StateUploads:
         )
 
     def _nonterminal(self, operation_id: str) -> VersionedTransferView:
-        view = self.show(operation_id=operation_id)
+        return self._nonterminal_with_lineage(operation_id)[0]
+
+    def _nonterminal_with_lineage(
+        self, operation_id: str
+    ) -> tuple[VersionedTransferView, Lineage | None]:
+        view, lineage = self._show(None, operation_id)
         assert view.operation is not None
         if view.operation.status in TERMINAL:
             raise YorungeError("operation_conflict")
-        return view
+        return view, lineage
 
     @staticmethod
     def _baseline_in_view(view: VersionedTransferView) -> None:
@@ -1120,7 +1480,10 @@ class StateUploads:
     ) -> ProviderDataset | None:
         """Local pre-HTTP gate; an unsuccessful marker never claims a new permission."""
         with self.phase(operation_id):
-            view = self._nonterminal(operation_id)
+            view, lineage = self._nonterminal_with_lineage(operation_id)
+            if lineage is not None:
+                # A continuation's baseline is its root's, found as its lineage was validated.
+                return lineage.baseline
             if not legacy_create_without_baseline(view):
                 return created_dataset(view)
             record = view.operation
@@ -1154,19 +1517,7 @@ class StateUploads:
             self.require_created_baseline(operation_id, owner)
             check = decode(AuthorizationCheck, authorization.encoded().decode("ascii"))
             code = check.error_code
-            if (
-                code is None
-                or code
-                not in {
-                    "remote_access_denied",
-                    "remote_rate_limited",
-                    "remote_failed",
-                    "transport_timeout",
-                    "transport_failed",
-                    "invalid_response",
-                }
-                or check.action != "read_created_dataset"
-            ):
+            if code is None or code not in READ_FAILURES or check.action != "read_created_dataset":
                 raise YorungeError("invalid_request")
             stamp = self.cache.stamp()
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
@@ -1174,45 +1525,89 @@ class StateUploads:
                 record = view.operation
                 assert record is not None
                 self._baseline_in_view(view)
-                if not record.workflow_latched or record.dataset_id is None:
-                    raise YorungeError("operation_uncertain")
-                self._credential(check.scope, stamp)
-                if (
-                    scope_target(check.scope) != scope_target(view.plan.scope)
-                    or check.dataset_id != record.dataset_id
-                    or instant(check.checked_at) > stamp.now
-                ):
-                    raise YorungeError("state_changed")
-                require_fresh(check.checked_at, timestamp(stamp.now))
-                checked = instant(check.checked_at)
-                gate.require_range(
-                    checked,
-                    checked + timedelta(seconds=30, microseconds=1),
-                    error="upload_plan_not_valid",
-                )
-                active_write = False
-                fence = record.fence
-                if owner is None:
-                    self._takeover_allowed(record, stamp)
-                    fence += 1
+                check_only = self._failed_read_check_only(record)
+                self._failed_read_current(check, view, record, stamp, gate)
+                if check_only:
+                    self._cancel_check_only(record, owner, stamp, gate)
+                    active_write = False
                 else:
-                    current = self._owner(record, owner, stamp, gate)
-                    active_write = current.mode == "write"
-                changed = self._change(
-                    record,
-                    stamp,
-                    lease=None,
-                    fence=fence,
-                    status="unknown",
-                    reason="read_unavailable"
-                    if record.schema_version == 2
-                    else "request_uncertain",
-                )
-                self._control(changed, stamp, terminal=False)
+                    active_write = self._read_unavailable(record, owner, stamp, gate)
             self._finish(stamp, gate, scope=check.scope)
             if active_write:
                 raise OperationError("operation_uncertain", operation_id, reason_code=code)
             raise OperationError(code, operation_id, reason_code=code)
+
+    @staticmethod
+    def _failed_read_check_only(record: UploadRecord) -> bool:
+        """Whether the failed read is a check-only continuation's; refuse a record with no read."""
+        check_only = isinstance(record, TransferRecordV3) and record.verification_only
+        if isinstance(record, TransferRecordV3) and not record.workflow_latched and not check_only:
+            # Nothing was sent and nothing is read yet: there is nothing to be uncertain
+            # about, and nothing for this call to report.
+            raise YorungeError("operation_conflict")
+        if not check_only and (not record.workflow_latched or record.dataset_id is None):
+            raise YorungeError("operation_uncertain")
+        return check_only
+
+    def _failed_read_current(
+        self,
+        check: AuthorizationCheck,
+        view: VersionedTransferView,
+        record: UploadRecord,
+        stamp: Stamp,
+        gate: TimeGate,
+    ) -> None:
+        """The failed read is of this plan's scope and this record's dataset, observed just now."""
+        self._credential(check.scope, stamp)
+        if (
+            scope_target(check.scope) != scope_target(view.plan.scope)
+            or check.dataset_id != record.dataset_id
+            or instant(check.checked_at) > stamp.now
+        ):
+            raise YorungeError("state_changed")
+        require_fresh(check.checked_at, timestamp(stamp.now))
+        checked = instant(check.checked_at)
+        gate.require_range(
+            checked,
+            checked + timedelta(seconds=30, microseconds=1),
+            error="upload_plan_not_valid",
+        )
+
+    def _cancel_check_only(
+        self, record: UploadRecord, owner: TransferLease | None, stamp: Stamp, gate: TimeGate
+    ) -> None:
+        # Nothing was sent, so nothing is uncertain: it is cancelled, and the caller
+        # gets the read's own error rather than "operation_uncertain".
+        if owner is None:
+            raise YorungeError("operation_conflict")
+        self._owner(record, owner, stamp, gate)
+        changed = self._change(
+            record, stamp, lease=None, status="cancelled", reason="local_cancelled"
+        )
+        self._control(changed, stamp, terminal=True)
+
+    def _read_unavailable(
+        self, record: UploadRecord, owner: TransferLease | None, stamp: Stamp, gate: TimeGate
+    ) -> bool:
+        """Leave a sent operation unknown after a failed read; whether a write owner was ended."""
+        active_write = False
+        fence = record.fence
+        if owner is None:
+            self._takeover_allowed(record, stamp)
+            fence += 1
+        else:
+            current = self._owner(record, owner, stamp, gate)
+            active_write = current.mode == "write"
+        changed = self._change(
+            record,
+            stamp,
+            lease=None,
+            fence=fence,
+            status="unknown",
+            reason="read_unavailable" if record.schema_version in (2, 3) else "request_uncertain",
+        )
+        self._control(changed, stamp, terminal=False)
+        return active_write
 
     def prepare_initial_read(
         self,
@@ -1231,7 +1626,11 @@ class StateUploads:
                 assert record is not None
                 self._baseline_in_view(view)
                 current = self._owner(record, owner, stamp, gate)
-                if current.mode != "write" or record.status != "running":
+                # A check-only continuation never sends, so it never runs: it reads as admitted.
+                check_only = isinstance(record, TransferRecordV3) and record.verification_only
+                if current.mode != "write" or record.status != (
+                    "admitted" if check_only else "running"
+                ):
                     raise YorungeError("operation_conflict")
                 self._credential(view.plan.scope, stamp)
                 if self._approved(view, gate) != record.approval:
@@ -1314,12 +1713,29 @@ class StateUploads:
         except OperationError as error:
             if error.code == "operation_uncertain":
                 try:
-                    self._uncertain_verification(operation_id, owner)
+                    cancelled = self._uncertain_verification(operation_id, owner)
                 except YorungeError as marker_error:
+                    if self._sent_nothing(operation_id):
+                        # Nothing is uncertain: the marker did not land (the lease is gone) and
+                        # the lease cleanup will cancel the operation. This was a late proof.
+                        raise OperationError(
+                            "execution_timeout", operation_id, reason_code=marker_error.code
+                        ) from None
                     raise OperationError(
                         "operation_uncertain", operation_id, reason_code=marker_error.code
                     ) from None
+                if cancelled:
+                    # A check-only continuation sent nothing: the proof came too late, no more.
+                    raise OperationError("execution_timeout", operation_id) from None
             raise
+
+    def _sent_nothing(self, operation_id: str) -> bool:
+        """Whether this is a continuation record that never wrote an intent."""
+        try:
+            record = self.show(operation_id=operation_id).operation
+        except YorungeError:
+            return False
+        return isinstance(record, TransferRecordV3) and not record.workflow_latched
 
     def _proof_deadline(self, deadline: float | None) -> None:
         if deadline is None:
@@ -1334,15 +1750,17 @@ class StateUploads:
         if self.clock.monotonic() >= deadline:
             raise YorungeError("execution_timeout")
 
-    def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> None:
+    def _uncertain_verification(self, operation_id: str, owner: TransferLease) -> bool:
+        """Mark a verification whose outcome is unknown; whether it was a plain local cancel."""
         with self.phase(operation_id):
             view = self.show(operation_id=operation_id)
             assert view.operation is not None
             if view.operation.status in TERMINAL or (
                 view.operation.status == "unknown" and view.operation.reason == "request_uncertain"
             ):
-                return
+                return False
             stamp = self.cache.stamp()
+            cancelled = False
             with self.cache.transaction(stamp, clock_error="operation_lease_lost") as gate:
                 view = self.show(operation_id=operation_id)
                 record = view.operation
@@ -1350,12 +1768,20 @@ class StateUploads:
                 if record.status in TERMINAL or (
                     record.status == "unknown" and record.reason == "request_uncertain"
                 ):
-                    return
+                    return False
                 current = self._owner(record, owner, stamp, gate)
-                changed = self._change(
-                    record, stamp, status="unknown", lease=current, reason="request_uncertain"
-                )
-                self._control(changed, stamp, terminal=False)
+                if isinstance(record, TransferRecordV3) and not record.workflow_latched:
+                    # No intent was ever written: nothing is uncertain, the operation is cancelled.
+                    cancelled = True
+                    changed = self._change(
+                        record, stamp, status="cancelled", lease=None, reason="local_cancelled"
+                    )
+                    self._control(changed, stamp, terminal=True)
+                else:
+                    changed = self._change(
+                        record, stamp, status="unknown", lease=current, reason="request_uncertain"
+                    )
+                    self._control(changed, stamp, terminal=False)
             # This local marker grants no new read or write authority.
             final, within = self.cache._finish(
                 stamp,
@@ -1366,6 +1792,7 @@ class StateUploads:
             gate.check(final.now)
             if not within:
                 raise YorungeError("state_busy")
+            return cancelled
 
     def _verified(
         self,
@@ -1382,7 +1809,10 @@ class StateUploads:
             self._nonterminal(operation_id)
             self.require_created_baseline(operation_id, owner)
             proof = decode_versioned(
-                TransferVerification, TransferVerificationV2, proof.encoded().decode("ascii")
+                TransferVerification,
+                TransferVerificationV2,
+                proof.encoded().decode("ascii"),
+                TransferVerificationV3,
             )
             self._secret(proof)
             stamp = self.cache.stamp()
@@ -1394,8 +1824,7 @@ class StateUploads:
                 if record.status in TERMINAL:
                     raise YorungeError("operation_conflict")
                 owner = self._owner(record, owner, stamp, gate)
-                if proof.schema_version != record.schema_version:
-                    raise YorungeError("upload_plan_not_valid")
+                _require_proof_fits(record, proof)
                 access = authorize_read(
                     self,
                     view,
@@ -1406,18 +1835,8 @@ class StateUploads:
                     accept_unverified_read=accept_unverified_read,
                     initial_owner=owner.mode == "write",
                 )
-                if verification_scope(proof) != access.scope or (
-                    isinstance(proof, TransferVerificationV2)
-                    and proof.authorization_policy != access.policy
-                ):
-                    raise YorungeError("upload_plan_not_valid")
-                if (
-                    record.dataset_id is None
-                    or proof.dataset_id != record.dataset_id
-                    or instant(proof.observed_at) > stamp.now
-                ):
-                    raise YorungeError("operation_conflict")
-                if proof.schema_version == 2:
+                _require_proof_target(record, proof, access, stamp)
+                if proof.schema_version in (2, 3):
                     observed = instant(proof.observed_at)
                     gate.require_range(
                         observed,
@@ -1425,15 +1844,7 @@ class StateUploads:
                         error="operation_uncertain",
                     )
                     gate.check(stamp.now)
-                # All normal write stages must be acknowledged. Recovery without
-                # this evidence remains unknown until an exact provider oracle
-                # is implemented; an ID/name match cannot manufacture success.
-                if not acknowledged_stages(view):
-                    raise YorungeError("operation_uncertain")
-                try:
-                    verification_after(view, proof)
-                except ValueError:
-                    raise YorungeError("operation_uncertain") from None
+                _require_proof_closes(view, record, proof)
                 changed = self._change(
                     record,
                     stamp,

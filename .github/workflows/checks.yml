@@ -15,7 +15,7 @@ jobs:
   linux311:
     name: Linux / Python 3.11
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "true"
@@ -56,7 +56,7 @@ jobs:
           echo "TMPDIR=$TMPDIR" >> "$GITHUB_ENV"
           producer_python=python
           if test -x .venv/bin/python; then producer_python=.venv/bin/python; fi
-          "$producer_python" scripts/evidence_privacy.py context --mode ci --producer-preflight --source-root "$GITHUB_WORKSPACE" --workspace .local/startup-baseline --workspace .local/startup-check --workspace .local/stream-check --workspace .local/upload-check --workspace .local/distribution-upload-check --child-root .venv --child-root .local/startup-check --child-root .local/stream-check --child-root .local/upload-check --child-root .local/distribution-upload-check --child-root "$TMPDIR" --output .local/evidence-privacy-context.json
+          "$producer_python" scripts/evidence_privacy.py context --mode ci --producer-preflight --source-root "$GITHUB_WORKSPACE" --workspace .local/startup-baseline --workspace .local/startup-check --workspace .local/stream-check --workspace .local/upload-check --workspace .local/distribution-upload-check --workspace .local/download-check --workspace .local/distribution-download-check --child-root .venv --child-root .local/startup-check --child-root .local/stream-check --child-root .local/upload-check --child-root .local/distribution-upload-check --child-root .local/download-check --child-root .local/distribution-download-check --child-root "$TMPDIR" --output .local/evidence-privacy-context.json
           echo "YORUNGE_EVIDENCE_CONTEXT=$GITHUB_WORKSPACE/.local/evidence-privacy-context.json" >> "$GITHUB_ENV"
       - name: Record compatibility environment
         id: environment-report
@@ -127,6 +127,8 @@ jobs:
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
               "upload_budget_scope": "native_linux311_and_source_bound_m5"
               if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "download_budget_scope": "native_linux311_and_source_bound_m5"
+              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
           }
           Path("dist").mkdir(exist_ok=True)
           encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
@@ -149,7 +151,7 @@ jobs:
         id: build
         run: |
           .ci-tools/bin/uv build
-          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv --evidence-output dist/installation.json --upload-workspace .local/distribution-upload-check > dist/verification.jsonl
+          .venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv --evidence-output dist/installation.json --upload-workspace .local/distribution-upload-check --download-workspace .local/distribution-download-check > dist/verification.jsonl
           cat dist/verification.jsonl
       - name: Record and verify Linux startup diagnostics
         id: startup-budgets
@@ -160,17 +162,17 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-2-reference-startup-11.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-7.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-2-reference-jobs-11.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-7.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-2-reference-datasets-11.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-7.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -180,12 +182,22 @@ jobs:
         id: upload-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-2-reference-upload-11.json > dist/upload-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-7.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
         id: upload-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/upload_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check --output dist/upload.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Verify source-bound reference download budgets
+        id: download-reference
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-7.json > dist/download-reference.txt
+      - name: Enforce installed native download budgets
+        id: download-budgets
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        run: |
+          .venv/bin/python scripts/download_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/download-check --output dist/download.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - name: Diagnose a failed startup budget
         id: startup-diagnostics
         if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' }}
@@ -219,7 +231,7 @@ jobs:
   linux314:
     name: Linux / Python 3.14
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       PYTHON_VERSION: "3.14"
       RUN_BUDGETS: "false"
@@ -228,7 +240,7 @@ jobs:
   macos311:
     name: macOS / Python 3.11
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "false"

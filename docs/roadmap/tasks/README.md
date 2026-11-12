@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-04. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-12. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur; tablo tamamlanmış (`verified`) kartları da bulunabilir kılar, güncel durum her kartın `status` alanındadır. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -49,14 +49,24 @@
 | [P02-2w](p02-2w-upload-maintainability.md) | Son kaynak öncesi upload doğrulama/transaction bakım sınırları |
 | [P02-R1](p02-r1-verified-context-binding.md) | Doğrulanmış kimlik/bağ ve gerekli tüketici otoritesi için kanonik P02 takip işi; mevcut P02-0 paketinin yeni önkoşulu değil |
 | [P02-R2](p02-r2-upload-content-cardinality.md) | Aynı hash/farklı adın ayrı uzak item olarak korunması; Accepted ADR-0028 ile ilk teslimden ayrılan özgün ihtiyacın açık takip sahibi |
-
 | [P02-R3](p02-r3-isolated-performance-acceptance.md) | Son kaynakta izole performans kabulü; ADR-0030 Proposed, mevcut kapılar henüz değişmedi |
+| [P02-R4](p02-r4-dataset-version-creation.md) | Veri sürümü oluşturma (freeze) etkisi; ADR-0033 ile P02-3c dışında bırakılan özgün ihtiyaç |
+| [P02-R5](p02-r5-dataset-item-byte-access.md) | Dataset öğesi baytlarına programatik erişim (`blocked`: API anahtarı kabul edilmiyor); uzak byte doğrulamasının açık sahibi |
+| [P02-R6](p02-r6-adopt-unknown-create.md) | Bilinmeyen create sonucunun açık dataset sahiplenmesi; ADR-0031 ile P02-3a dışında bırakılan özgün ihtiyaç |
+| [P02-R7](p02-r7-persist-provider-denials.md) | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu; ADR-0031 incelemesinde bulunan belge–kod boşluğu |
+| [P02-R8](p02-r8-forget-unused-upload-plans.md) | Operation’sız upload planlarını unutma (kota yeniden kazanımı); continuation’ın N dosyayı yeniden saymasının açık sahibi |
+| [P02-R9](p02-r9-network-diagnosis-and-trust-paths.md) | Kullanıcıya dönük ağ/TLS tanısı ve açık kurumsal CA/proxy yolu; kullanıcı kararı (B16) ve ADR kapılı |
+| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart |
+| [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i, r ve t–y |
+| [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
+| [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3z](p02-3z-download-evidence-installation-ci.md) | P02-3 adım kartları: [resume d–i, r, t–y, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o ve z, sürüm p–q; ADR’ler Accepted; yirmi üç kartın hepsi `verified` (her biri iki fresh review turu ve tam paketle kapandı), üst kartlar P02-3a–c `in_review` |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 
 [P02-0 paketi](../p02-0-delivery-plan.md), araştırma P02-0a ile üst keşif teslimi P02-0b’yi, bağımsız [LLM P02-0c](p02-0c-llm-context-discovery.md) ve [Platform P02-0d](p02-0d-platform-context-discovery.md) kabulleriyle ilişkilendirir. [Kabul/merge kaydı](../../research/p02-0-implementation-validation.md#development-merge-kapanışı) ve [hazırlık review’si](../../research/p02-readiness-review.md) ayrı amaç taşır.
 
-[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-2a–c üst kartları [P02-2 planına](../p02-2-delivery-plan.md) bağlıdır; ADR-0024–0029 Accepted, kod/review ve kullanıcı düzeltmeleri tamamlandı. Son 08 dataset/raw/upload ve iki kurulum geçti; startup/jobs süre kabulü ve yeni kaynak CI/kurulum/Sonar/saklama açık olduğundan üst kartlar draft kalır. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
+[P02-1 teslim planı](../p02-1-delivery-plan.md) B15, manifest/parser, descriptor tarama ve public yayın/yüzey kartlarını beş adımda topladı; bütün kartlar [PR #13](https://github.com/HodeTech/Yorunge/pull/13) / [50d68b1](https://github.com/HodeTech/Yorunge/commit/50d68b1deab80d6fe14749d556efde1f103b5759) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-1-implementation-validation.md#development-merge-kapanışı) kanoniktir. P02-2a–c üst kartları ve d–w alt kartları [P02-2 planına](../p02-2-delivery-plan.md) bağlıdır; hepsi verified ve [PR #14](https://github.com/HodeTech/Yorunge/pull/14) / [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) ile development’a teslim edildi. [Kabul ve merge kaydı](../../research/p02-2-implementation-validation.md#development-merge-kapanışı) kanoniktir. [Current](../current.md#sıradaki-iş-ve-kalan-kapsam) sonraki adımı gösterir.
 
 [P02-2t](p02-2t-public-upload-workflows.md), s salt okuma kabulünden sonra ortak CLI/Python ve dar public sonuç/niyet görünümünü iki fresh turla tamamladı; [kanonik yüzey](../../reference/dataset-upload-public.md) uygulanmıştır.
 

@@ -16,6 +16,7 @@ from yorunge.adapters.upload_store import (
 from yorunge.domain.capabilities import canonical, timestamp
 from yorunge.domain.dataset_transfer import TERMINAL, TransferControl
 from yorunge.domain.dataset_transfer_v2 import TransferControlV2
+from yorunge.domain.dataset_transfer_v3 import TransferControlV3
 
 
 def _snapshot_body(view: VersionedTransferView) -> dict[str, object]:
@@ -56,9 +57,10 @@ def upload_snapshot(connection: sqlite3.Connection, deadline: Deadline) -> dict[
     if connection.execute(
         "SELECT 1 FROM sqlite_schema WHERE name='upload_plans' AND type='table'"
     ).fetchone():
+        views: dict[str, VersionedTransferView] = {}  # a source is read once for the whole pass
         for row in connection.execute("SELECT plan_id FROM upload_plans ORDER BY plan_id"):
             deadline.remaining()
-            view = read_any_view(connection, row[0])
+            view = read_any_view(connection, row[0], views)
             record = view.operation
             digest.update(canonical(_snapshot_body(view)) + b"\n")
             counts["upload_plan_count"] += 1
@@ -96,6 +98,7 @@ def invalidate_uploads(
             }
         )
         write_record(connection, changed, record.revision)
+        # The control is written in the family of the record it describes, which picks the type.
         control = decode_versioned(
             TransferControl,
             TransferControlV2,
@@ -112,6 +115,7 @@ def invalidate_uploads(
                     "verification_digest": None,
                 }
             ).decode("ascii"),
+            TransferControlV3,
         )
         connection.execute(
             "INSERT INTO upload_controls VALUES(?,?,?) ON "

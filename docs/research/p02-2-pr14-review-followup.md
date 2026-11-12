@@ -1,6 +1,6 @@
 # PR #14 kullanıcı review takibi
 
-**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Dört kaynak düzeltmesi ve fresh turları kapandı; 08 dataset/raw/upload geçti, startup/jobs süreleri reddedildi. Yeni kaynak CI/kurulum/Sonar/saklama açık; P02-2/a/b/c ve PR draft. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
+**Tarih:** 2026-11-04. **Kaynak:** fd083a2 yerel /7e5675c uzak PR başı; development 50d68b1. **Durum:** Kapandı. Dört kaynak düzeltmesi ve fresh turları tamamlandı; 11 reference kabulü, son kaynak üç ortam CI/Sonar ve CI çıktılarının kalıcı saklaması [merge kapanışında](p02-2-implementation-validation.md#development-merge-kapanışı) kayıtlıdır. PR #14, 2026-11-06’da `94aaaf0` ile development’a alındı; P02-2/a/b/c verified. Aşağıdaki “açık/draft” ifadeleri yazıldıkları aşamayı anlatır. Bu kayıt review iddialarını bağımsız kaynak denetimiyle sınıflar; bütün ajan iddiaları doğru kabul edilmez. Yeni source/test/script değişiklikleri nedeniyle 06 referansı artık önceki kaynağın tarihsel kabulüdür. Son bütün düzeltmeler/review ve gerekli karar kapanmadan yeni native seri veya source push yapılmaz.
 
 ## Uygulama sırası
 

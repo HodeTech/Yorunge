@@ -1,148 +1,98 @@
 """Real schema-7 history reads/reset; v2 fixtures do not create write authority."""
 
-import hashlib
 import json
 from functools import partial
 from pathlib import Path
 
 import pytest
 
+from tests.fixtures.upload_history import (
+    encode,
+    install_fixture,
+    install_legacy_running,
+    legacy_record,
+)
 from yorunge import api
 from yorunge.adapters.state import metadata, open_store
 from yorunge.adapters.upload_maintenance import invalidate_uploads
 from yorunge.adapters.upload_repository import StateUploads
-from yorunge.adapters.upload_store import read_any_view, read_view, validate_uploads
+from yorunge.adapters.upload_store import (
+    read_any_record,
+    read_any_view,
+    read_view,
+    validate_uploads,
+)
 from yorunge.domain.capabilities import instant
-from yorunge.domain.dataset_transfer import operation_reservation
 from yorunge.domain.errors import YorungeError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
-def encode(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+def test_reset_makes_a_running_v1_operation_unknown_with_a_v1_recovery_control(tmp_path):
+    # The continuation guard of the reset must not touch the oldest family.
+    with open_store(tmp_path / "state") as store:
+        plan, record = install_legacy_running(store)
+        with store.connection:
+            store.connection.execute("BEGIN IMMEDIATE")
+            invalidate_uploads(
+                store.connection,
+                plan.scope.store_id,
+                plan.scope.identity_epoch,
+                instant("2026-11-03T11:00:00.000000Z"),
+                store.deadline,
+            )
+        changed = read_any_record(store.connection, record.operation_id)
+        assert (changed.schema_version, changed.status, changed.reason) == (
+            1,
+            "unknown",
+            "identity_reset",
+        )
+        kind, payload = store.connection.execute(
+            "SELECT kind,payload FROM upload_controls"
+        ).fetchone()
+        assert kind == "recovery"
+        assert json.loads(payload)["schema_version"] == 1
 
 
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
-
-
-def install_fixture(store, *, terminal=True):
-    data = json.loads((FIXTURES / "dataset-transfer-graph-v2.json").read_bytes())
-    meta = metadata(store.connection)
-    plan, approval, record, proof = (
-        data[key] for key in ("plan", "approval", "record", "verification")
-    )
-    plan["scope"].update(store_id=meta.store_id, identity_epoch=meta.identity_epoch)
-    body = {k: v for k, v in plan.items() if k != "digest"}
-    plan["digest"] = digest(body)
-    binding = {
-        k: v for k, v in plan.items() if k not in ("plan_id", "digest", "prepared_at", "expires_at")
-    }
-    approval.update(
-        store_id=meta.store_id,
-        identity_epoch=meta.identity_epoch,
-        plan_digest=plan["digest"],
-        binding_digest=digest(binding),
-    )
-    record.update(
-        approval=approval, plan_digest=plan["digest"], observed_identity_epoch=meta.identity_epoch
-    )
-    proof["scope"] = plan["scope"]
-    for intent in data["intents"]:
-        intent["owner"]["identity_epoch"] = meta.identity_epoch
-        kind, index = intent["kind"], intent["file_index"]
-        mf = json.loads((FIXTURES / "dataset-manifest-v1.json").read_bytes())
-        request = {
-            "plan_digest": plan["digest"],
-            "kind": kind,
-            "file_index": index,
-            "file": mf["files"][index] if index is not None else None,
-            "dataset_id": proof["dataset_id"] if kind != "create" else None,
-            "object_key": f"objects/{index}" if kind in ("put", "confirm") else None,
-        }
-        intent["request_digest"] = digest(request)
-    control = data["controls"][0]
-    control.update(identity_epoch=meta.identity_epoch, verification_digest=digest(proof))
-    if not terminal:
-        record.update(status="unknown", reason="request_uncertain")
-        control.update(kind="recovery", reason="request_uncertain", verification_digest=None)
-        data["verification"] = None
-    c = store.connection
-    namespace = {
-        k: plan["scope"][k] for k in ("service_origin", "api_base_path", "owner", "project_id")
-    }
-    namespace["name"] = plan["parameters"]["name"]
-    manifest = (FIXTURES / "dataset-manifest-v1.json").read_bytes()
-    c.execute(
-        "INSERT INTO upload_namespaces VALUES(?,?,NULL)",
-        (record["intent_digest"], encode(namespace).decode()),
-    )
-    c.execute(
-        "INSERT INTO upload_manifests VALUES(?,?)", (plan["manifest"]["digest"], manifest.decode())
-    )
-    c.execute(
-        "INSERT INTO upload_plans VALUES(?,?,?,?,?,?)",
-        (
-            plan["plan_id"],
-            record["intent_digest"],
-            plan["manifest"]["digest"],
-            plan["prepared_at"],
-            plan["expires_at"],
-            encode(plan).decode(),
-        ),
-    )
-    c.execute(
-        "INSERT INTO upload_approvals VALUES(?,?,?,?)",
-        (
-            plan["plan_id"],
-            approval["approval_id"],
-            approval["expires_at"],
-            encode(approval).decode(),
-        ),
-    )
-    c.execute(
-        "INSERT INTO upload_operations VALUES(?,?,?,?,?,?,?)",
-        (
-            record["operation_id"],
-            plan["plan_id"],
-            record["intent_digest"],
-            record["revision"],
-            None,
-            operation_reservation(3),
-            encode(record).decode(),
-        ),
-    )
-    c.execute(
-        "UPDATE upload_namespaces SET create_operation_id=? WHERE intent_digest=?",
-        (record["operation_id"], record["intent_digest"]),
-    )
-    for intent, receipt in zip(data["intents"], data["receipts"], strict=True):
-        c.execute(
-            "INSERT INTO upload_stage_intents VALUES(?,?,?,?,?,?)",
+def test_a_record_of_another_family_than_its_plan_is_never_read_as_its_own(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        data = install_fixture(store, terminal=False)  # a v2 plan with its v2 record
+        v2 = data["record"]
+        record = legacy_record(
+            operation_id=v2["operation_id"],
+            plan_id=v2["plan_id"],
+            plan_digest=v2["plan_digest"],
+            intent_digest=v2["intent_digest"],
+        )
+        # Every index column agrees with the v1 payload; only its family is not its plan's.
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=?, revision=?, lease_expires_at=?",
             (
-                intent["intent_id"],
-                intent["operation_id"],
-                intent["sequence"],
-                intent["kind"],
-                intent["file_index"] if intent["file_index"] is not None else -1,
-                encode(intent).decode(),
+                record.encoded().decode(),
+                record.revision,
+                record.lease.expires_at if record.lease else None,
             ),
         )
-        c.execute(
-            "INSERT INTO upload_stage_receipts VALUES(?,?)",
-            (receipt["intent_id"], encode(receipt).decode()),
+        with pytest.raises(YorungeError) as error:
+            read_any_record(store.connection, record.operation_id)
+        assert error.value.code == "state_invalid"
+
+
+def test_a_v2_record_of_a_dataset_its_create_receipt_did_not_make_is_invalid(tmp_path):
+    with open_store(tmp_path / "state") as store:
+        data = install_fixture(store, terminal=False)
+        plan_id = data["plan"]["plan_id"]
+        assert read_any_view(store.connection, plan_id).operation.dataset_id is not None
+        stored = json.loads(
+            store.connection.execute("SELECT payload FROM upload_operations").fetchone()[0]
         )
-    c.execute(
-        "INSERT INTO upload_controls VALUES(?,?,?)",
-        (record["operation_id"], control["kind"], encode(control).decode()),
-    )
-    if terminal:
-        c.execute(
-            "INSERT INTO upload_verifications VALUES(?,?)",
-            (record["operation_id"], encode(proof).decode()),
+        stored["dataset_id"] = "00000000-0000-4000-8000-000000000777"
+        store.connection.execute(
+            "UPDATE upload_operations SET payload=?", (encode(stored).decode(),)
         )
-    return data
+        with pytest.raises(YorungeError) as error:
+            read_any_view(store.connection, plan_id)
+        assert error.value.code == "state_invalid"
 
 
 def test_v2_full_history_show_list_and_validation_never_rewrite_payload(tmp_path):

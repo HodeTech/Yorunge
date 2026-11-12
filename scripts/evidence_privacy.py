@@ -25,7 +25,7 @@ from typing import Any, NoReturn
 
 MAX_FILE = 16 * 1024 * 1024
 MAX_TOTAL = 512 * 1024 * 1024
-MAX_MEMBERS = 512
+MAX_MEMBERS = 1024
 MAX_DEPTH = 4
 MAX_NODES = 200_000
 MAX_ZIP_NAME = 1024
@@ -206,7 +206,8 @@ def neutral_inputs(value: object) -> None:
     data = closed(value, CONTEXT_FIELDS)
     paths = [data["source_root"], *data["workspaces"], *data["child_roots"]]
     paths.extend(data["controller"].values())
-    if any(needle in path.encode() for path in paths for needle in needles):
+    folded = [needle.lower() for needle in needles]  # the same fold as the byte scan below
+    if any(needle in path.encode().lower() for path in paths for needle in folded):
         reject("personal_runtime_input")
 
 
@@ -350,11 +351,14 @@ def zip_payload(
 
 class Scanner:
     def __init__(self, value: object):
-        self.needles = validate_context(value)
+        # Letter case is no disguise: a home path or an address written as /USERS/NAME or
+        # NAME@EXAMPLE is the same value (APFS and mail systems fold it). The fold is ASCII only.
+        self.needles = tuple(needle.lower() for needle in validate_context(value))
         self.total = self.members = self.nodes = 0
 
     def literal(self, raw: bytes) -> None:
-        if any(needle in raw for needle in self.needles):
+        folded = raw.lower()
+        if any(needle in folded for needle in self.needles):
             reject("personal_provenance")
 
     def opaque_text(self, raw: bytes) -> None:
@@ -374,6 +378,8 @@ class Scanner:
             reject("publication_limit")
         self.literal(raw)
         self.literal(name.encode("utf-8", "strict"))
+        if not raw:
+            return  # nothing in it to leak: a process that died before it wrote leaves this
         if raw.startswith(b"\x1f\x8b"):
             with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
                 decoded = stream.read(MAX_FILE + 1)

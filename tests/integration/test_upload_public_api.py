@@ -393,7 +393,7 @@ def test_public_existing_start_is_local_but_not_a_false_delivery_success(
 def test_actual_sigint_after_coordinator_result_keeps_the_known_operation_id(tmp_path, monkeypatch):
     import signal
 
-    from tests.integration.test_upload_versioned_history import install_fixture
+    from tests.fixtures.upload_history import install_fixture
     from yorunge.adapters.state import open_store
 
     root = tmp_path / "state"

@@ -9,12 +9,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, BinaryIO, TextIO, TypeVar
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-    from yorunge.domain.errors import ErrorCode, YorungeError
+    from yorunge.domain.errors import ErrorCode, OperationError, YorungeError
     from yorunge.domain.models import Result
     from yorunge.domain.streams import StreamEvent
 
@@ -89,9 +90,17 @@ class OutputRenderer:
         stream_id: str | None = None,
         operation_id: str | None = None,
         upload_guidance: bool = False,
+        error_hints: Mapping[str, str | Callable[[YorungeError], str | None]] | None = None,
+        requested_operation_id: str | None = None,
     ) -> None:
         self.output = output
         self._upload_guidance = upload_guidance
+        # The operation the person asked about, so that an error naming another one (the successor
+        # of a source, the running one that blocks it) is not mistaken for it (text output only).
+        self._requested = requested_operation_id
+        # What a person is told on top of the fixed message, for the codes this command can meet
+        # in its own way (text output only; the machine envelope never changes).
+        self._error_hints = error_hints or {}
         self.stdout = sys.stdout if stdout is None else stdout
         self.stderr = sys.stderr if stderr is None else stderr
         if stream_id is not None or operation_id is not None:
@@ -242,8 +251,54 @@ class OutputRenderer:
                 self.operation_id,
                 reason_code=error.reason_code,
                 capacity_kind=error.capacity_kind,
+                blockers=error.blockers,
             )
         return self._failure(error.code)
+
+    @staticmethod
+    def _blockers_text(blockers: tuple[str, ...], operation_id: str) -> str:
+        """Why a continuation was refused: a sentence of reason and one of next step for each."""
+        from yorunge.cli.upload import BLOCKER_TEXT, explained_blockers
+
+        lines: list[str] = []
+        for name in explained_blockers(blockers):
+            reason, step = BLOCKER_TEXT[name]
+            lines.extend((f"- {name}: {reason}", f"  Sonraki adım: {step}"))
+        lines.append(
+            f"Rapor: yorunge datasets upload resume --operation-id {operation_id} "
+            "--accept-unverified-read"
+        )
+        lines.append("Özel --config/--profile/--state-dir kullandıysanız aynı seçenekleri koruyun.")
+        return "\n" + "\n".join(lines)
+
+    def _hint_text(self, error: YorungeError) -> str:
+        """The command's own hint for this error code, on a line of its own (else nothing)."""
+        hint = self._error_hints.get(error.code)
+        if callable(hint):
+            hint = hint(error)
+        return "\n" + hint if hint else ""
+
+    def _operation_text(self, error: OperationError, operation_id: str) -> str:
+        """The operation an error names, and what a person does about it (text output only)."""
+        message = f"\nİş: {operation_id}"
+        if (
+            error.code == "operation_conflict"
+            and self._requested is not None
+            and operation_id.lower() != self._requested.lower()
+        ):
+            message += (
+                f"\nİstediğiniz iş {self._requested} değil; yukarıdaki iş ona bağlı "
+                "(devamı ya da onu engelleyen iş). Önce onun durumuna bakın."
+            )
+        if error.blockers:
+            message += self._blockers_text(error.blockers, operation_id)
+        elif self._upload_guidance:
+            message += (
+                "\nİncele: yorunge datasets upload show --operation-id "
+                f"{operation_id}\nAynı --state-dir seçimini koruyun; "
+                "yeni plan/ad/store ile tekrar göndermeyin."
+            )
+        return message
 
     def _stderr_error(self, error: YorungeError) -> None:
         message = (
@@ -254,14 +309,9 @@ class OutputRenderer:
         if self.output == "text":
             from yorunge.domain.errors import OperationError
 
+            message += self._hint_text(error)
             if isinstance(error, OperationError) and error.operation_id is not None:
-                message += f"\nİş: {error.operation_id}"
-                if self._upload_guidance:
-                    message += (
-                        "\nİncele: yorunge datasets upload show --operation-id "
-                        f"{error.operation_id}\nAynı --state-dir seçimini koruyun; "
-                        "yeni plan/ad/store ile tekrar göndermeyin."
-                    )
+                message += self._operation_text(error, error.operation_id)
         try:
             write_utf8(message + "\n", self.stderr)
         except (OSError, ValueError):

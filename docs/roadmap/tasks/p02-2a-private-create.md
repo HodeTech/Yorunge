@@ -1,18 +1,18 @@
 ---
 id: P02-2a
 phase: P02
-status: draft
-size: L
+status: verified
+size: M
 depends_on: [P02-0a, P02-0d, P02-1]
 capabilities: [C03, C12, C13]
 ---
 # P02-2a — Private oluşturma planı ve kalıcı işlem
 
-**Tarih:** 2026-11-02. L kapsam [paket planındaki](../p02-2-delivery-plan.md#adımlar-ve-review-döngüsü) 1–3 S/M review adımlarına bölünmüştür; tek kod adımı değildir. ADR-0024/0025/0026 Accepted; gerçek producer/wire ve bütünleşik kart kabulü açıkken üst kart draft kalır.
+**Tarih:** 2026-11-02. L kapsam [paket planındaki](../p02-2-delivery-plan.md#adımlar-ve-review-döngüsü) 1–3 S/M review adımlarına bölünmüştür; tek kod adımı değildir. ADR-0024/0025/0026 Accepted; gerçek producer/wire, bütünleşik kabul ve development teslimi tamamlandı, üst kart verified. **Boyut notu:** özgün L tahmini korunur; işin tamamı d–w alt kartlarına bölündüğünden doğrulama aracı büyük kartın verified olmasını reddeder, bu üst kart yalnız bütünleşik kabul/teslim kaydı olarak M izlenir.
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı exact owner/proje ve güncel yerel içerikle private create niyetini planlar, digest ile onaylar; kalıcı operation ID'si olmadan dış etki başlamaz. Yerel plan/journal ve v2 politika temelleri çalışma dalındadır; gerçek provider producer/public yüzey d–w dilimlerinde yerel verified; üst teslimin nihai kabulü açıktır. Discovery izin üretmez.
+Kullanıcı exact owner/proje ve güncel yerel içerikle private create niyetini planlar, digest ile onaylar; kalıcı operation ID'si olmadan dış etki başlamaz. Yerel plan/journal ve v2 politika temelleri, gerçek provider producer/public yüzey d–w dilimlerinde verified'dır; üst teslimin nihai kabulü PR #14 ile kapandı (Teslim kaydı). Discovery izin üretmez.
 
 ## Giren ve girmeyen kapsam
 
@@ -42,6 +42,6 @@ Contract/state/process/TLS ve CLI/Python pozitif/ret testleri; format/lint/stric
 
 ## Teslim kaydı
 
-D–w uygulaması ve her kaynak diliminin iki fresh review turu çalışma dalında tamamlandı. R5, ca0d29c/runtime07’de iki farklı PNG’nin tam accepted graph/exact metadata sonucudur; yetki/fiyat/uzak byte kanıtı değildir. Kullanıcı review düzeltmeleri sonrası [08 ilk ölçümleri](../../research/p02-2-implementation-validation.md#5-kasım--08-ilk-ölçümler-ve-açık-süre-kapıları) dataset/raw/upload ve iki temiz kurulumu geçti; startup/jobs süre kabulü açık. Önceki başarılı/başarısız kaynak sonuçları korunur; güncel reference kabulü yerine geçmez.
-
-Üst kart, son üç ortam CI/altı temiz kurulum ve yeni Linux çıktılarının kalıcı saklanması kapanana kadar draft kalır. [Kanonik kabul kaydı](../../research/p02-2-implementation-validation.md) ve [current](../current.md#sıradaki-iş-ve-kalan-kapsam) gerçek kalan işi gösterir; P02-1 veya eski bir kaynak sonucu bu kabulün yerine sayılmaz.
+- PR/commit: [PR #14](https://github.com/HodeTech/Yorunge/pull/14); d–w uygulaması, kullanıcı review düzeltmeleri ve ölçüm/CI bağları son PR head’i [b0fb1f1](https://github.com/HodeTech/Yorunge/commit/b0fb1f1a6c5ef2648605267f122ccbff64b6cf13)’de tamamlandı. Kullanıcı tek development PR’ını **2026-11-06 01:07:58 Europe/Istanbul** tarihinde [94aaaf0](https://github.com/HodeTech/Yorunge/commit/94aaaf03e380381e95c9432de340378e23007e95) merge commit’iyle birleştirdi; [merge/CI ve kanıt kaydı](../../research/p02-2-implementation-validation.md#development-merge-kapanışı).
+- Sonuç: Exact owner/proje ve güncel yerel içerik için immutable private upload planı, digest onayı, kalıcı tekil operation/intent/receipt ve atomik create baseline’ı; strict context/create/proje bağlantısı codec’leri. R5 canlı koşusunda iki farklı PNG için create/link ve tam accepted graph exact metadata ile geçti. Her kod diliminde iki farklı fresh review turu ve doğrulanmış fix teyidi tamamlandı; üst kart verified ve development’a teslim edildi.
+- Kalan sınır: Sonuç yetki, fiyat veya uzaktan indirilmiş byte doğrulaması değildir (`authority_verified=false`, `pricing_verified=false`, remote bytes doğrulanmadı). Aynı SHA-256’lı farklı adlar P02-R2’de, doğrulanmış kimlik/yetki bağı P02-R1’de, etkili resume/indirme P02-3’te açıktır. Linux startup aşımı ADR-0019 kapsamında görünür tanıdır; M5 başarısı bütün host’lar için süre garantisi değildir. Development merge’ünü kullanıcı yaptı; Master/release ayrı kullanıcı sürecidir.

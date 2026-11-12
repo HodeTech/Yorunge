@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+import signal
 import time
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -17,7 +19,7 @@ from yorunge.adapters.capability_cache import StateCache
 from yorunge.adapters.identity import StateCredentialRegistry
 from yorunge.adapters.state import open_store
 from yorunge.adapters.upload_repository import StateUploads
-from yorunge.adapters.upload_store import capacity, read_manifest
+from yorunge.adapters.upload_store import _intent_binding, capacity, read_manifest, request_digest
 from yorunge.adapters.upload_store import read_any_view as read_view
 from yorunge.domain.capabilities import instant, timestamp
 from yorunge.domain.credentials import (
@@ -475,6 +477,107 @@ def test_corruption_is_rejected_at_both_read_boundaries(journal, damage, path):
         assert failure.value.code == "state_invalid"
 
 
+CREATE = ("create", None)
+LINK = ("project_link", None)
+
+
+def accepted_through(journal, stages):
+    record = journal.approved()
+    for kind, index in stages:
+        intent, permit, _ = journal.arm(record, kind, index)
+        permit.consume()
+        record = journal.accept(record, intent).operation
+    return record
+
+
+def intent_count(journal):
+    with open_store(journal.root) as store:
+        return len(read_view(store.connection, journal.plan.plan_id).intents)
+
+
+@pytest.mark.parametrize(
+    "accepted,kind,index",
+    [
+        ([], "project_link", None),
+        ([CREATE], "presign", 0),
+        ([CREATE, LINK], "put", 0),
+        ([CREATE, LINK, ("presign", 0)], "confirm", 0),
+        # Another file's acceptance never stands in for this file's predecessor.
+        ([CREATE, LINK, ("presign", 1)], "put", 0),
+        ([CREATE, LINK, ("presign", 0), ("presign", 1), ("put", 0)], "confirm", 1),
+    ],
+)
+def test_arm_refuses_a_stage_whose_predecessor_is_not_accepted_and_commits_nothing(
+    journal, accepted, kind, index
+):
+    record = accepted_through(journal, accepted)
+    with pytest.raises(YorungeError) as failure:
+        journal.arm(record, kind, index)
+    assert failure.value.code == "operation_conflict"
+    assert intent_count(journal) == len(accepted)
+
+
+@pytest.mark.parametrize("index", [3, 127, -1, 10**6, True])
+def test_arm_refuses_a_file_index_outside_the_plan_and_commits_nothing(journal, index):
+    # The plan has three files, so index 3 is one past the last valid file.
+    assert journal.plan.manifest.file_count == 3
+    record = accepted_through(journal, [CREATE, LINK])
+    with pytest.raises(YorungeError) as failure:
+        journal.arm(record, "presign", index)
+    assert failure.value.code == "invalid_request"
+    assert intent_count(journal) == 2
+
+
+@pytest.fixture
+def stored_create(journal):
+    """A real armed create intent and the view that holds it, as a valid template to copy."""
+    record = journal.approved()
+    intent, _, _ = journal.arm(record)
+    with open_store(journal.root) as store:
+        return read_view(store.connection, journal.plan.plan_id), intent
+
+
+def check_binding(journal, stored, intent, accepted):
+    view, _ = stored
+    _intent_binding(view, journal.manifest, intent, intent.sequence, set(), accepted)
+
+
+def test_stored_stage_binding_names_each_graph_rule_that_it_enforces(journal, stored_create):
+    view, template = stored_create
+    link = template.model_copy(update={"kind": "project_link", "file_index": None})
+    created = SimpleNamespace(dataset_id=DATASET, object_key=None, recorded_at=template.intended_at)
+    # The template is a valid stored intent, so only the graph rule under test can fail.
+    check_binding(journal, stored_create, template, {})
+    digest = request_digest(view.plan, journal.manifest, "project_link", None, {CREATE: created})
+    check_binding(
+        journal,
+        stored_create,
+        link.model_copy(update={"request_digest": digest}),
+        {CREATE: created},
+    )
+    with pytest.raises(ValueError, match="stage predecessor not accepted"):
+        check_binding(journal, stored_create, link, {})
+    put = template.model_copy(update={"kind": "put", "file_index": 0})
+    with pytest.raises(ValueError, match="stage predecessor not accepted"):
+        check_binding(journal, stored_create, put, {CREATE: created, LINK: created})
+    later = SimpleNamespace(
+        dataset_id=DATASET,
+        object_key=None,
+        recorded_at=timestamp(instant(template.intended_at) + timedelta(seconds=1)),
+    )
+    with pytest.raises(ValueError, match="stage precedes predecessor acknowledgement"):
+        check_binding(journal, stored_create, link, {CREATE: later})
+
+
+@pytest.mark.parametrize("index", [3, 127])
+def test_stored_stage_binding_rejects_a_file_index_outside_the_plan(journal, stored_create, index):
+    # Index 3 is one past the last of the plan's three files; it must fail on the index itself.
+    assert journal.plan.manifest.file_count == 3
+    presign = stored_create[1].model_copy(update={"kind": "presign", "file_index": index})
+    with pytest.raises(ValueError, match="invalid stage binding"):
+        check_binding(journal, stored_create, presign, {})
+
+
 def test_new_plan_or_reset_does_not_bypass_namespace(journal):
     record = journal.approved()
     journal.arm(record)
@@ -551,7 +654,7 @@ def test_real_kill_after_admission_before_id_output_is_recoverable(journal):
         assert committed.wait(10), "child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode != 0
+        assert process.exitcode == -signal.SIGKILL
         assert not process.is_alive()
         with open_store(journal.root) as store:
             repo = StateUploads(store, clock=journal.clock)

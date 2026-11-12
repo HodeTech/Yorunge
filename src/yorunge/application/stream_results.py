@@ -51,6 +51,7 @@ def _bound(error: YorungeError, operation_id: str | None) -> YorungeError:
             operation_id or error.operation_id,
             reason_code=error.reason_code,
             capacity_kind=error.capacity_kind,
+            blockers=error.blockers,
         )
     return _failure(error.code, operation_id)
 

@@ -27,7 +27,9 @@ class ProviderItem(UploadWire):
         return value
 
 
-class ProviderItems(UploadWire):
+class ProviderItemsPage(UploadWire):
+    """One listing page whose cross-item consistency is judged by the inventory reducer."""
+
     max_wire_bytes: ClassVar[int] = 1024 * 1024
     items: Annotated[tuple[ProviderItem, ...], Field(max_length=128)]
     next_cursor: str | None
@@ -40,6 +42,8 @@ class ProviderItems(UploadWire):
             raise ValueError("bounded opaque cursor required")
         return value
 
+
+class ProviderItems(ProviderItemsPage):
     @model_validator(mode="after")
     def distinct(self) -> Self:
         if (

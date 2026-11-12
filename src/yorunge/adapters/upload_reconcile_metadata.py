@@ -1,4 +1,9 @@
-"""Metadata for an acquired read lease; expired write approvals are historical only."""
+"""Metadata for an acquired read lease; expired write approvals are historical only.
+
+The proof is the whole dataset, N files, whichever family the source is: an original upload's
+(``TransferVerificationV2``) or a continuation's (``TransferVerificationV3``, built by the one
+constructor the continuation's own closing read uses).
+"""
 
 from __future__ import annotations
 
@@ -7,8 +12,11 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from yorunge.adapters.platform_upload_port import ObservedUploadPort
+from yorunge.adapters.upload_continuation_read import continuation_proof
 from yorunge.domain.capabilities import instant, timestamp
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_transfer_v2 import TransferVerificationV2
+from yorunge.domain.dataset_transfer_v3 import TransferVerificationV3
 from yorunge.domain.errors import YorungeError
 
 if TYPE_CHECKING:
@@ -32,7 +40,9 @@ def _deadline(environment: _ReadEnvironment, access: ReadAccess) -> float:
     return result
 
 
-async def observe_metadata(environment: _ReadEnvironment) -> TransferVerificationV2:
+async def observe_metadata(
+    environment: _ReadEnvironment,
+) -> TransferVerificationV2 | TransferVerificationV3:
     owner, check = environment.owner, environment.authorization
     assert owner is not None and check is not None
     environment.require_current(check)
@@ -56,6 +66,8 @@ async def observe_metadata(environment: _ReadEnvironment) -> TransferVerificatio
         environment.client, loaded.baseline.id, deadline=_deadline(environment, access)
     )
     environment.require_current(check)
+    if isinstance(loaded.plan, DatasetContinuationPlanV3):
+        return continuation_proof(loaded.plan, loaded.baseline.id, access, observed_at, files)
     return TransferVerificationV2(
         schema_version=2,
         dataset_id=loaded.baseline.id,

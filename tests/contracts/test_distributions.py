@@ -92,6 +92,8 @@ def test_valid_archive_files_and_explicit_directories(tmp_path):
         "C:/yorunge/file.py",
         "yorunge/unsafe\x1b.py",
         "yorunge/__pycache__/file.pyc",
+        "yorunge/.env",  # a hidden name below the package
+        "yorunge/.local/token",
         "other/file.py",
         "other.dist-info/METADATA",
         "yorunge-0.0.0.dist-info/METADATA",
@@ -176,6 +178,10 @@ def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
         ROOT + "/docs/p02-account-setup.md/child",
         ROOT + "/.github/unsafe.yml",
         ROOT + "/.agents/settings.json",
+        ROOT + "/src/yorunge/.env",  # a hidden name below a tree: secrets and local state
+        ROOT + "/tests/fixtures/.secret.json",
+        ROOT + "/scripts/.local/token",
+        ROOT + "/docs/research/.hidden.json",
         ROOT + "/src",
         ROOT,
     ],

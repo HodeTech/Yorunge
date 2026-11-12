@@ -101,6 +101,8 @@ def approve_upload_v2(
     acknowledge_unverified_authority: bool,
     acknowledge_unpriced_cost: bool,
 ) -> DatasetUploadApprovalV2:
+    if type(plan) is not DatasetUploadPlanV2:
+        raise YorungeError("upload_plan_not_valid")
     if plan.status == "draft" or not (
         instant(plan.prepared_at) <= instant(approved_at) < instant(plan.expires_at)
     ):

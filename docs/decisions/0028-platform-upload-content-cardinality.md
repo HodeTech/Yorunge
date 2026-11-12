@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 4 Kasım kullanıcı review düzeltmeleri sonrası uygulamayı yetkilendirdi; revizyonlar iki farklı fresh turda temiz teyit edildi. Ürün/kabul geçişi aşağıdaki adımlarla uygulanır. **Tarih:** 2026-11-04. **İş:** P02-2 canlı kabulü. Öneri, [ADR-0024](0024-durable-dataset-transfers.md) ve [P02-2c kabul 8](../roadmap/tasks/p02-2c-upload-recovery-acceptance.md#kabul) içindeki aynı hash/farklı ad olumlu upload beklentisini daraltır. Manifest v1, geçmiş kayıtlar ve tam başarı grafiği değişmez.
 
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0031](0031-upload-continuation.md) yalnız **v3 continuation kayıtları** için başarı grafiğini “seçilen M dosyanın 3M accepted makbuzu + N dosyalık metadata kanıtı + kök operation’ın CreateReceiptV2 baseline eşliği” olarak tanımlar; v1/v2 kayıtları, golden’ları ve bu kararın diğer hükümleri değişmez.
+
 ## Bağlam ve kanıt sınırı
 
 [r4 gerçek public koşusu](../research/p02-2-implementation-validation.md#4-kasım--r4-aynı-içerik-kardinalitesi-engeli), iki farklı içerik için accepted confirm üretti; üçüncü, farklı adlı fakat önceki dosyayla aynı SHA-256 içeriğinde created=0/batch_duplicates=1 döndü. İstek mevcut consumer’ın skip_dedup=true alanını taşıdı. Uygulama bunu accepted receipt veya başarıya çevirmedi; aynı operation unknown kaldı. Toplam 237 byte gönderildi; tekrar yapılmadı. Bu tek gözlem bütün hedef/sürüm/konfigürasyonlarda aynı davranışın kanıtı değildir; bugünkü yolun istenen pozitif kabulü karşılamadığını gösterir.

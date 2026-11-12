@@ -1,6 +1,6 @@
 # Kanıt ve referans kaydı
 
-**Güncellendi:** 2026-11-01. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
+**Güncellendi:** 2026-11-08. **Kapsam:** Başlangıç tasarımı ve tarihli kaynak kontrolleri; güncel canlı hesap sertifikası değildir.
 
 ## Kanıt türleri
 
@@ -111,3 +111,16 @@ Kullanıcı mevcut Platform key’iyle sınırlı salt okuma araştırmasını y
 Proje listesi search parametresini kullanır; useProject list/detail Zod şemaları id UUID ve nullable/optional org_id tüketir. API key UI kind=platform/llm_inference/model_inference ayrımı ve credit_org_id alanını gösterir; scope/key-grammar normatif şeması değildir. Ana web client Bearer browser token’ı taşır, GET wrapper success/data’yı açabilir. Bu davranış Yörünge için browser token fallback veya gevşek decoder yetkisi vermez. Org UI listede array/items kabul eder; pagination/tamlık ve principal anlamı açık kalır.
 
 Postman api-discovery/Orbit public aramasında dönen5 kaynak EVREN’le eşleşmedi; hiçbiri entegrasyon girdisi seçilmedi. Bu sonuç başka yerde sağlayıcı sözleşmesi olmadığı kanıtı değildir. Canlı hesap çağrıları bu kamu kaynağı tablosundan ayrı, tek6 GET/6 attempt/1.397 tüketilen raw byte/0,616151 s davranış koşusu olarak kaydedildi.
+
+## 8 Kasım LLM şeması yeniden okuma
+
+[LLM OpenAPI](https://evren-llmapi.ssyz.org.tr/openapi.json) credentialsız tek GET ile yeniden okundu (Europe/Istanbul, 2026-11-08). 31 Ekim kaydı korunur; aşağıdaki gövde onun yerine geçmez, sonrasını gösterir. Hash kaynak kimliğidir, sağlayıcı attestasyonu veya hesap davranışı kanıtı değildir. [Karşılaştırma ve kararlar](p02-llm-gateway-schema-review.md).
+
+| Kaynak / kanıt türü | Gözlenen | Byte | SHA-256 |
+|---|---|---:|---|
+| [LLM OpenAPI](https://evren-llmapi.ssyz.org.tr/openapi.json) / O; 3.1.0, info 0.1.0, 33 path | HTTP 200 | 53649 | `e2254a302d6108dcd715151f8f2310195b86439ac7f1686959df908a0f2a700e` |
+| [`/healthz`](https://evren-llmapi.ssyz.org.tr/healthz) | HTTP 200, `{"status":"ok"}` | 15 | — |
+| [`/readyz`](https://evren-llmapi.ssyz.org.tr/readyz) | HTTP 200, `{"status":"ready"}` | 18 | — |
+| `/health`, `/v1/health` | HTTP 404 (ikisi de) | 95 | — |
+
+31 Ekim gövdesi 52.240 byte / `5ba9b1b…` idi (+1.409 byte; path sayısı 33, aynı). Eski gövde saklanmadığından yapısal fark çıkarılamaz; 26 Ekim başlangıç kaydındaki 30 path / `200e493…` da tarihsel kalır. Gövde bu kez de saklanmadı; yerine bir sonraki yeniden okumada diff alınabilen [yapısal özet](probes/llm-openapi-structure-20261108/README.md) (operasyonlar, bileşen alanları, tipler/nullability, zorunlu alanlar, açıklama özetleri) ve onu üreten betik kaydedildi. Şemada `securitySchemes` ve operasyon düzeyinde `security` yoktur; bu, anahtar gerektiren uçların anonim olduğu anlamına gelmez. Sağlık uçlarının anahtarsız 200 vermesi şemadan değil bu gözlemden çıkar. Şemada deprecation/sunset/replacement alanı, `terms_not_accepted` kodu, hız sınırı başlıkları, `Retry-After`, SSE keep-alive ve `include_usage` yoktur; dış incelemeler bunların bir kısmını varsayar. Bu varsayımlar doğrulanmamış dış gözlemdir ve P02-4a/5b/6b'de canlı doğrulanacak adaydır. Anahtarlı hiçbir çağrı yapılmadı.

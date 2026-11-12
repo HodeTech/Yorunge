@@ -207,6 +207,30 @@ def test_global_expiry_rows_roll_back_with_business_while_clock_is_durable(tmp_p
         store.verify()
 
 
+def test_a_full_disk_inside_a_business_transaction_is_reported_as_a_full_disk(tmp_path):
+    """SQLite rolls a transaction back itself when a single-row write finds the disk full: the
+    savepoint is gone, and the cleanup's "no such savepoint" must not hide the failure that caused
+    it (which is ``state_write_failed``, not ``state_invalid``)."""
+    from yorunge.adapters.state import sqlite_error_code
+
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, Clock())
+        stamp = cache.stamp()
+        store.connection.execute("CREATE TABLE filler(value TEXT)")
+        pages = store.connection.execute("PRAGMA page_count").fetchone()[0]
+        store.connection.execute(f"PRAGMA max_page_count={pages}")
+        with pytest.raises(sqlite3.OperationalError) as failure:
+            with cache.transaction(stamp):
+                for _ in range(64):  # one row at a time: no statement journal to fall back on
+                    store.connection.execute("INSERT INTO filler VALUES(?)", ("x" * 4000,))
+        assert "savepoint" not in str(failure.value), failure.value
+        assert sqlite_error_code(failure.value) == "state_write_failed"
+        assert not store.connection.in_transaction
+        store.connection.execute("PRAGMA max_page_count=1073741823")
+        store.connection.execute("DROP TABLE filler")
+        store.verify()  # the store is intact and usable afterwards
+
+
 @pytest.mark.parametrize("interrupt", [False, True])
 def test_global_expiry_migration_backfills_existing_records_atomically(
     tmp_path, monkeypatch, interrupt, schema5_runtime
@@ -1226,3 +1250,104 @@ def test_intermediate_clock_sample_cannot_be_overwritten_before_tick(tmp_path):
         cache.now()
         clock.value += timedelta(seconds=1)
         assert cache.stamp().generation == stamp.generation + 1
+
+
+@pytest.mark.parametrize(
+    "original",
+    [YorungeError("capability_expired"), KeyboardInterrupt()],
+    ids=["a closed error", "an interrupt"],
+)
+def test_a_cleanup_that_cannot_read_the_clock_back_does_not_replace_the_failure(
+    tmp_path, monkeypatch, original
+):
+    """The failure that ends the block is the one to report: the cleanup's own ``_tick`` failing
+    (a clock row that cannot be read back) is not, and the ``finally`` still rolls back."""
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, Clock())
+        stamp = cache.stamp()
+        store.connection.execute("CREATE TABLE business(value TEXT)")
+        if store.connection.in_transaction:
+            store.connection.commit()
+        real, calls = cache._tick, []
+
+        def failing_on_the_cleanup(now):
+            calls.append(now)
+            if len(calls) == 3:  # the entry, the first look inside, then the cleanup's
+                raise YorungeError("state_invalid")
+            return real(now)
+
+        monkeypatch.setattr(cache, "_tick", failing_on_the_cleanup)
+        with pytest.raises(type(original)) as raised:
+            with cache.transaction(stamp):
+                store.connection.execute("INSERT INTO business VALUES('x')")
+                raise original
+        assert raised.value is original
+        assert len(calls) == 3  # the cleanup tick was reached and failed
+        assert not store.connection.in_transaction
+        assert store.connection.execute("SELECT count(*) FROM business").fetchone()[0] == 0
+        monkeypatch.undo()
+        assert cache.stamp().generation >= 1  # the store is usable afterwards
+
+
+def test_read_stamp_leaves_no_transaction_open(tmp_path):
+    from yorunge.adapters.capability_cache import read_stamp
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        assert read_stamp(store, Clock()) is not None
+        assert not store.connection.in_transaction
+
+
+def test_read_stamp_inside_a_transaction_of_the_caller_leaves_it_open(tmp_path):
+    from yorunge.adapters.capability_cache import read_stamp
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        store.connection.execute("BEGIN IMMEDIATE")
+        assert read_stamp(store, Clock()) is not None
+        assert store.connection.in_transaction  # not begun, not rolled back by the read
+        store.connection.execute("ROLLBACK")
+
+
+def test_the_identity_and_the_clock_row_are_read_in_one_snapshot(tmp_path, monkeypatch):
+    from yorunge.adapters import capability_cache
+    from yorunge.adapters.state import DB_NAME
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        other = sqlite3.connect(store.root / DB_NAME, isolation_level=None, timeout=0)
+        real, outcome = capability_cache.metadata, []
+
+        def then_a_writer(connection):
+            value = real(connection)  # the first read is done; the snapshot is open
+            try:
+                other.execute("BEGIN IMMEDIATE")
+                other.execute("UPDATE cache_clock SET mutation_revision=mutation_revision+1")
+                other.execute("COMMIT")
+                outcome.append("committed")
+            except sqlite3.OperationalError:
+                outcome.append("blocked")
+                if other.in_transaction:
+                    other.execute("ROLLBACK")
+            return value
+
+        monkeypatch.setattr(capability_cache, "metadata", then_a_writer)
+        assert capability_cache.read_stamp(store, Clock()) is not None
+        other.close()
+        assert outcome == ["blocked"]  # no commit can fall between the two reads
+
+
+def test_read_stamp_takes_no_write_lock(tmp_path):
+    """A report that promises to write nothing must not queue behind (or in front of) a writer."""
+    from yorunge.adapters.capability_cache import read_stamp
+    from yorunge.adapters.state import DB_NAME
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        other = sqlite3.connect(store.root / DB_NAME, isolation_level=None, timeout=0)
+        other.execute("BEGIN IMMEDIATE")  # a writer holds the reserved lock
+        try:
+            assert read_stamp(store, Clock()) is not None
+        finally:
+            other.execute("ROLLBACK")
+            other.close()

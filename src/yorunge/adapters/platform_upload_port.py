@@ -29,6 +29,7 @@ from yorunge.domain.credentials import (
     ServiceTarget,
     normalize_target,
 )
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest
 from yorunge.domain.dataset_transfer import StageIntent, StageReceipt, VerifiedFile, scope_target
 from yorunge.domain.dataset_upload import UploadScope, manifest_reference
@@ -37,6 +38,8 @@ from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context
 from yorunge.domain.state import canonical_uuid
 from yorunge.domain.upload_requests import upload_request_digest
+from yorunge.domain.upload_resume import RemoteInventory
+from yorunge.domain.upload_versions import graph_of
 
 if TYPE_CHECKING:
     from yorunge.adapters.platform_upload_put import PreparedPutCall
@@ -173,7 +176,7 @@ class PreparedUploadCall(_Private):
             upload = descriptors.presigned(raw, self._context, secret)
         else:
             assert self._count is not None
-            metadata.confirm_ack(raw, self._count, secret)
+            metadata.confirm_ack(raw, self._count, secret, base=port._base)
         return ControlOutcome(
             StageReceipt(
                 schema_version=1,
@@ -190,9 +193,11 @@ class PreparedUploadCall(_Private):
 
 
 class ObservedUploadPort(_Private):
+    """The effects of one plan: an original upload's, or a continuation's files alone."""
+
     def __init__(
         self,
-        plan: DatasetUploadPlanV2,
+        plan: DatasetUploadPlanV2 | DatasetContinuationPlanV3,
         manifest: DatasetManifest,
         scope: UploadScope,
         bound: BoundCredential,
@@ -201,7 +206,16 @@ class ObservedUploadPort(_Private):
         *,
         utc_clock: Callable[[], datetime] | None = None,
     ) -> None:
-        self._plan = revalidate_input(DatasetUploadPlanV2, plan)
+        checked: DatasetUploadPlanV2 | DatasetContinuationPlanV3
+        if isinstance(plan, DatasetContinuationPlanV3):
+            checked = revalidate_input(DatasetContinuationPlanV3, plan)
+            # What the dataset held before this operation: a confirm reports its own count or, in
+            # a dataset that was not new, the dataset's (see ``metadata.confirm_ack``).
+            self._base = checked.continuation.remote_present_count
+        else:
+            checked = revalidate_input(DatasetUploadPlanV2, plan)
+            self._base = 0
+        self._plan, self._graph = checked, graph_of(checked)
         self._manifest = revalidate_input(DatasetManifest, manifest)
         self._scope = revalidate_input(UploadScope, scope)
         self._bound(bound, credential)
@@ -227,6 +241,7 @@ class ObservedUploadPort(_Private):
         self._credential, self._budget = credential, budget
         self._clock = utc_clock or (lambda: datetime.now(UTC))
         self._files: tuple[descriptors.FileContext, ...] = ()
+        self._indexed: dict[int, descriptors.FileContext] = {}
 
     def _bound(self, bound: BoundCredential, credential: HttpCredential) -> None:
         if (
@@ -291,16 +306,15 @@ class ObservedUploadPort(_Private):
             self._files = descriptors.contexts(
                 self._plan, self._manifest, *key, self._credential.secret
             )
+            self._indexed = {context.file_index: context for context in self._files}
         return self._files
 
     def _file(self, context: descriptors.FileContext) -> None:
         if type(context) is not descriptors.FileContext:
             raise YorungeError("invalid_request")
-        owned = self._files
         if (
             type(context.file_index) is not int
-            or not 0 <= context.file_index < len(owned)
-            or owned[context.file_index] is not context
+            or self._indexed.get(context.file_index) is not context
             or revalidate_input(ServiceTarget, context.target) != self._credential.target
             or revalidate_input(DatasetFile, context.file)
             != self._manifest.files[context.file_index]
@@ -338,6 +352,8 @@ class ObservedUploadPort(_Private):
         )
 
     def prepare_create(self, operation_id: str) -> PreparedUploadCall:
+        if self._graph.continuation:
+            raise YorungeError("invalid_request")  # a continuation has no create
         return self._prepare(
             operation_id,
             "create",
@@ -346,6 +362,8 @@ class ObservedUploadPort(_Private):
         )
 
     def prepare_link(self, operation_id: str, dataset_id: str) -> PreparedUploadCall:
+        if self._graph.continuation:
+            raise YorungeError("invalid_request")  # nor a link
         secret = self._credential.secret
         path = codec.segment(self._scope.project_id, secret)
         return self._prepare(
@@ -375,7 +393,9 @@ class ObservedUploadPort(_Private):
             raise YorungeError("invalid_request")
         context = upload.context
         self._file(context)
-        if type(confirmed_count) is not int or not 1 <= confirmed_count <= context.file_count:
+        # An operation holds one confirm per file it sends: all the files of an original upload,
+        # the selected ones of a continuation (not the manifest's, whose other files are not sent).
+        if type(confirmed_count) is not int or not 1 <= confirmed_count <= len(self._graph.files):
             raise YorungeError("invalid_request")
         path = codec.segment(context.dataset_id, self._credential.secret)
         return self._prepare(
@@ -399,3 +419,10 @@ class ObservedUploadPort(_Private):
         from yorunge.adapters.platform_upload_items import read_items
 
         return await read_items(self, client, dataset_id, deadline=deadline)
+
+    async def inventory(
+        self, client: UploadHttpxTransport, dataset_id: str, *, deadline: float
+    ) -> RemoteInventory:
+        from yorunge.adapters.platform_upload_items import read_inventory
+
+        return await read_inventory(self, client, dataset_id, deadline=deadline)

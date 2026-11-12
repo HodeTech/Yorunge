@@ -22,6 +22,7 @@ GITHUB_DIRECTORY = ".github"
 SDIST_SUFFIX = ".tar.gz"
 EXAMPLE_PROFILE = "examples/profile.toml"
 TRAIN_TASK = "llm.train"
+UNEXPECTED_SDIST_MEMBER = "unexpected sdist member"
 
 ALLOWED_SDIST = {
     ".gitignore",
@@ -157,7 +158,9 @@ def _docs_allowed(parts: tuple[str, ...], directory: bool) -> bool:
 
 def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
     if parts[0] not in ALLOWED_SDIST:
-        raise ValueError("unexpected sdist member")
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)
+    if any(part.startswith(".") for part in parts[1:]):
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)  # a hidden name (.env, .netrc, .local/) below
     if parts[0] == GITHUB_DIRECTORY:
         allowed = _github_allowed(parts, directory)
     elif parts[0] == ".agents":
@@ -170,7 +173,7 @@ def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
             not tree and len(parts) == 1 and not directory
         )
     if not allowed:
-        raise ValueError("unexpected sdist member")
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)
 
 
 def inspect_archive(path: Path) -> list[str]:
@@ -203,6 +206,8 @@ def inspect_archive(path: Path) -> list[str]:
                     raise ValueError("archive links and special files are not permitted")
                 if parts[0] not in ("yorunge", metadata) or (len(parts) == 1 and not directory):
                     raise ValueError("unexpected wheel member")
+                if any(part.startswith(".") for part in parts[1:]):
+                    raise ValueError("unexpected wheel member")  # a hidden name: secrets, state
                 members.append(name)
     elif path.name.endswith(SDIST_SUFFIX):
         root = path.name.removesuffix(SDIST_SUFFIX)
@@ -529,6 +534,7 @@ def verify_package(
     root: Path,
     environment: dict[str, str],
     upload_workspace: Path,
+    download_workspace: Path,
 ) -> dict[str, Any]:
     members = inspect_archive(package)
     with tempfile.TemporaryDirectory(prefix="yorunge-install-") as directory:
@@ -608,6 +614,9 @@ def verify_package(
         execution_smoke = "not_run_unsupported_platform"
         jobs_smoke = "not_run_unsupported_platform"
         upload_smoke = "not_run_unsupported_platform"
+        resume_smoke = "not_run_unsupported_platform"
+        versions_smoke = "not_run_unsupported_platform"
+        download_smoke = "not_run_unsupported_platform"
         if sys.platform in ("darwin", "linux"):
             verify_installed_datasets(console, python, scratch, environment)
             verify_installed_cache(console, root, scratch, environment)
@@ -625,6 +634,19 @@ def verify_package(
                 environment,
                 artifact_kind,
             )
+            surface = runpy.run_path(str(root / "scripts/surface_installation.py"))
+            resume_smoke = surface["verify_resume"](console, python, scratch, environment)
+            versions_smoke = surface["verify_versions"](console, python, scratch, environment)
+            download = runpy.run_path(str(root / "scripts/download_installation.py"))
+            download_smoke = download["verify"](
+                python,
+                venv,
+                root,
+                scratch,
+                download_workspace / artifact_kind,
+                environment,
+                artifact_kind,
+            )
         result = {
             "archive": package.name,
             "sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
@@ -637,6 +659,9 @@ def verify_package(
             "execution_smoke": execution_smoke,
             "jobs_smoke": jobs_smoke,
             "upload_smoke": upload_smoke,
+            "resume_smoke": resume_smoke,
+            "versions_smoke": versions_smoke,
+            "download_smoke": download_smoke,
         }
         print(json.dumps(result))
         return result
@@ -650,12 +675,16 @@ def main() -> int:
     parser.add_argument(
         "--upload-workspace", default=Path(".local/distribution-upload-check"), type=Path
     )
+    parser.add_argument(
+        "--download-workspace", default=Path(".local/distribution-download-check"), type=Path
+    )
     args = parser.parse_args()
     uv = str(args.uv.resolve())
     root = Path(__file__).resolve().parents[1]
     packages = distribution_pair(args.dist.resolve())
     output = args.evidence_output.absolute()
     upload_workspace = args.upload_workspace.absolute()
+    download_workspace = args.download_workspace.absolute()
     if (
         output.exists()
         or output.is_symlink()
@@ -669,23 +698,36 @@ def main() -> int:
         or any(parent.is_symlink() for parent in upload_workspace.parents)
     ):
         raise ValueError("installation upload requires a new workspace without symlinks")
+    if (
+        download_workspace.exists()
+        or download_workspace.is_symlink()
+        or any(parent.is_symlink() for parent in download_workspace.parents)
+    ):
+        raise ValueError("installation download requires a new workspace without symlinks")
+    if (
+        upload_workspace in (download_workspace, *download_workspace.parents)
+        or download_workspace in upload_workspace.parents
+    ):
+        raise ValueError("installation upload and download workspaces must be separate")
     upload_workspace.mkdir(parents=True, mode=0o700)
+    download_workspace.mkdir(parents=True, mode=0o700)
     environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
     environment["PYTHONNOUSERSITE"] = "1"
     results = [
-        verify_package(package, uv, root, environment, upload_workspace) for package in packages
+        verify_package(package, uv, root, environment, upload_workspace, download_workspace)
+        for package in packages
     ]
     evidence = runpy.run_path(str(root / "scripts/research_evidence.py"))
     passed = all(
         row["origin_verified"]
-        and all(row[key] == "passed" for key in evidence["INSTALL_CHECKS_V3"][1:])
+        and all(row[key] == "passed" for key in evidence["INSTALL_CHECKS_V4"][1:])
         for row in results
     )
     report = {
-        "schema_version": 3,
-        "report_kind": "installation_v3",
+        "schema_version": 4,
+        "report_kind": "installation_v4",
         "source_commit": run(
             ["git", "rev-parse", "HEAD"], cwd=root, environment=environment
         ).strip(),
@@ -693,7 +735,7 @@ def main() -> int:
         "results": results,
         "passed": passed,
     }
-    evidence["installation_summary_v3"](report)
+    evidence["installation_summary_v4"](report)
     with output.open("x", encoding="utf-8") as target:
         json.dump(report, target, ensure_ascii=False, indent=2, allow_nan=False)
         target.write("\n")

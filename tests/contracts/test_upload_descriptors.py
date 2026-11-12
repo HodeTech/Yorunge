@@ -14,6 +14,7 @@ import pytest
 from yorunge.application import upload_descriptors as codec
 from yorunge.application import upload_metadata_codec as metadata
 from yorunge.domain.credentials import SecretValue
+from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
 from yorunge.domain.dataset_manifest import DatasetFile, DatasetManifest, build_manifest
 from yorunge.domain.dataset_upload import UploadStoragePolicy, manifest_reference
 from yorunge.domain.dataset_upload_v2 import DatasetUploadPlanV2
@@ -24,6 +25,15 @@ PLAN = DatasetUploadPlanV2.model_validate_json(
     (FIXTURES / "dataset-upload-plan-v2.json").read_bytes()
 )
 MANIFEST = DatasetManifest.model_validate_json((FIXTURES / "dataset-manifest-v1.json").read_bytes())
+CONTINUATION = DatasetContinuationPlanV3.model_validate_json(
+    (FIXTURES / "dataset-continuation-plan-v3.json").read_bytes()
+)  # sends files 0 and 2 of the three; the dataset already holds the other
+EVERY_FILE = DatasetContinuationPlanV3.model_validate_json(
+    (FIXTURES / "dataset-continuation-plan-v3-all-files.json").read_bytes()
+)
+CHECK_ONLY = DatasetContinuationPlanV3.model_validate_json(
+    (FIXTURES / "dataset-continuation-plan-v3-verification-only.json").read_bytes()
+)
 DATASET = "00000000-0000-4000-8000-000000000009"
 OPERATION = "00000000-0000-4000-8000-000000000010"
 SECRET = SecretValue("synthetic-platform-secret")
@@ -38,6 +48,17 @@ def contexts(plan=PLAN, manifest=MANIFEST, secret=SECRET):
     return codec.contexts(plan, manifest, OPERATION, DATASET, secret)
 
 
+def continued(plan=CONTINUATION):
+    return codec.contexts(plan, MANIFEST, OPERATION, plan.continuation.dataset_id, SECRET)
+
+
+def presigned_all(expected):
+    return tuple(
+        codec.presigned(encoded(response(context, f"object-{i}")), context, SECRET)
+        for i, context in enumerate(expected)
+    )
+
+
 def response(context, key=KEY, **updates):
     return {
         "presigned_urls": [
@@ -47,7 +68,9 @@ def response(context, key=KEY, **updates):
                 "file_size": context.file.size,
                 "client_uid": context.client_uid,
                 "object_key": key,
-                "upload_url": f"/datasets/{DATASET}/upload/put?key={quote(key, safe='')}",
+                "upload_url": (
+                    f"/datasets/{context.dataset_id}/upload/put?key={quote(key, safe='')}"
+                ),
                 **updates,
             }
         ],
@@ -322,6 +345,43 @@ def test_confirm_requires_exact_created_integer(created):
 
 
 @pytest.mark.parametrize(
+    "shape",
+    [{}, {"actual_count": 1}, {"batch_duplicates": 0}, {"actual_count": 1, "batch_duplicates": 0}],
+    ids=["nothing", "the count alone", "the duplicates alone", "both counters"],
+)
+@pytest.mark.parametrize("base", [0, 3], ids=["an original upload", "a continuation"])
+def test_confirm_cannot_leave_created_out_whatever_else_it_says(shape, base):
+    # The two counters are checked only when present; ``created`` is what says the confirm took
+    # effect once, so an answer without it is not an acknowledgement.
+    encoded_value = encoded(shape)
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(encoded_value, 1, SECRET, base=base)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("place", [0, -1, 129, True, 1.0, "1", None])
+def test_a_confirm_has_a_place_among_one_to_128_confirms_of_the_operation(place):
+    # A place outside the operation, or not an integer, is the caller's mistake: not a provider's
+    # answer to judge and not a request that should have been sent.
+    confirmed_value = confirmed(1)
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(confirmed_value, place, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize(
+    "base,place",
+    [(-1, 1), (128, 1), (127, 2), (True, 1), (1.0, 1), ("1", 1), (None, 1)],
+)
+def test_a_base_the_dataset_cannot_have_had_is_the_callers_mistake(base, place):
+    # The dataset holds at most 128 items: what it held before, and this operation's confirms.
+    confirmed_value = confirmed(place)
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
+    assert error.value.code == "invalid_request"
+
+
+@pytest.mark.parametrize(
     "field,value",
     [
         ("actual_count", True),
@@ -336,6 +396,74 @@ def test_confirm_optional_counters_are_strict_when_present(field, value):
     with pytest.raises(YorungeError) as error:
         metadata.confirm_ack(raw, 1, SECRET)
     assert error.value.code == "invalid_response"
+
+
+def confirmed(count, **updates):
+    return encoded({"created": 1, "actual_count": count, "batch_duplicates": 0, **updates})
+
+
+@pytest.mark.parametrize("place", [1, 2, 64, 128])
+def test_an_original_confirm_has_one_meaning_its_place_in_the_operation(place):
+    metadata.confirm_ack(confirmed(place), place, SECRET)
+    for other in (place - 1, place + 1):
+        confirmed_value = confirmed(other)
+        with pytest.raises(YorungeError) as error:
+            metadata.confirm_ack(confirmed_value, place, SECRET)
+        assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("base,place", [(1, 1), (5, 2), (126, 2), (127, 1), (63, 64)])
+def test_a_confirm_into_a_dataset_that_was_not_empty_may_mean_either_count(base, place):
+    # The operation's own count, or the dataset's (what was there before, and this operation's).
+    for meant in (place, base + place):
+        metadata.confirm_ack(confirmed(meant), place, SECRET, base=base)
+    wrong = {0, place - 1, place + 1, base + place - 1, base + place + 1} - {place, base + place}
+    for other in sorted(wrong - {-1}):
+        confirmed_value = confirmed(other)
+        with pytest.raises(YorungeError) as error:
+            metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
+        assert error.value.code == "invalid_response", (base, place, other)
+
+
+@pytest.mark.parametrize("base,place", [(1, 2), (5, 2), (126, 2), (3, 64)])
+def test_each_confirm_is_judged_on_its_own_not_by_the_meaning_an_earlier_one_showed(base, place):
+    # The count is a secondary alarm and the meaning of a provider's count is unobserved: a confirm
+    # is accepted for either, whatever the one before it reported (the check keeps no state). A
+    # latch on the first confirm's meaning was tried and dropped: it adds nothing the set does not
+    # already refuse, except when the two counts are neighbours (base 1).
+    own, total = place, base + place
+    metadata.confirm_ack(confirmed(own), place, SECRET, base=base)
+    metadata.confirm_ack(confirmed(total), place, SECRET, base=base)
+    for neither in (0, own - 1, total + 1, own + total + 1):
+        if neither in (own, total):
+            continue
+        confirmed_value = confirmed(neither)
+        with pytest.raises(YorungeError) as error:
+            metadata.confirm_ack(confirmed_value, place, SECRET, base=base)
+        assert error.value.code == "invalid_response"
+
+
+def test_a_base_leaves_everything_else_of_the_confirm_as_strict():
+    base = {"base": 5}
+    metadata.confirm_ack(encoded({"created": 1}), 2, SECRET, **base)  # the count is optional
+    for updates in (
+        {"created": 2},
+        {"created": True},
+        {"batch_duplicates": 1},
+        {"actual_count": True},
+    ):
+        confirmed_value = confirmed(2, **updates)
+        with pytest.raises(YorungeError) as error:
+            metadata.confirm_ack(confirmed_value, 2, SECRET, **base)
+        assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("base", [True, -1, 1.0, "5", None, 127])
+def test_a_base_that_cannot_be_a_count_of_present_items_is_an_invalid_request(base):
+    confirmed_value = confirmed(2)
+    with pytest.raises(YorungeError) as error:
+        metadata.confirm_ack(confirmed_value, 2, SECRET, base=base)
+    assert error.value.code == "invalid_request"
 
 
 def item(**updates):
@@ -614,3 +742,93 @@ def test_invalid_private_codec_inputs_have_closed_errors(case):
     with pytest.raises(YorungeError) as error:
         invoke()
     assert error.value.code == "invalid_request"
+
+
+# --- a continuation sends some of the files: contexts and uploads of the selection alone ----
+
+
+def test_a_continuation_has_a_context_for_each_selected_file_and_for_no_other():
+    found = continued()
+    assert [c.file_index for c in found] == [0, 2] == list(CONTINUATION.continuation.file_indices)
+    assert [c.file.path for c in found] == [MANIFEST.files[0].path, MANIFEST.files[2].path]
+    assert {c.file_count for c in found} == {3}  # the manifest still has three files
+    assert {c.dataset_id for c in found} == {CONTINUATION.continuation.dataset_id}
+    assert {c.plan_id for c in found} == {CONTINUATION.plan_id}
+    names = {c.local_binding for c in found} | {c.client_uid for c in found}
+    assert len(names) == 4  # every identity is minted for its file alone
+    for context, index in zip(found, (0, 2), strict=True):
+        body = json.loads(codec.presign_content(context, SECRET))["files"][0]
+        assert body["filename"] == MANIFEST.files[index].path
+
+
+def test_a_continuation_may_send_every_file_or_none_and_has_contexts_for_just_those():
+    assert [c.file_index for c in continued(EVERY_FILE)] == [0, 1, 2]
+    assert continued(CHECK_ONLY) == ()
+
+
+def test_the_dataset_of_a_continuation_is_the_plans_own():
+    with pytest.raises(YorungeError) as error:
+        codec.contexts(CONTINUATION, MANIFEST, OPERATION, DATASET, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+def test_a_manifest_that_is_not_the_plans_has_no_contexts_for_a_continuation_either():
+    other = build_manifest((DatasetFile(path="b.txt", size=3, sha256=MANIFEST.files[0].sha256),))
+    with pytest.raises(YorungeError) as error:
+        codec.contexts(CONTINUATION, other, OPERATION, CONTINUATION.continuation.dataset_id, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+def test_a_copied_continuation_plan_is_revalidated_before_contexts_are_minted():
+    forged = CONTINUATION.model_copy(update={"plan_id": "not-an-id"})
+    with pytest.raises(YorungeError) as error:
+        codec.contexts(forged, MANIFEST, OPERATION, CONTINUATION.continuation.dataset_id, SECRET)
+    assert error.value.code == "invalid_request"
+
+
+def test_the_uploads_of_a_selection_are_distinct_for_that_selection_alone():
+    expected = continued()
+    uploads = presigned_all(expected)
+    codec.distinct_uploads(uploads, expected, (0, 2))
+    # An original upload covers every file: a subset is not one, whatever the caller calls it.
+    with pytest.raises(YorungeError) as error:
+        codec.distinct_uploads(uploads, expected)
+    assert error.value.code == "invalid_response"
+
+
+@pytest.mark.parametrize("selection", [(0, 1), (2, 0), (0,), (0, 2, 3), (), (1, 2)])
+def test_uploads_of_other_files_than_the_selection_are_refused(selection):
+    expected = continued()
+    presigned_all_value = presigned_all(expected)
+    with pytest.raises(YorungeError) as error:
+        codec.distinct_uploads(presigned_all_value, expected, selection)
+    assert error.value.code == "invalid_response"
+
+
+def test_a_selection_cannot_hide_a_missing_or_foreign_upload():
+    expected = continued()
+    uploads = presigned_all(expected)
+    for broken_expected, broken_uploads in (
+        (expected[:1], uploads),  # more uploads than files
+        (expected, uploads[:1]),  # fewer
+        ((), ()),  # nothing at all is not a batch
+    ):
+        with pytest.raises(YorungeError) as error:
+            codec.distinct_uploads(broken_uploads, broken_expected, (0, 2))
+        assert error.value.code == "invalid_response"
+    other = codec.contexts(
+        CONTINUATION, MANIFEST, str(uuid4()), CONTINUATION.continuation.dataset_id, SECRET
+    )
+    mixed = (other[0], expected[1])
+    presigned_all_value = presigned_all(mixed)
+    with pytest.raises(YorungeError) as error:  # one operation's file beside another's
+        codec.distinct_uploads(presigned_all_value, mixed, (0, 2))
+    assert error.value.code == "invalid_response"
+
+
+def test_a_selection_still_refuses_a_provider_key_shared_by_two_files():
+    expected = continued()
+    shared = tuple(codec.presigned(encoded(response(c)), c, SECRET) for c in expected)
+    with pytest.raises(YorungeError) as error:
+        codec.distinct_uploads(shared, expected, (0, 2))
+    assert error.value.code == "invalid_response"

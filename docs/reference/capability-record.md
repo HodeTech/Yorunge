@@ -57,4 +57,4 @@ Clock, bağlar ve global sınır aynı SQL read snapshot'ında kalırken termina
 Bu kayıt dış uyumu anlatır. Yörünge özelliğinin planlandı/uygulandı/yayımlandı durumu [yetenek matrisindedir](../capability-matrix.md); iki durum tek enum'da birleştirilmez.
 
 
-P02-2e çalışma dalındaki şema 7, ayrı upload plan/onay/lease tüketicileriyle frontier'i yedi indekse ve 13.696 sınır/13.697 kontrol hesabına taşır; development henüz şema 6'dır. [Kanonik transfer state hesabı](dataset-transfer.md#p02-2e-kalıcı-yerel-journal-sözleşmesi) kota, full/warm doğrulama ve reset/preview kapsamını tanımlar. Capability expiry tablosunun cache-key anlamı korunur; upload expiry'leri bu tabloya eklenmez.
+P02-2e şema 7, ayrı upload plan/onay/lease tüketicileriyle frontier'i yedi indekse ve 13.696 sınır/13.697 kontrol hesabına taşır; PR #14 ile development şeması 7’dir. [Kanonik transfer state hesabı](dataset-transfer.md#p02-2e-kalıcı-yerel-journal-sözleşmesi) kota, full/warm doğrulama ve reset/preview kapsamını tanımlar. Capability expiry tablosunun cache-key anlamı korunur; upload expiry'leri bu tabloya eklenmez.

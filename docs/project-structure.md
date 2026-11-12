@@ -45,4 +45,4 @@ docs/roadmap/tasks/       # Yalnız yakın/aktif işlerin ayrıntılı kabul kar
 
 Root'ta README, MIT, katkı/güvenlik/topluluk belgeleri ve ajan rehberi; `docs` altında kanonik ürün/standart/mimari/karar/referans/yol haritası/kanıt belgeleri bulunur. Her belge alt dizininin README'si giriş noktasıdır.
 
-`data`, `models`, `artifacts`, `.yorunge` kullanıcı çalışma alanıdır. `.local`, `.venv`, `dist` yerel araç/kurulum/build çıktısıdır; kaynak depoya eklenmez. Dağıtım girdileri `pyproject.toml` izin listesinde açıkça seçilir; arşiv üyeleri ayrıca `scripts/verify-distributions.py` ile doğrulanır.
+`data`, `models`, `artifacts`, `.yorunge` kullanıcı çalışma alanıdır. `.local`, `.venv`, `dist` yerel araç/kurulum/build çıktısıdır; kaynak depoya eklenmez. Dağıtım girdileri `pyproject.toml` izin listesinde açıkça seçilir; arşiv üyeleri ayrıca `scripts/verify-distributions.py` ile doğrulanır; sdist'te `src`, `tests`, `scripts`, `examples` ve `docs` altındaki gizli adlar (baştaki nokta) reddedilir.

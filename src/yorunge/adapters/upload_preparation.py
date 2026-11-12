@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from yorunge.adapters.capability_cache import Clock, StateCache, SystemClock
 from yorunge.adapters.identity import StateCredentialRegistry
-from yorunge.adapters.platform_upload_reader import ObservedUploadReader
+from yorunge.adapters.platform_upload_reader import PHASE_SECONDS, ObservedUploadReader
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.state import open_existing_store
 from yorunge.adapters.upload_http import UploadSession
@@ -51,7 +51,13 @@ from yorunge.domain.dataset_upload_v2 import (
 )
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Context, Profile
-from yorunge.domain.upload_costs import UploadCostWork, UploadExecutionWindow, UploadRequestLimits
+from yorunge.domain.upload_costs import (
+    ContinuationRequestLimits,
+    UploadCostWork,
+    UploadExecutionWindow,
+    UploadRequestLimits,
+)
+from yorunge.domain.upload_graph import ORIGINAL_PLAN_VERSION, StageGraphSpec
 
 SessionFactory = Callable[[HttpCredential, UploadBudget], UploadSession]
 
@@ -66,12 +72,13 @@ def revoke_upload_approval(plan_id: str, state_dir: Path | None) -> VersionedTra
 
 
 def _limits(manifest: DatasetManifest) -> UploadRequestLimits:
+    counts = StageGraphSpec(ORIGINAL_PLAN_VERSION, manifest.file_count).request_counts()
     return UploadRequestLimits(
         max_create=1,
         max_project_link=1,
-        max_presign=manifest.file_count,
-        max_put=manifest.file_count,
-        max_confirm=manifest.file_count,
+        max_presign=counts.presign,
+        max_put=counts.put,
+        max_confirm=counts.confirm,
         max_read_requests=512,
         max_read_attempts=1024,
         max_control_request_bytes=4194304,
@@ -227,7 +234,13 @@ class UploadPreparationRuntime:
             StateUploads(store, bound, clock=self.clock).check_scope(scope, name=name)
 
     def _http(
-        self, bound: BoundCredential, scope: UploadScope, limits: UploadRequestLimits, end: float
+        self,
+        bound: BoundCredential,
+        scope: UploadScope,
+        limits: UploadRequestLimits | ContinuationRequestLimits,
+        end: float,
+        *,
+        seconds: float = PHASE_SECONDS,
     ) -> tuple[UploadSession, ObservedUploadReader]:
         credential = HttpCredential(
             "X-API-Key",
@@ -235,7 +248,7 @@ class UploadPreparationRuntime:
             target=bound.credential.target,
             service_id="evren-platform",
         )
-        budget = UploadBudget(limits, end=min(end, time.monotonic() + 30), read_only=True)
+        budget = UploadBudget(limits, end=min(end, time.monotonic() + seconds), read_only=True)
         return self._session(credential, budget), ObservedUploadReader(
             scope, credential, budget, utc_clock=self.clock.now
         )

@@ -1,10 +1,12 @@
 # Upload original koordinatörü
 
-**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 ve r.2 ayrı commit/fix ve ikişer fresh kod turuyla yerel kapandı. R.3 initial proof/full koordinatör iki fresh tur ve son kill test teyitleriyle kapandı; P02-2r çalışma dalında yerel verified. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+**Tarih:** 2026-11-03. **Durum:** P02-2r dar composition sözleşmesi. R.1 ve r.2 ayrı commit/fix ve ikişer fresh kod turuyla yerel kapandı. R.3 initial proof/full koordinatör iki fresh tur ve son kill test teyitleriyle kapandı; P02-2r verified ve development’tadır. Accepted ADR-0024/0025/0026/0027 ve [v2 politika/state/proof](dataset-upload-v2.md), [gerçek port](dataset-upload-port.md), [input/current/preparation](dataset-upload-preparation.md) geçerlidir. Bu belge yeni replay, auth, fiyat, TTL veya public DTO tanımlamaz.
+
+**2026-11-06 kısmi değişiklik (Accepted):** [ADR-0031](../decisions/0031-upload-continuation.md) / [continuation sözleşmesi](dataset-upload-continuation.md) yalnız v3 continuation kayıtları için başarı grafiği, baseline kaynağı ve unlatched/cleanup davranışını ayrı tanımlar; bu belgedeki v1/v2 kuralları o kayıtlar dışında değişmez.
 
 ## Katman ve invocation
 
-Application algoritması private typed environment protokolünü kullanır; somut SQLite, dosya, config/env ve HTTP session outer composition’dadır. Application adapter import etmez. Tek private owned session/loop/pool, aynı captured credential ve aynı original UploadBudget kullanılır. Source full hash/recheck ve ağ await sırasında SQLite store/transaction açık tutulmaz; her yerel faz open_existing_store/owner/fence/CAS/final scope/clock kapısını yeniden uygular. Örtük state init/migration yoktur.
+Application algoritması private typed environment protokolünü kullanır; somut SQLite, dosya, config/env ve HTTP session outer composition’dadır. Application adapter import etmez. Tek private owned session/loop/pool, aynı captured credential ve aynı original UploadBudget kullanılır (bir devamda planın kendi ContinuationRequestLimits bütçesi; aşama ortamı [devam başvurusundadır](dataset-upload-continuation.md#stage-grafiği-durum-yolu-ve-kapılar)). Source full hash/recheck ve ağ await sırasında SQLite store/transaction açık tutulmaz; her yerel faz open_existing_store/owner/fence/CAS/final scope/clock kapısını yeniden uygular. Örtük state init/migration yoktur.
 
 Original start önce plan ID/state-dir türünü ve sync context’i doğrular, sonra yalnız yerel kayıt arar. Mevcut operation varsa immutable durumu ve aynı ID ile local sonuç yolu seçilir; config/env/manifest/root/hash, remote probe, yeni budget reservation/admission/lease/write access/permit üretilmez. Bu, existing-admit kuralının composition karşılığıdır; mevcut kaydı yürütmeye devam etmez. Public start’ın [status/latch matrisi](dataset-upload-public.md#python-api) latched pending/unknown için exit5, unlatched admitted veya failed/cancelled için conflict2, succeeded için local Result0 uygular. Bu private sonuç tek başına terminal success üretmez; local show/list sorgusu ayrı kalır.
 
@@ -44,7 +46,7 @@ Yeni operation bilinmeden pre-admission hata mevcut güvenli kodudur. ID biliniy
 
 Proof COMMIT sonrası caller/session hatasında yerel tam kayıttan terminal sonuç görülebiliyorsa unknown marker yazılmaz; güvenli source error ve aynı ID korunur. Örneğin open-existing-store fazındaki OSError mevcut state_write_failed/2 olur. Kalıcı başarı bu cevap kaybıyla düşürülmez. Yerel kayıt artık okunamıyorsa terminal olduğuna dair yeni kesinlik iddia edilmez.
 
-Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Ayrı controller ve public summary/API/CLI çalışma dalında uygulandı; nihai paket kabulü güncel durum kaydında izlenir.
+Ayrı readonly reconcile, terminal/active other-owner/legacy baseline/ID yokluğu kapılarını network öncesi uygular; onun current read grant/insan seçimi/hata kodu ve yeni proof davranışı [v2 read sözleşmesinin](dataset-upload-v2.md#read-terminal-ve-başarı-grafiği) konusudur. Original-start retry gibi kullanılmaz. Ayrı controller ve public summary/API/CLI uygulandı ve development’tadır; paket kabulü [güncel durum kaydında](../roadmap/current.md) izlenir.
 
 ## Dilimler ve kabul
 
