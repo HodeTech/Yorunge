@@ -215,13 +215,19 @@ class ArtifactPublisher:
 
         self._guarded(staged)
 
-    def publish_stage(self, stage: str, descriptor: int, size: int) -> None:
+    def publish_stage(
+        self, stage: str, descriptor: int, size: int, *, written: os.stat_result | None = None
+    ) -> None:
         """Publish a stage the caller opened, filled with ``size`` bytes and synced itself.
 
         The stage is the one name ``stage`` in the target's directory and ``descriptor`` is open
         on it. Until this returns or fails the stage is the publisher's, which removes it again by
         identity when publication fails, unless ``_discard`` keeps it; the caller does not touch it
         meanwhile. Everything after the write is the publisher's: verify, link, clean up, sync.
+        ``written`` is the state of the stage (``fstat`` of ``descriptor``) at the moment the caller
+        last verified its bytes: the stage is published only if it still is exactly that (identity,
+        size, mode, times), before and after the link. Without it the state is read here, which
+        binds the link to the file as it is now and to nothing the caller knew of its bytes.
         """
         if not stage or "/" in stage or "\0" in stage or stage in (".", "..", self.location.name):
             raise ValueError("a stage is one name in the target's directory, and not the target's")
@@ -241,7 +247,7 @@ class ArtifactPublisher:
                 raise ValueError("a stage cannot be the target under another spelling")
             self.stage = stage
             self.stage_identity = identity(held)
-            self._finalize(descriptor, size, os.fstat(descriptor))
+            self._finalize(descriptor, size, held if written is None else written)
 
         self._guarded(adopted)
 

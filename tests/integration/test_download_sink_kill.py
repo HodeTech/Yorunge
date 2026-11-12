@@ -196,8 +196,21 @@ def test_the_boundaries_come_in_the_order_the_reference_closes(tmp_path):
     assert steps[-1] == "removed:lock"  # the lock object is the last change to the directory
 
 
+def snapshot(directory):
+    """Every entry of the directory: its name, mode and bytes."""
+    return {
+        entry.name: (stat.S_IMODE(entry.stat().st_mode), entry.read_bytes())
+        for entry in sorted(Path(directory).iterdir())
+    }
+
+
 @pytest.mark.parametrize("preparation", [None, "stopped", "unpublished"])
-def test_a_kill_under_a_hostile_umask_leaves_files_the_next_run_accepts(tmp_path, preparation):
+def test_a_kill_under_a_hostile_umask_is_judged_by_the_file_it_left(tmp_path, preparation):
+    """The process umask is not the download's to borrow (it is every thread's), so under a umask
+    that clears owner bits a new file is 0400 until its ``fchmod``. A kill after the ``fchmod``
+    leaves a file the next run accepts as before; a kill between the two calls leaves the one trace
+    of its kind, which the next run reports as ``download_partial_unverified`` without touching it
+    (the owner removes the file; the run after that finishes)."""
     record = tmp_path / "steps.txt"
     extra = {"SINK_UMASK": "277"}
     run = child(prepared(tmp_path, "recording", preparation), "fresh", extra, record=record)
@@ -207,11 +220,43 @@ def test_a_kill_under_a_hostile_umask_leaves_files_the_next_run_accepts(tmp_path
         for label in record.read_text().split()
         if label.split("#")[0].endswith((":created", ":private"))
     ]
-    assert creations
+    assert any(label.split("#")[0].endswith(":created") for label in creations)
+    assert any(label.split("#")[0].endswith(":private") for label in creations)
     for number, label in enumerate(creations):
         directory = prepared(tmp_path, f"umask-{number}", preparation)
         assert child(directory, "fresh", extra, kill=label).returncode == -signal.SIGKILL
-        assert_only_the_protocols_own_traces(directory)  # and every file of it is 0600
+        if label.split("#")[0].endswith(":private"):
+            assert_only_the_protocols_own_traces(directory)  # and every file of it is 0600
+            driver.engine_run(directory)
+            assert listing(directory) == [driver.NAME], (label, listing(directory))
+            assert (directory / driver.NAME).read_bytes() == driver.DATA
+            continue
+        odd = [name for name, (mode, _) in snapshot(directory).items() if mode != 0o600]
+        assert odd, label  # the file that was just made is not 0600 yet
+        before = snapshot(directory)
+        with pytest.raises(YorungeError) as refused:
+            driver.engine_run(directory)
+        assert refused.value.code == "download_partial_unverified", (label, refused.value.code)
+        after = snapshot(directory)
+        assert {name: after[name] for name in odd} == {name: before[name] for name in odd}, label
+        assert set(before) - set(after) <= {NAMES.lock}, label  # only the lock object may go
+        for name in odd:
+            (directory / name).unlink()  # what the owner does about it
         driver.engine_run(directory)
-        assert listing(directory) == [driver.NAME], (label, listing(directory))
-        assert (directory / driver.NAME).read_bytes() == driver.DATA
+        assert (directory / driver.NAME).read_bytes() == driver.DATA, label
+
+
+def test_the_process_umask_is_never_touched_by_a_download(tmp_path, monkeypatch):
+    """Not even for the length of a call: nothing of the download may call ``os.umask``."""
+    calls = []
+    real = os.umask
+
+    def watched(mask):
+        calls.append(mask)
+        return real(mask)
+
+    monkeypatch.setattr(os, "umask", watched)
+    directory = prepared(tmp_path, "run", None)
+    driver.engine_run(directory)
+    assert (directory / driver.NAME).read_bytes() == driver.DATA
+    assert calls == []

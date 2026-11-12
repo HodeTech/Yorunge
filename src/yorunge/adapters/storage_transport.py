@@ -32,6 +32,7 @@ from yorunge.application.storage import (
 from yorunge.application.upload_progress import source_chunk
 from yorunge.domain.capabilities import instant
 from yorunge.domain.credentials import SecretValue, normalize_target
+from yorunge.domain.download import PHASE_SECONDS, POOL_SECONDS
 from yorunge.domain.download_response import (
     Disposition,
     DownloadResponse,
@@ -263,7 +264,9 @@ class TransferHttpxTransport(HttpxTransport):
             request.target.wire_url,
             headers=request.wire_headers(),
             extensions={
-                "timeout": httpx.Timeout(min(5.0, remaining), pool=min(1.0, remaining)).as_dict()
+                "timeout": httpx.Timeout(
+                    min(PHASE_SECONDS, remaining), pool=min(POOL_SECONDS, remaining)
+                ).as_dict()
             },
         )
         if str(wire.url) != request.target.wire_url:
@@ -405,7 +408,9 @@ class TransferHttpxTransport(HttpxTransport):
             headers=request.wire_headers(),
             content=body,
             extensions={
-                "timeout": httpx.Timeout(min(5.0, remaining), pool=min(1.0, remaining)).as_dict()
+                "timeout": httpx.Timeout(
+                    min(PHASE_SECONDS, remaining), pool=min(POOL_SECONDS, remaining)
+                ).as_dict()
             },
         )
         # Keep HTTPX's prepared headers, but expose our public AsyncByteStream

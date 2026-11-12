@@ -40,7 +40,7 @@ from yorunge.adapters.download_files import (
     step,
     sync_directory,
 )
-from yorunge.adapters.input_files import close_descriptor
+from yorunge.adapters.input_files import close_descriptor, signature
 from yorunge.adapters.local_files import full_sync
 from yorunge.adapters.target_directory import TargetDirectory, open_target_directory
 from yorunge.domain.capabilities import instant, timestamp
@@ -212,6 +212,7 @@ class DownloadSink:
         self._total: int | None = None
         self._created_at: str | None = None
         self._kept_sidecar = False  # a resume plan: the sidecar of an earlier run stands
+        self._sidecar_held: Entry | None = None  # the sidecar file this download left (or kept)
         self._whole_stage = False  # the plan was to publish a complete stage of an earlier run
         self._unsettled = False  # the digest and the count of what was written may disagree
         self._completing = False  # the completion checkpoint may already be on disk
@@ -342,6 +343,8 @@ class DownloadSink:
             return SinkPlan("download", None, 0)
         record = decision.record
         assert record is not None and decision.prefix_checked and self._stage is not None
+        assert observed.sidecar is not None
+        self._sidecar_held = observed.sidecar.entry  # the record that was read and is kept
         if decision.truncate_to is not None:
             os.ftruncate(self._stage, decision.truncate_to)
             step("stage:truncated")
@@ -426,6 +429,7 @@ class DownloadSink:
         self.written = self.committed = self.resumed_from = 0
         self._etag = self._total = self._created_at = None
         self._kept_sidecar = False
+        self._sidecar_held = None
         self._whole_stage = False
 
     # --- step 9: the body -------------------------------------------------------------------------
@@ -567,6 +571,7 @@ class DownloadSink:
         stage = self._open_stage()
         self._lock_held()  # before anything is compared, removed or linked
         computed = self._hasher.hexdigest()
+        settled = self._read_back(stage, computed)  # what is on disk is what was hashed
         try:
             verification = verify_expectation(computed, self.written, expected_sha256)
         except DownloadIntegrityMismatch:
@@ -584,12 +589,49 @@ class DownloadSink:
         except OSError:
             raise _write_failed() from None
         step("publish:synced")
-        DownloadPublisher(self).publish_stage(self.names.stage, stage, self.written)
+        if signature(os.fstat(stage)) != signature(settled):
+            raise _write_failed()  # somebody wrote to the stage while it was read back and synced
+        DownloadPublisher(self).publish_stage(
+            self.names.stage, stage, self.written, written=settled
+        )
         self._phase = "published"
         resumed = self.resumed_from > 0 or self._whole_stage
         return Published(self.written, computed, verification, self.resumed_from, resumed)
 
+    def _read_back(self, stage: int, computed: str) -> os.stat_result:
+        """The stage as it is on disk now: ``written`` bytes whose digest is the one computed.
+
+        The digest of a download is that of the bytes received; the file that is linked is what the
+        disk holds. They are one only if nobody wrote to the stage in between (another process of
+        the same user, a cleanup tool, a failing disk), and a ``sha256_matched`` that is true of
+        other bytes than the published ones is worse than no answer: so the stage is read once more,
+        through the descriptor that is held, before anything is compared or linked. A stage that is
+        longer, shorter or different is ``download_write_failed``, kept (the next run reads its
+        prefix again, finds it wrong and starts from nothing). The state read here is what the
+        publisher then binds the link to (size, times, identity): a write after this point is
+        found by its checks before and after the link. A write between the last check and the link
+        itself is an observed interval, not a sandbox (the same as every removal by name).
+        """
+        before = os.fstat(stage)
+        if before.st_size != self.written:
+            raise _write_failed()
+        digest = hashlib.sha256()
+        offset = 0
+        while offset < self.written:
+            block = os.pread(stage, min(BLOCK_BYTES, self.written - offset), offset)
+            if not block:
+                raise _write_failed()  # the stage is shorter than what was written
+            digest.update(block)
+            offset += len(block)
+        if digest.hexdigest() != computed or signature(os.fstat(stage)) != signature(before):
+            raise _write_failed()
+        return before
+
     # --- shared -----------------------------------------------------------------------------------
+
+    def _holds(self, entry: Entry) -> bool:
+        """``entry`` is the sidecar file this download left (or kept at the start)."""
+        return self._sidecar_held is not None and same_file(self._sidecar_held, entry)
 
     def remove_present(self, removals: tuple[Removal, ...]) -> None:
         """Remove what stands there now and is provably ours, in the fixed order."""
@@ -597,11 +639,12 @@ class DownloadSink:
             if name not in removals:
                 continue
             entry = entry_of(self.directory.descriptor, getattr(self.names, name))
-            if entry is None:
-                continue
-            if not entry.owned:
-                raise YorungeError("download_partial_unverified")
-            remove_seen(self.directory.descriptor, getattr(self.names, name), entry, label=name)
+            if entry is not None:
+                if not entry.owned or (name == "sidecar" and not self._holds(entry)):
+                    raise YorungeError("download_partial_unverified")
+                remove_seen(self.directory.descriptor, getattr(self.names, name), entry, label=name)
+            if name == "sidecar":
+                self._sidecar_held = None
 
     def _remove_owned(self, removals: tuple[Removal, ...], stage: Entry) -> None:
         """Remove what stands there now, in the fixed order, only what is provably ours.
@@ -616,11 +659,15 @@ class DownloadSink:
                 entry = entry_of(self.directory.descriptor, getattr(self.names, name))
                 if name == "stage" and not same_file(stage, entry):
                     continue
+                if name == "sidecar" and entry is not None and not self._holds(entry):
+                    continue  # a sidecar this download did not leave stays, whatever the verdict
                 if name in removals and entry is not None and entry.owned:
                     remove_seen(
                         self.directory.descriptor, getattr(self.names, name), entry, label=name
                     )
                     done = True
+                    if name == "sidecar":
+                        self._sidecar_held = None
             if done:
                 sync_directory(self.directory.descriptor)
         except (OSError, YorungeError):
@@ -648,12 +695,13 @@ class DownloadSink:
             }
         )
         try:
-            replace_atomically(
+            self._sidecar_held = replace_atomically(
                 self.directory.descriptor,
                 self.names.sidecar_tmp,
                 self.names.sidecar,
                 record.encoded(),
                 label="sidecar",
+                expected=self._sidecar_held,
             )
         except OSError:
             raise _write_failed() from None

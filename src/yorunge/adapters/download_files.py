@@ -15,9 +15,7 @@ from __future__ import annotations
 import errno
 import os
 import stat
-import threading
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Final
@@ -96,37 +94,24 @@ def open_checked(directory: int, name: str, seen: Entry, flags: int) -> int:
         raise
 
 
-_umask = threading.Lock()
-
-
-@contextmanager
-def _owner_only_creation() -> Iterator[None]:
-    """Files created inside have no group or world access and keep the owner's, whatever the umask.
-
-    A umask that clears owner bits (0277) would make a new file 0400 until its ``fchmod``; a kill
-    between the two would leave a file the next run cannot call ours. The process umask is set to
-    0077 while a file is created: group and world closed, the owner's bits open (also for a umask
-    like 0277, whose owner bits are thereby opened for the moment), and the lock keeps two threads
-    from restoring each other's value. A signal that runs its Python handler between ``os.umask``
-    returning and the ``try`` below leaves 0077 in the process (documented: the CLI exits).
-    """
-    with _umask:
-        previous = os.umask(0o077)
-        try:
-            yield
-        finally:
-            os.umask(previous)
-
-
 def create_exclusive(directory: int, name: str, *, label: str) -> int:
-    """A new private file that did not exist (``O_EXCL``), mode 0600 whatever the umask."""
-    with _owner_only_creation():
-        descriptor = os.open(
-            name,
-            os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-            0o600,
-            dir_fd=directory,
-        )
+    """A new private file that did not exist (``O_EXCL``), mode 0600 whatever the umask.
+
+    The process umask is never touched: it belongs to the whole process, and a library that
+    borrowed it for the length of a call would change the files other threads create meanwhile (or
+    restore a value another thread had just set). The file is requested as 0600, which the umask
+    can only narrow (0022 and 0077 leave it as it is); ``fchmod`` then makes it exactly 0600 for the
+    rare umask that clears owner bits too. A process killed between the two calls under such a
+    umask leaves a file the next run does not call ours (``download_partial_unverified``, nothing
+    is touched): the one trace of this kind, and it asks for a hostile umask and a kill in a window
+    of two system calls.
+    """
+    descriptor = os.open(
+        name,
+        os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory,
+    )
     try:
         step(f"{label}:created")
         os.fchmod(descriptor, 0o600)
@@ -186,12 +171,34 @@ def sync_directory(directory: int) -> None:
     step("directory:synced")
 
 
-def replace_atomically(directory: int, tmp: str, final: str, content: bytes, *, label: str) -> None:
+def require_standing(directory: int, name: str, expected: Entry | None) -> None:
+    """``name`` is what this download left there: nothing (``None``) or the very file ``expected``.
+
+    Anything else is a trace of somebody else's, which is reported and never touched. POSIX has no
+    replacement by identity: the look and the call that follows are an observed interval, not a
+    sandbox (the lock keeps this tool's own processes out of it).
+    """
+    current = entry_of(directory, name)
+    if expected is None:
+        if current is not None:
+            raise YorungeError("download_partial_unverified")
+    elif not same_file(expected, current):
+        raise YorungeError("download_partial_unverified")
+
+
+def replace_atomically(
+    directory: int, tmp: str, final: str, content: bytes, *, label: str, expected: Entry | None
+) -> Entry:
     """Write ``content`` as ``final`` so that a reader sees the old file or the whole new one.
 
-    A new temporary file (``O_EXCL``, 0600), written and synced; then renamed over ``final``; then
-    the directory is synced. A temporary file in the way is a foreign file: the write fails.
+    ``expected`` is what the name leads to now, as this download left it (``None``: nothing); a
+    name that leads to anything else is not replaced (``download_partial_unverified``), before the
+    temporary file is made and again just before the rename. A new temporary file (``O_EXCL``,
+    0600), written and synced; then renamed over ``final``; then the directory is synced. A
+    temporary file in the way is a foreign file: the write fails. The identity of the file that now
+    stands at ``final`` is returned.
     """
+    require_standing(directory, final, expected)
     descriptor = create_exclusive(directory, tmp, label=f"{label}_tmp")
     try:
         pending = memoryview(content)
@@ -203,6 +210,8 @@ def replace_atomically(directory: int, tmp: str, final: str, content: bytes, *, 
         step(f"{label}_tmp:written")
         os.fsync(descriptor)
         step(f"{label}_tmp:synced")
+        made = describe(os.fstat(descriptor))
+        require_standing(directory, final, expected)
     except BaseException as error:
         close_descriptor(descriptor, error, code=CLOSE_CODE)
         try:
@@ -214,6 +223,7 @@ def replace_atomically(directory: int, tmp: str, final: str, content: bytes, *, 
     os.replace(tmp, final, src_dir_fd=directory, dst_dir_fd=directory)
     step(f"{label}:replaced")
     sync_directory(directory)
+    return made
 
 
 @dataclass(slots=True)
