@@ -22,6 +22,7 @@ GITHUB_DIRECTORY = ".github"
 SDIST_SUFFIX = ".tar.gz"
 EXAMPLE_PROFILE = "examples/profile.toml"
 TRAIN_TASK = "llm.train"
+UNEXPECTED_SDIST_MEMBER = "unexpected sdist member"
 
 ALLOWED_SDIST = {
     ".gitignore",
@@ -157,9 +158,9 @@ def _docs_allowed(parts: tuple[str, ...], directory: bool) -> bool:
 
 def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
     if parts[0] not in ALLOWED_SDIST:
-        raise ValueError("unexpected sdist member")
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)
     if any(part.startswith(".") for part in parts[1:]):
-        raise ValueError("unexpected sdist member")  # a hidden name (.env, .netrc, .local/) below
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)  # a hidden name (.env, .netrc, .local/) below
     if parts[0] == GITHUB_DIRECTORY:
         allowed = _github_allowed(parts, directory)
     elif parts[0] == ".agents":
@@ -172,7 +173,7 @@ def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
             not tree and len(parts) == 1 and not directory
         )
     if not allowed:
-        raise ValueError("unexpected sdist member")
+        raise ValueError(UNEXPECTED_SDIST_MEMBER)
 
 
 def inspect_archive(path: Path) -> list[str]:

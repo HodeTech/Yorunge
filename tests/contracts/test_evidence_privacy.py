@@ -110,7 +110,8 @@ def test_a_known_personal_value_is_found_whatever_its_letter_case(case, tmp_path
         "upper-email": email.upper(),
         "mixed-email": email.title(),
     }[case]
-    assert personal != home and personal != email  # a different spelling of the same value
+    assert personal != home  # a different spelling of the same value
+    assert personal != email
     raw = encode({"executable": personal + "/checkout/venv/bin/python"})
     with pytest.raises(ValueError, match="personal_provenance"):
         GUARD["check"](raw, "report.json", value)

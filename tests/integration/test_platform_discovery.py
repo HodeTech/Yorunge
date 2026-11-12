@@ -300,12 +300,15 @@ class RecordingTransport(HttpxTransport):
         return super().open(request, deadline=deadline)
 
 
-def test_every_read_of_one_discovery_is_given_the_one_absolute_deadline(tmp_path, certificates):
+def test_every_read_of_one_discovery_is_given_the_one_absolute_deadline(
+    tmp_path, certificates, monkeypatch
+):
     """The deadline is shared by the reads: not a fresh budget per read (no wall-clock margin)."""
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
     deadlines: list[float] = []
-    RecordingTransport.deadlines = deadlines
+    # the class declares ``deadlines`` as an annotation only: there is no attribute to restore
+    monkeypatch.setattr(RecordingTransport, "deadlines", deadlines, raising=False)
     clock = ObservationClock(SystemClock())
     with TlsServer(certificates, routes()) as server:
         session = HttpSession(

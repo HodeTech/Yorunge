@@ -198,7 +198,8 @@ def test_list_page_two_asks_for_page_two_and_says_where_the_next_one_is(workspac
     assert as_text.returncode == 0
     assert not as_text.stderr
     assert "sayfa 2, toplam 5 sürüm" in text
-    assert "v3" in text and "v4" in text
+    assert "v3" in text
+    assert "v4" in text
     assert "Sonraki sayfa var (--page 3)." in text
     assert "provider" not in text.casefold()
 

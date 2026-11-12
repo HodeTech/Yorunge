@@ -320,7 +320,7 @@ class StateCache:
         if row is None or row[0] != value.identity_epoch:
             raise YorungeError("state_invalid")
         checked_clock_row(row)
-        epoch, generation, high, anomaly, revision = row
+        epoch, generation, high, anomaly, _ = row
         moment = timestamp(now)
         if self.observation_high is not None:
             high = max(high, timestamp(self.observation_high))

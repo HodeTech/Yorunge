@@ -428,5 +428,6 @@ def test_a_stage_published_with_the_state_the_caller_verified_must_still_be_that
         error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT), written=verified))
     finally:
         os.close(descriptor)
-    assert isinstance(error, YorungeError) and error.code == CODES.changed
+    assert isinstance(error, YorungeError)
+    assert error.code == CODES.changed
     assert not (place.directory / place.name).exists()  # nothing was linked

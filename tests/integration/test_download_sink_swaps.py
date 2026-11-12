@@ -79,7 +79,8 @@ def test_a_stage_written_into_after_the_download_is_never_published_nor_reported
     published, plan = download(
         place
     )  # the next run reads the prefix again, finds it wrong, restarts
-    assert plan.action == "download" and plan.resumed_from == 0
+    assert plan.action == "download"
+    assert plan.resumed_from == 0
     assert target(place).read_bytes() == DATA
     assert left(place) == [target(place).name]
 
@@ -146,8 +147,16 @@ def test_an_untouched_stage_is_published_as_before(place):
 
 
 def plant_foreign_sidecar(place, mode=0o644):
+    """Put somebody else's file at the sidecar's name.
+
+    The file this download wrote is moved out of the directory, not unlinked: a freed inode number
+    is handed out again at once on Linux (ext4, tmpfs, overlayfs), and a "foreign" file that got the
+    number back would be the same ``(device, inode)`` as the one that was held (see the file-system
+    paragraph of ``docs/reference/download-engine.md``). Keeping the old file alive makes the
+    foreign one a different file on every kernel, which is what this test is about.
+    """
     sidecar = place / NAMES.sidecar
-    sidecar.unlink()
+    sidecar.rename(place.parent / (place.name + ".replaced-sidecar"))
     sidecar.write_bytes(FOREIGN)
     os.chmod(sidecar, mode)
     return sidecar
@@ -253,7 +262,8 @@ def test_a_sidecar_swapped_while_the_temporary_copy_is_written_is_not_replaced(p
         armed.append(True)  # the body's first checkpoint, not the header one
         sink.write(DATA[:50_000])
         assert code_of(lambda: sink.write(DATA[50_000:150_000])) == "download_partial_unverified"
-    assert planted and planted[0].read_bytes() == FOREIGN
+    assert planted
+    assert planted[0].read_bytes() == FOREIGN
     assert not (place / NAMES.sidecar_tmp).exists()  # the copy this call made is not left behind
 
 
@@ -273,7 +283,8 @@ def test_a_foreign_sidecar_is_found_before_a_temporary_copy_is_made(place, monke
 def test_the_header_checkpoint_never_replaces_a_sidecar_that_appeared_after_the_start(place):
     """A fresh download holds no sidecar, so a file at its name is somebody else's."""
     with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
-        assert plan.action == "download" and plan.ask is None
+        assert plan.action == "download"
+        assert plan.ask is None
         sidecar = place / NAMES.sidecar
         sidecar.write_bytes(FOREIGN)
         os.chmod(sidecar, 0o600)
