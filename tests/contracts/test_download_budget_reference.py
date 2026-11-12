@@ -12,6 +12,7 @@ import hashlib
 import json
 import runpy
 import sys
+import zlib
 from functools import cache
 from pathlib import Path
 
@@ -468,6 +469,19 @@ def test_the_cli_action_fails_closed_on_a_refused_reference(monkeypatch, checks,
     assert printed.out == ""
     assert "Evidence check failed" in printed.err
     assert "current source bytes" not in printed.err  # a closed message, no interpolated detail
+
+
+def test_a_corrupt_deflate_stream_is_a_closed_failure_not_a_traceback(monkeypatch, checks, capsys):
+    def corrupt(root, name):
+        zlib.decompress(b"not a deflate stream")  # raises zlib.error, which is no ValueError
+
+    main = cli(monkeypatch, checks, corrupt, "verify-download-reference", NAME)
+    with pytest.raises(SystemExit) as stop:
+        main()
+    printed = capsys.readouterr()
+    assert stop.value.code == 1 and printed.out == ""
+    assert "Evidence check failed" in printed.err
+    assert "Traceback" not in printed.err
 
 
 def test_the_cli_action_needs_a_name(monkeypatch, checks):

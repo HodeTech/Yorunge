@@ -82,6 +82,32 @@ def test_known_personal_value_in_supported_layers_rejects(kind, tmp_path):
         GUARD["check"](raw, name, value)
 
 
+def test_the_neutral_producer_root_is_not_personal_and_is_accepted(tmp_path):
+    """Measurements are run under a neutral root on purpose (ADR-0029 §4): a path below it names a
+    machine's temporary directory, not a person, and is the one form the archives keep."""
+    value = synthetic_context(tmp_path)
+    raw = encode({"executable": "/private/tmp/neutral-producer/env/bin/python"})
+    GUARD["check"](raw, "report.json", value)  # no ValueError
+
+
+@pytest.mark.parametrize("case", ["upper-path", "lower-path", "upper-email", "mixed-email"])
+def test_a_known_personal_value_is_found_whatever_its_letter_case(case, tmp_path):
+    """/USERS/NAME is /Users/Name on a case-insensitive volume, and mail addresses fold: the same
+    person, so the same rejection (the fold is ASCII; no Unicode normalisation is claimed)."""
+    value = synthetic_context(tmp_path)
+    home, email = value["system_home"], value["git_author_email"]["value"]
+    personal = {
+        "upper-path": home.upper(),
+        "lower-path": home.lower(),
+        "upper-email": email.upper(),
+        "mixed-email": email.title(),
+    }[case]
+    assert personal != home and personal != email  # a different spelling of the same value
+    raw = encode({"executable": personal + "/checkout/venv/bin/python"})
+    with pytest.raises(ValueError, match="personal_provenance"):
+        GUARD["check"](raw, "report.json", value)
+
+
 @pytest.mark.parametrize("wrapper", ["trace", "json-string"])
 def test_encoded_object_inside_opaque_text_is_uninspectable_not_clean(wrapper, tmp_path):
     value = synthetic_context(tmp_path)

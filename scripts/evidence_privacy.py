@@ -350,11 +350,14 @@ def zip_payload(
 
 class Scanner:
     def __init__(self, value: object):
-        self.needles = validate_context(value)
+        # Letter case is no disguise: a home path or an address written as /USERS/NAME or
+        # NAME@EXAMPLE is the same value (APFS and mail systems fold it). The fold is ASCII only.
+        self.needles = tuple(needle.lower() for needle in validate_context(value))
         self.total = self.members = self.nodes = 0
 
     def literal(self, raw: bytes) -> None:
-        if any(needle in raw for needle in self.needles):
+        folded = raw.lower()
+        if any(needle in folded for needle in self.needles):
             reject("personal_provenance")
 
     def opaque_text(self, raw: bytes) -> None:

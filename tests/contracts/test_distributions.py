@@ -176,6 +176,10 @@ def test_wheel_rejects_directory_type_name_mismatch(tmp_path, kind):
         ROOT + "/docs/p02-account-setup.md/child",
         ROOT + "/.github/unsafe.yml",
         ROOT + "/.agents/settings.json",
+        ROOT + "/src/yorunge/.env",  # a hidden name below a tree: secrets and local state
+        ROOT + "/tests/fixtures/.secret.json",
+        ROOT + "/scripts/.local/token",
+        ROOT + "/docs/research/.hidden.json",
         ROOT + "/src",
         ROOT,
     ],

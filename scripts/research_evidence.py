@@ -16,6 +16,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import zlib
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
@@ -2069,6 +2070,7 @@ def main() -> int:
         EOFError,
         RecursionError,
         subprocess.SubprocessError,
+        zlib.error,
     ):
         parser.exit(
             1, "Evidence check failed; preserve originals privately and keep retention open.\n"

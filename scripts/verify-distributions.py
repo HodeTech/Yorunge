@@ -158,6 +158,8 @@ def _docs_allowed(parts: tuple[str, ...], directory: bool) -> bool:
 def check_sdist_path(parts: tuple[str, ...], *, directory: bool) -> None:
     if parts[0] not in ALLOWED_SDIST:
         raise ValueError("unexpected sdist member")
+    if any(part.startswith(".") for part in parts[1:]):
+        raise ValueError("unexpected sdist member")  # a hidden name (.env, .netrc, .local/) below
     if parts[0] == GITHUB_DIRECTORY:
         allowed = _github_allowed(parts, directory)
     elif parts[0] == ".agents":
