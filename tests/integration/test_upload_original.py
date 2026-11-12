@@ -318,13 +318,15 @@ def test_an_admission_whose_closing_gate_fails_is_that_failure_and_sends_nothing
         plan = approved(prepared_input, server)
         monkeypatch.setattr(StateUploads, "_finish", failing_gate)
         monkeypatch.setattr(StateUploads, "admit", marked_admit)
+        attempt = partial(
+            create_link_original,
+            plan.plan_id,
+            prepared_input[0],
+            loader(prepared_input),
+            session_factory=factory(server),
+        )
         with pytest.raises(YorungeError) as error:
-            create_link_original(
-                plan.plan_id,
-                prepared_input[0],
-                loader(prepared_input),
-                session_factory=factory(server),
-            )
+            attempt()
         assert error.value.code == "state_busy"
         assert not provider.created
         assert provider.create_calls == provider.link_calls == 0

@@ -161,10 +161,14 @@ def check_header(path: Path) -> None:
         raise YorungeError("state_invalid")
     for suffix in ("-journal", "-wal", "-shm"):
         candidate = path.with_name(path.name + suffix)
-        if candidate.exists() or candidate.is_symlink():
+        try:
             private_stat(candidate)
-            if suffix != "-journal":
-                raise YorungeError("state_invalid")
+        except FileNotFoundError:
+            # Not there, or a rollback journal another process committed away meanwhile:
+            # asking first and looking second would turn that commit into an invalid store.
+            continue
+        if suffix != "-journal":
+            raise YorungeError("state_invalid")
 
 
 def metadata(connection: sqlite3.Connection) -> Metadata:

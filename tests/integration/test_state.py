@@ -722,6 +722,61 @@ def test_key_symlinks_are_rejected_without_following(tmp_path, part):
     assert saved.exists()
 
 
+@pytest.mark.parametrize("opener", [state.open_existing_store, open_store])
+def test_a_rollback_journal_committed_away_while_it_is_checked_is_not_an_invalid_store(
+    tmp_path, monkeypatch, opener
+):
+    # Another process's commit deletes its journal at any moment; a store that is looked at
+    # between the journal being seen and being inspected is the same valid store.
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    journal = root / (DB_NAME + "-journal")
+    journal.write_bytes(b"")
+    journal.chmod(0o600)
+    real, inspected = state.private_stat, []
+
+    def committed_meanwhile(path):
+        if path.name == journal.name:
+            inspected.append(path)
+            path.unlink()
+        return real(path)
+
+    monkeypatch.setattr(state, "private_stat", committed_meanwhile)
+    with opener(root) as store:
+        assert store.info.store_schema_version == len(state_schema.MIGRATIONS)
+    assert inspected == [journal]
+    assert not journal.exists()
+
+
+@pytest.mark.parametrize("kind", ["journal-mode", "journal-link", "wal", "shm", "wal-link"])
+def test_a_present_but_unsafe_sidecar_file_is_still_an_invalid_store(tmp_path, kind):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    name = DB_NAME + ("-journal" if kind.startswith("journal") else f"-{kind.split('-')[0]}")
+    sidecar = root / name
+    if kind.endswith("-link"):
+        sidecar.symlink_to(root / "missing-target")
+    else:
+        sidecar.write_bytes(b"")
+        sidecar.chmod(0o644 if kind == "journal-mode" else 0o600)
+    before = (root / DB_NAME).read_bytes()
+    with pytest.raises(YorungeError) as failure:
+        state.check_header(root / DB_NAME)
+    assert failure.value.code == "state_invalid"
+    assert (root / DB_NAME).read_bytes() == before
+    assert sidecar.is_symlink() or sidecar.exists()
+
+
+def test_a_private_empty_journal_alone_is_not_an_invalid_header(tmp_path):
+    root = tmp_path / "state"
+    api.initialize_state(state_dir=root)
+    journal = root / (DB_NAME + "-journal")
+    journal.write_bytes(b"")
+    journal.chmod(0o600)
+    state.check_header(root / DB_NAME)
+    assert journal.exists()
+
+
 def test_hardlinked_database_is_not_opened(tmp_path):
     root = tmp_path / "state"
     api.initialize_state(state_dir=root)
