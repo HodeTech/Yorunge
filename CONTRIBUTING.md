@@ -82,14 +82,14 @@ Jobs normal/yoğun list/show için ayrı ilk süreç, üç ısınma ve en az 30 
 .venv/bin/python scripts/benchmark-download.py --python .local/startup-check/candidate/env/bin/python --wheel .local/startup-check/candidate/dist/*.whl --workspace .local/download-check --output dist/download.json --cpu "gerçek CPU etiketi" --disk-type unknown
 ```
 
-Çıkış kodu yalnız tam 12 süreçlik rapor `accepted` ise 0'dır; `--labels`/`--samples` ile kısaltılmış koşu smoke'tur, rapor kısmi işaretlenir ve kabul sayılmaz. CI'ın Linux 3.11 hücresi upload adımlarının ardından iki adım daha çalıştırır: `verify-download-reference p02-3-reference-download-2.json` kaynak bağlı M5 referansını doğrular (adı ölçümden önce seçilmiştir; P02-3 sonunda kod dondurulduktan sonra ölçüldü ve arşivlendi, kaynak değişirse yeni adla yeniden ölçülür), `scripts/download_ci.py` ise aynı 12 süreci sahipli süreç grubunda çalıştırır, logları korur ve raporu bu run'ın kaynak/environment/runtime eşliğiyle yeniden doğrular. Başarısız veya iptal edilen koşunun özgün çıktıları kayıpsız saklanır; yeşile çevrilmez.
+Çıkış kodu yalnız tam 12 süreçlik rapor `accepted` ise 0'dır; `--labels`/`--samples` ile kısaltılmış koşu smoke'tur, rapor kısmi işaretlenir ve kabul sayılmaz. CI'ın Linux 3.11 hücresi upload adımlarının ardından iki adım daha çalıştırır: `verify-download-reference p02-3-reference-download-3.json` kaynak bağlı M5 referansını doğrular (adı ölçümden önce seçilmiştir; P02-3 sonunda kod dondurulduktan sonra ölçüldü ve arşivlendi, kaynak değişirse yeni adla yeniden ölçülür), `scripts/download_ci.py` ise aynı 12 süreci sahipli süreç grubunda çalıştırır, logları korur ve raporu bu run'ın kaynak/environment/runtime eşliğiyle yeniden doğrular. Başarısız veya iptal edilen koşunun özgün çıktıları kayıpsız saklanır; yeşile çevrilmez.
 
 İndirme **referansı** yalnız referans host'ta (Apple M5 Max, internal SSD/APFS), kod dondurulduktan sonra ve makine sessizken (eşzamanlı ağır iş yokken) alınır; kaynak değişirse yeni adla yeniden ölçülür. Aday kurulum yukarıdaki gibi hazırlandıktan sonra:
 
 ```sh
-.venv/bin/python scripts/benchmark-download.py --python .local/startup-check/candidate/env/bin/python --wheel .local/startup-check/candidate/dist/*.whl --workspace .local/download-reference-1 --output dist/p02-3-reference-download-2.json --cpu "Apple M5 Max" --disk-type "internal SSD/APFS"
-.venv/bin/python scripts/research_evidence.py archive dist/p02-3-reference-download-2.json
-.venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-2.json
+.venv/bin/python scripts/benchmark-download.py --python .local/startup-check/candidate/env/bin/python --wheel .local/startup-check/candidate/dist/*.whl --workspace .local/download-reference-1 --output dist/p02-3-reference-download-3.json --cpu "Apple M5 Max" --disk-type "internal SSD/APFS"
+.venv/bin/python scripts/research_evidence.py archive dist/p02-3-reference-download-3.json
+.venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-3.json
 ```
 
 `archive` gizlilik bağlamı ister ([kanıt standardı](docs/standards/research-evidence.md)); `verify-download-reference` kaynak haritasını güncel ağaçla karşılaştırır, bu yüzden arşivlemeden sonra kaynak değişirse yeniden ölçülür.
