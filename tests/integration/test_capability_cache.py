@@ -1250,3 +1250,40 @@ def test_intermediate_clock_sample_cannot_be_overwritten_before_tick(tmp_path):
         cache.now()
         clock.value += timedelta(seconds=1)
         assert cache.stamp().generation == stamp.generation + 1
+
+
+@pytest.mark.parametrize(
+    "original",
+    [YorungeError("capability_expired"), KeyboardInterrupt()],
+    ids=["a closed error", "an interrupt"],
+)
+def test_a_cleanup_that_cannot_read_the_clock_back_does_not_replace_the_failure(
+    tmp_path, monkeypatch, original
+):
+    """The failure that ends the block is the one to report: the cleanup's own ``_tick`` failing
+    (a clock row that cannot be read back) is not, and the ``finally`` still rolls back."""
+    with open_store(tmp_path / "state") as store:
+        cache = StateCache(store, Clock())
+        stamp = cache.stamp()
+        store.connection.execute("CREATE TABLE business(value TEXT)")
+        if store.connection.in_transaction:
+            store.connection.commit()
+        real, calls = cache._tick, []
+
+        def failing_on_the_cleanup(now):
+            calls.append(now)
+            if len(calls) == 3:  # the entry, the first look inside, then the cleanup's
+                raise YorungeError("state_invalid")
+            return real(now)
+
+        monkeypatch.setattr(cache, "_tick", failing_on_the_cleanup)
+        with pytest.raises(type(original)) as raised:
+            with cache.transaction(stamp):
+                store.connection.execute("INSERT INTO business VALUES('x')")
+                raise original
+        assert raised.value is original
+        assert len(calls) == 3  # the cleanup tick was reached and failed
+        assert not store.connection.in_transaction
+        assert store.connection.execute("SELECT count(*) FROM business").fetchone()[0] == 0
+        monkeypatch.undo()
+        assert cache.stamp().generation >= 1  # the store is usable afterwards

@@ -82,8 +82,16 @@ def read_stamp(store: Store, clock: Clock) -> Stamp | None:
     ``start`` sees. Time never runs behind the watermark here. ``None``: the clock row is not the
     store's own (a store that is not valid).
     """
-    value = metadata(store.connection)
-    row = store.connection.execute(SELECT_CLOCK).fetchone()
+    connection = store.connection
+    own = not connection.in_transaction
+    if own:
+        connection.execute("BEGIN")  # the identity and the clock row are read as one snapshot
+    try:
+        value = metadata(connection)
+        row = connection.execute(SELECT_CLOCK).fetchone()
+    finally:
+        if own and connection.in_transaction:
+            connection.execute("ROLLBACK")
     if row is None or row[0] != value.identity_epoch:
         return None
     checked_clock_row(row)

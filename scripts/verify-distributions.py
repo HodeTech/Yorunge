@@ -205,6 +205,8 @@ def inspect_archive(path: Path) -> list[str]:
                     raise ValueError("archive links and special files are not permitted")
                 if parts[0] not in ("yorunge", metadata) or (len(parts) == 1 and not directory):
                     raise ValueError("unexpected wheel member")
+                if any(part.startswith(".") for part in parts[1:]):
+                    raise ValueError("unexpected wheel member")  # a hidden name: secrets, state
                 members.append(name)
     elif path.name.endswith(SDIST_SUFFIX):
         root = path.name.removesuffix(SDIST_SUFFIX)

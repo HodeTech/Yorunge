@@ -292,8 +292,11 @@ class TlsServer:
         self._server.server_close()
         self._thread.join(timeout=2)
         assert not self._thread.is_alive(), "TLS fixture did not stop"
-        if self.route_errors and not any(exc):
-            raise AssertionError("a route of the fixture raised") from self.route_errors[0]
+        if self.route_errors:
+            if exc[1] is not None:  # the test already failed: the fixture's error rides along
+                exc[1].add_note(f"a route of the fixture raised: {self.route_errors[0]!r}")  # type: ignore[attr-defined]
+            else:
+                raise AssertionError("a route of the fixture raised") from self.route_errors[0]
 
 
 @contextmanager

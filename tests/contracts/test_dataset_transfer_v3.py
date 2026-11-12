@@ -430,8 +430,8 @@ def entries(count):
 
 
 def test_a_129th_entry_is_refused_by_the_length_rule_not_by_another_one():
-    # Indexes 0..127 are valid and the extra entry reuses one, so neither the index range nor the
-    # order rules can be what refuses it before the length cap does.
+    # Indexes 0..127 are valid and the extra entry reuses one: the index range does not refuse it
+    # (a field that fails stops the validators that follow), so the length cap is what does.
     files = [*entries(128), {**entries(1)[0], "item_id": "00000000-0000-4000-8000-000000000999"}]
     with pytest.raises(ValidationError) as caught:
         TransferVerificationV3.model_validate_json(canon(proof_of(files=files)))

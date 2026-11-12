@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import signal
 import time
 from dataclasses import dataclass
 from datetime import timedelta
@@ -653,7 +654,7 @@ def test_real_kill_after_admission_before_id_output_is_recoverable(journal):
         assert committed.wait(10), "child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode == -9  # SIGKILL
+        assert process.exitcode == -signal.SIGKILL
         assert not process.is_alive()
         with open_store(journal.root) as store:
             repo = StateUploads(store, clock=journal.clock)

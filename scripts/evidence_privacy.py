@@ -206,7 +206,8 @@ def neutral_inputs(value: object) -> None:
     data = closed(value, CONTEXT_FIELDS)
     paths = [data["source_root"], *data["workspaces"], *data["child_roots"]]
     paths.extend(data["controller"].values())
-    if any(needle in path.encode() for path in paths for needle in needles):
+    folded = [needle.lower() for needle in needles]  # the same fold as the byte scan below
+    if any(needle in path.encode().lower() for path in paths for needle in folded):
         reject("personal_runtime_input")
 
 

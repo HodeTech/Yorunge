@@ -90,6 +90,14 @@ def test_the_neutral_producer_root_is_not_personal_and_is_accepted(tmp_path):
     GUARD["check"](raw, "report.json", value)  # no ValueError
 
 
+def test_the_producer_preflight_folds_letter_case_like_the_byte_scan(tmp_path):
+    """A runtime input that spells the home path in other letters fails early, not only late."""
+    value = synthetic_context(tmp_path)
+    value["source_root"] = value["system_home"].upper() + "/checkout"
+    with pytest.raises(ValueError, match="personal_runtime_input"):
+        GUARD["neutral_inputs"](value)
+
+
 @pytest.mark.parametrize("case", ["upper-path", "lower-path", "upper-email", "mixed-email"])
 def test_a_known_personal_value_is_found_whatever_its_letter_case(case, tmp_path):
     """/USERS/NAME is /Users/Name on a case-insensitive volume, and mail addresses fold: the same

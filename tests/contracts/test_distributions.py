@@ -92,6 +92,8 @@ def test_valid_archive_files_and_explicit_directories(tmp_path):
         "C:/yorunge/file.py",
         "yorunge/unsafe\x1b.py",
         "yorunge/__pycache__/file.pyc",
+        "yorunge/.env",  # a hidden name below the package
+        "yorunge/.local/token",
         "other/file.py",
         "other.dist-info/METADATA",
         "yorunge-0.0.0.dist-info/METADATA",

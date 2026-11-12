@@ -162,9 +162,11 @@ class UploadResumeRuntime(UploadPreparationRuntime):
     def _read_source(self, operation_id: str) -> tuple[ResumeSource, str]:
         """The source as the journal holds it now. A read: the clock is looked at, never written.
 
-        The report promises that it writes nothing (``prepare`` saves its plan in a transaction of
-        its own, which takes its own durable clock point); a durable stamp here would record the
-        clock's high watermark and could move the generation that plans are compared with.
+        The journal-only report (a source the journal rules out) writes nothing, not even the
+        clock: a durable stamp here would record the clock's high watermark and could move the
+        generation that plans are compared with. The report that reads the provider binds the
+        credential and takes its clock point like every Platform command (``prepare`` saves its
+        plan in a transaction of its own).
         """
         with open_existing_store(self.state_dir) as store:
             stamp = read_stamp(store, self.clock)
