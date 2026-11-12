@@ -353,3 +353,70 @@ def test_a_sidecar_whose_directory_sync_failed_is_still_the_one_this_download_ho
     monkeypatch.undo()
     assert failed.value.code == "download_write_failed"
     assert left(place) == []  # no orphan sidecar, no stage, no lock object
+
+
+def test_a_lock_object_lost_while_the_stage_is_read_back_and_synced_stops_before_the_hand_over(
+    place, monkeypatch
+):
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        at_boundary(monkeypatch, "publish:synced", lambda: (place / NAMES.lock).unlink())
+        assert code_of(lambda: sink.publish(None)) == "download_busy"
+    assert not target(place).exists()  # nothing was linked
+    assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])  # the finished stage stays
+
+
+def test_after_a_discard_of_a_sidecar_that_is_already_gone_the_next_checkpoint_expects_none(place):
+    stopped_after(place, 100_000)
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        assert plan.ask is not None
+        (place / NAMES.sidecar).unlink()  # a hand, a cleanup tool: gone before the discard
+        sink.discard()
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        sink.publish(None)
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [target(place).name]
+
+
+def test_a_write_that_puts_the_modification_time_back_is_still_found_by_the_change_time(
+    place, monkeypatch
+):
+    """Only the change time cannot be set by a writer: same size, same mtime, other bytes."""
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        stage = place / NAMES.stage
+        age(stage)
+
+        def forge():
+            overwrite_in_place(stage, b"\x00" * 8, at=10)
+            os.utime(stage, ns=(LONG_AGO, LONG_AGO))  # the mtime is back; the ctime is not
+
+        at_boundary(monkeypatch, "publish:synced", forge)
+        assert code_of(lambda: sink.publish(None)) == "download_write_failed"
+    assert not target(place).exists()
+
+
+def test_a_stage_touched_while_it_is_read_back_is_a_write_failure_not_a_verdict(place, monkeypatch):
+    """The read-back's own look at the state: without it a wrong expectation drops the stage."""
+    real, touched = os.pread, []
+
+    def racing(descriptor, count, offset):
+        if not touched:
+            touched.append(True)
+            os.utime(place / NAMES.stage, ns=(1, 1))  # someone touched it in the middle of the read
+        return real(descriptor, count, offset)
+
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        monkeypatch.setattr(os, "pread", racing)
+        assert code_of(lambda: sink.publish("00" * 32)) == "download_write_failed"
+        monkeypatch.undo()
+    assert sorted(left(place)) == sorted([NAMES.stage, NAMES.sidecar])  # kept for the next run

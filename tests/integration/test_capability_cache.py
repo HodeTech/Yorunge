@@ -1287,3 +1287,67 @@ def test_a_cleanup_that_cannot_read_the_clock_back_does_not_replace_the_failure(
         assert store.connection.execute("SELECT count(*) FROM business").fetchone()[0] == 0
         monkeypatch.undo()
         assert cache.stamp().generation >= 1  # the store is usable afterwards
+
+
+def test_read_stamp_leaves_no_transaction_open(tmp_path):
+    from yorunge.adapters.capability_cache import read_stamp
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        assert read_stamp(store, Clock()) is not None
+        assert not store.connection.in_transaction
+
+
+def test_read_stamp_inside_a_transaction_of_the_caller_leaves_it_open(tmp_path):
+    from yorunge.adapters.capability_cache import read_stamp
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        store.connection.execute("BEGIN IMMEDIATE")
+        assert read_stamp(store, Clock()) is not None
+        assert store.connection.in_transaction  # not begun, not rolled back by the read
+        store.connection.execute("ROLLBACK")
+
+
+def test_the_identity_and_the_clock_row_are_read_in_one_snapshot(tmp_path, monkeypatch):
+    from yorunge.adapters import capability_cache
+    from yorunge.adapters.state import DB_NAME
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        other = sqlite3.connect(store.root / DB_NAME, isolation_level=None, timeout=0)
+        real, outcome = capability_cache.metadata, []
+
+        def then_a_writer(connection):
+            value = real(connection)  # the first read is done; the snapshot is open
+            try:
+                other.execute("BEGIN IMMEDIATE")
+                other.execute("UPDATE cache_clock SET mutation_revision=mutation_revision+1")
+                other.execute("COMMIT")
+                outcome.append("committed")
+            except sqlite3.OperationalError:
+                outcome.append("blocked")
+                if other.in_transaction:
+                    other.execute("ROLLBACK")
+            return value
+
+        monkeypatch.setattr(capability_cache, "metadata", then_a_writer)
+        assert capability_cache.read_stamp(store, Clock()) is not None
+        other.close()
+        assert outcome == ["blocked"]  # no commit can fall between the two reads
+
+
+def test_read_stamp_takes_no_write_lock(tmp_path):
+    """A report that promises to write nothing must not queue behind (or in front of) a writer."""
+    from yorunge.adapters.capability_cache import read_stamp
+    from yorunge.adapters.state import DB_NAME
+
+    with open_store(tmp_path / "state") as store:
+        StateCache(store, Clock()).stamp()
+        other = sqlite3.connect(store.root / DB_NAME, isolation_level=None, timeout=0)
+        other.execute("BEGIN IMMEDIATE")  # a writer holds the reserved lock
+        try:
+            assert read_stamp(store, Clock()) is not None
+        finally:
+            other.execute("ROLLBACK")
+            other.close()

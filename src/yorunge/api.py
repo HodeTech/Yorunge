@@ -1371,9 +1371,9 @@ def resume_dataset_upload(
 
     The default is a read-only report: it answers with the same shape whether the source can be
     continued or not (what rules it out is in ``blockers``) and stores no plan, operation or
-    record. ``prepare`` makes the same observation and, only without blockers, saves the local
-    plan; it is an error
-    (``continuation_not_possible``, or ``operation_conflict`` naming the operation in the way)
+    upload record. ``prepare`` makes the same observation and, only without blockers, saves the
+    local plan; it is an error (``continuation_not_possible``, or ``operation_conflict`` naming
+    the operation in the way)
     otherwise. ``accept_unverified_read`` is the human's choice to read the dataset on an explicit
     attempt; ``accept_unconfirmed_effects`` belongs to ``prepare`` and to files whose last confirm
     was sent without an answer.

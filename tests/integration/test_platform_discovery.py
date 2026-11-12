@@ -333,13 +333,13 @@ def test_a_slow_second_read_ends_at_the_shared_deadline_not_at_its_own_reply(
     with TlsServer(certificates, selected_routes) as server:
         started = time.monotonic()
         with pytest.raises(YorungeError) as failure:
-            run(root, server, timeout=3.0)
+            run(root, server, timeout=2.0)
         elapsed = time.monotonic() - started
         # The server records a request before it waits to answer it: this only waits (bounded, by
         # an event) for its thread to have been scheduled, whatever the machine's load.
         assert server.wait_for_requests(2, timeout=10)
     assert failure.value.code == "transport_timeout"
-    assert elapsed < 8.0  # the reply was due after ten seconds: the deadline ended the read
+    assert elapsed < 4.0  # the reply was due after ten seconds: the deadline ended the read
     assert [request.path for request in server.requests] == [
         "/api/v1/auth/me",
         "/api/v1/organizations",
