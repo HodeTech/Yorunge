@@ -90,7 +90,8 @@ def test_the_last_page_is_a_valid_argument(workspace, monkeypatch):
 def test_the_budget_of_one_use_is_thirty_seconds():
     use = dataset_version_api._Composition(lambda: None, None)  # type: ignore[arg-type]
     assert dataset_version_api.VERSION_SECONDS == 30.0
-    assert use.deadline - use.started == 30.0
+    # Two monotonic readings: their difference is 30 up to the float's resolution at that size.
+    assert use.deadline - use.started == pytest.approx(30.0)
 
 
 # ---------------------------------------------------------------------------------------------
