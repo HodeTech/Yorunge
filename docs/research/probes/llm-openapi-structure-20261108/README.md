@@ -12,7 +12,7 @@ curl -sS https://evren-llmapi.ssyz.org.tr/openapi.json -o .local/openapi-new.jso
 diff docs/research/probes/llm-openapi-structure-20261108/structure.json .local/structure-new.json
 ```
 
-`source` farkı gövdenin değiştiğini, `operations`/`schemas` farkı yapısal değişimi, yalnız `#özet` veya `text` farkı yalnız açıklama değişimini gösterir. Yeni özet ilgili kanıt kaydına eklenir; `structure.json` değiştirilmez, tarihli yeni bir dizin açılır. Betik yalnız yerel dosya okur, ağ kullanmaz, çift anahtarlı veya OpenAPI olmayan girdiyi reddeder.
+`source` farkı gövdenin değiştiğini, `operations`/`schemas` farkı yapısal değişimi, yalnız `#özet` veya `text` farkı yalnız açıklama değişimini gösterir. Yeni özet ilgili kanıt kaydına eklenir; `structure.json` değiştirilmez, tarihli yeni bir dizin açılır. Betik yalnız yerel dosya okur, ağ kullanmaz; çift anahtarlı, JSON nesnesi olmayan veya `paths` nesnesi taşımayan girdiyi reddeder. `openapi` sürüm alanını doğrulamaz, yalnız kaynak özetinde gösterir.
 
 ## Ağsız kontrol
 

@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-08. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-12. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur; tablo tamamlanmış (`verified`) kartları da bulunabilir kılar, güncel durum her kartın `status` alanındadır. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -60,7 +60,7 @@
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i, r ve t–y |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |
-| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3z](p02-3z-download-evidence-installation-ci.md) | P02-3 adım kartları: [resume d–i, r, t–y, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o ve z, sürüm p–q; ADR’ler Accepted; yirmi dört kartın hepsi `verified` (her biri iki fresh review turu ve tam paketle kapandı), üst kartlar P02-3a–c `in_review` |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3z](p02-3z-download-evidence-installation-ci.md) | P02-3 adım kartları: [resume d–i, r, t–y, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o ve z, sürüm p–q; ADR’ler Accepted; yirmi üç kartın hepsi `verified` (her biri iki fresh review turu ve tam paketle kapandı), üst kartlar P02-3a–c `in_review` |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 

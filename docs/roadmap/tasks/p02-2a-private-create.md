@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı exact owner/proje ve güncel yerel içerikle private create niyetini planlar, digest ile onaylar; kalıcı operation ID'si olmadan dış etki başlamaz. Yerel plan/journal ve v2 politika temelleri çalışma dalındadır; gerçek provider producer/public yüzey d–w dilimlerinde yerel verified; üst teslimin nihai kabulü açıktır. Discovery izin üretmez.
+Kullanıcı exact owner/proje ve güncel yerel içerikle private create niyetini planlar, digest ile onaylar; kalıcı operation ID'si olmadan dış etki başlamaz. Yerel plan/journal ve v2 politika temelleri, gerçek provider producer/public yüzey d–w dilimlerinde verified'dır; üst teslimin nihai kabulü PR #14 ile kapandı (Teslim kaydı). Discovery izin üretmez.
 
 ## Giren ve girmeyen kapsam
 

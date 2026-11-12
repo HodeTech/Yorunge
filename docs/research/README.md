@@ -1,10 +1,10 @@
 # Araştırma ve kanıtlar
 
-**Güncellendi:** 2026-11-08. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
+**Güncellendi:** 2026-11-12. Bu bölüm dış kaynak, gözlem ve açık soruları taşır; uygulanmış ürün sözleşmesi değildir.
 
-[Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı.
+[Ham ölçüm indeksi](evidence.md) ve [manifest](evidence-manifest.json), kayıpsız arşivlerin review girişidir. Python ölçüm betikleri, bu raporlar ve testlerin okuduğu sabit JSON vektörleri normal incelemede kalır; `raw/` gzip dosyaları ayrı araçla doğrulanır. [Saklama/review/paket standardı](../standards/research-evidence.md). Önceki fazların kökteki ham kayıtları bu bakımda taşınmadı. İndeks bütün kayıtları listeler, hangisinin güncel olduğunu söylemez: aynı hat için kaynak değişince yeni adlı bir seri (`-N`) alınır, öncekiler tarihsel kalır ve güncel seriyi ilgili uygulama kaydı adlandırır (örnek: [P02-3 kaydı](p02-3-implementation-validation.md)).
 
-- [P02-3 uygulama/kabul kaydı](p02-3-implementation-validation.md): adım durumu; hazırlık aşamasında henüz uygulama veya kabul kaydı yok.
+- [P02-3 uygulama/kabul kaydı](p02-3-implementation-validation.md): 23 adım kartının commit/review/tam paket kaydı, PR #15 CI/SonarCloud bulguları ve düzeltmeleri, journal yarışı, bağımsız yorum turu ve referans serileri; yetkili canlı kabul yoktur.
 - [P02-3 hazırlık incelemesi](p02-3-readiness-review.md): belge/kod/kaynak incelemesi, resume–indirme–sürüm için ADR-0031/0032/0033 gerekçeleri, dataset baytı erişim sınırı ve gerçek dış kapılar; uygulama veya canlı kabul değildir.
 - [PR #14 kullanıcı review takibi](p02-2-pr14-review-followup.md): dört kaynak/review dilimi, 11 reference kabulü, son kaynak CI/Sonar ve kanıt saklama tamam; PR 94aaaf0 ile development’a alındı.
 - [P02-2 ilk private create gözlemi](p02-2-private-create-observations.md): create 201, detail GET 405 ve kontrollü durma; link/upload yok, kaynak/test/receipt hash bağı korunur.
@@ -41,6 +41,8 @@
 
 Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya yolları bu depoya alınmaz. Kayıtların amacı kanıtın türünü, tarihini ve neyi doğrulamadığını görünür tutmaktır.
 
+**Kök dizindeki düz JSON dosyaları:** `docs/research/` altında doğrudan duran `*.json` dosyaları (`git ls-files docs/research | grep -E '^docs/research/[^/]+\.json$'`) bilerek `evidence-manifest.json` dışındadır ve `verify` onları denetlemez. 2026-11-12'de manifest dışında 68 dosya vardır; 51'i ölçüm biçimindedir ve bunların 47'si arşiv aracından (commit `45dc6c8`, 2026-10-29) önce eklenmiştir. Aracın sonrasında eklenen dört ölçüm biçimli dosya (`p02-2-created-dataset-read-observations`, `p02-2-five-get-observations`, `p02-2-private-create-observations`, `p02-platform-discovery-observations`) performans ölçümü değil, ilgili rapora hash'le bağlı küçük canlı-API gözlem alındılarıdır. Kalan dosyalar katalog, envanter, Sonar kaydı ve sabit test vektörleridir; bazıları kaynak gibi sürümlenir ve testlerce okunur. Bunları arşivlemek `verify`'ın açılmış kopya yasağı nedeniyle kök dosyaların silinmesini gerektirir; README, indeks, ADR ve rapor bağlantıları kırılır ve Git geçmişi yeniden yazılmaz. Bu yüzden taşınmadılar. Yeni performans, kurulum veya tanı ölçümü kök dizine konmaz: Git dışında `dist/` altına yazılır ve [`archive` akışıyla](../standards/research-evidence.md#kayıt-ve-doğrulama) `raw/` altına alınır.
+
 - [P01-3 ikinci Linux başlangıç ölçümü](p01-3-linux-startup-second.json): farklı runner CPU ortamı; 200 ms cache bütçesi başarısız, ilk kayıt korunur.
 
 - [P01-3 Linux doğrulanmış başlangıç ölçümü](p01-3-linux-startup-verified.json): 83f70a8 CI koşusu, 1.024 fresh kayıt ve 30 süreçte bütün bütçeler geçti; runner farkı kayıtlıdır.
@@ -76,4 +78,4 @@ Ham özel veriler, API anahtarları ve başka checkout'a bağlı kişisel dosya 
 
 [P02-2 upload ölçüm planı](p02-2-upload-measurement-plan.md), kurulu native worker/sink/report kodundan ve gerçek ölçümden önce fixture/pencere/örnek/limitleri sabitler; bir kabul sonucu değildir.
 
-[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kayıt ile sonraki sekiz kaydı ayrı izler; source fix ve gerekçeli disposition durumları API’den doğrulandı. Önceki 7e5675c kaynağında açık kayıt 0 ve gate OK; son kaynak analizi beklenir; [kabul kaydı](p02-2-implementation-validation.md) kalan CI/kurulum/saklamanın sahibidir.
+[PR #14 Sonar incelemesi](p02-2-sonar-review.md), ilk 611 kayıt ile sonraki sekiz kaydı ayrı izler; source fix ve gerekçeli disposition durumları API’den doğrulandı. Son PR kaynağında kalite kapısı OK ve açık kayıt 0 idi; PR #14 development’a alındı ve [merge kapanışı](p02-2-implementation-validation.md#development-merge-kapanışı) CI/kurulum/saklamanın sahibidir.

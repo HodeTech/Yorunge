@@ -1,15 +1,15 @@
 # P02-3 — Etkili resume, akışlı indirme ve veri sürüm bağları teslim planı
 
-**Tarih:** 2026-11-06. **Durum:** ADR-0031/0032/0033 kullanıcı 2026-11-06 talimatıyla Accepted; uygulama adım 1’den başlıyor (K4–K6 varsayılanları geçerli, aşağıda). **Dal:** `feat/p02-3-dataset-recovery`, development `94aaaf0` tabanı. Tek development PR; Master/release kullanıcıdadır. Kapsam kararı ve kanıtı [hazırlık incelemesindedir](../research/p02-3-readiness-review.md); adım sonuçları [uygulama ve kabul kaydında](../research/p02-3-implementation-validation.md) tutulur.
+**Tarih:** 2026-11-06. **Durum:** ADR-0031/0032/0033 kullanıcı 2026-11-06 talimatıyla Accepted; uygulama tamam, PR #15 incelemesi bekleniyor; canlı kabuller (K6a/b/c) yapılmadı (K4–K6 varsayılanları geçerli, aşağıda). **Dal:** `feat/p02-3-dataset-recovery`, development `94aaaf0` tabanı. Tek development PR; Master/release kullanıcıdadır. Kapsam kararı ve kanıtı [hazırlık incelemesindedir](../research/p02-3-readiness-review.md); adım sonuçları [uygulama ve kabul kaydında](../research/p02-3-implementation-validation.md) tutulur.
 
 ## Kullanıcı sonucu
 
 Veri sorumlusu kesintiye uğrayan private yüklemeyi aynı Platform dataset’inde, yeni create veya DB düzenlemesi olmadan, yalnız kanıtlanmış güvenli adımları göndererek tamamlar ve neyin doğrulandığını görür (**P02-3a**). Model geliştirici kesin model sürümünün ağırlığını doğrulama seviyesi görünür ve hedefi ezmeyen biçimde indirir; sağlayıcı güçlü ETag ve Range sunarsa kesilen indirme aynı komutla devam eder (**P02-3b**). Kullanıcı bir veri sürümünü ve bölme sayımlarını görür, değişmez referansa bağlar ve sapmayı denetler; eğitim planı (P03-1) bu referansı tüketir (**P02-3c**). Sonuçlar yetki, fiyat veya dataset baytlarının uzaktan doğrulanması iddiası taşımaz.
 
-**Planlanan kullanıcı akışı (resume).** Komutlar taslaktır; ayrıntı [continuation sözleşmesindedir](../reference/dataset-upload-continuation.md).
+**Kullanıcı akışı (resume).** Komutlar uygulandı (çalışma dalında, canlı kabul yok); ayrıntı [continuation sözleşmesindedir](../reference/dataset-upload-continuation.md).
 
 ```text
-datasets upload show --operation-id OP        # unknown; "devam için: datasets upload resume --operation-id OP"
+datasets upload show --operation-id OP        # unknown; "Devam için: yorunge datasets upload resume --operation-id OP --accept-unverified-read"
 datasets upload resume --operation-id OP --accept-unverified-read
                                               # rapor (exit 0): 57 confirmed, 3 observed, 38 gönderilecek, kota etkisi, önerilen eylem
 datasets upload resume --operation-id OP --accept-unverified-read --prepare [--accept-unconfirmed-effects]
@@ -89,7 +89,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 
 Her karar için öneri ve reddedilirse varsayılan aşağıdadır; onayın bilmeniz gereken sonuçları tablonun altında karar başına listelenir (ADR’lerin yalnız özeti; ayrıntı ADR’lerdedir).
 
-**Durum (2026-11-06):** Kullanıcı K1–K3 için, harici review bulgularının işlenmesinden sonra ADR’lerin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı. K4–K6 ayrıca yanıtlanmadı; **varsayılanlar geçerlidir:** R4–R8 ertelenmiş (açılma ölçütü ve hedef kartlarda), tek PR, canlı girdiler verilmedi (model yoklaması ile resume ve sürüm canlı kabulleri “yapılmadı” kaydı alır; üst kartlar bunu açıkça taşır). Kullanıcı bu varsayılanları istediği zaman değiştirebilir; değişiklik ilgili adımdan önce bildirilmelidir.
+**Durum (2026-11-06):** Kullanıcı K1–K3 için, harici review bulgularının işlenmesinden sonra ADR’lerin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı. K4–K6 ayrıca yanıtlanmadı; **varsayılanlar geçerlidir:** R4–R8 ertelenmiş (kapsam dışı bırakıldı; kartları `draft`, R5 `blocked` durumundadır, ayrı bir “ertelenmiş” durumu yoktur; açılma ölçütü ve hedef kartlarda), tek PR, canlı girdiler verilmedi (model yoklaması ile resume ve sürüm canlı kabulleri “yapılmadı” kaydı alır; üst kartlar bunu açıkça taşır). Kullanıcı bu varsayılanları istediği zaman değiştirebilir; değişiklik ilgili adımdan önce bildirilmelidir.
 
 | # | Karar | Öneri | Reddedilirse / varsayılan |
 |---|---|---|---|
@@ -114,4 +114,4 @@ Her adım kendi kartındaki olumlu/negatif oracle’ları ve gerçek kontrolleri
 
 ## Teslim kaydı
 
-Uygulama kartları P02-3d–z (yirmi dört) `verified`; üst kartlar P02-3a–c `in_review`. Adım adım uygulama, iki fresh review turu ve düzeltmeler [uygulama ve kabul kaydındadır](../research/p02-3-implementation-validation.md) (Adım 1–22 ve tam paket). Tek development PR’ı (#15) bu dalla açıldı; ilk iki CI koşusu ve Sonar koştu, bulguları ve düzeltmeleri [PR #15 kaydı](../research/p02-3-implementation-validation.md#pr-15-ci-sonarcloud-yarış-kusurları-ve-son-kaynak-referans-serisi--5) içindedir; `-3` ağacında üç ortam CI’ın tam koşusu, altı temiz kurulum ve Sonar yeniden analizi beklenir. Yetkili canlı kabuller (K6a, K6b, K6c) yapılmadı. Son kaynak M5 referans serisi: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-5`, kod `1b2cc1f`’de dondurulduktan sonra kişisiz kökte bir kez alındı ve arşivlendi (altısı da ilk denemede geçti; beş kaynak bağlı doğrulayıcı geçti; `-1` (a574c5b), `-2` (27a532c), `-3` (50946ba) ve `-4` (9ab9d6a) serileri kaynak değiştiği için tarihsel kayıttır). ADR-0030 (performans kabulü) hâlâ Proposed; Master/release bu planın işi değildir.
+Uygulama kartları P02-3d–z (yirmi üç) `verified`; üst kartlar P02-3a–c `in_review`. Adım adım uygulama, iki fresh review turu ve düzeltmeler [uygulama ve kabul kaydındadır](../research/p02-3-implementation-validation.md) (Adım 1–22 ve tam paket). Tek development PR’ı (#15) bu dalla açıldı; ilk iki CI koşusu ve Sonar koştu, bulguları ve düzeltmeleri [PR #15 kaydı](../research/p02-3-implementation-validation.md#pr-15-ci-sonarcloud-yarış-kusurları-ve-son-kaynak-referans-serisi--5) içindedir; `-3` ağacında üç ortam CI’ın tam koşusu, altı temiz kurulum ve Sonar yeniden analizi beklenir. Yetkili canlı kabuller (K6a, K6b, K6c) yapılmadı. Son kaynak M5 referans serisi: `p02-3-reference-{startup,jobs,datasets,raw,upload,download}-5`, kod `1b2cc1f`’de dondurulduktan sonra kişisiz kökte bir kez alındı ve arşivlendi (altısı da ilk denemede geçti; beş kaynak bağlı doğrulayıcı geçti; `-1` (a574c5b), `-2` (27a532c), `-3` (50946ba) ve `-4` (9ab9d6a) serileri kaynak değiştiği için tarihsel kayıttır). ADR-0030 (performans kabulü) hâlâ Proposed; Master/release bu planın işi değildir.

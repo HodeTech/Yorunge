@@ -1,6 +1,6 @@
 # ADR-0033: Veri sürümü ve bölme sayımlarının salt okunur, değişmez referansı
 
-**Durum:** Accepted — kullanıcı 2026-11-06 tarihinde, belge review bulgularının (üç iç tur ve üç harici review) işlenmesinden sonra ADR’nin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı; K4–K6 varsayılanları geçerlidir ([teslim planı](../roadmap/p02-3-delivery-plan.md#kullanıcı-kararları)). **Tarih:** 2026-11-06. **İş:** P02-3c. [Hazırlık incelemesi](../research/p02-3-readiness-review.md), [teslim planı](../roadmap/p02-3-delivery-plan.md), [sözleşme taslağı](../reference/dataset-versions.md). Kabul, uygulanmış sürüm desteği, sürüm oluşturma/freeze yetkisi veya eğitim planı bağı anlamına gelmez; uygulama durumunu yetenek matrisi gösterir.
+**Durum:** Accepted — kullanıcı 2026-11-06 tarihinde, belge review bulgularının (üç iç tur ve üç harici review) işlenmesinden sonra ADR’nin Accepted yapılmasını ve uygulamaya devam edilmesini talimatlandırdı; K4–K6 varsayılanları geçerlidir ([teslim planı](../roadmap/p02-3-delivery-plan.md#kullanıcı-kararları)). **Tarih:** 2026-11-06. **İş:** P02-3c. [Hazırlık incelemesi](../research/p02-3-readiness-review.md), [teslim planı](../roadmap/p02-3-delivery-plan.md), [sözleşme](../reference/dataset-versions.md). Kabul, uygulanmış sürüm desteği, sürüm oluşturma/freeze yetkisi veya eğitim planı bağı anlamına gelmez; uygulama durumunu yetenek matrisi gösterir.
 
 ## Bağlam
 

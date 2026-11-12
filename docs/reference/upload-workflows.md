@@ -27,7 +27,7 @@ export EVREN_PLATFORM_API_KEY
 
 Mevcut [P02 özel credential dosyası](../p02-account-setup.md#hazırlıktan-normal-discoveryye) ürün tarafından doğrudan okunmaz; o rehberdeki çocuk-süreç env aktarımı da kullanılabilir. Anahtar CLI argümanı değildir. Farklı terminaldeki env seçiminiz bu terminale taşınmaz.
 
-**Kurumsal ağ:** Yörünge `HTTPS_PROXY`/`SSL_CERT_FILE` gibi ortam değerlerini kullanmaz ve upload, çözülen adres genel değilse (private/CGNAT gibi) bağlanmadan reddeder. Zorunlu proxy, TLS denetimi, özel CA veya split-horizon DNS olan ağlarda upload şimdilik desteklenmez; belirtiler ve ayrıntı [HTTP taşıma sözleşmesindedir](http-transport.md#kurumsal-ağ-ve-ortam-proxysi).
+**Kurumsal ağ:** Yörünge `HTTPS_PROXY`/`SSL_CERT_FILE` gibi ortam değerlerini kullanmaz ve upload (aynı oturumu kullanan `models download` da), çözülen adres genel değilse (private/CGNAT gibi) bağlanmadan reddeder. Zorunlu proxy, TLS denetimi, özel CA veya split-horizon DNS olan ağlarda upload ve model indirme şimdilik desteklenmez; belirtiler ve ayrıntı [HTTP taşıma sözleşmesindedir](http-transport.md#kurumsal-ağ-ve-ortam-proxysi).
 
 ## Planı inceleyip açıkça onaylayın
 

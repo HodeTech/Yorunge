@@ -12,7 +12,7 @@ capabilities: [C03, C12, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile çalışma dalında verified, gerçek presign/confirm codec/producer ve ortak workflow d–w dilimlerinde yerel verified; üst teslimin nihai kabulü açıktır.
+Kullanıcı doğru private dataset/proje için izinli storage hedefine dosyalarını bounded olarak gönderir; her dosyanın uzak karşılığını ve doğrulama seviyesini görür. Genel HTTP bytes request'i ≤1 MiB olarak korunur; ayrı storage portu f ile, gerçek presign/confirm codec/producer ve ortak workflow d–w dilimlerinde verified; üst teslimin nihai kabulü PR #14 ile kapandı (Teslim kaydı).
 
 ## Giren ve girmeyen kapsam
 
@@ -20,7 +20,7 @@ API proxy/direct signed target ayrımı, exact allowlist/header/expiry, descript
 
 ## Bağımlılıklar ve kararlar
 
-P02-2a gerçek current/intent kabulü ve Accepted [ADR-0025](../../decisions/0025-isolated-storage-streaming.md)/[0026](../../decisions/0026-explicit-unverified-transfer-attempts.md) gerekir. Default verified_only ile açık explicit_attempt risk/onay kapıları ayrı korunur. Mevcut proxy/strict consumer çalışma dalında yerel uygulanmıştır. [Accepted ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) ilk yolu tekil SHA-256’lı dosya kümeleriyle sınırlar; tekrarlar prepare/approve/yeni start öncesi yerel ret olur. Direct provider hedef/expiry/header ve aynı hash/farklı adın olumlu uzak desteği P02-R2’de açık; bu ilk yol için destek iddia edilmez. Son olumlu live/native/CI kabulü henüz kapanmadı. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
+P02-2a gerçek current/intent kabulü ve Accepted [ADR-0025](../../decisions/0025-isolated-storage-streaming.md)/[0026](../../decisions/0026-explicit-unverified-transfer-attempts.md) gerekir. Default verified_only ile açık explicit_attempt risk/onay kapıları ayrı korunur. Proxy/strict consumer uygulanmış ve development'tadır. [Accepted ADR-0028](../../decisions/0028-platform-upload-content-cardinality.md) ilk yolu tekil SHA-256’lı dosya kümeleriyle sınırlar; tekrarlar prepare/approve/yeni start öncesi yerel ret olur. Direct provider hedef/expiry/header ve aynı hash/farklı adın olumlu uzak desteği P02-R2’de açık; bu ilk yol için destek iddia edilmez. Native, CI ve dar canlı metadata kabulü kapandı (Teslim kaydı); bu, yetki, fiyat veya uzak byte doğrulaması değildir. Depolama yanıtı kendi hedef allowlist'ini yetkilendiremez.
 
 ## Sözleşme ve uygulama sınırı
 
