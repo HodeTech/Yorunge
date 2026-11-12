@@ -25,7 +25,7 @@ pytestmark = pytest.mark.usefixtures("evidence_publication_context")
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN_PATH = runpy.run_path
-NAME = "p02-3-reference-download-1.json"
+NAME = "p02-3-reference-download-2.json"
 M5 = {"cpu": "Apple M5 Max", "disk_type": "internal SSD/APFS"}
 ACCEPTED = "requires an accepted run of twelve measurements"
 CURRENT = "download reference differs from complete current source bytes"
@@ -395,7 +395,7 @@ def test_a_reference_is_found_among_other_entries_by_its_exact_name(
     for name in ("a-neighbour.json", "z-neighbour.json"):
         with pytest.raises(ValueError, match="invalid download measurement fields"):
             checks["verify_download_reference"](tmp_path, name)
-    for name in ("p02-3-reference-download-2.json", NAME.replace(".json", "-x.json")):
+    for name in ("p02-3-reference-download-1.json", NAME.replace(".json", "-x.json")):
         with pytest.raises(ValueError, match="unknown download reference evidence name"):
             checks["verify_download_reference"](tmp_path, name)
 
