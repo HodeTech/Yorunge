@@ -180,8 +180,13 @@ def versions_list(server, certificates, workspace, *extra, output="json"):
 
 def test_list_page_two_asks_for_page_two_and_says_where_the_next_one_is(workspace, certificates):
     third = row(id="33333333-3333-4333-8333-333333333333", version_tag="v3")
+    fourth = row(id="44444444-4444-4444-8444-444444444444", version_tag="v4")
     table = routes(
-        **{BASE + "?page=2": body(listing([third], page=2, page_size=2, total=5, has_next=True))}
+        **{
+            BASE + "?page=2": body(
+                listing([third, fourth], page=2, page_size=2, total=5, has_next=True)
+            )
+        }
     )
     with TlsServer(certificates, table) as server:
         as_json = versions_list(server, certificates, workspace, "--page", "2")
@@ -193,7 +198,7 @@ def test_list_page_two_asks_for_page_two_and_says_where_the_next_one_is(workspac
     assert as_text.returncode == 0
     assert not as_text.stderr
     assert "sayfa 2, toplam 5 sürüm" in text
-    assert "v3" in text
+    assert "v3" in text and "v4" in text
     assert "Sonraki sayfa var (--page 3)." in text
     assert "provider" not in text.casefold()
 
