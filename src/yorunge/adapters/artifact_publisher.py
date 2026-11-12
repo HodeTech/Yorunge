@@ -226,7 +226,8 @@ class ArtifactPublisher:
         meanwhile. Everything after the write is the publisher's: verify, link, clean up, sync.
         ``written`` is the state of the stage (``fstat`` of ``descriptor``) at the moment the caller
         last verified its bytes: the stage is published only if it still is exactly that (identity,
-        size, mode, times), before and after the link. Without it the state is read here, which
+        size, mode, times) before the link, and (identity, size, mode, mtime) after it: the link
+        itself moves the change time. Without it the state is read here, which
         binds the link to the file as it is now and to nothing the caller knew of its bytes.
         """
         if not stage or "/" in stage or "\0" in stage or stage in (".", "..", self.location.name):

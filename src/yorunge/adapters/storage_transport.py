@@ -408,9 +408,7 @@ class TransferHttpxTransport(HttpxTransport):
             headers=request.wire_headers(),
             content=body,
             extensions={
-                "timeout": httpx.Timeout(
-                    min(PHASE_SECONDS, remaining), pool=min(POOL_SECONDS, remaining)
-                ).as_dict()
+                "timeout": httpx.Timeout(min(5.0, remaining), pool=min(1.0, remaining)).as_dict()
             },
         )
         # Keep HTTPX's prepared headers, but expose our public AsyncByteStream

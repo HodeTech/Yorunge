@@ -9,6 +9,7 @@ an editor, a second library) is not asked to take it. Two things must hold whate
 * a file that is not the sidecar this download wrote is never replaced or removed by it.
 """
 
+import errno
 import hashlib
 import os
 import stat
@@ -27,8 +28,9 @@ from tests.integration.test_download_sink import (
     target,
 )
 from tests.integration.test_download_sink import place as place
-from yorunge.adapters import download_files, download_sink
+from yorunge.adapters import artifact_publisher, download_files, download_sink
 from yorunge.adapters.download_sink import open_sink
+from yorunge.domain.errors import YorungeError
 
 FOREIGN = b"somebody else's file, not a record of this download"
 LONG_AGO = 1_000_000_000_000_000_000  # an mtime far from now: a later write cannot share it
@@ -233,3 +235,121 @@ def test_a_digest_mismatch_does_not_drop_a_sidecar_that_is_not_the_one_it_wrote(
             sink.publish("00" * 32)
     assert_untouched(sidecar, 0o600)
     assert not (place / NAMES.stage).exists()  # the stage that was written is dropped as before
+
+
+def test_a_sidecar_swapped_while_the_temporary_copy_is_written_is_not_replaced(place, monkeypatch):
+    """The check just before the rename: the foreign file appears after the first look, while the
+    temporary copy is made, written and synced."""
+    monkeypatch.setattr(download_sink, "CHECKPOINT_BYTES", 100_000)
+    planted, armed = [], []
+
+    def marker(name):
+        if name == "sidecar_tmp:synced" and armed and not planted:
+            planted.append(plant_foreign_sidecar(place))
+
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        monkeypatch.setattr(download_files, "_marker", marker)
+        armed.append(True)  # the body's first checkpoint, not the header one
+        sink.write(DATA[:50_000])
+        assert code_of(lambda: sink.write(DATA[50_000:150_000])) == "download_partial_unverified"
+    assert planted and planted[0].read_bytes() == FOREIGN
+    assert not (place / NAMES.sidecar_tmp).exists()  # the copy this call made is not left behind
+
+
+def test_a_foreign_sidecar_is_found_before_a_temporary_copy_is_made(place, monkeypatch):
+    monkeypatch.setattr(download_sink, "CHECKPOINT_BYTES", 100_000)
+    announced = []
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        sink.write(DATA[:50_000])
+        sidecar = plant_foreign_sidecar(place)
+        monkeypatch.setattr(download_files, "_marker", announced.append)
+        assert code_of(lambda: sink.write(DATA[50_000:150_000])) == "download_partial_unverified"
+    assert "sidecar_tmp:created" not in announced, announced  # nothing is made for a foreign name
+    assert_untouched(sidecar, 0o644)
+
+
+def test_the_header_checkpoint_never_replaces_a_sidecar_that_appeared_after_the_start(place):
+    """A fresh download holds no sidecar, so a file at its name is somebody else's."""
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        assert plan.action == "download" and plan.ask is None
+        sidecar = place / NAMES.sidecar
+        sidecar.write_bytes(FOREIGN)
+        os.chmod(sidecar, 0o600)
+        assert code_of(lambda: sink.begin(full(), "full")) == "download_partial_unverified"
+    assert_untouched(sidecar, 0o600)
+    assert not (place / NAMES.sidecar_tmp).exists()
+
+
+def test_discard_does_not_remove_a_sidecar_that_appeared_after_a_fresh_start(place):
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sidecar = place / NAMES.sidecar
+        sidecar.write_bytes(FOREIGN)
+        os.chmod(sidecar, 0o600)
+        assert code_of(sink.discard) == "download_partial_unverified"
+    assert_untouched(sidecar, 0o600)
+
+
+def test_after_a_discard_the_next_checkpoint_expects_no_sidecar(place):
+    stopped_after(place, 100_000)
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        assert plan.ask is not None
+        sink.discard()
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        sink.publish(None)
+    assert target(place).read_bytes() == DATA
+    assert left(place) == [target(place).name]
+
+
+def test_a_write_between_the_last_look_and_the_hand_over_to_the_publisher_is_found(
+    place, monkeypatch
+):
+    """Only the state the sink verified catches it: the publisher's own state, read when it starts,
+    would already include the write."""
+    original = artifact_publisher.ArtifactPublisher.publish_stage
+    hits = []
+
+    def late(self, *arguments, **keywords):
+        hits.append(True)
+        overwrite_in_place(place / NAMES.stage, b"\x00" * 8, at=10)
+        return original(self, *arguments, **keywords)
+
+    monkeypatch.setattr(artifact_publisher.ArtifactPublisher, "publish_stage", late)
+    with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+        sink.begin(full(), "full")
+        sink.write(DATA)
+        sink.complete(terminated=True)
+        age(place / NAMES.stage)
+        assert code_of(lambda: sink.publish(None)) == "download_write_failed"
+    assert hits
+    assert not target(place).exists()
+
+
+def test_a_sidecar_whose_directory_sync_failed_is_still_the_one_this_download_holds(
+    place, monkeypatch
+):
+    """The rename took place and the sync after it failed: the name leads to the new file, which
+    is the one the stop must remove (not a trace left behind with the stage gone)."""
+    armed, real = [], download_files.sync_directory
+
+    def failing_sync(descriptor):
+        if armed:
+            armed.clear()
+            raise OSError(errno.EIO, "directory sync")
+        return real(descriptor)
+
+    def marker(name):
+        if name == "sidecar:replaced":
+            armed.append(True)  # the next directory sync is the one after the rename
+
+    monkeypatch.setattr(download_files, "_marker", marker)
+    monkeypatch.setattr(download_files, "sync_directory", failing_sync)
+    with pytest.raises(YorungeError) as failed:  # leaving the block with the error: the stop runs
+        with open_sink(target(place), identity_key=IDENTITY) as (sink, plan):
+            sink.begin(full(), "full")
+    monkeypatch.undo()
+    assert failed.value.code == "download_write_failed"
+    assert left(place) == []  # no orphan sidecar, no stage, no lock object

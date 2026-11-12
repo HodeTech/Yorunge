@@ -414,3 +414,19 @@ def test_after_a_kill_the_streams_stage_is_republished_or_refused_and_the_target
     if published:
         assert target.stat().st_ino == inode
         assert target.read_bytes() == CONTENT
+
+
+def test_a_stage_published_with_the_state_the_caller_verified_must_still_be_that_state(place):
+    """``written=`` binds the link to what the caller last looked at, not to the state read when
+    the publisher starts: a write in between is found (``changed``) and nothing is published."""
+    pub, _ = publisher(place)
+    name, descriptor = staged(place)
+    try:
+        verified = os.fstat(descriptor)
+        os.pwrite(descriptor, b"\x00", 0)  # after the caller's look, before the publisher's
+        os.utime(name, ns=(1, verified.st_mtime_ns + 1), dir_fd=place.descriptor)
+        error = failure(lambda: pub.publish_stage(name, descriptor, len(CONTENT), written=verified))
+    finally:
+        os.close(descriptor)
+    assert isinstance(error, YorungeError) and error.code == CODES.changed
+    assert not (place.directory / place.name).exists()  # nothing was linked

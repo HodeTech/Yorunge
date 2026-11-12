@@ -187,16 +187,24 @@ def require_standing(directory: int, name: str, expected: Entry | None) -> None:
 
 
 def replace_atomically(
-    directory: int, tmp: str, final: str, content: bytes, *, label: str, expected: Entry | None
-) -> Entry:
+    directory: int,
+    tmp: str,
+    final: str,
+    content: bytes,
+    *,
+    label: str,
+    expected: Entry | None,
+    on_replaced: Callable[[Entry], None],
+) -> None:
     """Write ``content`` as ``final`` so that a reader sees the old file or the whole new one.
 
     ``expected`` is what the name leads to now, as this download left it (``None``: nothing); a
     name that leads to anything else is not replaced (``download_partial_unverified``), before the
     temporary file is made and again just before the rename. A new temporary file (``O_EXCL``,
     0600), written and synced; then renamed over ``final``; then the directory is synced. A
-    temporary file in the way is a foreign file: the write fails. The identity of the file that now
-    stands at ``final`` is returned.
+    temporary file in the way is a foreign file: the write fails. ``on_replaced`` is told the
+    identity of the file that now stands at ``final``, the moment it does (before the directory is
+    synced: a failing sync must not leave the caller holding the identity of the file it replaced).
     """
     require_standing(directory, final, expected)
     descriptor = create_exclusive(directory, tmp, label=f"{label}_tmp")
@@ -221,9 +229,9 @@ def replace_atomically(
         raise
     close_descriptor(descriptor, code=CLOSE_CODE)
     os.replace(tmp, final, src_dir_fd=directory, dst_dir_fd=directory)
+    on_replaced(made)
     step(f"{label}:replaced")
     sync_directory(directory)
-    return made
 
 
 @dataclass(slots=True)

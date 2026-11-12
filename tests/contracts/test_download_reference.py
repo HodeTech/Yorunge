@@ -221,6 +221,15 @@ def test_the_names_of_the_reference_are_the_names_of_the_code():
     assert "herhangi bir harf büyüklüğünde" in text
 
 
+def test_the_reference_does_not_describe_a_borrowed_process_umask():
+    """The sink never touches the process umask (it is every thread's): the reference says so and
+    does not describe the borrowing that was removed."""
+    text = REFERENCE.read_text(encoding="utf-8")
+    assert "hiçbir zaman değiştirilmez" in text
+    for borrowed in ("`0077` yapılır", "umask’ı `0077` yapılır", "os.umask(0o077)"):
+        assert borrowed not in text, borrowed
+
+
 # --- the closed order of the local protocol -------------------------------------------------------
 
 STEPS = [

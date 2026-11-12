@@ -429,7 +429,6 @@ class DownloadSink:
         self.written = self.committed = self.resumed_from = 0
         self._etag = self._total = self._created_at = None
         self._kept_sidecar = False
-        self._sidecar_held = None
         self._whole_stage = False
 
     # --- step 9: the body -------------------------------------------------------------------------
@@ -589,8 +588,7 @@ class DownloadSink:
         except OSError:
             raise _write_failed() from None
         step("publish:synced")
-        if signature(os.fstat(stage)) != signature(settled):
-            raise _write_failed()  # somebody wrote to the stage while it was read back and synced
+        self._lock_held()  # the read-back and the sync took time: still the one writer
         DownloadPublisher(self).publish_stage(
             self.names.stage, stage, self.written, written=settled
         )
@@ -628,6 +626,9 @@ class DownloadSink:
         return before
 
     # --- shared -----------------------------------------------------------------------------------
+
+    def _hold_sidecar(self, entry: Entry) -> None:
+        self._sidecar_held = entry
 
     def _holds(self, entry: Entry) -> bool:
         """``entry`` is the sidecar file this download left (or kept at the start)."""
@@ -695,13 +696,14 @@ class DownloadSink:
             }
         )
         try:
-            self._sidecar_held = replace_atomically(
+            replace_atomically(
                 self.directory.descriptor,
                 self.names.sidecar_tmp,
                 self.names.sidecar,
                 record.encoded(),
                 label="sidecar",
                 expected=self._sidecar_held,
+                on_replaced=self._hold_sidecar,
             )
         except OSError:
             raise _write_failed() from None
