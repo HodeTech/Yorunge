@@ -38,7 +38,7 @@ def killed_after(lifecycle, step, *arguments):
         assert committed.wait(30), "the child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode != 0
+        assert process.exitcode == -signal.SIGKILL
         assert not process.is_alive()
     finally:
         if process.is_alive():

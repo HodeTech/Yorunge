@@ -385,8 +385,10 @@ def test_cancelled_real_effect_closes_resources_without_receipt_or_retry(journal
 
         async def cancel(client):
             task = asyncio.create_task(call.execute(client, arm))
-            while not server.requests:
-                await asyncio.sleep(0.005)
+            async with asyncio.timeout(5):
+                while not server.requests:
+                    assert not task.done(), "execute() ended before it reached the wire"
+                    await asyncio.sleep(0.005)
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task

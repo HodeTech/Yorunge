@@ -34,22 +34,24 @@ def no_signal_policy_leak(foreground_test_job):
 
 
 @pytest.fixture(autouse=True)
-def offline_home(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("EVREN_PLATFORM_API_KEY", SECRET)
-    monkeypatch.setenv("EVREN_LLM_API_KEY", SECRET)
-
+def offline_home(tmp_path):
+    # A private MonkeyPatch: a test's own ``monkeypatch.undo()`` must not lift the offline guard.
     def denied(*args, **kwargs):
         raise AssertionError("network is forbidden in offline tests")
 
-    monkeypatch.setattr(socket.socket, "connect", denied)
-    monkeypatch.setattr(socket.socket, "connect_ex", denied)
-    monkeypatch.setattr(socket, "getaddrinfo", denied)
-    for name in ("gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo"):
-        monkeypatch.setattr(socket, name, denied)
-    monkeypatch.setattr(socket.socket, "sendto", denied)
-    if hasattr(socket.socket, "sendmsg"):
-        monkeypatch.setattr(socket.socket, "sendmsg", denied)
+    with pytest.MonkeyPatch.context() as guard:
+        guard.setenv("HOME", str(tmp_path))
+        guard.setenv("EVREN_PLATFORM_API_KEY", SECRET)
+        guard.setenv("EVREN_LLM_API_KEY", SECRET)
+        guard.setattr(socket.socket, "connect", denied)
+        guard.setattr(socket.socket, "connect_ex", denied)
+        guard.setattr(socket, "getaddrinfo", denied)
+        for name in ("gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo"):
+            guard.setattr(socket, name, denied)
+        guard.setattr(socket.socket, "sendto", denied)
+        if hasattr(socket.socket, "sendmsg"):
+            guard.setattr(socket.socket, "sendmsg", denied)
+        yield
 
 
 @pytest.fixture

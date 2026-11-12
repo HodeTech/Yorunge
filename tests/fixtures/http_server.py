@@ -126,7 +126,9 @@ class TlsServer:
         self.certificates, self.routes = certificates, routes
         self.requests: list[RequestRecord] = []
         self.disconnected = threading.Event()
+        self.route_errors: list[BaseException] = []
         self._lock = threading.Lock()
+        self._recorded = threading.Condition(self._lock)
         self._counts: dict[str, int] = {}
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -144,13 +146,22 @@ class TlsServer:
     ) -> LoopbackTransport:
         return LoopbackTransport(self.port, context or self.client_context(), hostname)
 
+    def wait_for_requests(self, count: int, timeout: float) -> bool:
+        with self._recorded:
+            return self._recorded.wait_for(lambda: len(self.requests) >= count, timeout)
+
     def _reply(self, record: RequestRecord) -> Reply:
         with self._lock:
             self.requests.append(record)
+            self._recorded.notify_all()
             count = self._counts.get(record.path, 0) + 1
             self._counts[record.path] = count
         route = self.routes.get(record.path, Reply(status=404, body=b""))
-        return route(record, count) if callable(route) else route
+        try:
+            return route(record, count) if callable(route) else route
+        except BaseException as error:  # an assertion in a provider fixture is the test's failure
+            self.route_errors.append(error)
+            raise
 
     def __enter__(self) -> TlsServer:
         owner = self
@@ -281,6 +292,8 @@ class TlsServer:
         self._server.server_close()
         self._thread.join(timeout=2)
         assert not self._thread.is_alive(), "TLS fixture did not stop"
+        if self.route_errors and not any(exc):
+            raise AssertionError("a route of the fixture raised") from self.route_errors[0]
 
 
 @contextmanager

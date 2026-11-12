@@ -155,14 +155,14 @@ def test_a_deadline_that_strikes_while_the_held_prefix_is_hashed_stops_the_read(
     def slow(descriptor, count):
         if count > 4200:  # the blocks of the prefix, not the sidecar
             reads.append(count)
-            time.sleep(0.2)
+            time.sleep(0.4)  # the first read alone outlasts the 0.25 s deadline
         return real(descriptor, count)
 
     with monkeypatch.context() as patch:
         patch.setattr(download_sink.os, "read", slow)
         requests = len(world.server.requests)
         assert code_of(lambda: world.run(seconds=0.25)) == "transport_timeout"
-    assert len(reads) < 3  # the guard ended the hashing; reading the whole prefix is no answer
+    assert len(reads) == 1  # one block was read, the guard struck before the second
     assert len(world.server.requests) == requests  # and nothing was asked of the network
     assert world.names() == sorted([world.stage().name, world.sidecar().name])
     # untouched: the next call continues from what was held

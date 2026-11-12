@@ -21,7 +21,7 @@ from tests.integration.test_upload_continuation_public import loopback_only as l
 from tests.integration.test_upload_continuation_public import prepared_input as prepared_input
 from tests.integration.test_upload_continuation_public import public_inputs as public_inputs
 from yorunge import api
-from yorunge.domain.errors import OperationError
+from yorunge.domain.errors import OperationError, YorungeError
 
 
 def test_a_second_approval_is_refused_before_the_provider_is_asked(
@@ -165,7 +165,7 @@ def test_the_journal_is_in_the_closed_order_with_the_successor_named(monkeypatch
         "merge_chain",
         lambda journals, manifest: (_ for _ in ()).throw(ValueError("x")),
     )
-    with pytest.raises(OperationError if False else Exception) as raised:
+    with pytest.raises(YorungeError) as raised:
         upload_chain.source_journal(source)
     assert raised.value.code == "state_invalid"
 

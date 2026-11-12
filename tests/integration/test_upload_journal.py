@@ -653,7 +653,7 @@ def test_real_kill_after_admission_before_id_output_is_recoverable(journal):
         assert committed.wait(10), "child did not commit"
         process.kill()
         process.join(10)
-        assert process.exitcode != 0
+        assert process.exitcode == -9  # SIGKILL
         assert not process.is_alive()
         with open_store(journal.root) as store:
             repo = StateUploads(store, clock=journal.clock)

@@ -702,7 +702,7 @@ def test_one_fresh_check_serves_twenty_five_seconds_of_stages(
 
 def test_every_permit_is_armed_within_the_end_of_the_run(prepared_input, certificates, monkeypatch):
     data, provider = three_files(prepared_input)
-    seen, ends = [], []
+    seen, ends, budgets = [], [], []
     original = StateUploads.arm
 
     def arm(repository, *arguments, **keywords):
@@ -712,9 +712,10 @@ def test_every_permit_is_armed_within_the_end_of_the_run(prepared_input, certifi
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)  # the original upload armed its own permits
         monkeypatch.setattr(StateUploads, "arm", arm)
-        start(data, server, report.plan_id, window=300, ends=ends)
+        start(data, server, report.plan_id, window=300, ends=ends, budgets=budgets)
     assert len(ends) == 1
     assert seen == ends * 3  # presign, put and confirm of the one file
+    assert budgets[0].end == ends[0]  # a run shorter than fifteen minutes is held to its own end
 
 
 def test_a_run_given_more_than_fifteen_minutes_is_held_to_fifteen(prepared_input, certificates):
@@ -725,8 +726,13 @@ def test_a_run_given_more_than_fifteen_minutes_is_held_to_fifteen(prepared_input
 
     with TlsServer(certificates, provider.routes()) as server:
         report = planned(data, server, provider)
-        answer = start(data, server, report.plan_id, window=1000, algorithm=nothing)
+        budgets, before = [], time.monotonic()
+        answer = start(
+            data, server, report.plan_id, window=1000, algorithm=nothing, budgets=budgets
+        )
+        after = time.monotonic()
     assert answer == "the budget was built"
+    assert before + 900 <= budgets[0].end <= after + 900  # exactly fifteen minutes from its making
 
 
 def test_a_lease_close_to_its_end_is_renewed_before_a_slow_look_at_the_dataset(
