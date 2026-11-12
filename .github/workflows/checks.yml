@@ -162,17 +162,17 @@ jobs:
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-2.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-3.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-2.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-3.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-2.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-3.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -182,7 +182,7 @@ jobs:
         id: upload-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-2.json > dist/upload-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-3.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
         id: upload-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
@@ -192,7 +192,7 @@ jobs:
         id: download-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-2.json > dist/download-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-3.json > dist/download-reference.txt
       - name: Enforce installed native download budgets
         id: download-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}

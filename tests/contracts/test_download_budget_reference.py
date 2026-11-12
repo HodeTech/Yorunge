@@ -25,7 +25,7 @@ pytestmark = pytest.mark.usefixtures("evidence_publication_context")
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN_PATH = runpy.run_path
-NAME = "p02-3-reference-download-2.json"
+NAME = "p02-3-reference-download-3.json"
 M5 = {"cpu": "Apple M5 Max", "disk_type": "internal SSD/APFS"}
 ACCEPTED = "requires an accepted run of twelve measurements"
 CURRENT = "download reference differs from complete current source bytes"
