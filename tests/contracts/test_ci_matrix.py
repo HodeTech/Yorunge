@@ -127,9 +127,10 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
     ]
     assert steps["tests"]["env"] == {"DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}"}
     test_lines = steps["tests"]["run"].splitlines()
-    assert (
-        "  .venv/bin/pytest -o faulthandler_timeout=60" in test_lines
-    )  # the full suite is the default
+    # The full suite is the default; every worker takes whole files, one worker per CPU.
+    full = "  .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60"
+    assert full in test_lines
+    assert full + " $selection" in test_lines
     assert test_lines[0] == 'if [ "$DOCS_ONLY" = "true" ]; then'
     assert test_lines[-1] == "fi"
     assert steps["build"]["run"].splitlines() == [
@@ -236,8 +237,12 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         ),
     ):
         step = steps[step_id]
+        # The verifiers read archived references (documents) and always run; measurements do not.
+        verifier = step_id.endswith("-reference") or step_id in ("jobs-budgets", "dataset-budgets")
         assert step["if"] == (
-            "${{ success() && env.RUN_BUDGETS == 'true' "
+            "${{ success() && env.RUN_BUDGETS == 'true' }}"
+            if verifier
+            else "${{ success() && env.RUN_BUDGETS == 'true' "
             "&& steps.change-set.outputs.docs_only != 'true' }}"
         )
         assert step["run"].strip() == command
@@ -501,7 +506,10 @@ def test_actual_gate_rejects_empty_or_malformed_needs(workflow, tmp_path, conten
 
 def environment_report_code(workflow):
     step = steps_by_id(workflow["jobs"]["linux311"])["environment-report"]
-    assert step["env"] == {"CI_JOB": "${{ github.job }}"}
+    assert step["env"] == {
+        "CI_JOB": "${{ github.job }}",
+        "DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}",
+    }
     lines = step["run"].splitlines()
     assert lines[0] == ".venv/bin/python - <<'PY'"
     assert lines[-1] == "PY"
@@ -519,6 +527,7 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     for key, value in {
         "PYTHON_VERSION": f"{sys.version_info.major}.{sys.version_info.minor}",
         "RUN_BUDGETS": budgets,
+        "DOCS_ONLY": "false",
         "GITHUB_SHA": "b" * 40,
         "CI_JOB": "linux311",
         "RUNNER_LABEL": "ubuntu-24.04",
@@ -586,6 +595,7 @@ def test_actual_environment_report_rejects_the_wrong_python(workflow, tmp_path, 
     code = environment_report_code(workflow)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PYTHON_VERSION", "0.0")
+    monkeypatch.setenv("DOCS_ONLY", "false")
     with pytest.raises(SystemExit, match="does not match the required version"):
         exec(code, {})
     assert not (tmp_path / "dist/ci-environment.json").exists()

@@ -7,6 +7,7 @@ script itself against hostile paths, odd git states and the repository's own doc
 
 import ast
 import importlib.util
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -70,6 +71,11 @@ def test_documents_are_documents(path):
         "docs-extra/a.md",
         ".agentsx/a.md",
         "src/docs/a.md",  # a nested ``docs`` is source
+        "docs/research/probes/x/pilot.py",  # a test runs it (hash pinned): code, not documentation
+        "docs/a.py",
+        "docs/a.PY",
+        "docs/run.sh",
+        ".agents/skills/x/run.py",
         "tests/docs/a.md",
         "ROOT/README.md",
     ],
@@ -87,6 +93,9 @@ def test_everything_else_is_not_a_document(path):
         "docs/a.md ",
         "docs/a.md\n",
         "docs/\0a.md",
+        "docs/a\\b.md",  # a backslash inside a path
+        "docs/a\nb.md",  # a newline inside a path
+        "docs/a\rb.md",
         "docs\\a.md",
         "/docs/a.md",
         "docs/../src/a.py",
@@ -114,7 +123,7 @@ def test_a_change_set_is_documentation_only_when_every_path_is_and_it_is_not_emp
     assert ci_changes.docs_only(["docs/a.md", "docs/../src/x.py"]) is False
 
 
-# --- a real merge checkout ---------------------------------------------------------------
+# --- a real merge checkout --------------------------------------------------------------------
 
 
 def git(repo, *args):
@@ -253,7 +262,7 @@ def test_a_directory_that_is_not_a_repository_is_never_documentation(tmp_path):
     assert ci_changes.classify(PR, tmp_path / "missing") is False
 
 
-def test_the_command_prints_exactly_true_or_false(tmp_path, monkeypatch):
+def test_the_command_prints_exactly_true_or_false(tmp_path):
     repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
 
     def run(environment):
@@ -275,7 +284,7 @@ def test_the_command_prints_exactly_true_or_false(tmp_path, monkeypatch):
         assert result.returncode == 2 and result.stdout == ""
 
 
-# --- which tests the lane runs -----------------------------------------------------------
+# --- which tests the lane runs ----------------------------------------------------------------
 
 
 def tree(tmp_path, files):
@@ -294,7 +303,6 @@ def test_the_lane_selects_the_tests_that_mention_a_document(tmp_path):
             "tests/unit/test_d.py": "# docs/reference/x.md is only named in a comment\nx = 1\n",
             "tests/unit/test_e.py": "text = path.read_text()  # changelog entry\nCHANGELOG = 1\n",
             "tests/contracts/__pycache__/test_f.py": "docs/\n",
-            "tests/contracts/__init__.py": "docs/\n",
         },
     )
     assert ci_changes.docs_tests(root) == [
@@ -367,3 +375,118 @@ def test_every_test_that_reads_a_document_in_this_repository_is_in_the_lane():
         "tests/contracts/test_agent_guides.py",
     ):
         assert name in selection
+
+
+# --- merge shapes git can produce that the classifier must not trust --------------------------
+
+
+def test_an_octopus_merge_is_never_classified_as_documentation(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "development")
+    write(repo, "docs/a.md")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "base")
+    for name in ("one", "two"):
+        git(repo, "switch", "-q", "-c", name, "development")
+        write(repo, f"docs/{name}.md")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", name)
+        git(repo, "switch", "-q", "development")
+    git(repo, "merge", "-q", "--no-ff", "-m", "octopus", "one", "two")
+    parents = git(repo, "rev-list", "--parents", "-n", "1", "HEAD").split()
+    assert len(parents) == 4  # the commit and three parents
+    assert ci_changes.classify(PR, repo) is False
+
+
+def test_a_submodule_change_is_seen_even_when_the_diff_is_told_to_ignore_submodules(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "development")
+    write(repo, "docs/a.md")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "base")
+    git(repo, "switch", "-q", "-c", "feature")
+    inner = repo / "src" / "sub"  # a repository inside the work tree is committed as a gitlink
+    inner.mkdir(parents=True)
+    git(inner, "init", "-q")
+    write(inner, "f")
+    git(inner, "add", "-A")
+    git(inner, "commit", "-q", "-m", "inner")
+    git(repo, "add", "src/sub")
+    git(repo, "commit", "-q", "-m", "feature")
+    git(repo, "switch", "-q", "development")
+    shutil.rmtree(inner)  # development must not pick the nested repository up as well
+    write(repo, "docs/later.md")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "moved")
+    git(repo, "merge", "-q", "--no-ff", "-m", "merge", "feature")
+    git(repo, "config", "diff.ignoreSubmodules", "all")
+    (repo / ".gitmodules").write_text('[submodule "src/sub"]\n\tpath = src/sub\n\tignore = all\n')
+    assert git(repo, "diff", "--name-only", "HEAD^1", "HEAD").strip() == ""  # plain git hides it
+    assert ci_changes.changed_paths(repo) == ["src/sub"]
+    assert ci_changes.classify(PR, repo) is False
+
+
+# --- the selection: every form of reference, every kind of reader -----------------------------
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "open('docs/reference/x.md')",
+        "p = ROOT / 'docs'",
+        'p = ROOT / "docs"',
+        "text = 'README'",
+        "text = 'CHANGELOG'",
+        "text = 'CONTRIBUTING'",
+        "text = 'AGENTS'",
+        "text = '.agents'",
+        "text = 'SECURITY'",
+        "text = 'CODE_OF_CONDUCT'",
+        "name = 'guide.md'",
+    ],
+)
+def test_every_form_of_reference_selects_the_test(tmp_path, content):
+    root = tree(
+        tmp_path,
+        {"tests/contracts/test_a.py": content + "\n", "tests/contracts/test_b.py": "x = 1\n"},
+    )
+    assert ci_changes.docs_tests(root) == ["tests/contracts/test_a.py"]
+
+
+def test_a_file_name_the_shell_would_split_runs_everything(tmp_path):
+    root = tree(
+        tmp_path,
+        {"tests/contracts/test_a b.py": "docs/\n", "tests/contracts/test_c.py": "docs/\n"},
+    )
+    assert ci_changes.docs_tests(root) == ["tests"]
+
+
+def test_a_package_initialiser_that_reads_a_document_runs_everything(tmp_path):
+    root = tree(
+        tmp_path,
+        {
+            "tests/contracts/test_a.py": "docs/\n",
+            "tests/contracts/__init__.py": "TEXT = open('docs/a.md').read()\n",
+        },
+    )
+    assert ci_changes.docs_tests(root) == ["tests"]
+
+
+def test_a_test_that_runs_a_script_that_reads_documents_is_selected(tmp_path):
+    root = tree(
+        tmp_path,
+        {
+            "scripts/check-things.py": "text = open('docs/a.md').read()\n",
+            "scripts/plain_tool.py": "x = 1\n",
+            "tests/contracts/test_runs_reader.py": "run('scripts/check-things.py')\n",
+            "tests/contracts/test_runs_reader_module.py": "import check_things\n",
+            "tests/contracts/test_runs_plain.py": "run('scripts/plain_tool.py')\n",
+            "tests/contracts/test_unrelated.py": "x = 1\n",
+        },
+    )
+    assert ci_changes.docs_tests(root) == [
+        "tests/contracts/test_runs_reader.py",
+        "tests/contracts/test_runs_reader_module.py",
+    ]

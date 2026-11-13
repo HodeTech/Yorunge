@@ -15,6 +15,7 @@ import pytest
 
 from tests.contracts.test_ci_matrix import (
     CELLS,
+    environment_report_code,
     invoke_gate,
     steps_by_id,
     successful_needs,
@@ -25,6 +26,15 @@ ROOT = Path(__file__).resolve().parents[2]
 CLASSIFIER = (ROOT / "scripts" / "ci_changes.py").read_text(encoding="utf-8")
 GUARD = "steps.change-set.outputs.docs_only != 'true'"
 READER = "text = open('docs/a.md').read()\n"
+PYTEST_FLAGS = [
+    "-n",
+    "auto",
+    "--dist",
+    "loadfile",
+    "--durations=25",
+    "-o",
+    "faulthandler_timeout=60",
+]
 
 
 # --- structure --------------------------------------------------------------------------------
@@ -54,16 +64,38 @@ def test_the_classification_is_the_second_step_and_never_conditional(workflow):
     assert 'git rev-parse -q --verify "HEAD^2"' in run
 
 
-def test_every_budget_step_is_skipped_for_a_documentation_change_set(workflow):
+REFERENCE_VERIFIERS = (
+    "startup-reference",
+    "jobs-budgets",
+    "dataset-budgets",
+    "upload-reference",
+    "download-reference",
+)
+NATIVE_MEASUREMENTS = (
+    "startup-baseline",
+    "startup-budgets",
+    "raw-stream-budgets",
+    "upload-budgets",
+    "download-budgets",
+    "startup-diagnostics",
+)
+
+
+def test_every_code_bound_measurement_is_skipped_for_a_documentation_change_set(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
-    guarded = [
-        step_id
-        for step_id, step in steps.items()
-        if "RUN_BUDGETS" in step.get("if", "") and step_id != "startup-evidence-guard"
-    ]
-    assert len(guarded) == 11, guarded
-    for step_id in guarded:
-        assert GUARD in steps[step_id]["if"], step_id
+    guarded = {step_id for step_id, step in steps.items() if GUARD in step.get("if", "")}
+    assert guarded == set(NATIVE_MEASUREMENTS)
+    for step_id in NATIVE_MEASUREMENTS:
+        assert "RUN_BUDGETS == 'true'" in steps[step_id]["if"], step_id
+
+
+def test_the_reference_verifiers_read_archived_documents_so_they_always_run(workflow):
+    # A documentation change can replace a reference archive or its manifest entry: the catalogue
+    # check alone would pass, the verifier would not. They only verify, and run on Linux 3.11 only.
+    steps = steps_by_id(workflow["jobs"]["linux311"])
+    for step_id in REFERENCE_VERIFIERS:
+        assert steps[step_id]["if"] == "${{ success() && env.RUN_BUDGETS == 'true' }}", step_id
+        assert "verify-" in steps[step_id]["run"] and "-reference" in steps[step_id]["run"]
     # The guard of a completed measurement only runs after the measurement itself ran.
     assert "steps.startup-budgets.outcome == 'success'" in steps["startup-evidence-guard"]["if"]
 
@@ -324,17 +356,35 @@ def selected_arguments(workflow, repo, tmp_path, docs_only):
 def test_the_documentation_lane_runs_only_the_tests_that_read_documents(workflow, tmp_path):
     repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
     lines = selected_arguments(workflow, repo, tmp_path, "true")
-    assert "-o" in lines and "faulthandler_timeout=60" in lines
-    assert "tests/contracts/test_reader.py" in lines
-    assert "tests/contracts/test_plain.py" not in lines
-    assert "tests" not in lines  # a concrete selection, not the whole tree
+    arguments = lines[lines.index("-n") :]  # what follows the echo of the selection
+    assert arguments[:7] == PYTEST_FLAGS
+    assert arguments[7:] == ["tests/contracts/test_reader.py"]  # a concrete selection, not the tree
 
 
 @pytest.mark.parametrize("docs_only", ["false", "", "maybe"])
 def test_anything_but_a_documentation_claim_runs_the_whole_suite(workflow, tmp_path, docs_only):
     repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
     lines = selected_arguments(workflow, repo, tmp_path, docs_only)
-    assert lines == ["-o", "faulthandler_timeout=60"]  # no selection: pytest runs ``testpaths``
+    assert lines == PYTEST_FLAGS  # no selection: pytest runs ``testpaths``
+
+
+def test_a_selection_that_fails_or_is_empty_runs_everything(workflow, tmp_path):
+    # The classifier says "true" for the change set but cannot produce a selection.
+    classifier = (
+        "import sys\nif sys.argv[1] == 'classify':\n    print('true')\nelse:\n    sys.exit(3)\n"
+    )
+    repo = merge_checkout(
+        tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"), classifier=classifier
+    )
+    lines = selected_arguments(workflow, repo, tmp_path, "true")
+    assert lines[-1] == "tests"
+    empty = classifier.replace("sys.exit(3)", "pass")
+    other = tmp_path / "second"
+    other.mkdir()
+    repo = merge_checkout(
+        other, lambda repo: write(repo, "docs/a.md", "changed\n"), classifier=empty
+    )
+    assert selected_arguments(workflow, repo, other, "true")[-1] == "tests"
 
 
 def test_the_lane_runs_everything_when_no_test_reads_a_document(workflow, tmp_path):
@@ -357,3 +407,57 @@ def test_the_classifier_file_the_workflow_runs_is_the_one_in_this_repository():
         text=True,
     )
     assert result.returncode == 0
+
+
+# --- the evidence record says what the cell really ran ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("docs_only", "budgets", "expected"),
+    [
+        (
+            "true",
+            "true",
+            "documentation_lane",
+        ),  # Linux 3.11 keeps RUN_BUDGETS but ran no measurement
+        ("true", "false", "documentation_lane"),
+        ("false", "false", "compatibility_only"),
+    ],
+)
+def test_the_environment_report_does_not_claim_budgets_the_lane_did_not_run(
+    workflow, tmp_path, monkeypatch, docs_only, budgets, expected
+):
+    code = environment_report_code(workflow)
+    monkeypatch.chdir(tmp_path)
+    for key, value in {
+        "PYTHON_VERSION": f"{sys.version_info.major}.{sys.version_info.minor}",
+        "RUN_BUDGETS": budgets,
+        "DOCS_ONLY": docs_only,
+        "GITHUB_SHA": "b" * 40,
+        "CI_JOB": "linux311",
+        "RUNNER_LABEL": "ubuntu-24.04",
+        "RUNNER_OS": "Linux",
+        "RUNNER_ARCH": "X64",
+    }.items():
+        monkeypatch.setenv(key, value)
+    original = subprocess.check_output
+
+    def check_output(command, **kwargs):
+        if tuple(command) == ("git", "rev-parse", "HEAD"):
+            return "a" * 40 + "\n"
+        if tuple(command) == (".ci-tools/bin/uv", "--version"):
+            return "uv 0.11.2\n"
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, "check_output", check_output)
+    exec(code, {})
+    report = json.loads((tmp_path / "dist/ci-environment.json").read_text(encoding="utf-8"))
+    scopes = {key: value for key, value in report.items() if key.endswith("_budget_scope")}
+    assert set(scopes) == {
+        "startup_budget_scope",
+        "jobs_budget_scope",
+        "raw_stream_budget_scope",
+        "upload_budget_scope",
+        "download_budget_scope",
+    }
+    assert set(scopes.values()) == {expected}

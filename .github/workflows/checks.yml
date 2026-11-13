@@ -82,6 +82,7 @@ jobs:
         id: environment-report
         env:
           CI_JOB: ${{ github.job }}
+          DOCS_ONLY: ${{ steps.change-set.outputs.docs_only }}
         run: |
           .venv/bin/python - <<'PY'
           import importlib.metadata
@@ -96,6 +97,14 @@ jobs:
           expected = tuple(map(int, os.environ["PYTHON_VERSION"].split(".")))
           if sys.version_info[:2] != expected:
               raise SystemExit("compatibility interpreter does not match the required version")
+          docs_lane = os.environ["DOCS_ONLY"] == "true"
+          budgeted = os.environ["RUN_BUDGETS"] == "true" and not docs_lane
+
+          def scope(budgeted_scope):
+              if docs_lane:
+                  return "documentation_lane"
+              return budgeted_scope if budgeted else "compatibility_only"
+
           cpu = platform.processor() or "unknown"
           if sys.platform == "linux":
               for line in Path("/proc/cpuinfo").read_text().splitlines():
@@ -139,16 +148,11 @@ jobs:
               "cpu_affinity": sorted(os.sched_getaffinity(0))
               if hasattr(os, "sched_getaffinity") else None,
               "disk_type": "unknown",
-              "startup_budget_scope": "source_bound_m5_and_linux_diagnostic"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "jobs_budget_scope": "reference_receipt_macos_m5max_py311"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "raw_stream_budget_scope": "reference_linux311"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "upload_budget_scope": "native_linux311_and_source_bound_m5"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "download_budget_scope": "native_linux311_and_source_bound_m5"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "startup_budget_scope": scope("source_bound_m5_and_linux_diagnostic"),
+              "jobs_budget_scope": scope("reference_receipt_macos_m5max_py311"),
+              "raw_stream_budget_scope": scope("reference_linux311"),
+              "upload_budget_scope": scope("native_linux311_and_source_bound_m5"),
+              "download_budget_scope": scope("native_linux311_and_source_bound_m5"),
           }
           Path("dist").mkdir(exist_ok=True)
           encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
@@ -172,12 +176,15 @@ jobs:
           if [ "$DOCS_ONLY" = "true" ]; then
             # Documentation readers only (reference contracts, guides, evidence): the full suite
             # depends on code, tests, scripts, the workflow and the lock file, none of which changed.
-            selection="$(python3 "$RUNNER_TEMP/ci_changes.py" docs-tests .)"
+            selection="$(python3 "$RUNNER_TEMP/ci_changes.py" docs-tests . || echo tests)"
+            [ -n "$selection" ] || selection=tests
             echo "Documentation lane tests:" && echo "$selection"
             # shellcheck disable=SC2086 # the script only selects plain names; splitting is intended
-            .venv/bin/pytest -o faulthandler_timeout=60 $selection
+            .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60 $selection
           else
-            .venv/bin/pytest -o faulthandler_timeout=60
+            # One worker per CPU, whole files per worker: the suite is flat (no file is more than
+            # 6 % of it) and its module fixtures stay per file. The slowest tests are listed.
+            .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60
           fi
       - name: Build and verify both distributions in clean environments
         id: build
@@ -192,17 +199,17 @@ jobs:
           .venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --report dist/startup.json --receipt dist/startup-diagnostic.json
       - name: Verify source-bound reference startup budgets
         id: startup-reference
-        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-7.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
-        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-7.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
-        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-7.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
@@ -212,7 +219,7 @@ jobs:
           .venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
       - name: Verify source-bound reference upload budgets
         id: upload-reference
-        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-7.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
@@ -222,7 +229,7 @@ jobs:
           .venv/bin/python scripts/upload_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check --output dist/upload.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - name: Verify source-bound reference download budgets
         id: download-reference
-        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
           .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-7.json > dist/download-reference.txt
       - name: Enforce installed native download budgets

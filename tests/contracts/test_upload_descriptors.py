@@ -545,7 +545,8 @@ def test_put_consumed_key_exemption_does_not_reach_discarded_metadata(field):
     "field,value",
     [
         ("id", "bad"),
-        ("dataset_id", str(uuid4())),
+        # Parameter values are fixed: pytest-xdist needs the same test ids in every worker.
+        ("dataset_id", "a6b743f9-fa7a-40b6-92a1-f2516df5bfbf"),
         ("original_filename", "../x"),
         ("file_size_bytes", True),
         ("file_size_bytes", 500_000_001),
