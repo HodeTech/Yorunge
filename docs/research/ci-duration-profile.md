@@ -93,22 +93,22 @@ Bu PR’ın ilk CI koşusu ([43348860041](https://github.com/HodeTech/Yorunge/ac
 
 Tüm koşu **40 dakikada** bitti (önceki üç koşu 66–77 dk). Üç hücrede de paralele özgü bir düşüş görülmedi (bilinen P02-2 flake’i dahil hiçbir test düşmedi); bu tek koşudur ve bir güvence değil bir gözlemdir. Beş referans doğrulayıcı (`-8`) Linux 3.11’de geçti (her biri 59–63 s). Kritik yol artık Linux 3.11: testler 22,5 dk, ardından seri ölçüm adımları ~14,6 dk (dağıtım doğrulaması 76 s, beş doğrulayıcı ~303 s, raw stream 8 s, native upload 416 s, native indirme 73 s) işin yaklaşık %37’sini tutar; macOS’ta yalnız 2 işçi çalıştığı için kazanç en küçüktür. Sonraki iyileştirme adayları “yapılmayan iyileştirmeler” tablosundadır; **belge-only hat bu koşuda sınanmadı** (hedef dalda sınıflandırıcı yoktu): ilk gerçek ölçüm ve merge kutusu doğrulaması bu PR birleştikten sonraki ilk belge-only PR’dadır.
 
-## Referans serisi `-8` (bu değişiklikten sonra)
+## Referans serisi `-9` (son seri)
 
-Belge-only hat, paralel yürütme ve inceleme düzeltmeleri `.github/workflows/checks.yml`, `scripts/` ve `tests/` ile `pyproject.toml`/`uv.lock` dosyalarını değiştirdi (11 dosya, +1.433/−39); ürün kaynağı `src/` değişmedi. Kaynak bağlı referanslar bu yüzden geçersiz oldu ve `-8` serisi kod `60f70d6`’da (adları ölçümden önce seçilmiş) kişisiz kökte **bir kez** alındı ve arşivlendi; altı aşama da ilk denemede geçti, beş kaynak bağlı doğrulayıcı ve `research_evidence.py verify` (583 arşiv) geçti. `-1`…`-7` tarihsel kayıttır.
+Belge-only hat, paralel yürütme ve inceleme düzeltmeleri `.github/workflows/checks.yml`, `scripts/` ve `tests/` ile `pyproject.toml`/`uv.lock` dosyalarını değiştirdi; ürün kaynağı `src/` değişmedi. Kaynak bağlı referanslar geçersiz olduğundan `-9` serisi kod `20a6b46`’da (adları ölçümden önce seçilmiş) kişisiz kökte **bir kez** alındı ve arşivlendi; altı aşama da ilk denemede geçti, beş kaynak bağlı doğrulayıcı ve `research_evidence.py verify` (591 arşiv) geçti. `-1`…`-8` tarihsel kayıttır. `-8` ölçümü bu işin ara adımıydı: `-9`, gate özeti ve iki takılma korumasının düzeltmesinden sonra yeniden alındı.
 
-**Tam paket** (temiz klon, macOS, altı kabuk): tests/contracts + tests/unit 8.300, tests/integration beş kabukta 913, 779, 1.002, 1.032, 985: toplam **13.011 geçti, 1 atlandı, 0 düştü** (`10b19be`’ye göre +226 test: belge-only hat ve sözleşme testleri). **İlk koşuda contracts+unit kabuğunda bir test düştü** (`test_signal_job_baseline.py::test_nested_foreground_job_handles_real_sigint_and_restores_launcher_policy[ignored]`, `subprocess.TimeoutExpired`): iç içe pytest, altı kabuğun aynı anda koştuğu yükte 45 sn sınırını aştı (aynı kabuk yükte 960 sn sürmüştü); aynı test tek süreçte 5/5 geçti (2,7 sn) ve kabuk sessiz makinede 269 sn’de **8.300 geçti, 1 atlandı** ile yeniden koştu. Bu, yukarıdaki “zamana duyarlı sınırlar” tablosunun ilk satırıdır; yeniden deneme başarısızlığı gizlemek için değil, nedeni (yük) ortaya koymak için yapıldı ve burada kayıtlıdır.
+**Tam paket** (temiz klon, macOS, altı kabuk, `20a6b46`): tests/contracts + tests/unit 8.300 geçti, 1 atlandı; tests/integration 913, 779, 1.002, 1.032, 985: toplam **13.011 geçti, 1 atlandı, 0 düştü**. (`-8` denemesinde contracts+unit kabuğunda yük altında bir zaman aşımı düştü; `-9`da düşmedi. Bu, zamana duyarlı sınırların bilinen sınıfıdır.)
 
 | Kayıt | Sonuç |
 |---|---|
-| [Startup](evidence.md#p02-3-reference-startup-8) | aday help/version/context/cache p95 **23,12/21,99/72,57/116,15 ms** (sınırlar 500/500/200/200); taban 23,20/21,80/73,02/118,90 ms |
-| [Jobs](evidence.md#p02-3-reference-jobs-8) | normal list/show **100,46/99,37 ms**, yoğun list/show **146,91/103,68 ms** (200 ms sınırı; yoğun list’te %26,5 pay) |
-| [Dataset](evidence.md#p02-3-reference-datasets-8) | 24 süreç, en uzun **0,6958 s**; U≤**20.824.064 byte**, inspect/verify G=**344.064/16.384 byte** |
-| [Raw](evidence.md#p02-3-reference-raw-8) | 16/256/1024 MiB geçti; 1024 MiB **1,55 s**, ek RSS üst sınırı en çok **868.352 byte** |
-| [Upload](evidence.md#p02-3-reference-upload-8) | 12 süreç, tam accepted graph ve kaynak kapıları geçti; en uzun çağrı **63,20 s**, U≤**4.587.520**, G=**458.752 byte** |
-| [Download](evidence.md#p02-3-reference-download-8) | 12 süreç **accepted**; 16 MiB 0,09–0,10 s, 256 MiB 0,84–0,85 s, 1.024 MiB **3,17–3,19 s**, `resume` 0,92–0,94 s ve üçünde `resumed_from` = kesim = 202.326.595; U≤**5.242.880**, G≤**4.145.152 byte** (8 MiB sınırın yaklaşık yarısı) |
+| [Startup](evidence.md#p02-3-reference-startup-9) | aday help/version/context/cache p95 **23,34/23,13/75,19/119,51 ms** (sınırlar 500/500/200/200); taban 23,10/22,91/74,75/124,85 ms |
+| [Jobs](evidence.md#p02-3-reference-jobs-9) | normal list/show **102,48/103,67 ms**, yoğun list/show **151,13/106,74 ms** (200 ms sınırı; yoğun list’te %24,4 pay) |
+| [Dataset](evidence.md#p02-3-reference-datasets-9) | 24 süreç, en uzun **0,6830 s**; U≤**20.905.984 byte**, inspect/verify G=**622.592/655.360 byte** |
+| [Raw](evidence.md#p02-3-reference-raw-9) | 16/256/1024 MiB geçti; 1024 MiB **1,56 s**, ek RSS üst sınırı en çok **1.359.872 byte** |
+| [Upload](evidence.md#p02-3-reference-upload-9) | 12 süreç, tam accepted graph ve kaynak kapıları geçti; en uzun çağrı **63,30 s**, U≤**4.538.368**, G=**1.179.648 byte** |
+| [Download](evidence.md#p02-3-reference-download-9) | 12 süreç **accepted**; 16 MiB 0,09–0,10 s, 256 MiB 0,85–0,86 s, 1.024 MiB **3,22–3,25 s**, `resume` 0,94–0,95 s ve üçünde `resumed_from` = kesim = 202.326.595; U≤**4.947.968**, G≤**3.850.240 byte** (8 MiB sınırın yaklaşık yarısı) |
 
-[Koşul kaydı](evidence.md#p02-3-native8-conditions): aşama süreleri 30,8/41,9/11,3/3,4/248,4/33,5 sn, sessiz pencere 61,6 sn (31 örnek, sıfırlama yok), AC güç ve sınırlarda bilinen yapı/test/derleyici süreci yok; ölçüm seçilmemiştir (ilk sonuç), fiziksel izolasyon attestasyonu yoktur. Ürün kaynağı değişmediğinden `-7` ile `-8` arasındaki farklar ölçüm gürültüsüdür (örneğin indirme U/G aralıkları).
+[Koşul kaydı](evidence.md#p02-3-native9-conditions): aşama süreleri 33,3/42,8/11,6/3,6/247,1/33,7 sn, sessiz pencere 61,4 sn (31 örnek, sıfırlama yok), AC güç ve sınırlarda bilinen yapı/test/derleyici süreci yok. Ölçüm, bilgisayar pilde iken ilk denemede reddedildi (güç koşulu; hiçbir aşama çalışmadı) ve AC bağlandıktan sonra alındı; bu sonuç ilk ve tek kabul edilen ölçümdür. Ölçüm seçilmemiştir; fiziksel izolasyon attestasyonu yoktur.
 
 ## Zamana duyarlı sınırlar (paralellikte en kırılgan olanlar)
 
