@@ -16,6 +16,15 @@ Testler kullanıcı sözleşmesini ve hata sınırını doğrular. Uygulamayı s
 
 Varsayılan testler çevrimdışı ve sentetik veriyle çalışır. Gerçek anahtar, kullanıcı verisi veya ücretli hesap CI fixture'ı olmaz. Canlı sözleşme canary'si ancak ayrı yetkili, kapsamı/maliyeti açık bir süreçle eklenir; offline yeşil sonuç canlı destek diye sunulmaz.
 
+## CI’da paralel yürütme ve belge-only hat
+
+Tam suite CI’da `pytest -n auto --dist loadfile` ile koşar ([ADR-0034](../decisions/0034-ci-duration-docs-lane-and-parallel-suite.md)); yerelde `-n` varsayılan değildir ve tek süreç de geçerlidir. Bunun testlere sözleşmesi:
+
+- **Parametre kimlikleri deterministik olur.** `pytest.mark.parametrize` değerleri `uuid4()`, saat, rastgele sayı veya ortama bağlı bir değer olamaz: her işçi aynı test kimliklerini toplamalıdır, aksi hâlde xdist toplama aşamasında durur. Rastgele değer gerekiyorsa gövdede üretilir ya da `ids=` ile sabitlenir.
+- **Dosyalar arasında sıra bağımlılığı olmaz.** Bir dosya bütünüyle tek işçide koşar ama hangi dosyalarla birlikte ve hangi sırayla koşacağı değişir; modül fixture’ı dosya başınadır; oturum kapsamlı fixture’lar işçi (süreç) başına kurulur ve işçiler arasında paylaşılmaz.
+- **Belgeyi okuyan test bunu kodunda belirtir.** Belge-only PR’lar yalnız belgeye başvuran testleri koşturur: `docs/…` yolu, belge dosya adı (`README.md`, `CHANGELOG.md` vb.) ya da `.md` kod satırında geçmelidir (yalnız yorum satırı sayılmaz). Belge okuyan bir yardımcı/fixture/`conftest` varsa seçim bütün `tests` ağacına düşer; bu güvenlidir ama hattı yavaşlatır. `tests/contracts/test_ci_changes.py` sözdizimi ağacıyla depodaki her belge okuyan testin seçimde olduğunu doğrular.
+- **Zamana duyarlı testler paylaşılan CPU’ya dayanıklı olur:** olay/koşul tabanlı beklemeler, geniş ama anlamlı paylar; duvar saati payına güvenen test yük altında düşer (bkz. Linux 3.14’te düşen `test_platform_total_deadline_is_shared_across_reads` [kaydı](../research/p02-3-implementation-validation.md#pr-15-üç-dış-inceleme-raporu-ürün-kusurları-ve-son-kaynak-referans-serisi--7)).
+
 ## İlk zorunlu negatif senaryolar
 
 - Aynı boyutta değişmiş dosya, symlink/kök dışı yol, değişen manifest ve kesik günlük.

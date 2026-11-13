@@ -4,6 +4,10 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Changed — 2026-11-13
+
+- CI süresi ([ADR-0034](docs/decisions/0034-ci-duration-docs-lane-and-parallel-suite.md)): yalnız belge değiştiren `development` PR’ları artık tam suite yerine statik kontrolleri, dağıtım doğrulamasını ve belgeye başvuran testleri koşturur (hücreler, iş adları ve `offline-core` aynıdır; sınıflandırmayı hedef dalın `scripts/ci_changes.py` kopyası yapar); tam suite her hücrede `pytest -n auto --dist loadfile` ile paralel koşar (`pytest-xdist` yalnız geliştirme grubunda) ve en yavaş 25 test yazılır. İki testin `uuid4()` parametre değeri sabitlendi (xdist aynı test kimliklerini ister). Merge, `Master` ve release kullanıcıdadır.
+
 ### Fixed — 2026-11-12
 
 - Yerel durum deposunu açan bir süreç, aynı anda başka bir süreç commit ederken geçerli depoyu reddedebiliyordu: SQLite’ın rollback journal’ı (`state.sqlite3-journal`) varlığı sorulup incelenmeden önce commit’le silinirse okuyucu `state_invalid`, yazıcı `state_write_failed` alıyordu. Artık o dosya bu arada silinmişse ya da silinirken adı duran ama bağı kalmamışsa (`st_nlink == 0`) depo geçerlidir (yoklama ve bakış tek `lstat`); var olan yan dosyaların denetimi (özel olmayan ya da symlink journal, `-wal`, `-shm` hâlâ `state_invalid`) değişmedi. Aynı planı eşzamanlı başlatan süreçlerin Linux 3.14 CI testi bu yarışı gösterdi.
