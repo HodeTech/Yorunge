@@ -332,9 +332,11 @@ jobs:
               # readers; the code-bound budgets and the rest of the suite were not applicable.
               if path := os.environ.get("GITHUB_STEP_SUMMARY"):
                   with Path(path).open("a", encoding="utf-8") as summary:
-                      summary.write("Documentation-only change set: static checks, distribution "
-                                    "verification and every test that reads a document ran in all "
-                                    "three cells; the full suite and the native budgets did not.\n")
+                      summary.write("Documentation-only change set: all three cells ran the "
+                                    "static checks, the distribution verification and the tests "
+                                    "selected for documentation (every test when the selection "
+                                    "fell back to the whole suite); the code-bound native "
+                                    "measurements were skipped.\n")
               raise SystemExit(0)
           startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
           if startup not in {"passed", "diagnostic_budget_exceeded"}:

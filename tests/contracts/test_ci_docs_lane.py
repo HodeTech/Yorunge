@@ -118,7 +118,10 @@ def test_a_documentation_change_set_passes_without_the_code_bound_outputs(
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {cell: "success" for cell in CELLS}
     assert "Documentation-only change set" in summary.read_text()
-    assert "did not" in summary.read_text()  # the summary says what was not run
+    text = summary.read_text()
+    assert "native measurements were skipped" in text  # what the gate knows was skipped
+    assert "full suite did not" not in text  # the selection may have fallen back to every test
+    assert "fell back to the whole suite" in text
 
 
 def test_a_code_change_set_still_needs_the_startup_outputs(workflow, tmp_path):
