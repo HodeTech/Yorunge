@@ -21,20 +21,13 @@ from tests.contracts.test_ci_matrix import (
     successful_needs,
 )
 from tests.contracts.test_ci_matrix import workflow as workflow
+from tests.fixtures.ci_git import git, isolate_git, write
 
 ROOT = Path(__file__).resolve().parents[2]
 CLASSIFIER = (ROOT / "scripts" / "ci_changes.py").read_text(encoding="utf-8")
 GUARD = "steps.change-set.outputs.docs_only != 'true'"
 READER = "text = open('docs/a.md').read()\n"
-PYTEST_FLAGS = [
-    "-n",
-    "auto",
-    "--dist",
-    "loadfile",
-    "--durations=25",
-    "-o",
-    "faulthandler_timeout=60",
-]
+PYTEST_FLAGS = ["--dist", "loadfile", "--durations=25", "-o", "faulthandler_timeout=60"]
 
 
 # --- structure --------------------------------------------------------------------------------
@@ -187,20 +180,16 @@ def test_all_skipped_cells_never_pass_even_with_a_documentation_claim(workflow, 
 # --- the steps, run for real ------------------------------------------------------------------
 
 
-def git(repo, *args):
-    return subprocess.run(
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+@pytest.fixture(autouse=True)
+def git_environment(monkeypatch):
+    isolate_git(monkeypatch)
 
 
-def write(repo, name, content="x\n"):
-    path = repo / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+def assert_workers(arguments):
+    """``-n N``: one worker fewer than the CPUs the process may use, at least one."""
+    cpus = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
+    assert arguments[0] == "-n"
+    assert arguments[1] == str(max(1, cpus - 1))
 
 
 def merge_checkout(tmp_path, change, *, classifier=CLASSIFIER, reader=READER):
@@ -224,6 +213,7 @@ def merge_checkout(tmp_path, change, *, classifier=CLASSIFIER, reader=READER):
     write(repo, "docs/later.md")
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "moved")
+    git(repo, "update-ref", "refs/remotes/origin/development", "development")
     git(repo, "merge", "-q", "--no-ff", "-m", "merge", "feature")
     return repo
 
@@ -357,7 +347,8 @@ def test_the_documentation_lane_runs_only_the_tests_that_read_documents(workflow
     repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
     lines = selected_arguments(workflow, repo, tmp_path, "true")
     arguments = lines[lines.index("-n") :]  # what follows the echo of the selection
-    assert arguments[:7] == PYTEST_FLAGS
+    assert_workers(arguments[:2])
+    assert arguments[2:7] == PYTEST_FLAGS
     assert arguments[7:] == ["tests/contracts/test_reader.py"]  # a concrete selection, not the tree
 
 
@@ -365,7 +356,8 @@ def test_the_documentation_lane_runs_only_the_tests_that_read_documents(workflow
 def test_anything_but_a_documentation_claim_runs_the_whole_suite(workflow, tmp_path, docs_only):
     repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
     lines = selected_arguments(workflow, repo, tmp_path, docs_only)
-    assert lines == PYTEST_FLAGS  # no selection: pytest runs ``testpaths``
+    assert_workers(lines[:2])
+    assert lines[2:] == PYTEST_FLAGS  # no selection: pytest runs ``testpaths``
 
 
 def test_a_selection_that_fails_or_is_empty_runs_everything(workflow, tmp_path):
@@ -395,18 +387,18 @@ def test_the_lane_runs_everything_when_no_test_reads_a_document(workflow, tmp_pa
     assert lines[-1] == "tests"
 
 
-def test_the_classifier_file_the_workflow_runs_is_the_one_in_this_repository():
-    # The target branch's copy is what runs; keeping the file free of third-party imports is part
-    # of the contract, because the step runs it with the runner's own ``python3``.
-    source = CLASSIFIER
-    assert "import yaml" not in source and "import pytest" not in source
-    result = subprocess.run(
-        [sys.executable, "-I", "-c", "import ast,sys; ast.parse(sys.stdin.read())"],
-        input=source,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0
+def test_the_classifier_imports_only_the_standard_library():
+    # The step runs it with the runner's own ``python3``, where nothing else is installed.
+    import ast
+
+    imported = set()
+    for node in ast.walk(ast.parse(CLASSIFIER)):
+        if isinstance(node, ast.Import):
+            imported |= {alias.name.split(".")[0] for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            assert node.level == 0
+            imported.add((node.module or "").split(".")[0])
+    assert imported <= set(sys.stdlib_module_names), imported
 
 
 # --- the evidence record says what the cell really ran ----------------------------------------

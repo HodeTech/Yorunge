@@ -173,6 +173,10 @@ jobs:
         env:
           DOCS_ONLY: ${{ steps.change-set.outputs.docs_only }}
         run: |
+          # One worker fewer than the CPUs: the tests start child interpreters and TLS threads of
+          # their own, and workers beyond the CPUs made state-opening tests miss the product's own
+          # 5 s state budget (docs/research/ci-duration-profile.md).
+          workers="$(python3 -c 'import os; n = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(); print(max(1, n - 1))')"
           if [ "$DOCS_ONLY" = "true" ]; then
             # Documentation readers only (reference contracts, guides, evidence): the full suite
             # depends on code, tests, scripts, the workflow and the lock file, none of which changed.
@@ -180,11 +184,11 @@ jobs:
             [ -n "$selection" ] || selection=tests
             echo "Documentation lane tests:" && echo "$selection"
             # shellcheck disable=SC2086 # the script only selects plain names; splitting is intended
-            .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60 $selection
+            .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60 $selection
           else
-            # One worker per CPU, whole files per worker: the suite is flat (no file is more than
-            # 6 % of it) and its module fixtures stay per file. The slowest tests are listed.
-            .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60
+            # Whole files per worker: the suite is flat (no file is more than 6 % of it) and its
+            # module fixtures stay per file. The slowest tests are listed.
+            .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60
           fi
       - name: Build and verify both distributions in clean environments
         id: build

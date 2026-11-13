@@ -37,8 +37,25 @@ ROOT_DOCUMENTS = frozenset(
     }
 )
 DOCUMENT_TREES = ("docs", ".agents")
-# Executable files that live under a document tree (research probes) are code: a test runs them.
-EXECUTABLE_SUFFIXES = frozenset({".py", ".sh", ".bash", ".js", ".mjs", ".ts"})
+# Under a document tree only these file kinds are documentation; anything else (research probes,
+# hooks, scripts of any language, files without a suffix) can be executed and is code.
+DOCUMENT_SUFFIXES = frozenset(
+    {
+        ".md",
+        ".json",
+        ".jsonl",
+        ".gz",
+        ".yaml",
+        ".yml",
+        ".txt",
+        ".csv",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+    }
+)
 # A test that mentions any of these may read a document; selecting too many is safe, too few is not.
 DOCUMENT_REFERENCE = re.compile(
     r"docs/|[\"']docs[\"']|README|CHANGELOG|CONTRIBUTING|AGENTS|\.agents|SECURITY|CODE_OF_CONDUCT|\.md\b"
@@ -61,7 +78,7 @@ def is_documentation(path: str) -> bool:
         return False
     if len(pure.parts) == 1:
         return path in ROOT_DOCUMENTS
-    return pure.parts[0] in DOCUMENT_TREES and pure.suffix.lower() not in EXECUTABLE_SUFFIXES
+    return pure.parts[0] in DOCUMENT_TREES and pure.suffix.lower() in DOCUMENT_SUFFIXES
 
 
 def docs_only(paths: Iterable[str]) -> bool:
@@ -71,20 +88,33 @@ def docs_only(paths: Iterable[str]) -> bool:
 
 
 def _git(*args: str, cwd: Path | None = None) -> bytes:
+    # ``GIT_DIR`` and friends would point git at some other repository than ``cwd``.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     return subprocess.run(
-        ["git", *args], check=True, capture_output=True, cwd=cwd, timeout=60
+        ["git", *args], check=True, capture_output=True, cwd=cwd, timeout=60, env=env
     ).stdout
 
 
-def changed_paths(root: Path | None = None) -> list[str]:
+def changed_paths(root: Path | None = None, base: str | None = None) -> list[str]:
     """Paths the merge checkout adds to its first parent (the target branch tip).
 
     Renames are reported as a deletion and an addition, so a file moved out of the source tree
-    still counts as a source change.
+    still counts as a source change. With ``base`` the first parent must be the tip of
+    ``origin/<base>`` or one of its ancestors: a merge that was made against some other branch
+    (a stacked or retargeted pull request) would hide what the target branch does not have.
     """
     parents = _git("rev-list", "--parents", "-n", "1", "HEAD", cwd=root).split()
     if len(parents) != 3:  # the commit and exactly two parents: a real merge checkout
         raise ValueError("the checkout is not a pull request merge commit")
+    if base is not None:
+        # exit status 1 (not an ancestor) and a missing ref both raise and select the full run
+        _git(
+            "merge-base",
+            "--is-ancestor",
+            parents[1].decode(),
+            f"refs/remotes/origin/{base}",
+            cwd=root,
+        )
     raw = _git(
         "diff",
         "--name-only",
@@ -103,7 +133,7 @@ def classify(environment: dict[str, str] | None = None, root: Path | None = None
     if env.get("EVENT_NAME") != "pull_request" or env.get("BASE_REF") != PROTECTED_BASE:
         return False
     try:
-        return docs_only(changed_paths(root))
+        return docs_only(changed_paths(root, PROTECTED_BASE))
     except (OSError, ValueError, subprocess.SubprocessError):
         return False
 

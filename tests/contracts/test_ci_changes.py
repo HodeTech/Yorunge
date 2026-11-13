@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.ci_git import git, isolate_git, write
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "ci_changes.py"
 spec = importlib.util.spec_from_file_location("ci_changes", SCRIPT)
@@ -39,6 +41,12 @@ PR = {"EVENT_NAME": "pull_request", "BASE_REF": "development"}
         "docs/research/raw/p02-3-ci1-linux311-startup.json.gz",
         "docs/research/evidence-manifest.json",
         "docs/a/b/c/d.md",
+        "docs/a.jsonl",
+        "docs/a.txt",
+        "docs/a.yml",
+        "docs/img/a.png",
+        "docs/img/a.SVG",
+        "docs/data.csv",
         ".agents/skills/yorunge-pr/SKILL.md",
     ],
 )
@@ -76,6 +84,22 @@ def test_documents_are_documents(path):
         "docs/a.PY",
         "docs/run.sh",
         ".agents/skills/x/run.py",
+        # Only known document kinds are documentation; any other kind could be executed.
+        "docs/a.pyw",
+        "docs/a.cjs",
+        "docs/a.tsx",
+        "docs/a.ps1",
+        "docs/a.bat",
+        "docs/a.rb",
+        "docs/a.pl",
+        "docs/a.zsh",
+        "docs/a.ipynb",
+        "docs/a.pth",
+        "docs/a.tar",
+        "docs/Makefile",
+        "docs/.hidden",
+        "docs/README",
+        ".agents/hooks/pre-commit",
         "tests/docs/a.md",
         "ROOT/README.md",
     ],
@@ -126,20 +150,9 @@ def test_a_change_set_is_documentation_only_when_every_path_is_and_it_is_not_emp
 # --- a real merge checkout --------------------------------------------------------------------
 
 
-def git(repo, *args):
-    return subprocess.run(
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-
-
-def write(repo, name, content="x\n"):
-    path = repo / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+@pytest.fixture(autouse=True)
+def git_environment(monkeypatch):
+    isolate_git(monkeypatch)
 
 
 def merge_checkout(tmp_path, change):
@@ -160,6 +173,7 @@ def merge_checkout(tmp_path, change):
     write(repo, "docs/later.md", "the target moved on\n")  # the base is not the merge base
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "moved")
+    git(repo, "update-ref", "refs/remotes/origin/development", "development")
     git(repo, "merge", "-q", "--no-ff", "-m", "merge", "feature")
     return repo
 
@@ -420,6 +434,7 @@ def test_a_submodule_change_is_seen_even_when_the_diff_is_told_to_ignore_submodu
     write(repo, "docs/later.md")
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "moved")
+    git(repo, "update-ref", "refs/remotes/origin/development", "development")
     git(repo, "merge", "-q", "--no-ff", "-m", "merge", "feature")
     git(repo, "config", "diff.ignoreSubmodules", "all")
     (repo / ".gitmodules").write_text('[submodule "src/sub"]\n\tpath = src/sub\n\tignore = all\n')
@@ -490,3 +505,64 @@ def test_a_test_that_runs_a_script_that_reads_documents_is_selected(tmp_path):
         "tests/contracts/test_runs_reader.py",
         "tests/contracts/test_runs_reader_module.py",
     ]
+
+
+# --- the first parent must belong to the target branch ----------------------------------------
+
+
+def test_a_merge_made_against_another_branch_is_never_classified_as_documentation(tmp_path):
+    repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
+    assert ci_changes.classify(PR, repo) is True
+    # The remote's development is somewhere the merge's first parent does not lead back to.
+    git(repo, "update-ref", "refs/remotes/origin/development", "feature")
+    assert ci_changes.classify(PR, repo) is False
+
+
+def test_a_missing_origin_branch_is_never_documentation(tmp_path):
+    repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
+    git(repo, "update-ref", "-d", "refs/remotes/origin/development")
+    assert ci_changes.classify(PR, repo) is False
+
+
+def test_a_first_parent_behind_the_target_tip_is_still_the_target_branch(tmp_path):
+    repo = merge_checkout(tmp_path, lambda repo: write(repo, "docs/a.md", "changed\n"))
+    merge = git(repo, "rev-parse", "HEAD").strip()
+    git(repo, "switch", "-q", "-c", "newer", "HEAD^1")  # the target moved on after the merge ref
+    write(repo, "docs/newer.md")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "newer")
+    git(repo, "update-ref", "refs/remotes/origin/development", "newer")
+    git(repo, "switch", "-q", "--detach", merge)
+    assert ci_changes.classify(PR, repo) is True
+
+
+# --- scripts that run a document reading script -----------------------------------------------
+
+# A test names a document when its code does, or when it runs a script whose code does. Scripts
+# that only run such a script are not followed (that would reach every script and fixture), so each
+# of them was checked once: none reads a document that is not code. A new entry here is a decision.
+SECOND_HOP_SCRIPTS = [
+    "benchmark-datasets.py",
+    "benchmark-download.py",
+    "dataset_wheel.py",
+    "download_diagnostic.py",
+    "startup_evidence.py",
+    "upload_diagnostic.py",
+    "upload_evidence.py",
+    "upload_link_diagnostic.py",
+    "upload_owned_diagnostic.py",
+]
+
+
+def test_the_scripts_that_only_run_a_document_reading_script_are_a_decided_set():
+    readers = ci_changes._reader_scripts(ROOT)
+    found = sorted(
+        path.name
+        for path in (ROOT / "scripts").glob("*.py")
+        if not ci_changes.DOCUMENT_REFERENCE.search(ci_changes._code(path))
+        and any(name in ci_changes._code(path) for name in readers)
+    )
+    assert found == SECOND_HOP_SCRIPTS, (
+        "a script now runs a document reading script: decide whether it reaches a document that "
+        "is not code (then name its tests in docs-tests) or add it here"
+    )

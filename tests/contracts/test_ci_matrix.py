@@ -128,10 +128,15 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
     assert steps["tests"]["env"] == {"DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}"}
     test_lines = steps["tests"]["run"].splitlines()
     # The full suite is the default; every worker takes whole files, one worker per CPU.
-    full = "  .venv/bin/pytest -n auto --dist loadfile --durations=25 -o faulthandler_timeout=60"
+    full = (
+        '  .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60'
+    )
     assert full in test_lines
     assert full + " $selection" in test_lines
-    assert test_lines[0] == 'if [ "$DOCS_ONLY" = "true" ]; then'
+    assert sum(line.startswith('workers="$(python3 -c ') for line in test_lines) == 1
+    assert test_lines.index('if [ "$DOCS_ONLY" = "true" ]; then') > next(
+        n for n, line in enumerate(test_lines) if line.startswith("workers=")
+    )
     assert test_lines[-1] == "fi"
     assert steps["build"]["run"].splitlines() == [
         ".ci-tools/bin/uv build",
