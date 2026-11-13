@@ -1,0 +1,205 @@
+"""Classify a pull request's change set for the ``core-checks`` workflow.
+
+A pull request that changes only documentation does not need the whole test suite, the native
+budgets or the measurement evidence: those depend on code, tests, scripts, the workflow or the
+lock file. It still needs everything that can *read* documentation, and this repository has many
+such readers (reference contracts are tested against the documents). So the workflow keeps all
+three compatibility cells and the required ``offline-core`` aggregate, runs the static checks and
+the distribution verification as always, and runs only the tests that reference documentation
+instead of the whole suite. Anything that is not provably documentation selects the full run.
+
+    ci_changes.py classify            prints ``true`` or ``false`` (never anything else)
+    ci_changes.py docs-tests [ROOT]   prints the test selection of the documentation lane
+
+The workflow runs the copy of this file from the target branch (the first parent of the merge
+checkout), never the pull request's own copy, so a pull request cannot classify itself.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from collections.abc import Iterable
+from pathlib import Path, PurePosixPath
+
+PROTECTED_BASE = "development"
+ROOT_DOCUMENTS = frozenset(
+    {
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "SECURITY.md",
+        "CODE_OF_CONDUCT.md",
+    }
+)
+DOCUMENT_TREES = ("docs", ".agents")
+# Under a document tree only these file kinds are documentation; anything else (research probes,
+# hooks, scripts of any language, files without a suffix) can be executed and is code.
+DOCUMENT_SUFFIXES = frozenset(
+    {
+        ".md",
+        ".json",
+        ".jsonl",
+        ".gz",
+        ".yaml",
+        ".yml",
+        ".txt",
+        ".csv",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+    }
+)
+# A test that mentions any of these may read a document; selecting too many is safe, too few is not.
+DOCUMENT_REFERENCE = re.compile(
+    r"docs/|[\"']docs[\"']|README|CHANGELOG|CONTRIBUTING|AGENTS|\.agents|SECURITY|CODE_OF_CONDUCT|\.md\b"
+)
+RUN_EVERYTHING = "tests"
+# The workflow hands the selection to pytest by word splitting: only plain names may be selected.
+PLAIN_NAME = re.compile(r"[A-Za-z0-9_./-]+")
+
+
+def is_documentation(path: str) -> bool:
+    """True only for a normalised, repository-relative path that is a document by construction."""
+    if not path or path != path.strip() or "\\" in path:
+        return False
+    if any(ord(char) < 32 or ord(char) == 127 for char in path):  # NUL, newline, CR, escapes...
+        return False
+    pure = PurePosixPath(path)
+    if pure.is_absolute() or any(part in ("", ".", "..") for part in path.split("/")):
+        return False
+    if str(pure) != path:
+        return False
+    if len(pure.parts) == 1:
+        return path in ROOT_DOCUMENTS
+    return pure.parts[0] in DOCUMENT_TREES and pure.suffix.lower() in DOCUMENT_SUFFIXES
+
+
+def docs_only(paths: Iterable[str]) -> bool:
+    """A non-empty change set made only of documents; an empty or unreadable one is not."""
+    seen = list(paths)
+    return bool(seen) and all(is_documentation(path) for path in seen)
+
+
+def _git(*args: str, cwd: Path | None = None) -> bytes:
+    # ``GIT_DIR`` and friends would point git at some other repository than ``cwd``.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    return subprocess.run(
+        ["git", *args], check=True, capture_output=True, cwd=cwd, timeout=60, env=env
+    ).stdout
+
+
+def changed_paths(root: Path | None = None, base: str | None = None) -> list[str]:
+    """Paths the merge checkout adds to its first parent (the target branch tip).
+
+    Renames are reported as a deletion and an addition, so a file moved out of the source tree
+    still counts as a source change. With ``base`` the first parent must be the tip of
+    ``origin/<base>`` or one of its ancestors: a merge that was made against some other branch
+    (a stacked or retargeted pull request) would hide what the target branch does not have.
+    """
+    parents = _git("rev-list", "--parents", "-n", "1", "HEAD", cwd=root).split()
+    if len(parents) != 3:  # the commit and exactly two parents: a real merge checkout
+        raise ValueError("the checkout is not a pull request merge commit")
+    if base is not None:
+        # exit status 1 (not an ancestor) and a missing ref both raise and select the full run
+        _git(
+            "merge-base",
+            "--is-ancestor",
+            parents[1].decode(),
+            f"refs/remotes/origin/{base}",
+            cwd=root,
+        )
+    raw = _git(
+        "diff",
+        "--name-only",
+        "-z",
+        "--no-renames",
+        "--ignore-submodules=none",
+        parents[1].decode(),
+        "HEAD",
+        cwd=root,
+    )
+    return [item.decode("utf-8", "surrogateescape") for item in raw.split(b"\0") if item]
+
+
+def classify(environment: dict[str, str] | None = None, root: Path | None = None) -> bool:
+    env = os.environ if environment is None else environment
+    if env.get("EVENT_NAME") != "pull_request" or env.get("BASE_REF") != PROTECTED_BASE:
+        return False
+    try:
+        return docs_only(changed_paths(root, PROTECTED_BASE))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+
+
+def _code(path: Path) -> str:
+    """The file without its full-line comments: a comment that names a document reads nothing."""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    return "\n".join(line for line in lines if not line.lstrip().startswith("#"))
+
+
+def _reader_scripts(root: Path) -> set[str]:
+    """Names of the scripts whose code names a document: a test that runs one reads it as well.
+
+    Only direct readers count. Following scripts that run other scripts would reach nearly every
+    script and every fixture, and the selection would fall back to the whole tree; a document that
+    a script reaches only through another script is code-bound (executable files under a document
+    tree are not documentation, see ``EXECUTABLE_SUFFIXES``).
+    """
+    names: set[str] = set()
+    for path in sorted((root / "scripts").glob("*.py")):
+        if DOCUMENT_REFERENCE.search(_code(path)):
+            names |= {path.stem, path.stem.replace("_", "-"), path.stem.replace("-", "_")}
+    return names
+
+
+def docs_tests(root: Path) -> list[str]:
+    """The test files that may read a document, or the whole ``tests`` tree when unsure.
+
+    A test reads a document when its code names one, or runs a script that does (the script is
+    found the same way): the reading is then indirect and no document name appears in the test.
+
+    A shared helper that mentions documents (a fixture, a ``conftest``) can be imported by any test,
+    so the lane then falls back to everything instead of guessing which tests use it.
+    """
+    tests = root / "tests"
+    readers = _reader_scripts(root)
+    selected: list[str] = []
+    for path in sorted(tests.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        code = _code(path)
+        mentions = DOCUMENT_REFERENCE.search(code) or any(name in code for name in readers)
+        if path.name.startswith("test_"):
+            if mentions:
+                selected.append(path.relative_to(root).as_posix())
+        elif mentions:
+            return [RUN_EVERYTHING]
+    if not selected or not all(PLAIN_NAME.fullmatch(name) for name in selected):
+        return [RUN_EVERYTHING]
+    return selected
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] not in ("classify", "docs-tests") or len(argv) > 2:
+        sys.stderr.write("usage: ci_changes.py classify | docs-tests [ROOT]\n")
+        return 2
+    if argv[0] == "classify":
+        if len(argv) != 1:
+            sys.stderr.write("usage: ci_changes.py classify\n")
+            return 2
+        sys.stdout.write("true\n" if classify() else "false\n")
+        return 0
+    root = Path(argv[1]) if len(argv) == 2 else Path.cwd()
+    sys.stdout.write("\n".join(docs_tests(root)) + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

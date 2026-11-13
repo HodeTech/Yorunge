@@ -21,6 +21,7 @@ jobs:
       RUN_BUDGETS: "true"
       RUNNER_LABEL: ubuntu-24.04
     outputs:
+      docs_only: ${{ steps.change-set.outputs.docs_only }}
       startup_diagnostic: ${{ steps.startup-budgets.outputs.outcome }}
       startup_baseline_mode: ${{ steps.startup-budgets.outputs.baseline_mode }}
     steps: &compatibility-steps
@@ -28,9 +29,28 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Classify the change set
+        id: change-set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # The classifier of the target branch (first parent of the merge checkout) decides, so a
+          # pull request cannot classify itself; anything doubtful selects the full run.
+          docs_only=false
+          if git rev-parse -q --verify "HEAD^2" > /dev/null && git cat-file -e "HEAD^1:scripts/ci_changes.py" 2> /dev/null; then
+            git show "HEAD^1:scripts/ci_changes.py" > "$RUNNER_TEMP/ci_changes.py"
+            docs_only="$(python3 "$RUNNER_TEMP/ci_changes.py" classify || echo false)"
+          fi
+          case "$docs_only" in
+            true | false) ;;
+            *) docs_only=false ;;
+          esac
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "Documentation-only change set: **$docs_only**" >> "$GITHUB_STEP_SUMMARY"
       - name: Check out pinned startup comparison source
         id: startup-baseline
-        if: ${{ env.RUN_BUDGETS == 'true' }}
+        if: ${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
@@ -62,6 +82,7 @@ jobs:
         id: environment-report
         env:
           CI_JOB: ${{ github.job }}
+          DOCS_ONLY: ${{ steps.change-set.outputs.docs_only }}
         run: |
           .venv/bin/python - <<'PY'
           import importlib.metadata
@@ -76,6 +97,14 @@ jobs:
           expected = tuple(map(int, os.environ["PYTHON_VERSION"].split(".")))
           if sys.version_info[:2] != expected:
               raise SystemExit("compatibility interpreter does not match the required version")
+          docs_lane = os.environ["DOCS_ONLY"] == "true"
+          budgeted = os.environ["RUN_BUDGETS"] == "true" and not docs_lane
+
+          def scope(budgeted_scope):
+              if docs_lane:
+                  return "documentation_lane"
+              return budgeted_scope if budgeted else "compatibility_only"
+
           cpu = platform.processor() or "unknown"
           if sys.platform == "linux":
               for line in Path("/proc/cpuinfo").read_text().splitlines():
@@ -119,16 +148,11 @@ jobs:
               "cpu_affinity": sorted(os.sched_getaffinity(0))
               if hasattr(os, "sched_getaffinity") else None,
               "disk_type": "unknown",
-              "startup_budget_scope": "source_bound_m5_and_linux_diagnostic"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "jobs_budget_scope": "reference_receipt_macos_m5max_py311"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "raw_stream_budget_scope": "reference_linux311"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "upload_budget_scope": "native_linux311_and_source_bound_m5"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
-              "download_budget_scope": "native_linux311_and_source_bound_m5"
-              if os.environ["RUN_BUDGETS"] == "true" else "compatibility_only",
+              "startup_budget_scope": scope("source_bound_m5_and_linux_diagnostic"),
+              "jobs_budget_scope": scope("reference_receipt_macos_m5max_py311"),
+              "raw_stream_budget_scope": scope("reference_linux311"),
+              "upload_budget_scope": scope("native_linux311_and_source_bound_m5"),
+              "download_budget_scope": scope("native_linux311_and_source_bound_m5"),
           }
           Path("dist").mkdir(exist_ok=True)
           encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
@@ -146,7 +170,26 @@ jobs:
           .venv/bin/python scripts/research_evidence.py verify
       - name: Test offline contracts and real console entry
         id: tests
-        run: .venv/bin/pytest -o faulthandler_timeout=60
+        env:
+          DOCS_ONLY: ${{ steps.change-set.outputs.docs_only }}
+        run: |
+          # One worker fewer than the CPUs: the tests start child interpreters and TLS threads of
+          # their own, and workers beyond the CPUs made state-opening tests miss the product's own
+          # 5 s state budget (docs/research/ci-duration-profile.md).
+          workers="$(python3 -c 'import os; n = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(); print(max(1, n - 1))')"
+          if [ "$DOCS_ONLY" = "true" ]; then
+            # Documentation readers only (reference contracts, guides, evidence): the full suite
+            # depends on code, tests, scripts, the workflow and the lock file, none of which changed.
+            selection="$(python3 "$RUNNER_TEMP/ci_changes.py" docs-tests . || echo tests)"
+            [ -n "$selection" ] || selection=tests
+            echo "Documentation lane tests:" && echo "$selection"
+            # shellcheck disable=SC2086 # the script only selects plain names; splitting is intended
+            .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60 $selection
+          else
+            # Whole files per worker: the suite is flat (no file is more than 6 % of it) and its
+            # module fixtures stay per file. The slowest tests are listed.
+            .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60
+          fi
       - name: Build and verify both distributions in clean environments
         id: build
         run: |
@@ -155,52 +198,52 @@ jobs:
           cat dist/verification.jsonl
       - name: Record and verify Linux startup diagnostics
         id: startup-budgets
-        if: ${{ env.RUN_BUDGETS == 'true' }}
+        if: ${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         run: |
           .venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv --baseline-project .local/startup-baseline --workspace .local/startup-check --report dist/startup.json --receipt dist/startup-diagnostic.json
       - name: Verify source-bound reference startup budgets
         id: startup-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-7.json > dist/startup-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-startup-reference p02-3-reference-startup-10.json > dist/startup-reference.txt
       - name: Verify source-bound reference jobs budgets
         id: jobs-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-7.json > dist/jobs-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-jobs-reference p02-3-reference-jobs-10.json > dist/jobs-reference.txt
       - name: Verify source-bound reference dataset hash budgets
         id: dataset-budgets
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-7.json > dist/dataset-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-dataset-reference p02-3-reference-datasets-10.json > dist/dataset-reference.txt
       - name: Enforce installed raw stream budgets
         id: raw-stream-budgets
-        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         run: |
           .venv/bin/python scripts/benchmark-stream.py --python .local/startup-check/candidate/env/bin/python --workspace .local/stream-check --output dist/stream.json --disk-type unknown
       - name: Verify source-bound reference upload budgets
         id: upload-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-7.json > dist/upload-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-upload-reference p02-3-reference-upload-10.json > dist/upload-reference.txt
       - name: Enforce installed native upload budgets
         id: upload-budgets
-        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         run: |
           .venv/bin/python scripts/upload_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/upload-check --output dist/upload.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - name: Verify source-bound reference download budgets
         id: download-reference
         if: ${{ success() && env.RUN_BUDGETS == 'true' }}
         run: |
-          .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-7.json > dist/download-reference.txt
+          .venv/bin/python scripts/research_evidence.py verify-download-reference p02-3-reference-download-10.json > dist/download-reference.txt
       - name: Enforce installed native download budgets
         id: download-budgets
-        if: ${{ success() && env.RUN_BUDGETS == 'true' }}
+        if: ${{ success() && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         run: |
           .venv/bin/python scripts/download_ci.py --python .local/startup-check/candidate/env/bin/python --wheel-dir .local/startup-check/candidate/dist --workspace .local/download-check --output dist/download.json --environment dist/ci-environment.json --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - name: Diagnose a failed startup budget
         id: startup-diagnostics
-        if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' }}
+        if: ${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') && env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}
         run: |
           if test -f dist/startup.json && test -x .local/startup-check/candidate/env/bin/python; then
             PYTHONHASHSEED=0 PYTHONNOUSERSITE=1 .local/startup-check/candidate/env/bin/python -X importtime .local/startup-check/candidate/env/bin/yorunge capabilities --task llm.train --cached --config examples/profile.toml --state-dir .local/startup-check/candidate-state --output json > /dev/null
@@ -236,6 +279,8 @@ jobs:
       PYTHON_VERSION: "3.14"
       RUN_BUDGETS: "false"
       RUNNER_LABEL: ubuntu-24.04
+    outputs:
+      docs_only: ${{ steps.change-set.outputs.docs_only }}
     steps: *compatibility-steps
   macos311:
     name: macOS / Python 3.11
@@ -245,6 +290,8 @@ jobs:
       PYTHON_VERSION: "3.11"
       RUN_BUDGETS: "false"
       RUNNER_LABEL: macos-15
+    outputs:
+      docs_only: ${{ steps.change-set.outputs.docs_only }}
     steps: *compatibility-steps
   offline-core:
     name: offline-core
@@ -274,6 +321,23 @@ jobs:
           print(json.dumps(results, sort_keys=True))
           if any(result != "success" for result in results.values()):
               raise SystemExit("every required compatibility cell must succeed")
+          claims = {
+              name: item.get("outputs", {}).get("docs_only") if isinstance(item.get("outputs"), dict) else None
+              for name, item in needs.items()
+          }
+          if set(claims.values()) not in ({"true"}, {"false"}):
+              raise SystemExit("the cells must agree whether the change set is documentation only")
+          if set(claims.values()) == {"true"}:
+              # Every cell ran the static checks, the distribution verification and the documentation
+              # readers; the code-bound budgets and the rest of the suite were not applicable.
+              if path := os.environ.get("GITHUB_STEP_SUMMARY"):
+                  with Path(path).open("a", encoding="utf-8") as summary:
+                      summary.write("Documentation-only change set: all three cells ran the "
+                                    "static checks, the distribution verification and the tests "
+                                    "selected for documentation (every test when the selection "
+                                    "fell back to the whole suite); the code-bound native "
+                                    "measurements were skipped.\n")
+              raise SystemExit(0)
           startup = needs["linux311"].get("outputs", {}).get("startup_diagnostic")
           if startup not in {"passed", "diagnostic_budget_exceeded"}:
               raise SystemExit("a verified Linux startup diagnostic outcome is required")

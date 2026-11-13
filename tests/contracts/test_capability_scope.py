@@ -80,13 +80,14 @@ def test_scope_wire_requires_every_field_even_nullable(field):
         ("clock_generation", 0),
         ("clock_generation", 2**63),
         ("store_id", "not-an-id"),
-        ("store_id", str(uuid4()).upper()),
+        # Parameter values are fixed: pytest-xdist needs the same test ids in every worker.
+        ("store_id", "A69885B7-9165-4291-9633-11AA686C1A7A"),
         ("account_id", ""),
         ("project_id", "space forbidden"),
         ("unexpected", None),
         ("service_origin", "https://example.test"),
         ("api_base_path", "/v1"),
-        ("credential_id", str(uuid4())),
+        ("credential_id", "a095d62b-d79e-42cb-aca5-2b8be6691991"),
         ("authorization_scope", {"permissions": [], "resources": []}),
         ("execution", {"backend": "local"}),
         (
