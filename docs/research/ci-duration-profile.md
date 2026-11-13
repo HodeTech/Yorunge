@@ -54,7 +54,7 @@ Alfabetik sıra bile ideale yakın olduğundan ağırlık dosyası/yeniden sıra
 
 ## Yerel xdist denemesi
 
-Dört ölçüm, hepsi bu dalın testleriyle (12.957 test; belge-only hat testleri dahil). **Sonuç: işçi sayısı CPU sayısına eşit olmalı (`-n auto`); fazlası ürünün kendi bütçesini aşan testler üretir.**
+Dört ölçüm, hepsi bu dalın testleriyle (12.957 test; belge-only hat testleri dahil). **Sonuç: işçi sayısı CPU sayısını aşmamalı; seçilen politika vCPU − 1’dir.** Aşağıdaki ölçümler CPU’ya eşit işçinin (4) yüklü laboratuvarda temiz geçtiğini ama iki işçide bile nadir düşüşler görüldüğünü, CPU’nun 1,5 katı işçinin (6) ise ürünün kendi bütçesini aşan 22 paralele özgü düşüş ürettiğini gösterir; bunlar tarihsel gözlemdir, yürütme önerisi değildir. `-n auto` önerilmez (kota altında CPU sayısından fazla işçi başlatır).
 
 | Ortam | Koşu | Süre | Sonuç |
 |---|---|---|---|
