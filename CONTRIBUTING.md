@@ -122,7 +122,7 @@ Linux CI aynı-host AB/BA startup'ı ölçmeyi sürdürür (belge-only PR’lar 
 
 ## Doğrulama seçimi
 
-Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır. Tek istisna yalnız belge değiştiren (`docs/`, `.agents/`, kökteki `README`/`CHANGELOG`/`CONTRIBUTING`/`AGENTS`/`CLAUDE`/`SECURITY`/`CODE_OF_CONDUCT` `.md`) bir `development` PR’ıdır: CI üç hücrede statik kontrolleri, dağıtım doğrulamasını ve belgeye başvuran testleri koşturur, tam suite ve native bütçeler atlanır ([ADR-0034](docs/decisions/0034-ci-duration-docs-lane-and-parallel-suite.md)). Yerelde tam suite’i hızlandırmak için `.venv/bin/pytest -n auto --dist loadfile` kullanılabilir (CI böyle koşar); tek süreç de geçerlidir.
+Komutlar yukarıdaki kanonik listededir. Bu tablo yerelde hangisinin neden gerektiğini belirler; CI korunan dala giren her değişiklikte kendi tam kapısını çalıştırır. Tek istisna yalnız belge değiştiren (`docs/`, `.agents/`, kökteki `README`/`CHANGELOG`/`CONTRIBUTING`/`AGENTS`/`CLAUDE`/`SECURITY`/`CODE_OF_CONDUCT` `.md`) bir `development` PR’ıdır: CI üç hücrede statik kontrolleri, dağıtım doğrulamasını ve belgeye başvuran testleri koşturur, tam suite ve native bütçeler atlanır ([ADR-0034](docs/decisions/0034-ci-duration-docs-lane-and-parallel-suite.md)). Yerelde tam suite’i hızlandırmak için `.venv/bin/pytest -n 4 --dist loadfile` gibi CPU sayınızdan küçük bir değer kullanılabilir (CI vCPU − 1 işçiyle koşar; `-n auto` kotalı konteynerde CPU sayısından fazla işçi başlatır); tek süreç de geçerlidir.
 
 | Değişiklik | Yerelde gerekli kanıt |
 |---|---|
