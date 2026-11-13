@@ -83,7 +83,15 @@ Dört ölçüm, hepsi bu dalın testleriyle (12.957 test; belge-only hat testler
 
 ## CI denemesi
 
-@@CI@@
+Bu PR’ın ilk CI koşusu ([43348860041](https://github.com/HodeTech/Yorunge/actions/runs/43348860041); hedef dalda `ci_changes.py` olmadığından **tam koşu**, işçi sayısı vCPU − 1: Linux 4 vCPU’da 3, macOS 3 vCPU’da 2) üç hücrede de başarılıdır:
+
+| Hücre | Test adımı (önceki üç koşu → bu koşu) | Test sonucu | İş süresi (önce → şimdi) |
+|---|---|---|---|
+| Linux / Python 3.11 | 2.919–3.632 s → **1.349 s** (2,2–2,7×) | 13.007 geçti, 2 atlandı | 60–77 dk → **39 dk 58 sn** |
+| Linux / Python 3.14 | 3.789–3.900 s → **1.088 s** (3,5×) | 13.007 geçti, 2 atlandı, 94 uyarı (bilinçli fork testleri) | 62–67 dk → **20 dk 13 sn** |
+| macOS / Python 3.11 | 2.398–3.189 s → **1.847 s** (1,3–1,7×) | 13.011 geçti, 1 atlandı | 40–57 dk → **34 dk 47 sn** |
+
+Tüm koşu **40 dakikada** bitti (önceki üç koşu 66–77 dk). Üç hücrede de paralele özgü bir düşüş görülmedi (bilinen P02-2 flake’i dahil hiçbir test düşmedi); bu tek koşudur ve bir güvence değil bir gözlemdir. Beş referans doğrulayıcı (`-8`) Linux 3.11’de geçti (her biri 59–63 s). Kritik yol artık Linux 3.11: testler 22,5 dk, ardından seri ölçüm adımları ~14,6 dk (dağıtım doğrulaması 76 s, beş doğrulayıcı ~303 s, raw stream 8 s, native upload 416 s, native indirme 73 s) işin yaklaşık %37’sini tutar; macOS’ta yalnız 2 işçi çalıştığı için kazanç en küçüktür. Sonraki iyileştirme adayları “yapılmayan iyileştirmeler” tablosundadır; **belge-only hat bu koşuda sınanmadı** (hedef dalda sınıflandırıcı yoktu): ilk gerçek ölçüm ve merge kutusu doğrulaması bu PR birleştikten sonraki ilk belge-only PR’dadır.
 
 ## Referans serisi `-8` (bu değişiklikten sonra)
 
