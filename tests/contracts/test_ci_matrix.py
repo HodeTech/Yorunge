@@ -194,17 +194,17 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-3-reference-startup-9.json > dist/startup-reference.txt",
+            "p02-3-reference-startup-10.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-3-reference-jobs-9.json > dist/jobs-reference.txt",
+            "p02-3-reference-jobs-10.json > dist/jobs-reference.txt",
         ),
         (
             "dataset-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
-            "p02-3-reference-datasets-9.json > dist/dataset-reference.txt",
+            "p02-3-reference-datasets-10.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -215,7 +215,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "upload-reference",
             ".venv/bin/python scripts/research_evidence.py verify-upload-reference "
-            "p02-3-reference-upload-9.json > dist/upload-reference.txt",
+            "p02-3-reference-upload-10.json > dist/upload-reference.txt",
         ),
         (
             "upload-budgets",
@@ -229,7 +229,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "download-reference",
             ".venv/bin/python scripts/research_evidence.py verify-download-reference "
-            "p02-3-reference-download-9.json > dist/download-reference.txt",
+            "p02-3-reference-download-10.json > dist/download-reference.txt",
         ),
         (
             "download-budgets",
