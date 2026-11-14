@@ -1,6 +1,6 @@
 # ADR-0030: Yerel performans kabulünü geliştirme tesliminden ayırma
 
-**Durum:** Proposed — kullanıcı onayı bekleniyor; mevcut CI kapıları henüz değişmedi. **Tarih:** 2026-11-05. **İş:** P02-2 teslimi ve [P02-R3](../roadmap/tasks/p02-r3-isolated-performance-acceptance.md). [ADR-0019](0019-reference-startup-performance.md) yalnız aşağıdaki geliştirme/kabul kapısında kısmen değiştirilir.
+**Durum:** Proposed — kullanıcı onayı bekleniyor; mevcut CI kapıları henüz değişmedi. **2026-11-13 notu:** [ADR-0034](0034-ci-duration-docs-lane-and-parallel-suite.md) yalnız belge değiştiren `development` PR’larında tam suite’in ve kod bağlı native ölçümlerin atlanmasına izin verir; aşağıdaki “zorunlu CI davranışı” tablosu kod, test, betik, workflow, kilit dosyası ya da belge olmayan her değişiklik için olduğu gibi geçerlidir. **Tarih:** 2026-11-05. **İş:** P02-2 teslimi ve [P02-R3](../roadmap/tasks/p02-r3-isolated-performance-acceptance.md). [ADR-0019](0019-reference-startup-performance.md) yalnız aşağıdaki geliştirme/kabul kapısında kısmen değiştirilir.
 
 ## Bağlam
 

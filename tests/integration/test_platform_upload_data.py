@@ -212,7 +212,14 @@ def test_put_failure_never_accepts_or_replays_and_closes_source(
             assert instances[0]._slots._value == 2
         # The changed bytes can be sent before the final streaming hash fails;
         # that is not an accepted receipt or permission to resend.
-        assert len(server.requests) == int(failure != "wrong_arm")
+        # A same-size rewrite (abc -> xyz) is caught before anything is sent when the timestamps
+        # show it, and only after the body is streamed when they do not: the file system's
+        # timestamp resolution decides. Both are the intended outcome (input_changed, nothing
+        # accepted).
+        if failure == "changed_file":
+            assert len(server.requests) in (0, 1)
+        else:
+            assert len(server.requests) == int(failure != "wrong_arm")
     assert call._closed
     assert call._source._file_fd is call._source._root_fd is None
     assert value.snapshot().effect_attempts == int(failure != "wrong_arm")

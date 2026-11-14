@@ -45,7 +45,7 @@ def with_closed_descriptor(command, descriptor):
 @contextmanager
 def gated_cli(target, phase, *arguments, closed_descriptor=None):
     parent, child = socket.socketpair()
-    parent.settimeout(10)
+    parent.settimeout(60)  # hang guards: a loaded machine must not turn a slow start into a failure
     command = [sys.executable, str(FIXTURE), str(child.fileno()), phase, str(target), *arguments]
     if closed_descriptor is not None:
         command = with_closed_descriptor(command, closed_descriptor)
@@ -63,13 +63,13 @@ def gated_cli(target, phase, *arguments, closed_descriptor=None):
         parent.close()
         if process.poll() is None:
             process.kill()
-        process.communicate(timeout=10)
+        process.communicate(timeout=60)
 
 
 def interrupt(target, phase, *arguments):
     with gated_cli(target, phase, *arguments) as (process, control):
         process.send_signal(signal.SIGINT)
-        stdout, stderr = process.communicate(timeout=10)
+        stdout, stderr = process.communicate(timeout=60)
         publication = receive_line(control)
         return process.returncode, stdout.decode(), stderr.decode(), publication
 
@@ -297,7 +297,7 @@ def test_output_failure_or_local_cancel_keeps_successful_persistent_job(
                 process.stdout.close()
                 process.stdout = None
             control.sendall(b"r")
-        stdout, stderr = process.communicate(timeout=10)
+        stdout, stderr = process.communicate(timeout=60)
         assert process.returncode == (1 if failure == "output-ebadf" else 6), stderr
         assert not stdout
         code = {
@@ -320,7 +320,7 @@ def test_config_uncertainty_exit_survives_closed_error_pipe(tmp_path):
         process.stderr.close()
         process.stderr = None
         process.send_signal(signal.SIGINT)
-        stdout, stderr = process.communicate(timeout=10)
+        stdout, stderr = process.communicate(timeout=60)
         assert process.returncode == 5
         assert stdout == b""
         assert stderr is None
@@ -339,7 +339,7 @@ def test_config_uncertainty_exit_survives_closed_error_pipe(tmp_path):
 )
 def test_stdio_absent_at_python_startup_remains_controlled(descriptor, arguments, expected):
     command = with_closed_descriptor([sys.executable, "-m", "yorunge", *arguments], descriptor)
-    result = subprocess.run(command, capture_output=True, timeout=10)
+    result = subprocess.run(command, capture_output=True, timeout=60)
     assert result.returncode == expected
     assert result.stdout == b""
     if descriptor == 1:
@@ -360,7 +360,7 @@ def test_missing_stderr_at_startup_preserves_actual_config_publish_uncertainty(t
         closed_descriptor=2,
     ) as (process, control):
         process.send_signal(signal.SIGINT)
-        stdout, stderr = process.communicate(timeout=10)
+        stdout, stderr = process.communicate(timeout=60)
         assert process.returncode == 5
         assert stdout == b""
         assert stderr == b""

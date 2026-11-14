@@ -2,6 +2,8 @@
 
 **Durum:** Accepted — 2026-10-30 kullanıcı yetkisi; iki P2 belge düzeltmesi, üç uygulama adımı, Sonar bakımı, fresh referanslar ve gerçek CI kabulü [kapanış kaydında](../research/p01-remaining-implementation-validation.md#ilk-runtime-release-ci-kapanışı) doğrulandı. **Tarih:** 2026-10-29; revizyon 2026-10-30. **İş:** P01-6b.
 
+**2026-11-13 kısmi değişiklik:** [ADR-0034](0034-ci-duration-docs-lane-and-parallel-suite.md), yalnız belge değiştiren `development` PR’larında kod bağlı native ölçümlerin (Linux startup tanısı, raw stream, native upload/download) atlanmasına izin verir; hücreler, `offline-core` adı, aggregate ve beş kaynak bağlı referans doğrulayıcısı korunur. Kod, test, betik, workflow, kilit dosyası ya da belge olmayan herhangi bir değişiklik bu karardaki zorunlu kapıların tamamını çalıştırır.
+
 **2026-11-04 kısmi değişiklik:** [ADR-0029](0029-evidence-provenance-privacy.md), özgün baytları koruma kuralını değiştirmeden 95 hash bağlı tarihsel nonsecret provenance kaydını ve yeni Git/CI yayımı öncesi bounded gizlilik kapısını tanımlar. Gizlilik reddindeki özel yerel kopya kalıcı kabul kanıtı değildir; saklama takibi kapanmadan kabul/merge önerisi verilmez. Kaynak/ölçüm başarısızlığı başarıya çevrilmez.
 
 ## Bağlam

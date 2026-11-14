@@ -67,7 +67,7 @@ raise SystemExit(result)
         cwd=ROOT,
         capture_output=True,
         text=True,
-        timeout=45,
+        timeout=180,  # a hang guard (the run takes seconds); 45 s was missed once under load
     )
     assert found.returncode == 0, found.stdout + found.stderr
     assert "3 passed" in found.stdout

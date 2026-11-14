@@ -101,6 +101,7 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         assert "continue-on-error" not in step
     steps = steps_by_id(job)
     for required in (
+        "change-set",
         "python",
         "environment-setup",
         "environment-report",
@@ -124,7 +125,19 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
         ".venv/bin/python scripts/check-agent-guides.py",
         ".venv/bin/python scripts/research_evidence.py verify",
     ]
-    assert steps["tests"]["run"] == ".venv/bin/pytest -o faulthandler_timeout=60"
+    assert steps["tests"]["env"] == {"DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}"}
+    test_lines = steps["tests"]["run"].splitlines()
+    # The full suite is the default; every worker takes whole files, one worker per CPU.
+    full = (
+        '  .venv/bin/pytest -n "$workers" --dist loadfile --durations=25 -o faulthandler_timeout=60'
+    )
+    assert full in test_lines
+    assert full + " $selection" in test_lines
+    assert sum(line.startswith('workers="$(python3 -c ') for line in test_lines) == 1
+    assert test_lines.index('if [ "$DOCS_ONLY" = "true" ]; then') > next(
+        n for n, line in enumerate(test_lines) if line.startswith("workers=")
+    )
+    assert test_lines[-1] == "fi"
     assert steps["build"]["run"].splitlines() == [
         ".ci-tools/bin/uv build",
         ".venv/bin/python scripts/verify-distributions.py --uv .ci-tools/bin/uv "
@@ -138,7 +151,10 @@ def test_cells_share_full_checks_without_allowed_failures(workflow, cell):
 def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(workflow):
     steps = steps_by_id(workflow["jobs"]["linux311"])
     baseline = steps["startup-baseline"]
-    assert baseline["if"] == "${{ env.RUN_BUDGETS == 'true' }}"
+    assert (
+        baseline["if"]
+        == "${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
+    )
     assert baseline["with"]["path"] == ".local/startup-baseline"
     assert baseline["with"]["persist-credentials"] == "false"
     assert baseline["with"]["ref"] == (
@@ -147,7 +163,10 @@ def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(w
         "&& github.event.before) || github.sha }}"
     )
     budgets = steps["startup-budgets"]
-    assert budgets["if"] == "${{ env.RUN_BUDGETS == 'true' }}"
+    assert (
+        budgets["if"]
+        == "${{ env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
+    )
     assert budgets["run"].strip() == (
         ".venv/bin/python scripts/startup_diagnostic.py --uv .ci-tools/bin/uv "
         "--baseline-project .local/startup-baseline --workspace .local/startup-check "
@@ -156,7 +175,7 @@ def test_reference_startup_gate_and_failure_diagnostics_keep_the_existing_path(w
     diagnostics = steps["startup-diagnostics"]
     assert diagnostics["if"] == (
         "${{ (failure() || steps.startup-budgets.outputs.outcome == 'diagnostic_budget_exceeded') "
-        "&& env.RUN_BUDGETS == 'true' }}"
+        "&& env.RUN_BUDGETS == 'true' && steps.change-set.outputs.docs_only != 'true' }}"
     )
     assert "scripts/check-startup.py" not in diagnostics["run"]
 
@@ -175,17 +194,17 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "startup-reference",
             ".venv/bin/python scripts/research_evidence.py verify-startup-reference "
-            "p02-3-reference-startup-7.json > dist/startup-reference.txt",
+            "p02-3-reference-startup-10.json > dist/startup-reference.txt",
         ),
         (
             "jobs-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-jobs-reference "
-            "p02-3-reference-jobs-7.json > dist/jobs-reference.txt",
+            "p02-3-reference-jobs-10.json > dist/jobs-reference.txt",
         ),
         (
             "dataset-budgets",
             ".venv/bin/python scripts/research_evidence.py verify-dataset-reference "
-            "p02-3-reference-datasets-7.json > dist/dataset-reference.txt",
+            "p02-3-reference-datasets-10.json > dist/dataset-reference.txt",
         ),
         (
             "raw-stream-budgets",
@@ -196,7 +215,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "upload-reference",
             ".venv/bin/python scripts/research_evidence.py verify-upload-reference "
-            "p02-3-reference-upload-7.json > dist/upload-reference.txt",
+            "p02-3-reference-upload-10.json > dist/upload-reference.txt",
         ),
         (
             "upload-budgets",
@@ -210,7 +229,7 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         (
             "download-reference",
             ".venv/bin/python scripts/research_evidence.py verify-download-reference "
-            "p02-3-reference-download-7.json > dist/download-reference.txt",
+            "p02-3-reference-download-10.json > dist/download-reference.txt",
         ),
         (
             "download-budgets",
@@ -223,7 +242,14 @@ def test_reference_jobs_and_raw_stream_gates_follow_successful_tests_build_and_s
         ),
     ):
         step = steps[step_id]
-        assert step["if"] == "${{ success() && env.RUN_BUDGETS == 'true' }}"
+        # The verifiers read archived references (documents) and always run; measurements do not.
+        verifier = step_id.endswith("-reference") or step_id in ("jobs-budgets", "dataset-budgets")
+        assert step["if"] == (
+            "${{ success() && env.RUN_BUDGETS == 'true' }}"
+            if verifier
+            else "${{ success() && env.RUN_BUDGETS == 'true' "
+            "&& steps.change-set.outputs.docs_only != 'true' }}"
+        )
         assert step["run"].strip() == command
         assert ordered.index(previous) < ordered.index(step_id)
         previous = step_id
@@ -422,7 +448,7 @@ def invoke_gate(workflow, tmp_path, content):
 
 
 def successful_needs():
-    needs = {cell: {"result": "success", "outputs": {}} for cell in CELLS}
+    needs = {cell: {"result": "success", "outputs": {"docs_only": "false"}} for cell in CELLS}
     needs["linux311"]["outputs"]["startup_diagnostic"] = "passed"
     needs["linux311"]["outputs"]["startup_baseline_mode"] = "pinned_runtime"
     return needs
@@ -485,7 +511,10 @@ def test_actual_gate_rejects_empty_or_malformed_needs(workflow, tmp_path, conten
 
 def environment_report_code(workflow):
     step = steps_by_id(workflow["jobs"]["linux311"])["environment-report"]
-    assert step["env"] == {"CI_JOB": "${{ github.job }}"}
+    assert step["env"] == {
+        "CI_JOB": "${{ github.job }}",
+        "DOCS_ONLY": "${{ steps.change-set.outputs.docs_only }}",
+    }
     lines = step["run"].splitlines()
     assert lines[0] == ".venv/bin/python - <<'PY'"
     assert lines[-1] == "PY"
@@ -503,6 +532,7 @@ def test_actual_environment_report_records_source_runtime_and_scope(
     for key, value in {
         "PYTHON_VERSION": f"{sys.version_info.major}.{sys.version_info.minor}",
         "RUN_BUDGETS": budgets,
+        "DOCS_ONLY": "false",
         "GITHUB_SHA": "b" * 40,
         "CI_JOB": "linux311",
         "RUNNER_LABEL": "ubuntu-24.04",
@@ -570,6 +600,7 @@ def test_actual_environment_report_rejects_the_wrong_python(workflow, tmp_path, 
     code = environment_report_code(workflow)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PYTHON_VERSION", "0.0")
+    monkeypatch.setenv("DOCS_ONLY", "false")
     with pytest.raises(SystemExit, match="does not match the required version"):
         exec(code, {})
     assert not (tmp_path / "dist/ci-environment.json").exists()
@@ -598,6 +629,7 @@ def test_aggregate_allows_verified_budget_overrun_and_shows_it_without_performan
 def test_completed_measurement_is_guarded_before_artifact_upload(workflow):
     job = workflow["jobs"]["linux311"]
     assert job["outputs"] == {
+        "docs_only": "${{ steps.change-set.outputs.docs_only }}",
         "startup_diagnostic": "${{ steps.startup-budgets.outputs.outcome }}",
         "startup_baseline_mode": "${{ steps.startup-budgets.outputs.baseline_mode }}",
     }
