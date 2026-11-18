@@ -348,12 +348,6 @@ def test_llm_missing_data_is_invalid() -> None:
     assert raise_code(codec.llm_listing, jbytes({"object": "list"}), KEY) == "invalid_response"
 
 
-def test_llm_display_fields_are_cleaned_but_identifiers_are_not() -> None:
-    model = codec.llm_model(jbytes(llm_item(precision="bf‮16", id="model​a")), KEY)
-    assert model.precision == "bf16"
-    assert model.model_id == "model​a"  # a cleaned identifier could name another model
-
-
 def test_llm_identifier_longer_than_the_raw_limit_is_invalid() -> None:
     assert raise_code(codec.llm_model, jbytes(llm_item(id="m" * 257)), KEY) == "invalid_response"
 
@@ -414,11 +408,6 @@ def test_platform_missing_required_field_is_invalid() -> None:
     model = platform_model()
     del model["slug"]
     assert raise_code(codec.platform_model, jbytes(model), KEY) == "invalid_response"
-
-
-def test_platform_display_text_is_cleaned_identifier_is_not() -> None:
-    model = codec.platform_model(jbytes(platform_model(name="A‮B", slug="model​a")), KEY)
-    assert model.name == "AB" and model.slug == "model​a"
 
 
 @pytest.mark.parametrize(
@@ -550,3 +539,123 @@ def test_dataset_negative_item_count_is_invalid() -> None:
         raise_code(codec.platform_datasets, jbytes([dataset_row(item_count=-1)]), KEY, 1, 20, ())
         == "invalid_response"
     )
+
+
+def test_llm_display_text_is_cleaned_and_an_identifier_with_a_format_character_is_refused() -> None:
+    model = codec.llm_model(jbytes(llm_item(precision="bf\u202e16")), KEY)
+    assert model.precision == "bf16"
+    split = llm_item(id="model\u200ba")
+    assert raise_code(codec.llm_model, jbytes(split), KEY) == "invalid_response"
+
+
+def test_platform_display_text_is_cleaned_and_format_characters_in_ids_are_refused() -> None:
+    model = codec.platform_model(jbytes(platform_model(name="A\u202eB")), KEY)
+    assert model.name == "AB"
+    assert raise_code(codec.platform_model, jbytes(platform_model(slug="model\u200ba")), KEY) == (
+        "invalid_response"
+    )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("id", "sk-li\u200bve-x"),
+        ("owner_username", "own\u2066er"),
+        ("slug", "mo\u00addel"),
+        ("id", "line\u2028break"),
+    ],
+)
+def test_platform_identifiers_refuse_format_and_separator_characters(field, value) -> None:
+    assert raise_code(codec.platform_model, jbytes(platform_model(**{field: value})), KEY) == (
+        "invalid_response"
+    )
+
+
+def test_a_version_tag_with_a_format_character_is_refused() -> None:
+    assert (
+        raise_code(
+            codec.platform_versions, jbytes([platform_version(version_tag="1.\u200b0")]), KEY, 1
+        )
+        == "invalid_response"
+    )
+
+
+def test_a_dataset_slug_with_a_format_character_is_refused() -> None:
+    assert (
+        raise_code(
+            codec.platform_datasets, jbytes([dataset_row(slug="data\u200bset")]), KEY, 1, 20, ()
+        )
+        == "invalid_response"
+    )
+
+
+def test_an_llm_task_with_a_format_character_is_refused() -> None:
+    assert raise_code(codec.llm_model, jbytes(llm_item(task="emb\u200bedding")), KEY) == (
+        "invalid_response"
+    )
+
+
+@pytest.mark.parametrize(
+    "stamp",
+    [
+        "2026-13-99T99:99:99Z",
+        "2026-02-30T00:00:00Z",
+        "2026-01-01T00:00:00",
+        "2026-01-01T00:00:00+14:00",
+        "\u0662\u0660\u0662\u0666-\u0660\u0661-\u0660\u0661"
+        "T\u0660\u0660:\u0660\u0660:\u0660\u0660Z",
+        "2026-01-01T00:00:00.1234567Z",
+        "2026-01-01T00:00:00Z\n",
+    ],
+)
+def test_a_stamp_that_is_not_a_real_rfc_3339_date_time_is_refused(stamp) -> None:
+    assert raise_code(codec.platform_model, jbytes(platform_model(created_at=stamp)), KEY) == (
+        "invalid_response"
+    )
+
+
+@pytest.mark.parametrize("stamp", ["2026-01-01T00:00:00Z", "2026-03-29T12:30:00.5+03:00"])
+def test_a_real_rfc_3339_stamp_is_kept(stamp) -> None:
+    assert codec.platform_model(jbytes(platform_model(created_at=stamp)), KEY).created_at == stamp
+
+
+def test_a_short_page_that_announces_more_is_refused() -> None:
+    # Twenty were asked, five came, and the headers say more pages follow: rows would be skipped.
+    assert raise_code(catalog.dataset_page, 1, 20, 5, ("true",), ()) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 0, ("true",), ()) == "invalid_response"
+
+
+def test_a_short_last_page_is_fine() -> None:
+    assert catalog.dataset_page(2, 20, 5, ("false",), ()) == "last_page"
+
+
+def test_a_count_above_the_exact_json_integer_range_is_refused() -> None:
+    too_big = catalog.MAX_COUNT + 1
+    assert raise_code(
+        codec.platform_versions, jbytes([platform_version(file_size_bytes=too_big)]), KEY, 1
+    ) == ("invalid_response")
+
+
+SPLIT_SECRET = "sk-live-ABCDEFGH12345678"
+
+
+@pytest.mark.parametrize(
+    "entry,body,args",
+    [
+        ("platform_model", lambda s: platform_model(architecture=s), ()),
+        ("platform_versions", lambda s: [platform_version(framework=s)], (1,)),
+        ("platform_datasets", lambda s: [dataset_row(name=s)], (1, 20, ())),
+        ("llm_model", lambda s: llm_item(precision=s), ()),
+        (
+            "llm_model",
+            lambda s: llm_item(
+                pricing={"prompt_token_price": 1, "completion_token_price": 1, "currency": s}
+            ),
+            (),
+        ),
+    ],
+)
+def test_every_entry_point_refuses_a_secret_rebuilt_by_cleaning(entry, body, args) -> None:
+    split = SPLIT_SECRET[:6] + "\u200b" + SPLIT_SECRET[6:]
+    call = getattr(codec, entry)
+    assert raise_code(call, jbytes(body(split)), KEY, *args) == "invalid_response"

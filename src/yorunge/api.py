@@ -10,6 +10,16 @@ from typing import TYPE_CHECKING, Literal, overload
 from pydantic import ConfigDict, ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
+from yorunge.domain.catalog import (
+    CatalogReading,
+    DatasetPage,
+    LlmListing,
+    LlmModel,
+    PlatformModelDetail,
+    PlatformModelPage,
+    PlatformVersionResolution,
+    VersionListing,
+)
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
     CapabilityView,
@@ -1524,4 +1534,143 @@ def download_model_weights(
         _platform_loader(config, profile),
         state_dir,
         progress,
+    )
+
+
+# --- catalog (P02-4d, ADR-0035): read-only, one observation window per command -----------------
+
+
+def list_platform_models(
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[CatalogReading[PlatformModelPage]]:
+    """One page of the models the Platform key can read; no state, no writes (ADR-0035)."""
+    from yorunge.adapters.catalog_http import list_platform_models as read
+
+    observed = read(_platform_loader(config, profile), page, page_size)
+    return Result[CatalogReading[PlatformModelPage]](
+        data=CatalogReading[PlatformModelPage](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=observed.value,
+        )
+    )
+
+
+def show_platform_model(
+    owner: str,
+    slug: str,
+    *,
+    versions: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[CatalogReading[PlatformModelDetail]]:
+    """One model by ``owner/slug``, with its versions when asked (two GETs at most)."""
+    from yorunge.adapters.catalog_http import show_platform_model as read
+
+    observed = read(_platform_loader(config, profile), owner, slug, versions=versions)
+    model, listing = observed.value
+    return Result[CatalogReading[PlatformModelDetail]](
+        data=CatalogReading[PlatformModelDetail](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=PlatformModelDetail(model=model, versions=listing),
+        )
+    )
+
+
+def list_platform_versions(
+    model_id: str, *, config: Path | None = None, profile: str | None = None
+) -> Result[CatalogReading[VersionListing]]:
+    """The versions of a model addressed by its identifier; its completeness stays unknown."""
+    from yorunge.adapters.catalog_http import list_platform_versions as read
+
+    observed = read(_platform_loader(config, profile), model_id)
+    return Result[CatalogReading[VersionListing]](
+        data=CatalogReading[VersionListing](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=observed.value,
+        )
+    )
+
+
+def resolve_platform_version(
+    owner: str,
+    slug: str,
+    version_tag: str,
+    *,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[CatalogReading[PlatformVersionResolution]]:
+    """The one version of ``owner/slug`` that carries ``version_tag``; never a guess."""
+    from yorunge.adapters.catalog_http import resolve_platform_version as read
+
+    observed = read(_platform_loader(config, profile), owner, slug, version_tag)
+    model, version = observed.value
+    return Result[CatalogReading[PlatformVersionResolution]](
+        data=CatalogReading[PlatformVersionResolution](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=PlatformVersionResolution(model=model, version=version),
+        )
+    )
+
+
+def list_platform_datasets(
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[CatalogReading[DatasetPage]]:
+    """One page of the datasets the key owns; the scope label stays unknown until K4 confirms it."""
+    from yorunge.adapters.catalog_http import list_platform_datasets as read
+
+    observed = read(_platform_loader(config, profile), page, page_size)
+    return Result[CatalogReading[DatasetPage]](
+        data=CatalogReading[DatasetPage](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=observed.value,
+        )
+    )
+
+
+def list_llm_models(
+    *, config: Path | None = None, profile: str | None = None
+) -> Result[CatalogReading[LlmListing]]:
+    """The LLM models this key can see; a model missing from the list is not proof of absence."""
+    from yorunge.adapters.catalog_http import list_llm_models as read
+
+    observed = read(_platform_loader(config, profile))
+    return Result[CatalogReading[LlmListing]](
+        data=CatalogReading[LlmListing](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=observed.value,
+        )
+    )
+
+
+def show_llm_model(
+    model_id: str,
+    *,
+    task: str | None = None,
+    config: Path | None = None,
+    profile: str | None = None,
+) -> Result[CatalogReading[LlmModel]]:
+    """One LLM model by identifier; ``task``, when given, must equal the model's task."""
+    from yorunge.adapters.catalog_http import show_llm_model as read
+
+    observed = read(_platform_loader(config, profile), model_id, task=task)
+    return Result[CatalogReading[LlmModel]](
+        data=CatalogReading[LlmModel](
+            observed_from=observed.observed_from,
+            observed_until=observed.observed_until,
+            data=observed.value,
+        )
     )

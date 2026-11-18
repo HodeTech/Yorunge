@@ -11,9 +11,10 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Sequence
-from typing import Annotated, Final, Literal, Protocol
+from datetime import datetime
+from typing import Annotated, Final, Generic, Literal, Protocol, TypeVar
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import Model, has_control_characters
@@ -149,6 +150,9 @@ def dataset_page(
     if len(total_values) > 1:
         return "unknown"
     more = has_next_values[0] == "true"
+    if more and returned != page_size:
+        # A short page that announces more pages: the server changed the size under us.
+        raise YorungeError("invalid_response")
     if len(total_values) == 1:
         if _DIGITS.fullmatch(total_values[0]) is None:
             return "unknown"
@@ -182,7 +186,10 @@ def detail_identity(owner_username: str | None, slug: str, owner: str, asked_slu
 # --- resolution -----------------------------------------------------------------------------------
 
 
-def resolve_version(versions: Sequence[VersionRef], tag: str) -> VersionRef:
+VersionT = TypeVar("VersionT", bound=VersionRef)
+
+
+def resolve_version(versions: Sequence[VersionT], tag: str) -> VersionT:
     """Exactly one version carries the tag; none is not-visible, more than one is ambiguous."""
     version_tag(tag)
     matches = [item for item in versions if item.version_tag == tag]
@@ -193,7 +200,7 @@ def resolve_version(versions: Sequence[VersionRef], tag: str) -> VersionRef:
     return matches[0]
 
 
-def candidates(versions: Sequence[VersionRef], tag: str) -> tuple[VersionRef, ...]:
+def candidates(versions: Sequence[VersionT], tag: str) -> tuple[VersionT, ...]:
     """The few candidates an ambiguity shows: enough to choose by identity, never a pick."""
     return tuple(item for item in versions if item.version_tag == tag)[:MAX_CANDIDATES]
 
@@ -235,17 +242,47 @@ def text(value: str | None, limit: int) -> str | None:
 
 # --- consumed records (ADR-0035 Karar 8) ----------------------------------------------------------
 
-Identity = Annotated[str, Field(min_length=1, max_length=IDENTITY_LIMIT)]
-Count = Annotated[int, Field(ge=0)]
-Price = Annotated[int | float, Field(ge=0, allow_inf_nan=False)]
-# RFC 3339 date-time as the Platform schema states it; anything else is not a timestamp we show.
-Stamp = Annotated[
+MAX_COUNT: Final = 2**53 - 1  # the largest integer every JSON reader keeps exactly
+_STAMP: Final = re.compile(
+    r"\A[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
+    r"T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]{1,6})?"
+    r"(Z|[+-](0[0-9]|1[0-3]):[0-5][0-9])\Z"
+)
+_UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Zl", "Zp"})
+
+
+def _plain(value: str) -> str:
+    """An identifier is opaque and carries no control, format or line-separator character.
+
+    Such a character is never part of a legitimate identifier, and a cleaned identifier could name
+    another model or rebuild a secret, so the answer is refused instead of cleaned.
+    """
+    if has_control_characters(value) or any(
+        unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value
+    ):
+        raise ValueError("plain identifier required")
+    return value
+
+
+def _stamp(value: str) -> str:
+    """RFC 3339 date-time with an offset, and a real calendar date and time."""
+    if _STAMP.fullmatch(value) is None:
+        raise ValueError("RFC 3339 date-time required")
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("RFC 3339 date-time required") from None
+    return value
+
+
+Identity = Annotated[
     str,
-    Field(
-        max_length=40,
-        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})?$",
-    ),
+    AfterValidator(_plain),
+    Field(min_length=1, max_length=IDENTITY_LIMIT),
 ]
+Count = Annotated[int, Field(ge=0, le=MAX_COUNT)]
+Price = Annotated[int | float, Field(ge=0, allow_inf_nan=False)]
+Stamp = Annotated[str, AfterValidator(_stamp), Field(max_length=40)]
 
 
 class _Consumed(Model):
@@ -261,7 +298,7 @@ class LlmPricing(_Consumed):
 
 class LlmModel(_Consumed):
     model_id: Identity
-    task: Annotated[str, Field(min_length=1, max_length=64)]
+    task: Annotated[str, AfterValidator(_plain), Field(min_length=1, max_length=64)]
     created: Count
     modalities: tuple[str, ...] | None = None
     context_length: Count | None = None
@@ -292,7 +329,7 @@ class PlatformModel(_Consumed):
 
 
 class PlatformModelPage(_Consumed):
-    page: Annotated[int, Field(ge=1)]
+    page: Annotated[int, Field(ge=1, le=MAX_COUNT)]
     page_size: Annotated[int, Field(ge=1, le=PLATFORM_MAX_PAGE_SIZE)]
     total: Count
     returned: Count
@@ -328,9 +365,34 @@ class PlatformDataset(_Consumed):
 
 
 class DatasetPage(_Consumed):
-    page: Annotated[int, Field(ge=1)]
+    page: Annotated[int, Field(ge=1, le=MAX_COUNT)]
     page_size: Annotated[int, Field(ge=1, le=PLATFORM_MAX_PAGE_SIZE)]
     returned: Count
     completeness: Completeness
     scope: Literal["unknown"] = "unknown"  # the filter's effect is unproven until K4 (Karar 2)
     datasets: tuple[PlatformDataset, ...]
+
+
+class PlatformModelDetail(_Consumed):
+    """One model, and its version list when the caller asked for it."""
+
+    model: PlatformModel
+    versions: VersionListing | None
+
+
+class PlatformVersionResolution(_Consumed):
+    """A tag resolved to exactly one version of one model."""
+
+    model: PlatformModel
+    version: PlatformVersion
+
+
+T = TypeVar("T")
+
+
+class CatalogReading(Model, Generic[T]):
+    """What one command read, with the window it was read in (ADR-0035 Karar 3)."""
+
+    observed_from: Stamp
+    observed_until: Stamp
+    data: T
