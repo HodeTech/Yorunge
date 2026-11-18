@@ -2,15 +2,23 @@
 
 The line observes what the server reports and what Yörünge does not do. It must not depend on
 ``is_material``, must not appear when the terms are accepted, and must not carry a command, a URL,
-an acceptance path or a claim about access or obligation.
+an acceptance path or a claim about access or obligation. The whole text is pinned for both states,
+so that a change to any other line shows up here too.
 """
 
 import copy
 import json
 
+import pytest
+
 from tests.contracts.test_context_discovery import WIRE
 from yorunge.cli import TERMS_NOT_ACCEPTED_GUIDANCE, discovery_text_result
 from yorunge.domain.discovery import ContextDiscovery
+
+HEAD = ["Hizmet: evren-llm", "Profil: work"]
+SCOPE = "Profilin hesap/proje tercihinin LLM hizmet kapsamı bilinmiyor."
+UNVERIFIED = "Kimlik doğrulaması: doğrulanmadı. Uzak hesap/proje kimliği sunulmuyor."
+NO_EXECUTION = "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir."
 
 
 def view(*, accepted: bool, is_material: bool) -> ContextDiscovery:
@@ -21,11 +29,29 @@ def view(*, accepted: bool, is_material: bool) -> ContextDiscovery:
     return ContextDiscovery.model_validate_json(json.dumps(data))
 
 
-def test_unaccepted_terms_get_exactly_one_guidance_line_right_after_the_terms_state():
-    lines = discovery_text_result(view(accepted=False, is_material=True)).splitlines()
-    assert lines.count(TERMS_NOT_ACCEPTED_GUIDANCE) == 1
-    state = next(index for index, line in enumerate(lines) if line.startswith("Sunucunun şart"))
-    assert lines[state + 1] == TERMS_NOT_ACCEPTED_GUIDANCE
+def test_unaccepted_terms_text_is_pinned_line_by_line():
+    assert discovery_text_result(view(accepted=False, is_material=True)) == "\n".join(
+        [
+            *HEAD,
+            "Sunucunun şart durumu: kabul edilmemiş (sürüm 2)",
+            TERMS_NOT_ACCEPTED_GUIDANCE,
+            UNVERIFIED,
+            NO_EXECUTION,
+            SCOPE,
+        ]
+    )
+
+
+def test_accepted_terms_text_is_pinned_line_by_line_and_has_no_guidance():
+    assert discovery_text_result(view(accepted=True, is_material=False)) == "\n".join(
+        [
+            *HEAD,
+            "Sunucunun şart durumu: kabul edilmiş (sürüm 2)",
+            UNVERIFIED,
+            NO_EXECUTION,
+            SCOPE,
+        ]
+    )
 
 
 def test_is_material_does_not_change_the_text_for_unaccepted_terms():
@@ -34,10 +60,11 @@ def test_is_material_does_not_change_the_text_for_unaccepted_terms():
     assert material == optional
 
 
-def test_accepted_terms_have_no_guidance_line_and_keep_their_state():
-    text = discovery_text_result(view(accepted=True, is_material=False))
-    assert TERMS_NOT_ACCEPTED_GUIDANCE not in text
-    assert "şart durumu: kabul edilmiş" in text
+@pytest.mark.parametrize("accepted", [True, False])
+def test_the_verification_and_execution_lines_are_kept_in_both_states(accepted):
+    text = discovery_text_result(view(accepted=accepted, is_material=True))
+    assert UNVERIFIED in text.splitlines()
+    assert NO_EXECUTION in text.splitlines()
 
 
 def test_the_guidance_names_no_command_url_acceptance_path_or_obligation():
@@ -49,13 +76,20 @@ def test_the_guidance_names_no_command_url_acceptance_path_or_obligation():
         "doc_path",
         "terms/",
         "gerekir",
+        "gerekli",
+        "gerekiyor",
+        "lazım",
+        "mecbur",
         "zorunlu",
         "erişemez",
+        "kabul edin",
         "kabul ettik",
         "kabul edildi",
+        "onaylayın",
+        "kendi hesabınız",
     ):
         assert forbidden not in text
-    assert "yörünge şart kabul etmez" in text
+    assert "yörünge şartları sizin adınıza kabul etmez." in text
 
 
 def test_the_unaccepted_text_shows_no_host_or_url():

@@ -475,8 +475,7 @@ def jobs_text_result(data: Model) -> str:
 # server reports and what Yörünge does not do; it states no obligation, no loss of access, and no
 # command, URL or acceptance path.
 TERMS_NOT_ACCEPTED_GUIDANCE = (
-    "Sunucu şartları kabul edilmemiş bildiriyor. Yörünge şart kabul etmez; karar kendi EVREN "
-    "hesabınızda size aittir."
+    "Sunucu, şartların kabul edilmediğini bildiriyor. Yörünge şartları sizin adınıza kabul etmez."
 )
 
 

@@ -220,6 +220,22 @@ def test_public_text_gives_one_terms_guidance_line_when_terms_are_not_accepted(
     assert result.stderr == b""
 
 
+@pytest.mark.parametrize("output", ["json", "ndjson"])
+def test_machine_output_keeps_the_reason_and_never_carries_the_terms_guidance(
+    context_files, certificates, output
+):
+    config, root = context_files
+    body = b'{"accepted":false,"current_version":4,"is_material":true,"doc_path":"terms/v4.md"}'
+    with TlsServer(certificates, {"/v1/terms/status": Reply(body=body)}) as server:
+        result = child(server, certificates, config, root, "--output", output)
+    assert result.returncode == 0, result.stderr
+    text = result.stdout.decode("utf-8", "strict")
+    assert b"terms_not_accepted" in result.stdout
+    assert TERMS_NOT_ACCEPTED_GUIDANCE not in text
+    assert json.dumps(TERMS_NOT_ACCEPTED_GUIDANCE)[1:-1] not in text
+    assert result.stderr == b""
+
+
 def test_api_default_state_is_explicit_and_does_not_fall_back_from_another_root(
     context_files, certificates, monkeypatch
 ):
