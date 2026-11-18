@@ -512,9 +512,9 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
     from yorunge.domain.catalog import CatalogReading
 
     if isinstance(data, CatalogReading):
-        from yorunge.cli.catalog import catalog_text
+        from yorunge.cli.catalog import catalog_text, options_suffix
 
-        return catalog_text(data)
+        return catalog_text(data, options_suffix(args))
     if args.command == "datasets":
         if args.action == "upload":
             from yorunge.cli.upload import text

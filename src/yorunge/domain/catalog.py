@@ -87,8 +87,11 @@ def provider_segment(value: object) -> str:
 
 
 def task_argument(value: object) -> str:
-    """An LLM task named by the user: a plain identifier of 1 to 64 characters, checked first."""
-    if type(value) is not str or not 1 <= len(value) <= 64:
+    """An LLM task named by the user: a plain identifier of 1 to 64 characters, checked first.
+
+    Edge whitespace is refused, not trimmed: a trimmed task would filter for a different name.
+    """
+    if type(value) is not str or not 1 <= len(value) <= 64 or value != value.strip():
         raise YorungeError("invalid_request")
     if any(unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value):
         raise YorungeError("invalid_request")
@@ -286,13 +289,16 @@ _UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Zl", "Zp"})
 
 
 def _plain(value: str) -> str:
-    """An identifier is opaque and carries no control, format or line-separator character.
+    """An identifier is opaque: no control, format or line-separator character, no edge whitespace.
 
     Such a character is never part of a legitimate identifier, and a cleaned identifier could name
-    another model or rebuild a secret, so the answer is refused instead of cleaned.
+    another model or rebuild a secret, so the answer is refused instead of cleaned. Edge whitespace
+    is refused too, because a trimmed identifier would be shown as a different one.
     """
-    if has_control_characters(value) or any(
-        unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value
+    if (
+        value != value.strip()
+        or has_control_characters(value)
+        or any(unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value)
     ):
         raise ValueError("plain identifier required")
     return value

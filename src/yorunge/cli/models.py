@@ -216,31 +216,35 @@ def _mismatch_hint(error: YorungeError) -> str | None:
     )
 
 
+# Each suggested command ends in ``{options}``: the profile and config the person gave, so that the
+# command reads the same account as the one that failed.
 CATALOG_HINTS: dict[str, str] = {
     "model_not_visible": (
         "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
-        "anahtarı kontrol edin ya da 'yorunge models list --service evren-platform' (veya "
-        "evren-llm) ile arayın."
+        "anahtarı kontrol edin ya da 'yorunge models list --service evren-platform{options}' (veya "
+        "evren-llm{options}) ile arayın."
     ),
     "model_ambiguous": (
         "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. Kimlikleri görmek için 'yorunge "
-        "models show --service evren-platform --model OWNER/SLUG --versions' çalıştırın, sonra "
-        "'yorunge models download --version-id KIMLIK --format onnx --weights-out DOSYA' ile "
-        "devam edin."
+        "models show --service evren-platform --model OWNER/SLUG --versions{options}' çalıştırın, "
+        "sonra 'yorunge models download --version-id KIMLIK --format onnx --weights-out "
+        "DOSYA{options}' ile devam edin."
     ),
     "model_task_mismatch": (
         "Model beklenen görevle eşleşmiyor. 'yorunge models show --service evren-llm --model-id "
-        "KIMLIK' ile görevi kontrol edin."
+        "KIMLIK{options}' ile görevi kontrol edin."
     ),
     "model_not_addressable": (
         "Modelin sahip adı yok; owner/slug ile adreslenemez. 'yorunge models show --service "
-        "evren-platform --model-id KIMLIK --versions' kullanın."
+        "evren-platform --model-id KIMLIK --versions{options}' kullanın."
     ),
 }
 
 
 def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeError], str | None]]:
     """What a person is told, in text, of the errors this command meets in its own way."""
+    from yorunge.cli.catalog import options_suffix
+
     hints: dict[str, str | Callable[[YorungeError], str | None]] = {
         "transport_timeout": TIMEOUT_HINT,
         "download_integrity_mismatch": _mismatch_hint,
@@ -248,7 +252,8 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
     }
     if vars(args).get("no_resume") is True:
         hints["download_partial_unverified"] = NO_RESUME_HINT
-    hints.update(CATALOG_HINTS)
+    suffix = options_suffix(args)
+    hints.update({code: text.format(options=suffix) for code, text in CATALOG_HINTS.items()})
     return hints
 
 

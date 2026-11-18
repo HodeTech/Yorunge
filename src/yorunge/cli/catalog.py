@@ -3,12 +3,14 @@
 The rules live in ``yorunge.api`` and the catalog adapter. This module reads the arguments,
 refuses every combination that cannot mean anything before any request is made, and writes a
 plain text view. Provider text is shown through the catalog's own cleaning; identifiers are shown
-as the provider sent them, with the same cleaning applied for the terminal only.
+as the provider sent them, with the same cleaning applied for the terminal only. A command the
+text suggests repeats the profile and config the user gave, so it reads the same account.
 """
 
 from __future__ import annotations
 
 import argparse
+import shlex
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -93,6 +95,16 @@ def configure_datasets(actions: argparse._SubParsersAction) -> None:  # type: ig
     )
 
 
+def options_suffix(args: argparse.Namespace) -> str:
+    """The profile and config the user gave, in the form a suggested command repeats them."""
+    parts = []
+    if getattr(args, "config", None) is not None:
+        parts.append(f" --config {shlex.quote(str(args.config))}")
+    if getattr(args, "profile", None) is not None:
+        parts.append(f" --profile {shlex.quote(args.profile)}")
+    return "".join(parts)
+
+
 def _invalid() -> YorungeError:
     from yorunge.domain.errors import YorungeError
 
@@ -138,18 +150,23 @@ def _list(args: argparse.Namespace) -> CliResult:
 
 
 def _filter_by_task(result: Result[CatalogReading[LlmListing]], task: str) -> CliResult:
-    """A client-side filter: the same list the key sees, with its completeness unchanged."""
+    """A client-side filter: the same list the key sees, with its completeness unchanged.
+
+    The filter is recorded only when the provider listed something to filter; an empty provider
+    list stays an empty list, whatever task was asked for.
+    """
     from yorunge.domain.catalog import CatalogReading, LlmListing
     from yorunge.domain.models import Result
 
     reading = result.data
-    kept = tuple(model for model in reading.data.models if model.task == task)
+    provider_models = reading.data.models
+    kept = tuple(model for model in provider_models if model.task == task)
     filtered = CatalogReading[LlmListing](
         observed_from=reading.observed_from,
         observed_until=reading.observed_until,
-        data=LlmListing(models=kept, task_filter=task),
+        data=LlmListing(models=kept, task_filter=task if provider_models else None),
     )
-    return Result[CatalogReading[LlmListing]](data=filtered)
+    return Result[CatalogReading[LlmListing]](data=filtered, warnings=result.warnings)
 
 
 def _show(args: argparse.Namespace) -> CliResult:
@@ -203,7 +220,8 @@ def _s(value: object, limit: int | None = None) -> str:
 def _id(value: object) -> str:
     """An identifier as the provider sent it: cleaned for the terminal, never shortened.
 
-    The codec already bounds identifiers to the raw limit, so the display limit is the same bound.
+    The codec already bounds identifiers to the raw limit, and refuses edge whitespace, so the
+    display limit is the same bound and nothing is trimmed.
     """
     from yorunge.domain.catalog import IDENTITY_LIMIT
 
@@ -214,7 +232,8 @@ def _window(reading: CatalogReading[object]) -> str:
     return f"Gözlem: {reading.observed_from} – {reading.observed_until}"
 
 
-def catalog_text(reading: CatalogReading[object]) -> str:
+def catalog_text(reading: CatalogReading[object], options: str = "") -> str:
+    """The text view of one reading; ``options`` is what the suggested commands must repeat."""
     from yorunge.domain.catalog import (
         DatasetPage,
         LlmListing,
@@ -226,17 +245,17 @@ def catalog_text(reading: CatalogReading[object]) -> str:
 
     data = reading.data
     if isinstance(data, PlatformModelPage):
-        lines = _platform_page(data)
+        lines = _platform_page(data, options)
     elif isinstance(data, PlatformModelDetail):
-        lines = _platform_detail(data)
+        lines = _platform_detail(data, options)
     elif isinstance(data, VersionListing):
-        lines = _version_only(data)
+        lines = _versions(data, None, options)
     elif isinstance(data, LlmListing):
         lines = _llm_listing(data)
     elif isinstance(data, LlmModel):
         lines = _llm_model(data)
     elif isinstance(data, DatasetPage):
-        lines = _dataset_page(data)
+        lines = _dataset_page(data, options)
     else:
         raise TypeError("a catalog reading is expected")
     lines.append(_window(reading))
@@ -247,7 +266,7 @@ def _number(value: int | None) -> str:
     return "-" if value is None else str(value)
 
 
-def _platform_page(page: object) -> list[str]:
+def _platform_page(page: object, options: str) -> list[str]:
     from yorunge.domain.catalog import PlatformModelPage
 
     assert isinstance(page, PlatformModelPage)
@@ -266,17 +285,17 @@ def _platform_page(page: object) -> list[str]:
     if any(model.owner_username is None for model in page.models):
         lines.append(
             "Sahip adı olmayan modeller için kimlikle: yorunge models show --service "
-            f"{PLATFORM} --model-id KIMLIK --versions"
+            f"{PLATFORM} --model-id KIMLIK --versions{options}"
         )
     if page.completeness == "partial":
         lines.append(
             f"Sonraki sayfa: yorunge models list --service {PLATFORM} "
-            f"--page {page.page + 1} --page-size {page.page_size}"
+            f"--page {page.page + 1} --page-size {page.page_size}{options}"
         )
     return lines
 
 
-def _platform_detail(detail: object) -> list[str]:
+def _platform_detail(detail: object, options: str) -> list[str]:
     from yorunge.domain.catalog import TEXT_LIMIT, PlatformModelDetail
 
     assert isinstance(detail, PlatformModelDetail)
@@ -293,18 +312,11 @@ def _platform_detail(detail: object) -> list[str]:
     if model.description is not None:
         lines.append(f"  açıklama: {_s(model.description, TEXT_LIMIT)}")
     if detail.versions is not None:
-        lines.extend(_versions(detail.versions, _id(model.slug)))
+        lines.extend(_versions(detail.versions, _id(model.slug), options))
     return lines
 
 
-def _version_only(listing: object) -> list[str]:
-    from yorunge.domain.catalog import VersionListing
-
-    assert isinstance(listing, VersionListing)
-    return _versions(listing, None)
-
-
-def _versions(listing: object, slug: str | None) -> list[str]:
+def _versions(listing: object, slug: str | None, options: str) -> list[str]:
     from yorunge.domain.catalog import VersionListing
 
     assert isinstance(listing, VersionListing)
@@ -334,7 +346,7 @@ def _versions(listing: object, slug: str | None) -> list[str]:
         )
     lines.append(
         "  İndirme (sürüm kimliğiyle): yorunge models download --version-id KIMLIK "
-        "--format onnx|pt|tflite --weights-out DOSYA"
+        f"--format onnx|pt|tflite --weights-out DOSYA{options}"
     )
     return lines
 
@@ -389,7 +401,7 @@ def _llm_model(model: object) -> list[str]:
     return lines
 
 
-def _dataset_page(page: object) -> list[str]:
+def _dataset_page(page: object, options: str) -> list[str]:
     from yorunge.domain.catalog import DatasetPage
 
     assert isinstance(page, DatasetPage)
@@ -410,6 +422,6 @@ def _dataset_page(page: object) -> list[str]:
     if page.completeness == "partial":
         lines.append(
             f"Sonraki sayfa: yorunge datasets list --page {page.page + 1} "
-            f"--page-size {page.page_size}"
+            f"--page-size {page.page_size}{options}"
         )
     return lines

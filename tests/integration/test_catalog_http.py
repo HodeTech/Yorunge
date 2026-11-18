@@ -5,8 +5,11 @@ Every assertion looks at the recorded requests: the key only where the schema sa
 exact query, the number of GETs per command, no redirect followed, and no state written.
 """
 
+import argparse
 import json
+import shlex
 import socket
+from pathlib import Path
 
 import pytest
 
@@ -921,6 +924,7 @@ def test_an_llm_list_filters_by_task_on_the_client_only(
         )
     assert code == 0
     assert "emb-a" in out and "chat-b" not in out
+    assert "görev süzmesi: embedding" in out
     assert [record.path for record in rig.server.requests] == [f"{LLM_BASE}/models"]
 
 
@@ -930,6 +934,12 @@ def test_an_llm_list_filters_by_task_on_the_client_only(
         (["models", "list", "--service", "evren-llm", "--page", "1"], 2),
         (["models", "list", "--service", "evren-platform", "--task", "chat"], 2),
         (["models", "show", "--service", "evren-platform", "--model-id", "x"], 2),
+        (["models", "show", "--service", "evren-llm", "--model-id", "x", "--versions"], 2),
+        (["models", "show", "--service", "evren-llm", "--model", "a/b"], 2),
+        (["models", "show", "--service", "evren-platform", "--model", "no-slash"], 2),
+        (["models", "show", "--service", "evren-platform", "--model", "a/b", "--model-id", "x"], 2),
+        (["models", "show", "--service", "evren-platform", "--model", "a/b", "--task", "chat"], 2),
+        (["models", "list", "--service", "evren-llm", "--page-size", "5"], 2),
         (["datasets", "list", "--state-dir", "/tmp/state"], 2),
     ],
 )
@@ -982,7 +992,7 @@ def test_the_dataset_page_says_its_scope_is_not_confirmed(
 # --- review round 1 of the command line (P02-4e) ----------------------------------------------
 
 
-@pytest.mark.parametrize("task", ["", "x" * 65, "emb\x1bedding"])
+@pytest.mark.parametrize("task", ["", "x" * 65, "emb\x1bedding", " chat", "chat ", "   "])
 def test_a_bad_llm_task_is_refused_before_the_list_is_requested(
     certificates, keys, monkeypatch, config_file, capsys, task
 ):
@@ -1216,3 +1226,269 @@ def test_ndjson_stdout_is_only_event_lines(certificates, keys, monkeypatch, conf
     lines = [line for line in out.splitlines() if line.strip()]
     events = [json.loads(line) for line in lines]
     assert events and all(isinstance(event, dict) for event in events)
+
+
+# --- review round 2 of the command line (P02-4e) ------------------------------------------------
+
+
+def dataset_row(**overrides):
+    row = {
+        "id": "dataset-1",
+        "name": "Dataset A",
+        "slug": "dataset-a",
+        "modality": "VISION",
+        "item_count": 3,
+        "visibility": "PRIVATE",
+        "updated_at": STAMP,
+        "owner_username": OWNER,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_a_task_filter_is_recorded_in_the_json_reading(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{LLM_BASE}/models": body(
+            {"object": "list", "data": [llm_model(id="emb-a", task="embedding")]}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                "embedding",
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 0
+    assert json.loads(out)["data"]["data"]["task_filter"] == "embedding"
+
+
+def test_a_task_filter_on_an_empty_provider_list_records_no_filter(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{LLM_BASE}/models": body({"object": "list", "data": []})}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                "embedding",
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 0
+    assert json.loads(out)["data"]["data"]["task_filter"] is None
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                "embedding",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "görev süzmesi" not in out and "(görünen model yok)" in out
+
+
+def test_the_task_filter_keeps_the_provider_warnings_and_the_window() -> None:
+    from yorunge.cli.catalog import _filter_by_task
+    from yorunge.domain.catalog import CatalogReading, LlmListing, LlmModel
+    from yorunge.domain.models import Result
+
+    listing = LlmListing(
+        models=(
+            LlmModel(model_id="emb-a", task="embedding", created=1),
+            LlmModel(model_id="chat-b", task="chat", created=1),
+        )
+    )
+    reading = CatalogReading[LlmListing](observed_from=STAMP, observed_until=STAMP, data=listing)
+    result = Result[CatalogReading[LlmListing]](data=reading, warnings=("kısmi uyarı",))
+    filtered = _filter_by_task(result, "embedding")
+    assert [model.model_id for model in filtered.data.data.models] == ["emb-a"]
+    assert filtered.data.data.task_filter == "embedding"
+    assert filtered.data.observed_from == STAMP and filtered.data.observed_until == STAMP
+    assert filtered.warnings == ("kısmi uyarı",)
+
+
+@pytest.mark.parametrize(
+    "flag,value",
+    [("--page-size", "0"), ("--page", "0"), ("--page-size", "101"), ("--page", "9" * 40)],
+)
+def test_a_page_outside_the_catalog_range_says_invalid_request_before_any_request(
+    certificates, keys, monkeypatch, config_file, capsys, flag, value
+):
+    with Rig(certificates, {}, monkeypatch) as rig:
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                flag,
+                value,
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 2
+    assert "invalid_request" in out + err
+    assert rig.server.requests == []
+
+
+def test_suggested_commands_repeat_the_config_and_profile_the_person_gave(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body(
+            {"items": [model_json(owner_username=None)] + [model_json()] * 19, "total": 45}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                "--config",
+                str(config_file),
+                "--profile",
+                "test",
+            ],
+        )
+    assert code == 0
+    lines = out.splitlines()
+    owner_less = next(line for line in lines if "--model-id KIMLIK" in line)
+    next_page = next(line for line in lines if line.startswith("Sonraki sayfa"))
+    assert owner_less.endswith("--profile test")
+    assert next_page.endswith("--profile test")
+
+    routes = {
+        f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
+            body=json.dumps([dataset_row()] * 20).encode("utf-8"), headers=(("X-Has-Next", "1"),)
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            ["datasets", "list", "--config", str(config_file), "--profile", "test"],
+        )
+    assert code == 0
+    next_page = next(line for line in out.splitlines() if line.startswith("Sonraki sayfa"))
+    assert next_page.endswith("--profile test")
+
+
+def test_the_download_hint_repeats_the_profile_the_person_gave(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(1)]),
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-platform",
+                "--model",
+                f"{OWNER}/{SLUG}",
+                "--versions",
+                "--config",
+                str(config_file),
+                "--profile",
+                "test",
+            ],
+        )
+    assert code == 0
+    hint = next(line for line in out.splitlines() if "İndirme" in line)
+    assert hint.endswith("--profile test")
+
+
+def test_a_model_not_visible_error_repeats_the_config_and_profile(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{LLM_BASE}/models/llm-a": Reply(status=404, body=b"{}")}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-llm",
+                "--model-id",
+                "llm-a",
+                "--config",
+                str(config_file),
+                "--profile",
+                "test",
+            ],
+        )
+    assert code == 1
+    assert f"--config {shlex.quote(str(config_file))} --profile test" in out + err
+
+
+def test_the_catalog_hints_quote_the_config_path_and_leave_no_placeholder() -> None:
+    from yorunge.cli.models import error_hints
+
+    config = Path("my dir/config.toml")
+    hints = error_hints(argparse.Namespace(config=config, profile="pilot"))
+    expected = f"--config {shlex.quote(str(config))} --profile pilot"
+    for code in (
+        "model_not_visible",
+        "model_ambiguous",
+        "model_task_mismatch",
+        "model_not_addressable",
+    ):
+        assert expected in hints[code]
+        assert "{options}" not in hints[code]
+    bare = error_hints(argparse.Namespace())
+    assert "--config" not in bare["model_not_visible"]
+    assert "{options}" not in bare["model_not_visible"]
+
+
+def test_a_long_dataset_identifier_is_shown_whole_in_the_text_view(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    long_id = "D" * 200
+    routes = {
+        f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
+            body=json.dumps([dataset_row(id=long_id)]).encode("utf-8"),
+            headers=(("X-Has-Next", "0"),),
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
+    assert code == 0
+    assert f"kimlik {long_id}" in out and "…" not in out

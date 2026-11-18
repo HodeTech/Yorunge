@@ -598,6 +598,30 @@ def test_an_llm_task_with_a_format_character_is_refused() -> None:
 
 
 @pytest.mark.parametrize(
+    "field,value",
+    [
+        ("id", " model-uuid-1"),
+        ("owner_username", "owner-1 "),
+        ("slug", "\u3000model-a"),
+    ],
+)
+def test_platform_identifiers_with_edge_whitespace_are_refused_not_trimmed(field, value) -> None:
+    assert raise_code(codec.platform_model, jbytes(platform_model(**{field: value})), KEY) == (
+        "invalid_response"
+    )
+
+
+@pytest.mark.parametrize("value", [" llm-a", "llm-a ", "\u3000llm-a"])
+def test_an_llm_identifier_with_edge_whitespace_is_refused_not_trimmed(value) -> None:
+    assert raise_code(codec.llm_model, jbytes(llm_item(id=value)), KEY) == "invalid_response"
+
+
+@pytest.mark.parametrize("value", [" chat", "chat ", "   ", "\u3000chat"])
+def test_a_task_argument_with_edge_whitespace_is_refused_not_trimmed(value) -> None:
+    assert raise_code(catalog.task_argument, value) == "invalid_request"
+
+
+@pytest.mark.parametrize(
     "stamp",
     [
         "2026-13-99T99:99:99Z",

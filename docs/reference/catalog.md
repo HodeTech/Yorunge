@@ -105,6 +105,12 @@ Komut, yazılacak hiçbir durum dosyası açmaz ve çalışma dizinine dosya yaz
 
 `observed_from`: komutun ilk ağ isteğinin başladığı an (oturum ve kimlik kurulumu bu sürenin dışındadır). `observed_until`: son yanıt gövdesinin tamamen okunduğu an. Aynı komutta birden fazla istek varsa tek pencere bunları kapsar.
 
+## Komut yüzeyi (P02-4e)
+
+- `models list --service evren-llm --task T` süzmesi istemci tarafındadır ve isteği değiştirmez. Metin başlığı `görev süzmesi: T` yazar. JSON'da `data.task_filter` aynı değeri taşır; sağlayıcı listesi boşsa süzme kaydedilmez ve `task_filter` `null` olur. Tamlık etiketi süzmeyle değişmez (`unknown` kalır).
+- Öneri satırları (`Sonraki sayfa`, sahip adı olmayan modeller için kimlik yolu, sürüm indirme ipucu, katalog hata ipuçları), çağıranın verdiği `--config` ve `--profile` seçeneklerini aynen tekrarlar; öneri aynı hesabı okur.
+- Geçersiz argümanlar hiçbir istek gönderilmeden çıkış 2 ve `invalid_request` ile döner: `page_size` 1–100, `page` 1 ile 2^53−1 arası; `--page`/`--page-size` yalnız Platform listesinde; `--task` yalnız LLM'de (listede süzme, gösterimde beklenen görev); görev 1–64 karakter, denetim ya da biçim karakteri içermez ve baştan veya sondan boşluk taşımaz. `show`: `--model` yalnız Platform'da ve `OWNER/SLUG` biçiminde; `--model-id` Platform'da yalnız `--versions` ile, LLM'de tek başına; `--model` ile `--model-id` birlikte verilmez; `--versions` yalnız Platform'da.
+
 ## Canlı teyit (K4)
 
 2026-11-19 salt okuma kaydı ([kanıt](../research/p02-4-catalog-live-read-20261119.md)): `page_size=100` kabul edildi; veri seti başlığı `X-Has-Next` `0`/`1` olarak geliyor; veri seti `scope=owned` filtresinin etkisi bu hesapta gözlenemedi (etiket `unknown` kalır); LLM kimlikleri alfabeye uygun; LLM görevleri `decision` ve `guard` değerlerini de içeriyor. Hâlâ teyit bekleyenler: platform sayfasında 100'ün üstü, `model_id` ile sürüm listesi (hesapta model yok), sürüm çözümü ve büyük `model_card` alanının 1 MiB sınırına etkisi.
