@@ -251,6 +251,7 @@ def resolve_platform_version(
             call, _request(call.resolved, PLATFORM, f"models/{owner}/{slug}")
         )
         model = codec.platform_model(detail.body, call.resolved.secret)
+        catalog.owner_address(model.owner_username)  # no owner name: owner/slug cannot address it
         catalog.detail_identity(model.owner_username, model.slug, owner, slug)
         listed = await _model_scoped(
             call,

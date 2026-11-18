@@ -1498,6 +1498,44 @@ def check_dataset_version(
     return use(binding, _platform_loader(config, profile), state_dir)
 
 
+def download_model_weights_by_tag(
+    model: str,
+    version_tag: str,
+    *,
+    artifact_format: str,
+    weights_out: Path,
+    fold: int | None = None,
+    sha256: str | None = None,
+    timeout: int | None = None,
+    no_resume: bool = False,
+    config: Path | None = None,
+    profile: str | None = None,
+    state_dir: Path | None = None,
+    progress: Callable[[int, int | None], None] | None = None,
+) -> Result[DownloadSummary]:
+    """Download the one version of ``model`` (``OWNER/SLUG``) that carries ``version_tag``.
+
+    The catalog resolves the version (exact match only; no latest, no default, no guess) and the
+    result names what was resolved. The options and the guarantees are those of
+    :func:`download_model_weights`; the version identifier is the one the catalog returned.
+    """
+    from yorunge.adapters.model_download import download_model_weights_by_tag as use
+
+    return use(
+        model,
+        version_tag,
+        artifact_format,
+        weights_out,
+        fold,
+        sha256,
+        timeout,
+        no_resume,
+        _platform_loader(config, profile),
+        state_dir,
+        progress,
+    )
+
+
 def download_model_weights(
     version_id: str,
     *,

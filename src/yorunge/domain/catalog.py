@@ -288,7 +288,7 @@ _STAMP: Final = re.compile(
 _UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Zl", "Zp"})
 
 
-def _plain(value: str) -> str:
+def plain_identifier(value: str) -> str:
     """An identifier is opaque: no control, format or line-separator character, no edge whitespace.
 
     Such a character is never part of a legitimate identifier, and a cleaned identifier could name
@@ -317,7 +317,7 @@ def _stamp(value: str) -> str:
 
 Identity = Annotated[
     str,
-    AfterValidator(_plain),
+    AfterValidator(plain_identifier),
     Field(min_length=1, max_length=IDENTITY_LIMIT),
 ]
 Count = Annotated[int, Field(ge=0, le=MAX_COUNT)]
@@ -338,7 +338,7 @@ class LlmPricing(_Consumed):
 
 class LlmModel(_Consumed):
     model_id: Identity
-    task: Annotated[str, AfterValidator(_plain), Field(min_length=1, max_length=64)]
+    task: Annotated[str, AfterValidator(plain_identifier), Field(min_length=1, max_length=64)]
     created: Count
     modalities: tuple[str, ...] | None = None
     context_length: Count | None = None

@@ -90,11 +90,25 @@ def configure(models: Parser) -> None:
     )
     command.add_argument(
         "--version-id",
-        required=True,
+        default=None,
         help=(
             "Kesin model sürümü kimliği (UUID). Platform arayüzündeki model sürümü sayfasından "
-            "alın; ad ya da slug çözülmez ve ilk sürüm seçilmez."
+            "alın; ad ya da slug çözülmez ve ilk sürüm seçilmez. --model ile birlikte verilemez."
         ),
+    )
+    command.add_argument(
+        "--model",
+        default=None,
+        help=(
+            "Model OWNER/SLUG; --version-tag ile birlikte verilir. Sürüm katalogdan çözülür: "
+            "etiketi tam eşleşen tek sürüm kullanılır, en son ya da varsayılan sürüm seçilmez. "
+            "Sahip adı olmayan modeller için --version-id kullanın."
+        ),
+    )
+    command.add_argument(
+        "--version-tag",
+        default=None,
+        help="Sürüm etiketi (tam eşleşme); --model ile birlikte verilir",
     )
     command.add_argument(
         "--format",
@@ -164,23 +178,33 @@ def dispatch(args: argparse.Namespace) -> CliResult:
         from yorunge.cli.catalog import dispatch_models
 
         return dispatch_models(args)
+    from yorunge.domain.errors import YorungeError
+
     reject_context(args, ("project",))  # a weights download has no project; none is dropped quietly
+    by_id = args.version_id is not None
+    by_tag = args.model is not None or args.version_tag is not None
+    if by_id == by_tag or (by_tag and (args.model is None or args.version_tag is None)):
+        # One way to name the version, given whole: an id, or an owner/slug with its tag. Refused
+        # before any file, state or request.
+        raise YorungeError("invalid_request")
     options = vars(args)
     progress = ProgressText(sys.stderr) if options.get("output", "text") == "text" else None
+    shared = {
+        "artifact_format": args.artifact_format,
+        "weights_out": args.weights_out,
+        "fold": args.fold,
+        "sha256": args.sha256,
+        "timeout": args.timeout,
+        "no_resume": args.no_resume,
+        "config": options.get("config"),
+        "profile": options.get("profile"),
+        "state_dir": options.get("state_dir"),
+        "progress": progress if progress is not None and progress.enabled else None,
+    }
     try:
-        return api.download_model_weights(
-            args.version_id,
-            artifact_format=args.artifact_format,
-            weights_out=args.weights_out,
-            fold=args.fold,
-            sha256=args.sha256,
-            timeout=args.timeout,
-            no_resume=args.no_resume,
-            config=options.get("config"),
-            profile=options.get("profile"),
-            state_dir=options.get("state_dir"),
-            progress=progress if progress is not None and progress.enabled else None,
-        )
+        if by_id:
+            return api.download_model_weights(args.version_id, **shared)
+        return api.download_model_weights_by_tag(args.model, args.version_tag, **shared)
     finally:
         if progress is not None:
             progress.close()
@@ -257,7 +281,9 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
     return hints
 
 
-def _summary_text(data: DownloadSummary) -> str:
+def _summary_text(data: DownloadSummary, warnings: tuple[str, ...] = ()) -> str:
+    from yorunge.adapters.download_engine import REPLACED_PARTIAL_WARNING
+
     source = data.source
     kind = f"biçim {source.format}" + ("" if source.fold is None else f", fold {source.fold}")
     rows = [
@@ -265,6 +291,18 @@ def _summary_text(data: DownloadSummary) -> str:
         f"Sürüm: {source.version_id}; {kind}",
         f"Boyut: {data.bytes} bayt; SHA-256: {data.sha256}",
     ]
+    if data.resolution is not None:
+        resolved = data.resolution
+        rows.insert(
+            1,
+            f"Çözülen model: {resolved.owner}/{resolved.slug} (model kimliği "
+            f"{resolved.model_id}); sürüm etiketi {resolved.version_tag}. Sürüm kimliği "
+            "katalog yanıtında gözlemlendi; indirme sırasında değişmiş olabilir.",
+        )
+    if REPLACED_PARTIAL_WARNING in warnings:
+        rows.append(
+            "Önceki yarım dosya farklı bir sürüme aitti; atıldı ve bu sürüm baştan indirildi."
+        )
     if data.verification_level == "sha256_matched":
         rows.append("Doğrulama: SHA-256, verdiğiniz beklenen özetle eşleşti (sha256_matched).")
     else:
@@ -287,7 +325,7 @@ def _summary_text(data: DownloadSummary) -> str:
     return "\n".join(rows)
 
 
-def text(data: Model) -> str:
+def text(data: Model, warnings: tuple[str, ...] = ()) -> str:
     from yorunge.domain.catalog import CatalogReading
     from yorunge.domain.download import DownloadSummary
 
@@ -296,7 +334,7 @@ def text(data: Model) -> str:
 
         return catalog_text(data)
     if isinstance(data, DownloadSummary):
-        return _summary_text(data)
+        return _summary_text(data, warnings)
     raise TypeError("a download result is expected")
 
 

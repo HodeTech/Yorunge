@@ -281,6 +281,51 @@ def decide_start(
     return _decide_with_stage(stage, sidecar, sidecar_tmp, identity_key, target_hash, no_resume)
 
 
+_PROBE_FIRST: Final = "0" * 64
+_PROBE_SECOND: Final = "f" * 64
+
+
+def identity_free_refusal(
+    *,
+    lock: LockState,
+    target: Entry | None,
+    stage: Entry | None,
+    sidecar: SidecarState | None,
+    sidecar_tmp: Entry | None,
+    no_resume: bool,
+) -> StartDecision | None:
+    """The refusal of the start table that no download identity can change, or None.
+
+    The table reads the identity only where a stage of ours stands with a readable record, and
+    there it keeps, publishes or discards; it never refuses. So a refusal that two different
+    identities both get, the same way, is one the identity does not decide, and it can be given
+    before anything is asked of the network. The probes are compared and never written anywhere.
+    """
+    first = decide_start(
+        lock=lock,
+        target=target,
+        stage=stage,
+        sidecar=sidecar,
+        sidecar_tmp=sidecar_tmp,
+        identity_key=_PROBE_FIRST,
+        target_hash=_PROBE_FIRST,
+        no_resume=no_resume,
+    )
+    second = decide_start(
+        lock=lock,
+        target=target,
+        stage=stage,
+        sidecar=sidecar,
+        sidecar_tmp=sidecar_tmp,
+        identity_key=_PROBE_SECOND,
+        target_hash=_PROBE_FIRST,
+        no_resume=no_resume,
+    )
+    if first.error is not None and first == second:
+        return first
+    return None
+
+
 def confirm_prefix(decision: StartDecision, observed_sha256: str | None) -> StartDecision:
     """The decision once the stage's committed prefix has been re-read and hashed.
 

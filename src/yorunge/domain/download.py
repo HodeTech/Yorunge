@@ -13,9 +13,16 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Final, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from yorunge.domain.capabilities import JsonWireModel, canonical, instant
+from yorunge.domain.catalog import plain_identifier
 from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.errors import DownloadIntegrityMismatch, YorungeError
 from yorunge.domain.models import Model, has_control_characters, is_reportable_path
@@ -136,6 +143,30 @@ class DownloadSource(Model):
         return provider_uuid(value)
 
 
+class DownloadResolution(Model):
+    """What a catalog reference resolved to, observed when the download was asked by tag (P02-4f).
+
+    The names are the catalog's own text and are shown, never used as an address: the version
+    identifier in ``DownloadSource`` is the only thing the download acts on.
+    """
+
+    model_id: Annotated[str, Field(min_length=1, max_length=256)]
+    owner: Annotated[str, Field(min_length=1, max_length=256)]
+    slug: Annotated[str, Field(min_length=1, max_length=256)]
+    version_tag: Annotated[str, Field(min_length=1, max_length=128)]
+    version_id: str
+
+    @field_validator("model_id", "owner", "slug", "version_tag")
+    @classmethod
+    def plain_text(cls, value: str) -> str:
+        return plain_identifier(value)  # the catalog's own rule: no control, format or edge space
+
+    @field_validator("version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+
 class DownloadSummary(Model):
     schema_version: Literal[1]
     kind: Literal["download_summary"]
@@ -147,6 +178,8 @@ class DownloadSummary(Model):
     resumed: bool
     resumed_from_bytes: ByteCount
     source: DownloadSource
+    # Set only when the version was resolved from the catalog (``--model`` and ``--version-tag``).
+    resolution: DownloadResolution | None = None
 
     @field_validator("output_path")
     @classmethod
@@ -154,6 +187,15 @@ class DownloadSummary(Model):
         if not is_reportable_path(value):
             raise ValueError("bounded printable path required")
         return value
+
+    @model_serializer(mode="wrap")
+    def omit_absent_resolution(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
+        """A download by version identifier says nothing of a resolution: the key is not written,
+        so that its result is the one it was before the catalog path existed."""
+        data: dict[str, object] = handler(self)
+        if self.resolution is None:
+            data.pop("resolution", None)
+        return data
 
     @model_validator(mode="after")
     def consistent(self) -> Self:
@@ -170,6 +212,8 @@ class DownloadSummary(Model):
                 raise ValueError("a resumed download resumes from part of its bytes")
         elif self.resumed_from_bytes != 0:
             raise ValueError("a download that did not resume resumed from nothing")
+        if self.resolution is not None and self.resolution.version_id != self.source.version_id:
+            raise ValueError("the resolved version is the version that was downloaded")
         return self
 
 

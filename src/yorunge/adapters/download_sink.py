@@ -74,6 +74,7 @@ from yorunge.domain.download_state import (
     StartDecision,
     confirm_prefix,
     decide_start,
+    identity_free_refusal,
     resumable,
 )
 from yorunge.domain.errors import DownloadIntegrityMismatch, YorungeError
@@ -190,14 +191,14 @@ class DownloadSink:
         self,
         directory: TargetDirectory,
         *,
-        identity_key: str,
         no_resume: bool,
         clock: Callable[[], datetime],
         guard: Callable[[], None],
     ) -> None:
         self.directory = directory
         self.names: DownloadNames = download_names(directory.name)
-        self.identity_key = identity_key
+        self.identity_key: str | None = None  # set by settle(), before any decision uses it
+        self.replaced_other_identity = False  # a partial of another identity was discarded
         self.target_hash = target_hash(directory.name)
         self.no_resume = no_resume
         self._clock, self._guard = clock, guard
@@ -220,14 +221,48 @@ class DownloadSink:
     # --- steps 2-6: the lock, the look, the decision, its removals, the stage ---------------------
 
     @_closed
-    def start(self) -> SinkPlan:
-        """Steps 2-6: the lock, the look, the decision, its removals, the stage.
+    def hold(self) -> None:
+        """Steps 2-3: the lock, the look, and the refusals that no download identity can change.
 
-        An OS error on the way (EACCES, EROFS, ENOSPC, EDQUOT, a filesystem without locks) is
+        Nothing that needs the identity is decided here, and nothing is removed or created unless a
+        refusal removes this download's own leftovers (a stage hard-linked to the target). The rest
+        waits for :meth:`settle`, so that no request is made before a refusal is known. An OS error
+        on the way (EACCES, EROFS, ENOSPC, EDQUOT, a filesystem without locks) is
         ``download_write_failed``.
         """
         fd = self.directory.descriptor
         self._lock = acquire_lock(fd, self.names.lock)
+        observed = self._observe()
+        refusal = identity_free_refusal(
+            lock="held",
+            target=observed.target,
+            stage=observed.stage,
+            sidecar=observed.sidecar,
+            sidecar_tmp=observed.tmp,
+            no_resume=self.no_resume,
+        )
+        if refusal is not None:
+            self._remove(refusal.remove, observed)
+            assert refusal.error is not None  # the refusals of the start table carry an error
+            raise YorungeError(refusal.error)
+
+    @_closed
+    def settle(self, identity_key: str) -> SinkPlan:
+        """Steps 4-6: the decision with the download's identity, its removals, the stage.
+
+        Called once, under the lock that :meth:`hold` took. A failure here is final for this sink:
+        whatever the decision did not finish is not this sink's to keep or drop, so :meth:`stop`
+        has nothing to do after it (the caller closes the sink as before).
+        """
+        assert self.identity_key is None and self._phase == "ready", "settle is called once"
+        self.identity_key = parse_sha256(identity_key)
+        try:
+            return self._decide_and_act()
+        except BaseException:
+            self._phase = "stopped"
+            raise
+
+    def _decide_and_act(self) -> SinkPlan:
         for attempt in range(2):
             observed = self._observe()
             decision = decide_start(
@@ -236,7 +271,7 @@ class DownloadSink:
                 stage=observed.stage,
                 sidecar=observed.sidecar,
                 sidecar_tmp=observed.tmp,
-                identity_key=self.identity_key,
+                identity_key=self._settled_key,
                 target_hash=self.target_hash,
                 no_resume=self.no_resume,
             )
@@ -246,6 +281,8 @@ class DownloadSink:
             self._remove(decision.remove, observed)
             if decision.error is not None:
                 raise YorungeError(decision.error)
+            if self._discards_other_identity(decision, observed):
+                self.replaced_other_identity = True
             try:
                 return self._act(decision, observed)
             except FileExistsError:
@@ -253,6 +290,22 @@ class DownloadSink:
                 if attempt == 1:
                     raise YorungeError("download_partial_unverified") from None
         raise YorungeError("download_partial_unverified")  # pragma: no cover
+
+    @property
+    def _settled_key(self) -> str:
+        assert self.identity_key is not None, "the identity is settled before any decision"
+        return self.identity_key
+
+    def _discards_other_identity(self, decision: StartDecision, observed: _Observed) -> bool:
+        """Whether this start drops the partial content of another download: a stage with a
+        readable record of another identity. A stage without a record is no download's content."""
+        record = None if observed.sidecar is None else observed.sidecar.record
+        return (
+            decision.action == "start_clean"
+            and observed.stage is not None
+            and record is not None
+            and record.identity_key != self._settled_key
+        )
 
     def _observe(self) -> _Observed:
         fd = self.directory.descriptor
@@ -683,7 +736,7 @@ class DownloadSink:
             {
                 "schema_version": 1,
                 "kind": "download_partial",
-                "identity_key": self.identity_key,
+                "identity_key": self._settled_key,
                 "target_hash": self.target_hash,
                 "etag": self._etag,
                 "total_size": self._total,
@@ -752,37 +805,35 @@ class _Observed:
 
 
 @contextmanager
-def open_sink(
+def open_held_sink(
     target: Path,
     *,
-    identity_key: str,
     no_resume: bool = False,
     clock: Callable[[], datetime] | None = None,
     guard: Callable[[], None] | None = None,
-) -> Iterator[tuple[DownloadSink, SinkPlan]]:
-    """Take the target: its directory, its lock, and what the directory calls for.
+) -> Iterator[DownloadSink]:
+    """Take the target and its lock, and the refusals no identity can change; the caller calls
+    :meth:`DownloadSink.settle` with the download's identity before the stage is used.
 
     ``guard`` is called between the blocks of a long local read or write: the engine's deadline.
     Whatever happens, the lock object is removed last and the descriptors are closed.
     """
     validate_target_name(target.name)
-    parse_sha256(identity_key)  # a malformed key would only fail once the lock object exists
     directory = open_target_directory(target)
     sink = DownloadSink(
         directory,
-        identity_key=identity_key,
         no_resume=no_resume,
         clock=clock or (lambda: datetime.now(UTC)),
         guard=guard or (lambda: None),
     )
     try:
         try:
-            plan = sink.start()
+            sink.hold()
         except BaseException:
             sink.close()
             raise
         try:
-            yield sink, plan
+            yield sink
         except BaseException:
             sink.stop()  # an interrupt, a cancellation, any error: keep what can be resumed
             raise
@@ -793,3 +844,23 @@ def open_sink(
             directory.close()
         except YorungeError:
             pass  # the outcome is decided (a published target, a verdict, an interrupt)
+
+
+@contextmanager
+def open_sink(
+    target: Path,
+    *,
+    identity_key: str,
+    no_resume: bool = False,
+    clock: Callable[[], datetime] | None = None,
+    guard: Callable[[], None] | None = None,
+) -> Iterator[tuple[DownloadSink, SinkPlan]]:
+    """Take the target with its identity known: :func:`open_held_sink` and ``settle`` in one.
+
+    A malformed key is refused before the target is opened (it would only fail once the lock
+    object exists otherwise).
+    """
+    parse_sha256(identity_key)
+    with open_held_sink(target, no_resume=no_resume, clock=clock, guard=guard) as sink:
+        plan = sink.settle(identity_key)
+        yield sink, plan

@@ -17,10 +17,16 @@ from inspect import iscoroutinefunction
 from pathlib import Path
 from typing import Literal
 
+from yorunge.adapters import catalog_http
 from yorunge.adapters.capability_cache import SystemClock
 from yorunge.adapters.command_arguments import absolute, judge_ground
 from yorunge.adapters.context_state import StateDiscovery
-from yorunge.adapters.download_engine import DownloadJob, Progress, run_download
+from yorunge.adapters.download_engine import (
+    DownloadJob,
+    Progress,
+    run_download,
+    run_resolved_download,
+)
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.storage_transport import TransferSession
 from yorunge.application.context_discovery import DiscoverySnapshot, ObservationClock
@@ -35,9 +41,11 @@ from yorunge.application.model_download import (
     weights_query,
 )
 from yorunge.application.response_json import JSON_LIMIT
+from yorunge.domain import catalog
 from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.download import (
     DEFAULT_TIMEOUT_SECONDS,
+    DownloadResolution,
     DownloadSource,
     DownloadSummary,
     identity_key,
@@ -106,15 +114,9 @@ def download_model_weights(
     progress: Progress | None,
 ) -> Result[DownloadSummary]:
     identifier = _identifier(version_id)
-    fmt = _format(artifact_format)
-    # The Python API takes the integers its signature names; the parsers also read the CLI's text.
-    if any(value is not None and type(value) is not int for value in (fold, timeout)):
-        raise YorungeError("invalid_request")
-    chosen_fold = None if fold is None else parse_fold(fold)
-    expected = None if sha256 is None else parse_sha256(sha256)
-    seconds = DEFAULT_TIMEOUT_SECONDS if timeout is None else parse_timeout(timeout)
-    if type(no_resume) is not bool or (progress is not None and not _synchronous(progress)):
-        raise YorungeError("invalid_request")
+    fmt, chosen_fold, expected, seconds = _judge(
+        artifact_format, fold, sha256, timeout, no_resume, progress
+    )
     judge_ground(state_dir)
     target = absolute(weights_out)
     started = time.monotonic()
@@ -154,6 +156,118 @@ def download_model_weights(
         if summary is None:
             raise
     return Result[DownloadSummary](data=summary)
+
+
+def download_model_weights_by_tag(
+    model: str,
+    version_tag: str,
+    artifact_format: str,
+    weights_out: Path,
+    fold: int | None,
+    sha256: str | None,
+    timeout: int | None,
+    no_resume: bool,
+    loader: ContextLoader,
+    state_dir: Path | None,
+    progress: Progress | None,
+) -> Result[DownloadSummary]:
+    """The version of ``model`` (OWNER/SLUG) that carries ``version_tag``, downloaded (P02-4f).
+
+    The arguments are judged first; the local refusals that no identity can change come before any
+    catalog request; the catalog then resolves the one version (two GETs at most, nothing guessed),
+    and the stage is settled with that version's identity under the same lock.
+    """
+    owner, slug = _address(model)
+    tag = catalog.version_tag(version_tag)
+    fmt, chosen_fold, expected, seconds = _judge(
+        artifact_format, fold, sha256, timeout, no_resume, progress
+    )
+    judge_ground(state_dir)
+    target = absolute(weights_out)
+    started = time.monotonic()
+    clock = ObservationClock(SystemClock())
+    state = StateDiscovery(state_dir, loader, EnvSecretReader(), clock, service_id=PLATFORM)
+    snapshot = _captured(state, started + CAPTURE_SECONDS)
+    resolved = snapshot.credential
+    key = HttpCredential("X-API-Key", resolved.secret, target=resolved.target, service_id=PLATFORM)
+    origin, base = resolved.target.service_origin, resolved.target.api_base_path
+    session = TransferSession(key, storage_origins=(origin,))
+
+    def build() -> tuple[DownloadJob, DownloadResolution]:
+        found = catalog_http.resolve_platform_version(loader, owner, slug, tag)
+        model_record, version = found.value
+        version_id = version.version_id
+        job = DownloadJob(
+            target=target,
+            source=DownloadSource(
+                kind="model_version", version_id=version_id, format=fmt, fold=chosen_fold
+            ),
+            identity_key=identity_key(
+                origin=origin,
+                api_base_path=base,
+                kind="model_version",
+                resource_id=version_id,
+                artifact_format=fmt,
+                fold=chosen_fold,
+            ),
+            resolve=_Weights(key, version_id, fmt, chosen_fold),
+            expected_sha256=expected,
+            no_resume=no_resume,
+            timeout=seconds,
+            progress=progress,
+        )
+        resolution = DownloadResolution(
+            model_id=model_record.model_id,
+            owner=owner,
+            slug=slug,
+            version_tag=version.version_tag,
+            version_id=version_id,
+        )
+        return job, resolution
+
+    summary: DownloadSummary | None = None
+    warnings: tuple[str, ...] = ()
+    try:
+        with session:
+            summary, warnings = run_resolved_download(
+                target, session, build, no_resume=no_resume, timeout=seconds
+            )
+    except Exception:
+        # The same rule as the version path: a failure of the session's close after the file was
+        # verified and published does not overwrite the result that was delivered.
+        if summary is None:
+            raise
+    return Result[DownloadSummary](data=summary, warnings=warnings)
+
+
+def _address(model: object) -> tuple[str, str]:
+    """``OWNER/SLUG``: exactly one slash, both sides in the address alphabet; refused before any
+    file or request."""
+    if type(model) is not str or model.count("/") != 1:
+        raise YorungeError("invalid_request")
+    owner, slug = model.split("/")
+    return catalog.require_address(owner, slug)
+
+
+def _judge(
+    artifact_format: str,
+    fold: int | None,
+    sha256: str | None,
+    timeout: int | None,
+    no_resume: bool,
+    progress: Progress | None,
+) -> tuple[Literal["onnx", "pt", "tflite"], int | None, str | None, int]:
+    """The options of a download, judged once: the format, the fold, the digest, the timeout."""
+    fmt = _format(artifact_format)
+    # The Python API takes the integers its signature names; the parsers also read the CLI's text.
+    if any(value is not None and type(value) is not int for value in (fold, timeout)):
+        raise YorungeError("invalid_request")
+    chosen_fold = None if fold is None else parse_fold(fold)
+    expected = None if sha256 is None else parse_sha256(sha256)
+    seconds = DEFAULT_TIMEOUT_SECONDS if timeout is None else parse_timeout(timeout)
+    if type(no_resume) is not bool or (progress is not None and not _synchronous(progress)):
+        raise YorungeError("invalid_request")
+    return fmt, chosen_fold, expected, seconds
 
 
 def _captured(state: StateDiscovery, end: float) -> DiscoverySnapshot:
@@ -196,4 +310,4 @@ def _identifier(version_id: object) -> str:
         raise YorungeError("invalid_request") from None
 
 
-__all__ = ["DEFAULT_TIMEOUT_SECONDS", "download_model_weights"]
+__all__ = ["DEFAULT_TIMEOUT_SECONDS", "download_model_weights", "download_model_weights_by_tag"]

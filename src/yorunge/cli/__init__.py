@@ -517,7 +517,7 @@ def discovery_text_result(data: Model) -> str:
     return "\n".join(lines)
 
 
-def _result_text(args: argparse.Namespace, data: Model) -> str:
+def _result_text(args: argparse.Namespace, data: Model, warnings: tuple[str, ...] = ()) -> str:
     from yorunge.domain.catalog import CatalogReading
 
     if isinstance(data, CatalogReading):
@@ -539,7 +539,7 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
     if args.command == "models":
         from yorunge.cli.models import text as models_text
 
-        return models_text(data)
+        return models_text(data, warnings)
     if args.command == "context" and args.action == "discover":
         return discovery_text_result(data)
     return text_result(data)
@@ -842,7 +842,9 @@ def _render_result(args: argparse.Namespace, renderer: OutputRenderer, result: C
             renderer = OutputRenderer(
                 renderer.output, operation_id=operation_id(result.data), upload_guidance=True
             )
-        text = _result_text(args, result.data) if renderer.output == "text" else None
+        text = (
+            _result_text(args, result.data, result.warnings) if renderer.output == "text" else None
+        )
         renderer.result(cast("Result[Model]", result), text=text)
         return 0
     except YorungeError as error:

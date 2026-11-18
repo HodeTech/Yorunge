@@ -109,6 +109,7 @@ Komut, yazılacak hiçbir durum dosyası açmaz ve çalışma dizinine dosya yaz
 
 - `models list --service evren-llm --task T` süzmesi istemci tarafındadır ve isteği değiştirmez. Metin başlığı `görev süzmesi: T` yazar. JSON'da `data.task_filter` aynı değeri taşır; sağlayıcı listesi boşsa süzme kaydedilmez ve `task_filter` `null` olur. Tamlık etiketi süzmeyle değişmez (`unknown` kalır).
 - Öneri satırları (`Sonraki sayfa`, sahip adı olmayan modeller için kimlik yolu, sürüm indirme ipucu, katalog hata ipuçları), çağıranın verdiği `--config` ve `--profile` seçeneklerini aynen tekrarlar; öneri aynı hesabı okur.
+- `models download --model OWNER/SLUG --version-tag TAG` (P02-4f) sürüm kimliğini bu başvurudaki çözüm kurallarıyla alır; sıra, kilit, bütçe ve çıktı [indirme referansındadır](download-engine.md#katalogdan-seçimle-indirme-p02-4f).
 - Geçersiz argümanlar hiçbir istek gönderilmeden çıkış 2 ve `invalid_request` ile döner: `page_size` 1–100, `page` 1 ile 2^53−1 arası; `--page`/`--page-size` yalnız Platform listesinde; `--task` yalnız LLM'de (listede süzme, gösterimde beklenen görev); görev 1–64 karakter, denetim ya da biçim karakteri içermez ve baştan veya sondan boşluk taşımaz. `show`: `--model` yalnız Platform'da ve `OWNER/SLUG` biçiminde; `--model-id` Platform'da yalnız `--versions` ile, LLM'de tek başına; `--model` ile `--model-id` birlikte verilmez; `--versions` yalnız Platform'da.
 
 ## Canlı teyit (K4)
