@@ -1,6 +1,6 @@
 # Mimari karar kayıtları
 
-**Güncellendi:** 2026-11-12. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
+**Güncellendi:** 2026-11-19. `Accepted` tasarımın benimsendiğini gösterir; uygulama durumunu [yetenek matrisi](../capability-matrix.md) belirtir.
 
 | ADR | Karar | Durum |
 |---|---|---|
@@ -38,5 +38,6 @@
 | [0032](0032-bounded-download-and-verification-levels.md) | Sınırlı akışlı indirme, no-clobber yayın, resume ve kapalı doğrulama seviyeleri; dataset baytı hariç | Accepted — kullanıcı 2026-11-06 talimatıyla; ADR-0025 GET/expiry hükmünü kısmen değiştirir; PR #15 ile development’a teslim edildi (canlı kabul yok) |
 | [0033](0033-dataset-version-references.md) | Veri sürümü ve bölme sayımlarının salt okuma, değişmez referansı; freeze ertelenir | Accepted — kullanıcı 2026-11-06 talimatıyla; PR #15 ile development’a teslim edildi (canlı kabul yok) |
 | [0034](0034-ci-duration-docs-lane-and-parallel-suite.md) | CI süresi: belge-only hat (hücreler ve `offline-core` aynı, hedef dalın sınıflandırıcısı) ve dosya bazlı paralel test yürütme (`pytest-xdist`) | Accepted — kullanıcı 2026-11-13 talimatıyla; ölçüm [CI süre profilinde](../research/ci-duration-profile.md) |
+| [0035](0035-catalog-reads-fixed-references-and-selection.md) | Model/veri kataloğu: yalnız GET kaynakları, LLM kimliği gateway’den, kalıcı önbellek yok, gözlemlenen sabit referans ve seçim bağı | Proposed — 2026-11-18 hazırlık; kullanıcı K1 onayı bekleniyor ([P02-4 planı](../roadmap/p02-4-delivery-plan.md)) |
 
 Yeni karar sıradaki dört haneli numarayla açılır. Zorunlu alanlar: durum/tarih, bağlam, karar, değerlendirilen alternatifler ve sonuçlar. Karar hâlâ açıksa Proposed; geçersizleşmişse yeni karara Superseded bağlantısı kullanılır. İlk kayıtlardaki kabul, ürün talimatları ve bu çalışma kapsamında oluşturulan başlangıç tasarımını ifade eder; dış API erişimi veya yayımlanmış kod onayı değildir.
