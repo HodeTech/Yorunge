@@ -13,11 +13,11 @@ Sağlayıcı yanıtının okunmayan alanları yok sayılır ve hiçbir çıktıy
 | Kaynak | Okunan alanlar | Zorunlu | Not |
 |---|---|---|---|
 | LLM `GET /v1/models` | `data` (dizi, en çok 500) | evet | sayfalama yok; tamlık `unknown` |
-| LLM `ModelInfo` | `id`, `task`, `created` zorunlu; `modalities`, `context_length`, `default_max_output_tokens`, `precision`, `pricing` | `id`, `task`, `created` | `task` açık dize; kimlik ve görev ham tutulur |
+| LLM `ModelInfo` | `id`, `task` (1–64 karakter, denetim karakteri yok), `created` zorunlu; `modalities`, `context_length`, `default_max_output_tokens`, `precision`, `pricing` | `id`, `task`, `created` | `task` açık dize; kimlik ve görev ham tutulur |
 | LLM `pricing` | `prompt_token_price`, `completion_token_price` (zorunlu, 0 veya üstü); `currency`, `free_until` | zorunlu iki fiyat | `free_until` yalnız bilgidir, maliyet kapısı değildir |
 | Platform `GET /models` | `items`, `total` | evet | sayfa kuralı aşağıda |
 | Platform `Model` (liste/detay) | `id`, `slug`, `name`, `modality`, `stage`, `visibility`, `versions_count`, `created_at`, `updated_at` zorunlu; `owner_username`, `description`, `license`, `architecture` | yukarıdakiler | `owner_username` null olabilir |
-| Platform sürüm öğesi | `id`, `version_tag`, `created_at` zorunlu; `framework`, `file_size_bytes`; `weights_url`, `onnx_url`, `tflite_url` yalnız varlık bayrağı | yukarıdakiler | URL değeri tipte taşınmaz. Boş veya boşluk olan URL yoktur; null ve boş dışında tipteki her URL değeri `invalid_response` |
+| Platform sürüm öğesi | `id`, `version_tag`, `created_at` zorunlu; `framework`, `file_size_bytes`; `weights_url`, `onnx_url`, `tflite_url` yalnız varlık bayrağı | yukarıdakiler | URL değeri tipte taşınmaz. Null veya boş/boşluk dizesi “konum yok” (bayrak `false`); boş olmayan dize “konum var” (bayrak `true`); dize olmayan her değer (ör. `false`, sayı, liste) `invalid_response` |
 | Platform veri seti öğesi | `id`, `name`, `slug`, `modality`, `item_count`, `visibility`, `updated_at` zorunlu; `owner_username` | yukarıdakiler | kapsam etiketi K4 teyidine kadar `unknown` |
 
 Zorunlu alan yoksa, tip yanlışsa (`true` bir sayı yerine geçemez; `1.0` bir tam sayı yerine geçemez), sayı eksi veya 2^53−1’i aşıyorsa, boş veya duplicate anahtarlı JSON ya da sınırı aşan yanıt `invalid_response` döner.
@@ -28,7 +28,7 @@ Zaman damgaları RFC 3339 tarih-saat biçimindedir: saat dilimi (`Z` veya `±HH:
 
 ## Görüntü metni ve kimlik
 
-Sağlayıcı metinleri güvenilmez metindir. Ad, açıklama, lisans, mimari, modalite, aşama, görünürlük, biçim, para birimi ve fiyat tarihi çözümlenirken temizlenir: kontrol ve çift yönlü geçersiz kılma karakterleri düşer, satır sonu ve sekme boşluk olur, uzunluk sınırı aşılırsa sonda `…` bulunur. Sınırlar: ad ve biçim alanları 128, açıklama 512 gösterim karakteri.
+Sağlayıcı metinleri güvenilmez metindir. Ad, açıklama, lisans, mimari, modalite, aşama, görünürlük, biçim, para birimi, fiyat tarihi, LLM `precision` ve `modalities` çözümlenirken temizlenir: kontrol ve çift yönlü geçersiz kılma karakterleri düşer, satır sonu ve sekme boşluk olur, uzunluk sınırı aşılırsa sonda `…` bulunur. Sınırlar: ad ve biçim alanları 128, açıklama 512 gösterim karakteri.
 
 Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez; temizlenmiş bir kimlik başka bir modele dönüşebilir. Satır sonu benzeri Unicode ayraçlar (U+2028, U+2029) boşluğa çevrilir. Kimlik ham tutulur, yalnız görüntülenirken temizlenir ve görüntüden alınan değer hiçbir zaman argüman olarak kullanılmaz.
 
