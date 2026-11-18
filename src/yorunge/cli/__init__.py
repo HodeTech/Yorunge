@@ -471,6 +471,15 @@ def jobs_text_result(data: Model) -> str:
     raise TypeError("unsupported jobs result type")
 
 
+# P02-R10: the one line a person needs when the server reports unaccepted terms. It says what the
+# server reports and what Yörünge does not do; it states no obligation, no loss of access, and no
+# command, URL or acceptance path.
+TERMS_NOT_ACCEPTED_GUIDANCE = (
+    "Sunucu şartları kabul edilmemiş bildiriyor. Yörünge şart kabul etmez; karar kendi EVREN "
+    "hesabınızda size aittir."
+)
+
+
 def discovery_text_result(data: Model) -> str:
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
@@ -500,6 +509,7 @@ def discovery_text_result(data: Model) -> str:
     lines = [
         f"Hizmet: {data.service_id}\nProfil: {data.profile}",
         f"Sunucunun şart durumu: {terms} (sürüm {data.terms.current_version})",
+        *((TERMS_NOT_ACCEPTED_GUIDANCE,) if not data.terms.accepted else ()),
         "Kimlik doğrulaması: doğrulanmadı. Uzak hesap/proje kimliği sunulmuyor.",
         "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir.",
     ]

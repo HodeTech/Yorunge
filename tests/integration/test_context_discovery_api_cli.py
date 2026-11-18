@@ -20,6 +20,7 @@ from yorunge.adapters.http_session import HttpSession
 from yorunge.adapters.http_transport import HttpxTransport
 from yorunge.adapters.secrets import EnvSecretReader
 from yorunge.adapters.state import DB_NAME, open_store
+from yorunge.cli import TERMS_NOT_ACCEPTED_GUIDANCE
 from yorunge.domain.errors import YorungeError
 
 CONNECT = socket.socket.connect
@@ -199,6 +200,23 @@ def test_public_text_is_utf8_and_explicit_about_terms_and_unverified_identity(
     assert "şart durumu: kabul edilmiş" in text
     assert "doğrulanmadı" in text
     assert "hizmet kapsamı bilinmiyor" in text
+    assert result.stderr == b""
+
+
+def test_public_text_gives_one_terms_guidance_line_when_terms_are_not_accepted(
+    context_files, certificates
+):
+    config, root = context_files
+    body = b'{"accepted":false,"current_version":4,"is_material":true,"doc_path":"terms/v4.md"}'
+    with TlsServer(certificates, {"/v1/terms/status": Reply(body=body)}) as server:
+        result = child(server, certificates, config, root)
+    assert result.returncode == 0, result.stderr
+    text = result.stdout.decode("utf-8", "strict")
+    assert text.count(TERMS_NOT_ACCEPTED_GUIDANCE) == 1
+    assert "şart durumu: kabul edilmemiş (sürüm 4)" in text
+    assert "doğrulanmadı" in text
+    assert "terms/v4.md" not in text and "https://" not in text
+    assert "--yes" not in text and "terms accept" not in text
     assert result.stderr == b""
 
 
