@@ -1,8 +1,8 @@
 """The catalog contract (P02-4c, ADR-0035): consumed shapes, page rules, completeness, addresses.
 
 Every fixture here is synthetic: no real identifier, key or person. The provider answers are
-written from the public schema summary, so the tests say what a *consumed* field must look like and
-what a silently changed page or an unexpected secret must do.
+written from the public schema summary, so the tests say what a *consumed* field must look like,
+what a silently changed page must do, and what an unexpected secret must do wherever it sits.
 """
 
 import json
@@ -15,7 +15,8 @@ from yorunge.domain import catalog
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.errors import YorungeError
 
-KEY = SecretValue("synthetic-catalog-canary-0001")
+KEY = SecretValue("sk-live-ABCDEFGH12345678")
+STAMP = "2026-01-01T00:00:00Z"
 
 
 def raise_code(callable_, *args, **kwargs) -> str:
@@ -31,14 +32,15 @@ def jbytes(value: object) -> bytes:
 # --- addresses ------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("value", ["owner-1", "a.b_c-9", "x" * 128])
-def test_segment_accepts_the_allowed_alphabet(value: str) -> None:
+@pytest.mark.parametrize("value", ["owner-1", "a.b_c-9", "x" * 128, "..."])
+def test_segment_accepts_the_allowed_alphabet_and_ordinary_dots(value: str) -> None:
+    # "..." is an ordinary name in this alphabet; only the dot segments are navigation.
     assert catalog.segment(value) == value
 
 
 @pytest.mark.parametrize(
     "value",
-    ["", ".", "..", "a/b", "a%2e", "a?b", "a#b", "a b", "a\nb", "x" * 129, "ö", None],
+    ["", ".", "..", "a/b", "a%2e", "a?b", "a#b", "a b", "a\nb", "x" * 129, "ö", None, True],
 )
 def test_segment_refuses_everything_else_before_any_request(value) -> None:
     assert raise_code(catalog.segment, value) == "invalid_request"
@@ -85,6 +87,7 @@ def test_expected_rows_follow_the_asked_page_size() -> None:
         (2, 20, 40, 20, "last_page"),
         (1, 20, 0, 0, "complete"),
         (1, 20, 20, 20, "complete"),
+        (5, 20, 10, 0, "last_page"),
     ],
 )
 def test_platform_page_labels(page, size, total, returned, expected) -> None:
@@ -92,11 +95,11 @@ def test_platform_page_labels(page, size, total, returned, expected) -> None:
 
 
 def test_a_silently_smaller_page_is_invalid_not_complete() -> None:
-    # Asked for 100, received 20 of 45: the old formula would call this complete.
+    # Asked for 100, received 20 of 45: a formula on the total alone would call this complete.
     assert raise_code(catalog.platform_page, 1, 100, 45, 20) == "invalid_response"
 
 
-@pytest.mark.parametrize("total", [-1, True, "45", None])
+@pytest.mark.parametrize("total", [-1, True, 1.0, "45", None])
 def test_platform_total_must_be_a_non_negative_integer(total) -> None:
     assert raise_code(catalog.platform_page, 1, 20, total, 0) == "invalid_response"
 
@@ -104,33 +107,46 @@ def test_platform_total_must_be_a_non_negative_integer(total) -> None:
 @pytest.mark.parametrize(
     "has_next,expected",
     [
-        (None, "unknown"),
-        ("maybe", "unknown"),
-        ("TRUE", "unknown"),
-        ("true", "partial"),
-        ("false", "complete"),
+        ((), "unknown"),
+        (("maybe",), "unknown"),
+        (("TRUE",), "unknown"),
+        (("true",), "partial"),
+        (("false",), "complete"),
+        (("true", "true"), "unknown"),
+        (("false", "false"), "unknown"),
     ],
 )
-def test_dataset_header_labels_are_exact_or_unknown(has_next, expected) -> None:
-    assert catalog.dataset_page(1, 20, 20, has_next, None) == expected
+def test_dataset_has_next_header_is_exact_and_single_or_unknown(has_next, expected) -> None:
+    assert catalog.dataset_page(1, 20, 20, has_next, ()) == expected
+
+
+@pytest.mark.parametrize("total", [("-5",), ("abc",), ("1.0",), ("45", "45"), ("1" * 19,)])
+def test_unreadable_or_repeated_total_header_makes_the_page_unknown_not_complete(total) -> None:
+    assert catalog.dataset_page(1, 20, 20, ("false",), total) == "unknown"
+    assert catalog.dataset_page(1, 20, 20, ("true",), total) == "unknown"
 
 
 def test_dataset_last_page_is_not_complete() -> None:
-    assert catalog.dataset_page(3, 20, 5, "false", None) == "last_page"
+    assert catalog.dataset_page(3, 20, 5, ("false",), ()) == "last_page"
 
 
 def test_dataset_total_header_must_agree_with_rows_and_has_next() -> None:
-    assert catalog.dataset_page(1, 20, 20, "true", "45") == "partial"
-    assert raise_code(catalog.dataset_page, 1, 20, 19, "true", "45") == "invalid_response"
-    assert raise_code(catalog.dataset_page, 1, 20, 20, "false", "45") == "invalid_response"
-    # An unreadable total is ignored; the has-next header alone decides the label.
-    assert catalog.dataset_page(1, 20, 20, "true", "many") == "partial"
+    assert catalog.dataset_page(1, 20, 20, ("true",), ("45",)) == "partial"
+    assert raise_code(catalog.dataset_page, 1, 20, 19, ("true",), ("45",)) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 20, ("false",), ("45",)) == "invalid_response"
 
 
 def test_version_list_is_complete_only_when_it_matches_the_detail() -> None:
     assert catalog.versions_listing(3, 3) == "complete"
     assert catalog.versions_listing(3, 2) == "unknown"
+    assert catalog.versions_listing(None, 2) == "unknown"  # the model_id route has no detail
     assert raise_code(catalog.checked_versions, 3, 2) == "invalid_response"
+
+
+@pytest.mark.parametrize("count", [True, 1.0, -1, "1"])
+def test_version_count_must_be_a_plain_non_negative_integer(count) -> None:
+    assert raise_code(catalog.versions_listing, count, 1) == "invalid_response"
+    assert raise_code(catalog.checked_versions, count, 1) == "invalid_response"
 
 
 # --- resolution (ADR-0035 Karar 5) ----------------------------------------------------------------
@@ -144,9 +160,9 @@ class Version:
 
 
 VERSIONS = (
-    Version("v-1", "1.0", "2026-01-01T00:00:00Z"),
-    Version("v-2", "1.1", "2026-02-01T00:00:00Z"),
-    Version("v-3", "1.1", "2026-03-01T00:00:00Z"),
+    Version("v-1", "1.0", STAMP),
+    Version("v-2", "1.1", STAMP),
+    Version("v-3", "1.1", STAMP),
 )
 
 
@@ -164,7 +180,7 @@ def test_two_versions_with_one_tag_are_ambiguous_never_picked() -> None:
 
 
 def test_candidates_are_capped_at_five() -> None:
-    many = tuple(Version(f"v-{n}", "dup", "2026-01-01T00:00:00Z") for n in range(9))
+    many = tuple(Version(f"v-{n}", "dup", STAMP) for n in range(9))
     assert len(catalog.candidates(many, "dup")) == catalog.MAX_CANDIDATES
 
 
@@ -177,11 +193,30 @@ def test_llm_task_mismatch_is_refused_unknown_names_are_not() -> None:
     assert raise_code(catalog.task_matches, "embedding", "chat") == "model_task_mismatch"
 
 
+@pytest.mark.parametrize(
+    "code,exit_code",
+    [
+        ("model_not_visible", 1),
+        ("model_ambiguous", 2),
+        ("model_task_mismatch", 2),
+        ("model_not_addressable", 2),
+    ],
+)
+def test_the_four_new_codes_have_their_messages_and_exit_codes(code, exit_code) -> None:
+    error = YorungeError(code)
+    assert error.exit_code == exit_code
+    assert error.message
+
+
 # --- display (untrusted text) ---------------------------------------------------------------------
 
 
 def test_display_text_drops_controls_and_bidi_overrides_and_flattens_breaks() -> None:
     assert catalog.text("a\x07b‮c\nd\te", 100) == "abc d e"
+
+
+def test_unicode_line_and_paragraph_separators_become_spaces() -> None:
+    assert catalog.text("a b c", 100) == "a b c"
 
 
 def test_display_text_is_bounded_and_says_so() -> None:
@@ -198,22 +233,46 @@ def test_display_text_keeps_none_and_refuses_a_useless_limit() -> None:
 
 
 def test_the_secret_is_refused_wherever_it_sits_even_in_a_dropped_field() -> None:
-    answer = jbytes({"data": [], "debug": KEY.reveal()})
-    assert raise_code(codec.read, answer, KEY) == "invalid_response"
+    answer = jbytes({"data": [], "debug": {"deep": [KEY.reveal()]}})
+    assert raise_code(codec.llm_listing, answer, KEY) == "invalid_response"
 
 
 def test_the_secret_as_a_key_is_refused_too() -> None:
     answer = jbytes({"data": [], KEY.reveal(): 1})
-    assert raise_code(codec.read, answer, KEY) == "invalid_response"
+    assert raise_code(codec.llm_listing, answer, KEY) == "invalid_response"
 
 
 def test_duplicate_keys_and_nonfinite_numbers_are_refused_by_the_strict_parser() -> None:
-    assert raise_code(codec.read, b'{"data": [], "data": []}', KEY) == "invalid_response"
-    assert raise_code(codec.read, b'{"data": [NaN]}', KEY) == "invalid_response"
+    assert raise_code(codec.llm_listing, b'{"data": [], "data": []}', KEY) == "invalid_response"
+    assert raise_code(codec.llm_listing, b'{"data": [NaN]}', KEY) == "invalid_response"
 
 
 def test_an_answer_over_the_shared_budget_is_refused() -> None:
-    assert raise_code(codec.read, b"x" * (codec.JSON_LIMIT + 1), KEY) == "invalid_response"
+    assert raise_code(codec.llm_listing, b"x" * (codec.JSON_LIMIT + 1), KEY) == "invalid_response"
+
+
+def test_a_secret_rebuilt_by_cleaning_is_refused_on_the_output() -> None:
+    # Each piece is clean on its own; the display cleaning joins them into the key again.
+    name = KEY.reveal()[:5] + "​" + KEY.reveal()[5:]
+    answer = jbytes({"items": [platform_model(name=name)], "total": 1})
+    assert raise_code(codec.platform_models, answer, KEY, 1, 20) == "invalid_response"
+
+
+def test_a_secret_rebuilt_in_llm_modalities_or_currency_is_refused() -> None:
+    key = KEY.reveal()
+    split_modality = key[:4] + "⁦" + key[4:]
+    assert (
+        raise_code(
+            codec.llm_listing, jbytes({"data": [llm_item(modalities=[split_modality])]}), KEY
+        )
+        == "invalid_response"
+    )
+    split_currency = key[:6] + "­" + key[6:]
+    pricing = {"prompt_token_price": 1, "completion_token_price": 1, "currency": split_currency}
+    assert (
+        raise_code(codec.llm_listing, jbytes({"data": [llm_item(pricing=pricing)]}), KEY)
+        == "invalid_response"
+    )
 
 
 # --- LLM listing and detail -----------------------------------------------------------------------
@@ -243,9 +302,8 @@ def llm_item(**overrides):
 
 
 def test_llm_listing_projects_consumed_fields_and_drops_the_rest() -> None:
-    listing = codec.llm_listing(codec.read(jbytes({"object": "list", "data": [llm_item()]}), KEY))
-    model = listing.models[0]
-    dumped = model.model_dump()
+    listing = codec.llm_listing(jbytes({"object": "list", "data": [llm_item()]}), KEY)
+    dumped = listing.models[0].model_dump()
     assert dumped["model_id"] == "model-a" and dumped["task"] == "embedding"
     assert "owned_by" not in dumped and "capabilities" not in dumped and "object" not in dumped
     assert listing.completeness == "unknown"
@@ -254,33 +312,50 @@ def test_llm_listing_projects_consumed_fields_and_drops_the_rest() -> None:
 def test_llm_missing_required_field_is_invalid() -> None:
     item = llm_item()
     del item["task"]
-    assert raise_code(codec.llm_listing, {"data": [item]}) == "invalid_response"
+    assert raise_code(codec.llm_listing, jbytes({"data": [item]}), KEY) == "invalid_response"
 
 
 def test_llm_wrong_type_is_invalid_even_for_a_bool_number() -> None:
-    assert raise_code(codec.llm_listing, {"data": [llm_item(created=True)]}) == "invalid_response"
-    assert raise_code(codec.llm_listing, {"data": [llm_item(task=3)]}) == "invalid_response"
+    assert (
+        raise_code(codec.llm_listing, jbytes({"data": [llm_item(created=True)]}), KEY)
+        == "invalid_response"
+    )
+    assert raise_code(codec.llm_listing, jbytes({"data": [llm_item(task=3)]}), KEY) == (
+        "invalid_response"
+    )
+
+
+def test_llm_negative_counts_and_prices_are_invalid() -> None:
+    assert raise_code(codec.llm_listing, jbytes({"data": [llm_item(created=-1)]}), KEY) == (
+        "invalid_response"
+    )
+    bad = llm_item(pricing={"prompt_token_price": -0.1, "completion_token_price": 1})
+    assert raise_code(codec.llm_listing, jbytes({"data": [bad]}), KEY) == "invalid_response"
 
 
 def test_llm_pricing_null_is_accepted_and_wrong_pricing_is_not() -> None:
-    assert codec.llm_model(llm_item(pricing=None)).pricing is None
+    assert codec.llm_model(jbytes(llm_item(pricing=None)), KEY).pricing is None
     bad = llm_item(pricing={"prompt_token_price": "cheap", "completion_token_price": 1})
-    assert raise_code(codec.llm_model, bad) == "invalid_response"
+    assert raise_code(codec.llm_model, jbytes(bad), KEY) == "invalid_response"
 
 
 def test_llm_listing_over_five_hundred_records_is_refused() -> None:
     items = [llm_item(id=f"m-{n}") for n in range(catalog.LLM_MAX_RECORDS + 1)]
-    assert raise_code(codec.llm_listing, {"data": items}) == "invalid_response"
+    assert raise_code(codec.llm_listing, jbytes({"data": items}), KEY) == "invalid_response"
 
 
 def test_llm_missing_data_is_invalid() -> None:
-    assert raise_code(codec.llm_listing, {"object": "list"}) == "invalid_response"
+    assert raise_code(codec.llm_listing, jbytes({"object": "list"}), KEY) == "invalid_response"
 
 
 def test_llm_display_fields_are_cleaned_but_identifiers_are_not() -> None:
-    model = codec.llm_model(llm_item(precision="bf‮16", id="model​a"))
+    model = codec.llm_model(jbytes(llm_item(precision="bf‮16", id="model​a")), KEY)
     assert model.precision == "bf16"
     assert model.model_id == "model​a"  # a cleaned identifier could name another model
+
+
+def test_llm_identifier_longer_than_the_raw_limit_is_invalid() -> None:
+    assert raise_code(codec.llm_model, jbytes(llm_item(id="m" * 257)), KEY) == "invalid_response"
 
 
 # --- Platform models ------------------------------------------------------------------------------
@@ -301,8 +376,8 @@ def platform_model(**overrides):
         "visibility": "PRIVATE",
         "versions_count": 2,
         "architecture": "yolov8n",
-        "created_at": "2026-01-01T00:00:00Z",
-        "updated_at": "2026-01-02T00:00:00Z",
+        "created_at": STAMP,
+        "updated_at": "2026-01-02T00:00:00.123456+03:00",
         "model_card": "x" * 10,
         "demo_config": {"anything": ["goes"]},
         "tags": [],
@@ -313,7 +388,7 @@ def platform_model(**overrides):
 
 def test_platform_page_projects_items_and_labels_the_page() -> None:
     page = codec.platform_models(
-        codec.read(jbytes({"items": [platform_model()] * 20, "total": 45}), KEY), 1, 20
+        jbytes({"items": [platform_model()] * 20, "total": 45}), KEY, 1, 20
     )
     assert page.completeness == "partial" and page.returned == 20 and page.total == 45
     assert page.models[0].owner_username == "owner-1"
@@ -321,31 +396,54 @@ def test_platform_page_projects_items_and_labels_the_page() -> None:
 
 
 def test_platform_null_owner_is_kept_as_null_not_invented() -> None:
-    page = codec.platform_models(
-        {"items": [platform_model(owner_username=None)], "total": 1}, 1, 20
-    )
-    assert page.models[0].owner_username is None
+    body = {"items": [platform_model(owner_username=None)], "total": 1}
+    assert codec.platform_models(jbytes(body), KEY, 1, 20).models[0].owner_username is None
 
 
 def test_platform_page_with_a_silently_changed_size_is_invalid() -> None:
-    body = {"items": [platform_model()] * 20, "total": 45}
-    assert raise_code(codec.platform_models, body, 1, 100) == "invalid_response"
+    body = jbytes({"items": [platform_model()] * 20, "total": 45})
+    assert raise_code(codec.platform_models, body, KEY, 1, 100) == "invalid_response"
 
 
 def test_platform_page_items_over_the_asked_size_are_invalid() -> None:
-    body = {"items": [platform_model()] * 21, "total": 45}
-    assert raise_code(codec.platform_models, body, 1, 20) == "invalid_response"
+    body = jbytes({"items": [platform_model()] * 21, "total": 45})
+    assert raise_code(codec.platform_models, body, KEY, 1, 20) == "invalid_response"
 
 
 def test_platform_missing_required_field_is_invalid() -> None:
     model = platform_model()
     del model["slug"]
-    assert raise_code(codec.platform_model, model) == "invalid_response"
+    assert raise_code(codec.platform_model, jbytes(model), KEY) == "invalid_response"
 
 
 def test_platform_display_text_is_cleaned_identifier_is_not() -> None:
-    model = codec.platform_model(platform_model(name="A‮B", slug="model​a"))
+    model = codec.platform_model(jbytes(platform_model(name="A‮B", slug="model​a")), KEY)
     assert model.name == "AB" and model.slug == "model​a"
+
+
+@pytest.mark.parametrize(
+    "stamp",
+    ["2026-01-01", "yesterday", "2026-01-01T00:00:00Z\x1b[2J", "‮" + STAMP, "x" * 5000],
+)
+def test_timestamps_must_be_rfc3339_date_times(stamp) -> None:
+    assert raise_code(codec.platform_model, jbytes(platform_model(created_at=stamp)), KEY) == (
+        "invalid_response"
+    )
+
+
+def test_platform_counts_must_be_plain_non_negative_integers() -> None:
+    for bad in ({"versions_count": True}, {"versions_count": 1.0}, {"versions_count": -3}):
+        assert raise_code(codec.platform_model, jbytes(platform_model(**bad)), KEY) == (
+            "invalid_response"
+        )
+
+
+def test_platform_identifier_length_is_bounded_on_the_raw_record() -> None:
+    assert (
+        raise_code(codec.platform_model, jbytes(platform_model(id="i" * 257)), KEY)
+        == "invalid_response"
+    )
+    assert codec.platform_model(jbytes(platform_model(id="i" * 256)), KEY).model_id == "i" * 256
 
 
 # --- Platform versions and datasets ---------------------------------------------------------------
@@ -357,7 +455,7 @@ def platform_version(**overrides):
         "version_tag": "1.0",
         "framework": "pytorch",
         "file_size_bytes": 1024,
-        "created_at": "2026-01-01T00:00:00Z",
+        "created_at": STAMP,
         "weights_url": "https://example.invalid/private/signed?sig=synthetic",
         "onnx_url": None,
         "tflite_url": None,
@@ -368,7 +466,7 @@ def platform_version(**overrides):
 
 
 def test_version_urls_become_presence_flags_and_never_values() -> None:
-    listing = codec.platform_versions([platform_version()], versions_count=1)
+    listing = codec.platform_versions(jbytes([platform_version()]), KEY, 1)
     version = listing.versions[0].model_dump()
     assert version["has_weights"] is True
     assert version["has_onnx"] is False and version["has_tflite"] is False
@@ -376,16 +474,26 @@ def test_version_urls_become_presence_flags_and_never_values() -> None:
     assert listing.completeness == "complete"
 
 
-def test_version_list_count_mismatch_is_unknown_for_listing() -> None:
-    assert codec.platform_versions([platform_version()], versions_count=3).completeness == "unknown"
+def test_an_empty_or_null_url_is_no_location_and_a_non_string_url_is_invalid() -> None:
+    listing = codec.platform_versions(
+        jbytes([platform_version(weights_url="", onnx_url="   ")]), KEY, 1
+    )
+    assert listing.versions[0].has_weights is False and listing.versions[0].has_onnx is False
+    assert (
+        raise_code(codec.platform_versions, jbytes([platform_version(onnx_url=False)]), KEY, 1)
+        == "invalid_response"
+    )
+
+
+def test_version_list_count_mismatch_is_unknown_and_absent_count_is_unknown() -> None:
+    body = jbytes([platform_version()])
+    assert codec.platform_versions(body, KEY, 3).completeness == "unknown"
+    assert codec.platform_versions(body, KEY, None).completeness == "unknown"
 
 
 def test_version_list_over_the_row_bound_is_invalid() -> None:
-    rows = [
-        platform_version(id=f"c{n}", version_tag=str(n))
-        for n in range(catalog.MAX_VERSION_ROWS + 1)
-    ]
-    assert raise_code(codec.platform_versions, rows, 1) == "invalid_response"
+    rows = [platform_version(id=f"c{n}", version_tag=str(n)) for n in range(501)]
+    assert raise_code(codec.platform_versions, jbytes(rows), KEY, 1) == "invalid_response"
 
 
 def dataset_row(**overrides):
@@ -396,7 +504,7 @@ def dataset_row(**overrides):
         "modality": "VISION",
         "item_count": 12,
         "visibility": "PRIVATE",
-        "updated_at": "2026-01-01T00:00:00Z",
+        "updated_at": STAMP,
         "owner_username": "owner-1",
         "annotation_count": 3,
         "health_score": 0.5,
@@ -406,31 +514,39 @@ def dataset_row(**overrides):
 
 
 def test_dataset_page_reads_paging_from_headers_case_insensitively() -> None:
-    page = codec.platform_datasets(
-        [dataset_row()] * 20, 1, 20, {"X-Has-Next": "true", "x-total-count": "45"}
-    )
+    headers = (("X-Has-Next", "true"), ("x-total-count", "45"))
+    page = codec.platform_datasets(jbytes([dataset_row()] * 20), KEY, 1, 20, headers)
     assert page.completeness == "partial" and page.scope == "unknown"
     assert page.datasets[0].dataset_id == "00000000-0000-4000-8000-0000000000d1"
 
 
 def test_a_repeated_paging_header_is_unclear_hence_unknown() -> None:
-    headers = {"X-Has-Next": "false", "x-has-next": "false"}
-    assert codec.platform_datasets([dataset_row()], 1, 20, headers).completeness == "unknown"
+    headers = (("X-Has-Next", "false"), ("x-has-next", "false"))
+    assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, headers).completeness == (
+        "unknown"
+    )
 
 
 def test_dataset_page_without_headers_is_unknown_not_complete() -> None:
-    assert codec.platform_datasets([dataset_row()], 1, 20, {}).completeness == "unknown"
+    assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, ()).completeness == (
+        "unknown"
+    )
 
 
 def test_dataset_rows_over_the_asked_size_are_invalid() -> None:
-    rows = [dataset_row()] * 21
-    assert (
-        raise_code(codec.platform_datasets, rows, 1, 20, {"X-Has-Next": "false"})
-        == "invalid_response"
-    )
+    rows = jbytes([dataset_row()] * 21)
+    headers = (("X-Has-Next", "false"),)
+    assert raise_code(codec.platform_datasets, rows, KEY, 1, 20, headers) == "invalid_response"
 
 
 def test_dataset_missing_item_count_is_invalid() -> None:
     row = dataset_row()
     del row["item_count"]
-    assert raise_code(codec.platform_datasets, [row], 1, 20, {}) == "invalid_response"
+    assert raise_code(codec.platform_datasets, jbytes([row]), KEY, 1, 20, ()) == "invalid_response"
+
+
+def test_dataset_negative_item_count_is_invalid() -> None:
+    assert (
+        raise_code(codec.platform_datasets, jbytes([dataset_row(item_count=-1)]), KEY, 1, 20, ())
+        == "invalid_response"
+    )

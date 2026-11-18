@@ -8,29 +8,29 @@ Katalog yalnız salt okumadır. Platform modelleri, sürümleri ve veri setleri;
 
 ## Okunan alanlar (dar tüketici)
 
-Sağlayıcı yanıtının okunmayan alanları yok sayılır ve hiçbir çıktıya girmez. Her ham yanıtın tüm ağacında seçili anahtar için gizli tarama yapılır; anahtar bulunursa yanıt `invalid_response` olur.
+Sağlayıcı yanıtının okunmayan alanları yok sayılır ve hiçbir çıktıya girmez. Her ham yanıtın tüm ağacında (anahtar ve değerler, okunan veya okunmayan) seçili anahtar için gizli tarama yapılır. Görüntü temizliği tarama sonrasında çalıştığı için bitmiş kayıt bir kez daha taranır: temizlik sırasında birleşen bir anahtar da `invalid_response` olur. Kayıtlar çözücü tarafından kendi bayt girdisini alır; taramayı atlayan bir çağıran yoktur.
 
 | Kaynak | Okunan alanlar | Zorunlu | Not |
 |---|---|---|---|
 | LLM `GET /v1/models` | `data` (dizi, en çok 500) | evet | sayfalama yok; tamlık `unknown` |
 | LLM `ModelInfo` | `id`, `task`, `created` zorunlu; `modalities`, `context_length`, `default_max_output_tokens`, `precision`, `pricing` | `id`, `task`, `created` | `task` açık dize; kimlik ve görev ham tutulur |
-| LLM `pricing` | `prompt_token_price`, `completion_token_price` (zorunlu); `currency`, `free_until` | zorunlu iki fiyat | `free_until` yalnız bilgidir, maliyet kapısı değildir |
+| LLM `pricing` | `prompt_token_price`, `completion_token_price` (zorunlu, 0 veya üstü); `currency`, `free_until` | zorunlu iki fiyat | `free_until` yalnız bilgidir, maliyet kapısı değildir |
 | Platform `GET /models` | `items`, `total` | evet | sayfa kuralı aşağıda |
 | Platform `Model` (liste/detay) | `id`, `slug`, `name`, `modality`, `stage`, `visibility`, `versions_count`, `created_at`, `updated_at` zorunlu; `owner_username`, `description`, `license`, `architecture` | yukarıdakiler | `owner_username` null olabilir |
-| Platform sürüm öğesi | `id`, `version_tag`, `created_at` zorunlu; `framework`, `file_size_bytes`; `weights_url`, `onnx_url`, `tflite_url` yalnız varlık bayrağı | yukarıdakiler | URL değeri tipte taşınmaz |
+| Platform sürüm öğesi | `id`, `version_tag`, `created_at` zorunlu; `framework`, `file_size_bytes`; `weights_url`, `onnx_url`, `tflite_url` yalnız varlık bayrağı | yukarıdakiler | URL değeri tipte taşınmaz. Boş veya boşluk olan URL yoktur; null ve boş dışında tipteki her URL değeri `invalid_response` |
 | Platform veri seti öğesi | `id`, `name`, `slug`, `modality`, `item_count`, `visibility`, `updated_at` zorunlu; `owner_username` | yukarıdakiler | kapsam etiketi K4 teyidine kadar `unknown` |
 
-Zorunlu alan yoksa, tip yanlışsa (`true` bir sayı yerine geçemez), boş veya duplicate anahtarlı JSON ya da sınırı aşan yanıt `invalid_response` döner.
+Zorunlu alan yoksa, tip yanlışsa (`true` bir sayı yerine geçemez; `1.0` bir tam sayı yerine geçemez), sayı eksi ise, boş veya duplicate anahtarlı JSON ya da sınırı aşan yanıt `invalid_response` döner. Tanımlayıcılar en çok 256 karakterdir. Zaman damgaları RFC 3339 tarih-saat biçimindedir (en çok 40 karakter); başka her biçim `invalid_response`.
 
 ## Görüntü metni ve kimlik
 
 Sağlayıcı metinleri güvenilmez metindir. Ad, açıklama, lisans, mimari, modalite, aşama, görünürlük, biçim, para birimi ve fiyat tarihi çözümlenirken temizlenir: kontrol ve çift yönlü geçersiz kılma karakterleri düşer, satır sonu ve sekme boşluk olur, uzunluk sınırı aşılırsa sonda `…` bulunur. Sınırlar: ad ve biçim alanları 128, açıklama 512 gösterim karakteri.
 
-Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez; temizlenmiş bir kimlik başka bir modele dönüşebilir. Kimlik ham tutulur, yalnız görüntülenirken temizlenir ve görüntüden alınan değer hiçbir zaman argüman olarak kullanılmaz.
+Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez; temizlenmiş bir kimlik başka bir modele dönüşebilir. Satır sonu benzeri Unicode ayraçlar (U+2028, U+2029) boşluğa çevrilir. Kimlik ham tutulur, yalnız görüntülenirken temizlenir ve görüntüden alınan değer hiçbir zaman argüman olarak kullanılmaz.
 
 ## Adres alfabesi
 
-`owner`, `slug`, `model_id` ve `version_id` argümanları `[A-Za-z0-9._-]{1,128}` ile sınırlıdır; `.` ve `..` yasaktır. Dışarıdaki her değer ağ isteğinden önce `invalid_request` ile reddedilir.
+`owner`, `slug`, `model_id` ve `version_id` argümanları `[A-Za-z0-9._-]{1,128}` ile sınırlıdır; `.` ve `..` yasaktır (URL’de gezinme anlamına gelirler). `...` gibi noktalardan oluşan diğer adlar bu alfabede olağan adlardır. Dışarıdaki her değer ağ isteğinden önce `invalid_request` ile reddedilir.
 
 API’den gelen ve bu alfabeye uymayan kimlikler listede temizlenmiş metin olarak gösterilir; onlarla `show` veya `download` yapılamaz. Bu bilinçli bir sınırdır.
 
@@ -53,9 +53,9 @@ Tamlık etiketleri:
 | `last_page` | `page > 1` ve sonraki sayfa yok; önceki sayfalar gösterilmedi |
 | `unknown` | kanıtlanamıyor |
 
-Veri setleri sayfa bilgisini başlıkta taşır: `X-Has-Next` tam olarak `true` veya `false` değilse `unknown`. `X-Total-Count` varsa aynı satır kuralı uygulanır ve `X-Has-Next` ile çelişirse `invalid_response`. Başlık tekrarlanırsa belirsiz kabul edilir (`unknown`). Veri seti isteğinde `limit`, `offset` ve `sort` kullanılmaz.
+Veri setleri sayfa bilgisini başlıkta taşır. `X-Has-Next` tam olarak bir kez ve `true` veya `false` olarak bulunmalıdır; başka her durum `unknown`. `X-Total-Count` bulunursa düz bir ondalık sayı olmalıdır: tekrarlanmış, eksi, biçimi bozuk veya okunamayan bir değer sayfayı `unknown` yapar (tamlık iddiası kurulmaz). Okunabilen bir `X-Total-Count` satır sayısıyla ve `X-Has-Next` ile çelişirse `invalid_response`. Veri seti isteğinde `limit`, `offset` ve `sort` kullanılmaz.
 
-Sürüm listesinde sayfalama yoktur: detay yanıtındaki `versions_count` dizi uzunluğuyla eşitse `complete`, değilse `unknown`. Çözümde eşitlik zorunludur; değilse `invalid_response`.
+Sürüm listesinde sayfalama yoktur: detay yanıtındaki `versions_count` dizi uzunluğuyla eşitse `complete`, değilse `unknown`. `model_id` yolunda detay olmadığı için `versions_count` bilinmez ve tamlık `unknown`dur. Çözümde eşitlik zorunludur; değilse `invalid_response`. `versions_count` bool, ondalık veya eksi ise her yerde `invalid_response`.
 
 ## Çözüm
 
