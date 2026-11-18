@@ -1,6 +1,6 @@
 # Katalog ve modeller modülü
 
-**Durum:** Planlandı — P02-4 hazırlık planı ve kartları hazır ([plan](../roadmap/p02-4-delivery-plan.md); [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Proposed; kod yok). **Kapsam:** C05. **Faz:** P02/P03.
+**Durum:** P02-4 uygulanıyor ([plan](../roadmap/p02-4-delivery-plan.md); [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted, 2026-11-19). Kod adımları kart bazında kapanır. **Kapsam:** C05. **Faz:** P02/P03.
 
 Model/veri araması, sahip/slug/UUID çözümleme, model görevi ve sürüm metadata'sı bu modüldedir. Modelin hesapta görünmesi ile belirli iş/parametreyi desteklemesi farklı sonuçlardır.
 

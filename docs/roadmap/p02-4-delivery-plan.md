@@ -1,6 +1,6 @@
 # P02-4 — Katalog, sabit referans ve seçilmiş ağırlık teslim planı
 
-**Tarih:** 2026-11-19. **Durum:** Hazırlık; kod yok. İki fresh belge review turu (R1, R2) tamamlandı ve bulguları işlendi. [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Proposed; kartlar `draft`. **Kullanıcı kararları K1–K11 bekleniyor; sessizlik onay değildir**, her karar açıkça yanıtlanmalıdır. **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
+**Tarih:** 2026-11-19. **Durum:** Uygulama başladı. İki fresh review turu ve belge incelemesinin bulguları işlendi; [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted (2026-11-19). ADR dışındaki kararlar aşağıdaki tabloda önerilerle uygulanır (kullanıcı talimatı). **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
 
 ## Kullanıcı sonucu
 
@@ -42,21 +42,21 @@ Bağımlılıkların tamamı development’ta verified/teslimdir. P02-4c, ADR-00
 
 ## Kullanıcı kararları (P02-4 K1–K11)
 
-Önerilen seçenek ilk sıradadır; ama onay yerine geçmez.
+ADR’de yer alan kararlar (K1, K6, K9, K11) [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted ile onaylanmıştır. Diğerleri kullanıcı talimatıyla **önerileriyle** uygulanır; her biri aşağıda işaretlidir.
 
-| # | Karar | Öneri | Reddedilirse |
-|---|---|---|---|
-| K1 | [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) (Proposed): yalnız GET; LLM kimliği gateway’den; tek sayfa semantiği ve tamlık durumları; kalıcı önbellek yok; “sabit” = gözlemlenen kimlik; seçim bağı | **Açıkça onayla** | Önbellek istenirse ayrı ADR ve V2 migration; otomatik sayfa döngüsü istenirse ADR revize edilir |
-| K2 | Veri seti listesi: `GET /datasets` (sayfa `page`/`page_size`; tamlık `X-Has-Next` başlığıyla). Kapsam: repodaki upload kodunun kullandığı `scope=owned` (öneri) veya “görünen” kapsam. Keşif şemasında `scope` yok; “görünen” seçilirse K4 okumasında davranış teyit edilir | `owned` | “Görünen” seçilip teyit alınamazsa kapsam `unknown` kalır ve veri seti listesi yalnız owned ile sunulur |
-| K3 | LLM model kaynağı: gateway `GET /v1/models`; Platform `selectable-models` P02-4’te yok | Gateway | Platform kaynağı için ayrı doğrulama gerekir; iki kaynağın aynı kimlik kümesi olduğu kanıtlanmadan inference kimliği olarak kullanılmaz |
-| K4 | **Canlı salt okuma:** Platform modelleri (liste, detay, `model_id` ile sürüm listesi), veri setleri (liste) ve LLM listesi/detayı; yerel pilot anahtarlarıyla yalnız GET; ≤20 mantıksal istek; yazma, ücretli çağrı, indirme yok. Teyit edilecekler: sayfa üst sınırı (100), tüketilen alan kümesi, `X-Has-Next`/`X-Total-Count` değer biçimi, `scope` davranışı, LLM kimlik alfabesi (`/` var mı) | **Açıkça onayla** | Hayırsa canlı kabul “yapılmadı” kalır; üst sınır, alan kümesi ve başlık biçimi doğrulanmamış kalır; P02-4a LLM alt kabulü “canlı doğrulanmadı” olur |
-| K5 | **Canlı indirme:** erişilebilir bir model sürümü kimliği kullanıcı tarafından verilirse ve ek yetki onaylanırsa tek indirme kabulü. Ayrı onaydır; varsayılan yoktur | Ayrı onay ve sürüm kimliği | Verilmezse P02-4f canlı kabulü “yapılmadı” kalır; yerel kabul yine tamamlanır |
-| K6 | Seçim sözdizimi: `--model OWNER/SLUG --version-tag TAG`; `--version-id` korunur; “en son sürüm” yok. Motor sırası ADR-0035 §6’daki gibi olur: ağsız yerel ön kontroller (hedef var, meşgul, doğrulanamayan iz) çözümden önce; kimlik bağlı stage kararı çözümden sonra. Bu, motorda P02-4f’de regresyonla kanıtlanan bir ayrıştırma gerektirir | **Onayla** | Yalnız `--version-id` seçilirse P02-4b katalog çözümünü kapsamaz ve kart küçülür (kullanıcı onayı gerekir) |
-| K7 | [P02-R10](tasks/p02-r10-llm-terms-guidance.md) (ready, S): bu PR’da **ayrı kart ve ayrı commit** (adım 5). R10 yalnız `context discover` text satırıdır; katalog hata yoluna genişletilmez. Katalogda 401/403 `remote_access_denied` (çıkış 3) döner | **Dahil et** | Ayrı PR’a alınırsa adım 5 çıkar; katalog değişmez |
-| K8 | UX hedefleri (ölçümden önce sabit): (a) `models list --service ...` tek sayfa, sayfa numarası, tamlık ve sonraki komut ipucu gösterir; (b) bulma yolu `models list` (owner/slug) → `models show --versions` (etiket) → `models download --model --version-tag`, kimlik kopyalanmaz; (c) `owner_username` null modeller için çıkış yolu `models show --model-id UUID --versions` ve `models download --version-id`; (d) belirsiz, bulunamayan veya görev uyumsuz çözümde 0 ağırlık isteği; (e) süre/yardım/yanlış hedef ölçümü P02-7’de | **Onayla** | Farklı hedef istenirse kart ölçüm öncesi güncellenir |
-| K9 | Codec: **dar tüketici** (öneri; [ADR-0022](../decisions/0022-observed-platform-consumer-contract.md) deseni): tüketilen alanlar sıkı tipli, diğer alanlar yok sayılır ve çıktıya girmez, ham ağaçta literal-secret taraması (`scan_for_secret`), DTO’lar kapalı. Alternatif **K9-B**: kapalı tam şekil (`decode_response`); tek gözlemle tam şekil bilinmediği, `null` tipli ve serbest nesne alanları olduğu ve yeni alan tüm listeyi durdurduğu için K4 sonrası kesinleşir | **Dar tüketici** | K9-B seçilirse ADR-0035 §8 yeniden yazılır; tam şekil K4 örneğiyle çıkarılır, nesne alanları tek tek modellenir |
-| K10 | Dal ve PR: `feat/p02-4-catalog-and-selection` (origin/development tabanı), tek development PR; adım başına commit ve iki fresh review turu | **Onayla** | Hat bazında bölme istenirse adım 4 sonrası PR sınırı ilan edilir; kapsam küçültülmez |
-| K11 | Yeni hata kodlarının çıkışı: `model_ambiguous`, `model_task_mismatch`, `model_not_addressable` çıkış 2 (kullanıcının seçimi çözülemedi); `model_not_visible` çıkış 1 (uzak sonuç: kaynak bu anahtara görünmüyor). Mevcut [çıkış kodları](../reference/cli-contract.md) bu sınıflamayla uyumlu | **Bu sınıflama** | Bütün dört kod çıkış 2 olabilir; gerekçe ADR-0035 Karar 9’da yazılı olur |
+| # | Karar | Durum |
+|---|---|---|
+| K1 | ADR-0035: yalnız GET; LLM kimliği gateway’den; tek sayfa semantiği ve tamlık durumları; kalıcı önbellek yok; “sabit” = gözlemlenen kimlik; seçim bağı; dar tüketici codec | **Accepted (2026-11-19)** |
+| K2 | Veri seti listesi: `GET /datasets` (sayfa `page`/`page_size`; tamlık `X-Has-Next`); `scope=owned` isteği gönderilir, ama çıktıdaki kapsam etiketi K4 teyidine kadar `unknown` kalır | Öneri uygulanır |
+| K3 | LLM model kaynağı: gateway `GET /v1/models`; Platform `selectable-models` P02-4’te yok | Öneri uygulanır |
+| K4 | Canlı salt okuma: yerel pilot anahtarlarıyla yalnız GET, ≤20 mantıksal istek; yazma, ücretli çağrı, indirme yok. Teyit: sayfa üst sınırı, sunucunun sayfa boyutunu düşürme davranışı, `X-Has-Next`/`X-Total-Count` biçimi, `scope` etkisi, LLM kimlik alfabesi, en büyük gerçek sayfa boyutu | Öneri uygulanır |
+| K5 | Canlı indirme: erişilebilir bir sürüm kimliği kullanıcı tarafından verilmediği sürece yapılmaz; kabul “yapılmadı” olarak kaydedilir | Öneri uygulanır (sürüm kimliği bekleniyor) |
+| K6 | Seçim sözdizimi `--model OWNER/SLUG --version-tag TAG`; `--version-id` korunur; “en son” yok; motor sırası ve kilit kapsamı ADR-0035 §6 | **Accepted (2026-11-19)** |
+| K7 | P02-R10 ayrı kart ve ayrı commit (adım 5); katalog hata yoluna genişletilmez | Öneri uygulanır |
+| K8 | UX: bulma yolu `models list` → `models show --versions` → `models download --model --version-tag`; owner’sız model için `show --model-id --versions` ve `download --version-id`; hesap `--config`/`--profile` ile veya aktif profilden; belirsizlikte 0 ağırlık isteği; süre/yardım/yanlış hedef ölçümü P02-7’de | Öneri uygulanır |
+| K9 | Codec: dar tüketici (ADR-0022 deseni; okunmayan alan çıktıya girmez; ham ağaçta gizli tarama; DTO’lar kapalı). K9-B kapalı tam şekil reddedildi | **Accepted (2026-11-19)** |
+| K10 | Dal `feat/p02-4-catalog-and-selection`, tek development PR, adım başına commit ve iki fresh review turu; PR en sonda, merge kullanıcıda | Öneri uygulanır |
+| K11 | Hata çıkışları: `model_not_visible` çıkış 1; `model_ambiguous`, `model_task_mismatch`, `model_not_addressable` çıkış 2 | **Accepted (2026-11-19)** |
 
 ## Adımlar ve review döngüsü
 
@@ -64,7 +64,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 
 | Adım | Kart | Review eksenleri | Tek sonuç / kapı |
 |---|---|---|---|
-| 0 | Hazırlık: bu belge, ADR-0035, kartlar, indeksler | belge tutarlılığı · sözleşme/güvenlik · UX | R1 ve R2 tamam (bulgular işlendi); kullanıcı onayı K1–K11; onaydan sonra hazırlık commit’i |
+| 0 | Hazırlık: bu belge, ADR-0035, kartlar, indeksler | belge tutarlılığı · sözleşme/güvenlik · UX | R1, R2 ve belge incelemesi tamam; ADR-0035 Accepted; hazırlık commit’i `7247867` ve düzeltme commit’i |
 | 1 | [P02-4c](tasks/p02-4c-catalog-contract.md) | sözleşme/oracle · güven sınırı | Dar tüketici tipleri (K9), tamlık ve çözüm kuralları, sınırlar, sanitizasyon, `docs/reference/catalog.md` |
 | 2 | [P02-4d](tasks/p02-4d-catalog-transport-api.md) | ağ güvenliği · sır sızıntısı · test | GET adaptörleri, tek sayfa, yanıt/süre sınırları, retry, `api.py` fonksiyonları, loopback TLS entegrasyonu |
 | 3 | [P02-4e](tasks/p02-4e-catalog-cli-acceptance.md) (CLI) | UX/CLI sözleşmesi · belge | `models list/show`, `datasets list`, metin/JSON/NDJSON, dört yeni hata kodu, [cli-contract](../reference/cli-contract.md) güncellemesi (taslak `llm models` örneği dahil), süreç testleri, kurulu CLI smoke |
@@ -95,7 +95,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 
 - Her komutun ağ çağrısı sayısı sabittir: liste 1, detay 1, `model_id` ile sürüm listesi 1, `--versions` ile detay 2, veri seti listesi 1; çözüm en çok 2 GET’tir. Liste satırları için model başına detay çağrısı yapılmaz (N+1 yok).
 - Bellek ve yanıt sınırları: tek yanıt en çok 1 MiB; Platform sayfası en çok 100 kayıt (üst sınır K4 ile teyit); LLM listesi en çok 500 kayıt; komut toplamı en çok 30 s; her okuma en çok iki deneme (ADR-0017, yalnız salt okuma GET).
-- Platform sayfa boyutu varsayılanı 20.
+- Platform sayfa boyutu istemci varsayılanı 20; sunucu davranışı K4 ile teyit edilir.
 - Startup ve import: katalog kodu tembel yüklenir; yardım ve yerel komutlar ağ veya katalog modülü yüklemez. Import grafiği değişirse [startup kapısı](../standards/performance.md) yeniden ölçülür.
 
 **Güvenlik.**
@@ -108,7 +108,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 - Şart, lisans veya erişim kabulü otomatik yapılmaz; `pricing`/`free_until` maliyet kapısı değildir.
 - Tamlık ve görünürlük iddiası kanıtsız yapılmaz; kapsam kanıtlanmadıkça `unknown` yazılır.
 
-**Kaynak bütçesi.** Her komut: ≤2 GET (seçim yolunda +1 JSON + 1 indirme), yanıt ≤1 MiB, süre ≤30 s, bellekte en çok bir sayfa. Bu sayılar ölçülmeden kabul edilmez; kartlar bunu kabul maddesi yapar.
+**Kaynak bütçesi.** Katalog komutu: ≤2 GET (seçim yolunda çözüm ≤2 GET, sonra +1 JSON ve motor), yanıt ≤1 MiB, katalog süresi ≤30 s (indirme deadline’ından ayrı), bellekte en çok bir sayfa. İndirme süresi `--timeout` ile ayrıca sınırlıdır. Bu sayılar ölçülmeden kabul edilmez; kartlar bunu kabul maddesi yapar.
 
 **Doğrulanamayan konular (K4 ile teyit).** Platform sayfa üst sınırı (100), `X-Has-Next` ve `X-Total-Count` değer biçimi, `scope` davranışı, `model_card` gibi büyük alanların 1 MiB sınırına etkisi, LLM kimlik alfabesi, `GET /models/{model_id}/versions` yanıtının sayfalama davranışı.
 

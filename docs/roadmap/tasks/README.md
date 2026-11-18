@@ -59,7 +59,7 @@
 | [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart |
 | [P02-4a](p02-4a-catalog-acceptance.md) | Sayfalı veri/model kataloğu üst kabulü (P02-4c–e); `draft`; [hazırlık planı](../p02-4-delivery-plan.md), K1–K11 kullanıcı kararı bekliyor |
 | [P02-4b](p02-4b-selected-download-acceptance.md) | Katalog çözümlü seçimin ağırlık indirmesine bağlanması üst kabulü (P02-4f); `draft` |
-| [P02-4c](p02-4c-catalog-contract.md) | Katalog tipleri, kapalı codec’ler, tamlık/çözüm/görev kuralları ve kanonik referans; `draft` |
+| [P02-4c](p02-4c-catalog-contract.md) | Katalog tipleri, kapalı codec’ler, tamlık/çözüm/görev kuralları ve kanonik referans; `in_progress` |
 | [P02-4d](p02-4d-catalog-transport-api.md) | Katalog GET taşıması, tek sayfa sınırları ve Python API; `draft` |
 | [P02-4e](p02-4e-catalog-cli-acceptance.md) | `models list/show`, `datasets list`, CLI yüzeyi ve canlı salt okuma kabulü; `draft` |
 | [P02-4f](p02-4f-selected-download-binding.md) | `models download --model/--version-tag` çözüm bağı; `draft` |
