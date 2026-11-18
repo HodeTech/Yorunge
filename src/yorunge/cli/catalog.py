@@ -117,6 +117,7 @@ def dispatch_models(args: argparse.Namespace) -> CliResult:
 
 def _list(args: argparse.Namespace) -> CliResult:
     from yorunge import api
+    from yorunge.domain.catalog import task_argument
 
     if args.service == PLATFORM:
         if args.task is not None:
@@ -128,24 +129,25 @@ def _list(args: argparse.Namespace) -> CliResult:
         )
     if args.page is not None or args.page_size is not None:
         raise _invalid()
+    # The task is checked before the list is requested: a bad argument never reaches the network.
+    task = None if args.task is None else task_argument(args.task)
     result = api.list_llm_models(config=args.config, profile=args.profile)
-    if args.task is None:
+    if task is None:
         return result
-    return _filter_by_task(result, args.task)
+    return _filter_by_task(result, task)
 
 
 def _filter_by_task(result: Result[CatalogReading[LlmListing]], task: str) -> CliResult:
     """A client-side filter: the same list the key sees, with its completeness unchanged."""
-    from yorunge.domain.catalog import CatalogReading, LlmListing, task_argument
+    from yorunge.domain.catalog import CatalogReading, LlmListing
     from yorunge.domain.models import Result
 
-    expected = task_argument(task)
     reading = result.data
-    kept = tuple(model for model in reading.data.models if model.task == expected)
+    kept = tuple(model for model in reading.data.models if model.task == task)
     filtered = CatalogReading[LlmListing](
         observed_from=reading.observed_from,
         observed_until=reading.observed_until,
-        data=LlmListing(models=kept),
+        data=LlmListing(models=kept, task_filter=task),
     )
     return Result[CatalogReading[LlmListing]](data=filtered)
 
@@ -189,13 +191,23 @@ def dispatch_datasets(args: argparse.Namespace) -> CliResult:
 # --- text ---------------------------------------------------------------------------------------
 
 
-def _s(value: object) -> str:
-    """Provider text for the terminal: the catalog's cleaning, and a dash for nothing."""
+def _s(value: object, limit: int | None = None) -> str:
+    """Provider text for the terminal: the catalog's cleaning, bounded by the display limit."""
     from yorunge.domain.catalog import NAME_LIMIT, text
 
     if value is None:
         return "-"
-    return text(value if isinstance(value, str) else str(value), NAME_LIMIT) or "-"
+    return text(value if isinstance(value, str) else str(value), limit or NAME_LIMIT) or "-"
+
+
+def _id(value: object) -> str:
+    """An identifier as the provider sent it: cleaned for the terminal, never shortened.
+
+    The codec already bounds identifiers to the raw limit, so the display limit is the same bound.
+    """
+    from yorunge.domain.catalog import IDENTITY_LIMIT
+
+    return _s(value, IDENTITY_LIMIT)
 
 
 def _window(reading: CatalogReading[object]) -> str:
@@ -246,10 +258,15 @@ def _platform_page(page: object) -> list[str]:
     if not page.models:
         lines.append("Bu anahtara görünen model yok; bu kesin bir yokluk kanıtı değildir.")
     for model in page.models:
-        owner = _s(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
+        owner = _id(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
         lines.append(
-            f"  {owner}/{_s(model.slug)}  {_s(model.name)}  {_s(model.modality)}  "
-            f"sürüm {model.versions_count}  kimlik {_s(model.model_id)}"
+            f"  {owner}/{_id(model.slug)}  {_s(model.name)}  {_s(model.modality)}  "
+            f"sürüm {model.versions_count}  kimlik {_id(model.model_id)}"
+        )
+    if any(model.owner_username is None for model in page.models):
+        lines.append(
+            "Sahip adı olmayan modeller için kimlikle: yorunge models show --service "
+            f"{PLATFORM} --model-id KIMLIK --versions"
         )
     if page.completeness == "partial":
         lines.append(
@@ -260,23 +277,23 @@ def _platform_page(page: object) -> list[str]:
 
 
 def _platform_detail(detail: object) -> list[str]:
-    from yorunge.domain.catalog import PlatformModelDetail
+    from yorunge.domain.catalog import TEXT_LIMIT, PlatformModelDetail
 
     assert isinstance(detail, PlatformModelDetail)
     model = detail.model
-    owner = _s(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
+    owner = _id(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
     lines = [
-        f"{owner}/{_s(model.slug)} — {_s(model.name)}",
-        f"  kimlik: {_s(model.model_id)}",
+        f"{owner}/{_id(model.slug)} — {_s(model.name)}",
+        f"  kimlik: {_id(model.model_id)}",
         f"  görünürlük: {_s(model.visibility)}; aşama: {_s(model.stage)}; "
         f"modalite: {_s(model.modality)}",
         f"  lisans: {_s(model.license) if model.license is not None else 'belirtilmemiş'}",
         f"  sürüm sayısı: {model.versions_count}",
     ]
     if model.description is not None:
-        lines.append(f"  açıklama: {_s(model.description)}")
+        lines.append(f"  açıklama: {_s(model.description, TEXT_LIMIT)}")
     if detail.versions is not None:
-        lines.extend(_versions(detail.versions, _s(model.slug)))
+        lines.extend(_versions(detail.versions, _id(model.slug)))
     return lines
 
 
@@ -312,7 +329,7 @@ def _versions(listing: object, slug: str | None) -> list[str]:
             if present
         ]
         lines.append(
-            f"    {_s(version.version_tag)}  kimlik {_s(version.version_id)}  "
+            f"    {_id(version.version_tag)}  kimlik {_id(version.version_id)}  "
             f"biçim: {', '.join(formats) or 'bilinmiyor'}  {_s(version.created_at)}"
         )
     lines.append(
@@ -326,14 +343,23 @@ def _llm_listing(listing: object) -> list[str]:
     from yorunge.domain.catalog import LlmListing
 
     assert isinstance(listing, LlmListing)
-    lines = ["LLM modelleri (bu anahtara görünenler; listede olmaması kesin yokluk değildir):"]
+    heading = "LLM modelleri (bu anahtara görünenler; listede olmaması kesin yokluk değildir)"
+    if listing.task_filter is not None:
+        heading += f"; görev süzmesi: {_s(listing.task_filter)} (istemci tarafı)"
+    lines = [heading + ":"]
     if not listing.models:
-        lines.append("  (görünen model yok)")
+        if listing.task_filter is not None:
+            lines.append(
+                f"  görev {_s(listing.task_filter)} ile eşleşen model yok; süzme olmadan "
+                "listeleyerek diğer görevlere bakın."
+            )
+        else:
+            lines.append("  (görünen model yok)")
     for model in listing.models:
         modalities = ", ".join(_s(item) for item in model.modalities or ()) or "-"
         context = "-" if model.context_length is None else str(model.context_length)
         lines.append(
-            f"  {_s(model.model_id)}  görev {_s(model.task)}  bağlam {context}  "
+            f"  {_id(model.model_id)}  görev {_s(model.task)}  bağlam {context}  "
             f"modalite {modalities}"
         )
     return lines
@@ -344,7 +370,7 @@ def _llm_model(model: object) -> list[str]:
 
     assert isinstance(model, LlmModel)
     lines = [
-        f"{_s(model.model_id)} — görev {_s(model.task)}",
+        f"{_id(model.model_id)} — görev {_s(model.task)}",
         f"  modaliteler: {', '.join(_s(item) for item in model.modalities or ()) or '-'}",
         f"  bağlam: {_number(model.context_length)}; "
         f"en çok çıktı: {_number(model.default_max_output_tokens)}",
@@ -375,11 +401,11 @@ def _dataset_page(page: object) -> list[str]:
         lines.append("  (bu sayfada veri seti yok)")
     for dataset in page.datasets:
         owner = (
-            _s(dataset.owner_username) if dataset.owner_username is not None else "(sahip adı yok)"
+            _id(dataset.owner_username) if dataset.owner_username is not None else "(sahip adı yok)"
         )
         lines.append(
-            f"  {owner}/{_s(dataset.slug)}  {_s(dataset.name)}  {_s(dataset.modality)}  "
-            f"öğe {dataset.item_count}  {_s(dataset.visibility)}  kimlik {_s(dataset.dataset_id)}"
+            f"  {owner}/{_id(dataset.slug)}  {_s(dataset.name)}  {_s(dataset.modality)}  "
+            f"öğe {dataset.item_count}  {_s(dataset.visibility)}  kimlik {_id(dataset.dataset_id)}"
         )
     if page.completeness == "partial":
         lines.append(

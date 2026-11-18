@@ -219,15 +219,18 @@ def _mismatch_hint(error: YorungeError) -> str | None:
 CATALOG_HINTS: dict[str, str] = {
     "model_not_visible": (
         "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
-        "anahtarı kontrol edin ya da 'yorunge models list' ile arayın."
+        "anahtarı kontrol edin ya da 'yorunge models list --service evren-platform' (veya "
+        "evren-llm) ile arayın."
     ),
     "model_ambiguous": (
-        "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. 'yorunge models show --versions' "
-        "ile kimlikleri görüp sürüm kimliğiyle devam edin."
+        "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. Kimlikleri görmek için 'yorunge "
+        "models show --service evren-platform --model OWNER/SLUG --versions' çalıştırın, sonra "
+        "'yorunge models download --version-id KIMLIK --format onnx --weights-out DOSYA' ile "
+        "devam edin."
     ),
     "model_task_mismatch": (
-        "Model beklenen görevle eşleşmiyor. 'yorunge models list --service evren-llm' ile görevi "
-        "kontrol edin."
+        "Model beklenen görevle eşleşmiyor. 'yorunge models show --service evren-llm --model-id "
+        "KIMLIK' ile görevi kontrol edin."
     ),
     "model_not_addressable": (
         "Modelin sahip adı yok; owner/slug ile adreslenemez. 'yorunge models show --service "

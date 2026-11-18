@@ -344,6 +344,8 @@ class LlmModel(_Consumed):
 class LlmListing(_Consumed):
     models: tuple[LlmModel, ...] = Field(max_length=LLM_MAX_RECORDS)
     completeness: Literal["unknown"] = "unknown"
+    # Set only by the client-side task filter of the command line; the provider never sends it.
+    task_filter: str | None = None
 
 
 class PlatformModel(_Consumed):

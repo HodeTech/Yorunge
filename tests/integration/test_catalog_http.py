@@ -977,3 +977,242 @@ def test_the_dataset_page_says_its_scope_is_not_confirmed(
         code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
     assert code == 0
     assert "Veri setleri" in out and "kapsam: teyit edilmedi" in out
+
+
+# --- review round 1 of the command line (P02-4e) ----------------------------------------------
+
+
+@pytest.mark.parametrize("task", ["", "x" * 65, "emb\x1bedding"])
+def test_a_bad_llm_task_is_refused_before_the_list_is_requested(
+    certificates, keys, monkeypatch, config_file, capsys, task
+):
+    with Rig(certificates, {}, monkeypatch) as rig:
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                task,
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 2
+    assert "invalid_request" in out + err
+    assert rig.server.requests == []
+
+
+def test_a_task_filter_with_no_match_says_so_and_not_that_nothing_is_visible(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{LLM_BASE}/models": body(
+            {"object": "list", "data": [llm_model(id="emb-a", task="embedding")]}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                "rerank",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "görev rerank ile eşleşen model yok" in out
+    assert "(görünen model yok)" not in out
+
+
+def test_a_long_description_is_shown_in_full_up_to_the_display_limit(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    description = "d" * 300
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(
+            model_json(versions_count=0, description=description)
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-platform",
+                "--model",
+                f"{OWNER}/{SLUG}",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert f"açıklama: {description}" in out
+
+
+def test_a_long_identifier_is_shown_whole_not_cut_with_an_ellipsis(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    long_id = "L" * 200
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body(
+            {"items": [model_json(id=long_id)], "total": 1}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+        )
+    assert code == 0
+    assert f"kimlik {long_id}" in out and "…" not in out
+
+
+def test_an_owner_less_model_in_a_list_gets_the_identifier_route_once(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body(
+            {"items": [model_json(owner_username=None)], "total": 1}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+        )
+    assert code == 0
+    assert "(sahip adı yok)" in out
+    assert out.count("--model-id KIMLIK --versions") == 1
+
+
+def test_a_partial_platform_page_names_the_next_page_command(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body(
+            {"items": [model_json()] * 20, "total": 45}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+        )
+    assert code == 0
+    assert (
+        "Sonraki sayfa: yorunge models list --service evren-platform --page 2 --page-size 20" in out
+    )
+
+
+def test_a_partial_dataset_page_names_the_next_page_command(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    row = {
+        "id": "dataset-1",
+        "name": "Dataset A",
+        "slug": "dataset-a",
+        "modality": "VISION",
+        "item_count": 3,
+        "visibility": "PRIVATE",
+        "updated_at": STAMP,
+        "owner_username": OWNER,
+    }
+    routes = {
+        f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
+            body=json.dumps([row] * 20).encode("utf-8"), headers=(("X-Has-Next", "1"),)
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
+    assert code == 0
+    assert "Sonraki sayfa: yorunge datasets list --page 2 --page-size 20" in out
+
+
+@pytest.mark.parametrize(
+    "flag,value",
+    [
+        ("--page-size", "0"),
+        ("--page", "١"),
+        ("--page", "9" * 40),
+        ("--page-size", "101"),
+        ("--page", "-1"),
+        ("--page", "1e3"),
+    ],
+)
+def test_a_bad_page_number_is_refused_before_any_request(
+    certificates, keys, monkeypatch, config_file, capsys, flag, value
+):
+    with Rig(certificates, {}, monkeypatch) as rig:
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                flag,
+                value,
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 2
+    assert rig.server.requests == []
+
+
+def test_a_model_not_visible_error_names_a_command_that_runs(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{LLM_BASE}/models/llm-a": Reply(status=404, body=b"{}")}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-llm",
+                "--model-id",
+                "llm-a",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 1
+    assert "yorunge models list --service evren-platform" in out + err
+
+
+def test_ndjson_stdout_is_only_event_lines(certificates, keys, monkeypatch, config_file, capsys):
+    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [], "total": 0})}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                "--config",
+                str(config_file),
+                "--output",
+                "ndjson",
+            ],
+        )
+    assert code == 0
+    lines = [line for line in out.splitlines() if line.strip()]
+    events = [json.loads(line) for line in lines]
+    assert events and all(isinstance(event, dict) for event in events)

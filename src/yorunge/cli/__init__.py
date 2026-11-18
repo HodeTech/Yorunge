@@ -203,7 +203,7 @@ def parser() -> Parser:
     )
     add(
         "models",
-        "Model sürümü ağırlığı indir (kesin sürüm kimliğiyle, ezmeden, doğrulama seviyesi görünür)",
+        "Model kataloğunu oku ve model sürümü ağırlığı indir (ezmez; doğrulama seviyesi görünür)",
         _models_options,
     )
     return root
