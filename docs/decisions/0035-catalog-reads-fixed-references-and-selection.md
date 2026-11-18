@@ -38,7 +38,7 @@ Kaynaklar ve bilinen sınırlar (yerel keşif OpenAPI özeti ve repodaki kanıtl
    - Komut başına istek sayısı: liste 1; `owner/slug` detayı 1; `--versions` ile detay 2; `model_id` ile sürüm listesi 1; veri seti listesi 1.
 3. **Tamlık durumu ve gözlem penceresi.**
    - Platform modelleri: `has_next` yokken ve `p=1` ise `complete` (tüm liste); `has_next` varsa `partial` (sonraki sayfa komutu verilir); `p>1` ve `has_next` yoksa `last_page` (önceki sayfalar gösterilmedi). Boş `t=0`, `p=1` tam listedir (`complete`).
-   - Veri setleri: `X-Has-Next` tam olarak bir kez ve `true` veya `false` olarak bulunmalıdır; başka her durum `unknown`. `X-Total-Count` bulunursa düz ondalık sayı olmalıdır; okunamayan, tekrarlanmış veya eksi değer sayfayı `unknown` yapar. Okunabilen toplam satır sayısı ve `X-Has-Next` ile çelişirse `invalid_response`. Başlık biçimi K4 ile teyit edilir.
+   - Veri setleri: `X-Has-Next` tam olarak bir kez ve `0` veya `1` olarak bulunmalıdır (canlı gözlem K4: tamsayı biçimi, `0` ve `1`); başka her durum `unknown`. `X-Total-Count` bulunursa düz ondalık sayı olmalıdır; okunamayan, tekrarlanmış veya eksi değer sayfayı `unknown` yapar. Okunabilen toplam satır sayısı ve `X-Has-Next` ile çelişirse `invalid_response`. Başlık biçimi K4 ile teyit edilir.
    - Sürüm listesi: detay yanıtındaki `versions_count` ile dizi uzunluğu eşitse `complete`; değilse `unknown`. `model_id` yolunda detay olmadığı için bu yolda `unknown`dur.
    - LLM tek yanıtı için kapsam kanıtı yoksa `unknown`dur.
    - `observed_from`, bir komutun ilk ağ isteği başladığı an; `observed_until`, son yanıtın tamamlandığı andır. Aynı komutta birden fazla istek varsa tek pencere bunları kapsar.
@@ -91,4 +91,4 @@ Kaynaklar ve bilinen sınırlar (yerel keşif OpenAPI özeti ve repodaki kanıtl
 - Dört yeni kararlı hata kodu eklenir (Karar 9).
 - Motor sırasının ayrıştırılması ve kilit kapsamının korunması P02-4f’de ayrı regresyon kanıtı gerektirir.
 - Dataset baytı indirme ve upload’ın uzak byte sınırı değişmez ([P02-R5](../roadmap/tasks/p02-r5-dataset-item-byte-access.md)).
-- Canlı K4 okumasında teyit edilecek maddeler: sayfa üst sınırı, sunucunun sayfa boyutunu düşürme davranışı, `X-Has-Next`/`X-Total-Count` biçimi, `scope` filtresinin etkisi, LLM kimlik alfabesi, en büyük gerçek sayfanın boyutu (1 MiB sınırı).
+- Canlı K4 okuması (2026-11-19, [kanıt](../research/p02-4-catalog-live-read-20261119.md)) veri seti başlığını `0`/`1` olarak düzeltti ve kapsam filtresinin etkisini bu hesapta gözlemleyemedi. Teyit bekleyen maddeler: sayfa üst sınırı, sunucunun sayfa boyutunu düşürme davranışı, `X-Has-Next`/`X-Total-Count` biçimi, `scope` filtresinin etkisi, LLM kimlik alfabesi, en büyük gerçek sayfanın boyutu (1 MiB sınırı).

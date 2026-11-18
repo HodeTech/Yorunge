@@ -314,7 +314,7 @@ def test_datasets_send_owned_scope_and_read_the_paging_headers(certificates, key
                     }
                 ]
             ).encode("utf-8"),
-            headers=(("X-Has-Next", "false"), ("X-Total-Count", "1")),
+            headers=(("X-Has-Next", "0"), ("X-Total-Count", "1")),
         )
     }
     rig, observed, error = run(
@@ -768,7 +768,7 @@ def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypa
     routes = {
         f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(1)]),
         f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
-            body=json.dumps([]).encode("utf-8"), headers=(("X-Has-Next", "false"),)
+            body=json.dumps([]).encode("utf-8"), headers=(("X-Has-Next", "0"),)
         ),
         f"{LLM_BASE}/models": body({"object": "list", "data": [llm_model()]}),
     }
@@ -970,7 +970,7 @@ def test_the_dataset_page_says_its_scope_is_not_confirmed(
 ):
     routes = {
         f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
-            body=b"[]", headers=(("X-Has-Next", "false"),)
+            body=b"[]", headers=(("X-Has-Next", "0"),)
         )
     }
     with Rig(certificates, routes, monkeypatch):

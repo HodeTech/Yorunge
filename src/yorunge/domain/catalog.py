@@ -174,15 +174,16 @@ def dataset_page(
 ) -> Completeness:
     """Dataset paging is in headers. Anything unclear makes the page ``unknown``, never complete.
 
-    The has-next header must appear exactly once, with ``true`` or ``false``. The total header may
+    The has-next header must appear exactly once, as the integer ``0`` or ``1`` the provider sends
+    (observed on the live catalog, K4). The total header may
     appear at most once; when it is present it must be a plain decimal number and must agree with
     the rows and the has-next header, or the answer is invalid.
     """
-    if len(has_next_values) != 1 or has_next_values[0] not in ("true", "false"):
+    if len(has_next_values) != 1 or has_next_values[0] not in ("0", "1"):
         return "unknown"
     if len(total_values) > 1:
         return "unknown"
-    more = has_next_values[0] == "true"
+    more = has_next_values[0] == "1"
     if more and returned != page_size:
         # A short page that announces more pages: the server changed the size under us.
         raise YorungeError("invalid_response")

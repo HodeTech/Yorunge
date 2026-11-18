@@ -110,10 +110,12 @@ def test_platform_total_must_be_a_non_negative_integer(total) -> None:
         ((), "unknown"),
         (("maybe",), "unknown"),
         (("TRUE",), "unknown"),
-        (("true",), "partial"),
-        (("false",), "complete"),
-        (("true", "true"), "unknown"),
-        (("false", "false"), "unknown"),
+        (("1",), "partial"),
+        (("0",), "complete"),
+        (("1", "1"), "unknown"),
+        (("0", "0"), "unknown"),
+        (("true",), "unknown"),
+        (("false",), "unknown"),
     ],
 )
 def test_dataset_has_next_header_is_exact_and_single_or_unknown(has_next, expected) -> None:
@@ -122,18 +124,18 @@ def test_dataset_has_next_header_is_exact_and_single_or_unknown(has_next, expect
 
 @pytest.mark.parametrize("total", [("-5",), ("abc",), ("1.0",), ("45", "45"), ("1" * 19,)])
 def test_unreadable_or_repeated_total_header_makes_the_page_unknown_not_complete(total) -> None:
-    assert catalog.dataset_page(1, 20, 20, ("false",), total) == "unknown"
-    assert catalog.dataset_page(1, 20, 20, ("true",), total) == "unknown"
+    assert catalog.dataset_page(1, 20, 20, ("0",), total) == "unknown"
+    assert catalog.dataset_page(1, 20, 20, ("1",), total) == "unknown"
 
 
 def test_dataset_last_page_is_not_complete() -> None:
-    assert catalog.dataset_page(3, 20, 5, ("false",), ()) == "last_page"
+    assert catalog.dataset_page(3, 20, 5, ("0",), ()) == "last_page"
 
 
 def test_dataset_total_header_must_agree_with_rows_and_has_next() -> None:
-    assert catalog.dataset_page(1, 20, 20, ("true",), ("45",)) == "partial"
-    assert raise_code(catalog.dataset_page, 1, 20, 19, ("true",), ("45",)) == "invalid_response"
-    assert raise_code(catalog.dataset_page, 1, 20, 20, ("false",), ("45",)) == "invalid_response"
+    assert catalog.dataset_page(1, 20, 20, ("1",), ("45",)) == "partial"
+    assert raise_code(catalog.dataset_page, 1, 20, 19, ("1",), ("45",)) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 20, ("0",), ("45",)) == "invalid_response"
 
 
 def test_version_list_is_complete_only_when_it_matches_the_detail() -> None:
@@ -503,14 +505,14 @@ def dataset_row(**overrides):
 
 
 def test_dataset_page_reads_paging_from_headers_case_insensitively() -> None:
-    headers = (("X-Has-Next", "true"), ("x-total-count", "45"))
+    headers = (("X-Has-Next", "1"), ("x-total-count", "45"))
     page = codec.platform_datasets(jbytes([dataset_row()] * 20), KEY, 1, 20, headers)
     assert page.completeness == "partial" and page.scope == "unknown"
     assert page.datasets[0].dataset_id == "00000000-0000-4000-8000-0000000000d1"
 
 
 def test_a_repeated_paging_header_is_unclear_hence_unknown() -> None:
-    headers = (("X-Has-Next", "false"), ("x-has-next", "false"))
+    headers = (("X-Has-Next", "0"), ("x-has-next", "0"))
     assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, headers).completeness == (
         "unknown"
     )
@@ -524,7 +526,7 @@ def test_dataset_page_without_headers_is_unknown_not_complete() -> None:
 
 def test_dataset_rows_over_the_asked_size_are_invalid() -> None:
     rows = jbytes([dataset_row()] * 21)
-    headers = (("X-Has-Next", "false"),)
+    headers = (("X-Has-Next", "0"),)
     assert raise_code(codec.platform_datasets, rows, KEY, 1, 20, headers) == "invalid_response"
 
 
@@ -621,12 +623,12 @@ def test_a_real_rfc_3339_stamp_is_kept(stamp) -> None:
 
 def test_a_short_page_that_announces_more_is_refused() -> None:
     # Twenty were asked, five came, and the headers say more pages follow: rows would be skipped.
-    assert raise_code(catalog.dataset_page, 1, 20, 5, ("true",), ()) == "invalid_response"
-    assert raise_code(catalog.dataset_page, 1, 20, 0, ("true",), ()) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 5, ("1",), ()) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 0, ("1",), ()) == "invalid_response"
 
 
 def test_a_short_last_page_is_fine() -> None:
-    assert catalog.dataset_page(2, 20, 5, ("false",), ()) == "last_page"
+    assert catalog.dataset_page(2, 20, 5, ("0",), ()) == "last_page"
 
 
 def test_a_count_above_the_exact_json_integer_range_is_refused() -> None:

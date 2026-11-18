@@ -57,7 +57,7 @@ Tamlık etiketleri:
 | `last_page` | `page > 1` ve sonraki sayfa yok; önceki sayfalar gösterilmedi |
 | `unknown` | kanıtlanamıyor |
 
-Veri setleri sayfa bilgisini başlıkta taşır. Sonraki sayfanın varlığı bildirilmişse (`X-Has-Next: true`) sayfadaki satır sayısı istenen sayfa boyutuna eşit olmalıdır; kısa bir sayfa devam bildiriyorsa satırlar sonraki istekte atlanır ve yanıt `invalid_response` olur. `X-Has-Next` tam olarak bir kez ve `true` veya `false` olarak bulunmalıdır; başka her durum `unknown`. `X-Total-Count` bulunursa düz bir ondalık sayı olmalıdır: tekrarlanmış, eksi, biçimi bozuk veya okunamayan bir değer sayfayı `unknown` yapar (tamlık iddiası kurulmaz). Okunabilen bir `X-Total-Count` satır sayısıyla ve `X-Has-Next` ile çelişirse `invalid_response`. Veri seti isteğinde `limit`, `offset` ve `sort` kullanılmaz.
+Veri setleri sayfa bilgisini başlıkta taşır. Sonraki sayfanın varlığı bildirilmişse (`X-Has-Next: 1`) sayfadaki satır sayısı istenen sayfa boyutuna eşit olmalıdır; kısa bir sayfa devam bildiriyorsa satırlar sonraki istekte atlanır ve yanıt `invalid_response` olur. `X-Has-Next` tam olarak bir kez ve `0` veya `1` olarak bulunmalıdır (canlı gözlem: tamsayı biçimi); başka her durum `unknown`. `X-Total-Count` bulunursa düz bir ondalık sayı olmalıdır: tekrarlanmış, eksi, biçimi bozuk veya okunamayan bir değer sayfayı `unknown` yapar (tamlık iddiası kurulmaz). Okunabilen bir `X-Total-Count` satır sayısıyla ve `X-Has-Next` ile çelişirse `invalid_response`. Veri seti isteğinde `limit`, `offset` ve `sort` kullanılmaz.
 
 Sürüm listesinde sayfalama yoktur: detay yanıtındaki `versions_count` dizi uzunluğuyla eşitse `complete`, değilse `unknown`. `model_id` yolunda detay olmadığı için `versions_count` bilinmez ve tamlık `unknown`dur. Çözümde eşitlik zorunludur; değilse `invalid_response`. `versions_count` bool, ondalık veya eksi ise her yerde `invalid_response`.
 
@@ -107,4 +107,4 @@ Komut, yazılacak hiçbir durum dosyası açmaz ve çalışma dizinine dosya yaz
 
 ## Canlı teyit (K4)
 
-Şu maddeler gerçek hesapla salt okuma ile doğrulanmadan kesin sayılmaz: Platform sayfa üst sınırı, sunucunun istenen sayfa boyutunu düşürme davranışı, `X-Has-Next` ve `X-Total-Count` biçimi, `scope=owned` filtresinin etkisi, LLM kimlik alfabesi, okunan alanların canlı örnekte bulunması ve en büyük gerçek sayfanın boyutu.
+2026-11-19 salt okuma kaydı ([kanıt](../research/p02-4-catalog-live-read-20261119.md)): `page_size=100` kabul edildi; veri seti başlığı `X-Has-Next` `0`/`1` olarak geliyor; veri seti `scope=owned` filtresinin etkisi bu hesapta gözlenemedi (etiket `unknown` kalır); LLM kimlikleri alfabeye uygun; LLM görevleri `decision` ve `guard` değerlerini de içeriyor. Hâlâ teyit bekleyenler: platform sayfasında 100'ün üstü, `model_id` ile sürüm listesi (hesapta model yok), sürüm çözümü ve büyük `model_card` alanının 1 MiB sınırına etkisi.
