@@ -212,18 +212,29 @@ def run_resolved_download(
     ``build`` (the catalog's calls) runs with the lock held and yields the job whose identity the
     stage is then settled with. The time it takes is given back to the download deadline up to the
     control budget, as the JSON call's is: the deadline is ``timeout`` seconds from the start and
-    covers the local state and the GET. Returns the summary and the warnings of the run (a partial
-    of another identity that was dropped is said, never silently replaced).
+    covers the local state and the GET. The warnings name a partial of another download that was
+    dropped, and they reach the caller only with a successful result: a run that fails after the
+    drop does not name it (the drop comes before the first request, as on the version path).
     """
-    if not isinstance(session, TransferSession) or type(no_resume) is not bool:
+    if (
+        not isinstance(session, TransferSession)
+        or type(no_resume) is not bool
+        or type(timeout) is not int
+    ):
         raise YorungeError("invalid_request")
+    parse_timeout(timeout)  # the bounds of the job's own timeout, judged before the lock
     session.preflight()
     limit = _Limit(time.monotonic() + timeout)
     with open_held_sink(target, no_resume=no_resume, guard=limit.guard) as sink:
         began = time.monotonic()
         job, resolution = build()
         limit.refund(min(time.monotonic() - began, JSON_BUDGET_SECONDS))
-        if type(job) is not DownloadJob or job.target != target or job.no_resume != no_resume:
+        if (
+            type(job) is not DownloadJob
+            or job.target != target
+            or job.no_resume != no_resume
+            or job.timeout != timeout
+        ):
             raise YorungeError("invalid_request")  # the job is the one this sink was taken for
         plan = sink.settle(job.identity_key)
         progress = _Progress(job.progress)

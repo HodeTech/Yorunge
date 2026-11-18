@@ -13,13 +13,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Final, Literal, Self
 
-from pydantic import (
-    Field,
-    SerializerFunctionWrapHandler,
-    field_validator,
-    model_serializer,
-    model_validator,
-)
+from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import JsonWireModel, canonical, instant
 from yorunge.domain.catalog import plain_identifier
@@ -178,8 +172,11 @@ class DownloadSummary(Model):
     resumed: bool
     resumed_from_bytes: ByteCount
     source: DownloadSource
-    # Set only when the version was resolved from the catalog (``--model`` and ``--version-tag``).
-    resolution: DownloadResolution | None = None
+    # Set only when the version was resolved from the catalog (``--model`` and ``--version-tag``);
+    # absent otherwise, so that a download by version identifier keeps its result unchanged.
+    resolution: DownloadResolution | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @field_validator("output_path")
     @classmethod
@@ -187,15 +184,6 @@ class DownloadSummary(Model):
         if not is_reportable_path(value):
             raise ValueError("bounded printable path required")
         return value
-
-    @model_serializer(mode="wrap")
-    def omit_absent_resolution(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
-        """A download by version identifier says nothing of a resolution: the key is not written,
-        so that its result is the one it was before the catalog path existed."""
-        data: dict[str, object] = handler(self)
-        if self.resolution is None:
-            data.pop("resolution", None)
-        return data
 
     @model_validator(mode="after")
     def consistent(self) -> Self:

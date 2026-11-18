@@ -7,6 +7,7 @@ settled once, and a second settle is a programming error, not a second decision.
 import pytest
 
 from yorunge.adapters.download_sink import open_held_sink
+from yorunge.domain.errors import YorungeError
 
 KEY = "a" * 64
 
@@ -24,5 +25,6 @@ def test_a_settled_identity_is_decided_once(tmp_path):
     target = tmp_path / "weights.onnx"
     with open_held_sink(target) as sink:
         sink.settle(KEY)
-        with pytest.raises(AssertionError):
+        with pytest.raises(YorungeError) as info:
             sink.settle(KEY)
+        assert info.value.code == "invalid_request"

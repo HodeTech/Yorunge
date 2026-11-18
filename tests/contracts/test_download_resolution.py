@@ -66,3 +66,29 @@ def test_a_resolution_name_with_control_format_or_edge_characters_is_refused(fie
 def test_a_resolution_that_names_another_version_than_the_one_downloaded_is_refused():
     with pytest.raises(ValidationError):
         summary(resolution(version_id=OTHER), version_id=VERSION)
+
+
+def test_a_summary_without_a_resolution_keeps_the_key_out_of_its_json():
+    assert "resolution" not in summary().model_dump(mode="json")
+    assert "resolution" not in summary().model_dump_json()
+
+
+def test_a_summary_with_a_resolution_carries_it_in_its_json():
+    carried = summary(resolution()).model_dump(mode="json")["resolution"]
+    assert carried["version_tag"] == "1.1" and carried["version_id"] == VERSION
+
+
+def test_the_text_says_a_complete_stage_was_catalog_read_and_what_was_dropped():
+    from yorunge.adapters.download_engine import REPLACED_PARTIAL_WARNING
+    from yorunge.cli.models import text
+
+    complete = summary(resolution()).model_copy(
+        update={"resumed": True, "resumed_from_bytes": len(DATA)}
+    )
+    assert "sürüm katalogdan okundu" in text(complete)
+    plain_complete = summary().model_copy(update={"resumed": True, "resumed_from_bytes": len(DATA)})
+    assert "ağ isteği yapılmadan" in text(plain_complete)
+    assert "katalogdan okundu" not in text(plain_complete)
+    dropped = text(summary(resolution()), (REPLACED_PARTIAL_WARNING,))
+    assert "başka bir indirmeye (farklı sürüm, biçim ya da fold) aitti" in dropped
+    assert "Önceki yarım dosya" not in text(summary(resolution()))

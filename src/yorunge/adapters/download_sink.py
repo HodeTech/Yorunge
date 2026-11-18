@@ -243,8 +243,7 @@ class DownloadSink:
         )
         if refusal is not None:
             self._remove(refusal.remove, observed)
-            assert refusal.error is not None  # the refusals of the start table carry an error
-            raise YorungeError(refusal.error)
+            raise YorungeError(refusal.error or "download_write_failed")  # a refusal has an error
 
     @_closed
     def settle(self, identity_key: str) -> SinkPlan:
@@ -254,7 +253,8 @@ class DownloadSink:
         whatever the decision did not finish is not this sink's to keep or drop, so :meth:`stop`
         has nothing to do after it (the caller closes the sink as before).
         """
-        assert self.identity_key is None and self._phase == "ready", "settle is called once"
+        if self._lock is None or self.identity_key is not None or self._phase != "ready":
+            raise YorungeError("invalid_request")  # settle follows one hold, and is called once
         self.identity_key = parse_sha256(identity_key)
         try:
             return self._decide_and_act()
@@ -293,7 +293,8 @@ class DownloadSink:
 
     @property
     def _settled_key(self) -> str:
-        assert self.identity_key is not None, "the identity is settled before any decision"
+        if self.identity_key is None:  # only before settle, which the engine never reaches
+            raise YorungeError("invalid_request")
         return self.identity_key
 
     def _discards_other_identity(self, decision: StartDecision, observed: _Observed) -> bool:

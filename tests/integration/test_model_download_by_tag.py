@@ -12,7 +12,7 @@ import pytest
 
 from tests.fixtures.http_server import Reply
 from tests.fixtures.model_network import loopback_models
-from tests.integration.test_download_engine import CUT, DATA, TAG, sha
+from tests.integration.test_download_engine import CUT, DATA, ORIGIN, TAG, credential, sha
 from tests.integration.test_model_download import (
     BASE,
     JSON_PATH,
@@ -408,7 +408,7 @@ def test_the_cli_text_says_when_a_partial_of_another_version_was_dropped(
             str(rig.state),
         )
     assert code == 0, err
-    assert "Önceki yarım dosya farklı bir sürüme aitti" in out
+    assert "başka bir indirmeye (farklı sürüm, biçim ya da fold) aitti" in out
 
 
 @pytest.mark.parametrize(
@@ -470,3 +470,201 @@ def test_the_secret_is_never_printed_by_the_tag_path(workspace, certificates, mo
         )
     assert code == 0, err
     assert SECRET not in out + err
+
+
+# --- review round 1 of the tag path (P02-4f): what the first version left unproven ----------
+
+
+def test_a_tag_download_with_a_digest_earns_sha256_matched(workspace, certificates, monkeypatch):
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        summary = rig.call_tag(sha256=sha(DATA)).data
+    assert summary.verification_level == "sha256_matched"
+    assert summary.expectation_source == "user_supplied"
+
+
+def test_a_tag_download_sends_its_format_and_fold_and_names_them(
+    workspace, certificates, monkeypatch
+):
+    route = {f"{JSON_PATH}?format=pt&fold=2": json_route()}
+    with tag_rig(certificates, workspace, monkeypatch, **route) as rig:
+        summary = rig.call_tag(artifact_format="pt", fold=2).data
+    assert f"{JSON_PATH}?format=pt&fold=2" in [r.path for r in rig.server.requests]
+    assert (summary.source.format, summary.source.fold) == ("pt", 2)
+    assert summary.resolution is not None and summary.resolution.version_id == VERSION
+
+
+def test_a_same_version_restart_with_no_resume_names_no_other_download(
+    workspace, certificates, monkeypatch
+):
+    with Rig(certificates, workspace) as rig:
+        rig.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
+        assert code_of(rig.call) == "download_incomplete"
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        result = rig.call_tag(no_resume=True)
+    assert result.warnings == ()
+    assert result.data.resumed is False
+    assert rig.target.read_bytes() == DATA
+
+
+def test_the_catalog_time_is_given_back_to_the_download_deadline(
+    workspace, certificates, monkeypatch
+):
+    """The catalog takes 31 s of a 30 s download: its time is paid back (up to its budget), so the
+    resumable stage still gets its own checks. Without the refund this run times out."""
+    import time as real_time
+
+    from yorunge.adapters import download_engine
+
+    class Clock:
+        offset = 0.0
+
+        def monotonic(self):
+            return real_time.monotonic() + self.offset
+
+        def __getattr__(self, name):
+            return getattr(real_time, name)
+
+    with Rig(certificates, workspace) as rig:
+        rig.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
+        assert code_of(rig.call) == "download_incomplete"
+    clock = Clock()
+    monkeypatch.setattr(download_engine, "time", clock)
+    resolve = catalog_http.resolve_platform_version
+
+    def slow_resolve(loader, owner, slug, tag):
+        clock.offset += 31.0
+        return resolve(loader, owner, slug, tag)
+
+    monkeypatch.setattr(catalog_http, "resolve_platform_version", slow_resolve)
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        summary = rig.call_tag(timeout=30).data
+    assert (summary.resumed, summary.resumed_from_bytes) == (True, CUT)
+    assert rig.target.read_bytes() == DATA
+
+
+def test_after_a_switch_the_new_partial_resumes_by_its_tag(workspace, certificates, monkeypatch):
+    leave_partial_of_another_version(certificates, workspace)
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        rig.provider.script = [Reply(body=DATA, headers=(("ETag", TAG),), truncate_at=CUT)]
+        assert code_of(lambda: rig.call_tag()) == "download_incomplete"
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        result = rig.call_tag()
+    assert result.warnings == ()
+    assert (result.data.resumed, result.data.resumed_from_bytes) == (True, CUT)
+    assert rig.target.read_bytes() == DATA
+
+
+def test_the_help_names_the_tag_way_and_its_trade_off(capsys):
+    from yorunge.cli import main
+
+    with pytest.raises(SystemExit) as info:
+        main(["models", "download", "--help"])
+    out = " ".join(capsys.readouterr().out.split())
+    assert info.value.code == 0
+    assert "--model OWNER/SLUG" in out and "--version-tag TAG" in out
+    assert "sahip adı olmayan modeller için --version-id" in out.lower()
+    assert "tam bir stage bile katalog okunmadan yayımlanmaz" in out
+
+
+def test_a_bad_selection_is_judged_before_the_target_is_looked_at(
+    workspace, certificates, monkeypatch
+):
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        rig.target.write_bytes(b"keep me")
+        assert code_of(lambda: rig.call_tag(model="no-slash")) == "invalid_request"
+    assert rig.server.requests == []
+    assert rig.target.read_bytes() == b"keep me"
+
+
+def test_a_provider_version_identifier_that_is_no_uuid_is_an_invalid_answer(
+    workspace, certificates, monkeypatch
+):
+    listing = reply([version_record(version_id="not-a-uuid")])
+    with tag_rig(certificates, workspace, monkeypatch, listing=listing) as rig:
+        assert code_of(lambda: rig.call_tag()) == "invalid_response"
+    assert rig.json_calls() == [] and rig.names() == []
+
+
+def test_a_repeated_version_tag_is_refused_before_any_request(
+    workspace, certificates, monkeypatch, capsys
+):
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        code, out, err = rig.run_cli(
+            capsys,
+            "models",
+            "download",
+            "--model",
+            f"{OWNER}/{SLUG}",
+            "--version-tag",
+            "9.9",
+            "--version-tag",
+            VERSION_TAG,
+            "--format",
+            "onnx",
+            "--weights-out",
+            str(rig.target),
+            "--config",
+            str(rig.config),
+            "--state-dir",
+            str(rig.state),
+            "--output",
+            "json",
+        )
+    assert code == 2
+    assert "invalid_request" in out + err
+    assert rig.server.requests == [] and rig.names() == []
+
+
+def test_a_half_selection_names_the_two_ways_in_text(workspace, certificates, monkeypatch, capsys):
+    with tag_rig(certificates, workspace, monkeypatch) as rig:
+        code, out, err = rig.run_cli(
+            capsys,
+            "models",
+            "download",
+            "--model",
+            f"{OWNER}/{SLUG}",
+            "--format",
+            "onnx",
+            "--weights-out",
+            str(rig.target),
+            "--config",
+            str(rig.config),
+            "--state-dir",
+            str(rig.state),
+        )
+    assert code == 2
+    assert "--version-id" in out + err and "--version-tag" in out + err
+    assert rig.server.requests == []
+
+
+def test_a_closed_session_is_refused_before_the_lock_and_the_build(tmp_path):
+    from yorunge.adapters.download_engine import run_resolved_download
+    from yorunge.adapters.storage_transport import TransferSession
+
+    session = TransferSession(credential(), storage_origins=(ORIGIN,))
+    with session:
+        pass  # entered and closed: no download may use it
+    built = []
+
+    def build():
+        built.append(True)
+        raise AssertionError("the catalog is not asked through a closed session")
+
+    with pytest.raises(YorungeError) as info:
+        run_resolved_download(tmp_path / "w.onnx", session, build, no_resume=False, timeout=30)
+    assert info.value.code == "invalid_request"
+    assert built == [] and list(tmp_path.iterdir()) == []
+
+
+def test_an_out_of_bounds_timeout_is_refused_before_the_lock(tmp_path):
+    from yorunge.adapters.download_engine import run_resolved_download
+    from yorunge.adapters.storage_transport import TransferSession
+
+    session = TransferSession(credential(), storage_origins=(ORIGIN,))
+    with session:
+        with pytest.raises(YorungeError) as info:
+            run_resolved_download(
+                tmp_path / "w.onnx", session, lambda: None, no_resume=False, timeout=10
+            )
+    assert info.value.code == "invalid_request"
+    assert list(tmp_path.iterdir()) == []

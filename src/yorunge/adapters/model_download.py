@@ -196,7 +196,7 @@ def download_model_weights_by_tag(
     def build() -> tuple[DownloadJob, DownloadResolution]:
         found = catalog_http.resolve_platform_version(loader, owner, slug, tag)
         model_record, version = found.value
-        version_id = version.version_id
+        version_id = _provider_version(version.version_id)
         job = DownloadJob(
             target=target,
             source=DownloadSource(
@@ -238,6 +238,15 @@ def download_model_weights_by_tag(
         if summary is None:
             raise
     return Result[DownloadSummary](data=summary, warnings=warnings)
+
+
+def _provider_version(value: str) -> str:
+    """The version identifier the download addresses: a canonical UUID. A catalog answer that is a
+    plain identifier but not a UUID is an invalid answer, never a raw validation failure."""
+    try:
+        return provider_uuid(value)
+    except ValueError:
+        raise YorungeError("invalid_response") from None
 
 
 def _address(model: object) -> tuple[str, str]:
