@@ -36,7 +36,7 @@ Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez;
 
 `owner`, `slug`, `model_id` ve `version_id` argümanları `[A-Za-z0-9._-]{1,128}` ile sınırlıdır; `.` ve `..` yasaktır (URL’de gezinme anlamına gelirler). `...` gibi noktalardan oluşan diğer adlar bu alfabede olağan adlardır. Dışarıdaki her değer ağ isteğinden önce `invalid_request` ile reddedilir.
 
-API’den gelen ve bu alfabeye uymayan kimlikler listede temizlenmiş metin olarak gösterilir; onlarla `show` veya `download` yapılamaz. Bu bilinçli bir sınırdır.
+API’den gelen ve bu alfabeye uymayan kimlikler listede temizlenmiş metin olarak gösterilir; onlarla `show` veya `download` yapılamaz. Bu bilinçli bir sınırdır. Sağlayıcının `id`’si 128 karakterden uzunsa veya bu alfabenin dışındaysa, detay ve liste yine gösterilir; ama bu kimlikle sürüm listesi (`--versions`) ve sürüm çözümü yolu kurulamadığı için `invalid_response` verir ve tek bir sürüm çözülmez.
 
 `version_tag` URL’ye girmez; yalnız istemci tarafında tam eşleşmede kullanılır. Kurallar: 1–128 karakter ve kontrol karakteri yok.
 

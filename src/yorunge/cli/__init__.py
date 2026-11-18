@@ -13,6 +13,15 @@ from yorunge.cli.output import OutputRenderer, write_utf8
 
 if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
+    from yorunge.domain.catalog import (
+        CatalogReading,
+        DatasetPage,
+        LlmListing,
+        LlmModel,
+        PlatformModelDetail,
+        PlatformModelPage,
+        VersionListing,
+    )
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
@@ -79,6 +88,12 @@ if TYPE_CHECKING:
         | Result[ForgottenExecutionPlan]
         | Result[JobsPage]
         | Result[JobView]
+        | Result[CatalogReading[PlatformModelPage]]
+        | Result[CatalogReading[PlatformModelDetail]]
+        | Result[CatalogReading[VersionListing]]
+        | Result[CatalogReading[LlmListing]]
+        | Result[CatalogReading[LlmModel]]
+        | Result[CatalogReading[DatasetPage]]
     )
 
 
@@ -224,6 +239,10 @@ def _datasets_options(datasets: Parser) -> None:
 
     versions._configure = configure_versions
 
+    from yorunge.cli.catalog import configure_datasets
+
+    configure_datasets(actions)
+
 
 def _models_options(models: Parser) -> None:
     from yorunge.cli.models import configure
@@ -307,14 +326,19 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         from yorunge.cli.versions import SINGLETONS as VERSION_SINGLETONS
 
         _reject_duplicates(arguments, VERSION_SINGLETONS)
+    elif args.command == "datasets" and args.action == "list":
+        from yorunge.cli.catalog import LIST_SINGLETONS, PROFILE_SINGLETONS
+
+        _reject_duplicates(arguments, PROFILE_SINGLETONS | LIST_SINGLETONS)
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
         )
     elif args.command == "models":
+        from yorunge.cli.catalog import SINGLETONS as CATALOG_SINGLETONS
         from yorunge.cli.models import SINGLETONS as MODEL_SINGLETONS
 
-        _reject_duplicates(arguments, MODEL_SINGLETONS)
+        _reject_duplicates(arguments, MODEL_SINGLETONS | CATALOG_SINGLETONS)
 
 
 def _context_options(context: Parser) -> None:
@@ -485,6 +509,12 @@ def discovery_text_result(data: Model) -> str:
 
 
 def _result_text(args: argparse.Namespace, data: Model) -> str:
+    from yorunge.domain.catalog import CatalogReading
+
+    if isinstance(data, CatalogReading):
+        from yorunge.cli.catalog import catalog_text
+
+        return catalog_text(data)
     if args.command == "datasets":
         if args.action == "upload":
             from yorunge.cli.upload import text
@@ -880,6 +910,10 @@ def context_result(args: argparse.Namespace) -> CliResult:
 def datasets_result(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
+    if args.action == "list":
+        from yorunge.cli.catalog import dispatch_datasets
+
+        return dispatch_datasets(args)
     if args.action == "upload":
         from yorunge.cli.upload import dispatch as upload_result
 

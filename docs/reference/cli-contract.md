@@ -24,6 +24,10 @@
 | `yorunge datasets upload plan/review/approve/revoke/start/list/show/reconcile/resume` | Development’ta private aktarım/aynı-ID salt okuma; `resume` (P02-3i) yarım kalan aktarımın ne gerektirdiğini raporlar ve `--prepare` ile devam planı kaydeder; `show/list/review/approve/revoke/start/reconcile` devam planlarını ve operation’larını da tanır (`schema_version=3` özeti); [public sözleşme](dataset-upload-public.md), [devam sözleşmesi](dataset-upload-continuation.md#public-yüzey-p02-3i) ve [kullanım](upload-workflows.md); upload yüzeyi PR #14 ile development’a teslim edildi, `resume` ve devam planı tanıma PR #15 ile development’a teslim edildi |
 | `yorunge datasets versions list/show/bind/check` | Development’ta salt okuma veri sürümü/bölme gözlemi, `--binding-out` ile değişmez bağ dosyası ve sapma denetimi (P02-3q; canlı kabul yok); [sözleşme](dataset-versions.md) |
 | `yorunge models download --version-id UUID --format onnx\|pt\|tflite --weights-out FILE` | Development’ta kesin model sürümü ağırlığını akışlı, no-clobber ve devam edilebilir indirir; kimliksiz imzalı GET, kapalı doğrulama seviyeleri (P02-3n; canlı kabul yok); [sözleşme](download-engine.md) |
+| `yorunge models list --service evren-platform\|evren-llm [--page N] [--page-size M] [--task TASK]` | Salt okuma; Platform modelleri (tek sayfa, `complete`/`partial`/`last_page`/`unknown` tamlığı) ya da LLM modelleri (`--task` istemci tarafı süzme); profil ve gözlem penceresi gösterilir; [katalog sözleşmesi](catalog.md) (P02-4e) |
+| `yorunge models show --service evren-platform --model OWNER/SLUG [--versions]` ve `--service evren-platform --model-id UUID --versions` | Salt okuma; model detayı ve sürüm listesi; sahip adı olmayan model yalnız kimlikle, yalnız sürüm listesi (P02-4e) |
+| `yorunge models show --service evren-llm --model-id ID [--task TASK]` | Salt okuma; LLM modeli; `--task` beklenenle eşleşmezse `model_task_mismatch` (P02-4e) |
+| `yorunge datasets list [--page N] [--page-size M]` | Salt okuma; veri setleri sayfası; başlık tabanlı tamlık; kapsam etiketi K4 teyidine kadar teyit edilmemiş (P02-4e) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
@@ -71,7 +75,7 @@ Uygulanan çıkış kodları **0**, **2**, açık credential kontrolünde **3**,
 
 ```text
 yorunge datasets inspect ./veri --manifest-out ./manifest.json
-yorunge llm models --profile work --output json
+yorunge models list --service evren-llm --profile work --output json
 yorunge train plan --recipe training.yaml
 yorunge train plan --recipe training.yaml --tool axolotl --execution local
 yorunge train run --plan PLAN_ID --approve-plan PLAN_DIGEST

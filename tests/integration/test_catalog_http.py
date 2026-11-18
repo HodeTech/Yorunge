@@ -702,17 +702,64 @@ def test_each_request_carries_only_its_own_service_key(certificates, keys, monke
     assert rig.server.requests[0].header("Authorization") == f"Bearer {LLM_KEY}"
 
 
-def test_the_observation_window_brackets_the_requests(certificates, keys, monkeypatch):
-    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [], "total": 0})}
+def test_the_window_starts_at_the_first_request_and_ends_after_the_last_body(
+    certificates, keys, monkeypatch
+):
+    from datetime import UTC, datetime, timedelta
+
+    class Ticks:
+        """A clock that moves one second for every reading, so the window's ends are countable."""
+
+        readings = 0
+
+        def now(self):
+            Ticks.readings += 1
+            return datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=Ticks.readings)
+
+    monkeypatch.setattr(client, "SystemClock", Ticks)
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(1)]),
+    }
     _, observed, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
+    )
+    assert error is None
+    # The first reading opens the window (the first request); the last body closes it (the third
+    # reading: the first body, then the second). A window ending at the first body would read two.
+    assert observed.observed_from == "2026-01-01T00:00:01.000000Z"
+    assert observed.observed_until == "2026-01-01T00:00:03.000000Z"
+
+
+def test_a_model_id_longer_than_the_address_alphabet_cannot_be_listed_by_versions(
+    certificates, keys, monkeypatch
+):
+    long_id = "m" * 129
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(id=long_id))}
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
+    )
+    assert error is not None and error.code == "invalid_response"
+    assert len(rig.server.requests) == 1
+
+
+def test_a_list_endpoint_404_is_a_remote_failure_not_a_visibility_answer(
+    certificates, keys, monkeypatch
+):
+    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": Reply(status=404, body=b"{}")}
+    _, _, error = run(
         certificates,
         monkeypatch,
         routes,
         lambda: client.list_platform_models(loader, 1, 20),
     )
-    assert error is None
-    assert observed.observed_from and observed.observed_until
-    assert observed.observed_from <= observed.observed_until
+    assert error is not None and error.code == "remote_failed"
 
 
 def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypatch, config_file):
@@ -732,3 +779,201 @@ def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypa
     assert versions.completeness == "unknown"
     assert datasets.completeness == "complete" and datasets.returned == 0
     assert models.models[0].model_id == "llm-a"
+
+
+# --- the command line over the same fixture (P02-4e) ------------------------------------------
+
+
+def cli(capsys, argv):
+    from yorunge.cli import main as cli_main
+
+    code = cli_main(argv)
+    out, err = capsys.readouterr()
+    return code, out, err
+
+
+def test_the_list_prints_a_plain_page_and_hides_control_characters(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body(
+            {"items": [model_json(name="Model\x1b[2JA")], "total": 1}
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, err = cli(
+            capsys,
+            ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+        )
+    assert code == 0
+    assert f"{OWNER}/{SLUG}" in out and "Platform modelleri" in out
+    assert "\x1b" not in out and "\x1b" not in err
+    assert "Gözlem:" in out
+
+
+def test_the_json_list_is_the_result_envelope_with_its_window(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [model_json()], "total": 1})
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                "--config",
+                str(config_file),
+                "--output",
+                "json",
+            ],
+        )
+    assert code == 0
+    envelope = json.loads(out)
+    assert envelope["data"]["data"]["models"][0]["slug"] == SLUG
+    assert envelope["data"]["observed_from"] <= envelope["data"]["observed_until"]
+    assert "weights_url" not in out
+
+
+def test_the_ndjson_list_is_one_result_event_per_command(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [model_json()], "total": 1})
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                "--config",
+                str(config_file),
+                "--output",
+                "ndjson",
+            ],
+        )
+    assert code == 0
+    events = [json.loads(line) for line in out.splitlines() if line.strip()]
+    assert any(event.get("event") == "result" for event in events)
+
+
+def test_show_with_versions_prints_the_versions_and_no_location(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(1)]),
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-platform",
+                "--model",
+                f"{OWNER}/{SLUG}",
+                "--versions",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "Sürümler" in out and "version-1" in out
+    assert "--version-id" in out
+    assert "signed" not in out and "weights_url" not in out
+
+
+def test_an_llm_list_filters_by_task_on_the_client_only(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{LLM_BASE}/models": body(
+            {
+                "object": "list",
+                "data": [
+                    llm_model(id="emb-a", task="embedding"),
+                    llm_model(id="chat-b", task="chat"),
+                ],
+            }
+        )
+    }
+    with Rig(certificates, routes, monkeypatch) as rig:
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-llm",
+                "--task",
+                "embedding",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "emb-a" in out and "chat-b" not in out
+    assert [record.path for record in rig.server.requests] == [f"{LLM_BASE}/models"]
+
+
+@pytest.mark.parametrize(
+    "argv,code",
+    [
+        (["models", "list", "--service", "evren-llm", "--page", "1"], 2),
+        (["models", "list", "--service", "evren-platform", "--task", "chat"], 2),
+        (["models", "show", "--service", "evren-platform", "--model-id", "x"], 2),
+        (["datasets", "list", "--state-dir", "/tmp/state"], 2),
+    ],
+)
+def test_a_refused_combination_exits_two_without_a_request(
+    certificates, keys, monkeypatch, config_file, capsys, argv, code
+):
+    with Rig(certificates, {}, monkeypatch) as rig:
+        got, out, err = cli(capsys, [*argv, "--config", str(config_file), "--output", "json"])
+    assert got == code
+    assert "invalid_request" in out + err
+    assert rig.server.requests == []
+
+
+def test_a_model_not_visible_says_it_is_not_a_proof_of_absence(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{LLM_BASE}/models/llm-a": Reply(status=404, body=b"{}")}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, err = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-llm",
+                "--model-id",
+                "llm-a",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 1
+    assert "kesin bir yokluk kanıtı değildir" in out + err
+
+
+def test_the_dataset_page_says_its_scope_is_not_confirmed(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
+            body=b"[]", headers=(("X-Has-Next", "false"),)
+        )
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
+    assert code == 0
+    assert "Veri setleri" in out and "kapsam: teyit edilmedi" in out

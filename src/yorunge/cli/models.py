@@ -151,12 +151,19 @@ def configure(models: Parser) -> None:
         "EVREN_PLATFORM_API_KEY). Anahtar argüman değildir; kayıtlı Platform hizmetinin anahtarı "
         "yalnız sürüm adresini almak için kullanılır, dosya imzalı adresten anahtarsız indirilir."
     )
+    from yorunge.cli.catalog import configure_models as configure_catalog
+
+    configure_catalog(actions)
 
 
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
     from yorunge.cli import reject_context
 
+    if args.action in ("list", "show"):
+        from yorunge.cli.catalog import dispatch_models
+
+        return dispatch_models(args)
     reject_context(args, ("project",))  # a weights download has no project; none is dropped quietly
     options = vars(args)
     progress = ProgressText(sys.stderr) if options.get("output", "text") == "text" else None
@@ -209,6 +216,26 @@ def _mismatch_hint(error: YorungeError) -> str | None:
     )
 
 
+CATALOG_HINTS: dict[str, str] = {
+    "model_not_visible": (
+        "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
+        "anahtarı kontrol edin ya da 'yorunge models list' ile arayın."
+    ),
+    "model_ambiguous": (
+        "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. 'yorunge models show --versions' "
+        "ile kimlikleri görüp sürüm kimliğiyle devam edin."
+    ),
+    "model_task_mismatch": (
+        "Model beklenen görevle eşleşmiyor. 'yorunge models list --service evren-llm' ile görevi "
+        "kontrol edin."
+    ),
+    "model_not_addressable": (
+        "Modelin sahip adı yok; owner/slug ile adreslenemez. 'yorunge models show --service "
+        "evren-platform --model-id KIMLIK --versions' kullanın."
+    ),
+}
+
+
 def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeError], str | None]]:
     """What a person is told, in text, of the errors this command meets in its own way."""
     hints: dict[str, str | Callable[[YorungeError], str | None]] = {
@@ -218,6 +245,7 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
     }
     if vars(args).get("no_resume") is True:
         hints["download_partial_unverified"] = NO_RESUME_HINT
+    hints.update(CATALOG_HINTS)
     return hints
 
 
@@ -252,8 +280,13 @@ def _summary_text(data: DownloadSummary) -> str:
 
 
 def text(data: Model) -> str:
+    from yorunge.domain.catalog import CatalogReading
     from yorunge.domain.download import DownloadSummary
 
+    if isinstance(data, CatalogReading):
+        from yorunge.cli.catalog import catalog_text
+
+        return catalog_text(data)
     if isinstance(data, DownloadSummary):
         return _summary_text(data)
     raise TypeError("a download result is expected")

@@ -171,9 +171,10 @@ def _run(
 
     with HttpSession() as session:
         value = session.call(exchange)
-    if window.started is None or window.finished is None:
-        raise YorungeError("invalid_response")  # a command that answered read at least one body
-    return Observed(value, window.started, window.finished)
+    started, finished = window.started, window.finished
+    # A step only returns after its request read a body: the window has both ends by then.
+    assert started is not None and finished is not None
+    return Observed(value, started, finished)
 
 
 def _page_query(page: int, page_size: int) -> tuple[tuple[str, str], ...]:
