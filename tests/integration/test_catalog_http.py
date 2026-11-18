@@ -542,3 +542,193 @@ def test_a_refused_model_request_is_an_invalid_request_not_a_remote_failure(
         lambda: client.show_llm_model(loader, "llm-a", task=None),
     )
     assert error is not None and error.code == "invalid_request"
+
+
+# --- review round 1: bounds, statuses, identities and arguments before any request --------------
+
+
+@pytest.mark.parametrize(
+    "page", [pytest.param(2**53 + 1, id="above-range"), pytest.param(10**5000, id="huge")]
+)
+def test_an_absurd_page_number_is_refused_before_any_request(certificates, keys, monkeypatch, page):
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        {},
+        lambda: client.list_platform_models(loader, page, 20),
+    )
+    assert error is not None and error.code == "invalid_request"
+    assert rig.server.requests == []
+
+
+def test_a_refused_list_request_is_an_invalid_request_on_every_catalog_endpoint(
+    certificates, keys, monkeypatch
+):
+    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=100": Reply(status=422, body=b"{}")}
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.list_platform_models(loader, 1, 100),
+    )
+    assert error is not None and error.code == "invalid_request"
+
+
+def test_platform_detail_404_is_not_visible_and_422_is_a_refused_request(
+    certificates, keys, monkeypatch
+):
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": Reply(status=404, body=b"{}")}
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
+    )
+    assert error is not None and error.code == "model_not_visible"
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": Reply(status=422, body=b"{}")}
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
+    )
+    assert error is not None and error.code == "invalid_request"
+
+
+def test_a_versions_404_is_not_visible_after_a_visible_detail(certificates, keys, monkeypatch):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": Reply(status=404, body=b"{}"),
+    }
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
+    )
+    assert error is not None and error.code == "model_not_visible"
+
+
+def test_a_detail_redirect_is_not_followed(certificates, keys, monkeypatch):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": Reply(
+            status=302, headers=(("Location", "https://evil.example/x"),)
+        )
+    }
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
+    )
+    assert error is not None and error.code == "remote_failed"
+    assert len(rig.server.requests) == 1
+
+
+def test_resolving_a_tag_refuses_a_detail_of_another_model_after_one_get(
+    certificates, keys, monkeypatch
+):
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(owner_username="other"))}
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.0"),
+    )
+    assert error is not None and error.code == "invalid_response"
+    assert len(rig.server.requests) == 1
+
+
+def test_a_provider_identifier_outside_the_alphabet_is_a_bad_answer_not_a_bad_argument(
+    certificates, keys, monkeypatch
+):
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(id="bad:id"))}
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
+    )
+    assert error is not None and error.code == "invalid_response"
+    assert len(rig.server.requests) == 1
+
+
+@pytest.mark.parametrize("task", ["", 123, "emb​edding", "x" * 65])
+def test_a_bad_task_argument_is_refused_before_any_request(certificates, keys, monkeypatch, task):
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        {},
+        lambda: client.show_llm_model(loader, "llm-a", task=task),
+    )
+    assert error is not None and error.code == "invalid_request"
+    assert rig.server.requests == []
+
+
+@pytest.mark.parametrize("flag", ["no", 1, None])
+def test_a_versions_flag_that_is_not_a_boolean_is_refused_before_any_request(
+    certificates, keys, monkeypatch, flag
+):
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        {},
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=flag),
+    )
+    assert error is not None and error.code == "invalid_request"
+    assert rig.server.requests == []
+
+
+def test_each_request_carries_only_its_own_service_key(certificates, keys, monkeypatch):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json()),
+        f"{LLM_BASE}/models/llm-a": body(llm_model()),
+    }
+    rig, _, _ = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
+    )
+    assert rig.server.requests[0].header("Authorization") is None
+    assert rig.server.requests[0].header("X-API-Key") == PLATFORM_KEY
+    rig, _, _ = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_llm_model(loader, "llm-a", task=None),
+    )
+    assert rig.server.requests[0].header("X-API-Key") is None
+    assert rig.server.requests[0].header("Authorization") == f"Bearer {LLM_KEY}"
+
+
+def test_the_observation_window_brackets_the_requests(certificates, keys, monkeypatch):
+    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [], "total": 0})}
+    _, observed, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.list_platform_models(loader, 1, 20),
+    )
+    assert error is None
+    assert observed.observed_from and observed.observed_until
+    assert observed.observed_from <= observed.observed_until
+
+
+def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypatch, config_file):
+    from yorunge import api
+
+    routes = {
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(1)]),
+        f"{PLATFORM_BASE}/datasets?page=1&page_size=20&scope=owned": Reply(
+            body=json.dumps([]).encode("utf-8"), headers=(("X-Has-Next", "false"),)
+        ),
+        f"{LLM_BASE}/models": body({"object": "list", "data": [llm_model()]}),
+    }
+    with Rig(certificates, routes, monkeypatch):
+        versions = api.list_platform_versions(MODEL_ID, config=config_file).data.data
+        datasets = api.list_platform_datasets(config=config_file).data.data
+        models = api.list_llm_models(config=config_file).data.data
+    assert versions.completeness == "unknown"
+    assert datasets.completeness == "complete" and datasets.returned == 0
+    assert models.models[0].model_id == "llm-a"

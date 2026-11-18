@@ -42,7 +42,7 @@ API’den gelen ve bu alfabeye uymayan kimlikler listede temizlenmiş metin olar
 
 ## Sayfa kuralları
 
-Platform modelleri: istek `page ≥ 1` ve `1 ≤ page_size ≤ 100` ile gönderilir (varsayılan 20; üst sınır K4 ile teyit edilecek). Yanıtta `total` negatif olmayan tam sayı olmalıdır. Döndürülen kayıt sayısı `n`, şu değere eşit olmalıdır:
+Platform modelleri: istek `1 ≤ page ≤ 2^53−1` ve `1 ≤ page_size ≤ 100` ile gönderilir; aralık dışı değer ağ isteğinden önce `invalid_request` olur (varsayılan 20; üst sınır K4 ile teyit edilecek). Yanıtta `total` negatif olmayan tam sayı olmalıdır. Döndürülen kayıt sayısı `n`, şu değere eşit olmalıdır:
 
 `n = max(0, min(page_size, total - (page - 1) * page_size))`
 
@@ -97,13 +97,13 @@ Her komut, tek seçilmiş profilin (`--config`/`--profile` veya aktif profil) hi
 | LLM listesi | `GET models` | tek yanıt; tamlık `unknown` |
 | LLM modeli | `GET models/{model_id}` | görev kontrolü isteğe bağlı |
 
-Yeniden deneme yalnız salt okuma GET’inde en çok iki denemedir ve yalnız 408, 429, 502, 503, 504 ile geçici bağlantı hatalarında yapılır. Model kapsamlı uçta 404 `model_not_visible`, 422 `invalid_request` olur; diğer durum kodları kapalı kataloğun kodlarıdır (401/403 `remote_access_denied`, 429 `remote_rate_limited`, diğerleri `remote_failed`). Hata metni sır, ham gövde ya da adres içermez.
+Yeniden deneme yalnız salt okuma GET’inde en çok iki denemedir ve yalnız 408, 429, 502, 503, 504 ile geçici bağlantı hatalarında yapılır. Her katalog GET’inde 422 `invalid_request` olur; model kapsamlı uçta 404 `model_not_visible` olur (liste uçlarında 404 uzak hata sayılır); diğer durum kodları kapalı kataloğun kodlarıdır (401/403 `remote_access_denied`, 429 `remote_rate_limited`, diğerleri `remote_failed`). Hata metni sır, ham gövde ya da adres içermez.
 
 Komut, yazılacak hiçbir durum dosyası açmaz ve çalışma dizinine dosya yazmaz.
 
 ## Gözlem penceresi
 
-`observed_from`: komutun ilk ağ isteğinin başladığı an. `observed_until`: son yanıtın tamamlandığı an. Aynı komutta birden fazla istek varsa tek pencere bunları kapsar.
+`observed_from`: komutun ilk ağ isteğinin başladığı an (oturum ve kimlik kurulumu bu sürenin dışındadır). `observed_until`: son yanıt gövdesinin tamamen okunduğu an. Aynı komutta birden fazla istek varsa tek pencere bunları kapsar.
 
 ## Canlı teyit (K4)
 

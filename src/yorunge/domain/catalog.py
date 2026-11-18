@@ -75,6 +75,35 @@ def version_tag(value: str) -> str:
     return value
 
 
+def provider_segment(value: object) -> str:
+    """A segment the provider named and the path now needs: a provider fault, not a user one.
+
+    A value outside the alphabet from the answer is an invalid answer; it is never reported as a
+    mistake in what the user typed.
+    """
+    if type(value) is not str or _SEGMENT.fullmatch(value) is None or value in (".", ".."):
+        raise YorungeError("invalid_response")
+    return value
+
+
+def task_argument(value: object) -> str:
+    """An LLM task named by the user: a plain identifier of 1 to 64 characters, checked first."""
+    if type(value) is not str or not 1 <= len(value) <= 64:
+        raise YorungeError("invalid_request")
+    if any(unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value):
+        raise YorungeError("invalid_request")
+    if has_control_characters(value):
+        raise YorungeError("invalid_request")
+    return value
+
+
+def flag_argument(value: object) -> bool:
+    """A switch the caller gives as a real boolean; a truthy string is not one."""
+    if type(value) is not bool:
+        raise YorungeError("invalid_request")
+    return value
+
+
 def owner_address(owner_username: str | None) -> str:
     """A model without a stored owner name cannot be addressed as ``owner/slug`` (Karar 5)."""
     if owner_username is None:
@@ -91,11 +120,15 @@ def require_address(owner: str, slug: str) -> tuple[str, str]:
 
 
 def page_arguments(page: int, page_size: int) -> None:
-    """Request arguments are integers in range; the request never carries anything else."""
+    """Request arguments are integers in range, checked before any request is made.
+
+    The page number is bounded by the exact JSON integer range the answer may echo, so an
+    absurd number is a refused argument and never reaches the wire or the integer-to-text limit.
+    """
     if (
         type(page) is not int
         or type(page_size) is not int
-        or page < 1
+        or not 1 <= page <= MAX_COUNT
         or not 1 <= page_size <= PLATFORM_MAX_PAGE_SIZE
     ):
         raise YorungeError("invalid_request")
