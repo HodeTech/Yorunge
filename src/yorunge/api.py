@@ -10,16 +10,6 @@ from typing import TYPE_CHECKING, Literal, overload
 from pydantic import ConfigDict, ValidationError
 
 from yorunge.adapters.files import load_config, load_recipe, load_saved_plan, validate
-from yorunge.domain.catalog import (
-    CatalogReading,
-    DatasetPage,
-    LlmListing,
-    LlmModel,
-    PlatformModelDetail,
-    PlatformModelPage,
-    PlatformVersionResolution,
-    VersionListing,
-)
 from yorunge.domain.errors import YorungeError
 from yorunge.domain.models import (
     CapabilityView,
@@ -44,6 +34,16 @@ if TYPE_CHECKING:
     from yorunge.application.operation_observations import ReadContext, ReadPort
     from yorunge.application.operations import OperationCoordinator, StartPort
     from yorunge.domain.capabilities import CachedCapabilityView
+    from yorunge.domain.catalog import (
+        CatalogReading,
+        DatasetPage,
+        LlmListing,
+        LlmModel,
+        PlatformModelDetail,
+        PlatformModelPage,
+        PlatformVersionResolution,
+        VersionListing,
+    )
     from yorunge.domain.configuration import ConfigUpdate, Diagnostic, DoctorReport, ProfilesView
     from yorunge.domain.credentials import BoundCredential, CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_continuation import DatasetContinuationPlanV3
@@ -1587,6 +1587,7 @@ def list_platform_models(
 ) -> Result[CatalogReading[PlatformModelPage]]:
     """One page of the models the Platform key can read; no state, no writes (ADR-0035)."""
     from yorunge.adapters.catalog_http import list_platform_models as read
+    from yorunge.domain.catalog import CatalogReading, PlatformModelPage
 
     observed = read(_platform_loader(config, profile), page, page_size)
     return Result[CatalogReading[PlatformModelPage]](
@@ -1608,6 +1609,7 @@ def show_platform_model(
 ) -> Result[CatalogReading[PlatformModelDetail]]:
     """One model by ``owner/slug``, with its versions when asked (two GETs at most)."""
     from yorunge.adapters.catalog_http import show_platform_model as read
+    from yorunge.domain.catalog import CatalogReading, PlatformModelDetail
 
     observed = read(_platform_loader(config, profile), owner, slug, versions=versions)
     model, listing = observed.value
@@ -1625,6 +1627,7 @@ def list_platform_versions(
 ) -> Result[CatalogReading[VersionListing]]:
     """The versions of a model addressed by its identifier; its completeness stays unknown."""
     from yorunge.adapters.catalog_http import list_platform_versions as read
+    from yorunge.domain.catalog import CatalogReading, VersionListing
 
     observed = read(_platform_loader(config, profile), model_id)
     return Result[CatalogReading[VersionListing]](
@@ -1646,6 +1649,7 @@ def resolve_platform_version(
 ) -> Result[CatalogReading[PlatformVersionResolution]]:
     """The one version of ``owner/slug`` that carries ``version_tag``; never a guess."""
     from yorunge.adapters.catalog_http import resolve_platform_version as read
+    from yorunge.domain.catalog import CatalogReading, PlatformVersionResolution
 
     observed = read(_platform_loader(config, profile), owner, slug, version_tag)
     model, version = observed.value
@@ -1667,6 +1671,7 @@ def list_platform_datasets(
 ) -> Result[CatalogReading[DatasetPage]]:
     """One page of the datasets the key owns; the scope label stays unknown until K4 confirms it."""
     from yorunge.adapters.catalog_http import list_platform_datasets as read
+    from yorunge.domain.catalog import CatalogReading, DatasetPage
 
     observed = read(_platform_loader(config, profile), page, page_size)
     return Result[CatalogReading[DatasetPage]](
@@ -1683,6 +1688,7 @@ def list_llm_models(
 ) -> Result[CatalogReading[LlmListing]]:
     """The LLM models this key can see; a model missing from the list is not proof of absence."""
     from yorunge.adapters.catalog_http import list_llm_models as read
+    from yorunge.domain.catalog import CatalogReading, LlmListing
 
     observed = read(_platform_loader(config, profile))
     return Result[CatalogReading[LlmListing]](
@@ -1703,6 +1709,7 @@ def show_llm_model(
 ) -> Result[CatalogReading[LlmModel]]:
     """One LLM model by identifier; ``task``, when given, must equal the model's task."""
     from yorunge.adapters.catalog_http import show_llm_model as read
+    from yorunge.domain.catalog import CatalogReading, LlmModel
 
     observed = read(_platform_loader(config, profile), model_id, task=task)
     return Result[CatalogReading[LlmModel]](

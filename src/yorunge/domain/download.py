@@ -16,7 +16,6 @@ from typing import Annotated, ClassVar, Final, Literal, Self
 from pydantic import Field, field_validator, model_validator
 
 from yorunge.domain.capabilities import JsonWireModel, canonical, instant
-from yorunge.domain.catalog import plain_identifier
 from yorunge.domain.dataset_upload import provider_uuid
 from yorunge.domain.errors import DownloadIntegrityMismatch, YorungeError
 from yorunge.domain.models import Model, has_control_characters, is_reportable_path
@@ -153,6 +152,8 @@ class DownloadResolution(Model):
     @field_validator("model_id", "owner", "slug", "version_tag")
     @classmethod
     def plain_text(cls, value: str) -> str:
+        from yorunge.domain.catalog import plain_identifier  # imported where a resolution is made
+
         return plain_identifier(value)  # the catalog's own rule: no control, format or edge space
 
     @field_validator("version_id")
