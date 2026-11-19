@@ -214,7 +214,7 @@ def test_the_four_new_codes_have_their_messages_and_exit_codes(code, exit_code) 
 
 
 def test_display_text_drops_controls_and_bidi_overrides_and_flattens_breaks() -> None:
-    assert catalog.text("a\x07b‮c\nd\te", 100) == "abc d e"
+    assert catalog.text("a\x07b\u202ec\nd\te", 100) == "abc d e"
 
 
 def test_unicode_line_and_paragraph_separators_become_spaces() -> None:
@@ -223,7 +223,8 @@ def test_unicode_line_and_paragraph_separators_become_spaces() -> None:
 
 def test_display_text_is_bounded_and_says_so() -> None:
     cut = catalog.text("x" * 300, 10)
-    assert len(cut) == 10 and cut.endswith(catalog.ELLIPSIS)
+    assert len(cut) == 10
+    assert cut.endswith(catalog.ELLIPSIS)
 
 
 def test_display_text_keeps_none_and_refuses_a_useless_limit() -> None:
@@ -262,7 +263,7 @@ def test_a_secret_rebuilt_by_cleaning_is_refused_on_the_output() -> None:
 
 def test_a_secret_rebuilt_in_llm_modalities_or_currency_is_refused() -> None:
     key = KEY.reveal()
-    split_modality = key[:4] + "⁦" + key[4:]
+    split_modality = key[:4] + "\u2066" + key[4:]
     assert (
         raise_code(
             codec.llm_listing, jbytes({"data": [llm_item(modalities=[split_modality])]}), KEY
@@ -306,8 +307,11 @@ def llm_item(**overrides):
 def test_llm_listing_projects_consumed_fields_and_drops_the_rest() -> None:
     listing = codec.llm_listing(jbytes({"object": "list", "data": [llm_item()]}), KEY)
     dumped = listing.models[0].model_dump()
-    assert dumped["model_id"] == "model-a" and dumped["task"] == "embedding"
-    assert "owned_by" not in dumped and "capabilities" not in dumped and "object" not in dumped
+    assert dumped["model_id"] == "model-a"
+    assert dumped["task"] == "embedding"
+    assert "owned_by" not in dumped
+    assert "capabilities" not in dumped
+    assert "object" not in dumped
     assert listing.completeness == "unknown"
 
 
@@ -386,7 +390,9 @@ def test_platform_page_projects_items_and_labels_the_page() -> None:
     page = codec.platform_models(
         jbytes({"items": [platform_model()] * 20, "total": 45}), KEY, 1, 20
     )
-    assert page.completeness == "partial" and page.returned == 20 and page.total == 45
+    assert page.completeness == "partial"
+    assert page.returned == 20
+    assert page.total == 45
     assert page.models[0].owner_username == "owner-1"
     assert "model_card" not in page.models[0].model_dump()
 
@@ -414,7 +420,7 @@ def test_platform_missing_required_field_is_invalid() -> None:
 
 @pytest.mark.parametrize(
     "stamp",
-    ["2026-01-01", "yesterday", "2026-01-01T00:00:00Z\x1b[2J", "‮" + STAMP, "x" * 5000],
+    ["2026-01-01", "yesterday", "2026-01-01T00:00:00Z\x1b[2J", "\u202e" + STAMP, "x" * 5000],
 )
 def test_timestamps_must_be_rfc3339_date_times(stamp) -> None:
     assert raise_code(codec.platform_model, jbytes(platform_model(created_at=stamp)), KEY) == (
@@ -460,8 +466,10 @@ def test_version_urls_become_presence_flags_and_never_values() -> None:
     listing = codec.platform_versions(jbytes([platform_version()]), KEY, 1)
     version = listing.versions[0].model_dump()
     assert version["has_weights"] is True
-    assert version["has_onnx"] is False and version["has_tflite"] is False
-    assert "weights_url" not in version and "signed" not in json.dumps(version)
+    assert version["has_onnx"] is False
+    assert version["has_tflite"] is False
+    assert "weights_url" not in version
+    assert "signed" not in json.dumps(version)
     assert listing.completeness == "complete"
 
 
@@ -469,7 +477,8 @@ def test_an_empty_or_null_url_is_no_location_and_a_non_string_url_is_invalid() -
     listing = codec.platform_versions(
         jbytes([platform_version(weights_url="", onnx_url="   ")]), KEY, 1
     )
-    assert listing.versions[0].has_weights is False and listing.versions[0].has_onnx is False
+    assert listing.versions[0].has_weights is False
+    assert listing.versions[0].has_onnx is False
     assert (
         raise_code(codec.platform_versions, jbytes([platform_version(onnx_url=False)]), KEY, 1)
         == "invalid_response"
@@ -507,7 +516,8 @@ def dataset_row(**overrides):
 def test_dataset_page_reads_paging_from_headers_case_insensitively() -> None:
     headers = (("X-Has-Next", "1"), ("x-total-count", "45"))
     page = codec.platform_datasets(jbytes([dataset_row()] * 20), KEY, 1, 20, headers)
-    assert page.completeness == "partial" and page.scope == "unknown"
+    assert page.completeness == "partial"
+    assert page.scope == "unknown"
     assert page.datasets[0].dataset_id == "00000000-0000-4000-8000-0000000000d1"
 
 

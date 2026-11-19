@@ -97,4 +97,5 @@ def test_the_guidance_names_no_command_url_acceptance_path_or_obligation():
 def test_the_unaccepted_text_shows_no_host_or_url():
     text = discovery_text_result(view(accepted=False, is_material=True))
     assert "example.test" not in text
-    assert "https://" not in text and "http://" not in text
+    assert "https://" not in text
+    assert "http://" not in text

@@ -53,7 +53,7 @@ def test_a_resolution_with_plain_names_is_accepted_and_is_optional():
     [
         ("owner", "own\x1ber"),
         ("slug", " model-a"),
-        ("version_tag", "1.1‮"),
+        ("version_tag", "1.1\u202e"),
         ("model_id", "model​uuid"),
         ("version_tag", "1.1 "),
     ],
@@ -64,8 +64,9 @@ def test_a_resolution_name_with_control_format_or_edge_characters_is_refused(fie
 
 
 def test_a_resolution_that_names_another_version_than_the_one_downloaded_is_refused():
+    other = resolution(version_id=OTHER)
     with pytest.raises(ValidationError):
-        summary(resolution(version_id=OTHER), version_id=VERSION)
+        summary(other, version_id=VERSION)
 
 
 def test_a_summary_without_a_resolution_keeps_the_key_out_of_its_json():
@@ -75,7 +76,8 @@ def test_a_summary_without_a_resolution_keeps_the_key_out_of_its_json():
 
 def test_a_summary_with_a_resolution_carries_it_in_its_json():
     carried = summary(resolution()).model_dump(mode="json")["resolution"]
-    assert carried["version_tag"] == "1.1" and carried["version_id"] == VERSION
+    assert carried["version_tag"] == "1.1"
+    assert carried["version_id"] == VERSION
 
 
 def test_the_text_says_a_complete_stage_was_catalog_read_and_what_was_dropped():

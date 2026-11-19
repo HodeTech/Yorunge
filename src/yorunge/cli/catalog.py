@@ -31,6 +31,7 @@ SHOW_SINGLETONS = {"--service", "--model", "--model-id", "--versions", "--task"}
 SINGLETONS = (
     PROFILE_SINGLETONS | LIST_SINGLETONS | SHOW_SINGLETONS | {"--output", "--non-interactive"}
 )
+NO_OWNER = "(sahip adı yok)"
 COMPLETENESS = {
     "complete": "tam liste",
     "partial": "kısmi: sonraki sayfa var",
@@ -277,7 +278,7 @@ def _platform_page(page: object, options: str) -> list[str]:
     if not page.models:
         lines.append("Bu anahtara görünen model yok; bu kesin bir yokluk kanıtı değildir.")
     for model in page.models:
-        owner = _id(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
+        owner = _id(model.owner_username) if model.owner_username is not None else NO_OWNER
         lines.append(
             f"  {owner}/{_id(model.slug)}  {_s(model.name)}  {_s(model.modality)}  "
             f"sürüm {model.versions_count}  kimlik {_id(model.model_id)}"
@@ -300,7 +301,7 @@ def _platform_detail(detail: object, options: str) -> list[str]:
 
     assert isinstance(detail, PlatformModelDetail)
     model = detail.model
-    owner = _id(model.owner_username) if model.owner_username is not None else "(sahip adı yok)"
+    owner = _id(model.owner_username) if model.owner_username is not None else NO_OWNER
     lines = [
         f"{owner}/{_id(model.slug)} — {_s(model.name)}",
         f"  kimlik: {_id(model.model_id)}",
@@ -412,9 +413,7 @@ def _dataset_page(page: object, options: str) -> list[str]:
     if not page.datasets:
         lines.append("  (bu sayfada veri seti yok)")
     for dataset in page.datasets:
-        owner = (
-            _id(dataset.owner_username) if dataset.owner_username is not None else "(sahip adı yok)"
-        )
+        owner = _id(dataset.owner_username) if dataset.owner_username is not None else NO_OWNER
         lines.append(
             f"  {owner}/{_id(dataset.slug)}  {_s(dataset.name)}  {_s(dataset.modality)}  "
             f"öğe {dataset.item_count}  {_s(dataset.visibility)}  kimlik {_id(dataset.dataset_id)}"

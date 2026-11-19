@@ -35,7 +35,7 @@ ELLIPSIS: Final = "…"
 Completeness = Literal["complete", "partial", "last_page", "unknown"]
 
 _SEGMENT: Final = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
-_DIGITS: Final = re.compile(r"\A[0-9]{1,18}\Z")
+_DIGITS: Final = re.compile(r"\A\d{1,18}\Z", re.ASCII)
 # Bidirectional controls and the other format characters a terminal may act on.
 _FORMAT_CATEGORIES: Final = frozenset({"Cc", "Cf"})
 # Line and paragraph separators: some terminals and log viewers treat them as line ends.
@@ -91,13 +91,16 @@ def task_argument(value: object) -> str:
 
     Edge whitespace is refused, not trimmed: a trimmed task would filter for a different name.
     """
-    if type(value) is not str or not 1 <= len(value) <= 64 or value != value.strip():
+    if type(value) is not str:
         raise YorungeError("invalid_request")
-    if any(unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in value):
+    text: str = value
+    if not 1 <= len(text) <= 64 or text != text.strip():
         raise YorungeError("invalid_request")
-    if has_control_characters(value):
+    if any(unicodedata.category(char) in _UNPLAIN_CATEGORIES for char in text):
         raise YorungeError("invalid_request")
-    return value
+    if has_control_characters(text):
+        raise YorungeError("invalid_request")
+    return text
 
 
 def flag_argument(value: object) -> bool:

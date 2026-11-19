@@ -173,7 +173,8 @@ def _run(
         value = session.call(exchange)
     started, finished = window.started, window.finished
     # A step only returns after its request read a body: the window has both ends by then.
-    assert started is not None and finished is not None
+    assert started is not None
+    assert finished is not None
     return Observed(value, started, finished)
 
 

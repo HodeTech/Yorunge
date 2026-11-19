@@ -220,8 +220,10 @@ def test_public_text_gives_one_terms_guidance_line_when_terms_are_not_accepted(
     assert text.count(reviewed) == 1
     assert "şart durumu: kabul edilmemiş (sürüm 4)" in text
     assert "doğrulanmadı" in text
-    assert "terms/v4.md" not in text and "https://" not in text
-    assert "--yes" not in text and "terms accept" not in text
+    assert "terms/v4.md" not in text
+    assert "https://" not in text
+    assert "--yes" not in text
+    assert "terms accept" not in text
     assert result.stderr == b""
 
 

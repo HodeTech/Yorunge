@@ -141,14 +141,12 @@ def _guard(record: BaseModel, secret: SecretValue) -> None:
     pending: list[object] = [record.model_dump()]
     while pending:
         item = pending.pop()
-        if isinstance(item, str):
-            if literal_secret_match(item, captured):
+        if isinstance(item, str) and literal_secret_match(item, captured):
+            raise YorungeError("invalid_response")
+        if isinstance(item, Mapping):
+            if any(isinstance(key, str) and literal_secret_match(key, captured) for key in item):
                 raise YorungeError("invalid_response")
-        elif isinstance(item, Mapping):
-            for key, child in item.items():
-                if isinstance(key, str) and literal_secret_match(key, captured):
-                    raise YorungeError("invalid_response")
-                pending.append(child)
+            pending.extend(item.values())
         elif isinstance(item, (list, tuple)):
             pending.extend(item)
 

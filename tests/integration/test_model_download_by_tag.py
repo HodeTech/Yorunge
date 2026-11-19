@@ -228,7 +228,9 @@ def test_a_missing_tag_is_not_visible_and_nothing_is_downloaded(
         certificates, workspace, monkeypatch, listing=reply([version_record(tag="2.0")])
     ) as rig:
         assert code_of(lambda: rig.call_tag()) == "model_not_visible"
-    assert rig.json_calls() == [] and rig.signed() == [] and rig.names() == []
+    assert rig.json_calls() == []
+    assert rig.signed() == []
+    assert rig.names() == []
 
 
 def test_an_ambiguous_tag_stops_before_any_choice(workspace, certificates, monkeypatch):
@@ -241,7 +243,9 @@ def test_an_ambiguous_tag_stops_before_any_choice(workspace, certificates, monke
         listing=listing,
     ) as rig:
         assert code_of(lambda: rig.call_tag()) == "model_ambiguous"
-    assert rig.json_calls() == [] and rig.signed() == [] and rig.names() == []
+    assert rig.json_calls() == []
+    assert rig.signed() == []
+    assert rig.names() == []
 
 
 def test_an_owner_less_model_is_not_addressable_by_owner_and_slug(
@@ -251,7 +255,8 @@ def test_an_owner_less_model_is_not_addressable_by_owner_and_slug(
         certificates, workspace, monkeypatch, detail=reply(model_record(owner_username=None))
     ) as rig:
         assert code_of(lambda: rig.call_tag()) == "model_not_addressable"
-    assert rig.json_calls() == [] and rig.names() == []
+    assert rig.json_calls() == []
+    assert rig.names() == []
 
 
 def test_a_version_list_that_disagrees_with_the_detail_count_is_an_invalid_response(
@@ -261,7 +266,8 @@ def test_a_version_list_that_disagrees_with_the_detail_count_is_an_invalid_respo
         certificates, workspace, monkeypatch, detail=reply(model_record(versions_count=2))
     ) as rig:
         assert code_of(lambda: rig.call_tag()) == "invalid_response"
-    assert rig.json_calls() == [] and rig.names() == []
+    assert rig.json_calls() == []
+    assert rig.names() == []
 
 
 @pytest.mark.parametrize(
@@ -280,7 +286,8 @@ def test_a_bad_reference_is_refused_before_any_file_or_request(
 ):
     with tag_rig(certificates, workspace, monkeypatch) as rig:
         assert code_of(lambda: rig.call_tag(model=model, tag=tag)) == "invalid_request"
-    assert rig.server.requests == [] and rig.names() == []
+    assert rig.server.requests == []
+    assert rig.names() == []
 
 
 def test_an_existing_target_is_refused_before_any_catalog_request(
@@ -490,7 +497,8 @@ def test_a_tag_download_sends_its_format_and_fold_and_names_them(
         summary = rig.call_tag(artifact_format="pt", fold=2).data
     assert f"{JSON_PATH}?format=pt&fold=2" in [r.path for r in rig.server.requests]
     assert (summary.source.format, summary.source.fold) == ("pt", 2)
-    assert summary.resolution is not None and summary.resolution.version_id == VERSION
+    assert summary.resolution is not None
+    assert summary.resolution.version_id == VERSION
 
 
 def test_a_same_version_restart_with_no_resume_names_no_other_download(
@@ -569,7 +577,8 @@ def test_the_help_names_the_tag_way_and_its_trade_off(capsys):
         main(["models", "download", "--help"])
     out = " ".join(capsys.readouterr().out.split())
     assert info.value.code == 0
-    assert "--model OWNER/SLUG" in out and "--version-tag TAG" in out
+    assert "--model OWNER/SLUG" in out
+    assert "--version-tag TAG" in out
     assert "sahip adı olmayan modeller için --version-id" in out.lower()
     assert "tam bir stage bile katalog okunmadan yayımlanmaz" in out
 
@@ -590,7 +599,8 @@ def test_a_provider_version_identifier_that_is_no_uuid_is_an_invalid_answer(
     listing = reply([version_record(version_id="not-a-uuid")])
     with tag_rig(certificates, workspace, monkeypatch, listing=listing) as rig:
         assert code_of(lambda: rig.call_tag()) == "invalid_response"
-    assert rig.json_calls() == [] and rig.names() == []
+    assert rig.json_calls() == []
+    assert rig.names() == []
 
 
 def test_a_repeated_version_tag_is_refused_before_any_request(
@@ -620,7 +630,8 @@ def test_a_repeated_version_tag_is_refused_before_any_request(
         )
     assert code == 2
     assert "invalid_request" in out + err
-    assert rig.server.requests == [] and rig.names() == []
+    assert rig.server.requests == []
+    assert rig.names() == []
 
 
 def test_a_half_selection_names_the_two_ways_in_text(workspace, certificates, monkeypatch, capsys):
@@ -641,7 +652,8 @@ def test_a_half_selection_names_the_two_ways_in_text(workspace, certificates, mo
             str(rig.state),
         )
     assert code == 2
-    assert "--version-id" in out + err and "--version-tag" in out + err
+    assert "--version-id" in out + err
+    assert "--version-tag" in out + err
     assert rig.server.requests == []
 
 
@@ -661,7 +673,8 @@ def test_a_closed_session_is_refused_before_the_lock_and_the_build(tmp_path):
     with pytest.raises(YorungeError) as info:
         run_resolved_download(tmp_path / "w.onnx", session, build, no_resume=False, timeout=30)
     assert info.value.code == "invalid_request"
-    assert built == [] and list(tmp_path.iterdir()) == []
+    assert built == []
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_an_out_of_bounds_timeout_is_refused_before_the_lock(tmp_path):

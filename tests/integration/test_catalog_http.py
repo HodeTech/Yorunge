@@ -176,7 +176,8 @@ def test_a_silently_smaller_page_is_refused_and_one_request_only(certificates, k
         routes,
         lambda: client.list_platform_models(loader, 1, 100),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
     assert len(rig.server.requests) == 1
 
 
@@ -211,7 +212,8 @@ def test_a_detail_of_another_model_is_refused(certificates, keys, monkeypatch):
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
 
 
 def test_one_tag_resolves_with_two_gets_and_nothing_is_guessed(certificates, keys, monkeypatch):
@@ -243,7 +245,8 @@ def test_an_ambiguous_tag_stops_before_any_choice(certificates, keys, monkeypatc
         routes,
         lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.0"),
     )
-    assert error is not None and error.code == "model_ambiguous"
+    assert error is not None
+    assert error.code == "model_ambiguous"
 
 
 def test_a_version_list_that_disagrees_with_the_detail_is_refused(certificates, keys, monkeypatch):
@@ -257,7 +260,8 @@ def test_a_version_list_that_disagrees_with_the_detail_is_refused(certificates, 
         routes,
         lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.1"),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
 
 
 def test_a_missing_tag_is_not_visible_and_not_absent(certificates, keys, monkeypatch):
@@ -271,7 +275,8 @@ def test_a_missing_tag_is_not_visible_and_not_absent(certificates, keys, monkeyp
         routes,
         lambda: client.resolve_platform_version(loader, OWNER, SLUG, "9.9"),
     )
-    assert error is not None and error.code == "model_not_visible"
+    assert error is not None
+    assert error.code == "model_not_visible"
 
 
 def test_a_dot_segment_is_refused_before_any_request(certificates, keys, monkeypatch):
@@ -281,7 +286,8 @@ def test_a_dot_segment_is_refused_before_any_request(certificates, keys, monkeyp
         {},
         lambda: client.show_platform_model(loader, "..", SLUG, versions=False),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
     assert rig.server.requests == []
 
 
@@ -361,7 +367,8 @@ def test_a_llm_model_outside_the_key_is_not_visible(certificates, keys, monkeypa
         routes,
         lambda: client.show_llm_model(loader, "llm-a", task=None),
     )
-    assert error is not None and error.code == "model_not_visible"
+    assert error is not None
+    assert error.code == "model_not_visible"
 
 
 def test_a_llm_task_mismatch_is_refused(certificates, keys, monkeypatch):
@@ -372,7 +379,8 @@ def test_a_llm_task_mismatch_is_refused(certificates, keys, monkeypatch):
         routes,
         lambda: client.show_llm_model(loader, "llm-a", task="embedding"),
     )
-    assert error is not None and error.code == "model_task_mismatch"
+    assert error is not None
+    assert error.code == "model_task_mismatch"
 
 
 # --- status, redirects, bounds and secrets -------------------------------------------------------
@@ -399,7 +407,8 @@ def test_status_codes_map_to_the_closed_codes_and_the_retry_policy(
         routes,
         lambda: client.list_platform_models(loader, 1, 20),
     )
-    assert error is not None and error.code == code
+    assert error is not None
+    assert error.code == code
     assert len(rig.server.requests) == count
     assert all(record.path.startswith(PLATFORM_BASE) for record in rig.server.requests)
 
@@ -412,7 +421,8 @@ def test_an_answer_over_the_shared_limit_is_refused(certificates, keys, monkeypa
         routes,
         lambda: client.list_platform_models(loader, 1, 20),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
 
 
 def test_a_key_echoed_by_the_provider_is_refused_and_never_shown(certificates, keys, monkeypatch):
@@ -424,8 +434,10 @@ def test_a_key_echoed_by_the_provider_is_refused_and_never_shown(certificates, k
         routes,
         lambda: client.list_platform_models(loader, 1, 20),
     )
-    assert error is not None and error.code == "invalid_response"
-    assert PLATFORM_KEY not in str(error) and PLATFORM_KEY not in error.message
+    assert error is not None
+    assert error.code == "invalid_response"
+    assert PLATFORM_KEY not in str(error)
+    assert PLATFORM_KEY not in error.message
 
 
 def test_a_catalog_command_writes_nothing_to_disk(certificates, keys, monkeypatch, tmp_path):
@@ -544,7 +556,8 @@ def test_a_refused_model_request_is_an_invalid_request_not_a_remote_failure(
         routes,
         lambda: client.show_llm_model(loader, "llm-a", task=None),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
 
 
 # --- review round 1: bounds, statuses, identities and arguments before any request --------------
@@ -560,7 +573,8 @@ def test_an_absurd_page_number_is_refused_before_any_request(certificates, keys,
         {},
         lambda: client.list_platform_models(loader, page, 20),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
     assert rig.server.requests == []
 
 
@@ -574,7 +588,8 @@ def test_a_refused_list_request_is_an_invalid_request_on_every_catalog_endpoint(
         routes,
         lambda: client.list_platform_models(loader, 1, 100),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
 
 
 def test_platform_detail_404_is_not_visible_and_422_is_a_refused_request(
@@ -587,7 +602,8 @@ def test_platform_detail_404_is_not_visible_and_422_is_a_refused_request(
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
     )
-    assert error is not None and error.code == "model_not_visible"
+    assert error is not None
+    assert error.code == "model_not_visible"
     routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": Reply(status=422, body=b"{}")}
     _, _, error = run(
         certificates,
@@ -595,7 +611,8 @@ def test_platform_detail_404_is_not_visible_and_422_is_a_refused_request(
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
 
 
 def test_a_versions_404_is_not_visible_after_a_visible_detail(certificates, keys, monkeypatch):
@@ -609,7 +626,8 @@ def test_a_versions_404_is_not_visible_after_a_visible_detail(certificates, keys
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
     )
-    assert error is not None and error.code == "model_not_visible"
+    assert error is not None
+    assert error.code == "model_not_visible"
 
 
 def test_a_detail_redirect_is_not_followed(certificates, keys, monkeypatch):
@@ -624,7 +642,8 @@ def test_a_detail_redirect_is_not_followed(certificates, keys, monkeypatch):
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
     )
-    assert error is not None and error.code == "remote_failed"
+    assert error is not None
+    assert error.code == "remote_failed"
     assert len(rig.server.requests) == 1
 
 
@@ -638,7 +657,8 @@ def test_resolving_a_tag_refuses_a_detail_of_another_model_after_one_get(
         routes,
         lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.0"),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
     assert len(rig.server.requests) == 1
 
 
@@ -652,7 +672,8 @@ def test_a_provider_identifier_outside_the_alphabet_is_a_bad_answer_not_a_bad_ar
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
     assert len(rig.server.requests) == 1
 
 
@@ -664,7 +685,8 @@ def test_a_bad_task_argument_is_refused_before_any_request(certificates, keys, m
         {},
         lambda: client.show_llm_model(loader, "llm-a", task=task),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
     assert rig.server.requests == []
 
 
@@ -678,7 +700,8 @@ def test_a_versions_flag_that_is_not_a_boolean_is_refused_before_any_request(
         {},
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=flag),
     )
-    assert error is not None and error.code == "invalid_request"
+    assert error is not None
+    assert error.code == "invalid_request"
     assert rig.server.requests == []
 
 
@@ -748,7 +771,8 @@ def test_a_model_id_longer_than_the_address_alphabet_cannot_be_listed_by_version
         routes,
         lambda: client.show_platform_model(loader, OWNER, SLUG, versions=True),
     )
-    assert error is not None and error.code == "invalid_response"
+    assert error is not None
+    assert error.code == "invalid_response"
     assert len(rig.server.requests) == 1
 
 
@@ -762,7 +786,8 @@ def test_a_list_endpoint_404_is_a_remote_failure_not_a_visibility_answer(
         routes,
         lambda: client.list_platform_models(loader, 1, 20),
     )
-    assert error is not None and error.code == "remote_failed"
+    assert error is not None
+    assert error.code == "remote_failed"
 
 
 def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypatch, config_file):
@@ -780,7 +805,8 @@ def test_api_lists_versions_datasets_and_llm_models(certificates, keys, monkeypa
         datasets = api.list_platform_datasets(config=config_file).data.data
         models = api.list_llm_models(config=config_file).data.data
     assert versions.completeness == "unknown"
-    assert datasets.completeness == "complete" and datasets.returned == 0
+    assert datasets.completeness == "complete"
+    assert datasets.returned == 0
     assert models.models[0].model_id == "llm-a"
 
 
@@ -809,8 +835,10 @@ def test_the_list_prints_a_plain_page_and_hides_control_characters(
             ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
         )
     assert code == 0
-    assert f"{OWNER}/{SLUG}" in out and "Platform modelleri" in out
-    assert "\x1b" not in out and "\x1b" not in err
+    assert f"{OWNER}/{SLUG}" in out
+    assert "Platform modelleri" in out
+    assert "\x1b" not in out
+    assert "\x1b" not in err
     assert "Gözlem:" in out
 
 
@@ -889,9 +917,11 @@ def test_show_with_versions_prints_the_versions_and_no_location(
             ],
         )
     assert code == 0
-    assert "Sürümler" in out and "version-1" in out
+    assert "Sürümler" in out
+    assert "version-1" in out
     assert "--version-id" in out
-    assert "signed" not in out and "weights_url" not in out
+    assert "signed" not in out
+    assert "weights_url" not in out
 
 
 def test_an_llm_list_filters_by_task_on_the_client_only(
@@ -923,7 +953,8 @@ def test_an_llm_list_filters_by_task_on_the_client_only(
             ],
         )
     assert code == 0
-    assert "emb-a" in out and "chat-b" not in out
+    assert "emb-a" in out
+    assert "chat-b" not in out
     assert "görev süzmesi: embedding" in out
     assert [record.path for record in rig.server.requests] == [f"{LLM_BASE}/models"]
 
@@ -986,7 +1017,8 @@ def test_the_dataset_page_says_its_scope_is_not_confirmed(
     with Rig(certificates, routes, monkeypatch):
         code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
     assert code == 0
-    assert "Veri setleri" in out and "kapsam: teyit edilmedi" in out
+    assert "Veri setleri" in out
+    assert "kapsam: teyit edilmedi" in out
 
 
 # --- review round 1 of the command line (P02-4e) ----------------------------------------------
@@ -1086,7 +1118,8 @@ def test_a_long_identifier_is_shown_whole_not_cut_with_an_ellipsis(
             ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
         )
     assert code == 0
-    assert f"kimlik {long_id}" in out and "…" not in out
+    assert f"kimlik {long_id}" in out
+    assert "…" not in out
 
 
 def test_an_owner_less_model_in_a_list_gets_the_identifier_route_once(
@@ -1225,7 +1258,8 @@ def test_ndjson_stdout_is_only_event_lines(certificates, keys, monkeypatch, conf
     assert code == 0
     lines = [line for line in out.splitlines() if line.strip()]
     events = [json.loads(line) for line in lines]
-    assert events and all(isinstance(event, dict) for event in events)
+    assert events
+    assert all(isinstance(event, dict) for event in events)
 
 
 # --- review round 2 of the command line (P02-4e) ------------------------------------------------
@@ -1311,7 +1345,8 @@ def test_a_task_filter_on_an_empty_provider_list_records_no_filter(
             ],
         )
     assert code == 0
-    assert "görev süzmesi" not in out and "(görünen model yok)" in out
+    assert "görev süzmesi" not in out
+    assert "(görünen model yok)" in out
 
 
 def test_the_task_filter_keeps_the_provider_warnings_and_the_window() -> None:
@@ -1330,7 +1365,8 @@ def test_the_task_filter_keeps_the_provider_warnings_and_the_window() -> None:
     filtered = _filter_by_task(result, "embedding")
     assert [model.model_id for model in filtered.data.data.models] == ["emb-a"]
     assert filtered.data.data.task_filter == "embedding"
-    assert filtered.data.observed_from == STAMP and filtered.data.observed_until == STAMP
+    assert filtered.data.observed_from == STAMP
+    assert filtered.data.observed_until == STAMP
     assert filtered.warnings == ("kısmi uyarı",)
 
 
@@ -1491,4 +1527,5 @@ def test_a_long_dataset_identifier_is_shown_whole_in_the_text_view(
     with Rig(certificates, routes, monkeypatch):
         code, out, _ = cli(capsys, ["datasets", "list", "--config", str(config_file)])
     assert code == 0
-    assert f"kimlik {long_id}" in out and "…" not in out
+    assert f"kimlik {long_id}" in out
+    assert "…" not in out
