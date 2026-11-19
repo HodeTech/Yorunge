@@ -6,7 +6,7 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ### Added — 2026-11-19
 
-- P02-4 (katalog, sabit referans ve seçilmiş indirme; [ADR-0035](docs/decisions/0035-catalog-reads-fixed-references-and-selection.md); [PR #18](https://github.com/HodeTech/Yorunge/pull/18) ile development’a alındı; K5 canlı indirme yapılmadı): `models list --service evren-platform|evren-llm`, `models show` ve `datasets list` salt okuma komutları (sayfa tamlığı, gözlem penceresi, kapalı hata kodları); `models download --model OWNER/SLUG --version-tag TAG` ile katalogdan tek tam eşleşen sürümün indirilmesi (çözülen kimlik sonuçta görünür); `api.list_*`, `api.show_*`, `api.resolve_platform_version` ve `api.download_model_weights_by_tag`.
+- P02-4 (katalog, sabit referans ve seçilmiş indirme; [ADR-0035](docs/decisions/0035-catalog-reads-fixed-references-and-selection.md); [PR #18](https://github.com/HodeTech/Yorunge/pull/18) ile development’a açıldı, birleştirme kullanıcıda; K5 canlı indirme yapılmadı): `models list --service evren-platform|evren-llm`, `models show` ve `datasets list` salt okuma komutları (sayfa tamlığı, gözlem penceresi, kapalı hata kodları); `models download --model OWNER/SLUG --version-tag TAG` ile katalogdan tek tam eşleşen sürümün indirilmesi (çözülen kimlik sonuçta görünür); `api.list_*`, `api.show_*`, `api.resolve_platform_version` ve `api.download_model_weights_by_tag`.
 - P02-R10: LLM şartları kabul edilmemiş iken `context discover --service evren-llm` metninde tek sabit gözlem satırı (kabul, komut veya URL yok).
 
 ### Changed — 2026-11-13

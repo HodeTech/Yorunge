@@ -14,6 +14,8 @@ import shlex
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from yorunge.cli import CliResult
     from yorunge.domain.catalog import CatalogReading, LlmListing
     from yorunge.domain.errors import YorungeError
@@ -53,8 +55,14 @@ def _count(value: str) -> int:
 def _profile_options(parser: argparse.ArgumentParser) -> None:
     from pathlib import Path
 
-    parser.add_argument("--config", type=Path, default=None, help="TOML profil dosyası")
-    parser.add_argument("--profile", default=None, help="Profil adı (yoksa aktif profil)")
+    # SUPPRESS: a choice given before the command is kept; an absent one is not a value (argparse
+    # would otherwise overwrite the root's choice with this default).
+    parser.add_argument(
+        "--config", type=Path, default=argparse.SUPPRESS, help="TOML profil dosyası"
+    )
+    parser.add_argument(
+        "--profile", default=argparse.SUPPRESS, help="Profil adı (yoksa aktif profil)"
+    )
 
 
 def configure_models(actions: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
@@ -96,13 +104,25 @@ def configure_datasets(actions: argparse._SubParsersAction) -> None:  # type: ig
     )
 
 
+def _selection(args: argparse.Namespace) -> tuple[Path | None, str | None]:
+    """The config and profile the person gave, wherever they were given (before or after)."""
+    options = vars(args)
+    return options.get("config"), options.get("profile")
+
+
 def options_suffix(args: argparse.Namespace) -> str:
-    """The profile and config the user gave, in the form a suggested command repeats them."""
+    """The profile and config the user gave, in the form a suggested command repeats them.
+
+    A config path that cannot be shown on one terminal line (a control character, a line break) is
+    named by a placeholder: a copied command then fails loudly instead of breaking the text.
+    """
+    config, profile = _selection(args)
     parts = []
-    if getattr(args, "config", None) is not None:
-        parts.append(f" --config {shlex.quote(str(args.config))}")
-    if getattr(args, "profile", None) is not None:
-        parts.append(f" --profile {shlex.quote(args.profile)}")
+    if config is not None:
+        shown = str(config)
+        parts.append(f" --config {shlex.quote(shown) if shown.isprintable() else 'DOSYA'}")
+    if profile is not None:
+        parts.append(f" --profile {shlex.quote(profile)}")
     return "".join(parts)
 
 
@@ -129,6 +149,7 @@ def dispatch_models(args: argparse.Namespace) -> CliResult:
 
 
 def _list(args: argparse.Namespace) -> CliResult:
+    config, profile = _selection(args)
     from yorunge import api
     from yorunge.domain.catalog import task_argument
 
@@ -137,14 +158,12 @@ def _list(args: argparse.Namespace) -> CliResult:
             raise _invalid()
         page = 1 if args.page is None else args.page
         size = 20 if args.page_size is None else args.page_size
-        return api.list_platform_models(
-            page=page, page_size=size, config=args.config, profile=args.profile
-        )
+        return api.list_platform_models(page=page, page_size=size, config=config, profile=profile)
     if args.page is not None or args.page_size is not None:
         raise _invalid()
     # The task is checked before the list is requested: a bad argument never reaches the network.
     task = None if args.task is None else task_argument(args.task)
-    result = api.list_llm_models(config=args.config, profile=args.profile)
+    result = api.list_llm_models(config=config, profile=profile)
     if task is None:
         return result
     return _filter_by_task(result, task)
@@ -165,12 +184,14 @@ def _filter_by_task(result: Result[CatalogReading[LlmListing]], task: str) -> Cl
     filtered = CatalogReading[LlmListing](
         observed_from=reading.observed_from,
         observed_until=reading.observed_until,
+        profile=reading.profile,
         data=LlmListing(models=kept, task_filter=task if provider_models else None),
     )
     return Result[CatalogReading[LlmListing]](data=filtered, warnings=result.warnings)
 
 
 def _show(args: argparse.Namespace) -> CliResult:
+    config, profile = _selection(args)
     from yorunge import api
 
     if args.service == PLATFORM:
@@ -181,29 +202,26 @@ def _show(args: argparse.Namespace) -> CliResult:
         if args.model is not None:
             owner, slug = _split_model(args.model)
             return api.show_platform_model(
-                owner, slug, versions=args.versions, config=args.config, profile=args.profile
+                owner, slug, versions=args.versions, config=config, profile=profile
             )
         # The owner-less route lists the versions of a model by its identifier, and only that.
         if args.model_id is None or not args.versions:
             raise _invalid()
-        return api.list_platform_versions(args.model_id, config=args.config, profile=args.profile)
+        return api.list_platform_versions(args.model_id, config=config, profile=profile)
     if args.model is not None or args.versions or args.model_id is None:
         raise _invalid()
-    return api.show_llm_model(
-        args.model_id, task=args.task, config=args.config, profile=args.profile
-    )
+    return api.show_llm_model(args.model_id, task=args.task, config=config, profile=profile)
 
 
 def dispatch_datasets(args: argparse.Namespace) -> CliResult:
+    config, profile = _selection(args)
     from yorunge import api
     from yorunge.cli import reject_context
 
     reject_context(args, ("state_dir", "project"))
     page = 1 if args.page is None else args.page
     size = 20 if args.page_size is None else args.page_size
-    return api.list_platform_datasets(
-        page=page, page_size=size, config=args.config, profile=args.profile
-    )
+    return api.list_platform_datasets(page=page, page_size=size, config=config, profile=profile)
 
 
 # --- text ---------------------------------------------------------------------------------------
@@ -230,7 +248,11 @@ def _id(value: object) -> str:
 
 
 def _window(reading: CatalogReading[object]) -> str:
-    return f"Gözlem: {reading.observed_from} – {reading.observed_until}"
+    """The account the answer was read with, and the window it was read in."""
+    return (
+        f"Hesap profili: {_s(reading.profile)}; "
+        f"Gözlem: {reading.observed_from} – {reading.observed_until}"
+    )
 
 
 def catalog_text(reading: CatalogReading[object], options: str = "") -> str:
@@ -330,7 +352,7 @@ def _versions(listing: object, slug: str | None, options: str) -> list[str]:
         )
     lines = [f"  {heading}"]
     if not listing.versions:
-        lines.append("    (sürüm yok)")
+        lines.append("    (bu yanıtta sürüm görülmedi; bu kesin yokluk değildir)")
     for version in listing.versions:
         formats = [
             name
@@ -345,10 +367,11 @@ def _versions(listing: object, slug: str | None, options: str) -> list[str]:
             f"    {_id(version.version_tag)}  kimlik {_id(version.version_id)}  "
             f"biçim: {', '.join(formats) or 'bilinmiyor'}  {_s(version.created_at)}"
         )
-    lines.append(
-        "  İndirme (sürüm kimliğiyle): yorunge models download --version-id KIMLIK "
-        f"--format onnx|pt|tflite --weights-out DOSYA{options}"
-    )
+    if listing.versions:
+        lines.append(
+            "  İndirme (sürüm kimliğiyle): yorunge models download --version-id KIMLIK "
+            f"--format onnx|pt|tflite --weights-out DOSYA{options}"
+        )
     return lines
 
 

@@ -51,11 +51,13 @@ ContextLoader = Callable[[], tuple[Context, Profile]]
 
 @dataclass(frozen=True)
 class Observed(Generic[T]):
-    """What a command read, with the window it was read in (``observed_from`` to ``until``)."""
+    """What a command read, with the window it was read in (``observed_from`` to ``until``) and the
+    profile whose account it was read with."""
 
     value: T
     observed_from: str
     observed_until: str
+    profile: str
 
 
 @dataclass(frozen=True)
@@ -88,11 +90,6 @@ class _Call:
     resolved: ResolvedCredential
     deadline: float
     window: _Window
-
-
-def _credential(loader: ContextLoader, service_id: ServiceId) -> ResolvedCredential:
-    _context, profile = loader()
-    return resolve_credential(profile, service_id, EnvSecretReader())
 
 
 def _request(
@@ -136,12 +133,12 @@ async def _get(call: _Call, request: HttpRequest) -> _Bytes:
                 if len(data) + len(part) > JSON_LIMIT:
                     raise YorungeError("invalid_response")
                 data.extend(part)
+            call.window.end()  # the last body byte is read here; teardown is not observation
             headers = tuple((str(key), str(value)) for key, value in response.headers)
     except HttpStatusFailure as error:
         if error.status_code == 422:
             raise YorungeError("invalid_request") from None
         raise
-    call.window.end()
     return _Bytes(bytes(data), headers)
 
 
@@ -159,9 +156,20 @@ def _run(
     loader: ContextLoader,
     service_id: ServiceId,
     steps: Callable[[_Call], Awaitable[T]],
+    *,
+    captured: ResolvedCredential | None = None,
 ) -> Observed[T]:
-    """One command: one credential, one session, one deadline, one window."""
-    resolved = _credential(loader, service_id)
+    """One command: one credential, one session, one deadline, one window.
+
+    ``captured`` is the credential a caller already holds for the same profile (a download resolves
+    the version with the key its local snapshot bound): it is used as is, never read again.
+    """
+    context, profile = loader()
+    resolved = (
+        captured
+        if captured is not None
+        else resolve_credential(profile, service_id, EnvSecretReader())
+    )
     clock = SystemClock()
     window = _Window(clock)
     deadline = time.monotonic() + WINDOW_SECONDS
@@ -175,7 +183,7 @@ def _run(
     # A step only returns after its request read a body: the window has both ends by then.
     assert started is not None
     assert finished is not None
-    return Observed(value, started, finished)
+    return Observed(value, started, finished, context.profile)
 
 
 def _page_query(page: int, page_size: int) -> tuple[tuple[str, str], ...]:
@@ -209,6 +217,7 @@ def show_platform_model(
             call, _request(call.resolved, PLATFORM, f"models/{owner}/{slug}")
         )
         model = codec.platform_model(detail.body, call.resolved.secret)
+        catalog.owner_address(model.owner_username)  # no owner name: owner/slug cannot address it
         catalog.detail_identity(model.owner_username, model.slug, owner, slug)
         if not versions:
             return model, None
@@ -241,7 +250,12 @@ def list_platform_versions(loader: ContextLoader, model_id: str) -> Observed[Ver
 
 
 def resolve_platform_version(
-    loader: ContextLoader, owner: str, slug: str, version_tag: str
+    loader: ContextLoader,
+    owner: str,
+    slug: str,
+    version_tag: str,
+    *,
+    captured: ResolvedCredential | None = None,
 ) -> Observed[tuple[PlatformModel, PlatformVersion]]:
     """The one version of ``owner/slug`` that carries ``version_tag``: two GETs, nothing guessed."""
     owner, slug = catalog.require_address(owner, slug)
@@ -266,7 +280,7 @@ def resolve_platform_version(
         catalog.checked_versions(model.versions_count, len(versions.versions))
         return model, catalog.resolve_version(versions.versions, version_tag)
 
-    return _run(loader, PLATFORM, steps)
+    return _run(loader, PLATFORM, steps, captured=captured)
 
 
 def list_platform_datasets(
@@ -301,6 +315,8 @@ def show_llm_model(loader: ContextLoader, model_id: str, *, task: str | None) ->
     async def steps(call: _Call) -> LlmModel:
         got = await _model_scoped(call, _request(call.resolved, LLM, f"models/{model_id}"))
         model = codec.llm_model(got.body, call.resolved.secret)
+        if model.model_id != model_id:
+            raise YorungeError("invalid_response")  # another model than the one asked for
         if task is not None:
             catalog.task_matches(task, model.task)
         return model

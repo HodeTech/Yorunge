@@ -1517,7 +1517,9 @@ def download_model_weights_by_tag(
 
     The catalog resolves the version (exact match only; no latest, no default, no guess) and the
     result names what was resolved. The options and the guarantees are those of
-    :func:`download_model_weights`; the version identifier is the one the catalog returned.
+    :func:`download_model_weights`, with one difference: this route reads the catalog before it
+    can publish a complete stage (a stage whose bytes are all held is not published without a GET),
+    while the version-identifier route publishes such a stage without any request.
     """
     from yorunge.adapters.model_download import download_model_weights_by_tag as use
 
@@ -1594,6 +1596,7 @@ def list_platform_models(
         data=CatalogReading[PlatformModelPage](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=observed.value,
         )
     )
@@ -1617,6 +1620,7 @@ def show_platform_model(
         data=CatalogReading[PlatformModelDetail](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=PlatformModelDetail(model=model, versions=listing),
         )
     )
@@ -1634,6 +1638,7 @@ def list_platform_versions(
         data=CatalogReading[VersionListing](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=observed.value,
         )
     )
@@ -1657,6 +1662,7 @@ def resolve_platform_version(
         data=CatalogReading[PlatformVersionResolution](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=PlatformVersionResolution(model=model, version=version),
         )
     )
@@ -1669,7 +1675,8 @@ def list_platform_datasets(
     config: Path | None = None,
     profile: str | None = None,
 ) -> Result[CatalogReading[DatasetPage]]:
-    """One page of the datasets the key owns; the scope label stays unknown until K4 confirms it."""
+    """One page of the datasets, requested with ``scope=owned``; the returned scope stays unknown
+    until K4 confirms the provider applied that filter, so the page is not claimed to be owned."""
     from yorunge.adapters.catalog_http import list_platform_datasets as read
     from yorunge.domain.catalog import CatalogReading, DatasetPage
 
@@ -1678,6 +1685,7 @@ def list_platform_datasets(
         data=CatalogReading[DatasetPage](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=observed.value,
         )
     )
@@ -1695,6 +1703,7 @@ def list_llm_models(
         data=CatalogReading[LlmListing](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=observed.value,
         )
     )
@@ -1716,6 +1725,7 @@ def show_llm_model(
         data=CatalogReading[LlmModel](
             observed_from=observed.observed_from,
             observed_until=observed.observed_until,
+            profile=observed.profile,
             data=observed.value,
         )
     )

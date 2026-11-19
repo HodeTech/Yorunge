@@ -194,7 +194,7 @@ def verify_package_with_doubles(monkeypatch, tmp_path, name, platform="linux", r
         "verify_installed_transport",
         double("transport", {"http_smoke": "passed", "stream_smoke": "passed"}),
     )
-    for old in ("datasets", "cache", "execution", "jobs"):
+    for old in ("datasets", "cache", "execution", "jobs", "catalog"):
         monkeypatch.setitem(namespace, f"verify_installed_{old}", double(old))
     monkeypatch.setattr(runpy, "run_path", lambda path: loaders[Path(path).name])
     monkeypatch.setitem(namespace, "sys", SimpleNamespace(platform=platform, executable="python"))

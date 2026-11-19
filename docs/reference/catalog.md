@@ -103,6 +103,8 @@ Komut, yazılacak hiçbir durum dosyası açmaz ve çalışma dizinine dosya yaz
 
 ## Gözlem penceresi
 
+Metin çıktısı her cevapta okunan hesap profilini (`Hesap profili`) ve pencereyi birlikte gösterir; JSON'da bu alan `profile` olarak taşınır. Belirsiz bir etiket en çok beş adayı (kimlik, etiket, tarih) gösterir; hiçbiri seçilmez. Sürüm listesi boşsa metin bunu kesin yokluk olarak değil, "bu yanıtta görülmedi" olarak söyler ve indirme ipucu vermez.
+
 `observed_from`: komutun ilk ağ isteğinin başladığı an (oturum ve kimlik kurulumu bu sürenin dışındadır). `observed_until`: son yanıt gövdesinin tamamen okunduğu an. Aynı komutta birden fazla istek varsa tek pencere bunları kapsar.
 
 ## Komut yüzeyi (P02-4e)

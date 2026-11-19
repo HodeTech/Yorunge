@@ -28,3 +28,17 @@ def test_a_settled_identity_is_decided_once(tmp_path):
         with pytest.raises(YorungeError) as info:
             sink.settle(KEY)
         assert info.value.code == "invalid_request"
+
+
+def test_a_settle_after_the_lock_object_was_removed_under_it_is_refused(tmp_path, monkeypatch):
+    target = tmp_path / "weights.onnx"
+    with open_held_sink(target) as sink:
+
+        def gone(self):  # the lock object no longer leads to the locked file
+            raise YorungeError("download_busy")
+
+        monkeypatch.setattr(type(sink._lock), "verify", gone)
+        with pytest.raises(YorungeError) as info:
+            sink.settle(KEY)
+    assert info.value.code == "download_busy"
+    assert list(tmp_path.iterdir()) == []

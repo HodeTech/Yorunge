@@ -257,6 +257,8 @@ class DownloadSink:
             raise YorungeError("invalid_request")  # settle follows one hold, and is called once
         self.identity_key = parse_sha256(identity_key)
         try:
+            # The identity may have waited for a catalog answer: the exclusion must still be ours.
+            self._lock_held()
             return self._decide_and_act()
         except BaseException:
             self._phase = "stopped"

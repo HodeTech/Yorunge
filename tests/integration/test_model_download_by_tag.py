@@ -321,12 +321,12 @@ def test_the_lock_is_held_while_the_catalog_answers(workspace, certificates, mon
     resolve = catalog_http.resolve_platform_version
     rig = tag_rig(certificates, workspace, monkeypatch)
 
-    def resolve_while_racing(loader, owner, slug, tag):
+    def resolve_while_racing(loader, owner, slug, tag, **kwargs):
         try:
             api.download_model_weights_by_tag(f"{OWNER}/{SLUG}", VERSION_TAG, **rig.values({}))
         except YorungeError as error:
             raced.append(error.code)
-        return resolve(loader, owner, slug, tag)
+        return resolve(loader, owner, slug, tag, **kwargs)
 
     monkeypatch.setattr(catalog_http, "resolve_platform_version", resolve_while_racing)
     with rig:
@@ -544,9 +544,9 @@ def test_the_catalog_time_is_given_back_to_the_download_deadline_up_to_its_budge
     monkeypatch.setattr(download_engine, "time", clock)
     resolve = catalog_http.resolve_platform_version
 
-    def slow_resolve(loader, owner, slug, tag):
+    def slow_resolve(loader, owner, slug, tag, **kwargs):
         clock.offset += catalog_seconds
-        return resolve(loader, owner, slug, tag)
+        return resolve(loader, owner, slug, tag, **kwargs)
 
     monkeypatch.setattr(catalog_http, "resolve_platform_version", slow_resolve)
     with tag_rig(certificates, workspace, monkeypatch) as rig:

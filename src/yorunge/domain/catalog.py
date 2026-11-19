@@ -17,7 +17,7 @@ from typing import Annotated, Final, Generic, Literal, Protocol, TypeVar
 from pydantic import AfterValidator, Field
 
 from yorunge.domain.errors import YorungeError
-from yorunge.domain.models import Model, has_control_characters
+from yorunge.domain.models import Identifier, Model, has_control_characters
 
 # --- limits (ADR-0035 Karar 2) --------------------------------------------------------------------
 
@@ -229,6 +229,17 @@ def detail_identity(owner_username: str | None, slug: str, owner: str, asked_slu
 VersionT = TypeVar("VersionT", bound=VersionRef)
 
 
+class VersionAmbiguous(YorungeError):
+    """More than one version carries the tag: the few candidates are shown, none is chosen.
+
+    Each candidate is ``(identity, tag, creation time)``; there are at most ``MAX_CANDIDATES``.
+    """
+
+    def __init__(self, found: tuple[tuple[str, str, str], ...]) -> None:
+        super().__init__("model_ambiguous")
+        self.candidates = found
+
+
 def resolve_version(versions: Sequence[VersionT], tag: str) -> VersionT:
     """Exactly one version carries the tag; none is not-visible, more than one is ambiguous."""
     version_tag(tag)
@@ -236,7 +247,12 @@ def resolve_version(versions: Sequence[VersionT], tag: str) -> VersionT:
     if not matches:
         raise YorungeError("model_not_visible")
     if len(matches) > 1:
-        raise YorungeError("model_ambiguous")
+        raise VersionAmbiguous(
+            tuple(
+                (item.version_id, item.version_tag, item.created_at)
+                for item in candidates(versions, tag)
+            )
+        )
     return matches[0]
 
 
@@ -286,7 +302,7 @@ MAX_COUNT: Final = 2**53 - 1  # the largest integer every JSON reader keeps exac
 _STAMP: Final = re.compile(
     r"\A[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
     r"T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]{1,6})?"
-    r"(Z|[+-](0[0-9]|1[0-3]):[0-5][0-9])\Z"
+    r"(Z|[+-](0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])\Z"
 )
 _UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Zl", "Zp"})
 
@@ -436,8 +452,10 @@ T = TypeVar("T")
 
 
 class CatalogReading(Model, Generic[T]):
-    """What one command read, with the window it was read in (ADR-0035 Karar 3)."""
+    """What one command read, with the window and the profile whose account it was read with
+    (ADR-0035 Karar 3)."""
 
     observed_from: Stamp
     observed_until: Stamp
+    profile: Identifier
     data: T

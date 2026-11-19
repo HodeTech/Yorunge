@@ -194,7 +194,8 @@ def download_model_weights_by_tag(
     session = TransferSession(key, storage_origins=(origin,))
 
     def build() -> tuple[DownloadJob, DownloadResolution]:
-        found = catalog_http.resolve_platform_version(loader, owner, slug, tag)
+        # The version is resolved with the credential the snapshot bound, not a second reading.
+        found = catalog_http.resolve_platform_version(loader, owner, slug, tag, captured=resolved)
         model_record, version = found.value
         version_id = _provider_version(version.version_id)
         job = DownloadJob(

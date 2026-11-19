@@ -441,10 +441,17 @@ def test_a_key_echoed_by_the_provider_is_refused_and_never_shown(certificates, k
 
 
 def test_a_catalog_command_writes_nothing_to_disk(certificates, keys, monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))  # the default state location, if a command reached it
     monkeypatch.chdir(tmp_path)
     routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [], "total": 0})}
-    run(certificates, monkeypatch, routes, lambda: client.list_platform_models(loader, 1, 20))
-    assert list(tmp_path.iterdir()) == []
+    _, observed, error = run(
+        certificates, monkeypatch, routes, lambda: client.list_platform_models(loader, 1, 20)
+    )
+    assert error is None and observed.value.completeness == "complete"
+    assert list(tmp_path.iterdir()) == [home]
+    assert list(home.rglob("*")) == []
 
 
 # --- the public API over the same fixture ------------------------------------------------------
@@ -891,7 +898,7 @@ def test_the_ndjson_list_is_one_result_event_per_command(
         )
     assert code == 0
     events = [json.loads(line) for line in out.splitlines() if line.strip()]
-    assert any(event.get("event") == "result" for event in events)
+    assert len(events) == 1 and events[0].get("event") == "result"
 
 
 def test_show_with_versions_prints_the_versions_and_no_location(
@@ -1360,7 +1367,9 @@ def test_the_task_filter_keeps_the_provider_warnings_and_the_window() -> None:
             LlmModel(model_id="chat-b", task="chat", created=1),
         )
     )
-    reading = CatalogReading[LlmListing](observed_from=STAMP, observed_until=STAMP, data=listing)
+    reading = CatalogReading[LlmListing](
+        observed_from=STAMP, observed_until=STAMP, profile="test", data=listing
+    )
     result = Result[CatalogReading[LlmListing]](data=reading, warnings=("kısmi uyarı",))
     filtered = _filter_by_task(result, "embedding")
     assert [model.model_id for model in filtered.data.data.models] == ["emb-a"]
@@ -1507,8 +1516,10 @@ def test_the_catalog_hints_quote_the_config_path_and_leave_no_placeholder() -> N
         "model_task_mismatch",
         "model_not_addressable",
     ):
-        assert expected in hints[code]
-        assert "{options}" not in hints[code]
+        hint = hints[code]
+        text = hint if isinstance(hint, str) else hint(YorungeError(code))
+        assert expected in text
+        assert "{options}" not in text
     bare = error_hints(argparse.Namespace())
     assert "--config" not in bare["model_not_visible"]
     assert "{options}" not in bare["model_not_visible"]
@@ -1529,3 +1540,136 @@ def test_a_long_dataset_identifier_is_shown_whole_in_the_text_view(
     assert code == 0
     assert f"kimlik {long_id}" in out
     assert "…" not in out
+
+
+# --- review of the catalog on PR #18: identities, candidates, credentials and text ----------------
+
+
+def test_a_llm_detail_of_another_model_is_refused(certificates, keys, monkeypatch):
+    routes = {f"{LLM_BASE}/models/llm-a": body(llm_model(id="llm-b"))}
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_llm_model(loader, "llm-a", task=None),
+    )
+    assert error is not None
+    assert error.code == "invalid_response"
+
+
+def test_an_owner_less_model_is_not_addressable_by_show_either(certificates, keys, monkeypatch):
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(owner_username=None))}
+    rig, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.show_platform_model(loader, OWNER, SLUG, versions=False),
+    )
+    assert error is not None
+    assert error.code == "model_not_addressable"
+    assert len(rig.server.requests) == 1
+
+
+def test_an_ambiguous_tag_names_its_candidates_and_chooses_none(certificates, keys, monkeypatch):
+    same = version_json(1) | {"version_tag": "1.0"}
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=2)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([same, same | {"id": "version-x"}]),
+    }
+    _, _, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.0"),
+    )
+    assert error is not None
+    assert error.code == "model_ambiguous"
+    assert [identity for identity, _tag, _created in error.candidates] == ["version-1", "version-x"]
+
+
+def test_a_captured_credential_resolves_the_tag_without_reading_the_key_again(
+    certificates, keys, monkeypatch
+):
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.credentials import resolve_credential
+
+    _context, profile = loader()
+    captured = resolve_credential(profile, "evren-platform", EnvSecretReader())
+    monkeypatch.delenv(PLATFORM_KEY_ENV)  # the key changed or went away after the snapshot
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(2)]),
+    }
+    rig, observed, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.2", captured=captured),
+    )
+    assert error is None
+    assert observed.value[1].version_id == "version-2"
+    assert rig.server.requests[0].header("X-API-Key") == PLATFORM_KEY
+
+
+def test_an_empty_version_list_says_none_was_seen_and_offers_no_download(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=0)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([]),
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-platform",
+                "--model",
+                f"{OWNER}/{SLUG}",
+                "--versions",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "bu yanıtta sürüm görülmedi" in out
+    assert "yorunge models download" not in out
+
+
+def test_the_text_names_the_profile_the_answer_was_read_with(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{PLATFORM_BASE}/models?page=1&page_size=20": body({"items": [], "total": 0})}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+        )
+    assert code == 0
+    assert "Hesap profili: test" in out
+
+
+def test_a_choice_given_before_the_command_is_kept_by_the_catalog_subcommands():
+    from pathlib import Path
+
+    from yorunge.cli import parser
+
+    listed = parser().parse_args(
+        ["--config", "/x/root.toml", "models", "list", "--service", "evren-platform"]
+    )
+    assert listed.config == Path("/x/root.toml")
+    datasets = parser().parse_args(["--profile", "pilot", "datasets", "list"])
+    assert datasets.profile == "pilot"
+
+
+def test_a_config_path_that_cannot_be_shown_on_one_line_is_named_by_a_placeholder():
+    from yorunge.cli.catalog import options_suffix
+
+    assert options_suffix(argparse.Namespace(config=Path("a\nb.toml"), profile=None)) == (
+        " --config DOSYA"
+    )
+    assert options_suffix(argparse.Namespace(config=Path("my dir/c.toml"), profile="p")) == (
+        " --config 'my dir/c.toml' --profile p"
+    )

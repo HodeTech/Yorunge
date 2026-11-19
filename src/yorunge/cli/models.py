@@ -303,7 +303,26 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
         hints["invalid_request"] = SELECTION_HINT
     suffix = options_suffix(args)
     hints.update({code: text.format(options=suffix) for code, text in CATALOG_HINTS.items()})
+    hints["model_ambiguous"] = _ambiguity_hint(
+        CATALOG_HINTS["model_ambiguous"].format(options=suffix)
+    )
     return hints
+
+
+def _ambiguity_hint(base: str) -> Callable[[YorungeError], str | None]:
+    """The ambiguity hint, with the candidates the error carries (identity, tag, date), if any."""
+
+    def hint(error: YorungeError) -> str | None:
+        found = getattr(error, "candidates", ())
+        if not found:
+            return base
+        rows = [
+            f"  kimlik {identity}  etiket {tag}  tarih {created}"
+            for identity, tag, created in found
+        ]
+        return "\n".join([base, "Adaylar (seçim yapılmadı):", *rows])
+
+    return hint
 
 
 def _summary_text(data: DownloadSummary, warnings: tuple[str, ...] = ()) -> str:

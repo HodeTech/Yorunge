@@ -528,6 +528,37 @@ def verify_installed_datasets(
         raise ValueError("installed dataset same-size mutation was not rejected")
 
 
+def verify_installed_catalog(console: Path, scratch: Path, environment: dict[str, str]) -> None:
+    """The installed console refuses catalog arguments before any request, from a clean environment.
+
+    The reads themselves need a provider and are covered by the loopback tests of the source tree;
+    this checks what the installed entry point alone decides: the exit code and the closed code.
+    """
+    arguments = [str(console), "models"]
+    refused = json.loads(
+        run(
+            [*arguments, "list", "--service", "evren-platform", "--page", "0", "--output=json"],
+            cwd=scratch,
+            environment=environment,
+            expected_code=2,
+        )
+    )
+    if refused["code"] != "invalid_request":
+        raise ValueError("installed catalog page refusal contract failed")
+    combined = json.loads(
+        run(
+            [*arguments, "show", "--service", "evren-llm", "--model", "a/b", "--output=json"],
+            cwd=scratch,
+            environment=environment,
+            expected_code=2,
+        )
+    )
+    if combined["code"] != "invalid_request":
+        raise ValueError("installed catalog combination was not refused")
+    if "--service" not in run([*arguments, "list", "--help"], cwd=scratch, environment=environment):
+        raise ValueError("installed catalog help does not name its service option")
+
+
 def verify_package(
     package: Path,
     uv: str,
@@ -619,6 +650,7 @@ def verify_package(
         download_smoke = "not_run_unsupported_platform"
         if sys.platform in ("darwin", "linux"):
             verify_installed_datasets(console, python, scratch, environment)
+            verify_installed_catalog(console, scratch, environment)
             verify_installed_cache(console, root, scratch, environment)
             cache_smoke = "passed"
             execution_smoke = verify_installed_execution(console, root, scratch, environment)

@@ -637,7 +637,7 @@ def test_a_task_argument_with_edge_whitespace_is_refused_not_trimmed(value) -> N
         "2026-13-99T99:99:99Z",
         "2026-02-30T00:00:00Z",
         "2026-01-01T00:00:00",
-        "2026-01-01T00:00:00+14:00",
+        "2026-01-01T00:00:00+24:00",
         "\u0662\u0660\u0662\u0666-\u0660\u0661-\u0660\u0661"
         "T\u0660\u0660:\u0660\u0660:\u0660\u0660Z",
         "2026-01-01T00:00:00.1234567Z",
@@ -650,7 +650,10 @@ def test_a_stamp_that_is_not_a_real_rfc_3339_date_time_is_refused(stamp) -> None
     )
 
 
-@pytest.mark.parametrize("stamp", ["2026-01-01T00:00:00Z", "2026-03-29T12:30:00.5+03:00"])
+@pytest.mark.parametrize(
+    "stamp",
+    ["2026-01-01T00:00:00Z", "2026-03-29T12:30:00.5+03:00", "2026-01-01T00:00:00+14:00"],
+)
 def test_a_real_rfc_3339_stamp_is_kept(stamp) -> None:
     assert codec.platform_model(jbytes(platform_model(created_at=stamp)), KEY).created_at == stamp
 
