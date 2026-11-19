@@ -123,3 +123,7 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 ## Teslim kaydı
 
 Hazırlık aşamasında boş. Adım sonuçları ve PR bilgisi gerçekleştikçe bu belgeye ve kartlara eklenir.
+
+## Kaynak referans serisi `-11`
+
+P02-4 kaynak yollarını (`src`, `tests`, `scripts`, `.github`) değiştirdiği için P02-3 `-10` serisi bu ağaca bağlanamaz. Ad değişimi `ecced3c` commit'inde yapıldı; seri bu commit'in temiz klonundan Apple M5 Max (dahili APFS SSD, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download ile koşul kaydı. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-11` ve `p02-3-native11-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti. Bu kayıttan sonra yalnız belge commit'leri eklenir; kaynak haritası değişirse seri yeniden alınır.
