@@ -11,6 +11,17 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SECRET = "synthetic-secret-NEVER-PRINT-48291"
+MAX_PARAMETER_TEXT = 128
+
+
+def pytest_make_parametrize_id(config, val, argname):
+    # Pytest builds a node id from every parameter value, so a megabyte body becomes a megabyte node
+    # id. Pytest exports the running node id as PYTEST_CURRENT_TEST, and that environment then
+    # exceeds the execve limit for every child process of the test (openssl, the CLI under test).
+    # A long text parameter gets a length label; pytest keeps the labels unique.
+    if isinstance(val, (str, bytes)) and len(val) > MAX_PARAMETER_TEXT:
+        return f"{argname}-{len(val)}-chars"
+    return None
 
 
 @pytest.fixture(scope="session", autouse=True)
