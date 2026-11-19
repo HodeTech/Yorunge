@@ -1,7 +1,7 @@
 ---
 id: P02-R10
 phase: P02
-status: ready
+status: verified
 size: S
 depends_on: [P02-0c]
 capabilities: [C01, C02]
@@ -42,4 +42,6 @@ Yalnız text biçimlendirici ve belge değişir. Domain modeli, Result/ContextDi
 
 ## Teslim kaydı
 
-Ready; uygulama veya kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`; geliştirme commit'leri 2333c0b, 6372f9e, 02dfeac).
+- Sonuç: `accepted=false` iken text çıktısında tek sabit gözlem satırı; `accepted=true` metni, JSON ve NDJSON değişmedi. İki fresh review turu; doğrulanan bulgular düzeltildi; metin literal olarak sabitlendi; hedefli testler ve tam paket geçti.
+- Kalan sınır: satır kabul yolunu göstermez; kabul yolu doğrulanmış kaynak olmadan yazılmaz ([B17](../backlog.md) kararı).

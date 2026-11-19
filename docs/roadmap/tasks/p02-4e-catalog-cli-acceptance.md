@@ -1,7 +1,7 @@
 ---
 id: P02-4e
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-4d]
 capabilities: [C03, C05, C13]
@@ -63,4 +63,6 @@ CLI ve API için integration/süreç testleri, parser testleri, kurulu wheel smo
 
 ## Teslim kaydı
 
-Hazırlık; uygulama ve kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi).
+- Sonuç: `models list/show` ve `datasets list` CLI yüzeyi (metin, JSON, NDJSON), profil koruyan öneri ve hata ipuçları, K4 canlı salt okuma kaydı (12 GET, bütçe 20). R1 ve R2 review bulguları düzeltildi (dbd3545, fffcf0b, c96fcf7).
+- Kalan sınır: K4'ün açık maddeleri (100 üstü sayfa, `model_id` ile sürüm listesi, `scope=owned` etkisi) canlı teyit bekler.

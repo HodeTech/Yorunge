@@ -26,11 +26,11 @@ Public görünürlük, silme, rezervasyon yazma, model warmup/benchmark gibi ek 
 | P02-R7 | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu | P02-2c; ayrı Proposed ADR | [Takip kartı](tasks/p02-r7-persist-provider-denials.md); ADR-0031 incelemesinde bulunan belge–kod boşluğu | `draft` |
 | P02-R8 | Operation’sız upload planlarını unutma (kota yeniden kazanımı) | P02-2c; ayrı karar | [Takip kartı](tasks/p02-r8-forget-unused-upload-plans.md); ADR-0031 incelemesinde bulunan kota etkisi | `draft` |
 | P02-R9 | Kullanıcıya dönük ağ/TLS tanısı ve açık kurumsal CA/proxy yolu | P01-5a, P02-0c; kullanıcı kararı [B16](backlog.md) ve ADR | [Takip kartı](tasks/p02-r9-network-diagnosis-and-trust-paths.md); [şema yeniden okuması ve dış inceleme doğrulaması](../research/p02-llm-gateway-schema-review.md); mevcut ortam proxy/CA yok sayma sınırı kullanıcı belgesine yazıldı | `draft` |
-| P02-R10 | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme | P02-0c | [Takip kartı](tasks/p02-r10-llm-terms-guidance.md); yalnız text çıktısı, kabul/URL/komut yok | `ready` |
+| P02-R10 | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme | P02-0c | [Takip kartı](tasks/p02-r10-llm-terms-guidance.md); yalnız text çıktısı, kabul/URL/komut yok | `verified` |
 | P02-1 | Yerel normal dosya denetimi ve sürümlü manifest | P01-1a, P01-3b; alt kartlar | [Paket planı](p02-1-delivery-plan.md); P02-1a/b/c/d, kurulum/native, iki review turu ve üç ortam source/metadata CI/kanıt kabulü tamam; PR #13 / 50d68b1 ile development’a teslim edildi | `verified` |
 | P02-2 | Private oluşturma ve tek doğrulanmış upload yolu | P02-0a, ilgili P02-0b kabulü, P02-1; P01-4b/P01-5b | [P02-2 planı](p02-2-delivery-plan.md); P02-2a–c ve d–w verified, Accepted ADR-0024–0029; ayrı project link dahil create/upload ve ilk kesinti güvenliği PR #14 / 94aaaf0 ile development’a teslim edildi | `verified` |
 | P02-3 | Resume/reconcile, indirme/verify ve veri sürüm bağları | P02-2c (resume), P02-2f ve P02-0d (indirme/sürüm) | [Paket planı](p02-3-delivery-plan.md); üst kartlar P02-3a–c, adım kartları P02-3d–z (yirmi üç kart); ADR-0031/0032/0033 Accepted (2026-11-06); indirme ve sürüm hatları resume’dan bağımsız hazırlanabilir; PR #15 / 69efc8d ile development’a teslim edildi, canlı kabul yok | `verified` |
-| P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b ([plan](p02-4-delivery-plan.md)); indirme ayrıca P02-3b | `draft` |
+| P02-4 | Veri/model kataloğu, sabit referans çözümü ve seçilmiş ağırlık indirme | P02-0a, ilgili P02-0b kabulü; P01-3a/P01-5a | P02-4a/b ([plan](p02-4-delivery-plan.md)); indirme ayrıca P02-3b | `verified` |
 | P02-5 | Native LLM ve temel çıkarım | P02-4a’nın ilgili hizmet/model kabulü; P01-5b | P02-5a–e; her görev ayrı typed girdi/çıktı ve maliyet sınırı | `draft` |
 | P02-6 | GPU/kuyruk/rezervasyon bilgisi ve kota okuma | P02-0a; hesap verisi için ilgili P02-0b kabulü | P02-6a/b; yalnız okuma, tahsis/fatura garantisi yok | `draft` |
 | P02-7 | Bütünleşik kullanıcı akışı ve faz kapanışı | Kapanışa alınan bütün P02 alt işleri | [Faz kabulü](#faz-kabulü); eksik hedef açıkça kalır | `draft` |
@@ -98,12 +98,12 @@ Aşağıdaki alt ID’ler kapsam/bağımlılık sınırıdır; henüz hazır uyg
 | P02-3p | Veri sürümü tipleri, strict codec ve salt okuma okuyucusu | P02-0d; [kart](tasks/p02-3p-version-domain-reader.md) | `verified` |
 | P02-3q | Public `datasets versions` yüzeyi ve bağ artifact’ı | P02-3p, P02-3s; [kart](tasks/p02-3q-public-version-surface.md) | `verified` |
 | P02-3s | Ortak no-clobber artifact yayıncısı (manifest yayıncısı genellemesi; indirme ve sürüm hatlarının ortak ihtiyacı) | P02-2c; [kart](tasks/p02-3s-common-artifact-publisher.md) | `verified` |
-| P02-4a | Sayfalı veri/model kataloğu ve göreve uygun sabit referans çözümü (üst kabul; adımlar P02-4c–e) | P02-4c, P02-4d, P02-4e; [kart](tasks/p02-4a-catalog-acceptance.md) | `draft` |
-| P02-4b | Seçilmiş model ağırlığını ortak indirme portuyla teslim etme (P02-3n kesin sürüm kimliğiyle indirmeyi sağlar; bu iş katalog çözümlü seçimi bağlar; üst kabul, adım P02-4f) | P02-4a, P02-4f, P02-3b, P02-3n; [kart](tasks/p02-4b-selected-download-acceptance.md) | `draft` |
-| P02-4c | Katalog tipleri, strict codec’ler, sayfa/çözüm/görev kuralları ve kanonik referans (ADR-0035) | P02-0a, P02-0c, P02-0d; [kart](tasks/p02-4c-catalog-contract.md) | `in_progress` |
-| P02-4d | Katalog GET taşıması, sınırlar ve Python API (kayıtlı hedef, sır sınırı) | P02-4c, P01-5a; [kart](tasks/p02-4d-catalog-transport-api.md) | `draft` |
-| P02-4e | `models list/show`, `datasets list` CLI yüzeyi ve K4 kapsamında canlı salt okuma kabulü | P02-4d; [kart](tasks/p02-4e-catalog-cli-acceptance.md) | `draft` |
-| P02-4f | Katalogdan seçilen sürümün `models download --model/--version-tag` ile indirmeye bağlanması | P02-4e, P02-3n; [kart](tasks/p02-4f-selected-download-binding.md) | `draft` |
+| P02-4a | Sayfalı veri/model kataloğu ve göreve uygun sabit referans çözümü (üst kabul; adımlar P02-4c–e) | P02-4c, P02-4d, P02-4e; [kart](tasks/p02-4a-catalog-acceptance.md) | `verified` |
+| P02-4b | Seçilmiş model ağırlığını ortak indirme portuyla teslim etme (P02-3n kesin sürüm kimliğiyle indirmeyi sağlar; bu iş katalog çözümlü seçimi bağlar; üst kabul, adım P02-4f) | P02-4a, P02-4f, P02-3b, P02-3n; [kart](tasks/p02-4b-selected-download-acceptance.md) | `verified` |
+| P02-4c | Katalog tipleri, strict codec’ler, sayfa/çözüm/görev kuralları ve kanonik referans (ADR-0035) | P02-0a, P02-0c, P02-0d; [kart](tasks/p02-4c-catalog-contract.md) | `verified` |
+| P02-4d | Katalog GET taşıması, sınırlar ve Python API (kayıtlı hedef, sır sınırı) | P02-4c, P01-5a; [kart](tasks/p02-4d-catalog-transport-api.md) | `verified` |
+| P02-4e | `models list/show`, `datasets list` CLI yüzeyi ve K4 kapsamında canlı salt okuma kabulü | P02-4d; [kart](tasks/p02-4e-catalog-cli-acceptance.md) | `verified` |
+| P02-4f | Katalogdan seçilen sürümün `models download --model/--version-tag` ile indirmeye bağlanması | P02-4e, P02-3n; [kart](tasks/p02-4f-selected-download-binding.md) | `verified` |
 | P02-5a | Tek nonstream metin görevi ve typed yanıt/kullanım sonucu | P02-4a LLM alt kabulü | `draft` |
 | P02-5b | Sağlayıcı SSE’sini doğrulanmış StreamEvent/terminal sonucuna dönüştürme | P02-5a | `draft` |
 | P02-5c | Sıra/boyut/sonluluğu doğrulanmış embedding sonucu | P02-4a LLM alt kabulü | `draft` |

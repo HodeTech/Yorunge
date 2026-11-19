@@ -1,6 +1,6 @@
 # P02-4 — Katalog, sabit referans ve seçilmiş ağırlık teslim planı
 
-**Tarih:** 2026-11-19. **Durum:** Uygulama başladı. İki fresh review turu ve belge incelemesinin bulguları işlendi; [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted (2026-11-19). ADR dışındaki kararlar aşağıdaki tabloda önerilerle uygulanır (kullanıcı talimatı). **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
+**Tarih:** 2026-11-19. **Durum:** Teslim edildi — [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`development` hedefi; birleştirme kullanıcıda). Her adım iki fresh review turundan geçti; K5 canlı indirme yapılmadı. Hazırlık belge turlarının bulguları da işlendi; [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted (2026-11-19). ADR dışındaki kararlar aşağıdaki tabloda önerilerle uygulanır (kullanıcı talimatı). **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
 
 ## Kullanıcı sonucu
 

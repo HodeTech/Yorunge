@@ -1,7 +1,7 @@
 ---
 id: P02-4a
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-4c, P02-4d, P02-4e]
 capabilities: [C03, C05, C13]
@@ -40,4 +40,6 @@ Alt kartların doğrulamaları birleşir; bu kartta ek olarak belge/matris denet
 
 ## Teslim kaydı
 
-Hazırlık; uygulama ve kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi).
+- Sonuç: alt kartlar P02-4c, P02-4d ve P02-4e teslim edildi; K4 canlı salt okuma kaydı yapıldı ([kanıt](../../research/p02-4-catalog-live-read-20261119.md)): LLM listesi (15 model) ve detayı canlı okundu, kimlikler alfabeye uygun, veri seti başlığı `0`/`1` olarak düzeltildi.
+- Kalan sınır: Platform model okuması ve sürüm çözümü pilot hesapta model olmadığı için canlı kanıtsız; 100 üstü sayfa ve `scope=owned` etkisi gözlenmedi. P02-5 LLM girdilerini bu kayda göre "canlı doğrulanmadı" sınırıyla okuyabilir.

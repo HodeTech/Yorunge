@@ -1,7 +1,7 @@
 ---
 id: P02-4c
 phase: P02
-status: in_progress
+status: verified
 size: M
 depends_on: [P02-0a, P02-0c, P02-0d]
 capabilities: [C05, C13]
@@ -70,4 +70,6 @@ P02-0a, P02-0c (LLM) ve P02-0d (Platform) verified ve development’ta. Karar ka
 
 ## Teslim kaydı
 
-Uygulama devam ediyor; kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi).
+- Sonuç: katalog tipleri, kapalı codec'ler, sayfa/tamlık/çözüm/görev kuralları ve kanonik referans ([katalog başvurusu](../../reference/catalog.md)) uygulandı; sözleşme testleri geçti; K4 ile düzeltilen veri seti başlık biçimi (`X-Has-Next` `0`/`1`) kanıtlı.
+- Kalan sınır: 100 üstü platform sayfası ve `model_id` ile sürüm listesi canlı teyit edilmedi (hesapta model yok).

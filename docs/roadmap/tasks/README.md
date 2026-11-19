@@ -56,13 +56,13 @@
 | [P02-R7](p02-r7-persist-provider-denials.md) | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu; ADR-0031 incelemesinde bulunan belge–kod boşluğu |
 | [P02-R8](p02-r8-forget-unused-upload-plans.md) | Operation’sız upload planlarını unutma (kota yeniden kazanımı); continuation’ın N dosyayı yeniden saymasının açık sahibi |
 | [P02-R9](p02-r9-network-diagnosis-and-trust-paths.md) | Kullanıcıya dönük ağ/TLS tanısı ve açık kurumsal CA/proxy yolu; kullanıcı kararı (B16) ve ADR kapılı |
-| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart |
-| [P02-4a](p02-4a-catalog-acceptance.md) | Sayfalı veri/model kataloğu üst kabulü (P02-4c–e); `draft`; [hazırlık planı](../p02-4-delivery-plan.md), K1–K11 kullanıcı kararı bekliyor |
-| [P02-4b](p02-4b-selected-download-acceptance.md) | Katalog çözümlü seçimin ağırlık indirmesine bağlanması üst kabulü (P02-4f); `draft` |
-| [P02-4c](p02-4c-catalog-contract.md) | Katalog tipleri, kapalı codec’ler, tamlık/çözüm/görev kuralları ve kanonik referans; `in_progress` |
-| [P02-4d](p02-4d-catalog-transport-api.md) | Katalog GET taşıması, tek sayfa sınırları ve Python API; `draft` |
-| [P02-4e](p02-4e-catalog-cli-acceptance.md) | `models list/show`, `datasets list`, CLI yüzeyi ve canlı salt okuma kabulü; `draft` |
-| [P02-4f](p02-4f-selected-download-binding.md) | `models download --model/--version-tag` çözüm bağı; `draft` |
+| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart; `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4a](p02-4a-catalog-acceptance.md) | Sayfalı veri/model kataloğu üst kabulü (P02-4c–e); `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)); [teslim planı](../p02-4-delivery-plan.md) |
+| [P02-4b](p02-4b-selected-download-acceptance.md) | Katalog çözümlü seçimin ağırlık indirmesine bağlanması üst kabulü (P02-4f); `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)); K5 canlı indirme yapılmadı |
+| [P02-4c](p02-4c-catalog-contract.md) | Katalog tipleri, kapalı codec’ler, tamlık/çözüm/görev kuralları ve kanonik referans; `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4d](p02-4d-catalog-transport-api.md) | Katalog GET taşıması, tek sayfa sınırları ve Python API; `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4e](p02-4e-catalog-cli-acceptance.md) | `models list/show`, `datasets list`, CLI yüzeyi ve canlı salt okuma kabulü; `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4f](p02-4f-selected-download-binding.md) | `models download --model/--version-tag` çözüm bağı; `verified` ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i, r ve t–y |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |

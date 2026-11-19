@@ -1,7 +1,7 @@
 ---
 id: P02-4b
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-4a, P02-4f, P02-3b, P02-3n]
 capabilities: [C03, C05, C13]
@@ -42,4 +42,6 @@ P02-4f doğrulamaları ve belge denetimi; tam paket ve kurulu wheel smoke’u ([
 
 ## Teslim kaydı
 
-Hazırlık; uygulama ve kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi).
+- Sonuç: `models download --model OWNER/SLUG --version-tag TAG` uygulandı; çözüm sırası ADR-0035 Karar 6'ya göre kilit altında; çözülen kimlik çıktıda; download-engine ve katalog referanslarının seçim bölümleri yazıldı. Her adım iki fresh review turundan geçti (62300f7, 2d26af0, bb1df34); mutasyon kanıtları alındı.
+- Kalan sınır: K5 canlı indirme **yapılmadı** (kabul maddesi 4 gereği): pilot hesapta Platform modeli yok (toplam 0), sürüm kimliği ve ek yetki verilmedi. Etiketle seçimde tam stage'in ağsız yayımı yoktur (Karar 6 ödünleşmesi).

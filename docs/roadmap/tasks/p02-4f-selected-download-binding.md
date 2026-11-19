@@ -1,7 +1,7 @@
 ---
 id: P02-4f
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-4e, P02-3n]
 capabilities: [C03, C05, C13]
@@ -65,4 +65,6 @@ Integration testleri (loopback TLS, istek sayımı), süreç testleri, kill/resu
 
 ## Teslim kaydı
 
-Hazırlık; uygulama ve kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi; geliştirme 62300f7, R1 2d26af0, R2 bb1df34).
+- Sonuç: motor iki fazlı ayrıldı (kimliksiz yerel retler ağdan önce, kimlik çözümden sonra); etiket yolu, özet `resolution` alanı (yalnız etiket yolunda), uyarı, zaman iadesi ve CLI yüzeyi testlerle kanıtlandı; `--version-id` yolu regresyonsuz. Mutasyon kanıtı: zaman iadesi, özet aktarımı ve uyarı bayrağı kaldırıldığında testler başarısız olur.
+- Kalan sınır: K5 canlı indirme yapılmadı (kart madde 8). Etiket yolunda atma sonrası bir hatayla biten çalıştırma "yarım dosya atıldı" uyarısını taşımaz; `--version-id` yolu da bildirmez (belgelendi).

@@ -1,7 +1,7 @@
 ---
 id: P02-4d
 phase: P02
-status: draft
+status: verified
 size: M
 depends_on: [P02-4c, P01-5a, P02-0c, P02-0d]
 capabilities: [C01, C05, C13]
@@ -61,4 +61,6 @@ Runtime satırı: integration testleri (loopback TLS), contract/unit testleri, R
 
 ## Teslim kaydı
 
-Hazırlık; uygulama ve kabul kaydı yoktur.
+- PR/commit: [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`feat/p02-4-catalog-and-selection`, `development` hedefi).
+- Sonuç: salt okuma GET taşıması, sınırlar, 422/404 eşlemesi, 30 sn pencere ve Python API (`list_*`, `show_*`, `resolve_*`) uygulandı; loopback TLS ve istek sayımı testleri geçti; bulgular iki turda düzeltildi (2201df9, 99f2020).
+- Kalan sınır: model kapsamlı uçların (404 `model_not_visible`) canlı davranışı hesapta model olmadığı için gözlenmedi.
