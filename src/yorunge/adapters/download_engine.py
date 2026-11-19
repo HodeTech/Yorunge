@@ -214,7 +214,7 @@ def run_resolved_download(
     control budget, as the JSON call's is: the deadline is ``timeout`` seconds from the start and
     covers the local state and the GET. The warnings name a partial of another download that was
     dropped, and they reach the caller only with a successful result: a run that fails after the
-    drop does not name it (the drop comes before the first request, as on the version path).
+    drop does not name it (the drop comes after the catalog reads and before the weights requests).
     """
     if (
         not isinstance(session, TransferSession)

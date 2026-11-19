@@ -408,7 +408,7 @@ def test_the_cli_text_says_when_a_partial_of_another_version_was_dropped(
             str(rig.state),
         )
     assert code == 0, err
-    assert "başka bir indirmeye (farklı sürüm, biçim ya da fold) aitti" in out
+    assert "başka bir indirmeye (farklı sürüm, biçim, fold ya da hizmet hedefi) aitti" in out
 
 
 @pytest.mark.parametrize(
@@ -506,11 +506,16 @@ def test_a_same_version_restart_with_no_resume_names_no_other_download(
     assert rig.target.read_bytes() == DATA
 
 
-def test_the_catalog_time_is_given_back_to_the_download_deadline(
-    workspace, certificates, monkeypatch
+@pytest.mark.parametrize(
+    "catalog_seconds,outcome",
+    [(31.0, "resumed"), (100.0, "transport_timeout")],
+)
+def test_the_catalog_time_is_given_back_to_the_download_deadline_up_to_its_budget(
+    workspace, certificates, monkeypatch, catalog_seconds, outcome
 ):
-    """The catalog takes 31 s of a 30 s download: its time is paid back (up to its budget), so the
-    resumable stage still gets its own checks. Without the refund this run times out."""
+    """The catalog's time is paid back to the download deadline, up to its 30 s control budget.
+    A 31 s catalog read leaves the resumable stage its checks; a 100 s one gets only 30 s back, so
+    the same download times out. The budget cap is what this pins, not only the refund."""
     import time as real_time
 
     from yorunge.adapters import download_engine
@@ -532,11 +537,14 @@ def test_the_catalog_time_is_given_back_to_the_download_deadline(
     resolve = catalog_http.resolve_platform_version
 
     def slow_resolve(loader, owner, slug, tag):
-        clock.offset += 31.0
+        clock.offset += catalog_seconds
         return resolve(loader, owner, slug, tag)
 
     monkeypatch.setattr(catalog_http, "resolve_platform_version", slow_resolve)
     with tag_rig(certificates, workspace, monkeypatch) as rig:
+        if outcome == "transport_timeout":
+            assert code_of(lambda: rig.call_tag(timeout=30)) == "transport_timeout"
+            return
         summary = rig.call_tag(timeout=30).data
     assert (summary.resumed, summary.resumed_from_bytes) == (True, CUT)
     assert rig.target.read_bytes() == DATA

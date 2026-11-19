@@ -90,5 +90,5 @@ def test_the_text_says_a_complete_stage_was_catalog_read_and_what_was_dropped():
     assert "ağ isteği yapılmadan" in text(plain_complete)
     assert "katalogdan okundu" not in text(plain_complete)
     dropped = text(summary(resolution()), (REPLACED_PARTIAL_WARNING,))
-    assert "başka bir indirmeye (farklı sürüm, biçim ya da fold) aitti" in dropped
+    assert "başka bir indirmeye (farklı sürüm, biçim, fold ya da hizmet hedefi) aitti" in dropped
     assert "Önceki yarım dosya" not in text(summary(resolution()))

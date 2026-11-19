@@ -327,7 +327,8 @@ def _summary_text(data: DownloadSummary, warnings: tuple[str, ...] = ()) -> str:
         )
     if REPLACED_PARTIAL_WARNING in warnings:
         rows.append(
-            "Önceki yarım dosya başka bir indirmeye (farklı sürüm, biçim ya da fold) aitti; "
+            "Önceki yarım dosya başka bir indirmeye (farklı sürüm, biçim, fold ya da hizmet "
+            "hedefi) aitti; "
             "atıldı ve bu indirme baştan başladı."
         )
     if data.verification_level == "sha256_matched":
