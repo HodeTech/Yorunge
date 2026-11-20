@@ -124,6 +124,10 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 
 Hazırlık aşamasında boş. Adım sonuçları ve PR bilgisi gerçekleştikçe bu belgeye ve kartlara eklenir.
 
-## Kaynak referans serisi `-11`
+## Kaynak referans serisi `-12`
+
+Güncel seri. `-11` kaydı (aşağıda) yalnız `ecced3c` ağacına bağlıdır; `a40520f` ağacında kaynak haritası (`src`, `tests`, `scripts`, `.github`) değiştiği için `-12` gerekiydi. Seri `a40520f` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye ve son pencerede bilinen yoğun işlem sayısı 0 gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-12` ve `p02-3-native12-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
+
+## Kaynak referans serisi `-11` (önceki, yerini `-12`ye bıraktı)
 
 P02-4 kaynak yollarını (`src`, `tests`, `scripts`, `.github`) değiştirdiği için P02-3 `-10` serisi bu ağaca bağlanamaz. Ad değişimi `ecced3c` commit'inde yapıldı; seri bu commit'in temiz klonundan Apple M5 Max (dahili APFS SSD, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download ile koşul kaydı. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-11` ve `p02-3-native11-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti. Bu kayıttan sonra yalnız belge commit'leri eklenir; kaynak haritası değişirse seri yeniden alınır.
