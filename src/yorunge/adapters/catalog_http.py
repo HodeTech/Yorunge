@@ -50,6 +50,18 @@ ContextLoader = Callable[[], tuple[Context, Profile]]
 
 
 @dataclass(frozen=True)
+class Captured:
+    """What a caller already holds for one profile: the credential its local snapshot bound and the
+    profile's name. A command that reads it again is not reading the same account."""
+
+    credential: ResolvedCredential
+    profile: str
+
+
+Source = ContextLoader | Captured
+
+
+@dataclass(frozen=True)
 class Observed(Generic[T]):
     """What a command read, with the window it was read in (``observed_from`` to ``until``) and the
     profile whose account it was read with."""
@@ -129,6 +141,8 @@ async def _get(call: _Call, request: HttpRequest) -> _Bytes:
     call.window.begin()
     try:
         async with call.transport.open(request, deadline=call.deadline) as response:
+            if response.status_code != 200:  # a 2xx that is not 200 is not the answer asked for
+                raise YorungeError("invalid_response")
             async for part in response.chunks():
                 if len(data) + len(part) > JSON_LIMIT:
                     raise YorungeError("invalid_response")
@@ -153,23 +167,23 @@ async def _model_scoped(call: _Call, request: HttpRequest) -> _Bytes:
 
 
 def _run(
-    loader: ContextLoader,
+    source: Source,
     service_id: ServiceId,
     steps: Callable[[_Call], Awaitable[T]],
-    *,
-    captured: ResolvedCredential | None = None,
 ) -> Observed[T]:
     """One command: one credential, one session, one deadline, one window.
 
-    ``captured`` is the credential a caller already holds for the same profile (a download resolves
-    the version with the key its local snapshot bound): it is used as is, never read again.
+    A ``Captured`` source is used as it is, never read again, and only for the service it was bound
+    to: a key of another service is refused before any request. A loader is read once, here.
     """
-    context, profile = loader()
-    resolved = (
-        captured
-        if captured is not None
-        else resolve_credential(profile, service_id, EnvSecretReader())
-    )
+    if isinstance(source, Captured):
+        if source.credential.reference.service_id != service_id:
+            raise YorungeError("invalid_request")  # a programming fault: refused before a request
+        resolved, name = source.credential, source.profile
+    else:
+        context, profile = source()
+        resolved = resolve_credential(profile, service_id, EnvSecretReader())
+        name = context.profile
     clock = SystemClock()
     window = _Window(clock)
     deadline = time.monotonic() + WINDOW_SECONDS
@@ -180,10 +194,11 @@ def _run(
     with HttpSession() as session:
         value = session.call(exchange)
     started, finished = window.started, window.finished
-    # A step only returns after its request read a body: the window has both ends by then.
-    assert started is not None
-    assert finished is not None
-    return Observed(value, started, finished, context.profile)
+    # A step only returns after its request read a body: the window has both ends by then. A
+    # window without both ends is not an observation, and it is never shown as one.
+    if started is None or finished is None:
+        raise YorungeError("invalid_response")
+    return Observed(value, started, finished, name)
 
 
 def _page_query(page: int, page_size: int) -> tuple[tuple[str, str], ...]:
@@ -250,12 +265,10 @@ def list_platform_versions(loader: ContextLoader, model_id: str) -> Observed[Ver
 
 
 def resolve_platform_version(
-    loader: ContextLoader,
+    source: Source,
     owner: str,
     slug: str,
     version_tag: str,
-    *,
-    captured: ResolvedCredential | None = None,
 ) -> Observed[tuple[PlatformModel, PlatformVersion]]:
     """The one version of ``owner/slug`` that carries ``version_tag``: two GETs, nothing guessed."""
     owner, slug = catalog.require_address(owner, slug)
@@ -280,7 +293,7 @@ def resolve_platform_version(
         catalog.checked_versions(model.versions_count, len(versions.versions))
         return model, catalog.resolve_version(versions.versions, version_tag)
 
-    return _run(loader, PLATFORM, steps, captured=captured)
+    return _run(source, PLATFORM, steps)
 
 
 def list_platform_datasets(

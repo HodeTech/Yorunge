@@ -26,7 +26,10 @@ LLM = "evren-llm"
 SERVICES = (PLATFORM, LLM)
 LIST_SUMMARY = "Erişebildiğiniz modellerin bir sayfasını göster (salt okuma)"
 SHOW_SUMMARY = "Bir modeli, sürümlerini ya da bir LLM modelini göster (salt okuma)"
-DATASETS_SUMMARY = "Veri setlerinin bir sayfasını göster (salt okuma; kapsam K4 ile teyit edilir)"
+DATASETS_SUMMARY = (
+    "Veri setlerinin bir sayfasını göster (salt okuma; sahip kapsamı istenir, döndürülen kapsam "
+    "doğrulanmadı)"
+)
 PROFILE_SINGLETONS = {"--config", "--profile"}
 LIST_SINGLETONS = {"--service", "--page", "--page-size", "--task"}
 SHOW_SINGLETONS = {"--service", "--model", "--model-id", "--versions", "--task"}
@@ -72,9 +75,14 @@ def configure_models(actions: argparse._SubParsersAction) -> None:  # type: igno
     common(listing, context=False)
     _profile_options(listing)
     listing.add_argument("--service", required=True, choices=SERVICES, help="Hangi hizmet")
-    listing.add_argument("--page", type=_count, default=None, help="Sayfa (Platform; varsayılan 1)")
     listing.add_argument(
-        "--page-size", type=_count, default=None, help="Sayfa boyutu (Platform; varsayılan 20)"
+        "--page", type=_count, default=None, help="Sayfa, 1 ve üzeri (Platform; varsayılan 1)"
+    )
+    listing.add_argument(
+        "--page-size",
+        type=_count,
+        default=None,
+        help="Sayfa boyutu, 1 ile 100 arası (Platform; varsayılan 20)",
     )
     listing.add_argument("--task", default=None, help="LLM görevine göre istemci tarafı süzme")
 
@@ -98,9 +106,14 @@ def configure_datasets(actions: argparse._SubParsersAction) -> None:  # type: ig
     listing = actions.add_parser("list", help=DATASETS_SUMMARY, description=DATASETS_SUMMARY)
     common(listing, context=False)
     _profile_options(listing)
-    listing.add_argument("--page", type=_count, default=None, help="Sayfa (varsayılan 1)")
     listing.add_argument(
-        "--page-size", type=_count, default=None, help="Sayfa boyutu (varsayılan 20)"
+        "--page", type=_count, default=None, help="Sayfa, 1 ve üzeri (varsayılan 1)"
+    )
+    listing.add_argument(
+        "--page-size",
+        type=_count,
+        default=None,
+        help="Sayfa boyutu, 1 ile 100 arası (varsayılan 20)",
     )
 
 
@@ -111,10 +124,12 @@ def _selection(args: argparse.Namespace) -> tuple[Path | None, str | None]:
 
 
 def options_suffix(args: argparse.Namespace) -> str:
-    """The profile and config the user gave, in the form a suggested command repeats them.
+    """The profile, config and state directory the user gave, as a suggested command repeats them.
 
-    A config path that cannot be shown on one terminal line (a control character, a line break) is
-    named by a placeholder: a copied command then fails loudly instead of breaking the text.
+    The same account and the same store as the command that failed.
+
+    A path that cannot be shown on one terminal line (a control character, a line break) is named by
+    a placeholder: a copied command then fails loudly instead of breaking the text.
     """
     config, profile = _selection(args)
     parts = []
@@ -123,6 +138,10 @@ def options_suffix(args: argparse.Namespace) -> str:
         parts.append(f" --config {shlex.quote(shown) if shown.isprintable() else 'DOSYA'}")
     if profile is not None:
         parts.append(f" --profile {shlex.quote(profile)}")
+    state = getattr(args, "state_dir", None)  # only the download commands name a store
+    if state is not None:
+        shown = str(state)
+        parts.append(f" --state-dir {shlex.quote(shown) if shown.isprintable() else 'DOSYA'}")
     return "".join(parts)
 
 
@@ -272,7 +291,7 @@ def catalog_text(reading: CatalogReading[object], options: str = "") -> str:
     elif isinstance(data, PlatformModelDetail):
         lines = _platform_detail(data, options)
     elif isinstance(data, VersionListing):
-        lines = _versions(data, None, options)
+        lines = _versions(data, None, None, options)
     elif isinstance(data, LlmListing):
         lines = _llm_listing(data)
     elif isinstance(data, LlmModel):
@@ -297,8 +316,13 @@ def _platform_page(page: object, options: str) -> list[str]:
         f"Platform modelleri — sayfa {page.page}, sayfa boyutu {page.page_size}, "
         f"toplam {page.total} kayıt; {COMPLETENESS[page.completeness]}."
     ]
-    if not page.models:
+    if not page.models and page.total == 0:
         lines.append("Bu anahtara görünen model yok; bu kesin bir yokluk kanıtı değildir.")
+    elif not page.models:
+        lines.append(
+            f"Bu sayfada model yok; bu anahtara görünen {page.total} kayıt var, sayfa numarasını "
+            "kontrol edin."
+        )
     for model in page.models:
         owner = _id(model.owner_username) if model.owner_username is not None else NO_OWNER
         lines.append(
@@ -335,11 +359,25 @@ def _platform_detail(detail: object, options: str) -> list[str]:
     if model.description is not None:
         lines.append(f"  açıklama: {_s(model.description, TEXT_LIMIT)}")
     if detail.versions is not None:
-        lines.extend(_versions(detail.versions, _id(model.slug), options))
+        address = _address_of(model.owner_username, model.slug)
+        lines.extend(_versions(detail.versions, _id(model.slug), address, options))
     return lines
 
 
-def _versions(listing: object, slug: str | None, options: str) -> list[str]:
+def _address_of(owner: str | None, slug: str) -> str | None:
+    """``owner/slug`` as a command repeats it, when both are address segments; else none."""
+    from yorunge.domain.catalog import segment
+    from yorunge.domain.errors import YorungeError
+
+    if owner is None:
+        return None
+    try:
+        return f"{segment(owner)}/{segment(slug)}"
+    except YorungeError:
+        return None
+
+
+def _versions(listing: object, slug: str | None, address: str | None, options: str) -> list[str]:
     from yorunge.domain.catalog import VersionListing
 
     assert isinstance(listing, VersionListing)
@@ -368,10 +406,17 @@ def _versions(listing: object, slug: str | None, options: str) -> list[str]:
             f"biçim: {', '.join(formats) or 'bilinmiyor'}  {_s(version.created_at)}"
         )
     if listing.versions:
+        # The tag route needs the address; the identifier route works for every model.
+        if address is not None:
+            lines.append(
+                f"  İndirme (etiketle): yorunge models download --model {address} "
+                f"--version-tag ETIKET --format FORMAT --weights-out DOSYA{options}"
+            )
         lines.append(
             "  İndirme (sürüm kimliğiyle): yorunge models download --version-id KIMLIK "
-            f"--format onnx|pt|tflite --weights-out DOSYA{options}"
+            f"--format FORMAT --weights-out DOSYA{options}"
         )
+        lines.append("  FORMAT: onnx, pt veya tflite (listedeki weights biçimi pt'dir).")
     return lines
 
 

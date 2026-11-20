@@ -329,7 +329,10 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
     elif args.command == "datasets" and args.action == "list":
         from yorunge.cli.catalog import LIST_SINGLETONS, PROFILE_SINGLETONS
 
-        _reject_duplicates(arguments, PROFILE_SINGLETONS | LIST_SINGLETONS)
+        # The same output switches the other catalog commands refuse twice: one value, not the last.
+        _reject_duplicates(
+            arguments, PROFILE_SINGLETONS | LIST_SINGLETONS | {"--output", "--non-interactive"}
+        )
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}

@@ -1243,7 +1243,9 @@ def test_a_model_not_visible_error_names_a_command_that_runs(
             ],
         )
     assert code == 1
-    assert "yorunge models list --service evren-platform" in out + err
+    # The suggestion names the service that failed: an LLM 404 is not a Platform question.
+    assert "yorunge models list --service evren-llm --config" in out + err
+    assert "--service evren-platform" not in out + err
 
 
 def test_ndjson_stdout_is_only_event_lines(certificates, keys, monkeypatch, config_file, capsys):
@@ -1593,22 +1595,45 @@ def test_a_captured_credential_resolves_the_tag_without_reading_the_key_again(
     from yorunge.adapters.secrets import EnvSecretReader
     from yorunge.application.credentials import resolve_credential
 
-    _context, profile = loader()
+    context, profile = loader()
     captured = resolve_credential(profile, "evren-platform", EnvSecretReader())
     monkeypatch.delenv(PLATFORM_KEY_ENV)  # the key changed or went away after the snapshot
     routes = {
         f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
         f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(2)]),
     }
+    bound = client.Captured(captured, context.profile)  # no loader: the snapshot is the reading
     rig, observed, error = run(
         certificates,
         monkeypatch,
         routes,
-        lambda: client.resolve_platform_version(loader, OWNER, SLUG, "1.2", captured=captured),
+        lambda: client.resolve_platform_version(bound, OWNER, SLUG, "1.2"),
     )
     assert error is None
     assert observed.value[1].version_id == "version-2"
+    assert observed.profile == context.profile
     assert rig.server.requests[0].header("X-API-Key") == PLATFORM_KEY
+
+
+def test_a_captured_credential_of_another_service_is_refused_before_any_request(
+    certificates, keys, monkeypatch
+):
+    from yorunge.adapters.secrets import EnvSecretReader
+    from yorunge.application.credentials import resolve_credential
+
+    context, profile = loader()
+    llm = resolve_credential(profile, "evren-llm", EnvSecretReader())  # not a Platform key
+    bound = client.Captured(llm, context.profile)
+    routes = {f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1))}
+    rig, _observed, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.resolve_platform_version(bound, OWNER, SLUG, "1.2"),
+    )
+    assert error is not None
+    assert error.code == "invalid_request"
+    assert rig.server.requests == []
 
 
 def test_an_empty_version_list_says_none_was_seen_and_offers_no_download(
@@ -1673,3 +1698,130 @@ def test_a_config_path_that_cannot_be_shown_on_one_line_is_named_by_a_placeholde
     assert options_suffix(argparse.Namespace(config=Path("my dir/c.toml"), profile="p")) == (
         " --config 'my dir/c.toml' --profile p"
     )
+
+
+# --- review of 2026-11-21: answer status, page past the last, suggested commands ---------------
+
+
+@pytest.mark.parametrize("status", [202, 203, 204, 206])
+def test_a_success_status_other_than_200_is_no_answer(certificates, keys, monkeypatch, status):
+    routes = {
+        f"{PLATFORM_BASE}/models?page=1&page_size=20": Reply(
+            status=status, body=b'{"items": [], "total": 0}'
+        )
+    }
+    _rig, _observed, error = run(
+        certificates,
+        monkeypatch,
+        routes,
+        lambda: client.list_platform_models(loader, 1, 20),
+    )
+    assert error is not None
+    assert error.code == "invalid_response"
+
+
+def test_a_page_past_the_last_says_its_page_is_empty_not_that_the_key_sees_nothing(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {f"{PLATFORM_BASE}/models?page=5&page_size=20": body({"items": [], "total": 3})}
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "list",
+                "--service",
+                "evren-platform",
+                "--page",
+                "5",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert "Bu sayfada model yok" in out
+    assert "görünen model yok" not in out
+
+
+def test_a_listed_version_names_its_model_and_tag_in_the_download_suggestion(
+    certificates, keys, monkeypatch, config_file, capsys
+):
+    routes = {
+        f"{PLATFORM_BASE}/models/{OWNER}/{SLUG}": body(model_json(versions_count=1)),
+        f"{PLATFORM_BASE}/models/{MODEL_ID}/versions": body([version_json(2)]),
+    }
+    with Rig(certificates, routes, monkeypatch):
+        code, out, _ = cli(
+            capsys,
+            [
+                "models",
+                "show",
+                "--service",
+                "evren-platform",
+                "--model",
+                f"{OWNER}/{SLUG}",
+                "--versions",
+                "--config",
+                str(config_file),
+            ],
+        )
+    assert code == 0
+    assert f"yorunge models download --model {OWNER}/{SLUG} --version-tag ETIKET" in out
+    assert "--format FORMAT" in out
+    assert "onnx|pt|tflite" not in out  # a pipe in a copied command is not a format
+
+
+def test_a_download_without_a_prepared_store_names_the_init_command(capsys, tmp_path):
+    code, out, err = cli(
+        capsys,
+        [
+            "models",
+            "download",
+            "--version-id",
+            "00000000-0000-4000-8000-000000000001",
+            "--format",
+            "onnx",
+            "--weights-out",
+            str(tmp_path / "model.onnx"),
+        ],
+    )
+    assert code != 0
+    assert "yorunge state init" in out + err
+
+
+def test_a_repeated_output_switch_of_datasets_list_is_refused(capsys, config_file):
+    code, out, err = cli(
+        capsys,
+        [
+            "datasets",
+            "list",
+            "--service",
+            "evren-platform",
+            "--output",
+            "text",
+            "--output",
+            "json",
+            "--config",
+            str(config_file),
+        ],
+    )
+    assert code == 2
+    assert "İstek geçersiz" in out + err  # the usage error is the request error, shown once
+
+
+def test_an_interrupted_catalog_read_reports_a_cancelled_request_not_a_traceback(
+    monkeypatch, config_file, capsys
+):
+    from yorunge import api
+
+    def interrupted(*_args, **_kwargs):
+        raise KeyboardInterrupt  # what a SIGINT raises inside the read
+
+    monkeypatch.setattr(api, "list_platform_models", interrupted)
+    code, out, err = cli(
+        capsys,
+        ["models", "list", "--service", "evren-platform", "--config", str(config_file)],
+    )
+    assert code != 0
+    assert "Yerel çağrı veya izleme bırakıldı" in out + err
+    assert "Traceback" not in out + err

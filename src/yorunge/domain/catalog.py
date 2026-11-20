@@ -26,10 +26,11 @@ PLATFORM_MAX_PAGE_SIZE: Final = 100  # provisional until the live reading (K4) c
 LLM_MAX_RECORDS: Final = 500
 MAX_VERSION_ROWS: Final = 500  # a version list has no paging; bounded by the answer budget
 MAX_CANDIDATES: Final = 5
+MODALITY_LIMIT: Final = 32  # an LLM record names a handful of modalities, never thousands
 NAME_LIMIT: Final = 128  # display characters for names, slugs and short labels
 TEXT_LIMIT: Final = 512  # display characters for descriptions
 IDENTITY_LIMIT: Final = 256  # raw identifiers the provider sends; addresses are narrower
-VERSION_TAG_LIMIT: Final = 128
+VERSION_TAG_LIMIT: Final = IDENTITY_LIMIT  # a listed tag must be selectable: the same bound
 ELLIPSIS: Final = "…"
 
 Completeness = Literal["complete", "partial", "last_page", "unknown"]
@@ -65,14 +66,18 @@ def segment(value: str) -> str:
 
 
 def version_tag(value: str) -> str:
-    """A tag is compared on the client and never placed in a URL: length and controls only."""
-    if (
-        type(value) is not str
-        or not 1 <= len(value) <= VERSION_TAG_LIMIT
-        or has_control_characters(value)
-    ):
+    """A tag the user names: the provider's own rule (a plain identifier), within its bound.
+
+    A tag is compared on the client and never placed in a URL. It is judged by the same rule as a
+    tag the provider lists: a tag the user can type is a tag that can be listed, and a format or
+    line-separator character would be a tag no listing shows as itself.
+    """
+    if type(value) is not str or not 1 <= len(value) <= VERSION_TAG_LIMIT:
         raise YorungeError("invalid_request")
-    return value
+    try:
+        return plain_identifier(value)
+    except ValueError:
+        raise YorungeError("invalid_request") from None
 
 
 def provider_segment(value: object) -> str:
@@ -111,10 +116,13 @@ def flag_argument(value: object) -> bool:
 
 
 def owner_address(owner_username: str | None) -> str:
-    """A model without a stored owner name cannot be addressed as ``owner/slug`` (Karar 5)."""
+    """A model without a stored owner name cannot be addressed as ``owner/slug`` (Karar 5).
+
+    The name comes from the provider's answer, so a name outside the alphabet is a provider fault.
+    """
     if owner_username is None:
         raise YorungeError("model_not_addressable")
-    return segment(owner_username)
+    return provider_segment(owner_username)
 
 
 def require_address(owner: str, slug: str) -> tuple[str, str]:
@@ -156,8 +164,8 @@ def _label(page: int, more: bool) -> Completeness:
 
 
 def _count(value: object) -> int:
-    """A count from the answer: a non-negative integer, never a bool or a float."""
-    if type(value) is not int or value < 0:
+    """A count from the answer: an integer from 0 to ``MAX_COUNT``, never a bool or a float."""
+    if type(value) is not int or not 0 <= value <= MAX_COUNT:
         raise YorungeError("invalid_response")
     return value
 
@@ -197,6 +205,8 @@ def dataset_page(
         if _DIGITS.fullmatch(total_values[0]) is None:
             return "unknown"
         total = int(total_values[0])
+        if total > MAX_COUNT:  # beyond what a JSON reader keeps exactly: no such total exists
+            raise YorungeError("invalid_response")
         if returned != expected_rows(page, page_size, total):
             raise YorungeError("invalid_response")
         if more != has_next(page, page_size, total):
@@ -239,6 +249,17 @@ class VersionAmbiguous(YorungeError):
         super().__init__("model_ambiguous")
         self.candidates = found
 
+    def envelope(self) -> dict[str, object]:
+        # The machine reader needs the candidates too, not only the text hint.
+        value = super().envelope()
+        value["details"] = {
+            "candidates": [
+                {"version_id": identity, "version_tag": tag, "created_at": created}
+                for identity, tag, created in self.candidates
+            ]
+        }
+        return value
+
 
 def resolve_version(versions: Sequence[VersionT], tag: str) -> VersionT:
     """Exactly one version carries the tag; none is not-visible, more than one is ambiguous."""
@@ -273,18 +294,20 @@ def task_matches(expected: str, observed: str) -> None:
 def text(value: str | None, limit: int) -> str | None:
     """Untrusted provider text as it may be shown: no format or control characters, bounded length.
 
-    Line breaks, tabs and the Unicode line and paragraph separators become spaces; every other
-    control and bidirectional override is dropped. A cut text ends with an ellipsis, so that it is
-    never silently shortened.
+    Line breaks, tabs, the vertical tab, form feed, NEL and the Unicode line and paragraph
+    separators become spaces; every other control and bidirectional override is dropped. A cut text
+    ends with an ellipsis, so that it is never silently shortened.
     """
+    if type(limit) is not int or limit < 2:
+        raise YorungeError("invalid_response")
     if value is None:
         return None
-    if type(value) is not str or type(limit) is not int or limit < 2:
+    if type(value) is not str:
         raise YorungeError("invalid_response")
     pieces: list[str] = []
     for char in value:
         category = unicodedata.category(char)
-        if char in "\t\n\r" or category in _LINE_CATEGORIES:
+        if char in "\t\n\r\v\f\x85" or category in _LINE_CATEGORIES:
             pieces.append(" ")
         elif category in _FORMAT_CATEGORIES:
             continue
@@ -301,10 +324,11 @@ def text(value: str | None, limit: int) -> str | None:
 MAX_COUNT: Final = 2**53 - 1  # the largest integer every JSON reader keeps exactly
 _STAMP: Final = re.compile(
     r"\A[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
-    r"T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]{1,6})?"
+    r"T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]{1,6})?"
     r"(Z|[+-](0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])\Z"
 )
-_UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Zl", "Zp"})
+# Surrogates (``Cs``) cannot be encoded as UTF-8, so no identifier may carry one.
+_UNPLAIN_CATEGORIES: Final = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
 
 
 def plain_identifier(value: str) -> str:
@@ -340,7 +364,7 @@ Identity = Annotated[
     Field(min_length=1, max_length=IDENTITY_LIMIT),
 ]
 Count = Annotated[int, Field(ge=0, le=MAX_COUNT)]
-Price = Annotated[int | float, Field(ge=0, allow_inf_nan=False)]
+Price = Annotated[int | float, Field(ge=0, le=MAX_COUNT, allow_inf_nan=False)]
 Stamp = Annotated[str, AfterValidator(_stamp), Field(max_length=40)]
 
 
@@ -359,7 +383,7 @@ class LlmModel(_Consumed):
     model_id: Identity
     task: Annotated[str, AfterValidator(plain_identifier), Field(min_length=1, max_length=64)]
     created: Count
-    modalities: tuple[str, ...] | None = None
+    modalities: tuple[str, ...] | None = Field(default=None, max_length=MODALITY_LIMIT)
     context_length: Count | None = None
     default_max_output_tokens: Count | None = None
     precision: str | None = None

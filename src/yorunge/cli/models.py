@@ -265,17 +265,20 @@ def selection_refused(args: argparse.Namespace) -> bool:
     return by_id == by_tag or (by_tag and (model is None or tag is None))
 
 
+STATE_HINT = (
+    "Yerel durum hazır değilse 'yorunge state init' ile hazırlayın; hazırsa sahiplik ve bütünlük "
+    "denetimini çalıştırın."
+)
+LIST_ARGUMENTS_HINT = (
+    "Sayfa 1 ve üzeri bir tam sayıdır; sayfa boyutu 1 ile 100 arasında bir tam sayıdır. Görev adı "
+    "1 ile 64 karakter arasında olmalı ve kenarında boşluk bulunmamalıdır."
+)
 CATALOG_HINTS: dict[str, str] = {
-    "model_not_visible": (
-        "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
-        "anahtarı kontrol edin ya da 'yorunge models list --service evren-platform{options}' (veya "
-        "evren-llm{options}) ile arayın."
-    ),
     "model_ambiguous": (
         "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. Kimlikleri görmek için 'yorunge "
         "models show --service evren-platform --model OWNER/SLUG --versions{options}' çalıştırın, "
-        "sonra 'yorunge models download --version-id KIMLIK --format onnx --weights-out "
-        "DOSYA{options}' ile devam edin."
+        "sonra 'yorunge models download --version-id KIMLIK --format FORMAT --weights-out "
+        "DOSYA{options}' ile devam edin (FORMAT: onnx, pt veya tflite)."
     ),
     "model_task_mismatch": (
         "Model beklenen görevle eşleşmiyor. 'yorunge models show --service evren-llm --model-id "
@@ -306,7 +309,27 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
     hints["model_ambiguous"] = _ambiguity_hint(
         CATALOG_HINTS["model_ambiguous"].format(options=suffix)
     )
+    hints["model_not_visible"] = _not_visible_hint(args, suffix)
+    hints["state_invalid"] = STATE_HINT
+    if getattr(args, "action", None) == "list":
+        hints["invalid_request"] = LIST_ARGUMENTS_HINT
     return hints
+
+
+def _not_visible_hint(args: argparse.Namespace, options: str) -> str:
+    """The next step for a model or version the key cannot see, named for the command at hand."""
+    if getattr(args, "action", None) == "download":
+        return (
+            "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. "
+            "Etiketin yazımını 'yorunge models show --service evren-platform --model OWNER/SLUG "
+            f"--versions{options}' ile kontrol edin; profili ve anahtarı da kontrol edin."
+        )
+    service = getattr(args, "service", None) or "evren-platform"
+    return (
+        "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
+        f"anahtarı kontrol edin ya da 'yorunge models list --service {service}{options}' ile "
+        "arayın."
+    )
 
 
 def _ambiguity_hint(base: str) -> Callable[[YorungeError], str | None]:

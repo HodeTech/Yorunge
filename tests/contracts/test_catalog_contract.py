@@ -15,7 +15,7 @@ from yorunge.domain import catalog
 from yorunge.domain.credentials import SecretValue
 from yorunge.domain.errors import YorungeError
 
-KEY = SecretValue("sk-live-ABCDEFGH12345678")
+KEY = SecretValue("sk-test-not-a-real-key-0001")
 STAMP = "2026-01-01T00:00:00Z"
 
 
@@ -46,16 +46,41 @@ def test_segment_refuses_everything_else_before_any_request(value) -> None:
     assert raise_code(catalog.segment, value) == "invalid_request"
 
 
-def test_version_tag_is_length_and_control_bounded_only() -> None:
+def test_version_tag_is_the_providers_rule_within_its_bound() -> None:
     assert catalog.version_tag("v1.0+build") == "v1.0+build"
+    assert catalog.version_tag("x" * catalog.IDENTITY_LIMIT) == "x" * catalog.IDENTITY_LIMIT
     assert raise_code(catalog.version_tag, "") == "invalid_request"
     assert raise_code(catalog.version_tag, "a\tb") == "invalid_request"
-    assert raise_code(catalog.version_tag, "x" * 129) == "invalid_request"
+    assert raise_code(catalog.version_tag, "x" * (catalog.IDENTITY_LIMIT + 1)) == "invalid_request"
+    # A format character or an edge space is a tag no listing shows as itself.
+    assert raise_code(catalog.version_tag, "v1​") == "invalid_request"
+    assert raise_code(catalog.version_tag, " v1") == "invalid_request"
+
+
+def test_a_listed_tag_of_the_longest_bound_is_selectable() -> None:
+    tag = "t" * catalog.IDENTITY_LIMIT
+    version = catalog.PlatformVersion(
+        version_id="11111111-1111-4111-8111-111111111111",
+        version_tag=tag,
+        framework=None,
+        file_size_bytes=None,
+        created_at="2026-11-01T00:00:00Z",
+        has_weights=True,
+        has_onnx=False,
+        has_tflite=False,
+    )
+    assert catalog.resolve_version((version,), catalog.version_tag(tag)) is version
 
 
 def test_owner_without_a_stored_name_is_not_addressable() -> None:
     assert raise_code(catalog.owner_address, None) == "model_not_addressable"
     assert catalog.owner_address("owner-1") == "owner-1"
+
+
+def test_an_owner_name_outside_the_alphabet_is_a_provider_fault() -> None:
+    # The name comes from the answer: it is never reported as a mistake in what the user typed.
+    for name in ("own er", "owner/x", "ownér", "x" * 129, ""):
+        assert raise_code(catalog.owner_address, name) == "invalid_response", name
 
 
 def test_detail_must_be_the_model_the_address_named() -> None:
@@ -675,7 +700,7 @@ def test_a_count_above_the_exact_json_integer_range_is_refused() -> None:
     ) == ("invalid_response")
 
 
-SPLIT_SECRET = "sk-live-ABCDEFGH12345678"
+SPLIT_SECRET = "sk-test-not-a-real-key-0001"
 
 
 @pytest.mark.parametrize(
@@ -698,3 +723,106 @@ def test_every_entry_point_refuses_a_secret_rebuilt_by_cleaning(entry, body, arg
     split = SPLIT_SECRET[:6] + "\u200b" + SPLIT_SECRET[6:]
     call = getattr(codec, entry)
     assert raise_code(call, jbytes(body(split)), KEY, *args) == "invalid_response"
+
+
+# --- boundaries, classifications and guards (review of 2026-11-21) --------------------------------
+
+
+def test_the_largest_page_size_and_position_are_accepted() -> None:
+    catalog.page_arguments(1, catalog.PLATFORM_MAX_PAGE_SIZE)
+    catalog.page_arguments(catalog.MAX_COUNT, 1)
+    page = codec.platform_models(
+        jbytes({"items": [], "total": 0}), KEY, 1, catalog.PLATFORM_MAX_PAGE_SIZE
+    )
+    assert page.completeness == "complete"
+
+
+def test_a_total_at_the_exact_bound_is_kept_and_one_beyond_is_invalid() -> None:
+    assert catalog.platform_page(1, 20, catalog.MAX_COUNT, 20) == "partial"
+    too_big = catalog.MAX_COUNT + 1
+    assert raise_code(catalog.platform_page, 1, 20, too_big, 20) == "invalid_response"
+    assert raise_code(catalog.dataset_page, 1, 20, 0, ("0",), (str(too_big),)) == (
+        "invalid_response"
+    )
+    assert raise_code(catalog.versions_listing, too_big, 0) == "invalid_response"
+
+
+def test_a_price_beyond_the_exact_range_is_refused() -> None:
+    from pydantic import TypeAdapter, ValidationError
+
+    adapter = TypeAdapter(catalog.Price)
+    assert adapter.validate_python(catalog.MAX_COUNT) == catalog.MAX_COUNT
+    with pytest.raises(ValidationError):
+        adapter.validate_python(catalog.MAX_COUNT + 1)
+
+
+def test_a_model_with_too_many_modalities_is_invalid() -> None:
+    many = ["text"] * (catalog.MODALITY_LIMIT + 1)
+    assert raise_code(codec.llm_listing, jbytes({"data": [llm_item(modalities=many)]}), KEY) == (
+        "invalid_response"
+    )
+
+
+def test_a_lone_surrogate_is_never_an_identifier() -> None:
+    with pytest.raises(ValueError):
+        catalog.plain_identifier("a\ud800b")
+
+
+def test_a_leap_second_is_not_a_stamp() -> None:
+    assert (
+        raise_code(
+            codec.platform_model, jbytes(platform_model(created_at="2026-01-01T00:00:60Z")), KEY
+        )
+        == "invalid_response"
+    )
+
+
+def test_text_turns_vertical_tab_form_feed_and_nel_into_spaces() -> None:
+    assert catalog.text("a\x0bb\x0cc\x85d", 64) == "a b c d"
+
+
+def test_text_checks_its_limit_before_its_value() -> None:
+    assert raise_code(catalog.text, None, 1) == "invalid_response"
+
+
+def test_a_key_split_between_owner_and_slug_is_never_shown() -> None:
+    key = SecretValue("sk-live-abc/defghijk")
+    raw = platform_model(owner_username="sk-live-abc", slug="defghijk")
+    assert raise_code(codec.platform_model, jbytes(raw), key) == "invalid_response"
+
+
+def test_a_key_made_of_digits_is_not_shown_in_a_numeric_field() -> None:
+    key = SecretValue("12345678")
+    assert (
+        raise_code(codec.platform_model, jbytes(platform_model(versions_count=12345678)), key)
+        == "invalid_response"
+    )
+
+
+def test_an_ambiguous_tag_names_its_candidates_to_the_machine_reader() -> None:
+    error = catalog.VersionAmbiguous(
+        (
+            ("v-1", "1.0", "2026-01-01T00:00:00Z"),
+            ("v-2", "1.0", "2026-01-02T00:00:00Z"),
+        )
+    )
+    value = error.envelope()
+    assert value["code"] == "model_ambiguous"
+    assert value["details"] == {
+        "candidates": [
+            {"version_id": "v-1", "version_tag": "1.0", "created_at": "2026-01-01T00:00:00Z"},
+            {"version_id": "v-2", "version_tag": "1.0", "created_at": "2026-01-02T00:00:00Z"},
+        ]
+    }
+
+
+def test_a_paging_header_is_trimmed_only_of_http_spaces() -> None:
+    # A no-break space is not optional whitespace: the value is kept and is then unclear.
+    unclear = (("X-Has-Next", "1 "),)
+    assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, unclear).completeness == (
+        "unknown"
+    )
+    spaced = (("X-Has-Next", " 0\t"),)
+    assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, spaced).completeness == (
+        "complete"
+    )

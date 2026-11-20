@@ -278,7 +278,8 @@ def test_a_version_list_that_disagrees_with_the_detail_count_is_an_invalid_respo
         ("/slug", VERSION_TAG),
         (f"{OWNER}/..", VERSION_TAG),
         (f"{OWNER}/{SLUG}", ""),
-        (f"{OWNER}/{SLUG}", "x" * 129),
+        (f"{OWNER}/{SLUG}", "x" * 257),  # one past the provider's bound
+        (f"{OWNER}/{SLUG}", "v1​"),  # a format character: never a listed tag's own text
     ],
 )
 def test_a_bad_reference_is_refused_before_any_file_or_request(

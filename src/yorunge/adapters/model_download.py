@@ -195,7 +195,8 @@ def download_model_weights_by_tag(
 
     def build() -> tuple[DownloadJob, DownloadResolution]:
         # The version is resolved with the credential the snapshot bound, not a second reading.
-        found = catalog_http.resolve_platform_version(loader, owner, slug, tag, captured=resolved)
+        bound = catalog_http.Captured(resolved, snapshot.context.profile)
+        found = catalog_http.resolve_platform_version(bound, owner, slug, tag)
         model_record, version = found.value
         version_id = _provider_version(version.version_id)
         job = DownloadJob(
@@ -217,13 +218,16 @@ def download_model_weights_by_tag(
             timeout=seconds,
             progress=progress,
         )
-        resolution = DownloadResolution(
-            model_id=model_record.model_id,
-            owner=owner,
-            slug=slug,
-            version_tag=version.version_tag,
-            version_id=version_id,
-        )
+        try:
+            resolution = DownloadResolution(
+                model_id=model_record.model_id,
+                owner=owner,
+                slug=slug,
+                version_tag=version.version_tag,
+                version_id=version_id,
+            )
+        except ValueError:  # a validation failure of the provider's names is an invalid answer
+            raise YorungeError("invalid_response") from None
         return job, resolution
 
     summary: DownloadSummary | None = None

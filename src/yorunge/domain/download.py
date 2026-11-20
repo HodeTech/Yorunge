@@ -146,7 +146,7 @@ class DownloadResolution(Model):
     model_id: Annotated[str, Field(min_length=1, max_length=256)]
     owner: Annotated[str, Field(min_length=1, max_length=256)]
     slug: Annotated[str, Field(min_length=1, max_length=256)]
-    version_tag: Annotated[str, Field(min_length=1, max_length=128)]
+    version_tag: Annotated[str, Field(min_length=1, max_length=256)]  # the provider's tag bound
     version_id: str
 
     @field_validator("model_id", "owner", "slug", "version_tag")

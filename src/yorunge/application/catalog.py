@@ -143,8 +143,20 @@ def _guard(record: BaseModel, secret: SecretValue) -> None:
         item = pending.pop()
         if isinstance(item, str) and literal_secret_match(item, captured):
             raise YorungeError("invalid_response")
+        if isinstance(item, (int, float)) and not isinstance(item, bool):
+            # A numeric field is shown as its digits: a key made of digits must not hide in one.
+            if literal_secret_match(str(item), captured):
+                raise YorungeError("invalid_response")
         if isinstance(item, Mapping):
             if any(isinstance(key, str) and literal_secret_match(key, captured) for key in item):
+                raise YorungeError("invalid_response")
+            owner, slug = item.get("owner_username"), item.get("slug")
+            # The address is shown as ``owner/slug``: a key split between the two must not show.
+            if (
+                isinstance(owner, str)
+                and isinstance(slug, str)
+                and literal_secret_match(f"{owner}/{slug}", captured)
+            ):
                 raise YorungeError("invalid_response")
             pending.extend(item.values())
         elif isinstance(item, (list, tuple)):
@@ -210,8 +222,9 @@ def _validate(kind: type[T], data: object) -> T:
 
 def _header_values(headers: Sequence[tuple[str, str]], name: str) -> tuple[str, ...]:
     """Every value of one header, names compared without case; the caller decides what a count
-    other than one means."""
-    return tuple(value.strip() for key, value in headers if key.lower() == name)
+    other than one means. Only the HTTP optional whitespace (space and tab) is trimmed: any other
+    character stays, so a value that is not exactly the contract's value is not made to match it."""
+    return tuple(value.strip(" \t") for key, value in headers if key.lower() == name)
 
 
 def _llm_model(raw: object) -> catalog.LlmModel:
