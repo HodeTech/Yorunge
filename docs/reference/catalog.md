@@ -1,6 +1,6 @@
 # Katalog sözleşmesi (P02-4c)
 
-**Durum:** Uygulandı (P02-4c): domain ve dar codec, çevrimdışı contract testleriyle. Ağ okuma (P02-4d), CLI yüzeyi (P02-4e) ve seçim bağı (P02-4f) ayrı adımlardır. **Karar kaynağı:** [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) (Accepted, 2026-11-19). **Kod:** [domain/catalog.py](../../src/yorunge/domain/catalog.py), [application/catalog.py](../../src/yorunge/application/catalog.py); testler `tests/contracts/test_catalog_contract.py`.
+**Durum:** P02-4c–f uygulandı; [PR #18](https://github.com/HodeTech/Yorunge/pull/18) development’a açık, birleştirme kullanıcıda. Domain ve dar codec (P02-4c) çevrimdışı contract testleriyle; ağ okuma (P02-4d), CLI yüzeyi (P02-4e) ve seçim bağı (P02-4f) aşağıdaki bölümlerde. Canlı kabul kısmidir (aşağıda K4). **Karar kaynağı:** [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) (Accepted, 2026-11-19). **Kod:** [domain/catalog.py](../../src/yorunge/domain/catalog.py), [application/catalog.py](../../src/yorunge/application/catalog.py); testler `tests/contracts/test_catalog_contract.py`.
 
 ## Kapsam
 
@@ -30,7 +30,7 @@ Zaman damgaları RFC 3339 tarih-saat biçimindedir: saat dilimi (`Z` veya `±HH:
 
 Sağlayıcı metinleri güvenilmez metindir. Ad, açıklama, lisans, mimari, modalite, aşama, görünürlük, biçim, para birimi, fiyat tarihi, LLM `precision` ve `modalities` çözümlenirken temizlenir: kontrol ve çift yönlü geçersiz kılma karakterleri düşer, satır sonu ve sekme boşluk olur, uzunluk sınırı aşılırsa sonda `…` bulunur. Sınırlar: ad ve biçim alanları 128, açıklama 512 gösterim karakteri.
 
-Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez; temizlenmiş bir kimlik başka bir modele dönüşebilir. Satır sonu benzeri Unicode ayraçlar (U+2028, U+2029) boşluğa çevrilir. Kimlik ham tutulur, yalnız görüntülenirken temizlenir ve görüntüden alınan değer hiçbir zaman argüman olarak kullanılmaz.
+Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez; temizlenmiş bir kimlik başka bir modele dönüşebilir. Kimlik ham tutulur; görüntüde (yalnız gösterim) satır ayracı benzeri karakterler boşluğa çevrilir. Bu görüntü temizliği kimliği değiştirmez: kimlik zaten ayraç içeremez (yukarıdaki kural), ve görüntüden alınan değer hiçbir zaman argüman olarak kullanılmaz.
 
 ## Adres alfabesi
 
@@ -38,15 +38,17 @@ Kimlikler (`id`, `slug`, `owner_username`, `version_tag`, LLM `id`) temizlenmez;
 
 API’den gelen ve bu alfabeye uymayan kimlikler listede temizlenmiş metin olarak gösterilir; onlarla `show` veya `download` yapılamaz. Bu bilinçli bir sınırdır. Sağlayıcının `id`’si 128 karakterden uzunsa veya bu alfabenin dışındaysa, detay ve liste yine gösterilir; ama bu kimlikle sürüm listesi (`--versions`) ve sürüm çözümü yolu kurulamadığı için `invalid_response` verir ve tek bir sürüm çözülmez.
 
-`version_tag` URL’ye girmez; yalnız istemci tarafında tam eşleşmede kullanılır. Kurallar: 1–128 karakter ve kontrol karakteri yok.
+`version_tag` URL’ye girmez; yalnız istemci tarafında tam eşleşmede kullanılır. Kurallar: 1–256 karakter (sağlayıcının sınırı) ve düz tanımlayıcı (kontrol, biçim ve satır ayracı yok, kenar boşluğu yok). Listelenen her etiket seçilebilir.
 
 ## Sayfa kuralları
 
-Platform modelleri: istek `1 ≤ page ≤ 2^53−1` ve `1 ≤ page_size ≤ 100` ile gönderilir; aralık dışı değer ağ isteğinden önce `invalid_request` olur (varsayılan 20; üst sınır K4 ile teyit edilecek). Yanıtta `total` negatif olmayan tam sayı olmalıdır. Döndürülen kayıt sayısı `n`, şu değere eşit olmalıdır:
+Platform modelleri: istek `1 ≤ page ≤ 2^53−1` ve `1 ≤ page_size ≤ 100` ile gönderilir; aralık dışı değer ağ isteğinden önce `invalid_request` olur (varsayılan 20; 100 üstü sayfa boyutu canlıda denenmedi, K4 kalan sınırıdır). Yanıtta `total` negatif olmayan tam sayı olmalıdır. Döndürülen kayıt sayısı `n`, şu değere eşit olmalıdır:
 
 `n = max(0, min(page_size, total - (page - 1) * page_size))`
 
 Eşit değilse `invalid_response` (sunucu sayfa boyutunu sessizce düşürmüş olabilir). `has_next = page * page_size < total`.
+
+**Sınır (bilinen, sözleşme düzeyinde).** Platform model sayfası yanıtı etkin sayfa boyutunu bildirmez. Sayfa 1’de sessiz küçültme toplam ve satır sayısı tutarsızlığıyla yakalanır. Sayfa 2 ve sonrasında ise sunucu boyutu küçültüp son sayfanın sayısı istenen boyutla çakışırsa sayfa `last_page` görünür, oysa bir sonraki sayfa olabilir. Bu durum tespit edilemez; K4 kalan sınırları arasındadır.
 
 Tamlık etiketleri:
 
@@ -77,11 +79,11 @@ Sürüm listesinde sayfalama yoktur: detay yanıtındaki `versions_count` dizi u
 | `model_task_mismatch` | 2 | model beklenen görevle eşleşmiyor |
 | `model_not_addressable` | 2 | modelin sahip adı yok; `owner/slug` ile adreslenemez |
 
-Mevcut `invalid_request`, `invalid_response` ve `remote_access_denied` kodları değişmez. Çıkış sınıflaması ADR-0035 Karar 9’dadır; CLI tablosu P02-4e’de güncellenir.
+Mevcut `invalid_request`, `invalid_response` ve `remote_access_denied` kodları değişmez. Çıkış sınıflaması ADR-0035 Karar 9’dadır; CLI tablosu bu dört kodu da içerecek biçimde [CLI sözleşmesinde](cli-contract.md) güncellendi.
 
 ## Bütçeler
 
-Tek yanıt en çok 1 MiB. LLM listesi en çok 500 kayıt; Platform sayfası en çok `page_size` kayıt; sürüm listesi en çok 500 kayıt. Katalog komutu toplamı en çok 30 s; her komut için ağ isteği sayısı sabittir (liste 1; detay 1; sürümlerle detay 2; veri seti listesi 1).
+Tek yanıt en çok 1 MiB. LLM listesi en çok 500 kayıt; Platform sayfası en çok `page_size` kayıt; sürüm listesi en çok 500 kayıt. Katalog komutu toplamı en çok 30 s; her komut için ağ isteği sayısı sabittir: Platform liste 1; model detayı 1; detay ve sürümler 2; `model_id` ile sürüm listesi 1; etiketle çözüm en çok 2 (detay ve sürümler); LLM liste 1; LLM model 1; veri seti listesi 1.
 
 ## Uç noktalar ve taşıma (P02-4d)
 
@@ -93,7 +95,7 @@ Her komut, tek seçilmiş profilin (`--config`/`--profile` veya aktif profil) hi
 | Model detayı | `GET models/{owner}/{slug}` (+ `GET models/{id}/versions`) | `--versions` ile iki istek; detay sahibi ve slug’ı istenenle eşleşmelidir |
 | Sürüm listesi (kimlikle) | `GET models/{id}/versions` | tamlık `unknown` (detay yok) |
 | Sürüm çözümü | detay + `GET models/{id}/versions` | `versions_count` eşitliği zorunlu; tam bir sürüm |
-| Veri seti listesi | `GET datasets?page&page_size&scope=owned` | başlık tabanlı tamlık; `scope` etiketi K4’e kadar `unknown` |
+| Veri seti listesi | `GET datasets?page&page_size&scope=owned` | başlık tabanlı tamlık; `scope` etiketi `unknown` (döndürülen kapsam doğrulanmadı) |
 | LLM listesi | `GET models` | tek yanıt; tamlık `unknown` |
 | LLM modeli | `GET models/{model_id}` | görev kontrolü isteğe bağlı |
 
@@ -109,11 +111,11 @@ Metin çıktısı her cevapta okunan hesap profilini (`Hesap profili`) ve pencer
 
 ## Komut yüzeyi (P02-4e)
 
-- `models list --service evren-llm --task T` süzmesi istemci tarafındadır ve isteği değiştirmez. Metin başlığı `görev süzmesi: T` yazar. JSON'da `data.task_filter` aynı değeri taşır; sağlayıcı listesi boşsa süzme kaydedilmez ve `task_filter` `null` olur. Tamlık etiketi süzmeyle değişmez (`unknown` kalır).
+- `models list --service evren-llm --task T` süzmesi istemci tarafındadır ve isteği değiştirmez. Metin başlığı `görev süzmesi: T` yazar. JSON'da `data.data.task_filter` (okuma sarmalayıcısının `data` alanının içinde) aynı değeri taşır; sağlayıcı listesi boşsa süzme kaydedilmez ve `task_filter` `null` olur. Tamlık etiketi süzmeyle değişmez (`unknown` kalır).
 - Öneri satırları (`Sonraki sayfa`, sahip adı olmayan modeller için kimlik yolu, sürüm indirme ipucu, katalog hata ipuçları), çağıranın verdiği `--config` ve `--profile` seçeneklerini aynen tekrarlar; öneri aynı hesabı okur.
 - `models download --model OWNER/SLUG --version-tag TAG` (P02-4f) sürüm kimliğini bu başvurudaki çözüm kurallarıyla alır; sıra, kilit, bütçe ve çıktı [indirme referansındadır](download-engine.md#katalogdan-seçimle-indirme-p02-4f).
 - Geçersiz argümanlar hiçbir istek gönderilmeden çıkış 2 ve `invalid_request` ile döner: `page_size` 1–100, `page` 1 ile 2^53−1 arası; `--page`/`--page-size` yalnız Platform listesinde; `--task` yalnız LLM'de (listede süzme, gösterimde beklenen görev); görev 1–64 karakter, denetim ya da biçim karakteri içermez ve baştan veya sondan boşluk taşımaz. `show`: `--model` yalnız Platform'da ve `OWNER/SLUG` biçiminde; `--model-id` Platform'da yalnız `--versions` ile, LLM'de tek başına; `--model` ile `--model-id` birlikte verilmez; `--versions` yalnız Platform'da.
 
 ## Canlı teyit (K4)
 
-2026-11-19 salt okuma kaydı ([kanıt](../research/p02-4-catalog-live-read-20261119.md)): `page_size=100` kabul edildi; veri seti başlığı `X-Has-Next` `0`/`1` olarak geliyor; veri seti `scope=owned` filtresinin etkisi bu hesapta gözlenemedi (etiket `unknown` kalır); LLM kimlikleri alfabeye uygun; LLM görevleri `decision` ve `guard` değerlerini de içeriyor. Hâlâ teyit bekleyenler: platform sayfasında 100'ün üstü, `model_id` ile sürüm listesi (hesapta model yok), sürüm çözümü ve büyük `model_card` alanının 1 MiB sınırına etkisi.
+2026-11-19 salt okuma kaydı ([kanıt](../research/p02-4-catalog-live-read-20261119.md)): `page_size=100` kabul edildi; veri seti başlığı `X-Has-Next` `0`/`1` olarak geliyor; veri seti `scope=owned` filtresinin etkisi bu hesapta gözlenemedi (etiket `unknown` kalır); LLM kimlikleri alfabeye uygun; LLM görevleri `decision` ve `guard` değerlerini de içeriyor. Hâlâ teyit bekleyenler: platform sayfasında 100'ün üstü, `model_id` ile sürüm listesi (bu anahtara görünür Platform modeli yok; hesap düzeyinde bir yokluk iddiası değildir), sürüm çözümü ve büyük `model_card` alanının 1 MiB sınırına etkisi.

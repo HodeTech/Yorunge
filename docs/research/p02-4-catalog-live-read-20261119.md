@@ -1,6 +1,6 @@
 # P02-4 katalog canlı salt okuma kaydı (2026-11-19)
 
-**Durum:** Kanıt kaydı (K4). **Kapsam:** yalnız salt okuma GET; yazma, indirme, ücretli çağrı ve veri değişikliği yok. **Hesap:** yerel pilot profili; kimlik, ad, adres ve anahtar değerleri bu kayda girmez. **Kaynak:** [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) K4, [katalog başvurusu](../reference/catalog.md). Ham yanıt gövdeleri ve kimlikler bu depoda tutulmaz.
+**Durum:** Kanıt kaydı (K4). **Kapsam:** yalnız salt okuma GET; yazma, indirme, ücretli çağrı ve veri değişikliği yok. **Hesap:** yerel pilot profili; kimlik, ad, adres ve anahtar değerleri bu kayda girmez. **Kaynak:** [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) K4, [katalog başvurusu](../reference/catalog.md). Ham yanıt gövdeleri ve kimlikler bu depoda tutulmaz. Bu kayıt anlatısaldır: ham yanıt ve çalıştırma betiği arşivlenmedi, sayılar betik çıktısının özetidir; kayıt tarihinde ham receipt tutulmadı.
 
 ## Yöntem ve bütçe
 
@@ -15,7 +15,7 @@
 | LLM listesi | `models` | — | tamam; 15 model |
 | LLM modeli | `models/{id}` | — | tamam; görev `ocr` |
 
-Platform modeli ayrıntısı, sürüm listesi ve sürüm indirmesi bu hesapta **test edilemedi**: hesapta platform modeli yok (toplam 0). Sürüm kimliğiyle indirme için kullanıcı tarafından bir sürüm kimliği ve ek yetki verilmedi (K5); o kabul "yapılmadı" olarak kalır.
+Platform modeli ayrıntısı, sürüm listesi ve sürüm indirmesi bu hesapta **test edilemedi**: bu anahtara görünür Platform modeli yok (toplam 0); bu, hesap düzeyinde bir yokluk iddiası değildir. Sürüm kimliğiyle indirme için kullanıcı tarafından bir sürüm kimliği ve ek yetki verilmedi (K5); o kabul "yapılmadı" olarak kalır.
 
 ## Gözlemler
 
@@ -30,7 +30,7 @@ Platform modeli ayrıntısı, sürüm listesi ve sürüm indirmesi bu hesapta **
 
 ## Ne kanıtlanmadı
 
-- Platform model listesi, sürüm listesi (`model_id` yolu) ve sürüm çözümü: hesapta model yok, bu yüzden kanıt üretilemedi.
+- Platform model listesi, sürüm listesi (`model_id` yolu) ve sürüm çözümü: bu anahtara görünür model yok, bu yüzden kanıt üretilemedi.
 - Platform sayfasında 100'ün üstü, `page` üst sınırı ve büyük `model_card` alanıyla 1 MiB sınırı.
 - Kapsam filtresinin etkisi (bu hesapta ayırt edilemedi).
 - Kullanıcı yetkisi, erişim kapsamı ve "bu anahtara görünen" kümenin tamlığı: LLM listesi tamlığı `unknown` olarak kalır.

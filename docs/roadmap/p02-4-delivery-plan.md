@@ -1,6 +1,6 @@
 # P02-4 — Katalog, sabit referans ve seçilmiş ağırlık teslim planı
 
-**Tarih:** 2026-11-19. **Durum:** Teslim edildi — [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`development` hedefi; birleştirme kullanıcıda). Her adım iki fresh review turundan geçti; K5 canlı indirme yapılmadı. Hazırlık belge turlarının bulguları da işlendi; [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted (2026-11-19). ADR dışındaki kararlar aşağıdaki tabloda önerilerle uygulanır (kullanıcı talimatı). **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
+**Tarih:** 2026-11-19; son güncelleme 2026-11-21. **Durum:** PR açık — [PR #18](https://github.com/HodeTech/Yorunge/pull/18) (`development` hedefi; birleştirme kullanıcıda). Her adım iki fresh review turundan geçti; 2026-11-21 incelemesinin doğrulanmış bulguları düzeltildi; K4 kısmi; K5 canlı indirme yapılmadı. Hazırlık belge turlarının bulguları da işlendi; [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted (2026-11-19). ADR dışındaki kararlar aşağıdaki tabloda önerilerle uygulanır (kullanıcı talimatı). **Dal:** `feat/p02-4-catalog-and-selection`, `origin/development` `1a36c8d` tabanı. Tek development PR; Master ve release kullanıcıdadır.
 
 ## Kullanıcı sonucu
 
@@ -116,17 +116,24 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 
 - **P02-4c (sözleşme):** Her tüketilen alan için olumlu ve negatif oracle; zorunlu alan eksikliği, tip yanlışlığı, duplicate key, NaN, sınır aşımı; tamlık formülü (`(p-1)*s + n >= t`) ve başlık durumları; belirsiz ve sıfır sonuçlu çözüm; `owner_username` null; `.`/`..` ve alfabe dışı segment; görev uyuşmazlığı; sanitizasyon; depolama adresi görünmezliği. Fixture’lar resmî şema özetinden türetilir; kişisel veri ve gerçek kimlik içermez.
 - **P02-4d (taşıma):** Loopback TLS sahte Platform ve LLM; yanlış origin, yönlendirme reddi, 401/403/404/408/429/5xx eşlemesi; iki denemenin sınırı; anahtar sızıntı sentinel’i; istek sayımı ve bayt/süre sınırı kanıtı; yanlış hedefe 0 istek.
-- **P02-4e (CLI ve canlı):** Gerçek süreç testleri (yardım, çıktı kipleri, exit kodları, SIGINT, kapalı stdout, eksik `--service`, LLM’de sayfa bayrağı); kurulu wheel smoke’u; K4 kapsamında canlı GET kaydı (sayılar, görev dağılımı, alan kümesi, başlık biçimleri, üst sınır; kimlik ve ad maskeli; [kanıt standardı](../standards/research-evidence.md)).
+- **P02-4e (CLI ve canlı):** Gerçek süreç testleri: kapalı stdout ve yanlış yapılandırmada çıkış kodu (uygulandı); kesilen okumanın iptal eşlemesi in-process (gerçek süreçte canlı istek sırasında SIGINT yok); yardım, çıktı kipleri, eksik `--service` ve LLM’de sayfa bayrağı testlerle; kurulu wheel smoke’u yalnız çevrimdışı ret ve yardımı kapsar (katalog başarı yolu kurulu pakette kanıtsız); K4 canlı GET kaydı kısmi ([kanıt](../research/p02-4-catalog-live-read-20261119.md); [kanıt standardı](../standards/research-evidence.md)).
 - **P02-4f (seçim bağı):** Çözüm başarısızsa ağırlık isteği yok; ağsız yerel ön kontrol hatalarında hiç GET yok; belirsizlikte ağırlık isteği yok; çözülen `version_id` ile tek JSON çağrısı; `--version-id` yolu ve motor davranışı regresyonsuz; farklı çözülen sürümde önceki kısmi içeriğin atıldığı kanıtı; K5 varsa canlı indirme kabulü, yoksa “yapılmadı”.
 - **Kapılar:** Ruff format/lint, strict mypy, hedefli ve tam test paketi, `check-docs.py`, `check-agent-guides.py`, `git diff --check`, build ve temiz kurulum; import/startup değişirse ilgili M5 kapısı. Çalıştırılmayan kontroller açıkça yazılır.
 
 ## Teslim kaydı
 
-Hazırlık aşamasında boş. Adım sonuçları ve PR bilgisi gerçekleştikçe bu belgeye ve kartlara eklenir.
+- **PR:** [PR #18](https://github.com/HodeTech/Yorunge/pull/18) `feat/p02-4-catalog-and-selection` dalından `development`e açık; birleştirme kullanıcıda. Master ve release kullanıcıdadır.
+- **Son commit’ler:** `34492b7` (-12 referans arşivi ve kaydı), `788901b` (görev indeksi durumu), `0bf0753` (2026-11-21 kod incelemesi: sınıflandırma, sınırlar, yanıt durumu, yakalanmış kimlik, ipuçları, testler).
+- **CI:** `34492b7` üzerinde zorunlu kapılar yeşil (offline-core, branch-policy, Linux 3.11 ve 3.14, macOS 3.11; SonarCloud geçti). 2026-11-21 değişiklikleri için CI yeniden koşar; sonuç PR’da izlenir.
+- **Kanıt:** `-12` referans serisi (altı aşama ve koşul kaydı) arşivlendi; beş doğrulayıcı ve genel `verify` geçti. Referans kaynak haritası değişirse seri yeniden alınır.
+- **Kart kabulleri:** P02-4a–f ve P02-R10 kartları kendi kabul bölümlerinde izlenir; bir maddenin karşılanmadığı kartta açıkça yazılır.
+- **K4 (canlı salt okuma):** kısmi. Veri setleri ve LLM okundu; Platform model detayı, sürüm listesi ve `scope=owned` etkisi bu anahtarda görünür model olmadığı için kanıtsız.
+- **K5 (canlı indirme):** yapılmadı; sürüm kimliği ve ek yetki verilmedi.
+- **Açık sınırlar:** (1) Platform sayfa 2 ve sonrasında sessiz sayfa boyutu küçültmesi tespit edilemez ([katalog başvurusu](../reference/catalog.md)); (2) etiket yolunda katalog aşamasında SIGKILL testi yok, motor kimlik testleri aynı kimliği kapsar; (3) kurulu wheel’de katalog başarı yolu yok; (4) etiket yolunda atılan yarım dosya uyarısı yalnız başarılı sonuçta taşınır ([indirme başvurusu](../reference/download-engine.md#katalogdan-seçimle-indirme-p02-4f)).
 
 ## Kaynak referans serisi `-12`
 
-Güncel seri. `-11` kaydı (aşağıda) yalnız `ecced3c` ağacına bağlıdır; `a40520f` ağacında kaynak haritası (`src`, `tests`, `scripts`, `.github`) değiştiği için `-12` gerekiydi. Seri `a40520f` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye ve son pencerede bilinen yoğun işlem sayısı 0 gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-12` ve `p02-3-native12-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
+Güncel seri. `-11` kaydı (aşağıda) yalnız `ecced3c` ağacına bağlıdır; `a40520f` ağacında kaynak haritası (`src`, `tests`, `scripts`, `.github`) değiştiği için `-12` gerekiyordu. Seri `a40520f` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye ve son pencerede bilinen yoğun işlem sayısı 0 gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-12` ve `p02-3-native12-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
 
 ## Kaynak referans serisi `-11` (önceki, yerini `-12`ye bıraktı)
 

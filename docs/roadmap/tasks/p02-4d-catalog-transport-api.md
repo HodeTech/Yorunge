@@ -12,7 +12,7 @@ capabilities: [C01, C05, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Uygulama geliştiricisi `yorunge.api` üzerinden Platform modellerini/sürümlerini/veri setlerini ve LLM model listesini, ağ hatalarında kontrollü sonuçla ve sınırları aşmadan okuyabilir. Bugün katalog için ağ adaptörü ve public API yoktur.
+Uygulama geliştiricisi `yorunge.api` üzerinden Platform modellerini/sürümlerini/veri setlerini ve LLM model listesini, ağ hatalarında kontrollü sonuçla ve sınırları aşmadan okuyabilir. Planlama anında katalog için ağ adaptörü ve public API yoktur.
 
 ## Giren ve girmeyen kapsam
 

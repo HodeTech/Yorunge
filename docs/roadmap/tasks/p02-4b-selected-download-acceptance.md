@@ -38,7 +38,7 @@ Kanonik sınırlar: [indirme motoru sözleşmesi](../../reference/download-engin
 
 ## Doğrulama
 
-P02-4f doğrulamaları ve belge denetimi; tam paket ve kurulu wheel smoke’u ([CONTRIBUTING](../../../CONTRIBUTING.md#doğrulama-seçimi)). Canlı indirme yapılırsa indirilen bayt sayısı, süre ve doğrulama seviyesi kayıtlı olur; dosya yalnız kabul için ayrılmış geçici bir hedefe yazılır ve kabul sonunda silinir.
+P02-4f doğrulamaları ve belge denetimi; tam paket ve kurulu wheel smoke’u (yalnız çevrimdışı ret ve yardım; etiket yolunun kurulu pakette canlı kanıtı yoktur; [CONTRIBUTING](../../../CONTRIBUTING.md#doğrulama-seçimi)). Canlı indirme yapılırsa indirilen bayt sayısı, süre ve doğrulama seviyesi kayıtlı olur; dosya yalnız kabul için ayrılmış geçici bir hedefe yazılır ve kabul sonunda silinir.
 
 ## Teslim kaydı
 

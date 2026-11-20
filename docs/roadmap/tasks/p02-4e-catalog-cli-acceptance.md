@@ -12,7 +12,7 @@ capabilities: [C03, C05, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı bir komutla Platform modellerini veya LLM modellerini tek sayfa görür, bir modeli açar ve sürüm etiketlerini ile biçimlerini öğrenir. Bugün bu komutlar yok; kullanıcı kimlikleri başka yerden kopyalamak zorundadır. Seçilen sürümün indirilmesi [P02-4f](p02-4f-selected-download-binding.md) kapsamındadır.
+Kullanıcı bir komutla Platform modellerini veya LLM modellerini tek sayfa görür, bir modeli açar ve sürüm etiketlerini ile biçimlerini öğrenir. Planlama anında bu komutlar yoktu; kullanıcı kimlikleri başka yerden kopyalamak zorundadır. Seçilen sürümün indirilmesi [P02-4f](p02-4f-selected-download-binding.md) kapsamındadır.
 
 ## Giren ve girmeyen kapsam
 
@@ -39,7 +39,7 @@ Kullanıcı bir komutla Platform modellerini veya LLM modellerini tek sayfa gör
 - Metin çıktısında her değer temizlenmiş ve sınırlandırılmıştır; JSON/NDJSON her kaydı ayrı satırda ve saf biçimde verir.
 - Liste çıktısı en çok bir sayfadır; tamlık `complete`, `partial`, `last_page` veya `unknown` olarak gösterilir; `partial` ve `last_page` için sonraki sayfa komutu verilir. Sessiz kırpma yok.
 - Boş sonuç metni: “bu anahtara görünmüyor (kesin yokluk değil)”. “Yok” veya “kaldırıldı” denmez.
-- `--non-interactive` ve non-TTY çalışmada prompt yoktur; SIGINT ve kapalı stdout temiz çıkar.
+- `--non-interactive` ve non-TTY çalışmada prompt yoktur; kapalı stdout temiz çıkar (süreç testi); kesilen okuma iptal olarak eşlenir (in-process). Gerçek süreçte canlı istek sırasında SIGINT bu turda kapsanmadı (sınır).
 - Yardım ve yerel komutlar katalog modülünü ve ağ kütüphanesini yüklemez (tembel yükleme).
 - Yardım görev örneklerini yalnız örnek olarak verir; sıralama veya öneri yoktur. `owner_username` null modeller için yardım `--model-id --versions` yolunu gösterir.
 
@@ -52,14 +52,14 @@ Kullanıcı bir komutla Platform modellerini veya LLM modellerini tek sayfa gör
 5. Hata ve çıkış kodları ADR-0035 Karar 9 ile uyumlu: 401/403 çıkış 3, invalid_response ve `model_not_visible` çıkış 1, diğer yeni kodlar çıkış 2; sır ve ham gövde hiçbir çıktıda yoktur.
 6. Parser: `--project` ve `--state-dir` reddedilir; `--config`/`--profile` kabul edilir; LLM’de `--page` reddedilir (süreç testleri).
 7. JSON/NDJSON: stdout yalnız makine çıktısıdır; stderr’de ilerleme yalnız TTY’de vardır.
-8. Gerçek süreç testleri: yardım, her çıktı kipi, eksik `--service`, alfabe dışı argüman, `.`/`..`, geçersiz sayfa, SIGINT, kapalı stdout.
-9. Kurulu wheel smoke’u temiz bir ortamda `models list` ve `models show` komutlarını ağsız hata yolu ve loopback sunucuyla çalıştırır.
+8. Gerçek süreç testleri: kapalı stdout ve yanlış yapılandırmada çıkış (uygulandı); yardım, çıktı kipleri, eksik `--service`, alfabe dışı argüman, `.`/`..`, geçersiz sayfa ve kesilen okuma eşlemesi in-process testlerle. Gerçek süreçte canlı istek sırasında SIGINT sınırdır.
+9. Kurulu wheel smoke’u temiz bir ortamda `models list` ve `models show` komutlarını ağsız hata yolu ile çalıştırır (çevrimdışı ret ve yardım). Loopback ile başarılı katalog okuması kurulu pakette bu turda kapsanmadı; sınır olarak açıkça kayıtlıdır.
 10. Canlı (K4): Platform modelleri (liste, detay, `model_id` ile sürümler), veri setleri ve LLM listesi/detayı için GET kaydı; istek sayısı ≤20; yazma yok. Kayıt şunları teyit eder ya da “doğrulanmadı” der: okunan alanların canlı örnekte bulunması, sayfa üst sınırı, sunucunun sayfa boyutunu düşürme davranışı, `X-Has-Next`/`X-Total-Count` biçimi, `scope` etkisi (scope’lu ve scope’suz sonuç farkı), LLM kimlik alfabesi, en büyük gerçek sayfanın boyutu (1 MiB sınırına göre).
 11. Startup: katalog kodu import grafiğine yalnız tembel girerse yeniden ölçüm gerekmez; değişirse [startup kapısı](../../standards/performance.md) çalıştırılır.
 
 ## Doğrulama
 
-CLI ve API için integration/süreç testleri, parser testleri, kurulu wheel smoke’u, Ruff, strict mypy, `check-docs.py`, `check-agent-guides.py`. Canlı kayıt ayrı bir kanıt dosyasında tutulur ve kabul raporuna bağlanır.
+CLI ve API için integration/süreç testleri, parser testleri, kurulu wheel smoke’u (yukarıdaki sınırla), Ruff, strict mypy, `check-docs.py`, `check-agent-guides.py`. Canlı kayıt ayrı bir kanıt dosyasında tutulur ve kabul raporuna bağlanır.
 
 ## Teslim kaydı
 

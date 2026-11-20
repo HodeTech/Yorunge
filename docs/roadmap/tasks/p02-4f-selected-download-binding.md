@@ -12,7 +12,7 @@ capabilities: [C03, C05, C13]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-Kullanıcı `owner/slug` ve sürüm etiketiyle bir model sürümünü seçip ağırlığını indirir; indirmeden önce hangi kimliğin çözüldüğünü görür. Bugün yalnız `--version-id` kabul edilir ([P02-3n](p02-3n-model-weights-consumer.md)).
+Kullanıcı `owner/slug` ve sürüm etiketiyle bir model sürümünü seçip ağırlığını indirir; indirmeden önce hangi kimliğin çözüldüğünü görür. Planlama anında yalnız `--version-id` kabul edilirdi ([P02-3n](p02-3n-model-weights-consumer.md)).
 
 ## Giren ve girmeyen kapsam
 
@@ -37,7 +37,7 @@ Kullanıcı `owner/slug` ve sürüm etiketiyle bir model sürümünü seçip ağ
 
 **Stage ve kimlik gerçeği** ([download-engine](../../reference/download-engine.md)): stage, sidecar ve kilit adları hedef adının hash’inden türer; aynı hedefte farklı bir sürüm `identity_key` uyuşmazlığı verir ve mevcut kurala göre yarım içerik atılır, temiz başlanır. Bu bir üzerine yazma değil, yeni indirmedir ve kullanıcıya açıkça söylenir.
 
-**Motor ayrıştırması.** Bugün `open_sink` yerel kararı tek adımda verir ve kilit, JSON çağrısı dahil motorun callback’i boyunca tutulur. Ön kontroller (2. adım) ile kimlik kararı (4. adım) arasında çözüm çağrılarını koruyacak şekilde ayrıştırma gerekir; kilit kapsamı değişmez. Ayrıştırma P02-3l/3m’de kanıtlanmış davranışları (hedef yarışı, sidecar, kilit, resume kararı) bozmaz; mevcut kill ve resume test matrisi değişmeden geçer.
+**Motor ayrıştırması.** Planlama anında `open_sink` yerel kararı tek adımda verir ve kilit, JSON çağrısı dahil motorun callback’i boyunca tutulur. Ön kontroller (2. adım) ile kimlik kararı (4. adım) arasında çözüm çağrılarını koruyacak şekilde ayrıştırma gerekir; kilit kapsamı değişmez. Ayrıştırma P02-3l/3m’de kanıtlanmış davranışları (hedef yarışı, sidecar, kilit, resume kararı) bozmaz; mevcut kill ve resume test matrisi değişmeden geçer.
 
 **Ödünleşme:** `--model` yolunda `identity_key` sürüm kimliğini taşıdığı için tam stage olsa bile ağsız yayım yapılamaz; kimlik doğrulaması için katalog okuması gerekir. Bu sınır referansa ve yardıma yazılır; `--version-id` yolundaki ağsız tam-stage yayımı değişmez.
 
@@ -56,12 +56,12 @@ Kullanıcı `owner/slug` ve sürüm etiketiyle bir model sürümünü seçip ağ
 4. Çözülen `version_id` ile tek JSON çağrısı; `--version-id` ve `--model` birlikte verilirse argüman hatası ve ağ isteği yok.
 5. `--version-id` yolu ve motor davranışı regresyonsuz; mevcut kill ve resume testleri değişmeden geçer; tam stage’de ağsız yayım bu yolda hâlâ geçerlidir.
 6. Çözülen kimlik çıktıda ve yardımda görünür; sürüm etiketi ile kimlik farkı açıklanır.
-7. Farklı çözülen sürüm: aynı hedefte önceki kısmi içerik kurala göre atılır ve yeni indirme başlar; kill ve resume testi bu geçişi kapsar; üzerine yazma olmadığı kanıtlanır.
+7. Farklı çözülen sürüm: aynı hedefte önceki kısmi içerik kurala göre atılır ve yeni indirme başlar; kill ve resume testleri aynı kimlik ve motor yolunu kapsar; etiket yolunun katalog aşamasında ayrı SIGKILL testi bu turda eklenmedi (sınır); üzerine yazma olmadığı kanıtlanır.
 8. Canlı (K5): sürüm kimliği kullanıcı tarafından verilmediği için bu kartta yapılmaz; kabul “yapılmadı” olarak kaydedilir. Kullanıcı sürüm kimliği verirse ayrı tek indirme kabulü yapılır (JSON çağrısı + kimliksiz imzalı GET, seviye, bayt, süre); dosya yalnız geçici kabul hedefinde tutulur ve kabul sonunda silinir.
 
 ## Doğrulama
 
-Integration testleri (loopback TLS, istek sayımı), süreç testleri, kill/resume matrisi (motor ayrıştırmasının regresyonu), kilit eşzamanlılık testi, kurulu wheel smoke’u, Ruff, strict mypy, `check-docs.py`. Native ölçüm bu kartta yoktur.
+Integration testleri (loopback TLS, istek sayımı), süreç testleri, kill/resume matrisi (motor ayrıştırmasının regresyonu), kilit eşzamanlılık testi, kurulu wheel smoke’u (yukarıdaki sınırla), Ruff, strict mypy, `check-docs.py`. Native ölçüm bu kartta yoktur.
 
 ## Teslim kaydı
 

@@ -65,7 +65,7 @@ Kaynaklar ve bilinen sınırlar (yerel keşif OpenAPI özeti ve repodaki kanıtl
 8. **Codec ve gizli tarama (K9 — dar tüketici).** Katalog yanıtı, `decode_response` kuralını değiştirmeden **dar bir tüketici** ile çözülür. Desen [ADR-0022](0022-observed-platform-consumer-contract.md)’nin Platform gözlem sözleşmesinden alınır:
    - Tüketilen alanlar (P02-4c’de listelenir) tip ve zorunluluk açısından sıkı doğrulanır; `null` yalnız şemanın nullable dediği yerde kabul edilir.
    - Tüketilmeyen alanlar yok sayılır ve hiçbir çıktıya girmez.
-   - Ham yanıtın tüm ağacında seçili anahtar için literal-secret taraması yapılır (`scan_for_secret`); tüketilen dizeler ayrıca `check_response_secrets` ile denetlenir.
+   - Ham yanıtın tüm ağacında seçili anahtar için literal-secret taraması yapılır (`scan_for_secret`); bitmiş kayıt ayrıca denetlenir (`_guard`): metin, sayısal alan ve `owner/slug` birleşimi dahil (2026-11-21 düzeltmesi).
    - Dış DTO’lar kapalıdır (`extra=forbid`).
    - ADR-0022’nin “aynı istisna verilmez” hükmü yetki ve yazma tüketicilerini kapsar; katalog salt okumadır, yetki veya yazma kararı üretmez. Gizli tarama ve dış DTO kapalılığı korunduğu için istisna genişlemesi değildir.
    - Alternatif K9-B (kapalı tam şekil) reddedildi: tek gözlemle tam şekil bilinmiyor, serbest nesne alanları repo kuralıyla çelişiyor ve yeni alan tüm listeyi durdurur.
@@ -91,4 +91,16 @@ Kaynaklar ve bilinen sınırlar (yerel keşif OpenAPI özeti ve repodaki kanıtl
 - Dört yeni kararlı hata kodu eklenir (Karar 9).
 - Motor sırasının ayrıştırılması ve kilit kapsamının korunması P02-4f’de ayrı regresyon kanıtı gerektirir.
 - Dataset baytı indirme ve upload’ın uzak byte sınırı değişmez ([P02-R5](../roadmap/tasks/p02-r5-dataset-item-byte-access.md)).
-- Canlı K4 okuması (2026-11-19, [kanıt](../research/p02-4-catalog-live-read-20261119.md)) veri seti başlığını `0`/`1` olarak düzeltti ve kapsam filtresinin etkisini bu hesapta gözlemleyemedi. Teyit bekleyen maddeler: sayfa üst sınırı, sunucunun sayfa boyutunu düşürme davranışı, `X-Has-Next`/`X-Total-Count` biçimi, `scope` filtresinin etkisi, LLM kimlik alfabesi, en büyük gerçek sayfanın boyutu (1 MiB sınırı).
+- Canlı K4 okuması (2026-11-19, [kanıt](../research/p02-4-catalog-live-read-20261119.md)) veri seti başlığını `0`/`1` olarak düzeltti ve kapsam filtresinin etkisini bu hesapta gözlemleyemedi. Kalan sınırlar (2026-11-21 itibarıyla): 100 üstü sayfa boyutu canlıda denenmedi; sunucunun sayfa boyutunu düşürme davranışı Platform model sayfasında gözlenemez (aşağıdaki düzeltme); `scope` filtresinin etkisi bu hesapta ayırt edilemedi; en büyük gerçek sayfanın boyutu (1 MiB sınırı) ölçülmedi. `X-Has-Next`/`X-Total-Count` biçimi ve LLM kimlik alfabesi K4’te doğrulandı.
+
+## Düzeltme (2026-11-21)
+
+Kabul edilmiş karar değişmedi; aşağıdakiler P02-4 kod ve belge incelemesinin doğrulanmış bulgularıyla uygulamaya ve belgeye hizalandı.
+
+- **Sağlayıcı verisi:** sahip adı alfabe dışındaysa `invalid_response` (kullanıcı hatası değil); ayrıca `provider_segment` kullanılır.
+- **Sürüm etiketi:** kullanıcının verdiği etiket sağlayıcının kuralındadır (düz tanımlayıcı, 1–256 karakter). Böylece listelenen her etiket seçilebilir; 128 sınırı kaldırıldı.
+- **Sayı sınırları:** toplamlar ve sayaçlar en çok 2^53−1; fiyat üst sınırlı; modalite en çok 32; sürrogat ve artık saniye kabul edilmez.
+- **Sır denetimi:** sayısal alanlar ve `owner/slug` birleşimi de taranır. Sabit alan adları ile anahtarlar da `_guard` kapsamındadır; `check_response_secrets` çağrılmaz.
+- **Yakalanmış kimlik bilgisi:** anlık görüntü hizmetini ve profil adını taşır; katalog okuması ikinci bir yapılandırma okumasına bağlı değildir.
+- **Yanıt durumu:** yalnız 200 başarılı kabul edilir; 202, 203, 204 ve 206 `invalid_response` olur.
+- **Bilinen sınır (sözleşme düzeyinde):** Platform model sayfası etkin sayfa boyutunu bildirmez. Sayfa 2 ve sonrasında sunucunun boyutu sessizce küçültüp son sayfa sayısını çakıştırması tespit edilemez; sayfa 1 bu durumu yakalar.

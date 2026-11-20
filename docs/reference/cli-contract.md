@@ -28,7 +28,7 @@
 | `yorunge models list --service evren-platform\|evren-llm [--page N] [--page-size M] [--task TASK]` | Salt okuma; Platform modelleri (tek sayfa, `complete`/`partial`/`last_page`/`unknown` tamlığı) ya da LLM modelleri (`--task` istemci tarafı süzme; JSON'da `data.task_filter`); profil ve gözlem penceresi gösterilir; [katalog sözleşmesi](catalog.md) (P02-4e) |
 | `yorunge models show --service evren-platform --model OWNER/SLUG [--versions]` ve `--service evren-platform --model-id UUID --versions` | Salt okuma; model detayı ve sürüm listesi; sahip adı olmayan model yalnız kimlikle, yalnız sürüm listesi (P02-4e) |
 | `yorunge models show --service evren-llm --model-id ID [--task TASK]` | Salt okuma; LLM modeli; `--task` beklenenle eşleşmezse `model_task_mismatch` (P02-4e) |
-| `yorunge datasets list [--page N] [--page-size M]` | Salt okuma; veri setleri sayfası; başlık tabanlı tamlık; kapsam etiketi K4 teyidine kadar teyit edilmemiş (P02-4e) |
+| `yorunge datasets list [--page N] [--page-size M]` | Salt okuma; veri setleri sayfası; başlık tabanlı tamlık; kapsam etiketi doğrulanmamış (P02-4e) |
 | `yorunge train plan` | `plan prepare --task llm.train` ile aynı kullanım senaryosu |
 | `yorunge plan show --plan FILE` | Kaydedilmiş **Plan nesnesini** doğrular; güncel config okunmaz |
 
@@ -167,6 +167,10 @@ Bu bölüm **uygulanan kapalı kod/mesaj/exit kataloğudur; P01-5b review ve kab
 | request_cancelled | 6 | Yerel çağrı/izleme SIGINT ile bırakıldı; rollback veya uzak iş cancellation başarısı değildir |
 | output_closed | 6 | Stdout alıcısı kapandı; retry/ikinci write yok, stderr best-effort |
 | output_write_failed | 1 | BrokenPipe dışı stdout I/O hatası; başarılı kalıcı iş değişmez |
+| model_not_visible | 1 | Katalog: model veya sürüm bu anahtara görünmüyor (model-scoped 404); kesin yokluk değildir |
+| model_ambiguous | 2 | Aynı etiketle birden çok sürüm; seçim yapılmaz; en çok 5 aday (metinde ve JSON `details.candidates` içinde) |
+| model_task_mismatch | 2 | LLM modeli beklenen görevle eşleşmiyor |
+| model_not_addressable | 2 | Modelin sahip adı yok; `owner/slug` ile adreslenemez |
 
 Dispatch sırasında API sınırından taşan yerel `OSError` veya `UnicodeError`, mevcut `file_unreadable`/2 ile kontrollü raporlanır; stdout susturulmaz ve bu hata çıktı teslim hatası sayılmaz. `output_closed`/`output_write_failed` eşlemesi renderer yazım/serileştirme sınırına aittir. API’nin daha özel kontrollü hataları ve yan etki belirsizliği önceliği korunur.
 

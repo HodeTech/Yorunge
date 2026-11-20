@@ -29,7 +29,7 @@ Kanonik katalog sınırı `docs/reference/catalog.md` dosyasıdır (P02-4c ile y
 ## Kabul
 
 1. Alt kartlar P02-4c, 4d, 4e `verified` ve her biri iki fresh review turuyla kapanmış.
-2. Çevrimdışı kabul: sahte sunucularla sayfalama, çözüm, sınırlar, sızıntı ve sanitizasyon negatifleri geçer; kurulu wheel smoke’u geçer.
+2. Çevrimdışı kabul: sahte sunucularla sayfalama, çözüm, sınırlar, sızıntı ve sanitizasyon negatifleri geçer; kurulu wheel smoke’u (çevrimdışı ret ve yardım) geçer; kurulu pakette başarılı katalog okuması bu turda kapsanmadı (sınır).
 3. Canlı kabul (K4): Platform modelleri, veri setleri ve LLM listesi/detayı için salt okuma GET kaydı; alan kümesi, sayfa üst sınırı ve başlıklar teyit edilir. Yapılmadıysa “yapılmadı” kaydı ve doğrulanmayan uçlar açıkça yazılır.
 4. LLM alt kabulü: P02-5’in model/görev doğrulaması için gereken `ModelInfo` alanları kanıtlı; P02-5 bu alt kabulü ön koşul olarak okur. Canlı kabul yoksa alt kabul “canlı doğrulanmadı” ile işaretlenir.
 5. Belge: [C05](../../capability-matrix.md) satırı, [katalog modülü](../../modules/catalog-models.md), [CLI sözleşmesi](../../reference/cli-contract.md), [current](../current.md) ve [faz satırı](../phase-02-data-and-inference.md) gerçek durumla eşleşir.

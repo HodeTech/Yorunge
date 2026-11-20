@@ -1,6 +1,6 @@
 # Katalog ve modeller modülü
 
-**Durum:** P02-4 [PR #18](https://github.com/HodeTech/Yorunge/pull/18) ile development’a teslim edildi ([plan](../roadmap/p02-4-delivery-plan.md); [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted, 2026-11-19). K4 canlı salt okuma kabul; K5 canlı indirme yapılmadı. **Kapsam:** C05. **Faz:** P02/P03.
+**Durum:** P02-4 [PR #18](https://github.com/HodeTech/Yorunge/pull/18) ile development’a açık (birleştirme kullanıcıda) ([plan](../roadmap/p02-4-delivery-plan.md); [ADR-0035](../decisions/0035-catalog-reads-fixed-references-and-selection.md) Accepted, 2026-11-19). K4 canlı salt okuma kısmi (Platform model ve sürüm yolları kanıtsız); K5 canlı indirme yapılmadı. **Kapsam:** C05. **Faz:** P02/P03.
 
 Model/veri araması, sahip/slug/UUID çözümleme, model görevi ve sürüm metadata'sı bu modüldedir. Modelin hesapta görünmesi ile belirli iş/parametreyi desteklemesi farklı sonuçlardır.
 

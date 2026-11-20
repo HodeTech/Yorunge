@@ -12,11 +12,11 @@ capabilities: [C01, C02]
 
 ## Kullanıcı sonucu ve mevcut eksik
 
-`yorunge context discover --service evren-llm`, şartlar kabul edilmemişse text çıktısında yalnız "Sunucunun şart durumu: kabul edilmemiş (sürüm N)" der (`discovery_text_result`, [cli/__init__.py](../../../src/yorunge/cli/__init__.py)). Kullanıcıya bunun ne anlama geldiğini ve Yörünge'nin şart kabul etmediğini söylemez. [Kullanıcı yolculuğu 1](../../user-journeys.md) sonucun "düzeltilecek tek sonraki adımı" göstermesini ister. JSON/NDJSON'da `terms_not_accepted` nedeni zaten vardır; eksik olan insan okuyan metindir.
+`yorunge context discover --service evren-llm`, şartlar kabul edilmemişse text çıktısında yalnız "Sunucunun şart durumu: kabul edilmemiş (sürüm N)" der (`discovery_text_result`, [cli/__init__.py](../../../src/yorunge/cli/__init__.py)). Kullanıcıya bunun ne anlama geldiğini ve Yörünge'nin şart kabul etmediğini söylemez. Bu kart, kabul yolu doğrulanmadığı için kullanıcıya yapılacak tek bir eylem söylemez; yalnız durumu ve Yörünge'nin kabul etmediğini bildirir. [Kullanıcı yolculuğu 1](../../user-journeys.md) sonucun "düzeltilecek tek sonraki adımı" göstermesini ister. JSON/NDJSON'da `terms_not_accepted` nedeni zaten vardır; eksik olan insan okuyan metindir.
 
 ## Giren ve girmeyen kapsam
 
-Girer: `terms.accepted=false` iken **text** çıktısına tek satırlık sabit, **gözlem** biçiminde yönlendirme. Önerilen metin: "Sunucu şartları kabul edilmemiş bildiriyor. Yörünge şart kabul etmez; karar kendi EVREN hesabınızda size aittir." (kesin metin review'de kapanır). Satır bir zorunluluk veya erişim sonucu iddia etmez. `accepted=true` iken satır yoktur. [Context discovery referansı](../../reference/context-discovery.md) ve text çıktı testi güncellenir.
+Girer: `terms.accepted=false` iken **text** çıktısına tek satırlık sabit, **gözlem** biçiminde yönlendirme. Uygulanan metin (`TERMS_NOT_ACCEPTED_GUIDANCE`, bayt bayt pinli): "Sunucu, şartların kabul edilmediğini bildiriyor. Yörünge şartları sizin adınıza kabul etmez." İlk taslaktaki "EVREN hesabınızda" ifadesi kullanılmadı: hesap yerine geçen bir yer iddiası kanıtlanmamıştı. Satır bir zorunluluk veya erişim sonucu iddia etmez. `accepted=true` iken satır yoktur. [Context discovery referansı](../../reference/context-discovery.md) ve text çıktı testi güncellenir.
 
 Girmez: JSON/NDJSON alanı veya neden kümesi değişikliği; `doc_path`/URL gösterme ya da takip; şart metnini gösterme ([B17](../backlog.md) kararıdır); şart kabulü; yönlendirmeye komut, URL veya sürüm-kabul örneği ekleme; diğer hizmet çıktıları.
 

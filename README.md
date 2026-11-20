@@ -16,7 +16,7 @@ Veri setleri, modeller, çıkarım, eğitim, kaynaklar ve sonuçlar arasında da
 |---|---|
 | **Hesap ve proje** | **Var:** yerel profil/doctor ve EVREN hizmetlerinden salt okuma gözlemleri. Doğrulanmış uzak kimlik/yetki çözümlemesi ayrı iş. |
 | **Veri setleri** | **Var:** yerel envanter, manifest ve içerik doğrulama; farklı içerikli dosyalar için onaylı private yükleme ve aynı işi salt okumayla inceleme ([kabul durumu](docs/roadmap/current.md)). **Development’a teslim edildi (PR #15; canlı kabul yok):** kesintiden sonra kanıtlı, yeni onaylı devam (`datasets upload resume`), kesin model sürümü ağırlığı indirme (`models download`) ve salt okuma veri sürümü referansı (`datasets versions`) ([P02-3 planı](docs/roadmap/p02-3-delivery-plan.md)); dataset baytı indirme sağlayıcı erişimine bağlı. |
-| **Modeller ve çıkarım** | **Planlandı:** model kataloğu, LLM metin/akış, embedding, rerank ve görsel çıkarım. |
+| **Modeller ve çıkarım** | **Kısmi ([PR #18](https://github.com/HodeTech/Yorunge/pull/18), development’a açık):** salt okunur model kataloğu ve etiketle indirme; K4 kısmi, K5 canlı indirme yapılmadı. **Planlandı:** LLM metin/akış, embedding, rerank ve görsel çıkarım. |
 | **Eğitim ve araçlar** | **Var:** yerel plan hazırlığı. **Planlandı:** yönetilen EVREN eğitimi, varsayılan ForgeLM ve seçilebilir araç adaptörleri. |
 | **Kaynaklar ve sonuçlar** | **Var:** yerel iş geçmişi. **Planlandı:** GPU/kota görünürlüğü, uzak iş izleme ve sonuç toplama. |
 
