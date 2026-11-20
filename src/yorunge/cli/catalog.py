@@ -386,7 +386,7 @@ def _versions(listing: object, slug: str | None, address: str | None, options: s
         heading = (
             "Sürümler, model kimliğiyle ("
             + COMPLETENESS[listing.completeness]
-            + "; sahip adı olmadığı için etiketle çözüm yapılmaz):"
+            + "; bu yolda sahip adı bilinmediği için etiketle çözüm yapılmaz):"
         )
     lines = [f"  {heading}"]
     if not listing.versions:
@@ -462,8 +462,8 @@ def _llm_model(model: object) -> list[str]:
     else:
         price = model.pricing
         lines.append(
-            f"  fiyat: girdi {price.prompt_token_price} / çıktı {price.completion_token_price} "
-            f"{_s(price.currency) if price.currency is not None else ''}; ücretsiz tarih: "
+            f"  fiyat: girdi {price.prompt_token_price} / çıktı {price.completion_token_price}"
+            f"{' ' + _s(price.currency) if price.currency is not None else ''}; ücretsiz tarih: "
             f"{_s(price.free_until) if price.free_until is not None else 'yok'} "
             "(bilgi; maliyet kapısı değildir)"
         )

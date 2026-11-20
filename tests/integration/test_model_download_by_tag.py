@@ -221,6 +221,21 @@ def test_a_partial_of_another_version_is_dropped_and_the_result_says_so(
 # --- refusals: no request, no file -----------------------------------------------------------
 
 
+def test_a_catalog_refusal_keeps_another_versions_partial_exactly_as_it_was(
+    workspace, certificates, monkeypatch
+):
+    leave_partial_of_another_version(certificates, workspace)
+    with tag_rig(
+        certificates, workspace, monkeypatch, listing=reply([version_record(tag="2.0")])
+    ) as rig:
+        before = rig.names()
+        assert before  # the other version's partial is really there
+        assert code_of(lambda: rig.call_tag()) == "model_not_visible"
+        # The refusal came before anything was dropped: no warning is owed, nothing is removed.
+        assert rig.names() == before
+    assert rig.json_calls() == []
+
+
 def test_a_missing_tag_is_not_visible_and_nothing_is_downloaded(
     workspace, certificates, monkeypatch
 ):

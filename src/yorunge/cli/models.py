@@ -343,7 +343,12 @@ def _ambiguity_hint(base: str) -> Callable[[YorungeError], str | None]:
             f"  kimlik {identity}  etiket {tag}  tarih {created}"
             for identity, tag, created in found
         ]
-        return "\n".join([base, "Adaylar (seçim yapılmadı):", *rows])
+        total = int(getattr(error, "total", len(found)))
+        heading = (
+            f"Adaylar (seçim yapılmadı; {total} sürüm bu etiketi taşıyor, "
+            f"en çok {len(found)} gösterilir):"
+        )
+        return "\n".join([base, heading, *rows])
 
     return hint
 

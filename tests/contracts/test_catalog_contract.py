@@ -804,15 +804,17 @@ def test_an_ambiguous_tag_names_its_candidates_to_the_machine_reader() -> None:
         (
             ("v-1", "1.0", "2026-01-01T00:00:00Z"),
             ("v-2", "1.0", "2026-01-02T00:00:00Z"),
-        )
+        ),
+        7,
     )
     value = error.envelope()
     assert value["code"] == "model_ambiguous"
     assert value["details"] == {
+        "total": 7,
         "candidates": [
             {"version_id": "v-1", "version_tag": "1.0", "created_at": "2026-01-01T00:00:00Z"},
             {"version_id": "v-2", "version_tag": "1.0", "created_at": "2026-01-02T00:00:00Z"},
-        ]
+        ],
     }
 
 
@@ -825,4 +827,13 @@ def test_a_paging_header_is_trimmed_only_of_http_spaces() -> None:
     spaced = (("X-Has-Next", " 0\t"),)
     assert codec.platform_datasets(jbytes([dataset_row()]), KEY, 1, 20, spaced).completeness == (
         "complete"
+    )
+
+
+def test_a_version_list_of_the_bound_length_is_complete_and_one_more_is_unclear() -> None:
+    assert catalog.versions_listing(catalog.MAX_VERSION_ROWS, catalog.MAX_VERSION_ROWS) == (
+        "complete"
+    )
+    assert catalog.versions_listing(catalog.MAX_VERSION_ROWS + 1, catalog.MAX_VERSION_ROWS) == (
+        "unknown"
     )

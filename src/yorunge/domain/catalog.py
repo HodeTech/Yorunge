@@ -243,20 +243,23 @@ class VersionAmbiguous(YorungeError):
     """More than one version carries the tag: the few candidates are shown, none is chosen.
 
     Each candidate is ``(identity, tag, creation time)``; there are at most ``MAX_CANDIDATES``.
+    ``total`` is how many versions carry the tag, so that a reader knows how many were not shown.
     """
 
-    def __init__(self, found: tuple[tuple[str, str, str], ...]) -> None:
+    def __init__(self, found: tuple[tuple[str, str, str], ...], total: int) -> None:
         super().__init__("model_ambiguous")
         self.candidates = found
+        self.total = total
 
     def envelope(self) -> dict[str, object]:
         # The machine reader needs the candidates too, not only the text hint.
         value = super().envelope()
         value["details"] = {
+            "total": self.total,
             "candidates": [
                 {"version_id": identity, "version_tag": tag, "created_at": created}
                 for identity, tag, created in self.candidates
-            ]
+            ],
         }
         return value
 
@@ -272,7 +275,8 @@ def resolve_version(versions: Sequence[VersionT], tag: str) -> VersionT:
             tuple(
                 (item.version_id, item.version_tag, item.created_at)
                 for item in candidates(versions, tag)
-            )
+            ),
+            len(matches),
         )
     return matches[0]
 

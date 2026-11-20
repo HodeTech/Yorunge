@@ -13,7 +13,7 @@ Sağlayıcı yanıtının okunmayan alanları yok sayılır ve hiçbir çıktıy
 | Kaynak | Okunan alanlar | Zorunlu | Not |
 |---|---|---|---|
 | LLM `GET /v1/models` | `data` (dizi, en çok 500) | evet | sayfalama yok; tamlık `unknown` |
-| LLM `ModelInfo` | `id`, `task` (1–64 karakter, denetim karakteri yok), `created` zorunlu; `modalities`, `context_length`, `default_max_output_tokens`, `precision`, `pricing` | `id`, `task`, `created` | `task` açık dize; kimlik ve görev ham tutulur |
+| LLM `ModelInfo` | `id`, `task` (sağlayıcı değeri: düz tanımlayıcı, en çok 256; kullanıcının `--task` argümanı 1–64), `created` zorunlu; `modalities`, `context_length`, `default_max_output_tokens`, `precision`, `pricing` | `id`, `task`, `created` | `task` açık dize; kimlik ve görev ham tutulur |
 | LLM `pricing` | `prompt_token_price`, `completion_token_price` (zorunlu, 0 veya üstü); `currency`, `free_until` | zorunlu iki fiyat | `free_until` yalnız bilgidir, maliyet kapısı değildir |
 | Platform `GET /models` | `items`, `total` | evet | sayfa kuralı aşağıda |
 | Platform `Model` (liste/detay) | `id`, `slug`, `name`, `modality`, `stage`, `visibility`, `versions_count`, `created_at`, `updated_at` zorunlu; `owner_username`, `description`, `license`, `architecture` | yukarıdakiler | `owner_username` null olabilir |
