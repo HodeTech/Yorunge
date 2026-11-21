@@ -1,6 +1,6 @@
 # Yakın iş kartları
 
-**Güncellendi:** 2026-11-12. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur; tablo tamamlanmış (`verified`) kartları da bulunabilir kılar, güncel durum her kartın `status` alanındadır. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
+**Güncellendi:** 2026-11-19. Kartlar yalnız yaklaşan veya gerçekten başlanmış işler için oluşturulur; tablo tamamlanmış (`verified`) kartları da bulunabilir kılar, güncel durum her kartın `status` alanındadır. Planlama sözleşmesi [roadmap indeksindedir](../README.md#hazır-iş-paketi).
 
 | Kart | Sonuç |
 |---|---|
@@ -56,11 +56,17 @@
 | [P02-R7](p02-r7-persist-provider-denials.md) | Kesin sağlayıcı retlerinin kalıcı `rejected` makbuzu; ADR-0031 incelemesinde bulunan belge–kod boşluğu |
 | [P02-R8](p02-r8-forget-unused-upload-plans.md) | Operation’sız upload planlarını unutma (kota yeniden kazanımı); continuation’ın N dosyayı yeniden saymasının açık sahibi |
 | [P02-R9](p02-r9-network-diagnosis-and-trust-paths.md) | Kullanıcıya dönük ağ/TLS tanısı ve açık kurumsal CA/proxy yolu; kullanıcı kararı (B16) ve ADR kapılı |
-| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart |
+| [P02-R10](p02-r10-llm-terms-guidance.md) | LLM şart durumu `kabul edilmemiş` iken tek satır yönlendirme (kabul etmez, URL/komut yok); karar gerektirmeyen küçük kart ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4a](p02-4a-catalog-acceptance.md) | Sayfalı veri/model kataloğu üst kabulü (P02-4c–e) ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)); [teslim planı](../p02-4-delivery-plan.md) |
+| [P02-4b](p02-4b-selected-download-acceptance.md) | Katalog çözümlü seçimin ağırlık indirmesine bağlanması üst kabulü (P02-4f) ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)); K5 canlı indirme yapılmadı |
+| [P02-4c](p02-4c-catalog-contract.md) | Katalog tipleri, kapalı codec’ler, tamlık/çözüm/görev kuralları ve kanonik referans ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4d](p02-4d-catalog-transport-api.md) | Katalog GET taşıması, tek sayfa sınırları ve Python API ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4e](p02-4e-catalog-cli-acceptance.md) | `models list/show`, `datasets list`, CLI yüzeyi ve canlı salt okuma kabulü ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
+| [P02-4f](p02-4f-selected-download-binding.md) | `models download --model/--version-tag` çözüm bağı ([PR #18](https://github.com/HodeTech/Yorunge/pull/18)) |
 | [P02-3a](p02-3a-upload-resume-acceptance.md) | Etkili resume üst kabulü (ADR-0031 Accepted); adımlar d–i, r ve t–y |
 | [P02-3b](p02-3b-download-acceptance.md) | Ortak indirme üst kabulü (ADR-0032 Accepted); adımlar j–o |
 | [P02-3c](p02-3c-dataset-version-acceptance.md) | Veri sürümü referansı üst kabulü (ADR-0033 Accepted); adımlar p–q |
-| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3z](p02-3z-download-evidence-installation-ci.md) | P02-3 adım kartları: [resume d–i, r, t–y, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o ve z, sürüm p–q; ADR’ler Accepted; yirmi üç kartın hepsi `verified` (her biri iki fresh review turu ve tam paketle kapandı), üst kartlar P02-3a–c `in_review` |
+| [P02-3d](p02-3d-stage-graph-spec.md)–[P02-3z](p02-3z-download-evidence-installation-ci.md) | P02-3 adım kartları: [resume d–i, r, t–y, ortak yayıncı s](../p02-3-delivery-plan.md#adımlar-ve-review-döngüsü), indirme j–o ve z, sürüm p–q; ADR’ler Accepted; yirmi üç kartın her biri iki fresh review turu ve tam paketle kapandı; üst kartlar P02-3a–c kabul kartlarıdır |
 
 [Kalan P01 paketi](../p01-remaining-delivery-plan.md), P01-5a/b ve P01-6b’yi tek epik PR’ına bağlar; [kabul kaydı](../../research/p01-remaining-implementation-validation.md#adr-0019-ve-sonar-son-kaynak-ci-kapanışı) test/review/kurulum/performans kanıtının kaynağıdır.
 

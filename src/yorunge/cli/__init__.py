@@ -13,6 +13,15 @@ from yorunge.cli.output import OutputRenderer, write_utf8
 
 if TYPE_CHECKING:
     from yorunge.domain.capabilities import CachedCapabilityView
+    from yorunge.domain.catalog import (
+        CatalogReading,
+        DatasetPage,
+        LlmListing,
+        LlmModel,
+        PlatformModelDetail,
+        PlatformModelPage,
+        VersionListing,
+    )
     from yorunge.domain.configuration import ConfigUpdate, DoctorReport, ProfilesView
     from yorunge.domain.credentials import CredentialCheck, CredentialObservation
     from yorunge.domain.dataset_manifest import DatasetInspection, DatasetVerification
@@ -79,6 +88,12 @@ if TYPE_CHECKING:
         | Result[ForgottenExecutionPlan]
         | Result[JobsPage]
         | Result[JobView]
+        | Result[CatalogReading[PlatformModelPage]]
+        | Result[CatalogReading[PlatformModelDetail]]
+        | Result[CatalogReading[VersionListing]]
+        | Result[CatalogReading[LlmListing]]
+        | Result[CatalogReading[LlmModel]]
+        | Result[CatalogReading[DatasetPage]]
     )
 
 
@@ -188,7 +203,7 @@ def parser() -> Parser:
     )
     add(
         "models",
-        "Model sürümü ağırlığı indir (kesin sürüm kimliğiyle, ezmeden, doğrulama seviyesi görünür)",
+        "Model kataloğunu oku ve model sürümü ağırlığı indir (ezmez; doğrulama seviyesi görünür)",
         _models_options,
     )
     return root
@@ -223,6 +238,10 @@ def _datasets_options(datasets: Parser) -> None:
     from yorunge.cli.versions import configure as configure_versions
 
     versions._configure = configure_versions
+
+    from yorunge.cli.catalog import configure_datasets
+
+    configure_datasets(actions)
 
 
 def _models_options(models: Parser) -> None:
@@ -307,14 +326,22 @@ def _check_singletons(args: argparse.Namespace, arguments: Sequence[str]) -> Non
         from yorunge.cli.versions import SINGLETONS as VERSION_SINGLETONS
 
         _reject_duplicates(arguments, VERSION_SINGLETONS)
+    elif args.command == "datasets" and args.action == "list":
+        from yorunge.cli.catalog import LIST_SINGLETONS, PROFILE_SINGLETONS
+
+        # The same output switches the other catalog commands refuse twice: one value, not the last.
+        _reject_duplicates(
+            arguments, PROFILE_SINGLETONS | LIST_SINGLETONS | {"--output", "--non-interactive"}
+        )
     elif args.command == "datasets":
         _reject_duplicates(
             arguments, {"--manifest-out", "--manifest", "--output", "--non-interactive"}
         )
     elif args.command == "models":
+        from yorunge.cli.catalog import SINGLETONS as CATALOG_SINGLETONS
         from yorunge.cli.models import SINGLETONS as MODEL_SINGLETONS
 
-        _reject_duplicates(arguments, MODEL_SINGLETONS)
+        _reject_duplicates(arguments, MODEL_SINGLETONS | CATALOG_SINGLETONS)
 
 
 def _context_options(context: Parser) -> None:
@@ -447,6 +474,14 @@ def jobs_text_result(data: Model) -> str:
     raise TypeError("unsupported jobs result type")
 
 
+# P02-R10: the one line a person needs when the server reports unaccepted terms. It says what the
+# server reports and what Yörünge does not do; it states no obligation, no loss of access, and no
+# command, URL or acceptance path.
+TERMS_NOT_ACCEPTED_GUIDANCE = (
+    "Sunucu, şartların kabul edilmediğini bildiriyor. Yörünge şartları sizin adınıza kabul etmez."
+)
+
+
 def discovery_text_result(data: Model) -> str:
     from yorunge.domain.discovery import ContextDiscovery
     from yorunge.domain.platform_discovery import PlatformContextDiscovery
@@ -476,6 +511,7 @@ def discovery_text_result(data: Model) -> str:
     lines = [
         f"Hizmet: {data.service_id}\nProfil: {data.profile}",
         f"Sunucunun şart durumu: {terms} (sürüm {data.terms.current_version})",
+        *((TERMS_NOT_ACCEPTED_GUIDANCE,) if not data.terms.accepted else ()),
         "Kimlik doğrulaması: doğrulanmadı. Uzak hesap/proje kimliği sunulmuyor.",
         "Bu gözlem yürütme izni vermez; uzak atomik snapshot değildir.",
     ]
@@ -484,7 +520,13 @@ def discovery_text_result(data: Model) -> str:
     return "\n".join(lines)
 
 
-def _result_text(args: argparse.Namespace, data: Model) -> str:
+def _result_text(args: argparse.Namespace, data: Model, warnings: tuple[str, ...] = ()) -> str:
+    from yorunge.domain.catalog import CatalogReading
+
+    if isinstance(data, CatalogReading):
+        from yorunge.cli.catalog import catalog_text, options_suffix
+
+        return catalog_text(data, options_suffix(args))
     if args.command == "datasets":
         if args.action == "upload":
             from yorunge.cli.upload import text
@@ -500,7 +542,7 @@ def _result_text(args: argparse.Namespace, data: Model) -> str:
     if args.command == "models":
         from yorunge.cli.models import text as models_text
 
-        return models_text(data)
+        return models_text(data, warnings)
     if args.command == "context" and args.action == "discover":
         return discovery_text_result(data)
     return text_result(data)
@@ -803,7 +845,9 @@ def _render_result(args: argparse.Namespace, renderer: OutputRenderer, result: C
             renderer = OutputRenderer(
                 renderer.output, operation_id=operation_id(result.data), upload_guidance=True
             )
-        text = _result_text(args, result.data) if renderer.output == "text" else None
+        text = (
+            _result_text(args, result.data, result.warnings) if renderer.output == "text" else None
+        )
         renderer.result(cast("Result[Model]", result), text=text)
         return 0
     except YorungeError as error:
@@ -880,6 +924,10 @@ def context_result(args: argparse.Namespace) -> CliResult:
 def datasets_result(args: argparse.Namespace) -> CliResult:
     from yorunge import api
 
+    if args.action == "list":
+        from yorunge.cli.catalog import dispatch_datasets
+
+        return dispatch_datasets(args)
     if args.action == "upload":
         from yorunge.cli.upload import dispatch as upload_result
 

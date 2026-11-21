@@ -101,6 +101,18 @@ printf 'xyz' > "$demo_dir/source/a.txt"
 
 Python karşılıkları `api.inspect_dataset(Path(root), manifest_out=Path(target))` ve `api.verify_dataset(Path(root), manifest=Path(target))` çağrılarıdır. Inspect normal dosyaların ad/byte/hash envanterini root dışındaki yeni, 0600 manifest dosyasına kaydeder; mevcut hedefi ezmez. Parent mevcut olmalıdır. İki işlem text/JSON/NDJSON küçük özeti verir; bütün dosya listesi yalnız artifact’tadır. Gizli dosyalar dahil edilir; symlink/özel dosya, Unicode/case ad çakışması ve desteklenmeyen adlar reddedilir. Python Unicode sürümü sonuçta görünür; yeni sürüm yeni çakışmaları reddedebilir. Verify bütün içerikleri yeniden hash’ler; boş dizin farkı içerik uyuşmazlığı değildir. Sonuç veri formatı, ML uygunluğu, atomik snapshot veya upload/yürütme izni değildir. Manifest adlar/hash’ler içerebilir; paylaşırken koru. [Sınırlar, iptal ve hata/exit sözleşmesi](../reference/dataset-manifest.md).
 
+## Katalog okuma (salt okuma)
+
+Platform ve LLM kataloğu yalnız okunur: durum, indirme ya da yazma yapılmaz. Anahtar, profilin ortam değişkeninden okunur ve yalnız ilgili GET'in başlığında gider.
+
+```sh
+.venv/bin/yorunge models list --service evren-platform --config PROFIL.toml
+.venv/bin/yorunge models show --service evren-platform --model OWNER/SLUG --versions --config PROFIL.toml
+.venv/bin/yorunge models download --model OWNER/SLUG --version-tag ETIKET --format onnx --weights-out DOSYA --config PROFIL.toml
+```
+
+Liste ve gösterim durum dizini gerektirmez. İndirme için önce `yorunge state init` ile durum dizinini hazırlayın. Ayrıntı: [katalog başvurusu](catalog.md) ve [indirme motoru](download-engine.md#katalogdan-seçimle-indirme-p02-4f).
+
 ## Yerel iş geçmişi
 
 ```sh

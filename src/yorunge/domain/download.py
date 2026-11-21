@@ -136,6 +136,32 @@ class DownloadSource(Model):
         return provider_uuid(value)
 
 
+class DownloadResolution(Model):
+    """What a catalog reference resolved to, observed when the download was asked by tag (P02-4f).
+
+    The names are the catalog's own text and are shown, never used as an address: the version
+    identifier in ``DownloadSource`` is the only thing the download acts on.
+    """
+
+    model_id: Annotated[str, Field(min_length=1, max_length=256)]
+    owner: Annotated[str, Field(min_length=1, max_length=256)]
+    slug: Annotated[str, Field(min_length=1, max_length=256)]
+    version_tag: Annotated[str, Field(min_length=1, max_length=256)]  # the provider's tag bound
+    version_id: str
+
+    @field_validator("model_id", "owner", "slug", "version_tag")
+    @classmethod
+    def plain_text(cls, value: str) -> str:
+        from yorunge.domain.catalog import plain_identifier  # imported where a resolution is made
+
+        return plain_identifier(value)  # the catalog's own rule: no control, format or edge space
+
+    @field_validator("version_id")
+    @classmethod
+    def canonical_identifier(cls, value: str) -> str:
+        return provider_uuid(value)
+
+
 class DownloadSummary(Model):
     schema_version: Literal[1]
     kind: Literal["download_summary"]
@@ -147,6 +173,11 @@ class DownloadSummary(Model):
     resumed: bool
     resumed_from_bytes: ByteCount
     source: DownloadSource
+    # Set only when the version was resolved from the catalog (``--model`` and ``--version-tag``);
+    # absent otherwise, so that a download by version identifier keeps its result unchanged.
+    resolution: DownloadResolution | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @field_validator("output_path")
     @classmethod
@@ -170,6 +201,8 @@ class DownloadSummary(Model):
                 raise ValueError("a resumed download resumes from part of its bytes")
         elif self.resumed_from_bytes != 0:
             raise ValueError("a download that did not resume resumed from nothing")
+        if self.resolution is not None and self.resolution.version_id != self.source.version_id:
+            raise ValueError("the resolved version is the version that was downloaded")
         return self
 
 

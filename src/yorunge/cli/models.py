@@ -24,6 +24,8 @@ SINGLETONS = {
     "--config",
     "--profile",
     "--version-id",
+    "--model",
+    "--version-tag",
     "--format",
     "--fold",
     "--sha256",
@@ -90,11 +92,27 @@ def configure(models: Parser) -> None:
     )
     command.add_argument(
         "--version-id",
-        required=True,
+        default=None,
         help=(
             "Kesin model sürümü kimliği (UUID). Platform arayüzündeki model sürümü sayfasından "
-            "alın; ad ya da slug çözülmez ve ilk sürüm seçilmez."
+            "alın; ad ya da slug çözülmez ve ilk sürüm seçilmez. --model ile birlikte verilemez."
         ),
+    )
+    command.add_argument(
+        "--model",
+        metavar="OWNER/SLUG",
+        default=None,
+        help=(
+            "Model OWNER/SLUG; --version-tag ile birlikte verilir. Sürüm katalogdan çözülür: "
+            "etiketi tam eşleşen tek sürüm kullanılır, en son ya da varsayılan sürüm seçilmez. "
+            "Sahip adı olmayan modeller için --version-id kullanın."
+        ),
+    )
+    command.add_argument(
+        "--version-tag",
+        metavar="TAG",
+        default=None,
+        help="Sürüm etiketi (tam eşleşme); --model ile birlikte verilir",
     )
     command.add_argument(
         "--format",
@@ -149,31 +167,50 @@ def configure(models: Parser) -> None:
         "hedef oluşturulmaz. Önkoşullar: 'yorunge state init' ile hazırlanmış durum dizini, bir "
         "Platform profili ve anahtarın env değişkeni (varsayılan profilde "
         "EVREN_PLATFORM_API_KEY). Anahtar argüman değildir; kayıtlı Platform hizmetinin anahtarı "
-        "yalnız sürüm adresini almak için kullanılır, dosya imzalı adresten anahtarsız indirilir."
+        "sürüm adresini almak için kullanılır (etiketle seçimde ayrıca sürüm kataloğunu okumak "
+        "için); dosya imzalı adresten anahtarsız indirilir. Etiketle seçimde (--model, "
+        "--version-tag) sürüm katalogdan tek tam eşleşmeyle çözülür; bu yolda tam bir stage bile "
+        "katalog okunmadan yayımlanmaz."
     )
+    from yorunge.cli.catalog import configure_models as configure_catalog
+
+    configure_catalog(actions)
 
 
 def dispatch(args: argparse.Namespace) -> CliResult:
     from yorunge import api
     from yorunge.cli import reject_context
 
+    if args.action in ("list", "show"):
+        from yorunge.cli.catalog import dispatch_models
+
+        return dispatch_models(args)
+    from yorunge.domain.errors import YorungeError
+
     reject_context(args, ("project",))  # a weights download has no project; none is dropped quietly
+    if selection_refused(args):
+        # One way to name the version, given whole: an id, or an owner/slug with its tag. Refused
+        # before any file, state or request.
+        raise YorungeError("invalid_request")
     options = vars(args)
     progress = ProgressText(sys.stderr) if options.get("output", "text") == "text" else None
+    shared = {
+        "artifact_format": args.artifact_format,
+        "weights_out": args.weights_out,
+        "fold": args.fold,
+        "sha256": args.sha256,
+        "timeout": args.timeout,
+        "no_resume": args.no_resume,
+        "config": options.get("config"),
+        "profile": options.get("profile"),
+        "state_dir": options.get("state_dir"),
+        "progress": progress if progress is not None and progress.enabled else None,
+    }
+    by_id = args.version_id is not None
     try:
-        return api.download_model_weights(
-            args.version_id,
-            artifact_format=args.artifact_format,
-            weights_out=args.weights_out,
-            fold=args.fold,
-            sha256=args.sha256,
-            timeout=args.timeout,
-            no_resume=args.no_resume,
-            config=options.get("config"),
-            profile=options.get("profile"),
-            state_dir=options.get("state_dir"),
-            progress=progress if progress is not None and progress.enabled else None,
-        )
+        if by_id:
+            return api.download_model_weights(args.version_id, **shared)
+        return api.download_model_weights_by_tag(args.model, args.version_tag, **shared)
     finally:
         if progress is not None:
             progress.close()
@@ -209,8 +246,55 @@ def _mismatch_hint(error: YorungeError) -> str | None:
     )
 
 
+# Each suggested command ends in ``{options}``: the profile and config the person gave, so that the
+# command reads the same account as the one that failed.
+SELECTION_HINT = (
+    "Sürümü ya --version-id ile ya da --model OWNER/SLUG ve --version-tag birlikte verin; ikisi "
+    "birden ya da yalnız biri verilemez."
+)
+
+
+def selection_refused(args: argparse.Namespace) -> bool:
+    """Whether a download names its version in neither way, in both, or half of the tag way."""
+    if getattr(args, "action", None) != "download":
+        return False  # catalog reads name their models in their own ways
+    by_id = getattr(args, "version_id", None) is not None
+    model = getattr(args, "model", None)
+    tag = getattr(args, "version_tag", None)
+    by_tag = model is not None or tag is not None
+    return by_id == by_tag or (by_tag and (model is None or tag is None))
+
+
+STATE_HINT = (
+    "Yerel durum hazır değilse 'yorunge state init' ile hazırlayın; hazırsa sahiplik ve bütünlük "
+    "denetimini çalıştırın."
+)
+LIST_ARGUMENTS_HINT = (
+    "Sayfa 1 ve üzeri bir tam sayıdır; sayfa boyutu 1 ile 100 arasında bir tam sayıdır. Görev adı "
+    "1 ile 64 karakter arasında olmalı ve kenarında boşluk bulunmamalıdır."
+)
+CATALOG_HINTS: dict[str, str] = {
+    "model_ambiguous": (
+        "Aynı etiketli birden fazla sürüm var; seçim yapılmadı. Kimlikleri görmek için 'yorunge "
+        "models show --service evren-platform --model OWNER/SLUG --versions{options}' çalıştırın, "
+        "sonra 'yorunge models download --version-id KIMLIK --format FORMAT --weights-out "
+        "DOSYA{options}' ile devam edin (FORMAT: onnx, pt veya tflite)."
+    ),
+    "model_task_mismatch": (
+        "Model beklenen görevle eşleşmiyor. 'yorunge models show --service evren-llm --model-id "
+        "KIMLIK{options}' ile görevi kontrol edin."
+    ),
+    "model_not_addressable": (
+        "Modelin sahip adı yok; owner/slug ile adreslenemez. 'yorunge models show --service "
+        "evren-platform --model-id KIMLIK --versions{options}' kullanın."
+    ),
+}
+
+
 def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeError], str | None]]:
     """What a person is told, in text, of the errors this command meets in its own way."""
+    from yorunge.cli.catalog import options_suffix
+
     hints: dict[str, str | Callable[[YorungeError], str | None]] = {
         "transport_timeout": TIMEOUT_HINT,
         "download_integrity_mismatch": _mismatch_hint,
@@ -218,10 +302,60 @@ def error_hints(args: argparse.Namespace) -> dict[str, str | Callable[[YorungeEr
     }
     if vars(args).get("no_resume") is True:
         hints["download_partial_unverified"] = NO_RESUME_HINT
+    if selection_refused(args):
+        hints["invalid_request"] = SELECTION_HINT
+    suffix = options_suffix(args)
+    hints.update({code: text.format(options=suffix) for code, text in CATALOG_HINTS.items()})
+    hints["model_ambiguous"] = _ambiguity_hint(
+        CATALOG_HINTS["model_ambiguous"].format(options=suffix)
+    )
+    hints["model_not_visible"] = _not_visible_hint(args, suffix)
+    hints["state_invalid"] = STATE_HINT
+    if getattr(args, "action", None) == "list":
+        hints["invalid_request"] = LIST_ARGUMENTS_HINT
     return hints
 
 
-def _summary_text(data: DownloadSummary) -> str:
+def _not_visible_hint(args: argparse.Namespace, options: str) -> str:
+    """The next step for a model or version the key cannot see, named for the command at hand."""
+    if getattr(args, "action", None) == "download":
+        return (
+            "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. "
+            "Etiketin yazımını 'yorunge models show --service evren-platform --model OWNER/SLUG "
+            f"--versions{options}' ile kontrol edin; profili ve anahtarı da kontrol edin."
+        )
+    service = getattr(args, "service", None) or "evren-platform"
+    return (
+        "Model veya sürüm bu anahtara görünmüyor; bu kesin bir yokluk kanıtı değildir. Profili ve "
+        f"anahtarı kontrol edin ya da 'yorunge models list --service {service}{options}' ile "
+        "arayın."
+    )
+
+
+def _ambiguity_hint(base: str) -> Callable[[YorungeError], str | None]:
+    """The ambiguity hint, with the candidates the error carries (identity, tag, date), if any."""
+
+    def hint(error: YorungeError) -> str | None:
+        found = getattr(error, "candidates", ())
+        if not found:
+            return base
+        rows = [
+            f"  kimlik {identity}  etiket {tag}  tarih {created}"
+            for identity, tag, created in found
+        ]
+        total = int(getattr(error, "total", len(found)))
+        heading = (
+            f"Adaylar (seçim yapılmadı; {total} sürüm bu etiketi taşıyor, "
+            f"en çok {len(found)} gösterilir):"
+        )
+        return "\n".join([base, heading, *rows])
+
+    return hint
+
+
+def _summary_text(data: DownloadSummary, warnings: tuple[str, ...] = ()) -> str:
+    from yorunge.adapters.download_engine import REPLACED_PARTIAL_WARNING
+
     source = data.source
     kind = f"biçim {source.format}" + ("" if source.fold is None else f", fold {source.fold}")
     rows = [
@@ -229,6 +363,21 @@ def _summary_text(data: DownloadSummary) -> str:
         f"Sürüm: {source.version_id}; {kind}",
         f"Boyut: {data.bytes} bayt; SHA-256: {data.sha256}",
     ]
+    if data.resolution is not None:
+        resolved = data.resolution
+        rows.insert(
+            1,
+            f"Çözülen model: {resolved.owner}/{resolved.slug} (model kimliği "
+            f"{resolved.model_id}); sürüm etiketi {resolved.version_tag}. Etiketin gösterdiği "
+            "sürüm kimliği katalog yanıtında gözlemlendi; sağlayıcı bunun değişmezliğini garanti "
+            "etmez.",
+        )
+    if REPLACED_PARTIAL_WARNING in warnings:
+        rows.append(
+            "Önceki yarım dosya başka bir indirmeye (farklı sürüm, biçim, fold ya da hizmet "
+            "hedefi) aitti; "
+            "atıldı ve bu indirme baştan başladı."
+        )
     if data.verification_level == "sha256_matched":
         rows.append("Doğrulama: SHA-256, verdiğiniz beklenen özetle eşleşti (sha256_matched).")
     else:
@@ -242,6 +391,11 @@ def _summary_text(data: DownloadSummary) -> str:
         rows.append(
             f"Aktarım: yarım kalan indirmeden {data.resumed_from_bytes} bayttan devam edildi."
         )
+    elif data.resolution is not None:
+        rows.append(
+            "Aktarım: önceki yarım indirme tamdı; ağırlık isteği yapılmadan yayımlandı "
+            "(sürüm katalogdan okundu)."
+        )
     else:
         rows.append("Aktarım: önceki yarım indirme tamdı; ağ isteği yapılmadan yayımlandı.")
     rows.append(
@@ -251,11 +405,16 @@ def _summary_text(data: DownloadSummary) -> str:
     return "\n".join(rows)
 
 
-def text(data: Model) -> str:
+def text(data: Model, warnings: tuple[str, ...] = ()) -> str:
+    from yorunge.domain.catalog import CatalogReading
     from yorunge.domain.download import DownloadSummary
 
+    if isinstance(data, CatalogReading):
+        from yorunge.cli.catalog import catalog_text
+
+        return catalog_text(data)
     if isinstance(data, DownloadSummary):
-        return _summary_text(data)
+        return _summary_text(data, warnings)
     raise TypeError("a download result is expected")
 
 

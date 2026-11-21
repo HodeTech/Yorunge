@@ -1,6 +1,6 @@
 # Referans sözleşmeler
 
-**Durum:** CLI/config/capability yerel alt kümeleri uygulandı; tam yürütme/araç portları tasarım. **Tarih:** 2026-11-03.
+**Durum:** CLI/config/capability yerel alt kümeleri uygulandı; tam yürütme/araç portları tasarım. **Tarih:** 2026-11-21.
 
 | Belge | Kanonik tanım |
 |---|---|
@@ -29,6 +29,7 @@
 | [Upload CLI/Python](dataset-upload-public.md) | Uygulanmış P02-2t dar public summary, requested-intent review ve ortak kullanım senaryoları |
 | [Upload HTTP bütçeleri](dataset-upload-http.md) | V2 work limitlerinin gerçek HTTP çağrı/deneme/gövde yoluna bağlanması ve kayıtlı service URI; uygulama/kabul ilgili kartta |
 | [Upload continuation](dataset-upload-continuation.md) | ADR-0031 Accepted: kesintiden sonra kanıtlı, yeni onaylı devam; kapalı sınıflar, v3 plan/kayıt farkları ve uygulanan `resume` yüzeyi (canlı kabul P02-3a’da) |
+| [Katalog okuma](catalog.md) | ADR-0035 Accepted: salt okunur Platform/LLM kataloğu, sabit referans ve etiketle seçim (P02-4c–f); [PR #18](https://github.com/HodeTech/Yorunge/pull/18) development’a açık; K4 kısmi, K5 yapılmadı |
 | [Akışlı indirme motoru](download-engine.md) | ADR-0032 Accepted: imzalı URL GET, no-clobber yayın, resume ve doğrulama seviyeleri; uygulanan motor ve `models download` yüzeyi (canlı kabul ve native ölçüm ayrı kartlarda) |
 | [Veri sürümü referansı](dataset-versions.md) | ADR-0033 Accepted: salt okuma sürüm/bölme gözlemi, değişmez bağ ve sapma denetimi; uygulanan `datasets versions` yüzeyi (canlı kabul P02-3c’de) |
 

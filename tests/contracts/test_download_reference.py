@@ -303,7 +303,7 @@ def test_the_engine_section_states_the_constants_and_the_order_of_the_engine():
     assert "tamponlamaz" in section
     assert "yerel durumu her istekten önce" in section
     assert "`complete(terminated=True)`" in section
-    assert section.index("Tam-stage ise ağ koşusu yoktur") < section.index("en çok iki GET")
+    assert section.index("tam-stage ise ağ koşusu yoktur") < section.index("en çok iki GET")
     # the framing ends, the whole-body mark is written, THEN the last report
     assert section.index("`complete(terminated=True)` yazılır") < section.index("sonra son rapor")
     assert MAX_REPORTED_PATH_BYTES == 4096

@@ -4,6 +4,11 @@ Yayımlanan değişiklikler sürüm bazında kaydedilir. Bu dosyadaki `Unrelease
 
 ## Unreleased
 
+### Added — 2026-11-19
+
+- P02-4 (katalog, sabit referans ve seçilmiş indirme; [ADR-0035](docs/decisions/0035-catalog-reads-fixed-references-and-selection.md); [PR #18](https://github.com/HodeTech/Yorunge/pull/18) ile development’a açıldı, birleştirme kullanıcıda; K5 canlı indirme yapılmadı): `models list --service evren-platform|evren-llm`, `models show` ve `datasets list` salt okuma komutları (sayfa tamlığı, gözlem penceresi, kapalı hata kodları); `models download --model OWNER/SLUG --version-tag TAG` ile katalogdan tek tam eşleşen sürümün indirilmesi (çözülen kimlik sonuçta görünür); `api.list_*`, `api.show_*`, `api.resolve_platform_version` ve `api.download_model_weights_by_tag`.
+- P02-R10: LLM şartları kabul edilmemiş iken `context discover --service evren-llm` metninde tek sabit gözlem satırı (kabul yolu, komut veya URL içermez).
+
 ### Changed — 2026-11-13
 
 - CI süresi ([ADR-0034](docs/decisions/0034-ci-duration-docs-lane-and-parallel-suite.md)): yalnız belge değiştiren `development` PR’ları artık tam suite yerine statik kontrolleri, dağıtım doğrulamasını ve belgeye başvuran testleri koşturur (hücreler, iş adları ve `offline-core` aynıdır; sınıflandırmayı hedef dalın `scripts/ci_changes.py` kopyası yapar); tam suite her hücrede `pytest -n <vCPU − 1> --dist loadfile` ile paralel koşar (`pytest-xdist` yalnız geliştirme grubunda) ve en yavaş 25 test yazılır. İki testin `uuid4()` parametre değeri sabitlendi (xdist aynı test kimliklerini ister). Workflow, betik ve testler değiştiği için kaynak bağlı M5 referans serisi yeniden ölçüldü (`p02-3-reference-{startup,jobs,datasets,raw,upload,download}-10`, kod `1cac786`; ürün kaynağı `src/` değişmedi; `-7`–`-9` tarihsel). CI’da düşen bir test (aynı boyutlu dosya yeniden yazımı) zaman damgası çözünürlüğüne bağlıydı; testin iki geçerli sonucu kabul etmesi sağlandı, ürün değişmedi. Merge, `Master` ve release kullanıcıdadır.

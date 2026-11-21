@@ -30,7 +30,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from yorunge.adapters.download_sink import DownloadSink, Published, SinkPlan, open_sink
+from yorunge.adapters.download_sink import (
+    DownloadSink,
+    Published,
+    SinkPlan,
+    open_held_sink,
+    open_sink,
+)
 from yorunge.adapters.storage_transport import TransferSession
 from yorunge.application.download_transport import (
     DownloadRequest,
@@ -43,6 +49,7 @@ from yorunge.domain.download import (
     CONTROL_CALL_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
     MAX_DOWNLOAD_BYTES,
+    DownloadResolution,
     DownloadSource,
     DownloadSummary,
     parse_sha256,
@@ -184,7 +191,61 @@ def run_download(
                 lambda transport: _network(job, secret, plan, sink, transport, limit, progress)
             )
         published = sink.publish(job.expected_sha256)
-    return _summary(job, published)
+    return _summary(job, published, None)
+
+
+Build = Callable[[], tuple[DownloadJob, DownloadResolution]]
+REPLACED_PARTIAL_WARNING: Final = "partial_of_other_identity_discarded"  # the text view says it
+
+
+def run_resolved_download(
+    target: Path,
+    session: TransferSession,
+    build: Build,
+    *,
+    no_resume: bool,
+    timeout: int,
+) -> tuple[DownloadSummary, tuple[str, ...]]:
+    """Download the version that ``build`` resolves, under the lock, after the local refusals.
+
+    The local refusals that no identity can change are given first, before ``build`` runs.
+    ``build`` (the catalog's calls) runs with the lock held and yields the job whose identity the
+    stage is then settled with. The time it takes is given back to the download deadline up to the
+    control budget, as the JSON call's is: the deadline is ``timeout`` seconds from the start and
+    covers the local state and the GET. The warnings name a partial of another download that was
+    dropped, and they reach the caller only with a successful result: a run that fails after the
+    drop does not name it (the drop comes after the catalog reads and before the weights requests).
+    """
+    if (
+        not isinstance(session, TransferSession)
+        or type(no_resume) is not bool
+        or type(timeout) is not int
+    ):
+        raise YorungeError("invalid_request")
+    parse_timeout(timeout)  # the bounds of the job's own timeout, judged before the lock
+    session.preflight()
+    limit = _Limit(time.monotonic() + timeout)
+    with open_held_sink(target, no_resume=no_resume, guard=limit.guard) as sink:
+        began = time.monotonic()
+        job, resolution = build()
+        limit.refund(min(time.monotonic() - began, JSON_BUDGET_SECONDS))
+        if (
+            type(job) is not DownloadJob
+            or job.target != target
+            or job.no_resume != no_resume
+            or job.timeout != timeout
+        ):
+            raise YorungeError("invalid_request")  # the job is the one this sink was taken for
+        plan = sink.settle(job.identity_key)
+        progress = _Progress(job.progress)
+        if plan.action == "download":
+            secret = session.secret
+            session.download(
+                lambda transport: _network(job, secret, plan, sink, transport, limit, progress)
+            )
+        published = sink.publish(job.expected_sha256)
+    warnings = (REPLACED_PARTIAL_WARNING,) if sink.replaced_other_identity else ()
+    return _summary(job, published, resolution), warnings
 
 
 def _instant(value: float) -> bool:
@@ -252,7 +313,9 @@ async def _receive(sink: DownloadSink, view: DownloadView, progress: _Progress) 
     progress.finish(sink.written, total)
 
 
-def _summary(job: DownloadJob, published: Published) -> DownloadSummary:
+def _summary(
+    job: DownloadJob, published: Published, resolution: DownloadResolution | None
+) -> DownloadSummary:
     verification = published.verification
     return DownloadSummary(
         schema_version=1,
@@ -265,4 +328,5 @@ def _summary(job: DownloadJob, published: Published) -> DownloadSummary:
         resumed=published.resumed,
         resumed_from_bytes=published.resumed_from_bytes,
         source=job.source,
+        resolution=resolution,
     )
