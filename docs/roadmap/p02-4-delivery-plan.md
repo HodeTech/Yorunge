@@ -123,17 +123,21 @@ Her kod adımı: **geliştir → ilgili gerçek kontroller → commit → fresh 
 ## Teslim kaydı
 
 - **PR:** [PR #18](https://github.com/HodeTech/Yorunge/pull/18) `feat/p02-4-catalog-and-selection` dalından `development`e açık; birleştirme kullanıcıda. Master ve release kullanıcıdadır.
-- **Son commit’ler:** `34492b7` (-12 referans arşivi ve kaydı), `788901b` (görev indeksi durumu), `0bf0753` (2026-11-21 kod incelemesi: sınıflandırma, sınırlar, yanıt durumu, yakalanmış kimlik, ipuçları, testler).
-- **CI:** `34492b7` üzerinde zorunlu kapılar yeşil (offline-core, branch-policy, Linux 3.11 ve 3.14, macOS 3.11; SonarCloud geçti). 2026-11-21 değişiklikleri için CI yeniden koşar; sonuç PR’da izlenir.
-- **Kanıt:** `-12` referans serisi (altı aşama ve koşul kaydı) arşivlendi; beş doğrulayıcı ve genel `verify` geçti. Referans kaynak haritası değişirse seri yeniden alınır.
+- **Son commit’ler:** `0bf0753` (2026-11-21 kod incelemesi: sınıflandırma, sınırlar, yanıt durumu, yakalanmış kimlik, ipuçları, testler), `788901b` (görev indeksi durumu), `4bdb0a9` (-13 kaynak adları), ardından -13 referans arşivi ve kaydı.
+- **CI:** `4bdb0a9` üzerinde Linux 3.11 tam paketi geçti, ancak `-13` arşivi eklenene kadar startup referans kapısı ve `offline-core` kırmızıydı; bu arşiv bu commit ile eklenir ve sonuç PR’da izlenir.
+- **Kanıt:** `-13` referans serisi (altı aşama ve koşul kaydı) arşivlendi; beş doğrulayıcı ve genel `verify` geçti. Referans kaynak haritası değişirse seri yeniden alınır.
 - **Kart kabulleri:** P02-4a–f ve P02-R10 kartları kendi kabul bölümlerinde izlenir; bir maddenin karşılanmadığı kartta açıkça yazılır.
 - **K4 (canlı salt okuma):** kısmi. Veri setleri ve LLM okundu; Platform model detayı, sürüm listesi ve `scope=owned` etkisi bu anahtarda görünür model olmadığı için kanıtsız.
 - **K5 (canlı indirme):** yapılmadı; sürüm kimliği ve ek yetki verilmedi.
 - **Açık sınırlar:** (1) Platform sayfa 2 ve sonrasında sessiz sayfa boyutu küçültmesi tespit edilemez ([katalog başvurusu](../reference/catalog.md)); (2) etiket yolunda katalog aşamasında SIGKILL testi yok, motor kimlik testleri aynı kimliği kapsar; (3) kurulu wheel’de katalog başarı yolu yok; (4) etiket yolunda atılan yarım dosya uyarısı yalnız başarılı sonuçta taşınır ([indirme başvurusu](../reference/download-engine.md#katalogdan-seçimle-indirme-p02-4f)).
 
-## Kaynak referans serisi `-12`
+## Kaynak referans serisi `-13`
 
-Güncel seri. `-11` kaydı (aşağıda) yalnız `ecced3c` ağacına bağlıdır; `a40520f` ağacında kaynak haritası (`src`, `tests`, `scripts`, `.github`) değiştiği için `-12` gerekiyordu. Seri `a40520f` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye ve son pencerede bilinen yoğun işlem sayısı 0 gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-12` ve `p02-3-native12-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
+Güncel seri. `-12` kaydı (aşağıda) yalnız `a40520f` ağacına bağlıdır; `2b6cc13` ağacında kaynak haritası (`src`, `tests`, `scripts`, `.github`) değiştiği için `-13` gerekti. Seri `4bdb0a9` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye, son pencerede bilinen yoğun işlem sayısı 0 ve bir sıfırlama gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-13` ve `p02-3-native13-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
+
+## Kaynak referans serisi `-12` (önceki, yerini `-13`e bıraktı)
+
+`-12` kaydı `a40520f` ağacına bağlıdır. `-11` kaydı (aşağıda) yalnız `ecced3c` ağacına bağlıdır; `a40520f` ağacında kaynak haritası değiştiği için `-12` gerekiyordu. Seri `a40520f` commit'inin temiz klonundan Apple M5 Max (dahili APFS SSD, AC güç, 60 saniyelik sessiz pencere) üzerinde ölçüldü: startup, jobs, datasets, raw, upload ve download sırayla birer kez çalıştı; altısı da geçti. Koşul kaydı `quiet_window` olarak 61 saniye ve son pencerede bilinen yoğun işlem sayısı 0 gösterir. Yedi kanıt [evidence.md](../research/evidence.md) içinde `p02-3-reference-*-12` ve `p02-3-native12-conditions` olarak arşivlendi. Beş doğrulayıcı (`verify-*-reference`) ve genel `verify` geçti.
 
 ## Kaynak referans serisi `-11` (önceki, yerini `-12`ye bıraktı)
 
